@@ -27,8 +27,8 @@ const JWT_SECRET =
 const upload = multer({ dest: "uploads/" });
 
 // Настройка Google AI (Вставь свой новый ключ!)
-const fileManager = new GoogleAIFileManager(API_KEY);
-const genAI = new GoogleGenerativeAI(API_KEY);
+const fileManager = new GoogleAIFileManager(process.env.GEMINI_API_KEY);
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 
 app.use(cors());
