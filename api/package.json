@@ -17,10 +17,12 @@
     "cheerio": "^1.1.2",
     "compute-cosine-similarity": "^1.1.0",
     "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.17.0",
     "multer": "^2.0.2",
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.1.10",
+    "replicate": "^1.4.0"
   }
 }
