@@ -39,7 +39,7 @@ const NewOutfitScreen = () => {
   const [visiblilty, setVisiblity] = useState("Everyone");
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState(null);
-  const BASE_URL = "http://localhost:3000";
+  const BASE_URL = "https://aiwardrobe-ivh4.onrender.com";
 
   useEffect(() => {
     const fetchToken = async () => {

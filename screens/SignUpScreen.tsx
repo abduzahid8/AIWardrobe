@@ -17,17 +17,17 @@ const SignUpScreen = () => {
   const [username, setUserName] = useState("");
   const [profileImage, setProfileImage] = useState("");
   const navigation = useNavigation();
-  const {register} = useAuthStore();
+  const { register } = useAuthStore();
 
   const handleSignUp = async () => {
-    if(!email || !password || !username || !gender){
-      Alert.alert("Error","All fields except profile image are req");
+    if (!email || !password || !username || !gender) {
+      Alert.alert("Error", "All fields except profile image are req");
       return;
     }
-    try{
-      await register(email,password,username,gender,profileImage)
-    }catch(error){
-      Alert.alert("Error",error.message)
+    try {
+      await register(email, password, username, gender, profileImage)
+    } catch (error: any) {
+      Alert.alert("Error", error.message)
     }
   }
 
@@ -70,7 +70,7 @@ const SignUpScreen = () => {
       </TouchableOpacity>
       <TouchableOpacity onPress={() => navigation.goBack()}>
         <Text className="text-center text-blue-500 text-lg">
-         Already have an account? Sign In
+          Already have an account? Sign In
         </Text>
       </TouchableOpacity>
     </View>

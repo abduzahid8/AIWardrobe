@@ -10,12 +10,13 @@ import {
 import React, { useState } from "react";
 import { useNavigation } from "@react-navigation/native";
 import useAuthStore from "../store/auth";
+export const API_URL = "https://aiwardrobe-ivh4.onrender.com";
 
 const SignInScreen = () => {
   const navigation = useNavigation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const {login} = useAuthStore();
+  const { login } = useAuthStore();
   const handleSignIn = async () => {
     if (!email || !password) {
       Alert.alert("Error", "Email and password are required");
@@ -23,11 +24,11 @@ const SignInScreen = () => {
     }
     try {
       await login(email, password);
-    } catch (err) {
-      Alert.alert("Error", err.message);
+    } catch (error: any) {
+      Alert.alert("Error", error.message);
     }
   };
-
+  console.log("Мой текущий API URL:", API_URL);
   return (
     <View className="flex-1 bg-white justify-center p-4">
       <Text className="text-2xl font-bold text-center mb-6">SignIn</Text>
