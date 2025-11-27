@@ -48,7 +48,7 @@ const AIOutfitmaker = () => {
       console.log("Data",searchQuery);
 
       const response = await axios.get(
-        `http://localhost:3000/smart-search?query=${encodeURIComponent(
+        `https://aiwardrobe-ivh4.onrender.com/smart-search?query=${encodeURIComponent(
           searchQuery
         )}`
       );

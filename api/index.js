@@ -32,7 +32,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 
 app.use(cors());
-app.use(express.json({ limit: '50mb' })); 
+app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 
@@ -178,47 +178,47 @@ app.post("/save-outfit", authenticateToken, async (req, res) => {
 
 // ========== WEATHER API ==========
 
-const WEATHER_API_KEY = "0b0b523ea5bec9aef3883b17a3dbec98"; 
+const WEATHER_API_KEY = "0b0b523ea5bec9aef3883b17a3dbec98";
 
 
 app.get("/weather", async (req, res) => {
   const { city, lat, lon } = req.query;
-  
+
   try {
     let query;
-    
+
     // Если переданы координаты
     if (lat && lon) {
       query = `${lat},${lon}`;
-    } 
+    }
     // Если передан город
     else if (city) {
       query = city;
-    } 
+    }
     // Если ничего не передано - используем Ташкент по умолчанию
     else {
       query = "Tashkent";
     }
-    
+
     // WeatherAPI.com - бесплатный и работает сразу без задержки активации
     const url = `https://api.weatherapi.com/v1/current.json?key=${WEATHER_API_KEY}&q=${query}&aqi=no`;
-    
+
     console.log("🌤️ Запрашиваю погоду для:", query);
-    
+
     const response = await fetch(url);
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       console.error("❌ Weather API Error:", errorData);
-      return res.status(response.status).json({ 
-        error: errorData.error?.message || "Failed to fetch weather" 
+      return res.status(response.status).json({
+        error: errorData.error?.message || "Failed to fetch weather"
       });
     }
-    
+
     const data = await response.json();
-    
+
     console.log("✅ Weather fetched:", data.location.name, data.current.temp_c + "°C");
-    
+
     // Форматируем ответ под ваш фронтенд
     res.json({
       temp: Math.round(data.current.temp_c),
@@ -229,12 +229,12 @@ app.get("/weather", async (req, res) => {
       humidity: data.current.humidity,
       wind_speed: data.current.wind_kph
     });
-    
+
   } catch (error) {
     console.error("❌ Weather fetch error:", error.message);
-    res.status(500).json({ 
+    res.status(500).json({
       error: "Failed to fetch weather data",
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -242,31 +242,31 @@ app.get("/weather", async (req, res) => {
 // Маршрут для координат
 app.post("/weather/coords", async (req, res) => {
   const { latitude, longitude } = req.body;
-  
+
   if (!latitude || !longitude) {
-    return res.status(400).json({ 
-      error: "Latitude and longitude are required" 
+    return res.status(400).json({
+      error: "Latitude and longitude are required"
     });
   }
-  
+
   try {
     const query = `${latitude},${longitude}`;
     const url = `https://api.weatherapi.com/v1/current.json?key=${WEATHER_API_KEY}&q=${query}&aqi=no`;
-    
+
     console.log("🌤️ Запрашиваю погоду по координатам:", query);
-    
+
     const response = await fetch(url);
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       console.error("❌ Weather API Error:", errorData);
-      return res.status(response.status).json({ 
-        error: errorData.error?.message || "Failed to fetch weather" 
+      return res.status(response.status).json({
+        error: errorData.error?.message || "Failed to fetch weather"
       });
     }
-    
+
     const data = await response.json();
-    
+
     res.json({
       temp: Math.round(data.current.temp_c),
       feels_like: Math.round(data.current.feelslike_c),
@@ -276,12 +276,12 @@ app.post("/weather/coords", async (req, res) => {
       humidity: data.current.humidity,
       wind_speed: data.current.wind_kph
     });
-    
+
   } catch (error) {
     console.error("❌ Weather fetch error:", error.message);
-    res.status(500).json({ 
+    res.status(500).json({
       error: "Failed to fetch weather data",
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -289,28 +289,28 @@ app.post("/weather/coords", async (req, res) => {
 // Дополнительный маршрут для получения погоды по координатам
 app.post("/weather/coords", async (req, res) => {
   const { latitude, longitude } = req.body;
-  
+
   if (!latitude || !longitude) {
-    return res.status(400).json({ 
-      error: "Latitude and longitude are required" 
+    return res.status(400).json({
+      error: "Latitude and longitude are required"
     });
   }
-  
+
   try {
     const url = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${WEATHER_API_KEY}&units=metric`;
-    
+
     const response = await fetch(url);
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       console.error("❌ Weather API Error:", errorData);
-      return res.status(response.status).json({ 
-        error: errorData.message || "Failed to fetch weather" 
+      return res.status(response.status).json({
+        error: errorData.message || "Failed to fetch weather"
       });
     }
-    
+
     const data = await response.json();
-    
+
     res.json({
       temp: Math.round(data.main.temp),
       feels_like: Math.round(data.main.feels_like),
@@ -320,12 +320,12 @@ app.post("/weather/coords", async (req, res) => {
       humidity: data.main.humidity,
       wind_speed: data.wind.speed
     });
-    
+
   } catch (error) {
     console.error("❌ Weather fetch error:", error.message);
-    res.status(500).json({ 
+    res.status(500).json({
       error: "Failed to fetch weather data",
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -478,8 +478,8 @@ app.get("/smart-search", async (req, res) => {
 
     res.json(scored.slice(0, 5));
   } catch (err) {
-      console.error("🔴 ОШИБКА ИИ:", err); // <--- ДОБАВИТЬ ЭТУ СТРОКУ
-      res.status(500).json({ error: err.message });
+    console.error("🔴 ОШИБКА ИИ:", err); // <--- ДОБАВИТЬ ЭТУ СТРОКУ
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -489,38 +489,29 @@ app.post("/ai-chat", async (req, res) => {
   console.log("📨 Запрос:", query);
 
   try {
-    // 👇 ИЗМЕНЕНИЕ: Используем chatCompletion вместо textGeneration
-    // И модель Qwen (она работает стабильнее всего сейчас)
     const result = await hf.chatCompletion({
-      model: "Qwen/Qwen2.5-72B-Instruct",
+      // 👇 МЕНЯЕМ МОДЕЛЬ ЗДЕСЬ. 72B слишком тяжелая, ставим 7B или Llama 3
+      model: "meta-llama/Meta-Llama-3-8B-Instruct",
       messages: [
-        { role: "system", content: "You are a fashion stylist. Give short advice with emojis." },
+        { role: "system", content: "You are a helpful fashion stylist. Keep answers short and fun with emojis." },
         { role: "user", content: query }
       ],
-      max_tokens: 200,
+      max_tokens: 500, // Чуть увеличим токены
+      temperature: 0.7 // Креативность
     });
 
-    // 👇 ИЗМЕНЕНИЕ: Ответ лежит в choices[0].message.content
-    console.log("🤖 Ответ:", result.choices[0].message.content);
-    res.json({ text: result.choices[0].message.content });
-    
+    // Проверка, есть ли ответ
+    if (result && result.choices && result.choices.length > 0) {
+      console.log("🤖 Ответ:", result.choices[0].message.content);
+      res.json({ text: result.choices[0].message.content });
+    } else {
+      throw new Error("AI вернул пустой ответ");
+    }
+
   } catch (err) {
-    console.error("❌ Ошибка HF:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
-// 👇 НОВЫЙ МАРШРУТ ДЛЯ ПАРСИНГА ССЫЛОК
-app.post("/scrape-item", async (req, res) => {
-  const { url } = req.body;
-
-  if (!url) return res.status(400).json({ error: "URL is required" });
-
-  const result = await scrapeProduct(url);
-
-  if (result.success) {
-    res.json(result.data);
-  } else {
-    res.status(500).json({ error: result.error });
+    console.error("❌ Ошибка HF:", err.message);
+    // Возвращаем понятную ошибку на телефон, а не просто 500
+    res.status(500).json({ error: "AI model is busy, try again later." });
   }
 });
 
@@ -534,8 +525,8 @@ app.post("/scrape-item", async (req, res) => {
 
 // 👇 ВСТАВЬТЕ СЮДА ВАШ ТОКЕН ОТ REPLICATE (начинается на r8_...)
 const replicate = new Replicate({
-      auth: process.env.REPLICATE_API_TOKEN,
-    });
+  auth: process.env.REPLICATE_API_TOKEN,
+});
 
 app.post("/try-on", async (req, res) => {
   const { human_image, garment_image, description } = req.body;
@@ -563,7 +554,7 @@ app.post("/try-on", async (req, res) => {
 
     console.log("✅ Готово:", output);
     res.json({ image: output }); // Replicate возвращает ссылку на результат
-    
+
   } catch (error) {
     console.error("Ошибка Replicate:", error);
     res.status(500).json({ error: error.message });
@@ -633,7 +624,7 @@ app.post("/scan-wardrobe", upload.single("video"), async (req, res) => {
 
     // 5. (Опционально) Тут можно сразу сохранить их в MongoDB
     // Но пока просто вернем на клиент, чтобы показать пользователю
-    
+
     // Удаляем временный файл с сервера
     fs.unlinkSync(req.file.path);
 

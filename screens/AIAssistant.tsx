@@ -13,7 +13,7 @@ import React, { useState } from "react";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 // @ts-ignore - игнорируем ошибку, если путь немного отличается
-import { API_URL } from "../api/config"; 
+import { API_URL } from "../api/config";
 
 // Определяем типы для сообщений, чтобы TypeScript не ругался
 interface Message {
@@ -26,7 +26,7 @@ const AIAssistant = () => {
   const navigation = useNavigation();
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  
+
   // Указываем, что это массив сообщений
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -46,7 +46,7 @@ const AIAssistant = () => {
   // Функция отправки
   const handleSend = async (textOverride?: string) => {
     const textToSend = typeof textOverride === 'string' ? textOverride : query;
-    
+
     if (!textToSend.trim()) return;
 
     const userMessage: Message = { id: Date.now(), text: textToSend, sender: "user" };
@@ -55,19 +55,18 @@ const AIAssistant = () => {
     setIsLoading(true);
 
     try {
-      // Используем API_URL из конфига. 
-      // Если конфиг не сработает, он попробует localhost, но лучше проверить API_URL
-      const baseUrl = API_URL || "http://localhost:3000"; 
-      
+      // Используем API_URL из конфига.
+      const baseUrl = API_URL || "https://aiwardrobe-ivh4.onrender.com";
+
       const response = await fetch(`${baseUrl}/ai-chat`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            query: textToSend, 
-          }),
-        }
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: textToSend,
+        }),
+      }
       );
 
       const data = await response.json();
@@ -78,15 +77,15 @@ const AIAssistant = () => {
 
       if (data.text) {
         const aiResponse = data.text;
-        
+
         const enhancedResponse = aiResponse
           .replace("http", " [Link](")
           .replace(" ", ") ");
 
-        const botMessage: Message = { 
-            id: Date.now() + 1, 
-            text: enhancedResponse, 
-            sender: "ai" 
+        const botMessage: Message = {
+          id: Date.now() + 1,
+          text: enhancedResponse,
+          sender: "ai"
         };
 
         setMessages((prev) => [...prev, botMessage]);
@@ -97,10 +96,10 @@ const AIAssistant = () => {
     } catch (error: any) {
       console.log("AI error", error);
       const errorMessage: Message = {
-          id: Date.now() + 1,
-          text: `Sorry, server connection error. Try again! 😔`,
-          sender: "ai",
-        };
+        id: Date.now() + 1,
+        text: `Sorry, server connection error. Try again! 😔`,
+        sender: "ai",
+      };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
@@ -132,11 +131,10 @@ const AIAssistant = () => {
         {messages.map((message) => (
           <View
             key={message.id}
-            className={`mb-4 p-3 rounded-lg max-w-[80%] ${
-              message.sender == "user"
+            className={`mb-4 p-3 rounded-lg max-w-[80%] ${message.sender == "user"
                 ? "bg-cyan-200 self-end"
                 : "bg-cyan-100 self-start"
-            }`}
+              }`}
           >
             <Text className="text-base text-gray-800">{message.text}</Text>
             {message.sender === "ai" &&

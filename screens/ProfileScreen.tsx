@@ -42,7 +42,7 @@ const ProfileScreen = () => {
 
       try {
         const response = await axios.get(
-          `http://localhost:3000/save-outfit/user/${user._id}`,
+          `https://aiwardrobe-ivh4.onrender.com/save-outfit/user/${user._id}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
