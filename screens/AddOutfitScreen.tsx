@@ -15,7 +15,7 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { mpants, mshirts, pants, shoes, skirts, tops } from "../images";
 import { Ionicons } from "@expo/vector-icons";
 // Убедитесь, что путь верный!
-import { API_URL } from "../api/config"; 
+import { API_URL } from "../api/config";
 
 const AddOutfitScreen = () => {
   const route = useRoute();
@@ -64,12 +64,13 @@ const AddOutfitScreen = () => {
           image: data.image,
           name: data.title,
           gender: "u",
+          type: "imported",
         };
 
         // Добавляем в начало и выбираем
         setPopularClothes((prev) => [newItem, ...prev]);
         setSelected((prev) => [...prev, newItem.id]);
-        setLink(""); 
+        setLink("");
         Alert.alert("Success", "Item imported!");
       } else {
         Alert.alert("Error", "Could not find image. Try another link.");
@@ -114,13 +115,13 @@ const AddOutfitScreen = () => {
       <View className="mx-4 mt-4 p-3 bg-gray-50 rounded-xl border border-gray-200">
         <Text className="text-xs text-gray-500 mb-2 ml-1">Import from Web (Zara, Asos...)</Text>
         <View className="flex-row items-center">
-          <TextInput 
+          <TextInput
             className="flex-1 bg-white p-3 rounded-lg border border-gray-300 mr-2"
             placeholder="Paste link here..."
             value={link}
             onChangeText={setLink}
           />
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={handleLinkPaste}
             disabled={loadingLink}
             className="bg-black w-12 h-12 rounded-lg items-center justify-center"
@@ -155,7 +156,7 @@ const AddOutfitScreen = () => {
         <View className="flex-row flex-wrap px-4 mt-2 mb-20">
           {popularClothes?.map((item, index) => (
             <TouchableOpacity
-              key={item.id || index} 
+              key={item.id || index}
               onPress={() => toggleSelect(item?.id)}
               className="w-1/3 p-1 relative"
             >
@@ -170,9 +171,8 @@ const AddOutfitScreen = () => {
                 </Text>
               </View>
               <View
-                className={`absolute top-2 left-2 w-6 h-6 rounded-full border-2 ${
-                  selected.includes(item.id) ? "bg-black" : "border-gray-400"
-                } items-center justify-center`}
+                className={`absolute top-2 left-2 w-6 h-6 rounded-full border-2 ${selected.includes(item.id) ? "bg-black" : "border-gray-400"
+                  } items-center justify-center`}
               >
                 {selected.includes(item?.id) && (
                   <Ionicons name="checkmark" size={16} color="white" />

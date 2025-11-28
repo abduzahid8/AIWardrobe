@@ -18,7 +18,7 @@ const ProfileScreen = () => {
   const [activeTab, setActiveTab] = useState("Clothes");
   const [activeCategory, setActiveCategory] = useState("All");
   const { logout, user, token } = useAuthStore();
-  const [outifts, setOutfits] = useState([]);
+  const [outifts, setOutfits] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const username = user?.username || "sujanand";
   const email = user?.email || "";
@@ -37,7 +37,7 @@ const ProfileScreen = () => {
 
   useEffect(() => {
     const fetchOutfits = async () => {
-      if (!user._id || !token) return;
+      if (!user?._id || !token) return;
       setLoading(true);
 
       try {
@@ -63,21 +63,21 @@ const ProfileScreen = () => {
     activeCategory == "All"
       ? popularClothes
       : popularClothes.filter((item) => {
-          switch (activeCategory) {
-            case "Tops":
-              return item.type == "shirt";
-            case "Bottoms":
-              return item.type == "pants" || item.type == "skirts";
-            case "Shoes":
-              return item.type == "shoes";
-            default:
-              return true;
-          }
-        });
+        switch (activeCategory) {
+          case "Tops":
+            return item.type == "shirt";
+          case "Bottoms":
+            return item.type == "pants" || item.type == "skirts";
+          case "Shoes":
+            return item.type == "shoes";
+          default:
+            return true;
+        }
+      });
 
-  const sortItems = (items:any) => {
+  const sortItems = (items: any[]) => {
     const order = ["shirt", "pants", "skirts", "shoes"];
-    return items.sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type));
+    return items.sort((a: any, b: any) => order.indexOf(a.type) - order.indexOf(b.type));
   };
 
   console.log("Data", activeTab);
@@ -135,9 +135,8 @@ const ProfileScreen = () => {
               className="pb-2"
             >
               <Text
-                className={`text-base font-medium ${
-                  activeTab == tab ? "text-black" : "text-gray-400"
-                }`}
+                className={`text-base font-medium ${activeTab == tab ? "text-black" : "text-gray-400"
+                  }`}
               >
                 {tab}
               </Text>
@@ -154,14 +153,12 @@ const ProfileScreen = () => {
             <TouchableOpacity
               onPress={() => setActiveCategory(cat)}
               key={cat}
-              className={`px-3 mr-4 rounded-full ${
-                activeCategory == cat ? "text-black" : "text-gray-400"
-              }`}
+              className={`px-3 mr-4 rounded-full ${activeCategory == cat ? "text-black" : "text-gray-400"
+                }`}
             >
               <Text
-                className={`text-base font-medium ${
-                  activeCategory == cat ? "text-black" : "text-gray-400"
-                }`}
+                className={`text-base font-medium ${activeCategory == cat ? "text-black" : "text-gray-400"
+                  }`}
               >
                 {cat}
               </Text>
@@ -242,7 +239,7 @@ const ProfileScreen = () => {
                           {outfit.ocassion}
                         </Text>
                         <Text className="text-sm text-gray-500 mt-1">
-                          {outfit.items.map((item) => item.type).join(", ")}
+                          {outfit.items.map((item: any) => item.type).join(", ")}
                         </Text>
                       </View>
                     </View>

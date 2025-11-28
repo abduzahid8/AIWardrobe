@@ -14,9 +14,17 @@ import { GoogleAIFileManager } from "@google/generative-ai/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import fs from "fs"; // Для работы с файловой системой
 import path from "path"; // Для путей
+import ClothingItem from "./models/ClothingItem.js";
 import "dotenv/config";
+import { v2 as cloudinary } from 'cloudinary';
+import { createClient } from '@supabase/supabase-js';
+import axios from 'axios';
 
 
+
+
+
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
 const app = express();
 const port = 3000;
@@ -357,6 +365,111 @@ app.get("/save-outfit/user/:userId", authenticateToken, async (req, res) => {
   }
 });
 
+
+
+// Сохранение списка вещей (Batch Save)
+// Роут для сохранения вещей с генерацией картинок
+app.post("/wardrobe/add-batch", authenticateToken, async (req, res) => {
+  try {
+    const { items } = req.body;
+    const userId = req.user.id;
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: "No items provided" });
+    }
+
+    console.log(`🎨 Начинаю обработку ${items.length} вещей через Supabase...`);
+
+    const itemsWithImages = await Promise.all(items.map(async (item) => {
+      let finalImageUrl = "https://via.placeholder.com/300?text=No+Image";
+
+      try {
+        // А. Генерируем промпт
+        const prompt = `A professional studio photography of a ${item.color} ${item.style} ${item.itemType} (${item.description}), isolated on clean white background, flat lay, fashion catalog style, high quality, realistic, no shadows`;
+
+        // Б. Просим Replicate создать картинку
+        const output = await replicate.run(
+          "black-forest-labs/flux-schnell",
+          {
+            input: {
+              prompt: prompt,
+              aspect_ratio: "1:1",
+              output_format: "jpg",
+              output_quality: 80
+            }
+          }
+        );
+
+        // В. Если картинка есть -> Скачиваем и заливаем в Supabase
+        if (output && output[0]) {
+          const replicateUrl = output[0];
+
+          // 1. Скачиваем картинку как ArrayBuffer
+          const imageResponse = await axios.get(replicateUrl, { responseType: 'arraybuffer' });
+          const buffer = Buffer.from(imageResponse.data, 'binary');
+
+          // 2. Генерируем уникальное имя файла
+          const fileName = `${userId}/${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
+
+          // 3. Загружаем в Supabase Storage
+          const { data, error } = await supabase
+            .storage
+            .from('wardrobe_images') // Имя твоего бакета
+            .upload(fileName, buffer, {
+              contentType: 'image/jpeg',
+              upsert: false
+            });
+
+          if (error) {
+            console.error("Supabase error:", error);
+            throw error;
+          }
+
+          // 4. Получаем публичную ссылку
+          const { data: publicUrlData } = supabase
+            .storage
+            .from('wardrobe_images')
+            .getPublicUrl(fileName);
+
+          finalImageUrl = publicUrlData.publicUrl;
+        }
+
+      } catch (genError) {
+        console.error(`Ошибка с вещью ${item.itemType}:`, genError.message);
+      }
+
+      // Возвращаем объект для MongoDB
+      return {
+        userId: userId,
+        type: item.itemType,
+        color: item.color,
+        season: item.season,
+        style: item.style,
+        description: item.description,
+        imageUrl: finalImageUrl
+      };
+    }));
+
+    // Сохраняем в MongoDB
+    const savedItems = await ClothingItem.insertMany(itemsWithImages);
+
+    // Обновляем юзера
+    await User.findByIdAndUpdate(userId, {
+      $push: { outfits: { $each: savedItems.map(i => i._id) } }
+    });
+
+    console.log(`✅ Успешно сохранено: ${savedItems.length} шт.`);
+    res.status(201).json({ success: true, count: savedItems.length });
+
+  } catch (err) {
+    console.error("Critical Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+
+
 const generateEmbedding = async (text) => {
   const response = await hf.featureExtraction({
     model: "sentence-transformers/all-MiniLM-L6-v2",
@@ -582,10 +695,18 @@ app.post("/scan-wardrobe", upload.single("video"), async (req, res) => {
 
     // 2. Ждем, пока видео обработается (Google требует пару секунд)
     let file = await fileManager.getFile(uploadResult.file.name);
-    while (file.state === "PROCESSING") {
-      console.log("...обработка видео на стороне Google...");
+    let pollCount = 0;
+    const maxPolls = 90; // Max 3 minutes (90 * 2 seconds)
+
+    while (file.state === "PROCESSING" && pollCount < maxPolls) {
+      console.log(`...обработка видео (${pollCount * 2}s)...`);
       await new Promise((resolve) => setTimeout(resolve, 2000));
       file = await fileManager.getFile(uploadResult.file.name);
+      pollCount++;
+    }
+
+    if (pollCount >= maxPolls) {
+      throw new Error("Video processing timeout - try shorter video");
     }
 
     if (file.state === "FAILED") {
@@ -628,7 +749,7 @@ app.post("/scan-wardrobe", upload.single("video"), async (req, res) => {
     // Удаляем временный файл с сервера
     fs.unlinkSync(req.file.path);
 
-    res.json({ items });
+    res.json({ detectedItems: items });
 
   } catch (error) {
     console.error("Video Scan Error:", error);

@@ -4,9 +4,10 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import HomeScreen from "../screens/HomeScreen";
 import { Ionicons } from "@expo/vector-icons";
 import ProfileScreen from "../screens/ProfileScreen";
+import { TabParamList } from "./types";
 
 export const TabNavigator = () => {
-  const Tab = createBottomTabNavigator();
+  const Tab = createBottomTabNavigator<TabParamList>();
   return (
     <Tab.Navigator
       screenOptions={{
@@ -36,17 +37,21 @@ export const TabNavigator = () => {
         name="Add"
         component={View}
         options={{
-          tabBarIcon: ({}) => (
+          tabBarIcon: ({ }) => (
             <View className="w-12 h-12 rounded-full bg-black items-center justify-center">
               <Text className="text-white text-[28px] leading-[28px]">+</Text>
             </View>
           ),
-          tabBarButton: (props) => (
-            <TouchableOpacity
-              {...props}
-              className="items-center justify-center"
-            />
-          ),
+          tabBarButton: (props) => {
+            const { delayLongPress, ...rest } = props as any;
+            return (
+              <TouchableOpacity
+                {...rest}
+                delayLongPress={delayLongPress !== null ? delayLongPress : undefined}
+                style={{ alignItems: 'center', justifyContent: 'center' }}
+              />
+            );
+          },
         }}
       />
 

@@ -11,11 +11,14 @@ import ScanWardrobeScreen from "../screens/ScreenWardrobe";
 import SignInScreen from "../screens/SignInScreen";
 import SignUpScreen from "../screens/SignUpScreen";
 import AIOutfitmaker from "../screens/AIOutfitmaker";
+import DesignRoomScreen from "../screens/DesignRoomScreen";
+import NewOutfitScreen from "../screens/NewOutfitScreen";
 
 // Импорт хранилища авторизации
 import useAuthStore from "../store/auth";
+import { RootStackParamList } from "./types";
 
-const Stack = createNativeStackNavigator();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const RootNavigator = () => {
   // Получаем состояние авторизации и функцию инициализации
@@ -33,23 +36,23 @@ const RootNavigator = () => {
         <>
           {/* Вместо Tabs пока используем Home, так как TabNavigator еще не создан */}
           <Stack.Screen name="Home" component={HomeScreen} />
-          
-          <Stack.Screen 
-            name="AddOutfit" 
-            component={AddOutfitScreen} 
-            options={{ presentation: 'modal', title: "Add New Item" }} 
+
+          <Stack.Screen
+            name="AddOutfit"
+            component={AddOutfitScreen}
+            options={{ presentation: 'modal', title: "Add New Item" }}
           />
-          
+
           {/* AI Экраны */}
           <Stack.Screen name="AIChat" component={AIAssistant} />
           <Stack.Screen name="AIOutfit" component={AIOutfitmaker} />
           <Stack.Screen name="AITryOn" component={AITryOnScreen} />
           {/* 👇 ДОБАВЛЕН ЭКРАН СКАНИРОВАНИЯ */}
           <Stack.Screen name="ScanWardrobe" component={ScanWardrobeScreen} />
-          
-          {/* Заглушки для экранов из вашего кода, если они появятся позже */}
-          {/* <Stack.Screen name="DesignRoom" component={DesignRoomScreen} /> */}
-          {/* <Stack.Screen name="NewOutfit" component={NewOutfitScreen} /> */}
+
+          {/* Design and save screens */}
+          <Stack.Screen name="DesignRoom" component={DesignRoomScreen} />
+          <Stack.Screen name="NewOutfit" component={NewOutfitScreen} />
         </>
       ) : (
         // 🔒 Если не вошел: Показываем экраны входа
