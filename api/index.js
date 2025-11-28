@@ -693,24 +693,30 @@ app.post("/scan-wardrobe", upload.single("video"), async (req, res) => {
     console.log(`✅ Видео загружено в облако: ${uploadResult.file.uri}`);
 
     // 2. Ждем, пока видео обработается (Google требует пару секунд)
+    console.log(`✅ Видео загружено в облако: ${uploadResult.file.uri}`);
+
+    // Ожидание обработки (Максимум 40 секунд)
     let file = await fileManager.getFile(uploadResult.file.name);
-    let pollCount = 0;
-    const maxPolls = 90; // Max 3 minutes (90 * 2 seconds)
+    let attempt = 0;
+    const maxAttempts = 20; // 20 раз по 2 секунды = 40 секунд макс
 
-    while (file.state === "PROCESSING" && pollCount < maxPolls) {
-      console.log(`...обработка видео (${pollCount * 2}s)...`);
+    while (file.state === "PROCESSING") {
+      if (attempt >= maxAttempts) {
+        throw new Error("Google слишком долго обрабатывает видео. Попробуйте файл поменьше.");
+      }
+
+      console.log(`⏳ Обработка видео... (${attempt + 1}/${maxAttempts})`);
       await new Promise((resolve) => setTimeout(resolve, 2000));
-      file = await fileManager.getFile(uploadResult.file.name);
-      pollCount++;
-    }
 
-    if (pollCount >= maxPolls) {
-      throw new Error("Video processing timeout - try shorter video");
+      file = await fileManager.getFile(uploadResult.file.name);
+      attempt++;
     }
 
     if (file.state === "FAILED") {
-      throw new Error("Google failed to process video.");
+      throw new Error("Google не смог обработать это видео.");
     }
+
+    console.log("🧠 Видео готово! Запускаю анализ...");
 
     // 3. Спрашиваем Gemini
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });

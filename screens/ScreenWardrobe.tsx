@@ -19,7 +19,7 @@ export default function ScanWardrobeScreen() {
   const navigation = useNavigation<any>();
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<any>(null);
-  
+
   const [isRecording, setIsRecording] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false); // Единый стейт загрузки
 
@@ -63,11 +63,11 @@ export default function ScanWardrobeScreen() {
       // Переходим на экран проверки результатов
       // Убедись, что 'ReviewScan' есть в RootNavigator!
       if (response.data.detectedItems) {
-          navigation.navigate('ReviewScan', {
-            items: response.data.detectedItems
-          });
+        navigation.navigate('ReviewScan', {
+          items: response.data.detectedItems
+        });
       } else {
-          Alert.alert("Упс", "ИИ не нашел вещей на видео.");
+        Alert.alert("Упс", "ИИ не нашел вещей на видео.");
       }
 
     } catch (error: any) {
@@ -80,20 +80,21 @@ export default function ScanWardrobeScreen() {
 
   // 1. Выбор видео из галереи
   const pickVideoFromGallery = async () => {
-  try {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: 'videos', 
-      allowsEditing: true,
-      quality: 1,
-    });
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: 'videos',
+        allowsEditing: true, // Разрешаем редактирование (это часто включает сжатие)
+        quality: 0.5,        // Сжимаем качество
+        videoExportPreset: ImagePicker.VideoExportPreset.H264_640x480, // Принудительно 640x480 (SD)
+      });
 
-    if (!result.canceled && result.assets[0].uri) {
-      handleAnalyzeVideo(result.assets[0].uri);
+      if (!result.canceled && result.assets[0].uri) {
+        handleAnalyzeVideo(result.assets[0].uri);
+      }
+    } catch (error) {
+      Alert.alert("Ошибка", "Не удалось выбрать видео");
     }
-  } catch (error) {
-    Alert.alert("Ошибка", "Не удалось выбрать видео");
-  }
-};
+  };
 
   // 2. Запись видео
   const startRecording = async () => {
@@ -109,10 +110,10 @@ export default function ScanWardrobeScreen() {
           maxDuration: 10,
           quality: "480p",
         });
-        
+
         // Когда запись закончится (через 10 сек или вручную)
         if (video) {
-            handleAnalyzeVideo(video.uri); // <-- Вызываем новую функцию
+          handleAnalyzeVideo(video.uri); // <-- Вызываем новую функцию
         }
       } catch (e) {
         console.error(e);
