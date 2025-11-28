@@ -18,7 +18,7 @@ const AIOutfitmaker = () => {
   const [query, setQuery] = useState("");
   const [extraPrompt, setExtraPrompt] = useState("");
   const [occasion, setOccasion] = useState("none");
-  const [outfits, setOutfits] = useState([]);
+  const [outfits, setOutfits] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
@@ -45,14 +45,14 @@ const AIOutfitmaker = () => {
         searchQuery = `${occasion} ${searchQuery}`.trim();
       }
 
-      console.log("Data",searchQuery);
+      console.log("Data", searchQuery);
 
       const response = await axios.get(
         `https://aiwardrobe-ivh4.onrender.com/smart-search?query=${encodeURIComponent(
           searchQuery
         )}`
       );
-      
+
 
       setOutfits(response.data);
     } catch (error) {
@@ -63,7 +63,7 @@ const AIOutfitmaker = () => {
     }
   };
 
-  const selectOccasion = (value) => {
+  const selectOccasion = (value: string) => {
     setOccasion(value);
     setModalVisible(false);
   };
@@ -147,9 +147,8 @@ const AIOutfitmaker = () => {
           {(query || extraPrompt || occasion !== "none") && (
             <Text className="text-gray-500 mt-4 px-4">
               Searching for:{" "}
-              {`${
-                occasion !== "none" ? occasion : ""
-              } ${query} ${extraPrompt}`.trim()}
+              {`${occasion !== "none" ? occasion : ""
+                } ${query} ${extraPrompt}`.trim()}
             </Text>
           )}
 

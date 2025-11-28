@@ -48,7 +48,7 @@ const SignInScreen = () => {
       <TouchableOpacity onPress={handleSignIn} className="bg-blue-500 p-3 rounded-lg mb-4">
         <Text className="text-center text-white text-lg">Sign In</Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => navigation.navigate("SignUp")}>
+      <TouchableOpacity onPress={() => (navigation.navigate as any)("SignUp")}>
         <Text className="text-center text-blue-500 text-lg">
           Don't have an account? Sign Up
         </Text>

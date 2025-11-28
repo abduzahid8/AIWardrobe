@@ -67,7 +67,7 @@ const DesignRoomScreen = () => {
   const { selectedItems, date, savedOutfits } = route.params as {
     selectedItems: ClothingItem[];
     date: string;
-    savedOutifts: { [key: string]: any[] };
+    savedOutfits: { [key: string]: any[] };
   };
   const [clothes, setClothes] = useState<ClothingItem[]>([]);
   const navigation = useNavigation();
@@ -100,7 +100,7 @@ const DesignRoomScreen = () => {
         <Text className="text-white text-lg">{date}</Text>
         <TouchableOpacity
           onPress={() =>
-            navigation.navigate("NewOutfit", {
+            (navigation.navigate as any)("NewOutfit", {
               selectedItems,
               date,
               savedOutfits,

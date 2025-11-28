@@ -30,7 +30,7 @@ const NewOutfitScreen = () => {
   const { selectedItems, date, savedOutfits } = route.params as {
     selectedItems: ClothingItem[];
     date: string;
-    savedOutifts: { [key: string]: any[] };
+    savedOutfits: { [key: string]: any[] };
   };
   const navigation = useNavigation();
   const [caption, setCaption] = useState("");
@@ -38,7 +38,7 @@ const NewOutfitScreen = () => {
   const [occasion, setOcassion] = useState("Work");
   const [visiblilty, setVisiblity] = useState("Everyone");
   const [loading, setLoading] = useState(false);
-  const [userId, setUserId] = useState(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const BASE_URL = "https://aiwardrobe-ivh4.onrender.com";
 
   useEffect(() => {
@@ -113,7 +113,7 @@ const NewOutfitScreen = () => {
         index: 0,
         routes: [
           {
-            name: "Tabs",
+            name: "Home" as never,
             params: {
               screen: "Home",
               params: { savedOutfits: updatedOutfits },
@@ -122,7 +122,7 @@ const NewOutfitScreen = () => {
         ],
       });
     } catch (error) {
-      console.log("Save error", error.message);
+      console.log("Save error", error instanceof Error ? error.message : error);
     } finally {
       setLoading(false);
     }
@@ -138,8 +138,8 @@ const NewOutfitScreen = () => {
       <View className="flex-1 items-center justify-center">
         {selectedItems
           ?.sort((a, b) => {
-            const order = { shirt: 1, skirts: 2, pants: 3, shoes: 4 };
-            return (order[a.type] || 5) - (order[b.type] || 5);
+            const order: { [key: string]: number } = { shirt: 1, skirts: 2, pants: 3, shoes: 4 };
+            return (order[a.type || ""] || 5) - (order[b.type || ""] || 5);
           })
           .map((item, index) => (
             <Image
