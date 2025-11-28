@@ -16,7 +16,6 @@ import fs from "fs"; // Для работы с файловой системой
 import path from "path"; // Для путей
 import ClothingItem from "./models/ClothingItem.js";
 import "dotenv/config";
-import { v2 as cloudinary } from 'cloudinary';
 import { createClient } from '@supabase/supabase-js';
 import axios from 'axios';
 
