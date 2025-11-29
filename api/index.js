@@ -689,7 +689,6 @@ app.post("/scan-wardrobe", upload.single("video"), async (req, res) => {
     const fileName = `scan_${Date.now()}.mp4`;
 
     // 2. Загружаем видео в Supabase (в ту же папку, где картинки, или создай 'videos')
-    // Используем 'wardrobe_images' так как он у нас точно Public
     console.log("⬆️ Загрузка видео в Supabase...");
     const { data: uploadData, error: uploadError } = await supabase
       .storage
