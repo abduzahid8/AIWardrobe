@@ -13,12 +13,12 @@ import SignUpScreen from "../screens/SignUpScreen";
 import AIOutfitmaker from "../screens/AIOutfitmaker";
 import DesignRoomScreen from "../screens/DesignRoomScreen";
 import NewOutfitScreen from "../screens/NewOutfitScreen";
-
-// Импорт хранилища авторизации
 import useAuthStore from "../store/auth";
 import { RootStackParamList } from "./types";
+import ReviewScreen from "../screens/ReviewScreen";
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
+
+const Stack = createNativeStackNavigator<any>();
 
 const RootNavigator = () => {
   // Получаем состояние авторизации и функцию инициализации
@@ -41,6 +41,12 @@ const RootNavigator = () => {
             name="AddOutfit"
             component={AddOutfitScreen}
             options={{ presentation: 'modal', title: "Add New Item" }}
+          />
+
+          <Stack.Screen
+            name="ReviewScan"
+            component={ReviewScreen}
+            options={{ headerShown: false }}
           />
 
           {/* AI Экраны */}
