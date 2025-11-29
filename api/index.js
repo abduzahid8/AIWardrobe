@@ -674,7 +674,8 @@ app.post("/try-on", async (req, res) => {
 });
 
 
-// 👇 РОУТ ДЛЯ ВИДЕО-СКАНИРОВАНИЯ
+
+// --- НОВЫЙ РОУТ СКАНИРОВАНИЯ (SUPABASE + REPLICATE) ---
 app.post("/scan-wardrobe", upload.single("video"), async (req, res) => {
   try {
     if (!req.file) {
@@ -682,82 +683,91 @@ app.post("/scan-wardrobe", upload.single("video"), async (req, res) => {
     }
 
     console.log("🎥 Видео получено:", req.file.path);
-    console.log("⏳ Начинаю обработку ИИ...");
 
-    // 1. Загружаем видео в Google AI
-    const uploadResult = await fileManager.uploadFile(req.file.path, {
-      mimeType: req.file.mimetype,
-      displayName: "Wardrobe Scan",
-    });
+    // 1. Читаем файл с диска
+    const fileBuffer = fs.readFileSync(req.file.path);
+    const fileName = `scan_${Date.now()}.mp4`;
 
-    console.log(`✅ Видео загружено в облако: ${uploadResult.file.uri}`);
+    // 2. Загружаем видео в Supabase (в ту же папку, где картинки, или создай 'videos')
+    // Используем 'wardrobe_images' так как он у нас точно Public
+    console.log("⬆️ Загрузка видео в Supabase...");
+    const { data: uploadData, error: uploadError } = await supabase
+      .storage
+      .from('wardrobe_images')
+      .upload(fileName, fileBuffer, {
+        contentType: 'video/mp4',
+        upsert: false
+      });
 
-    // 2. Ждем, пока видео обработается (Google требует пару секунд)
-    console.log(`✅ Видео загружено в облако: ${uploadResult.file.uri}`);
+    if (uploadError) {
+      throw new Error(`Supabase upload error: ${uploadError.message}`);
+    }
 
-    // Ожидание обработки (Максимум 40 секунд)
-    let file = await fileManager.getFile(uploadResult.file.name);
-    let attempt = 0;
-    const maxAttempts = 20; // 20 раз по 2 секунды = 40 секунд макс
+    // Получаем публичную ссылку, чтобы Replicate мог скачать видео
+    const { data: publicUrlData } = supabase
+      .storage
+      .from('wardrobe_images')
+      .getPublicUrl(fileName);
 
-    while (file.state === "PROCESSING") {
-      if (attempt >= maxAttempts) {
-        throw new Error("Google слишком долго обрабатывает видео. Попробуйте файл поменьше.");
+    const videoUrl = publicUrlData.publicUrl;
+    console.log(`🔗 Ссылка на видео: ${videoUrl}`);
+
+    // 3. Отправляем ссылку в Replicate (Модель Video-LLaVA)
+    console.log("🧠 Отправляю в Replicate (Video-LLaVA)...");
+
+    const input = {
+      video_path: videoUrl,
+      text_prompt: `List the clothing items in this video. 
+      Format the output EXACTLY as a JSON list of objects.
+      Each object must have: "itemType", "color", "style" (Casual/Formal), "description".
+      Example: [{"itemType": "Shirt", "color": "Blue", "style": "Casual", "description": "Denim shirt"}]
+      Do NOT include any other text, markdown, or explanations. ONLY the JSON array.`
+    };
+
+    const output = await replicate.run(
+      "lucataco/video-llava:16922da8774708779c3b9b9409549eb936307373322bc69c3bb9da40d42630e5",
+      { input }
+    );
+
+    console.log("🤖 Ответ Replicate:", output);
+
+    // 4. Парсим ответ (Replicate часто возвращает массив строк, склеиваем)
+    const rawText = Array.isArray(output) ? output.join("") : String(output);
+
+    // Чистим JSON от лишнего (если ИИ решит поболтать)
+    let items = [];
+    try {
+      const firstBracket = rawText.indexOf('[');
+      const lastBracket = rawText.lastIndexOf(']');
+
+      if (firstBracket !== -1 && lastBracket !== -1) {
+        const jsonStr = rawText.substring(firstBracket, lastBracket + 1);
+        items = JSON.parse(jsonStr);
+      } else {
+        // ФОЛЛБЭК: Если ИИ не вернул JSON, а просто текст, создаем один предмет
+        console.log("⚠️ Не удалось найти JSON, используем raw text");
+        items = [{
+          itemType: "Detected Item",
+          color: "Mixed",
+          style: "Casual",
+          description: rawText.substring(0, 100).replace(/\n/g, " ") // Берем начало текста
+        }];
       }
-
-      console.log(`⏳ Обработка видео... (${attempt + 1}/${maxAttempts})`);
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      file = await fileManager.getFile(uploadResult.file.name);
-      attempt++;
+    } catch (parseErr) {
+      console.error("Ошибка парсинга:", parseErr);
+      items = [{ itemType: "Unknown Item", color: "Unknown", style: "Casual", description: "Item from video" }];
     }
-
-    if (file.state === "FAILED") {
-      throw new Error("Google не смог обработать это видео.");
-    }
-
-    console.log("🧠 Видео готово! Запускаю анализ...");
-
-    // 3. Спрашиваем Gemini
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const result = await model.generateContent([
-      {
-        fileData: {
-          mimeType: uploadResult.file.mimeType,
-          fileUri: uploadResult.file.uri,
-        },
-      },
-      {
-        text: `Analyze this video of a wardrobe. Detect each distinct clothing item shown.
-        Ignore background, furniture, or hands.
-        Return a JSON ARRAY where each object has:
-        - itemType (e.g. Shirt, Pants, Dress)
-        - color (dominant color)
-        - season (Summer, Winter, All)
-        - style (Casual, Formal, Sport)
-        - description (short description)
-        
-        OUTPUT RAW JSON ONLY. NO MARKDOWN. NO \`\`\`.`,
-      },
-    ]);
-
-    // 4. Чистим ответ и сохраняем
-    const responseText = result.response.text();
-    console.log("🤖 Ответ ИИ:", responseText);
-
-    const cleanJson = responseText.replace(/```json|```/g, "").trim();
-    const items = JSON.parse(cleanJson);
-
-    // 5. (Опционально) Тут можно сразу сохранить их в MongoDB
-    // Но пока просто вернем на клиент, чтобы показать пользователю
 
     // Удаляем временный файл с сервера
-    fs.unlinkSync(req.file.path);
+    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
 
+    // Возвращаем результат на телефон
     res.json({ detectedItems: items });
 
   } catch (error) {
-    console.error("Video Scan Error:", error);
+    console.error("Video Scan Error (Replicate):", error);
+    // Чистим мусор при ошибке
+    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
     res.status(500).json({ error: error.message });
   }
 });
