@@ -413,7 +413,7 @@ app.post("/wardrobe/add-batch", authenticateToken, async (req, res) => {
           // 3. Загружаем в Supabase Storage
           const { data, error } = await supabase
             .storage
-            .from('wardrobe_images') // Имя твоего бакета
+            .from('AIWARDROBE') // Имя твоего бакета
             .upload(fileName, buffer, {
               contentType: 'image/jpeg',
               upsert: false
@@ -427,7 +427,7 @@ app.post("/wardrobe/add-batch", authenticateToken, async (req, res) => {
           // 4. Получаем публичную ссылку
           const { data: publicUrlData } = supabase
             .storage
-            .from('wardrobe_images')
+            .from('AIWARDROBE')
             .getPublicUrl(fileName);
 
           finalImageUrl = publicUrlData.publicUrl;
@@ -693,7 +693,7 @@ app.post("/scan-wardrobe", upload.single("video"), async (req, res) => {
     console.log("⬆️ Загрузка видео в Supabase...");
     const { data: uploadData, error: uploadError } = await supabase
       .storage
-      .from('wardrobe_images')
+      .from('AIWARDROBE')
       .upload(fileName, fileBuffer, {
         contentType: 'video/mp4',
         upsert: false
@@ -706,7 +706,7 @@ app.post("/scan-wardrobe", upload.single("video"), async (req, res) => {
     // Получаем публичную ссылку, чтобы Replicate мог скачать видео
     const { data: publicUrlData } = supabase
       .storage
-      .from('wardrobe_images')
+      .from('AIWARDROBE')
       .getPublicUrl(fileName);
 
     const videoUrl = publicUrlData.publicUrl;
