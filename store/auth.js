@@ -34,7 +34,7 @@ const useAuthStore = create((set) => ({
         gender,
         profileImage,
       });
-      console.log("data",response.data)
+      console.log("data", response.data)
       const { token } = response.data;
       await AsyncStorage.setItem("userToken", token);
       set({ token, loading: false, isAuthenticated: true });
@@ -44,7 +44,7 @@ const useAuthStore = create((set) => ({
     }
   },
 
-  login: async (email,password) => {
+  login: async (email, password) => {
     set({ loading: true, error: null });
     try {
       const response = await axios.post(`${BASE_URL}/login`, {
@@ -52,7 +52,7 @@ const useAuthStore = create((set) => ({
         password,
       });
       const { token } = response.data;
-      console.log("token",response.data)
+      console.log("token", response.data)
       await AsyncStorage.setItem("userToken", token);
       set({ token, loading: false, isAuthenticated: true });
       await useAuthStore.getState().fetchUser()

@@ -12,6 +12,7 @@ import {
 import React, { useState } from "react";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 // @ts-ignore - игнорируем ошибку, если путь немного отличается
 import { API_URL } from "../api/config";
 
@@ -24,6 +25,7 @@ interface Message {
 
 const AIAssistant = () => {
   const navigation = useNavigation();
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -31,7 +33,7 @@ const AIAssistant = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
-      text: "Hello! I am your AI Stylist. Ask me about outfits! 👗",
+      text: t('aiChat.greeting'),
       sender: "ai",
     },
   ]);
@@ -119,7 +121,7 @@ const AIAssistant = () => {
           <Ionicons name="chevron-back" size={24} color="#333" />
         </TouchableOpacity>
         <Text className="text-xl font-bold text-gray-800">
-          AI Fashion Assistant
+          {t('aiChat.title')}
         </Text>
         <View className="w-6" />
       </View>
@@ -132,8 +134,8 @@ const AIAssistant = () => {
           <View
             key={message.id}
             className={`mb-4 p-3 rounded-lg max-w-[80%] ${message.sender == "user"
-                ? "bg-cyan-200 self-end"
-                : "bg-cyan-100 self-start"
+              ? "bg-cyan-200 self-end"
+              : "bg-cyan-100 self-start"
               }`}
           >
             <Text className="text-base text-gray-800">{message.text}</Text>
@@ -192,7 +194,7 @@ const AIAssistant = () => {
           className="flex-1 h-10 bg-gray-100 rounded-full px-4 text-base text-gray-800"
           value={query}
           onChangeText={setQuery}
-          placeholder="Ask me anything about fashion..."
+          placeholder={t('aiChat.placeholder')}
           placeholderTextColor={"#999"}
         />
         <TouchableOpacity

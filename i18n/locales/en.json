@@ -1,0 +1,122 @@
+{
+    "common": {
+        "upgrade": "Upgrade",
+        "cancel": "Cancel",
+        "save": "Save",
+        "delete": "Delete",
+        "edit": "Edit",
+        "next": "Next",
+        "back": "Back",
+        "loading": "Loading...",
+        "error": "Error",
+        "success": "Success"
+    },
+    "home": {
+        "title": "Fits",
+        "askAI": "Ask AI",
+        "yourWeek": "Your Week",
+        "planner": "Planner",
+        "popularThisWeek": "Popular this week",
+        "more": "More",
+        "weather": {
+            "unavailable": "Weather unavailable"
+        }
+    },
+    "profile": {
+        "editProfile": "Edit Profile",
+        "shareProfile": "Share Profile",
+        "followers": "Followers",
+        "following": "Following",
+        "tabs": {
+            "clothes": "Clothes",
+            "outfits": "Outfits",
+            "collections": "Collections"
+        },
+        "categories": {
+            "all": "All",
+            "tops": "Tops",
+            "bottoms": "Bottoms",
+            "shoes": "Shoes",
+            "outerwear": "Outerwear"
+        },
+        "noClothes": "No Clothes available in this category",
+        "noOutfits": "No Outfits saved"
+    },
+    "addOutfit": {
+        "title": "Add outfit",
+        "importFromWeb": "Import from Web (Zara, Asos...)",
+        "pasteLink": "Paste link here...",
+        "selfie": "Selfie",
+        "suggestions": "Suggestions",
+        "saved": "Saved",
+        "popularClothes": "Popular Clothes",
+        "itemImported": "Item imported!",
+        "errors": {
+            "noImage": "Could not find image. Try another link.",
+            "connectionFailed": "Connection failed. Check server."
+        }
+    },
+    "aiChat": {
+        "title": "AI Style Assistant",
+        "placeholder": "Ask me anything about your style...",
+        "greeting": "Hi! I'm your AI style assistant. How can I help you today?"
+    },
+    "aiTryOn": {
+        "title": "Magic Mirror",
+        "you": "You",
+        "clothes": "Clothes",
+        "result": "Result",
+        "selectPhoto": "Select Photo",
+        "selectItem": "Select Item",
+        "generating": "Generating new look...",
+        "takesTime": "(Takes ~20 seconds)",
+        "resultHere": "Result will appear here",
+        "generate": "Generate Outfit",
+        "processing": "Processing...",
+        "errors": {
+            "missingPhotos": "Please upload both your photo and the cloth photo.",
+            "tryOnFailed": "Try-On failed. Check server console."
+        }
+    },
+    "features": {
+        "aiSuggestions": {
+            "title": "AI Suggestions",
+            "subtitle": "Ask AI for style advice"
+        },
+        "aiOutfitMaker": {
+            "title": "AI Outfit Maker",
+            "subtitle": "Create outfits"
+        },
+        "aiTryOn": {
+            "title": "AI Try On",
+            "subtitle": "Virtual Try-On"
+        },
+        "colorAnalysis": {
+            "title": "Color Analysis",
+            "subtitle": "Find best colors"
+        },
+        "scanWardrobe": {
+            "title": "Scan Wardrobe",
+            "subtitle": "Digitize wardrobe"
+        }
+    },
+    "language": {
+        "selectLanguage": "Select Language",
+        "english": "English",
+        "russian": "Russian",
+        "uzbek": "Uzbek"
+    },
+    "auth": {
+        "signIn": "Sign In",
+        "signUp": "Sign Up",
+        "email": "Email",
+        "password": "Password",
+        "username": "Username",
+        "forgotPassword": "Forgot Password?",
+        "noAccount": "Don't have an account?",
+        "haveAccount": "Already have an account?",
+        "createAccount": "Create Account",
+        "welcome": "Welcome Back",
+        "getStarted": "Get Started"
+    }
+}

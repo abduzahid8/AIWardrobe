@@ -14,11 +14,13 @@ import React, { useState } from "react";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { mpants, mshirts, pants, shoes, skirts, tops } from "../images";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 // Убедитесь, что путь верный!
 import { API_URL } from "../api/config";
 
 const AddOutfitScreen = () => {
   const route = useRoute();
+  const { t } = useTranslation();
   // @ts-ignore
   const { date, savedOutfits } = route?.params || {};
   const navigation = useNavigation();
@@ -71,13 +73,13 @@ const AddOutfitScreen = () => {
         setPopularClothes((prev) => [newItem, ...prev]);
         setSelected((prev) => [...prev, newItem.id]);
         setLink("");
-        Alert.alert("Success", "Item imported!");
+        Alert.alert(t('common.success'), t('addOutfit.itemImported'));
       } else {
-        Alert.alert("Error", "Could not find image. Try another link.");
+        Alert.alert(t('common.error'), t('addOutfit.errors.noImage'));
       }
     } catch (error) {
       console.log("Scrape Error:", error);
-      Alert.alert("Error", "Connection failed. Check server.");
+      Alert.alert(t('common.error'), t('addOutfit.errors.connectionFailed'));
     } finally {
       setLoadingLink(false);
     }
@@ -107,17 +109,17 @@ const AddOutfitScreen = () => {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={28} color="black" />
         </TouchableOpacity>
-        <Text className="text-lg font-semibold">Add outfit</Text>
+        <Text className="text-lg font-semibold">{t('addOutfit.title')}</Text>
         <Text className="text-gray-500">{date}</Text>
       </View>
 
       {/* 👇 НОВЫЙ БЛОК ИМПОРТА 👇 */}
       <View className="mx-4 mt-4 p-3 bg-gray-50 rounded-xl border border-gray-200">
-        <Text className="text-xs text-gray-500 mb-2 ml-1">Import from Web (Zara, Asos...)</Text>
+        <Text className="text-xs text-gray-500 mb-2 ml-1">{t('addOutfit.importFromWeb')}</Text>
         <View className="flex-row items-center">
           <TextInput
             className="flex-1 bg-white p-3 rounded-lg border border-gray-300 mr-2"
-            placeholder="Paste link here..."
+            placeholder={t('addOutfit.pasteLink')}
             value={link}
             onChangeText={setLink}
           />
@@ -139,20 +141,20 @@ const AddOutfitScreen = () => {
       <View className="flex-row justify-around mt-4 px-4">
         <TouchableOpacity className="bg-gray-100 w-[30%] py-3 rounded-lg items-center">
           <Ionicons name="camera-outline" size={22} color="black" />
-          <Text className="font-medium mt-1">Selfie</Text>
+          <Text className="font-medium mt-1">{t('addOutfit.selfie')}</Text>
         </TouchableOpacity>
         <TouchableOpacity className="bg-gray-100 w-[30%] py-3 rounded-lg items-center">
           <Ionicons name="sparkles-outline" size={22} color="black" />
-          <Text className="font-medium mt-1">Suggestions</Text>
+          <Text className="font-medium mt-1">{t('addOutfit.suggestions')}</Text>
         </TouchableOpacity>
         <TouchableOpacity className="bg-gray-100 w-[30%] py-3 rounded-lg items-center">
           <Ionicons name="shirt-outline" size={22} color="black" />
-          <Text className="font-medium mt-1">Saved</Text>
+          <Text className="font-medium mt-1">{t('addOutfit.saved')}</Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView className="flex-1 mt-4">
-        <Text className="text-lg font-semibold px-4 mt-4">Popular Clothes</Text>
+        <Text className="text-lg font-semibold px-4 mt-4">{t('addOutfit.popularClothes')}</Text>
         <View className="flex-row flex-wrap px-4 mt-2 mb-20">
           {popularClothes?.map((item, index) => (
             <TouchableOpacity
@@ -206,7 +208,7 @@ const AddOutfitScreen = () => {
             onPress={handleNext}
             className="bg-black py-3 rounded-lg mt-3 mb-3 items-center self-end w-24"
           >
-            <Text className="text-white font-semibold">Next</Text>
+            <Text className="text-white font-semibold">{t('common.next')}</Text>
           </TouchableOpacity>
         </View>
       )}

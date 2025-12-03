@@ -1,0 +1,122 @@
+{
+    "common": {
+        "upgrade": "Обновить",
+        "cancel": "Отмена",
+        "save": "Сохранить",
+        "delete": "Удалить",
+        "edit": "Редактировать",
+        "next": "Далее",
+        "back": "Назад",
+        "loading": "Загрузка...",
+        "error": "Ошибка",
+        "success": "Успешно"
+    },
+    "home": {
+        "title": "Образы",
+        "askAI": "Спросить AI",
+        "yourWeek": "Ваша неделя",
+        "planner": "Планировщик",
+        "popularThisWeek": "Популярное на этой неделе",
+        "more": "Еще",
+        "weather": {
+            "unavailable": "Погода недоступна"
+        }
+    },
+    "profile": {
+        "editProfile": "Редактировать профиль",
+        "shareProfile": "Поделиться профилем",
+        "followers": "Подписчики",
+        "following": "Подписки",
+        "tabs": {
+            "clothes": "Одежда",
+            "outfits": "Образы",
+            "collections": "Коллекции"
+        },
+        "categories": {
+            "all": "Все",
+            "tops": "Верх",
+            "bottoms": "Низ",
+            "shoes": "Обувь",
+            "outerwear": "Верхняя одежда"
+        },
+        "noClothes": "Нет одежды в этой категории",
+        "noOutfits": "Нет сохраненных образов"
+    },
+    "addOutfit": {
+        "title": "Добавить образ",
+        "importFromWeb": "Импорт из интернета (Zara, Asos...)",
+        "pasteLink": "Вставьте ссылку здесь...",
+        "selfie": "Селфи",
+        "suggestions": "Предложения",
+        "saved": "Сохранено",
+        "popularClothes": "Популярная одежда",
+        "itemImported": "Товар импортирован!",
+        "errors": {
+            "noImage": "Не удалось найти изображение. Попробуйте другую ссылку.",
+            "connectionFailed": "Ошибка подключения. Проверьте сервер."
+        }
+    },
+    "aiChat": {
+        "title": "AI Стилист",
+        "placeholder": "Спросите меня о вашем стиле...",
+        "greeting": "Привет! Я ваш AI стилист. Чем могу помочь сегодня?"
+    },
+    "aiTryOn": {
+        "title": "Волшебное зеркало",
+        "you": "Вы",
+        "clothes": "Одежда",
+        "result": "Результат",
+        "selectPhoto": "Выбрать фото",
+        "selectItem": "Выбрать вещь",
+        "generating": "Создаем новый образ...",
+        "takesTime": "(Займет ~20 секунд)",
+        "resultHere": "Результат появится здесь",
+        "generate": "Создать образ",
+        "processing": "Обработка...",
+        "errors": {
+            "missingPhotos": "Пожалуйста, загрузите и ваше фото, и фото одежды.",
+            "tryOnFailed": "Примерка не удалась. Проверьте консоль сервера."
+        }
+    },
+    "features": {
+        "aiSuggestions": {
+            "title": "AI Предложения",
+            "subtitle": "Спросите AI о стиле"
+        },
+        "aiOutfitMaker": {
+            "title": "Создатель образов AI",
+            "subtitle": "Создавайте образы"
+        },
+        "aiTryOn": {
+            "title": "Виртуальная примерка",
+            "subtitle": "Примерьте виртуально"
+        },
+        "colorAnalysis": {
+            "title": "Анализ цвета",
+            "subtitle": "Найдите лучшие цвета"
+        },
+        "scanWardrobe": {
+            "title": "Сканировать гардероб",
+            "subtitle": "Оцифруйте гардероб"
+        }
+    },
+    "language": {
+        "selectLanguage": "Выберите язык",
+        "english": "Английский",
+        "russian": "Русский",
+        "uzbek": "Узбекский"
+    },
+    "auth": {
+        "signIn": "Войти",
+        "signUp": "Регистрация",
+        "email": "Электронная почта",
+        "password": "Пароль",
+        "username": "Имя пользователя",
+        "forgotPassword": "Забыли пароль?",
+        "noAccount": "Нет аккаунта?",
+        "haveAccount": "Уже есть аккаунт?",
+        "createAccount": "Создать аккаунт",
+        "welcome": "С возвращением",
+        "getStarted": "Начать"
+    }
+}

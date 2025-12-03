@@ -13,8 +13,11 @@ import useAuthStore from "../store/auth";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { mpants, mshirts, pants, shoes, skirts, tops } from "../images";
+import { useTranslation } from "react-i18next";
+import LanguageSelector from "../components/LanguageSelector";
 
 const ProfileScreen = () => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("Clothes");
   const [activeCategory, setActiveCategory] = useState("All");
   const { logout, user, token } = useAuthStore();
@@ -77,7 +80,9 @@ const ProfileScreen = () => {
 
   const sortItems = (items: any[]) => {
     const order = ["shirt", "pants", "skirts", "shoes"];
-    return items.sort((a: any, b: any) => order.indexOf(a.type) - order.indexOf(b.type));
+    return items.sort(
+      (a: any, b: any) => order.indexOf(a.type) - order.indexOf(b.type)
+    );
   };
 
   console.log("Data", activeTab);
@@ -87,7 +92,8 @@ const ProfileScreen = () => {
       <ScrollView>
         <View className="flex-row items-center justify-between px-4 pt-2">
           <Text className="text-2xl font-bold">{username}</Text>
-          <View className="flex-row gap-3">
+          <View className="flex-row gap-3 items-center">
+            <LanguageSelector />
             <Ionicons name="calendar-outline" color="black" size={24} />
             <Ionicons name="pie-chart-outline" color="black" size={24} />
             <Ionicons name="menu-outline" color="black" size={24} />
@@ -120,60 +126,67 @@ const ProfileScreen = () => {
 
         <View className="flex-row px-4 mt-4 gap-3">
           <TouchableOpacity className="flex-1 bg-gray-100 rounded-lg py-2 items-center">
-            <Text className="font-medium">Edit Profile</Text>
+            <Text className="font-medium">{t('profile.editProfile')}</Text>
           </TouchableOpacity>
           <TouchableOpacity className="flex-1 bg-gray-100 rounded-lg py-2 items-center">
-            <Text className="font-medium">Share Profile</Text>
+            <Text className="font-medium">{t('profile.shareProfile')}</Text>
           </TouchableOpacity>
         </View>
 
         <View className="flex-row justify-around mt-5 border-b border-gray-300">
-          {["Clothes", "Outfits", "Collections"].map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              onPress={() => setActiveTab(tab)}
-              className="pb-2"
-            >
-              <Text
-                className={`text-base font-medium ${activeTab == tab ? "text-black" : "text-gray-400"
-                  }`}
+          {[t('profile.tabs.clothes'), t('profile.tabs.outfits'), t('profile.tabs.collections')].map((tab, idx) => {
+            const tabKey = ['Clothes', 'Outfits', 'Collections'][idx];
+            return (
+              <TouchableOpacity
+                key={tabKey}
+                onPress={() => setActiveTab(tabKey)}
+                className="pb-2"
               >
-                {tab}
-              </Text>
-              {activeTab === tab && <View className="h-0.5 bg-black mt-2" />}
-            </TouchableOpacity>
-          ))}
+                <Text
+                  className={`text-base font-medium ${activeTab == tabKey ? "text-black" : "text-gray-400"
+                    }`}
+                >
+                  {tab}
+                </Text>
+                {activeTab === tabKey && <View className="h-0.5 bg-black mt-2" />}
+              </TouchableOpacity>
+            );
+          })}
         </View>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           className="mt-3 pl-4"
         >
-          {["All", "Tops", "Bottoms", "Shoes", "Outerwear"].map((cat) => (
-            <TouchableOpacity
-              onPress={() => setActiveCategory(cat)}
-              key={cat}
-              className={`px-3 mr-4 rounded-full ${activeCategory == cat ? "text-black" : "text-gray-400"
-                }`}
-            >
-              <Text
-                className={`text-base font-medium ${activeCategory == cat ? "text-black" : "text-gray-400"
+          {[t('profile.categories.all'), t('profile.categories.tops'), t('profile.categories.bottoms'), t('profile.categories.shoes'), t('profile.categories.outerwear')].map((cat, idx) => {
+            const catKey = ["All", "Tops", "Bottoms", "Shoes", "Outerwear"][idx];
+            return (
+              <TouchableOpacity
+                onPress={() => setActiveCategory(catKey)}
+                key={catKey}
+                className={`px-3 mr-4 rounded-full ${activeCategory == catKey ? "text-black" : "text-gray-400"
                   }`}
               >
-                {cat}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <Text
+                  className={`text-base font-medium ${activeCategory == catKey ? "text-black" : "text-gray-400"
+                    }`}
+                >
+                  {cat}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
 
         {activeTab == "Clothes" && (
           <View className="px-4">
             {filteredClothes.length == 0 ? (
-              <Text>No Clothes available in this category</Text>
+              <Text>{t('profile.noClothes')}</Text>
             ) : (
               <View className="flex-row flex-wrap">
-                {filteredClothes?.map((item) => (
-                  <View className="w-1/3 p-1.5">
+                {/* FIX 1: Added index and used it as key */}
+                {filteredClothes?.map((item, index) => (
+                  <View key={index} className="w-1/3 p-1.5">
                     <View
                       style={{
                         shadowColor: "#000",
@@ -207,11 +220,12 @@ const ProfileScreen = () => {
             {loading ? (
               <ActivityIndicator size={"large"} color="#000" />
             ) : outifts.length === 0 ? (
-              <Text>No Outifits saved</Text>
+              <Text>{t('profile.noOutfits')}</Text>
             ) : (
               <View className="flex-row flex-wrap">
+                {/* FIX 2: Added key using outfit._id */}
                 {outifts?.map((outfit) => (
-                  <View className="w-1/2 p-1.5">
+                  <View key={outfit._id} className="w-1/2 p-1.5">
                     <View
                       style={{
                         shadowColor: "#000",
@@ -222,7 +236,7 @@ const ProfileScreen = () => {
                       }}
                       className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden"
                     >
-                      {sortItems(outfit.items).map((item, index) => (
+                      {sortItems(outfit.items).map((item: any, index: number) => (
                         <Image
                           key={`${outfit._id}-${item.id}-${index}`}
                           source={{ uri: item.image }}
@@ -239,7 +253,9 @@ const ProfileScreen = () => {
                           {outfit.ocassion}
                         </Text>
                         <Text className="text-sm text-gray-500 mt-1">
-                          {outfit.items.map((item: any) => item.type).join(", ")}
+                          {outfit.items
+                            .map((item: any) => item.type)
+                            .join(", ")}
                         </Text>
                       </View>
                     </View>

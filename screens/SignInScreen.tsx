@@ -10,10 +10,12 @@ import {
 import React, { useState } from "react";
 import { useNavigation } from "@react-navigation/native";
 import useAuthStore from "../store/auth";
+import { useTranslation } from "react-i18next";
 export const API_URL = "https://aiwardrobe-ivh4.onrender.com";
 
 const SignInScreen = () => {
   const navigation = useNavigation();
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const { login } = useAuthStore();
@@ -31,26 +33,26 @@ const SignInScreen = () => {
   console.log("Мой текущий API URL:", API_URL);
   return (
     <View className="flex-1 bg-white justify-center p-4">
-      <Text className="text-2xl font-bold text-center mb-6">SignIn</Text>
+      <Text className="text-2xl font-bold text-center mb-6">{t('auth.signIn')}</Text>
       <TextInput
         className="border border-gray-300 p-3 mb-4 rounded-lg"
         value={email}
         onChangeText={setEmail}
-        placeholder="Email"
+        placeholder={t('auth.email')}
       />
       <TextInput
         className="border border-gray-300 p-3 mb-4 rounded-lg"
         value={password}
         onChangeText={setPassword}
-        placeholder="Password"
+        placeholder={t('auth.password')}
         secureTextEntry
       />
       <TouchableOpacity onPress={handleSignIn} className="bg-blue-500 p-3 rounded-lg mb-4">
-        <Text className="text-center text-white text-lg">Sign In</Text>
+        <Text className="text-center text-white text-lg">{t('auth.signIn')}</Text>
       </TouchableOpacity>
       <TouchableOpacity onPress={() => (navigation.navigate as any)("SignUp")}>
         <Text className="text-center text-blue-500 text-lg">
-          Don't have an account? Sign Up
+          {t('auth.noAccount')} {t('auth.signUp')}
         </Text>
       </TouchableOpacity>
     </View>
