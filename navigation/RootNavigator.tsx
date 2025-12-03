@@ -1,28 +1,44 @@
 import React, { useEffect } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
-// Импорт существующих экранов
+// Imports screens...
 import HomeScreen from "../screens/HomeScreen";
 import AIAssistant from "../screens/AIAssistant";
 import AddOutfitScreen from "../screens/AddOutfitScreen";
 import AITryOnScreen from "../screens/AITryOnScreen";
-// 👇 ДОБАВЛЕН ИМПОРТ
 import ScanWardrobeScreen from "../screens/ScreenWardrobe";
 import SignInScreen from "../screens/SignInScreen";
 import SignUpScreen from "../screens/SignUpScreen";
 import AIOutfitmaker from "../screens/AIOutfitmaker";
 import DesignRoomScreen from "../screens/DesignRoomScreen";
 import NewOutfitScreen from "../screens/NewOutfitScreen";
+import { TabNavigator } from "./TabNavigator";
+
 import useAuthStore from "../store/auth";
-import { RootStackParamList } from "./types";
 import ReviewScreen from "../screens/ReviewScreen";
 
+export type RootStackParamList = {
+  Home: undefined;
+  SignIn: undefined;
+  SignUp: undefined;
+  AddOutfit: undefined;
+  AIChat: undefined;
+  AIOutfit: undefined;
+  AITryOn: undefined;
+  ScanWardrobe: undefined;
 
-const Stack = createNativeStackNavigator<any>();
+  // Самое важное: мы указываем, что этот экран ждет массив items!
+  ReviewScan: { items: any[] };
+
+  DesignRoom: undefined;
+  NewOutfit: undefined;
+};
+
+// 2. Передаем этот список в Stack
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const RootNavigator = () => {
-  // Получаем состояние авторизации и функцию инициализации
-  // @ts-ignore - игнорируем возможные ошибки типизации Zustand
+  // @ts-ignore
   const { isAuthenticated, initializeAuth } = useAuthStore();
 
   useEffect(() => {
@@ -32,10 +48,9 @@ const RootNavigator = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {isAuthenticated ? (
-        // 🔓 Если пользователь вошел: Показываем главные экраны
         <>
-          {/* Вместо Tabs пока используем Home, так как TabNavigator еще не создан */}
-          <Stack.Screen name="Home" component={HomeScreen} />
+          {/* Main tab navigation with Home, Add, and Profile */}
+          <Stack.Screen name="Home" component={TabNavigator} />
 
           <Stack.Screen
             name="AddOutfit"
@@ -43,25 +58,22 @@ const RootNavigator = () => {
             options={{ presentation: 'modal', title: "Add New Item" }}
           />
 
+          {/* Important: name should match ParamList */}
           <Stack.Screen
-            name="ReviewScan"
-            component={ReviewScreen}
+            name="ReviewScan"          // Route name (for navigation.navigate)
+            component={ReviewScreen}   // Component itself (from file)
             options={{ headerShown: false }}
           />
 
-          {/* AI Экраны */}
           <Stack.Screen name="AIChat" component={AIAssistant} />
           <Stack.Screen name="AIOutfit" component={AIOutfitmaker} />
           <Stack.Screen name="AITryOn" component={AITryOnScreen} />
-          {/* 👇 ДОБАВЛЕН ЭКРАН СКАНИРОВАНИЯ */}
           <Stack.Screen name="ScanWardrobe" component={ScanWardrobeScreen} />
 
-          {/* Design and save screens */}
           <Stack.Screen name="DesignRoom" component={DesignRoomScreen} />
           <Stack.Screen name="NewOutfit" component={NewOutfitScreen} />
         </>
       ) : (
-        // 🔒 Если не вошел: Показываем экраны входа
         <>
           <Stack.Screen name="SignIn" component={SignInScreen} />
           <Stack.Screen name="SignUp" component={SignUpScreen} />

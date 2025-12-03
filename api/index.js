@@ -688,18 +688,23 @@ app.post("/scan-wardrobe", upload.single("video"), async (req, res) => {
     const fileBuffer = fs.readFileSync(req.file.path);
     const fileName = `scan_${Date.now()}.mp4`;
 
-    // 2. Загружаем видео в Supabase (в ту же папку, где картинки, или создай 'videos')
-    console.log("⬆️ Загрузка видео в Supabase...");
+    const BUCKET_NAME = 'AIWARDROBE'; // Вынесли в переменную
+
+    console.log(`🔍 [DEBUG] Попытка загрузки в бакет: "${BUCKET_NAME}"`);
+    console.log(`🔍 [DEBUG] Supabase URL: ${process.env.SUPABASE_URL ? 'Установлен' : 'ОТСУТСТВУЕТ!'}`);
+
+    // Попытка загрузить тестовый файл (проверка связи)
     const { data: uploadData, error: uploadError } = await supabase
       .storage
-      .from('AIWARDROBE')
+      .from(BUCKET_NAME)
       .upload(fileName, fileBuffer, {
         contentType: 'video/mp4',
         upsert: false
       });
 
     if (uploadError) {
-      throw new Error(`Supabase upload error: ${uploadError.message}`);
+      console.error("❌ ОШИБКА SUPABASE:", JSON.stringify(uploadError, null, 2));
+      throw new Error(`Supabase upload failed: ${uploadError.message} (Bucket: ${BUCKET_NAME})`);
     }
 
     // Получаем публичную ссылку, чтобы Replicate мог скачать видео

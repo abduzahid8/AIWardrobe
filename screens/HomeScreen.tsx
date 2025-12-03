@@ -14,6 +14,7 @@ import React, { useEffect, useState } from "react";
 import { useIsFocused, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import moment from "moment";
+import { useTranslation } from "react-i18next";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { jwtDecode } from "jwt-decode";
 import axios from "axios";
@@ -26,7 +27,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const { width, height } = Dimensions.get("window");
 
 // Weather API Key
-const WEATHER_API_KEY = "acec1d31ef3e181c0ca471ac4db642ff"; 
+const WEATHER_API_KEY = "acec1d31ef3e181c0ca471ac4db642ff";
 
 const features = [
   {
@@ -110,7 +111,8 @@ const initialStories = [
 const HomeScreen = () => {
   const navigation = useNavigation();
   const isFocused = useIsFocused();
-  
+  const { t } = useTranslation();
+
   const [savedOutfits, setSavedOutfits] = useState<any>({});
   const [stories, setStories] = useState(initialStories);
   const [userId, setUserId] = useState("");
@@ -146,22 +148,22 @@ const HomeScreen = () => {
         const { latitude, longitude } = location.coords;
 
         const response = await axios.get(
-            `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${WEATHER_API_KEY}`
+          `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${WEATHER_API_KEY}`
         );
-        
+
         setWeather({
-            city: response.data.name,
-            temp: Math.round(response.data.main.temp),
-            description: response.data.weather[0].description
+          city: response.data.name,
+          temp: Math.round(response.data.main.temp),
+          description: response.data.weather[0].description
         });
-        
+
       } catch (error: any) {
         console.log("❌ Weather error:", error.message);
         // Fallback weather
         setWeather({
-            city: "Tashkent",
-            temp: 24,
-            description: "Sunny"
+          city: "Tashkent",
+          temp: 24,
+          description: "Sunny"
         });
       } finally {
         setLocationLoading(false);
@@ -216,33 +218,33 @@ const HomeScreen = () => {
   return (
     <SafeAreaView className="flex-1 bg-white">
       <ScrollView className="flex-1 bg-white">
-        <View className="flex-row items-center justify-between px-4 pt-4">
-          <Text className="text-3xl font-bold">Fits</Text>
-          <View className="flex-row items-center gap-3">
-            <TouchableOpacity className="bg-black px-4 py-1 rounded-full">
-              <Text className="text-white font-semibold text-sm">Upgrade</Text>
+        <View className="flex-row items-center justify-between px-6 pt-6">
+          <Text className="text-4xl font-bold">{t('home.title')}</Text>
+          <View className="flex-row items-center gap-4">
+            <TouchableOpacity className="bg-black px-5 py-2 rounded-full">
+              <Text className="text-white font-bold text-sm">{t('common.upgrade')}</Text>
             </TouchableOpacity>
-            <Ionicons name="notifications-outline" color={"black"} size={24} />
-            <Ionicons name="search-outline" color={"black"} size={24} />
+            <Ionicons name="notifications-outline" color={"black"} size={26} />
+            <Ionicons name="search-outline" color={"black"} size={26} />
           </View>
         </View>
 
         {/* Weather Widget */}
-        <View className="mx-4 mt-6 mb-2 bg-blue-50 p-4 rounded-2xl flex-row justify-between items-center border border-blue-100">
-          <View>
+        <View className="mx-6 mt-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-3xl p-6 flex-row items-center justify-between shadow-lg">
+          <View className="flex-1">
             {locationLoading ? (
-              <ActivityIndicator color="#3b82f6" />
+              <ActivityIndicator size="small" color="#60A5FA" />
             ) : weather ? (
               <>
-                <Text className="text-gray-500 text-xs font-medium mb-1">
-                📍 {weather.city}
+                <Text className="text-gray-600 text-sm font-semibold mb-2">
+                  📍 {weather.city}
                 </Text>
-                <View className="flex-row items-end">
-                  <Text className="text-3xl font-bold text-gray-800">
-                  {weather.temp}°C
+                <View className="flex-row items-baseline">
+                  <Text className="text-5xl font-bold text-gray-900">
+                    {weather.temp}°
                   </Text>
-                  <Text className="text-gray-600 mb-1 ml-2 capitalize">
-                  {weather.description}
+                  <Text className="text-gray-600 ml-3 capitalize text-lg">
+                    {weather.description}
                   </Text>
                 </View>
               </>
@@ -250,15 +252,15 @@ const HomeScreen = () => {
               <Text className="text-gray-500">Weather unavailable</Text>
             )}
           </View>
-          
-          <TouchableOpacity 
-            className="bg-blue-500 px-4 py-2 rounded-xl flex-row items-center shadow-sm"
+
+          <TouchableOpacity
+            className="bg-gradient-to-r from-blue-500 to-purple-500 px-6 py-3 rounded-2xl flex-row items-center shadow-md"
             onPress={() => {
-               (navigation as any).navigate("AIChat"); 
+              (navigation as any).navigate("AIChat");
             }}
           >
-            <Ionicons name="sparkles" size={16} color="white" style={{marginRight: 5}} />
-            <Text className="text-white font-bold text-xs">Ask AI</Text>
+            <Ionicons name="sparkles" size={18} color="white" style={{ marginRight: 6 }} />
+            <Text className="text-white font-bold text-sm">{t('home.askAI')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -270,11 +272,10 @@ const HomeScreen = () => {
           {stories.map((story, idx) => (
             <Pressable key={idx} className="mr-4 items-center">
               <View
-                className={`w-16 h-16 rounded-full items-center justify-center relative ${
-                  story.viewed
-                    ? "border-2 border-gray-200"
-                    : "border-2 border-purple-400"
-                }`}
+                className={`w-16 h-16 rounded-full items-center justify-center relative ${story.viewed
+                  ? "border-2 border-gray-200"
+                  : "border-2 border-purple-400"
+                  }`}
               >
                 <Image
                   className="w-16 h-16 rounded-full"
@@ -292,8 +293,8 @@ const HomeScreen = () => {
         </ScrollView>
 
         <View className="flex-row items-center justify-between mt-6 px-4">
-          <Text className="text-lg font-semibold">Your Week</Text>
-          <Text className="text-gray-500">Planner </Text>
+          <Text className="text-lg font-semibold">{t('home.yourWeek')}</Text>
+          <Text className="text-gray-500">{t('home.planner')}</Text>
         </View>
 
         <ScrollView
@@ -318,9 +319,8 @@ const HomeScreen = () => {
                       savedOutfits,
                     });
                   }}
-                  className={`w-24 h-40 rounded-xl items-center justify-center overflow-hidden shadow-md ${
-                    outfit ? "bg-white" : "bg-gray-50"
-                  }`}
+                  className={`w-24 h-40 rounded-xl items-center justify-center overflow-hidden shadow-md ${outfit ? "bg-white" : "bg-gray-50"
+                    }`}
                 >
                   {!outfit && (
                     <View className="w-full h-full flex items-center justify-center">
@@ -344,18 +344,18 @@ const HomeScreen = () => {
                         (item: any) =>
                           item.type === "pants" || item.type == "skirts"
                       ) && (
-                        <Image
-                          source={{
-                            uri: outfit.find(
-                              (item: any) =>
-                                item.type === "pants" || item.type == "skirts"
-                            )?.image,
-                          }}
-                          className="w-20 h-20"
-                          resizeMode="contain"
-                          style={{ maxWidth: "100%", maxHeight: "50%" }}
-                        />
-                      )}
+                          <Image
+                            source={{
+                              uri: outfit.find(
+                                (item: any) =>
+                                  item.type === "pants" || item.type == "skirts"
+                              )?.image,
+                            }}
+                            className="w-20 h-20"
+                            resizeMode="contain"
+                            style={{ maxWidth: "100%", maxHeight: "50%" }}
+                          />
+                        )}
                     </View>
                   )}
                 </Pressable>
@@ -382,18 +382,26 @@ const HomeScreen = () => {
             >
               <View className="p-3">
                 <Text className="font-bold text-[16px] text-gray-800">
-                  {feature.title}
+                  {idx === 0
+                    ? t('features.aiSuggestions.title')
+                    : idx == 1
+                      ? t('features.aiOutfitMaker.title')
+                      : idx === 2
+                        ? t('features.aiTryOn.title')
+                        : idx === 3
+                          ? t('features.colorAnalysis.title')
+                          : t('features.scanWardrobe.title')}
                 </Text>
                 <Text className="text-xs text-gray-500 mt-1">
                   {idx === 0
-                    ? "Ask AI for style advice"
+                    ? t('features.aiSuggestions.subtitle')
                     : idx == 1
-                    ? "Create outfits"
-                    : idx === 2
-                    ? "Virtual Try-On"
-                    : idx === 3
-                    ? "Find best colors"
-                    : "Digitize wardrobe"}
+                      ? t('features.aiOutfitMaker.subtitle')
+                      : idx === 2
+                        ? t('features.aiTryOn.subtitle')
+                        : idx === 3
+                          ? t('features.colorAnalysis.subtitle')
+                          : t('features.scanWardrobe.subtitle')}
                 </Text>
               </View>
               <Image
@@ -407,8 +415,8 @@ const HomeScreen = () => {
         </View>
 
         <View className="flex-row items-center justify-between mt-6 px-4">
-          <Text className="text-lg font-semibold">Popular this week</Text>
-          <Text className="text-gray-500">More</Text>
+          <Text className="text-lg font-semibold">{t('home.popularThisWeek')}</Text>
+          <Text className="text-gray-500">{t('home.more')}</Text>
         </View>
 
         <ScrollView

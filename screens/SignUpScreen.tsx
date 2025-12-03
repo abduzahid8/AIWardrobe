@@ -9,8 +9,10 @@ import {
 import React, { useState } from "react";
 import { useNavigation } from "@react-navigation/native";
 import useAuthStore from "../store/auth";
+import { useTranslation } from "react-i18next";
 
 const SignUpScreen = () => {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [gender, setGender] = useState("");
@@ -33,25 +35,25 @@ const SignUpScreen = () => {
 
   return (
     <View className="flex-1 bg-white justify-center p-4">
-      <Text className="text-2xl font-bold text-center mb-6">Sign Up</Text>
+      <Text className="text-2xl font-bold text-center mb-6">{t('auth.signUp')}</Text>
       <TextInput
         className="border border-gray-300 p-3 mb-4 rounded-lg"
         value={email}
         onChangeText={setEmail}
-        placeholder="Email"
+        placeholder={t('auth.email')}
       />
       <TextInput
         className="border border-gray-300 p-3 mb-4 rounded-lg"
         value={password}
         onChangeText={setPassword}
-        placeholder="Password"
+        placeholder={t('auth.password')}
         secureTextEntry
       />
       <TextInput
         className="border border-gray-300 p-3 mb-4 rounded-lg"
         value={username}
         onChangeText={setUserName}
-        placeholder="Username"
+        placeholder={t('auth.username')}
       />
       <TextInput
         className="border border-gray-300 p-3 mb-4 rounded-lg"
@@ -66,11 +68,11 @@ const SignUpScreen = () => {
         placeholder="Profile Image URL (optional)"
       />
       <TouchableOpacity onPress={handleSignUp} className="bg-blue-500 p-3 rounded-lg mb-4">
-        <Text className="text-center text-white text-lg">Sign Up</Text>
+        <Text className="text-center text-white text-lg">{t('auth.signUp')}</Text>
       </TouchableOpacity>
       <TouchableOpacity onPress={() => navigation.goBack()}>
         <Text className="text-center text-blue-500 text-lg">
-          Already have an account? Sign In
+          {t('auth.haveAccount')} {t('auth.signIn')}
         </Text>
       </TouchableOpacity>
     </View>

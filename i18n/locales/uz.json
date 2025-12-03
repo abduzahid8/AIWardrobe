@@ -1,0 +1,122 @@
+{
+    "common": {
+        "upgrade": "Yangilash",
+        "cancel": "Bekor qilish",
+        "save": "Saqlash",
+        "delete": "O'chirish",
+        "edit": "Tahrirlash",
+        "next": "Keyingi",
+        "back": "Orqaga",
+        "loading": "Yuklanmoqda...",
+        "error": "Xato",
+        "success": "Muvaffaqiyatli"
+    },
+    "home": {
+        "title": "Kiyimlar",
+        "askAI": "AI dan so'rang",
+        "yourWeek": "Sizning haftangiz",
+        "planner": "Rejalashtiruvchi",
+        "popularThisWeek": "Bu haftaning mashhuri",
+        "more": "Ko'proq",
+        "weather": {
+            "unavailable": "Ob-havo ma'lumotlari mavjud emas"
+        }
+    },
+    "profile": {
+        "editProfile": "Profilni tahrirlash",
+        "shareProfile": "Profilni ulashish",
+        "followers": "Obunachilar",
+        "following": "Obunalar",
+        "tabs": {
+            "clothes": "Kiyimlar",
+            "outfits": "Liboslar",
+            "collections": "To'plamlar"
+        },
+        "categories": {
+            "all": "Hammasi",
+            "tops": "Ustki kiyim",
+            "bottoms": "Pastki kiyim",
+            "shoes": "Poyabzal",
+            "outerwear": "Ustki kiyim"
+        },
+        "noClothes": "Bu toifada kiyim yo'q",
+        "noOutfits": "Saqlangan liboslar yo'q"
+    },
+    "addOutfit": {
+        "title": "Libos qo'shish",
+        "importFromWeb": "Internetdan import (Zara, Asos...)",
+        "pasteLink": "Havolani bu yerga qo'ying...",
+        "selfie": "Selfi",
+        "suggestions": "Takliflar",
+        "saved": "Saqlangan",
+        "popularClothes": "Mashhur kiyimlar",
+        "itemImported": "Mahsulot import qilindi!",
+        "errors": {
+            "noImage": "Rasm topilmadi. Boshqa havolani sinab ko'ring.",
+            "connectionFailed": "Ulanish muvaffaqiyatsiz. Serverni tekshiring."
+        }
+    },
+    "aiChat": {
+        "title": "AI Stilist",
+        "placeholder": "Stilingiz haqida so'rang...",
+        "greeting": "Salom! Men sizning AI stilistingizman. Bugun qanday yordam bera olaman?"
+    },
+    "aiTryOn": {
+        "title": "Sehrli Ko'zgu",
+        "you": "Siz",
+        "clothes": "Kiyim",
+        "result": "Natija",
+        "selectPhoto": "Rasm tanlang",
+        "selectItem": "Narsani tanlang",
+        "generating": "Yangi ko'rinish yaratilmoqda...",
+        "takesTime": "(~20 soniya vaqt oladi)",
+        "resultHere": "Natija bu yerda paydo bo'ladi",
+        "generate": "Libos yaratish",
+        "processing": "Qayta ishlanmoqda...",
+        "errors": {
+            "missingPhotos": "Iltimos, o'z rasmingiz va kiyim rasmini yuklang.",
+            "tryOnFailed": "Kiyib ko'rish muvaffaqiyatsiz. Server konsolini tekshiring."
+        }
+    },
+    "features": {
+        "aiSuggestions": {
+            "title": "AI Takliflari",
+            "subtitle": "AI dan stilingiz haqida so'rang"
+        },
+        "aiOutfitMaker": {
+            "title": "AI Libos Yaratuvchi",
+            "subtitle": "Liboslar yarating"
+        },
+        "aiTryOn": {
+            "title": "Virtual Kiyib Ko'rish",
+            "subtitle": "Virtualda kiyib ko'ring"
+        },
+        "colorAnalysis": {
+            "title": "Rang Tahlili",
+            "subtitle": "Eng yaxshi ranglarni toping"
+        },
+        "scanWardrobe": {
+            "title": "Shkafni Skanerlash",
+            "subtitle": "Shkafni raqamlashtiring"
+        }
+    },
+    "language": {
+        "selectLanguage": "Tilni tanlang",
+        "english": "Ingliz",
+        "russian": "Rus",
+        "uzbek": "O'zbek"
+    },
+    "auth": {
+        "signIn": "Kirish",
+        "signUp": "Ro'yxatdan o'tish",
+        "email": "Elektron pochta",
+        "password": "Parol",
+        "username": "Foydalanuvchi nomi",
+        "forgotPassword": "Parolni unutdingizmi?",
+        "noAccount": "Akkauntingiz yo'qmi?",
+        "haveAccount": "Akkauntingiz bormi?",
+        "createAccount": "Akkount yaratish",
+        "welcome": "Xush kelibsiz",
+        "getStarted": "Boshlash"
+    }
+}
