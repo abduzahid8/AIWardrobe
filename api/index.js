@@ -109,6 +109,101 @@ app.post('/api/analyze-frames', async (req, res) => {
   }
 });
 
+// === OpenAI Vision API for Clothing Analysis ===
+app.post('/api/openai/analyze-clothing', async (req, res) => {
+  try {
+    const { imageBase64 } = req.body;
+
+    if (!imageBase64) {
+      return res.status(400).json({ error: 'Image base64 is required' });
+    }
+
+    const response = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o-mini',
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: `Analyze this image and list EACH clothing item separately. For EACH item provide:
+1. itemType: specific type (e.g., "Denim Jacket", "V-neck T-shirt", "Slim-fit Jeans")
+2. color: exact color(s)  
+3. style: Casual/Formal/Sport/Streetwear
+4. material: fabric type if visible (cotton, denim, leather, etc.)
+5. productDescription: A short product description
+
+Return JSON array: [{"itemType": "...", "color": "...", "style": "...", "material": "...", "productDescription": "..."}]
+If no clothing visible, return [].`
+            },
+            {
+              type: 'image_url',
+              image_url: { url: `data:image/jpeg;base64,${imageBase64}` }
+            }
+          ]
+        }],
+        max_tokens: 1000
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 45000
+      }
+    );
+
+    const text = response.data.choices?.[0]?.message?.content || '[]';
+    console.log('OpenAI Clothing Analysis:', text);
+
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    const detectedItems = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
+
+    res.json({ detectedItems });
+
+  } catch (error) {
+    console.error('OpenAI analysis error:', error.response?.data || error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// === OpenAI DALL-E for Product Image Generation ===
+app.post('/api/openai/generate-image', async (req, res) => {
+  try {
+    const { prompt } = req.body;
+
+    if (!prompt) {
+      return res.status(400).json({ error: 'Prompt is required' });
+    }
+
+    const response = await axios.post(
+      'https://api.openai.com/v1/images/generations',
+      {
+        model: 'dall-e-3',
+        prompt: `${prompt}, professional product photography, clean white background, studio lighting, high quality, e-commerce style, centered, full garment visible`,
+        n: 1,
+        size: '1024x1024',
+        quality: 'standard'
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 60000
+      }
+    );
+
+    const imageUrl = response.data.data[0].url;
+    res.json({ imageUrl });
+
+  } catch (error) {
+    console.error('DALL-E generation error:', error.response?.data || error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 
 const hf = new HfInference(process.env.HF_TOKEN);
 
