@@ -1,104 +1,66 @@
 import { StyleSheet, Text, TouchableOpacity, View, Platform } from "react-native";
-import React from "react";
+import React, { useMemo, useCallback } from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import HomeScreen from "../screens/HomeScreen";
 import { Ionicons } from "@expo/vector-icons";
-import ProfileScreen from "../screens/ProfileScreen";
-import AddOutfitScreen from "../screens/AddOutfitScreen";
-import { TabParamList } from "./types";
+import { useTranslation } from "react-i18next";
 
-export const TabNavigator = () => {
-  const Tab = createBottomTabNavigator<TabParamList>();
+// New Imports
+import DailyBriefScreen from "../src/features/home/DailyBriefScreen";
+import CuratedClosetScreen from "../src/features/closet/CuratedClosetScreen";
+import AddOutfitScreen from "../screens/AddOutfitScreen"; // Keeping for now
+import DesignRoomScreen from "../screens/DesignRoomScreen"; // Keeping for now
+import ProfileScreen from "../screens/ProfileScreen"; // Keeping for now
 
-  // ✅ FIX: Define the config HERE (Before the return)
-  // Note: Standard Bottom Tabs usually switch instantly and might ignore this config,
-  // but this is the correct syntax if you want to define it.
-  const transitionConfig = {
-    animation: Platform.OS === 'ios' ? 'shift' : 'fade',
-    transitionSpec: {
-      open: {
-        animation: 'spring',
-        config: {
-          stiffness: 300,
-          damping: 30,
-          mass: 0.8,
-          overshootClamping: false,
-        },
-      },
-      close: {
-        animation: 'spring',
-        config: {
-          stiffness: 300,
-          damping: 30,
-          mass: 0.8,
-          overshootClamping: false,
-        },
-      },
-    },
-  };
+import { colors } from "../src/theme";
+
+const Tab = createBottomTabNavigator();
+
+const TabNavigator = () => {
+  const { t } = useTranslation();
+
+  const tabBarStyle = useMemo(() => ({
+    backgroundColor: colors.background,
+    borderTopColor: colors.border,
+    height: Platform.OS === "ios" ? 85 : 60,
+    paddingTop: 10,
+  }), []);
+
+  const getTabBarIcon = useCallback(({ route, focused, color, size }: any) => {
+    let iconName: any;
+
+    if (route.name === "Home") {
+      iconName = focused ? "newspaper" : "newspaper-outline";
+    } else if (route.name === "Discover") {
+      iconName = focused ? "shirt" : "shirt-outline";
+    } else if (route.name === "AddOutfit") {
+      iconName = focused ? "add-circle" : "add-circle-outline";
+    } else if (route.name === "DesignRoom") {
+      iconName = focused ? "easel" : "easel-outline";
+    } else if (route.name === "Profile") {
+      iconName = focused ? "person" : "person-outline";
+    }
+
+    return <Ionicons name={iconName} size={size} color={color} />;
+  }, []);
 
   return (
     <Tab.Navigator
-      screenOptions={{
+      screenOptions={({ route }) => ({
         headerShown: false,
         tabBarShowLabel: false,
-        tabBarActiveTintColor: "#000",
-        tabBarInactiveTintColor: "#D3D3D3",
-        tabBarStyle: {
-          height: 70,
-          paddingBottom: 10,
-          paddingTop: 10,
-          backgroundColor: "#fff",
-          borderTopWidth: 1,
-          borderTopColor: "#f0f0f0",
-        },
-        // To use the config, you would reference the variable here
-        // (However, note that BottomTabNavigator does not natively support transitionSpec like StackNavigator does)
-      }}
+        tabBarStyle,
+        tabBarActiveTintColor: colors.text.primary,
+        tabBarInactiveTintColor: colors.text.secondary,
+        tabBarIcon: (props) => getTabBarIcon({ route, ...props }),
+      })}
     >
-      <Tab.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" color={color} size={size} />
-          ),
-        }}
-      />
-
-      <Tab.Screen
-        name="Add"
-        component={AddOutfitScreen}
-        options={{
-          tabBarIcon: ({ }) => (
-            <View className="w-12 h-12 rounded-full bg-black items-center justify-center">
-              <Text className="text-white text-[28px] leading-[28px]">+</Text>
-            </View>
-          ),
-          tabBarButton: (props) => {
-            const { delayLongPress, ...rest } = props as any;
-            return (
-              <TouchableOpacity
-                {...rest}
-                delayLongPress={delayLongPress !== null ? delayLongPress : undefined}
-                style={{ alignItems: 'center', justifyContent: 'center' }}
-              />
-            );
-          },
-        }}
-      />
-
-      <Tab.Screen
-        name="Profile"
-        component={ProfileScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" color={color} size={size} />
-          ),
-        }}
-      />
-    </Tab.Navigator >
+      <Tab.Screen name="Home" component={DailyBriefScreen} />
+      <Tab.Screen name="Discover" component={CuratedClosetScreen} />
+      <Tab.Screen name="AddOutfit" component={AddOutfitScreen} />
+      <Tab.Screen name="DesignRoom" component={DesignRoomScreen} />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
+    </Tab.Navigator>
   );
 };
 
-const styles = StyleSheet.create({});
+export default TabNavigator;

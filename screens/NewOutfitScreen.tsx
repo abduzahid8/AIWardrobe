@@ -15,6 +15,7 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { jwtDecode } from "jwt-decode";
 import axios from "axios";
+import moment from "moment";
 
 interface ClothingItem {
   id: number;
@@ -27,11 +28,12 @@ interface ClothingItem {
 
 const NewOutfitScreen = () => {
   const route = useRoute();
-  const { selectedItems, date, savedOutfits } = route.params as {
-    selectedItems: ClothingItem[];
-    date: string;
-    savedOutfits: { [key: string]: any[] };
+  const params = (route.params || {}) as {
+    selectedItems?: ClothingItem[];
+    date?: string;
+    savedOutfits?: { [key: string]: any[] };
   };
+  const { selectedItems = [], date = moment().format("YYYY-MM-DD"), savedOutfits = {} } = params;
   const navigation = useNavigation();
   const [caption, setCaption] = useState("");
   const [isOotd, setIsOotd] = useState(false);

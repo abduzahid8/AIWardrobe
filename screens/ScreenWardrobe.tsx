@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,7 +7,7 @@ import {
   Alert,
   StyleSheet,
 } from "react-native";
-import { CameraView, useCameraPermissions } from "expo-camera";
+import { Camera, CameraView } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import * as ImagePicker from "expo-image-picker";
@@ -17,19 +17,30 @@ import { useNavigation } from '@react-navigation/native';
 
 export default function ScanWardrobeScreen() {
   const navigation = useNavigation<any>();
-  const [permission, requestPermission] = useCameraPermissions();
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const cameraRef = useRef<any>(null);
 
   const [isRecording, setIsRecording] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false); // Единый стейт загрузки
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  // Запрос прав
-  if (!permission) return <View />;
-  if (!permission.granted) {
+  useEffect(() => {
+    (async () => {
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      setHasPermission(status === 'granted');
+    })();
+  }, []);
+
+  if (hasPermission === null) {
+    return <View />;
+  }
+  if (hasPermission === false) {
     return (
       <View style={styles.center}>
         <Text style={{ marginBottom: 20 }}>Нужен доступ к камере</Text>
-        <TouchableOpacity onPress={requestPermission} style={styles.btn}>
+        <TouchableOpacity onPress={async () => {
+          const { status } = await Camera.requestCameraPermissionsAsync();
+          setHasPermission(status === 'granted');
+        }} style={styles.btn}>
           <Text style={styles.btnText}>Разрешить</Text>
         </TouchableOpacity>
       </View>
@@ -55,9 +66,8 @@ export default function ScanWardrobeScreen() {
 
       const response = await axios.post(`${API_URL}/scan-wardrobe`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 180000, // 3 minutes (Google AI processing takes time)
+        timeout: 180000,
       });
-
       console.log("✅ Ответ от ИИ:", response.data);
 
       // Переходим на экран проверки результатов
@@ -82,7 +92,8 @@ export default function ScanWardrobeScreen() {
   const pickVideoFromGallery = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: 'videos',
+        // @ts-ignore
+        mediaTypes: ['videos'],
         allowsEditing: true, // Разрешаем редактирование (это часто включает сжатие)
         quality: 0.5,        // Сжимаем качество
         videoExportPreset: ImagePicker.VideoExportPreset.H264_640x480, // Принудительно 640x480 (SD)

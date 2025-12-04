@@ -6,14 +6,19 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Platform,
 } from "react-native";
 import React, { useEffect, useState } from "react";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import moment from "moment";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { colors, shadows, spacing } from "../src/theme";
 
 const { width, height } = Dimensions.get("window");
 
@@ -64,11 +69,12 @@ const DraggableClothingItem = ({ item }: { item: ClothingItem }) => {
 
 const DesignRoomScreen = () => {
   const route = useRoute();
-  const { selectedItems, date, savedOutfits } = route.params as {
-    selectedItems: ClothingItem[];
-    date: string;
-    savedOutfits: { [key: string]: any[] };
+  const params = (route.params || {}) as {
+    selectedItems?: ClothingItem[];
+    date?: string;
+    savedOutfits?: { [key: string]: any[] };
   };
+  const { selectedItems = [], date = moment().format("YYYY-MM-DD"), savedOutfits = {} } = params;
   const [clothes, setClothes] = useState<ClothingItem[]>([]);
   const navigation = useNavigation();
 
@@ -93,44 +99,187 @@ const DesignRoomScreen = () => {
       return { ...item, x: xPosition, y: yPosition };
     });
     setClothes(initialClothes);
-  }, [selectedItems]);
+  }, [JSON.stringify(selectedItems)]);
+
   return (
-    <SafeAreaView className="flex-1 bg-black">
-      <View className="flex-row justify-between items-center p-4">
-        <Text className="text-white text-lg">{date}</Text>
-        <TouchableOpacity
-          onPress={() =>
-            (navigation.navigate as any)("NewOutfit", {
-              selectedItems,
-              date,
-              savedOutfits,
-            })
-          }
-          className="bg-gray-700 p-2 rounded"
-        >
-          <Text className="text-white">Next</Text>
-        </TouchableOpacity>
-      </View>
-      <View className="flex-1">
-        {clothes?.map((item) => (
-          <DraggableClothingItem key={item.id} item={item} />
-        ))}
-      </View>
-      <View className="flex-row justify-between p-4">
-        <TouchableOpacity className="bg-gray-700 p-2 rounded">
-          <Text className="text-white">Add Clothes</Text>
-        </TouchableOpacity>
-        <TouchableOpacity className="bg-gray-700 p-2 rounded">
-          <Text className="text-white">Stickers</Text>
-        </TouchableOpacity>
-        <TouchableOpacity className="bg-gray-700 p-2 rounded">
-          <Text className="text-white">Background</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+    <View style={styles.container}>
+      <LinearGradient
+        colors={['#ffffff', '#f0f4ff', '#e6eeff']}
+        style={StyleSheet.absoluteFill}
+      />
+      <SafeAreaView style={styles.safeArea}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.headerTitle}>Design Room</Text>
+            <Text style={styles.headerDate}>{moment(date).format("MMMM Do")}</Text>
+          </View>
+          <TouchableOpacity
+            onPress={() =>
+              (navigation.navigate as any)("NewOutfit", {
+                selectedItems,
+                date,
+                savedOutfits,
+              })
+            }
+            style={styles.nextButton}
+          >
+            <Text style={styles.nextButtonText}>Next</Text>
+            <Ionicons name="arrow-forward" size={16} color="#fff" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Canvas Area */}
+        <View style={styles.canvas}>
+          {clothes?.map((item) => (
+            <DraggableClothingItem key={item.id} item={item} />
+          ))}
+          {clothes.length === 0 && (
+            <View style={styles.emptyState}>
+              <Ionicons name="shirt-outline" size={48} color="#cbd5e1" />
+              <Text style={styles.emptyStateText}>
+                Add clothes to start designing
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Toolbar */}
+        <View style={styles.toolbarContainer}>
+          <View style={[styles.toolbar, shadows.medium]}>
+            <TouchableOpacity style={styles.toolButton}>
+              <View style={styles.toolIconBg}>
+                <Ionicons name="add" size={24} color="#1e293b" />
+              </View>
+              <Text style={styles.toolLabel}>Add</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.toolButton}
+              onPress={() => (navigation as any).navigate('WardrobeVideo')}
+            >
+              <View style={[styles.toolIconBg, styles.activeToolIcon]}>
+                <Ionicons name="videocam" size={24} color="#fff" />
+              </View>
+              <Text style={styles.toolLabel}>Scan Video</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.toolButton}>
+              <View style={styles.toolIconBg}>
+                <Ionicons name="happy-outline" size={24} color="#1e293b" />
+              </View>
+              <Text style={styles.toolLabel}>Stickers</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.toolButton}>
+              <View style={styles.toolIconBg}>
+                <Ionicons name="image-outline" size={24} color="#1e293b" />
+              </View>
+              <Text style={styles.toolLabel}>Bg</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </SafeAreaView>
+    </View>
   );
 };
 
-export default DesignRoomScreen;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  safeArea: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    zIndex: 50,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1e293b',
+    fontFamily: Platform.OS === 'ios' ? 'Didot' : 'serif',
+  },
+  headerDate: {
+    fontSize: 14,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  nextButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1e293b',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 4,
+  },
+  nextButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  canvas: {
+    flex: 1,
+    position: 'relative',
+    zIndex: 10,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: 0.5,
+  },
+  emptyStateText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  toolbarContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    zIndex: 50,
+  },
+  toolbar: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+  },
+  toolButton: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  toolIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activeToolIcon: {
+    backgroundColor: '#4f46e5',
+    shadowColor: '#4f46e5',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  toolLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#475569',
+  },
+});
 
-const styles = StyleSheet.create({});
+export default DesignRoomScreen;

@@ -12,7 +12,8 @@ import SignUpScreen from "../screens/SignUpScreen";
 import AIOutfitmaker from "../screens/AIOutfitmaker";
 import DesignRoomScreen from "../screens/DesignRoomScreen";
 import NewOutfitScreen from "../screens/NewOutfitScreen";
-import { TabNavigator } from "./TabNavigator";
+import TabNavigator from "../navigation/TabNavigator";
+import WardrobeVideoScreen from "../screens/WardrobeVideoScreen";
 
 import useAuthStore from "../store/auth";
 import ReviewScreen from "../screens/ReviewScreen";
@@ -32,6 +33,7 @@ export type RootStackParamList = {
 
   DesignRoom: undefined;
   NewOutfit: undefined;
+  WardrobeVideo: undefined;
 };
 
 // 2. Передаем этот список в Stack
@@ -43,7 +45,7 @@ const RootNavigator = () => {
 
   useEffect(() => {
     initializeAuth();
-  }, [initializeAuth]);
+  }, []);
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -69,6 +71,7 @@ const RootNavigator = () => {
           <Stack.Screen name="AIOutfit" component={AIOutfitmaker} />
           <Stack.Screen name="AITryOn" component={AITryOnScreen} />
           <Stack.Screen name="ScanWardrobe" component={ScanWardrobeScreen} />
+          <Stack.Screen name="WardrobeVideo" component={WardrobeVideoScreen} />
 
           <Stack.Screen name="DesignRoom" component={DesignRoomScreen} />
           <Stack.Screen name="NewOutfit" component={NewOutfitScreen} />

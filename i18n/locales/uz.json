@@ -13,14 +13,34 @@
     },
     "home": {
         "title": "Kiyimlar",
-        "askAI": "AI dan so'rang",
+        "dailyBrief": "Kunlik Xabar",
+        "todaysLook": "Bugungi Ko'rinish",
+        "stylistInsight": "Stilist Maslahati",
+        "askStylist": "Stilistdan So'rash",
+        "todaysSuggestion": "Bugungi taklif",
+        "askAI": "AI dan so'rash",
         "yourWeek": "Sizning haftangiz",
         "planner": "Rejalashtiruvchi",
-        "popularThisWeek": "Bu haftaning mashhuri",
+        "popularThisWeek": "Bu hafta mashhur",
         "more": "Ko'proq",
         "weather": {
             "unavailable": "Ob-havo ma'lumotlari mavjud emas"
         }
+    },
+    "discover": {
+        "title": "Kashf etish",
+        "curatedCloset": "Shkaf",
+        "aiStudio": "AI Studiya",
+        "trendingNow": "Trendda",
+        "seeAll": "Hammasini Ko'rish",
+        "filters": {
+            "all": "Hammasi",
+            "tops": "Ustki kiyim",
+            "bottoms": "Pastki kiyim",
+            "shoes": "Poyabzal",
+            "accessories": "Aksessuarlar"
+        },
+        "aiFeatures": "AI Xususiyatlari"
     },
     "profile": {
         "editProfile": "Profilni tahrirlash",

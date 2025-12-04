@@ -34,8 +34,10 @@ export type RootStackParamList = {
 
 export type TabParamList = {
     Home: undefined;
-    Add: undefined;
+    Discover: undefined;
+    Wardrobe: undefined;
     Profile: undefined;
+    Add: undefined; // Keeping for backward compatibility if needed
 };
 
 export type ClothingItem = {

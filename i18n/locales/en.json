@@ -13,14 +13,34 @@
     },
     "home": {
         "title": "Fits",
-        "askAI": "Ask AI",
+        "dailyBrief": "Daily Brief",
+        "todaysLook": "Today's Look",
+        "stylistInsight": "Stylist Insight",
+        "askStylist": "Ask Stylist",
+        "todaysSuggestion": "Today's Suggestion",
         "yourWeek": "Your Week",
         "planner": "Planner",
-        "popularThisWeek": "Popular this week",
+        "popularThisWeek": "Popular This Week",
         "more": "More",
-        "weather": {
-            "unavailable": "Weather unavailable"
-        }
+        "askAI": "Ask AI"
+    },
+    "discover": {
+        "title": "Discover",
+        "curatedCloset": "Curated Closet",
+        "aiStudio": "AI Studio",
+        "trendingNow": "Trending Now",
+        "seeAll": "See All",
+        "filters": {
+            "all": "All",
+            "tops": "Tops",
+            "bottoms": "Bottoms",
+            "shoes": "Shoes",
+            "accessories": "Accessories"
+        },
+        "aiFeatures": "AI Features"
+    },
+    "weather": {
+        "unavailable": "Weather unavailable"
     },
     "profile": {
         "editProfile": "Edit Profile",

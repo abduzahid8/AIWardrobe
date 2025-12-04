@@ -13,7 +13,12 @@
     },
     "home": {
         "title": "Образы",
-        "askAI": "Спросить AI",
+        "dailyBrief": "Ежедневная сводка",
+        "todaysLook": "Образ дня",
+        "stylistInsight": "Совет стилиста",
+        "askStylist": "Спросить стилиста",
+        "todaysSuggestion": "Предложение дня",
+        "askAI": "Спросить ИИ",
         "yourWeek": "Ваша неделя",
         "planner": "Планировщик",
         "popularThisWeek": "Популярное на этой неделе",
@@ -21,6 +26,21 @@
         "weather": {
             "unavailable": "Погода недоступна"
         }
+    },
+    "discover": {
+        "title": "Обзор",
+        "curatedCloset": "Гардероб",
+        "aiStudio": "AI Студия",
+        "trendingNow": "В тренде",
+        "seeAll": "Смотреть все",
+        "filters": {
+            "all": "Все",
+            "tops": "Верх",
+            "bottoms": "Низ",
+            "shoes": "Обувь",
+            "accessories": "Аксессуары"
+        },
+        "aiFeatures": "AI Функции"
     },
     "profile": {
         "editProfile": "Редактировать профиль",

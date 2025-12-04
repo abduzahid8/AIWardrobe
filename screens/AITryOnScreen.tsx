@@ -40,7 +40,8 @@ const AITryOnScreen = () => {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       // 👇 ИСПОЛЬЗУЕМ СТАРЫЙ ВАРИАНТ (с Options) - он рабочий
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      // @ts-ignore
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [3, 4],
       quality: 0.5,
@@ -63,6 +64,10 @@ const AITryOnScreen = () => {
     setResultImage(null);
 
     try {
+      // Add timeout to fetch
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
       const response = await fetch(`${API_URL}/try-on`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -71,16 +76,36 @@ const AITryOnScreen = () => {
           garment_image: clothImage,
           description: "clothing",
         }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Server error: ${response.status} ${errorText}`);
+      }
 
       const data = await response.json();
 
       if (data.error) throw new Error(data.error);
+      if (!data.image) throw new Error("No image returned from server");
 
       setResultImage(data.image);
     } catch (error: any) {
-      console.log(error);
-      Alert.alert(t('common.error'), t('aiTryOn.errors.tryOnFailed'));
+      console.error("Try-On Error:", error);
+
+      let errorMessage = t('aiTryOn.errors.tryOnFailed');
+
+      if (error.name === 'AbortError') {
+        errorMessage = "Request timed out. Please try again.";
+      } else if (error.message.includes('Network request failed')) {
+        errorMessage = "Network error. Check your internet connection.";
+      } else if (error.message.includes('Server error')) {
+        errorMessage = "Server is currently unavailable. Please try again later.";
+      }
+
+      Alert.alert(t('common.error'), errorMessage);
     } finally {
       setLoading(false);
     }
