@@ -27,7 +27,10 @@ interface DetectedItem {
     color: string;
     style: string;
     description: string;
-    frameImage?: string; // Base64 frame image
+    material?: string;
+    details?: string;
+    productDescription?: string;
+    frameImage?: string;
 }
 
 interface AnalysisResult {
@@ -100,148 +103,193 @@ const WardrobeVideoScreen = () => {
         return frames;
     };
 
+    // STEP 1 & 2: Analyze video frame - detect clothing AND get detailed description
+    const analyzeClothingWithAI = async (frameBase64: string): Promise<DetectedItem[]> => {
+        try {
+            setProgress('🔍 AI detecting clothing...');
+
+            const response = await axios.post(
+                'https://api.openai.com/v1/chat/completions',
+                {
+                    model: 'gpt-4o-mini',
+                    messages: [{
+                        role: 'user',
+                        content: [
+                            {
+                                type: 'text',
+                                text: `Analyze this image and list EACH clothing item separately. For EACH item provide:
+1. itemType: specific type (e.g., "Denim Jacket", "V-neck T-shirt", "Slim-fit Jeans")
+2. color: exact color(s)
+3. style: Casual/Formal/Sport/Streetwear
+4. material: fabric type if visible (cotton, denim, leather, etc.)
+5. details: special features (buttons, zippers, patterns, logos)
+6. productDescription: Write a detailed 1-sentence product description for generating a catalog image
+
+Return JSON array: [{"itemType": "...", "color": "...", "style": "...", "material": "...", "details": "...", "productDescription": "A [color] [material] [itemType] with [details], photographed on white background"}]
+
+If no clothing visible, return [].`
+                            },
+                            {
+                                type: 'image_url',
+                                image_url: { url: `data:image/jpeg;base64,${frameBase64}` }
+                            }
+                        ]
+                    }],
+                    max_tokens: 1000
+                },
+                {
+                    headers: {
+                        'Authorization': `Bearer ${process.env.OPENAI_API_KEY || 'sk-proj-your-key'}`,
+                        'Content-Type': 'application/json'
+                    },
+                    timeout: 45000
+                }
+            );
+
+            const text = response.data.choices?.[0]?.message?.content || '[]';
+            console.log('AI Response:', text);
+
+            const jsonMatch = text.match(/\[[\s\S]*\]/);
+            if (jsonMatch) {
+                return JSON.parse(jsonMatch[0]);
+            }
+            return [];
+        } catch (error: any) {
+            console.error('AI Analysis error:', error.message);
+            throw error;
+        }
+    };
+
+    // STEP 3: Generate clean product image using AI
+    const generateProductImage = async (item: DetectedItem): Promise<string> => {
+        try {
+            setProgress(`🎨 Creating image for ${item.itemType}...`);
+
+            // Use DALL-E to generate clean product image
+            const prompt = item.productDescription ||
+                `A ${item.color} ${item.itemType}, professional product photography, clean white background, studio lighting, high quality, e-commerce style, centered, full garment visible`;
+
+            const response = await axios.post(
+                'https://api.openai.com/v1/images/generations',
+                {
+                    model: 'dall-e-3',
+                    prompt: prompt,
+                    n: 1,
+                    size: '1024x1024',
+                    quality: 'standard'
+                },
+                {
+                    headers: {
+                        'Authorization': `Bearer ${process.env.OPENAI_API_KEY || 'sk-proj-your-key'}`,
+                        'Content-Type': 'application/json'
+                    },
+                    timeout: 60000
+                }
+            );
+
+            return response.data.data[0].url;
+        } catch (error: any) {
+            console.log('Image generation failed, using fallback:', error.message);
+            // Fallback to stock image based on type
+            return getClothingImage(item.itemType, item.color);
+        }
+    };
+
+    // Fallback stock images
+    const getClothingImage = (itemType: string, color: string): string => {
+        const type = itemType.toLowerCase();
+        const clothingImages: { [key: string]: string } = {
+            'jacket': 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400&h=500&fit=crop',
+            'denim': 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400&h=500&fit=crop',
+            'shirt': 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=400&h=500&fit=crop',
+            't-shirt': 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=500&fit=crop',
+            'jeans': 'https://images.unsplash.com/photo-1542272454315-4c01d7abdf4a?w=400&h=500&fit=crop',
+            'pants': 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=400&h=500&fit=crop',
+            'dress': 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=400&h=500&fit=crop',
+            'sweater': 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=400&h=500&fit=crop',
+            'hoodie': 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=400&h=500&fit=crop',
+            'coat': 'https://images.unsplash.com/photo-1539533018447-63fcce2678e3?w=400&h=500&fit=crop',
+            'shoes': 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=500&fit=crop',
+            'sneakers': 'https://images.unsplash.com/photo-1460353581641-37baddab0fa2?w=400&h=500&fit=crop',
+        };
+
+        for (const [key, url] of Object.entries(clothingImages)) {
+            if (type.includes(key)) return url;
+        }
+        return 'https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=400&h=500&fit=crop';
+    };
+
     const analyzeVideo = async (videoUri: string) => {
         setAnalyzing(true);
         setResults(null);
-        setProgress('Preparing video...');
+        setProgress('📹 Extracting frames from video...');
 
         try {
-            // Extract frames from video
+            // STEP 1: Extract frames from video
             const frames = await extractFrames(videoUri);
 
             if (frames.length === 0) {
                 throw new Error('Could not extract any frames from video');
             }
 
-            setProgress('AI analyzing clothing...');
+            // STEP 2: AI analyzes frame and detects clothing with detailed descriptions
+            let detectedItems = await analyzeClothingWithAI(frames[0]);
 
-            // Use OpenAI Vision API for accurate detection
-            let detectedItems: DetectedItem[] = [];
-
-            try {
-                const response = await axios.post(
-                    'https://api.openai.com/v1/chat/completions',
-                    {
-                        model: 'gpt-4o-mini',
-                        messages: [{
-                            role: 'user',
-                            content: [
-                                {
-                                    type: 'text',
-                                    text: 'List ONLY the clothing items visible in this image. Return JSON array: [{"itemType": "...", "color": "...", "style": "Casual/Formal/Sport", "description": "..."}]. If no clothes visible, return empty array [].'
-                                },
-                                {
-                                    type: 'image_url',
-                                    image_url: { url: `data:image/jpeg;base64,${frames[0]}` }
-                                }
-                            ]
-                        }],
-                        max_tokens: 500
-                    },
-                    {
-                        headers: {
-                            'Authorization': `Bearer ${process.env.OPENAI_API_KEY || 'sk-proj-your-key'}`,
-                            'Content-Type': 'application/json'
-                        },
-                        timeout: 30000
-                    }
-                );
-
-                const text = response.data.choices?.[0]?.message?.content || '[]';
-                const jsonMatch = text.match(/\[[\s\S]*\]/);
-                if (jsonMatch) {
-                    detectedItems = JSON.parse(jsonMatch[0]);
-                }
-            } catch (apiError) {
-                console.log('OpenAI unavailable, using Clarifai...');
-
-                // Fallback: Use your deployed backend which has Clarifai
-                try {
-                    const formData = new FormData();
-                    formData.append('image', {
-                        uri: `data:image/jpeg;base64,${frames[0]}`,
-                        type: 'image/jpeg',
-                        name: 'frame.jpg'
-                    } as any);
-
-                    // Just detect what we can from frame
-                    detectedItems = [{
-                        itemType: 'Clothing Item',
-                        color: 'Detected',
-                        style: 'Casual',
-                        description: 'Item from your video'
-                    }];
-                } catch (e) {
-                    detectedItems = [];
+            if (detectedItems.length === 0) {
+                // Try second frame
+                if (frames.length > 1) {
+                    setProgress('Trying another frame...');
+                    detectedItems = await analyzeClothingWithAI(frames[1]);
                 }
             }
 
             if (detectedItems.length === 0) {
-                Alert.alert('No Items Found', 'Could not detect clothing in this video. Try a clearer video.');
+                Alert.alert('No Clothing Found', 'AI could not detect clothing items in this video. Try a video with clear clothing visible.');
                 setAnalyzing(false);
                 return;
             }
 
-            // Add the frame image to each detected item
-            const itemsWithImages = detectedItems.map(item => ({
-                ...item,
-                frameImage: `data:image/jpeg;base64,${frames[0]}`
-            }));
+            // STEP 3: Generate product images for each detected item
+            setProgress(`🎨 Generating ${detectedItems.length} product image(s)...`);
+
+            const itemsWithImages: DetectedItem[] = [];
+            for (const item of detectedItems) {
+                try {
+                    const imageUrl = await generateProductImage(item);
+                    itemsWithImages.push({
+                        ...item,
+                        frameImage: imageUrl,
+                        description: item.productDescription || `${item.color} ${item.itemType}`
+                    });
+                } catch (e) {
+                    // Use fallback image
+                    itemsWithImages.push({
+                        ...item,
+                        frameImage: getClothingImage(item.itemType, item.color),
+                        description: item.productDescription || `${item.color} ${item.itemType}`
+                    });
+                }
+            }
 
             setResults({
                 detectedItems: itemsWithImages,
-                frameImage: `data:image/jpeg;base64,${frames[0]}`  // Main frame for display
+                frameImage: `data:image/jpeg;base64,${frames[0]}`
             });
             setProgress('');
 
         } catch (error: any) {
             console.error('Analysis failed:', error);
             setProgress('');
-            Alert.alert('Analysis Failed', 'Please try again');
+            Alert.alert('Analysis Failed', error.message || 'Please try again');
         } finally {
             setAnalyzing(false);
         }
     };
 
-
-    // Get a stock clothing image based on type and color
-    const getClothingImage = (itemType: string, color: string): string => {
-        const type = itemType.toLowerCase();
-        const searchTerm = encodeURIComponent(`${color} ${type} clothing`);
-
-        // Use Unsplash for high-quality clothing images
-        const clothingImages: { [key: string]: string } = {
-            'shirt': 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=300&h=400&fit=crop',
-            't-shirt': 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300&h=400&fit=crop',
-            'jacket': 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=300&h=400&fit=crop',
-            'jeans': 'https://images.unsplash.com/photo-1542272454315-4c01d7abdf4a?w=300&h=400&fit=crop',
-            'pants': 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=300&h=400&fit=crop',
-            'dress': 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=300&h=400&fit=crop',
-            'skirt': 'https://images.unsplash.com/photo-1583496661160-fb5886a0ebb4?w=300&h=400&fit=crop',
-            'sweater': 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=300&h=400&fit=crop',
-            'hoodie': 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=300&h=400&fit=crop',
-            'coat': 'https://images.unsplash.com/photo-1539533018447-63fcce2678e3?w=300&h=400&fit=crop',
-            'shoes': 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&h=400&fit=crop',
-            'sneakers': 'https://images.unsplash.com/photo-1460353581641-37baddab0fa2?w=300&h=400&fit=crop',
-            'shorts': 'https://images.unsplash.com/photo-1591195853828-11db59a44f6b?w=300&h=400&fit=crop',
-            'blouse': 'https://images.unsplash.com/photo-1564257631407-4deb1f99d992?w=300&h=400&fit=crop',
-        };
-
-        // Find matching image or use default
-        for (const [key, url] of Object.entries(clothingImages)) {
-            if (type.includes(key)) {
-                return url;
-            }
-        }
-
-        // Default clothing image
-        return 'https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=300&h=400&fit=crop';
-    };
-
     const saveToWardrobe = async () => {
         if (!results || results.detectedItems.length === 0) return;
 
-        setProgress('Saving to wardrobe...');
+        setProgress('💾 Saving to wardrobe...');
 
         try {
             const AsyncStorage = require('@react-native-async-storage/async-storage').default;
@@ -250,15 +298,17 @@ const WardrobeVideoScreen = () => {
             const existingData = await AsyncStorage.getItem('myWardrobeItems');
             const existingItems = existingData ? JSON.parse(existingData) : [];
 
-            // Create new items with matching clothing images
-            const newItems = results.detectedItems.map((item, index) => ({
+            // Create new items with AI-generated or fallback images
+            const newItems = results.detectedItems.map((item: DetectedItem, index: number) => ({
                 id: `item_${Date.now()}_${index}`,
                 type: item.itemType,
                 color: item.color,
                 style: item.style,
-                description: item.description,
+                description: item.description || item.productDescription || `${item.color} ${item.itemType}`,
+                material: item.material || 'Unknown',
+                details: item.details || '',
                 season: 'All Seasons',
-                image: getClothingImage(item.itemType, item.color),  // Use stock image!
+                image: item.frameImage,  // Use AI-generated or fallback image
                 source: 'video_scan',
                 createdAt: new Date().toISOString()
             }));
@@ -285,7 +335,6 @@ const WardrobeVideoScreen = () => {
             setProgress('');
         }
     };
-
 
     return (
         <View style={styles.container}>
