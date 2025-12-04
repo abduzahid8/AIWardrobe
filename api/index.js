@@ -42,8 +42,8 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-const wardrobeAnalysisRoutes = require('./routes/wardrobeAnalysis');
-app.use('/api', wardrobeAnalysisRoutes);
+// wardrobeAnalysis routes removed - using direct implementation
+// app.use('/api', wardrobeAnalysisRoutes);
 
 // === NEW: Frame-based clothing analysis using Gemini Vision ===
 app.post('/api/analyze-frames', async (req, res) => {
