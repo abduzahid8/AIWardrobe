@@ -129,30 +129,42 @@ mongoose
   .catch((err) => console.log("Error connecting to MongoDb", err));
 
 // POST endpoint to save clothing items from video scan
-app.post("/clothing-items", async (req, res) => {
+app.post("/clothing-items", authenticateToken, async (req, res) => {
   try {
-    const { type, color, style, description, source, userId } = req.body;
+    const { type, color, style, description, season, imageUrl } = req.body;
 
-    // Use default userId for video scan items (anonymous user)
-    const defaultUserId = new mongoose.Types.ObjectId();
+    // Get userId from the authenticated token
+    const userId = req.user.id;
 
-    const itemData = {
-      userId: userId || defaultUserId,  // Always provide userId
+    const newItem = new ClothingItem({
+      userId: userId,
       type: type || 'Unknown',
       color: color || 'Unknown',
       style: style || 'Casual',
       description: description || '',
-      source: source || 'video_scan',
-      imageUrl: 'https://via.placeholder.com/150',
+      season: season || 'All Seasons',
+      imageUrl: imageUrl || 'https://via.placeholder.com/150',
       createdAt: new Date()
-    };
+    });
 
-    const newItem = new ClothingItem(itemData);
     await newItem.save();
-    console.log('✅ Saved clothing item:', newItem.type);
+    console.log('✅ Saved clothing item:', newItem.type, 'for user:', userId);
     res.status(201).json({ success: true, item: newItem });
   } catch (error) {
     console.error('Error saving clothing item:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET endpoint to fetch user's clothing items
+app.get("/clothing-items", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const items = await ClothingItem.find({ userId }).sort({ createdAt: -1 });
+    console.log('📦 Found', items.length, 'items for user:', userId);
+    res.json({ items });
+  } catch (error) {
+    console.error('Error fetching clothing items:', error);
     res.status(500).json({ error: error.message });
   }
 });

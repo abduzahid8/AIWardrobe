@@ -199,39 +199,51 @@ const WardrobeVideoScreen = () => {
         setProgress('Saving to wardrobe...');
 
         try {
-            // Save locally using AsyncStorage - works 100%!
             const AsyncStorage = require('@react-native-async-storage/async-storage').default;
 
-            // Get existing items
-            const existingData = await AsyncStorage.getItem('wardrobeItems');
-            const existingItems = existingData ? JSON.parse(existingData) : [];
+            // Get user's auth token
+            const token = await AsyncStorage.getItem('authToken');
 
-            // Add new items with IDs
-            const newItems = results.detectedItems.map((item, index) => ({
-                id: Date.now() + index,
-                type: item.itemType,
-                color: item.color,
-                style: item.style,
-                description: item.description,
-                source: 'video_scan',
-                createdAt: new Date().toISOString()
-            }));
+            if (!token) {
+                Alert.alert('Please Login', 'You need to login to save items to your wardrobe');
+                return;
+            }
 
-            // Save all items
-            const allItems = [...existingItems, ...newItems];
-            await AsyncStorage.setItem('wardrobeItems', JSON.stringify(allItems));
+            // Save each item to MongoDB with auth
+            for (const item of results.detectedItems) {
+                await axios.post(`${API_URL}/clothing-items`, {
+                    type: item.itemType,
+                    color: item.color,
+                    style: item.style,
+                    description: item.description,
+                    season: 'All Seasons',
+                    imageUrl: 'https://via.placeholder.com/150'
+                }, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+            }
 
-            console.log('✅ Saved', newItems.length, 'items locally');
+            console.log('✅ Saved', results.detectedItems.length, 'items to MongoDB');
 
             Alert.alert(
                 'Success! 🎉',
                 `${results.detectedItems.length} item(s) saved to your wardrobe!`,
-                [{ text: 'OK', onPress: () => navigation.goBack() }]
+                [{
+                    text: 'View Wardrobe',
+                    onPress: () => {
+                        // Navigate to wardrobe/closet screen
+                        navigation.navigate('ScreenWardrobe' as never);
+                    }
+                }]
             );
-        } catch (error) {
+        } catch (error: any) {
             console.error('Save error:', error);
-            // Even if save fails, show success for demo
-            Alert.alert('Saved!', 'Items added to your wardrobe!');
+            Alert.alert('Error', error.response?.data?.error || 'Failed to save. Please try again.');
+        } finally {
+            setProgress('');
         }
     };
 
