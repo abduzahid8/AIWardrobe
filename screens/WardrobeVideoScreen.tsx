@@ -103,91 +103,41 @@ const WardrobeVideoScreen = () => {
         return frames;
     };
 
-    // STEP 1 & 2: Analyze video frame - detect clothing AND get detailed description
+    // STEP 1 & 2: Analyze video frame via backend (uses server-side API key)
     const analyzeClothingWithAI = async (frameBase64: string): Promise<DetectedItem[]> => {
         try {
             setProgress('🔍 AI detecting clothing...');
 
+            // Route through backend which has OpenAI API key
             const response = await axios.post(
-                'https://api.openai.com/v1/chat/completions',
-                {
-                    model: 'gpt-4o-mini',
-                    messages: [{
-                        role: 'user',
-                        content: [
-                            {
-                                type: 'text',
-                                text: `Analyze this image and list EACH clothing item separately. For EACH item provide:
-1. itemType: specific type (e.g., "Denim Jacket", "V-neck T-shirt", "Slim-fit Jeans")
-2. color: exact color(s)
-3. style: Casual/Formal/Sport/Streetwear
-4. material: fabric type if visible (cotton, denim, leather, etc.)
-5. details: special features (buttons, zippers, patterns, logos)
-6. productDescription: Write a detailed 1-sentence product description for generating a catalog image
-
-Return JSON array: [{"itemType": "...", "color": "...", "style": "...", "material": "...", "details": "...", "productDescription": "A [color] [material] [itemType] with [details], photographed on white background"}]
-
-If no clothing visible, return [].`
-                            },
-                            {
-                                type: 'image_url',
-                                image_url: { url: `data:image/jpeg;base64,${frameBase64}` }
-                            }
-                        ]
-                    }],
-                    max_tokens: 1000
-                },
-                {
-                    headers: {
-                        'Authorization': `Bearer ${process.env.OPENAI_API_KEY || 'sk-proj-your-key'}`,
-                        'Content-Type': 'application/json'
-                    },
-                    timeout: 45000
-                }
+                `${API_URL}/api/openai/analyze-clothing`,
+                { imageBase64: frameBase64 },
+                { timeout: 45000 }
             );
 
-            const text = response.data.choices?.[0]?.message?.content || '[]';
-            console.log('AI Response:', text);
-
-            const jsonMatch = text.match(/\[[\s\S]*\]/);
-            if (jsonMatch) {
-                return JSON.parse(jsonMatch[0]);
-            }
-            return [];
+            console.log('AI Response:', response.data);
+            return response.data.detectedItems || [];
         } catch (error: any) {
             console.error('AI Analysis error:', error.message);
             throw error;
         }
     };
 
-    // STEP 3: Generate clean product image using AI
+    // STEP 3: Generate clean product image via backend DALL-E
     const generateProductImage = async (item: DetectedItem): Promise<string> => {
         try {
             setProgress(`🎨 Creating image for ${item.itemType}...`);
 
-            // Use DALL-E to generate clean product image
-            const prompt = item.productDescription ||
-                `A ${item.color} ${item.itemType}, professional product photography, clean white background, studio lighting, high quality, e-commerce style, centered, full garment visible`;
+            const prompt = item.productDescription || `A ${item.color} ${item.itemType}`;
 
+            // Route through backend which has OpenAI API key
             const response = await axios.post(
-                'https://api.openai.com/v1/images/generations',
-                {
-                    model: 'dall-e-3',
-                    prompt: prompt,
-                    n: 1,
-                    size: '1024x1024',
-                    quality: 'standard'
-                },
-                {
-                    headers: {
-                        'Authorization': `Bearer ${process.env.OPENAI_API_KEY || 'sk-proj-your-key'}`,
-                        'Content-Type': 'application/json'
-                    },
-                    timeout: 60000
-                }
+                `${API_URL}/api/openai/generate-image`,
+                { prompt },
+                { timeout: 60000 }
             );
 
-            return response.data.data[0].url;
+            return response.data.imageUrl;
         } catch (error: any) {
             console.log('Image generation failed, using fallback:', error.message);
             // Fallback to stock image based on type
