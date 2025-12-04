@@ -229,7 +229,7 @@ const WardrobeVideoScreen = () => {
                 `${results.detectedItems.length} item(s) saved to your wardrobe!`,
                 [{
                     text: 'View Wardrobe',
-                    onPress: () => navigation.navigate('Profile' as never)
+                    onPress: () => (navigation as any).navigate('Home', { screen: 'Profile' })
                 },
                 { text: 'OK' }]
             );
