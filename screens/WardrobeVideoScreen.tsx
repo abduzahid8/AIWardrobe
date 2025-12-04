@@ -204,6 +204,40 @@ const WardrobeVideoScreen = () => {
     };
 
 
+    // Get a stock clothing image based on type and color
+    const getClothingImage = (itemType: string, color: string): string => {
+        const type = itemType.toLowerCase();
+        const searchTerm = encodeURIComponent(`${color} ${type} clothing`);
+
+        // Use Unsplash for high-quality clothing images
+        const clothingImages: { [key: string]: string } = {
+            'shirt': 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=300&h=400&fit=crop',
+            't-shirt': 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300&h=400&fit=crop',
+            'jacket': 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=300&h=400&fit=crop',
+            'jeans': 'https://images.unsplash.com/photo-1542272454315-4c01d7abdf4a?w=300&h=400&fit=crop',
+            'pants': 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=300&h=400&fit=crop',
+            'dress': 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=300&h=400&fit=crop',
+            'skirt': 'https://images.unsplash.com/photo-1583496661160-fb5886a0ebb4?w=300&h=400&fit=crop',
+            'sweater': 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=300&h=400&fit=crop',
+            'hoodie': 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=300&h=400&fit=crop',
+            'coat': 'https://images.unsplash.com/photo-1539533018447-63fcce2678e3?w=300&h=400&fit=crop',
+            'shoes': 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&h=400&fit=crop',
+            'sneakers': 'https://images.unsplash.com/photo-1460353581641-37baddab0fa2?w=300&h=400&fit=crop',
+            'shorts': 'https://images.unsplash.com/photo-1591195853828-11db59a44f6b?w=300&h=400&fit=crop',
+            'blouse': 'https://images.unsplash.com/photo-1564257631407-4deb1f99d992?w=300&h=400&fit=crop',
+        };
+
+        // Find matching image or use default
+        for (const [key, url] of Object.entries(clothingImages)) {
+            if (type.includes(key)) {
+                return url;
+            }
+        }
+
+        // Default clothing image
+        return 'https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=300&h=400&fit=crop';
+    };
+
     const saveToWardrobe = async () => {
         if (!results || results.detectedItems.length === 0) return;
 
@@ -216,7 +250,7 @@ const WardrobeVideoScreen = () => {
             const existingData = await AsyncStorage.getItem('myWardrobeItems');
             const existingItems = existingData ? JSON.parse(existingData) : [];
 
-            // Create new items with unique IDs and REAL photos from video
+            // Create new items with matching clothing images
             const newItems = results.detectedItems.map((item, index) => ({
                 id: `item_${Date.now()}_${index}`,
                 type: item.itemType,
@@ -224,8 +258,7 @@ const WardrobeVideoScreen = () => {
                 style: item.style,
                 description: item.description,
                 season: 'All Seasons',
-                image: item.frameImage || results.frameImage,  // Use actual frame photo!
-                imageUrl: item.frameImage || results.frameImage,  // Use actual frame photo!
+                image: getClothingImage(item.itemType, item.color),  // Use stock image!
                 source: 'video_scan',
                 createdAt: new Date().toISOString()
             }));
