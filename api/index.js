@@ -204,6 +204,49 @@ app.post('/api/openai/generate-image', async (req, res) => {
   }
 });
 
+// === Generate Product Photo using Replicate SDXL ===
+app.post('/api/generate-product-image', async (req, res) => {
+  try {
+    const { description, itemType, color } = req.body;
+
+    if (!description && !itemType) {
+      return res.status(400).json({ error: 'Description or item type required' });
+    }
+
+    const prompt = description ||
+      `A ${color || ''} ${itemType}, professional product photography, clean white background, studio lighting, high quality fashion catalog style, centered, full garment visible, no model, isolated on white`;
+
+    console.log('🎨 Generating product image with SDXL:', prompt);
+
+    // Use Replicate's SDXL model for high-quality images
+    const replicateModel = new Replicate({
+      auth: process.env.REPLICATE_API_TOKEN,
+    });
+
+    const output = await replicateModel.run(
+      "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
+      {
+        input: {
+          prompt: prompt,
+          negative_prompt: "human, person, model, mannequin, low quality, blurry, distorted",
+          width: 1024,
+          height: 1024,
+          num_inference_steps: 25,
+          guidance_scale: 7.5,
+        }
+      }
+    );
+
+    const imageUrl = Array.isArray(output) ? output[0] : output;
+    console.log('✅ Generated image:', imageUrl);
+
+    res.json({ imageUrl });
+
+  } catch (error) {
+    console.error('Image generation error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 const hf = new HfInference(process.env.HF_TOKEN);
 
