@@ -42,7 +42,72 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+const wardrobeAnalysisRoutes = require('./routes/wardrobeAnalysis');
+app.use('/api', wardrobeAnalysisRoutes);
 
+// === NEW: Frame-based clothing analysis using Gemini Vision ===
+app.post('/api/analyze-frames', async (req, res) => {
+  try {
+    const { frames } = req.body; // Array of base64 image strings
+
+    if (!frames || !Array.isArray(frames) || frames.length === 0) {
+      return res.status(400).json({ error: 'No frames provided' });
+    }
+
+    console.log(`🖼️ Received ${frames.length} frames for analysis`);
+
+    // Use Gemini Vision to analyze frames
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+    // Prepare image parts for Gemini
+    const imageParts = frames.slice(0, 5).map((base64Data, index) => ({
+      inlineData: {
+        data: base64Data.replace(/^data:image\/\w+;base64,/, ''),
+        mimeType: 'image/jpeg'
+      }
+    }));
+
+    const prompt = `Analyze these video frames showing a person's wardrobe/clothes.
+    List ALL clothing items you can identify across all frames.
+    
+    For each item, provide:
+    - itemType: (e.g., T-Shirt, Jeans, Dress, Jacket, Sneakers, etc.)
+    - color: Primary color(s)
+    - style: Casual, Formal, Sport, or Streetwear
+    - description: Brief description
+    
+    Return ONLY a valid JSON array, no other text:
+    [{"itemType": "...", "color": "...", "style": "...", "description": "..."}]`;
+
+    const result = await model.generateContent([prompt, ...imageParts]);
+    const responseText = result.response.text();
+
+    console.log('🤖 Gemini response:', responseText);
+
+    // Parse JSON from response
+    let detectedItems = [];
+    try {
+      const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        detectedItems = JSON.parse(jsonMatch[0]);
+      }
+    } catch (parseError) {
+      console.error('Parse error:', parseError);
+      detectedItems = [{
+        itemType: 'Unknown Item',
+        color: 'Unknown',
+        style: 'Casual',
+        description: 'Could not parse response'
+      }];
+    }
+
+    res.json({ detectedItems });
+
+  } catch (error) {
+    console.error('Frame analysis error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 
 const hf = new HfInference(process.env.HF_TOKEN);
@@ -62,6 +127,26 @@ mongoose
   .connect("mongodb+srv://karimdzanovzoha:Abduzahid8@aiwardrobe.fah7ml3.mongodb.net/?appName=AIWardrobe")
   .then(() => console.log("Connected to MongoDB"))
   .catch((err) => console.log("Error connecting to MongoDb", err));
+
+// POST endpoint to save clothing items from video scan
+app.post("/clothing-items", async (req, res) => {
+  try {
+    const { type, color, style, description, source } = req.body;
+    const newItem = new ClothingItem({
+      type: type || 'Unknown',
+      color: color || 'Unknown',
+      style: style || 'Casual',
+      description: description || '',
+      source: source || 'video_scan',
+      createdAt: new Date()
+    });
+    await newItem.save();
+    res.status(201).json({ success: true, item: newItem });
+  } catch (error) {
+    console.error('Error saving clothing item:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 app.post("/register", async (req, res) => {
   try {

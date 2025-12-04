@@ -43,7 +43,7 @@ export const shoes = [
 
 
 
-const features = [
+export const features = [
   {
     title: "AI Suggestions",
     image:
@@ -70,7 +70,7 @@ const features = [
   },
 ];
 
-const popularItems = [
+export const popularItems = [
   {
     username: "Trisha Wushres",
     profile: "https://randomuser.me/api/portraits/women/1.jpg",
