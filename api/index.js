@@ -57,7 +57,7 @@ app.post('/api/analyze-frames', async (req, res) => {
     console.log(`🖼️ Received ${frames.length} frames for analysis`);
 
     // Gemini Vision for clothing analysis - using stable model
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-002' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
 
     // Prepare image parts for Gemini
     const imageParts = frames.slice(0, 5).map((base64Data, index) => ({
