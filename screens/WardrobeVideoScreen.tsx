@@ -120,29 +120,38 @@ const WardrobeVideoScreen = () => {
                 return response.data.detectedItems;
             }
         } catch (error: any) {
-            console.log('Backend unavailable, using smart detection:', error.message);
+            console.log('Backend unavailable, manual selection mode:', error.message);
         }
 
-        // Fallback: Smart local detection based on common wardrobe items
-        setProgress('🔍 Detecting clothing...');
-        const clothingTypes = [
-            { itemType: 'T-Shirt', color: 'White', style: 'Casual', description: 'Classic white cotton t-shirt' },
-            { itemType: 'Jeans', color: 'Blue', style: 'Casual', description: 'Classic blue denim jeans' },
-            { itemType: 'Jacket', color: 'Black', style: 'Streetwear', description: 'Stylish black jacket' },
-            { itemType: 'Sneakers', color: 'White', style: 'Sport', description: 'White athletic sneakers' },
-            { itemType: 'Hoodie', color: 'Gray', style: 'Casual', description: 'Comfortable gray hoodie' },
-            { itemType: 'Dress Shirt', color: 'Light Blue', style: 'Formal', description: 'Formal light blue dress shirt' },
-            { itemType: 'Sweater', color: 'Navy', style: 'Casual', description: 'Warm navy wool sweater' },
-            { itemType: 'Chinos', color: 'Khaki', style: 'Smart Casual', description: 'Classic khaki chino pants' },
-        ];
+        // Fallback: Let user select what's in the video
+        setProgress('');
 
-        // Pick 2-3 random items as "detected"
-        const shuffled = [...clothingTypes].sort(() => Math.random() - 0.5);
-        const numItems = 2 + Math.floor(Math.random() * 2);
+        return new Promise((resolve) => {
+            const clothingOptions = [
+                { itemType: 'Jacket', color: 'Black', style: 'Streetwear', description: 'Your jacket' },
+                { itemType: 'T-Shirt', color: 'White', style: 'Casual', description: 'Your t-shirt' },
+                { itemType: 'Jeans', color: 'Blue', style: 'Casual', description: 'Your jeans' },
+                { itemType: 'Hoodie', color: 'Gray', style: 'Casual', description: 'Your hoodie' },
+                { itemType: 'Sneakers', color: 'White', style: 'Sport', description: 'Your sneakers' },
+                { itemType: 'Dress', color: 'Black', style: 'Formal', description: 'Your dress' },
+                { itemType: 'Sweater', color: 'Navy', style: 'Casual', description: 'Your sweater' },
+                { itemType: 'Pants', color: 'Gray', style: 'Smart Casual', description: 'Your pants' },
+                { itemType: 'Coat', color: 'Brown', style: 'Formal', description: 'Your coat' },
+                { itemType: 'Shorts', color: 'Khaki', style: 'Casual', description: 'Your shorts' },
+            ];
 
-        await new Promise(r => setTimeout(r, 1000));
-
-        return shuffled.slice(0, numItems);
+            Alert.alert(
+                'What clothing is in this video?',
+                'Select the item you scanned:',
+                [
+                    ...clothingOptions.slice(0, 6).map(item => ({
+                        text: item.itemType,
+                        onPress: () => resolve([item])
+                    })),
+                    { text: 'Cancel', style: 'cancel', onPress: () => resolve([]) }
+                ]
+            );
+        });
     };
 
 
