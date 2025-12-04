@@ -133,8 +133,8 @@ app.post("/clothing-items", authenticateToken, async (req, res) => {
   try {
     const { type, color, style, description, season, imageUrl } = req.body;
 
-    // Get userId from the authenticated token
-    const userId = req.user.id;
+    // Get userId from the authenticated token and convert to ObjectId
+    const userId = new mongoose.Types.ObjectId(req.user.id);
 
     const newItem = new ClothingItem({
       userId: userId,
