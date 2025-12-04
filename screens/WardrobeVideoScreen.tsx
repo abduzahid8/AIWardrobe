@@ -234,31 +234,38 @@ const WardrobeVideoScreen = () => {
                 return;
             }
 
-            // STEP 3: Generate product images for each detected item
-            setProgress(`🎨 Generating ${detectedItems.length} product image(s)...`);
+            // STEP 3: Remove background to create professional product photo
+            setProgress('🎨 Creating professional product photo...');
 
-            const itemsWithImages: DetectedItem[] = [];
-            for (const item of detectedItems) {
-                try {
-                    const imageUrl = await generateProductImage(item);
-                    itemsWithImages.push({
-                        ...item,
-                        frameImage: imageUrl,
-                        description: item.productDescription || `${item.color} ${item.itemType}`
-                    });
-                } catch (e) {
-                    // Use fallback image
-                    itemsWithImages.push({
-                        ...item,
-                        frameImage: getClothingImage(item.itemType, item.color),
-                        description: item.productDescription || `${item.color} ${item.itemType}`
-                    });
+            let finalImage = `data:image/jpeg;base64,${frames[0]}`;
+
+            // Try to remove background for clean product photo
+            try {
+                setProgress('✨ Removing background...');
+                const bgResponse = await axios.post(
+                    `${API_URL}/api/remove-background`,
+                    { imageBase64: frames[0] },
+                    { timeout: 60000 }
+                );
+
+                if (bgResponse.data.imageUrl) {
+                    finalImage = bgResponse.data.imageUrl;
+                    console.log('✅ Background removed successfully!');
                 }
+            } catch (bgError: any) {
+                console.log('Background removal unavailable, using original frame:', bgError.message);
+                // Keep using original frame
             }
+
+            const itemsWithImages: DetectedItem[] = detectedItems.map(item => ({
+                ...item,
+                frameImage: finalImage,  // Professional photo with no background!
+                description: item.description || `${item.color} ${item.itemType}`
+            }));
 
             setResults({
                 detectedItems: itemsWithImages,
-                frameImage: `data:image/jpeg;base64,${frames[0]}`
+                frameImage: finalImage
             });
             setProgress('');
 

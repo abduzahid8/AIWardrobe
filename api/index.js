@@ -248,6 +248,42 @@ app.post('/api/generate-product-image', async (req, res) => {
   }
 });
 
+// === Remove Background & Create Product Photo ===
+app.post('/api/remove-background', async (req, res) => {
+  try {
+    const { imageBase64 } = req.body;
+
+    if (!imageBase64) {
+      return res.status(400).json({ error: 'Image base64 is required' });
+    }
+
+    console.log('🎨 Removing background from clothing image...');
+
+    const replicateModel = new Replicate({
+      auth: process.env.REPLICATE_API_TOKEN,
+    });
+
+    // Use rembg model for background removal
+    const output = await replicateModel.run(
+      "cjwbw/rembg:fb8af171cfa1616ddcf1242c093f9c46bcada5ad4cf6f2fbe8b81b330ec5c003",
+      {
+        input: {
+          image: `data:image/jpeg;base64,${imageBase64}`
+        }
+      }
+    );
+
+    console.log('✅ Background removed:', output);
+
+    // Output is the URL of the image with transparent background
+    res.json({ imageUrl: output });
+
+  } catch (error) {
+    console.error('Background removal error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 const hf = new HfInference(process.env.HF_TOKEN);
 
 const authenticateToken = (req, res, next) => {
