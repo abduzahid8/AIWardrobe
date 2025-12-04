@@ -103,35 +103,23 @@ const WardrobeVideoScreen = () => {
         return frames;
     };
 
-    // Local clothing detection - works without backend!
+    // Real AI clothing detection via backend Gemini
     const analyzeClothingWithAI = async (frameBase64: string): Promise<DetectedItem[]> => {
-        setProgress('🔍 Analyzing clothing...');
+        try {
+            setProgress('🔍 AI analyzing clothing...');
 
-        // Simulate AI analysis with smart detection
-        const clothingTypes = [
-            { itemType: 'T-Shirt', color: 'White', style: 'Casual', material: 'Cotton' },
-            { itemType: 'Jeans', color: 'Blue', style: 'Casual', material: 'Denim' },
-            { itemType: 'Jacket', color: 'Black', style: 'Streetwear', material: 'Leather' },
-            { itemType: 'Sneakers', color: 'White', style: 'Sport', material: 'Canvas' },
-            { itemType: 'Hoodie', color: 'Gray', style: 'Casual', material: 'Cotton' },
-            { itemType: 'Dress', color: 'Red', style: 'Formal', material: 'Silk' },
-            { itemType: 'Sweater', color: 'Navy', style: 'Casual', material: 'Wool' },
-            { itemType: 'Shorts', color: 'Khaki', style: 'Casual', material: 'Cotton' },
-        ];
+            const response = await axios.post(
+                `${API_URL}/api/analyze-frames`,
+                { frames: [frameBase64] },
+                { timeout: 60000 }
+            );
 
-        // Randomly select 2-4 items to simulate detection
-        const shuffled = clothingTypes.sort(() => 0.5 - Math.random());
-        const numItems = Math.floor(Math.random() * 3) + 2; // 2-4 items
-        const detected = shuffled.slice(0, numItems).map(item => ({
-            ...item,
-            description: `${item.color} ${item.material} ${item.itemType}`
-        }));
-
-        // Simulate processing time
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
-        console.log('Detected items:', detected);
-        return detected;
+            console.log('AI Response:', response.data);
+            return response.data.detectedItems || [];
+        } catch (error: any) {
+            console.error('AI Analysis error:', error.message);
+            throw error;
+        }
     };
 
 
