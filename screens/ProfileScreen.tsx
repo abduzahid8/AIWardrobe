@@ -128,7 +128,7 @@ const ProfileScreen = () => {
   const allClothes = React.useMemo(() => {
     const saved = savedClothes.map(item => ({
       ...item,
-      image: item.imageUrl || 'https://via.placeholder.com/150',
+      image: item.image || item.imageUrl || 'https://via.placeholder.com/150',  // Use real frame image!
       isSaved: true
     }));
     return [...saved, ...popularClothes];
