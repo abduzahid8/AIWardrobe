@@ -14,6 +14,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
 // @ts-ignore
 import { API_URL } from "../api/config";
 
@@ -22,6 +24,7 @@ const AITryOnScreen = () => {
   const navigation = useNavigation();
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [resultImage, setResultImage] = useState<string | null>(null);
 
   // Храним сами картинки (Base64 или URI)
@@ -111,6 +114,52 @@ const AITryOnScreen = () => {
     }
   };
 
+  // Save result to wardrobe
+  const handleSaveToWardrobe = async () => {
+    if (!resultImage) return;
+
+    setSaving(true);
+
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+
+      if (!token) {
+        Alert.alert('Login Required', 'Please login to save items to your wardrobe');
+        setSaving(false);
+        return;
+      }
+
+      await axios.post(`${API_URL}/clothing-items`, {
+        type: 'AI Try-On Result',
+        color: 'Mixed',
+        style: 'Casual',
+        description: 'Virtual try-on generated outfit',
+        season: 'All Seasons',
+        imageUrl: resultImage
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      Alert.alert(
+        'Saved! 🎉',
+        'Your try-on result has been saved to your wardrobe!',
+        [{
+          text: 'View Wardrobe',
+          onPress: () => (navigation as any).navigate('Profile')
+        },
+        { text: 'OK' }]
+      );
+    } catch (error: any) {
+      console.error('Save error:', error);
+      Alert.alert('Error', 'Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -196,6 +245,20 @@ const AITryOnScreen = () => {
             {loading ? t('aiTryOn.processing') : `${t('aiTryOn.generate')} ⚡️`}
           </Text>
         </TouchableOpacity>
+
+        {/* Save to Wardrobe Button - only show when result exists */}
+        {resultImage && (
+          <TouchableOpacity
+            style={styles.saveButton}
+            onPress={handleSaveToWardrobe}
+            disabled={saving}
+          >
+            <Ionicons name="heart" size={20} color="#fff" style={{ marginRight: 8 }} />
+            <Text style={styles.saveButtonText}>
+              {saving ? 'Saving...' : 'Save to Wardrobe'}
+            </Text>
+          </TouchableOpacity>
+        )}
 
       </ScrollView>
     </SafeAreaView>
@@ -316,4 +379,24 @@ const styles = StyleSheet.create({
     marginBottom: 40
   },
   buttonText: { color: "#fff", fontSize: 18, fontWeight: "bold", letterSpacing: 1 },
+  saveButton: {
+    backgroundColor: "#E91E63",
+    paddingVertical: 16,
+    borderRadius: 30,
+    width: "100%",
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    shadowColor: "#E91E63",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+    marginBottom: 40
+  },
+  saveButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold"
+  },
 });

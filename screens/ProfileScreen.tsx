@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   View,
   Platform,
+  Alert,
+  Modal,
 } from "react-native";
 import React, { useEffect, useState } from "react";
 import useAuthStore from "../store/auth";
@@ -17,6 +19,7 @@ import { mpants, mshirts, pants, shoes, skirts, tops } from "../images";
 import { useTranslation } from "react-i18next";
 import LanguageSelector from "../components/LanguageSelector";
 import { colors, shadows, spacing } from "../src/theme";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { useNavigation } from "@react-navigation/native";
 
@@ -28,11 +31,94 @@ const ProfileScreen = () => {
   const { logout, user, token } = useAuthStore();
   const [outifts, setOutfits] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const username = user?.username || "sujanand";
   const email = user?.email || "";
   const followersCount = user?.followers?.length || 0;
   const followingCount = user?.following?.length || 0;
   const profileImage = user?.profileImage || "https://picsum.photos/100/100";
+
+  // Settings menu options
+  const handleLogout = async () => {
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to logout?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await AsyncStorage.removeItem("authToken");
+              await AsyncStorage.removeItem("userData");
+              logout();
+              setShowSettings(false);
+              (navigation as any).reset({
+                index: 0,
+                routes: [{ name: "Login" }],
+              });
+            } catch (error) {
+              console.error("Logout error:", error);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleEditProfile = () => {
+    setShowSettings(false);
+    Alert.alert("Edit Profile", "Profile editing coming soon!");
+  };
+
+  const handleNotifications = () => {
+    setShowSettings(false);
+    Alert.alert("Notifications", "Notification settings coming soon!");
+  };
+
+  const handlePrivacy = () => {
+    setShowSettings(false);
+    Alert.alert("Privacy", "Privacy settings coming soon!");
+  };
+
+  const handleHelp = () => {
+    setShowSettings(false);
+    Alert.alert(
+      "Help & Support",
+      "Contact us at: support@aiwardrobe.com\n\nVersion: 1.0.0"
+    );
+  };
+
+  // Saved clothing items from MongoDB
+  const [savedClothes, setSavedClothes] = useState<any[]>([]);
+  const [loadingSaved, setLoadingSaved] = useState(false);
+
+  // Fetch saved clothes from backend
+  const fetchSavedClothes = React.useCallback(async () => {
+    if (!token) return;
+    setLoadingSaved(true);
+
+    try {
+      const response = await axios.get(
+        `https://aiwardrobe-ivh4.onrender.com/clothing-items`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      setSavedClothes(response.data.items || []);
+    } catch (error) {
+      console.log("Error fetching saved clothes:", error);
+    } finally {
+      setLoadingSaved(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    fetchSavedClothes();
+  }, [fetchSavedClothes]);
 
   const popularClothes = React.useMemo(() => [
     ...pants,
@@ -42,6 +128,16 @@ const ProfileScreen = () => {
     ...mshirts,
     ...shoes,
   ].filter((item) => item.image), []);
+
+  // Combine saved clothes with popular clothes for display
+  const allClothes = React.useMemo(() => {
+    const saved = savedClothes.map(item => ({
+      ...item,
+      image: item.imageUrl || 'https://via.placeholder.com/150',
+      isSaved: true
+    }));
+    return [...saved, ...popularClothes];
+  }, [savedClothes, popularClothes]);
 
   const fetchOutfits = React.useCallback(async () => {
     if (!user?._id || !token) return;
@@ -70,21 +166,21 @@ const ProfileScreen = () => {
 
   const filteredClothes = React.useMemo(() => {
     if (activeCategory == "All") {
-      return popularClothes;
+      return allClothes;  // Now includes saved items!
     }
-    return popularClothes.filter((item) => {
+    return allClothes.filter((item) => {
       switch (activeCategory) {
         case "Tops":
-          return item.type == "shirt";
+          return item.type == "shirt" || item.type?.toLowerCase().includes('shirt') || item.type?.toLowerCase().includes('top');
         case "Bottoms":
-          return item.type == "pants" || item.type == "skirts";
+          return item.type == "pants" || item.type == "skirts" || item.type?.toLowerCase().includes('pant') || item.type?.toLowerCase().includes('jean');
         case "Shoes":
-          return item.type == "shoes";
+          return item.type == "shoes" || item.type?.toLowerCase().includes('shoe') || item.type?.toLowerCase().includes('sneaker');
         default:
           return true;
       }
     });
-  }, [activeCategory, popularClothes]);
+  }, [activeCategory, allClothes]);
 
   const sortItems = React.useCallback((items: any[]) => {
     const order = ["shirt", "pants", "skirts", "shoes"];
@@ -92,6 +188,7 @@ const ProfileScreen = () => {
       (a: any, b: any) => order.indexOf(a.type) - order.indexOf(b.type)
     );
   }, []);
+
 
   return (
     <View style={styles.container}>
@@ -108,11 +205,15 @@ const ProfileScreen = () => {
               >
                 <Ionicons name="videocam-outline" size={24} color={colors.text.primary} />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.iconButton}>
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() => setShowSettings(true)}
+              >
                 <Ionicons name="settings-outline" size={24} color={colors.text.primary} />
               </TouchableOpacity>
             </View>
           </View>
+
 
           {/* Profile Info */}
           <View style={styles.profileSection}>
@@ -262,6 +363,56 @@ const ProfileScreen = () => {
             </View>
           )}
         </ScrollView>
+
+        {/* Settings Modal */}
+        <Modal
+          visible={showSettings}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowSettings(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.settingsModal}>
+              <View style={styles.settingsHeader}>
+                <Text style={styles.settingsTitle}>Settings</Text>
+                <TouchableOpacity onPress={() => setShowSettings(false)}>
+                  <Ionicons name="close" size={24} color={colors.text.primary} />
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity style={styles.settingsItem} onPress={handleEditProfile}>
+                <Ionicons name="person-outline" size={22} color={colors.text.primary} />
+                <Text style={styles.settingsItemText}>Edit Profile</Text>
+                <Ionicons name="chevron-forward" size={20} color={colors.text.secondary} />
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.settingsItem} onPress={handleNotifications}>
+                <Ionicons name="notifications-outline" size={22} color={colors.text.primary} />
+                <Text style={styles.settingsItemText}>Notifications</Text>
+                <Ionicons name="chevron-forward" size={20} color={colors.text.secondary} />
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.settingsItem} onPress={handlePrivacy}>
+                <Ionicons name="lock-closed-outline" size={22} color={colors.text.primary} />
+                <Text style={styles.settingsItemText}>Privacy</Text>
+                <Ionicons name="chevron-forward" size={20} color={colors.text.secondary} />
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.settingsItem} onPress={handleHelp}>
+                <Ionicons name="help-circle-outline" size={22} color={colors.text.primary} />
+                <Text style={styles.settingsItemText}>Help & Support</Text>
+                <Ionicons name="chevron-forward" size={20} color={colors.text.secondary} />
+              </TouchableOpacity>
+
+              <View style={styles.settingsDivider} />
+
+              <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+                <Ionicons name="log-out-outline" size={22} color="#FF3B30" />
+                <Text style={styles.logoutText}>Logout</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </View>
   );
@@ -466,5 +617,58 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontStyle: "italic",
     marginTop: spacing.xl,
+  },
+  // Settings Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  settingsModal: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 40,
+  },
+  settingsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: spacing.l,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  settingsTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: colors.text.primary,
+  },
+  settingsItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.l,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  settingsItemText: {
+    flex: 1,
+    fontSize: 16,
+    color: colors.text.primary,
+    marginLeft: spacing.m,
+  },
+  settingsDivider: {
+    height: 8,
+    backgroundColor: colors.background,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.l,
+  },
+  logoutText: {
+    fontSize: 16,
+    color: '#FF3B30',
+    marginLeft: spacing.m,
+    fontWeight: '500',
   },
 });
