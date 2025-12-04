@@ -234,32 +234,52 @@ const WardrobeVideoScreen = () => {
                 return;
             }
 
-            // STEP 3: Remove background to create professional product photo
+            // STEP 3: Create professional product photo using full pipeline
             setProgress('🎨 Creating professional product photo...');
+            setProgress('📸 Step 1/3: Selecting best frame...');
 
-            let finalImage = `data:image/jpeg;base64,${frames[0]}`;
+            let finalImage = `data:image/jpeg;base64,${frames[Math.floor(frames.length / 2)]}`;
 
-            // Try to remove background for clean product photo
             try {
-                setProgress('✨ Removing background...');
-                const bgResponse = await axios.post(
-                    `${API_URL}/api/remove-background`,
-                    { imageBase64: frames[0] },
-                    { timeout: 60000 }
+                // Call professional product photo pipeline
+                setProgress('✂️ Step 2/3: Segmenting clothing...');
+
+                const productResponse = await axios.post(
+                    `${API_URL}/api/product-photo/process`,
+                    {
+                        frames: frames,
+                        clothingType: detectedItems[0]?.itemType || 'clothing'
+                    },
+                    { timeout: 120000 }  // 2 minutes for full pipeline
                 );
 
-                if (bgResponse.data.imageUrl) {
-                    finalImage = bgResponse.data.imageUrl;
-                    console.log('✅ Background removed successfully!');
+                if (productResponse.data.imageUrl) {
+                    setProgress('✨ Step 3/3: Creating Massimo Dutti style photo...');
+                    finalImage = productResponse.data.imageUrl;
+                    console.log('✅ Professional product photo created!');
                 }
-            } catch (bgError: any) {
-                console.log('Background removal unavailable, using original frame:', bgError.message);
-                // Keep using original frame
+            } catch (pipelineError: any) {
+                console.log('Professional pipeline failed, using fallback:', pipelineError.message);
+
+                // Fallback: Try simple background removal
+                try {
+                    setProgress('✨ Removing background...');
+                    const bgResponse = await axios.post(
+                        `${API_URL}/api/remove-background`,
+                        { imageBase64: frames[0] },
+                        { timeout: 60000 }
+                    );
+                    if (bgResponse.data.imageUrl) {
+                        finalImage = bgResponse.data.imageUrl;
+                    }
+                } catch (bgError) {
+                    console.log('Using original frame');
+                }
             }
 
             const itemsWithImages: DetectedItem[] = detectedItems.map(item => ({
                 ...item,
-                frameImage: finalImage,  // Professional photo with no background!
+                frameImage: finalImage,  // Professional Massimo Dutti style photo!
                 description: item.description || `${item.color} ${item.itemType}`
             }));
 
