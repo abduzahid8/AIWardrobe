@@ -201,8 +201,8 @@ const WardrobeVideoScreen = () => {
         try {
             const AsyncStorage = require('@react-native-async-storage/async-storage').default;
 
-            // Get user's auth token
-            const token = await AsyncStorage.getItem('authToken');
+            // Get user's auth token (stored as 'userToken')
+            const token = await AsyncStorage.getItem('userToken');
 
             if (!token) {
                 Alert.alert('Please Login', 'You need to login to save items to your wardrobe');

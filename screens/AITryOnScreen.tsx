@@ -121,7 +121,7 @@ const AITryOnScreen = () => {
     setSaving(true);
 
     try {
-      const token = await AsyncStorage.getItem('authToken');
+      const token = await AsyncStorage.getItem('userToken');
 
       if (!token) {
         Alert.alert('Login Required', 'Please login to save items to your wardrobe');
