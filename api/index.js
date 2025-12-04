@@ -131,15 +131,25 @@ mongoose
 // POST endpoint to save clothing items from video scan
 app.post("/clothing-items", async (req, res) => {
   try {
-    const { type, color, style, description, source } = req.body;
-    const newItem = new ClothingItem({
+    const { type, color, style, description, source, userId } = req.body;
+
+    // Create item without requiring userId for video scans
+    const itemData = {
       type: type || 'Unknown',
       color: color || 'Unknown',
       style: style || 'Casual',
       description: description || '',
       source: source || 'video_scan',
+      imageUrl: 'https://via.placeholder.com/150',
       createdAt: new Date()
-    });
+    };
+
+    // Only add userId if provided
+    if (userId) {
+      itemData.userId = userId;
+    }
+
+    const newItem = new ClothingItem(itemData);
     await newItem.save();
     res.status(201).json({ success: true, item: newItem });
   } catch (error) {
@@ -147,6 +157,7 @@ app.post("/clothing-items", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
 
 app.post("/register", async (req, res) => {
   try {
