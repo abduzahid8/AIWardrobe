@@ -123,10 +123,29 @@ const WardrobeVideoScreen = () => {
     };
 
 
-    // STEP 3: Get matching product image (use stock images - fast & reliable)
+    // STEP 3: Generate AI product image via Replicate SDXL
     const generateProductImage = async (item: DetectedItem): Promise<string> => {
-        setProgress(`🖼️ Getting image for ${item.itemType}...`);
-        return getClothingImage(item.itemType, item.color);
+        try {
+            setProgress(`🎨 AI generating image for ${item.itemType}...`);
+
+            const response = await axios.post(
+                `${API_URL}/api/generate-product-image`,
+                {
+                    itemType: item.itemType,
+                    color: item.color,
+                    description: item.description
+                },
+                { timeout: 90000 }  // 90 seconds for image generation
+            );
+
+            if (response.data.imageUrl) {
+                return response.data.imageUrl;
+            }
+            throw new Error('No image URL returned');
+        } catch (error: any) {
+            console.log('AI image generation failed, using stock:', error.message);
+            return getClothingImage(item.itemType, item.color);
+        }
     };
 
     // Fallback stock images
