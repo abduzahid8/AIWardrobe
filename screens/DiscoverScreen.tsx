@@ -8,6 +8,7 @@ import {
     Pressable,
     Dimensions,
     StyleSheet,
+    Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -22,6 +23,43 @@ const DiscoverScreen = () => {
     const navigation = useNavigation();
     const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState("Closet");
+    const [wishlist, setWishlist] = useState<number[]>([]);
+
+    // Toggle wishlist item
+    const toggleWishlist = (idx: number) => {
+        if (wishlist.includes(idx)) {
+            setWishlist(wishlist.filter(i => i !== idx));
+            Alert.alert('Removed', 'Item removed from wishlist');
+        } else {
+            setWishlist([...wishlist, idx]);
+            Alert.alert('Added! ❤️', 'Item added to your wishlist');
+        }
+    };
+
+    // Handle tab navigation
+    const handleTabPress = (tab: string) => {
+        if (tab === "Design Room") {
+            (navigation as any).navigate('DesignRoom');
+        } else if (tab === "Wishlist") {
+            Alert.alert('Wishlist', `You have ${wishlist.length} saved items`);
+            setActiveTab(tab);
+        } else if (tab === "Inspiration") {
+            Alert.alert('Inspiration', 'Fashion inspiration coming soon! 💡');
+            setActiveTab(tab);
+        } else {
+            setActiveTab(tab);
+        }
+    };
+
+    // Handle search
+    const handleSearch = () => {
+        Alert.alert('Search', 'Search for clothing items, outfits, or styles...\n\nComing soon!');
+    };
+
+    // Handle notifications
+    const handleNotifications = () => {
+        Alert.alert('Notifications', 'No new notifications');
+    };
 
     return (
         <View className="flex-1 bg-gray-50">
@@ -33,10 +71,16 @@ const DiscoverScreen = () => {
                 <View className="px-6 pt-2 pb-4 flex-row items-center justify-between z-10 bg-white">
                     <Text className="text-3xl font-bold text-gray-900 tracking-tight">Discover</Text>
                     <View className="flex-row gap-3">
-                        <TouchableOpacity className="w-10 h-10 bg-gray-50 rounded-full items-center justify-center border border-gray-100 shadow-sm">
+                        <TouchableOpacity
+                            className="w-10 h-10 bg-gray-50 rounded-full items-center justify-center border border-gray-100 shadow-sm"
+                            onPress={handleSearch}
+                        >
                             <Ionicons name="search-outline" size={20} color="#374151" />
                         </TouchableOpacity>
-                        <TouchableOpacity className="w-10 h-10 bg-gray-50 rounded-full items-center justify-center border border-gray-100 shadow-sm">
+                        <TouchableOpacity
+                            className="w-10 h-10 bg-gray-50 rounded-full items-center justify-center border border-gray-100 shadow-sm"
+                            onPress={handleNotifications}
+                        >
                             <Ionicons name="notifications-outline" size={20} color="#374151" />
                         </TouchableOpacity>
                     </View>
@@ -48,7 +92,7 @@ const DiscoverScreen = () => {
                         {["Closet", "Wishlist", "Inspiration", "Design Room"].map((tab) => (
                             <TouchableOpacity
                                 key={tab}
-                                onPress={() => setActiveTab(tab)}
+                                onPress={() => handleTabPress(tab)}
                                 className="rounded-full"
                             >
                                 {activeTab === tab ? (
@@ -134,7 +178,7 @@ const DiscoverScreen = () => {
                     <View className="px-6">
                         <View className="flex-row items-center justify-between mb-4">
                             <Text className="text-lg font-bold text-gray-900">Trending Now</Text>
-                            <TouchableOpacity>
+                            <TouchableOpacity onPress={() => Alert.alert('Trending', 'Showing all trending items...')}>
                                 <Text className="text-purple-600 font-semibold text-sm">See All</Text>
                             </TouchableOpacity>
                         </View>
@@ -152,8 +196,11 @@ const DiscoverScreen = () => {
                                             colors={['transparent', 'rgba(0,0,0,0.3)']}
                                             className="absolute bottom-0 left-0 right-0 h-1/3"
                                         />
-                                        <TouchableOpacity className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-sm">
-                                            <Ionicons name="heart-outline" size={18} color="#EF4444" />
+                                        <TouchableOpacity
+                                            className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-sm"
+                                            onPress={() => toggleWishlist(idx)}
+                                        >
+                                            <Ionicons name={wishlist.includes(idx) ? "heart" : "heart-outline"} size={18} color="#EF4444" />
                                         </TouchableOpacity>
                                     </View>
                                     <Text className="font-bold text-gray-900 text-sm mb-1" numberOfLines={1}>{item.itemName}</Text>
@@ -171,7 +218,7 @@ const DiscoverScreen = () => {
 
                 </ScrollView>
             </SafeAreaView>
-        </View>
+        </View >
     );
 };
 

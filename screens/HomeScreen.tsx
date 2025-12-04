@@ -10,6 +10,8 @@ import {
   ScrollView,
   Image,
   Dimensions,
+  Alert,
+  ActionSheetIOS,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -48,6 +50,36 @@ const HomeScreen = () => {
     return "Good evening";
   };
 
+  // Show quick action menu
+  const showQuickActions = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Scan Wardrobe', 'AI Try-On', 'Create Outfit', 'Design Room'],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) (navigation as any).navigate('WardrobeVideo');
+          if (buttonIndex === 2) (navigation as any).navigate('AITryOn');
+          if (buttonIndex === 3) (navigation as any).navigate('NewOutfit');
+          if (buttonIndex === 4) (navigation as any).navigate('DesignRoom');
+        }
+      );
+    } else {
+      Alert.alert(
+        'Quick Actions',
+        'Choose an action',
+        [
+          { text: 'Scan Wardrobe', onPress: () => (navigation as any).navigate('WardrobeVideo') },
+          { text: 'AI Try-On', onPress: () => (navigation as any).navigate('AITryOn') },
+          { text: 'Create Outfit', onPress: () => (navigation as any).navigate('NewOutfit') },
+          { text: 'Design Room', onPress: () => (navigation as any).navigate('DesignRoom') },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+    }
+  };
+
   return (
     <View className="flex-1 bg-white">
       {/* Background Gradient Mesh (Subtle) */}
@@ -72,6 +104,7 @@ const HomeScreen = () => {
               <Ionicons name="person-outline" size={20} color="#4B5563" />
             </TouchableOpacity>
             <TouchableOpacity
+              onPress={() => (navigation as any).navigate("Profile")}
               className="w-10 h-10 rounded-full bg-white/50 items-center justify-center border border-white/60 shadow-sm"
             >
               <Ionicons name="settings-outline" size={20} color="#4B5563" />
@@ -122,7 +155,7 @@ const HomeScreen = () => {
           {/* Chat Input Area */}
           <View className="px-6 pb-6 pt-4">
             <View className="bg-white rounded-[24px] p-2 shadow-lg shadow-purple-100 border border-purple-50 flex-row items-end">
-              <TouchableOpacity className="p-3 bg-gray-50 rounded-full">
+              <TouchableOpacity className="p-3 bg-gray-50 rounded-full" onPress={showQuickActions}>
                 <Ionicons name="add" size={24} color="#6B7280" />
               </TouchableOpacity>
 
