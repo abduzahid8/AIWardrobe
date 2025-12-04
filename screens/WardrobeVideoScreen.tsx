@@ -103,16 +103,16 @@ const WardrobeVideoScreen = () => {
         return frames;
     };
 
-    // STEP 1 & 2: Analyze video frame via backend (uses server-side API key)
+    // STEP 1 & 2: Analyze video frame via backend Gemini (already configured)
     const analyzeClothingWithAI = async (frameBase64: string): Promise<DetectedItem[]> => {
         try {
             setProgress('🔍 AI detecting clothing...');
 
-            // Route through backend which has OpenAI API key
+            // Use existing Gemini endpoint on backend
             const response = await axios.post(
-                `${API_URL}/api/openai/analyze-clothing`,
-                { imageBase64: frameBase64 },
-                { timeout: 45000 }
+                `${API_URL}/api/analyze-frames`,
+                { frames: [frameBase64] },
+                { timeout: 60000 }
             );
 
             console.log('AI Response:', response.data);
@@ -123,26 +123,10 @@ const WardrobeVideoScreen = () => {
         }
     };
 
-    // STEP 3: Generate clean product image via backend DALL-E
+    // STEP 3: Get matching product image (use stock images - fast & reliable)
     const generateProductImage = async (item: DetectedItem): Promise<string> => {
-        try {
-            setProgress(`🎨 Creating image for ${item.itemType}...`);
-
-            const prompt = item.productDescription || `A ${item.color} ${item.itemType}`;
-
-            // Route through backend which has OpenAI API key
-            const response = await axios.post(
-                `${API_URL}/api/openai/generate-image`,
-                { prompt },
-                { timeout: 60000 }
-            );
-
-            return response.data.imageUrl;
-        } catch (error: any) {
-            console.log('Image generation failed, using fallback:', error.message);
-            // Fallback to stock image based on type
-            return getClothingImage(item.itemType, item.color);
-        }
+        setProgress(`🖼️ Getting image for ${item.itemType}...`);
+        return getClothingImage(item.itemType, item.color);
     };
 
     // Fallback stock images
