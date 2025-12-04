@@ -27,10 +27,12 @@ interface DetectedItem {
     color: string;
     style: string;
     description: string;
+    frameImage?: string; // Base64 frame image
 }
 
 interface AnalysisResult {
     detectedItems: DetectedItem[];
+    frameImage?: string; // The frame used for detection
 }
 
 const WardrobeVideoScreen = () => {
@@ -180,7 +182,16 @@ const WardrobeVideoScreen = () => {
                 return;
             }
 
-            setResults({ detectedItems });
+            // Add the frame image to each detected item
+            const itemsWithImages = detectedItems.map(item => ({
+                ...item,
+                frameImage: `data:image/jpeg;base64,${frames[0]}`
+            }));
+
+            setResults({
+                detectedItems: itemsWithImages,
+                frameImage: `data:image/jpeg;base64,${frames[0]}`  // Main frame for display
+            });
             setProgress('');
 
         } catch (error: any) {
@@ -205,7 +216,7 @@ const WardrobeVideoScreen = () => {
             const existingData = await AsyncStorage.getItem('myWardrobeItems');
             const existingItems = existingData ? JSON.parse(existingData) : [];
 
-            // Create new items with unique IDs
+            // Create new items with unique IDs and REAL photos from video
             const newItems = results.detectedItems.map((item, index) => ({
                 id: `item_${Date.now()}_${index}`,
                 type: item.itemType,
@@ -213,7 +224,8 @@ const WardrobeVideoScreen = () => {
                 style: item.style,
                 description: item.description,
                 season: 'All Seasons',
-                imageUrl: 'https://via.placeholder.com/150',
+                image: item.frameImage || results.frameImage,  // Use actual frame photo!
+                imageUrl: item.frameImage || results.frameImage,  // Use actual frame photo!
                 source: 'video_scan',
                 createdAt: new Date().toISOString()
             }));
