@@ -90,31 +90,26 @@ const ProfileScreen = () => {
     );
   };
 
-  // Saved clothing items from MongoDB
+  // Saved clothing items from local storage
   const [savedClothes, setSavedClothes] = useState<any[]>([]);
   const [loadingSaved, setLoadingSaved] = useState(false);
 
-  // Fetch saved clothes from backend
+  // Fetch saved clothes from local storage
   const fetchSavedClothes = React.useCallback(async () => {
-    if (!token) return;
     setLoadingSaved(true);
 
     try {
-      const response = await axios.get(
-        `https://aiwardrobe-ivh4.onrender.com/clothing-items`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      setSavedClothes(response.data.items || []);
+      // Load from local AsyncStorage
+      const localData = await AsyncStorage.getItem('myWardrobeItems');
+      const localItems = localData ? JSON.parse(localData) : [];
+      console.log('📦 Loaded', localItems.length, 'items from local storage');
+      setSavedClothes(localItems);
     } catch (error) {
       console.log("Error fetching saved clothes:", error);
     } finally {
       setLoadingSaved(false);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     fetchSavedClothes();
