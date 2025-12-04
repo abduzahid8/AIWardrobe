@@ -50,7 +50,7 @@ const ProfileScreen = () => {
           style: "destructive",
           onPress: async () => {
             try {
-              await AsyncStorage.removeItem("authToken");
+              await AsyncStorage.removeItem("userToken");
               await AsyncStorage.removeItem("userData");
               logout();
               setShowSettings(false);
