@@ -133,8 +133,11 @@ app.post("/clothing-items", async (req, res) => {
   try {
     const { type, color, style, description, source, userId } = req.body;
 
-    // Create item without requiring userId for video scans
+    // Use default userId for video scan items (anonymous user)
+    const defaultUserId = new mongoose.Types.ObjectId();
+
     const itemData = {
+      userId: userId || defaultUserId,  // Always provide userId
       type: type || 'Unknown',
       color: color || 'Unknown',
       style: style || 'Casual',
@@ -144,13 +147,9 @@ app.post("/clothing-items", async (req, res) => {
       createdAt: new Date()
     };
 
-    // Only add userId if provided
-    if (userId) {
-      itemData.userId = userId;
-    }
-
     const newItem = new ClothingItem(itemData);
     await newItem.save();
+    console.log('✅ Saved clothing item:', newItem.type);
     res.status(201).json({ success: true, item: newItem });
   } catch (error) {
     console.error('Error saving clothing item:', error);
