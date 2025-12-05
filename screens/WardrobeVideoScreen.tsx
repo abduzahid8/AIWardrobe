@@ -235,28 +235,32 @@ const WardrobeVideoScreen = () => {
             }
 
             // STEP 3: Create professional product photo using full pipeline
-            setProgress('🎨 Creating professional product photo...');
+            setProgress('🎨 Creating Massimo Dutti style product photo...');
             setProgress('📸 Step 1/3: Selecting best frame...');
 
-            let finalImage = `data:image/jpeg;base64,${frames[Math.floor(frames.length / 2)]}`;
+            const item = detectedItems[0];
+            let finalImage = '';
 
             try {
-                // Call professional product photo pipeline
-                setProgress('✂️ Step 2/3: Segmenting clothing...');
+                // Call professional product photo pipeline with full clothing details
+                setProgress('✂️ Step 2/3: Cutting out clothing...');
 
                 const productResponse = await axios.post(
                     `${API_URL}/api/product-photo/process`,
                     {
                         frames: frames,
-                        clothingType: detectedItems[0]?.itemType || 'clothing'
+                        clothingType: `${item?.color || ''} ${item?.style || ''} ${item?.itemType || 'clothing'}`.trim(),
+                        clothingColor: item?.color || '',
+                        clothingStyle: item?.style || '',
+                        clothingDescription: item?.description || ''
                     },
-                    { timeout: 120000 }  // 2 minutes for full pipeline
+                    { timeout: 180000 }  // 3 minutes for full Massimo Dutti pipeline
                 );
 
                 if (productResponse.data.imageUrl) {
-                    setProgress('✨ Step 3/3: Creating Massimo Dutti style photo...');
+                    setProgress('✨ Step 3/3: Creating front-facing product photo...');
                     finalImage = productResponse.data.imageUrl;
-                    console.log('✅ Professional product photo created!');
+                    console.log('✅ Massimo Dutti style product photo created!');
                 }
             } catch (pipelineError: any) {
                 console.log('Professional pipeline failed, using fallback:', pipelineError.message);
@@ -273,7 +277,31 @@ const WardrobeVideoScreen = () => {
                         finalImage = bgResponse.data.imageUrl;
                     }
                 } catch (bgError) {
-                    console.log('Using original frame');
+                    console.log('Background removal failed, generating AI product image...');
+                }
+            }
+
+            // FINAL FALLBACK: If all else fails, generate AI product image with white background
+            if (!finalImage || finalImage.startsWith('data:image')) {
+                try {
+                    setProgress('🎨 Generating AI product image...');
+                    const aiImageResponse = await axios.post(
+                        `${API_URL}/api/generate-product-image`,
+                        {
+                            itemType: item?.itemType || 'clothing',
+                            color: item?.color || 'black',
+                            description: `${item?.color || ''} ${item?.itemType || 'clothing'}, professional product photo`
+                        },
+                        { timeout: 90000 }
+                    );
+                    if (aiImageResponse.data.imageUrl) {
+                        finalImage = aiImageResponse.data.imageUrl;
+                        console.log('✅ AI product image generated!');
+                    }
+                } catch (aiError: any) {
+                    console.log('AI generation failed, using stock image:', aiError.message);
+                    // Use a clean stock image as absolute last resort
+                    finalImage = getClothingImage(item?.itemType || 'jacket', item?.color || 'black');
                 }
             }
 

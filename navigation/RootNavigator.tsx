@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { Platform } from "react-native";
 
 // Imports screens...
 import HomeScreen from "../screens/HomeScreen";
@@ -39,6 +40,19 @@ export type RootStackParamList = {
 // 2. Передаем этот список в Stack
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+// iOS 26-style smooth transition config
+const smoothTransitionConfig = {
+  animation: 'spring' as const,
+  config: {
+    stiffness: 1000,
+    damping: 500,
+    mass: 3,
+    overshootClamping: true,
+    restDisplacementThreshold: 0.01,
+    restSpeedThreshold: 0.01,
+  },
+};
+
 const RootNavigator = () => {
   // @ts-ignore
   const { isAuthenticated, initializeAuth } = useAuthStore();
@@ -48,7 +62,25 @@ const RootNavigator = () => {
   }, []);
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        // iOS 26-style smooth animations
+        animation: 'slide_from_right',
+        animationDuration: 350,
+        gestureEnabled: true,
+        gestureDirection: 'horizontal',
+        // Smooth spring-based transitions
+        ...(Platform.OS === 'ios' && {
+          animation: 'default',
+          animationTypeForReplace: 'push',
+        }),
+        // Custom animation
+        contentStyle: {
+          backgroundColor: '#FDFCF8',
+        },
+      }}
+    >
       {isAuthenticated ? (
         <>
           {/* Main tab navigation with Home, Add, and Profile */}
@@ -57,29 +89,80 @@ const RootNavigator = () => {
           <Stack.Screen
             name="AddOutfit"
             component={AddOutfitScreen}
-            options={{ presentation: 'modal', title: "Add New Item" }}
+            options={{
+              presentation: 'modal',
+              animation: 'slide_from_bottom',
+              title: "Add New Item",
+            }}
           />
 
           {/* Important: name should match ParamList */}
           <Stack.Screen
             name="ReviewScan"          // Route name (for navigation.navigate)
             component={ReviewScreen}   // Component itself (from file)
-            options={{ headerShown: false }}
+            options={{
+              headerShown: false,
+              animation: 'fade_from_bottom',
+            }}
           />
 
-          <Stack.Screen name="AIChat" component={AIAssistant} />
-          <Stack.Screen name="AIOutfit" component={AIOutfitmaker} />
-          <Stack.Screen name="AITryOn" component={AITryOnScreen} />
-          <Stack.Screen name="ScanWardrobe" component={ScanWardrobeScreen} />
-          <Stack.Screen name="WardrobeVideo" component={WardrobeVideoScreen} />
+          <Stack.Screen
+            name="AIChat"
+            component={AIAssistant}
+            options={{ animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
+            name="AIOutfit"
+            component={AIOutfitmaker}
+            options={{ animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
+            name="AITryOn"
+            component={AITryOnScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
+            name="ScanWardrobe"
+            component={ScanWardrobeScreen}
+            options={{ animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen
+            name="WardrobeVideo"
+            component={WardrobeVideoScreen}
+            options={{
+              animation: 'slide_from_bottom',
+              presentation: 'modal',
+              gestureEnabled: true,
+              gestureDirection: 'vertical',
+            }}
+          />
 
-          <Stack.Screen name="DesignRoom" component={DesignRoomScreen} />
-          <Stack.Screen name="NewOutfit" component={NewOutfitScreen} />
+          <Stack.Screen
+            name="DesignRoom"
+            component={DesignRoomScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
+            name="NewOutfit"
+            component={NewOutfitScreen}
+            options={{
+              animation: 'fade_from_bottom',
+              presentation: 'transparentModal',
+            }}
+          />
         </>
       ) : (
         <>
-          <Stack.Screen name="SignIn" component={SignInScreen} />
-          <Stack.Screen name="SignUp" component={SignUpScreen} />
+          <Stack.Screen
+            name="SignIn"
+            component={SignInScreen}
+            options={{ animation: 'fade' }}
+          />
+          <Stack.Screen
+            name="SignUp"
+            component={SignUpScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
         </>
       )}
     </Stack.Navigator>
