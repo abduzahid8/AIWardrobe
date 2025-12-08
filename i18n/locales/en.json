@@ -138,5 +138,50 @@
         "createAccount": "Create Account",
         "welcome": "Welcome Back",
         "getStarted": "Get Started"
+    },
+    "wardrobe": {
+        "cameraAccess": "Camera access required",
+        "allow": "Allow",
+        "aiAnalyzing": "AI is analyzing video...",
+        "mayTakeMinute": "This may take up to a minute",
+        "recording": "Recording...",
+        "holdToScan": "Hold to scan",
+        "noItemsFound": "AI didn't find any items in the video",
+        "error": "Error",
+        "selectVideoError": "Failed to select video",
+        "cameraNotSimulator": "Camera doesn't work on simulator. Use gallery.",
+        "recognitionError": "Failed to recognize clothing. Try a shorter video."
+    },
+    "designRoom": {
+        "title": "Design Room",
+        "next": "Next",
+        "add": "Add",
+        "scanVideo": "Scan Video",
+        "stickers": "Stickers",
+        "background": "Bg",
+        "emptyState": "Add clothes to start designing"
+    },
+    "tabs": {
+        "home": "Home",
+        "discover": "Discover",
+        "add": "Add",
+        "design": "Design",
+        "profile": "Profile"
+    },
+    "styles": {
+        "selectStyle": "Select Style",
+        "yourStyle": "Your Style",
+        "dior": {
+            "name": "Christian Dior",
+            "description": "Elegant, feminine, haute couture"
+        },
+        "armani": {
+            "name": "Giorgio Armani",
+            "description": "Minimalist, sophisticated, relaxed tailoring"
+        },
+        "lauren": {
+            "name": "Ralph Lauren",
+            "description": "Preppy, American classic, sporty elegance"
+        }
     }
 }

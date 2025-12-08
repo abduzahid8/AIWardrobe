@@ -12,11 +12,13 @@ import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import * as ImagePicker from "expo-image-picker";
 import * as Device from 'expo-device';
+import { useTranslation } from 'react-i18next';
 import { API_URL } from "../api/config";
 import { useNavigation } from '@react-navigation/native';
 
 export default function ScanWardrobeScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const cameraRef = useRef<any>(null);
 
@@ -36,12 +38,12 @@ export default function ScanWardrobeScreen() {
   if (hasPermission === false) {
     return (
       <View style={styles.center}>
-        <Text style={{ marginBottom: 20 }}>Нужен доступ к камере</Text>
+        <Text style={{ marginBottom: 20 }}>{t('wardrobe.cameraAccess')}</Text>
         <TouchableOpacity onPress={async () => {
           const { status } = await Camera.requestCameraPermissionsAsync();
           setHasPermission(status === 'granted');
         }} style={styles.btn}>
-          <Text style={styles.btnText}>Разрешить</Text>
+          <Text style={styles.btnText}>{t('wardrobe.allow')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -62,27 +64,26 @@ export default function ScanWardrobeScreen() {
         name: 'upload.mp4',
       });
 
-      console.log("🚀 Отправка видео на:", `${API_URL}/scan-wardrobe`);
+      console.log("🚀 Sending video to:", `${API_URL}/scan-wardrobe`);
 
       const response = await axios.post(`${API_URL}/scan-wardrobe`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 180000,
       });
-      console.log("✅ Ответ от ИИ:", response.data);
+      console.log("✅ AI Response:", response.data);
 
       // Переходим на экран проверки результатов
-      // Убедись, что 'ReviewScan' есть в RootNavigator!
       if (response.data.detectedItems) {
         navigation.navigate('ReviewScan', {
           items: response.data.detectedItems
         });
       } else {
-        Alert.alert("Упс", "ИИ не нашел вещей на видео.");
+        Alert.alert(t('wardrobe.error'), t('wardrobe.noItemsFound'));
       }
 
     } catch (error: any) {
-      console.error("Ошибка анализа:", error);
-      Alert.alert("Ошибка", "Не удалось распознать одежду. Попробуйте видео покороче.");
+      console.error("Analysis error:", error);
+      Alert.alert(t('wardrobe.error'), t('wardrobe.recognitionError'));
     } finally {
       setIsAnalyzing(false);
     }
@@ -103,14 +104,14 @@ export default function ScanWardrobeScreen() {
         handleAnalyzeVideo(result.assets[0].uri);
       }
     } catch (error) {
-      Alert.alert("Ошибка", "Не удалось выбрать видео");
+      Alert.alert(t('wardrobe.error'), t('wardrobe.selectVideoError'));
     }
   };
 
   // 2. Запись видео
   const startRecording = async () => {
     if (!Device.isDevice) {
-      Alert.alert("Ошибка", "Камера не работает на симуляторе. Используйте галерею.");
+      Alert.alert(t('wardrobe.error'), t('wardrobe.cameraNotSimulator'));
       return;
     }
 
@@ -145,8 +146,8 @@ export default function ScanWardrobeScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: 'black', justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color="#fff" />
-        <Text style={{ color: 'white', marginTop: 16, fontSize: 18, fontWeight: 'bold' }}>ИИ смотрит видео...</Text>
-        <Text style={{ color: '#aaa', marginTop: 5 }}>Это может занять до минуты</Text>
+        <Text style={{ color: 'white', marginTop: 16, fontSize: 18, fontWeight: 'bold' }}>{t('wardrobe.aiAnalyzing')}</Text>
+        <Text style={{ color: '#aaa', marginTop: 5 }}>{t('wardrobe.mayTakeMinute')}</Text>
       </View>
     );
   }
@@ -163,7 +164,7 @@ export default function ScanWardrobeScreen() {
       <View style={styles.overlay}>
         <View style={styles.tipContainer}>
           <Text style={{ color: 'white', fontWeight: '600' }}>
-            {isRecording ? "🔴 Запись..." : "Удерживайте для сканирования"}
+            {isRecording ? `🔴 ${t('wardrobe.recording')}` : t('wardrobe.holdToScan')}
           </Text>
         </View>
 

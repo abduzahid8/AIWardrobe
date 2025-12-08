@@ -21,6 +21,7 @@ import axios from "axios";
 import { mpants, mshirts, pants, shoes, skirts, tops } from "../images";
 import { useTranslation } from "react-i18next";
 import LanguageSelector from "../components/LanguageSelector";
+import StyleSelector from "../components/StyleSelector";
 import { ChipButton, IconButton } from "../components/AnimatedButton";
 import { colors, shadows, spacing, animations } from "../src/theme";
 import AsyncStorage from "@react-native-async-storage/async-storage";

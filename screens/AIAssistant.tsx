@@ -9,10 +9,13 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { DESIGNER_STYLES, getStylePromptSuffix } from "../src/styles/designerStyles";
+import StyleSelector from "../components/StyleSelector";
 // @ts-ignore - игнорируем ошибку, если путь немного отличается
 import { API_URL } from "../api/config";
 
@@ -23,11 +26,36 @@ interface Message {
   sender: "user" | "ai";
 }
 
+const STYLE_STORAGE_KEY = '@selected_style';
+
 const AIAssistant = () => {
   const navigation = useNavigation();
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedStyleId, setSelectedStyleId] = useState<string | null>(null);
+
+  // Load selected style on mount
+  useEffect(() => {
+    loadSelectedStyle();
+  }, []);
+
+  const loadSelectedStyle = async () => {
+    try {
+      const saved = await AsyncStorage.getItem(STYLE_STORAGE_KEY);
+      if (saved) {
+        setSelectedStyleId(saved);
+      }
+    } catch (error) {
+      console.error('Error loading style:', error);
+    }
+  };
+
+  // Get current style info for display
+  const getSelectedStyleInfo = () => {
+    if (!selectedStyleId) return null;
+    return DESIGNER_STYLES.find(s => s.id === selectedStyleId);
+  };
 
   // Указываем, что это массив сообщений
   const [messages, setMessages] = useState<Message[]>([
@@ -60,13 +88,20 @@ const AIAssistant = () => {
       // Используем API_URL из конфига.
       const baseUrl = API_URL || "https://aiwardrobe-ivh4.onrender.com";
 
+      // Add style context to the query if a style is selected
+      const styleContext = selectedStyleId ? getStylePromptSuffix(selectedStyleId) : '';
+      const enhancedQuery = styleContext
+        ? `${textToSend}\n\n[User's preferred style: ${styleContext}]`
+        : textToSend;
+
       const response = await fetch(`${baseUrl}/ai-chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          query: textToSend,
+          query: enhancedQuery,
+          stylePreference: selectedStyleId || undefined,
         }),
       }
       );
@@ -124,6 +159,11 @@ const AIAssistant = () => {
           {t('aiChat.title')}
         </Text>
         <View className="w-6" />
+      </View>
+
+      {/* Style Selector - Users can choose their designer style here */}
+      <View style={styles.styleSelectorContainer}>
+        <StyleSelector onStyleChange={loadSelectedStyle} />
       </View>
 
       <ScrollView
@@ -211,4 +251,28 @@ const AIAssistant = () => {
 
 export default AIAssistant;
 
-const styles = StyleSheet.create({});
+const styles = StyleSheet.create({
+  styleSelectorContainer: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  styleBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#f0f0ff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0f0',
+  },
+  styleBannerText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4f46e5',
+  },
+});
