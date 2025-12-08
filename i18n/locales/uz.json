@@ -138,5 +138,50 @@
         "createAccount": "Akkount yaratish",
         "welcome": "Xush kelibsiz",
         "getStarted": "Boshlash"
+    },
+    "wardrobe": {
+        "cameraAccess": "Kameraga ruxsat kerak",
+        "allow": "Ruxsat berish",
+        "aiAnalyzing": "AI videoni tahlil qilmoqda...",
+        "mayTakeMinute": "Bu bir daqiqagacha vaqt olishi mumkin",
+        "recording": "Yozilmoqda...",
+        "holdToScan": "Skanerlash uchun bosib turing",
+        "noItemsFound": "AI videoda hech narsa topmadi",
+        "error": "Xato",
+        "selectVideoError": "Videoni tanlab bo'lmadi",
+        "cameraNotSimulator": "Kamera simulyatorda ishlamaydi. Galereyadan foydalaning.",
+        "recognitionError": "Kiyimni aniqlab bo'lmadi. Qisqaroq videoni sinab ko'ring."
+    },
+    "designRoom": {
+        "title": "Dizayn xonasi",
+        "next": "Keyingi",
+        "add": "Qo'shish",
+        "scanVideo": "Videoni skanerlash",
+        "stickers": "Stikerlar",
+        "background": "Fon",
+        "emptyState": "Dizayn qilish uchun kiyim qo'shing"
+    },
+    "tabs": {
+        "home": "Bosh sahifa",
+        "discover": "Kashf etish",
+        "add": "Qo'shish",
+        "design": "Dizayn",
+        "profile": "Profil"
+    },
+    "styles": {
+        "selectStyle": "Stilni tanlang",
+        "yourStyle": "Sizning stilingiz",
+        "dior": {
+            "name": "Kristian Dior",
+            "description": "Nafis, ayollarcha, yuqori moda"
+        },
+        "armani": {
+            "name": "Jorjio Armani",
+            "description": "Minimalist, nafis, erkin bichim"
+        },
+        "lauren": {
+            "name": "Ralf Loren",
+            "description": "Preppi, Amerika klassikasi, sport nafisligi"
+        }
     }
 }

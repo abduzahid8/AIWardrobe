@@ -18,6 +18,7 @@ import Animated, {
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from 'react-i18next';
 import { colors, shadows, spacing } from "../src/theme";
 
 const { width, height } = Dimensions.get("window");
@@ -69,6 +70,7 @@ const DraggableClothingItem = ({ item }: { item: ClothingItem }) => {
 
 const DesignRoomScreen = () => {
   const route = useRoute();
+  const { t } = useTranslation();
   const params = (route.params || {}) as {
     selectedItems?: ClothingItem[];
     date?: string;
@@ -111,7 +113,7 @@ const DesignRoomScreen = () => {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.headerTitle}>Design Room</Text>
+            <Text style={styles.headerTitle}>{t('designRoom.title')}</Text>
             <Text style={styles.headerDate}>{moment(date).format("MMMM Do")}</Text>
           </View>
           <TouchableOpacity
@@ -124,7 +126,7 @@ const DesignRoomScreen = () => {
             }
             style={styles.nextButton}
           >
-            <Text style={styles.nextButtonText}>Next</Text>
+            <Text style={styles.nextButtonText}>{t('designRoom.next')}</Text>
             <Ionicons name="arrow-forward" size={16} color="#fff" />
           </TouchableOpacity>
         </View>
@@ -138,7 +140,7 @@ const DesignRoomScreen = () => {
             <View style={styles.emptyState}>
               <Ionicons name="shirt-outline" size={48} color="#cbd5e1" />
               <Text style={styles.emptyStateText}>
-                Add clothes to start designing
+                {t('designRoom.emptyState')}
               </Text>
             </View>
           )}
@@ -151,7 +153,7 @@ const DesignRoomScreen = () => {
               <View style={styles.toolIconBg}>
                 <Ionicons name="add" size={24} color="#1e293b" />
               </View>
-              <Text style={styles.toolLabel}>Add</Text>
+              <Text style={styles.toolLabel}>{t('designRoom.add')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -161,21 +163,21 @@ const DesignRoomScreen = () => {
               <View style={[styles.toolIconBg, styles.activeToolIcon]}>
                 <Ionicons name="videocam" size={24} color="#fff" />
               </View>
-              <Text style={styles.toolLabel}>Scan Video</Text>
+              <Text style={styles.toolLabel}>{t('designRoom.scanVideo')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.toolButton}>
               <View style={styles.toolIconBg}>
                 <Ionicons name="happy-outline" size={24} color="#1e293b" />
               </View>
-              <Text style={styles.toolLabel}>Stickers</Text>
+              <Text style={styles.toolLabel}>{t('designRoom.stickers')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.toolButton}>
               <View style={styles.toolIconBg}>
                 <Ionicons name="image-outline" size={24} color="#1e293b" />
               </View>
-              <Text style={styles.toolLabel}>Bg</Text>
+              <Text style={styles.toolLabel}>{t('designRoom.background')}</Text>
             </TouchableOpacity>
           </View>
         </View>
