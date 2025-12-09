@@ -759,7 +759,7 @@ router.post("/ai-chat", async (req, res) => {
 
 /**
  * POST /api/generate-outfits
- * Generate outfit recommendations based on occasion and style
+ * Generate outfit recommendations with AI-powered matching
  */
 router.post("/generate-outfits", async (req, res) => {
     try {
@@ -771,37 +771,90 @@ router.post("/generate-outfits", async (req, res) => {
             });
         }
 
-        console.log("🎨 Generating outfits for:", { occasion, stylePreferences });
+        console.log("🎨 Generating outfits with AI for:", { occasion, stylePreferences });
 
-        // Import outfit database (you'll need to convert to .js or use dynamic import)
+        // Import outfit database
         const { curatedOutfits } = await import("../data/curatedOutfits.js");
 
-        // Parse style keywords from user input
-        const styleKeywords = stylePreferences
-            ? stylePreferences.toLowerCase().split(/[\s,]+/).filter(w => w.length > 2)
-            : [];
+        // Try AI-powered matching first, fallback to keyword matching
+        let scoredOutfits;
 
-        // Score each outfit
-        const scoredOutfits = curatedOutfits.map(outfit => {
-            let score = 0;
+        try {
+            // Use Gemini for semantic understanding
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-            // Occasion match (highest weight)
-            if (occasion && outfit.occasion.includes(occasion.toLowerCase())) {
-                score += 10;
+            const prompt = `You are a fashion AI stylist. Analyze these outfit requests and score each outfit from 0-100.
+
+USER REQUEST:
+Occasion: ${occasion || 'any'}
+Style Preferences: ${stylePreferences || 'none specified'}
+
+AVAILABLE OUTFITS:
+${curatedOutfits.map((outfit, idx) => `
+${idx + 1}. ${outfit.description}
+   - Occasions: ${outfit.occasion.join(', ')}
+   - Styles: ${outfit.style.join(', ')}
+`).join('\n')}
+
+Return ONLY a JSON array of scores, one number (0-100) for each outfit in order. Example: [95, 70, 85, 60, ...]`;
+
+            const result = await model.generateContent(prompt);
+            const responseText = result.response.text();
+
+            // Extract numbers from response
+            const scores = JSON.parse(responseText.match(/\[[\d,\s]+\]/)?.[0] || '[]');
+
+            if (scores.length === curatedOutfits.length) {
+                console.log("✅ Using AI-powered matching");
+                scoredOutfits = curatedOutfits.map((outfit, idx) => ({
+                    ...outfit,
+                    matchScore: scores[idx] / 100
+                }));
+            } else {
+                throw new Error("AI returned invalid scores");
             }
+        } catch (aiError) {
+            console.log("⚠️ AI matching failed, using keyword fallback:", aiError.message);
 
-            // Style keyword matches
-            styleKeywords.forEach(keyword => {
-                if (outfit.style.some(s => s.includes(keyword))) {
-                    score += 3;
+            // Fallback: Enhanced keyword matching
+            const styleKeywords = stylePreferences
+                ? stylePreferences.toLowerCase().split(/[\s,]+/).filter(w => w.length > 2)
+                : [];
+
+            scoredOutfits = curatedOutfits.map(outfit => {
+                let score = 0;
+
+                // Exact occasion match (weight: 10)
+                if (occasion && outfit.occasion.includes(occasion.toLowerCase())) {
+                    score += 10;
                 }
-                if (outfit.description.toLowerCase().includes(keyword)) {
-                    score += 1;
+
+                // Partial occasion match (weight: 5)
+                if (occasion && outfit.occasion.some(occ =>
+                    occ.includes(occasion.toLowerCase()) || occasion.toLowerCase().includes(occ)
+                )) {
+                    score += 5;
                 }
+
+                // Style keyword matches
+                styleKeywords.forEach(keyword => {
+                    // Exact style match (weight: 4)
+                    if (outfit.style.some(s => s === keyword)) {
+                        score += 4;
+                    }
+                    // Partial style match (weight: 2)
+                    else if (outfit.style.some(s => s.includes(keyword) || keyword.includes(s))) {
+                        score += 2;
+                    }
+                    // Description match (weight: 1)
+                    if (outfit.description.toLowerCase().includes(keyword)) {
+                        score += 1;
+                    }
+                });
+
+                return { ...outfit, matchScore: Math.min(score / 15, 1) }; // Normalize to 0-1
             });
-
-            return { ...outfit, matchScore: score / 13 }; // Normalize to 0-1
-        });
+        }
 
         // Sort by score and return top matches
         const topOutfits = scoredOutfits
@@ -809,16 +862,16 @@ router.post("/generate-outfits", async (req, res) => {
             .sort((a, b) => b.matchScore - a.matchScore)
             .slice(0, limit);
 
-        console.log(`✅ Found ${topOutfits.length} matching outfits`);
+        console.log(`✅ Found ${topOutfits.length} matching outfits (top score: ${topOutfits[0]?.matchScore?.toFixed(2)})`);
 
         res.json({
             success: true,
             outfits: topOutfits,
             query: {
                 occasion,
-                stylePreferences,
-                keywords: styleKeywords
-            }
+                stylePreferences
+            },
+            aiPowered: topOutfits[0]?.matchScore > 0.5
         });
 
     } catch (error) {
