@@ -398,67 +398,75 @@ router.post("/product-photo/process", async (req, res) => {
             }
         }
 
-        // STEP 4: Use IP-Adapter to preserve clothing identity (Massimo Dutti style)
-        console.log("🎨 Step 4: Transforming to Massimo Dutti style...");
+        // STEP 4: Replicate transformation (temporarily disabled - using AliceVision output directly)
+        // Uncomment below when Replicate credits are available
         let finalImageUrl = normalizedImageUrl;
 
-        try {
-            const clothingDesc = clothingType || "clothing item";
+        const USE_REPLICATE_TRANSFORM = false; // Set to true to enable Massimo Dutti style
 
-            const output = await replicate.run(
-                "lucataco/ip-adapter-sdxl:9ed17ca0dc62091449bf513afc32a4c7d0d38c8d1b485cc3e19b02cfe4ce6d31",
-                {
-                    input: {
-                        image: normalizedImageUrl,
-                        prompt: `professional e-commerce product photography of this exact ${clothingDesc}, 
-              front facing view, flat lay on pure white background #FFFFFF, 
-              ghost mannequin invisible mannequin style, 
-              Massimo Dutti catalog aesthetic, studio lighting, 
-              perfectly centered, symmetrical, high resolution 4K, 
-              clean minimal premium luxury fashion photography`,
-                        negative_prompt:
-                            "person, human, model, body, mannequin visible, hanger, shadows, wrinkles, low quality, blurry, deformed, cropped",
-                        strength: 0.6,
-                        guidance_scale: 7.5,
-                        num_inference_steps: 30,
-                    },
-                }
-            );
-
-            finalImageUrl = Array.isArray(output) ? output[0] : output;
-            steps.push("ip_adapter_transform");
-            console.log("✅ Transformed to Massimo Dutti style!");
-        } catch (ipAdapterError) {
-            console.log("IP-Adapter failed, trying SDXL fallback:", ipAdapterError.message);
-
+        if (USE_REPLICATE_TRANSFORM) {
+            console.log("🎨 Step 4: Transforming to Massimo Dutti style...");
             try {
                 const clothingDesc = clothingType || "clothing item";
 
                 const output = await replicate.run(
-                    "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
+                    "lucataco/ip-adapter-sdxl:9ed17ca0dc62091449bf513afc32a4c7d0d38c8d1b485cc3e19b02cfe4ce6d31",
                     {
                         input: {
-                            prompt: `professional Massimo Dutti e-commerce photo of this exact ${clothingDesc}, 
-                front facing flat lay on pure white background, ghost mannequin style, 
-                studio lighting, fashion catalog quality, perfectly centered`,
                             image: normalizedImageUrl,
-                            prompt_strength: 0.3,
-                            negative_prompt: "person, human, model, mannequin visible, hanger, shadows, low quality",
-                            width: 1024,
-                            height: 1024,
-                            num_inference_steps: 30,
+                            prompt: `professional e-commerce product photography of this exact ${clothingDesc}, 
+                  front facing view, flat lay on pure white background #FFFFFF, 
+                  ghost mannequin invisible mannequin style, 
+                  Massimo Dutti catalog aesthetic, studio lighting, 
+                  perfectly centered, symmetrical, high resolution 4K, 
+                  clean minimal premium luxury fashion photography`,
+                            negative_prompt:
+                                "person, human, model, body, mannequin visible, hanger, shadows, wrinkles, low quality, blurry, deformed, cropped",
+                            strength: 0.6,
                             guidance_scale: 7.5,
+                            num_inference_steps: 30,
                         },
                     }
                 );
 
                 finalImageUrl = Array.isArray(output) ? output[0] : output;
-                steps.push("sdxl_transform");
-                console.log("✅ SDXL fallback succeeded");
-            } catch (sdxlError) {
-                console.log("SDXL also failed, using normalized image:", sdxlError.message);
-                steps.push("no_transform");
+                steps.push("ip_adapter_transform");
+                console.log("✅ Transformed to Massimo Dutti style!");
+            } catch (ipAdapterError) {
+                console.log("IP-Adapter failed, trying SDXL fallback:", ipAdapterError.message);
+
+                try {
+                    const clothingDesc = clothingType || "clothing item";
+
+                    const output = await replicate.run(
+                        "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
+                        {
+                            input: {
+                                prompt: `professional Massimo Dutti e-commerce photo of this exact ${clothingDesc}, 
+                    front facing flat lay on pure white background, ghost mannequin style, 
+                    studio lighting, fashion catalog quality, perfectly centered`,
+                                image: normalizedImageUrl,
+                                prompt_strength: 0.3,
+                                negative_prompt: "person, human, model, mannequin visible, hanger, shadows, low quality",
+                                width: 1024,
+                                height: 1024,
+                                num_inference_steps: 30,
+                                guidance_scale: 7.5,
+                            },
+                        }
+                    );
+
+                    finalImageUrl = Array.isArray(output) ? output[0] : output;
+                    steps.push("sdxl_transform");
+                    console.log("✅ SDXL fallback succeeded");
+                } catch (sdxlError) {
+                    console.log("SDXL also failed, using normalized image:", sdxlError.message);
+                    steps.push("no_transform");
+                }
             }
+        } else {
+            console.log("✨ Step 4: Using AliceVision-processed image (Replicate disabled)");
+            steps.push("alicevision_output");
         }
 
         res.json({
@@ -467,7 +475,7 @@ router.post("/product-photo/process", async (req, res) => {
             bestFrameIndex: bestFrameIndex,
             keyframeScores: keyframeScores,
             steps: steps,
-            style: "massimo_dutti",
+            style: USE_REPLICATE_TRANSFORM ? "massimo_dutti" : "alicevision_clean",
             aliceVisionEnhanced: steps.some(s => s.startsWith("alicevision_")),
             preservedOriginal: true,
         });
