@@ -106,12 +106,12 @@ const AIOutfitGenerator = () => {
             <Text style={{ fontSize: 18, fontWeight: '700', color: '#1a1a1a', marginBottom: 16 }}>
               Choose Occasion
             </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -6 }}>
               {occasions.map((occasion) => (
                 <TouchableOpacity
                   key={occasion.id}
                   onPress={() => setSelectedOccasion(occasion.id)}
-                  style={{ width: (width - 52) / 2 }}
+                  style={{ width: (width - 52) / 2, paddingHorizontal: 6, marginBottom: 12 }}
                 >
                   <LinearGradient
                     colors={selectedOccasion === occasion.id ? occasion.colors : ['#f9fafb', '#f3f4f6']}
