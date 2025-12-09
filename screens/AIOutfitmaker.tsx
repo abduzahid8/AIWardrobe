@@ -1,256 +1,338 @@
+import React, { useState } from 'react';
 import {
-  Image,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
   View,
-} from "react-native";
-import React, { useState } from "react";
-import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
-import axios from "axios";
-import Modal from "react-native-modal";
+  Text,
+  TouchableOpacity,
+  TextInput,
+  ScrollView,
+  Image,
+  ActivityIndicator,
+  Dimensions,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
+import axios from 'axios';
 
-const AIOutfitmaker = () => {
-  const [query, setQuery] = useState("");
-  const [extraPrompt, setExtraPrompt] = useState("");
-  const [occasion, setOccasion] = useState("none");
-  const [outfits, setOutfits] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [modalVisible, setModalVisible] = useState(false);
+const { width } = Dimensions.get('window');
+
+const API_URL = 'https://aiwardrobe-ivh4.onrender.com';
+
+// Occasion cards with icons and gradients
+const occasions = [
+  { id: 'date', label: 'Date', icon: 'heart', colors: ['#FF6B9D', '#FE8DC3'] },
+  { id: 'coffee', label: 'Coffee', icon: 'cafe', colors: ['#8B5E3C', '#A67C52'] },
+  { id: 'interview', label: 'Interview', icon: 'briefcase', colors: ['#4F46E5', '#6366F1'] },
+  { id: 'party', label: 'Party', icon: 'sparkles', colors: ['#F59E0B', '#FBBF24'] },
+  { id: 'gym', label: 'Gym', icon: 'fitness', colors: ['#10B981', '#34D399'] },
+  { id: 'casual', label: 'Casual', icon: 'shirt', colors: ['#6B7280', '#9CA3AF'] },
+  { id: 'beach', label: 'Beach', icon: 'sunny', colors: ['#06B6D4', '#22D3EE'] },
+  { id: 'formal', label: 'Formal', icon: 'medal', colors: ['#8B5CF6', '#A78BFA'] },
+];
+
+const AIOutfitGenerator = () => {
   const navigation = useNavigation();
-  const occasions = [
-    { label: "Select Occasion", value: "none" },
-    { label: "Date", value: "date" },
-    { label: "Coffee", value: "coffee" },
-    { label: "Interview", value: "interview" },
-    { label: "Party", value: "party" },
-    { label: "Beach", value: "beach" },
-  ];
+  const [selectedOccasion, setSelectedOccasion] = useState('');
+  const [styleInput, setStyleInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [outfits, setOutfits] = useState([]);
+  const [error, setError] = useState('');
 
-  const handleSearch = async () => {
-    if (!query.trim() && !extraPrompt.trim() && occasion == "none") {
-      setError("please enter a query or select a occasion");
+  const generateOutfits = async () => {
+    if (!selectedOccasion && !styleInput.trim()) {
+      setError('Please select an occasion or describe your style');
       return;
     }
+
     setLoading(true);
-    setError("");
+    setError('');
+    setOutfits([]);
+
     try {
-      let searchQuery = query.trim() || extraPrompt.trim();
-      if (!searchQuery.toLowerCase().includes(occasion) && occasion == "none") {
-        searchQuery = `${occasion} ${searchQuery}`.trim();
+      console.log('🎨 Generating outfits:', { selectedOccasion, styleInput });
+
+      const response = await axios.post(`${API_URL}/api/generate-outfits`, {
+        occasion: selectedOccasion,
+        stylePreferences: styleInput.trim(),
+        limit: 5
+      }, {
+        timeout: 30000
+      });
+
+      if (response.data.success && response.data.outfits.length > 0) {
+        setOutfits(response.data.outfits);
+        console.log(`✅ Found ${response.data.outfits.length} outfits`);
+      } else {
+        setError('No matching outfits found. Try different preferences!');
       }
-
-      console.log("Data", searchQuery);
-
-      const response = await axios.get(
-        `https://aiwardrobe-ivh4.onrender.com/smart-search?query=${encodeURIComponent(
-          searchQuery
-        )}`
-      );
-
-
-      setOutfits(response.data);
-    } catch (error) {
-      console.log("Error fetching outfits", error);
-      setError("Failed to fetch outfits, please try again");
+    } catch (err) {
+      console.error('Outfit generation error:', err);
+      setError('Failed to generate outfits. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const selectOccasion = (value: string) => {
-    setOccasion(value);
-    setModalVisible(false);
-  };
-
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <View className="flex-row items-center px-4 py-2">
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" color={"black"} size={24} />
-        </TouchableOpacity>
-        <Text className="text-lg font-semibold flex-1 text-center mr-6">
-          Outfit Suggestions
-        </Text>
-      </View>
+    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+      <LinearGradient
+        colors={['#ffffff', '#f9fafb', '#f3f4f6']}
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+      />
 
-      <ScrollView>
-        <View className="items-center mt-4">
-          <View className="relative">
-            <Image
-              source={{
-                uri: "https://images.pexels.com/photos/19501169/pexels-photo-19501169.jpeg",
-              }}
-              className="w-24 h-24 rounded-full"
-            />
-            <View className="absolute -top-5 left-16 bg-white border border-gray-200 rounded-lg px-2 py-1">
-              <Text className="text-xs">I'm your personal AI stylist</Text>
-            </View>
-          </View>
-          <Text className="text-lg font-semibold mt-3">Eli</Text>
-          <Text className="text-gray-500 mt-1">Minimal • Timeless</Text>
-          <TouchableOpacity className="mt-2 bg-gray-200 px-4 py-2 rounded-full">
-            <Text className="text-gray-700 text-sm font-medium">
-              Change Stylist
-            </Text>
+      <SafeAreaView style={{ flex: 1 }}>
+        {/* Header */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16 }}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 16 }}>
+            <Ionicons name="chevron-back" size={28} color="#1a1a1a" />
           </TouchableOpacity>
+          <Text style={{ fontSize: 24, fontWeight: '800', color: '#1a1a1a', flex: 1 }}>
+            AI Stylist
+          </Text>
+          <Ionicons name="sparkles" size={24} color="#F59E0B" />
         </View>
 
-        <View className="mt-6 px-4">
-          <Text className="text-base font-semibold">Outfit Request</Text>
-
-          <TouchableOpacity
-            onPress={() => setModalVisible(true)}
-            className="flex-row items-center py-3 border-b border-gray-200"
-          >
-            <Ionicons name="briefcase-outline" color={"black"} size={24} />
-            <Text className="ml-3 text-base flex-1">
-              {occasions.find((o) => o.value === occasion)?.label ||
-                "Select Occasion"}{" "}
-            </Text>
-            <Ionicons name="chevron-down" color={"gray"} size={20} />
-          </TouchableOpacity>
-
-          <View className="flex-row items-center py-3 border-b border-gray-200 mt-2">
-            <Ionicons name="shirt-outline" color={"black"} size={24} />
-            <TextInput
-              placeholder="E.g first date dinner, casual vibe"
-              value={query}
-              onChangeText={setQuery}
-              className="ml-3 text-base flex-1"
-            />
-          </View>
-
-          <View className="mt-6">
-            <Text className="text-base font-semibold mb-2">
-              Additional Prompt
-            </Text>
-
-            <TextInput
-              placeholder="Add more details(optional)"
-              value={extraPrompt}
-              onChangeText={setExtraPrompt}
-              className="border border-gray-300 rounded-lg p-3 text-gray-700 h-20"
-              multiline
-              maxLength={200}
-            />
-            <Text className="text-gray-400 text-xs mt-1">
-              Max 200 characters
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {/* Hero Section */}
+          <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 24 }}>
+            <Text style={{ fontSize: 16, color: '#6b7280', lineHeight: 24 }}>
+              Tell me about your occasion and style preferences. I'll create the perfect outfit for you! ✨
             </Text>
           </View>
 
-          {(query || extraPrompt || occasion !== "none") && (
-            <Text className="text-gray-500 mt-4 px-4">
-              Searching for:{" "}
-              {`${occasion !== "none" ? occasion : ""
-                } ${query} ${extraPrompt}`.trim()}
+          {/* Occasion Selector */}
+          <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#1a1a1a', marginBottom: 16 }}>
+              Choose Occasion
             </Text>
-          )}
-
-          {error && <Text className="text-red-500 mt-4 px-4">{error}</Text>}
-
-          <TouchableOpacity
-            className="mt-8 mx-4 bg-black py-4 rounded-full items-center"
-            disabled={loading}
-            onPress={handleSearch}
-          >
-            <Text className="text-white font-semibold text-lg">
-              {loading ? "Searching..." : "✨ Make Outfits"}
-            </Text>
-          </TouchableOpacity>
-
-          {loading && (
-            <Text className="text-center text-gray-500 mt-6">
-              Searching Outfits
-            </Text>
-          )}
-
-          {!loading && outfits.length > 0 && (
-            <View className="mt-6 px-4">
-              <Text className="text-lg font-semibold mb-3">
-                Suggested Outfits
-              </Text>
-              {outfits?.map((outfit) => (
-                <View key={outfit._id}>
-                  <View className="flex items-center">
-                    <Image
-                      resizeMode="contain"
-                      style={{ aspectRatio: 0.75 }}
-                      className="w-3/4 h-72"
-                      source={{ uri: outfit?.image }}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+              {occasions.map((occasion) => (
+                <TouchableOpacity
+                  key={occasion.id}
+                  onPress={() => setSelectedOccasion(occasion.id)}
+                  style={{ width: (width - 52) / 2 }}
+                >
+                  <LinearGradient
+                    colors={selectedOccasion === occasion.id ? occasion.colors : ['#f9fafb', '#f3f4f6']}
+                    style={{
+                      paddingVertical: 20,
+                      borderRadius: 16,
+                      alignItems: 'center',
+                      borderWidth: 2,
+                      borderColor: selectedOccasion === occasion.id ? 'transparent' : '#e5e7eb',
+                    }}
+                  >
+                    <Ionicons
+                      name={occasion.icon as any}
+                      size={32}
+                      color={selectedOccasion === occasion.id ? '#fff' : '#1a1a1a'}
                     />
+                    <Text
+                      style={{
+                        marginTop: 8,
+                        fontSize: 14,
+                        fontWeight: '600',
+                        color: selectedOccasion === occasion.id ? '#fff' : '#1a1a1a',
+                      }}
+                    >
+                      {occasion.label}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Style Input */}
+          <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#1a1a1a', marginBottom: 12 }}>
+              Describe Your Style
+            </Text>
+            <View
+              style={{
+                backgroundColor: '#fff',
+                borderRadius: 16,
+                padding: 16,
+                borderWidth: 2,
+                borderColor: '#e5e7eb',
+                minHeight: 120,
+              }}
+            >
+              <TextInput
+                placeholder="e.g., minimalist, comfortable, neutral colors, elegant..."
+                placeholderTextColor="#9ca3af"
+                value={styleInput}
+                onChangeText={setStyleInput}
+                multiline
+                style={{
+                  fontSize: 16,
+                  color: '#1a1a1a',
+                  flex: 1,
+                  textAlignVertical: 'top',
+                }}
+                maxLength={200}
+              />
+            </View>
+            <Text style={{ fontSize: 12, color: '#9ca3af', marginTop: 8 }}>
+              {styleInput.length}/200 characters
+            </Text>
+          </View>
+
+          {/* Generate Button */}
+          <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
+            <TouchableOpacity
+              onPress={generateOutfits}
+              disabled={loading}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={['#1a1a1a', '#000000']}
+                style={{
+                  paddingVertical: 18,
+                  borderRadius: 16,
+                  alignItems: 'center',
+                  flexDirection: 'row',
+                  justifyContent: 'center',
+                }}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="sparkles-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
+                    <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff' }}>
+                      Generate Outfits
+                    </Text>
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+
+          {/* Error Message */}
+          {error && (
+            <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
+              <View style={{ backgroundColor: '#FEF2F2', padding: 16, borderRadius: 12, borderLeftWidth: 4, borderLeftColor: '#EF4444' }}>
+                <Text style={{ color: '#DC2626', fontSize: 14 }}>{error}</Text>
+              </View>
+            </View>
+          )}
+
+          {/* Results */}
+          {outfits.length > 0 && (
+            <View style={{ paddingHorizontal: 20, marginBottom: 40 }}>
+              <Text style={{ fontSize: 20, fontWeight: '700', color: '#1a1a1a', marginBottom: 16 }}>
+                Your Perfect Outfits ({outfits.length})
+              </Text>
+
+              {outfits.map((outfit, index) => (
+                <View
+                  key={outfit.id}
+                  style={{
+                    marginBottom: 24,
+                    backgroundColor: '#fff',
+                    borderRadius: 20,
+                    overflow: 'hidden',
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 12,
+                    elevation: 5,
+                  }}
+                >
+                  {/* Main Image */}
+                  <Image
+                    source={{ uri: outfit.mainImage }}
+                    style={{ width: '100%', height: 400 }}
+                    resizeMode="cover"
+                  />
+
+                  {/* Match Score Badge */}
+                  <View
+                    style={{
+                      position: 'absolute',
+                      top: 16,
+                      right: 16,
+                      backgroundColor: 'rgba(0,0,0,0.7)',
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 20,
+                    }}
+                  >
+                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>
+                      {Math.round(outfit.matchScore * 100)}% Match
+                    </Text>
                   </View>
-                  <View className="mt-4">
-                    <Text className="text-sm font-medium text-gray-900">
-                      Items:
+
+                  <View style={{ padding: 20 }}>
+                    {/* Description */}
+                    <Text style={{ fontSize: 16, color: '#1a1a1a', marginBottom: 12, lineHeight: 24 }}>
+                      {outfit.description}
                     </Text>
-                    <Text className="text-base mt-1">
-                      {outfit.items.join(", ")}
-                    </Text>
+
+                    {/* Items */}
+                    <View style={{ marginBottom: 16 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: '#6b7280', marginBottom: 8 }}>
+                        Items Included:
+                      </Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginLeft: -4 }}>
+                        {outfit.items.map((item, idx) => (
+                          <View
+                            key={idx}
+                            style={{
+                              marginRight: 12,
+                              alignItems: 'center',
+                              width: 80,
+                            }}
+                          >
+                            <Image
+                              source={{ uri: item.image }}
+                              style={{
+                                width: 80,
+                                height: 80,
+                                borderRadius: 12,
+                                marginBottom: 6,
+                              }}
+                            />
+                            <Text
+                              style={{
+                                fontSize: 11,
+                                color: '#6b7280',
+                                textAlign: 'center',
+                              }}
+                              numberOfLines={2}
+                            >
+                              {item.name}
+                            </Text>
+                          </View>
+                        ))}
+                      </ScrollView>
+                    </View>
+
+                    {/* Styling Tips */}
+                    <View
+                      style={{
+                        backgroundColor: '#F9FAFB',
+                        padding: 12,
+                        borderRadius: 12,
+                        borderLeftWidth: 3,
+                        borderLeftColor: '#4F46E5',
+                      }}
+                    >
+                      <Text style={{ fontSize: 12, color: '#4b5563', lineHeight: 18 }}>
+                        💡 <Text style={{ fontWeight: '600' }}>Styling Tip:</Text> {outfit.stylingTips}
+                      </Text>
+                    </View>
                   </View>
-                  <View className="mt-3">
-                    <Text className="text-sm font-medium text-gray-900">
-                      Details:
-                    </Text>
-                    <Text className="text-sm text-gray-600">
-                      {outfit.style} • {outfit.occasion} • Score:{" "}
-                      {(outfit.score * 100).toFixed(1)}%
-                    </Text>
-                  </View>
-                  <TouchableOpacity className="mt-4 bg-gray-200 px-4 py-2 rounded-full mx-auto">
-                    <Text className="text-gray-700 text-sm font-medium text-center">
-                      Like
-                    </Text>
-                  </TouchableOpacity>
                 </View>
               ))}
             </View>
           )}
-
-          {!loading &&
-            outfits.length == 0 &&
-            (query || extraPrompt || occasion !== "none") && (
-              <Text className="text-center text-gray-400 mt-6">
-                No outfits match your search
-              </Text>
-            )}
-        </View>
-      </ScrollView>
-
-      <Modal
-        isVisible={modalVisible}
-        onBackdropPress={() => setModalVisible(false)}
-        style={{ justifyContent: "flex-end", margin: 0 }}
-        backdropColor="black"
-        backdropOpacity={0.3}
-        animationIn="slideInUp"
-        animationOut="slideOutDown"
-      >
-        <View className="bg-white rounded-t-2xl p-4 max-h-[50%]">
-          <View className="items-center mb-4">
-            <View className="w-12 h-1 bg-gray-300 rounded-full" />
-            <Text className="text-lg font-semibold mt-2">Select Occasion</Text>
-          </View>
-          {occasions.map((item) => (
-            <TouchableOpacity
-              key={item.value}
-              className="py-3 border-b border-gray-200"
-              onPress={() => selectOccasion(item.value)}
-            >
-              <Text className="text-base text-center">{item.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </Modal>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 };
 
-export default AIOutfitmaker;
-
-const styles = StyleSheet.create({});
+export default AIOutfitGenerator;
