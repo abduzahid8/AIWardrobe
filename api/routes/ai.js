@@ -753,4 +753,78 @@ router.post("/ai-chat", async (req, res) => {
     }
 });
 
+// ============================================
+// AI OUTFIT GENERATOR - Curated Recommendations
+// ============================================
+
+/**
+ * POST /api/generate-outfits
+ * Generate outfit recommendations based on occasion and style
+ */
+router.post("/generate-outfits", async (req, res) => {
+    try {
+        const { occasion, stylePreferences, limit = 5 } = req.body;
+
+        if (!occasion && !stylePreferences) {
+            return res.status(400).json({
+                error: "Please provide an occasion or style preferences"
+            });
+        }
+
+        console.log("🎨 Generating outfits for:", { occasion, stylePreferences });
+
+        // Import outfit database (you'll need to convert to .js or use dynamic import)
+        const { curatedOutfits } = await import("../data/curatedOutfits.js");
+
+        // Parse style keywords from user input
+        const styleKeywords = stylePreferences
+            ? stylePreferences.toLowerCase().split(/[\s,]+/).filter(w => w.length > 2)
+            : [];
+
+        // Score each outfit
+        const scoredOutfits = curatedOutfits.map(outfit => {
+            let score = 0;
+
+            // Occasion match (highest weight)
+            if (occasion && outfit.occasion.includes(occasion.toLowerCase())) {
+                score += 10;
+            }
+
+            // Style keyword matches
+            styleKeywords.forEach(keyword => {
+                if (outfit.style.some(s => s.includes(keyword))) {
+                    score += 3;
+                }
+                if (outfit.description.toLowerCase().includes(keyword)) {
+                    score += 1;
+                }
+            });
+
+            return { ...outfit, matchScore: score / 13 }; // Normalize to 0-1
+        });
+
+        // Sort by score and return top matches
+        const topOutfits = scoredOutfits
+            .filter(o => o.matchScore > 0)
+            .sort((a, b) => b.matchScore - a.matchScore)
+            .slice(0, limit);
+
+        console.log(`✅ Found ${topOutfits.length} matching outfits`);
+
+        res.json({
+            success: true,
+            outfits: topOutfits,
+            query: {
+                occasion,
+                stylePreferences,
+                keywords: styleKeywords
+            }
+        });
+
+    } catch (error) {
+        console.error("Outfit generation error:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 export default router;
