@@ -5,19 +5,138 @@ const ClothingItemSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: false,  // Made optional for video scan items
+    index: true,
   },
-  type: { type: String, required: true }, // Например: "Shirt"
-  color: { type: String },                // "Blue"
-  season: { type: String },               // "Summer"
-  style: { type: String },                // "Casual"
-  description: { type: String },          // "Light blue linen shirt"
 
-  // Важный момент: Gemini 1.5 Flash по видео дает только текст.
-  // Пока поставим заглушку или будем использовать скриншот позже.
+  // Basic Info
+  type: { type: String, required: true },  // e.g., "Shirt", "Jeans"
+  category: {
+    type: String,
+    enum: ['Tops', 'Bottoms', 'Dresses', 'Outerwear', 'Shoes', 'Accessories', 'Other'],
+    default: 'Other'
+  },
+  color: { type: [String], default: [] },  // Support multiple colors
+  style: {
+    type: String,
+    enum: ['Casual', 'Formal', 'Sport', 'Streetwear', 'Beach', 'Elegant', 'Business', 'Other'],
+    default: 'Casual'
+  },
+
+  // Additional Details
+  brand: { type: String, default: '' },
+  material: { type: String, default: '' },  // Cotton, Denim, Leather, etc.
+  pattern: {
+    type: String,
+    enum: ['Solid', 'Striped', 'Checkered', 'Floral', 'Printed', 'Other'],
+    default: 'Solid'
+  },
+
+  // Seasons & Occasions
+  season: {
+    type: [String],
+    enum: ['Spring', 'Summer', 'Fall', 'Winter', 'All Seasons'],
+    default: ['All Seasons']
+  },
+  occasion: {
+    type: [String],
+    default: []  // e.g., ['Work', 'Casual', 'Party', 'Date']
+  },
+
+  // Cost & Value Tracking
+  price: { type: Number, default: 0 },
+  currency: { type: String, default: 'USD' },
+  purchaseDate: { type: Date },
+  purchaseLocation: { type: String, default: '' },
+
+  // Wear Tracking
+  wearCount: { type: Number, default: 0 },
+  lastWorn: { type: Date },
+
+  // Computed field (updated on each wear)
+  costPerWear: { type: Number, default: 0 },
+
+  // Media
   imageUrl: { type: String, default: "https://via.placeholder.com/150" },
+  thumbnailUrl: { type: String },
 
-  createdAt: { type: Date, default: Date.now },
+  // Organization
+  isFavorite: { type: Boolean, default: false },
+  isArchived: { type: Boolean, default: false },
+  notes: { type: String, default: '' },
+  tags: { type: [String], default: [] },
+
+  // AI-generated description
+  description: { type: String, default: '' },
+  aiGenerated: { type: Boolean, default: false },
+
+}, {
+  timestamps: true, // Adds createdAt and updatedAt
 });
+
+// Index for efficient queries
+ClothingItemSchema.index({ userId: 1, category: 1 });
+ClothingItemSchema.index({ userId: 1, isFavorite: 1 });
+ClothingItemSchema.index({ userId: 1, wearCount: 1 });
+ClothingItemSchema.index({ userId: 1, lastWorn: 1 });
+
+// Virtual for calculating cost per wear
+ClothingItemSchema.virtual('calculatedCostPerWear').get(function () {
+  if (this.wearCount === 0 || !this.price) return null;
+  return (this.price / this.wearCount).toFixed(2);
+});
+
+// Method to log a wear
+ClothingItemSchema.methods.logWear = async function () {
+  this.wearCount += 1;
+  this.lastWorn = new Date();
+  if (this.price > 0) {
+    this.costPerWear = parseFloat((this.price / this.wearCount).toFixed(2));
+  }
+  return this.save();
+};
+
+// Static method to get wardrobe statistics
+ClothingItemSchema.statics.getStats = async function (userId) {
+  const stats = await this.aggregate([
+    { $match: { userId: new mongoose.Types.ObjectId(userId) } },
+    {
+      $group: {
+        _id: null,
+        totalItems: { $sum: 1 },
+        totalValue: { $sum: '$price' },
+        avgWearCount: { $avg: '$wearCount' },
+        neverWorn: {
+          $sum: { $cond: [{ $eq: ['$wearCount', 0] }, 1, 0] }
+        },
+        favorites: {
+          $sum: { $cond: ['$isFavorite', 1, 0] }
+        },
+      }
+    }
+  ]);
+
+  const categoryStats = await this.aggregate([
+    { $match: { userId: new mongoose.Types.ObjectId(userId) } },
+    { $group: { _id: '$category', count: { $sum: 1 } } }
+  ]);
+
+  const colorStats = await this.aggregate([
+    { $match: { userId: new mongoose.Types.ObjectId(userId) } },
+    { $unwind: '$color' },
+    { $group: { _id: '$color', count: { $sum: 1 } } },
+    { $sort: { count: -1 } },
+    { $limit: 10 }
+  ]);
+
+  return {
+    ...(stats[0] || { totalItems: 0, totalValue: 0, avgWearCount: 0, neverWorn: 0, favorites: 0 }),
+    byCategory: categoryStats.reduce((acc, item) => {
+      acc[item._id || 'Other'] = item.count;
+      return acc;
+    }, {}),
+    topColors: colorStats.map(c => ({ color: c._id, count: c.count }))
+  };
+};
 
 const ClothingItem = mongoose.model("ClothingItem", ClothingItemSchema);
 export default ClothingItem;
