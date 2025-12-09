@@ -26,7 +26,8 @@ logger = logging.getLogger(__name__)
 from modules import (
     select_best_frame_from_base64,
     segment_clothing_from_base64,
-    normalize_lighting_from_base64
+    normalize_lighting_from_base64,
+    create_product_card_from_base64
 )
 
 # Initialize FastAPI app
@@ -99,11 +100,25 @@ class LightingResponse(BaseModel):
     appliedCorrections: Dict[str, float]
 
 
+class CardStylingRequest(BaseModel):
+    """Request model for product card styling"""
+    image: str = Field(..., description="Base64-encoded image (cutout clothing)")
+    add_shadow: bool = Field(True, description="Add professional drop shadow")
+    add_border: bool = Field(False, description="Add subtle border frame")
+
+
+class CardStylingResponse(BaseModel):
+    """Response model for card styling"""
+    success: bool
+    productCard: str
+
+
 class FullPipelineRequest(BaseModel):
     """Request model for full processing pipeline"""
     frames: List[str] = Field(..., description="List of base64-encoded video frames")
     add_white_background: bool = Field(True, description="Add white background after segmentation")
     normalize_lighting: bool = Field(True, description="Apply lighting normalization")
+    create_product_card: bool = Field(True, description="Create professional product card")
     target_brightness: float = Field(0.55, ge=0, le=1)
     target_temperature: float = Field(6000, ge=3000, le=10000)
 
@@ -134,6 +149,7 @@ async def root():
             "/keyframe - Smart frame selection",
             "/segment - Clothing segmentation", 
             "/lighting - Lighting normalization",
+            "/card - Product card styling",
             "/process - Full pipeline"
         ]
     }
@@ -147,7 +163,8 @@ async def health_check():
         "modules": {
             "keyframe": "loaded",
             "segmentation": "loaded",
-            "lighting": "loaded"
+            "lighting": "loaded",
+            "card_styling": "loaded"
         }
     }
 
@@ -266,6 +283,38 @@ async def normalize_lighting(request: LightingRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/card", response_model=CardStylingResponse)
+async def create_product_card(request: CardStylingRequest):
+    """
+    Create professional product card from cutout clothing.
+    
+    Adds:
+    - Professional drop shadow
+    - Perfect centering
+    - Quality enhancements
+    - Optional border frame
+    """
+    try:
+        logger.info("Creating professional product card")
+        
+        card_b64 = create_product_card_from_base64(
+            request.image,
+            add_shadow=request.add_shadow,
+            add_border=request.add_border
+        )
+        
+        logger.info("Product card created successfully")
+        
+        return CardStylingResponse(
+            success=True,
+            productCard=card_b64
+        )
+        
+    except Exception as e:
+        logger.error(f"Card styling error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/process", response_model=FullPipelineResponse)
 async def full_pipeline(request: FullPipelineRequest):
     """
@@ -325,6 +374,28 @@ async def full_pipeline(request: FullPipelineRequest):
                 lighting_corrections = lighting_result["appliedCorrections"]
                 steps.append("lighting_normalization")
                 logger.info("Lighting normalization complete")
+        
+        # Step 4: Create professional product card (optional)
+        if request.create_product_card:
+            logger.info("Step 4: Creating professional product card")
+            
+            # Extract base64 from data URL
+            if ',' in current_image:
+                image_b64 = current_image.split(',')[1]
+            else:
+                image_b64 = current_image
+            
+            try:
+                card_image = create_product_card_from_base64(
+                    image_b64,
+                    add_shadow=True,
+                    add_border=False
+                )
+                current_image = card_image
+                steps.append("product_card_styling")
+                logger.info("Product card styling complete")
+            except Exception as card_error:
+                logger.warning(f"Card styling failed, using previous image: {card_error}")
         
         logger.info(f"Full pipeline complete: {' → '.join(steps)}")
         
