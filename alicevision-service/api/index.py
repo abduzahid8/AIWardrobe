@@ -255,7 +255,3 @@ async def lighting_normalize(request: LightingRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-# Vercel handler
-handler = app
