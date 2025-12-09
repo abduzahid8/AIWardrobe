@@ -204,7 +204,7 @@ router.post("/openai/generate-image", async (req, res) => {
 
 /**
  * POST /api/generate-product-image
- * Generate product photo using Replicate SDXL
+ * Generate product photo using Replicate SDXL (TEMPORARILY DISABLED)
  */
 router.post("/generate-product-image", async (req, res) => {
     try {
@@ -214,6 +214,18 @@ router.post("/generate-product-image", async (req, res) => {
             return res.status(400).json({ error: "Description or item type required" });
         }
 
+        // Replicate temporarily disabled - return placeholder or use AliceVision output
+        console.log("⚠️ generate-product-image called but Replicate is disabled");
+        console.log("   Use /api/product-photo/process instead for AliceVision processing");
+
+        // Return a note that this endpoint is disabled
+        res.json({
+            imageUrl: null,
+            message: "Replicate disabled. Use /api/product-photo/process for AliceVision-enhanced images",
+            useAliceVision: true
+        });
+
+        /* REPLICATE CODE - Uncomment when credits available
         const prompt =
             description ||
             `A ${color || ""} ${itemType}, professional product photography, clean white background, studio lighting, high quality fashion catalog style, centered, full garment visible, no model, isolated on white`;
@@ -238,6 +250,7 @@ router.post("/generate-product-image", async (req, res) => {
         console.log("✅ Generated image:", imageUrl);
 
         res.json({ imageUrl });
+        */
     } catch (error) {
         console.error("Image generation error:", error.message);
         res.status(500).json({ error: error.message });
