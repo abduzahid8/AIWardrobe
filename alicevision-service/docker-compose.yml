@@ -1,0 +1,46 @@
+# AliceVision Service Docker Compose
+# Use for local development with the AIWardrobe backend
+
+version: '3.8'
+
+services:
+  alicevision:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: alicevision-service
+    ports:
+      - "5000:5000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=5000
+      - DEBUG=true
+    volumes:
+      # Mount for development (hot reload)
+      - ./modules:/app/modules:ro
+      - ./main.py:/app/main.py:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Add GPU support
+  # Uncomment below for GPU-enabled deployment
+  # alicevision-gpu:
+  #   build: .
+  #   container_name: alicevision-service-gpu
+  #   ports:
+  #     - "5001:5000"
+  #   environment:
+  #     - USE_GPU=true
+  #     - CUDA_VISIBLE_DEVICES=0
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: 1
+  #             capabilities: [gpu]
