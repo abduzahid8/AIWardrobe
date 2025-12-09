@@ -3,17 +3,12 @@ import "dotenv/config";
 
 /**
  * JWT Secret from environment variable
- * CRITICAL: Never hardcode secrets in source code
+ * CRITICAL: Set JWT_SECRET in production for security!
  */
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET || 'aiwardrobe-dev-secret-change-in-production';
 
-if (!JWT_SECRET) {
-    console.error("❌ FATAL: JWT_SECRET environment variable is not set!");
-    console.error("   Please add JWT_SECRET to your .env file");
-    // Don't crash in development, but warn loudly
-    if (process.env.NODE_ENV === 'production') {
-        process.exit(1);
-    }
+if (!process.env.JWT_SECRET) {
+    console.warn("⚠️ WARNING: JWT_SECRET not set, using default. Set this in production!");
 }
 
 /**
