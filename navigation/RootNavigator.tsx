@@ -104,13 +104,16 @@ const RootNavigator = () => {
 
   const handleNavigateToSignUp = () => {
     setShowTrialModal(false);
-    // Navigation will happen automatically as isTrialMode will be false
+    const { endTrial } = useAuthStore.getState();
+    endTrial();
   };
 
   const handleNavigateToSignIn = () => {
     setShowTrialModal(false);
-    // Navigation will happen automatically as isTrialMode will be false
+    const { endTrial } = useAuthStore.getState();
+    endTrial();
   };
+
 
   // Determine what to show based on authentication and trial state
   const shouldShowApp = isAuthenticated || (isTrialMode && !isTrialExpired);
