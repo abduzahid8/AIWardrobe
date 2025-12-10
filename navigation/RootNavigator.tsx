@@ -75,11 +75,12 @@ const RootNavigator = () => {
       await initializeAuth();
       await initializeTrial();
 
-      // If user is not authenticated and trial is not expired, start trial mode
+      // Automatically start trial mode for unauthenticated users
       const { isAuthenticated: authStatus } = useAuthStore.getState();
       const { isTrialExpired: trialExpired } = useTrialStore.getState();
 
       if (!authStatus && !trialExpired) {
+        // Auto-start trial mode - no need to show auth screens
         startTrial();
       }
     };
@@ -93,7 +94,7 @@ const RootNavigator = () => {
       incrementTrialCount();
       setHasIncrementedThisSession(true);
     }
-  }, [isTrialMode, isTrialExpired, hasIncrementedThisSession]);
+  }, [isTrialMode, isTrialExpired, hasIncrementedThisSession, incrementTrialCount]);
 
   // Show modal when trial expires
   useEffect(() => {
