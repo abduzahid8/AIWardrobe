@@ -75,6 +75,21 @@ const SignUpScreen = () => {
           {t('auth.haveAccount')} {t('auth.signIn')}
         </Text>
       </TouchableOpacity>
+
+      <View className="mt-6">
+        <Text className="text-center text-gray-500 mb-2">or</Text>
+        <TouchableOpacity
+          onPress={() => {
+            const { startTrial } = useAuthStore.getState();
+            startTrial();
+          }}
+          className="border border-gray-300 p-3 rounded-lg"
+        >
+          <Text className="text-center text-gray-700 text-lg font-semibold">
+            Try App First (3 free tries)
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };

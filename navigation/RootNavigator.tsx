@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Platform } from "react-native";
 
@@ -17,7 +17,10 @@ import TabNavigator from "../navigation/TabNavigator";
 import WardrobeVideoScreen from "../screens/WardrobeVideoScreen";
 
 import useAuthStore from "../store/auth";
+import useTrialStore from "../store/trialStore";
+import TrialLimitModal from "../components/TrialLimitModal";
 import ReviewScreen from "../screens/ReviewScreen";
+import OutfitCalendarScreen from "../screens/OutfitCalendarScreen";
 
 export type RootStackParamList = {
   Home: undefined;
@@ -35,6 +38,7 @@ export type RootStackParamList = {
   DesignRoom: undefined;
   NewOutfit: undefined;
   WardrobeVideo: undefined;
+  Calendar: undefined;
 };
 
 // 2. Передаем этот список в Stack
@@ -55,117 +59,179 @@ const smoothTransitionConfig = {
 
 const RootNavigator = () => {
   // @ts-ignore
-  const { isAuthenticated, initializeAuth } = useAuthStore();
+  const { isAuthenticated, isTrialMode, startTrial } = useAuthStore();
+  const {
+    trialCount,
+    isTrialExpired,
+    initializeTrial,
+    incrementTrialCount
+  } = useTrialStore();
+  const [showTrialModal, setShowTrialModal] = useState(false);
+  const [hasIncrementedThisSession, setHasIncrementedThisSession] = useState(false);
 
   useEffect(() => {
-    initializeAuth();
+    const initialize = async () => {
+      const { initializeAuth } = useAuthStore.getState();
+      await initializeAuth();
+      await initializeTrial();
+
+      // If user is not authenticated and trial is not expired, start trial mode
+      const { isAuthenticated: authStatus } = useAuthStore.getState();
+      const { isTrialExpired: trialExpired } = useTrialStore.getState();
+
+      if (!authStatus && !trialExpired) {
+        startTrial();
+      }
+    };
+
+    initialize();
   }, []);
 
+  // Increment trial counter on app launch (only once per session)
+  useEffect(() => {
+    if (isTrialMode && !isTrialExpired && !hasIncrementedThisSession) {
+      incrementTrialCount();
+      setHasIncrementedThisSession(true);
+    }
+  }, [isTrialMode, isTrialExpired, hasIncrementedThisSession]);
+
+  // Show modal when trial expires
+  useEffect(() => {
+    if (isTrialExpired && !isAuthenticated) {
+      setShowTrialModal(true);
+    }
+  }, [isTrialExpired, isAuthenticated]);
+
+  const handleNavigateToSignUp = () => {
+    setShowTrialModal(false);
+    // Navigation will happen automatically as isTrialMode will be false
+  };
+
+  const handleNavigateToSignIn = () => {
+    setShowTrialModal(false);
+    // Navigation will happen automatically as isTrialMode will be false
+  };
+
+  // Determine what to show based on authentication and trial state
+  const shouldShowApp = isAuthenticated || (isTrialMode && !isTrialExpired);
+
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: false,
-        // iOS 26-style smooth animations
-        animation: 'slide_from_right',
-        animationDuration: 350,
-        gestureEnabled: true,
-        gestureDirection: 'horizontal',
-        // Smooth spring-based transitions
-        ...(Platform.OS === 'ios' && {
-          animation: 'default',
-          animationTypeForReplace: 'push',
-        }),
-        // Custom animation
-        contentStyle: {
-          backgroundColor: '#FDFCF8',
-        },
-      }}
-    >
-      {isAuthenticated ? (
-        <>
-          {/* Main tab navigation with Home, Add, and Profile */}
-          <Stack.Screen name="Home" component={TabNavigator} />
+    <>
+      <TrialLimitModal
+        visible={showTrialModal}
+        onSignUp={handleNavigateToSignUp}
+        onSignIn={handleNavigateToSignIn}
+      />
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+          // iOS 26-style smooth animations
+          animation: 'slide_from_right',
+          animationDuration: 350,
+          gestureEnabled: true,
+          gestureDirection: 'horizontal',
+          // Smooth spring-based transitions
+          ...(Platform.OS === 'ios' && {
+            animation: 'default',
+            animationTypeForReplace: 'push',
+          }),
+          // Custom animation
+          contentStyle: {
+            backgroundColor: '#FDFCF8',
+          },
+        }}
+      >
+        {shouldShowApp ? (
+          <>
+            {/* Main tab navigation with Home, Add, and Profile */}
+            <Stack.Screen name="Home" component={TabNavigator} />
 
-          <Stack.Screen
-            name="AddOutfit"
-            component={AddOutfitScreen}
-            options={{
-              presentation: 'modal',
-              animation: 'slide_from_bottom',
-              title: "Add New Item",
-            }}
-          />
+            <Stack.Screen
+              name="AddOutfit"
+              component={AddOutfitScreen}
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+                title: "Add New Item",
+              }}
+            />
 
-          {/* Important: name should match ParamList */}
-          <Stack.Screen
-            name="ReviewScan"          // Route name (for navigation.navigate)
-            component={ReviewScreen}   // Component itself (from file)
-            options={{
-              headerShown: false,
-              animation: 'fade_from_bottom',
-            }}
-          />
+            {/* Important: name should match ParamList */}
+            <Stack.Screen
+              name="ReviewScan"          // Route name (for navigation.navigate)
+              component={ReviewScreen}   // Component itself (from file)
+              options={{
+                headerShown: false,
+                animation: 'fade_from_bottom',
+              }}
+            />
 
-          <Stack.Screen
-            name="AIChat"
-            component={AIAssistant}
-            options={{ animation: 'slide_from_right' }}
-          />
-          <Stack.Screen
-            name="AIOutfit"
-            component={AIOutfitmaker}
-            options={{ animation: 'slide_from_right' }}
-          />
-          <Stack.Screen
-            name="AITryOn"
-            component={AITryOnScreen}
-            options={{ animation: 'slide_from_right' }}
-          />
-          <Stack.Screen
-            name="ScanWardrobe"
-            component={ScanWardrobeScreen}
-            options={{ animation: 'slide_from_bottom' }}
-          />
-          <Stack.Screen
-            name="WardrobeVideo"
-            component={WardrobeVideoScreen}
-            options={{
-              animation: 'slide_from_bottom',
-              presentation: 'modal',
-              gestureEnabled: true,
-              gestureDirection: 'vertical',
-            }}
-          />
+            <Stack.Screen
+              name="AIChat"
+              component={AIAssistant}
+              options={{ animation: 'slide_from_right' }}
+            />
+            <Stack.Screen
+              name="AIOutfit"
+              component={AIOutfitmaker}
+              options={{ animation: 'slide_from_right' }}
+            />
+            <Stack.Screen
+              name="AITryOn"
+              component={AITryOnScreen}
+              options={{ animation: 'slide_from_right' }}
+            />
+            <Stack.Screen
+              name="ScanWardrobe"
+              component={ScanWardrobeScreen}
+              options={{ animation: 'slide_from_bottom' }}
+            />
+            <Stack.Screen
+              name="WardrobeVideo"
+              component={WardrobeVideoScreen}
+              options={{
+                animation: 'slide_from_bottom',
+                presentation: 'modal',
+                gestureEnabled: true,
+                gestureDirection: 'vertical',
+              }}
+            />
 
-          <Stack.Screen
-            name="DesignRoom"
-            component={DesignRoomScreen}
-            options={{ animation: 'slide_from_right' }}
-          />
-          <Stack.Screen
-            name="NewOutfit"
-            component={NewOutfitScreen}
-            options={{
-              animation: 'fade_from_bottom',
-              presentation: 'transparentModal',
-            }}
-          />
-        </>
-      ) : (
-        <>
-          <Stack.Screen
-            name="SignIn"
-            component={SignInScreen}
-            options={{ animation: 'fade' }}
-          />
-          <Stack.Screen
-            name="SignUp"
-            component={SignUpScreen}
-            options={{ animation: 'slide_from_right' }}
-          />
-        </>
-      )}
-    </Stack.Navigator>
+            <Stack.Screen
+              name="DesignRoom"
+              component={DesignRoomScreen}
+              options={{ animation: 'slide_from_right' }}
+            />
+            <Stack.Screen
+              name="Calendar"
+              component={OutfitCalendarScreen}
+              options={{ animation: 'slide_from_right' }}
+            />
+            <Stack.Screen
+              name="NewOutfit"
+              component={NewOutfitScreen}
+              options={{
+                animation: 'fade_from_bottom',
+                presentation: 'transparentModal',
+              }}
+            />
+          </>
+        ) : (
+          <>
+            <Stack.Screen
+              name="SignIn"
+              component={SignInScreen}
+              options={{ animation: 'fade' }}
+            />
+            <Stack.Screen
+              name="SignUp"
+              component={SignUpScreen}
+              options={{ animation: 'slide_from_right' }}
+            />
+          </>
+        )}
+      </Stack.Navigator>
+    </>
   );
 };
 

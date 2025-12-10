@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import React, { useEffect, useState, useCallback } from "react";
 import useAuthStore from "../store/auth";
+import useTrialStore from "../store/trialStore";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { mpants, mshirts, pants, shoes, skirts, tops } from "../images";
@@ -141,7 +142,8 @@ const ProfileScreen = () => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("Clothes");
   const [activeCategory, setActiveCategory] = useState("All");
-  const { logout, user, token } = useAuthStore();
+  const { logout, user, token, isTrialMode } = useAuthStore();
+  const { getTrialsRemaining } = useTrialStore();
   const [outifts, setOutfits] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -439,6 +441,10 @@ const ProfileScreen = () => {
                 onPress={() => (navigation as any).navigate('WardrobeVideo')}
               />
               <IconButton
+                icon="sparkles-outline"
+                onPress={() => (navigation as any).navigate('AIOutfit')}
+              />
+              <IconButton
                 icon="settings-outline"
                 onPress={() => setShowSettings(true)}
               />
@@ -471,6 +477,24 @@ const ProfileScreen = () => {
               </View>
             </View>
           </View>
+
+          {/* Trial Status Banner */}
+          {isTrialMode && (
+            <View style={styles.trialBanner}>
+              <View style={styles.trialBannerGradient}>
+                <Ionicons name="time-outline" size={20} color="#667eea" />
+                <Text style={styles.trialBannerText}>
+                  {getTrialsRemaining()} free {getTrialsRemaining() === 1 ? 'try' : 'tries'} remaining
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => (navigation as any).navigate('SignUp')}
+                style={styles.trialButton}
+              >
+                <Text style={styles.trialButtonText}>Create Account</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Tabs */}
           <View style={styles.tabsContainer}>
@@ -1117,4 +1141,38 @@ const styles = StyleSheet.create({
     marginLeft: spacing.m,
     fontWeight: '500',
   },
+  trialBanner: {
+    marginHorizontal: spacing.l,
+    marginVertical: spacing.m,
+    padding: spacing.l,
+    backgroundColor: '#f0f4ff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#667eea33',
+  },
+  trialBannerGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.m,
+  },
+  trialBannerText: {
+    fontSize: 16,
+    color: colors.text.primary,
+    marginLeft: spacing.s,
+    fontWeight: '600',
+  },
+  trialButton: {
+    backgroundColor: '#667eea',
+    paddingVertical: spacing.m,
+    paddingHorizontal: spacing.l,
+    borderRadius: 12,
+    alignItems: 'center',
+    ...shadows.soft,
+  },
+  trialButtonText: {
+    fontSize: 15,
+    color: '#FFF',
+    fontWeight: '700',
+  },
+
 });

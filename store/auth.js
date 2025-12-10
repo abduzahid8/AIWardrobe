@@ -11,6 +11,7 @@ const useAuthStore = create((set) => ({
   loading: false,
   error: null,
   isAuthenticated: false,
+  isTrialMode: false,
 
   initializeAuth: async () => {
     try {
@@ -62,7 +63,15 @@ const useAuthStore = create((set) => ({
   },
   logout: async () => {
     await AsyncStorage.removeItem("userToken");
-    set({ user: null, token: null, isAuthenticated: false });
+    set({ user: null, token: null, isAuthenticated: false, isTrialMode: false });
+  },
+
+  startTrial: () => {
+    set({ isTrialMode: true, isAuthenticated: false });
+  },
+
+  endTrial: () => {
+    set({ isTrialMode: false });
   },
 
   fetchUser: async () => {
