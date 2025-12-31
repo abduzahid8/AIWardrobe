@@ -2,199 +2,492 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
-  TextInput,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
   ScrollView,
   Image,
   Dimensions,
-  Alert,
-  ActionSheetIOS,
+  StyleSheet,
+  ActivityIndicator,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { jwtDecode } from "jwt-decode";
-import moment from "moment";
 import { LinearGradient } from "expo-linear-gradient";
+import { Video, ResizeMode } from 'expo-av';
+import * as Location from 'expo-location';
+import { BlurView } from 'expo-blur';
+import { TahoeIconButton, TahoeActionCard, TahoeButton } from '../components/TahoeButton';
+import AppColors from '../constants/AppColors';
 
 const { width } = Dimensions.get("window");
 
+// Weather API Key
+const WEATHER_API_KEY = "acec1d31ef3e181c0ca471ac4db642ff";
+
+// Use unified AppColors
+const TAHOE = {
+  background: AppColors.surface,
+  surface: AppColors.background,
+  glass: AppColors.glass,
+  glassBorder: 'rgba(255, 255, 255, 0.5)',
+  primary: AppColors.accent,
+  secondary: AppColors.textSecondary,
+  text: AppColors.text,
+  textSecondary: AppColors.textSecondary,
+  accent: AppColors.accent,
+  success: AppColors.success,
+  gradientStart: AppColors.accent,
+  gradientEnd: '#5856D6',
+};
+
+interface WeatherData {
+  temp: number;
+  description: string;
+  icon: string;
+  city: string;
+}
+
 const HomeScreen = () => {
   const navigation = useNavigation();
-  const [message, setMessage] = useState("");
   const [userName, setUserName] = useState("User");
+  const [wardrobeCount, setWardrobeCount] = useState(0);
+  const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [loadingWeather, setLoadingWeather] = useState(true);
+  const [videoUri, setVideoUri] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchUser = async () => {
+    const fetchUserData = async () => {
       try {
         const token = await AsyncStorage.getItem("userToken");
         if (token) {
           const decoded: any = jwtDecode(token);
           setUserName(decoded.name || decoded.username || "User");
         }
+
+        const wardrobeData = await AsyncStorage.getItem('myWardrobeItems');
+        if (wardrobeData) {
+          const items = JSON.parse(wardrobeData);
+          setWardrobeCount(items.length);
+        }
+
+        const savedVideo = await AsyncStorage.getItem('lastWardrobeVideo');
+        if (savedVideo) {
+          setVideoUri(savedVideo);
+        }
       } catch (error) {
         console.log("Error fetching user:", error);
       }
     };
-    fetchUser();
+    fetchUserData();
+    fetchWeather();
   }, []);
 
-  const getGreeting = () => {
-    const hour = moment().hour();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
-  };
+  const fetchWeather = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setLoadingWeather(false);
+        return;
+      }
 
-  // Show quick action menu
-  const showQuickActions = () => {
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: ['Cancel', 'Scan Wardrobe', 'AI Try-On', 'Create Outfit', 'Design Room'],
-          cancelButtonIndex: 0,
-        },
-        (buttonIndex) => {
-          if (buttonIndex === 1) (navigation as any).navigate('WardrobeVideo');
-          if (buttonIndex === 2) (navigation as any).navigate('AITryOn');
-          if (buttonIndex === 3) (navigation as any).navigate('NewOutfit');
-          if (buttonIndex === 4) (navigation as any).navigate('DesignRoom');
-        }
+      const location = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = location.coords;
+
+      const response = await fetch(
+        `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${WEATHER_API_KEY}`
       );
-    } else {
-      Alert.alert(
-        'Quick Actions',
-        'Choose an action',
-        [
-          { text: 'Scan Wardrobe', onPress: () => (navigation as any).navigate('WardrobeVideo') },
-          { text: 'AI Try-On', onPress: () => (navigation as any).navigate('AITryOn') },
-          { text: 'Create Outfit', onPress: () => (navigation as any).navigate('NewOutfit') },
-          { text: 'Design Room', onPress: () => (navigation as any).navigate('DesignRoom') },
-          { text: 'Cancel', style: 'cancel' },
-        ]
-      );
+      const data = await response.json();
+
+      if (data.main && data.weather) {
+        setWeather({
+          temp: Math.round(data.main.temp),
+          description: data.weather[0].description,
+          icon: data.weather[0].icon,
+          city: data.name,
+        });
+      }
+    } catch (error) {
+      console.log('Weather fetch error:', error);
+    } finally {
+      setLoadingWeather(false);
     }
   };
 
-  return (
-    <View className="flex-1 bg-white">
-      {/* Background Gradient Mesh (Subtle) */}
-      <LinearGradient
-        colors={['#E0E7FF', '#F3E8FF', '#FFFFFF']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+  const unlockThreshold = 5;
+  const isUnlocked = wardrobeCount >= unlockThreshold;
+  const progress = Math.min(wardrobeCount / unlockThreshold, 1);
 
-      <SafeAreaView className="flex-1">
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          className="flex-1"
+  const quickActions = [
+    {
+      icon: 'sparkles' as const,
+      title: 'AI Stylist',
+      subtitle: 'Get outfit ideas',
+      color: '#5856D6',
+      screen: 'AIChat',
+    },
+    {
+      icon: 'airplane' as const,
+      title: 'Trip Planner',
+      subtitle: 'Pack smart',
+      color: '#FF2D55',
+      screen: 'TripPlanner',
+    },
+    {
+      icon: 'shirt' as const,
+      title: 'Try On',
+      subtitle: 'Virtual fitting',
+      color: '#FF9500',
+      screen: 'AITryOn',
+    },
+    {
+      icon: 'stats-chart' as const,
+      title: 'Analytics',
+      subtitle: 'See insights',
+      color: '#34C759',
+      screen: 'WardrobeAnalytics',
+    },
+  ];
+
+  return (
+    <View style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
+        {/* Header with glass effect */}
+        <BlurView intensity={Platform.OS === 'ios' ? 80 : 100} tint="light" style={styles.header}>
+          <TahoeIconButton
+            icon="person-circle-outline"
+            onPress={() => (navigation as any).navigate("Profile")}
+            color={TAHOE.text}
+          />
+
+          <Text style={styles.logo}>AIWardrobe</Text>
+
+          <TahoeIconButton
+            icon="notifications-outline"
+            onPress={() => (navigation as any).navigate("Profile")}
+            color={TAHOE.text}
+          />
+        </BlurView>
+
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
         >
-          {/* Header */}
-          <View className="px-6 pt-2 flex-row justify-between items-center">
-            <TouchableOpacity
-              onPress={() => (navigation as any).navigate("Profile")}
-              className="w-10 h-10 rounded-full bg-white/50 items-center justify-center border border-white/60 shadow-sm"
-            >
-              <Ionicons name="person-outline" size={20} color="#4B5563" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => (navigation as any).navigate("Profile")}
-              className="w-10 h-10 rounded-full bg-white/50 items-center justify-center border border-white/60 shadow-sm"
-            >
-              <Ionicons name="settings-outline" size={20} color="#4B5563" />
-            </TouchableOpacity>
+          {/* Welcome Message & Weather */}
+          <View style={styles.headerSection}>
+            <Text style={styles.welcome}>Welcome, {userName}!</Text>
+
+            {/* Weather Widget with glass effect */}
+            {loadingWeather ? (
+              <BlurView intensity={60} tint="light" style={styles.weatherWidget}>
+                <ActivityIndicator size="small" color={TAHOE.primary} />
+              </BlurView>
+            ) : weather ? (
+              <BlurView intensity={60} tint="light" style={styles.weatherWidget}>
+                <Image
+                  source={{ uri: `https://openweathermap.org/img/wn/${weather.icon}@2x.png` }}
+                  style={styles.weatherIcon}
+                />
+                <View style={styles.weatherInfo}>
+                  <Text style={styles.weatherTemp}>{weather.temp}°C</Text>
+                  <Text style={styles.weatherDesc}>{weather.description}</Text>
+                  <Text style={styles.weatherCity}>{weather.city}</Text>
+                </View>
+              </BlurView>
+            ) : null}
           </View>
 
-          {/* Main Content */}
-          <View className="flex-1 justify-center px-8">
-            <View className="mb-8">
-              <Text className="text-center text-lg font-medium text-gray-500 mb-2 tracking-wide">
-                {getGreeting()}, <Text className="text-purple-600 font-semibold">{userName}</Text>
-              </Text>
-              <Text className="text-center text-5xl font-bold text-gray-900 leading-tight">
-                How can I{"\n"}
-                <Text className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-500" style={{ color: '#7C3AED' }}>
-                  style you?
-                </Text>
-              </Text>
-            </View>
+          {/* Main Outfit/Video Display */}
+          <View style={styles.outfitContainer}>
+            {isUnlocked && videoUri ? (
+              <Video
+                source={{ uri: videoUri }}
+                style={styles.outfitVideo}
+                resizeMode={ResizeMode.CONTAIN}
+                shouldPlay={false}
+                isLooping
+                useNativeControls
+              />
+            ) : isUnlocked ? (
+              <Image
+                source={{ uri: "https://i.pinimg.com/736x/2e/3d/d1/2e3dd14ac81b207ee6d86bc99ef576eb.jpg" }}
+                style={styles.outfitImage}
+                resizeMode="contain"
+              />
+            ) : (
+              <View style={styles.placeholderContainer}>
+                <View style={styles.placeholderIcon}>
+                  <Ionicons name="shirt-outline" size={60} color={TAHOE.secondary} />
+                </View>
+                <Text style={styles.placeholderText}>Scan your wardrobe to see it here</Text>
+              </View>
+            )}
+          </View>
 
-            {/* Suggestion Chips */}
-            <View className="flex-row flex-wrap justify-center gap-3 mb-8">
-              {[
-                { text: "Outfit for work", icon: "briefcase-outline", color: ["#EFF6FF", "#DBEAFE"] },
-                { text: "Date night", icon: "heart-outline", color: ["#FFF1F2", "#FFE4E6"] },
-                { text: "Casual weekend", icon: "cafe-outline", color: ["#F0FDF4", "#DCFCE7"] },
-                { text: "Summer wedding", icon: "rose-outline", color: ["#FFFBEB", "#FEF3C7"] }
-              ].map((chip, index) => (
-                <TouchableOpacity
-                  key={index}
-                  onPress={() => setMessage(chip.text)}
-                  className="rounded-full shadow-sm"
-                >
-                  <LinearGradient
-                    colors={chip.color as any}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    className="px-5 py-3 rounded-full flex-row items-center border border-white/50"
-                  >
-                    <Ionicons name={chip.icon as any} size={16} color="#374151" style={{ marginRight: 6 }} />
-                    <Text className="text-gray-700 font-medium text-sm">{chip.text}</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
+          {/* Progress Section */}
+          <View style={styles.progressSection}>
+            {!isUnlocked ? (
+              <>
+                <Text style={styles.progressTitle}>
+                  Add {unlockThreshold} items to unlock personalized daily looks
+                </Text>
+                <View style={styles.progressBarContainer}>
+                  <View style={styles.progressBarBackground}>
+                    <LinearGradient
+                      colors={[TAHOE.gradientStart, TAHOE.gradientEnd]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={[styles.progressBarFill, { width: `${progress * 100}%` }]}
+                    />
+                  </View>
+                  <Text style={styles.progressText}>{wardrobeCount}/{unlockThreshold} items</Text>
+                </View>
+
+                <TahoeButton
+                  title="Scan Your Wardrobe"
+                  icon="add-circle-outline"
+                  variant="gradient"
+                  fullWidth
+                  haptic="medium"
+                  onPress={() => (navigation as any).navigate('WardrobeVideo')}
+                  style={styles.scanButton}
+                />
+              </>
+            ) : (
+              <BlurView intensity={60} tint="light" style={styles.unlockedSection}>
+                <View style={styles.unlockedBadge}>
+                  <Ionicons name="checkmark-circle" size={24} color={TAHOE.success} />
+                  <Text style={styles.unlockedText}>Daily looks unlocked! 🎉</Text>
+                </View>
+                <Text style={styles.unlockedSubtext}>
+                  You have {wardrobeCount} items in your wardrobe
+                </Text>
+              </BlurView>
+            )}
+          </View>
+
+          {/* Quick Actions with Tahoe Action Cards */}
+          <View style={styles.quickActions}>
+            <Text style={styles.sectionTitle}>Quick Actions</Text>
+            <View style={styles.actionGrid}>
+              {quickActions.map((action, index) => (
+                <TahoeActionCard
+                  key={action.screen}
+                  icon={action.icon}
+                  title={action.title}
+                  subtitle={action.subtitle}
+                  iconColor={action.color}
+                  onPress={() => (navigation as any).navigate(action.screen)}
+                  style={styles.actionCardItem}
+                />
               ))}
             </View>
           </View>
 
-          {/* Chat Input Area */}
-          <View className="px-6 pb-6 pt-4">
-            <View className="bg-white rounded-[24px] p-2 shadow-lg shadow-purple-100 border border-purple-50 flex-row items-end">
-              <TouchableOpacity className="p-3 bg-gray-50 rounded-full" onPress={showQuickActions}>
-                <Ionicons name="add" size={24} color="#6B7280" />
-              </TouchableOpacity>
-
-              <TextInput
-                className="flex-1 text-base text-gray-900 px-3 py-3 max-h-24"
-                placeholder="Describe an occasion or item..."
-                placeholderTextColor="#9CA3AF"
-                multiline
-                value={message}
-                onChangeText={setMessage}
-              />
-
-              <TouchableOpacity
-                disabled={!message.trim()}
-                onPress={() => {
-                  if (message.trim()) {
-                    (navigation as any).navigate("AIChat", { initialMessage: message });
-                    setMessage("");
-                  }
-                }}
-              >
-                <LinearGradient
-                  colors={message.trim() ? ['#8B5CF6', '#6366F1'] : ['#E5E7EB', '#D1D5DB']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  className="w-12 h-12 rounded-full items-center justify-center shadow-md"
-                >
-                  <Ionicons name="arrow-up" size={24} color="white" />
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-            <Text className="text-center text-xs text-gray-400 mt-4 font-medium">
-              Powered by AIWardrobe Intelligence
-            </Text>
-          </View>
-        </KeyboardAvoidingView>
+          {/* Extra spacing at bottom */}
+          <View style={{ height: 100 }} />
+        </ScrollView>
       </SafeAreaView>
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: TAHOE.background,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  logo: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: TAHOE.text,
+    letterSpacing: -0.5,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 20,
+  },
+  headerSection: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 16,
+  },
+  welcome: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: TAHOE.text,
+    marginBottom: 16,
+    letterSpacing: -0.5,
+  },
+  weatherWidget: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 16,
+    backgroundColor: TAHOE.glass,
+    borderWidth: 1,
+    borderColor: TAHOE.glassBorder,
+    overflow: 'hidden',
+  },
+  weatherIcon: {
+    width: 50,
+    height: 50,
+  },
+  weatherInfo: {
+    marginLeft: 12,
+  },
+  weatherTemp: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: TAHOE.text,
+  },
+  weatherDesc: {
+    fontSize: 14,
+    color: TAHOE.textSecondary,
+    textTransform: 'capitalize',
+  },
+  weatherCity: {
+    fontSize: 12,
+    color: TAHOE.secondary,
+    marginTop: 2,
+  },
+  outfitContainer: {
+    width: width - 40,
+    height: 380,
+    marginHorizontal: 20,
+    backgroundColor: TAHOE.surface,
+    borderRadius: 24,
+    overflow: 'hidden',
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 8,
+  },
+  outfitImage: {
+    width: '100%',
+    height: '100%',
+  },
+  outfitVideo: {
+    width: '100%',
+    height: '100%',
+  },
+  placeholderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: TAHOE.background,
+  },
+  placeholderIcon: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: TAHOE.glass,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  placeholderText: {
+    fontSize: 16,
+    color: TAHOE.textSecondary,
+    fontWeight: '500',
+  },
+  progressSection: {
+    paddingHorizontal: 20,
+    marginBottom: 32,
+  },
+  progressTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: TAHOE.textSecondary,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  progressBarContainer: {
+    marginBottom: 20,
+  },
+  progressBarBackground: {
+    height: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.06)',
+    borderRadius: 5,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 5,
+  },
+  progressText: {
+    fontSize: 14,
+    color: TAHOE.textSecondary,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  scanButton: {
+    marginTop: 4,
+  },
+  unlockedSection: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+    borderRadius: 20,
+    backgroundColor: TAHOE.glass,
+    borderWidth: 1,
+    borderColor: TAHOE.glassBorder,
+    overflow: 'hidden',
+  },
+  unlockedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  unlockedText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: TAHOE.success,
+  },
+  unlockedSubtext: {
+    fontSize: 14,
+    color: TAHOE.textSecondary,
+  },
+  quickActions: {
+    paddingHorizontal: 20,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: TAHOE.text,
+    marginBottom: 16,
+    letterSpacing: -0.3,
+  },
+  actionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 14,
+  },
+  actionCardItem: {
+    width: (width - 54) / 2,
+  },
+});
 
 export default HomeScreen;

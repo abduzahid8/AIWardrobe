@@ -19,9 +19,14 @@ import weatherRoutes from "./routes/weather.js";
 import aiRoutes from "./routes/ai.js";
 import statsRoutes from "./routes/stats.js";
 import alicevisionRoutes from "./routes/alicevision.js";
+import emailIngestionRoutes from "./routes/emailIngestion.js";
+import tripPlannerRoutes from "./routes/tripPlanner.js";
+import wardrobeAnalyticsRoutes from "./routes/wardrobeAnalytics.js";
+import subscriptionRoutes from "./routes/subscription.js";
 
 // Import middleware
 import { apiLimiter, aiLimiter } from "./middleware/rateLimit.js";
+import { auditLogger } from "./middleware/security.js";
 
 // Import models for seeding
 import Outfit from "./models/outfit.js";
@@ -66,6 +71,9 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 // Apply general rate limiting to all routes
 app.use(apiLimiter);
 
+// Apply audit logging (for security-relevant actions)
+app.use(auditLogger);
+
 // ============================================
 // DATABASE CONNECTION
 // ============================================
@@ -75,13 +83,29 @@ const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
 if (!MONGODB_URI) {
   console.error("❌ FATAL: MONGODB_URI environment variable is not set!");
   console.error("   Please add MONGODB_URI to your .env file");
-  // Continue with fallback for backward compatibility
+  console.error("   Example: MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/dbname");
+  process.exit(1);
 }
 
 mongoose
-  .connect(MONGODB_URI || "mongodb+srv://karimdzanovzoha:Abduzahid8@aiwardrobe.fah7ml3.mongodb.net/?appName=AIWardrobe")
+  .connect(MONGODB_URI, {
+    maxPoolSize: 10,
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+  })
   .then(() => console.log("✅ Connected to MongoDB"))
-  .catch((err) => console.log("❌ Error connecting to MongoDB:", err));
+  .catch((err) => {
+    console.error("❌ Error connecting to MongoDB:", err.message);
+    process.exit(1);
+  });
+
+// Graceful shutdown handling
+process.on('SIGINT', async () => {
+  console.log('🔄 Gracefully shutting down...');
+  await mongoose.connection.close();
+  console.log('✅ MongoDB connection closed');
+  process.exit(0);
+});
 
 // ============================================
 // MOUNT ROUTES
@@ -109,6 +133,18 @@ app.use("/", aiRoutes); // For routes like /try-on, /scan-wardrobe
 
 // AliceVision computer vision microservice integration
 app.use("/alicevision", aiLimiter, alicevisionRoutes);
+
+// Email receipt ingestion (competitive advantage feature)
+app.use("/api/email", emailIngestionRoutes);
+
+// Trip planner (engagement feature)
+app.use("/api/trip-planner", tripPlannerRoutes);
+
+// Wardrobe analytics (cost-per-wear tracking)
+app.use("/api/wardrobe-analytics", wardrobeAnalyticsRoutes);
+
+// Subscription & Payment management
+app.use("/api/subscription", subscriptionRoutes);
 
 // ============================================
 // DATABASE SEEDING
@@ -199,4 +235,7 @@ app.listen(port, "0.0.0.0", () => {
   console.log(`   - Weather: /weather`);
   console.log(`   - AI: /api/*, /try-on, /scan-wardrobe`);
   console.log(`   - AliceVision: /alicevision/keyframe, /alicevision/segment, /alicevision/lighting, /alicevision/process`);
+  console.log(`   - Email Ingestion: /api/email/auth-url, /api/email/scan-receipts, /api/email/import-items`);
+  console.log(`   - Trip Planner: /api/trip-planner/weather, /api/trip-planner/create`);
+  console.log(`   - Wardrobe Analytics: /api/wardrobe-analytics/:userId, /api/wardrobe-analytics/log-wear`);
 });

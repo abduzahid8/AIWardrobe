@@ -1,0 +1,27 @@
+# Prettier ignore patterns
+# These files/directories will not be formatted by Prettier
+
+# Dependencies
+node_modules/
+api/node_modules/
+
+# Build outputs
+dist/
+.expo/
+build/
+web-build/
+
+# Cache
+.cache/
+*.log
+
+# Generated files
+*.lock
+package-lock.json
+
+# Assets (non-code)
+assets/
+images/
+
+# Uploads
+uploads/

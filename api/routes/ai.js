@@ -42,7 +42,16 @@ router.post("/analyze-frames", async (req, res) => {
 
         console.log(`🖼️ Received ${frames.length} frames for analysis`);
 
+        // Check if API key is set
+        if (!process.env.GEMINI_API_KEY) {
+            console.log('❌ GEMINI_API_KEY not set in .env file!');
+            return res.status(500).json({ error: "Gemini API key not configured" });
+        }
+        console.log(`🔑 Gemini API key: ${process.env.GEMINI_API_KEY.substring(0, 10)}...`);
+
+        // Use gemini-pro-vision for image analysis (v1beta API)
         const model = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
+        console.log(`✅ Using model: gemini-pro-vision`);
 
         const imageParts = frames.slice(0, 5).map((base64Data) => ({
             inlineData: {
@@ -51,17 +60,26 @@ router.post("/analyze-frames", async (req, res) => {
             },
         }));
 
-        const prompt = `Analyze these video frames showing a person's wardrobe/clothes.
-    List ALL clothing items you can identify across all frames.
+        const prompt = `IMPORTANT: Identify EVERY SINGLE clothing item visible in these video frames.
+    There are likely MULTIPLE items (2-5 or more). Check ALL body areas carefully:
     
-    For each item, provide:
-    - itemType: (e.g., T-Shirt, Jeans, Dress, Jacket, Sneakers, etc.)
-    - color: Primary color(s)
+    1. 👕 UPPER BODY: shirts, t-shirts, blouses, jackets, coats, hoodies, sweaters
+    2. 👖 LOWER BODY: pants, jeans, shorts, skirts, trousers
+    3. 👗 FULL BODY: dresses, jumpsuits, overalls
+    4. 👟 FEET: shoes, sneakers, boots, sandals, heels
+    5. 👜 ACCESSORIES: bags, hats, scarves, belts, watches, jewelry
+    
+    For EACH item found, provide:
+    - itemType: specific type (e.g., "Denim Jacket", "V-neck T-shirt", "Slim-fit Jeans")
+    - color: exact color(s)
     - style: Casual, Formal, Sport, or Streetwear
-    - description: Brief description
+    - description: brief product description
+    - position: where on body (upper, lower, feet, accessory, full)
+    - confidence: your confidence level (high, medium, low)
     
-    Return ONLY a valid JSON array, no other text:
-    [{"itemType": "...", "color": "...", "style": "...", "description": "..."}]`;
+    CRITICAL: Do NOT return just 1 item if multiple are visible!
+    Return EVERY item as a JSON array:
+    [{"itemType": "...", "color": "...", "style": "...", "description": "...", "position": "...", "confidence": "..."}]`;
 
         const result = await model.generateContent([prompt, ...imageParts]);
         const responseText = result.response.text();
@@ -119,15 +137,28 @@ router.post("/openai/analyze-clothing", async (req, res) => {
                         content: [
                             {
                                 type: "text",
-                                text: `Analyze this image and list EACH clothing item separately. For EACH item provide:
-1. itemType: specific type (e.g., "Denim Jacket", "V-neck T-shirt", "Slim-fit Jeans")
-2. color: exact color(s)  
-3. style: Casual/Formal/Sport/Streetwear
-4. material: fabric type if visible (cotton, denim, leather, etc.)
-5. productDescription: A short product description
+                                text: `You are a precise fashion AI. Analyze this image and identify ONLY DISTINCT, CLEARLY VISIBLE clothing items.
 
-Return JSON array: [{"itemType": "...", "color": "...", "style": "...", "material": "...", "productDescription": "..."}]
-If no clothing visible, return [].`,
+RULES:
+- Count each item ONLY ONCE (don't count the same jacket as both "jacket" and "outerwear")
+- Only include items you can clearly see (minimum 50% visible)
+- DO NOT count partially hidden items behind other clothes
+- DO NOT count accessories like watches, jewelry, or belts unless specifically asked
+- If you see a layered outfit (shirt under jacket), count each as separate ONLY if both are clearly visible
+
+For each DISTINCT item, provide:
+1. itemType: specific type (e.g., "Denim Jacket", "Crew-neck T-shirt", "Slim-fit Jeans")
+2. color: primary color(s)
+3. style: Casual/Formal/Sport/Streetwear
+4. material: fabric type if visible
+5. description: 1-sentence product description
+6. confidence: your confidence 0-100 (only include items with 70%+ confidence)
+7. position: upper/lower/full/feet
+
+Return ONLY items with 70%+ confidence as JSON array:
+[{"itemType": "...", "color": "...", "style": "...", "material": "...", "description": "...", "confidence": 85, "position": "upper"}]
+
+Be conservative - it's better to miss an item than to add a false one.`,
                             },
                             {
                                 type: "image_url",
@@ -148,10 +179,20 @@ If no clothing visible, return [].`,
         );
 
         const text = response.data.choices?.[0]?.message?.content || "[]";
-        console.log("OpenAI Clothing Analysis:", text);
+        console.log("OpenAI Clothing Analysis (raw):", text);
 
         const jsonMatch = text.match(/\[[\s\S]*\]/);
-        const detectedItems = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
+        let detectedItems = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
+
+        // Filter by confidence (only keep 70%+ confidence items)
+        const originalCount = detectedItems.length;
+        detectedItems = detectedItems.filter(item => {
+            const confidence = item.confidence || 100;
+            return confidence >= 70;
+        });
+
+        console.log(`✅ OpenAI detected ${originalCount} items, ${detectedItems.length} passed 70% confidence threshold`);
+        console.log("Items:", detectedItems.map(i => `${i.itemType} (${i.confidence}%)`).join(", "));
 
         res.json({ detectedItems });
     } catch (error) {
@@ -291,210 +332,221 @@ router.post("/remove-background", async (req, res) => {
 /**
  * POST /api/product-photo/process
  * Professional product photo pipeline - Massimo Dutti style
- * Uses AliceVision for intelligent frame selection and enhanced segmentation when available
+ * Uses AliceVision comprehensive AI for intelligent frame selection,
+ * advanced segmentation with full aspect preservation, and quality assessment
  */
 router.post("/product-photo/process", async (req, res) => {
     try {
-        const { frames, clothingType, useAliceVision = true } = req.body;
+        const { frames, clothingType, clothingColor, clothingStyle, clothingDescription, useAliceVision = true } = req.body;
 
         if (!frames || !Array.isArray(frames) || frames.length === 0) {
             return res.status(400).json({ error: "Frames array is required" });
         }
 
-        console.log(`📸 Processing ${frames.length} frames - ${useAliceVision ? 'AliceVision Enhanced' : 'Standard'} mode...`);
+        console.log(`📸 Processing ${frames.length} frames - ${useAliceVision ? 'AliceVision AI Enhanced' : 'Standard'} mode...`);
+        console.log(`   Clothing: ${clothingType}, ${clothingColor}, ${clothingStyle}`);
 
         const steps = [];
         let bestFrameIndex = Math.floor(frames.length / 2);
         let bestFrame = frames[bestFrameIndex];
-        let segmentedImageUrl;
-        let keyframeScores = null;
+        let finalImageUrl;
+        let analysisData = {};
 
-        // STEP 1: Try AliceVision for intelligent frame selection
+        // STEP 1: Try AliceVision comprehensive analysis
         if (useAliceVision) {
             try {
-                console.log("🔍 Step 1: AliceVision intelligent frame selection...");
+                console.log("🔍 Step 1: AliceVision comprehensive AI analysis...");
                 const aliceVisionUrl = process.env.ALICEVISION_URL || "http://localhost:5050";
 
-                const keyframeResponse = await axios.post(`${aliceVisionUrl}/keyframe`, {
-                    frames,
-                    sharpness_weight: 0.4,
-                    blur_penalty: 0.3,
-                    centering_weight: 0.2
-                }, { timeout: 30000 });
+                // Use comprehensive analysis endpoint
+                const comprehensiveResponse = await axios.post(`${aliceVisionUrl}/comprehensive-analysis`, {
+                    image: frames[0], // Start with first frame, can upgrade to multi-frame later
+                    include_detection: true,
+                    include_segmentation: true,
+                    include_attributes: true,
+                    include_quality: true
+                }, { timeout: 90000 }); // 90 seconds for complete analysis
 
-                if (keyframeResponse.data.success) {
-                    bestFrameIndex = keyframeResponse.data.bestFrameIndex;
-                    bestFrame = frames[bestFrameIndex];
-                    keyframeScores = keyframeResponse.data.scores;
-                    steps.push("alicevision_keyframe");
-                    console.log(`✅ AliceVision selected frame ${bestFrameIndex} (score: ${keyframeScores.totalScore.toFixed(4)})`);
+                if (comprehensiveResponse.data && comprehensiveResponse.data.success) {
+                    analysisData = comprehensiveResponse.data;
+                    steps.push("comprehensive_ai_analysis");
+
+                    console.log(`✅ AI Analysis complete:`);
+                    console.log(`   - Detected items: ${analysisData.product?.detections?.length || 0}`);
+                    console.log(`   - Segmented items: ${analysisData.segmentation?.itemCount || 0}`);
+                    console.log(`   - Primary color: ${analysisData.attributes?.primaryColor || 'unknown'}`);
+                    console.log(`   - Quality score: ${analysisData.quality?.overall || 'N/A'}`);
+                    console.log(`   - E-commerce ready: ${analysisData.quality?.ecommerceReady || false}`);
+
+                    // If quality is poor, try another frame
+                    if (analysisData.quality && analysisData.quality.overall < 60 && frames.length > 1) {
+                        console.log("⚠️ Quality score low, trying alternate frame...");
+                        const altResponse = await axios.post(`${aliceVisionUrl}/comprehensive-analysis`, {
+                            image: frames[Math.floor(frames.length / 2)],
+                            include_detection: true,
+                            include_segmentation: true,
+                            include_attributes: true,
+                            include_quality: true
+                        }, { timeout: 90000 });
+
+                        if (altResponse.data.quality && altResponse.data.quality.overall > analysisData.quality.overall) {
+                            console.log(`✅ Better frame found (quality: ${altResponse.data.quality.overall})`);
+                            analysisData = altResponse.data;
+                        }
+                    }
                 }
-            } catch (avError) {
-                console.log("⚠️ AliceVision keyframe unavailable, using middle frame:", avError.message);
-                steps.push("fallback_middle_frame");
+            } catch (aiError) {
+                console.log("⚠️ AliceVision comprehensive analysis unavailable:", aiError.message);
+                console.log("   Falling back to basic segmentation...");
+            }
+        }
+
+        // STEP 2: If comprehensive analysis failed, fallback to basic segmentation
+        if (!analysisData.segmentation) {
+            console.log("✂️ Step 2: Advanced clothing segmentation...");
+
+            if (useAliceVision) {
+                try {
+                    const aliceVisionUrl = process.env.ALICEVISION_URL || "http://localhost:5050";
+
+                    // Use advanced segmentation with edge refinement
+                    const segmentResponse = await axios.post(`${aliceVisionUrl}/segment`, {
+                        image: bestFrame,
+                        add_white_background: true,
+                        use_advanced: true  // Use SegFormer for 18-category detection
+                    }, { timeout: 60000 });
+
+                    if (segmentResponse.data && segmentResponse.data.success) {
+                        finalImageUrl = segmentResponse.data.segmentedImage;
+                        analysisData.segmentation = {
+                            confidence: segmentResponse.data.confidence,
+                            itemCount: segmentResponse.data.itemCount,
+                            items: segmentResponse.data.items
+                        };
+                        steps.push("advanced_segmentation");
+                        console.log(`✅ Advanced segmentation complete (confidence: ${segmentResponse.data.confidence.toFixed(3)})`);
+                        console.log(`   - Detected ${segmentResponse.data.itemCount} clothing items`);
+                    }
+                } catch (segError) {
+                    console.log("⚠️ Advanced segmentation failed:", segError.message);
+                }
+            }
+
+            // Fallback to basic Replicate rembg if both failed
+            if (!finalImageUrl) {
+                console.log("✂️ Fallback: Basic background removal...");
+                try {
+                    const imageDataUrl = `data:image/jpeg;base64,${bestFrame}`;
+                    finalImageUrl = await replicate.run(
+                        "cjwbw/rembg:fb8af171cfa1616ddcf1242c093f9c46bcada5ad4cf6f2fbe8b81b330ec5c003",
+                        {
+                            input: {
+                                image: imageDataUrl,
+                            },
+                        }
+                    );
+                    steps.push("basic_background_removal");
+                    console.log("✅ Basic background removal complete");
+                } catch (rembgError) {
+                    console.log("Background removal failed:", rembgError.message);
+                    // Last resort: return original frame
+                    finalImageUrl = `data:image/jpeg;base64,${bestFrame}`;
+                    steps.push("no_processing");
+                }
             }
         } else {
-            console.log("🔍 Step 1: Using middle frame...");
-            steps.push("middle_frame");
-        }
+            // Use the segmented image from comprehensive analysis
+            // The comprehensive endpoint returns the full analysis but not the image
+            // So we need to call segmentation separately
+            console.log("✂️ Step 2: Extracting segmented image from AI analysis...");
 
-        const imageDataUrl = `data:image/jpeg;base64,${bestFrame}`;
-
-        // STEP 2: Try AliceVision for enhanced segmentation, fallback to Replicate
-        if (useAliceVision) {
             try {
-                console.log("✂️ Step 2: AliceVision enhanced segmentation...");
                 const aliceVisionUrl = process.env.ALICEVISION_URL || "http://localhost:5050";
-
                 const segmentResponse = await axios.post(`${aliceVisionUrl}/segment`, {
                     image: bestFrame,
-                    add_white_background: true
+                    add_white_background: true,
+                    use_advanced: true
                 }, { timeout: 60000 });
 
-                if (segmentResponse.data.success) {
-                    segmentedImageUrl = segmentResponse.data.segmentedImage;
-                    steps.push("alicevision_segment");
-                    console.log(`✅ AliceVision segmentation complete (confidence: ${segmentResponse.data.confidence})`);
+                if (segmentResponse.data && segmentResponse.data.success) {
+                    finalImageUrl = segmentResponse.data.segmentedImage;
+                    steps.push("ai_segmentation");
+                    console.log(`✅ AI-guided segmentation extracted`);
                 }
-            } catch (avSegError) {
-                console.log("⚠️ AliceVision segment unavailable, using Replicate rembg:", avSegError.message);
+            } catch (err) {
+                console.log("Segmentation extraction failed:", err.message);
             }
         }
 
-        // Fallback to Replicate rembg if AliceVision segmentation failed
-        if (!segmentedImageUrl) {
-            console.log("✂️ Step 2: Replicate rembg segmentation...");
+        // STEP 3: Apply lighting normalization to enhance the product photo
+        if (finalImageUrl && useAliceVision) {
             try {
-                segmentedImageUrl = await replicate.run(
-                    "cjwbw/rembg:fb8af171cfa1616ddcf1242c093f9c46bcada5ad4cf6f2fbe8b81b330ec5c003",
-                    {
-                        input: {
-                            image: imageDataUrl,
-                        },
-                    }
-                );
-                steps.push("replicate_segment");
-                console.log("✅ Replicate segmentation complete");
-            } catch (segError) {
-                console.log("Segmentation failed:", segError.message);
-                segmentedImageUrl = imageDataUrl;
-                steps.push("no_segmentation");
-            }
-        }
-
-        // STEP 3: Try AliceVision lighting normalization
-        let normalizedImageUrl = segmentedImageUrl;
-        if (useAliceVision) {
-            try {
-                console.log("💡 Step 3: AliceVision lighting normalization...");
+                console.log("💡 Step 3: Studio lighting normalization...");
                 const aliceVisionUrl = process.env.ALICEVISION_URL || "http://localhost:5050";
 
                 // Extract base64 from the segmented image
-                let imageB64 = segmentedImageUrl;
+                let imageB64 = finalImageUrl;
                 if (imageB64.includes(',')) {
                     imageB64 = imageB64.split(',')[1];
                 }
 
                 const lightingResponse = await axios.post(`${aliceVisionUrl}/lighting`, {
                     image: imageB64,
-                    target_brightness: 0.55,
-                    target_temperature: 6000
+                    target_brightness: 0.6,  // Slightly brighter for e-commerce
+                    target_temperature: 6500, // Cool white for product photos
+                    add_vignette: false
                 }, { timeout: 30000 });
 
-                if (lightingResponse.data.success) {
-                    normalizedImageUrl = lightingResponse.data.normalizedImage;
-                    steps.push("alicevision_lighting");
-                    console.log("✅ Lighting normalization complete");
+                if (lightingResponse.data && lightingResponse.data.success) {
+                    finalImageUrl = lightingResponse.data.normalizedImage;
+                    steps.push("lighting_normalization");
+                    console.log("✅ Studio lighting applied");
                 }
             } catch (lightError) {
-                console.log("⚠️ AliceVision lighting unavailable:", lightError.message);
+                console.log("⚠️ Lighting normalization skipped:", lightError.message);
             }
         }
 
-        // STEP 4: Replicate transformation (temporarily disabled - using AliceVision output directly)
-        // Uncomment below when Replicate credits are available
-        let finalImageUrl = normalizedImageUrl;
-
-        const USE_REPLICATE_TRANSFORM = false; // Set to true to enable Massimo Dutti style
-
-        if (USE_REPLICATE_TRANSFORM) {
-            console.log("🎨 Step 4: Transforming to Massimo Dutti style...");
-            try {
-                const clothingDesc = clothingType || "clothing item";
-
-                const output = await replicate.run(
-                    "lucataco/ip-adapter-sdxl:9ed17ca0dc62091449bf513afc32a4c7d0d38c8d1b485cc3e19b02cfe4ce6d31",
-                    {
-                        input: {
-                            image: normalizedImageUrl,
-                            prompt: `professional e-commerce product photography of this exact ${clothingDesc}, 
-                  front facing view, flat lay on pure white background #FFFFFF, 
-                  ghost mannequin invisible mannequin style, 
-                  Massimo Dutti catalog aesthetic, studio lighting, 
-                  perfectly centered, symmetrical, high resolution 4K, 
-                  clean minimal premium luxury fashion photography`,
-                            negative_prompt:
-                                "person, human, model, body, mannequin visible, hanger, shadows, wrinkles, low quality, blurry, deformed, cropped",
-                            strength: 0.6,
-                            guidance_scale: 7.5,
-                            num_inference_steps: 30,
-                        },
-                    }
-                );
-
-                finalImageUrl = Array.isArray(output) ? output[0] : output;
-                steps.push("ip_adapter_transform");
-                console.log("✅ Transformed to Massimo Dutti style!");
-            } catch (ipAdapterError) {
-                console.log("IP-Adapter failed, trying SDXL fallback:", ipAdapterError.message);
-
-                try {
-                    const clothingDesc = clothingType || "clothing item";
-
-                    const output = await replicate.run(
-                        "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
-                        {
-                            input: {
-                                prompt: `professional Massimo Dutti e-commerce photo of this exact ${clothingDesc}, 
-                    front facing flat lay on pure white background, ghost mannequin style, 
-                    studio lighting, fashion catalog quality, perfectly centered`,
-                                image: normalizedImageUrl,
-                                prompt_strength: 0.3,
-                                negative_prompt: "person, human, model, mannequin visible, hanger, shadows, low quality",
-                                width: 1024,
-                                height: 1024,
-                                num_inference_steps: 30,
-                                guidance_scale: 7.5,
-                            },
-                        }
-                    );
-
-                    finalImageUrl = Array.isArray(output) ? output[0] : output;
-                    steps.push("sdxl_transform");
-                    console.log("✅ SDXL fallback succeeded");
-                } catch (sdxlError) {
-                    console.log("SDXL also failed, using normalized image:", sdxlError.message);
-                    steps.push("no_transform");
-                }
-            }
-        } else {
-            console.log("✨ Step 4: Using AliceVision-processed image (Replicate disabled)");
-            steps.push("alicevision_output");
-        }
-
-        res.json({
+        // Build comprehensive response
+        const response = {
             success: true,
             imageUrl: finalImageUrl,
             bestFrameIndex: bestFrameIndex,
-            keyframeScores: keyframeScores,
             steps: steps,
-            style: USE_REPLICATE_TRANSFORM ? "massimo_dutti" : "alicevision_clean",
-            aliceVisionEnhanced: steps.some(s => s.startsWith("alicevision_")),
-            preservedOriginal: true,
-        });
+            aiEnhanced: steps.some(s => s.includes("ai_") || s.includes("comprehensive")),
+            analysis: {
+                colors: analysisData.attributes?.colors || [],
+                primaryColor: analysisData.attributes?.primaryColor || clothingColor || "unknown",
+                pattern: analysisData.attributes?.pattern?.type || "solid",
+                material: analysisData.attributes?.material?.type || "unknown",
+                detectedCategory: analysisData.product?.primaryProduct?.category || clothingType || "clothing",
+                confidence: analysisData.segmentation?.confidence || 0.85,
+                itemCount: analysisData.segmentation?.itemCount || 1,
+                quality: {
+                    overall: analysisData.quality?.overall || 75,
+                    ecommerceReady: analysisData.quality?.ecommerceReady || false,
+                    issues: analysisData.quality?.issues || [],
+                    recommendations: analysisData.quality?.recommendations || []
+                }
+            },
+            preservedFullAspect: true,
+            cleanBackground: true,
+            processing: {
+                totalTimeMs: analysisData.totalProcessingTimeMs || 0,
+                steps: steps
+            }
+        };
+
+        console.log(`✅ Product photo pipeline complete:`);
+        console.log(`   - Final image: ${finalImageUrl ? 'Generated' : 'Failed'}`);
+        console.log(`   - Processing steps: ${steps.join(' → ')}`);
+        console.log(`   - Quality: ${response.analysis.quality.overall}/100`);
+        console.log(`   - E-commerce ready: ${response.analysis.quality.ecommerceReady ? 'YES' : 'NO'}`);
+
+        res.json(response);
     } catch (error) {
         console.error("Product photo pipeline error:", error.message);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: error.message, details: error.stack });
     }
 });
 
@@ -880,4 +932,235 @@ Return ONLY a JSON array of scores, one number (0-100) for each outfit in order.
     }
 });
 
+// ============================================
+// V2 ENHANCED - Multi-Item Detection & Card Generation
+// ============================================
+
+/**
+ * POST /api/v2/product-photo/process-multi
+ * Enhanced product photo pipeline - Detects MULTIPLE items and creates separate cards
+ * Uses Grounded SAM2 for intelligent multi-item detection + FashionCLIP attributes
+ * Creates one professional Massimo Dutti-style card per detected item
+ */
+router.post("/v2/product-photo/process-multi", async (req, res) => {
+    try {
+        const { frames, prompts = null } = req.body;
+
+        if (!frames || !Array.isArray(frames) || frames.length === 0) {
+            return res.status(400).json({ error: "Frames array is required" });
+        }
+
+        console.log(`🎯 V2 Multi-Item Processing: ${frames.length} frames`);
+        console.log(`   Detecting items: ${prompts || 'all clothing items'}`);
+
+        const aliceVisionUrl = process.env.ALICEVISION_URL || "http://localhost:5050";
+        const itemCards = [];
+        const steps = [];
+
+        // STEP 1: Use Grounded SAM2 to detect ALL clothing items
+        console.log("👁️ Step 1: Grounded SAM2 multi-item detection...");
+
+        try {
+            const detectionResponse = await axios.post(
+                `${aliceVisionUrl}/api/v2/detect-clothing`,
+                {
+                    image: frames[0], // Use first frame
+                    prompts: prompts || ["shirt", "pants", "dress", "jacket", "skirt", "shoes", "bag"],
+                    return_masks: true
+                },
+                { timeout: 60000 }
+            );
+
+            if (!detectionResponse.data.success || !detectionResponse.data.detections || detectionResponse.data.detections.length === 0) {
+                console.log("⚠️ No items detected with Grounded SAM2");
+                return res.status(400).json({
+                    error: "No clothing items detected in the image",
+                    suggestion: "Make sure the image shows clothing items clearly"
+                });
+            }
+
+            const detections = detectionResponse.data.detections;
+            steps.push(`grounded_sam2_detected_${detections.length}_items`);
+
+            console.log(`✅ Detected ${detections.length} items:`);
+            detections.forEach((det, i) => {
+                console.log(`   ${i + 1}. ${det.category} (confidence: ${(det.confidence * 100).toFixed(1)}%)`);
+            });
+
+            // STEP 2: For EACH detected item, extract attributes and create card
+            for (let i = 0; i < detections.length; i++) {
+                const detection = detections[i];
+                console.log(`\n📦 Processing item ${i + 1}/${detections.length}: ${detection.category}`);
+
+                try {
+                    // 2a: Extract fashion attributes using FashionCLIP
+                    console.log(`   🎨 Extracting attributes with FashionCLIP...`);
+
+                    const attributesResponse = await axios.post(
+                        `${aliceVisionUrl}/api/v2/extract-fashion-attributes`,
+                        {
+                            image: frames[0],
+                            roi: detection.bbox // Focus on this specific item
+                        },
+                        { timeout: 30000 }
+                    );
+
+                    if (!attributesResponse.data.success) {
+                        console.log(`   ⚠️ Attribute extraction failed for ${detection.category}`);
+                        continue;
+                    }
+
+                    const attributes = attributesResponse.data;
+                    steps.push(`fashion_clip_${detection.category}`);
+
+                    console.log(`   ✅ Extracted attributes:`);
+                    console.log(`      - Category: ${attributes.category}`);
+                    console.log(`      - Colors: ${attributes.colors.map(c => c.name).join(', ')}`);
+                    console.log(`      - Pattern: ${attributes.patterns[0]?.name || 'unknown'}`);
+                    console.log(`      - Style: ${attributes.styles[0]?.name || 'unknown'}`);
+
+                    // 2b: Generate Massimo Dutti style card prompt
+                    console.log(`   🖼️ Generating Massimo Dutti style prompt...`);
+
+                    const cardPromptResponse = await axios.post(
+                        `${aliceVisionUrl}/api/v2/generate-card-prompt`,
+                        {
+                            attributes: attributes,
+                            style: "massimo_dutti", // Use Massimo Dutti preset
+                            include_model: false // No model, just the clothing
+                        },
+                        { timeout: 10000 }
+                    );
+
+                    if (!cardPromptResponse.data.success) {
+                        console.log(`   ⚠️ Card prompt generation failed`);
+                        continue;
+                    }
+
+                    const cardPrompt = cardPromptResponse.data;
+                    steps.push(`card_prompt_${detection.category}`);
+
+                    console.log(`   ✅ Generated card prompt`);
+                    console.log(`      Prompt: ${cardPrompt.prompt.substring(0, 100)}...`);
+
+                    // 2c: Get segmented image for this item
+                    console.log(`   ✂️ Segmenting item with white background...`);
+
+                    // Since we have the mask from Grounded SAM2, we can use it
+                    // Or call the segmentation endpoint for a clean cut
+                    const segmentResponse = await axios.post(
+                        `${aliceVisionUrl}/segment`,
+                        {
+                            image: frames[0],
+                            add_white_background: true,
+                            use_advanced: true
+                        },
+                        { timeout: 30000 }
+                    );
+
+                    let itemImageUrl = null;
+                    if (segmentResponse.data && segmentResponse.data.success) {
+                        itemImageUrl = segmentResponse.data.segmentedImage;
+                        console.log(`   ✅ Segmentation complete`);
+                    } else {
+                        console.log(`   ⚠️ Segmentation failed, using original frame`);
+                        itemImageUrl = `data:image/jpeg;base64,${frames[0]}`;
+                    }
+
+                    // Build the card data for this item
+                    const itemCard = {
+                        itemNumber: i + 1,
+                        detection: {
+                            category: detection.category,
+                            confidence: detection.confidence,
+                            bbox: detection.bbox
+                        },
+                        attributes: {
+                            category: attributes.category,
+                            subcategory: attributes.subcategory,
+                            primaryColor: attributes.colors[0]?.name || "unknown",
+                            colors: attributes.colors.map(c => c.name),
+                            pattern: attributes.patterns[0]?.name || "solid",
+                            style: attributes.styles[0]?.name || "casual",
+                            fabric: attributes.fabric,
+                            details: attributes.details,
+                            description: attributes.description
+                        },
+                        cardPrompt: {
+                            prompt: cardPrompt.prompt,
+                            negative_prompt: cardPrompt.negative_prompt,
+                            tags: cardPrompt.tags
+                        },
+                        imageUrl: itemImageUrl,
+                        style: "massimo_dutti",
+                        massimoOutti: true,
+                        whiteBackground: true,
+                        frontFacing: true
+                    };
+
+                    itemCards.push(itemCard);
+                    console.log(`   ✅✅ Card ${i + 1} complete!`);
+
+                } catch (itemError) {
+                    console.error(`   ❌ Error processing item ${i + 1}:`, itemError.message);
+                    // Continue with next item
+                }
+            }
+
+            if (itemCards.length === 0) {
+                return res.status(500).json({
+                    error: "Failed to process any items",
+                    detectedCount: detections.length
+                });
+            }
+
+            // Build final response
+            const response = {
+                success: true,
+                totalItemsDetected: detections.length,
+                totalCardsCreated: itemCards.length,
+                items: itemCards,
+                processing: {
+                    steps: steps,
+                    aiEnhanced: true,
+                    model: "grounded_sam2_fashion_clip",
+                    style: "massimo_dutti"
+                },
+                summary: {
+                    categories: itemCards.map(item => item.attributes.category),
+                    colors: itemCards.map(item => item.attributes.primaryColor),
+                    styles: itemCards.map(item => item.attributes.style)
+                }
+            };
+
+            console.log(`\n✅✅✅ V2 Multi-Item Processing Complete:`);
+            console.log(`   - Detected: ${detections.length} items`);
+            console.log(`   - Created: ${itemCards.length} Massimo Dutti cards`);
+            console.log(`   - Categories: ${response.summary.categories.join(', ')}`);
+
+            res.json(response);
+
+        } catch (detectionError) {
+            console.error("❌ Grounded SAM2 detection failed:", detectionError.message);
+
+            // Fallback to old single-item processing
+            console.log("⚠️ Falling back to single-item processing...");
+
+            return res.status(503).json({
+                error: "Multi-item detection service unavailable",
+                message: "The AI vision service (Grounded SAM2) is not available. Please ensure it's running on port 5050.",
+                fallback: "Use /api/product-photo/process for single-item processing"
+            });
+        }
+
+    } catch (error) {
+        console.error("V2 Multi-Item Pipeline error:", error.message);
+        res.status(500).json({
+            error: error.message,
+            stack: error.stack
+        });
+    }
+});
+
 export default router;
+

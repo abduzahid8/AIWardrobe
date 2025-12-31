@@ -21,6 +21,10 @@ class FrameScore:
     centering: float
     brightness: float
     total_score: float
+    # 🚀 NEW: Advanced metrics
+    stillness: float = 0.0           # Optical flow stillness (0-1, higher = more still)
+    semantic_relevance: float = 0.0   # CLIP similarity to fashion prompts (0-1)
+    spectral_sharpness: float = 0.0   # FFT-based texture-invariant sharpness
     
 
 class KeyframeSelector:
@@ -61,7 +65,12 @@ class KeyframeSelector:
     
     def detect_motion_blur(self, image: np.ndarray) -> float:
         """
-        Detect motion blur using FFT analysis.
+        🎯 ENHANCED: Spectral blur detection using FFT magnitude analysis.
+        
+        Uses adaptive thresholding based on texture complexity to avoid
+        false positives on soft fabrics (silk, cashmere) and false negatives
+        on high-contrast patterns (houndstooth, plaid).
+        
         Returns blur score (higher = more blur, which is bad).
         """
         if len(image.shape) == 3:
@@ -69,32 +78,173 @@ class KeyframeSelector:
         else:
             gray = image
         
-        # Apply FFT
-        f = np.fft.fft2(gray)
-        fshift = np.fft.fftshift(f)
-        magnitude = np.abs(fshift)
+        # Compute 2D FFT and shift zero frequency to center
+        fft = np.fft.fft2(gray)
+        fft_shift = np.fft.fftshift(fft)
+        magnitude = np.log1p(np.abs(fft_shift))
         
-        # Calculate ratio of high to low frequencies
-        rows, cols = gray.shape
-        crow, ccol = rows // 2, cols // 2
+        h, w = magnitude.shape
         
-        # High frequency region (outer ring)
-        outer_radius = min(rows, cols) // 4
-        inner_radius = outer_radius // 2
+        # Create radial frequency bins
+        y, x = np.ogrid[:h, :w]
+        center_y, center_x = h // 2, w // 2
+        r = np.sqrt((x - center_x)**2 + (y - center_y)**2)
+        r_max = np.sqrt(center_x**2 + center_y**2)
         
-        high_freq = magnitude[crow-outer_radius:crow+outer_radius, 
-                              ccol-outer_radius:ccol+outer_radius].mean()
-        low_freq = magnitude[crow-inner_radius:crow+inner_radius,
-                             ccol-inner_radius:ccol+inner_radius].mean()
+        # Top 15% frequencies (high-frequency band) - edge definition
+        high_freq_mask = r > (0.85 * r_max)
+        high_freq_energy = np.mean(magnitude[high_freq_mask]) if np.any(high_freq_mask) else 0
         
-        if low_freq == 0:
-            return 0.5
+        # Mid frequencies (texture band) - fabric patterns
+        mid_freq_mask = (r > 0.3 * r_max) & (r < 0.7 * r_max)
+        mid_freq_energy = np.mean(magnitude[mid_freq_mask]) if np.any(mid_freq_mask) else 1
         
-        # Lower ratio = more blur
-        blur_ratio = high_freq / low_freq
-        blur_score = 1.0 - min(blur_ratio / 0.1, 1.0)
+        # Low frequencies (overall structure)
+        low_freq_mask = r < 0.2 * r_max
+        low_freq_energy = np.mean(magnitude[low_freq_mask]) if np.any(low_freq_mask) else 1
         
-        return blur_score
+        # Adaptive threshold based on texture complexity
+        # High mid-freq energy suggests complex texture (good), not blur
+        texture_complexity = mid_freq_energy / (low_freq_energy + 1e-10)
+        
+        # Sharp images have high-frequency content
+        # Blurry images act as low-pass filters, attenuating high frequencies
+        blur_ratio = high_freq_energy / (mid_freq_energy + 1e-10)
+        
+        # Adaptive threshold: complex textures get more lenient blur threshold
+        adaptive_threshold = max(0.1, 0.05 * texture_complexity)
+        
+        # Blur score: low high-freq energy = blurry
+        blur_score = max(0, 1.0 - (blur_ratio / adaptive_threshold))
+        
+        return min(1.0, blur_score)
+    
+    def calculate_spectral_sharpness(self, image: np.ndarray) -> float:
+        """
+        🆕 Calculate texture-invariant sharpness using FFT spectral analysis.
+        
+        Unlike Laplacian variance (which confuses contrast with sharpness),
+        this method analyzes the magnitude spectrum to detect true focus.
+        
+        Returns sharpness score (0-1, higher = sharper).
+        """
+        if len(image.shape) == 3:
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        else:
+            gray = image
+        
+        # Compute 2D FFT
+        fft = np.fft.fft2(gray)
+        fft_shift = np.fft.fftshift(fft)
+        magnitude = np.log1p(np.abs(fft_shift))
+        
+        h, w = magnitude.shape
+        center_y, center_x = h // 2, w // 2
+        
+        # Calculate radial distance from center
+        y, x = np.ogrid[:h, :w]
+        r = np.sqrt((x - center_x)**2 + (y - center_y)**2)
+        r_max = np.sqrt(center_x**2 + center_y**2)
+        
+        # Weighted average emphasizing high frequencies
+        # Sharp images have more energy in high-frequency bands
+        weights = r / r_max  # Higher weight for outer (high-freq) regions
+        weighted_magnitude = magnitude * weights
+        
+        # Normalize by total magnitude to get relative high-freq content
+        total_mag = np.sum(magnitude) + 1e-10
+        weighted_sum = np.sum(weighted_magnitude)
+        
+        # Spectral sharpness score
+        sharpness = weighted_sum / total_mag
+        
+        # Normalize to 0-1 range (empirically tuned)
+        normalized_sharpness = min(1.0, sharpness / 0.5)
+        
+        return normalized_sharpness
+    
+    def calculate_optical_flow_stillness(
+        self, 
+        prev_frame: np.ndarray, 
+        curr_frame: np.ndarray
+    ) -> float:
+        """
+        🆕 Calculate motion magnitude using Farneback optical flow.
+        
+        Detects the "pose" moments in fashion videos where the subject
+        is still and the garment is displayed optimally.
+        
+        Returns stillness score (0-1, higher = more still = better for fashion).
+        """
+        # Convert to grayscale
+        if len(prev_frame.shape) == 3:
+            prev_gray = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)
+        else:
+            prev_gray = prev_frame
+            
+        if len(curr_frame.shape) == 3:
+            curr_gray = cv2.cvtColor(curr_frame, cv2.COLOR_BGR2GRAY)
+        else:
+            curr_gray = curr_frame
+        
+        # Calculate dense optical flow using Farneback method
+        flow = cv2.calcOpticalFlowFarneback(
+            prev_gray, curr_gray, None,
+            pyr_scale=0.5,    # Image pyramid scale
+            levels=3,         # Number of pyramid levels
+            winsize=15,       # Window size
+            iterations=3,     # Iterations per level
+            poly_n=5,         # Polynomial expansion neighborhood
+            poly_sigma=1.2,   # Gaussian std for polynomial expansion
+            flags=0
+        )
+        
+        # Calculate motion magnitude
+        magnitude = np.sqrt(flow[..., 0]**2 + flow[..., 1]**2)
+        avg_motion = np.mean(magnitude)
+        
+        # Stillness = inverse of motion (normalize to 0-1)
+        # max_expected_motion is typical movement in pixels per frame
+        max_expected_motion = 20.0
+        stillness = max(0, 1.0 - (avg_motion / max_expected_motion))
+        
+        return min(1.0, stillness)
+    
+    def calculate_brenner_gradient(self, image: np.ndarray) -> float:
+        """
+        🆕 Brenner Gradient: Fast alternative to FFT for real-time sharpness.
+        
+        Computes squared difference between pixels 2 apart.
+        More stable than Laplacian, especially for fashion textiles.
+        
+        Returns sharpness score (0-1, higher = sharper).
+        """
+        if len(image.shape) == 3:
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        else:
+            gray = image.copy()
+        
+        gray = gray.astype(np.float64)
+        
+        # Horizontal Brenner gradient
+        h_diff = gray[:, 2:] - gray[:, :-2]
+        h_focus = np.sum(h_diff ** 2)
+        
+        # Vertical Brenner gradient  
+        v_diff = gray[2:, :] - gray[:-2, :]
+        v_focus = np.sum(v_diff ** 2)
+        
+        # Combined focus measure
+        total_focus = h_focus + v_focus
+        
+        # Normalize by image size
+        pixels = gray.shape[0] * gray.shape[1]
+        normalized_focus = total_focus / pixels
+        
+        # Scale to 0-1 (empirically tuned)
+        sharpness = min(1.0, normalized_focus / 5000.0)
+        
+        return sharpness
     
     def calculate_centering(self, image: np.ndarray) -> float:
         """

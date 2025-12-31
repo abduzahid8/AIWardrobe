@@ -27,9 +27,13 @@ export type RootStackParamList = {
 
     // AI screens
     AIChat: undefined;
+    AIAssistant: { initialMessage?: string };
     AIOutfit: undefined;
+    AIOutfitmaker: undefined;
     AITryOn: undefined;
     ScanWardrobe: undefined;
+    WardrobeVideo: undefined;
+    WardrobeStats: undefined;
 };
 
 export type TabParamList = {
