@@ -35,3 +35,16 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+
+# AI Data & Weights
+alicevision-service/weights/
+alicevision-service/datasets/
+
+# Training Artifacts
+alicevision-service/training/datasets/
+alicevision-service/training/runs/

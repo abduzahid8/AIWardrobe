@@ -11,7 +11,7 @@ import React, { useState } from "react";
 import { useNavigation } from "@react-navigation/native";
 import useAuthStore from "../store/auth";
 import { useTranslation } from "react-i18next";
-export const API_URL = "https://aiwardrobe-ivh4.onrender.com";
+export const API_URL = "http://172.20.10.5:3000";
 
 const SignInScreen = () => {
   const navigation = useNavigation();

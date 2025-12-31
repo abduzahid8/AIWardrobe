@@ -23,7 +23,8 @@ import { mpants, mshirts, pants, shoes, skirts, tops } from "../images";
 import { useTranslation } from "react-i18next";
 import LanguageSelector from "../components/LanguageSelector";
 import StyleSelector from "../components/StyleSelector";
-import { ChipButton, IconButton } from "../components/AnimatedButton";
+import { ChipButton } from "../components/AnimatedButton";
+import { TahoeIconButton, TahoeChip } from "../components/TahoeButton";
 import { colors, shadows, spacing, animations } from "../src/theme";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Animated, {
@@ -436,17 +437,20 @@ const ProfileScreen = () => {
             <Text style={styles.username}>{username}</Text>
             <View style={styles.headerActions}>
               <LanguageSelector />
-              <IconButton
+              <TahoeIconButton
                 icon="videocam-outline"
                 onPress={() => (navigation as any).navigate('WardrobeVideo')}
+                variant="glass"
               />
-              <IconButton
+              <TahoeIconButton
                 icon="sparkles-outline"
                 onPress={() => (navigation as any).navigate('AIOutfit')}
+                variant="glass"
               />
-              <IconButton
+              <TahoeIconButton
                 icon="settings-outline"
                 onPress={() => setShowSettings(true)}
+                variant="glass"
               />
             </View>
           </View>
@@ -709,6 +713,54 @@ const ProfileScreen = () => {
                 <TouchableOpacity onPress={() => setShowSettings(false)}>
                   <Ionicons name="close" size={24} color={colors.text.primary} />
                 </TouchableOpacity>
+              </View>
+
+              {/* New Features Section */}
+              <View style={styles.settingsSection}>
+                <Text style={styles.settingsSectionTitle}>✨ New Features</Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.settingsItem}
+                onPress={() => {
+                  setShowSettings(false);
+                  (navigation as any).navigate('TripPlanner');
+                }}
+              >
+                <Ionicons name="airplane-outline" size={22} color={colors.text.primary} />
+                <Text style={styles.settingsItemText}>Plan a Trip</Text>
+                <Ionicons name="chevron-forward" size={20} color={colors.text.secondary} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.settingsItem}
+                onPress={() => {
+                  setShowSettings(false);
+                  (navigation as any).navigate('WardrobeAnalytics');
+                }}
+              >
+                <Ionicons name="stats-chart-outline" size={22} color={colors.text.primary} />
+                <Text style={styles.settingsItemText}>Wardrobe Analytics</Text>
+                <Ionicons name="chevron-forward" size={20} color={colors.text.secondary} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.settingsItem}
+                onPress={() => {
+                  setShowSettings(false);
+                  (navigation as any).navigate('EmailOnboarding');
+                }}
+              >
+                <Ionicons name="mail-outline" size={22} color={colors.text.primary} />
+                <Text style={styles.settingsItemText}>Connect Email (Auto-Import)</Text>
+                <Ionicons name="chevron-forward" size={20} color={colors.text.secondary} />
+              </TouchableOpacity>
+
+              <View style={styles.settingsDivider} />
+
+              {/* General Settings */}
+              <View style={styles.settingsSection}>
+                <Text style={styles.settingsSectionTitle}>General</Text>
               </View>
 
               <TouchableOpacity style={styles.settingsItem} onPress={handleEditProfile}>
@@ -1128,7 +1180,19 @@ const styles = StyleSheet.create({
   },
   settingsDivider: {
     height: 8,
-    backgroundColor: colors.background,
+    backgroundColor: colors.border,
+  },
+  settingsSection: {
+    paddingHorizontal: spacing.l,
+    paddingTop: spacing.m,
+    paddingBottom: spacing.xs,
+  },
+  settingsSectionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   logoutButton: {
     flexDirection: 'row',

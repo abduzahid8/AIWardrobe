@@ -3,7 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const TRIAL_COUNT_KEY = "trial_count";
 const TRIAL_FIRST_LAUNCH_KEY = "trial_first_launch";
-const MAX_TRIAL_COUNT = 3;
+const MAX_TRIAL_COUNT = 5; // 5 free uses before paywall
 
 interface TrialState {
     trialCount: number;

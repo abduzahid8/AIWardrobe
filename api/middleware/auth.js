@@ -3,12 +3,20 @@ import "dotenv/config";
 
 /**
  * JWT Secret from environment variable
- * CRITICAL: Set JWT_SECRET in production for security!
+ * CRITICAL: Must be set in production with a strong secret!
  */
-const JWT_SECRET = process.env.JWT_SECRET || 'aiwardrobe-dev-secret-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
 
-if (!process.env.JWT_SECRET) {
-    console.warn("⚠️ WARNING: JWT_SECRET not set, using default. Set this in production!");
+if (!JWT_SECRET) {
+    console.error("❌ FATAL: JWT_SECRET environment variable is not set!");
+    console.error("   Generate one with: openssl rand -hex 32");
+    process.exit(1);
+}
+
+if (JWT_SECRET.length < 32) {
+    console.error("❌ FATAL: JWT_SECRET must be at least 32 characters for security!");
+    console.error("   Generate one with: openssl rand -hex 32");
+    process.exit(1);
 }
 
 /**
@@ -31,7 +39,7 @@ export const authenticateToken = (req, res, next) => {
         });
     }
 
-    jwt.verify(token, JWT_SECRET || 'fallback-dev-secret', (err, decoded) => {
+    jwt.verify(token, JWT_SECRET, (err, decoded) => {
         if (err) {
             if (err.name === 'TokenExpiredError') {
                 return res.status(401).json({
@@ -62,7 +70,7 @@ export const optionalAuth = (req, res, next) => {
         return next();
     }
 
-    jwt.verify(token, JWT_SECRET || 'fallback-dev-secret', (err, decoded) => {
+    jwt.verify(token, JWT_SECRET, (err, decoded) => {
         req.user = err ? null : decoded;
         next();
     });

@@ -8,6 +8,8 @@ const ClothingItemSchema = new mongoose.Schema({
     index: true,
   },
 
+  sourceMetadata: mongoose.Schema.Types.Mixed, // Added sourceMetadata field
+
   // Basic Info
   type: { type: String, required: true },  // e.g., "Shirt", "Jeans"
   category: {
@@ -48,9 +50,9 @@ const ClothingItemSchema = new mongoose.Schema({
   purchaseDate: { type: Date },
   purchaseLocation: { type: String, default: '' },
 
-  // Wear Tracking
+  // Wear Tracking for analytics
   wearCount: { type: Number, default: 0 },
-  lastWorn: { type: Date },
+  lastWornDate: { type: Date }, // Renamed from lastWorn to lastWornDate
 
   // Computed field (updated on each wear)
   costPerWear: { type: Number, default: 0 },
@@ -77,18 +79,24 @@ const ClothingItemSchema = new mongoose.Schema({
 ClothingItemSchema.index({ userId: 1, category: 1 });
 ClothingItemSchema.index({ userId: 1, isFavorite: 1 });
 ClothingItemSchema.index({ userId: 1, wearCount: 1 });
-ClothingItemSchema.index({ userId: 1, lastWorn: 1 });
+ClothingItemSchema.index({ userId: 1, lastWornDate: 1 }); // Updated index to lastWornDate
 
-// Virtual for calculating cost per wear
+// Virtual field for cost-per-wear calculation
 ClothingItemSchema.virtual('calculatedCostPerWear').get(function () {
   if (this.wearCount === 0 || !this.price) return null;
+  return (this.price / this.wearCount).toFixed(2);
+});
+
+// Virtual field for cost-per-wear calculation (as requested by instruction)
+ClothingItemSchema.virtual('costPerWearVirtual').get(function () {
+  if (!this.price || this.wearCount === 0) return null;
   return (this.price / this.wearCount).toFixed(2);
 });
 
 // Method to log a wear
 ClothingItemSchema.methods.logWear = async function () {
   this.wearCount += 1;
-  this.lastWorn = new Date();
+  this.lastWornDate = new Date(); // Updated to lastWornDate
   if (this.price > 0) {
     this.costPerWear = parseFloat((this.price / this.wearCount).toFixed(2));
   }
@@ -138,5 +146,5 @@ ClothingItemSchema.statics.getStats = async function (userId) {
   };
 };
 
-const ClothingItem = mongoose.model("ClothingItem", ClothingItemSchema);
+const ClothingItem = mongoose.model("ClothingItem", ClothingItemSchema, "clothingitems"); // Changed collection name
 export default ClothingItem;

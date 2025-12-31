@@ -17,7 +17,7 @@ const useAuthStore = create((set) => ({
     try {
       const token = await AsyncStorage.getItem("userToken");
       if (token) {
-        set({ token, isAuthenticated: true });
+        set({ token, isAuthenticated: true, isTrialMode: false }); // Turn off trial mode for authenticated users
         await useAuthStore.getState().fetchUser()
       }
     } catch (err) {
@@ -38,7 +38,7 @@ const useAuthStore = create((set) => ({
       console.log("data", response.data)
       const { token } = response.data;
       await AsyncStorage.setItem("userToken", token);
-      set({ token, loading: false, isAuthenticated: true });
+      set({ token, loading: false, isAuthenticated: true, isTrialMode: false }); // Turn off trial mode
       await useAuthStore.getState().fetchUser()
     } catch (error) {
       set({ error: error.response.data.error });
@@ -55,7 +55,7 @@ const useAuthStore = create((set) => ({
       const { token } = response.data;
       console.log("token", response.data)
       await AsyncStorage.setItem("userToken", token);
-      set({ token, loading: false, isAuthenticated: true });
+      set({ token, loading: false, isAuthenticated: true, isTrialMode: false }); // Turn off trial mode
       await useAuthStore.getState().fetchUser()
     } catch (err) {
       set({ error: err.response.data.error });

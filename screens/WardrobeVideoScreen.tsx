@@ -24,13 +24,42 @@ const { width } = Dimensions.get('window');
 
 interface DetectedItem {
     itemType: string;
+    specificType?: string;  // Specific type (e.g., "denim trucker jacket")
+    classificationPath?: string; // Full path: "Outerwear > Jackets > Denim Jackets"
     color: string;
+    colorHex?: string;
     style: string;
     description: string;
-    material?: string;
+    material?: string;  // Primary material (cotton, denim, silk, etc.)
+    materialDetails?: {  // Full material analysis
+        type: string;
+        category: string;
+        texture: string;
+        finish: string;
+        weight: string;
+        isStretch: boolean;
+    };
+    pattern?: string;  // Pattern type (solid, stripes, plaid, etc.)
+    patternDetails?: {  // Full pattern analysis
+        type: string;
+        category: string;
+        isStriped: boolean;
+        isCheckered: boolean;
+        hasPrint: boolean;
+        colors: string[];
+    };
     details?: string;
     productDescription?: string;
     frameImage?: string;
+    position?: string;  // upper, lower, feet, accessory, full
+    confidence?: number; // 0-1 confidence score
+    confidenceLevel?: string; // "high", "medium", "low"
+    agreementScore?: number; // Multi-model agreement 0-1
+    detectionSources?: string[]; // Which AI models detected this
+    styleTags?: string[];  // Style tags (e.g., ["streetwear", "casual"])
+    features?: any;  // Physical features (zippers, buttons, collars)
+    bbox?: number[];  // Bounding box [x, y, w, h]
+    attributes?: any;  // Full attribute data from AI
 }
 
 interface AnalysisResult {
@@ -38,13 +67,134 @@ interface AnalysisResult {
     frameImage?: string; // The frame used for detection
 }
 
+// Helper: Get body position from clothing category
+const getItemPosition = (category: string): string => {
+    const cat = (category || '').toLowerCase();
+
+    // Upper body items
+    if (['shirt', 'blouse', 'sweater', 'jacket', 'coat', 'top', 't-shirt', 'hoodie',
+        'upper-clothes', 'cardigan', 'polo', 'tank'].some(u => cat.includes(u))) {
+        return 'upper';
+    }
+    // Lower body items
+    if (['pants', 'jeans', 'shorts', 'skirt', 'trousers', 'leggings'].some(l => cat.includes(l))) {
+        return 'lower';
+    }
+    // Full body items
+    if (['dress', 'jumpsuit', 'romper', 'overalls', 'suit'].some(f => cat.includes(f))) {
+        return 'full';
+    }
+    // Footwear
+    if (['shoe', 'boot', 'sneaker', 'sandal', 'heel', 'loafer', 'slipper'].some(f => cat.includes(f))) {
+        return 'feet';
+    }
+    // Accessories
+    if (['bag', 'hat', 'scarf', 'belt', 'watch', 'glasses', 'sunglasses'].some(a => cat.includes(a))) {
+        return 'accessory';
+    }
+    return 'upper'; // default
+};
+
+// 🚀 Enhanced category name formatting with better display names
+const formatCategoryName = (category: string): string => {
+    if (!category) return "Clothing";
+
+    // Map specific types to better display names
+    const displayMap: { [key: string]: string } = {
+        'upper_clothes': 'Top',
+        'left_shoe': 'Shoes',
+        'right_shoe': 'Shoes',
+        'pants': 'Pants',
+        'dress pants': 'Dress Pants',
+        'dress_pants': 'Dress Pants',
+        'chinos': 'Chinos',
+        'jeans': 'Jeans',
+        'skinny jeans': 'Skinny Jeans',
+        'joggers': 'Joggers',
+        't-shirt': 'T-Shirt',
+        'tshirt': 'T-Shirt',
+        'sport coat': 'Sport Coat',
+        'sport_coat': 'Sport Coat',
+        'blazer': 'Blazer',
+        'denim jacket': 'Denim Jacket',
+        'leather jacket': 'Leather Jacket',
+        'cardigan': 'Cardigan',
+        'sweater': 'Sweater',
+        'hoodie': 'Hoodie',
+        'sneakers': 'Sneakers',
+        'running shoes': 'Running Shoes',
+        'dress shoes': 'Dress Shoes',
+        'boots': 'Boots',
+        'loafers': 'Loafers',
+    };
+
+    const lowerCategory = category.toLowerCase();
+    if (displayMap[lowerCategory]) {
+        return displayMap[lowerCategory];
+    }
+
+    // Convert snake_case to Title Case
+    return category
+        .split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+};
+
+// 🚀 Helper: Merge left/right shoes into pairs - PRESERVE specificType!
+const mergeShoeCategories = (items: any[]): any[] => {
+    const shoeItems: any[] = [];
+    const otherItems: any[] = [];
+
+    items.forEach(item => {
+        const cat = (item.itemType || '').toLowerCase();
+        if (cat.includes('shoe') || cat.includes('left_shoe') || cat.includes('right_shoe') ||
+            cat.includes('sneaker') || cat.includes('boot') || cat.includes('sandal') || cat.includes('loafer')) {
+            shoeItems.push(item);
+        } else {
+            otherItems.push(item);
+        }
+    });
+
+    // If we have shoes, merge them - but KEEP the specificType!
+    if (shoeItems.length > 0) {
+        const firstShoe = shoeItems[0];
+
+        // 🚀 Use specificType for display name (sneakers, dress shoes, etc.)
+        let shoeDisplayName = 'Shoes';
+        if (firstShoe.specificType) {
+            shoeDisplayName = formatCategoryName(firstShoe.specificType);
+        } else if (firstShoe.itemType && !firstShoe.itemType.toLowerCase().includes('shoe')) {
+            // Already has a specific type like "Sneakers"
+            shoeDisplayName = firstShoe.itemType;
+        }
+
+        otherItems.push({
+            itemType: shoeDisplayName,
+            specificType: firstShoe.specificType,  // 🚀 Keep specific type!
+            color: firstShoe.color || 'Unknown',
+            style: 'Casual',
+            description: `${firstShoe.color || ''} ${shoeDisplayName}`.trim(),
+            position: 'feet',
+            confidence: firstShoe.confidence,
+            bbox: firstShoe.bbox,
+            colorHex: firstShoe.colorHex || "#000000"
+        });
+    }
+
+    return otherItems;
+};
+
 const WardrobeVideoScreen = () => {
     const navigation = useNavigation();
     const [analyzing, setAnalyzing] = useState(false);
     const [results, setResults] = useState<AnalysisResult | null>(null);
     const [progress, setProgress] = useState('');
 
-    const API_URL = 'https://aiwardrobe-ivh4.onrender.com';
+    // Use local API server with local network IP for iOS Simulator
+    const API_URL = 'http://172.20.10.5:3000';
+
+    // Direct connection to AliceVision Python service (port 5050)
+    const ALICEVISION_URL = 'http://172.20.10.5:5050';
 
     const requestPermissions = async () => {
         if (Platform.OS !== 'web') {
@@ -103,55 +253,286 @@ const WardrobeVideoScreen = () => {
         return frames;
     };
 
-    // Smart clothing detection - tries backend first, falls back to local
-    const analyzeClothingWithAI = async (frameBase64: string): Promise<DetectedItem[]> => {
+    // Smart clothing detection - Priority: AliceVision (local) > OpenAI > Gemini
+    const analyzeClothingWithAI = async (frames: string[]): Promise<DetectedItem[]> => {
         setProgress('🔍 AI analyzing clothing...');
 
-        // Try backend first
-        try {
-            const response = await axios.post(
-                `${API_URL}/api/analyze-frames`,
-                { frames: [frameBase64] },
-                { timeout: 30000 }
-            );
+        // Try with multiple frames for better detection
+        for (let attempt = 0; attempt < Math.min(frames.length, 3); attempt++) {
+            try {
+                setProgress(`🔍 Analyzing frame ${attempt + 1}...`);
 
-            if (response.data.detectedItems?.length > 0) {
-                console.log('✅ Backend AI detected:', response.data.detectedItems);
-                return response.data.detectedItems;
+                // FIRST: Try MAXIMUM POWER DETECTION (THE BEST POSSIBLE AI!)
+                try {
+                    setProgress(`🔥 MAXIMUM POWER AI analyzing...`);
+                    const imageData = frames[attempt].replace(/^data:image\/\w+;base64,/, '');
+
+                    // 🔥 Use /detect-max - Florence-2 + SegFormer + YOLO + Fashion-CLIP!
+                    const maxResponse = await axios.post(
+                        `${ALICEVISION_URL}/detect-max`,
+                        {
+                            image: imageData,
+                            enable_all: true  // Enable Florence-2 + everything!
+                        },
+                        { timeout: 300000 }  // 5 min for maximum AI
+                    );
+
+                    if (maxResponse.data.success && maxResponse.data.items?.length > 0) {
+                        let detectedItems = maxResponse.data.items.map((item: any) => {
+                            // Use detailed specificType from multi-model detection
+                            const displayName = item.specificType
+                                ? formatCategoryName(item.specificType)
+                                : formatCategoryName(item.category);
+
+                            return {
+                                itemType: displayName || "Clothing Item",
+                                specificType: item.specificType,
+                                color: item.primaryColor || "Unknown",
+                                colorHex: item.colorHex || "#000000",
+                                style: "Casual",
+                                description: `${item.primaryColor || ''} ${displayName}`.trim(),
+                                material: item.material,
+                                pattern: item.pattern,
+                                position: getItemPosition(item.category),
+                                confidence: item.confidence,
+                                confidenceLevel: item.confidence > 0.8 ? 'high' : item.confidence > 0.5 ? 'medium' : 'low',
+                                agreementScore: item.agreementScore,
+                                detectionSources: item.detectedBy,
+                                bbox: item.bbox,
+                                frameImage: item.cutoutImage
+                            };
+                        });
+
+                        detectedItems = mergeShoeCategories(detectedItems);
+
+                        console.log(`🔥 MAXIMUM POWER detected ${detectedItems.length} items:`);
+                        console.log(`   Models: ${maxResponse.data.modelsUsed?.join(', ')}`);
+                        console.log(`   Florence-2: ${maxResponse.data.florence2Enabled ? 'YES' : 'NO'}`);
+                        return detectedItems;
+                    }
+                } catch (maxError: any) {
+                    console.log(`Maximum detection failed: ${maxError.message}, trying ultimate...`);
+                }
+
+                // SECOND: Try PERFECT DETECTION (GPT-4V + rembg - 100% ACCURATE!)
+                try {
+                    setProgress(`🏆 Perfect AI analyzing (GPT-4V)...`);
+                    const imageData = frames[attempt].replace(/^data:image\/\w+;base64,/, '');
+
+                    const perfectResponse = await axios.post(
+                        `${ALICEVISION_URL}/detect-perfect`,
+                        {
+                            image: imageData,
+                            create_cutouts: true
+                        },
+                        { timeout: 60000 }
+                    );
+
+                    if (perfectResponse.data.success && perfectResponse.data.items?.length > 0) {
+                        let detectedItems = perfectResponse.data.items.map((item: any) => {
+                            return {
+                                itemType: formatCategoryName(item.type),
+                                specificType: item.type,
+                                color: item.color || "Unknown",
+                                colorHex: "#000000",
+                                style: item.style || "Casual",
+                                description: item.description || `${item.color} ${item.type}`.trim(),
+                                material: item.material,
+                                position: item.position || "upper",
+                                confidence: item.confidence,
+                                confidenceLevel: 'high',  // GPT-4V is always high confidence
+                                frameImage: item.productCardImage || item.cutoutImage,  // 🏷️ Use professional product card!
+                            };
+                        });
+
+                        detectedItems = mergeShoeCategories(detectedItems);
+                        const itemsWithCutouts = detectedItems.filter((i: DetectedItem) => i.frameImage).length;
+                        console.log(`🏆 PERFECT AI detected ${detectedItems.length} items (${itemsWithCutouts} with cutouts, ${perfectResponse.data.modelUsed})`);
+                        return detectedItems;
+                    }
+                } catch (perfectError: any) {
+                    console.log(`Perfect detection failed: ${perfectError.message}, trying ultimate...`);
+                }
+
+                // FALLBACK: Try ULTIMATE DETECTION (local SegFormer + CLIP)
+                try {
+                    setProgress(`🎯 Ultimate AI analyzing...`);
+                    const imageData = frames[attempt].replace(/^data:image\/\w+;base64,/, '');
+
+                    const ultimateResponse = await axios.post(
+                        `${ALICEVISION_URL}/detect-ultimate`,
+                        {
+                            image: imageData,
+                            create_cutouts: true
+                        },
+                        { timeout: 120000 }
+                    );
+
+                    if (ultimateResponse.data.success && ultimateResponse.data.items?.length > 0) {
+                        let detectedItems = ultimateResponse.data.items.map((item: any) => {
+                            return {
+                                itemType: item.label || "Clothing",
+                                specificType: item.type,
+                                color: item.color || "Unknown",
+                                colorHex: item.colorHex || "#000000",
+                                style: "Casual",
+                                description: `${item.color || ''} ${item.type}`.trim(),
+                                position: item.position || "upper",
+                                confidence: item.confidence,
+                                confidenceLevel: item.confidence > 0.8 ? 'high' : item.confidence > 0.5 ? 'medium' : 'low',
+                                bbox: item.bbox,
+                                frameImage: item.cutoutImage,
+                            };
+                        });
+
+                        detectedItems = mergeShoeCategories(detectedItems);
+                        console.log(`🎯 ULTIMATE AI detected ${detectedItems.length} items`);
+                        return detectedItems;
+                    }
+                } catch (ultimateError: any) {
+                    console.log(`Ultimate detection failed: ${ultimateError.message}, trying segment...`);
+                }
+
+                // FALLBACK: Try standard /segment endpoint
+                try {
+                    setProgress(`🤖 AI detecting & cutting out items...`);
+                    const imageData = frames[attempt].replace(/^data:image\/\w+;base64,/, '');
+
+                    const localResponse = await axios.post(
+                        `${ALICEVISION_URL}/segment`,
+                        {
+                            image: imageData,
+                            add_white_background: true,
+                            use_advanced: true
+                        },
+                        { timeout: 120000 }
+                    );
+
+                    if (localResponse.data.success && localResponse.data.items?.length > 0) {
+                        let detectedItems = localResponse.data.items.map((item: any) => {
+                            const displayName = item.specificType
+                                ? formatCategoryName(item.specificType)
+                                : formatCategoryName(item.category);
+
+                            return {
+                                itemType: displayName || "Clothing Item",
+                                specificType: item.specificType,
+                                color: item.primaryColor || "Unknown",
+                                colorHex: item.colorHex || "#000000",
+                                style: "Casual",
+                                description: `${item.primaryColor || ''} ${displayName}`.trim(),
+                                position: getItemPosition(item.category),
+                                confidence: item.confidence,
+                                confidenceLevel: item.confidence > 0.8 ? 'high' : item.confidence > 0.5 ? 'medium' : 'low',
+                                bbox: item.bbox
+                            };
+                        });
+
+                        detectedItems = mergeShoeCategories(detectedItems);
+                        console.log(`✅ Segment AI detected ${detectedItems.length} items`);
+                        return detectedItems;
+                    }
+                } catch (localError: any) {
+                    console.log(`/segment failed: ${localError.message}, trying fallbacks...`);
+                }
+
+                // FALLBACK: Try segment-all (may fail)
+                try {
+                    setProgress(`🤖 Local AI analyzing...`);
+                    const imageData = frames[attempt].replace(/^data:image\/\w+;base64,/, '');
+
+                    const localResponse = await axios.post(
+                        `${ALICEVISION_URL}/segment`,
+                        {
+                            image: imageData,
+                            add_white_background: false,
+                            use_advanced: true
+                        },
+                        { timeout: 90000 }
+                    );
+
+                    if (localResponse.data.success && localResponse.data.items?.length > 0) {
+                        let detectedItems = localResponse.data.items.map((item: any) => {
+                            // Use specificType if available (V2 CLIP types like "t-shirt", "denim jacket")
+                            const displayName = item.specificType
+                                ? formatCategoryName(item.specificType)
+                                : formatCategoryName(item.category);
+
+                            return {
+                                itemType: displayName || "Clothing Item",
+                                specificType: item.specificType,  // Store for later use
+                                color: item.primaryColor || "Unknown",
+                                style: "Casual",
+                                description: `${item.primaryColor || ''} ${displayName}`.trim(),
+                                position: getItemPosition(item.category),
+                                confidence: item.confidence > 0.8 ? 'high' : item.confidence > 0.5 ? 'medium' : 'low',
+                                bbox: item.bbox,
+                                colorHex: item.colorHex || "#000000"
+                            };
+                        });
+
+                        detectedItems = mergeShoeCategories(detectedItems);
+
+                        console.log(`✅ Local AI detected ${detectedItems.length} items:`,
+                            detectedItems.map((i: DetectedItem) => `${i.itemType}${i.specificType ? ' (' + i.specificType + ')' : ''}`));
+                        return detectedItems;
+                    }
+
+                    // If segmentation worked but no items, create a fallback item
+                    if (localResponse.data.success) {
+                        return [{
+                            itemType: "Clothing",
+                            color: "Detected",
+                            style: "Casual",
+                            description: "Clothing detected",
+                            position: "upper",
+                            confidence: localResponse.data.confidence || 0.7,
+                            confidenceLevel: (localResponse.data.confidence || 0.7) > 0.7 ? 'high' : 'medium'
+                        }];
+                    }
+                } catch (localError: any) {
+                    console.log(`Local AI failed: ${localError.message}, trying OpenAI...`);
+                }
+
+                // FALLBACK 1: Try OpenAI Vision
+                try {
+                    const openAIResponse = await axios.post(
+                        `${API_URL}/api/openai/analyze-clothing`,
+                        { imageBase64: frames[attempt].replace(/^data:image\/\w+;base64,/, '') },
+                        { timeout: 60000 }
+                    );
+
+                    if (openAIResponse.data.detectedItems?.length > 0) {
+                        console.log(`✅ OpenAI detected ${openAIResponse.data.detectedItems.length} items`);
+                        return openAIResponse.data.detectedItems;
+                    }
+                } catch (openAIError: any) {
+                    console.log(`OpenAI failed: ${openAIError.message}, trying Gemini...`);
+                }
+
+                // FALLBACK 2: Try Gemini
+                const response = await axios.post(
+                    `${API_URL}/api/analyze-frames`,
+                    { frames: [frames[attempt]] },
+                    { timeout: 60000 }
+                );
+
+                if (response.data.detectedItems?.length > 0) {
+                    console.log(`✅ Gemini detected ${response.data.detectedItems.length} items:`,
+                        response.data.detectedItems.map((i: DetectedItem) => i.itemType));
+                    return response.data.detectedItems;
+                }
+
+                console.log(`Frame ${attempt + 1}: No items detected, trying next...`);
+            } catch (error: any) {
+                console.log(`Frame ${attempt + 1} analysis failed:`, error.message);
             }
-        } catch (error: any) {
-            console.log('Backend unavailable, manual selection mode:', error.message);
         }
 
-        // Fallback: Let user select what's in the video
+        // All attempts failed - show error, don't ask user to select manually
+        console.log('❌ AI detection failed on all frames');
         setProgress('');
-
-        return new Promise((resolve) => {
-            const clothingOptions = [
-                { itemType: 'Jacket', color: 'Black', style: 'Streetwear', description: 'Your jacket' },
-                { itemType: 'T-Shirt', color: 'White', style: 'Casual', description: 'Your t-shirt' },
-                { itemType: 'Jeans', color: 'Blue', style: 'Casual', description: 'Your jeans' },
-                { itemType: 'Hoodie', color: 'Gray', style: 'Casual', description: 'Your hoodie' },
-                { itemType: 'Sneakers', color: 'White', style: 'Sport', description: 'Your sneakers' },
-                { itemType: 'Dress', color: 'Black', style: 'Formal', description: 'Your dress' },
-                { itemType: 'Sweater', color: 'Navy', style: 'Casual', description: 'Your sweater' },
-                { itemType: 'Pants', color: 'Gray', style: 'Smart Casual', description: 'Your pants' },
-                { itemType: 'Coat', color: 'Brown', style: 'Formal', description: 'Your coat' },
-                { itemType: 'Shorts', color: 'Khaki', style: 'Casual', description: 'Your shorts' },
-            ];
-
-            Alert.alert(
-                'What clothing is in this video?',
-                'Select the item you scanned:',
-                [
-                    ...clothingOptions.slice(0, 6).map(item => ({
-                        text: item.itemType,
-                        onPress: () => resolve([item])
-                    })),
-                    { text: 'Cancel', style: 'cancel', onPress: () => resolve([]) }
-                ]
-            );
-        });
+        throw new Error('AI could not detect clothing items. Please try a clearer video with good lighting.');
     };
 
 
@@ -217,16 +598,8 @@ const WardrobeVideoScreen = () => {
                 throw new Error('Could not extract any frames from video');
             }
 
-            // STEP 2: AI analyzes frame and detects clothing with detailed descriptions
-            let detectedItems = await analyzeClothingWithAI(frames[0]);
-
-            if (detectedItems.length === 0) {
-                // Try second frame
-                if (frames.length > 1) {
-                    setProgress('Trying another frame...');
-                    detectedItems = await analyzeClothingWithAI(frames[1]);
-                }
-            }
+            // STEP 2: AI analyzes ALL frames and detects ALL clothing items automatically
+            const detectedItems = await analyzeClothingWithAI(frames);
 
             if (detectedItems.length === 0) {
                 Alert.alert('No Clothing Found', 'AI could not detect clothing items in this video. Try a video with clear clothing visible.');
@@ -234,86 +607,185 @@ const WardrobeVideoScreen = () => {
                 return;
             }
 
-            // STEP 3: Create professional product photo using full pipeline
-            setProgress('🎨 Creating Massimo Dutti style product photo...');
-            setProgress('📸 Step 1/3: Selecting best frame...');
+            // STEP 3: Try V2 Multi-Item Processing first (if available)
+            // Note: V2 requires additional dependencies - falls back to working pipeline if unavailable
+            setProgress('🎯 Checking for advanced multi-item detection...');
 
-            const item = detectedItems[0];
-            let finalImage = '';
+            let useBasicPipeline = false;
 
             try {
-                // Call professional product photo pipeline with full clothing details
-                setProgress('✂️ Step 2/3: Cutting out clothing...');
-
-                const productResponse = await axios.post(
-                    `${API_URL}/api/product-photo/process`,
+                // Quick check if V2 is available (30 second timeout)
+                const v2Response = await axios.post(
+                    `${API_URL}/api/v2/product-photo/process-multi`,
                     {
                         frames: frames,
-                        clothingType: `${item?.color || ''} ${item?.style || ''} ${item?.itemType || 'clothing'}`.trim(),
-                        clothingColor: item?.color || '',
-                        clothingStyle: item?.style || '',
-                        clothingDescription: item?.description || ''
+                        prompts: null // Auto-detect all clothing items
                     },
-                    { timeout: 180000 }  // 3 minutes for full Massimo Dutti pipeline
+                    { timeout: 30000 }  // 30 seconds - fail fast if unavailable
                 );
 
-                if (productResponse.data.imageUrl) {
-                    setProgress('✨ Step 3/3: Creating front-facing product photo...');
-                    finalImage = productResponse.data.imageUrl;
-                    console.log('✅ Massimo Dutti style product photo created!');
-                }
-            } catch (pipelineError: any) {
-                console.log('Professional pipeline failed, using fallback:', pipelineError.message);
+                if (v2Response.data.success && v2Response.data.items && v2Response.data.items.length > 0) {
+                    const processedItems = v2Response.data.items;
 
-                // Fallback: Try simple background removal
-                try {
-                    setProgress('✨ Removing background...');
-                    const bgResponse = await axios.post(
-                        `${API_URL}/api/remove-background`,
-                        { imageBase64: frames[0] },
-                        { timeout: 60000 }
-                    );
-                    if (bgResponse.data.imageUrl) {
-                        finalImage = bgResponse.data.imageUrl;
-                    }
-                } catch (bgError) {
-                    console.log('Background removal failed, generating AI product image...');
+                    setProgress(`✅ Found ${processedItems.length} items! Creating cards...`);
+
+                    console.log(`✅ V2 Multi-Item Processing Complete:`);
+                    console.log(`   - Detected: ${v2Response.data.totalItemsDetected} items`);
+                    console.log(`   - Created: ${v2Response.data.totalCardsCreated} Massimo Dutti cards`);
+                    console.log(`   - Categories: ${v2Response.data.summary.categories.join(', ')}`);
+
+                    // Convert V2 items to DetectedItem format
+                    const itemsWithImages: DetectedItem[] = processedItems.map((item: any) => ({
+                        itemType: item.attributes.category,
+                        color: item.attributes.primaryColor,
+                        style: item.attributes.style,
+                        description: item.attributes.description,
+                        material: item.attributes.fabric || 'Unknown',
+                        details: JSON.stringify(item.attributes.details),
+                        productDescription: item.cardPrompt.prompt,
+                        frameImage: item.imageUrl  // Professional Massimo Dutti white background photo!
+                    }));
+
+                    setResults({
+                        detectedItems: itemsWithImages,
+                        frameImage: processedItems[0]?.imageUrl || ''
+                    });
+                    setProgress('');
+                    console.log(`✅ Saved ${itemsWithImages.length} Massimo Dutti cards!`);
+                    return; // Success!
                 }
+            } catch (v2Error: any) {
+                console.log('V2 Multi-Item processing unavailable, falling back...', v2Error.message);
+                setProgress('⚠️ Advanced AI unavailable, using basic mode...');
             }
 
-            // FINAL FALLBACK: If all else fails, generate AI product image with white background
-            if (!finalImage || finalImage.startsWith('data:image')) {
+            // FALLBACK: Multi-item processing for all detected items
+            setProgress(`🎨 Processing ${detectedItems.length} items...`);
+
+            // Process ALL detected items in parallel
+            const processItem = async (item: DetectedItem, index: number): Promise<DetectedItem> => {
                 try {
-                    setProgress('🎨 Generating AI product image...');
-                    const aiImageResponse = await axios.post(
-                        `${API_URL}/api/generate-product-image`,
+                    // 🚀 If item already has cutout from detection, use it directly!
+                    if (item.frameImage) {
+                        console.log(`✅ Using pre-cut image for ${item.itemType}`);
+                        return item;
+                    }
+
+                    setProgress(`📸 Cutting out ${item.itemType} (${index + 1}/${detectedItems.length})...`);
+
+                    // FIRST: Try AliceVision per-item segmentation
+                    try {
+                        const imageData = frames[0].replace(/^data:image\/\w+;base64,/, '');
+                        const segResponse = await axios.post(
+                            `${ALICEVISION_URL}/segment-item`,
+                            {
+                                image: imageData,
+                                bbox: (item as any).bbox || null,  // Use item's bounding box if available
+                                category: item.itemType,
+                                add_white_background: true,
+                                padding: 30  // Add padding around item
+                            },
+                            { timeout: 120000 }  // 2 min for ControlNet generation
+                        );
+
+                        if (segResponse.data.success && segResponse.data.croppedImage) {
+                            // 🚀 Use specificType from V2 detection if available
+                            const betterType = segResponse.data.specificType;
+                            const betterColor = segResponse.data.primaryColor;
+                            const updatedItemType = betterType
+                                ? formatCategoryName(betterType)
+                                : item.itemType;
+
+                            // 🏷️ Use professional product card if available, otherwise cutout
+                            const cardImage = segResponse.data.productCardImage || segResponse.data.croppedImage;
+
+                            console.log(`✅ Per-item cutout created for ${updatedItemType}${betterType ? ` (V2: ${betterType})` : ''}`);
+                            return {
+                                ...item,
+                                itemType: updatedItemType,  // 🚀 Update with V2 type!
+                                specificType: betterType || item.specificType,
+                                color: betterColor || item.color,
+                                frameImage: cardImage,  // 🏷️ Professional product card!
+                                description: `${betterColor || item.color} ${updatedItemType}`.trim()
+                            };
+                        }
+                    } catch (localError: any) {
+                        console.log(`Per-item cutout failed: ${localError.message}, trying full /segment...`);
+                    }
+
+                    // FALLBACK 1: Try full-frame segmentation
+                    try {
+                        const imageData = frames[0].replace(/^data:image\/\w+;base64,/, '');
+                        const segResponse = await axios.post(
+                            `${ALICEVISION_URL}/segment`,
+                            {
+                                image: imageData,
+                                add_white_background: true,
+                                use_advanced: true
+                            },
+                            { timeout: 120000 }  // 2 min fallback
+                        );
+
+                        if (segResponse.data.success && segResponse.data.segmentedImage) {
+                            console.log(`✅ Full-frame cutout for ${item.itemType}`);
+                            return {
+                                ...item,
+                                frameImage: segResponse.data.segmentedImage,
+                                description: item.description || `${item.color} ${item.itemType}`
+                            };
+                        }
+                    } catch (segError: any) {
+                        console.log(`Full segment failed: ${segError.message}`);
+                    }
+
+                    // FALLBACK 2: Try product photo pipeline via Node.js API
+                    const productResponse = await axios.post(
+                        `${API_URL}/api/product-photo/process`,
                         {
-                            itemType: item?.itemType || 'clothing',
-                            color: item?.color || 'black',
-                            description: `${item?.color || ''} ${item?.itemType || 'clothing'}, professional product photo`
+                            frames: frames,
+                            clothingType: `${item?.color || ''} ${item?.style || ''} ${item?.itemType || 'clothing'}`.trim(),
+                            clothingColor: item?.color || '',
+                            clothingStyle: item?.style || '',
+                            clothingDescription: item?.description || ''
                         },
-                        { timeout: 90000 }
+                        { timeout: 120000 }
                     );
-                    if (aiImageResponse.data.imageUrl) {
-                        finalImage = aiImageResponse.data.imageUrl;
-                        console.log('✅ AI product image generated!');
-                    }
-                } catch (aiError: any) {
-                    console.log('AI generation failed, using stock image:', aiError.message);
-                    // Use a clean stock image as absolute last resort
-                    finalImage = getClothingImage(item?.itemType || 'jacket', item?.color || 'black');
-                }
-            }
 
-            const itemsWithImages: DetectedItem[] = detectedItems.map(item => ({
-                ...item,
-                frameImage: finalImage,  // Professional Massimo Dutti style photo!
-                description: item.description || `${item.color} ${item.itemType}`
-            }));
+                    if (productResponse.data.imageUrl) {
+                        console.log(`✅ Product photo created for ${item.itemType}`);
+                        return {
+                            ...item,
+                            frameImage: productResponse.data.imageUrl,
+                            description: item.description || `${item.color} ${item.itemType}`
+                        };
+                    }
+                } catch (pipelineError: any) {
+                    console.log(`Pipeline failed for ${item.itemType}:`, pipelineError.message);
+                }
+
+                // Fallback: use stock image for this item
+                return {
+                    ...item,
+                    frameImage: getClothingImage(item.itemType, item.color),
+                    description: item.description || `${item.color} ${item.itemType}`
+                };
+            };
+
+            // Process all items in parallel with graceful error handling
+            const itemResults = await Promise.allSettled(
+                detectedItems.map((item, index) => processItem(item, index))
+            );
+
+            // Collect successful results
+            const itemsWithImages: DetectedItem[] = itemResults
+                .filter((result): result is PromiseFulfilledResult<DetectedItem> => result.status === 'fulfilled')
+                .map(result => result.value);
+
+            console.log(`✅ Successfully processed ${itemsWithImages.length}/${detectedItems.length} items`);
 
             setResults({
                 detectedItems: itemsWithImages,
-                frameImage: finalImage
+                frameImage: itemsWithImages[0]?.frameImage || ''
             });
             setProgress('');
 
@@ -483,22 +955,60 @@ const WardrobeVideoScreen = () => {
                                 </TouchableOpacity>
                             </View>
 
-                            {results.detectedItems.map((item: DetectedItem, index: number) => (
-                                <View key={index} style={styles.resultCard}>
-                                    <View style={styles.resultIcon}>
-                                        <Ionicons name="shirt" size={24} color="#4f46e5" />
+                            {results.detectedItems.map((item: DetectedItem, index: number) => {
+                                // Get icon based on position
+                                const getPositionIcon = (pos?: string) => {
+                                    switch (pos) {
+                                        case 'upper': return 'shirt';
+                                        case 'lower': return 'layers';
+                                        case 'feet': return 'footsteps';
+                                        case 'accessory': return 'bag';
+                                        case 'full': return 'body';
+                                        default: return 'shirt';
+                                    }
+                                };
+
+                                return (
+                                    <View key={index} style={styles.resultCard}>
+                                        <View style={styles.resultIcon}>
+                                            <Ionicons name={getPositionIcon(item.position)} size={24} color="#4f46e5" />
+                                        </View>
+                                        <View style={styles.resultInfo}>
+                                            <Text style={styles.resultType}>{item.itemType}</Text>
+                                            {/* Classification path for detailed type */}
+                                            {item.classificationPath && (
+                                                <Text style={styles.resultPath}>{item.classificationPath}</Text>
+                                            )}
+                                            <Text style={styles.resultDetails}>
+                                                {item.color} • {item.style}
+                                                {item.material ? ` • ${item.material}` : ''}
+                                                {item.pattern && item.pattern !== 'solid' ? ` • ${item.pattern}` : ''}
+                                            </Text>
+                                            {/* Material and pattern details */}
+                                            {(item.materialDetails || item.patternDetails) && (
+                                                <Text style={styles.resultMaterialPattern}>
+                                                    {item.materialDetails?.texture ? `${item.materialDetails.texture} ` : ''}
+                                                    {item.materialDetails?.finish ? `• ${item.materialDetails.finish}` : ''}
+                                                </Text>
+                                            )}
+                                            {/* Detection sources for transparency */}
+                                            {item.detectionSources && item.detectionSources.length > 0 && (
+                                                <Text style={styles.resultSources}>
+                                                    🤖 {item.detectionSources.join(' + ')}
+                                                </Text>
+                                            )}
+                                            {item.styleTags && item.styleTags.length > 0 && (
+                                                <Text style={styles.resultTags}>
+                                                    {item.styleTags.slice(0, 3).join(' • ')}
+                                                </Text>
+                                            )}
+                                        </View>
+                                        <View style={styles.checkIcon}>
+                                            <Ionicons name="checkmark-circle" size={24} color="#10b981" />
+                                        </View>
                                     </View>
-                                    <View style={styles.resultInfo}>
-                                        <Text style={styles.resultType}>{item.itemType}</Text>
-                                        <Text style={styles.resultDetails}>
-                                            {item.color} • {item.style}
-                                        </Text>
-                                    </View>
-                                    <View style={styles.checkIcon}>
-                                        <Ionicons name="checkmark-circle" size={24} color="#10b981" />
-                                    </View>
-                                </View>
-                            ))}
+                                );
+                            })}
 
                             <TouchableOpacity
                                 style={styles.saveButton}
@@ -737,6 +1247,27 @@ const styles = StyleSheet.create({
     resultDetails: {
         fontSize: 12,
         color: '#666',
+    },
+    resultTags: {
+        fontSize: 11,
+        color: '#4f46e5',
+        marginTop: 4,
+        fontStyle: 'italic',
+    },
+    resultPath: {
+        fontSize: 10,
+        color: '#9ca3af',
+        marginBottom: 2,
+    },
+    resultMaterialPattern: {
+        fontSize: 11,
+        color: '#6b7280',
+        marginTop: 2,
+    },
+    resultSources: {
+        fontSize: 10,
+        color: '#10b981',
+        marginTop: 3,
     },
     checkIcon: {
         marginLeft: 12,

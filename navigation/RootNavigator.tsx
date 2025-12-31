@@ -21,6 +21,13 @@ import useTrialStore from "../store/trialStore";
 import TrialLimitModal from "../components/TrialLimitModal";
 import ReviewScreen from "../screens/ReviewScreen";
 import OutfitCalendarScreen from "../screens/OutfitCalendarScreen";
+import AIHubScreen from "../screens/AIHubScreen";
+import EmailOnboardingScreen from "../screens/EmailOnboardingScreen";
+import TripPlannerScreen from "../screens/TripPlannerScreen";
+import WardrobeAnalyticsScreen from "../screens/WardrobeAnalyticsScreen";
+import OutfitDetailScreen from "../screens/OutfitDetailScreen";
+import PaywallScreen from "../screens/PaywallScreen";
+import OutfitAIScreen from "../screens/OutfitAIScreen";
 
 export type RootStackParamList = {
   Home: undefined;
@@ -39,6 +46,13 @@ export type RootStackParamList = {
   NewOutfit: undefined;
   WardrobeVideo: undefined;
   Calendar: undefined;
+  AIHub: undefined;
+  EmailOnboarding: undefined;
+  TripPlanner: undefined;
+  WardrobeAnalytics: undefined;
+  OutfitDetail: { image?: string; outfit?: any };
+  Paywall: undefined;
+  OutfitAI: undefined;  // 🧠 Multimodal AI Outfit Recommendations
 };
 
 // 2. Передаем этот список в Stack
@@ -88,13 +102,13 @@ const RootNavigator = () => {
     initialize();
   }, []);
 
-  // Increment trial counter on app launch (only once per session)
+  // Increment trial counter on app launch (only once per session, and ONLY for non-authenticated users)
   useEffect(() => {
-    if (isTrialMode && !isTrialExpired && !hasIncrementedThisSession) {
+    if (!isAuthenticated && isTrialMode && !isTrialExpired && !hasIncrementedThisSession) {
       incrementTrialCount();
       setHasIncrementedThisSession(true);
     }
-  }, [isTrialMode, isTrialExpired, hasIncrementedThisSession, incrementTrialCount]);
+  }, [isAuthenticated, isTrialMode, isTrialExpired, hasIncrementedThisSession, incrementTrialCount]);
 
   // Show modal when trial expires
   useEffect(() => {
@@ -217,6 +231,64 @@ const RootNavigator = () => {
               options={{
                 animation: 'fade_from_bottom',
                 presentation: 'transparentModal',
+              }}
+            />
+            <Stack.Screen
+              name="AIHub"
+              component={AIHubScreen}
+              options={{ animation: 'slide_from_bottom' }}
+            />
+            <Stack.Screen
+              name="EmailOnboarding"
+              component={EmailOnboardingScreen}
+              options={{
+                animation: 'slide_from_bottom',
+                presentation: 'modal',
+                gestureEnabled: true,
+                gestureDirection: 'vertical',
+              }}
+            />
+            <Stack.Screen
+              name="TripPlanner"
+              component={TripPlannerScreen}
+              options={{
+                animation: 'slide_from_bottom',
+                presentation: 'modal',
+                gestureEnabled: true,
+                gestureDirection: 'vertical',
+              }}
+            />
+            <Stack.Screen
+              name="WardrobeAnalytics"
+              component={WardrobeAnalyticsScreen}
+              options={{
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="OutfitDetail"
+              component={OutfitDetailScreen}
+              options={{
+                animation: 'fade',
+                presentation: 'fullScreenModal',
+                gestureEnabled: true,
+              }}
+            />
+            <Stack.Screen
+              name="Paywall"
+              component={PaywallScreen}
+              options={{
+                animation: 'slide_from_bottom',
+                presentation: 'modal',
+                gestureEnabled: true,
+                gestureDirection: 'vertical',
+              }}
+            />
+            <Stack.Screen
+              name="OutfitAI"
+              component={OutfitAIScreen}
+              options={{
+                animation: 'slide_from_right',
               }}
             />
           </>

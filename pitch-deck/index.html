@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIWardrobe - Investor Pitch Deck</title>
+    <meta name="description" content="AIWardrobe: Your AI-powered fashion assistant. Scan, organize, and optimize your wardrobe.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-logo">AIWardrobe</div>
+        <div class="nav-controls">
+            <button class="nav-btn" id="prevBtn" onclick="prevSlide()">←</button>
+            <span class="slide-indicator" id="slideIndicator">1 / 10</span>
+            <button class="nav-btn" id="nextBtn" onclick="nextSlide()">→</button>
+        </div>
+        <div class="nav-progress">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+    </nav>
+
+    <!-- Slides Container -->
+    <div class="slides-container" id="slidesContainer">
+        
+        <!-- Slide 1: Title -->
+        <section class="slide slide-1 active" data-slide="1">
+            <div class="slide-content">
+                <div class="logo-container">
+                    <div class="logo-icon">👗</div>
+                    <h1 class="company-name">AIWardrobe</h1>
+                </div>
+                <p class="one-liner">
+                    We use AI to help people get dressed faster by scanning their closet with video and generating personalized outfit recommendations.
+                </p>
+                <div class="tagline-chips">
+                    <span class="chip">📱 Mobile App</span>
+                    <span class="chip">🤖 AI-Powered</span>
+                    <span class="chip">🎥 Video Scanning</span>
+                </div>
+                <div class="cta-hint">
+                    <span>Press → to continue</span>
+                    <div class="arrow-bounce">→</div>
+                </div>
+            </div>
+            <div class="slide-decoration slide-1-decoration"></div>
+        </section>
+
+        <!-- Slide 2: The Problem -->
+        <section class="slide slide-2" data-slide="2">
+            <div class="slide-content">
+                <div class="slide-header">
+                    <span class="slide-number">02</span>
+                    <h2>The Problem</h2>
+                </div>
+                
+                <div class="problem-story">
+                    <div class="story-card">
+                        <div class="story-icon">⏰</div>
+                        <h3>Every morning, 1.4 billion people waste 15+ minutes deciding what to wear</h3>
+                    </div>
+                </div>
+
+                <div class="pain-points">
+                    <div class="pain-point">
+                        <div class="pain-icon">👔</div>
+                        <div class="pain-content">
+                            <h4>Forgotten Clothes</h4>
+                            <p>Average person only wears 20% of their wardrobe. $12B worth of clothes sit unused in US closets.</p>
+                        </div>
+                    </div>
+                    <div class="pain-point">
+                        <div class="pain-icon">📸</div>
+                        <div class="pain-content">
+                            <h4>No Digital Wardrobe</h4>
+                            <p>Manually photographing each item takes 2+ hours. Nobody does it.</p>
+                        </div>
+                    </div>
+                    <div class="pain-point">
+                        <div class="pain-icon">🤔</div>
+                        <div class="pain-content">
+                            <h4>Decision Fatigue</h4>
+                            <p>"What goes with what?" — No easy way to see outfit combinations.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="current-solution">
+                    <p class="current-label">How people solve this today:</p>
+                    <div class="current-methods">
+                        <span class="method bad">Buy more clothes 👎</span>
+                        <span class="method bad">Ignore most of closet 👎</span>
+                        <span class="method bad">Manual spreadsheets 👎</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 3: The Solution -->
+        <section class="slide slide-3" data-slide="3">
+            <div class="slide-content">
+                <div class="slide-header">
+                    <span class="slide-number">03</span>
+                    <h2>The Solution</h2>
+                </div>
+
+                <div class="solution-hero">
+                    <div class="magic-benefit">
+                        <span class="magic-icon">✨</span>
+                        <h3>Scan your entire wardrobe in 60 seconds with just a video</h3>
+                    </div>
+                </div>
+
+                <div class="solution-demo">
+                    <div class="demo-step">
+                        <div class="step-number">1</div>
+                        <div class="step-visual">🎥</div>
+                        <h4>Record</h4>
+                        <p>10-second video of your closet</p>
+                    </div>
+                    <div class="demo-arrow">→</div>
+                    <div class="demo-step">
+                        <div class="step-number">2</div>
+                        <div class="step-visual">🤖</div>
+                        <h4>AI Detects</h4>
+                        <p>Each item auto-categorized</p>
+                    </div>
+                    <div class="demo-arrow">→</div>
+                    <div class="demo-step">
+                        <div class="step-number">3</div>
+                        <div class="step-visual">👗</div>
+                        <h4>Get Outfits</h4>
+                        <p>Personalized daily suggestions</p>
+                    </div>
+                </div>
+
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <span class="feature-icon">🌤️</span>
+                        <h5>Weather-Smart</h5>
+                        <p>Outfits based on today's weather</p>
+                    </div>
+                    <div class="feature-card">
+                        <span class="feature-icon">✈️</span>
+                        <h5>Trip Planner</h5>
+                        <p>Pack perfectly for any trip</p>
+                    </div>
+                    <div class="feature-card">
+                        <span class="feature-icon">👤</span>
+                        <h5>Virtual Try-On</h5>
+                        <p>See outfits on yourself with AI</p>
+                    </div>
+                    <div class="feature-card">
+                        <span class="feature-icon">💬</span>
+                        <h5>AI Stylist</h5>
+                        <p>Chat with your personal fashion AI</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 4: Traction -->
+        <section class="slide slide-4" data-slide="4">
+            <div class="slide-content">
+                <div class="slide-header">
+                    <span class="slide-number">04</span>
+                    <h2>Traction</h2>
+                    <span class="slide-label">The Most Important Slide</span>
+                </div>
+
+                <div class="traction-hero">
+                    <div class="traction-chart">
+                        <div class="chart-container">
+                            <svg class="growth-chart" viewBox="0 0 400 200">
+                                <defs>
+                                    <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                        <stop offset="0%" style="stop-color:#6366f1;stop-opacity:0.3" />
+                                        <stop offset="100%" style="stop-color:#6366f1;stop-opacity:0" />
+                                    </linearGradient>
+                                </defs>
+                                <path class="chart-area" d="M0,180 Q50,170 100,150 T200,80 T300,40 T400,10 L400,200 L0,200 Z" fill="url(#chartGradient)"/>
+                                <path class="chart-line" d="M0,180 Q50,170 100,150 T200,80 T300,40 T400,10" fill="none" stroke="#6366f1" stroke-width="3"/>
+                            </svg>
+                            <div class="chart-labels">
+                                <span>Oct</span>
+                                <span>Nov</span>
+                                <span>Dec</span>
+                                <span>Jan</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card featured">
+                        <div class="metric-value">Built in</div>
+                        <div class="metric-number">8 weeks</div>
+                        <div class="metric-label">from idea to working product</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">📱</div>
+                        <div class="metric-number">18+</div>
+                        <div class="metric-label">Screens Built</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">🤖</div>
+                        <div class="metric-number">5</div>
+                        <div class="metric-label">AI Models Integrated</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">🌍</div>
+                        <div class="metric-number">3</div>
+                        <div class="metric-label">Languages Supported</div>
+                    </div>
+                </div>
+
+                <div class="progress-section">
+                    <h4>What We've Built</h4>
+                    <div class="progress-items">
+                        <div class="progress-item done">✅ Full mobile app (iOS + Android)</div>
+                        <div class="progress-item done">✅ Video-to-wardrobe AI pipeline</div>
+                        <div class="progress-item done">✅ Virtual try-on integration</div>
+                        <div class="progress-item done">✅ AI chat assistant</div>
+                        <div class="progress-item done">✅ Weather-based suggestions</div>
+                        <div class="progress-item done">✅ Trip packing planner</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 5: Unique Insight -->
+        <section class="slide slide-5" data-slide="5">
+            <div class="slide-content">
+                <div class="slide-header">
+                    <span class="slide-number">05</span>
+                    <h2>Why Now / Why Us</h2>
+                </div>
+
+                <div class="insight-hero">
+                    <div class="insight-card">
+                        <span class="insight-quote">"</span>
+                        <p>Video + AI finally makes wardrobe digitization effortless. Google Gemini and open-source vision models now process video in seconds, not hours.</p>
+                    </div>
+                </div>
+
+                <div class="why-grid">
+                    <div class="why-card why-now">
+                        <h4>⏰ Why Now</h4>
+                        <ul>
+                            <li><strong>AI Cost Collapse:</strong> Vision AI 100x cheaper than 2020</li>
+                            <li><strong>Gemini/GPT-4V:</strong> Video understanding finally works</li>
+                            <li><strong>Mobile GPUs:</strong> On-device processing now possible</li>
+                            <li><strong>Gen-Z behavior:</strong> OOTD culture demands digital wardrobes</li>
+                        </ul>
+                    </div>
+                    <div class="why-card why-us">
+                        <h4>🎯 Our Unfair Advantage</h4>
+                        <ul>
+                            <li><strong>Technical:</strong> Video-first approach (competitors use photo-by-photo)</li>
+                            <li><strong>Speed:</strong> 60 seconds vs 2+ hours to digitize</li>
+                            <li><strong>Stack:</strong> Gemini + SAM2 + FashionCLIP pipeline</li>
+                            <li><strong>Market:</strong> Multilingual (EN/RU/UZ) for underserved markets</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="moat-section">
+                    <h4>Technical Moat</h4>
+                    <div class="moat-items">
+                        <span class="moat-chip">SAM2 Segmentation</span>
+                        <span class="moat-chip">FashionCLIP</span>
+                        <span class="moat-chip">Grounding DINO</span>
+                        <span class="moat-chip">Gemini Vision</span>
+                        <span class="moat-chip">Real-time Processing</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 6: Market Size -->
+        <section class="slide slide-6" data-slide="6">
+            <div class="slide-content">
+                <div class="slide-header">
+                    <span class="slide-number">06</span>
+                    <h2>Market Size</h2>
+                </div>
+
+                <div class="market-pyramid">
+                    <div class="pyramid-level tam">
+                        <div class="level-content">
+                            <span class="level-value">$52B</span>
+                            <span class="level-label">TAM</span>
+                            <span class="level-desc">Global Fashion Tech & Wardrobe Management</span>
+                        </div>
+                    </div>
+                    <div class="pyramid-level sam">
+                        <div class="level-content">
+                            <span class="level-value">$4.2B</span>
+                            <span class="level-label">SAM</span>
+                            <span class="level-desc">Digital Wardrobe & Outfit Planning Apps</span>
+                        </div>
+                    </div>
+                    <div class="pyramid-level som">
+                        <div class="level-content">
+                            <span class="level-value">$120M</span>
+                            <span class="level-label">SOM</span>
+                            <span class="level-desc">AI-First Wardrobe Apps in Year 3</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bottom-up">
+                    <h4>📊 Bottom-Up Calculation</h4>
+                    <div class="calculation">
+                        <div class="calc-row">
+                            <span class="calc-label">Fashion-conscious smartphone users (18-45)</span>
+                            <span class="calc-value">400M globally</span>
+                        </div>
+                        <div class="calc-row">
+                            <span class="calc-label">× Would pay for wardrobe management (3%)</span>
+                            <span class="calc-value">12M users</span>
+                        </div>
+                        <div class="calc-row">
+                            <span class="calc-label">× Average annual subscription ($10/mo)</span>
+                            <span class="calc-value">$120/year</span>
+                        </div>
+                        <div class="calc-row total">
+                            <span class="calc-label">= Addressable Market</span>
+                            <span class="calc-value">$1.44B/year</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 7: Competition -->
+        <section class="slide slide-7" data-slide="7">
+            <div class="slide-content">
+                <div class="slide-header">
+                    <span class="slide-number">07</span>
+                    <h2>Competition</h2>
+                </div>
+
+                <div class="competition-matrix">
+                    <div class="matrix-container">
+                        <div class="axis-label y-axis">Easy Setup</div>
+                        <div class="axis-label x-axis">AI-Powered</div>
+                        
+                        <div class="quadrant q1">
+                            <span class="quadrant-label">Manual + Basic</span>
+                            <div class="competitor" style="left: 20%; top: 60%;">
+                                <span class="comp-name">Stylebook</span>
+                            </div>
+                            <div class="competitor" style="left: 30%; top: 70%;">
+                                <span class="comp-name">Closet+</span>
+                            </div>
+                        </div>
+                        <div class="quadrant q2">
+                            <span class="quadrant-label">Manual + AI</span>
+                            <div class="competitor" style="left: 60%; top: 55%;">
+                                <span class="comp-name">Cladwell</span>
+                            </div>
+                        </div>
+                        <div class="quadrant q3">
+                            <span class="quadrant-label">Easy + Basic</span>
+                            <div class="competitor" style="left: 25%; top: 25%;">
+                                <span class="comp-name">Smart Closet</span>
+                            </div>
+                        </div>
+                        <div class="quadrant q4 winner">
+                            <span class="quadrant-label">Easy + AI</span>
+                            <div class="competitor us" style="left: 75%; top: 15%;">
+                                <span class="comp-name">AIWardrobe</span>
+                                <span class="comp-badge">🏆</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="comparison-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Feature</th>
+                                <th>Stylebook</th>
+                                <th>Cladwell</th>
+                                <th class="highlight">AIWardrobe</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Video Scanning</td>
+                                <td>❌</td>
+                                <td>❌</td>
+                                <td class="highlight">✅</td>
+                            </tr>
+                            <tr>
+                                <td>AI Detection</td>
+                                <td>❌</td>
+                                <td>Basic</td>
+                                <td class="highlight">✅ Advanced</td>
+                            </tr>
+                            <tr>
+                                <td>Virtual Try-On</td>
+                                <td>❌</td>
+                                <td>❌</td>
+                                <td class="highlight">✅</td>
+                            </tr>
+                            <tr>
+                                <td>Setup Time</td>
+                                <td>2+ hours</td>
+                                <td>1+ hour</td>
+                                <td class="highlight">60 seconds</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 8: Business Model -->
+        <section class="slide slide-8" data-slide="8">
+            <div class="slide-content">
+                <div class="slide-header">
+                    <span class="slide-number">08</span>
+                    <h2>Business Model</h2>
+                </div>
+
+                <div class="pricing-tiers">
+                    <div class="tier free">
+                        <div class="tier-header">
+                            <h4>Free</h4>
+                            <span class="tier-price">$0</span>
+                        </div>
+                        <ul>
+                            <li>3 wardrobe scans</li>
+                            <li>Basic outfit suggestions</li>
+                            <li>Weather integration</li>
+                        </ul>
+                        <span class="tier-purpose">Acquisition</span>
+                    </div>
+                    <div class="tier premium featured">
+                        <div class="tier-badge">Most Popular</div>
+                        <div class="tier-header">
+                            <h4>Premium</h4>
+                            <span class="tier-price">$9.99<span>/mo</span></span>
+                        </div>
+                        <ul>
+                            <li>Unlimited scans</li>
+                            <li>Virtual try-on</li>
+                            <li>AI stylist chat</li>
+                            <li>Trip planner</li>
+                            <li>Advanced analytics</li>
+                        </ul>
+                        <span class="tier-purpose">Core Revenue</span>
+                    </div>
+                    <div class="tier yearly">
+                        <div class="tier-header">
+                            <h4>Annual</h4>
+                            <span class="tier-price">$79.99<span>/yr</span></span>
+                        </div>
+                        <ul>
+                            <li>All Premium features</li>
+                            <li>33% savings</li>
+                            <li>Priority support</li>
+                        </ul>
+                        <span class="tier-purpose">Retention</span>
+                    </div>
+                </div>
+
+                <div class="revenue-model">
+                    <h4>Revenue Streams</h4>
+                    <div class="revenue-bars">
+                        <div class="revenue-bar">
+                            <span class="bar-label">Subscriptions</span>
+                            <div class="bar-fill" style="width: 70%;">70%</div>
+                        </div>
+                        <div class="revenue-bar">
+                            <span class="bar-label">Affiliate (Shop links)</span>
+                            <div class="bar-fill" style="width: 20%;">20%</div>
+                        </div>
+                        <div class="revenue-bar">
+                            <span class="bar-label">Brand Partnerships</span>
+                            <div class="bar-fill" style="width: 10%;">10%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="unit-economics">
+                    <h4>Unit Economics Target</h4>
+                    <div class="economics-grid">
+                        <div class="econ-item">
+                            <span class="econ-label">LTV</span>
+                            <span class="econ-value">$180</span>
+                        </div>
+                        <div class="econ-item">
+                            <span class="econ-label">CAC</span>
+                            <span class="econ-value">$15</span>
+                        </div>
+                        <div class="econ-item featured">
+                            <span class="econ-label">LTV/CAC</span>
+                            <span class="econ-value">12x</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 9: Team -->
+        <section class="slide slide-9" data-slide="9">
+            <div class="slide-content">
+                <div class="slide-header">
+                    <span class="slide-number">09</span>
+                    <h2>The Team</h2>
+                </div>
+
+                <div class="team-grid">
+                    <div class="team-member founder">
+                        <div class="member-photo">
+                            <div class="photo-placeholder">ZV</div>
+                        </div>
+                        <h4>Zohid Vohidjonov</h4>
+                        <span class="member-role">Founder & Full-Stack Developer</span>
+                        <div class="member-credentials">
+                            <span class="credential">🎓 Self-taught developer</span>
+                            <span class="credential">💻 React Native + Express.js</span>
+                            <span class="credential">🤖 AI/ML Integration</span>
+                            <span class="credential">🚀 Built full product solo in 8 weeks</span>
+                        </div>
+                        <div class="member-links">
+                            <a href="https://github.com/abduzahid8" target="_blank" class="member-link">GitHub</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hiring-section">
+                    <h4>Hiring Roadmap with Funding</h4>
+                    <div class="hiring-roles">
+                        <div class="hire-role">
+                            <span class="role-priority">Q1</span>
+                            <span class="role-title">AI/ML Engineer</span>
+                        </div>
+                        <div class="hire-role">
+                            <span class="role-priority">Q1</span>
+                            <span class="role-title">Growth Marketer</span>
+                        </div>
+                        <div class="hire-role">
+                            <span class="role-priority">Q2</span>
+                            <span class="role-title">iOS Developer</span>
+                        </div>
+                        <div class="hire-role">
+                            <span class="role-priority">Q2</span>
+                            <span class="role-title">Product Designer</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 10: The Ask -->
+        <section class="slide slide-10" data-slide="10">
+            <div class="slide-content">
+                <div class="slide-header">
+                    <span class="slide-number">10</span>
+                    <h2>The Ask</h2>
+                </div>
+
+                <div class="ask-hero">
+                    <div class="ask-amount">
+                        <span class="currency">$</span>
+                        <span class="amount">500K</span>
+                    </div>
+                    <p class="ask-round">Pre-Seed Round</p>
+                </div>
+
+                <div class="use-of-funds">
+                    <h4>Use of Funds</h4>
+                    <div class="funds-allocation">
+                        <div class="fund-item">
+                            <div class="fund-bar" style="--percent: 45%;"></div>
+                            <div class="fund-details">
+                                <span class="fund-category">Engineering</span>
+                                <span class="fund-amount">$225K</span>
+                                <span class="fund-desc">AI/ML + Mobile team</span>
+                            </div>
+                        </div>
+                        <div class="fund-item">
+                            <div class="fund-bar" style="--percent: 30%;"></div>
+                            <div class="fund-details">
+                                <span class="fund-category">Growth & Marketing</span>
+                                <span class="fund-amount">$150K</span>
+                                <span class="fund-desc">User acquisition campaigns</span>
+                            </div>
+                        </div>
+                        <div class="fund-item">
+                            <div class="fund-bar" style="--percent: 15%;"></div>
+                            <div class="fund-details">
+                                <span class="fund-category">Infrastructure</span>
+                                <span class="fund-amount">$75K</span>
+                                <span class="fund-desc">Servers, AI APIs, storage</span>
+                            </div>
+                        </div>
+                        <div class="fund-item">
+                            <div class="fund-bar" style="--percent: 10%;"></div>
+                            <div class="fund-details">
+                                <span class="fund-category">Operations</span>
+                                <span class="fund-amount">$50K</span>
+                                <span class="fund-desc">Legal, admin, contingency</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="milestones">
+                    <h4>18-Month Milestones</h4>
+                    <div class="milestone-grid">
+                        <div class="milestone">
+                            <span class="milestone-icon">👥</span>
+                            <span class="milestone-value">50,000</span>
+                            <span class="milestone-label">Active Users</span>
+                        </div>
+                        <div class="milestone">
+                            <span class="milestone-icon">💰</span>
+                            <span class="milestone-value">$30K</span>
+                            <span class="milestone-label">MRR</span>
+                        </div>
+                        <div class="milestone">
+                            <span class="milestone-icon">🌍</span>
+                            <span class="milestone-value">10</span>
+                            <span class="milestone-label">Languages</span>
+                        </div>
+                        <div class="milestone">
+                            <span class="milestone-icon">🤝</span>
+                            <span class="milestone-value">5</span>
+                            <span class="milestone-label">Brand Partnerships</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="contact-cta">
+                    <p>Let's dress the world smarter.</p>
+                    <a href="mailto:zohid@aiwardrobe.app" class="contact-button">Get in Touch</a>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

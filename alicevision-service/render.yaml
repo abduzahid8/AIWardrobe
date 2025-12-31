@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: alicevision-ai
+    env: python
+    region: oregon
+    plan: free  # Free tier with optimizations
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: PORT
+        value: 5050
+      - key: HOST
+        value: 0.0.0.0
+      - key: DEBUG
+        value: false
+      - key: FREE_TIER_MODE
+        value: true
+      - key: WORKERS
+        value: 1
+    # Free tier specs: 512MB RAM, shared CPU
+    # Models will load on-demand to fit memory

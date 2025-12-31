@@ -14,11 +14,11 @@ import Animated, {
 import * as Haptics from "expo-haptics";
 
 // New Imports
-import DailyBriefScreen from "../src/features/home/DailyBriefScreen";
+import HomeScreen from "../screens/HomeScreen";
 import CuratedClosetScreen from "../src/features/closet/CuratedClosetScreen";
-import AddOutfitScreen from "../screens/AddOutfitScreen"; // Keeping for now
-import DesignRoomScreen from "../screens/DesignRoomScreen"; // Keeping for now
-import ProfileScreen from "../screens/ProfileScreen"; // Keeping for now
+import AIHubScreen from "../screens/AIHubScreen";
+import DesignRoomScreen from "../screens/DesignRoomScreen";
+import ProfileScreen from "../screens/ProfileScreen";
 
 import { colors } from "../src/theme";
 
@@ -52,13 +52,13 @@ const TabNavigator = () => {
     let iconName: any;
 
     if (route.name === "Home") {
-      iconName = focused ? "newspaper" : "newspaper-outline";
-    } else if (route.name === "Discover") {
+      iconName = focused ? "today" : "today-outline";
+    } else if (route.name === "Closet") {
       iconName = focused ? "shirt" : "shirt-outline";
-    } else if (route.name === "AddOutfit") {
-      iconName = focused ? "add-circle" : "add-circle-outline";
-    } else if (route.name === "DesignRoom") {
-      iconName = focused ? "easel" : "easel-outline";
+    } else if (route.name === "AI") {
+      iconName = focused ? "sparkles" : "sparkles-outline";
+    } else if (route.name === "Style") {
+      iconName = focused ? "color-palette" : "color-palette-outline";
     } else if (route.name === "Profile") {
       iconName = focused ? "person" : "person-outline";
     }
@@ -105,10 +105,10 @@ const TabNavigator = () => {
         }),
       })}
     >
-      <Tab.Screen name="Home" component={DailyBriefScreen} />
-      <Tab.Screen name="Discover" component={CuratedClosetScreen} />
-      <Tab.Screen name="AddOutfit" component={AddOutfitScreen} />
-      <Tab.Screen name="DesignRoom" component={DesignRoomScreen} />
+      <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="Closet" component={CuratedClosetScreen} />
+      <Tab.Screen name="AI" component={AIHubScreen} />
+      <Tab.Screen name="Style" component={DesignRoomScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );

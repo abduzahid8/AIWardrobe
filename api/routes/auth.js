@@ -4,6 +4,12 @@ import User from "../models/user.js";
 import { authenticateToken, JWT_SECRET, JWT_EXPIRES_IN } from "../middleware/auth.js";
 import { validateRegistration, validateLogin } from "../middleware/validators.js";
 import { authLimiter, registrationLimiter } from "../middleware/rateLimit.js";
+import {
+    checkAccountLock,
+    handleFailedLogin,
+    handleSuccessfulLogin,
+    getClientIP
+} from "../middleware/security.js";
 
 const router = express.Router();
 
@@ -83,21 +89,42 @@ router.post("/register", registrationLimiter, validateRegistration, async (req, 
  * 
  * Rate limited: 5 attempts per hour
  * Validated: email format, password required
+ * Security: Account lockout after 5 failed attempts
  */
-router.post("/login", authLimiter, validateLogin, async (req, res) => {
+router.post("/login", authLimiter, checkAccountLock, validateLogin, async (req, res) => {
     try {
         const { email, password } = req.body;
         console.log("🔐 Login attempt for:", email);
 
         const user = await User.findOne({ email: email.toLowerCase() });
 
+        // Check credentials
         if (!user || !(await user.comparePassword(password))) {
+            // Track failed login
+            if (user) {
+                const attempts = await handleFailedLogin(user, req);
+                console.log(`❌ Failed login for ${email}, attempt ${attempts}`);
+            }
+
             // Use same error message for both cases to prevent user enumeration
             return res.status(401).json({
                 error: "Invalid email or password",
                 code: "INVALID_CREDENTIALS"
             });
         }
+
+        // Check if account is locked
+        if (user.isLocked()) {
+            const remainingMinutes = Math.ceil((user.lockedUntil - new Date()) / 60000);
+            return res.status(423).json({
+                error: `Account is locked. Try again in ${remainingMinutes} minutes.`,
+                code: "ACCOUNT_LOCKED"
+            });
+        }
+
+        // Track successful login
+        await handleSuccessfulLogin(user, req);
+        console.log(`✅ Successful login for ${email}`);
 
         // Generate token with expiration
         const token = jwt.sign(
@@ -111,7 +138,8 @@ router.post("/login", authLimiter, validateLogin, async (req, res) => {
             user: {
                 id: user._id,
                 email: user.email,
-                username: user.username
+                username: user.username,
+                subscriptionTier: user.subscriptionTier || 'free'
             }
         });
     } catch (err) {

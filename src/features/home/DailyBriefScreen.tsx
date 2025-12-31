@@ -2,129 +2,352 @@ import React, { useState, useEffect } from "react";
 import {
     View,
     Text,
-    Image,
-    ScrollView,
     TouchableOpacity,
     StyleSheet,
     Dimensions,
-    ActivityIndicator,
-    Platform,
+    ScrollView,
+    Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import moment from "moment";
-import { colors, shadows, spacing, typography } from "../../theme";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
-import * as Location from 'expo-location';
-import axios from "axios";
+import * as Haptics from "expo-haptics";
+import Animated, {
+    useAnimatedStyle,
+    useSharedValue,
+    withRepeat,
+    withSequence,
+    withTiming,
+    withSpring,
+    FadeInUp,
+    FadeInDown,
+    FadeIn,
+    Easing,
+    interpolate,
+} from "react-native-reanimated";
+
+import { useTheme } from "../../theme/ThemeContext";
+import { useWardrobeItems } from "../../hooks";
 
 const { width, height } = Dimensions.get("window");
-const WEATHER_API_KEY = "acec1d31ef3e181c0ca471ac4db642ff";
 
+// ==========================================
+// 3D FLOATING OUTFIT HERO (Alta-inspired)
+// ==========================================
+const FloatingOutfitHero = ({ isDark }: { isDark: boolean }) => {
+    const floatY = useSharedValue(0);
+    const rotate3D = useSharedValue(0);
+    const scale = useSharedValue(1);
+
+    useEffect(() => {
+        // Floating animation
+        floatY.value = withRepeat(
+            withSequence(
+                withTiming(-12, { duration: 2500, easing: Easing.bezier(0.4, 0, 0.2, 1) }),
+                withTiming(0, { duration: 2500, easing: Easing.bezier(0.4, 0, 0.2, 1) })
+            ),
+            -1,
+            true
+        );
+
+        // 3D rotation
+        rotate3D.value = withRepeat(
+            withSequence(
+                withTiming(3, { duration: 4000 }),
+                withTiming(-3, { duration: 4000 })
+            ),
+            -1,
+            true
+        );
+
+        // Subtle pulse
+        scale.value = withRepeat(
+            withSequence(
+                withTiming(1.02, { duration: 2000 }),
+                withTiming(1, { duration: 2000 })
+            ),
+            -1,
+            true
+        );
+    }, []);
+
+    const heroStyle = useAnimatedStyle(() => ({
+        transform: [
+            { translateY: floatY.value },
+            { rotateY: `${rotate3D.value}deg` },
+            { scale: scale.value },
+        ],
+    }));
+
+    return (
+        <Animated.View style={[styles.heroCard, heroStyle, { backgroundColor: isDark ? '#60A5FA' : '#DBEAFE' }]}>
+            {/* Outfit illustration placeholder */}
+            <View style={styles.heroContent}>
+                <Ionicons name="shirt" size={80} color={isDark ? '#000' : '#3B82F6'} />
+                <Text style={[styles.heroLabel, { color: isDark ? '#000' : '#1E40AF' }]}>
+                    Today's Pick
+                </Text>
+            </View>
+
+            {/* 3D shine effect */}
+            <View style={styles.heroShine} />
+        </Animated.View>
+    );
+};
+
+// ==========================================
+// STATS CARD (Agrilo-style)
+// ==========================================
+const StatsCard = ({
+    icon,
+    value,
+    label,
+    isAccent = false,
+    isDark,
+    delay = 0
+}: {
+    icon: string;
+    value: string | number;
+    label: string;
+    isAccent?: boolean;
+    isDark: boolean;
+    delay?: number;
+}) => {
+    const scale = useSharedValue(1);
+
+    const animStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: scale.value }],
+    }));
+
+    const bgColor = isAccent
+        ? (isDark ? '#60A5FA' : '#DBEAFE')
+        : (isDark ? '#252525' : '#F8FAFC');
+
+    const textColor = isAccent
+        ? (isDark ? '#000' : '#1E40AF')
+        : (isDark ? '#fff' : '#000');
+
+    const secondaryColor = isAccent
+        ? (isDark ? '#1E3A5F' : '#3B82F6')
+        : (isDark ? '#9CA3AF' : '#6B7280');
+
+    return (
+        <Animated.View entering={FadeInUp.delay(delay).springify()}>
+            <TouchableOpacity
+                onPressIn={() => { scale.value = withSpring(0.95); }}
+                onPressOut={() => { scale.value = withSpring(1); }}
+                activeOpacity={1}
+            >
+                <Animated.View style={[styles.statsCard, animStyle, { backgroundColor: bgColor }]}>
+                    <View style={[styles.statsIconBadge, { backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)' }]}>
+                        <Ionicons name={icon as any} size={20} color={secondaryColor} />
+                    </View>
+                    <Text style={[styles.statsValue, { color: textColor }]}>{value}</Text>
+                    <Text style={[styles.statsLabel, { color: secondaryColor }]}>{label}</Text>
+                </Animated.View>
+            </TouchableOpacity>
+        </Animated.View>
+    );
+};
+
+// ==========================================
+// RECENT ACTIVITY ITEM
+// ==========================================
+const ActivityItem = ({
+    title,
+    subtitle,
+    isDark,
+    delay = 0
+}: {
+    title: string;
+    subtitle: string;
+    isDark: boolean;
+    delay?: number;
+}) => (
+    <Animated.View entering={FadeInUp.delay(delay).springify()}>
+        <TouchableOpacity
+            style={[styles.activityItem, { backgroundColor: isDark ? '#252525' : '#F8FAFC' }]}
+            activeOpacity={0.7}
+        >
+            <View style={styles.activityContent}>
+                <Text style={[styles.activityTitle, { color: isDark ? '#fff' : '#000' }]}>{title}</Text>
+                <Text style={[styles.activitySubtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>{subtitle}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={isDark ? '#6B7280' : '#9CA3AF'} />
+        </TouchableOpacity>
+    </Animated.View>
+);
+
+// ==========================================
+// MAIN COMPONENT
+// ==========================================
 const DailyBriefScreen = () => {
     const navigation = useNavigation();
     const { t } = useTranslation();
-    const [weather, setWeather] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
+    const { isDark, colors, toggleTheme } = useTheme();
+    const [activeTab, setActiveTab] = useState<'overview' | 'suggestions'>('overview');
 
-    useEffect(() => {
-        (async () => {
-            try {
-                let { status } = await Location.requestForegroundPermissionsAsync();
-                if (status !== 'granted') {
-                    setLoading(false);
-                    return;
-                }
+    const { itemCount } = useWardrobeItems({ includePopularItems: false });
 
-                let location = await Location.getCurrentPositionAsync({});
-                const { latitude, longitude } = location.coords;
+    const getGreeting = () => {
+        const hour = moment().hour();
+        if (hour < 12) return 'Good Morning';
+        if (hour < 18) return 'Good Afternoon';
+        return 'Good Evening';
+    };
 
-                const response = await axios.get(
-                    `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${WEATHER_API_KEY}`
-                );
-
-                setWeather({
-                    temp: Math.round(response.data.main.temp),
-                    description: response.data.weather[0].description,
-                    city: response.data.name
-                });
-            } catch (e) {
-                console.log(e);
-            } finally {
-                setLoading(false);
-            }
-        })();
-    }, []);
+    const userName = 'David'; // Replace with actual user name
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
             <SafeAreaView style={styles.safeArea}>
-                {/* Header */}
-                <View style={styles.header}>
-                    <Text style={styles.date}>{moment().format("dddd, MMM Do")}</Text>
-                    <TouchableOpacity onPress={() => (navigation as any).navigate("Profile")}>
-                        <View style={styles.profileButton}>
-                            <Ionicons name="person-outline" size={20} color={colors.text.primary} />
-                        </View>
-                    </TouchableOpacity>
-                </View>
-
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-
-                    {/* Hero Section: The "Magazine Cover" */}
-                    <View style={styles.heroContainer}>
-                        <Text style={styles.heroTitle}>{t('home.dailyBrief')}</Text>
-
-                        <View style={styles.weatherContainer}>
-                            {loading ? (
-                                <ActivityIndicator color={colors.text.secondary} />
-                            ) : (
-                                <Text style={styles.weatherText}>
-                                    {weather ? `${weather.temp}° ${weather.city}` : "24° Tashkent"} • {weather ? weather.description : "Sunny"}
-                                </Text>
-                            )}
-                        </View>
-
-                        {/* Outfit of the Day Card */}
-                        <View style={[styles.outfitCard, shadows.medium]}>
-                            <Image
-                                source={{ uri: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=1000&auto=format&fit=crop" }}
-                                style={styles.outfitImage}
-                                resizeMode="cover"
-                            />
-                            <View style={styles.outfitOverlay}>
-                                <Text style={styles.outfitLabel}>{t('home.todaysLook')}</Text>
-                                <Text style={styles.outfitTitle}>Casual Chic for Work</Text>
-                            </View>
-                        </View>
-                    </View>
-
-                    {/* Stylist Insight */}
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>{t('home.stylistInsight')}</Text>
-                        <View style={styles.insightCard}>
-                            <Text style={styles.insightText}>
-                                "It's a bit chilly this morning. Layer that beige trench coat over your white tee for an effortless, polished look."
-                            </Text>
-                            <View style={styles.stylistSignature}>
-                                <View style={styles.stylistAvatar} />
-                                <Text style={styles.stylistName}>AI Stylist</Text>
-                            </View>
-                        </View>
-                    </View>
-
-                </ScrollView>
-
-                {/* Floating Action Button (FAB) */}
-                <TouchableOpacity
-                    style={[styles.fab, shadows.medium]}
-                    onPress={() => (navigation as any).navigate("AIChat")}
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={styles.scrollContent}
                 >
-                    <Ionicons name="sparkles" size={24} color="#FFF" />
-                    <Text style={styles.fabText}>{t('home.askStylist')}</Text>
-                </TouchableOpacity>
+                    {/* Header - Agrilo Style */}
+                    <Animated.View
+                        entering={FadeInDown.delay(50).springify()}
+                        style={styles.header}
+                    >
+                        <View style={styles.greetingContainer}>
+                            <Text style={[styles.greetingSmall, { color: colors.text.secondary }]}>
+                                Hello {userName},
+                            </Text>
+                            <Text style={[styles.greetingLarge, { color: colors.text.primary }]}>
+                                {getGreeting()}!
+                            </Text>
+                        </View>
 
+                        <TouchableOpacity
+                            style={[styles.notificationButton, { backgroundColor: isDark ? '#252525' : '#F8FAFC' }]}
+                            onPress={() => (navigation as any).navigate('Notifications')}
+                        >
+                            <Ionicons
+                                name="notifications"
+                                size={20}
+                                color={isDark ? '#FBBF24' : '#F59E0B'}
+                            />
+                        </TouchableOpacity>
+                    </Animated.View>
+
+                    {/* Tab Pills - Agrilo Style */}
+                    <Animated.View
+                        entering={FadeInDown.delay(100).springify()}
+                        style={styles.tabContainer}
+                    >
+                        <TouchableOpacity
+                            style={[
+                                styles.tabPill,
+                                activeTab === 'overview' && styles.tabPillActive,
+                                {
+                                    backgroundColor: activeTab === 'overview'
+                                        ? (isDark ? '#fff' : '#000')
+                                        : (isDark ? '#252525' : '#E5E7EB')
+                                }
+                            ]}
+                            onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                setActiveTab('overview');
+                            }}
+                        >
+                            <Text style={[
+                                styles.tabPillText,
+                                {
+                                    color: activeTab === 'overview'
+                                        ? (isDark ? '#000' : '#fff')
+                                        : (isDark ? '#9CA3AF' : '#6B7280')
+                                }
+                            ]}>
+                                Wardrobe Overview
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[
+                                styles.tabPill,
+                                activeTab === 'suggestions' && styles.tabPillActive,
+                                {
+                                    backgroundColor: activeTab === 'suggestions'
+                                        ? (isDark ? '#fff' : '#000')
+                                        : (isDark ? '#252525' : '#E5E7EB')
+                                }
+                            ]}
+                            onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                setActiveTab('suggestions');
+                            }}
+                        >
+                            <Text style={[
+                                styles.tabPillText,
+                                {
+                                    color: activeTab === 'suggestions'
+                                        ? (isDark ? '#000' : '#fff')
+                                        : (isDark ? '#9CA3AF' : '#6B7280')
+                                }
+                            ]}>
+                                AI Suggestions
+                            </Text>
+                        </TouchableOpacity>
+                    </Animated.View>
+
+                    {/* 3D Floating Hero Card - Alta Style */}
+                    <Animated.View
+                        entering={FadeIn.delay(150).duration(800)}
+                        style={styles.heroContainer}
+                    >
+                        <FloatingOutfitHero isDark={isDark} />
+                    </Animated.View>
+
+                    {/* Stats Grid - Agrilo Style */}
+                    <View style={styles.statsGrid}>
+                        <StatsCard
+                            icon="flask"
+                            value={itemCount}
+                            label="Total Items"
+                            isDark={isDark}
+                            delay={200}
+                        />
+                        <StatsCard
+                            icon="happy"
+                            value="85%"
+                            label="Style Match"
+                            isAccent={true}
+                            isDark={isDark}
+                            delay={250}
+                        />
+                    </View>
+
+                    {/* Recent Activity - Agrilo Style */}
+                    <Animated.View
+                        entering={FadeInUp.delay(300).springify()}
+                        style={styles.sectionHeader}
+                    >
+                        <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
+                            Recent Activity
+                        </Text>
+                        <TouchableOpacity>
+                            <Text style={[styles.seeAll, { color: colors.text.secondary }]}>
+                                See all
+                            </Text>
+                        </TouchableOpacity>
+                    </Animated.View>
+
+                    <ActivityItem
+                        title="New outfit created"
+                        subtitle="3 Days ago"
+                        isDark={isDark}
+                        delay={350}
+                    />
+                    <ActivityItem
+                        title="Added 2 items to closet"
+                        subtitle="5 Days ago"
+                        isDark={isDark}
+                        delay={400}
+                    />
+                </ScrollView>
             </SafeAreaView>
         </View>
     );
@@ -133,144 +356,144 @@ const DailyBriefScreen = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: colors.background,
     },
     safeArea: {
         flex: 1,
     },
-    header: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingHorizontal: spacing.l,
-        paddingVertical: spacing.m,
-    },
-    date: {
-        fontSize: 14,
-        color: colors.text.secondary,
-        textTransform: "uppercase",
-        letterSpacing: 1,
-        fontWeight: "600",
-    },
-    profileButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: colors.border,
-        alignItems: "center",
-        justifyContent: "center",
-    },
     scrollContent: {
         paddingBottom: 100,
     },
-    heroContainer: {
-        paddingHorizontal: spacing.l,
-        marginBottom: spacing.xl,
+    header: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingTop: 16,
+        paddingBottom: 8,
     },
-    heroTitle: {
-        fontSize: 48,
-        color: colors.text.primary,
-        fontFamily: Platform.OS === 'ios' ? 'Didot' : 'serif', // Editorial Font
-        fontWeight: "400",
-        marginBottom: spacing.xs,
+    greetingContainer: {
+        flex: 1,
     },
-    weatherContainer: {
-        marginBottom: spacing.l,
-    },
-    weatherText: {
+    greetingSmall: {
         fontSize: 16,
-        color: colors.text.secondary,
-        fontStyle: "italic",
+        marginBottom: 4,
     },
-    outfitCard: {
-        width: "100%",
-        height: height * 0.55,
-        borderRadius: 2, // Sharp corners for editorial look
-        overflow: "hidden",
-        backgroundColor: colors.surfaceHighlight,
-        position: "relative",
+    greetingLarge: {
+        fontSize: 28,
+        fontWeight: '700',
     },
-    outfitImage: {
-        width: "100%",
-        height: "100%",
+    notificationButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
-    outfitOverlay: {
-        position: "absolute",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        padding: spacing.l,
-        backgroundColor: "rgba(0,0,0,0.2)",
+    tabContainer: {
+        flexDirection: 'row',
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+        gap: 12,
     },
-    outfitLabel: {
-        color: "#FFF",
-        fontSize: 12,
-        textTransform: "uppercase",
-        letterSpacing: 1,
-        marginBottom: spacing.xs,
+    tabPill: {
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 20,
     },
-    outfitTitle: {
-        color: "#FFF",
-        fontSize: 24,
-        fontFamily: Platform.OS === 'ios' ? 'Didot' : 'serif',
+    tabPillActive: {},
+    tabPillText: {
+        fontSize: 14,
+        fontWeight: '500',
     },
-    section: {
-        paddingHorizontal: spacing.l,
-        marginBottom: spacing.xl,
+    heroContainer: {
+        alignItems: 'center',
+        paddingVertical: 20,
+    },
+    heroCard: {
+        width: width - 40,
+        height: 280,
+        borderRadius: 24,
+        overflow: 'hidden',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    heroContent: {
+        alignItems: 'center',
+    },
+    heroLabel: {
+        fontSize: 18,
+        fontWeight: '600',
+        marginTop: 12,
+    },
+    heroShine: {
+        position: 'absolute',
+        top: -50,
+        right: -50,
+        width: 200,
+        height: 200,
+        borderRadius: 100,
+        backgroundColor: 'rgba(255,255,255,0.15)',
+    },
+    statsGrid: {
+        flexDirection: 'row',
+        paddingHorizontal: 20,
+        gap: 12,
+        marginTop: 8,
+    },
+    statsCard: {
+        flex: 1,
+        padding: 16,
+        borderRadius: 20,
+    },
+    statsIconBadge: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 12,
+    },
+    statsValue: {
+        fontSize: 32,
+        fontWeight: '300',
+    },
+    statsLabel: {
+        fontSize: 14,
+        marginTop: 4,
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        marginTop: 32,
+        marginBottom: 16,
     },
     sectionTitle: {
         fontSize: 18,
-        color: colors.text.primary,
-        marginBottom: spacing.m,
-        fontWeight: "600",
+        fontWeight: '600',
     },
-    insightCard: {
-        backgroundColor: colors.surface,
-        padding: spacing.l,
-        borderLeftWidth: 2,
-        borderLeftColor: colors.text.accent,
-    },
-    insightText: {
-        fontSize: 18,
-        color: colors.text.primary,
-        lineHeight: 28,
-        fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-        fontStyle: "italic",
-        marginBottom: spacing.m,
-    },
-    stylistSignature: {
-        flexDirection: "row",
-        alignItems: "center",
-    },
-    stylistAvatar: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        backgroundColor: colors.text.accent,
-        marginRight: spacing.s,
-    },
-    stylistName: {
+    seeAll: {
         fontSize: 14,
-        color: colors.text.secondary,
-        fontWeight: "600",
     },
-    fab: {
-        position: "absolute",
-        bottom: 32,
-        alignSelf: "center",
-        backgroundColor: colors.text.primary,
-        paddingVertical: 16,
-        paddingHorizontal: 32,
-        borderRadius: 100,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
+    activityItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginHorizontal: 20,
+        padding: 16,
+        borderRadius: 16,
+        marginBottom: 12,
     },
-    fabText: {
-        color: "#FFF",
+    activityContent: {
+        flex: 1,
+    },
+    activityTitle: {
         fontSize: 16,
-        fontWeight: "600",
+        fontWeight: '500',
+        marginBottom: 4,
+    },
+    activitySubtitle: {
+        fontSize: 14,
     },
 });
 

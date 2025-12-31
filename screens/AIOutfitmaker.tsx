@@ -19,6 +19,22 @@ const { width } = Dimensions.get('window');
 
 const API_URL = 'https://aiwardrobe-ivh4.onrender.com';
 
+// Outfit interface
+interface OutfitItem {
+  name: string;
+  image: string;
+  type?: string;
+}
+
+interface GeneratedOutfit {
+  id: string;
+  mainImage: string;
+  matchScore: number;
+  description: string;
+  items: OutfitItem[];
+  stylingTips?: string;
+}
+
 // Occasion cards with icons and gradients
 const occasions = [
   { id: 'date', label: 'Date', icon: 'heart', colors: ['#FF6B9D', '#FE8DC3'] },
@@ -36,7 +52,7 @@ const AIOutfitGenerator = () => {
   const [selectedOccasion, setSelectedOccasion] = useState('');
   const [styleInput, setStyleInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [outfits, setOutfits] = useState([]);
+  const [outfits, setOutfits] = useState<GeneratedOutfit[]>([]);
   const [error, setError] = useState('');
 
   const generateOutfits = async () => {
@@ -114,7 +130,7 @@ const AIOutfitGenerator = () => {
                   style={{ width: (width - 52) / 2, paddingHorizontal: 6, marginBottom: 12 }}
                 >
                   <LinearGradient
-                    colors={selectedOccasion === occasion.id ? occasion.colors : ['#f9fafb', '#f3f4f6']}
+                    colors={selectedOccasion === occasion.id ? (occasion.colors as [string, string]) : ['#f9fafb', '#f3f4f6']}
                     style={{
                       paddingVertical: 20,
                       borderRadius: 16,
