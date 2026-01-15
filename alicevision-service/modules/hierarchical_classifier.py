@@ -54,7 +54,8 @@ CLOTHING_TAXONOMY = {
         "Knitwear": {
             "Sweaters": [
                 "crewneck sweater", "v-neck sweater", "cable knit sweater",
-                "cashmere sweater", "wool sweater", "cotton sweater", "oversized sweater"
+                "cashmere sweater", "wool sweater", "cotton sweater", "oversized sweater",
+                "half-zip sweater", "zip-up sweater", "turtleneck sweater"
             ],
             "Cardigans": [
                 "button cardigan", "open cardigan", "longline cardigan",
@@ -138,7 +139,8 @@ CLOTHING_TAXONOMY = {
             ],
             "Casual Pants": [
                 "cargo pants", "joggers", "sweatpants", "track pants",
-                "corduroy pants", "linen pants", "palazzo pants"
+                "corduroy pants", "linen pants", "palazzo pants",
+                "gurkha pants", "pleated pants", "wide-leg pants"
             ]
         },
         "Shorts": {
@@ -485,6 +487,21 @@ class HierarchicalClothingClassifier:
         
         # Calculate overall confidence
         overall_conf = (l1_conf * 0.1 + l2_conf * 0.2 + l3_conf * 0.3 + l4_conf * 0.4)
+        
+        # 🎯 ACRE Refinement for low-confidence results
+        if overall_conf < 0.85 and use_multipass:
+            try:
+                from modules.acre_attention import get_acre_classifier
+                acre = get_acre_classifier(use_dino=False)  # Use gradient fallback for speed
+                refined = acre.classify_with_attention(image, l1_result, l4_result)
+                
+                if refined.confidence > overall_conf + 0.1:
+                    l4_result = refined.specific_type
+                    l4_conf = refined.confidence
+                    overall_conf = refined.confidence
+                    logger.info(f"🎯 ACRE refined: {refined.specific_type} ({refined.confidence:.2f})")
+            except Exception as acre_err:
+                logger.debug(f"ACRE refinement skipped: {acre_err}")
         
         # Build classification path
         path_parts = [l1_result]

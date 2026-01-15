@@ -17,23 +17,17 @@ import Animated, {
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
+import AppColors from '../constants/AppColors';
 
-// iOS 26 Tahoe Colors
-const TAHOE = {
-    glass: 'rgba(255, 255, 255, 0.18)',
-    glassBorder: 'rgba(255, 255, 255, 0.3)',
-    glassDark: 'rgba(0, 0, 0, 0.06)',
-    primary: '#007AFF',
-    secondary: '#8E8E93',
-    success: '#34C759',
-    danger: '#FF3B30',
-    warning: '#FF9500',
-    text: '#1C1C1E',
-    textSecondary: '#8E8E93',
-    textLight: '#FFFFFF',
-    gradientStart: '#007AFF',
-    gradientEnd: '#5856D6',
+// Strict Black & White Theme
+const BW = {
+    black: '#000000',
+    white: '#FFFFFF',
+    gray: '#8E8E93',
+    lightGray: '#F5F5F7',
+    border: '#EBEBEB',
+    glass: 'rgba(255, 255, 255, 0.9)',
+    glassBorder: 'rgba(0, 0, 0, 0.08)',
 };
 
 interface TahoeButtonProps {
@@ -42,9 +36,8 @@ interface TahoeButtonProps {
     icon?: keyof typeof Ionicons.glyphMap;
     iconPosition?: 'left' | 'right';
     iconSize?: number;
-    variant?: 'glass' | 'solid' | 'outline' | 'gradient' | 'ghost';
+    variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'glass';
     size?: 'small' | 'medium' | 'large';
-    color?: 'primary' | 'secondary' | 'success' | 'danger' | 'warning';
     disabled?: boolean;
     fullWidth?: boolean;
     style?: ViewStyle;
@@ -61,9 +54,8 @@ export const TahoeButton: React.FC<TahoeButtonProps> = ({
     icon,
     iconPosition = 'left',
     iconSize = 20,
-    variant = 'glass',
+    variant = 'primary',
     size = 'medium',
-    color = 'primary',
     disabled = false,
     fullWidth = false,
     style,
@@ -111,21 +103,10 @@ export const TahoeButton: React.FC<TahoeButtonProps> = ({
         onPress();
     };
 
-    const getColorValue = () => {
-        switch (color) {
-            case 'primary': return TAHOE.primary;
-            case 'secondary': return TAHOE.secondary;
-            case 'success': return TAHOE.success;
-            case 'danger': return TAHOE.danger;
-            case 'warning': return TAHOE.warning;
-            default: return TAHOE.primary;
-        }
-    };
-
     const getSizeStyles = (): ViewStyle => {
         switch (size) {
             case 'small':
-                return { paddingVertical: 8, paddingHorizontal: 14 };
+                return { paddingVertical: 10, paddingHorizontal: 16 };
             case 'large':
                 return { paddingVertical: 18, paddingHorizontal: 28 };
             default:
@@ -136,24 +117,59 @@ export const TahoeButton: React.FC<TahoeButtonProps> = ({
     const getTextSize = () => {
         switch (size) {
             case 'small': return 14;
-            case 'large': return 18;
+            case 'large': return 17;
             default: return 16;
         }
     };
 
     const getTextColor = () => {
-        if (disabled) return TAHOE.textSecondary;
+        if (disabled) return BW.gray;
 
         switch (variant) {
-            case 'solid':
-            case 'gradient':
-                return TAHOE.textLight;
-            case 'glass':
+            case 'primary':
+                return BW.white;
+            case 'secondary':
+                return BW.black;
             case 'outline':
             case 'ghost':
-                return getColorValue();
+            case 'glass':
+                return BW.black;
             default:
-                return TAHOE.text;
+                return BW.black;
+        }
+    };
+
+    const getVariantStyles = (): ViewStyle => {
+        switch (variant) {
+            case 'primary':
+                return {
+                    backgroundColor: BW.black,
+                    borderWidth: 0,
+                };
+            case 'secondary':
+                return {
+                    backgroundColor: BW.lightGray,
+                    borderWidth: 0,
+                };
+            case 'outline':
+                return {
+                    backgroundColor: 'transparent',
+                    borderWidth: 1.5,
+                    borderColor: BW.black,
+                };
+            case 'ghost':
+                return {
+                    backgroundColor: 'transparent',
+                    borderWidth: 0,
+                };
+            case 'glass':
+                return {
+                    backgroundColor: BW.glass,
+                    borderWidth: 1,
+                    borderColor: BW.glassBorder,
+                };
+            default:
+                return {};
         }
     };
 
@@ -205,7 +221,7 @@ export const TahoeButton: React.FC<TahoeButtonProps> = ({
                     style={[
                         styles.glassContainer,
                         getSizeStyles(),
-                        { borderColor: TAHOE.glassBorder }
+                        { borderColor: BW.glassBorder }
                     ]}
                 >
                     {content}
@@ -213,58 +229,6 @@ export const TahoeButton: React.FC<TahoeButtonProps> = ({
             </AnimatedTouchable>
         );
     }
-
-    // Gradient variant
-    if (variant === 'gradient') {
-        return (
-            <AnimatedTouchable
-                onPressIn={handlePressIn}
-                onPressOut={handlePressOut}
-                onPress={handlePress}
-                activeOpacity={1}
-                disabled={disabled}
-                style={[
-                    animatedStyle,
-                    fullWidth && styles.fullWidth,
-                    disabled && styles.disabled,
-                    style
-                ]}
-            >
-                <LinearGradient
-                    colors={[TAHOE.gradientStart, TAHOE.gradientEnd]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={[styles.gradientContainer, getSizeStyles()]}
-                >
-                    {content}
-                </LinearGradient>
-            </AnimatedTouchable>
-        );
-    }
-
-    // Other variants (solid, outline, ghost)
-    const getVariantStyles = (): ViewStyle => {
-        switch (variant) {
-            case 'solid':
-                return {
-                    backgroundColor: getColorValue(),
-                    borderWidth: 0,
-                };
-            case 'outline':
-                return {
-                    backgroundColor: 'transparent',
-                    borderWidth: 2,
-                    borderColor: getColorValue(),
-                };
-            case 'ghost':
-                return {
-                    backgroundColor: 'transparent',
-                    borderWidth: 0,
-                };
-            default:
-                return {};
-        }
-    };
 
     return (
         <AnimatedTouchable
@@ -288,7 +252,7 @@ export const TahoeButton: React.FC<TahoeButtonProps> = ({
     );
 };
 
-// Tahoe Icon Button for headers
+// Tahoe Icon Button for headers - Black & White
 interface TahoeIconButtonProps {
     icon: keyof typeof Ionicons.glyphMap;
     onPress: () => void;
@@ -302,8 +266,8 @@ export const TahoeIconButton: React.FC<TahoeIconButtonProps> = ({
     icon,
     onPress,
     size = 24,
-    color = TAHOE.text,
-    variant = 'glass',
+    color = BW.black,
+    variant = 'ghost',
     style,
 }) => {
     const scale = useSharedValue(1);
@@ -358,7 +322,7 @@ export const TahoeIconButton: React.FC<TahoeIconButtonProps> = ({
     );
 };
 
-// Tahoe Action Card for quick actions
+// Tahoe Action Card - Black & White theme
 interface TahoeActionCardProps {
     icon: keyof typeof Ionicons.glyphMap;
     title: string;
@@ -372,12 +336,11 @@ export const TahoeActionCard: React.FC<TahoeActionCardProps> = ({
     icon,
     title,
     subtitle,
-    iconColor = TAHOE.primary,
+    iconColor = BW.black,
     onPress,
     style,
 }) => {
     const scale = useSharedValue(1);
-    const shadowOpacity = useSharedValue(0.08);
 
     const animatedStyle = useAnimatedStyle(() => ({
         transform: [{ scale: withSpring(scale.value, { damping: 18, stiffness: 380 }) }],
@@ -385,12 +348,10 @@ export const TahoeActionCard: React.FC<TahoeActionCardProps> = ({
 
     const handlePressIn = () => {
         scale.value = 0.97;
-        shadowOpacity.value = withTiming(0.15, { duration: 100 });
     };
 
     const handlePressOut = () => {
         scale.value = 1;
-        shadowOpacity.value = withTiming(0.08, { duration: 150 });
     };
 
     const handlePress = () => {
@@ -406,22 +367,18 @@ export const TahoeActionCard: React.FC<TahoeActionCardProps> = ({
             activeOpacity={1}
             style={[styles.actionCardContainer, animatedStyle, style]}
         >
-            <BlurView
-                intensity={Platform.OS === 'ios' ? 40 : 60}
-                tint="light"
-                style={styles.actionCardBlur}
-            >
-                <View style={[styles.actionIconContainer, { backgroundColor: `${iconColor}15` }]}>
-                    <Ionicons name={icon} size={24} color={iconColor} />
+            <View style={styles.actionCardInner}>
+                <View style={styles.actionIconContainer}>
+                    <Ionicons name={icon} size={24} color={BW.black} />
                 </View>
                 <Text style={styles.actionTitle}>{title}</Text>
                 {subtitle && <Text style={styles.actionSubtitle}>{subtitle}</Text>}
-            </BlurView>
+            </View>
         </AnimatedTouchable>
     );
 };
 
-// Tahoe Chip Button
+// Tahoe Chip Button - Black & White
 interface TahoeChipProps {
     title: string;
     isActive?: boolean;
@@ -476,7 +433,7 @@ export const TahoeChip: React.FC<TahoeChipProps> = ({
 
 const styles = StyleSheet.create({
     button: {
-        borderRadius: 16,
+        borderRadius: 14,
         overflow: 'hidden',
     },
     contentRow: {
@@ -498,20 +455,14 @@ const styles = StyleSheet.create({
         width: '100%',
     },
     disabled: {
-        opacity: 0.5,
+        opacity: 0.4,
     },
 
     // Glass variant
     glassContainer: {
-        borderRadius: 16,
+        borderRadius: 14,
         borderWidth: 1,
-        backgroundColor: TAHOE.glass,
-        overflow: 'hidden',
-    },
-
-    // Gradient variant
-    gradientContainer: {
-        borderRadius: 16,
+        backgroundColor: BW.glass,
         overflow: 'hidden',
     },
 
@@ -526,9 +477,9 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: TAHOE.glass,
+        backgroundColor: BW.glass,
         borderWidth: 1,
-        borderColor: TAHOE.glassBorder,
+        borderColor: BW.glassBorder,
         overflow: 'hidden',
     },
     iconButtonGhost: {
@@ -539,64 +490,64 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
 
-    // Action Card
+    // Action Card - Clean B&W
     actionCardContainer: {
-        borderRadius: 20,
+        borderRadius: 18,
         overflow: 'hidden',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-        elevation: 4,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        elevation: 3,
     },
-    actionCardBlur: {
-        padding: 20,
-        backgroundColor: TAHOE.glass,
+    actionCardInner: {
+        padding: 18,
+        backgroundColor: BW.white,
         borderWidth: 1,
-        borderColor: TAHOE.glassBorder,
-        borderRadius: 20,
-        overflow: 'hidden',
+        borderColor: BW.border,
+        borderRadius: 18,
     },
     actionIconContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 14,
+        width: 44,
+        height: 44,
+        borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 12,
+        backgroundColor: BW.lightGray,
     },
     actionTitle: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '600',
-        color: TAHOE.text,
+        color: BW.black,
         marginBottom: 4,
     },
     actionSubtitle: {
         fontSize: 13,
-        color: TAHOE.textSecondary,
+        color: BW.gray,
     },
 
-    // Chip
+    // Chip - Black & White
     chip: {
         paddingVertical: 10,
         paddingHorizontal: 18,
         borderRadius: 100,
-        backgroundColor: TAHOE.glass,
+        backgroundColor: BW.white,
         borderWidth: 1,
-        borderColor: TAHOE.glassBorder,
+        borderColor: BW.border,
         marginRight: 10,
     },
     chipActive: {
-        backgroundColor: TAHOE.primary,
-        borderColor: TAHOE.primary,
+        backgroundColor: BW.black,
+        borderColor: BW.black,
     },
     chipText: {
         fontSize: 14,
         fontWeight: '500',
-        color: TAHOE.text,
+        color: BW.black,
     },
     chipTextActive: {
-        color: TAHOE.textLight,
+        color: BW.white,
     },
 });
 

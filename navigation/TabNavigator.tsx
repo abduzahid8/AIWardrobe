@@ -13,19 +13,42 @@ import Animated, {
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 
-// New Imports
+// Original Screens
 import HomeScreen from "../screens/HomeScreen";
-import CuratedClosetScreen from "../src/features/closet/CuratedClosetScreen";
+import MyClosetScreen from "../screens/MyClosetScreen";
 import AIHubScreen from "../screens/AIHubScreen";
-import DesignRoomScreen from "../screens/DesignRoomScreen";
+import InspoScreen from "../screens/InspoScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 
 import { colors } from "../src/theme";
 
 const Tab = createBottomTabNavigator();
 
+// Type for animated tab icon props
+interface AnimatedTabIconProps {
+  focused: boolean;
+  iconName: string;
+  color: string;
+  size: number;
+}
+
+// Type for tab bar icon props
+interface TabBarIconProps {
+  route: { name: string };
+  focused: boolean;
+  color: string;
+  size: number;
+}
+
+// Type for tab button props
+interface TabButtonProps {
+  children: React.ReactNode;
+  onPress: () => void;
+  accessibilityState?: { selected?: boolean };
+}
+
 // Animated tab icon with scale effect
-const AnimatedTabIcon = ({ focused, iconName, color, size }: any) => {
+const AnimatedTabIcon = ({ focused, iconName, color, size }: AnimatedTabIconProps) => {
   return (
     <Animated.View
       entering={FadeIn.duration(200)}
@@ -33,7 +56,7 @@ const AnimatedTabIcon = ({ focused, iconName, color, size }: any) => {
         transform: [{ scale: focused ? 1.15 : 1 }],
       }}
     >
-      <Ionicons name={iconName} size={size} color={color} />
+      <Ionicons name={iconName as any} size={size} color={color} />
     </Animated.View>
   );
 };
@@ -48,8 +71,8 @@ const TabNavigator = () => {
     paddingTop: 10,
   }), []);
 
-  const getTabBarIcon = useCallback(({ route, focused, color, size }: any) => {
-    let iconName: any;
+  const getTabBarIcon = useCallback(({ route, focused, color, size }: TabBarIconProps) => {
+    let iconName: string;
 
     if (route.name === "Home") {
       iconName = focused ? "today" : "today-outline";
@@ -57,17 +80,19 @@ const TabNavigator = () => {
       iconName = focused ? "shirt" : "shirt-outline";
     } else if (route.name === "AI") {
       iconName = focused ? "sparkles" : "sparkles-outline";
-    } else if (route.name === "Style") {
-      iconName = focused ? "color-palette" : "color-palette-outline";
+    } else if (route.name === "Inspo") {
+      iconName = focused ? "compass" : "compass-outline";
     } else if (route.name === "Profile") {
       iconName = focused ? "person" : "person-outline";
+    } else {
+      iconName = "help-outline";
     }
 
     return <AnimatedTabIcon focused={focused} iconName={iconName} color={color} size={size} />;
   }, []);
 
   // Custom tab button with haptic feedback
-  const TabButton = useCallback(({ children, onPress, accessibilityState }: any) => {
+  const TabButton = useCallback(({ children, onPress, accessibilityState }: TabButtonProps) => {
     const handlePress = () => {
       // Haptic feedback on tab press
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -94,7 +119,7 @@ const TabNavigator = () => {
         tabBarActiveTintColor: colors.text.primary,
         tabBarInactiveTintColor: colors.text.secondary,
         tabBarIcon: (props) => getTabBarIcon({ route, ...props }),
-        tabBarButton: (props) => <TabButton {...props} />,
+        tabBarButton: (props) => <TabButton {...props as any} />,
         // Smooth animations for tab content
         animation: 'fade',
         animationDuration: 250,
@@ -106,9 +131,9 @@ const TabNavigator = () => {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Closet" component={CuratedClosetScreen} />
+      <Tab.Screen name="Closet" component={MyClosetScreen} />
       <Tab.Screen name="AI" component={AIHubScreen} />
-      <Tab.Screen name="Style" component={DesignRoomScreen} />
+      <Tab.Screen name="Inspo" component={InspoScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );

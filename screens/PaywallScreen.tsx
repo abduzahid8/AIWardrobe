@@ -157,8 +157,13 @@ const PaywallScreen = () => {
 
     const handleRestore = async () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        // TODO: Implement restore purchases
-        console.log('Restore purchases');
+        // Restore purchases will be implemented with RevenueCat/StoreKit
+        // For now, show a placeholder message
+        setIsLoading('restore');
+        setTimeout(() => {
+            setIsLoading(null);
+            // Show alert or toast that no purchases found
+        }, 1500);
     };
 
     return (

@@ -171,18 +171,18 @@ CONFIDENCE_THRESHOLDS = {
     "reject": 0.25,         # <25% → reject, obvious noise only
 }
 
-# Minimum confidence by category (LOWERED - some items have naturally low confidence)
+# Minimum confidence by category (LOWERED for better recall - was causing 40% accuracy)
 CATEGORY_MIN_CONFIDENCE = {
-    "upper_clothes": 0.35,  # Tops - lowered from 0.55
-    "pants": 0.35,          # Lowered from 0.55
-    "shoes": 0.20,          # Often small in frame, low confidence - lowered from 0.50
-    "dress": 0.40,
-    "skirt": 0.35,          # Often confused with pants - lowered from 0.60
-    "bag": 0.30,
-    "hat": 0.25,            # Often small - lowered from 0.45
+    "upper_clothes": 0.25,  # LOWERED - accept more tops
+    "pants": 0.25,          # LOWERED - accept more pants
+    "shoes": 0.20,          # LOWERED - often small in frame
+    "dress": 0.30,          # LOWERED from 0.45
+    "skirt": 0.30,          # LOWERED from 0.55 - was rejecting valid skirts
+    "bag": 0.25,            # LOWERED
+    "hat": 0.25,            # LOWERED from 0.45 - was rejecting valid hats
     "belt": 0.20,           # Very small
-    "scarf": 0.20,
-    "sunglasses": 0.20,
+    "scarf": 0.25,          # LOWERED from 0.50 - was rejecting valid scarves
+    "sunglasses": 0.25,
 }
 
 # Multi-frame consensus thresholds (Layer 2)
@@ -191,6 +191,109 @@ MULTI_FRAME_CONSENSUS = {
     "agreement_threshold": 0.60,    # Item must appear in 60%+ of frames
     "best_frame_strategy": "highest_confidence",  # Use frame with best detection
 }
+
+
+# ============================================
+# 🎯 POSITION-BASED VALIDATION (NEW)
+# Prevents hat→skirt by checking item position
+# ============================================
+
+def validate_item_position(category: str, bbox: tuple, image_height: int, image_width: int) -> tuple:
+    """
+    Validate item position in image.
+    
+    Args:
+        category: Item category (hat, shoes, pants, etc.)
+        bbox: Bounding box (x1, y1, x2, y2) or (x, y, w, h)
+        image_height: Image height in pixels
+        image_width: Image width in pixels
+        
+    Returns:
+        Tuple of (is_valid, reason)
+    """
+    if not bbox or len(bbox) < 4 or image_height <= 0:
+        return True, "No bbox to validate"
+    
+    # Handle both bbox formats
+    if bbox[2] > image_width or bbox[3] > image_height:
+        # Format: (x, y, w, h)
+        y_center = (bbox[1] + bbox[3] / 2) / image_height
+        item_height = bbox[3]
+        item_width = bbox[2]
+    else:
+        # Format: (x1, y1, x2, y2)
+        y_center = (bbox[1] + bbox[3]) / 2 / image_height
+        item_height = bbox[3] - bbox[1]
+        item_width = bbox[2] - bbox[0]
+    
+    category_lower = category.lower()
+    
+    # HAT/CAP: Must be in top 40% of image
+    if any(x in category_lower for x in ["hat", "cap", "beanie", "fedora"]):
+        if y_center > 0.45:
+            return False, f"Hat position too low (y={y_center:.2f}, should be <0.45)"
+    
+    # SHOES: Must be in bottom 40% of image  
+    if any(x in category_lower for x in ["shoe", "sneaker", "boot", "sandal", "heel"]):
+        if y_center < 0.55:
+            return False, f"Shoes position too high (y={y_center:.2f}, should be >0.55)"
+    
+    # PANTS/SKIRT: Must be in lower 60% of image
+    if any(x in category_lower for x in ["pants", "jeans", "trousers", "skirt", "shorts"]):
+        if y_center < 0.35:
+            return False, f"Bottoms position too high (y={y_center:.2f}, should be >0.35)"
+    
+    return True, "Position valid"
+
+
+def validate_aspect_ratio(category: str, bbox: tuple) -> tuple:
+    """
+    Validate item aspect ratio.
+    
+    Args:
+        category: Item category
+        bbox: Bounding box (x1, y1, x2, y2) or (x, y, w, h)
+        
+    Returns:
+        Tuple of (is_valid, reason)
+    """
+    if not bbox or len(bbox) < 4:
+        return True, "No bbox to validate"
+    
+    # Calculate dimensions
+    if bbox[2] < 1 or bbox[3] < 1:
+        return True, "Invalid bbox dimensions"
+    
+    # Check format and calculate aspect ratio
+    if bbox[2] > bbox[0] * 2:  # Likely (x1, y1, x2, y2)
+        width = bbox[2] - bbox[0]
+        height = bbox[3] - bbox[1]
+    else:  # Likely (x, y, w, h)
+        width = bbox[2]
+        height = bbox[3]
+    
+    if width <= 0 or height <= 0:
+        return True, "Invalid dimensions"
+    
+    aspect_ratio = height / width
+    category_lower = category.lower()
+    
+    # SHORTS: Should be wider than tall (ratio < 1.0)
+    if "shorts" in category_lower:
+        if aspect_ratio > 1.5:
+            return False, f"Shorts too tall (ratio={aspect_ratio:.2f}, should be <1.5)"
+    
+    # PANTS: Should be taller than wide (ratio > 1.0)
+    if any(x in category_lower for x in ["pants", "jeans", "trousers"]):
+        if aspect_ratio < 0.8:
+            return False, f"Pants too wide (ratio={aspect_ratio:.2f}, should be >0.8)"
+    
+    # HAT: Should be wider than tall or roughly square
+    if any(x in category_lower for x in ["hat", "cap", "beanie"]):
+        if aspect_ratio > 2.0:
+            return False, f"Hat too tall (ratio={aspect_ratio:.2f}, should be <2.0)"
+    
+    return True, "Aspect ratio valid"
 
 
 def apply_confidence_filter(detections: list, min_threshold: float = None) -> list:
@@ -505,11 +608,45 @@ def infer_specific_type(category: str, primary_color: str, image: np.ndarray = N
     # === UPPER BODY - ADVANCED DETECTION ===
     if category in ["upper_clothes", "top"]:
         
-        # Analyze visual features if image is available
+        # ==========================================
+        # 🚀 STEP 1: MATERIAL DETECTION FIRST
+        # Check material BEFORE structure to avoid misclassification
+        # ==========================================
+        is_denim = False
+        is_leather = False
+        is_cotton = False
+        is_wool = False
+        
+        if image is not None:
+            is_denim = _is_denim_texture(image, mask)
+            is_leather = _is_leather_texture(image, mask)
+            is_cotton = _detect_cotton_fabric(image, mask)
+            is_wool = _is_wool_texture(image, mask)
+            
+            logger.debug(f"Material detection: denim={is_denim}, leather={is_leather}, cotton={is_cotton}, wool={is_wool}")
+        
+        # If we detected a specific material, use it to guide classification
+        if is_denim:
+            return "denim jacket"
+        
+        if is_leather:
+            return "leather jacket"
+        
+        if is_wool:
+            if color_lower in ["cream", "ivory", "off-white", "beige"]:
+                return "cable knit sweater"
+            elif color_lower in ["gray", "charcoal", "heather"]:
+                return "wool sweater"
+            else:
+                return "sweater"
+        
+        # ==========================================
+        # 🚀 STEP 2: STRUCTURE ANALYSIS (for non-material items)
+        # Only check structure if material is NOT definitively detected
+        # ==========================================
         is_thick_fabric = False
         is_structured = False
         has_collar = False
-        is_heavy = False
         aspect_ratio = 1.0
         edge_density = 0.0
         
@@ -538,7 +675,7 @@ def infer_specific_type(category: str, primary_color: str, image: np.ndarray = N
                     is_structured = edge_density > 15  # Jackets, blazers have structure
                 
                 # Check for collar region (top 15% of garment)
-                if h > 0:
+                if 'h' in dir() and h > 0:
                     collar_region = mask[y:y+int(h*0.15), :]
                     collar_edges = edges[y:y+int(h*0.15), :]
                     collar_edge_density = np.sum(collar_edges > 0) / max(np.sum(collar_region > 0), 1) * 100
@@ -547,18 +684,29 @@ def infer_specific_type(category: str, primary_color: str, image: np.ndarray = N
             except Exception as e:
                 pass  # Fall back to color-only analysis
         
-        # === JACKET/COAT DETECTION ===
-        # Jackets: wider aspect ratio, more structure, heavier colors
-        if is_structured or edge_density > 12 or aspect_ratio > 0.9:
-            # Likely a jacket or structured garment
-            if "denim" in color_lower or _is_denim_texture(image, mask) if image is not None else False:
-                return "denim jacket"
-            elif color_lower in ["black", "brown", "cognac", "saddle brown", "chocolate"]:
-                if is_thick_fabric or edge_density > 18:
-                    return "leather jacket"
+        # === COTTON SHIRT DETECTION (NEW - explicit cotton detection) ===
+        if is_cotton:
+            if has_collar:
+                if color_lower in ["white", "off-white", "cream"]:
+                    return "white shirt"
+                elif color_lower in ["light blue", "sky blue"]:
+                    return "button-down shirt"
                 else:
-                    return "blazer"
-            elif color_lower in ["olive", "army green", "khaki", "forest green", "hunter green"]:
+                    return "cotton shirt"
+            else:
+                # No collar = t-shirt
+                if color_lower in ["white", "off-white"]:
+                    return "white t-shirt"
+                elif color_lower in ["black"]:
+                    return "black t-shirt"
+                else:
+                    return "t-shirt"
+        
+        # === JACKET/COAT DETECTION (only if NOT cotton) ===
+        # Jackets: wider aspect ratio, more structure, heavier colors
+        if is_structured or edge_density > 15 or aspect_ratio > 0.95:
+            # Likely a jacket or structured garment
+            if color_lower in ["olive", "army green", "khaki", "forest green", "hunter green"]:
                 return "bomber jacket"
             elif color_lower in ["navy blue", "charcoal", "dark gray"]:
                 return "blazer"
@@ -569,8 +717,11 @@ def infer_specific_type(category: str, primary_color: str, image: np.ndarray = N
                     return "fleece jacket"
                 else:
                     return "puffer jacket"
-            else:
+            elif color_lower in ["black", "brown"]:
                 return "jacket"
+            else:
+                # DEFAULT: Don't assume jacket - use simpler label
+                return "top"
         
         # === HOODIE DETECTION ===
         # Hoodies: thick fabric, typically gray/black/navy, casual colors
@@ -749,9 +900,297 @@ def infer_specific_type(category: str, primary_color: str, image: np.ndarray = N
     return CATEGORY_DISPLAY_NAMES.get(category, category)
 
 
+def smart_classify_item(
+    category: str,
+    image: np.ndarray = None,
+    mask: np.ndarray = None,
+    confidence: float = None,
+    use_qwen_fallback: bool = True,
+    use_hierarchical: bool = True
+) -> Tuple[str, float]:
+    """
+    🧠 SMART CLASSIFIER - Maximum accuracy using all available signals
+    
+    Uses:
+    1. HierarchicalClassifier (200+ types, 4-level hierarchy) - PRIMARY
+    2. Material detection (silk, denim, leather, etc.)
+    3. Texture analysis
+    4. Color extraction
+    5. infer_specific_type logic
+    6. Qwen-VL fallback for ambiguous cases (confidence < 0.5)
+    
+    Returns:
+        Tuple of (specific_type, confidence)
+    """
+    import base64
+    from io import BytesIO
+    
+    # =============================================
+    # STEP 0: HIERARCHICAL CLASSIFIER V2 (BEST - VISUAL FEATURES)
+    # =============================================
+    if use_hierarchical and image is not None and image.size > 0:
+        # Try V2 first (visual feature enhanced)
+        try:
+            from modules.hierarchical_classifier_v2 import get_hierarchical_classifier_v2
+            hier_v2 = get_hierarchical_classifier_v2()
+            v2_result = hier_v2.classify(image, mask=mask, category_hint=category)
+            
+            if v2_result and v2_result.get("confidence", 0) > 0.6:
+                specific_type = v2_result.get("specific_type", category)
+                confidence = v2_result.get("confidence", 0.6)
+                logger.info(f"🎯 Hierarchical V2: {specific_type} (conf={confidence:.2f}, features={v2_result.get('features', {})})")
+                return specific_type, confidence
+            else:
+                logger.debug(f"V2 low confidence ({v2_result.get('confidence', 0):.2f}), trying V1...")
+        except Exception as v2_err:
+            logger.debug(f"Hierarchical V2 failed: {v2_err}")
+        
+        # Fallback to V1
+        try:
+            from modules.hierarchical_classifier import get_hierarchical_classifier
+            hier = get_hierarchical_classifier()
+            
+            # Use category hint for better accuracy
+            hier_result = hier.classify(image, category_hint=category)
+            
+            if hier_result.overall_confidence > 0.5:
+                # Use most specific type (level4 variant or level3 type)
+                best_type = hier_result.level4_variant
+                if best_type == hier_result.level3_type:
+                    best_type = hier_result.level3_type
+                
+                logger.info(f"🎯 Hierarchical V1: {hier_result.classification_path} (conf={hier_result.overall_confidence:.2f})")
+                return best_type, hier_result.overall_confidence
+            else:
+                logger.debug(f"Hierarchical V1 low confidence ({hier_result.overall_confidence:.2f}), trying other methods...")
+        except Exception as hier_err:
+            logger.debug(f"Hierarchical V1 classifier failed: {hier_err}")
+
+    
+    # Get primary color
+    primary_color = "Unknown"
+    if image is not None:
+        try:
+            colors = extract_dominant_colors(image, n_colors=1, mask=mask)
+            if colors:
+                primary_color = colors[0]["name"]
+        except:
+            pass
+    
+    # STEP 1: Use material detection for better classification
+    detected_material = None
+    if image is not None:
+        # Try all material detectors
+        if _is_denim_texture(image, mask):
+            detected_material = "denim"
+        elif _is_leather_texture(image, mask):
+            detected_material = "leather"
+        elif _is_silk_texture(image, mask):
+            detected_material = "silk"
+        elif _is_wool_texture(image, mask):
+            detected_material = "wool"
+        elif _is_velvet_texture(image, mask):
+            detected_material = "velvet"
+        elif _is_fleece_texture(image, mask):
+            detected_material = "fleece"
+        elif _is_linen_texture(image, mask):
+            detected_material = "linen"
+        elif _is_corduroy_texture(image, mask):
+            detected_material = "corduroy"
+        elif _detect_cotton_fabric(image, mask):
+            detected_material = "cotton"
+    
+    # STEP 2: Material-aware type refinement
+    if detected_material:
+        if category in ["upper_clothes", "top"]:
+            material_type_map = {
+                "denim": "denim jacket",
+                "leather": "leather jacket",
+                "silk": "silk blouse",
+                "wool": "wool sweater",
+                "velvet": "velvet top",
+                "fleece": "fleece jacket",
+                "linen": "linen shirt",
+                "corduroy": "corduroy jacket",
+                "cotton": "cotton t-shirt"
+            }
+            if detected_material in material_type_map:
+                return material_type_map[detected_material], 0.85
+        
+        elif category == "pants":
+            material_type_map = {
+                "denim": "jeans",
+                "leather": "leather pants",
+                "velvet": "velvet trousers",
+                "corduroy": "corduroy pants",
+                "linen": "linen pants",
+                "cotton": "chinos"
+            }
+            if detected_material in material_type_map:
+                return material_type_map[detected_material], 0.85
+        
+        elif category == "dress":
+            material_type_map = {
+                "silk": "silk dress",
+                "velvet": "velvet dress",
+                "linen": "linen dress",
+                "cotton": "cotton dress"
+            }
+            if detected_material in material_type_map:
+                return material_type_map[detected_material], 0.85
+    
+    # STEP 3: Use standard infer_specific_type
+    basic_type = infer_specific_type(category, primary_color, image, mask)
+    
+    # STEP 4: Qwen-VL fallback for low confidence or ambiguous types
+    if use_qwen_fallback and confidence is not None and confidence < 0.5:
+        try:
+            from modules.qwen_vl_reasoning import analyze_with_qwen
+            
+            # Convert image to base64
+            if image is not None:
+                _, buffer = cv2.imencode('.jpg', image)
+                img_b64 = base64.b64encode(buffer).decode()
+                
+                qwen_result = analyze_with_qwen(
+                    img_b64,
+                    "What specific type of clothing item is this? Give a precise name like 'denim jacket', 'cotton t-shirt', 'wool sweater', etc."
+                )
+                
+                if qwen_result.success and qwen_result.answer:
+                    # Extract clothing type from response
+                    answer = qwen_result.answer.lower().strip()
+                    # Common type patterns
+                    for common_type in [
+                        "t-shirt", "polo shirt", "dress shirt", "button-down", "blouse",
+                        "sweater", "hoodie", "cardigan", "jacket", "blazer", "coat",
+                        "jeans", "chinos", "trousers", "joggers", "shorts",
+                        "dress", "skirt", "sneakers", "boots", "loafers"
+                    ]:
+                        if common_type in answer:
+                            logger.info(f"🧠 Qwen-VL classified: {common_type}")
+                            return common_type, 0.75
+        except Exception as e:
+            logger.debug(f"Qwen-VL fallback failed: {e}")
+    
+    return basic_type, confidence if confidence else 0.7
+
+
 # ============================================
-# 🎯 HELPER FUNCTIONS FOR SIMPLER LABELS
+# 📊 CONFIDENCE CALIBRATION (PHASE 2)
+# Improves reliability by calibrating raw model scores
 # ============================================
+
+# Category-specific confidence thresholds
+# Based on typical model accuracy per category
+CATEGORY_CONFIDENCE_THRESHOLDS = {
+    "upper_clothes": 0.55,  # Shirts, sweaters - moderate complexity
+    "pants": 0.50,           # Usually clear
+    "dress": 0.60,           # Can be confused with tops
+    "skirt": 0.60,           # Similar to dress
+    "jacket": 0.55,          # Clear but varied types
+    "shoes": 0.45,           # Usually distinct
+    "hat": 0.50,
+    "bag": 0.50,
+    "belt": 0.55,
+    "scarf": 0.60,
+    "default": 0.50
+}
+
+# Platt scaling parameters (learned from typical CLIP/SegFormer outputs)
+# These transform raw logits to calibrated probabilities
+PLATT_PARAMS = {
+    "A": -1.5,   # Sigmoid scale
+    "B": 0.3     # Sigmoid shift
+}
+
+def calibrate_confidence(raw_score: float, category: str = None) -> float:
+    """
+    Apply Platt scaling to calibrate raw model confidence.
+    
+    Platt scaling: P(y=1|f) = 1 / (1 + exp(A*f + B))
+    
+    This transforms overconfident scores to more realistic probabilities.
+    """
+    import math
+    
+    A = PLATT_PARAMS["A"]
+    B = PLATT_PARAMS["B"]
+    
+    # Apply sigmoid transformation
+    try:
+        calibrated = 1.0 / (1.0 + math.exp(A * raw_score + B))
+    except OverflowError:
+        calibrated = 0.0 if A * raw_score + B > 0 else 1.0
+    
+    # Clamp to valid range
+    calibrated = max(0.0, min(1.0, calibrated))
+    
+    return calibrated
+
+
+def is_confident_detection(confidence: float, category: str = None) -> bool:
+    """
+    Check if detection meets category-specific threshold.
+    """
+    threshold = CATEGORY_CONFIDENCE_THRESHOLDS.get(
+        category, 
+        CATEGORY_CONFIDENCE_THRESHOLDS["default"]
+    )
+    return confidence >= threshold
+
+
+def get_confidence_level(confidence: float, category: str = None) -> str:
+    """
+    Get human-readable confidence level.
+    """
+    threshold = CATEGORY_CONFIDENCE_THRESHOLDS.get(
+        category,
+        CATEGORY_CONFIDENCE_THRESHOLDS["default"]
+    )
+    
+    if confidence >= threshold + 0.25:
+        return "high"
+    elif confidence >= threshold:
+        return "medium"
+    elif confidence >= threshold - 0.15:
+        return "low"
+    else:
+        return "uncertain"
+
+
+def calibrated_classify_item(
+    category: str,
+    image: np.ndarray = None,
+    mask: np.ndarray = None,
+    raw_confidence: float = None
+) -> Tuple[str, float, str]:
+    """
+    🎯 CALIBRATED CLASSIFIER - Maximum accuracy with reliable confidence
+    
+    Returns:
+        Tuple of (specific_type, calibrated_confidence, confidence_level)
+    """
+    # Get classification from smart classifier
+    specific_type, raw_conf = smart_classify_item(
+        category=category,
+        image=image,
+        mask=mask,
+        confidence=raw_confidence
+    )
+    
+    # Calibrate the confidence
+    calibrated_conf = calibrate_confidence(raw_conf if raw_conf else 0.7, category)
+    
+    # Get confidence level
+    conf_level = get_confidence_level(calibrated_conf, category)
+    
+    # Log calibration
+    logger.debug(f"Calibration: {raw_conf:.2f} → {calibrated_conf:.2f} ({conf_level})")
+    
+    return specific_type, calibrated_conf, conf_level
+
+
 
 def simplify_clothing_type(clip_label: str) -> str:
     """
@@ -863,31 +1302,30 @@ def infer_specific_type_v2(category: str, image: np.ndarray, mask: np.ndarray = 
     from typing import Tuple
     
     try:
-        # STEP 0: Our TRAINED CLASSIFIER (highest accuracy - 91.5%)
+        # STEP 0: Custom classifier DISABLED
+        # NOTE: Fashion-MNIST trained model doesn't work well on real color photos
+        # The grayscale 28x28 training data is too different from real photos
+        # TODO: Retrain on DeepFashion2 or iMaterialist for better accuracy
         custom_type = None
         custom_conf = 0.0
         
-        try:
-            from modules.clothing_classifier import classify_clothing
-            from PIL import Image
-            
-            # Convert numpy array to PIL Image
-            if image is not None:
-                img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                pil_image = Image.fromarray(img_rgb)
-                
-                predictions = classify_clothing(pil_image, top_k=1)
-                if predictions:
-                    custom_type = predictions[0]["unified_name"]
-                    custom_conf = predictions[0]["confidence"]
-                    logger.info(f"  🎯 CUSTOM MODEL says: {custom_type} (conf={custom_conf:.2f})")
-        except Exception as custom_err:
-            logger.debug(f"  Custom classifier not available: {custom_err}")
+        # Skip custom classifier - use CLIP instead which handles diverse images better
+        # if False:  # DISABLED - was causing misclassification (shoes→bag, shirt→jacket)
+        #     try:
+        #         from modules.clothing_classifier import classify_clothing
+        #         from PIL import Image
+        #         if image is not None:
+        #             img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        #             pil_image = Image.fromarray(img_rgb)
+        #             predictions = classify_clothing(pil_image, top_k=1)
+        #             if predictions:
+        #                 custom_type = predictions[0]["unified_name"]
+        #                 custom_conf = predictions[0]["confidence"]
+        #                 logger.info(f"  🎯 CUSTOM MODEL says: {custom_type} (conf={custom_conf:.2f})")
+        #     except Exception as custom_err:
+        #         logger.debug(f"  Custom classifier not available: {custom_err}")
         
-        # If custom classifier is highly confident, use its result directly
-        if custom_type and custom_conf > 0.75:
-            logger.info(f"  ✅ Final type: {custom_type} (from trained model, conf={custom_conf:.2f})")
-            return custom_type, custom_conf
+        # Custom classifier disabled - proceed to CLIP
         
         # STEP 1: CLIP Classification (fallback for uncertain cases)
         clip_type = None
@@ -929,8 +1367,27 @@ def infer_specific_type_v2(category: str, image: np.ndarray, mask: np.ndarray = 
                 final_type = simplify_clothing_type(clip_type)
                 final_conf = clip_conf + 0.1
         elif texture_type and texture_conf > 0.5:
-            # CLIP failed, use texture
-            final_type = texture_type
+            # CLIP failed, use texture - but convert materials to garment types
+            if texture_type in ["denim", "leather", "fleece", "knit", "wool"]:
+                # Map material + category to garment type
+                if category in ["upper_clothes", "top"]:
+                    if texture_type == "denim":
+                        final_type = "denim jacket"
+                    elif texture_type == "leather":
+                        final_type = "leather jacket"
+                    elif texture_type == "fleece":
+                        final_type = "fleece jacket"
+                    elif texture_type == "knit":
+                        final_type = "sweater"
+                    else:
+                        final_type = "jacket"
+                elif category == "pants":
+                    final_type = "jeans" if texture_type == "denim" else "pants"
+                else:
+                    # Use simple category label, not raw material
+                    final_type = get_simple_category_label(category)
+            else:
+                final_type = texture_type
             final_conf = texture_conf
         else:
             # Both failed - use SIMPLE fallback labels
@@ -1002,12 +1459,22 @@ def analyze_texture_v2(image: np.ndarray, mask: np.ndarray = None, category: str
         
         # CLASSIFICATION RULES
         
-        # DENIM: STRICT blue hue + HIGH saturation (must look blue, not gray)
-        # Hue 100-125 is true blue, 95-135 was too wide
-        if blue_ratio > 0.4 and avg_sat > 50:  # STRICTER thresholds
+        # DENIM: VERY STRICT - Must be obviously blue denim
+        # Must have: Strong blue color (>60% of pixels), High saturation (>80), 
+        # specific denim texture pattern (moderate variance, moderate edges)
+        is_true_denim = (
+            blue_ratio > 0.6 and        # Very strong blue color (>60% pixels blue)
+            avg_sat > 80 and            # High saturation (not gray)
+            texture_var > 200 and       # Some texture variation
+            texture_var < 4000 and      # But not too much (not cable knit)
+            edge_density > 0.03 and     # Has woven pattern edges
+            edge_density < 0.20         # But not excessively textured
+        )
+        
+        if is_true_denim:
+            logger.info(f"  🔵 DENIM detected: blue_ratio={blue_ratio:.2f}, sat={avg_sat:.0f}")
             if category in ["upper_clothes", "top"]:
-                return "denim", 0.85  # Return MATERIAL, not garment type
-
+                return "denim jacket", 0.85
             elif category == "pants":
                 return "jeans", 0.88
             elif category == "skirt":
@@ -1127,27 +1594,155 @@ def extract_primary_color_quick(image: np.ndarray, mask: np.ndarray = None) -> s
 
 
 def _is_denim_texture(image: np.ndarray, mask: np.ndarray = None) -> bool:
-    """Check if texture appears to be denim (blue tones + textured)."""
+    """
+    Check if texture appears to be denim.
+    STRICT: Requires true blue hue + high saturation + characteristic texture.
+    """
     try:
         # Convert to HSV for color analysis
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         
-        if mask is not None:
-            # Apply mask
-            h = hsv[:, :, 0][mask > 127]
-            s = hsv[:, :, 1][mask > 127]
+        if mask is not None and mask.size > 0:
+            mask_2d = mask if len(mask.shape) == 2 else cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
+            valid_mask = mask_2d > 127
+            h = hsv[:, :, 0][valid_mask]
+            s = hsv[:, :, 1][valid_mask]
+            gray_pixels = gray[valid_mask]
         else:
             h = hsv[:, :, 0].flatten()
             s = hsv[:, :, 1].flatten()
+            gray_pixels = gray.flatten()
         
-        if len(h) == 0:
+        if len(h) < 100:
             return False
         
-        # Denim is typically blue (hue 100-130) with moderate saturation
+        # STRICT: True denim is deep blue (H:100-130) with HIGH saturation
         avg_hue = np.mean(h)
         avg_sat = np.mean(s)
         
-        return 90 <= avg_hue <= 140 and avg_sat > 30
+        is_blue = 100 <= avg_hue <= 130 and avg_sat > 50
+        
+        # Denim also has characteristic texture (higher variance from weave pattern)
+        texture_var = np.var(gray_pixels) if len(gray_pixels) > 0 else 0
+        has_denim_texture = texture_var > 400
+        
+        # Both conditions must be met
+        return is_blue and has_denim_texture
+    except:
+        return False
+
+
+def _detect_cotton_fabric(image: np.ndarray, mask: np.ndarray = None) -> bool:
+    """
+    Detect cotton/plain fabric (NOT denim, leather, or wool).
+    Cotton is typically: smooth texture, neutral/varied colors, low reflectivity.
+    """
+    try:
+        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        
+        if mask is not None and mask.size > 0:
+            mask_2d = mask if len(mask.shape) == 2 else cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
+            valid_mask = mask_2d > 127
+            s = hsv[:, :, 1][valid_mask]
+            v = hsv[:, :, 2][valid_mask]
+            gray_pixels = gray[valid_mask]
+        else:
+            s = hsv[:, :, 1].flatten()
+            v = hsv[:, :, 2].flatten()
+            gray_pixels = gray.flatten()
+        
+        if len(gray_pixels) < 100:
+            return False
+        
+        # Cotton characteristics:
+        # 1. Low-medium saturation (not vivid like denim blue)
+        avg_sat = np.mean(s)
+        is_neutral = avg_sat < 80  # Cotton is often white, gray, neutral
+        
+        # 2. Smooth-medium texture (not as textured as denim weave)
+        texture_var = np.var(gray_pixels)
+        is_smooth_texture = 50 < texture_var < 400  # Between smooth leather and rough denim
+        
+        # 3. Not shiny (not leather/satin)
+        high_v = np.sum(v > 230) / len(v) if len(v) > 0 else 0
+        is_matte = high_v < 0.05
+        
+        return is_neutral and is_smooth_texture and is_matte
+    except:
+        return False
+
+
+def _is_leather_texture(image: np.ndarray, mask: np.ndarray = None) -> bool:
+    """
+    Detect leather texture: smooth, dark, with some reflectivity.
+    """
+    try:
+        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        
+        if mask is not None and mask.size > 0:
+            mask_2d = mask if len(mask.shape) == 2 else cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
+            valid_mask = mask_2d > 127
+            v = hsv[:, :, 2][valid_mask]
+            gray_pixels = gray[valid_mask]
+        else:
+            v = hsv[:, :, 2].flatten()
+            gray_pixels = gray.flatten()
+        
+        if len(gray_pixels) < 100:
+            return False
+        
+        # Leather characteristics:
+        # 1. Very smooth texture
+        texture_var = np.var(gray_pixels)
+        is_smooth = texture_var < 300
+        
+        # 2. Typically dark
+        avg_brightness = np.mean(v)
+        is_dark = avg_brightness < 120
+        
+        # 3. Some reflectivity (shiny spots)
+        high_v = np.sum(v > 220) / len(v) if len(v) > 0 else 0
+        has_sheen = high_v > 0.01  # At least 1% shiny areas
+        
+        return is_smooth and is_dark and has_sheen
+    except:
+        return False
+
+
+def _is_wool_texture(image: np.ndarray, mask: np.ndarray = None) -> bool:
+    """
+    Detect wool/knit texture: high variance, fuzzy edges.
+    """
+    try:
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        
+        if mask is not None and mask.size > 0:
+            mask_2d = mask if len(mask.shape) == 2 else cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
+            valid_mask = mask_2d > 127
+            gray_pixels = gray[valid_mask]
+        else:
+            gray_pixels = gray.flatten()
+        
+        if len(gray_pixels) < 100:
+            return False
+        
+        # Wool/knit has high texture variance from the fiber pattern
+        texture_var = np.var(gray_pixels)
+        is_textured = texture_var > 600
+        
+        # Also check for fuzzy edges (high edge density in local regions)
+        edges = cv2.Canny(gray, 50, 150)
+        if mask is not None:
+            edge_density = np.sum(edges[valid_mask] > 0) / len(gray_pixels)
+        else:
+            edge_density = np.sum(edges > 0) / edges.size
+        
+        has_fuzzy_edges = edge_density > 0.08
+        
+        return is_textured and has_fuzzy_edges
     except:
         return False
 
@@ -1519,6 +2114,14 @@ class AdvancedClothingSegmentor:
         for item in items:
             logger.info(f"  - {item.category}: {item.primary_color} ({item.area_percentage:.1f}%, conf={item.confidence:.2f})")
         
+        # 🚫 EXCLUDED CATEGORIES - Filter out false positives
+        # User confirmed these categories are not in their video - likely misdetections
+        EXCLUDED_CATEGORIES = ['skirt', 'scarf', 'hat', 'dress']  # Common false positives
+        original_count = len(items)
+        items = [item for item in items if item.category.lower() not in EXCLUDED_CATEGORIES]
+        if len(items) < original_count:
+            logger.info(f"🚫 Excluded {original_count - len(items)} items from false positive categories (skirt/scarf/hat/dress)")
+        
         # 🎯 LAYER 3: Apply confidence filter (4-Layer Assurance Stack)
         logger.info("🎯 Applying 4-Layer confidence filter...")
         items = apply_confidence_filter(items)
@@ -1602,13 +2205,39 @@ class AdvancedClothingSegmentor:
                 specific_type, type_conf = infer_specific_type_v2(category, item_crop, item_mask_crop)
                 logger.info(f"  🚀 CLIP Type: {specific_type} (conf={type_conf:.2f})")
             else:
-                # Fallback to heuristics
-                specific_type = infer_specific_type(category, primary_color, image, mask)
+                # Fallback to calibrated classifier with material detection
+                specific_type, _, conf_level = calibrated_classify_item(category, item_crop, item_mask_crop, confidence)
+                logger.info(f"  🎯 Calibrated Type: {specific_type} ({conf_level})")
                 
         except Exception as v2_err:
-            logger.debug(f"  V2 type inference failed: {v2_err}, using fallback")
-            # Fallback to heuristic method
-            specific_type = infer_specific_type(category, primary_color, image, mask)
+            logger.debug(f"  V2 type inference failed: {v2_err}, using calibrated classifier")
+            # Fallback to calibrated classifier with material detection + Qwen-VL
+            specific_type, _, conf_level = calibrated_classify_item(category, image, mask, confidence)
+            logger.info(f"  🎯 Calibrated Type: {specific_type} ({conf_level})")
+        
+        # 🎯 POSITION VALIDATION - Log warnings but DON'T reject
+        # (Overly strict rejection was causing 40% accuracy - users have various camera angles)
+        pos_valid, pos_reason = validate_item_position(category, (x, y, bw, bh), h, w)
+        if not pos_valid:
+            logger.warning(f"  ⚠️ POSITION WARNING {category}: {pos_reason} (keeping item)")
+            # DON'T return None - keep the item!
+        
+        # 🎯 ASPECT RATIO VALIDATION - Log warnings but DON'T reject
+        ar_valid, ar_reason = validate_aspect_ratio(category, (x, y, bw, bh))
+        if not ar_valid:
+            logger.warning(f"  ⚠️ ASPECT WARNING {category}: {ar_reason} (keeping item)")
+            # DON'T return None - keep the item!
+        
+        # 🎯 POSITION PRIOR - Adjust confidence based on spatial position
+        try:
+            from modules.position_classifier import apply_position_prior
+            prior_factor, prior_reason = apply_position_prior(category, (x, y, bw, bh), h, w)
+            adjusted_confidence = min(1.0, confidence * prior_factor)
+            if prior_factor != 1.0:
+                logger.info(f"  📍 Position prior: {prior_reason} (conf: {confidence:.2f} → {adjusted_confidence:.2f})")
+            confidence = adjusted_confidence
+        except Exception:
+            pass  # Position classifier not critical
         
         return ClothingItem(
             category=category,

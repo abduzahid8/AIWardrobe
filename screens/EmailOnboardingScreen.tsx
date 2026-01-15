@@ -17,11 +17,23 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
+// Scanned email item type
+interface ScannedEmailItem {
+    id?: string;
+    name: string;
+    brand?: string;
+    category?: string;
+    color?: string;
+    price?: number;
+    imageUrl?: string;
+    purchaseDate?: string;
+}
+
 interface ScanResult {
     receiptsScanned: number;
     receiptsFound: number;
     itemsDetected: number;
-    items: any[];
+    items: ScannedEmailItem[];
 }
 
 /**
@@ -160,7 +172,7 @@ const EmailOnboardingScreen = () => {
         }
     };
 
-    const handleImportItems = async (items: any[]) => {
+    const handleImportItems = async (items: ScannedEmailItem[]) => {
         try {
             const token = await AsyncStorage.getItem('userToken');
 

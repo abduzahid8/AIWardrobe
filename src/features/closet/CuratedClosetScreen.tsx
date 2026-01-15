@@ -113,6 +113,35 @@ const COLLECTIONS = [
     },
 ];
 
+// Type for outfit item in shop the look
+interface OutfitItemType {
+    id: string;
+    type: string;
+    brand: string;
+    name: string;
+    price: string;
+    image: string;
+}
+
+// Type for trending outfit
+interface OutfitType {
+    id: string;
+    image: string;
+    saves: number;
+    user: string;
+    items: OutfitItemType[];
+}
+
+// Type for collection
+interface CollectionType {
+    id: string;
+    title: string;
+    subtitle: string;
+    credit?: string;
+    linkText: string;
+    image: string;
+}
+
 // iOS 26 Tahoe Press Hook
 const useTahoePress = () => {
     const scale = useSharedValue(1);
@@ -158,7 +187,7 @@ const TabButton = ({ title, isActive, onPress }: { title: string; isActive: bool
 };
 
 // Outfit Grid Item
-const OutfitGridItem = ({ outfit, index, onPress }: { outfit: any; index: number; onPress: () => void }) => {
+const OutfitGridItem = ({ outfit, index, onPress }: { outfit: OutfitType; index: number; onPress: () => void }) => {
     const { animatedStyle, onPressIn, onPressOut } = useTahoePress();
     const isLarge = index % 3 === 0;
 
@@ -201,14 +230,14 @@ const OutfitModal = ({
     onAvatar
 }: {
     visible: boolean;
-    outfit: any;
-    allOutfits: any[];
+    outfit: OutfitType | null;
+    allOutfits: OutfitType[];
     currentIndex: number;
     onClose: () => void;
     onNavigate: (direction: 'up' | 'down') => void;
     onAvatar: () => void;
 }) => {
-    const [selectedItem, setSelectedItem] = useState<any>(null);
+    const [selectedItem, setSelectedItem] = useState<OutfitItemType | null>(null);
     const [isBookmarked, setIsBookmarked] = useState(false);
 
     if (!outfit) return null;
@@ -253,7 +282,7 @@ const OutfitModal = ({
                 {/* Left Side - Detected Items (Shop the Look) */}
                 <View style={styles.shopTheLook}>
                     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.shopTheLookScroll}>
-                        {outfit.items?.map((item: any, idx: number) => (
+                        {outfit.items?.map((item: OutfitItemType, idx: number) => (
                             <Animated.View
                                 key={item.id}
                                 entering={FadeInLeft.delay(idx * 80).springify()}
@@ -379,7 +408,7 @@ const OutfitModal = ({
 };
 
 // Collection Card
-const CollectionCard = ({ collection, index, onPress }: { collection: any; index: number; onPress: () => void }) => {
+const CollectionCard = ({ collection, index, onPress }: { collection: CollectionType; index: number; onPress: () => void }) => {
     const { animatedStyle, onPressIn, onPressOut } = useTahoePress();
 
     return (
@@ -436,7 +465,7 @@ const CuratedClosetScreen = () => {
         setTimeout(() => setRefreshing(false), 1500);
     }, []);
 
-    const handleOutfitPress = (outfit: any, index: number) => {
+    const handleOutfitPress = (outfit: OutfitType | CollectionType, index: number) => {
         setCurrentOutfitIndex(index);
         setShowModal(true);
     };

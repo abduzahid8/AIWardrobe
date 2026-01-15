@@ -12,17 +12,17 @@ export type RootStackParamList = {
     // Wardrobe screens
     AddOutfit: {
         date?: string;
-        savedOutfits?: { [key: string]: any[] };
+        savedOutfits?: { [key: string]: ClothingItem[] };
     };
     DesignRoom: {
         selectedItems: ClothingItem[];
         date: string;
-        savedOutfits?: { [key: string]: any[] };
+        savedOutfits?: { [key: string]: ClothingItem[] };
     };
     NewOutfit: {
         selectedItems: ClothingItem[];
         date: string;
-        savedOutfits?: { [key: string]: any[] };
+        savedOutfits?: { [key: string]: ClothingItem[] };
     };
 
     // AI screens

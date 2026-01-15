@@ -19,7 +19,6 @@ module.exports = {
         browser: true,
         node: true,
         es2021: true,
-        'react-native/react-native': true,
     },
     settings: {
         react: {
@@ -80,5 +79,6 @@ module.exports = {
         'metro.config.js',
         'tailwind.config.js',
         'api/node_modules/',
+        'alicevision-service/',
     ],
 };

@@ -513,3 +513,98 @@ try:
     ])
 except ImportError as e:
     _logger.debug(f"Golden Path not available: {e}")
+
+# === ADVANCED ACCURACY MODULES (2026) ===
+try:
+    from .low_light_enhancer import (
+        get_low_light_enhancer,
+        LowLightEnhancer,
+        enhance_if_dark
+    )
+    __all__.extend([
+        "get_low_light_enhancer",
+        "LowLightEnhancer",
+        "enhance_if_dark"
+    ])
+except ImportError as e:
+    _logger.debug(f"Low-light enhancer not available: {e}")
+
+try:
+    from .multi_scale_classifier import (
+        get_multi_scale_pyramid,
+        MultiScaleFeaturePyramid,
+        classify_with_multi_scale
+    )
+    __all__.extend([
+        "get_multi_scale_pyramid",
+        "MultiScaleFeaturePyramid",
+        "classify_with_multi_scale"
+    ])
+except ImportError as e:
+    _logger.debug(f"Multi-scale classifier not available: {e}")
+
+try:
+    from .temporal_ensemble import (
+        get_temporal_analyzer,
+        TemporalEnsembleAnalyzer,
+        apply_temporal_consensus
+    )
+    __all__.extend([
+        "get_temporal_analyzer",
+        "TemporalEnsembleAnalyzer",
+        "apply_temporal_consensus"
+    ])
+except ImportError as e:
+    _logger.debug(f"Temporal ensemble not available: {e}")
+
+try:
+    from .fashion_domain_adapter import (
+        get_fashion_adapter,
+        FashionDomainAdapter,
+        classify_fashion
+    )
+    __all__.extend([
+        "get_fashion_adapter",
+        "FashionDomainAdapter",
+        "classify_fashion"
+    ])
+except ImportError as e:
+    _logger.debug(f"Fashion domain adapter not available: {e}")
+
+try:
+    from .contrastive_fashion import (
+        get_contrastive_encoder,
+        ContrastiveFashionEncoder,
+        PrototypeMemoryBank
+    )
+    __all__.extend([
+        "get_contrastive_encoder",
+        "ContrastiveFashionEncoder",
+        "PrototypeMemoryBank"
+    ])
+except ImportError as e:
+    _logger.debug(f"Contrastive fashion not available: {e}")
+
+try:
+    from .slow_fast_pipeline import (
+        SlowFastPipeline,
+        TrackState,
+        FrameResult
+    )
+    __all__.extend([
+        "SlowFastPipeline",
+        "TrackState",
+        "FrameResult"
+    ])
+except ImportError as e:
+    _logger.debug(f"Slow-Fast pipeline not available: {e}")
+
+try:
+    from .adaptive_grounded_sam import (
+        AdaptiveGroundedSAM
+    )
+    __all__.extend([
+        "AdaptiveGroundedSAM"
+    ])
+except ImportError as e:
+    _logger.debug(f"Adaptive Grounded SAM not available: {e}")

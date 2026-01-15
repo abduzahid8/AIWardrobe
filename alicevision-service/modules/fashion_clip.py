@@ -323,20 +323,37 @@ class FashionCLIP:
         # Category-specific candidates for faster, more accurate classification
         category_candidates = {
             "upper_clothes": [
-                # T-shirts and casual tops
-                "t-shirt", "graphic tee", "tank top", "crop top", "polo shirt",
-                "henley shirt", "long sleeve shirt", "thermal top",
-                # Button-down shirts
-                "button-down shirt", "dress shirt", "oxford shirt", "flannel shirt",
-                # Sweaters and knits
-                "sweater", "crewneck sweater", "v-neck sweater", "cardigan", "turtleneck",
-                # Hoodies and sweatshirts
+                # === SWEATERS AND KNITS (check early - often visible under jackets) ===
+                "sweater", "crewneck sweater", "v-neck sweater", "cable knit sweater",
+                "wool sweater", "cashmere sweater", "cardigan", "zip cardigan",
+                "turtleneck", "mock neck sweater", "pullover",
+                # Hoodies and sweatshirts  
                 "hoodie", "pullover hoodie", "zip-up hoodie", "sweatshirt",
-                # Jackets
-                "denim jacket", "leather jacket", "bomber jacket", "trucker jacket",
-                "puffer jacket", "fleece jacket", "windbreaker", "track jacket",
+                # === BASIC SHIRTS ===
+                "shirt", "cotton shirt", "linen shirt", "casual shirt",
+                "short sleeve shirt", "long sleeve shirt",
+                "t-shirt", "graphic tee", "tank top", "crop top", "polo shirt",
+                "henley shirt", "thermal top",
+                "button-down shirt", "dress shirt", "oxford shirt", "flannel shirt",
+                # === JACKETS (expanded - 20+ types) ===
+                "jacket", "overshirt", "shirt jacket", "shacket",
+                # Casual jackets
+                "bomber jacket", "varsity jacket", "track jacket", "coach jacket",
+                "harrington jacket", "work jacket", "chore jacket", "field jacket",
+                # Material-specific jackets  
+                "denim jacket", "trucker jacket",
+                "leather jacket", "suede jacket", "faux leather jacket",
+                "wool jacket", "wool blend jacket", "tweed jacket",
+                "linen jacket", "cotton jacket",
+                "nylon jacket", "windbreaker", "rain jacket",
+                # Insulated jackets
+                "puffer jacket", "down jacket", "quilted jacket", "padded jacket",
+                "fleece jacket", "sherpa jacket",
+                # === COATS (longer outerwear) ===
+                "coat", "overcoat", "topcoat", "peacoat",
+                "trench coat", "parka", "duffle coat",
                 # Formal
-                "blazer", "sport coat", "vest",
+                "blazer", "sport coat", "suit jacket", "vest",
                 # Others
                 "blouse", "tunic", "jersey"
             ],

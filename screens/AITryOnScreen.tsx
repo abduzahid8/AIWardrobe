@@ -7,17 +7,33 @@ import {
   ActivityIndicator,
   SafeAreaView,
   Alert,
-  ScrollView
+  ScrollView,
+  Dimensions,
 } from "react-native";
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 // @ts-ignore
 import { API_URL } from "../api/config";
+import AppColors from '../constants/AppColors';
+
+const { width } = Dimensions.get('window');
+
+// Wardrobe item interface
+interface WardrobeItem {
+  _id: string;
+  id?: string;
+  type?: string;
+  itemType?: string;
+  category?: string;
+  color?: string;
+  imageUrl?: string;
+  image?: string;
+}
 
 
 const AITryOnScreen = () => {
@@ -27,9 +43,87 @@ const AITryOnScreen = () => {
   const [saving, setSaving] = useState(false);
   const [resultImage, setResultImage] = useState<string | null>(null);
 
-  // Храним сами картинки (Base64 или URI)
+  // Image states
   const [humanImage, setHumanImage] = useState<string | null>(null);
   const [clothImage, setClothImage] = useState<string | null>(null);
+
+  // Tab and wardrobe integration
+  const [activeTab, setActiveTab] = useState<'upload' | 'wardrobe'>('upload');
+  const [wardrobeItems, setWardrobeItems] = useState<WardrobeItem[]>([]);
+  const [loadingWardrobe, setLoadingWardrobe] = useState(false);
+  const [selectedWardrobeItem, setSelectedWardrobeItem] = useState<WardrobeItem | null>(null);
+
+  // Load wardrobe items
+  const loadWardrobeItems = useCallback(async () => {
+    try {
+      setLoadingWardrobe(true);
+      const token = await AsyncStorage.getItem('userToken');
+
+      if (token) {
+        const response = await axios.get(`${API_URL}/clothing-items`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.data) {
+          const items = Array.isArray(response.data) ? response.data : response.data.items || [];
+          // Filter to clothing items (tops, dresses, jackets)
+          const tryableItems = items.filter((item: WardrobeItem) => {
+            const category = (item.category || item.type || '').toLowerCase();
+            return category.includes('shirt') || category.includes('top') ||
+              category.includes('dress') || category.includes('jacket') ||
+              category.includes('blouse') || category.includes('sweater') ||
+              category.includes('upper');
+          });
+          setWardrobeItems(tryableItems.length > 0 ? tryableItems : items.slice(0, 20));
+        }
+      } else {
+        // Try loading from local storage
+        const localItems = await AsyncStorage.getItem('wardrobeItems');
+        if (localItems) {
+          setWardrobeItems(JSON.parse(localItems).slice(0, 20));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load wardrobe:', error);
+    } finally {
+      setLoadingWardrobe(false);
+    }
+  }, []);
+
+  // Load wardrobe on focus and when switching to wardrobe tab
+  useFocusEffect(
+    useCallback(() => {
+      if (activeTab === 'wardrobe') {
+        loadWardrobeItems();
+      }
+    }, [activeTab, loadWardrobeItems])
+  );
+
+  useEffect(() => {
+    if (activeTab === 'wardrobe' && wardrobeItems.length === 0) {
+      loadWardrobeItems();
+    }
+  }, [activeTab, loadWardrobeItems, wardrobeItems.length]);
+
+  // Handle selecting wardrobe item
+  const handleSelectWardrobeItem = async (item: WardrobeItem) => {
+    setSelectedWardrobeItem(item);
+    const imageUrl = item.imageUrl || item.image;
+    if (imageUrl) {
+      // If it's a URL, fetch and convert to base64
+      if (imageUrl.startsWith('http')) {
+        try {
+          // Use the image URL directly - the API should handle it
+          setClothImage(imageUrl);
+        } catch (error) {
+          console.error('Failed to process image:', error);
+          Alert.alert('Error', 'Failed to load this item. Please try uploading an image instead.');
+        }
+      } else {
+        // Already base64 or local
+        setClothImage(imageUrl);
+      }
+    }
+  };
 
   // Функция выбора фото
   // Функция выбора фото
@@ -67,17 +161,17 @@ const AITryOnScreen = () => {
     setResultImage(null);
 
     try {
-      // Add timeout to fetch
+      // Add timeout to fetch - HF Spaces can take up to 3 minutes
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 180000); // 180 second timeout for HF Spaces
 
-      const response = await fetch(`${API_URL}/try-on`, {
+      const response = await fetch(`${API_URL}/tryon`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          human_image: humanImage,
+          person_image: humanImage,
           garment_image: clothImage,
-          description: "clothing",
+          garment_type: "upper_body",
         }),
         signal: controller.signal,
       });
@@ -91,21 +185,38 @@ const AITryOnScreen = () => {
 
       const data = await response.json();
 
-      if (data.error) throw new Error(data.error);
-      if (!data.image) throw new Error("No image returned from server");
+      // Debug logging
+      console.log("📦 Try-On Response:", {
+        success: data.success,
+        methodUsed: data.methodUsed,
+        hasResultImage: !!data.resultImage,
+        resultImageLength: data.resultImage?.length || 0,
+        resultImagePrefix: data.resultImage?.substring(0, 50) || 'NONE'
+      });
 
-      setResultImage(data.image);
-    } catch (error: any) {
+      if (data.error) throw new Error(data.error);
+      if (!data.success || !data.resultImage) {
+        throw new Error(data.methodUsed === "replicate"
+          ? "AI service requires credits. Please try again later."
+          : "No image returned from server");
+      }
+
+      console.log("✅ Setting result image, length:", data.resultImage.length);
+      setResultImage(data.resultImage);
+    } catch (error: unknown) {
       console.error("Try-On Error:", error);
 
       let errorMessage = t('aiTryOn.errors.tryOnFailed');
 
-      if (error.name === 'AbortError') {
+      const err = error as Error & { name?: string };
+      if (err.name === 'AbortError') {
         errorMessage = "Request timed out. Please try again.";
-      } else if (error.message.includes('Network request failed')) {
+      } else if (err.message?.includes('Network request failed')) {
         errorMessage = "Network error. Check your internet connection.";
-      } else if (error.message.includes('Server error')) {
+      } else if (err.message?.includes('Server error')) {
         errorMessage = "Server is currently unavailable. Please try again later.";
+      } else if (err.message?.includes('credits')) {
+        errorMessage = "AI service is temporarily limited. Please try again in a minute.";
       }
 
       Alert.alert(t('common.error'), errorMessage);
@@ -152,7 +263,7 @@ const AITryOnScreen = () => {
         },
         { text: 'OK' }]
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Save error:', error);
       Alert.alert('Error', 'Failed to save. Please try again.');
     } finally {
@@ -196,25 +307,127 @@ const AITryOnScreen = () => {
             </TouchableOpacity>
           </View>
 
-          {/* Одежда */}
+          {/* Clothing Selection with Tabs */}
           <View style={styles.uploadColumn}>
             <Text style={styles.label}>2. {t('aiTryOn.clothes')}</Text>
-            <TouchableOpacity
-              style={styles.uploadBox}
-              onPress={() => pickImage(setClothImage)}
-              activeOpacity={0.7}
-            >
-              {clothImage ? (
-                <Image source={{ uri: clothImage }} style={styles.uploadedImage} />
-              ) : (
-                <View style={styles.uploadPlaceholder}>
-                  <View style={styles.iconCircle}>
-                    <Ionicons name="shirt" size={32} color="#000" />
+
+            {/* Tab Switcher */}
+            <View style={styles.tabContainer}>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === 'upload' && styles.tabActive]}
+                onPress={() => {
+                  setActiveTab('upload');
+                  setSelectedWardrobeItem(null);
+                }}
+              >
+                <Ionicons
+                  name="cloud-upload-outline"
+                  size={14}
+                  color={activeTab === 'upload' ? '#fff' : '#666'}
+                />
+                <Text style={[styles.tabText, activeTab === 'upload' && styles.tabTextActive]}>
+                  Upload
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === 'wardrobe' && styles.tabActive]}
+                onPress={() => setActiveTab('wardrobe')}
+              >
+                <Ionicons
+                  name="shirt-outline"
+                  size={14}
+                  color={activeTab === 'wardrobe' ? '#fff' : '#666'}
+                />
+                <Text style={[styles.tabText, activeTab === 'wardrobe' && styles.tabTextActive]}>
+                  My Wardrobe
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {activeTab === 'upload' ? (
+              <TouchableOpacity
+                style={styles.uploadBox}
+                onPress={() => pickImage(setClothImage)}
+                activeOpacity={0.7}
+              >
+                {clothImage && !selectedWardrobeItem ? (
+                  <Image source={{ uri: clothImage }} style={styles.uploadedImage} />
+                ) : (
+                  <View style={styles.uploadPlaceholder}>
+                    <View style={styles.iconCircle}>
+                      <Ionicons name="shirt" size={32} color="#000" />
+                    </View>
+                    <Text style={styles.uploadText}>{t('aiTryOn.selectItem')}</Text>
                   </View>
-                  <Text style={styles.uploadText}>{t('aiTryOn.selectItem')}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
+                )}
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.wardrobeSection}>
+                {loadingWardrobe ? (
+                  <View style={styles.wardrobeLoading}>
+                    <ActivityIndicator size="small" color={AppColors.primary} />
+                    <Text style={styles.wardrobeLoadingText}>Loading your closet...</Text>
+                  </View>
+                ) : wardrobeItems.length === 0 ? (
+                  <View style={styles.wardrobeEmpty}>
+                    <Ionicons name="shirt-outline" size={32} color="#ccc" />
+                    <Text style={styles.wardrobeEmptyText}>No items in your wardrobe</Text>
+                    <TouchableOpacity
+                      style={styles.scanButton}
+                      onPress={() => (navigation as any).navigate('WardrobeVideo')}
+                    >
+                      <Text style={styles.scanButtonText}>Scan Wardrobe</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.wardrobeScroll}
+                  >
+                    {wardrobeItems.map((item) => {
+                      const imageUrl = item.imageUrl || item.image;
+                      const isSelected = selectedWardrobeItem?._id === item._id;
+                      return (
+                        <TouchableOpacity
+                          key={item._id || item.id}
+                          style={[
+                            styles.wardrobeItemCard,
+                            isSelected && styles.wardrobeItemCardSelected
+                          ]}
+                          onPress={() => handleSelectWardrobeItem(item)}
+                        >
+                          {imageUrl ? (
+                            <Image
+                              source={{ uri: imageUrl }}
+                              style={styles.wardrobeItemImage}
+                            />
+                          ) : (
+                            <View style={styles.wardrobeItemPlaceholder}>
+                              <Ionicons name="shirt-outline" size={24} color="#ccc" />
+                            </View>
+                          )}
+                          {isSelected && (
+                            <View style={styles.selectedBadge}>
+                              <Ionicons name="checkmark-circle" size={20} color="#34C759" />
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                )}
+
+                {selectedWardrobeItem && (
+                  <View style={styles.selectedInfo}>
+                    <Ionicons name="checkmark-circle" size={16} color="#34C759" />
+                    <Text style={styles.selectedInfoText}>
+                      {selectedWardrobeItem.type || selectedWardrobeItem.category || 'Item'} selected
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
           </View>
 
         </View>
@@ -398,5 +611,127 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold"
+  },
+
+  // Tab Switcher
+  tabContainer: {
+    flexDirection: 'row',
+    marginBottom: 10,
+    borderRadius: 12,
+    backgroundColor: '#f0f0f0',
+    padding: 4,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 4,
+  },
+  tabActive: {
+    backgroundColor: '#000',
+  },
+  tabText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+  },
+  tabTextActive: {
+    color: '#fff',
+  },
+
+  // Wardrobe Section
+  wardrobeSection: {
+    minHeight: 200,
+  },
+  wardrobeLoading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  wardrobeLoadingText: {
+    marginTop: 10,
+    color: '#666',
+    fontSize: 14,
+  },
+  wardrobeEmpty: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 30,
+    backgroundColor: '#fafafa',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#eee',
+    borderStyle: 'dashed',
+  },
+  wardrobeEmptyText: {
+    marginTop: 8,
+    color: '#999',
+    fontSize: 14,
+  },
+  scanButton: {
+    marginTop: 16,
+    backgroundColor: '#000',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  scanButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  wardrobeScroll: {
+    paddingVertical: 10,
+  },
+  wardrobeItemCard: {
+    width: 80,
+    height: 110,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    marginRight: 10,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#eee',
+  },
+  wardrobeItemCardSelected: {
+    borderColor: '#34C759',
+    borderWidth: 2,
+  },
+  wardrobeItemImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  wardrobeItemPlaceholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  selectedBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+  },
+  selectedInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#E8F5E9',
+    borderRadius: 8,
+  },
+  selectedInfoText: {
+    marginLeft: 6,
+    fontSize: 13,
+    color: '#2E7D32',
+    fontWeight: '500',
   },
 });

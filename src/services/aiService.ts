@@ -2,9 +2,11 @@ import axios, { AxiosError } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
 
-// API Configuration - Using local API server (change back to remote for production)
-const API_URL = 'http://172.20.10.5:3000';
+// API Configuration
+const API_URL = 'http://192.168.100.214:3000';  // Node.js middleware
+const ALICEVISION_URL = 'http://192.168.100.214:5050';  // Direct Python AI service
 const TIMEOUT_MS = 60000;
+const VIDEO_TIMEOUT_MS = 180000;  // 3 minutes for video processing
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 2000;
 
@@ -50,6 +52,67 @@ export interface ChatResponse {
     suggestions?: string[];
 }
 
+// Video Analysis Types
+export interface VideoAnalysisResult {
+    success: boolean;
+    items: DetectedClothingItem[];
+    outfits: OutfitGroup[];
+    processingTimeMs: number;
+}
+
+export interface DetectedClothingItem {
+    category: string;
+    specificType: string;
+    confidence: number;
+    primaryColor: string;
+    colorHex: string;
+    material?: string;
+    pattern?: string;
+    cutoutImage?: string;
+    attributes?: Record<string, string | number | boolean>;
+}
+
+export interface OutfitGroup {
+    outfitId: number;
+    items: DetectedClothingItem[];
+    timestamp?: number;
+}
+
+// AI Outfit Recommendation Types
+export interface OutfitRecommendation {
+    items: RecommendedItem[];
+    confidence: number;
+    reasoning: string;
+    occasion: string;
+    style: string;
+    colorHarmony: string;
+}
+
+export interface RecommendedItem {
+    id: string;
+    category: string;
+    specificType: string;
+    primaryColor: string;
+    colorHex: string;
+    styleTags: string[];
+}
+
+// AI Stylist Chat Types
+export interface StylistChatResponse {
+    success: boolean;
+    response: string;
+    suggestedOutfits: OutfitRecommendation[];
+    followUpQuestions: string[];
+}
+
+// Semantic Search Types
+export interface WardrobeSearchResult {
+    success: boolean;
+    results: DetectedClothingItem[];
+    query: string;
+    totalResults: number;
+}
+
 // Retry utility
 async function withRetry<T>(
     fn: () => Promise<T>,
@@ -69,7 +132,7 @@ async function withRetry<T>(
 }
 
 // Enhanced error handling
-function handleAPIError(error: any, context: string): never {
+function handleAPIError(error: unknown, context: string): never {
     console.error(`[AIService] ${context} error:`, error);
 
     if (axios.isAxiosError(error)) {
@@ -118,7 +181,7 @@ class AIService {
     async generateOutfitSuggestions(
         occasion: string,
         stylePreferences?: string,
-        wardrobeItems?: any[]
+        wardrobeItems?: Array<{ type?: string; color?: string; style?: string; imageUrl?: string }>
     ): Promise<AIOutfitSuggestion[]> {
         const cacheKey = `${occasion}-${stylePreferences || ''}`;
         const cached = outfitCache.get(cacheKey);
@@ -414,6 +477,229 @@ class AIService {
             return { healthy: true, message: 'Server is running' };
         } catch {
             return { healthy: false, message: 'Server is currently unavailable' };
+        }
+    }
+
+    // ==================== ALICEVISION DIRECT METHODS ====================
+
+    /**
+     * Analyze video frames with temporal ensemble for consistent detection
+     */
+    async analyzeVideoFrames(
+        frames: string[],
+        options?: {
+            detectOutfitChanges?: boolean;
+            minAgreement?: number;
+        }
+    ): Promise<VideoAnalysisResult> {
+        return withRetry(async () => {
+            try {
+                const response = await axios.post(
+                    `${ALICEVISION_URL}/analyze-video-timeline`,
+                    {
+                        frames,
+                        detect_outfit_changes: options?.detectOutfitChanges ?? true,
+                        min_agreement: options?.minAgreement ?? 0.5
+                    },
+                    {
+                        headers: this.getHeaders(),
+                        timeout: VIDEO_TIMEOUT_MS
+                    }
+                );
+
+                return response.data;
+            } catch (error) {
+                console.error('[AIService] Video analysis error:', error);
+                throw error;
+            }
+        });
+    }
+
+    /**
+     * Ensemble detection for maximum accuracy on single image
+     */
+    async detectClothingEnsemble(
+        imageBase64: string
+    ): Promise<{
+        success: boolean;
+        items: DetectedClothingItem[];
+        processingTimeMs: number;
+        modelsUsed: string[];
+    }> {
+        return withRetry(async () => {
+            const response = await axios.post(
+                `${ALICEVISION_URL}/detect-ensemble`,
+                { image: imageBase64 },
+                {
+                    headers: this.getHeaders(),
+                    timeout: 90000
+                }
+            );
+
+            return response.data;
+        });
+    }
+
+    /**
+     * Multi-frame segmentation with voting for video clips
+     */
+    async segmentMultiFrame(
+        frames: string[],
+        minAgreement: number = 0.5
+    ): Promise<{
+        success: boolean;
+        items: DetectedClothingItem[];
+        framesAnalyzed: number;
+        strategy: string;
+    }> {
+        return withRetry(async () => {
+            const response = await axios.post(
+                `${ALICEVISION_URL}/segment-multi-frame`,
+                {
+                    frames,
+                    min_agreement: minAgreement
+                },
+                {
+                    headers: this.getHeaders(),
+                    timeout: 120000
+                }
+            );
+
+            return response.data;
+        });
+    }
+
+    /**
+     * Get AI-powered outfit recommendations
+     */
+    async getOutfitRecommendations(
+        wardrobeItems: DetectedClothingItem[],
+        occasion: string,
+        weather?: { temp: number; condition: string },
+        preferences?: {
+            preferredStyles?: string[];
+            avoidColors?: string[];
+            preferredColors?: string[];
+        }
+    ): Promise<{
+        success: boolean;
+        outfits: OutfitRecommendation[];
+        processingTimeMs: number;
+    }> {
+        return withRetry(async () => {
+            const response = await axios.post(
+                `${ALICEVISION_URL}/outfit/recommend`,
+                {
+                    wardrobe_items: wardrobeItems.map(item => ({
+                        id: item.cutoutImage?.slice(0, 20) || Math.random().toString(36),
+                        category: item.category,
+                        specificType: item.specificType,
+                        primaryColor: item.primaryColor,
+                        colorHex: item.colorHex,
+                        material: item.material,
+                        pattern: item.pattern
+                    })),
+                    occasion,
+                    weather,
+                    preferences
+                },
+                {
+                    headers: this.getHeaders(),
+                    timeout: TIMEOUT_MS
+                }
+            );
+
+            return response.data;
+        });
+    }
+
+    /**
+     * Chat with AI stylist about outfits
+     */
+    async chatWithStylist(
+        message: string,
+        wardrobeItems?: DetectedClothingItem[],
+        conversationHistory?: { role: string; content: string }[]
+    ): Promise<StylistChatResponse> {
+        return withRetry(async () => {
+            const response = await axios.post(
+                `${ALICEVISION_URL}/outfit/chat`,
+                {
+                    message,
+                    wardrobe_items: wardrobeItems?.map(item => ({
+                        id: item.cutoutImage?.slice(0, 20) || Math.random().toString(36),
+                        category: item.category,
+                        specificType: item.specificType,
+                        primaryColor: item.primaryColor,
+                        colorHex: item.colorHex
+                    })),
+                    conversation_history: conversationHistory
+                },
+                {
+                    headers: this.getHeaders(),
+                    timeout: 30000
+                }
+            );
+
+            return response.data;
+        });
+    }
+
+    /**
+     * Semantic search through wardrobe
+     */
+    async searchWardrobe(
+        query: string,
+        wardrobeItems: DetectedClothingItem[],
+        topK: number = 5
+    ): Promise<WardrobeSearchResult> {
+        return withRetry(async () => {
+            const response = await axios.post(
+                `${ALICEVISION_URL}/wardrobe/search`,
+                {
+                    query,
+                    wardrobe_items: wardrobeItems.map(item => ({
+                        id: item.cutoutImage?.slice(0, 20) || Math.random().toString(36),
+                        category: item.category,
+                        specificType: item.specificType,
+                        primaryColor: item.primaryColor,
+                        colorHex: item.colorHex,
+                        material: item.material,
+                        pattern: item.pattern
+                    })),
+                    top_k: topK
+                },
+                {
+                    headers: this.getHeaders(),
+                    timeout: 15000
+                }
+            );
+
+            return response.data;
+        });
+    }
+
+    /**
+     * Check AliceVision AI service health
+     */
+    async checkAliceVisionHealth(): Promise<{
+        healthy: boolean;
+        features: string[];
+        message: string;
+    }> {
+        try {
+            const response = await axios.get(`${ALICEVISION_URL}/health`, { timeout: 5000 });
+            return {
+                healthy: true,
+                features: response.data.features || [],
+                message: 'AliceVision AI service is running'
+            };
+        } catch {
+            return {
+                healthy: false,
+                features: [],
+                message: 'AliceVision AI service is unavailable'
+            };
         }
     }
 }

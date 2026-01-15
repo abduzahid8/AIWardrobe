@@ -26,7 +26,7 @@ export type FilterCategory = 'All' | 'Tops' | 'Bottoms' | 'Shoes' | 'Accessories
 
 interface UseWardrobeItemsOptions {
     includePopularItems?: boolean;
-    popularItems?: any[];
+    popularItems?: WardrobeItem[];
 }
 
 interface UseWardrobeItemsReturn {
@@ -63,7 +63,7 @@ export const useWardrobeItems = (options: UseWardrobeItemsOptions = {}): UseWard
             if (data) {
                 const parsedItems = JSON.parse(data);
                 // Normalize item format with unique IDs
-                const normalizedItems = parsedItems.map((item: any, idx: number) => ({
+                const normalizedItems = parsedItems.map((item: WardrobeItem, idx: number) => ({
                     ...item,
                     id: item.id || `local-${idx}-${Date.now()}`,
                     uniqueId: item.uniqueId || `saved-${item.id || idx}-${Date.now()}`,

@@ -55,21 +55,54 @@ const COLORS = {
     aiGlow: 'rgba(100, 100, 255, 0.1)',
 };
 
-// Quick Occasion Suggestions
+// Quick Occasion Suggestions - Alta-style
 const OCCASION_SUGGESTIONS = [
-    { id: '1', text: 'Job interview', icon: 'briefcase-outline' },
-    { id: '2', text: 'Casual dinner', icon: 'restaurant-outline' },
-    { id: '3', text: 'Weekend brunch', icon: 'cafe-outline' },
-    { id: '4', text: 'Business meeting', icon: 'people-outline' },
-    { id: '5', text: 'Date night', icon: 'heart-outline' },
-    { id: '6', text: 'Workout', icon: 'fitness-outline' },
+    { id: '1', text: 'Date Night', icon: 'heart-outline', emoji: '💕', color: '#E91E63' },
+    { id: '2', text: 'Job Interview', icon: 'briefcase-outline', emoji: '💼', color: '#3F51B5' },
+    { id: '3', text: 'Trip/Travel', icon: 'airplane-outline', emoji: '✈️', color: '#00BCD4' },
+    { id: '4', text: 'Brunch', icon: 'cafe-outline', emoji: '🥂', color: '#FF9800' },
+    { id: '5', text: 'Office Day', icon: 'business-outline', emoji: '👔', color: '#607D8B' },
+    { id: '6', text: 'Party', icon: 'sparkles-outline', emoji: '🎉', color: '#9C27B0' },
+    { id: '7', text: 'Casual Outing', icon: 'walk-outline', emoji: '👟', color: '#4CAF50' },
+    { id: '8', text: 'Wedding Guest', icon: 'flower-outline', emoji: '💐', color: '#F06292' },
 ];
 
-// Weather context interface
+// Outfit Adjustment Options - for refining suggestions
+const ADJUSTMENT_OPTIONS = [
+    { id: 'casual', label: 'More casual', icon: 'sunny-outline' },
+    { id: 'formal', label: 'More formal', icon: 'business-outline' },
+    { id: 'colors', label: 'Different colors', icon: 'color-palette-outline' },
+    { id: 'layers', label: 'Add layers', icon: 'layers-outline' },
+    { id: 'weather', label: 'Weather-appropriate', icon: 'partly-sunny-outline' },
+];
+
 interface WeatherContext {
     temp: number;
     condition: string;
     location?: string;
+}
+
+// Outfit item from AI response
+interface OutfitItemType {
+    category?: string;
+    specificType?: string;
+    primaryColor?: string;
+    colorHex?: string;
+}
+
+interface OutfitSuggestion {
+    items?: OutfitItemType[];
+    confidence?: number;
+    reasoning?: string;
+}
+
+// Occasion suggestion type
+interface OccasionSuggestion {
+    id: string;
+    text: string;
+    icon: string;
+    emoji: string;
+    color: string;
 }
 
 // Helper to fetch current weather
@@ -158,8 +191,8 @@ const TypingIndicator = () => {
     );
 };
 
-// Chat Message Bubble
-const ChatBubble = ({ message, isAI, outfit }: { message: string; isAI: boolean; outfit?: any }) => {
+// Chat Message Bubble with Adjustment Buttons
+const ChatBubble = ({ message, isAI, outfit, onAdjust }: { message: string; isAI: boolean; outfit?: OutfitSuggestion; onAdjust?: (adjustment: string) => void }) => {
     return (
         <Animated.View
             entering={FadeInUp.springify()}
@@ -179,7 +212,7 @@ const ChatBubble = ({ message, isAI, outfit }: { message: string; isAI: boolean;
                 {outfit && outfit.items && outfit.items.length > 0 && (
                     <View style={styles.outfitPreview}>
                         <View style={styles.outfitItems}>
-                            {outfit.items.slice(0, 4).map((item: any, idx: number) => (
+                            {outfit.items.slice(0, 4).map((item: OutfitItemType, idx: number) => (
                                 <View key={idx} style={styles.outfitItemCard}>
                                     <View style={[styles.outfitItemColor, { backgroundColor: item.colorHex || COLORS.surface }]} />
                                     <Text style={styles.outfitItemType} numberOfLines={1}>
@@ -202,6 +235,28 @@ const ChatBubble = ({ message, isAI, outfit }: { message: string; isAI: boolean;
                                 {outfit.reasoning}
                             </Text>
                         </View>
+
+                        {/* Adjustment buttons - "Adjust until right" */}
+                        {onAdjust && (
+                            <View style={styles.adjustmentSection}>
+                                <Text style={styles.adjustmentLabel}>Not quite right? Adjust:</Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.adjustmentScroll}>
+                                    {ADJUSTMENT_OPTIONS.map((option) => (
+                                        <TouchableOpacity
+                                            key={option.id}
+                                            style={styles.adjustmentChip}
+                                            onPress={() => {
+                                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                onAdjust(option.label);
+                                            }}
+                                        >
+                                            <Ionicons name={option.icon as any} size={14} color={COLORS.primary} />
+                                            <Text style={styles.adjustmentChipText}>{option.label}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                            </View>
+                        )}
                     </View>
                 )}
             </View>
@@ -209,18 +264,22 @@ const ChatBubble = ({ message, isAI, outfit }: { message: string; isAI: boolean;
     );
 };
 
-// Occasion Chip
-const OccasionChip = ({ occasion, onPress }: { occasion: any; onPress: () => void }) => {
+// Occasion Card - Enhanced Alta-style
+const OccasionCard = ({ occasion, onPress }: { occasion: OccasionSuggestion; onPress: () => void }) => {
     return (
         <TouchableOpacity
-            style={styles.occasionChip}
+            style={[styles.occasionCard, { borderColor: occasion.color + '40' }]}
             onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 onPress();
             }}
+            activeOpacity={0.7}
         >
-            <Ionicons name={occasion.icon} size={16} color={COLORS.primary} />
-            <Text style={styles.occasionChipText}>{occasion.text}</Text>
+            <View style={[styles.occasionIconBg, { backgroundColor: occasion.color + '20' }]}>
+                <Text style={styles.occasionEmoji}>{occasion.emoji}</Text>
+            </View>
+            <Text style={styles.occasionCardText}>{occasion.text}</Text>
+            <Ionicons name="arrow-forward" size={14} color={COLORS.textMuted} />
         </TouchableOpacity>
     );
 };
@@ -229,8 +288,8 @@ interface ChatMessage {
     id: string;
     text: string;
     isAI: boolean;
-    outfit?: any;
-    suggestedOutfits?: any[];
+    outfit?: OutfitSuggestion;
+    suggestedOutfits?: OutfitSuggestion[];
 }
 
 const OutfitAIScreen = () => {
@@ -375,8 +434,13 @@ const OutfitAIScreen = () => {
         scrollToBottom();
     };
 
-    const handleOccasionPress = (occasion: any) => {
+    const handleOccasionPress = (occasion: OccasionSuggestion) => {
         sendMessage(`I need an outfit for ${occasion.text.toLowerCase()}`);
+    };
+
+    // Handle outfit adjustments - "until they are right"
+    const handleAdjustOutfit = (adjustment: string) => {
+        sendMessage(`Please adjust the outfit suggestion: ${adjustment}`);
     };
 
     // Helper to detect occasion from message
@@ -486,6 +550,7 @@ const OutfitAIScreen = () => {
                             message={msg.text}
                             isAI={msg.isAI}
                             outfit={msg.outfit}
+                            onAdjust={msg.outfit ? handleAdjustOutfit : undefined}
                         />
                     ))}
 
@@ -498,10 +563,11 @@ const OutfitAIScreen = () => {
                             entering={FadeInUp.delay(300).springify()}
                             style={styles.suggestionsSection}
                         >
-                            <Text style={styles.suggestionsTitle}>Choose an occasion</Text>
+                            <Text style={styles.suggestionsTitle}>What's the occasion?</Text>
+                            <Text style={styles.suggestionsSubtitle}>Tell me your plans and I'll find the perfect outfit</Text>
                             <View style={styles.occasionGrid}>
                                 {OCCASION_SUGGESTIONS.map((occasion) => (
-                                    <OccasionChip
+                                    <OccasionCard
                                         key={occasion.id}
                                         occasion={occasion}
                                         onPress={() => handleOccasionPress(occasion)}
@@ -767,24 +833,71 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     occasionGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
+        gap: 10,
     },
-    occasionChip: {
+    occasionCard: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: COLORS.surfaceLight,
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        borderRadius: 20,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        borderRadius: 16,
         borderWidth: 1,
         borderColor: COLORS.border,
     },
-    occasionChipText: {
-        fontSize: 14,
+    occasionIconBg: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 12,
+    },
+    occasionEmoji: {
+        fontSize: 20,
+    },
+    occasionCardText: {
+        flex: 1,
+        fontSize: 16,
+        fontWeight: '500',
         color: COLORS.text,
-        marginLeft: 6,
+    },
+    suggestionsSubtitle: {
+        fontSize: 14,
+        color: COLORS.textSecondary,
+        marginBottom: 16,
+    },
+    // Adjustment chips for refining outfits
+    adjustmentSection: {
+        marginTop: 12,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: COLORS.border,
+    },
+    adjustmentLabel: {
+        fontSize: 12,
+        color: COLORS.textSecondary,
+        marginBottom: 8,
+    },
+    adjustmentScroll: {
+        marginHorizontal: -4,
+    },
+    adjustmentChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: COLORS.background,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 16,
+        marginHorizontal: 4,
+        borderWidth: 1,
+        borderColor: COLORS.primary + '40',
+    },
+    adjustmentChipText: {
+        fontSize: 12,
+        color: COLORS.primary,
+        marginLeft: 4,
+        fontWeight: '500',
     },
 
     // Input area

@@ -253,6 +253,29 @@ class MaterialAnalyzer:
             "linen": ("linen", "natural", 0.8),
             "velvet": ("velvet", "specialty", 0.85),
             "corduroy": ("corduroy", "specialty", 0.85),
+            # Added for better shoe detection
+            "suede": ("suede", "specialty", 0.9),
+            "chelsea boots": ("leather", "specialty", 0.85),
+            "boots": ("leather", "specialty", 0.8),
+            "leather shoes": ("leather", "specialty", 0.9),
+            "sneakers": ("leather", "specialty", 0.6),
+            "loafers": ("leather", "specialty", 0.8),
+            # Added for sweaters/knitwear
+            "sweater": ("wool", "natural", 0.75),
+            "half-zip": ("wool", "natural", 0.75),
+            "quarter-zip": ("wool", "natural", 0.75),
+            "cardigan": ("wool", "natural", 0.7),
+            "knitwear": ("wool", "natural", 0.8),
+            "hoodie": ("cotton", "natural", 0.7),
+            # Added for pants
+            "chinos": ("cotton", "natural", 0.7),
+            "gurkha": ("wool", "natural", 0.7),
+            "dress pants": ("wool", "natural", 0.75),
+            "trousers": ("wool", "natural", 0.7),
+            # Jackets
+            "bomber jacket": ("nylon", "synthetic", 0.7),
+            "puffer": ("nylon", "synthetic", 0.75),
+            "zip jacket": ("cotton", "natural", 0.65),
         }
         
         if category_hint:

@@ -151,6 +151,9 @@ class EnsembleDetector:
         self._material = None
         self._pattern = None
         self._feature_detector = None
+        self._fashion_adapter = None
+        self._contrastive = None
+        self._low_light = None
         
         logger.info(f"EnsembleDetector initialized (device={self.device})")
     
@@ -246,6 +249,36 @@ class EnsembleDetector:
                 logger.warning("Feature detector not available")
         return self._feature_detector
     
+    def _get_fashion_adapter(self):
+        """Lazy load fashion domain adapter."""
+        if self._fashion_adapter is None:
+            try:
+                from modules.fashion_domain_adapter import get_fashion_adapter
+                self._fashion_adapter = get_fashion_adapter()
+            except ImportError:
+                logger.debug("Fashion domain adapter not available")
+        return self._fashion_adapter
+    
+    def _get_contrastive(self):
+        """Lazy load contrastive fashion encoder."""
+        if self._contrastive is None:
+            try:
+                from modules.contrastive_fashion import get_contrastive_encoder
+                self._contrastive = get_contrastive_encoder()
+            except ImportError:
+                logger.debug("Contrastive encoder not available")
+        return self._contrastive
+    
+    def _get_low_light_enhancer(self):
+        """Lazy load low-light enhancer."""
+        if self._low_light is None:
+            try:
+                from modules.low_light_enhancer import get_low_light_enhancer
+                self._low_light = get_low_light_enhancer()
+            except ImportError:
+                logger.debug("Low-light enhancer not available")
+        return self._low_light
+    
     def detect(
         self,
         image: np.ndarray,
@@ -266,15 +299,26 @@ class EnsembleDetector:
         start_time = time.time()
         h, w = image.shape[:2]
         
+        # 🌙 Low-light enhancement for dark images
+        enhanced_image = image
+        low_light = self._get_low_light_enhancer()
+        if low_light:
+            try:
+                if low_light.should_enhance(image):
+                    enhanced_image = low_light.enhance(image)
+                    logger.info("🌙 Applied low-light enhancement")
+            except Exception as e:
+                logger.debug(f"Low-light enhancement skipped: {e}")
+        
         # Collect detections from all models
         all_detections = {}  # region_key -> list of (source, detection)
         models_used = []
         
         # Run detection models
         if self.parallel_execution:
-            detections = self._run_parallel(image)
+            detections = self._run_parallel(enhanced_image)
         else:
-            detections = self._run_sequential(image)
+            detections = self._run_sequential(enhanced_image)
         
         for source, dets in detections.items():
             models_used.append(source)
@@ -565,6 +609,69 @@ class EnsembleDetector:
                     det.attributes["features"] = result.to_dict()
                 except Exception as e:
                     logger.warning(f"Feature detection failed: {e}")
+            
+            # 🧠 Fashion Domain Adapter for vocabulary-enhanced classification
+            adapter = self._get_fashion_adapter()
+            if adapter:
+                try:
+                    result = adapter.classify(cropped, category_hint=det.category)
+                    if result.get("confidence", 0) > 0.5:
+                        det.attributes["fashion_domain"] = {
+                            "specific_type": result.get("specificType"),
+                            "confidence": result.get("confidence"),
+                            "similar_items": result.get("similarItems", [])[:5]
+                        }
+                        # Update specific type if more confident
+                        if result.get("confidence", 0) > det.confidence:
+                            det.specific_type = result.get("specificType", det.specific_type)
+                except Exception as e:
+                    logger.debug(f"Fashion adapter failed: {e}")
+            
+            # 🔗 Contrastive Memory for Rare Items (low-confidence)
+            if det.confidence < 0.60:
+                contrastive = self._get_contrastive()
+                if contrastive:
+                    try:
+                        embedding = contrastive.encode(cropped)
+                        nearest = contrastive.memory_bank.find_nearest(embedding, top_k=3)
+                        if nearest and nearest[0][1] > 0.75:
+                            det.attributes["prototype_match"] = {
+                                "label": nearest[0][0],
+                                "similarity": float(nearest[0][1]),
+                                "source": "contrastive_memory"
+                            }
+                            logger.info(f"🔗 Prototype match: {nearest[0][0]} ({nearest[0][1]:.2f})")
+                    except Exception as e:
+                        logger.debug(f"Contrastive lookup failed: {e}")
+            
+            # 🧬 Multi-Scale Classification Refinement for low-confidence items
+            if det.confidence < 0.80:
+                try:
+                    from modules.multi_scale_classifier import get_multi_scale_pyramid
+                    pyramid = get_multi_scale_pyramid()
+                    
+                    # Get candidates from the hierarchical classifier
+                    candidates = [det.specific_type]
+                    if hierarchical:
+                        all_types = hierarchical.get_all_types()
+                        # Add similar types from same category
+                        similar = [t for t in all_types if det.category.lower() in t.lower()][:10]
+                        candidates.extend(similar)
+                    
+                    if len(candidates) > 1:
+                        result = pyramid.classify_multi_scale(cropped, det.category, candidates)
+                        
+                        # Update if confidence improves significantly
+                        if result.confidence > det.confidence + 0.1:
+                            det.specific_type = result.specific_type
+                            det.attributes["multi_scale"] = {
+                                "dominant_scale": result.dominant_scale,
+                                "confidence": result.confidence,
+                                "breakdown": result.scale_breakdown
+                            }
+                            logger.info(f"🧬 Multi-scale refined: {result.specific_type} ({result.dominant_scale})")
+                except Exception as e:
+                    logger.debug(f"Multi-scale refinement skipped: {e}")
         
         return detections
 

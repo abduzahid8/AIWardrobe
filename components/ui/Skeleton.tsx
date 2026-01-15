@@ -16,7 +16,7 @@ interface SkeletonProps {
     width?: number | string;
     height?: number;
     borderRadius?: number;
-    style?: any;
+    style?: object;
 }
 
 // Base skeleton component with shimmer animation
