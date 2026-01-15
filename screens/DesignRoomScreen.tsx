@@ -50,7 +50,7 @@ const ALTA = {
 };
 
 // AliceVision API URL
-const ALICEVISION_URL = 'http://172.20.10.5:5050';
+const ALICEVISION_URL = 'http://192.168.100.214:5050';
 
 // Detected clothing item interface
 interface DetectedClothingItem {
@@ -158,7 +158,7 @@ const ToolbarButton = ({ icon, label, onPress, isActive = false }: {
 
 const DesignRoomScreen = () => {
   const navigation = useNavigation();
-  const [clothingItems, setClothingItems] = useState<any[]>([]);
+  const [clothingItems, setClothingItems] = useState<DetectedClothingItem[]>([]);
 
   // Celebrity outfit recognition state
   const [detectedItems, setDetectedItems] = useState<DetectedClothingItem[]>([]);
@@ -250,7 +250,7 @@ const DesignRoomScreen = () => {
         setAnalysisProgress(`✅ Found ${response.data.items.length} clothing items!`);
 
         // Map items to our format
-        const items: DetectedClothingItem[] = response.data.items.map((item: any) => ({
+        const items: DetectedClothingItem[] = response.data.items.map((item: DetectedClothingItem) => ({
           category: item.category,
           specificType: item.specificType,
           primaryColor: item.primaryColor,
@@ -268,16 +268,17 @@ const DesignRoomScreen = () => {
       } else {
         throw new Error('No clothing items detected');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Analysis failed:', error);
       setAnalysisProgress('');
 
-      if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+      const err = error as Error & { code?: string };
+      if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
         Alert.alert('Timeout', 'AI analysis took too long. Please try a smaller image.');
-      } else if (error.code === 'ERR_NETWORK') {
+      } else if (err.code === 'ERR_NETWORK') {
         Alert.alert('Connection Error', 'Cannot connect to AI service. Make sure the server is running.');
       } else {
-        Alert.alert('Analysis Failed', error.message || 'Could not detect clothing items. Try a clearer photo.');
+        Alert.alert('Analysis Failed', err.message || 'Could not detect clothing items. Try a clearer photo.');
       }
     } finally {
       setIsAnalyzing(false);

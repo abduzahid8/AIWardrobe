@@ -11,7 +11,7 @@ import React, { useState } from "react";
 import { useNavigation } from "@react-navigation/native";
 import useAuthStore from "../store/auth";
 import { useTranslation } from "react-i18next";
-export const API_URL = "http://172.20.10.5:3000";
+export const API_URL = "http://192.168.100.214:3000";
 
 const SignInScreen = () => {
   const navigation = useNavigation();
@@ -26,8 +26,8 @@ const SignInScreen = () => {
     }
     try {
       await login(email, password);
-    } catch (error: any) {
-      Alert.alert("Error", error.message);
+    } catch (error: unknown) {
+      Alert.alert("Error", (error as Error).message);
     }
   };
   console.log("Мой текущий API URL:", API_URL);

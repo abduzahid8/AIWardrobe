@@ -257,6 +257,204 @@ function getPosition(category) {
 }
 
 // ============================================
+// VIDEO TIMELINE ANALYSIS
+// ============================================
+
+/**
+ * POST /alicevision/analyze-video-timeline
+ * Analyze video and detect outfit changes
+ */
+router.post("/analyze-video-timeline", async (req, res) => {
+    try {
+        const { frames, detect_outfit_changes, min_agreement } = req.body;
+
+        if (!frames || !Array.isArray(frames) || frames.length < 2) {
+            return res.status(400).json({ error: "At least 2 frames required" });
+        }
+
+        console.log(`📹 Timeline analysis: ${frames.length} frames...`);
+
+        const result = await callAliceVision("/analyze-video-timeline", {
+            frames,
+            detect_outfit_changes: detect_outfit_changes !== false,
+            min_agreement: min_agreement || 0.5
+        }, 180000);
+
+        console.log(`✅ Timeline analysis complete: ${result.items?.length || 0} items, ${result.outfits?.length || 0} outfits`);
+
+        res.json(result);
+    } catch (error) {
+        console.error("Timeline analysis error:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ============================================
+// ENSEMBLE DETECTION (Best Accuracy)
+// ============================================
+
+/**
+ * POST /alicevision/detect-ensemble
+ * Multi-model ensemble detection for maximum accuracy
+ */
+router.post("/detect-ensemble", async (req, res) => {
+    try {
+        const { image } = req.body;
+
+        if (!image) {
+            return res.status(400).json({ error: "Image is required" });
+        }
+
+        console.log("🎯 Running ensemble detection...");
+
+        const result = await callAliceVision("/detect-ensemble", {
+            image
+        }, 90000);
+
+        console.log(`✅ Ensemble: ${result.items?.length || 0} items detected`);
+
+        res.json(result);
+    } catch (error) {
+        console.error("Ensemble detection error:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ============================================
+// MULTI-FRAME SEGMENTATION
+// ============================================
+
+/**
+ * POST /alicevision/segment-multi-frame
+ * Analyze multiple frames with temporal voting
+ */
+router.post("/segment-multi-frame", async (req, res) => {
+    try {
+        const { frames, min_agreement } = req.body;
+
+        if (!frames || !Array.isArray(frames) || frames.length < 2) {
+            return res.status(400).json({ error: "At least 2 frames required" });
+        }
+
+        console.log(`📹 Multi-frame segmentation: ${frames.length} frames...`);
+
+        const result = await callAliceVision("/segment-multi-frame", {
+            frames,
+            min_agreement: min_agreement || 0.5
+        }, 120000);
+
+        console.log(`✅ Multi-frame: ${result.items?.length || 0} items from ${result.framesAnalyzed} frames`);
+
+        res.json(result);
+    } catch (error) {
+        console.error("Multi-frame error:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ============================================
+// OUTFIT RECOMMENDATIONS
+// ============================================
+
+/**
+ * POST /alicevision/outfit/recommend
+ * AI-powered outfit recommendations
+ */
+router.post("/outfit/recommend", async (req, res) => {
+    try {
+        const { wardrobe_items, occasion, weather, preferences, max_outfits } = req.body;
+
+        if (!wardrobe_items || !Array.isArray(wardrobe_items)) {
+            return res.status(400).json({ error: "Wardrobe items required" });
+        }
+
+        console.log(`🧠 Generating outfit for: ${occasion}`);
+
+        const result = await callAliceVision("/outfit/recommend", {
+            wardrobe_items,
+            occasion: occasion || "casual",
+            weather,
+            preferences,
+            max_outfits: max_outfits || 3
+        }, 60000);
+
+        console.log(`✅ Generated ${result.outfits?.length || 0} outfit recommendations`);
+
+        res.json(result);
+    } catch (error) {
+        console.error("Outfit recommendation error:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ============================================
+// AI STYLIST CHAT
+// ============================================
+
+/**
+ * POST /alicevision/outfit/chat
+ * Conversational AI stylist
+ */
+router.post("/outfit/chat", async (req, res) => {
+    try {
+        const { message, wardrobe_items, conversation_history, context } = req.body;
+
+        if (!message) {
+            return res.status(400).json({ error: "Message is required" });
+        }
+
+        console.log(`💬 Stylist chat: ${message.slice(0, 50)}...`);
+
+        const result = await callAliceVision("/outfit/chat", {
+            message,
+            wardrobe_items,
+            conversation_history,
+            context
+        }, 30000);
+
+        console.log(`✅ Chat response generated`);
+
+        res.json(result);
+    } catch (error) {
+        console.error("Chat error:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ============================================
+// WARDROBE SEMANTIC SEARCH
+// ============================================
+
+/**
+ * POST /alicevision/wardrobe/search
+ * Natural language wardrobe search
+ */
+router.post("/wardrobe/search", async (req, res) => {
+    try {
+        const { query, wardrobe_items, top_k } = req.body;
+
+        if (!query) {
+            return res.status(400).json({ error: "Query is required" });
+        }
+
+        console.log(`🔎 Wardrobe search: ${query}`);
+
+        const result = await callAliceVision("/wardrobe/search", {
+            query,
+            wardrobe_items,
+            top_k: top_k || 5
+        }, 15000);
+
+        console.log(`✅ Found ${result.results?.length || 0} matching items`);
+
+        res.json(result);
+    } catch (error) {
+        console.error("Search error:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ============================================
 // HEALTH CHECK
 // ============================================
 
@@ -269,7 +467,20 @@ router.get("/health", async (req, res) => {
         const response = await axios.get(`${ALICEVISION_URL}/health`, { timeout: 5000 });
         res.json({
             status: "connected",
-            alicevision: response.data
+            alicevision: response.data,
+            endpoints: [
+                "/alicevision/keyframe",
+                "/alicevision/segment",
+                "/alicevision/lighting",
+                "/alicevision/process",
+                "/alicevision/analyze",
+                "/alicevision/analyze-video-timeline",
+                "/alicevision/detect-ensemble",
+                "/alicevision/segment-multi-frame",
+                "/alicevision/outfit/recommend",
+                "/alicevision/outfit/chat",
+                "/alicevision/wardrobe/search"
+            ]
         });
     } catch (error) {
         res.status(503).json({

@@ -19,6 +19,7 @@ import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, shadows, spacing } from '../src/theme';
+import CorrectionModal from '../src/components/CorrectionModal';
 
 const { width } = Dimensions.get('window');
 
@@ -48,6 +49,11 @@ interface DetectedItem {
         hasPrint: boolean;
         colors: string[];
     };
+    // 🧵 V2: Fine-grained attributes from FashionFAE
+    neckline?: string;  // crew neck, v-neck, turtleneck, etc.
+    sleeveType?: string;  // short sleeve, long sleeve, bishop sleeve, etc.
+    fit?: string;  // slim fit, regular, oversized, etc.
+    closure?: string;  // button-front, zip, pullover, etc.
     details?: string;
     productDescription?: string;
     frameImage?: string;
@@ -57,9 +63,55 @@ interface DetectedItem {
     agreementScore?: number; // Multi-model agreement 0-1
     detectionSources?: string[]; // Which AI models detected this
     styleTags?: string[];  // Style tags (e.g., ["streetwear", "casual"])
-    features?: any;  // Physical features (zippers, buttons, collars)
+    features?: Record<string, string | number | boolean>;  // Physical features (zippers, buttons, collars)
     bbox?: number[];  // Bounding box [x, y, w, h]
-    attributes?: any;  // Full attribute data from AI
+    attributes?: Record<string, string | number | boolean>;  // Full attribute data from AI
+    outfitId?: number;  // 🎬 Outfit grouping ID (1, 2, 3, 4...)
+    framesDetected?: number;  // 🎬 V2: Number of frames item was detected in
+    trackId?: number;  // 🎬 V2: Unique track ID from FeatureSORT
+    cutoutImage?: string;  // 🎬 Timeline: Pre-cut image from correct outfit frame
+    detectionBox?: number[];  // 🎬 Timeline: Bounding box for per-item cutout
+    startFrame?: number;  // 🎬 Timeline: Frame index for correct cutout generation
+    frameIndex?: number;  // Frame index where item was detected
+}
+
+// API Response Types for type-safe mapping
+interface APIItemResponse {
+    category?: string;
+    specificType?: string;
+    primaryColor?: string;
+    color?: string;
+    colorHex?: string;
+    material?: string;
+    pattern?: string;
+    confidence?: number;
+    bbox?: number[];
+    cutoutImage?: string;
+    bestFrame?: string;
+    attributes?: Record<string, string | number | boolean>;
+    type?: string;
+    fit?: string;
+    trackId?: number;
+    outfitId?: number;
+    outfit_id?: number;
+    neckline?: string;
+    sleeveType?: string;
+    styleTags?: string[];
+    caption?: string;
+    framesDetected?: number;
+    frameIndices?: number[];
+    // Fashion Intelligence specific
+    identity?: { type?: string; subType?: string; brandGuess?: string };
+    construction?: { closure?: string; neckline?: string; sleeves?: string; pockets?: string; details?: string };
+    quality?: { condition?: string; level?: string; priceRange?: string };
+    position?: string;
+    startFrame?: number;
+}
+
+interface OutfitResponse {
+    outfitId?: number;
+    startFrame?: number;
+    items?: APIItemResponse[];
 }
 
 interface AnalysisResult {
@@ -140,10 +192,78 @@ const formatCategoryName = (category: string): string => {
         .join(' ');
 };
 
+// 🔒 Helper: Deduplicate items detected multiple times (same type in overlapping positions)
+const deduplicateItems = (items: DetectedItem[]): DetectedItem[] => {
+    if (items.length <= 1) return items;
+
+    // Calculate IoU (Intersection over Union) for bounding boxes
+    const iou = (box1: number[] | undefined, box2: number[] | undefined): number => {
+        if (!box1 || !box2 || box1.length < 4 || box2.length < 4) return 0;
+
+        const [x1, y1, w1, h1] = box1;
+        const [x2, y2, w2, h2] = box2;
+
+        const xi1 = Math.max(x1, x2);
+        const yi1 = Math.max(y1, y2);
+        const xi2 = Math.min(x1 + w1, x2 + w2);
+        const yi2 = Math.min(y1 + h1, y2 + h2);
+
+        if (xi2 <= xi1 || yi2 <= yi1) return 0;
+
+        const inter = (xi2 - xi1) * (yi2 - yi1);
+        const union = w1 * h1 + w2 * h2 - inter;
+        return union > 0 ? inter / union : 0;
+    };
+
+    // Sort by confidence (highest first)
+    const sorted = [...items].sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
+
+    const unique: DetectedItem[] = [];
+    for (const item of sorted) {
+        let isDuplicate = false;
+        const itemType = (item.itemType || item.specificType || '').toLowerCase();
+        const itemFrame = item.frameIndex || 0;
+
+        for (const existing of unique) {
+            const existingType = (existing.itemType || existing.specificType || '').toLowerCase();
+            const existingFrame = existing.frameIndex || 0;
+
+            // 🚀 ONLY deduplicate items from SAME FRAME
+            // This preserves different outfits from different frames
+            if (itemFrame !== existingFrame) {
+                continue; // Different frame = different outfit, not duplicate
+            }
+
+            // Same category family AND overlapping bbox (IoU > 0.5 for stricter matching)
+            const sameCategory =
+                (itemType.includes('shirt') && existingType.includes('shirt')) ||
+                (itemType.includes('pants') && existingType.includes('pants')) ||
+                (itemType.includes('jeans') && existingType.includes('jeans')) ||
+                (itemType.includes('shoe') && existingType.includes('shoe')) ||
+                (itemType.includes('jacket') && existingType.includes('jacket')) ||
+                (itemType.includes('sweater') && existingType.includes('sweater')) ||
+                (itemType === existingType);
+
+            if (sameCategory && item.bbox && existing.bbox) {
+                if (iou(item.bbox, existing.bbox) > 0.5) { // Stricter IoU threshold
+                    isDuplicate = true;
+                    break;
+                }
+            }
+        }
+
+        if (!isDuplicate) {
+            unique.push(item);
+        }
+    }
+
+    return unique;
+};
+
 // 🚀 Helper: Merge left/right shoes into pairs - PRESERVE specificType!
-const mergeShoeCategories = (items: any[]): any[] => {
-    const shoeItems: any[] = [];
-    const otherItems: any[] = [];
+const mergeShoeCategories = (items: DetectedItem[]): DetectedItem[] => {
+    const shoeItems: DetectedItem[] = [];
+    const otherItems: DetectedItem[] = [];
 
     items.forEach(item => {
         const cat = (item.itemType || '').toLowerCase();
@@ -190,11 +310,18 @@ const WardrobeVideoScreen = () => {
     const [results, setResults] = useState<AnalysisResult | null>(null);
     const [progress, setProgress] = useState('');
 
+    // Phase 3: Correction modal state
+    const [correctionModal, setCorrectionModal] = useState<{
+        visible: boolean;
+        item: DetectedItem | null;
+        index: number;
+    }>({ visible: false, item: null, index: -1 });
+
     // Use local API server with local network IP for iOS Simulator
-    const API_URL = 'http://172.20.10.5:3000';
+    const API_URL = 'http://192.168.100.214:3000';
 
     // Direct connection to AliceVision Python service (port 5050)
-    const ALICEVISION_URL = 'http://172.20.10.5:5050';
+    const ALICEVISION_URL = 'http://192.168.100.214:5050';
 
     const requestPermissions = async () => {
         if (Platform.OS !== 'web') {
@@ -230,14 +357,16 @@ const WardrobeVideoScreen = () => {
 
     const extractFrames = async (videoUri: string): Promise<string[]> => {
         const frames: string[] = [];
-        const timePoints = [0, 2000, 4000, 6000, 8000]; // Extract at 0, 2, 4, 6, 8 seconds
+        // 🎯 DEMO MODE: Extract just 3 frames for quick 1-item detection
+        // This ensures fast processing while still getting good coverage
+        const timePoints = [0, 1000, 2000];  // Start, 1 second, 2 seconds
 
         for (const time of timePoints) {
             try {
-                setProgress(`Extracting frame ${frames.length + 1}/5...`);
+                setProgress(`Extracting frame ${frames.length + 1}/${timePoints.length}...`);
                 const { uri } = await VideoThumbnails.getThumbnailAsync(videoUri, {
                     time,
-                    quality: 0.7,
+                    quality: 0.9,  // High quality for best detection
                 });
 
                 // Convert to base64
@@ -250,14 +379,638 @@ const WardrobeVideoScreen = () => {
             }
         }
 
+        console.log(`📹 Extracted ${frames.length} frames from video`);
         return frames;
     };
 
-    // Smart clothing detection - Priority: AliceVision (local) > OpenAI > Gemini
+    // Smart clothing detection - MULTI-FRAME TRACKING
+    // Priority: Slow-Fast V2 > ByteTrack V1 > SegFormer+CLIP > Fashion Intelligence
     const analyzeClothingWithAI = async (frames: string[]): Promise<DetectedItem[]> => {
+        setProgress('🚀 AI analyzing clothing with Timeline Analysis...');
+
+        // 🎯 NEW: Try Timeline Analysis first for formatted output
+        // Returns: jacket(zip black "cotton") - pants(gurkha white "wool")(0-2)
+        if (frames.length >= 3) {
+            try {
+                setProgress(`🎯 Timeline Analysis: ${Math.min(frames.length, 30)} frames...`);
+
+                const cleanFrames = frames.slice(0, 30).map(f =>
+                    f.replace(/^data:image\/\w+;base64,/, '')
+                );
+
+                const timelineResponse = await axios.post(
+                    `${ALICEVISION_URL}/analyze-video-timeline`,
+                    {
+                        frames: cleanFrames,
+                        fps: 30,
+                        max_frames: 30,
+                        detect_materials: true
+                    },
+                    { timeout: 300000 }  // 5 min for timeline analysis
+                );
+
+                if (timelineResponse.data.success && timelineResponse.data.outfits?.length > 0) {
+                    const outfits = timelineResponse.data.outfits;
+                    const formattedTimeline = timelineResponse.data.formattedTimeline || [];
+
+                    console.log(`🎯 Timeline Analysis SUCCESS:`)
+                        ;
+                    formattedTimeline.forEach((line: string) => console.log(`  📋 ${line}`));
+
+                    // Convert timeline outfits to DetectedItem format
+                    const items: DetectedItem[] = [];
+
+                    outfits.forEach((outfit: OutfitResponse, outfitIdx: number) => {
+                        console.log(`  📦 Outfit ${outfitIdx + 1}: ${outfit.items?.length || 0} items`);
+                        outfit.items?.forEach((item: APIItemResponse, itemIdx: number) => {
+                            // Log each item for debugging
+                            console.log(`    🏷️ Item ${itemIdx + 1}: category=${item.category}, type=${item.specificType}, color=${item.color}`);
+                            items.push({
+                                itemType: formatCategoryName(item.specificType || item.category || ''),
+                                specificType: item.specificType || item.category,
+                                color: item.color || 'Unknown',
+                                colorHex: item.colorHex || '#000000',
+                                material: item.material || '',
+                                style: 'Casual',
+                                description: `${item.color || ''} ${item.specificType || item.category || ''}`.trim(),
+                                position: getItemPosition(item.category || ''),
+                                confidence: item.confidence || 0.90,
+                                confidenceLevel: 'high' as const,
+                                outfitId: outfit.outfitId || outfitIdx + 1,
+                                detectionSources: ['Timeline Analysis', 'SegFormer', 'Hierarchical Classifier'],
+                                // Store cutout from timeline (per-outfit frame)
+                                cutoutImage: item.cutoutImage || '',
+                                // Store bbox for per-item cutout generation
+                                detectionBox: item.bbox || [0, 0, 100, 100],
+                                // Store frame index for correct cutout
+                                startFrame: item.startFrame || outfit.startFrame || 0,
+                                // Store formatted string for display
+                                productDescription: formattedTimeline[outfitIdx] || ''
+                            });
+                        });
+                    });
+
+                    console.log(`🎯 TIMELINE SUCCESS: ${items.length} items across ${outfits.length} outfit(s)`);
+                    return items;
+                }
+            } catch (timelineError: any) {
+                const errorMessage = timelineError instanceof Error ? timelineError.message : 'Unknown error';
+            }
+        }
+
+        // 🚀 FALLBACK: AIWARDROBE 2.0: SLOW-FAST ARCHITECTURE
+        // Person-anchored tracking with fine-grained attributes
+        if (frames.length >= 3) {
+            try {
+                setProgress(`🚀 Slow-Fast V2: Analyzing ${Math.min(frames.length, 30)} frames...`);
+
+                const cleanFrames = frames.slice(0, 30).map(f =>
+                    f.replace(/^data:image\/\w+;base64,/, '')
+                );
+
+                // Try V2 API first (Slow-Fast architecture)
+                const v2Response = await axios.post(
+                    `${ALICEVISION_URL}/analyze-video-v2`,
+                    {
+                        frames: cleanFrames,
+                        max_frames: 30,
+                        keyframe_interval: 10,
+                        enable_slow_path: true,
+                        use_person_tracking: true
+                    },
+                    { timeout: 180000 }  // 3 min for multi-frame analysis
+                );
+
+                if (v2Response.data.success && v2Response.data.items?.length > 0) {
+                    const outfitCount = v2Response.data.outfitCount || 1;
+                    console.log(`🚀 Slow-Fast V2: ${v2Response.data.items.length} items from ${v2Response.data.framesAnalyzed} frames`);
+                    console.log(`⚡ Fast path: ${v2Response.data.fastPathMs}ms, Slow path: ${v2Response.data.slowPathMs}ms`);
+                    console.log(`🎬 OUTFITS DETECTED: ${outfitCount}`);
+
+                    // 🎯 FILTER: Only keep MAIN clothing items (no accessories)
+                    const MAIN_CLOTHING_CATEGORIES = [
+                        'upper_clothes', 'pants', 'dress', 'skirt', 'shoes', 'left_shoe', 'right_shoe',
+                        'jacket', 'shirt', 'sweater', 't-shirt', 'blouse', 'coat', 'blazer',
+                        'jeans', 'trousers', 'hoodie', 'cardigan', 'vest'
+                    ];
+                    const ACCESSORIES_TO_REMOVE = ['hat', 'scarf', 'belt', 'bag', 'sunglasses', 'cap', 'beanie'];
+
+                    let trackedItems = v2Response.data.items
+                        .filter((item: any) => {
+                            const category = (item.category || '').toLowerCase();
+                            const specificType = (item.specificType || '').toLowerCase();
+
+                            // Remove accessories
+                            const isAccessory = ACCESSORIES_TO_REMOVE.some(acc =>
+                                category.includes(acc) || specificType.includes(acc)
+                            );
+
+                            if (isAccessory) {
+                                console.log(`🚫 Filtered out accessory: ${item.specificType || item.category}`);
+                                return false;
+                            }
+                            return true;
+                        })
+                        .map((item: any) => ({
+                            itemType: formatCategoryName(item.specificType || item.category),
+                            specificType: item.specificType || item.category,
+                            color: item.primaryColor || item.color || 'Unknown',
+                            colorHex: item.colorHex || '#000000',
+                            // 🧵 V2: Fine-grained attributes from FashionFAE
+                            material: item.material || '',
+                            pattern: item.pattern || '',
+                            neckline: item.neckline || '',
+                            sleeveType: item.sleeveType || '',
+                            styleTags: item.styleTags || [],
+                            style: item.styleTags?.[0] || 'Casual',
+                            description: item.caption || `${item.primaryColor || ''} ${item.specificType || item.category}`.trim(),
+                            position: getItemPosition(item.category),
+                            confidence: item.confidence || 0.90,
+                            confidenceLevel: item.confidence > 0.8 ? 'high' : item.confidence > 0.5 ? 'medium' : 'low' as const,
+                            bbox: item.bbox,
+                            frameImage: item.cutoutImage || '',
+                            detectionSources: ['Slow-Fast V2', 'YOLOv8-Seg', 'Florence-2', 'FashionFAE'],
+                            framesDetected: item.framesDetected,
+                            trackId: item.trackId,
+                            // 🎬 V2: Person-anchored outfit grouping (no more items/4 heuristic!)
+                            outfitId: item.outfitId || 1
+                        }));
+
+                    console.log(`🚀 After accessory filter: ${trackedItems.length} main clothing items`);
+
+                    // 🔧 Merge shoe categories (left/right shoes → single Shoes item)
+                    trackedItems = mergeShoeCategories(trackedItems);
+                    console.log(`🚀 After shoe merge: ${trackedItems.length} final items`);
+
+                    const finalOutfitCount = new Set(trackedItems.map((i: any) => i.outfitId)).size;
+                    console.log(`🚀 SLOW-FAST V2 SUCCESS: ${trackedItems.length} tracked items across ${finalOutfitCount} outfit(s)`);
+                    return trackedItems;
+                }
+            } catch (v2Error: any) {
+                console.log(`Slow-Fast V2 failed: ${v2Error.message}, trying V1 ByteTrack...`);
+            }
+        }
+
+        // 🎯 FALLBACK: ByteTrack V1 (original architecture)
+        if (frames.length >= 3) {
+            try {
+                setProgress(`🎯 ByteTrack V1: Analyzing ${Math.min(frames.length, 10)} frames...`);
+
+                const cleanFrames = frames.slice(0, 10).map(f =>
+                    f.replace(/^data:image\/\w+;base64,/, '')
+                );
+
+                const trackResponse = await axios.post(
+                    `${ALICEVISION_URL}/analyze-video`,
+                    {
+                        frames: cleanFrames,
+                        max_frames: 10,
+                        use_tracking: true
+                    },
+                    { timeout: 180000 }  // 3 min for multi-frame analysis
+                );
+
+                if (trackResponse.data.success && trackResponse.data.items?.length > 0) {
+                    const outfitCount = trackResponse.data.outfitCount || 1;
+                    console.log(`🎯 ByteTrack: ${trackResponse.data.items.length} unique items from ${trackResponse.data.framesAnalyzed} frames`);
+                    console.log(`🎬 OUTFITS DETECTED: ${outfitCount}`);
+
+                    // 🎯 FILTER: Only keep MAIN clothing items (no accessories)
+                    const MAIN_CLOTHING_CATEGORIES = [
+                        'upper_clothes', 'pants', 'dress', 'skirt', 'shoes', 'left_shoe', 'right_shoe',
+                        'jacket', 'shirt', 'sweater', 't-shirt', 'blouse', 'coat', 'blazer',
+                        'jeans', 'trousers', 'hoodie', 'cardigan', 'vest'
+                    ];
+                    const ACCESSORIES_TO_REMOVE = ['hat', 'scarf', 'belt', 'bag', 'sunglasses', 'cap', 'beanie'];
+
+                    let trackedItems = trackResponse.data.items
+                        .filter((item: any) => {
+                            const category = (item.category || '').toLowerCase();
+                            const specificType = (item.specificType || '').toLowerCase();
+
+                            // Remove accessories
+                            const isAccessory = ACCESSORIES_TO_REMOVE.some(acc =>
+                                category.includes(acc) || specificType.includes(acc)
+                            );
+
+                            if (isAccessory) {
+                                console.log(`🚫 Filtered out accessory: ${item.specificType || item.category}`);
+                                return false;
+                            }
+                            return true;
+                        })
+                        .map((item: any) => ({
+                            itemType: formatCategoryName(item.specificType || item.category),
+                            specificType: item.specificType || item.category,
+                            color: item.primaryColor || item.color || 'Unknown',
+                            colorHex: item.colorHex || '#000000',
+                            material: item.material || item.attributes?.material,
+                            pattern: item.pattern || item.attributes?.pattern,
+                            style: 'Casual',
+                            description: `${item.primaryColor || item.color || ''} ${item.specificType || item.category}`.trim(),
+                            position: getItemPosition(item.category),
+                            confidence: item.confidence || 0.90,
+                            confidenceLevel: item.confidence > 0.8 ? 'high' : item.confidence > 0.5 ? 'medium' : 'low' as const,
+                            bbox: item.bbox,
+                            frameImage: item.cutoutImage || item.bestFrame,
+                            detectionSources: ['ByteTrack', 'SegFormer', 'Fashion-CLIP'],
+                            frameIndices: item.frameIndices,
+                            trackId: item.trackId,
+                            outfitId: item.outfit_id || 1
+                        }));
+
+                    console.log(`🎯 After accessory filter: ${trackedItems.length} main clothing items`);
+
+                    // 🔧 FIRST: Merge shoe categories (left/right shoes → single Shoes item)
+                    trackedItems = mergeShoeCategories(trackedItems);
+                    console.log(`🎯 After shoe merge: ${trackedItems.length} final items`);
+
+                    // 🎬 THEN: Simple outfit assignment - Divide evenly
+                    const numItems = trackedItems.length;
+                    if (numItems >= 4) {
+                        // Force 4 outfits for 8+ items
+                        let numOutfits = numItems >= 8 ? 4 : Math.max(Math.floor(numItems / 3), 2);
+                        numOutfits = Math.min(numOutfits, 4);  // Max 4 outfits
+
+                        // Calculate items per outfit
+                        const itemsPerOutfit = Math.ceil(numItems / numOutfits);
+
+                        console.log(`🎬 Distributing ${numItems} items into ${numOutfits} outfits (${itemsPerOutfit} per outfit)`);
+
+                        // Assign outfit IDs based on item order
+                        trackedItems = trackedItems.map((item: any, idx: number) => ({
+                            ...item,
+                            outfitId: Math.min(Math.floor(idx / itemsPerOutfit) + 1, numOutfits)
+                        }));
+
+                        // Log distribution
+                        const outfitCounts: { [key: number]: number } = {};
+                        trackedItems.forEach((item: any) => {
+                            outfitCounts[item.outfitId] = (outfitCounts[item.outfitId] || 0) + 1;
+                        });
+                        console.log(`🎬 OUTFIT DISTRIBUTION:`, outfitCounts);
+                    }
+
+                    const finalOutfitCount = new Set(trackedItems.map((i: any) => i.outfitId)).size;
+                    console.log(`🎯 BYTETRACK SUCCESS: ${trackedItems.length} tracked items across ${finalOutfitCount} outfit(s)`);
+                    return trackedItems;
+                }
+            } catch (trackError: any) {
+                console.log(`ByteTrack failed: ${trackError.message}, trying single-frame...`);
+            }
+        }
+
+        // FALLBACK: Single frame detection with SegFormer
+        try {
+            setProgress('🔍 Local AI: Segmenting clothing...');
+
+            const segmentResponse = await axios.post(
+                `${ALICEVISION_URL}/segment-all`,
+                {
+                    image: frames[0].replace(/^data:image\/\w+;base64,/, ''),
+                    add_white_background: true
+                },
+                { timeout: 120000 }
+            );
+
+            if (segmentResponse.data.success && segmentResponse.data.items?.length > 0) {
+                console.log(`🔍 Local AI: ${segmentResponse.data.items.length} items detected`);
+
+                let localItems = segmentResponse.data.items.map((item: any) => ({
+                    itemType: formatCategoryName(item.specificType || item.category),
+                    specificType: item.specificType || item.category,
+                    color: item.primaryColor || 'Unknown',
+                    colorHex: item.colorHex || '#000000',
+                    material: item.attributes?.material,
+                    pattern: item.attributes?.pattern,
+                    style: 'Casual',
+                    description: `${item.primaryColor || ''} ${item.specificType || item.category}`.trim(),
+                    position: getItemPosition(item.category),
+                    confidence: item.confidence || 0.85,
+                    confidenceLevel: item.confidence > 0.8 ? 'high' : item.confidence > 0.5 ? 'medium' : 'low' as const,
+                    bbox: item.bbox,
+                    frameImage: item.cutoutImage,
+                    detectionSources: ['SegFormer', 'Fashion-CLIP']
+                }));
+
+                localItems = mergeShoeCategories(localItems);
+                console.log(`🔍 LOCAL AI SUCCESS: ${localItems.length} validated items`);
+                return localItems;
+            }
+        } catch (localError: any) {
+            console.log(`Local AI failed: ${localError.message}, trying Fashion Intelligence...`);
+        }
+
+        // FALLBACK 2: Fashion Intelligence Engine
+        try {
+            setProgress('🧠 Fashion Intelligence analyzing...');
+
+            const fashionResponse = await axios.post(
+                `${ALICEVISION_URL}/analyze-fashion-deep`,
+                {
+                    image: frames[0].replace(/^data:image\/\w+;base64,/, '')
+                },
+                { timeout: 300000 }
+            );
+
+            if (fashionResponse.data.success && fashionResponse.data.items?.length > 0) {
+                console.log(`🧠 Fashion Intelligence: ${fashionResponse.data.items.length} items with deep understanding`);
+
+                // Log outfit intelligence if available
+                if (fashionResponse.data.outfitIntelligence) {
+                    const intel = fashionResponse.data.outfitIntelligence;
+                    console.log(`   📊 Overall aesthetic: ${intel.overallAesthetic}`);
+                    console.log(`   📊 Style coherence: ${intel.styleCoherence}/10`);
+                    console.log(`   📊 Suggestions: ${intel.suggestions?.slice(0, 2).join(', ')}`);
+                }
+
+                let fashionItems = fashionResponse.data.items.map((item: any) => ({
+                    // Core identification
+                    itemType: formatCategoryName(item.identity?.type || item.type || 'Clothing'),
+                    specificType: item.identity?.subType || item.identity?.type || item.type,
+                    brandGuess: item.identity?.brandGuess,
+
+                    // Color (deep)
+                    color: item.color?.primary || item.color || 'Unknown',
+                    colorSecondary: item.color?.secondary,
+                    colorHex: item.color?.hex || '#000000',
+                    colorTemperature: item.color?.temperature,
+
+                    // Material & Texture (deep)
+                    material: item.material?.outer,
+                    materialLining: item.material?.lining,
+                    texture: item.material?.texture,
+                    weight: item.material?.weight,
+
+                    // Construction details
+                    closure: item.construction?.closure,
+                    neckline: item.construction?.neckline,
+                    sleeves: item.construction?.sleeves,
+                    pockets: item.construction?.pockets,
+                    constructionDetails: item.construction?.details,
+
+                    // Fit & Silhouette
+                    fit: item.fit?.fit || 'Regular',
+                    fitLength: item.fit?.length,
+                    silhouette: item.fit?.silhouette,
+
+                    // Style & Context
+                    style: item.style?.formality || item.style?.aesthetics?.[0] || 'Casual',
+                    aesthetics: item.style?.aesthetics,
+                    occasions: item.style?.occasions,
+                    seasons: item.style?.seasons,
+                    gender: item.style?.gender,
+                    trends: item.style?.trends,
+
+                    // Quality assessment
+                    condition: item.quality?.condition,
+                    qualityLevel: item.quality?.level,
+                    priceRange: item.quality?.priceRange,
+
+                    // Standard fields
+                    description: `${item.color?.primary || ''} ${item.material?.outer || ''} ${item.identity?.type || item.type}`.trim(),
+                    position: item.category === 'footwear' ? 'feet' :
+                        item.category === 'bottoms' ? 'lower' :
+                            item.category === 'accessories' ? 'accessory' : 'upper',
+                    confidence: item.confidence || 0.95,
+                    confidenceLevel: 'high' as const,
+                    bbox: item.bbox,
+                    frameImage: item.cutoutImage,
+                    detectionSources: ['Fashion Intelligence Engine'],
+
+                    // Store full outfit intel for display
+                    outfitIntelligence: fashionResponse.data.outfitIntelligence
+                }));
+
+                fashionItems = mergeShoeCategories(fashionItems);
+                console.log(`🧠 FASHION INTELLIGENCE SUCCESS: ${fashionItems.length} items with deep attributes`);
+                return fashionItems;
+            }
+        } catch (fashionError: any) {
+            console.log(`Fashion Intelligence failed: ${fashionError.message}, falling back to VLM...`);
+        }
+
+        // FALLBACK 1: Try basic VLM detection
+        try {
+            setProgress('🧠 VLM fallback analyzing...');
+
+            const vlmResponse = await axios.post(
+                `${ALICEVISION_URL}/detect-vlm`,
+                {
+                    image: frames[0].replace(/^data:image\/\w+;base64,/, ''),
+                    frames: frames.slice(0, 5).map(f => f.replace(/^data:image\/\w+;base64,/, '')),
+                    create_cutouts: true
+                },
+                { timeout: 180000 }
+            );
+
+            if (vlmResponse.data.success && vlmResponse.data.items?.length > 0) {
+                let vlmItems = vlmResponse.data.items.map((item: any) => ({
+                    itemType: formatCategoryName(item.type),
+                    specificType: item.type,
+                    color: item.color,
+                    colorHex: item.colorHex || "#000000",
+                    style: item.fit || "Casual",
+                    material: item.material,
+                    pattern: item.pattern,
+                    description: `${item.color} ${item.type}`.trim(),
+                    position: item.position,
+                    confidence: item.confidence || 0.95,
+                    confidenceLevel: 'high' as const,
+                    bbox: item.bbox,
+                    frameImage: item.cutoutImage,
+                    detectionSources: ['Qwen2.5-VL-72B']
+                }));
+
+                vlmItems = mergeShoeCategories(vlmItems);
+                console.log(`🧠 VLM FALLBACK SUCCESS: ${vlmItems.length} items detected`);
+                return vlmItems;
+            }
+        } catch (vlmError: any) {
+            console.log(`VLM detection failed: ${vlmError.message}, falling back to ensemble...`);
+        }
+
+        // FALLBACK: Original multi-frame ensemble detection
         setProgress('🔍 AI analyzing clothing...');
 
-        // Try with multiple frames for better detection
+        let allDetectedItems: DetectedItem[] = [];
+
+        // 🚀 MULTI-FRAME DETECTION - Analyze multiple frames to catch all outfits
+        const framesToAnalyze = Math.min(frames.length, 5);
+
+        for (let frameIndex = 0; frameIndex < framesToAnalyze; frameIndex++) {
+            const imageData = frames[frameIndex].replace(/^data:image\/\w+;base64,/, '');
+            setProgress(`⚡ Analyzing frame ${frameIndex + 1}/${framesToAnalyze}...`);
+
+            try {
+
+
+                // Helper to convert Florence2 response to DetectedItem format
+                const convertFlorence2Items = (items: any[]): DetectedItem[] => {
+                    return items.map((item: any) => ({
+                        itemType: formatCategoryName(item.specificType || item.label),
+                        specificType: item.specificType || item.label,
+                        color: item.primaryColor || "Unknown",
+                        colorHex: "#000000",
+                        style: "Casual",
+                        description: `${item.primaryColor || ''} ${item.label}`.trim(),
+                        position: getItemPosition(item.category),
+                        confidence: item.confidence,
+                        confidenceLevel: item.confidence > 0.7 ? 'high' : 'medium',
+                        bbox: item.bbox
+                    }));
+                };
+
+                // Helper to convert Segment response to DetectedItem format
+                const convertSegmentItems = (items: any[]): DetectedItem[] => {
+                    return items.map((item: any) => ({
+                        itemType: item.specificType ? formatCategoryName(item.specificType) : formatCategoryName(item.category),
+                        specificType: item.specificType,
+                        color: item.primaryColor || "Unknown",
+                        colorHex: item.colorHex || "#000000",
+                        style: "Casual",
+                        description: `${item.primaryColor || ''} ${item.specificType || item.category}`.trim(),
+                        position: getItemPosition(item.category),
+                        confidence: item.confidence,
+                        confidenceLevel: item.confidence > 0.8 ? 'high' : item.confidence > 0.5 ? 'medium' : 'low',
+                        bbox: item.bbox
+                    }));
+                };
+
+                // Run detectors in parallel (increased timeouts for reliability)
+                const parallelResults = await Promise.allSettled([
+                    // 1. Segment - Most reliable, fast SegFormer
+                    axios.post(`${ALICEVISION_URL}/segment`, { image: imageData, add_white_background: true, use_advanced: true }, { timeout: 90000 })
+                        .then(r => r.data.success && r.data.items?.length > 0 ? convertSegmentItems(r.data.items) : null),
+
+                    // 2. Florence2 - Good accuracy
+                    axios.post(`${ALICEVISION_URL}/detect-florence2`, { image: imageData }, { timeout: 90000 })
+                        .then(r => r.data.success && r.data.items?.length > 0 ? convertFlorence2Items(r.data.items) : null),
+
+                    // 3. Ultimate - CLIP + SegFormer
+                    axios.post(`${ALICEVISION_URL}/detect-ultimate`, { image: imageData, create_cutouts: true }, { timeout: 60000 })
+                        .then(r => r.data.success && r.data.items?.length > 0 ? r.data.items.map((item: any) => ({
+                            itemType: item.label || "Clothing",
+                            specificType: item.type,
+                            color: item.color || "Unknown",
+                            colorHex: item.colorHex || "#000000",
+                            style: "Casual",
+                            description: `${item.color || ''} ${item.type}`.trim(),
+                            position: item.position || "upper",
+                            confidence: item.confidence,
+                            confidenceLevel: item.confidence > 0.8 ? 'high' : 'medium',
+                            bbox: item.bbox,
+                            frameImage: item.cutoutImage
+                        })) : null),
+
+                    // 4. Ensemble - YOLO + SegFormer + CLIP combined (BEST!)
+                    axios.post(`${ALICEVISION_URL}/detect-ensemble`, { image: imageData }, { timeout: 60000 })
+                        .then(r => r.data.success && r.data.items?.length > 0 ? r.data.items.map((item: any) => ({
+                            itemType: formatCategoryName(item.specificType || item.category),
+                            specificType: item.specificType,
+                            color: item.primaryColor || "Unknown",
+                            colorHex: item.colorHex || "#000000",
+                            style: "Casual",
+                            description: `${item.primaryColor || ''} ${item.specificType || item.category}`.trim(),
+                            position: getItemPosition(item.category),
+                            confidence: item.confidence,
+                            confidenceLevel: item.confidence > 0.8 ? 'high' : 'medium',
+                            bbox: item.bbox,
+                            frameImage: item.cutoutImage,
+                            material: item.material,
+                            pattern: item.pattern,
+                            detectionSources: item.detectionSources
+                        })) : null),
+
+                    // 5. Unified Pipeline - Florence2 + SAM2 (MAXIMUM ACCURACY)
+                    axios.post(`${ALICEVISION_URL}/detect-unified`, { image: imageData }, { timeout: 90000 })
+                        .then(r => r.data.success && r.data.items?.length > 0 ? r.data.items.map((item: any) => ({
+                            itemType: formatCategoryName(item.specificType || item.category),
+                            specificType: item.specificType,
+                            color: item.primaryColor || "Unknown",
+                            colorHex: item.colorHex || "#000000",
+                            style: "Casual",
+                            description: item.denseCaption || `${item.primaryColor || ''} ${item.specificType || item.category}`.trim(),
+                            position: getItemPosition(item.category),
+                            confidence: item.confidence,
+                            confidenceLevel: item.confidence > 0.8 ? 'high' : 'medium',
+                            bbox: item.bbox,
+                            frameImage: item.cutoutImage,
+                            material: item.material,
+                            pattern: item.pattern,
+                            modelSources: item.modelSources
+                        })) : null)
+                ]);
+
+                // 🚀 COMBINE results from ALL successful detectors (not just first)
+                for (const result of parallelResults) {
+                    if (result.status === 'fulfilled' && result.value && result.value.length > 0) {
+                        // Add frameIndex to each item for frame-aware deduplication
+                        const itemsWithFrame = result.value.map((item: any) => ({
+                            ...item,
+                            frameIndex: frameIndex  // Track which frame this item came from
+                        }));
+                        allDetectedItems = [...allDetectedItems, ...itemsWithFrame];
+                        // NOTE: NO break - collect from all detectors to catch more items!
+                    }
+                }
+                console.log(`⚡ Frame ${frameIndex + 1}: Collected from ${parallelResults.filter(r => r.status === 'fulfilled' && r.value?.length > 0).length} detectors`);
+
+            } catch (parallelError: any) {
+                console.log(`⚠️ Frame ${frameIndex + 1} error: ${parallelError.message}`);
+            }
+        } // End of multi-frame loop
+
+        // If we found items across frames, validate and return
+        if (allDetectedItems.length > 0) {
+            // 🧹 VALIDATION FILTER - Remove likely false positives
+            let validatedItems = allDetectedItems.filter(item => {
+                const type = (item.itemType || '').toLowerCase();
+                const confidence = item.confidence || 0;
+
+                // Filter out low-confidence scarf (often false positive on sweaters)
+                if (type.includes('scarf') && confidence < 0.7) {
+                    console.log(`🧹 Filtered: ${type} (confidence: ${confidence.toFixed(2)} < 0.7)`);
+                    return false;
+                }
+
+                // Filter out low-confidence skirt when pants detected
+                if (type.includes('skirt') && confidence < 0.6) {
+                    console.log(`🧹 Filtered: ${type} (confidence: ${confidence.toFixed(2)} < 0.6)`);
+                    return false;
+                }
+
+                // Filter out generic "clothing item" 
+                if (type === 'clothing item' && confidence < 0.5) {
+                    console.log(`🧹 Filtered: ${type} (too generic)`);
+                    return false;
+                }
+
+                return true;
+            });
+
+            // Convert denim skirt to pants if no actual skirt detected with high confidence
+            const hasHighConfidenceSkirt = validatedItems.some(i =>
+                (i.itemType || '').toLowerCase().includes('skirt') && (i.confidence || 0) > 0.7
+            );
+            if (!hasHighConfidenceSkirt) {
+                validatedItems = validatedItems.map(item => {
+                    if ((item.itemType || '').toLowerCase().includes('denim skirt')) {
+                        console.log(`🔄 Converted: denim skirt → jeans (no high-confidence skirt)`);
+                        return { ...item, itemType: 'Jeans', specificType: 'jeans' };
+                    }
+                    return item;
+                });
+            }
+
+            let finalItems = deduplicateItems(validatedItems);
+            finalItems = mergeShoeCategories(finalItems);
+            console.log(`✅ Multi-frame detection: ${finalItems.length} validated items from ${framesToAnalyze} frames`);
+            return finalItems;
+        }
+
+        console.log('⚠️ Multi-frame detection found nothing, falling back to sequential...');
+
         for (let attempt = 0; attempt < Math.min(frames.length, 3); attempt++) {
             try {
                 setProgress(`🔍 Analyzing frame ${attempt + 1}...`);
@@ -346,7 +1099,7 @@ const WardrobeVideoScreen = () => {
                         });
 
                         detectedItems = mergeShoeCategories(detectedItems);
-                        const itemsWithCutouts = detectedItems.filter((i: DetectedItem) => i.frameImage).length;
+                        const itemsWithCutouts = detectedItems.filter((i: any) => i.frameImage).length;
                         console.log(`🏆 PERFECT AI detected ${detectedItems.length} items (${itemsWithCutouts} with cutouts, ${perfectResponse.data.modelUsed})`);
                         return detectedItems;
                     }
@@ -474,7 +1227,7 @@ const WardrobeVideoScreen = () => {
                         detectedItems = mergeShoeCategories(detectedItems);
 
                         console.log(`✅ Local AI detected ${detectedItems.length} items:`,
-                            detectedItems.map((i: DetectedItem) => `${i.itemType}${i.specificType ? ' (' + i.specificType + ')' : ''}`));
+                            detectedItems.map((i: any) => `${i.itemType}${i.specificType ? ' (' + i.specificType + ')' : ''}`));
                         return detectedItems;
                     }
 
@@ -519,7 +1272,7 @@ const WardrobeVideoScreen = () => {
 
                 if (response.data.detectedItems?.length > 0) {
                     console.log(`✅ Gemini detected ${response.data.detectedItems.length} items:`,
-                        response.data.detectedItems.map((i: DetectedItem) => i.itemType));
+                        response.data.detectedItems.map((i: any) => i.itemType));
                     return response.data.detectedItems;
                 }
 
@@ -635,7 +1388,8 @@ const WardrobeVideoScreen = () => {
                     console.log(`   - Categories: ${v2Response.data.summary.categories.join(', ')}`);
 
                     // Convert V2 items to DetectedItem format
-                    const itemsWithImages: DetectedItem[] = processedItems.map((item: any) => ({
+                    // Preserve outfitId from original detectedItems
+                    const itemsWithImages: DetectedItem[] = processedItems.map((item: any, idx: number) => ({
                         itemType: item.attributes.category,
                         color: item.attributes.primaryColor,
                         style: item.attributes.style,
@@ -643,7 +1397,8 @@ const WardrobeVideoScreen = () => {
                         material: item.attributes.fabric || 'Unknown',
                         details: JSON.stringify(item.attributes.details),
                         productDescription: item.cardPrompt.prompt,
-                        frameImage: item.imageUrl  // Professional Massimo Dutti white background photo!
+                        frameImage: item.imageUrl,
+                        outfitId: detectedItems[idx]?.outfitId || 1  // 🎬 Preserve outfit ID
                     }));
 
                     setResults({
@@ -666,8 +1421,13 @@ const WardrobeVideoScreen = () => {
             const processItem = async (item: DetectedItem, index: number): Promise<DetectedItem> => {
                 try {
                     // 🚀 If item already has cutout from detection, use it directly!
-                    if (item.frameImage) {
+                    // Check both frameImage and cutoutImage (timeline endpoint uses cutoutImage)
+                    if (item.frameImage || item.cutoutImage) {
                         console.log(`✅ Using pre-cut image for ${item.itemType}`);
+                        // Ensure frameImage is set for display
+                        if (!item.frameImage && item.cutoutImage) {
+                            item.frameImage = item.cutoutImage;
+                        }
                         return item;
                     }
 
@@ -675,12 +1435,16 @@ const WardrobeVideoScreen = () => {
 
                     // FIRST: Try AliceVision per-item segmentation
                     try {
-                        const imageData = frames[0].replace(/^data:image\/\w+;base64,/, '');
+                        // 🎯 Use the correct frame for this item (from startFrame, not always frames[0])
+                        const frameIndex = Math.min((item as any).startFrame || 0, frames.length - 1);
+                        const bbox = (item as any).detectionBox || (item as any).bbox || null;
+                        console.log(`📦 Cutout ${item.itemType}: frame=${frameIndex}, bbox=${JSON.stringify(bbox)}`);
+                        const imageData = frames[frameIndex].replace(/^data:image\/\w+;base64,/, '');
                         const segResponse = await axios.post(
                             `${ALICEVISION_URL}/segment-item`,
                             {
                                 image: imageData,
-                                bbox: (item as any).bbox || null,  // Use item's bounding box if available
+                                bbox: (item as any).detectionBox || (item as any).bbox || null,  // Use item's bounding box if available
                                 category: item.itemType,
                                 add_white_background: true,
                                 padding: 30  // Add padding around item
@@ -692,18 +1456,50 @@ const WardrobeVideoScreen = () => {
                             // 🚀 Use specificType from V2 detection if available
                             const betterType = segResponse.data.specificType;
                             const betterColor = segResponse.data.primaryColor;
-                            const updatedItemType = betterType
+
+                            // 🔒 SAFETY: Only use betterType if it matches original category
+                            // This prevents pants → shoes type mismatches
+                            const originalCategoryLower = item.itemType.toLowerCase();
+                            const betterTypeLower = (betterType || "").toLowerCase();
+
+                            // Check if types are compatible (same category family)
+                            // 🔒 EXPANDED: All major clothing categories to prevent cross-category misclassifications
+                            const categoryFamilies: { [key: string]: string[] } = {
+                                'pants': ['pants', 'jeans', 'trousers', 'chinos', 'joggers', 'cargo', 'dress pants', 'slacks', 'sweatpants', 'leggings', 'black pants', 'khakis', 'corduroys'],
+                                'shoes': ['shoes', 'sneakers', 'boots', 'loafers', 'heels', 'sandals', 'flats', 'oxford', 'derby', 'chelsea boots', 'dress shoes', 'running shoes'],
+                                'top': ['top', 'shirt', 't-shirt', 'blouse', 'sweater', 'hoodie', 'jacket', 'coat', 'blazer', 'cardigan', 'polo', 'tank top', 'vest', 'pullover', 'sweatshirt', 'turtleneck', 'flannel'],
+                                'hat': ['hat', 'cap', 'beanie', 'fedora', 'bucket hat', 'baseball cap', 'snapback', 'trucker hat', 'dad hat', 'visor', 'sun hat', 'beret'],
+                                'scarf': ['scarf', 'wrap', 'shawl', 'neckerchief', 'bandana', 'pashmina', 'stole', 'infinity scarf'],
+                                'dress': ['dress', 'gown', 'sundress', 'maxi dress', 'midi dress', 'mini dress', 'cocktail dress', 'evening dress', 'bodycon dress', 'wrap dress', 'shirt dress', 'slip dress'],
+                                'skirt': ['skirt', 'mini skirt', 'maxi skirt', 'midi skirt', 'pencil skirt', 'pleated skirt', 'denim skirt', 'a-line skirt', 'wrap skirt'],
+                                'bag': ['bag', 'backpack', 'handbag', 'purse', 'tote', 'crossbody', 'messenger bag', 'clutch', 'duffel', 'satchel'],
+                                'belt': ['belt', 'waist belt', 'leather belt', 'chain belt'],
+                                'sunglasses': ['sunglasses', 'glasses', 'eyewear', 'shades'],
+                            };
+
+                            let typeMatches = false;
+                            for (const [family, types] of Object.entries(categoryFamilies)) {
+                                const originalInFamily = types.some(t => originalCategoryLower.includes(t));
+                                const betterInFamily = types.some(t => betterTypeLower.includes(t));
+                                if (originalInFamily && betterInFamily) {
+                                    typeMatches = true;
+                                    break;
+                                }
+                            }
+
+                            // Only update type if it matches the category family
+                            const updatedItemType = betterType && typeMatches
                                 ? formatCategoryName(betterType)
                                 : item.itemType;
 
                             // 🏷️ Use professional product card if available, otherwise cutout
                             const cardImage = segResponse.data.productCardImage || segResponse.data.croppedImage;
 
-                            console.log(`✅ Per-item cutout created for ${updatedItemType}${betterType ? ` (V2: ${betterType})` : ''}`);
+                            console.log(`✅ Per-item cutout created for ${updatedItemType}${betterType ? ` (V2: ${betterType}, matched: ${typeMatches})` : ''}`);
                             return {
                                 ...item,
-                                itemType: updatedItemType,  // 🚀 Update with V2 type!
-                                specificType: betterType || item.specificType,
+                                itemType: updatedItemType,  // 🚀 Update with V2 type only if matching!
+                                specificType: typeMatches ? (betterType || item.specificType) : item.specificType,
                                 color: betterColor || item.color,
                                 frameImage: cardImage,  // 🏷️ Professional product card!
                                 description: `${betterColor || item.color} ${updatedItemType}`.trim()
@@ -713,9 +1509,10 @@ const WardrobeVideoScreen = () => {
                         console.log(`Per-item cutout failed: ${localError.message}, trying full /segment...`);
                     }
 
-                    // FALLBACK 1: Try full-frame segmentation
+                    // FALLBACK 1: Try full-frame segmentation (using correct frame for this item)
                     try {
-                        const imageData = frames[0].replace(/^data:image\/\w+;base64,/, '');
+                        const frameIndex = Math.min((item as any).startFrame || 0, frames.length - 1);
+                        const imageData = frames[frameIndex].replace(/^data:image\/\w+;base64,/, '');
                         const segResponse = await axios.post(
                             `${ALICEVISION_URL}/segment`,
                             {
@@ -811,6 +1608,7 @@ const WardrobeVideoScreen = () => {
             const existingItems = existingData ? JSON.parse(existingData) : [];
 
             // Create new items with AI-generated or fallback images
+            // Include outfitId for grouping in wardrobe
             const newItems = results.detectedItems.map((item: DetectedItem, index: number) => ({
                 id: `item_${Date.now()}_${index}`,
                 type: item.itemType,
@@ -820,10 +1618,18 @@ const WardrobeVideoScreen = () => {
                 material: item.material || 'Unknown',
                 details: item.details || '',
                 season: 'All Seasons',
-                image: item.frameImage,  // Use AI-generated or fallback image
+                image: item.frameImage,
                 source: 'video_scan',
+                outfitId: (item as any).outfitId || 1,  // 🎬 PRESERVE OUTFIT ID
                 createdAt: new Date().toISOString()
             }));
+
+            // Log outfit distribution
+            const outfitCounts: { [key: number]: number } = {};
+            newItems.forEach((item: any) => {
+                outfitCounts[item.outfitId] = (outfitCounts[item.outfitId] || 0) + 1;
+            });
+            console.log(`💾 Saving ${newItems.length} items with outfits:`, outfitCounts);
 
             // Save all items
             const allItems = [...newItems, ...existingItems];
@@ -955,60 +1761,85 @@ const WardrobeVideoScreen = () => {
                                 </TouchableOpacity>
                             </View>
 
-                            {results.detectedItems.map((item: DetectedItem, index: number) => {
-                                // Get icon based on position
-                                const getPositionIcon = (pos?: string) => {
-                                    switch (pos) {
-                                        case 'upper': return 'shirt';
-                                        case 'lower': return 'layers';
-                                        case 'feet': return 'footsteps';
-                                        case 'accessory': return 'bag';
-                                        case 'full': return 'body';
-                                        default: return 'shirt';
+                            {/* 🎯 INDIVIDUAL ITEM CARDS GROUPED BY OUTFIT */}
+                            {(() => {
+                                // Group items by outfitId
+                                const outfitGroups: { [key: number]: DetectedItem[] } = {};
+                                results.detectedItems.forEach(item => {
+                                    const outfitId = (item as any).outfitId || 1;
+                                    if (!outfitGroups[outfitId]) {
+                                        outfitGroups[outfitId] = [];
                                     }
-                                };
+                                    outfitGroups[outfitId].push(item);
+                                });
 
-                                return (
-                                    <View key={index} style={styles.resultCard}>
-                                        <View style={styles.resultIcon}>
-                                            <Ionicons name={getPositionIcon(item.position)} size={24} color="#4f46e5" />
+                                // Sort outfit IDs
+                                const sortedOutfitIds = Object.keys(outfitGroups)
+                                    .map(Number)
+                                    .sort((a, b) => a - b);
+
+                                return sortedOutfitIds.map((outfitId, outfitIndex) => {
+                                    const items = outfitGroups[outfitId];
+
+                                    return (
+                                        <View key={outfitId} style={{ marginBottom: 16 }}>
+                                            {/* Outfit Header */}
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, paddingHorizontal: 4 }}>
+                                                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#4f46e5', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+                                                    <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>{outfitIndex + 1}</Text>
+                                                </View>
+                                                <Text style={{ fontSize: 16, fontWeight: '600', color: '#1a1a1a' }}>Outfit {outfitIndex + 1}</Text>
+                                                <Text style={{ fontSize: 12, color: '#666', marginLeft: 8 }}>({items.length} items)</Text>
+                                            </View>
+
+                                            {/* Individual Item Cards */}
+                                            {items.map((item, itemIdx) => (
+                                                <View key={itemIdx} style={[styles.resultCard, { marginBottom: 8 }]}>
+                                                    <View style={styles.resultIcon}>
+                                                        <View style={{ width: 40, height: 40, borderRadius: 8, backgroundColor: item.colorHex || '#eee', alignItems: 'center', justifyContent: 'center' }}>
+                                                            <Ionicons
+                                                                name={item.position === 'upper' ? 'shirt' : item.position === 'lower' ? 'layers' : item.position === 'feet' ? 'footsteps' : 'shirt'}
+                                                                size={20}
+                                                                color="#fff"
+                                                            />
+                                                        </View>
+                                                    </View>
+                                                    <View style={styles.resultInfo}>
+                                                        <Text style={styles.resultType}>{item.itemType}</Text>
+                                                        <Text style={styles.resultDetails}>
+                                                            {item.color}
+                                                            {item.material ? ` • ${item.material}` : ''}
+                                                        </Text>
+                                                    </View>
+                                                    <View style={styles.checkIcon}>
+                                                        <Ionicons name="checkmark-circle" size={24} color="#10b981" />
+                                                    </View>
+                                                </View>
+                                            ))}
                                         </View>
-                                        <View style={styles.resultInfo}>
-                                            <Text style={styles.resultType}>{item.itemType}</Text>
-                                            {/* Classification path for detailed type */}
-                                            {item.classificationPath && (
-                                                <Text style={styles.resultPath}>{item.classificationPath}</Text>
-                                            )}
-                                            <Text style={styles.resultDetails}>
-                                                {item.color} • {item.style}
-                                                {item.material ? ` • ${item.material}` : ''}
-                                                {item.pattern && item.pattern !== 'solid' ? ` • ${item.pattern}` : ''}
-                                            </Text>
-                                            {/* Material and pattern details */}
-                                            {(item.materialDetails || item.patternDetails) && (
-                                                <Text style={styles.resultMaterialPattern}>
-                                                    {item.materialDetails?.texture ? `${item.materialDetails.texture} ` : ''}
-                                                    {item.materialDetails?.finish ? `• ${item.materialDetails.finish}` : ''}
-                                                </Text>
-                                            )}
-                                            {/* Detection sources for transparency */}
-                                            {item.detectionSources && item.detectionSources.length > 0 && (
-                                                <Text style={styles.resultSources}>
-                                                    🤖 {item.detectionSources.join(' + ')}
-                                                </Text>
-                                            )}
-                                            {item.styleTags && item.styleTags.length > 0 && (
-                                                <Text style={styles.resultTags}>
-                                                    {item.styleTags.slice(0, 3).join(' • ')}
-                                                </Text>
-                                            )}
-                                        </View>
-                                        <View style={styles.checkIcon}>
-                                            <Ionicons name="checkmark-circle" size={24} color="#10b981" />
-                                        </View>
-                                    </View>
-                                );
-                            })}
+                                    );
+                                });
+                            })()}
+
+                            {/* Correction Modal */}
+                            <CorrectionModal
+                                visible={correctionModal.visible}
+                                onClose={() => setCorrectionModal({ visible: false, item: null, index: -1 })}
+                                originalType={correctionModal.item?.itemType || ''}
+                                category={correctionModal.item?.position || 'upper_clothes'}
+                                confidence={correctionModal.item?.confidence || 0.5}
+                                onCorrected={(newType) => {
+                                    // Update the item in results
+                                    if (results && correctionModal.index >= 0) {
+                                        const updated = [...results.detectedItems];
+                                        updated[correctionModal.index] = {
+                                            ...updated[correctionModal.index],
+                                            itemType: newType
+                                        };
+                                        setResults({ ...results, detectedItems: updated });
+                                    }
+                                }}
+                            />
 
                             <TouchableOpacity
                                 style={styles.saveButton}
@@ -1023,10 +1854,11 @@ const WardrobeVideoScreen = () => {
                                 </LinearGradient>
                             </TouchableOpacity>
                         </View>
-                    )}
-                </ScrollView>
-            </SafeAreaView>
-        </View>
+                    )
+                    }
+                </ScrollView >
+            </SafeAreaView >
+        </View >
     );
 };
 
@@ -1270,7 +2102,17 @@ const styles = StyleSheet.create({
         marginTop: 3,
     },
     checkIcon: {
-        marginLeft: 12,
+        marginLeft: 8,
+    },
+    resultActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    correctBtn: {
+        padding: 6,
+        backgroundColor: '#f0f0f0',
+        borderRadius: 6,
+        marginRight: 4,
     },
     saveButton: {
         marginTop: 24,

@@ -81,7 +81,7 @@ export default function ScanWardrobeScreen() {
         Alert.alert(t('wardrobe.error'), t('wardrobe.noItemsFound'));
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Analysis error:", error);
       Alert.alert(t('wardrobe.error'), t('wardrobe.recognitionError'));
     } finally {

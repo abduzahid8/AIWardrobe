@@ -223,7 +223,7 @@ const AIAssistant = () => {
         throw new Error("No response text from server");
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.log("AI error", error);
       const errorMessage: Message = {
         id: Date.now() + 1,

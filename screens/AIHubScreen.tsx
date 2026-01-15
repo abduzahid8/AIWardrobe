@@ -31,6 +31,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
 import { TahoeIconButton } from '../components/TahoeButton';
+import WeatherWidget from '../components/WeatherWidget';
 import AppColors from '../constants/AppColors';
 
 const { width, height } = Dimensions.get('window');
@@ -57,6 +58,13 @@ const STYLE_GOALS = [
     { id: '4', text: 'Evolve my style', icon: 'trending-up-outline' },
     { id: '5', text: 'Wear my clothes more', icon: 'shirt-outline' },
 ];
+
+// Type for style goal
+interface StyleGoalType {
+    id: string;
+    text: string;
+    icon: string;
+}
 
 // iOS 26 Tahoe Press Hook
 const useTahoePress = () => {
@@ -121,7 +129,7 @@ const FloatingAIAvatar = () => {
 };
 
 // Style Goal Button (Like Alta's homepage)
-const StyleGoalButton = ({ goal, index, onPress }: { goal: any; index: number; onPress: () => void }) => {
+const StyleGoalButton = ({ goal, index, onPress }: { goal: StyleGoalType; index: number; onPress: () => void }) => {
     const { animatedStyle, onPressIn, onPressOut } = useTahoePress();
 
     return (
@@ -138,7 +146,7 @@ const StyleGoalButton = ({ goal, index, onPress }: { goal: any; index: number; o
                 activeOpacity={1}
             >
                 <Animated.View style={[styles.goalButton, animatedStyle]}>
-                    <Ionicons name={goal.icon} size={20} color={ALTA.primary} style={styles.goalIcon} />
+                    <Ionicons name={goal.icon as any} size={20} color={ALTA.primary} style={styles.goalIcon} />
                     <Text style={styles.goalText}>{goal.text}</Text>
                     <Ionicons name="arrow-forward" size={16} color={ALTA.textMuted} />
                 </Animated.View>
@@ -154,7 +162,7 @@ const QuickActionCard = ({
     subtitle,
     onPress
 }: {
-    icon: any;
+    icon: string;
     title: string;
     subtitle: string;
     onPress: () => void;
@@ -173,7 +181,7 @@ const QuickActionCard = ({
         >
             <Animated.View style={[styles.quickActionCard, animatedStyle]}>
                 <View style={styles.quickActionIcon}>
-                    <Ionicons name={icon} size={24} color={ALTA.primary} />
+                    <Ionicons name={icon as any} size={24} color={ALTA.primary} />
                 </View>
                 <Text style={styles.quickActionTitle}>{title}</Text>
                 <Text style={styles.quickActionSubtitle}>{subtitle}</Text>
@@ -201,7 +209,7 @@ const AIHubScreen = () => {
         }
     };
 
-    const handleGoalPress = (goal: any) => {
+    const handleGoalPress = (goal: StyleGoalType) => {
         (navigation as any).navigate('AIChat', { initialMessage: goal.text });
     };
 
@@ -218,6 +226,8 @@ const AIHubScreen = () => {
                         onPress={() => (navigation as any).navigate('Profile')}
                         color={ALTA.text}
                     />
+
+                    <WeatherWidget />
 
                     <Image
                         source={{ uri: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100' }}
@@ -291,6 +301,12 @@ const AIHubScreen = () => {
                                 onPress={() => (navigation as any).navigate('WardrobeVideo')}
                             />
                             <QuickActionCard
+                                icon="grid-outline"
+                                title="My Closet"
+                                subtitle="Browse all items"
+                                onPress={() => (navigation as any).navigate('MyCloset')}
+                            />
+                            <QuickActionCard
                                 icon="sparkles-outline"
                                 title="AI Stylist"
                                 subtitle="Smart recommendations"
@@ -307,6 +323,18 @@ const AIHubScreen = () => {
                                 title="Plan outfits"
                                 subtitle="Weekly calendar"
                                 onPress={() => (navigation as any).navigate('Calendar')}
+                            />
+                            <QuickActionCard
+                                icon="people-outline"
+                                title="Meeting Outfit"
+                                subtitle="AI outfit for events"
+                                onPress={() => (navigation as any).navigate('MeetingOutfit')}
+                            />
+                            <QuickActionCard
+                                icon="trophy-outline"
+                                title="Style Goals"
+                                subtitle="Track your journey"
+                                onPress={() => (navigation as any).navigate('StyleGoals')}
                             />
                         </View>
                     </Animated.View>

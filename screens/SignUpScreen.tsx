@@ -28,8 +28,8 @@ const SignUpScreen = () => {
     }
     try {
       await register(email, password, username, gender, profileImage)
-    } catch (error: any) {
-      Alert.alert("Error", error.message)
+    } catch (error: unknown) {
+      Alert.alert("Error", (error as Error).message)
     }
   }
 

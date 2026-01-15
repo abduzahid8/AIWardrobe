@@ -45,10 +45,31 @@ const COLORS = {
     superLike: '#2196F3',
 };
 
+// ============================================
+// TYPE DEFINITIONS
+// ============================================
+
+interface OutfitItemType {
+    id?: string | number;
+    type?: string;
+    itemType?: string;
+    color?: string;
+    image?: string | null;
+    imageUrl?: string;
+}
+
+interface OutfitType {
+    id: string;
+    items: OutfitItemType[];
+    occasion: string;
+    style: string;
+    matchScore: number;
+}
+
 // Mock outfit data - in production, this would come from AI
-const generateMockOutfits = (wardrobeItems: any[]) => {
+const generateMockOutfits = (wardrobeItems: OutfitItemType[]): OutfitType[] => {
     // Generate outfit combinations from wardrobe items
-    const outfits: any[] = [];
+    const outfits: OutfitType[] = [];
     const tops = wardrobeItems.filter(i =>
         (i.type || i.itemType || '').toLowerCase().includes('shirt') ||
         (i.type || i.itemType || '').toLowerCase().includes('top') ||
@@ -117,7 +138,7 @@ const generateMockOutfits = (wardrobeItems: any[]) => {
 // ============================================
 
 interface OutfitCardProps {
-    outfit: any;
+    outfit: OutfitType;
     index: number;
     onSwipe: (direction: 'left' | 'right' | 'up') => void;
     isTop: boolean;
@@ -213,7 +234,7 @@ const OutfitCard = ({ outfit, index, onSwipe, isTop }: OutfitCardProps) => {
                 <View style={styles.cardInner}>
                     {/* Outfit Preview */}
                     <View style={styles.outfitPreview}>
-                        {outfit.items.map((item: any, idx: number) => (
+                        {outfit.items.map((item: OutfitItemType, idx: number) => (
                             <View key={idx} style={styles.itemPreview}>
                                 {item.image || item.imageUrl ? (
                                     <Image
@@ -247,7 +268,7 @@ const OutfitCard = ({ outfit, index, onSwipe, isTop }: OutfitCardProps) => {
                         </View>
 
                         <Text style={styles.outfitItems}>
-                            {outfit.items.map((i: any) => i.type || i.itemType).join(' + ')}
+                            {outfit.items.map((i: OutfitItemType) => i.type || i.itemType).join(' + ')}
                         </Text>
                     </View>
                 </View>
@@ -288,7 +309,7 @@ const OutfitSwipeScreen = () => {
     const { items: wardrobeItems } = useWardrobeItems();
     const { likeOutfit, dislikeOutfit, superLikeOutfit, totalLikes, totalDislikes } = useStylePreferenceStore();
 
-    const [outfits, setOutfits] = useState<any[]>([]);
+    const [outfits, setOutfits] = useState<OutfitType[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -305,13 +326,13 @@ const OutfitSwipeScreen = () => {
 
         if (direction === 'right') {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            likeOutfit(outfit.id, outfit.items?.map((i: any) => i.id), outfit.occasion);
+            likeOutfit(outfit.id, outfit.items?.map((i: OutfitItemType) => String(i.id)), outfit.occasion);
         } else if (direction === 'left') {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            dislikeOutfit(outfit.id, outfit.items?.map((i: any) => i.id), outfit.occasion);
+            dislikeOutfit(outfit.id, outfit.items?.map((i: OutfitItemType) => String(i.id)), outfit.occasion);
         } else if (direction === 'up') {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            superLikeOutfit(outfit.id, outfit.items?.map((i: any) => i.id), outfit.occasion);
+            superLikeOutfit(outfit.id, outfit.items?.map((i: OutfitItemType) => String(i.id)), outfit.occasion);
         }
 
         setCurrentIndex(prev => prev + 1);

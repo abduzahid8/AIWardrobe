@@ -40,6 +40,26 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 
 const { width } = Dimensions.get("window");
 
+// Type definitions
+interface ClothingItemType {
+  id?: string | number;
+  uniqueId?: string;
+  type?: string;
+  color?: string;
+  image?: string;
+  imageUrl?: string;
+  isSaved?: boolean;
+  style?: string;
+  description?: string;
+}
+
+interface OutfitType {
+  _id: string;
+  date?: string;
+  occasion?: string;
+  items: ClothingItemType[];
+}
+
 // Animated card component with iOS 25-style interactions
 const ClothingCard = ({
   item,
@@ -50,7 +70,7 @@ const ClothingCard = ({
   isFavorite,
   uniqueKey,
 }: {
-  item: any;
+  item: ClothingItemType;
   index: number;
   onPress: () => void;
   onLongPress: () => void;
@@ -145,7 +165,7 @@ const ProfileScreen = () => {
   const [activeCategory, setActiveCategory] = useState("All");
   const { logout, user, token, isTrialMode } = useAuthStore();
   const { getTrialsRemaining } = useTrialStore();
-  const [outifts, setOutfits] = useState<any[]>([]);
+  const [outifts, setOutfits] = useState<OutfitType[]>([]);
   const [loading, setLoading] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const username = user?.username || "sujanand";
@@ -156,7 +176,7 @@ const ProfileScreen = () => {
 
   // Edit Modal State
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editingItem, setEditingItem] = useState<any>(null);
+  const [editingItem, setEditingItem] = useState<ClothingItemType | null>(null);
   const [editType, setEditType] = useState("");
   const [editColor, setEditColor] = useState("");
 
@@ -216,7 +236,7 @@ const ProfileScreen = () => {
   };
 
   // Saved clothing items from local storage
-  const [savedClothes, setSavedClothes] = useState<any[]>([]);
+  const [savedClothes, setSavedClothes] = useState<ClothingItemType[]>([]);
   const [loadingSaved, setLoadingSaved] = useState(false);
 
   // Load favorites from AsyncStorage
@@ -275,7 +295,7 @@ const ProfileScreen = () => {
   );
 
   // Delete item function
-  const deleteItem = async (item: any) => {
+  const deleteItem = async (item: ClothingItemType) => {
     Alert.alert(
       "Delete Item",
       `Are you sure you want to delete this ${item.type || 'item'}?`,
@@ -292,8 +312,9 @@ const ProfileScreen = () => {
               setSavedClothes(updatedItems);
 
               // Also remove from favorites if present
-              if (favorites.includes(item.id)) {
-                saveFavorites(favorites.filter(id => id !== item.id));
+              const itemIdStr = String(item.id || '');
+              if (favorites.includes(itemIdStr)) {
+                saveFavorites(favorites.filter(id => id !== itemIdStr));
               }
             } catch (error) {
               console.error("Delete error:", error);
@@ -306,7 +327,7 @@ const ProfileScreen = () => {
   };
 
   // Edit item function
-  const openEditModal = (item: any) => {
+  const openEditModal = (item: ClothingItemType) => {
     if (!item.isSaved) {
       Alert.alert("Info", "You can only edit items you've added to your wardrobe.");
       return;
@@ -412,10 +433,10 @@ const ProfileScreen = () => {
     return clothes;
   }, [activeCategory, allClothes, favorites]);
 
-  const sortItems = useCallback((items: any[]) => {
+  const sortItems = useCallback((items: ClothingItemType[]) => {
     const order = ["shirt", "pants", "skirts", "shoes"];
     return items.sort(
-      (a: any, b: any) => order.indexOf(a.type) - order.indexOf(b.type)
+      (a, b) => order.indexOf(a.type || '') - order.indexOf(b.type || '')
     );
   }, []);
 
@@ -590,7 +611,7 @@ const ProfileScreen = () => {
                     <View key={outfit._id} style={styles.outfitItem}>
                       <View style={[styles.outfitCard, shadows.soft]}>
                         <View style={styles.outfitImageContainer}>
-                          {sortItems(outfit.items).map((item: any, index: number) => (
+                          {sortItems(outfit.items).map((item, index: number) => (
                             <Image
                               key={`${outfit._id}-${item.id}-${index}`}
                               source={{ uri: item.image }}
@@ -736,11 +757,11 @@ const ProfileScreen = () => {
                 style={styles.settingsItem}
                 onPress={() => {
                   setShowSettings(false);
-                  (navigation as any).navigate('WardrobeAnalytics');
+                  (navigation as any).navigate('MeetingOutfit');
                 }}
               >
-                <Ionicons name="stats-chart-outline" size={22} color={colors.text.primary} />
-                <Text style={styles.settingsItemText}>Wardrobe Analytics</Text>
+                <Ionicons name="sparkles-outline" size={22} color={colors.text.primary} />
+                <Text style={styles.settingsItemText}>Meeting Outfit</Text>
                 <Ionicons name="chevron-forward" size={20} color={colors.text.secondary} />
               </TouchableOpacity>
 

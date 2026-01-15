@@ -15,6 +15,7 @@ import DesignRoomScreen from "../screens/DesignRoomScreen";
 import NewOutfitScreen from "../screens/NewOutfitScreen";
 import TabNavigator from "../navigation/TabNavigator";
 import WardrobeVideoScreen from "../screens/WardrobeVideoScreen";
+import CameraScreen from "../screens/CameraScreen";
 
 import useAuthStore from "../store/auth";
 import useTrialStore from "../store/trialStore";
@@ -24,10 +25,31 @@ import OutfitCalendarScreen from "../screens/OutfitCalendarScreen";
 import AIHubScreen from "../screens/AIHubScreen";
 import EmailOnboardingScreen from "../screens/EmailOnboardingScreen";
 import TripPlannerScreen from "../screens/TripPlannerScreen";
-import WardrobeAnalyticsScreen from "../screens/WardrobeAnalyticsScreen";
 import OutfitDetailScreen from "../screens/OutfitDetailScreen";
 import PaywallScreen from "../screens/PaywallScreen";
 import OutfitAIScreen from "../screens/OutfitAIScreen";
+import MeetingOutfitScreen from "../screens/MeetingOutfitScreen";
+import PriceTrackerScreen from "../screens/PriceTrackerScreen";
+import FlashSalesScreen from "../screens/FlashSalesScreen";
+import FlashSaleEventScreen from "../screens/FlashSaleEventScreen";
+import MyClosetScreen from "../screens/MyClosetScreen";
+import StyleGoalsScreen from "../screens/StyleGoalsScreen";
+
+// Scanned item interface for ReviewScan
+interface ScannedItem {
+  id?: string;
+  type?: string;
+  color?: string;
+  image?: string;
+  imageUrl?: string;
+  confidence?: number;
+}
+
+// Outfit item interface
+interface OutfitItem {
+  id?: string;
+  items?: ScannedItem[];
+}
 
 export type RootStackParamList = {
   Home: undefined;
@@ -40,19 +62,26 @@ export type RootStackParamList = {
   ScanWardrobe: undefined;
 
   // Самое важное: мы указываем, что этот экран ждет массив items!
-  ReviewScan: { items: any[] };
+  ReviewScan: { items: ScannedItem[] };
 
   DesignRoom: undefined;
   NewOutfit: undefined;
   WardrobeVideo: undefined;
+  Camera: undefined;
   Calendar: undefined;
   AIHub: undefined;
   EmailOnboarding: undefined;
   TripPlanner: undefined;
-  WardrobeAnalytics: undefined;
-  OutfitDetail: { image?: string; outfit?: any };
+
+  OutfitDetail: { image?: string; outfit?: OutfitItem };
   Paywall: undefined;
   OutfitAI: undefined;  // 🧠 Multimodal AI Outfit Recommendations
+  MeetingOutfit: undefined;  // 📅 Meeting Outfit Generator
+  PriceTracker: undefined;   // 💰 Price Tracking
+  FlashSales: undefined;     // 🔥 Flash Sales
+  FlashSaleEvent: { eventId: string };  // 🛍️ Individual Flash Event
+  MyCloset: undefined;       // 👗 Digital Wardrobe Management
+  StyleGoals: undefined;     // 🎯 Style Goal Tracking
 };
 
 // 2. Передаем этот список в Stack
@@ -214,6 +243,15 @@ const RootNavigator = () => {
                 gestureDirection: 'vertical',
               }}
             />
+            <Stack.Screen
+              name="Camera"
+              component={CameraScreen}
+              options={{
+                animation: 'slide_from_bottom',
+                presentation: 'fullScreenModal',
+                headerShown: false,
+              }}
+            />
 
             <Stack.Screen
               name="DesignRoom"
@@ -259,13 +297,6 @@ const RootNavigator = () => {
               }}
             />
             <Stack.Screen
-              name="WardrobeAnalytics"
-              component={WardrobeAnalyticsScreen}
-              options={{
-                animation: 'slide_from_right',
-              }}
-            />
-            <Stack.Screen
               name="OutfitDetail"
               component={OutfitDetailScreen}
               options={{
@@ -287,6 +318,54 @@ const RootNavigator = () => {
             <Stack.Screen
               name="OutfitAI"
               component={OutfitAIScreen}
+              options={{
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="MeetingOutfit"
+              component={MeetingOutfitScreen}
+              options={{
+                animation: 'slide_from_bottom',
+                presentation: 'modal',
+                gestureEnabled: true,
+                gestureDirection: 'vertical',
+              }}
+            />
+            <Stack.Screen
+              name="PriceTracker"
+              component={PriceTrackerScreen}
+              options={{
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="FlashSales"
+              component={FlashSalesScreen}
+              options={{
+                animation: 'slide_from_bottom',
+                presentation: 'modal',
+                gestureEnabled: true,
+                gestureDirection: 'vertical',
+              }}
+            />
+            <Stack.Screen
+              name="FlashSaleEvent"
+              component={FlashSaleEventScreen}
+              options={{
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="MyCloset"
+              component={MyClosetScreen}
+              options={{
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="StyleGoals"
+              component={StyleGoalsScreen}
               options={{
                 animation: 'slide_from_right',
               }}

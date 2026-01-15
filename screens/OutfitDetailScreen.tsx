@@ -108,6 +108,17 @@ const DETECTED_ITEMS = [
     },
 ];
 
+// Type for detected clothing item
+interface DetectedItemType {
+    id: string;
+    type: string;
+    brand: string;
+    name: string;
+    price: string;
+    image: string;
+    position: { top: number; left: number };
+}
+
 // iOS 26 Tahoe Press Hook
 const useTahoePress = () => {
     const scale = useSharedValue(1);
@@ -138,7 +149,7 @@ const ClothingItemThumbnail = ({
     isSelected,
     onPress,
 }: {
-    item: any;
+    item: DetectedItemType;
     index: number;
     isSelected: boolean;
     onPress: () => void;
@@ -183,7 +194,7 @@ const ProductDetailModal = ({
     onClose,
 }: {
     visible: boolean;
-    item: any;
+    item: DetectedItemType | null;
     onClose: () => void;
 }) => {
     if (!item) return null;
@@ -255,7 +266,7 @@ const ProductDetailModal = ({
 const OutfitDetailScreen = () => {
     const navigation = useNavigation();
     const route = useRoute();
-    const [selectedItem, setSelectedItem] = useState<any>(null);
+    const [selectedItem, setSelectedItem] = useState<DetectedItemType | null>(null);
     const [showModal, setShowModal] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [bookmarkCount] = useState(144);
@@ -271,7 +282,7 @@ const OutfitDetailScreen = () => {
         return () => clearTimeout(timer);
     }, []);
 
-    const handleItemPress = (item: any) => {
+    const handleItemPress = (item: DetectedItemType) => {
         setSelectedItem(item);
         setShowModal(true);
     };

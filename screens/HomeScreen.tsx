@@ -8,6 +8,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Platform,
+  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -20,6 +21,8 @@ import * as Location from 'expo-location';
 import { BlurView } from 'expo-blur';
 import { TahoeIconButton, TahoeActionCard, TahoeButton } from '../components/TahoeButton';
 import AppColors from '../constants/AppColors';
+import flashSalesService from '../src/services/flashSalesService';
+import { FlashSaleEvent } from '../src/types/flashSales';
 
 const { width } = Dimensions.get("window");
 
@@ -56,13 +59,15 @@ const HomeScreen = () => {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loadingWeather, setLoadingWeather] = useState(true);
   const [videoUri, setVideoUri] = useState<string | null>(null);
+  const [featuredFlashSale, setFeaturedFlashSale] = useState<FlashSaleEvent | null>(null);
+  const [flashSaleTimeRemaining, setFlashSaleTimeRemaining] = useState('');
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
         const token = await AsyncStorage.getItem("userToken");
         if (token) {
-          const decoded: any = jwtDecode(token);
+          const decoded = jwtDecode<{ name?: string; username?: string }>(token);
           setUserName(decoded.name || decoded.username || "User");
         }
 
@@ -82,7 +87,32 @@ const HomeScreen = () => {
     };
     fetchUserData();
     fetchWeather();
+    loadFlashSale();
   }, []);
+
+  // Load featured flash sale
+  const loadFlashSale = async () => {
+    try {
+      const featured = await flashSalesService.getFeaturedEvent();
+      setFeaturedFlashSale(featured);
+      if (featured) {
+        setFlashSaleTimeRemaining(flashSalesService.formatTimeRemaining(featured));
+      }
+    } catch (error) {
+      console.log('Error loading flash sale:', error);
+    }
+  };
+
+  // Update countdown timer
+  useEffect(() => {
+    if (!featuredFlashSale) return;
+
+    const interval = setInterval(() => {
+      setFlashSaleTimeRemaining(flashSalesService.formatTimeRemaining(featuredFlashSale));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [featuredFlashSale]);
 
   const fetchWeather = async () => {
     try {
@@ -142,11 +172,11 @@ const HomeScreen = () => {
       screen: 'AITryOn',
     },
     {
-      icon: 'stats-chart' as const,
-      title: 'Analytics',
-      subtitle: 'See insights',
+      icon: 'people' as const,
+      title: 'Meeting',
+      subtitle: 'Create style',
       color: '#34C759',
-      screen: 'WardrobeAnalytics',
+      screen: 'MeetingOutfit',
     },
   ];
 
@@ -211,10 +241,13 @@ const HomeScreen = () => {
                 useNativeControls
               />
             ) : isUnlocked ? (
-              <Image
-                source={{ uri: "https://i.pinimg.com/736x/2e/3d/d1/2e3dd14ac81b207ee6d86bc99ef576eb.jpg" }}
-                style={styles.outfitImage}
-                resizeMode="contain"
+              <Video
+                source={require("../nux_men_o.mp4")}
+                style={styles.outfitVideo}
+                resizeMode={ResizeMode.CONTAIN}
+                shouldPlay={true}
+                isLooping
+                isMuted
               />
             ) : (
               <View style={styles.placeholderContainer}>
@@ -248,7 +281,7 @@ const HomeScreen = () => {
                 <TahoeButton
                   title="Scan Your Wardrobe"
                   icon="add-circle-outline"
-                  variant="gradient"
+                  variant="primary"
                   fullWidth
                   haptic="medium"
                   onPress={() => (navigation as any).navigate('WardrobeVideo')}
@@ -285,6 +318,55 @@ const HomeScreen = () => {
               ))}
             </View>
           </View>
+
+          {/* Flash Sales Banner */}
+          {featuredFlashSale && (
+            <View style={styles.flashSalesSection}>
+              <TouchableOpacity
+                style={styles.flashSalesBanner}
+                onPress={() => (navigation as any).navigate('FlashSales')}
+                activeOpacity={0.9}
+              >
+                <LinearGradient
+                  colors={['#1A1A1A', '#333333']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.flashSalesGradient}
+                >
+                  <View style={styles.flashSalesContent}>
+                    <View style={styles.flashSalesHeader}>
+                      <View style={styles.flashSalesLive}>
+                        <View style={styles.flashSalesLiveDot} />
+                        <Text style={styles.flashSalesLiveText}>
+                          {featuredFlashSale.status === 'active' ? 'LIVE NOW' : 'COMING SOON'}
+                        </Text>
+                      </View>
+                      <Text style={styles.flashSalesDiscount}>
+                        Up to {featuredFlashSale.discountPercentage}% OFF
+                      </Text>
+                    </View>
+
+                    <Text style={styles.flashSalesTitle}>
+                      🔥 {featuredFlashSale.title}
+                    </Text>
+
+                    <View style={styles.flashSalesFooter}>
+                      <View style={styles.flashSalesTimer}>
+                        <Ionicons name="time-outline" size={14} color="#FFF" />
+                        <Text style={styles.flashSalesTimerText}>
+                          {featuredFlashSale.status === 'upcoming' ? 'Starts in ' : 'Ends in '}
+                          {flashSaleTimeRemaining}
+                        </Text>
+                      </View>
+                      <View style={styles.flashSalesArrow}>
+                        <Ionicons name="arrow-forward" size={18} color="#FFF" />
+                      </View>
+                    </View>
+                  </View>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Extra spacing at bottom */}
           <View style={{ height: 100 }} />
@@ -487,6 +569,88 @@ const styles = StyleSheet.create({
   },
   actionCardItem: {
     width: (width - 54) / 2,
+  },
+  // Flash Sales Banner Styles
+  flashSalesSection: {
+    paddingHorizontal: 20,
+    marginTop: 24,
+  },
+  flashSalesBanner: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  flashSalesGradient: {
+    padding: 18,
+  },
+  flashSalesContent: {
+    flex: 1,
+  },
+  flashSalesHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  flashSalesLive: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FF3B30',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 5,
+  },
+  flashSalesLiveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FFF',
+  },
+  flashSalesLiveText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  flashSalesDiscount: {
+    color: '#FFD700',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  flashSalesTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFF',
+    marginBottom: 16,
+  },
+  flashSalesFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  flashSalesTimer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  flashSalesTimerText: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  flashSalesArrow: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

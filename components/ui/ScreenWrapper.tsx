@@ -23,7 +23,7 @@ interface ScreenWrapperProps {
     /** Custom background color */
     backgroundColor?: string;
     /** Custom style */
-    style?: any;
+    style?: object;
     /** Whether to show status bar */
     statusBar?: boolean;
 }

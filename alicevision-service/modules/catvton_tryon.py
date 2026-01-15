@@ -143,14 +143,38 @@ class CatVTONEngine:
         start_time = time.time()
         
         try:
-            if self.provider == "fashn":
-                result = self._try_on_fashn(
-                    person_image, garment_image, garment_type
-                )
-            elif self.provider == "replicate":
+            # Try API4AI free demo first (most reliable free option)
+            result = self._try_on_api4ai(
+                person_image, garment_image, garment_type
+            )
+            
+            if result.success:
+                result.processing_time_ms = (time.time() - start_time) * 1000
+                result.garment_type = garment_type
+                return result
+            
+            # Try FREE Hugging Face Spaces
+            logger.info("API4AI failed, trying HF Spaces...")
+            result = self._try_on_huggingface(
+                person_image, garment_image, garment_type,
+                num_inference_steps, guidance_scale
+            )
+            
+            if result.success:
+                result.processing_time_ms = (time.time() - start_time) * 1000
+                result.garment_type = garment_type
+                return result
+            
+            # Fallback to Replicate if HF fails
+            logger.info("HF Spaces failed, trying Replicate...")
+            if self.provider == "replicate":
                 result = self._try_on_replicate(
                     person_image, garment_image, garment_type,
                     num_inference_steps, guidance_scale
+                )
+            elif self.provider == "fashn":
+                result = self._try_on_fashn(
+                    person_image, garment_image, garment_type
                 )
             else:
                 result = self._try_on_local(
@@ -169,6 +193,288 @@ class CatVTONEngine:
                 success=False,
                 processing_time_ms=(time.time() - start_time) * 1000
             )
+    
+    def _try_on_api4ai(
+        self,
+        person_image: str,
+        garment_image: str,
+        garment_type: str
+    ) -> TryOnResult:
+        """Try-on via API4AI free demo API."""
+        import requests
+        
+        try:
+            logger.info("🆓 Trying API4AI free demo...")
+            
+            person_b64 = self._ensure_base64(person_image)
+            garment_b64 = self._ensure_base64(garment_image)
+            
+            # Validate images
+            if len(person_b64) < 1000 or len(garment_b64) < 1000:
+                logger.warning("Images too small for VTON")
+                return TryOnResult(success=False, method_used="api4ai")
+            
+            # API4AI virtual try-on endpoint (free demo)
+            url = "https://demo.api4ai.cloud/clothes-tryon/v1/results"
+            
+            files = {
+                'person_image': ('person.jpg', base64.b64decode(person_b64), 'image/jpeg'),
+                'cloth_image': ('garment.jpg', base64.b64decode(garment_b64), 'image/jpeg'),
+            }
+            
+            response = requests.post(url, files=files, timeout=120)
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Check for result image
+                if data.get('results') and len(data['results']) > 0:
+                    result_data = data['results'][0]
+                    
+                    # Get the result image URL or base64
+                    if 'image_url' in result_data:
+                        # Download the result
+                        img_response = requests.get(result_data['image_url'], timeout=30)
+                        if img_response.status_code == 200:
+                            raw_b64 = base64.b64encode(img_response.content).decode()
+                            result_b64 = f"data:image/jpeg;base64,{raw_b64}"
+                            
+                            logger.info("✅ API4AI succeeded!")
+                            return TryOnResult(
+                                success=True,
+                                result_image_b64=result_b64,
+                                method_used="api4ai_demo"
+                            )
+                    elif 'entities' in result_data:
+                        # Alternative response format
+                        for entity in result_data['entities']:
+                            if 'image' in entity:
+                                raw_b64 = entity['image']
+                                result_b64 = f"data:image/jpeg;base64,{raw_b64}"
+                                
+                                logger.info("✅ API4AI succeeded!")
+                                return TryOnResult(
+                                    success=True,
+                                    result_image_b64=result_b64,
+                                    method_used="api4ai_demo"
+                                )
+                
+                logger.warning(f"API4AI no result: {data}")
+            else:
+                logger.warning(f"API4AI error: {response.status_code} - {response.text[:200]}")
+                
+        except Exception as e:
+            logger.warning(f"API4AI failed: {e}")
+        
+        return TryOnResult(success=False, method_used="api4ai")
+    
+    def _try_on_huggingface(
+        self,
+        person_image: str,
+        garment_image: str,
+        garment_type: str,
+        num_inference_steps: int,
+        guidance_scale: float
+    ) -> TryOnResult:
+        """Try-on via FREE Hugging Face Spaces with multi-space fallback."""
+        import tempfile
+        import os as os_module
+        import threading
+        import queue
+        
+        # List of HF Spaces to try (in order of preference)
+        HF_SPACES = [
+            "levihsu/OOTDiffusion",
+            # Add more spaces here as fallbacks
+        ]
+        
+        try:
+            from gradio_client import Client, handle_file
+            
+            # Save base64 images to temp files
+            person_b64 = self._ensure_base64(person_image)
+            garment_b64 = self._ensure_base64(garment_image)
+            
+            # Validate images have sufficient data
+            if len(person_b64) < 1000 or len(garment_b64) < 1000:
+                logger.warning("Images too small for VTON - need real photos")
+                return TryOnResult(success=False, method_used="huggingface")
+            
+            with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as person_file:
+                person_file.write(base64.b64decode(person_b64))
+                person_path = person_file.name
+            
+            with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as garment_file:
+                garment_file.write(base64.b64decode(garment_b64))
+                garment_path = garment_file.name
+            
+            try:
+                for space_name in HF_SPACES:
+                    try:
+                        logger.info(f"🆓 Trying HF Space: {space_name}...")
+                        
+                        # Connect with shorter timeout
+                        client = Client(space_name)
+                        
+                        # Map garment type
+                        category_map = {
+                            "upper_body": "Upper-body",
+                            "lower_body": "Lower-body",
+                            "full_body": "Dress"
+                        }
+                        category = category_map.get(garment_type, "Upper-body")
+                        
+                        # Use a thread with timeout for the predict call
+                        result_queue = queue.Queue()
+                        
+                        def predict_worker():
+                            try:
+                                result = client.predict(
+                                    vton_img=handle_file(person_path),
+                                    garm_img=handle_file(garment_path),
+                                    category=category,
+                                    n_samples=1,
+                                    n_steps=min(num_inference_steps, 30),
+                                    image_scale=min(guidance_scale, 3.0),
+                                    seed=-1,
+                                    api_name="/process_dc"
+                                )
+                                result_queue.put(("success", result))
+                            except Exception as e:
+                                result_queue.put(("error", str(e)))
+                        
+                        thread = threading.Thread(target=predict_worker)
+                        thread.start()
+                        thread.join(timeout=120)  # 2 minute timeout for queue
+                        
+                        if thread.is_alive():
+                            logger.warning(f"HF Space {space_name} timed out in queue")
+                            continue
+                        
+                        if not result_queue.empty():
+                            status, result = result_queue.get()
+                            
+                            if status == "success" and result and len(result) > 0:
+                                output_path = result[0].get('image') if isinstance(result[0], dict) else result[0]
+                                
+                                if output_path and os_module.path.exists(output_path):
+                                    with open(output_path, 'rb') as f:
+                                        raw_b64 = base64.b64encode(f.read()).decode()
+                                    
+                                    # Add data URI prefix for React Native Image component
+                                    # Check file extension for correct MIME type
+                                    if output_path.lower().endswith('.webp'):
+                                        result_b64 = f"data:image/webp;base64,{raw_b64}"
+                                    elif output_path.lower().endswith('.png'):
+                                        result_b64 = f"data:image/png;base64,{raw_b64}"
+                                    else:
+                                        result_b64 = f"data:image/jpeg;base64,{raw_b64}"
+                                    
+                                    logger.info(f"✅ {space_name} succeeded!")
+                                    return TryOnResult(
+                                        success=True,
+                                        result_image_b64=result_b64,
+                                        method_used=f"hf_spaces_{space_name.split('/')[-1]}"
+                                    )
+                            elif status == "error":
+                                logger.warning(f"HF Space {space_name} error: {result}")
+                                
+                    except Exception as space_error:
+                        logger.warning(f"HF Space {space_name} failed: {space_error}")
+                        continue
+                
+                # If all HF Spaces failed, try simple overlay fallback
+                logger.info("All HF Spaces busy, trying simple overlay...")
+                return self._simple_overlay_tryon(person_path, garment_path, garment_type)
+                
+            finally:
+                # Cleanup temp files
+                try:
+                    os_module.unlink(person_path)
+                    os_module.unlink(garment_path)
+                except:
+                    pass
+                    
+        except Exception as e:
+            logger.warning(f"HF Spaces failed: {e}")
+        
+        return TryOnResult(success=False, method_used="huggingface")
+    
+    def _simple_overlay_tryon(
+        self,
+        person_path: str,
+        garment_path: str,
+        garment_type: str
+    ) -> TryOnResult:
+        """Simple overlay-based try-on as fallback when AI is unavailable."""
+        try:
+            import cv2
+            
+            # Read images
+            person_img = cv2.imread(person_path)
+            garment_img = cv2.imread(garment_path)
+            
+            if person_img is None or garment_img is None:
+                return TryOnResult(success=False, method_used="overlay")
+            
+            h, w = person_img.shape[:2]
+            
+            # Resize garment to fit on person
+            if garment_type == "upper_body":
+                # Place on upper body area (roughly 20-60% of height, centered)
+                target_h = int(h * 0.4)
+                target_w = int(w * 0.6)
+                y_offset = int(h * 0.2)
+                x_offset = int(w * 0.2)
+            elif garment_type == "lower_body":
+                # Place on lower body area (40-85% of height)
+                target_h = int(h * 0.45)
+                target_w = int(w * 0.5)
+                y_offset = int(h * 0.4)
+                x_offset = int(w * 0.25)
+            else:
+                # Full body - use most of the frame
+                target_h = int(h * 0.7)
+                target_w = int(w * 0.6)
+                y_offset = int(h * 0.15)
+                x_offset = int(w * 0.2)
+            
+            garment_resized = cv2.resize(garment_img, (target_w, target_h))
+            
+            # Create a simple blend/overlay (semi-transparent)
+            result = person_img.copy()
+            
+            # Create region of interest
+            y1, y2 = y_offset, min(y_offset + target_h, h)
+            x1, x2 = x_offset, min(x_offset + target_w, w)
+            
+            gh, gw = y2 - y1, x2 - x1
+            if gh > 0 and gw > 0:
+                garment_crop = garment_resized[:gh, :gw]
+                
+                # Blend with person image (50% transparency)
+                alpha = 0.5
+                result[y1:y2, x1:x2] = cv2.addWeighted(
+                    result[y1:y2, x1:x2], 1 - alpha,
+                    garment_crop, alpha,
+                    0
+                )
+            
+            # Encode result with data URI prefix for React Native
+            _, buffer = cv2.imencode('.jpg', result)
+            raw_b64 = base64.b64encode(buffer).decode()
+            result_b64 = f"data:image/jpeg;base64,{raw_b64}"
+            
+            logger.info("✅ Simple overlay try-on succeeded (preview mode)")
+            return TryOnResult(
+                success=True,
+                result_image_b64=result_b64,
+                method_used="overlay_preview"
+            )
+            
+        except Exception as e:
+            logger.warning(f"Simple overlay failed: {e}")
+            return TryOnResult(success=False, method_used="overlay")
     
     def _try_on_fashn(
         self,
@@ -234,8 +540,9 @@ class CatVTONEngine:
         num_inference_steps: int,
         guidance_scale: float
     ) -> TryOnResult:
-        """Try-on via Replicate API using IDM-VTON or similar."""
+        """Try-on via Replicate API using OOTDiffusion."""
         import replicate
+        import requests
         
         # Prepare images with data URI
         person_b64 = self._ensure_base64(person_image)
@@ -244,39 +551,11 @@ class CatVTONEngine:
         person_uri = f"data:image/jpeg;base64,{person_b64}"
         garment_uri = f"data:image/jpeg;base64,{garment_b64}"
         
-        # Use IDM-VTON on Replicate
+        # Try OOTDiffusion (most reliable)
         try:
+            logger.info("Trying OOTDiffusion on Replicate...")
             output = replicate.run(
-                "cuuupid/idm-vton:c871bb9b046c4fce9e4ceadc009c6be17b8fc09e6bf0a9a1ee1f48e9e2449e9e",
-                input={
-                    "human_img": person_uri,
-                    "garm_img": garment_uri,
-                    "garment_des": f"A {garment_type} garment",
-                    "category": "upper_body" if "upper" in garment_type else "lower_body",
-                    "denoise_steps": num_inference_steps,
-                    "seed": 42
-                }
-            )
-            
-            # Output is URL
-            if output:
-                import requests
-                img_response = requests.get(output)
-                result_b64 = base64.b64encode(img_response.content).decode()
-                
-                return TryOnResult(
-                    success=True,
-                    result_image_b64=result_b64,
-                    method_used="idm_vton_replicate"
-                )
-                
-        except Exception as e:
-            logger.warning(f"IDM-VTON failed, trying alternative: {e}")
-        
-        # Fallback to OOTDiffusion
-        try:
-            output = replicate.run(
-                "viktorfa/oot_diffusion:9f8fa4956970dde99689af7488157a30aa152e23953526a605df1d77598343d7",
+                "viktorfa/oot_diffusion",  # Use model name without version
                 input={
                     "model_image": person_uri,
                     "garment_image": garment_uri,
@@ -287,10 +566,10 @@ class CatVTONEngine:
             )
             
             if output and len(output) > 0:
-                import requests
                 img_response = requests.get(output[0])
                 result_b64 = base64.b64encode(img_response.content).decode()
                 
+                logger.info("OOTDiffusion succeeded!")
                 return TryOnResult(
                     success=True,
                     result_image_b64=result_b64,
@@ -298,8 +577,15 @@ class CatVTONEngine:
                 )
                 
         except Exception as e:
-            logger.error(f"VTON fallback failed: {e}")
+            error_str = str(e)
+            if "429" in error_str or "rate limit" in error_str.lower():
+                logger.warning("Replicate rate limit hit - need to add credits")
+            elif "402" in error_str:
+                logger.warning("Replicate payment required - add credits")
+            else:
+                logger.warning(f"OOTDiffusion failed: {e}")
         
+        logger.error("All VTON methods failed - please add Replicate credits at https://replicate.com/account/billing")
         return TryOnResult(success=False, method_used="replicate")
     
     def _try_on_local(
