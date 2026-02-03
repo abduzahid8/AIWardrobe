@@ -1,165 +1,165 @@
-// AIWardrobe Premium Theme - Wardrobe 2.0 + Alta Daily Inspired
+// AIWardrobe Monochrome Theme - Pure Black and White Only
 import { Appearance } from 'react-native';
 
 // ============================================
-// LIGHT THEME - Clean, airy Wardrobe 2.0 style
+// LIGHT THEME - Pure Black and White
 // ============================================
 export const lightColors = {
-    // Backgrounds - Light blue tint like Wardrobe 2.0
-    background: "#F8FAFC",
+    // Backgrounds - Pure White
+    background: "#FFFFFF",
     surface: "#FFFFFF",
-    surfaceHighlight: "#F1F5F9",
-    surfaceSecondary: "#E2E8F0",
+    surfaceHighlight: "#F5F5F5",
+    surfaceSecondary: "#EEEEEE",
 
-    // Accent Color Card
-    accentCard: "#FEF3E7",
-    accentCardDark: "#E4A076",
+    // Accent Color Card - Monochrome
+    accentCard: "#F5F5F5",
+    accentCardDark: "#000000",
 
-    // Primary accent - Soft blue
-    primary: "#3B82F6",
-    primaryLight: "#DBEAFE",
-    primaryDark: "#1D4ED8",
+    // Primary accent - Pure Black
+    primary: "#000000",
+    primaryLight: "#E0E0E0",
+    primaryDark: "#000000",
 
-    // Secondary accent - Warm orange (Wardrobe 2.0 style)
-    secondary: "#E4A076",
-    secondaryLight: "#FEF3E7",
-    secondaryDark: "#D18A5A",
+    // Secondary accent - Gray
+    secondary: "#4D4D4D",
+    secondaryLight: "#F5F5F5",
+    secondaryDark: "#333333",
 
-    // Text
+    // Text - Pure Black/White
     text: {
-        primary: "#1E293B",
-        secondary: "#64748B",
-        accent: "#3B82F6",
-        muted: "#94A3B8",
+        primary: "#000000",
+        secondary: "#4D4D4D",
+        accent: "#000000",
+        muted: "#808080",
         inverse: "#FFFFFF",
-        disabled: "#CBD5E1",
+        disabled: "#B3B3B3",
     },
 
-    // Borders
-    border: "#E2E8F0",
-    borderLight: "#F1F5F9",
+    // Borders - Monochrome
+    border: "#E0E0E0",
+    borderLight: "#F0F0F0",
 
-    // Status
-    success: "#22C55E",
-    error: "#EF4444",
-    warning: "#F59E0B",
-    info: "#3B82F6",
+    // Status - All Black (Monochrome)
+    success: "#000000",
+    error: "#000000",
+    warning: "#000000",
+    info: "#000000",
 
-    // Actions
-    favorite: "#EF4444",
-    delete: "#EF4444",
-    edit: "#3B82F6",
+    // Actions - Monochrome
+    favorite: "#000000",
+    delete: "#000000",
+    edit: "#000000",
 
-    // Buttons - Wardrobe 2.0 style
+    // Buttons - Monochrome
     button: {
-        primary: "#3B82F6",
+        primary: "#000000",
         primaryText: "#FFFFFF",
-        secondary: "#F1F5F9",
-        secondaryText: "#1E293B",
+        secondary: "#F5F5F5",
+        secondaryText: "#000000",
         ghost: "transparent",
-        ghostText: "#64748B",
-        cta: "#E4A076",
+        ghostText: "#4D4D4D",
+        cta: "#000000",
         ctaText: "#FFFFFF",
     },
 
-    // Glass
+    // Glass - Monochrome
     glass: {
         background: "rgba(255, 255, 255, 0.9)",
-        border: "rgba(255, 255, 255, 0.5)",
+        border: "rgba(0, 0, 0, 0.1)",
         dark: "rgba(0, 0, 0, 0.05)",
     },
 
-    // Gradients
+    // Gradients - Black to Gray
     gradients: {
-        primary: ["#3B82F6", "#60A5FA"],
-        secondary: ["#F8FAFC", "#DBEAFE"],
-        accent: ["#E4A076", "#F4B494"],
-        warm: ["#FEF3E7", "#DBEAFE"],
-        dark: ["#1E293B", "#334155"],
-        hero: ["#DBEAFE", "#F8FAFC", "#FFFFFF"],
+        primary: ["#000000", "#333333"],
+        secondary: ["#FFFFFF", "#F5F5F5"],
+        accent: ["#333333", "#000000"],
+        warm: ["#F5F5F5", "#EEEEEE"],
+        dark: ["#000000", "#1A1A1A"],
+        hero: ["#FFFFFF", "#F5F5F5", "#EEEEEE"],
     },
 };
 
 // ============================================
-// DARK THEME - Premium Alta Daily inspired
+// DARK THEME - Inverted Black and White
 // ============================================
 export const darkColors = {
-    // Backgrounds - Deep navy-black (Alta Daily + DiWander inspired)
-    background: "#0A0F1E",
-    surface: "#1A2032",
-    surfaceHighlight: "#252D45",
-    surfaceSecondary: "#1A2032",
+    // Backgrounds - Pure Black
+    background: "#000000",
+    surface: "#0A0A0A",
+    surfaceHighlight: "#1A1A1A",
+    surfaceSecondary: "#0A0A0A",
 
-    // Accent Color Card
-    accentCard: "#1E2A47",
-    accentCardDark: "#60A5FA",
+    // Accent Color Card - Monochrome
+    accentCard: "#1A1A1A",
+    accentCardDark: "#FFFFFF",
 
-    // Primary accent - Bright blue
-    primary: "#60A5FA",
-    primaryLight: "#1E3A5F",
-    primaryDark: "#93C5FD",
+    // Primary accent - Pure White
+    primary: "#FFFFFF",
+    primaryLight: "#333333",
+    primaryDark: "#FFFFFF",
 
-    // Secondary accent - Purple (premium feel)
-    secondary: "#8B5CF6",
-    secondaryLight: "#2E1A47",
-    secondaryDark: "#A78BFA",
+    // Secondary accent - Gray
+    secondary: "#B3B3B3",
+    secondaryLight: "#1A1A1A",
+    secondaryDark: "#CCCCCC",
 
-    // Glow accent - Indigo
-    glow: "#6366F1",
+    // Glow accent - White
+    glow: "#FFFFFF",
 
-    // Text
+    // Text - Pure White/Black
     text: {
-        primary: "#F1F5F9",
-        secondary: "#94A3B8",
-        accent: "#60A5FA",
-        muted: "#64748B",
-        inverse: "#0A0F1E",
-        disabled: "#475569",
+        primary: "#FFFFFF",
+        secondary: "#B3B3B3",
+        accent: "#FFFFFF",
+        muted: "#808080",
+        inverse: "#000000",
+        disabled: "#4D4D4D",
     },
 
-    // Borders
-    border: "#252D45",
-    borderLight: "#1A2032",
+    // Borders - Monochrome
+    border: "#333333",
+    borderLight: "#1A1A1A",
 
-    // Status
-    success: "#4ADE80",
-    error: "#F87171",
-    warning: "#FBBF24",
-    info: "#60A5FA",
+    // Status - All White (Monochrome)
+    success: "#FFFFFF",
+    error: "#FFFFFF",
+    warning: "#FFFFFF",
+    info: "#FFFFFF",
 
-    // Actions
-    favorite: "#F87171",
-    delete: "#F87171",
-    edit: "#60A5FA",
+    // Actions - Monochrome
+    favorite: "#FFFFFF",
+    delete: "#FFFFFF",
+    edit: "#FFFFFF",
 
-    // Buttons
+    // Buttons - Monochrome
     button: {
-        primary: "#60A5FA",
-        primaryText: "#0A0F1E",
-        secondary: "#252D45",
-        secondaryText: "#F1F5F9",
+        primary: "#FFFFFF",
+        primaryText: "#000000",
+        secondary: "#1A1A1A",
+        secondaryText: "#FFFFFF",
         ghost: "transparent",
-        ghostText: "#94A3B8",
-        cta: "#8B5CF6",
-        ctaText: "#FFFFFF",
+        ghostText: "#B3B3B3",
+        cta: "#FFFFFF",
+        ctaText: "#000000",
     },
 
-    // Glass
+    // Glass - Monochrome
     glass: {
-        background: "rgba(26, 32, 50, 0.9)",
+        background: "rgba(0, 0, 0, 0.9)",
         border: "rgba(255, 255, 255, 0.1)",
         dark: "rgba(0, 0, 0, 0.4)",
     },
 
-    // Gradients
+    // Gradients - White to Gray
     gradients: {
-        primary: ["#60A5FA", "#3B82F6"],
-        secondary: ["#1A2032", "#0A0F1E"],
-        accent: ["#8B5CF6", "#A78BFA"],
-        warm: ["#2E1A47", "#1E2A47"],
-        purple: ["#6366F1", "#8B5CF6"],
-        dark: ["#0A0F1E", "#1A2032"],
-        hero: ["#0A0F1E", "#1A2032", "#252D45"],
+        primary: ["#FFFFFF", "#CCCCCC"],
+        secondary: ["#0A0A0A", "#000000"],
+        accent: ["#CCCCCC", "#FFFFFF"],
+        warm: ["#1A1A1A", "#0A0A0A"],
+        purple: ["#FFFFFF", "#E0E0E0"],
+        dark: ["#000000", "#0A0A0A"],
+        hero: ["#000000", "#0A0A0A", "#1A1A1A"],
     },
 };
 
@@ -241,7 +241,7 @@ export const borderRadius = {
 };
 
 // ============================================
-// SHADOWS
+// SHADOWS - Monochrome (Black only)
 // ============================================
 export const shadows = {
     soft: {
@@ -273,16 +273,16 @@ export const shadows = {
         elevation: 1,
     },
     glow: {
-        shadowColor: "#8B5CF6",
+        shadowColor: "#000",
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.15,
         shadowRadius: 12,
         elevation: 6,
     },
 };
 
 // ============================================
-// ANIMATIONS - Alta Daily inspired
+// ANIMATIONS
 // ============================================
 export const animations = {
     // Spring physics
@@ -312,14 +312,14 @@ export const animations = {
         pressed: 0.97,
         normal: 1,
     },
-    // Alta-style 3D effects
+    // Float effects
     float: {
-        amplitude: 3,       // pixels to float up/down
-        duration: 3000,     // ms for full cycle
+        amplitude: 3,
+        duration: 3000,
     },
     tilt: {
-        maxAngle: 8,        // degrees of max tilt
-        perspective: 1000,  // perspective depth
+        maxAngle: 8,
+        perspective: 1000,
     },
     glow: {
         minOpacity: 0.2,
@@ -327,12 +327,12 @@ export const animations = {
         duration: 2000,
     },
     orbit: {
-        radius: 60,         // px radius
-        duration: 4000,     // ms for full rotation
+        radius: 60,
+        duration: 4000,
     },
     fadeIn: {
         duration: 600,
-        delay: 50,          // stagger delay per item
+        delay: 50,
     },
 };
 

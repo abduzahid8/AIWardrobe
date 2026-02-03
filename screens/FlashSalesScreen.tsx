@@ -30,7 +30,7 @@ import { BlurView } from 'expo-blur';
 import AppColors from '../constants/AppColors';
 import flashSalesService from '../src/services/flashSalesService';
 import { FlashSaleEvent } from '../src/types/flashSales';
-import { RootStackParamList } from '../navigation/RootNavigator';
+import { RootStackParamList } from '../navigation/types';
 
 const { width } = Dimensions.get('window');
 

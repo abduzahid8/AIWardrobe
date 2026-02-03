@@ -561,7 +561,7 @@ const MyClosetScreen = () => {
                                 </Text>
                                 <TouchableOpacity
                                     style={styles.addButton}
-                                    onPress={() => (navigation as any).navigate('WardrobeVideo')}
+                                    onPress={() => (navigation as any).navigate('Camera')}
                                 >
                                     <Ionicons name="camera-outline" size={20} color={COLORS.background} />
                                     <Text style={styles.addButtonText}>Scan Wardrobe</Text>

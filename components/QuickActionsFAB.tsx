@@ -44,7 +44,7 @@ const ACTIONS: QuickAction[] = [
         id: 'scan',
         icon: 'videocam',
         label: 'Scan Wardrobe',
-        route: 'WardrobeVideo',
+        route: 'Camera',
         color: '#FFFFFF',
         bgColor: '#1A1A1A',
     },

@@ -98,10 +98,12 @@ const useAuthStore = create<AuthStore>((set, get) => ({
             await get().fetchUser();
         } catch (error) {
             const axiosError = error as AxiosError<{ error: string }>;
+            const errorMessage = axiosError.response?.data?.error || 'Registration failed';
             set({
-                error: axiosError.response?.data?.error || 'Registration failed',
+                error: errorMessage,
                 loading: false,
             });
+            throw new Error(errorMessage); // Re-throw so the UI can Alert it
         }
     },
 
@@ -119,10 +121,12 @@ const useAuthStore = create<AuthStore>((set, get) => ({
             await get().fetchUser();
         } catch (err) {
             const axiosError = err as AxiosError<{ error: string }>;
+            const errorMessage = axiosError.response?.data?.error || 'Login failed';
             set({
-                error: axiosError.response?.data?.error || 'Login failed',
+                error: errorMessage,
                 loading: false,
             });
+            throw new Error(errorMessage); // Re-throw so the UI can Alert it
         }
     },
 

@@ -12,6 +12,8 @@ import {
 } from "react-native";
 import React, { useState, useEffect, useCallback } from "react";
 import { Ionicons } from "@expo/vector-icons";
+import Animated from 'react-native-reanimated';
+import { BlurView } from 'expo-blur';
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import * as ImagePicker from 'expo-image-picker';
@@ -280,6 +282,8 @@ const AITryOnScreen = () => {
         <Text style={styles.headerTitle}>{t('aiTryOn.title')} ✨</Text>
         <View style={{ width: 28 }} />
       </View>
+
+
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
 
@@ -734,4 +738,5 @@ const styles = StyleSheet.create({
     color: '#2E7D32',
     fontWeight: '500',
   },
+
 });

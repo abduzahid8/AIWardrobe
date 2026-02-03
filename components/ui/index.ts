@@ -33,5 +33,28 @@ export { ActionCard } from './ActionCard';
 export { QuickStat } from './QuickStat';
 export { CelebrityClothingCard } from './CelebrityClothingCard';
 
+// 2026 Liquid Glass Design System Components
+export {
+    BentoGrid,
+    BentoItem,
+    BentoSmall,
+    BentoMedium,
+    BentoLarge,
+    BentoTall,
+    BentoWide,
+    BentoHero,
+} from './BentoGrid';
+
+export {
+    LiquidGlassCard,
+    ClearGlassCard,
+    LightGlassCard,
+    FrostedGlassCard,
+    OpaqueGlassCard,
+    DarkGlassCard,
+    PressableGlassCard,
+} from './LiquidGlassCard';
 
 // Re-export types
+export type { BentoGridProps, BentoItemProps } from './BentoGrid';
+export type { LiquidGlassCardProps, GlassVariant, GlassElevation } from './LiquidGlassCard';

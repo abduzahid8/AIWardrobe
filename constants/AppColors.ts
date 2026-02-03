@@ -1,94 +1,100 @@
 /**
  * AIWardrobe Unified App Colors
- * Use these colors consistently across ALL screens
+ * MONOCHROME DESIGN - Black and White Only
  */
 
 // ============================================
-// UNIFIED APP COLORS - Alta Daily Style
+// UNIFIED APP COLORS - Black & White Only
 // ============================================
 export const AppColors = {
-    // Core
+    // Core - Pure White
     background: '#FFFFFF',
-    surface: '#F5F5F7',
+    surface: '#F5F5F5',
     surfaceSecondary: '#FAFAFA',
+    surfaceHighlight: '#EEEEEE',
 
-    // Text
-    text: '#1A1A1A',
-    textSecondary: '#6B6B6B',
-    textMuted: '#999999',
-    textLight: '#CCCCCC',
+    // Text - Pure Black with Gray Variants
+    text: '#000000',
+    textSecondary: '#4D4D4D',
+    textMuted: '#808080',
+    textLight: '#B3B3B3',
 
-    // Accent
+    // Accent - All Black (Monochrome)
     primary: '#000000',
-    accent: '#007AFF',
+    accent: '#000000',
 
-    // Status
-    success: '#34C759',
-    error: '#FF3B30',
-    warning: '#FF9500',
+    // Status - All Black (Monochrome)
+    success: '#000000',
+    error: '#000000',
+    warning: '#000000',
+    favorite: '#000000',
+    delete: '#000000',
 
-    // Borders
-    border: '#EBEBEB',
-    borderLight: '#F5F5F5',
+    // Borders - Black with varying opacity
+    border: '#E0E0E0',
+    borderLight: '#F0F0F0',
 
-    // Glass Effects
+    // Glass Effects - Monochrome
     glass: 'rgba(255, 255, 255, 0.9)',
     glassDark: 'rgba(0, 0, 0, 0.05)',
 
-    // Premium
-    premium: '#FFD700',
-    premiumDark: '#B8860B',
-    vip: '#A855F7',
-    vipDark: '#7C3AED',
+    // Premium - Black/Gray (No Gold)
+    premium: '#000000',
+    premiumDark: '#333333',
+    vip: '#000000',
+    vipDark: '#1A1A1A',
 
-    // Gradients
-    gradientPrimary: ['#000000', '#333333'],
-    gradientAccent: ['#007AFF', '#0056B3'],
-    gradientPremium: ['#FFD700', '#B8860B'],
-    gradientVIP: ['#A855F7', '#7C3AED'],
+    // Gradients - Black to Gray
+    gradientPrimary: ['#000000', '#333333'] as const,
+    gradientAccent: ['#333333', '#000000'] as const,
+    gradientPremium: ['#000000', '#1A1A1A'] as const,
+    gradientVIP: ['#1A1A1A', '#000000'] as const,
 };
 
-// Dark mode colors (optional, for future)
+// Dark mode colors - Inverted B&W
 export const AppColorsDark = {
-    // Core
-    background: '#0A0A0A',
+    // Core - Pure Black
+    background: '#000000',
     surface: '#1A1A1A',
-    surfaceSecondary: '#2A2A2A',
+    surfaceSecondary: '#0A0A0A',
+    surfaceHighlight: '#2A2A2A',
 
-    // Text
+    // Text - Pure White with Gray Variants
     text: '#FFFFFF',
-    textSecondary: '#999999',
-    textMuted: '#666666',
-    textLight: '#444444',
+    textSecondary: '#B3B3B3',
+    textMuted: '#808080',
+    textLight: '#4D4D4D',
 
-    // Accent
+    // Accent - All White (Monochrome)
     primary: '#FFFFFF',
-    accent: '#0A84FF',
+    accent: '#FFFFFF',
 
-    // Status
-    success: '#30D158',
-    error: '#FF453A',
-    warning: '#FF9F0A',
+    // Status - All White (Monochrome)
+    success: '#FFFFFF',
+    error: '#FFFFFF',
+    warning: '#FFFFFF',
+    favorite: '#FFFFFF',
+    delete: '#FFFFFF',
 
-    // Borders
+    // Borders - White with varying opacity
     border: '#333333',
     borderLight: '#2A2A2A',
 
-    // Glass Effects
+    // Glass Effects - Monochrome
     glass: 'rgba(0, 0, 0, 0.9)',
     glassDark: 'rgba(255, 255, 255, 0.05)',
 
-    // Premium
-    premium: '#FFD700',
-    premiumDark: '#B8860B',
-    vip: '#A855F7',
-    vipDark: '#7C3AED',
+    // Premium - White/Gray (No Gold)
+    premium: '#FFFFFF',
+    premiumDark: '#CCCCCC',
+    vip: '#FFFFFF',
+    vipDark: '#E0E0E0',
 
-    // Gradients
-    gradientPrimary: ['#FFFFFF', '#CCCCCC'],
-    gradientAccent: ['#0A84FF', '#0056B3'],
-    gradientPremium: ['#FFD700', '#B8860B'],
-    gradientVIP: ['#A855F7', '#7C3AED'],
+    // Gradients - White to Gray
+    gradientPrimary: ['#FFFFFF', '#CCCCCC'] as const,
+    gradientAccent: ['#CCCCCC', '#FFFFFF'] as const,
+    gradientPremium: ['#FFFFFF', '#E0E0E0'] as const,
+    gradientVIP: ['#E0E0E0', '#FFFFFF'] as const,
 };
 
 // Export default as light mode

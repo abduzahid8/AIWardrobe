@@ -14,6 +14,7 @@ import AIOutfitmaker from "../screens/AIOutfitmaker";
 import DesignRoomScreen from "../screens/DesignRoomScreen";
 import NewOutfitScreen from "../screens/NewOutfitScreen";
 import TabNavigator from "../navigation/TabNavigator";
+// import TabNavigator from "../navigation/TabNavigator"; // Ensure correct path
 import WardrobeVideoScreen from "../screens/WardrobeVideoScreen";
 import CameraScreen from "../screens/CameraScreen";
 
@@ -34,55 +35,8 @@ import FlashSalesScreen from "../screens/FlashSalesScreen";
 import FlashSaleEventScreen from "../screens/FlashSaleEventScreen";
 import MyClosetScreen from "../screens/MyClosetScreen";
 import StyleGoalsScreen from "../screens/StyleGoalsScreen";
+import { RootStackParamList } from "./types";
 
-// Scanned item interface for ReviewScan
-interface ScannedItem {
-  id?: string;
-  type?: string;
-  color?: string;
-  image?: string;
-  imageUrl?: string;
-  confidence?: number;
-}
-
-// Outfit item interface
-interface OutfitItem {
-  id?: string;
-  items?: ScannedItem[];
-}
-
-export type RootStackParamList = {
-  Home: undefined;
-  SignIn: undefined;
-  SignUp: undefined;
-  AddOutfit: undefined;
-  AIChat: undefined;
-  AIOutfit: undefined;
-  AITryOn: undefined;
-  ScanWardrobe: undefined;
-
-  // Самое важное: мы указываем, что этот экран ждет массив items!
-  ReviewScan: { items: ScannedItem[] };
-
-  DesignRoom: undefined;
-  NewOutfit: undefined;
-  WardrobeVideo: undefined;
-  Camera: undefined;
-  Calendar: undefined;
-  AIHub: undefined;
-  EmailOnboarding: undefined;
-  TripPlanner: undefined;
-
-  OutfitDetail: { image?: string; outfit?: OutfitItem };
-  Paywall: undefined;
-  OutfitAI: undefined;  // 🧠 Multimodal AI Outfit Recommendations
-  MeetingOutfit: undefined;  // 📅 Meeting Outfit Generator
-  PriceTracker: undefined;   // 💰 Price Tracking
-  FlashSales: undefined;     // 🔥 Flash Sales
-  FlashSaleEvent: { eventId: string };  // 🛍️ Individual Flash Event
-  MyCloset: undefined;       // 👗 Digital Wardrobe Management
-  StyleGoals: undefined;     // 🎯 Style Goal Tracking
-};
 
 // 2. Передаем этот список в Stack
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -370,6 +324,7 @@ const RootNavigator = () => {
                 animation: 'slide_from_right',
               }}
             />
+
           </>
         ) : (
           <>

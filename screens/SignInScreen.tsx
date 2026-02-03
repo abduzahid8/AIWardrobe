@@ -11,7 +11,7 @@ import React, { useState } from "react";
 import { useNavigation } from "@react-navigation/native";
 import useAuthStore from "../store/auth";
 import { useTranslation } from "react-i18next";
-export const API_URL = "http://192.168.100.214:3000";
+import { API_URL } from "../api/config";
 
 const SignInScreen = () => {
   const navigation = useNavigation();
