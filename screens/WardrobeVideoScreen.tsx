@@ -16,10 +16,11 @@ import * as ImagePicker from 'expo-image-picker';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import * as FileSystem from 'expo-file-system/legacy';
 import axios from 'axios';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, shadows, spacing } from '../src/theme';
 import CorrectionModal from '../src/components/CorrectionModal';
+import { RootStackParamList } from '../navigation/types';
 
 const { width } = Dimensions.get('window');
 
@@ -306,9 +307,63 @@ const mergeShoeCategories = (items: DetectedItem[]): DetectedItem[] => {
 
 const WardrobeVideoScreen = () => {
     const navigation = useNavigation();
+    const route = useRoute<RouteProp<RootStackParamList, 'WardrobeVideo'>>();
     const [analyzing, setAnalyzing] = useState(false);
     const [results, setResults] = useState<AnalysisResult | null>(null);
     const [progress, setProgress] = useState('');
+
+    // Auto-start analysis if params exist
+    React.useEffect(() => {
+        if (route.params?.videoUri) {
+            analyzeVideo(route.params.videoUri);
+        } else if (route.params?.imageUri) {
+            handleImageAnalysis(route.params.imageUri);
+        }
+    }, [route.params]);
+
+    const handleImageAnalysis = async (imageUri: string) => {
+        setAnalyzing(true);
+        setResults(null);
+        setProgress('Processing image...');
+        try {
+            const base64 = await FileSystem.readAsStringAsync(imageUri, {
+                encoding: 'base64',
+            });
+            const frames = [base64]; // Treat single image as one frame
+            const detectedItems = await analyzeClothingWithAI(frames);
+            // Logic to show results (similar to analyzeVideo)
+            // But logic is embedded in analyzeVideo. 
+            // Ideally refactor logic or copy post-processing.
+            // analyzeClothingWithAI *returns* detectedItems but doesn't setResults in all cases? 
+            // Wait, analyzeClothingWithAI calls Step 2 of analyzeVideo? 
+
+            // analyzeClothingWithAI function (lines 388-1596) handles EVERYTHING including setResults at line 1583.
+            // So just calling it is enough!
+            // EXCEPT step 3 (V2 multi) is outside it in analyzeVideo.
+            // I'll skip V2 multi for single photo for now or copy logic?
+            // Actually, analyzeVideo logic lines 1354 calls analyzeClothingWithAI.
+            // Then line 1363 checks V2.
+            // I should replicate analyzeVideo's structure for Image.
+
+            // Replicating analyzeVideo flow for Image:
+            if (detectedItems.length === 0) {
+                Alert.alert('No Clothing Found', 'AI could not detect clothing items.');
+                setAnalyzing(false);
+                return;
+            }
+
+            // Step 3 logic (V2) - omitted for simplicity or can copy if needed.
+            // For now, I rely on analyzeClothingWithAI setting results.
+            // Wait, analyzeClothingWithAI DOES setResults?
+            // Line 1583: setResults({...})
+            // Line 1591: setProgress('')
+            // So calling it IS enough for basic flow.
+
+        } catch (error) {
+            console.error('Image analysis error:', error);
+            setAnalyzing(false);
+        }
+    };
 
     // Phase 3: Correction modal state
     const [correctionModal, setCorrectionModal] = useState<{
@@ -386,6 +441,7 @@ const WardrobeVideoScreen = () => {
     // Smart clothing detection - MULTI-FRAME TRACKING
     // Priority: Slow-Fast V2 > ByteTrack V1 > SegFormer+CLIP > Fashion Intelligence
     const analyzeClothingWithAI = async (frames: string[]): Promise<DetectedItem[]> => {
+        let lastErrorDetailed = 'Unknown error';
         setProgress('🚀 AI analyzing clothing with Timeline Analysis...');
 
         // 🎯 NEW: Try Timeline Analysis first for formatted output
@@ -1244,6 +1300,7 @@ const WardrobeVideoScreen = () => {
                         }];
                     }
                 } catch (localError: any) {
+                    lastErrorDetailed = `Local AI: ${localError.message}`;
                     console.log(`Local AI failed: ${localError.message}, trying OpenAI...`);
                 }
 
@@ -1260,6 +1317,7 @@ const WardrobeVideoScreen = () => {
                         return openAIResponse.data.detectedItems;
                     }
                 } catch (openAIError: any) {
+                    lastErrorDetailed = `OpenAI: ${openAIError.message}`;
                     console.log(`OpenAI failed: ${openAIError.message}, trying Gemini...`);
                 }
 
@@ -1278,6 +1336,7 @@ const WardrobeVideoScreen = () => {
 
                 console.log(`Frame ${attempt + 1}: No items detected, trying next...`);
             } catch (error: any) {
+                lastErrorDetailed = `Gemini/Frame: ${error.message}`;
                 console.log(`Frame ${attempt + 1} analysis failed:`, error.message);
             }
         }
@@ -1285,7 +1344,7 @@ const WardrobeVideoScreen = () => {
         // All attempts failed - show error, don't ask user to select manually
         console.log('❌ AI detection failed on all frames');
         setProgress('');
-        throw new Error('AI could not detect clothing items. Please try a clearer video with good lighting.');
+        throw new Error(`AI could not detect clothing items. Last error: ${lastErrorDetailed}`);
     };
 
 

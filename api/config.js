@@ -5,7 +5,7 @@ import { Platform } from "react-native";
 const getBackendUrl = () => {
   // For testing SOTA locally (Qwen2.5-VL, Florence-2, etc.)
   // Comment out the next line to use production
-  return "http://192.168.100.214:5050";
+  return "http://192.168.100.219:3000"; // Point to Node.js Backend (3000)
 
   // Production server
   // return "https://aiwardrobe-ivh4.onrender.com";

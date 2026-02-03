@@ -1,15 +1,18 @@
-import { StyleSheet, Text, TouchableOpacity, View, Platform } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View, Platform, useWindowDimensions } from "react-native";
 import React, { useMemo, useCallback } from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import { BlurView } from 'expo-blur';
 import Animated, {
   FadeIn,
-  FadeOut,
-  SlideInRight,
-  SlideOutLeft,
-  SlideInLeft,
-  SlideOutRight,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withSequence,
+  interpolate,
+  useDerivedValue,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 
@@ -20,7 +23,11 @@ import AIHubScreen from "../screens/AIHubScreen";
 import InspoScreen from "../screens/InspoScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 
-import { colors } from "../src/theme";
+// 2026 Design System
+import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
+import { useReducedMotion } from '../hooks/useAccessibility';
+
+const { colors, spacing, radius, animation } = LiquidGlass2026Theme;
 
 const Tab = createBottomTabNavigator();
 
@@ -30,108 +37,176 @@ interface AnimatedTabIconProps {
   iconName: string;
   color: string;
   size: number;
+  label: string;
 }
 
-// Type for tab bar icon props
-interface TabBarIconProps {
-  route: { name: string };
-  focused: boolean;
-  color: string;
-  size: number;
-}
+// Helper for icon names
+const getIconName = (routeName: string, focused: boolean) => {
+  if (routeName === "Home") return focused ? "today" : "today-outline";
+  if (routeName === "Closet") return focused ? "shirt" : "shirt-outline";
+  if (routeName === "AI") return focused ? "sparkles" : "sparkles";
+  if (routeName === "Inspo") return focused ? "compass" : "compass-outline";
+  if (routeName === "Profile") return focused ? "person" : "person-outline";
+  return "help-outline";
+};
 
-// Type for tab button props
-interface TabButtonProps {
-  children: React.ReactNode;
-  onPress: () => void;
-  accessibilityState?: { selected?: boolean };
-}
+// Animated tab item with parallax icon/text movement
+const AnimatedTabItem = ({ focused, iconName, color, size, label }: AnimatedTabIconProps) => {
+  // Drive local animations based on focused state
+  const progress = useDerivedValue(() => {
+    return withTiming(focused ? 1 : 0, { duration: 250 });
+  });
 
-// Animated tab icon with scale effect
-const AnimatedTabIcon = ({ focused, iconName, color, size }: AnimatedTabIconProps) => {
+  const rotation = useSharedValue(0);
+
+  React.useEffect(() => {
+    if (focused) {
+      // Trigger a playful "wiggle" or "shake" when clicked
+      rotation.value = withSequence(
+        withTiming(-15, { duration: 50 }),
+        withTiming(15, { duration: 50 }),
+        withTiming(-10, { duration: 50 }),
+        withTiming(10, { duration: 50 }),
+        withTiming(0, { duration: 50 })
+      );
+    }
+  }, [focused]);
+
+  const iconStyle = useAnimatedStyle(() => ({
+    // Icon stays in place but wobbles when clicked
+    transform: [
+      { rotate: `${rotation.value}deg` },
+    ],
+  }));
+
+  const labelStyle = useAnimatedStyle(() => ({
+    opacity: progress.value,
+    transform: [
+      { translateY: interpolate(progress.value, [0, 1], [8, 0]) },
+      { scale: progress.value }
+    ],
+  }));
+
   return (
-    <Animated.View
-      entering={FadeIn.duration(200)}
-      style={{
-        transform: [{ scale: focused ? 1.15 : 1 }],
-      }}
+    <View style={styles.tabItemContainer}>
+      <Animated.View style={iconStyle}>
+        <Ionicons name={iconName as any} size={28} color={color} />
+      </Animated.View>
+      {/* Optional: Add label if desired, currently hidden to match "minimalist" request, but code supports it */}
+      {/* <Animated.Text style={[styles.tabLabel, { color }, labelStyle]}>
+        {label}
+      </Animated.Text> */}
+    </View>
+  );
+};
+
+// Liquid Parallax Tab Bar
+const LiquidParallaxTabBar = ({ state, descriptors, navigation }: any) => {
+  const { width } = useWindowDimensions();
+  // Adjust width for margins: Full width - (2 * horizontal margin)
+  const MARGIN_H = 20;
+  const EFFECTIVE_WIDTH = width - (MARGIN_H * 2);
+  const TAB_WIDTH = EFFECTIVE_WIDTH / state.routes.length;
+
+  // Shared value for the sliding indicator
+  const translateX = useSharedValue(0);
+
+  // Update position when index changes
+  React.useEffect(() => {
+    translateX.value = withSpring(state.index * TAB_WIDTH, {
+      damping: 12, // Lower damping for more bounce (15 -> 12)
+      stiffness: 150, // Higher stiffness for faster snap (120 -> 150)
+      mass: 1, // Heavier mass for momentum (0.8 -> 1)
+    });
+  }, [state.index, TAB_WIDTH]);
+
+  const animatedIndicatorStyle = useAnimatedStyle(() => ({
+    // Indicator needs to start from 0 relative to the container
+    transform: [{ translateX: translateX.value }],
+    width: TAB_WIDTH,
+  }));
+
+  return (
+    <BlurView
+      intensity={Platform.OS === 'ios' ? 80 : 100}
+      tint="light"
+      style={styles.tabBarContainer}
     >
-      <Ionicons name={iconName as any} size={size} color={color} />
-    </Animated.View>
+      {/* Glass overlay for extra depth */}
+      <View style={styles.glassOverlay} />
+
+      {/* Liquid Blob Indicator - Background Layer */}
+      <Animated.View style={[styles.indicatorContainer, animatedIndicatorStyle]}>
+        <View style={styles.liquidBlob} />
+      </Animated.View>
+
+      {/* Tabs - Foreground Layer */}
+      <View style={styles.tabBarContent}>
+        {state.routes.map((route: any, index: number) => {
+          const { options } = descriptors[route.key];
+          const isFocused = state.index === index;
+
+          // Use 2026 theme colors
+          const activeColor = colors.text.primary;
+          const inactiveColor = colors.text.tertiary;
+          const iconColor = isFocused ? activeColor : inactiveColor;
+
+          const onPress = () => {
+            const event = navigation.emit({
+              type: 'tabPress',
+              target: route.key,
+              canPreventDefault: true,
+            });
+
+            if (!isFocused && !event.defaultPrevented) {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              navigation.navigate(route.name);
+            }
+          };
+
+          return (
+            <TouchableOpacity
+              key={route.key}
+              accessibilityRole="button"
+              accessibilityState={isFocused ? { selected: true } : {}}
+              accessibilityLabel={options.tabBarAccessibilityLabel}
+              testID={options.tabBarTestID}
+              onPress={onPress}
+              style={styles.tabButton}
+              activeOpacity={1}
+            >
+              <AnimatedTabItem
+                focused={isFocused}
+                iconName={getIconName(route.name, isFocused)}
+                color={iconColor}
+                size={24}
+                label={route.name}
+              />
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </BlurView>
   );
 };
 
 const TabNavigator = () => {
   const { t } = useTranslation();
 
-  const tabBarStyle = useMemo(() => ({
-    backgroundColor: colors.background,
-    borderTopColor: colors.border,
-    height: Platform.OS === "ios" ? 85 : 60,
-    paddingTop: 10,
-  }), []);
-
-  const getTabBarIcon = useCallback(({ route, focused, color, size }: TabBarIconProps) => {
-    let iconName: string;
-
-    if (route.name === "Home") {
-      iconName = focused ? "today" : "today-outline";
-    } else if (route.name === "Closet") {
-      iconName = focused ? "shirt" : "shirt-outline";
-    } else if (route.name === "AI") {
-      iconName = focused ? "sparkles" : "sparkles-outline";
-    } else if (route.name === "Inspo") {
-      iconName = focused ? "compass" : "compass-outline";
-    } else if (route.name === "Profile") {
-      iconName = focused ? "person" : "person-outline";
-    } else {
-      iconName = "help-outline";
-    }
-
-    return <AnimatedTabIcon focused={focused} iconName={iconName} color={color} size={size} />;
-  }, []);
-
-  // Custom tab button with haptic feedback
-  const TabButton = useCallback(({ children, onPress, accessibilityState }: TabButtonProps) => {
-    const handlePress = () => {
-      // Haptic feedback on tab press
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      onPress();
-    };
-
-    return (
-      <TouchableOpacity
-        onPress={handlePress}
-        style={styles.tabButton}
-        activeOpacity={0.7}
-      >
-        {children}
-      </TouchableOpacity>
-    );
-  }, []);
-
   return (
     <Tab.Navigator
+      tabBar={(props) => <LiquidParallaxTabBar {...props} />}
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarShowLabel: false,
-        tabBarStyle,
-        tabBarActiveTintColor: colors.text.primary,
-        tabBarInactiveTintColor: colors.text.secondary,
-        tabBarIcon: (props) => getTabBarIcon({ route, ...props }),
-        tabBarButton: (props) => <TabButton {...props as any} />,
-        // Smooth animations for tab content
-        animation: 'fade',
-        animationDuration: 250,
+        // Using 'shift' animation for that "Parallax" feel on iOS page transitions
+        animation: Platform.OS === 'ios' ? 'shift' : 'fade',
         lazy: true,
-        // iOS-style smooth tab switching
-        ...(Platform.OS === 'ios' && {
-          animation: 'shift',
-        }),
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Closet" component={MyClosetScreen} />
+      {/* AI Hub has the special Morphing Button inside it */}
       <Tab.Screen name="AI" component={AIHubScreen} />
       <Tab.Screen name="Inspo" component={InspoScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
@@ -140,10 +215,70 @@ const TabNavigator = () => {
 };
 
 const styles = StyleSheet.create({
+  tabBarContainer: {
+    position: 'absolute',
+    bottom: 30,
+    left: 20,
+    right: 20,
+    height: 72,
+    borderRadius: 36,
+    overflow: 'hidden',
+    // Enhanced shadow for floating effect
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+    elevation: 12,
+  },
+  glassOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.glass.frosted,
+    borderWidth: 1,
+    borderColor: colors.border.glass,
+    borderRadius: 36,
+  },
+  tabBarContent: {
+    flexDirection: 'row',
+    height: '100%',
+    zIndex: 2,
+    alignItems: 'center',
+    paddingHorizontal: spacing.xs,
+  },
   tabButton: {
     flex: 1,
+    height: 54,
     justifyContent: 'center',
     alignItems: 'center',
+    // Ensure touch target meets WCAG 3.0 minimum
+    minWidth: spacing.touchTarget.minimum,
+  },
+  tabItemContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  indicatorContainer: {
+    position: 'absolute',
+    left: spacing.xs,
+    height: 54,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  liquidBlob: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.glass.opaque,
+    shadowColor: colors.accent.primary,
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
 });
 

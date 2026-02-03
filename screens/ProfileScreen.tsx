@@ -25,6 +25,7 @@ import LanguageSelector from "../components/LanguageSelector";
 import StyleSelector from "../components/StyleSelector";
 import { ChipButton } from "../components/AnimatedButton";
 import { TahoeIconButton, TahoeChip } from "../components/TahoeButton";
+// Note: ProfileScreen will be fully upgraded to LiquidGlass2026Theme in a future phase
 import { colors, shadows, spacing, animations } from "../src/theme";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Animated, {
@@ -39,6 +40,7 @@ import * as Haptics from "expo-haptics";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 
 const { width } = Dimensions.get("window");
+
 
 // Type definitions
 interface ClothingItemType {

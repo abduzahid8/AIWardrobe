@@ -32,7 +32,7 @@ import Animated, {
 import AppColors from '../constants/AppColors';
 import flashSalesService from '../src/services/flashSalesService';
 import { FlashSaleEvent, FlashSaleProduct } from '../src/types/flashSales';
-import { RootStackParamList } from '../navigation/RootNavigator';
+import { RootStackParamList } from '../navigation/types';
 import shoppingService from '../src/services/shoppingService';
 
 const { width } = Dimensions.get('window');

@@ -1,3 +1,9 @@
+/**
+ * AIHubScreen - 2026 Redesign
+ * Agentic AI Co-Pilot with Liquid Glass aesthetics and Bento Grid layout
+ * Based on 2026 Digital Experience Report guidelines
+ */
+
 import React, { useState, useEffect, useRef } from 'react';
 import {
     View,
@@ -27,77 +33,88 @@ import Animated, {
     FadeIn,
     FadeInUp,
     FadeInDown,
+    ZoomIn,
+    ZoomOut,
     Easing,
+    Layout,
 } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
+
+// 2026 Design System
+import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
+import {
+    BentoGrid,
+    BentoItem,
+    LiquidGlassCard,
+    FrostedGlassCard,
+    PressableGlassCard,
+} from '../components/ui';
+import { useAccessibility } from '../hooks/useAccessibility';
 import { TahoeIconButton } from '../components/TahoeButton';
 import WeatherWidget from '../components/WeatherWidget';
-import AppColors from '../constants/AppColors';
 
 const { width, height } = Dimensions.get('window');
+const { colors, spacing, typography, radius, animation } = LiquidGlass2026Theme;
 
-// Use unified AppColors
-const ALTA = {
-    background: AppColors.background,
-    surface: AppColors.surface,
-    surfaceLight: AppColors.surfaceSecondary,
-    primary: AppColors.primary,
-    accent: AppColors.accent,
-    text: AppColors.text,
-    textSecondary: AppColors.textSecondary,
-    textMuted: AppColors.textMuted,
-    border: AppColors.border,
-    glass: AppColors.glassDark,
-};
-
-// Quick Action Suggestions (Like Alta's Style Goals)
+// Quick Action Suggestions (Agentic Style Goals)
 const STYLE_GOALS = [
-    { id: '1', text: 'Plan my outfits better', icon: 'calendar-outline' },
-    { id: '2', text: 'Look professional at work', icon: 'briefcase-outline' },
-    { id: '3', text: 'Expand my wardrobe', icon: 'add-circle-outline' },
-    { id: '4', text: 'Evolve my style', icon: 'trending-up-outline' },
-    { id: '5', text: 'Wear my clothes more', icon: 'shirt-outline' },
+    { id: '1', text: 'Plan my outfits better', icon: 'calendar-outline', gradient: colors.gradients.coolWave },
+    { id: '2', text: 'Look professional at work', icon: 'briefcase-outline', gradient: colors.gradients.primaryAccent },
+    { id: '3', text: 'Expand my wardrobe', icon: 'add-circle-outline', gradient: colors.gradients.warmGlow },
+    { id: '4', text: 'Evolve my style', icon: 'trending-up-outline', gradient: colors.gradients.primaryAccent },
+    { id: '5', text: 'Wear my clothes more', icon: 'shirt-outline', gradient: colors.gradients.coolWave },
 ];
 
-// Type for style goal
 interface StyleGoalType {
     id: string;
     text: string;
     icon: string;
+    gradient: readonly string[];
 }
 
-// iOS 26 Tahoe Press Hook
-const useTahoePress = () => {
-    const scale = useSharedValue(1);
-    const opacity = useSharedValue(1);
+// Agentic AI Status Indicator
+const AgentStatusIndicator = ({ isActive }: { isActive: boolean }) => {
+    const pulse = useSharedValue(1);
 
-    const animatedStyle = useAnimatedStyle(() => ({
-        transform: [{ scale: withSpring(scale.value, { damping: 20, stiffness: 400 }) }],
-        opacity: opacity.value,
+    useEffect(() => {
+        if (isActive) {
+            pulse.value = withRepeat(
+                withSequence(
+                    withTiming(1.2, { duration: 800 }),
+                    withTiming(1, { duration: 800 })
+                ),
+                -1,
+                true
+            );
+        }
+    }, [isActive]);
+
+    const pulseStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: pulse.value }],
     }));
 
-    const onPressIn = () => {
-        scale.value = 0.97;
-        opacity.value = withTiming(0.9, { duration: 60 });
-    };
-
-    const onPressOut = () => {
-        scale.value = 1;
-        opacity.value = withTiming(1, { duration: 100 });
-    };
-
-    return { animatedStyle, onPressIn, onPressOut };
+    return (
+        <View style={styles.agentStatus}>
+            <Animated.View style={[styles.agentStatusDot, pulseStyle, isActive && styles.agentStatusActive]} />
+            <Text style={styles.agentStatusText}>
+                {isActive ? 'AI is thinking...' : 'Ready to help'}
+            </Text>
+        </View>
+    );
 };
 
-// Floating AI Avatar
+// Floating AI Avatar with Liquid Glass effect
 const FloatingAIAvatar = () => {
+    const { isReducedMotionEnabled } = useAccessibility();
     const floatY = useSharedValue(0);
     const glowOpacity = useSharedValue(0.5);
 
     useEffect(() => {
+        if (isReducedMotionEnabled) return;
+
         floatY.value = withRepeat(
             withSequence(
-                withTiming(-10, { duration: 2000, easing: Easing.bezier(0.4, 0, 0.2, 1) }),
+                withTiming(-8, { duration: 2000, easing: Easing.bezier(0.4, 0, 0.2, 1) }),
                 withTiming(0, { duration: 2000, easing: Easing.bezier(0.4, 0, 0.2, 1) })
             ),
             -1,
@@ -112,87 +129,127 @@ const FloatingAIAvatar = () => {
             -1,
             true
         );
-    }, []);
+    }, [isReducedMotionEnabled]);
 
     const floatStyle = useAnimatedStyle(() => ({
         transform: [{ translateY: floatY.value }],
     }));
 
+    const glowStyle = useAnimatedStyle(() => ({
+        opacity: glowOpacity.value,
+    }));
+
     return (
         <Animated.View style={[styles.avatarContainer, floatStyle]}>
-            {/* Simple elegant avatar circle */}
-            <View style={styles.avatarCircle}>
-                <Ionicons name="sparkles" size={36} color={ALTA.primary} />
-            </View>
+            {/* Glow effect */}
+            <Animated.View style={[styles.avatarGlow, glowStyle]} />
+
+            {/* Glass avatar circle */}
+            <BlurView intensity={60} tint="light" style={styles.avatarBlur}>
+                <LinearGradient
+                    colors={colors.gradients.primaryAccent as [string, string]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.avatarGradient}
+                >
+                    <Ionicons name="sparkles" size={32} color="#FFF" />
+                </LinearGradient>
+            </BlurView>
         </Animated.View>
     );
 };
 
-// Style Goal Button (Like Alta's homepage)
+// Style Goal Button with Glass effect
 const StyleGoalButton = ({ goal, index, onPress }: { goal: StyleGoalType; index: number; onPress: () => void }) => {
-    const { animatedStyle, onPressIn, onPressOut } = useTahoePress();
+    const { isReducedMotionEnabled } = useAccessibility();
+    const scale = useSharedValue(1);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: withSpring(scale.value, animation.spring.snappy) }],
+    }));
+
+    const handlePressIn = () => { scale.value = 0.98; };
+    const handlePressOut = () => { scale.value = 1; };
 
     return (
         <Animated.View
-            entering={FadeInUp.delay(200 + index * 50).springify()}
+            entering={isReducedMotionEnabled ? undefined : FadeInUp.delay(200 + index * 50).springify()}
         >
             <TouchableOpacity
-                onPressIn={onPressIn}
-                onPressOut={onPressOut}
+                onPressIn={handlePressIn}
+                onPressOut={handlePressOut}
                 onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     onPress();
                 }}
                 activeOpacity={1}
+                accessibilityRole="button"
+                accessibilityLabel={goal.text}
             >
                 <Animated.View style={[styles.goalButton, animatedStyle]}>
-                    <Ionicons name={goal.icon as any} size={20} color={ALTA.primary} style={styles.goalIcon} />
+                    <LinearGradient
+                        colors={goal.gradient as [string, string]}
+                        style={styles.goalIconContainer}
+                    >
+                        <Ionicons name={goal.icon as any} size={18} color="#FFF" />
+                    </LinearGradient>
                     <Text style={styles.goalText}>{goal.text}</Text>
-                    <Ionicons name="arrow-forward" size={16} color={ALTA.textMuted} />
+                    <Ionicons name="chevron-forward" size={18} color={colors.text.tertiary} />
                 </Animated.View>
             </TouchableOpacity>
         </Animated.View>
     );
 };
 
-// Quick Action Card
+// Quick Action Card with Liquid Glass
 const QuickActionCard = ({
     icon,
     title,
     subtitle,
-    onPress
+    gradient,
+    onPress,
+    index,
 }: {
     icon: string;
     title: string;
     subtitle: string;
+    gradient: readonly string[];
     onPress: () => void;
+    index: number;
 }) => {
-    const { animatedStyle, onPressIn, onPressOut } = useTahoePress();
+    const { isReducedMotionEnabled } = useAccessibility();
 
     return (
-        <TouchableOpacity
-            onPressIn={onPressIn}
-            onPressOut={onPressOut}
-            onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                onPress();
-            }}
-            activeOpacity={1}
-        >
-            <Animated.View style={[styles.quickActionCard, animatedStyle]}>
-                <View style={styles.quickActionIcon}>
-                    <Ionicons name={icon as any} size={24} color={ALTA.primary} />
-                </View>
+        <BentoItem colSpan={1} aspectRatio="square" index={index} animated={!isReducedMotionEnabled}>
+            <PressableGlassCard
+                style={styles.quickActionCard}
+                contentStyle={styles.quickActionContent}
+                onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    onPress();
+                }}
+                accessibilityLabel={`${title}: ${subtitle}`}
+            >
+                <LinearGradient
+                    colors={gradient as [string, string]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.quickActionIcon}
+                >
+                    <Ionicons name={icon as any} size={22} color="#FFF" />
+                </LinearGradient>
                 <Text style={styles.quickActionTitle}>{title}</Text>
                 <Text style={styles.quickActionSubtitle}>{subtitle}</Text>
-            </Animated.View>
-        </TouchableOpacity>
+            </PressableGlassCard>
+        </BentoItem>
     );
 };
 
 const AIHubScreen = () => {
     const navigation = useNavigation();
+    const { isReducedMotionEnabled, scaleFontSize } = useAccessibility();
     const [message, setMessage] = useState('');
+    const [isAgentActive, setIsAgentActive] = useState(false);
 
     const getGreeting = () => {
         const hour = moment().hour();
@@ -204,8 +261,10 @@ const AIHubScreen = () => {
     const handleSend = () => {
         if (message.trim()) {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setIsAgentActive(true);
             (navigation as any).navigate('AIChat', { initialMessage: message });
             setMessage('');
+            setTimeout(() => setIsAgentActive(false), 500);
         }
     };
 
@@ -213,27 +272,41 @@ const AIHubScreen = () => {
         (navigation as any).navigate('AIChat', { initialMessage: goal.text });
     };
 
+    // Quick actions data
+    const quickActions = [
+        { icon: 'shirt-outline', title: 'Scan wardrobe', subtitle: 'Add clothes', gradient: colors.gradients.warmGlow, screen: 'Camera' },
+        { icon: 'grid-outline', title: 'My Closet', subtitle: 'Browse items', gradient: colors.gradients.coolWave, screen: 'MyCloset' },
+        { icon: 'sparkles-outline', title: 'AI Stylist', subtitle: 'Get ideas', gradient: colors.gradients.primaryAccent, screen: 'OutfitAI' },
+        { icon: 'person-outline', title: 'Try On', subtitle: 'Virtual fit', gradient: colors.gradients.warmGlow, screen: 'AITryOn' },
+        { icon: 'calendar-outline', title: 'Plan outfits', subtitle: 'Weekly', gradient: colors.gradients.coolWave, screen: 'Calendar' },
+        { icon: 'people-outline', title: 'Meeting', subtitle: 'Event outfit', gradient: colors.gradients.primaryAccent, screen: 'MeetingOutfit' },
+    ];
+
     return (
         <View style={styles.container}>
             <SafeAreaView style={styles.safeArea}>
-                {/* Header */}
-                <Animated.View
-                    entering={FadeInDown.delay(50).springify()}
-                    style={styles.header}
-                >
-                    <TahoeIconButton
-                        icon="menu-outline"
+                {/* Header with Liquid Glass */}
+                <BlurView intensity={Platform.OS === 'ios' ? 80 : 100} tint="light" style={styles.header}>
+                    <TouchableOpacity
                         onPress={() => (navigation as any).navigate('Profile')}
-                        color={ALTA.text}
-                    />
+                        style={styles.headerButton}
+                        accessibilityLabel="Menu"
+                    >
+                        <Ionicons name="menu-outline" size={26} color={colors.text.primary} />
+                    </TouchableOpacity>
 
-                    <WeatherWidget />
+                    <AgentStatusIndicator isActive={isAgentActive} />
 
-                    <Image
-                        source={{ uri: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100' }}
-                        style={styles.headerAvatar}
-                    />
-                </Animated.View>
+                    <TouchableOpacity
+                        onPress={() => (navigation as any).navigate('Profile')}
+                        style={styles.headerButton}
+                        accessibilityLabel="Profile"
+                    >
+                        <View style={styles.headerAvatar}>
+                            <Ionicons name="person" size={18} color={colors.text.secondary} />
+                        </View>
+                    </TouchableOpacity>
+                </BlurView>
 
                 <ScrollView
                     contentContainerStyle={styles.scrollContent}
@@ -242,21 +315,21 @@ const AIHubScreen = () => {
                 >
                     {/* Hero Section */}
                     <Animated.View
-                        entering={FadeIn.delay(100).duration(600)}
+                        entering={isReducedMotionEnabled ? undefined : FadeIn.delay(100).duration(600)}
                         style={styles.heroSection}
                     >
                         <FloatingAIAvatar />
 
-                        <Text style={styles.heroTitle}>Dress with confidence</Text>
+                        <Text style={styles.heroTitle}>Dress with{'\n'}confidence</Text>
                         <Text style={styles.heroSubtitle}>
-                            Your personal AI stylist that truly gets you - from the clothes in your closet to the looks you love.
+                            Your AI stylist that gets you — from the clothes in your closet to the looks you love.
                         </Text>
                     </Animated.View>
 
-                    {/* Talk to Alta Input */}
+                    {/* Talk CTA Button */}
                     <Animated.View
-                        entering={FadeInUp.delay(150).springify()}
-                        style={styles.inputSection}
+                        entering={isReducedMotionEnabled ? undefined : FadeInUp.delay(150).springify()}
+                        style={styles.ctaSection}
                     >
                         <TouchableOpacity
                             style={styles.talkButton}
@@ -264,116 +337,124 @@ const AIHubScreen = () => {
                                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                                 (navigation as any).navigate('AIChat');
                             }}
+                            accessibilityRole="button"
+                            accessibilityLabel="Talk to AI Stylist"
                         >
-                            <Text style={styles.talkButtonText}>Talk to Alta</Text>
+                            <LinearGradient
+                                colors={colors.gradients.primaryAccent as [string, string]}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.talkButtonGradient}
+                            >
+                                <Ionicons name="chatbubble-ellipses" size={20} color="#FFF" />
+                                <Text style={styles.talkButtonText}>Talk to AI Stylist</Text>
+                            </LinearGradient>
                         </TouchableOpacity>
                     </Animated.View>
 
-                    {/* What's your style goal? */}
+                    {/* Style Goals Section */}
                     <Animated.View
-                        entering={FadeInUp.delay(180).springify()}
+                        entering={isReducedMotionEnabled ? undefined : FadeInUp.delay(180).springify()}
                         style={styles.goalsSection}
                     >
-                        <Text style={styles.goalsTitle}>What's your{'\n'}style goal?</Text>
+                        <Text style={styles.sectionTitle}>What's your style goal?</Text>
 
-                        {STYLE_GOALS.map((goal, index) => (
-                            <StyleGoalButton
-                                key={goal.id}
-                                goal={goal}
-                                index={index}
-                                onPress={() => handleGoalPress(goal)}
-                            />
-                        ))}
+                        <FrostedGlassCard contentStyle={styles.goalsCard}>
+                            {STYLE_GOALS.map((goal, index) => (
+                                <StyleGoalButton
+                                    key={goal.id}
+                                    goal={goal}
+                                    index={index}
+                                    onPress={() => handleGoalPress(goal)}
+                                />
+                            ))}
+                        </FrostedGlassCard>
                     </Animated.View>
 
-                    {/* Quick Actions Grid */}
-                    <Animated.View
-                        entering={FadeInUp.delay(400).springify()}
-                        style={styles.quickActionsSection}
-                    >
-                        <Text style={styles.quickActionsTitle}>Get started</Text>
+                    {/* Quick Actions Bento Grid */}
+                    <View style={styles.quickActionsSection}>
+                        <Text style={styles.sectionTitle}>Get started</Text>
 
-                        <View style={styles.quickActionsGrid}>
-                            <QuickActionCard
-                                icon="shirt-outline"
-                                title="Scan wardrobe"
-                                subtitle="Add your clothes"
-                                onPress={() => (navigation as any).navigate('WardrobeVideo')}
-                            />
-                            <QuickActionCard
-                                icon="grid-outline"
-                                title="My Closet"
-                                subtitle="Browse all items"
-                                onPress={() => (navigation as any).navigate('MyCloset')}
-                            />
-                            <QuickActionCard
-                                icon="sparkles-outline"
-                                title="AI Stylist"
-                                subtitle="Smart recommendations"
-                                onPress={() => (navigation as any).navigate('OutfitAI')}
-                            />
-                            <QuickActionCard
-                                icon="person-outline"
-                                title="Try on looks"
-                                subtitle="Virtual fitting"
-                                onPress={() => (navigation as any).navigate('AITryOn')}
-                            />
-                            <QuickActionCard
-                                icon="calendar-outline"
-                                title="Plan outfits"
-                                subtitle="Weekly calendar"
-                                onPress={() => (navigation as any).navigate('Calendar')}
-                            />
-                            <QuickActionCard
-                                icon="people-outline"
-                                title="Meeting Outfit"
-                                subtitle="AI outfit for events"
-                                onPress={() => (navigation as any).navigate('MeetingOutfit')}
-                            />
-                            <QuickActionCard
-                                icon="trophy-outline"
-                                title="Style Goals"
-                                subtitle="Track your journey"
-                                onPress={() => (navigation as any).navigate('StyleGoals')}
-                            />
-                        </View>
-                    </Animated.View>
+                        <BentoGrid columns={2} gap={spacing.md} padding={spacing.screenPadding}>
+                            {quickActions.map((action, index) => (
+                                <QuickActionCard
+                                    key={action.screen}
+                                    icon={action.icon}
+                                    title={action.title}
+                                    subtitle={action.subtitle}
+                                    gradient={action.gradient}
+                                    index={index}
+                                    onPress={() => (navigation as any).navigate(action.screen)}
+                                />
+                            ))}
+                        </BentoGrid>
+                    </View>
 
                     {/* Bottom spacing */}
-                    <View style={{ height: 120 }} />
+                    <View style={{ height: 160 }} />
                 </ScrollView>
 
-                {/* Floating Input */}
+                {/* Floating Input with Liquid Glass */}
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     keyboardVerticalOffset={10}
+                    style={styles.floatingInputKeyboardView}
                 >
-                    <View style={styles.floatingInputWrapper}>
+                    <BlurView intensity={90} tint="light" style={styles.floatingInputWrapper}>
                         <View style={styles.floatingInputContainer}>
                             <TextInput
                                 style={styles.textInput}
                                 placeholder="Ask anything about style..."
-                                placeholderTextColor={ALTA.textMuted}
+                                placeholderTextColor={colors.text.tertiary}
                                 value={message}
                                 onChangeText={setMessage}
                                 returnKeyType="send"
                                 onSubmitEditing={handleSend}
+                                accessibilityLabel="Type your style question"
                             />
+
+                            {/* Morphing Action Button */}
                             <TouchableOpacity
-                                style={[
-                                    styles.sendButton,
-                                    message.trim() && styles.sendButtonActive
-                                ]}
-                                onPress={handleSend}
+                                onPress={() => {
+                                    if (message.trim()) {
+                                        handleSend();
+                                    } else {
+                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                        (navigation as any).navigate('MagicMirror');
+                                    }
+                                }}
+                                activeOpacity={0.8}
+                                accessibilityRole="button"
+                                accessibilityLabel={message.trim() ? 'Send message' : 'Open Magic Mirror'}
                             >
-                                <Ionicons
-                                    name="arrow-up"
-                                    size={20}
-                                    color={message.trim() ? ALTA.background : ALTA.textMuted}
-                                />
+                                <Animated.View
+                                    style={[
+                                        styles.sendButton,
+                                        message.trim() ? styles.sendButtonActive : styles.magicButtonActive
+                                    ]}
+                                    layout={Layout.springify()}
+                                >
+                                    {message.trim() ? (
+                                        <Animated.View
+                                            entering={ZoomIn.duration(200)}
+                                            exiting={ZoomOut.duration(200)}
+                                            style={styles.iconCenter}
+                                        >
+                                            <Ionicons name="arrow-up" size={20} color="#FFF" />
+                                        </Animated.View>
+                                    ) : (
+                                        <Animated.View
+                                            entering={ZoomIn.duration(200)}
+                                            exiting={ZoomOut.duration(200)}
+                                            style={styles.iconCenter}
+                                        >
+                                            <Ionicons name="sparkles" size={20} color={colors.accent.primary} />
+                                        </Animated.View>
+                                    )}
+                                </Animated.View>
                             </TouchableOpacity>
                         </View>
-                    </View>
+                    </BlurView>
                 </KeyboardAvoidingView>
             </SafeAreaView>
         </View>
@@ -383,7 +464,7 @@ const AIHubScreen = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: ALTA.background,
+        backgroundColor: colors.background.primary,
     },
     safeArea: {
         flex: 1,
@@ -394,180 +475,241 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingVertical: 10,
+        paddingHorizontal: spacing.screenPadding,
+        paddingVertical: spacing.sm + 2,
+        backgroundColor: colors.glass.frosted,
+        borderBottomWidth: 0.5,
+        borderBottomColor: colors.border.subtle,
+    },
+    headerButton: {
+        width: spacing.touchTarget.minimum,
+        height: spacing.touchTarget.minimum,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     headerAvatar: {
         width: 36,
         height: 36,
         borderRadius: 18,
-        backgroundColor: ALTA.surface,
+        backgroundColor: colors.glass.frosted,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: colors.border.glass,
+    },
+
+    // Agent Status
+    agentStatus: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+    },
+    agentStatusDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: colors.accent.success,
+    },
+    agentStatusActive: {
+        backgroundColor: colors.accent.primary,
+    },
+    agentStatusText: {
+        ...typography.scale.labelMedium,
+        color: colors.text.secondary,
     },
 
     scrollContent: {
-        paddingHorizontal: 20,
+        paddingTop: spacing.lg,
     },
 
     // Hero Section
     heroSection: {
         alignItems: 'center',
-        paddingTop: 20,
-        paddingBottom: 30,
+        paddingHorizontal: spacing.screenPadding,
+        paddingBottom: spacing.xl,
     },
     avatarContainer: {
-        marginBottom: 24,
-    },
-    avatarCircle: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        backgroundColor: ALTA.surfaceLight,
+        marginBottom: spacing.lg,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    avatarGlow: {
+        position: 'absolute',
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        backgroundColor: colors.accent.primary,
+        opacity: 0.2,
+    },
+    avatarBlur: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        overflow: 'hidden',
         borderWidth: 1,
-        borderColor: ALTA.border,
+        borderColor: colors.border.glass,
+    },
+    avatarGradient: {
+        width: '100%',
+        height: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     heroTitle: {
-        fontSize: 32,
-        fontWeight: '700',
-        color: ALTA.text,
+        ...typography.scale.displayMedium,
+        color: colors.text.primary,
         textAlign: 'center',
-        marginBottom: 12,
-        letterSpacing: -0.5,
+        marginBottom: spacing.md,
     },
     heroSubtitle: {
-        fontSize: 16,
-        color: ALTA.textSecondary,
+        ...typography.scale.bodyLarge,
+        color: colors.text.secondary,
         textAlign: 'center',
+        paddingHorizontal: spacing.lg,
         lineHeight: 24,
-        paddingHorizontal: 20,
     },
 
-    // Input Section
-    inputSection: {
-        marginBottom: 40,
+    // CTA Section
+    ctaSection: {
+        paddingHorizontal: spacing.screenPadding,
+        marginBottom: spacing.xl,
     },
     talkButton: {
-        backgroundColor: ALTA.primary,
-        paddingVertical: 16,
-        borderRadius: 30,
+        borderRadius: radius.pill,
+        overflow: 'hidden',
+        ...LiquidGlass2026Theme.elevation.getShadow(8),
+    },
+    talkButtonGradient: {
+        flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: spacing.md,
+        gap: spacing.sm,
     },
     talkButtonText: {
-        fontSize: 16,
+        ...typography.scale.titleMedium,
+        color: '#FFF',
         fontWeight: '600',
-        color: ALTA.background,
     },
 
     // Goals Section
     goalsSection: {
-        marginBottom: 40,
+        paddingHorizontal: spacing.screenPadding,
+        marginBottom: spacing.xl,
     },
-    goalsTitle: {
-        fontSize: 28,
-        fontWeight: '700',
-        color: ALTA.text,
-        marginBottom: 20,
-        letterSpacing: -0.5,
+    sectionTitle: {
+        ...typography.scale.headlineSmall,
+        color: colors.text.primary,
+        marginBottom: spacing.md,
+    },
+    goalsCard: {
+        padding: spacing.xs,
     },
     goalButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 16,
+        paddingVertical: spacing.md,
+        paddingHorizontal: spacing.sm,
         borderBottomWidth: 1,
-        borderBottomColor: ALTA.border,
+        borderBottomColor: colors.border.subtle,
     },
-    goalIcon: {
-        marginRight: 14,
+    goalIconContainer: {
+        width: 32,
+        height: 32,
+        borderRadius: radius.sm,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: spacing.md,
     },
     goalText: {
         flex: 1,
-        fontSize: 16,
-        color: ALTA.text,
+        ...typography.scale.bodyLarge,
+        color: colors.text.primary,
     },
 
     // Quick Actions
     quickActionsSection: {
-        marginBottom: 20,
-    },
-    quickActionsTitle: {
-        fontSize: 20,
-        fontWeight: '600',
-        color: ALTA.text,
-        marginBottom: 16,
-    },
-    quickActionsGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 12,
+        marginBottom: spacing.lg,
     },
     quickActionCard: {
-        width: (width - 52) / 2,
-        backgroundColor: ALTA.surfaceLight,
-        borderRadius: 16,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: ALTA.border,
+        flex: 1,
+        height: '100%',
+    },
+    quickActionContent: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: spacing.md,
     },
     quickActionIcon: {
         width: 44,
         height: 44,
-        borderRadius: 12,
-        backgroundColor: ALTA.background,
+        borderRadius: radius.md,
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 12,
+        marginBottom: spacing.sm,
     },
     quickActionTitle: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: ALTA.text,
-        marginBottom: 4,
+        ...typography.scale.titleSmall,
+        color: colors.text.primary,
+        textAlign: 'center',
+        marginBottom: spacing.xs,
     },
     quickActionSubtitle: {
-        fontSize: 13,
-        color: ALTA.textSecondary,
+        ...typography.scale.bodySmall,
+        color: colors.text.secondary,
+        textAlign: 'center',
     },
 
     // Floating Input
-    floatingInputWrapper: {
+    floatingInputKeyboardView: {
         position: 'absolute',
         bottom: 0,
         left: 0,
         right: 0,
-        padding: 16,
-        paddingBottom: Platform.OS === 'ios' ? 0 : 16,
-        backgroundColor: ALTA.background,
-        borderTopWidth: 1,
-        borderTopColor: ALTA.border,
+    },
+    floatingInputWrapper: {
+        paddingHorizontal: spacing.screenPadding,
+        paddingVertical: spacing.md,
+        paddingBottom: Platform.OS === 'ios' ? spacing.xl : spacing.md,
+        borderTopWidth: 0.5,
+        borderTopColor: colors.border.subtle,
     },
     floatingInputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: ALTA.surfaceLight,
-        borderRadius: 24,
-        paddingHorizontal: 16,
-        paddingVertical: 8,
+        backgroundColor: colors.glass.frosted,
+        borderRadius: radius.pill,
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.xs,
         borderWidth: 1,
-        borderColor: ALTA.border,
+        borderColor: colors.border.glass,
     },
     textInput: {
         flex: 1,
-        height: 40,
-        fontSize: 16,
-        color: ALTA.text,
-        marginRight: 10,
+        height: 44,
+        ...typography.scale.bodyLarge,
+        color: colors.text.primary,
+        marginRight: spacing.sm,
     },
     sendButton: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: ALTA.surface,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         alignItems: 'center',
         justifyContent: 'center',
+        overflow: 'hidden',
     },
     sendButtonActive: {
-        backgroundColor: ALTA.primary,
+        backgroundColor: colors.accent.primary,
+    },
+    magicButtonActive: {
+        backgroundColor: colors.glass.opaque,
+    },
+    iconCenter: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 });
 
