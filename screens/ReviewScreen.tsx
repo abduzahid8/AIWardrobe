@@ -2,16 +2,14 @@ import React, { useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Alert, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import axios from 'axios';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { API_URL } from '../api/config';
 import useAuthStore from '../store/auth';
+import { supabase } from '../lib/supabase';
 
 export default function ReviewScanScreen() {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
     const { items } = route.params; // Получаем данные от Gemini
-    const { token } = useAuthStore(); // Токен юзера
 
     const [reviewedItems, setReviewedItems] = useState(items);
     const [isSaving, setIsSaving] = useState(false);
@@ -22,22 +20,31 @@ export default function ReviewScanScreen() {
         try {
             console.log(`📤 Отправляем ${reviewedItems.length} вещей на генерацию...`);
 
-            const response = await axios.post(
-                `${API_URL}/wardrobe/add-batch`,
-                { items: reviewedItems },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            const { user } = useAuthStore.getState();
+            if (!user) {
+                Alert.alert("Ошибка", "Вы не авторизованы");
+                return;
+            }
 
-            if (response.data.success) {
+            const { data, error } = await supabase.functions.invoke('add-clothing-batch', {
+                body: {
+                    items: reviewedItems,
+                    userId: user.id
+                }
+            });
+
+            if (error) throw error;
+
+            if (data && data.success) {
                 Alert.alert(
                     "Готово! 🎉",
-                    `Добавлено ${response.data.count} вещей. Сейчас мы генерируем для них красивые фото.`,
+                    `Добавлено ${data.count} вещей. Сейчас мы генерируем для них красивые фото.`,
                     [{ text: "ОК", onPress: () => navigation.navigate("Home") }]
                 );
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error("Ошибка сохранения:", error);
-            Alert.alert("Ошибка", "Не удалось сохранить вещи. Попробуйте позже.");
+            Alert.alert("Ошибка", `Не удалось сохранить вещи: ${error.message || "Unknown error"}`);
         } finally {
             setIsSaving(false);
         }
@@ -52,7 +59,7 @@ export default function ReviewScanScreen() {
 
     if (isSaving) {
         return (
-            <View className="flex-1 bg-black justify-center items-center">
+            <View className="flex-1 bg-[#0A1931] justify-center items-center">
                 <ActivityIndicator size="large" color="#fff" />
                 <Text className="text-white text-lg font-bold mt-4">Генерируем одежду...</Text>
                 <Text className="text-gray-400 text-sm mt-2">Рисуем фото и сохраняем в облако</Text>
@@ -65,7 +72,7 @@ export default function ReviewScanScreen() {
             {/* Заголовок */}
             <View className="flex-row items-center p-4 border-b border-gray-100">
                 <TouchableOpacity onPress={() => navigation.goBack()} className="mr-4">
-                    <Ionicons name="arrow-back" size={24} color="black" />
+                    <Ionicons name="arrow-back" size={24} color="#0A1931" />
                 </TouchableOpacity>
                 <Text className="text-xl font-bold">Найдено {reviewedItems.length} вещей</Text>
             </View>
@@ -103,7 +110,7 @@ export default function ReviewScanScreen() {
             <View className="p-4 border-t border-gray-100">
                 <TouchableOpacity
                     onPress={handleSaveToWardrobe}
-                    className="bg-black py-4 rounded-2xl items-center shadow-lg"
+                    className="bg-[#0A1931] py-4 rounded-2xl items-center shadow-lg"
                 >
                     <Text className="text-white font-bold text-lg">
                         Добавить в гардероб ({reviewedItems.length})

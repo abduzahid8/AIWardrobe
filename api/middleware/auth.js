@@ -1,34 +1,35 @@
-import jwt from "jsonwebtoken";
+import { createClient } from "@supabase/supabase-js";
 import "dotenv/config";
 
 /**
- * JWT Secret from environment variable
- * CRITICAL: Must be set in production with a strong secret!
+ * Unified Auth Middleware — Supabase JWT Validation
+ *
+ * The mobile app uses Supabase Auth exclusively.
+ * This middleware validates the Supabase access token sent in the
+ * Authorization header and attaches the Supabase user to req.user.
+ *
+ * Mobile sends: Authorization: Bearer <supabase_access_token>
  */
-const JWT_SECRET = process.env.JWT_SECRET;
 
-if (!JWT_SECRET) {
-    console.error("❌ FATAL: JWT_SECRET environment variable is not set!");
-    console.error("   Generate one with: openssl rand -hex 32");
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    console.error("❌ FATAL: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in .env");
+    console.error("   Get the service role key from: Supabase Dashboard → Settings → API");
     process.exit(1);
 }
 
-if (JWT_SECRET.length < 32) {
-    console.error("❌ FATAL: JWT_SECRET must be at least 32 characters for security!");
-    console.error("   Generate one with: openssl rand -hex 32");
-    process.exit(1);
-}
+// Use service role client to validate tokens server-side
+const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { autoRefreshToken: false, persistSession: false }
+});
 
 /**
- * JWT Token expiration (7 days)
+ * Middleware to authenticate Supabase JWT tokens.
+ * Attaches the Supabase user object to req.user on success.
  */
-export const JWT_EXPIRES_IN = '7d';
-
-/**
- * Middleware to authenticate JWT tokens
- * Extracts user info and attaches to req.user
- */
-export const authenticateToken = (req, res, next) => {
+export const authenticateToken = async (req, res, next) => {
     const authHeader = req.headers["authorization"];
     const token = authHeader?.split(" ")[1];
 
@@ -39,29 +40,38 @@ export const authenticateToken = (req, res, next) => {
         });
     }
 
-    jwt.verify(token, JWT_SECRET, (err, decoded) => {
-        if (err) {
-            if (err.name === 'TokenExpiredError') {
-                return res.status(401).json({
-                    error: "Token has expired",
-                    code: "TOKEN_EXPIRED"
-                });
-            }
-            return res.status(403).json({
-                error: "Invalid token",
+    try {
+        const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+
+        if (error || !user) {
+            return res.status(401).json({
+                error: "Invalid or expired token",
                 code: "INVALID_TOKEN"
             });
         }
-        req.user = decoded;
+
+        // Attach normalized user object — matches Supabase profile shape
+        req.user = {
+            id: user.id,
+            email: user.email,
+            username: user.user_metadata?.username || '',
+        };
+
         next();
-    });
+    } catch (err) {
+        console.error("Auth middleware error:", err.message);
+        return res.status(500).json({
+            error: "Authentication check failed",
+            code: "AUTH_ERROR"
+        });
+    }
 };
 
 /**
- * Optional authentication - doesn't fail if no token
- * Useful for routes that work both authenticated and not
+ * Optional authentication — attaches user if token is valid, continues either way.
+ * Use for routes that work both authenticated and unauthenticated.
  */
-export const optionalAuth = (req, res, next) => {
+export const optionalAuth = async (req, res, next) => {
     const authHeader = req.headers["authorization"];
     const token = authHeader?.split(" ")[1];
 
@@ -70,11 +80,15 @@ export const optionalAuth = (req, res, next) => {
         return next();
     }
 
-    jwt.verify(token, JWT_SECRET, (err, decoded) => {
-        req.user = err ? null : decoded;
-        next();
-    });
-};
+    try {
+        const { data: { user } } = await supabaseAdmin.auth.getUser(token);
+        req.user = user
+            ? { id: user.id, email: user.email, username: user.user_metadata?.username || '' }
+            : null;
+    } catch {
+        req.user = null;
+    }
 
-export { JWT_SECRET };
+    next();
+};
 

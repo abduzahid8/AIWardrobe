@@ -1,16 +1,12 @@
-import Constants from "expo-constants";
-import { Platform } from "react-native";
+/**
+ * API Server Configuration
+ * All values come from environment variables — never hardcode IPs or secrets.
+ */
 
-// 🔥 SOTA Detection - Using local AliceVision server
-const getBackendUrl = () => {
-  // For testing SOTA locally (Qwen2.5-VL, Florence-2, etc.)
-  // Comment out the next line to use production
-  return "http://192.168.100.219:3000"; // Point to Node.js Backend (3000)
+export const PORT = process.env.PORT || 3000;
+export const NODE_ENV = process.env.NODE_ENV || 'development';
+export const IS_PRODUCTION = NODE_ENV === 'production';
 
-  // Production server
-  // return "https://aiwardrobe-ivh4.onrender.com";
-};
+export const ALICEVISION_URL = process.env.ALICEVISION_URL || 'http://localhost:5050';
 
-export const API_URL = getBackendUrl();
-
-console.log("🌐 API URL:", API_URL);
+export default { PORT, NODE_ENV, IS_PRODUCTION, ALICEVISION_URL };

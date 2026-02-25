@@ -1,7 +1,20 @@
 /**
  * Clothing Item Types
  * Types for wardrobe and clothing management
+ *
+ * NOTE: Canonical domain types live in ./domain.ts
+ * Legacy types below are kept for backward compatibility.
  */
+
+// Re-export canonical types for new code
+export type {
+    ClothingItem as DomainClothingItem,
+    Outfit,
+    WearLog,
+    ClothingCategory as DomainClothingCategory,
+    Season as DomainSeason,
+    Occasion,
+} from './domain';
 
 import { ClothingStyle } from './api';
 

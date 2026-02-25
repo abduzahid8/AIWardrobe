@@ -1,7 +1,6 @@
 /**
- * InspoScreen - 2026 Redesign
- * Inspiration Page with Liquid Glass aesthetics and Bento Grid products
- * Based on 2026 Digital Experience Report guidelines
+ * InspoScreen - Inspiration page
+ * Layout: Featured Capsules + Monnaie's Spring Transition (exact design)
  */
 
 import React, { useState, useCallback } from 'react';
@@ -14,614 +13,536 @@ import {
     ScrollView,
     Image,
     StatusBar,
-    Platform,
+    TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
-import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, {
-    FadeInUp,
-    FadeIn,
-    useAnimatedStyle,
-    useSharedValue,
-    withSpring
-} from 'react-native-reanimated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// 2026 Design System
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
-import {
-    BentoGrid,
-    BentoItem,
-    FrostedGlassCard,
-    PressableGlassCard,
-} from '../components/ui';
-import { useAccessibility } from '../hooks/useAccessibility';
 
-const { width } = Dimensions.get('window');
-const { colors, spacing, typography, radius, animation } = LiquidGlass2026Theme;
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { colors, spacing, typography, radius } = LiquidGlass2026Theme;
 
-type TabType = 'community' | 'shopping' | 'saved';
-
-// Sample trending data
-const TRENDING_ITEMS = [
-    { id: '1', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400', aspectRatio: 1.2, likes: 234 },
-    { id: '2', image: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400', aspectRatio: 1.5, likes: 189 },
-    { id: '3', image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400', aspectRatio: 1.3, likes: 312 },
-    { id: '4', image: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400', aspectRatio: 1.4, likes: 156 },
+// Featured Capsules – collage-style cards with overlay text
+const FEATURED_CAPSULES = [
+    {
+        id: '1',
+        title: 'Winter Dressing Guide',
+        image: require('../pictures/image copy.png'),
+    },
+    {
+        id: '2',
+        title: 'The Cozy Edit',
+        image: require('../pictures/image.png'),
+    },
+    {
+        id: '3',
+        title: 'Capsule Wardrobe Picks',
+        image: 'https://images.unsplash.com/photo-1555069519-127aadedf1ee?w=400&q=80',
+    },
 ];
 
-// Sample shopping data
+// Monnaie's Spring Transition – product cards (brand, price, heart)
 const SHOPPING_ITEMS = [
-    { id: '1', brand: 'LORO PIANA', name: 'Cashmere Sweater', price: 1200, image: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=300', discount: 0 },
-    { id: '2', brand: 'Everlane', name: 'The No-Sweat Sweater', price: 98, image: 'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=300', discount: 20 },
-    { id: '3', brand: 'Todd Snyder', name: 'Silk-Cashmere Crewneck', price: 298, image: 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=300', discount: 0 },
-    { id: '4', brand: 'Simkhai', name: 'Bennett Sweater', price: 365, image: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=300', discount: 15 },
-    { id: '5', brand: 'Zegna', name: 'Oasi Cashmere Jacket', price: 6090, image: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=300', discount: 0 },
-    { id: '6', brand: 'ZEGNA', name: 'Riviera Slim-Fit Wool', price: 2730, image: 'https://images.unsplash.com/photo-1555069519-127aadedf1ee?w=300', discount: 10 },
+    {
+        id: '1',
+        brand: 'ZARA',
+        price: 129.00,
+        image: require('../pictures/shop/image copy.png'),
+    },
+    {
+        id: '2',
+        brand: 'ZARA',
+        price: 89.90,
+        image: require('../pictures/shop/image copy 2.png'),
+    },
+    {
+        id: '3',
+        brand: 'ZARA',
+        price: 69.90,
+        image: require('../pictures/shop/image copy 3.png'),
+    },
+    {
+        id: '4',
+        brand: 'ZARA',
+        price: 15.90,
+        image: require('../pictures/shop/image copy 4.png'),
+    },
 ];
 
-// Tab Button with Liquid Glass
-const TabButton = ({ title, isActive, onPress }: { title: string; isActive: boolean; onPress: () => void }) => (
+const GUIDE_ITEMS = [
+    {
+        id: '1',
+        title: 'Lewis Hamilton',
+        subtitle: 'Street Style Icon',
+        image: require('../pictures/image.png'),
+    },
+    {
+        id: '2',
+        title: 'A$AP Rocky',
+        subtitle: 'Experimental Luxury',
+        image: require('../pictures/image copy.png'),
+    },
+];
+
+const CAPSULE_CARD_WIDTH = 180;
+const CAPSULE_CARD_HEIGHT = 250;
+const PRODUCT_CARD_WIDTH = (SCREEN_WIDTH - spacing.screenPadding * 2 - spacing.sm) / 2;
+
+// Capsule card: image + bottom-left white text overlay
+const FeaturedCapsuleCard = ({ item }: { item: (typeof FEATURED_CAPSULES)[0] }) => (
     <TouchableOpacity
-        style={[styles.tabButton, isActive && styles.tabButtonActive]}
-        onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            onPress();
-        }}
-        accessibilityRole="tab"
-        accessibilityState={{ selected: isActive }}
+        style={styles.capsuleCard}
+        activeOpacity={0.9}
+        onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
     >
-        <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{title}</Text>
-        {isActive && <View style={styles.tabIndicator} />}
+        <Image
+            source={typeof item.image === 'string' ? { uri: item.image } : item.image}
+            style={styles.capsuleImage}
+            resizeMode="cover"
+        />
+        <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.6)']}
+            style={styles.capsuleGradient}
+        >
+            <Text style={styles.capsuleTitle}>{item.title}</Text>
+        </LinearGradient>
     </TouchableOpacity>
 );
 
-// Trending Card with Glass overlay
-const TrendingCard = ({ item, index }: { item: typeof TRENDING_ITEMS[0]; index: number }) => {
-    const { isReducedMotionEnabled } = useAccessibility();
-
-    return (
-        <Animated.View
-            entering={isReducedMotionEnabled ? undefined : FadeInUp.delay(index * 80).springify()}
-            style={[styles.trendingCard, { aspectRatio: 1 / item.aspectRatio }]}
-        >
-            <Image source={{ uri: item.image }} style={styles.trendingImage} resizeMode="cover" />
-
-            {/* Glass overlay with likes */}
-            <BlurView intensity={60} tint="dark" style={styles.trendingOverlay}>
-                <Ionicons name="heart" size={14} color="#FFF" />
-                <Text style={styles.trendingLikes}>{item.likes}</Text>
-            </BlurView>
-        </Animated.View>
-    );
-};
-
-// Shopping Product Card with Glass effect
+// Product card: image, heart in white circle (top-right), brand, price
 const ProductCard = ({
     item,
+    isSaved,
     onSave,
-    index,
-    isSaved
 }: {
-    item: typeof SHOPPING_ITEMS[0];
-    onSave: () => void;
-    index: number;
+    item: (typeof SHOPPING_ITEMS)[0];
     isSaved: boolean;
-}) => {
-    const { isReducedMotionEnabled } = useAccessibility();
-    const [saved, setSaved] = useState(isSaved);
-    const scale = useSharedValue(1);
-
-    const animatedStyle = useAnimatedStyle(() => ({
-        transform: [{ scale: withSpring(scale.value, animation.spring.snappy) }]
-    }));
-
-    return (
-        <BentoItem colSpan={1} aspectRatio="auto" index={index} animated={!isReducedMotionEnabled}>
-            <Animated.View style={[styles.productCard, animatedStyle]}>
-                <View style={styles.productImageBox}>
-                    <Image source={{ uri: item.image }} style={styles.productImage} resizeMode="cover" />
-
-                    {/* Discount badge */}
-                    {item.discount > 0 && (
-                        <View style={styles.discountBadge}>
-                            <Text style={styles.discountText}>-{item.discount}%</Text>
-                        </View>
-                    )}
-
-                    {/* Save button */}
-                    <TouchableOpacity
-                        style={styles.saveButton}
-                        onPress={() => {
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                            setSaved(!saved);
-                            if (!saved) onSave();
-                        }}
-                        accessibilityLabel={saved ? 'Remove from saved' : 'Save item'}
-                    >
-                        <BlurView intensity={80} tint="light" style={styles.saveButtonBlur}>
-                            <Ionicons
-                                name={saved ? "bookmark" : "bookmark-outline"}
-                                size={16}
-                                color={saved ? colors.accent.primary : colors.text.primary}
-                            />
-                        </BlurView>
-                    </TouchableOpacity>
+    onSave: () => void;
+}) => (
+    <View style={styles.productCard}>
+        <View style={styles.productImageBox}>
+            <Image
+                source={typeof item.image === 'string' ? { uri: item.image } : item.image}
+                style={styles.productImage}
+                resizeMode="cover"
+            />
+            <TouchableOpacity
+                style={styles.saveButton}
+                onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    onSave();
+                }}
+                accessibilityLabel={isSaved ? 'Remove from saved' : 'Save item'}
+            >
+                <View style={styles.saveButtonCircle}>
+                    <Ionicons
+                        name={isSaved ? 'heart' : 'heart-outline'}
+                        size={18}
+                        color="#0A1931"
+                    />
                 </View>
+            </TouchableOpacity>
+        </View>
+        <Text style={styles.productBrand} numberOfLines={1}>
+            {item.brand}
+        </Text>
+        <Text style={styles.productPrice}>${item.price.toFixed(2)}</Text>
+    </View>
+);
 
-                <View style={styles.productInfo}>
-                    <Text style={styles.productBrand}>{item.brand}</Text>
-                    <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
-                    <View style={styles.priceRow}>
-                        <Text style={styles.productPrice}>${item.price.toLocaleString()}</Text>
-                        {item.discount > 0 && (
-                            <Text style={styles.originalPrice}>
-                                ${Math.round(item.price / (1 - item.discount / 100)).toLocaleString()}
-                            </Text>
-                        )}
-                    </View>
-                </View>
-            </Animated.View>
-        </BentoItem>
-    );
-};
+type SegmentType = 'guide' | 'shop';
 
 const InspoScreen = () => {
-    const navigation = useNavigation();
-    const { isReducedMotionEnabled } = useAccessibility();
-    const [activeTab, setActiveTab] = useState<TabType>('community');
-    const [savedInspo, setSavedInspo] = useState<any[]>([]);
+    const [savedInspo, setSavedInspo] = useState<typeof SHOPPING_ITEMS>([]);
+    const [segment, setSegment] = useState<SegmentType>('guide');
+    const [searchQuery, setSearchQuery] = useState('');
 
-    useFocusEffect(useCallback(() => {
-        loadSavedInspo();
-    }, []));
+    useFocusEffect(
+        useCallback(() => {
+            let mounted = true;
+            const load = async () => {
+                try {
+                    const raw = await AsyncStorage.getItem('savedInspo');
+                    if (raw && mounted) setSavedInspo(JSON.parse(raw));
+                } catch (_) { }
+            };
+            load();
+            return () => {
+                mounted = false;
+            };
+        }, [])
+    );
 
-    const loadSavedInspo = async () => {
-        try {
-            const saved = await AsyncStorage.getItem('savedInspo');
-            if (saved) setSavedInspo(JSON.parse(saved));
-        } catch (e) { }
-    };
-
-    const saveInspo = async (item: any) => {
-        const updated = [...savedInspo, item];
-        setSavedInspo(updated);
-        await AsyncStorage.setItem('savedInspo', JSON.stringify(updated));
-    };
-
-    const handleAddInspo = () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        (navigation as any).navigate('Camera');
-    };
+    const saveInspo = useCallback(async (item: (typeof SHOPPING_ITEMS)[0]) => {
+        setSavedInspo((prev) => {
+            const has = prev.some((s) => s.id === item.id);
+            const next = has ? prev.filter((s) => s.id !== item.id) : [...prev, item];
+            AsyncStorage.setItem('savedInspo', JSON.stringify(next));
+            return next;
+        });
+    }, []);
 
     return (
         <View style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor={colors.background.primary} />
             <SafeAreaView style={styles.safeArea} edges={['top']}>
-
-                {/* Header with Liquid Glass */}
-                <BlurView intensity={Platform.OS === 'ios' ? 80 : 100} tint="light" style={styles.header}>
-                    <Text style={styles.headerTitle}>Inspiration</Text>
-                    <TouchableOpacity
-                        style={styles.headerButton}
-                        onPress={handleAddInspo}
-                        accessibilityLabel="Add inspiration"
-                    >
-                        <Ionicons name="add-circle-outline" size={26} color={colors.text.primary} />
-                    </TouchableOpacity>
-                </BlurView>
-
-                {/* Tabs */}
-                <View style={styles.tabsContainer}>
-                    <TabButton title="Community" isActive={activeTab === 'community'} onPress={() => setActiveTab('community')} />
-                    <TabButton title="Shopping" isActive={activeTab === 'shopping'} onPress={() => setActiveTab('shopping')} />
-                    <TabButton title="Saved" isActive={activeTab === 'saved'} onPress={() => setActiveTab('saved')} />
+                {/* Header Container exactly identical to MyClosetScreen */}
+                <View style={[styles.header, { justifyContent: 'center' }]}>
+                    <View style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]} pointerEvents="none">
+                        <Text style={styles.headerTitle}>Inspiration</Text>
+                    </View>
                 </View>
 
-                {/* Content */}
+                {/* Segmented Control */}
+                <View style={styles.segmentContainer}>
+                    <View style={styles.segmentBackground}>
+                        <TouchableOpacity
+                            style={[styles.segmentButton, segment === 'guide' && styles.segmentButtonActive]}
+                            onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                setSegment('guide');
+                            }}
+                        >
+                            <Text style={[styles.segmentText, segment === 'guide' && styles.segmentTextActive]}>Guide</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.segmentButton, segment === 'shop' && styles.segmentButtonActive]}
+                            onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                setSegment('shop');
+                            }}
+                        >
+                            <Text style={[styles.segmentText, segment === 'shop' && styles.segmentTextActive]}>Shop</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
                 <ScrollView
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
                 >
-                    {activeTab === 'community' && (
-                        <>
-                            {/* Trending Section */}
-                            <View style={styles.trendingGrid}>
-                                <View style={styles.trendingColumn}>
-                                    {TRENDING_ITEMS.filter((_, i) => i % 2 === 0).map((item, idx) => (
-                                        <TrendingCard key={item.id} item={item} index={idx * 2} />
-                                    ))}
-                                </View>
-                                <View style={styles.trendingColumn}>
-                                    {TRENDING_ITEMS.filter((_, i) => i % 2 === 1).map((item, idx) => (
-                                        <TrendingCard key={item.id} item={item} index={idx * 2 + 1} />
-                                    ))}
-                                </View>
-                            </View>
 
-                            {/* Trending Info Card */}
-                            <Animated.View
-                                entering={isReducedMotionEnabled ? undefined : FadeIn.delay(300)}
-                            >
-                                <FrostedGlassCard style={styles.trendingInfoCard}>
-                                    <View style={styles.updatedBadge}>
-                                        <Text style={styles.updatedText}>UPDATED TODAY</Text>
-                                        <View style={styles.liveDot} />
+
+
+                    // ... (existing code)
+
+                    {/* Guide Content - Big Square Star Photos */}
+                    {segment === 'guide' && (
+                        <View style={styles.section}>
+                            {GUIDE_ITEMS.map((item) => (
+                                <View key={item.id} style={styles.guideCardContainer}>
+                                    <View style={styles.guideCard}>
+                                        <Image
+                                            source={typeof item.image === 'string' ? { uri: item.image } : item.image}
+                                            style={styles.guideImage}
+                                            resizeMode="cover"
+                                        />
+                                        <LinearGradient
+                                            colors={['transparent', 'rgba(0,0,0,0.8)']}
+                                            style={styles.guideGradient}
+                                        >
+                                            <Text style={styles.guideTitle}>{item.title}</Text>
+                                            <Text style={styles.guideSubtitle}>{item.subtitle}</Text>
+                                        </LinearGradient>
                                     </View>
-                                    <Text style={styles.trendingTitle}>Trending Now</Text>
-                                    <Text style={styles.trendingSubtitle}>
-                                        See what's popular in the community
-                                    </Text>
-                                    <TouchableOpacity style={styles.discoverButton}>
-                                        <Text style={styles.discoverText}>Discover trends</Text>
-                                        <Ionicons name="arrow-forward" size={16} color={colors.accent.primary} />
-                                    </TouchableOpacity>
-                                </FrostedGlassCard>
-                            </Animated.View>
-                        </>
+                                </View>
+                            ))}
+                        </View>
                     )}
 
-                    {activeTab === 'shopping' && (
+                    {/* Shop Content */}
+                    {segment === 'shop' && (
                         <>
-                            <View style={styles.shopHeader}>
-                                <Text style={styles.sectionTitle}>Curated For You</Text>
-                                <TouchableOpacity>
-                                    <Text style={styles.seeAllText}>See all</Text>
-                                </TouchableOpacity>
+                            {/* Search input (Shop Only) */}
+                            <View style={styles.searchContainer}>
+                                <Ionicons name="search" size={20} color={colors.text.tertiary} style={styles.searchIcon} />
+                                <TextInput
+                                    placeholder="Flared jeans in light wash, high-waisted..."
+                                    placeholderTextColor={colors.text.tertiary}
+                                    value={searchQuery}
+                                    onChangeText={setSearchQuery}
+                                    style={styles.searchInput}
+                                    returnKeyType="search"
+                                />
                             </View>
 
-                            <BentoGrid columns={2} gap={spacing.md} padding={0}>
-                                {SHOPPING_ITEMS.map((item, index) => (
-                                    <ProductCard
-                                        key={item.id}
-                                        item={item}
-                                        index={index}
-                                        isSaved={savedInspo.some(s => s.id === item.id)}
-                                        onSave={() => saveInspo(item)}
-                                    />
-                                ))}
-                            </BentoGrid>
+                            {/* Featured Capsules (Shop Only now, as Guide has its own content) */}
+                            <View style={styles.section}>
+                                <Text style={styles.sectionTitle}>Featured Capsules</Text>
+                                <ScrollView
+                                    horizontal
+                                    showsHorizontalScrollIndicator={false}
+                                    contentContainerStyle={styles.capsulesScroll}
+                                >
+                                    {FEATURED_CAPSULES.map((item) => (
+                                        <FeaturedCapsuleCard key={item.id} item={item} />
+                                    ))}
+                                </ScrollView>
+                            </View>
+
+                            {/* Monnaie's Spring Transition */}
+                            <View style={styles.section}>
+                                <Text style={styles.sectionTitle}>Monnaie's Spring Transition</Text>
+                                <View style={styles.productsGrid}>
+                                    {SHOPPING_ITEMS.map((item, index) => (
+                                        <View
+                                            key={item.id}
+                                            style={[
+                                                styles.productCardWrap,
+                                                index % 2 === 0 && styles.productCardWrapLeft,
+                                            ]}
+                                        >
+                                            <ProductCard
+                                                item={item}
+                                                isSaved={savedInspo.some((s) => s.id === item.id)}
+                                                onSave={() => saveInspo(item)}
+                                            />
+                                        </View>
+                                    ))}
+                                </View>
+                            </View>
                         </>
                     )}
 
-                    {activeTab === 'saved' && (
-                        savedInspo.length === 0 ? (
-                            <FrostedGlassCard style={styles.emptyState} contentStyle={styles.emptyContent}>
-                                <View style={styles.emptyIconContainer}>
-                                    <Ionicons name="bookmark-outline" size={48} color={colors.text.tertiary} />
-                                </View>
-                                <Text style={styles.emptyTitle}>No saved inspo yet</Text>
-                                <Text style={styles.emptySubtitle}>
-                                    Get inspired — save something you like or share your own style.
-                                </Text>
-                                <TouchableOpacity
-                                    style={styles.addInspoButton}
-                                    onPress={handleAddInspo}
-                                    accessibilityLabel="Add inspiration"
-                                >
-                                    <LinearGradient
-                                        colors={colors.gradients.primaryAccent as [string, string]}
-                                        start={{ x: 0, y: 0 }}
-                                        end={{ x: 1, y: 0 }}
-                                        style={styles.addInspoGradient}
-                                    >
-                                        <Ionicons name="add" size={20} color="#FFF" />
-                                        <Text style={styles.addInspoText}>Add inspo</Text>
-                                    </LinearGradient>
-                                </TouchableOpacity>
-                            </FrostedGlassCard>
-                        ) : (
-                            <BentoGrid columns={2} gap={spacing.md} padding={0}>
-                                {savedInspo.map((item, index) => (
-                                    <ProductCard
-                                        key={index}
-                                        item={item}
-                                        index={index}
-                                        isSaved={true}
-                                        onSave={() => { }}
-                                    />
-                                ))}
-                            </BentoGrid>
-                        )
-                    )}
-
-                    <View style={{ height: 120 }} />
+                    <View style={{ height: 100 }} />
                 </ScrollView>
-
             </SafeAreaView>
         </View>
     );
 };
 
 const styles = StyleSheet.create({
+    // ... (existing styles)
+
+    // Guide Styles
+    guideCardContainer: {
+        paddingHorizontal: spacing.screenPadding,
+        marginBottom: spacing.lg,
+    },
+    guideCard: {
+        width: '100%',
+        aspectRatio: 1, // Big Square
+        borderRadius: radius.xl,
+        overflow: 'hidden',
+        backgroundColor: colors.background.secondary,
+        position: 'relative',
+    },
+    guideImage: {
+        width: '100%',
+        height: '100%',
+    },
+    guideGradient: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        padding: spacing.md,
+        paddingBottom: spacing.lg,
+    },
+    guideTitle: {
+        fontSize: 24,
+        fontWeight: '700',
+        color: '#FFF',
+        marginBottom: 4,
+    },
+    guideSubtitle: {
+        fontSize: 16,
+        fontWeight: '500',
+        color: '#RGBA(255,255,255,0.8)',
+    },
+
+    // ... (rest of styles)
+
     container: {
         flex: 1,
-        backgroundColor: colors.background.primary,
+        backgroundColor: '#FFFFFF',
     },
     safeArea: { flex: 1 },
-
+    scrollContent: {
+        paddingTop: spacing.md,
+    },
     // Header
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: spacing.screenPadding,
-        paddingVertical: spacing.sm + 2,
-        backgroundColor: colors.glass.frosted,
-        borderBottomWidth: 0.5,
-        borderBottomColor: colors.border.subtle,
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        backgroundColor: '#FFFFFF',
     },
     headerTitle: {
         ...typography.scale.titleLarge,
-        color: colors.text.primary,
         fontWeight: '700',
+        color: '#0A1931',
+        letterSpacing: 0.3,
     },
-    headerButton: {
-        width: spacing.touchTarget.minimum,
-        height: spacing.touchTarget.minimum,
+    headerSpacer: { width: 28 },
+
+    // Segmented Control
+    segmentContainer: {
+        alignItems: 'center',
+        paddingTop: 15,
+        paddingBottom: 20,
+        backgroundColor: '#FFFFFF',
+    },
+    segmentBackground: {
+        flexDirection: 'row',
+        backgroundColor: '#E5E5EA', // iOS System Gray 5
+        borderRadius: 24, // Rounded
+        padding: 4,
+        width: 300,
+    },
+    segmentButton: {
+        flex: 1,
+        paddingVertical: 10,
         alignItems: 'center',
         justifyContent: 'center',
+        borderRadius: 20,
     },
-
-    // Tabs
-    tabsContainer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        gap: spacing.xl,
-        paddingVertical: spacing.md,
-        backgroundColor: colors.background.primary,
+    segmentButtonActive: {
+        backgroundColor: '#FFFFFF',
+        shadowColor: '#0A1931',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
     },
-    tabButton: {
-        paddingVertical: spacing.xs,
-        paddingHorizontal: spacing.xs,
-        position: 'relative',
+    segmentText: {
+        fontSize: 15,
+        fontWeight: '500',
+        color: '#8E8E93',
     },
-    tabButtonActive: {},
-    tabText: {
-        ...typography.scale.bodyMedium,
-        color: colors.text.tertiary,
-    },
-    tabTextActive: {
-        color: colors.text.primary,
+    segmentTextActive: {
+        color: '#0A1931',
         fontWeight: '600',
     },
-    tabIndicator: {
+
+    // Search input
+    searchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.background.secondary,
+        marginHorizontal: spacing.screenPadding,
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.sm + 2,
+        borderRadius: 999,
+        marginBottom: spacing.lg,
+    },
+    searchIcon: {
+        marginRight: spacing.sm,
+    },
+    searchInput: {
+        flex: 1,
+        ...typography.scale.bodyMedium,
+        color: colors.text.primary,
+        paddingVertical: 0,
+    },
+
+    section: {
+        marginBottom: spacing.xl,
+    },
+    sectionTitle: {
+        ...typography.scale.titleMedium,
+        fontSize: 18,
+        fontWeight: '700',
+        color: colors.text.primary,
+        marginBottom: spacing.md,
+        paddingHorizontal: spacing.screenPadding,
+    },
+
+    // Featured Capsules
+    capsulesScroll: {
+        paddingHorizontal: spacing.screenPadding,
+        gap: spacing.md,
+    },
+    capsuleCard: {
+        width: CAPSULE_CARD_WIDTH,
+        height: CAPSULE_CARD_HEIGHT,
+        borderRadius: radius.lg,
+        overflow: 'hidden',
+        backgroundColor: colors.background.secondary,
+    },
+    capsuleImage: {
+        width: '100%',
+        height: '100%',
+    },
+    capsuleGradient: {
         position: 'absolute',
         bottom: 0,
         left: 0,
         right: 0,
-        height: 2,
-        backgroundColor: colors.accent.primary,
-        borderRadius: 1,
+        height: '45%',
+        justifyContent: 'flex-end',
+        padding: spacing.sm,
     },
-
-    // Content
-    scrollContent: {
-        paddingHorizontal: spacing.screenPadding,
-        paddingTop: spacing.md,
-    },
-
-    // Trending Grid
-    trendingGrid: {
-        flexDirection: 'row',
-        gap: spacing.md,
-    },
-    trendingColumn: {
-        flex: 1,
-        gap: spacing.md,
-    },
-    trendingCard: {
-        borderRadius: radius.lg,
-        overflow: 'hidden',
-        backgroundColor: colors.background.secondary,
-        minHeight: 180,
-    },
-    trendingImage: {
-        width: '100%',
-        height: '100%',
-    },
-    trendingOverlay: {
-        position: 'absolute',
-        bottom: spacing.sm,
-        right: spacing.sm,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.xs,
-        paddingHorizontal: spacing.sm,
-        paddingVertical: spacing.xs,
-        borderRadius: radius.pill,
-        overflow: 'hidden',
-    },
-    trendingLikes: {
+    capsuleTitle: {
         ...typography.scale.labelMedium,
-        color: '#FFF',
+        fontSize: 14,
         fontWeight: '600',
+        color: '#FFF',
+        textShadowColor: 'rgba(0,0,0,0.4)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
     },
 
-    // Trending Info Card
-    trendingInfoCard: {
-        marginTop: spacing.lg,
-    },
-    updatedBadge: {
+    // Monnaie's Spring Transition – 2-column grid
+    productsGrid: {
         flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.xs,
+        flexWrap: 'wrap',
+        paddingHorizontal: spacing.screenPadding,
+    },
+    productCardWrap: {
+        width: PRODUCT_CARD_WIDTH,
         marginBottom: spacing.sm,
     },
-    updatedText: {
-        ...typography.scale.labelSmall,
-        color: colors.text.tertiary,
+    productCardWrapLeft: {
+        marginRight: spacing.sm,
     },
-    liveDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: colors.accent.warning,
-    },
-    trendingTitle: {
-        ...typography.scale.headlineMedium,
-        color: colors.text.primary,
-        marginBottom: spacing.xs,
-    },
-    trendingSubtitle: {
-        ...typography.scale.bodyMedium,
-        color: colors.text.secondary,
-        marginBottom: spacing.md,
-    },
-    discoverButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'flex-end',
-        gap: spacing.xs,
-        paddingTop: spacing.md,
-        borderTopWidth: 0.5,
-        borderTopColor: colors.border.subtle,
-    },
-    discoverText: {
-        ...typography.scale.bodyMedium,
-        color: colors.accent.primary,
-        fontWeight: '600',
-    },
-
-    // Shopping
-    shopHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: spacing.md,
-    },
-    sectionTitle: {
-        ...typography.scale.titleLarge,
-        color: colors.text.primary,
-    },
-    seeAllText: {
-        ...typography.scale.bodyMedium,
-        color: colors.accent.primary,
-        fontWeight: '600',
-    },
-
-    // Product Card
     productCard: {
-        flex: 1,
+        width: '100%',
     },
     productImageBox: {
         width: '100%',
-        aspectRatio: 0.85,
+        aspectRatio: 1,
         backgroundColor: colors.background.secondary,
-        borderRadius: radius.lg,
+        borderRadius: radius.md,
         overflow: 'hidden',
-        marginBottom: spacing.sm,
+        marginBottom: spacing.xs,
     },
     productImage: {
         width: '100%',
         height: '100%',
     },
-    discountBadge: {
-        position: 'absolute',
-        top: spacing.sm,
-        left: spacing.sm,
-        backgroundColor: colors.accent.error,
-        paddingHorizontal: spacing.sm,
-        paddingVertical: spacing.xs,
-        borderRadius: radius.sm,
-    },
-    discountText: {
-        ...typography.scale.labelSmall,
-        color: '#FFF',
-        fontWeight: '700',
-    },
     saveButton: {
         position: 'absolute',
-        top: spacing.sm,
-        right: spacing.sm,
-        borderRadius: radius.full,
-        overflow: 'hidden',
+        top: spacing.xs,
+        right: spacing.xs,
+        zIndex: 10,
     },
-    saveButtonBlur: {
+    saveButtonCircle: {
         width: 32,
         height: 32,
+        borderRadius: 16,
+        backgroundColor: '#FFF',
         alignItems: 'center',
         justifyContent: 'center',
-    },
-    productInfo: {
-        paddingHorizontal: spacing.xs,
     },
     productBrand: {
-        ...typography.scale.labelSmall,
+        fontSize: 14,
+        fontWeight: '700',
         color: colors.text.primary,
-        marginBottom: spacing.xs,
-    },
-    productName: {
-        ...typography.scale.bodySmall,
-        color: colors.text.secondary,
-        marginBottom: spacing.xs,
-        lineHeight: 16,
-    },
-    priceRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.xs,
+        textTransform: 'uppercase',
+        marginBottom: 2,
     },
     productPrice: {
-        ...typography.scale.titleSmall,
+        fontSize: 15,
+        fontWeight: '400',
         color: colors.text.primary,
-    },
-    originalPrice: {
-        ...typography.scale.bodySmall,
-        color: colors.text.tertiary,
-        textDecorationLine: 'line-through',
-    },
-
-    // Empty State
-    emptyState: {
-        marginTop: spacing.xxl,
-    },
-    emptyContent: {
-        alignItems: 'center',
-        paddingVertical: spacing.xxl,
-    },
-    emptyIconContainer: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        backgroundColor: colors.glass.frosted,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: spacing.lg,
-    },
-    emptyTitle: {
-        ...typography.scale.titleLarge,
-        color: colors.text.primary,
-        marginBottom: spacing.sm,
-    },
-    emptySubtitle: {
-        ...typography.scale.bodyMedium,
-        color: colors.text.secondary,
-        textAlign: 'center',
-        marginBottom: spacing.xl,
-        paddingHorizontal: spacing.lg,
-    },
-    addInspoButton: {
-        borderRadius: radius.pill,
-        overflow: 'hidden',
-        ...LiquidGlass2026Theme.elevation.getShadow(6),
-    },
-    addInspoGradient: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: spacing.sm,
-        paddingVertical: spacing.md,
-        paddingHorizontal: spacing.xxl,
-    },
-    addInspoText: {
-        ...typography.scale.titleMedium,
-        color: '#FFF',
-        fontWeight: '600',
     },
 });
 

@@ -36,7 +36,7 @@ const COLORS = {
 const SHARE_OPTIONS = [
     { id: 'instagram', name: 'Instagram', icon: 'logo-instagram', color: '#E4405F' },
     { id: 'whatsapp', name: 'WhatsApp', icon: 'logo-whatsapp', color: '#25D366' },
-    { id: 'twitter', name: 'X / Twitter', icon: 'logo-twitter', color: '#000000' },
+    { id: 'twitter', name: 'X / Twitter', icon: 'logo-twitter', color: '#0A1931' },
     { id: 'facebook', name: 'Facebook', icon: 'logo-facebook', color: '#1877F2' },
     { id: 'pinterest', name: 'Pinterest', icon: 'logo-pinterest', color: '#E60023' },
     { id: 'copy', name: 'Copy Link', icon: 'link-outline', color: COLORS.textSecondary },

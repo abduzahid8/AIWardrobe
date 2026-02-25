@@ -1,172 +1,54 @@
 import express from "express";
-import jwt from "jsonwebtoken";
-import User from "../models/user.js";
-import { authenticateToken, JWT_SECRET, JWT_EXPIRES_IN } from "../middleware/auth.js";
-import { validateRegistration, validateLogin } from "../middleware/validators.js";
-import { authLimiter, registrationLimiter } from "../middleware/rateLimit.js";
-import {
-    checkAccountLock,
-    handleFailedLogin,
-    handleSuccessfulLogin,
-    getClientIP
-} from "../middleware/security.js";
+import { createClient } from "@supabase/supabase-js";
+import { authenticateToken } from "../middleware/auth.js";
+import { authLimiter } from "../middleware/rateLimit.js";
+import "dotenv/config";
+
+/**
+ * Auth Routes
+ *
+ * Registration and login are handled entirely by Supabase on the mobile client.
+ * This router only exposes server-side profile endpoints that require a valid
+ * Supabase access token.
+ *
+ * Flow:
+ *   1. Mobile calls supabase.auth.signUp() / signInWithPassword() directly
+ *   2. Supabase returns an access_token
+ *   3. Mobile sends that token in Authorization: Bearer <token> to this API
+ *   4. authenticateToken middleware validates it via supabaseAdmin.auth.getUser()
+ */
 
 const router = express.Router();
 
-/**
- * POST /register
- * Register a new user
- * 
- * Rate limited: 3 attempts per hour
- * Validated: email, password strength, username format
- */
-router.post("/register", registrationLimiter, validateRegistration, async (req, res) => {
-    try {
-        const { email, password, username, gender, profileImage } = req.body;
-        console.log("📧 Registration attempt for:", email);
-
-        // Check for existing email
-        const existingUser = await User.findOne({ email: email.toLowerCase() });
-        if (existingUser) {
-            return res.status(400).json({
-                error: "Email already exists",
-                code: "EMAIL_EXISTS"
-            });
-        }
-
-        // Check for existing username
-        const existingUsername = await User.findOne({
-            username: { $regex: new RegExp(`^${username}$`, 'i') }
-        });
-        if (existingUsername) {
-            return res.status(400).json({
-                error: "Username already exists",
-                code: "USERNAME_EXISTS"
-            });
-        }
-
-        // Create user (password hashing should be in User model pre-save hook)
-        const user = new User({
-            email: email.toLowerCase(),
-            password,
-            username,
-            gender: gender || 'prefer_not_to_say',
-            profileImage,
-            outfits: [],
-        });
-
-        console.log("👤 Creating user:", user.username);
-
-        await user.save();
-
-        // Generate token with expiration
-        const token = jwt.sign(
-            { id: user._id, username: user.username },
-            JWT_SECRET,
-            { expiresIn: JWT_EXPIRES_IN }
-        );
-
-        res.status(201).json({
-            token,
-            user: {
-                id: user._id,
-                email: user.email,
-                username: user.username
-            }
-        });
-    } catch (error) {
-        console.error("Registration error:", error.message);
-        res.status(500).json({
-            error: "Registration failed. Please try again.",
-            code: "REGISTRATION_ERROR"
-        });
-    }
-});
-
-/**
- * POST /login
- * Authenticate user and return JWT token
- * 
- * Rate limited: 5 attempts per hour
- * Validated: email format, password required
- * Security: Account lockout after 5 failed attempts
- */
-router.post("/login", authLimiter, checkAccountLock, validateLogin, async (req, res) => {
-    try {
-        const { email, password } = req.body;
-        console.log("🔐 Login attempt for:", email);
-
-        const user = await User.findOne({ email: email.toLowerCase() });
-
-        // Check credentials
-        if (!user || !(await user.comparePassword(password))) {
-            // Track failed login
-            if (user) {
-                const attempts = await handleFailedLogin(user, req);
-                console.log(`❌ Failed login for ${email}, attempt ${attempts}`);
-            }
-
-            // Use same error message for both cases to prevent user enumeration
-            return res.status(401).json({
-                error: "Invalid email or password",
-                code: "INVALID_CREDENTIALS"
-            });
-        }
-
-        // Check if account is locked
-        if (user.isLocked()) {
-            const remainingMinutes = Math.ceil((user.lockedUntil - new Date()) / 60000);
-            return res.status(423).json({
-                error: `Account is locked. Try again in ${remainingMinutes} minutes.`,
-                code: "ACCOUNT_LOCKED"
-            });
-        }
-
-        // Track successful login
-        await handleSuccessfulLogin(user, req);
-        console.log(`✅ Successful login for ${email}`);
-
-        // Generate token with expiration
-        const token = jwt.sign(
-            { id: user._id, username: user.username },
-            JWT_SECRET,
-            { expiresIn: JWT_EXPIRES_IN }
-        );
-
-        res.json({
-            token,
-            user: {
-                id: user._id,
-                email: user.email,
-                username: user.username,
-                subscriptionTier: user.subscriptionTier || 'free'
-            }
-        });
-    } catch (err) {
-        console.error("Login error:", err.message);
-        res.status(500).json({
-            error: "Login failed. Please try again.",
-            code: "LOGIN_ERROR"
-        });
-    }
-});
+const supabaseAdmin = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+);
 
 /**
  * GET /me
- * Get current authenticated user
+ * Returns the authenticated user's profile from Supabase.
+ * Requires: Authorization: Bearer <supabase_access_token>
  */
-router.get("/me", authenticateToken, async (req, res) => {
+router.get("/me", authLimiter, authenticateToken, async (req, res) => {
     try {
-        const user = await User.findById(req.user.id).select("-password");
-        if (!user) {
+        const { data: profile, error } = await supabaseAdmin
+            .from("profiles")
+            .select("id, email, username, gender, profile_image, subscription_tier, subscription_expires_at, created_at")
+            .eq("id", req.user.id)
+            .single();
+
+        if (error || !profile) {
             return res.status(404).json({
-                error: "User not found",
+                error: "Profile not found",
                 code: "USER_NOT_FOUND"
             });
         }
-        res.json(user);
+
+        res.json({ user: profile });
     } catch (err) {
-        console.error("Get user error:", err.message);
+        console.error("Get profile error:", err.message);
         res.status(500).json({
             error: "Failed to get user data",
             code: "FETCH_ERROR"
@@ -175,25 +57,36 @@ router.get("/me", authenticateToken, async (req, res) => {
 });
 
 /**
- * POST /refresh-token
- * Refresh an expiring token
+ * GET /subscription-status
+ * Returns the authenticated user's current subscription tier and expiry.
+ * Used by the mobile app to verify subscription server-side.
  */
-router.post("/refresh-token", authenticateToken, async (req, res) => {
+router.get("/subscription-status", authLimiter, authenticateToken, async (req, res) => {
     try {
-        // Generate new token
-        const token = jwt.sign(
-            { id: req.user.id, username: req.user.username },
-            JWT_SECRET,
-            { expiresIn: JWT_EXPIRES_IN }
-        );
+        const { data: profile, error } = await supabaseAdmin
+            .from("profiles")
+            .select("subscription_tier, subscription_expires_at")
+            .eq("id", req.user.id)
+            .single();
 
-        res.json({ token });
-    } catch (err) {
-        console.error("Token refresh error:", err.message);
-        res.status(500).json({
-            error: "Failed to refresh token",
-            code: "REFRESH_ERROR"
+        if (error || !profile) {
+            return res.status(404).json({ error: "Profile not found", code: "USER_NOT_FOUND" });
+        }
+
+        const isExpired = profile.subscription_expires_at
+            ? new Date(profile.subscription_expires_at) < new Date()
+            : false;
+
+        const effectiveTier = isExpired ? "free" : (profile.subscription_tier || "free");
+
+        res.json({
+            tier: effectiveTier,
+            expiresAt: profile.subscription_expires_at,
+            isActive: !isExpired && effectiveTier !== "free",
         });
+    } catch (err) {
+        console.error("Subscription status error:", err.message);
+        res.status(500).json({ error: "Failed to get subscription status", code: "FETCH_ERROR" });
     }
 });
 

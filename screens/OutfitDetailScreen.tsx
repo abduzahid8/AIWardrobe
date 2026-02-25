@@ -31,7 +31,7 @@ const { width, height } = Dimensions.get("window");
 
 // Colors
 const COLORS = {
-    background: '#000000',
+    background: '#0A1931',
     surface: '#1A1A1A',
     white: '#FFFFFF',
     text: '#FFFFFF',

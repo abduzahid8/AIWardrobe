@@ -21,7 +21,7 @@ import AppColors from '../constants/AppColors';
 
 // Strict Black & White Theme
 const BW = {
-    black: '#000000',
+    black: '#0A1931',
     white: '#FFFFFF',
     gray: '#8E8E93',
     lightGray: '#F5F5F7',
@@ -494,7 +494,7 @@ const styles = StyleSheet.create({
     actionCardContainer: {
         borderRadius: 18,
         overflow: 'hidden',
-        shadowColor: '#000',
+        shadowColor: '#0A1931',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.06,
         shadowRadius: 8,

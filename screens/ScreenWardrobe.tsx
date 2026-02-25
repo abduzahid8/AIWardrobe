@@ -13,7 +13,8 @@ import axios from "axios";
 import * as ImagePicker from "expo-image-picker";
 import * as Device from 'expo-device';
 import { useTranslation } from 'react-i18next';
-import { API_URL } from "../api/config";
+import Config from "../src/config/env";
+const API_URL = Config.api.url;
 import { useNavigation } from '@react-navigation/native';
 
 export default function ScanWardrobeScreen() {
@@ -144,7 +145,7 @@ export default function ScanWardrobeScreen() {
   // --- ЭКРАН ЗАГРУЗКИ (Показываем поверх камеры) ---
   if (isAnalyzing) {
     return (
-      <View style={{ flex: 1, backgroundColor: 'black', justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flex: 1, backgroundColor: '#0A1931', justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color="#fff" />
         <Text style={{ color: 'white', marginTop: 16, fontSize: 18, fontWeight: 'bold' }}>{t('wardrobe.aiAnalyzing')}</Text>
         <Text style={{ color: '#aaa', marginTop: 5 }}>{t('wardrobe.mayTakeMinute')}</Text>
@@ -154,7 +155,7 @@ export default function ScanWardrobeScreen() {
 
   // --- ЭКРАН КАМЕРЫ ---
   return (
-    <View style={{ flex: 1, backgroundColor: 'black' }}>
+    <View style={{ flex: 1, backgroundColor: '#0A1931' }}>
       <CameraView
         ref={cameraRef}
         style={StyleSheet.absoluteFill}

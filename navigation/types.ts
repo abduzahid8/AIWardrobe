@@ -34,8 +34,10 @@ export type RootStackParamList = {
     SignIn: undefined;
     SignUp: undefined;
 
-    // Main
-    Home: NavigatorScreenParams<TabParamList>;
+    // Main (tab container)
+    Main: NavigatorScreenParams<TabParamList>;
+    StyleQuiz: undefined;
+    Paywall: undefined;
 
     // Wardrobe & Scanning
     AddOutfit: {
@@ -43,48 +45,47 @@ export type RootStackParamList = {
         savedOutfits?: { [key: string]: ClothingItem[] };
     };
     ScanWardrobe: undefined;
-    ReviewScan: { items: ScannedItem[] }; // Confirmed usage
+    ReviewScan: { items: ScannedItem[] };
     WardrobeVideo: { videoUri?: string; imageUri?: string };
     Camera: undefined;
 
     // Creation & Design
-    DesignRoom: undefined; // DesignRoomScreen.tsx doesn't seem to access params via route
+    DesignRoom: undefined;
     NewOutfit: {
         selectedItems?: ClothingItem[];
         date?: string;
-        savedOutfits?: { [key: string]: any[] }; // from NewOutfitScreen.tsx
+        savedOutfits?: { [key: string]: any[] };
     };
 
-    // AI Features
+    // AI Features — names match registered Stack.Screen names exactly
     AIChat: undefined;
-    AIAssistant: { initialMessage?: string };
     AIOutfit: undefined;
-    AIOutfitmaker: undefined;
     AITryOn: undefined;
     AIHub: undefined;
     OutfitAI: undefined;
+    CreateAvatar: undefined;
 
-    // Others
+    // Calendar & Planning
     Calendar: undefined;
-    EmailOnboarding: undefined;
     TripPlanner: undefined;
-    OutfitDetail: { image?: string; outfit?: OutfitItem };
-    Paywall: undefined;
     MeetingOutfit: undefined;
+
+    // Shopping
     PriceTracker: undefined;
     FlashSales: undefined;
     FlashSaleEvent: { eventId: string };
+
+    // Profile & Settings
+    EmailOnboarding: undefined;
+    OutfitDetail: { image?: string; outfit?: OutfitItem };
     MyCloset: undefined;
     StyleGoals: undefined;
 };
 
 export type TabParamList = {
     Home: undefined;
-    Closet: undefined; // Changed from Wardrobe in original types to match TabNavigator usage
+    Closet: undefined;
     AI: undefined;
     Inspo: undefined;
     Profile: undefined;
-    Discover: undefined;
-    Add: undefined;
-    Wardrobe: undefined;
 };

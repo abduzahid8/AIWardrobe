@@ -3,6 +3,8 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Platform } from "react-native";
 
 // Imports screens...
+import StyleQuizScreen from "../screens/StyleQuizScreen";
+import { useStylePreferenceStore } from "../store/stylePreferenceStore";
 import HomeScreen from "../screens/HomeScreen";
 import AIAssistant from "../screens/AIAssistant";
 import AddOutfitScreen from "../screens/AddOutfitScreen";
@@ -29,6 +31,7 @@ import TripPlannerScreen from "../screens/TripPlannerScreen";
 import OutfitDetailScreen from "../screens/OutfitDetailScreen";
 import PaywallScreen from "../screens/PaywallScreen";
 import OutfitAIScreen from "../screens/OutfitAIScreen";
+import CreateAvatarScreen from "../screens/CreateAvatarScreen";
 import MeetingOutfitScreen from "../screens/MeetingOutfitScreen";
 import PriceTrackerScreen from "../screens/PriceTrackerScreen";
 import FlashSalesScreen from "../screens/FlashSalesScreen";
@@ -55,8 +58,8 @@ const smoothTransitionConfig = {
 };
 
 const RootNavigator = () => {
-  // @ts-ignore
   const { isAuthenticated, isTrialMode, startTrial } = useAuthStore();
+  const { hasCompletedOnboarding, onboardingStep } = useStylePreferenceStore();
   const {
     trialCount,
     isTrialExpired,
@@ -114,6 +117,7 @@ const RootNavigator = () => {
 
 
   // Determine what to show based on authentication and trial state
+  // Modified flow: Auth -> Onboarding (StyleQuiz) -> Paywall -> Main
   const shouldShowApp = isAuthenticated || (isTrialMode && !isTrialExpired);
 
   return (
@@ -144,8 +148,14 @@ const RootNavigator = () => {
       >
         {shouldShowApp ? (
           <>
+            {!hasCompletedOnboarding ? (
+              <Stack.Screen name="StyleQuiz" component={StyleQuizScreen} />
+            ) : (
+              <Stack.Screen name="Main" component={TabNavigator} />
+            )}
+
             {/* Main tab navigation with Home, Add, and Profile */}
-            <Stack.Screen name="Home" component={TabNavigator} />
+            {/* <Stack.Screen name="Home" component={TabNavigator} /> */}
 
             <Stack.Screen
               name="AddOutfit"
@@ -180,6 +190,11 @@ const RootNavigator = () => {
             <Stack.Screen
               name="AITryOn"
               component={AITryOnScreen}
+              options={{ animation: 'slide_from_right' }}
+            />
+            <Stack.Screen
+              name="CreateAvatar"
+              component={CreateAvatarScreen}
               options={{ animation: 'slide_from_right' }}
             />
             <Stack.Screen
@@ -259,16 +274,7 @@ const RootNavigator = () => {
                 gestureEnabled: true,
               }}
             />
-            <Stack.Screen
-              name="Paywall"
-              component={PaywallScreen}
-              options={{
-                animation: 'slide_from_bottom',
-                presentation: 'modal',
-                gestureEnabled: true,
-                gestureDirection: 'vertical',
-              }}
-            />
+
             <Stack.Screen
               name="OutfitAI"
               component={OutfitAIScreen}
@@ -324,6 +330,20 @@ const RootNavigator = () => {
                 animation: 'slide_from_right',
               }}
             />
+
+            {/* Global Paywall explicitly for when onboarding is done */}
+            {hasCompletedOnboarding && (
+              <Stack.Screen
+                name="Paywall"
+                component={PaywallScreen}
+                options={{
+                  animation: 'slide_from_bottom',
+                  presentation: 'modal',
+                  gestureEnabled: true,
+                  gestureDirection: 'vertical',
+                }}
+              />
+            )}
 
           </>
         ) : (

@@ -32,7 +32,7 @@ const { width } = Dimensions.get('window');
 const ALTA = {
     background: '#FFFFFF',
     surface: '#F5F5F5',
-    text: '#000000',
+    text: '#0A1931',
     textSecondary: '#666666',
     textMuted: '#999999',
     border: '#E5E5E5',
@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
         color: ALTA.textMuted, // #999 inactive
     },
     tabTextActive: {
-        color: ALTA.text, // #000 active
+        color: ALTA.text, // #0A1931 active
     },
 
     // Empty State

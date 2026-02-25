@@ -92,7 +92,7 @@ const OnboardingProgress: React.FC<OnboardingProgressProps> = ({
                     <Ionicons
                         name={isComplete ? "checkmark-circle" : "sparkles"}
                         size={20}
-                        color={isComplete ? "#22C55E" : "#000"}
+                        color={isComplete ? "#22C55E" : "#0A1931"}
                     />
                 </View>
                 <View style={styles.textContainer}>
@@ -120,10 +120,10 @@ const styles = StyleSheet.create({
         bottom: 100,
         left: 20,
         right: 20,
-        backgroundColor: '#000',
+        backgroundColor: '#0A1931',
         borderRadius: 16,
         padding: 16,
-        shadowColor: '#000',
+        shadowColor: '#0A1931',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.25,
         shadowRadius: 16,

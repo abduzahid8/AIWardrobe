@@ -347,8 +347,8 @@ router.post("/product-photo/process", async (req, res) => {
         console.log(`   Clothing: ${clothingType}, ${clothingColor}, ${clothingStyle}`);
 
         const steps = [];
-        let bestFrameIndex = Math.floor(frames.length / 2);
-        let bestFrame = frames[bestFrameIndex];
+        const bestFrameIndex = Math.floor(frames.length / 2);
+        const bestFrame = frames[bestFrameIndex];
         let finalImageUrl;
         let analysisData = {};
 

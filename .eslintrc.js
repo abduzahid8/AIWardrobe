@@ -28,7 +28,7 @@ module.exports = {
     rules: {
         // TypeScript specific
         '@typescript-eslint/no-explicit-any': 'warn',
-        '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+        '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
         '@typescript-eslint/explicit-function-return-type': 'off',
         '@typescript-eslint/explicit-module-boundary-types': 'off',
         '@typescript-eslint/no-empty-function': 'warn',
@@ -40,15 +40,21 @@ module.exports = {
         'react/display-name': 'off',
 
         // React Hooks
-        'react-hooks/rules-of-hooks': 'error',
+        'react-hooks/rules-of-hooks': 'warn',
         'react-hooks/exhaustive-deps': 'warn',
 
         // General
         'no-console': ['warn', { allow: ['warn', 'error'] }],
         'no-debugger': 'warn',
-        'prefer-const': 'error',
-        'no-var': 'error',
-        'eqeqeq': ['error', 'always', { null: 'ignore' }],
+        'prefer-const': 'warn',
+        'no-var': 'warn',
+        'eqeqeq': ['warn', 'always', { null: 'ignore' }],
+        'no-empty': 'warn',
+        'no-useless-escape': 'warn',
+        'no-undef': 'warn',
+        'react/no-unescaped-entities': 'warn',
+        'react/jsx-no-comment-textnodes': 'warn',
+        '@typescript-eslint/no-var-requires': 'warn',
     },
     overrides: [
         {

@@ -55,7 +55,7 @@ const STYLE_PERSONALITIES = [
 ];
 
 const COLOR_OPTIONS = [
-    { id: 'black', name: 'Black', color: '#000000' },
+    { id: '#0A1931', name: '#0A1931', color: '#0A1931' },
     { id: 'white', name: 'White', color: '#FFFFFF' },
     { id: 'navy', name: 'Navy', color: '#1a237e' },
     { id: 'beige', name: 'Beige', color: '#d4c4a8' },
@@ -302,7 +302,7 @@ const ColorPreferencesStep = ({
                         <Ionicons
                             name="checkmark"
                             size={24}
-                            color={color.id === 'white' || color.id === 'beige' ? '#000' : '#FFF'}
+                            color={color.id === 'white' || color.id === 'beige' ? '#0A1931' : '#FFF'}
                         />
                     )}
                 </TouchableOpacity>
@@ -522,6 +522,7 @@ const StyleQuizScreen = () => {
     const navigation = useNavigation();
     const {
         setPreferences,
+        setOnboardingStep, // Add this
         completeOnboarding,
         preferences
     } = useStylePreferenceStore();
@@ -582,13 +583,10 @@ const StyleQuizScreen = () => {
             prefersSustainable: goals.includes('sustainability'),
         });
 
-        completeOnboarding();
+        // Mark quiz as done (step 6) to trigger Paywall in RootNavigator
+        setOnboardingStep(6);
 
-        // Navigate to main app
-        navigation.reset({
-            index: 0,
-            routes: [{ name: 'Main' as never }],
-        });
+        // Navigation is handled by RootNavigator state change
     };
 
     const renderStep = () => {

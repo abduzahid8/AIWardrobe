@@ -9,10 +9,8 @@ import {
     Text,
     TouchableOpacity,
     StyleSheet,
-    Dimensions,
     StatusBar,
     Alert,
-    Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, CameraType, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
@@ -23,7 +21,7 @@ import * as MediaLibrary from 'expo-media-library';
 import * as ImagePicker from 'expo-image-picker';
 import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
-const { width, height } = Dimensions.get('window');
+
 
 type CameraMode = 'photo' | 'video';
 
@@ -32,7 +30,7 @@ const CameraScreen = () => {
     const cameraRef = useRef<CameraView>(null);
 
     const [cameraPermission, requestCameraPermission] = useCameraPermissions();
-    const [micPermission, requestMicPermission] = useMicrophonePermissions();
+    const [, requestMicPermission] = useMicrophonePermissions();
     const [mediaPermission, requestMediaPermission] = MediaLibrary.usePermissions();
 
     const [facing, setFacing] = useState<CameraType>('back');
@@ -257,7 +255,7 @@ const CameraScreen = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#000',
+        backgroundColor: '#0A1931',
     },
     camera: {
         flex: 1,
@@ -266,7 +264,7 @@ const styles = StyleSheet.create({
     // Permission
     permissionContainer: {
         flex: 1,
-        backgroundColor: '#000',
+        backgroundColor: '#0A1931',
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -285,7 +283,7 @@ const styles = StyleSheet.create({
     permissionButtonText: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#000',
+        color: '#0A1931',
     },
 
     // Top Controls
@@ -293,7 +291,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         paddingHorizontal: 20,
-        paddingTop: 10,
+        paddingTop: 50, // Increased to clear status bar/dynamic island
     },
     controlButton: {
         width: 44,

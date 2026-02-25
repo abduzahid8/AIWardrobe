@@ -96,7 +96,7 @@ const OutfitCalendarScreen = () => {
                 }
                 // Calculate streak
                 let streakCount = 0;
-                let checkDate = new Date(today);
+                const checkDate = new Date(today);
                 while (logs[formatDate(checkDate.getFullYear(), checkDate.getMonth(), checkDate.getDate())]) {
                     streakCount++;
                     checkDate.setDate(checkDate.getDate() - 1);

@@ -13,7 +13,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, {
-    FadeInUp,
     useAnimatedStyle,
     useSharedValue,
     withSpring,
@@ -59,18 +58,16 @@ const TrialLimitModal: React.FC<TrialLimitModalProps> = ({
             animationType="fade"
             statusBarTranslucent
         >
-            <BlurView intensity={40} style={styles.backdrop}>
+            <BlurView intensity={20} tint="dark" style={styles.backdrop}>
                 <View style={styles.container}>
                     <View style={styles.card}>
                         <LinearGradient
-                            colors={["#1A1A2E", "#16213E"]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
+                            colors={["#1A1C29", "#1A1C29"]}
                             style={styles.gradient}
                         >
                             {/* Icon */}
                             <View style={styles.iconContainer}>
-                                <Ionicons name="sparkles" size={48} color="#FFD700" />
+                                <Ionicons name="sparkles" size={42} color="#FFD700" />
                             </View>
 
                             {/* Title */}
@@ -92,23 +89,11 @@ const TrialLimitModal: React.FC<TrialLimitModalProps> = ({
                                         onSubscribe?.();
                                     }}
                                     activeOpacity={1}
+                                    style={styles.flex1}
                                 >
                                     <Animated.View style={[styles.subscriptionCard, styles.premiumCard, premiumPress.animatedStyle]}>
                                         <View style={styles.popularBadge}>
                                             <Text style={styles.popularBadgeText}>POPULAR</Text>
-                                        </View>
-                                        <Text style={styles.tierName}>Premium</Text>
-                                        <View style={styles.priceRow}>
-                                            <Text style={styles.price}>$9.99</Text>
-                                            <Text style={styles.period}>/month</Text>
-                                        </View>
-                                        <View style={styles.featureRow}>
-                                            <Ionicons name="checkmark" size={14} color="#34C759" />
-                                            <Text style={styles.featureText}>Unlimited AI Outfits</Text>
-                                        </View>
-                                        <View style={styles.featureRow}>
-                                            <Ionicons name="checkmark" size={14} color="#34C759" />
-                                            <Text style={styles.featureText}>50 Try-Ons/month</Text>
                                         </View>
                                     </Animated.View>
                                 </TouchableOpacity>
@@ -122,21 +107,9 @@ const TrialLimitModal: React.FC<TrialLimitModalProps> = ({
                                         onSubscribe?.();
                                     }}
                                     activeOpacity={1}
+                                    style={styles.flex1}
                                 >
                                     <Animated.View style={[styles.subscriptionCard, styles.vipCard, vipPress.animatedStyle]}>
-                                        <Text style={styles.tierName}>VIP</Text>
-                                        <View style={styles.priceRow}>
-                                            <Text style={styles.price}>$99.99</Text>
-                                            <Text style={styles.period}>/year</Text>
-                                        </View>
-                                        <View style={styles.featureRow}>
-                                            <Ionicons name="checkmark" size={14} color="#34C759" />
-                                            <Text style={styles.featureText}>Everything + Unlimited</Text>
-                                        </View>
-                                        <View style={styles.featureRow}>
-                                            <Ionicons name="checkmark" size={14} color="#34C759" />
-                                            <Text style={styles.featureText}>Priority Support</Text>
-                                        </View>
                                     </Animated.View>
                                 </TouchableOpacity>
                             </View>
@@ -185,22 +158,23 @@ const TrialLimitModal: React.FC<TrialLimitModalProps> = ({
 const styles = StyleSheet.create({
     backdrop: {
         flex: 1,
-        backgroundColor: "rgba(0, 0, 0, 0.6)",
+        backgroundColor: "rgba(0, 0, 0, 0.4)",
         justifyContent: "center",
         alignItems: "center",
     },
     container: {
-        width: width - 32,
+        width: width - 40,
         maxWidth: 400,
     },
     card: {
-        borderRadius: 24,
+        borderRadius: 28,
         overflow: "hidden",
+        backgroundColor: "#1A1C29",
         ...Platform.select({
             ios: {
                 shadowColor: "#000",
                 shadowOffset: { width: 0, height: 10 },
-                shadowOpacity: 0.4,
+                shadowOpacity: 0.5,
                 shadowRadius: 20,
             },
             android: {
@@ -209,100 +183,74 @@ const styles = StyleSheet.create({
         }),
     },
     gradient: {
-        padding: 24,
+        paddingVertical: 36,
+        paddingHorizontal: 20,
         alignItems: "center",
     },
     iconContainer: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        backgroundColor: "rgba(255, 215, 0, 0.15)",
+        width: 76,
+        height: 76,
+        borderRadius: 38,
+        backgroundColor: "rgba(92, 80, 24, 0.4)",
         justifyContent: "center",
         alignItems: "center",
         marginBottom: 20,
     },
     title: {
-        fontSize: 24,
-        fontWeight: "700",
+        fontSize: 22,
+        fontWeight: "800",
         color: "#FFF",
-        marginBottom: 10,
+        marginBottom: 12,
         textAlign: "center",
     },
     message: {
-        fontSize: 14,
+        fontSize: 15,
         color: "rgba(255, 255, 255, 0.8)",
         textAlign: "center",
-        lineHeight: 20,
-        marginBottom: 20,
-        paddingHorizontal: 10,
+        lineHeight: 22,
+        marginBottom: 30,
+        paddingHorizontal: 12,
     },
 
     // Subscription Options
     subscriptionOptions: {
         flexDirection: 'row',
-        gap: 12,
-        marginBottom: 20,
+        gap: 16,
+        marginBottom: 28,
         width: '100%',
+        paddingHorizontal: 8,
+    },
+    flex1: {
+        flex: 1,
     },
     subscriptionCard: {
-        flex: 1,
-        padding: 14,
-        borderRadius: 16,
+        height: 48,
+        borderRadius: 24,
         borderWidth: 2,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     premiumCard: {
-        backgroundColor: 'rgba(255, 215, 0, 0.1)',
+        backgroundColor: 'transparent',
         borderColor: '#FFD700',
     },
     vipCard: {
-        backgroundColor: 'rgba(168, 85, 247, 0.1)',
+        backgroundColor: 'transparent',
         borderColor: '#A855F7',
     },
     popularBadge: {
         position: 'absolute',
         top: -10,
-        right: 10,
+        right: 14,
         backgroundColor: '#FFD700',
-        paddingHorizontal: 6,
-        paddingVertical: 2,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
         borderRadius: 6,
     },
     popularBadgeText: {
-        fontSize: 8,
-        fontWeight: '700',
-        color: '#000',
-    },
-    tierName: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#FFF',
-        marginBottom: 4,
-    },
-    priceRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-end',
-        marginBottom: 10,
-    },
-    price: {
-        fontSize: 22,
+        fontSize: 9,
         fontWeight: '800',
-        color: '#FFF',
-    },
-    period: {
-        fontSize: 12,
-        color: 'rgba(255,255,255,0.6)',
-        marginLeft: 2,
-        marginBottom: 2,
-    },
-    featureRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        marginBottom: 4,
-    },
-    featureText: {
-        fontSize: 11,
-        color: 'rgba(255,255,255,0.8)',
+        color: '#000',
     },
 
     // Divider
@@ -310,42 +258,44 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         width: '100%',
-        marginBottom: 16,
+        marginBottom: 24,
+        paddingHorizontal: 20,
     },
     divider: {
         flex: 1,
         height: 1,
-        backgroundColor: 'rgba(255,255,255,0.2)',
+        backgroundColor: 'rgba(255,255,255,0.15)',
     },
     dividerText: {
-        fontSize: 12,
+        fontSize: 13,
         color: 'rgba(255,255,255,0.5)',
-        marginHorizontal: 12,
+        marginHorizontal: 16,
     },
 
     buttonContainer: {
         width: "100%",
+        paddingHorizontal: 8,
     },
     primaryButton: {
         backgroundColor: "#FFF",
-        paddingVertical: 14,
+        paddingVertical: 16,
         borderRadius: 12,
         alignItems: "center",
-        marginBottom: 10,
+        marginBottom: 16,
     },
     primaryButtonText: {
         fontSize: 16,
         fontWeight: "700",
-        color: "#1A1A2E",
+        color: "#000",
     },
     secondaryButton: {
-        paddingVertical: 10,
+        paddingVertical: 8,
         alignItems: "center",
     },
     secondaryButtonText: {
-        fontSize: 13,
+        fontSize: 14,
         color: "rgba(255,255,255,0.7)",
-        fontWeight: "500",
+        fontWeight: "400",
     },
 });
 

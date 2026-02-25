@@ -16,7 +16,8 @@ import { mpants, mshirts, pants, shoes, skirts, tops } from "../images";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 // Убедитесь, что путь верный!
-import { API_URL } from "../api/config";
+import Config from "../src/config/env";
+const API_URL = Config.api.url;
 
 const AddOutfitScreen = () => {
   const route = useRoute();
@@ -107,7 +108,7 @@ const AddOutfitScreen = () => {
     <SafeAreaView className="flex-1 bg-white">
       <View className="flex-row items-center justify-between px-4">
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={28} color="black" />
+          <Ionicons name="chevron-back" size={28} color="#0A1931" />
         </TouchableOpacity>
         <Text className="text-lg font-semibold">{t('addOutfit.title')}</Text>
         <Text className="text-gray-500">{date}</Text>
@@ -126,7 +127,7 @@ const AddOutfitScreen = () => {
           <TouchableOpacity
             onPress={handleLinkPaste}
             disabled={loadingLink}
-            className="bg-black w-12 h-12 rounded-lg items-center justify-center"
+            className="bg-[#0A1931] w-12 h-12 rounded-lg items-center justify-center"
           >
             {loadingLink ? (
               <ActivityIndicator color="white" size="small" />
@@ -140,15 +141,15 @@ const AddOutfitScreen = () => {
 
       <View className="flex-row justify-around mt-4 px-4">
         <TouchableOpacity className="bg-gray-100 w-[30%] py-3 rounded-lg items-center">
-          <Ionicons name="camera-outline" size={22} color="black" />
+          <Ionicons name="camera-outline" size={22} color="#0A1931" />
           <Text className="font-medium mt-1">{t('addOutfit.selfie')}</Text>
         </TouchableOpacity>
         <TouchableOpacity className="bg-gray-100 w-[30%] py-3 rounded-lg items-center">
-          <Ionicons name="sparkles-outline" size={22} color="black" />
+          <Ionicons name="sparkles-outline" size={22} color="#0A1931" />
           <Text className="font-medium mt-1">{t('addOutfit.suggestions')}</Text>
         </TouchableOpacity>
         <TouchableOpacity className="bg-gray-100 w-[30%] py-3 rounded-lg items-center">
-          <Ionicons name="shirt-outline" size={22} color="black" />
+          <Ionicons name="shirt-outline" size={22} color="#0A1931" />
           <Text className="font-medium mt-1">{t('addOutfit.saved')}</Text>
         </TouchableOpacity>
       </View>
@@ -173,7 +174,7 @@ const AddOutfitScreen = () => {
                 </Text>
               </View>
               <View
-                className={`absolute top-2 left-2 w-6 h-6 rounded-full border-2 ${selected.includes(item.id) ? "bg-black" : "border-gray-400"
+                className={`absolute top-2 left-2 w-6 h-6 rounded-full border-2 ${selected.includes(item.id) ? "bg-[#0A1931]" : "border-gray-400"
                   } items-center justify-center`}
               >
                 {selected.includes(item?.id) && (
@@ -206,7 +207,7 @@ const AddOutfitScreen = () => {
           </ScrollView>
           <TouchableOpacity
             onPress={handleNext}
-            className="bg-black py-3 rounded-lg mt-3 mb-3 items-center self-end w-24"
+            className="bg-[#0A1931] py-3 rounded-lg mt-3 mb-3 items-center self-end w-24"
           >
             <Text className="text-white font-semibold">{t('common.next')}</Text>
           </TouchableOpacity>

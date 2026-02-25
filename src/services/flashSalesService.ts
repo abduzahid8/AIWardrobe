@@ -183,7 +183,7 @@ const MOCK_FLASH_PRODUCTS: FlashSaleProduct[] = [
         productUrl: 'https://example.com/bag',
         affiliateUrl: 'https://example.com/bag?ref=aiwardrobe',
         category: 'accessories',
-        color: 'Black',
+        color: '#0A1931',
         stockStatus: 'in_stock',
         stockCount: 15,
         rating: 4.5,

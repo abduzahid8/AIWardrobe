@@ -11,11 +11,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
 import { LinearGradient } from 'expo-linear-gradient';
+import useAuthStore from '../store/auth';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+// API_URL removed
 
 // Scanned email item type
 interface ScannedEmailItem {
@@ -43,77 +42,28 @@ interface ScanResult {
  */
 const EmailOnboardingScreen = () => {
     const navigation = useNavigation();
+    const { user } = useAuthStore();
     const [loading, setLoading] = useState(false);
     const [scanning, setScanning] = useState(false);
     const [connected, setConnected] = useState(false);
     const [scanResults, setScanResults] = useState<ScanResult | null>(null);
-    const [userId, setUserId] = useState<string | null>(null);
 
     useEffect(() => {
-        checkEmailStatus();
-        getUserId();
+        // user is already available from store
     }, []);
 
-    const getUserId = async () => {
-        try {
-            const token = await AsyncStorage.getItem('userToken');
-            if (token) {
-                // Decode JWT to get userId (or fetch from /me endpoint)
-                const response = await axios.get(`${API_URL}/me`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                setUserId(response.data._id);
-            }
-        } catch (error) {
-            console.error('Error getting user ID:', error);
-        }
-    };
-
     const checkEmailStatus = async () => {
-        try {
-            const token = await AsyncStorage.getItem('userToken');
-            const response = await axios.get(`${API_URL}/api/email/status`, {
-                headers: { Authorization: `Bearer ${token}` },
-                params: { userId }
-            });
-            setConnected(response.data.connected);
-        } catch (error) {
-            console.error('Error checking email status:', error);
-        }
+        // Mock status check
+        // In future, this would check a Supabase 'integrations' table
     };
 
     const handleConnectEmail = async () => {
         setLoading(true);
         try {
-            // Get OAuth URL from backend
-            const response = await axios.get(`${API_URL}/api/email/auth-url`, {
-                params: { userId }
-            });
-
-            const { authUrl } = response.data;
-
-            // Open OAuth URL in browser
-            const supported = await Linking.canOpenURL(authUrl);
-            if (supported) {
-                await Linking.openURL(authUrl);
-
-                // Show message that user needs to authorize
-                Alert.alert(
-                    'Complete Authorization',
-                    'Please complete the authorization in your browser, then come back to the app.',
-                    [
-                        {
-                            text: 'I\'ve Authorized',
-                            onPress: () => {
-                                checkEmailStatus();
-                                navigation.goBack();
-                            }
-                        }
-                    ]
-                );
-            } else {
-                Alert.alert('Error', 'Cannot open authorization URL');
-            }
+            // Mock OAuth flow
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            setConnected(true);
+            Alert.alert("Success", "Gmail connected successfully (Simulated)");
         } catch (error) {
             console.error('Error connecting email:', error);
             Alert.alert('Error', 'Failed to connect email. Please try again.');
@@ -132,31 +82,28 @@ const EmailOnboardingScreen = () => {
         setScanResults(null);
 
         try {
-            const token = await AsyncStorage.getItem('userToken');
+            // Mock scanning process
+            await new Promise(resolve => setTimeout(resolve, 3000));
 
-            // Scan for receipts
-            const response = await axios.post(
-                `${API_URL}/api/email/scan-receipts`,
-                {
-                    userId,
-                    maxResults: 100,
-                    maxAge: '1y' // Scan past year
-                },
-                {
-                    headers: { Authorization: `Bearer ${token}` },
-                    timeout: 120000 // 2 minutes
-                }
-            );
+            const results = {
+                receiptsScanned: 154,
+                receiptsFound: 12,
+                itemsDetected: 5,
+                items: [
+                    { name: "Mock Item 1", category: "Shirt" },
+                    { name: "Mock Item 2", category: "Pants" }
+                ]
+            };
 
-            setScanResults(response.data);
+            setScanResults(results as any);
 
             Alert.alert(
                 'Scan Complete!',
-                `Found ${response.data.itemsDetected} clothing items from ${response.data.receiptsFound} receipts.`,
+                `Found ${results.itemsDetected} clothing items from ${results.receiptsFound} receipts.`,
                 [
                     {
                         text: 'Import to Wardrobe',
-                        onPress: () => handleImportItems(response.data.items)
+                        onPress: () => handleImportItems(results.items as any[])
                     },
                     {
                         text: 'Cancel',
@@ -174,17 +121,12 @@ const EmailOnboardingScreen = () => {
 
     const handleImportItems = async (items: ScannedEmailItem[]) => {
         try {
-            const token = await AsyncStorage.getItem('userToken');
-
-            const response = await axios.post(
-                `${API_URL}/api/email/import-items`,
-                { userId, items },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            // Mock import
+            await new Promise(resolve => setTimeout(resolve, 1000));
 
             Alert.alert(
                 'Success!',
-                `Imported ${response.data.itemsImported} items to your wardrobe.`,
+                `Imported ${items.length} items to your wardrobe.`,
                 [
                     {
                         text: 'View Wardrobe',

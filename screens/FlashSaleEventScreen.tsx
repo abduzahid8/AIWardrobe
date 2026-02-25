@@ -512,7 +512,7 @@ const styles = StyleSheet.create({
     // Hero
     heroContainer: {
         height: 380,
-        backgroundColor: '#000',
+        backgroundColor: '#0A1931',
     },
     heroImage: {
         width: '100%',
@@ -718,7 +718,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFF',
         borderRadius: 16,
         overflow: 'hidden',
-        shadowColor: '#000',
+        shadowColor: '#0A1931',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.06,
         shadowRadius: 8,

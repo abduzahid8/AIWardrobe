@@ -14,7 +14,7 @@ router.post("/", authenticateToken, async (req, res) => {
         const { date, items, caption, occasion, visibility, isOotd } = req.body;
         const userId = req.user.id;
 
-        let user = await User.findById(userId);
+        const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({ error: "User not found" });
         }
@@ -24,7 +24,7 @@ router.post("/", authenticateToken, async (req, res) => {
                 console.warn("Invalid item skipped", item);
                 return null;
             }
-            let imageUrl = item?.image;
+            const imageUrl = item?.image;
             if (!imageUrl || !imageUrl.match(/^https?:\/\/res\.cloudinary\.com/)) {
                 console.warn("Invalid or non-Cloudinary image URL:", imageUrl);
                 return null;

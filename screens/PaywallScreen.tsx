@@ -20,12 +20,12 @@ import Animated, {
     useAnimatedStyle,
     useSharedValue,
     withSpring,
-    withTiming,
 } from "react-native-reanimated";
-import useSubscriptionStore, { SUBSCRIPTION_PRICING, TIER_FEATURES } from "../store/subscriptionStore";
+import useSubscriptionStore, { SUBSCRIPTION_PRICING } from "../store/subscriptionStore";
+import { useStylePreferenceStore } from '../store/stylePreferenceStore';
 import AppColors from "../constants/AppColors";
 
-const { width, height } = Dimensions.get("window");
+const { width } = Dimensions.get("window");
 
 // Use unified AppColors
 const COLORS = {
@@ -141,17 +141,24 @@ const SubscriptionCard = ({
 const PaywallScreen = () => {
     const navigation = useNavigation();
     const { setSubscription } = useSubscriptionStore();
+    const { completeOnboarding } = useStylePreferenceStore();
     const [isLoading, setIsLoading] = useState<string | null>(null);
 
     const handlePurchase = async (tier: 'premium' | 'vip') => {
         setIsLoading(tier);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-        // Simulate purchase (replace with actual IAP logic)
+        // Simulate API call
         setTimeout(async () => {
             await setSubscription(tier);
             setIsLoading(null);
-            navigation.goBack();
+
+            completeOnboarding();
+
+            navigation.reset({
+                index: 0,
+                routes: [{ name: 'Main' as never }],
+            });
         }, 2000);
     };
 
@@ -179,7 +186,11 @@ const PaywallScreen = () => {
                             style={styles.closeButton}
                             onPress={() => {
                                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                navigation.goBack();
+                                completeOnboarding();
+                                navigation.reset({
+                                    index: 0,
+                                    routes: [{ name: 'Main' as never }],
+                                });
                             }}
                         >
                             <Ionicons name="close" size={28} color={COLORS.text} />
@@ -331,7 +342,7 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
         ...Platform.select({
             ios: {
-                shadowColor: '#000',
+                shadowColor: '#0A1931',
                 shadowOffset: { width: 0, height: 8 },
                 shadowOpacity: 0.3,
                 shadowRadius: 16,
@@ -431,6 +442,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         lineHeight: 16,
         paddingHorizontal: 20,
+        marginBottom: 20,
     },
 });
 
