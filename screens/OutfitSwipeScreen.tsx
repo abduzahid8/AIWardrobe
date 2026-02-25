@@ -110,7 +110,7 @@ const generateMockOutfits = (wardrobeItems: OutfitItemType[]): OutfitType[] => {
             {
                 id: 'sample-2',
                 items: [
-                    { type: 'Black Blazer', color: 'Black', image: null },
+                    { type: 'Black Blazer', color: '#0A1931', image: null },
                     { type: 'Gray Trousers', color: 'Gray', image: null },
                 ],
                 occasion: 'work',
@@ -548,7 +548,7 @@ const styles = StyleSheet.create({
         height: CARD_HEIGHT,
         borderRadius: 24,
         backgroundColor: COLORS.surface,
-        shadowColor: '#000',
+        shadowColor: '#0A1931',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.15,
         shadowRadius: 16,
@@ -673,7 +673,7 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.surface,
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#000',
+        shadowColor: '#0A1931',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
         shadowRadius: 8,

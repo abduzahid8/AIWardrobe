@@ -21,7 +21,8 @@ import * as Haptics from 'expo-haptics';
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { DESIGNER_STYLES, getStylePromptSuffix } from "../src/styles/designerStyles";
 import StyleSelector from "../components/StyleSelector";
-import { API_URL } from "../api/config";
+import Config from "../src/config/env";
+const API_URL = Config.api.url;
 import { colors, spacing, borderRadius, shadows } from "../src/theme";
 
 // Message interface

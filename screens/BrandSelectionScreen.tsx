@@ -110,7 +110,7 @@ const BrandRow = ({
                 <Ionicons
                     name={isLiked ? 'heart' : 'heart-outline'}
                     size={22}
-                    color={isLiked ? '#000' : '#9CA3AF'}
+                    color={isLiked ? '#0A1931' : '#9CA3AF'}
                 />
             </Animated.View>
         </TouchableOpacity>
@@ -169,7 +169,7 @@ const BrandSelectionScreen = () => {
                     style={styles.iconContainer}
                 >
                     <View style={styles.tagIcon}>
-                        <Ionicons name="pricetag-outline" size={24} color="#000" />
+                        <Ionicons name="pricetag-outline" size={24} color="#0A1931" />
                     </View>
                 </Animated.View>
 
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
         borderRadius: 1.5,
     },
     progressStepActive: {
-        backgroundColor: '#000',
+        backgroundColor: '#0A1931',
     },
     progressStepInactive: {
         backgroundColor: '#E5E7EB',
@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
     skipText: {
         fontSize: 14,
         fontWeight: '500',
-        color: '#000',
+        color: '#0A1931',
     },
     iconContainer: {
         paddingHorizontal: 20,
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 32,
         fontWeight: '600',
-        color: '#000',
+        color: '#0A1931',
         lineHeight: 40,
         marginBottom: 12,
     },
@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
         paddingVertical: 14,
         paddingRight: 44,
         fontSize: 15,
-        color: '#000',
+        color: '#0A1931',
     },
     searchIcon: {
         position: 'absolute',
@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
     brandName: {
         fontSize: 16,
         fontWeight: '400',
-        color: '#000',
+        color: '#0A1931',
     },
     ctaContainer: {
         position: 'absolute',
@@ -365,7 +365,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
     },
     ctaButton: {
-        backgroundColor: '#000',
+        backgroundColor: '#0A1931',
         paddingVertical: 16,
         borderRadius: 12,
         alignItems: 'center',

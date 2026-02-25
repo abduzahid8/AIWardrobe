@@ -211,7 +211,11 @@ const seedData = async () => {
   }
 };
 
-seedData();
+// Only seed when explicitly requested (e.g. SEED_DB=true npm start)
+// Never runs automatically in production to avoid cold-start latency
+if (process.env.SEED_DB === 'true') {
+  seedData();
+}
 
 // ============================================
 // HEALTH CHECK

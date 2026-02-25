@@ -13,7 +13,6 @@ import {
   Dimensions,
   StyleSheet,
   ActivityIndicator,
-  Platform,
   TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -24,40 +23,25 @@ import { jwtDecode } from "jwt-decode";
 import { LinearGradient } from "expo-linear-gradient";
 import { Video, ResizeMode } from 'expo-av';
 import * as Location from 'expo-location';
-import { BlurView } from 'expo-blur';
 import Animated, {
-  FadeIn,
   FadeInDown,
-  FadeInUp,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  interpolate,
 } from 'react-native-reanimated';
 
 // 2026 Design System
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 import {
-  BentoGrid,
-  BentoItem,
   LiquidGlassCard,
   FrostedGlassCard,
-  PressableGlassCard,
 } from '../components/ui';
 import { useAccessibility } from '../hooks/useAccessibility';
+import Config from '../src/config/env';
 
-// Existing imports
-// Existing imports
-import { TahoeIconButton, TahoeActionCard, TahoeButton } from '../components/TahoeButton';
-import { mpants, mshirts, pants, shoes, tops, skirts } from '../images';
+import { mpants, mshirts, pants, shoes, tops } from '../images';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
-
-// Weather API Key
-const WEATHER_API_KEY = "acec1d31ef3e181c0ca471ac4db642ff";
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 // Theme shortcuts
-const { colors, spacing, typography, radius, animation, blur } = LiquidGlass2026Theme;
+const { colors, spacing, typography, radius } = LiquidGlass2026Theme;
 
 interface WeatherData {
   temp: number;
@@ -73,11 +57,11 @@ interface WeatherData {
 const HomeScreen = () => {
   const navigation = useNavigation();
   const isFocused = useIsFocused();
-  const { isReducedMotionEnabled, scaleFontSize } = useAccessibility();
+  const { isReducedMotionEnabled } = useAccessibility();
 
   // State
   const [userName, setUserName] = useState("User");
-  const [wardrobeCount, setWardrobeCount] = useState(0);
+
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loadingWeather, setLoadingWeather] = useState(true);
   const [videoUri, setVideoUri] = useState<string | null>(null);
@@ -100,11 +84,7 @@ const HomeScreen = () => {
           setUserName(decoded.name || decoded.username || "User");
         }
 
-        const wardrobeData = await AsyncStorage.getItem('myWardrobeItems');
-        if (wardrobeData) {
-          const items = JSON.parse(wardrobeData);
-          setWardrobeCount(items.length);
-        }
+
 
         const savedVideo = await AsyncStorage.getItem('lastWardrobeVideo');
         if (savedVideo) {
@@ -114,8 +94,6 @@ const HomeScreen = () => {
         console.log("Error fetching user:", error);
       }
     };
-    fetchUserData();
-    fetchWeather();
     fetchUserData();
     fetchWeather();
   }, []);
@@ -132,7 +110,7 @@ const HomeScreen = () => {
       const { latitude, longitude } = location.coords;
 
       const response = await fetch(
-        `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${WEATHER_API_KEY}`
+        `${Config.weather.baseUrl}/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${Config.weather.apiKey}`
       );
       const data = await response.json();
 
@@ -178,35 +156,6 @@ const HomeScreen = () => {
   // ============================================
   // RENDER COMPONENTS
   // ============================================
-
-  // Header with Liquid Glass effect
-  const renderHeader = () => (
-    <BlurView
-      intensity={Platform.OS === 'ios' ? 80 : 100}
-      tint="light"
-      style={styles.header}
-    >
-      <TouchableOpacity
-        onPress={() => (navigation as any).navigate("Profile")}
-        style={styles.headerButton}
-        accessibilityLabel="Profile"
-        accessibilityRole="button"
-      >
-        <Ionicons name="person-circle-outline" size={28} color={colors.text.primary} />
-      </TouchableOpacity>
-
-      <Text style={styles.logo}>AIWardrobe</Text>
-
-      <TouchableOpacity
-        onPress={() => (navigation as any).navigate("Profile")}
-        style={styles.headerButton}
-        accessibilityLabel="Notifications"
-        accessibilityRole="button"
-      >
-        <Ionicons name="notifications-outline" size={24} color={colors.text.primary} />
-      </TouchableOpacity>
-    </BlurView>
-  );
 
   // Weather widget with Liquid Glass - Minimalist
   const renderWeatherWidget = () => {
@@ -270,7 +219,7 @@ const HomeScreen = () => {
           />
         ) : isUnlocked ? (
           <Video
-            source={require("../nux_men_o.mp4")}
+            source={require("../assets/videos/nux_men_o.mp4")}
             style={styles.heroVideo}
             resizeMode={ResizeMode.COVER}
             shouldPlay={isFocused}
@@ -292,7 +241,7 @@ const HomeScreen = () => {
           style={styles.heroOverlay}
         >
           <View style={styles.heroInfo}>
-            <Text style={styles.heroTitle}>Today's Look</Text>
+            <Text style={styles.heroTitle}>Today&apos;s Look</Text>
             {/* Subtitle removed for simplicity */}
           </View>
           <TouchableOpacity
@@ -304,6 +253,13 @@ const HomeScreen = () => {
           </TouchableOpacity>
         </LinearGradient>
       </LiquidGlassCard>
+
+      <TouchableOpacity
+        style={styles.createOutfitButton}
+        onPress={() => console.log('Create outfit')}
+      >
+        <Text style={styles.createOutfitText}>Create outfit</Text>
+      </TouchableOpacity>
     </Animated.View>
   );
 
@@ -358,18 +314,30 @@ const HomeScreen = () => {
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        {renderHeader()}
-
         <ScrollView
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
           {/* Greeting */}
-          <View style={styles.greetingSection}>
-            <Text style={styles.greetingText} numberOfLines={1}>
-              {greeting}, {userName}
-            </Text>
+          <View style={styles.headerSection}>
+            <Text style={styles.appTitleText}>AIWardrobe</Text>
+            <View style={styles.greetingSection}>
+              <Text style={styles.greetingText} numberOfLines={1}>
+                {greeting}, {userName}
+              </Text>
+              <TouchableOpacity
+                style={styles.buzzerButton}
+                onPress={() => {
+                  // TODO: Navigate to calendar or open calendar modal
+                  console.log("Calendar buzzer pressed");
+                }}
+                accessibilityLabel="Open calendar"
+              >
+                <Ionicons name="calendar-outline" size={24} color={colors.text.primary} />
+                <View style={styles.buzzerDot} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Weather Widget */}
@@ -402,48 +370,59 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Header
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.screenPadding,
-    paddingVertical: spacing.sm + 2,
-    backgroundColor: colors.glass.frosted,
-    borderBottomWidth: 0.5,
-    borderBottomColor: colors.border.subtle,
-  },
-  headerButton: {
-    width: spacing.touchTarget.minimum,
-    height: spacing.touchTarget.minimum,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logo: {
-    ...typography.scale.titleLarge,
-    color: colors.text.primary,
-    fontWeight: '700',
-    letterSpacing: -0.5,
-  },
+
 
   // Scroll
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingTop: spacing.lg,
+    paddingTop: spacing.sm,
   },
 
-  // Greeting
-  greetingSection: {
-    paddingHorizontal: spacing.screenPadding,
-    marginBottom: spacing.sm, // Reduced even more (little top)
-    marginTop: spacing.md,
+  // Header & Greeting
+  headerSection: {
+    paddingTop: spacing.sm,
+    marginBottom: spacing.xs,
   },
-  greetingText: {
+  appTitleText: {
     ...typography.scale.headlineMedium,
     color: colors.text.primary,
-    fontWeight: '600',
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: spacing.xl,
+  },
+  greetingSection: {
+    paddingHorizontal: spacing.screenPadding,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  greetingText: {
+    ...typography.scale.titleMedium,
+    color: colors.text.secondary,
+    fontWeight: '500',
+    flex: 1,
+  },
+  buzzerButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.background.secondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  buzzerDot: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#0A1931', // Using dark blue for active state
+    borderWidth: 1.5,
+    borderColor: colors.background.secondary,
   },
 
   // Weather
@@ -531,6 +510,20 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     borderRadius: radius.pill,
     gap: spacing.xs,
+  },
+
+  createOutfitButton: {
+    backgroundColor: '#0A1931',
+    paddingVertical: 14,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.md,
+  },
+  createOutfitText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 
   placeholderContainer: {
@@ -633,7 +626,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   addedButton: {
-    backgroundColor: '#000', // Success color (Black in monochrome)
+    backgroundColor: '#0A1931', // Success color (Dark blue)
   },
   addButtonText: {
     ...typography.scale.labelSmall,

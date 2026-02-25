@@ -19,7 +19,6 @@ import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import axios from 'axios';
-import moment from 'moment';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -167,7 +166,7 @@ const DesignRoomScreen = () => {
   const [savedItems, setSavedItems] = useState<Set<number>>(new Set());
 
   const isEmpty = clothingItems.length === 0 && detectedItems.length === 0;
-  const currentDate = moment().format('MMMM Do');
+  const currentDate = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric' }).format(new Date());
 
   const handleAdd = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);

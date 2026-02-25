@@ -1,30 +1,30 @@
 import { create } from 'zustand';
-import axios, { AxiosError } from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL } from '../api/config';
-
-const BASE_URL = API_URL;
+import { supabase } from '../lib/supabase';
+import { Session } from '@supabase/supabase-js';
 
 // ============================================
 // AUTH TYPES
 // ============================================
 
 export interface AuthUser {
-    _id: string;
+    id: string; // Changed from _id to id to match Supabase
     email: string;
     username: string;
     gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
-    profileImage?: string;
-    outfits?: string[];
-    followers?: string[];
-    following?: string[];
-    createdAt?: string;
-    updatedAt?: string;
+    profile_image?: string; // Changed from profileImage to snake_case to match DB, or we map it
+
+    // Subscription
+    subscription_tier?: 'free' | 'premium' | 'vip';
+    subscription_expires_at?: string;
+
+    // Legacy/Metadata
+    created_at?: string;
+    updated_at?: string;
 }
 
 export interface AuthState {
     user: AuthUser | null;
-    token: string | null;
+    session: Session | null;
     loading: boolean;
     error: string | null;
     isAuthenticated: boolean;
@@ -57,21 +57,39 @@ export type AuthStore = AuthState & AuthActions;
 const useAuthStore = create<AuthStore>((set, get) => ({
     // Initial state
     user: null,
-    token: null,
+    session: null,
     loading: false,
     error: null,
     isAuthenticated: false,
     isTrialMode: false,
 
     initializeAuth: async (): Promise<void> => {
+        set({ loading: true });
         try {
-            const token = await AsyncStorage.getItem('userToken');
-            if (token) {
-                set({ token, isAuthenticated: true, isTrialMode: false });
+            // Check for existing session
+            const { data: { session }, error } = await supabase.auth.getSession();
+
+            if (error) throw error;
+
+            if (session) {
+                set({ session, isAuthenticated: true, isTrialMode: false });
                 await get().fetchUser();
             }
+
+            // Listen for auth changes
+            supabase.auth.onAuthStateChange((_event, session) => {
+                if (session) {
+                    set({ session, isAuthenticated: true, isTrialMode: false });
+                    // We could fetch user here, but verify logic to avoid loops
+                } else {
+                    set({ session: null, user: null, isAuthenticated: false });
+                }
+            });
+
         } catch (err) {
             console.error('Auth initialization failed', err);
+        } finally {
+            set({ loading: false });
         }
     },
 
@@ -84,55 +102,66 @@ const useAuthStore = create<AuthStore>((set, get) => ({
     ): Promise<void> => {
         set({ loading: true, error: null });
         try {
-            const response = await axios.post<{ token: string }>(`${BASE_URL}/register`, {
+            const { data, error } = await supabase.auth.signUp({
                 email,
                 password,
-                username,
-                gender,
-                profileImage,
+                options: {
+                    data: {
+                        username,
+                        gender,
+                        profile_image: profileImage,
+                    },
+                },
             });
-            console.log('data', response.data);
-            const { token } = response.data;
-            await AsyncStorage.setItem('userToken', token);
-            set({ token, loading: false, isAuthenticated: true, isTrialMode: false });
-            await get().fetchUser();
-        } catch (error) {
-            const axiosError = error as AxiosError<{ error: string }>;
-            const errorMessage = axiosError.response?.data?.error || 'Registration failed';
+
+            if (error) throw error;
+
+            if (data.session) {
+                set({ session: data.session, isAuthenticated: true, isTrialMode: false, loading: false });
+                await get().fetchUser();
+            } else {
+                // If email confirmation is enabled, session might be null
+                set({ loading: false, error: "Please checks your email for confirmation link." });
+            }
+
+        } catch (error: any) {
+            console.log('Registration error details:', error);
             set({
-                error: errorMessage,
+                error: error.message || 'Registration failed',
                 loading: false,
             });
-            throw new Error(errorMessage); // Re-throw so the UI can Alert it
+            throw error;
         }
     },
 
     login: async (email: string, password: string): Promise<void> => {
         set({ loading: true, error: null });
         try {
-            const response = await axios.post<{ token: string }>(`${BASE_URL}/login`, {
+            const { data, error } = await supabase.auth.signInWithPassword({
                 email,
                 password,
             });
-            const { token } = response.data;
-            console.log('token', response.data);
-            await AsyncStorage.setItem('userToken', token);
-            set({ token, loading: false, isAuthenticated: true, isTrialMode: false });
-            await get().fetchUser();
-        } catch (err) {
-            const axiosError = err as AxiosError<{ error: string }>;
-            const errorMessage = axiosError.response?.data?.error || 'Login failed';
+
+            if (error) throw error;
+
+            if (data.session) {
+                set({ session: data.session, isAuthenticated: true, isTrialMode: false, loading: false });
+                await get().fetchUser();
+            }
+
+        } catch (err: any) {
+            console.log('Login error details:', err);
             set({
-                error: errorMessage,
+                error: err.message || 'Login failed',
                 loading: false,
             });
-            throw new Error(errorMessage); // Re-throw so the UI can Alert it
+            throw err;
         }
     },
 
     logout: async (): Promise<void> => {
-        await AsyncStorage.removeItem('userToken');
-        set({ user: null, token: null, isAuthenticated: false, isTrialMode: false });
+        await supabase.auth.signOut();
+        set({ user: null, session: null, isAuthenticated: false, isTrialMode: false });
     },
 
     startTrial: (): void => {
@@ -145,22 +174,43 @@ const useAuthStore = create<AuthStore>((set, get) => ({
 
     fetchUser: async (): Promise<void> => {
         try {
-            const token = await AsyncStorage.getItem('userToken');
-            console.log('da', token);
-            if (!token) {
-                set({ user: null, error: 'No token available' });
+            const { data: sessionData } = await supabase.auth.getSession();
+            const user = sessionData.session?.user;
+
+            if (!user) {
+                set({ user: null });
                 return;
             }
-            const response = await axios.get<AuthUser>(`${BASE_URL}/me`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            set({ user: response.data, error: null });
-        } catch (err) {
+
+            // Fetch profile data from 'profiles' table
+            const { data: profile, error } = await supabase
+                .from('user_profiles')
+                .select('*')
+                .eq('id', user.id)
+                .maybeSingle();
+
+            if (error) {
+                console.error('Error fetching profile:', error);
+            }
+
+            if (profile) {
+                set({ user: profile as AuthUser, error: null });
+            } else {
+                // Fallback to auth metadata if no profile row exists yet
+                const fallbackUser: AuthUser = {
+                    id: user.id,
+                    email: user.email || '',
+                    username: user.user_metadata?.username || '',
+                    gender: user.user_metadata?.gender,
+                    profile_image: user.user_metadata?.profile_image,
+                };
+                set({ user: fallbackUser, error: null });
+            }
+        } catch (err: any) {
             console.error('Failed to fetch user:', err);
-            const axiosError = err as AxiosError<{ error: string }>;
             set({
                 user: null,
-                error: axiosError.response?.data?.error || 'Failed to fetch user',
+                error: err.message || 'Failed to fetch user',
             });
         }
     },
@@ -171,3 +221,4 @@ const useAuthStore = create<AuthStore>((set, get) => ({
 }));
 
 export default useAuthStore;
+

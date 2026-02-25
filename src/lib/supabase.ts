@@ -12,14 +12,14 @@ const SUPABASE_URL =
     process.env.EXPO_PUBLIC_SUPABASE_URL ||
     process.env.SUPABASE_URL ||
     process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    'https://your-project.supabase.co';
+    'https://placeholder.supabase.co';
 
 const SUPABASE_ANON_KEY =
     process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
     process.env.SUPABASE_ANON_KEY ||
     process.env.SUPABASE_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    'your-anon-key';
+    'placeholder-anon-key';
 
 // Create Supabase client with React Native async storage
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {

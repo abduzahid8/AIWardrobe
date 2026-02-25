@@ -32,7 +32,7 @@ const { width } = Dimensions.get('window');
 const ALTA = {
     background: '#FFFFFF',
     surface: '#F5F5F5',
-    text: '#000000',
+    text: '#0A1931',
     textSecondary: '#666666',
     textMuted: '#999999',
     border: '#E5E5E5',
@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
         backgroundColor: ALTA.background,
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#000',
+        shadowColor: '#0A1931',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,

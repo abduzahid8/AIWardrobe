@@ -10,7 +10,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import moment from "moment";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics";
@@ -192,7 +191,7 @@ const DailyBriefScreen = () => {
     const { itemCount } = useWardrobeItems({ includePopularItems: false });
 
     const getGreeting = () => {
-        const hour = moment().hour();
+        const hour = new Date().getHours();
         if (hour < 12) return 'Good Morning';
         if (hour < 18) return 'Good Afternoon';
         return 'Good Evening';

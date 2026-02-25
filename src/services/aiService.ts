@@ -1,10 +1,10 @@
 import axios, { AxiosError } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert } from 'react-native';
+import Config from '../config/env';
 
 // API Configuration
-const API_URL = 'http://192.168.100.214:3000';  // Node.js middleware
-const ALICEVISION_URL = 'http://192.168.100.214:5050';  // Direct Python AI service
+const API_URL = Config.api.url;
+const ALICEVISION_URL = Config.api.alicevisionUrl;
 const TIMEOUT_MS = 60000;
 const VIDEO_TIMEOUT_MS = 180000;  // 3 minutes for video processing
 const MAX_RETRIES = 3;
@@ -181,9 +181,12 @@ class AIService {
     async generateOutfitSuggestions(
         occasion: string,
         stylePreferences?: string,
-        wardrobeItems?: Array<{ type?: string; color?: string; style?: string; imageUrl?: string }>
+        wardrobeItems?: Array<any>,
+        weather?: { temp: number; condition: string }
     ): Promise<AIOutfitSuggestion[]> {
-        const cacheKey = `${occasion}-${stylePreferences || ''}`;
+        // Cache key now needs to include item count and weather to be more accurate, 
+        // but for simplicity we'll just bust cache if wardrobe/weather is provided uniquely
+        const cacheKey = `${occasion}-${stylePreferences || ''}-${wardrobeItems?.length || 0}-${weather?.condition || ''}`;
         const cached = outfitCache.get(cacheKey);
 
         if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
@@ -198,7 +201,8 @@ class AIService {
                     {
                         occasion,
                         stylePreferences,
-                        wardrobeItems,
+                        wardrobeItems, // Now passing the real items to the backend!
+                        weather,       // Passing weather context
                         limit: 5,
                     },
                     {
@@ -233,9 +237,9 @@ class AIService {
                 occasion: 'Date Night',
                 confidence: 0.85,
                 items: [
-                    { type: 'Top', color: 'Black', recommendation: 'Silk blouse or fitted sweater' },
+                    { type: 'Top', color: '#0A1931', recommendation: 'Silk blouse or fitted sweater' },
                     { type: 'Bottom', color: 'Dark Blue', recommendation: 'Tailored jeans or skirt' },
-                    { type: 'Shoes', color: 'Black', recommendation: 'Heels or clean sneakers' },
+                    { type: 'Shoes', color: '#0A1931', recommendation: 'Heels or clean sneakers' },
                 ],
                 stylingTips: [
                     'Add a statement necklace for elegance',
@@ -266,7 +270,7 @@ class AIService {
                 confidence: 0.88,
                 items: [
                     { type: 'Top', color: 'Metallic', recommendation: 'Sequin top or bold colors' },
-                    { type: 'Bottom', color: 'Black', recommendation: 'Leather pants or mini skirt' },
+                    { type: 'Bottom', color: '#0A1931', recommendation: 'Leather pants or mini skirt' },
                     { type: 'Shoes', color: 'Gold', recommendation: 'Statement heels' },
                 ],
                 stylingTips: [
@@ -444,7 +448,7 @@ class AIService {
         temperature: number,
         condition: string
     ): Promise<AIOutfitSuggestion> {
-        let occasion = 'casual';
+        const occasion = 'casual';
         let additionalTips: string[] = [];
 
         if (temperature < 10) {

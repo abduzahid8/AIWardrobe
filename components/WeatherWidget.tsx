@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
     temp: {
         fontSize: 13,
         fontWeight: '600',
-        color: '#000',
+        color: '#0A1931',
     },
     range: {
         fontSize: 11,

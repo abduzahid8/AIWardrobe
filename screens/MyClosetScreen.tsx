@@ -7,7 +7,6 @@ import {
     Dimensions,
     ScrollView,
     Image,
-    TextInput,
     ActivityIndicator,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
@@ -19,73 +18,23 @@ import Animated, {
     FadeIn,
     FadeInUp,
     FadeInDown,
-    useAnimatedStyle,
-    useSharedValue,
-    withSpring,
 } from 'react-native-reanimated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
-import { TahoeIconButton } from '../components/TahoeButton';
-import AppColors from '../constants/AppColors';
-// @ts-ignore
-import { API_URL } from '../api/config';
+import { supabase } from '../lib/supabase';
+import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 
 const { width } = Dimensions.get('window');
+const { colors, spacing, radius, typography } = LiquidGlass2026Theme;
 
-// Use unified AppColors
-const COLORS = {
-    background: AppColors.background,
-    surface: AppColors.surface,
-    surfaceLight: AppColors.surfaceSecondary,
-    primary: AppColors.primary,
-    accent: AppColors.accent,
-    text: AppColors.text,
-    textSecondary: AppColors.textSecondary,
-    textMuted: AppColors.textMuted,
-    border: AppColors.border,
-    success: '#34C759',
-    warning: '#FF9500',
-    error: '#FF3B30',
-};
-
-// Category filters
+// Updated Category filters to match design
 const CATEGORIES = [
-    { id: 'all', label: 'All', icon: 'grid-outline' },
-    { id: 'tops', label: 'Tops', icon: 'shirt-outline' },
-    { id: 'bottoms', label: 'Bottoms', icon: 'bookmark-outline' },
-    { id: 'dresses', label: 'Dresses', icon: 'woman-outline' },
-    { id: 'outerwear', label: 'Outerwear', icon: 'snow-outline' },
-    { id: 'shoes', label: 'Shoes', icon: 'footsteps-outline' },
-    { id: 'accessories', label: 'Accessories', icon: 'glasses-outline' },
+    { id: 'favorite', label: 'Favorite', icon: 'heart' }, // Filled heart will be handled in render
+    { id: 'all', label: 'All', icon: 'grid' },
+    { id: 'tops', label: 'Tops', icon: 'shirt' },
+    { id: 'bottoms', label: 'Bottoms', icon: 'bookmark' }, // Placeholder icon
+    { id: 'shoes', label: 'Shoes', icon: 'footsteps' },
+    { id: 'accessories', label: 'Accessories', icon: 'glasses' },
 ];
-
-// Color filters
-const COLOR_FILTERS = [
-    { id: 'all', name: 'All', hex: null },
-    { id: 'black', name: 'Black', hex: '#000000' },
-    { id: 'white', name: 'White', hex: '#FFFFFF' },
-    { id: 'navy', name: 'Navy', hex: '#1B3A57' },
-    { id: 'gray', name: 'Gray', hex: '#808080' },
-    { id: 'brown', name: 'Brown', hex: '#8B4513' },
-    { id: 'red', name: 'Red', hex: '#DC143C' },
-    { id: 'blue', name: 'Blue', hex: '#4169E1' },
-    { id: 'green', name: 'Green', hex: '#228B22' },
-    { id: 'pink', name: 'Pink', hex: '#FF69B4' },
-];
-
-// Type for category item
-interface CategoryType {
-    id: string;
-    label: string;
-    icon: string;
-}
-
-// Type for color filter
-interface ColorFilterType {
-    id: string;
-    name: string;
-    hex: string | null;
-}
 
 interface ClothingItem {
     _id: string;
@@ -102,108 +51,38 @@ interface ClothingItem {
     wearCount?: number;
     lastWorn?: string;
     createdAt?: string;
+    isFavorite?: boolean; // Added for favorite filter
 }
 
-// Category Chip Component
-const CategoryChip = ({
-    category,
+// Category Chip from Design
+const FilterChip = ({
+    label,
     isSelected,
     onPress
 }: {
-    category: CategoryType;
+    label: string;
     isSelected: boolean;
     onPress: () => void;
 }) => {
     return (
         <TouchableOpacity
-            style={[styles.categoryChip, isSelected && styles.categoryChipSelected]}
+            style={[
+                styles.filterChip,
+                isSelected ? styles.filterChipSelected : styles.filterChipUnselected
+            ]}
             onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 onPress();
             }}
-            activeOpacity={0.7}
+            activeOpacity={0.8}
         >
-            <Ionicons
-                name={category.icon as any}
-                size={16}
-                color={isSelected ? COLORS.background : COLORS.textSecondary}
-            />
             <Text style={[
-                styles.categoryChipText,
-                isSelected && styles.categoryChipTextSelected
+                styles.filterChipText,
+                isSelected ? styles.filterChipTextSelected : styles.filterChipTextUnselected
             ]}>
-                {category.label}
+                {label}
             </Text>
         </TouchableOpacity>
-    );
-};
-
-// Color Chip Component
-const ColorChip = ({
-    color,
-    isSelected,
-    onPress
-}: {
-    color: ColorFilterType;
-    isSelected: boolean;
-    onPress: () => void;
-}) => {
-    return (
-        <TouchableOpacity
-            style={[styles.colorChip, isSelected && styles.colorChipSelected]}
-            onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                onPress();
-            }}
-            activeOpacity={0.7}
-        >
-            {color.hex ? (
-                <View style={[styles.colorDot, { backgroundColor: color.hex }]} />
-            ) : (
-                <Ionicons name="color-palette-outline" size={14} color={COLORS.textSecondary} />
-            )}
-            <Text style={[
-                styles.colorChipText,
-                isSelected && styles.colorChipTextSelected
-            ]}>
-                {color.name}
-            </Text>
-        </TouchableOpacity>
-    );
-};
-
-// Bento Grid Item Component
-const BentoItem = ({
-    title,
-    value,
-    icon,
-    color,
-    style,
-    size = 'normal'
-}: {
-    title: string;
-    value: string | number;
-    icon: string;
-    color: string;
-    style?: Record<string, string | number>;
-    size?: 'normal' | 'large';
-}) => {
-    return (
-        <View style={[
-            styles.bentoItem,
-            { backgroundColor: color + '10', borderColor: color + '20' },
-            style
-        ]}>
-            <View style={[styles.bentoIcon, { backgroundColor: color + '20' }]}>
-                <Ionicons name={icon as any} size={size === 'large' ? 24 : 18} color={color} />
-            </View>
-            <View>
-                <Text style={[styles.bentoValue, size === 'large' && styles.bentoValueLarge]}>
-                    {value}
-                </Text>
-                <Text style={styles.bentoTitle}>{title}</Text>
-            </View>
-        </View>
     );
 };
 
@@ -216,7 +95,6 @@ const ClothingGridItem = ({
     onPress: () => void;
 }) => {
     const imageUrl = item.imageUrl || item.image;
-    const itemType = item.type || item.itemType || 'Item';
 
     return (
         <TouchableOpacity
@@ -237,19 +115,9 @@ const ClothingGridItem = ({
                         />
                     ) : (
                         <View style={styles.itemPlaceholder}>
-                            <Ionicons name="shirt-outline" size={32} color={COLORS.textMuted} />
+                            <Ionicons name="shirt-outline" size={32} color={colors.text.tertiary} />
                         </View>
                     )}
-                    {item.colorHex && (
-                        <View style={[styles.colorBadge, { backgroundColor: item.colorHex }]} />
-                    )}
-                </View>
-
-                <View style={styles.itemInfo}>
-                    <Text style={styles.itemType} numberOfLines={1}>{itemType}</Text>
-                    <Text style={styles.itemCategory} numberOfLines={1}>
-                        {item.category || 'Uncategorized'}
-                    </Text>
                 </View>
             </Animated.View>
         </TouchableOpacity>
@@ -261,344 +129,201 @@ const MyClosetScreen = () => {
     const [items, setItems] = useState<ClothingItem[]>([]);
     const [filteredItems, setFilteredItems] = useState<ClothingItem[]>([]);
     const [loading, setLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState('all');
-    const [selectedColor, setSelectedColor] = useState('all');
-    const [showFilters, setShowFilters] = useState(false);
+    const [selectedCategory, setSelectedCategory] = useState('tops'); // Default from screenshot
+    const [viewMode, setViewMode] = useState<'clothes' | 'collections'>('clothes');
 
     // Load wardrobe items
     const loadItems = useCallback(async () => {
         try {
             setLoading(true);
-            const token = await AsyncStorage.getItem('userToken');
 
-            if (!token) {
-                // Load from AsyncStorage as fallback
-                const localItems = await AsyncStorage.getItem('myWardrobeItems');
-                if (localItems) {
-                    const parsed = JSON.parse(localItems);
-                    setItems(parsed);
-                    setFilteredItems(parsed);
-                }
-                setLoading(false);
-                return;
-            }
+            // Fetch from Supabase
+            const { data, error } = await supabase
+                .from('clothing_items')
+                .select('*')
+                .order('created_at', { ascending: false });
 
-            const response = await axios.get(`${API_URL}/clothing-items`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            if (data) {
+                // Map snake_case to camelCase
+                const mappedItems: ClothingItem[] = data.map(item => ({
+                    _id: item.id,
+                    id: item.id,
+                    type: item.type,
+                    itemType: item.type,
+                    color: item.color && item.color.length > 0 ? item.color[0] : 'various',
+                    imageUrl: item.image_url,
+                    image: item.image_url,
+                    category: item.category,
+                    wearCount: item.wear_count,
+                    createdAt: item.created_at,
+                    isFavorite: false, // Default for now
+                }));
 
-            if (response.data) {
-                const itemsArray = Array.isArray(response.data) ? response.data : response.data.items || [];
-                setItems(itemsArray);
-                setFilteredItems(itemsArray);
+                setItems(mappedItems);
             }
         } catch (error) {
             console.error('Failed to load wardrobe:', error);
-            // Try local storage
+            // local storage
             const localItems = await AsyncStorage.getItem('myWardrobeItems');
             if (localItems) {
-                const parsed = JSON.parse(localItems);
-                setItems(parsed);
-                setFilteredItems(parsed);
+                setItems(JSON.parse(localItems));
             }
         } finally {
             setLoading(false);
         }
     }, []);
 
-    // Refresh on focus
     useFocusEffect(
         useCallback(() => {
             loadItems();
         }, [loadItems])
     );
 
-    // Filter items when filters change
+    // Filter items
     useEffect(() => {
         let result = [...items];
 
-        // Category filter
-        if (selectedCategory !== 'all') {
-            result = result.filter(item => {
-                const category = (item.category || item.type || '').toLowerCase();
-                switch (selectedCategory) {
-                    case 'tops':
-                        return category.includes('shirt') || category.includes('top') ||
-                            category.includes('blouse') || category.includes('sweater') ||
-                            category.includes('upper');
-                    case 'bottoms':
-                        return category.includes('pants') || category.includes('jeans') ||
-                            category.includes('shorts') || category.includes('skirt');
-                    case 'dresses':
-                        return category.includes('dress');
-                    case 'outerwear':
-                        return category.includes('jacket') || category.includes('coat') ||
-                            category.includes('blazer');
-                    case 'shoes':
-                        return category.includes('shoe') || category.includes('sneaker') ||
-                            category.includes('boot') || category.includes('footwear');
-                    case 'accessories':
-                        return category.includes('bag') || category.includes('hat') ||
-                            category.includes('scarf') || category.includes('accessory') ||
-                            category.includes('belt') || category.includes('glasses');
-                    default:
-                        return true;
+        if (viewMode === 'clothes') {
+            if (selectedCategory !== 'all') {
+                if (selectedCategory === 'favorite') {
+                    result = result.filter(item => item.isFavorite);
+                } else {
+                    result = result.filter(item => {
+                        const category = (item.category || item.type || '').toLowerCase();
+                        // Simple inclusion check for now, can be robustified
+                        return category.includes(selectedCategory.replace('s', '')) || // remove plural s for matching
+                            (selectedCategory === 'tops' && (category.includes('shirt') || category.includes('blouse'))) ||
+                            (selectedCategory === 'bottoms' && (category.includes('pant') || category.includes('skirt') || category.includes('jean')));
+                    });
                 }
-            });
-        }
-
-        // Color filter
-        if (selectedColor !== 'all') {
-            result = result.filter(item => {
-                const color = (item.color || '').toLowerCase();
-                return color.includes(selectedColor);
-            });
-        }
-
-        // Search filter
-        if (searchQuery) {
-            const query = searchQuery.toLowerCase();
-            result = result.filter(item => {
-                const searchFields = [
-                    item.type, item.itemType, item.color,
-                    item.style, item.description, item.category
-                ].filter(Boolean).join(' ').toLowerCase();
-                return searchFields.includes(query);
-            });
+            }
         }
 
         setFilteredItems(result);
-    }, [items, selectedCategory, selectedColor, searchQuery]);
+    }, [items, selectedCategory, viewMode]);
 
-    // Calculate analytics
-    const analytics = {
-        total: items.length,
-        mostWorn: items.reduce((max, item) =>
-            (item.wearCount || 0) > (max.wearCount || 0) ? item : max,
-            items[0]
-        ),
-        neverWorn: items.filter(item => !item.wearCount || item.wearCount === 0).length,
-        categories: CATEGORIES.slice(1).map(cat => ({
-            ...cat,
-            count: items.filter(item => {
-                const category = (item.category || item.type || '').toLowerCase();
-                return category.includes(cat.id) ||
-                    (cat.id === 'tops' && (category.includes('shirt') || category.includes('upper'))) ||
-                    (cat.id === 'shoes' && (category.includes('sneaker') || category.includes('boot')));
-            }).length
-        }))
-    };
 
     return (
         <View style={styles.container}>
-            <SafeAreaView style={styles.safeArea}>
+            <SafeAreaView style={styles.safeArea} edges={['top']}>
                 {/* Header */}
-                <Animated.View
-                    entering={FadeInDown.delay(50).springify()}
-                    style={styles.header}
-                >
-                    <View>
+                <View style={[styles.header, items.length === 0 && { justifyContent: 'center' }]}>
+                    <View style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]} pointerEvents="none">
                         <Text style={styles.headerTitle}>My Closet</Text>
-                        <Text style={styles.headerSubtitle}>{items.length} items collected</Text>
                     </View>
+                    {items.length > 0 && (
+                        <TouchableOpacity style={styles.headerButtonLeft}>
+                            <Ionicons name="search" size={20} color={colors.text.secondary} />
+                            <Text style={styles.headerButtonText}>Search</Text>
+                        </TouchableOpacity>
+                    )}
 
-                    <TahoeIconButton
-                        icon="notifications-outline"
-                        onPress={() => { }}
-                        color={COLORS.text}
-                    />
-                </Animated.View>
 
-                {/* Search Bar */}
-                <Animated.View
-                    entering={FadeInUp.delay(100).springify()}
-                    style={styles.searchSection}
-                >
-                    <View style={styles.searchContainer}>
-                        <Ionicons name="search-outline" size={20} color={COLORS.textMuted} />
-                        <TextInput
-                            style={styles.searchInput}
-                            placeholder="Search your wardrobe..."
-                            placeholderTextColor={COLORS.textMuted}
-                            value={searchQuery}
-                            onChangeText={setSearchQuery}
-                        />
-                        {searchQuery ? (
-                            <TouchableOpacity onPress={() => setSearchQuery('')}>
-                                <Ionicons name="close-circle" size={20} color={COLORS.textMuted} />
-                            </TouchableOpacity>
-                        ) : null}
+                    {items.length > 0 && (
+                        <TouchableOpacity
+                            style={styles.headerButtonRight}
+                            onPress={() => (navigation as any).navigate('Camera')} // Navigate to Camera/Upload
+                        >
+                            <Ionicons name="add" size={22} color={colors.text.secondary} />
+                            <Text style={styles.headerButtonText}>Upload</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+
+                {/* Segmented Control */}
+                <View style={styles.segmentContainer}>
+                    <View style={styles.segmentBackground}>
+                        <TouchableOpacity
+                            style={[styles.segmentButton, viewMode === 'clothes' && styles.segmentButtonActive]}
+                            onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                setViewMode('clothes');
+                            }}
+                        >
+                            <Text style={[styles.segmentText, viewMode === 'clothes' && styles.segmentTextActive]}>Clothes</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.segmentButton, viewMode === 'collections' && styles.segmentButtonActive]}
+                            onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                setViewMode('collections');
+                            }}
+                        >
+                            <Text style={[styles.segmentText, viewMode === 'collections' && styles.segmentTextActive]}>Collections</Text>
+                        </TouchableOpacity>
                     </View>
-                    <TouchableOpacity
-                        style={[styles.filterButton, showFilters && styles.filterButtonActive]}
-                        onPress={() => {
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                            setShowFilters(!showFilters);
-                        }}
-                    >
-                        <Ionicons
-                            name="options-outline"
-                            size={20}
-                            color={showFilters ? COLORS.background : COLORS.text}
-                        />
-                    </TouchableOpacity>
-                </Animated.View>
+                </View>
 
+                {/* Filter Chips */}
+                {viewMode === 'clothes' && (
+                    <View style={styles.filterContainer}>
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.filterContentRaw}
+                        >
+                            {CATEGORIES.map((cat) => (
+                                <FilterChip
+                                    key={cat.id}
+                                    label={cat.label}
+                                    isSelected={selectedCategory === cat.id}
+                                    onPress={() => setSelectedCategory(cat.id)}
+                                />
+                            ))}
+                        </ScrollView>
+                    </View>
+                )}
+
+                {/* Content */}
                 <ScrollView
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
                 >
-                    {/* Category Filters */}
-                    <Animated.View entering={FadeInUp.delay(150).springify()}>
-                        <ScrollView
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            contentContainerStyle={styles.categoriesContainer}
-                        >
-                            {CATEGORIES.map((category) => (
-                                <CategoryChip
-                                    key={category.id}
-                                    category={category}
-                                    isSelected={selectedCategory === category.id}
-                                    onPress={() => setSelectedCategory(category.id)}
+                    {loading ? (
+                        <View style={styles.loadingContainer}>
+                            <ActivityIndicator size="small" color={colors.text.primary} />
+                        </View>
+                    ) : items.length === 0 ? (
+                        <View style={styles.emptyStateContainer}>
+                            <View style={styles.videoContainer}>
+                                <Video
+                                    source={require('../assets/videos/closet.mov')}
+                                    style={styles.video}
+                                    resizeMode={ResizeMode.CONTAIN}
+                                    shouldPlay={true}
+                                    isLooping
+                                    isMuted
+                                />
+                            </View>
+                            <Text style={styles.emptyTitle}>Your closet is empty</Text>
+                            <Text style={styles.emptySubtitle}>Start adding items to build your digital wardrobe.</Text>
+
+                            <TouchableOpacity
+                                style={styles.emptyButton}
+                                onPress={() => (navigation as any).navigate('Camera')}
+                            >
+                                <Text style={styles.emptyButtonText}>Scan Wardrobe</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        <View style={styles.grid}>
+                            {filteredItems.map((item, index) => (
+                                <ClothingGridItem
+                                    key={item._id || item.id || index}
+                                    item={item}
+                                    onPress={() => {
+                                        (navigation as any).navigate('OutfitDetail', {
+                                            image: item.imageUrl || item.image,
+                                            outfit: { id: item._id || item.id, items: [item] }
+                                        });
+                                    }}
                                 />
                             ))}
-                        </ScrollView>
-                    </Animated.View>
-
-                    {/* Color Filters (expanded) */}
-                    {showFilters && (
-                        <Animated.View
-                            entering={FadeInUp.springify()}
-                            style={styles.colorFiltersSection}
-                        >
-                            <Text style={styles.filterLabel}>Filter by color</Text>
-                            <ScrollView
-                                horizontal
-                                showsHorizontalScrollIndicator={false}
-                                contentContainerStyle={styles.colorsContainer}
-                            >
-                                {COLOR_FILTERS.map((color) => (
-                                    <ColorChip
-                                        key={color.id}
-                                        color={color}
-                                        isSelected={selectedColor === color.id}
-                                        onPress={() => setSelectedColor(color.id)}
-                                    />
-                                ))}
-                            </ScrollView>
-                        </Animated.View>
+                        </View>
                     )}
-
-                    {/* Analytics Section - Bento Grid */}
-                    <Animated.View
-                        entering={FadeInUp.delay(200).springify()}
-                        style={styles.analyticsSection}
-                    >
-                        {/* Closet Video */}
-                        <View style={styles.closetVideoContainer}>
-                            <Video
-                                source={require('./closet.mov')}
-                                style={styles.closetVideo}
-                                resizeMode={ResizeMode.COVER}
-                                shouldPlay={true}
-                                isLooping
-                                isMuted
-                            />
-                        </View>
-
-                        {/* Rediscover prompt */}
-                        {analytics.neverWorn > 0 && (
-                            <TouchableOpacity
-                                style={styles.rediscoverCard}
-                                onPress={() => {
-                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                                    // Filter to show never worn items
-                                    setFilteredItems(items.filter(item => !item.wearCount || item.wearCount === 0));
-                                }}
-                            >
-                                <View style={styles.rediscoverIcon}>
-                                    <Ionicons name="sparkles" size={24} color={COLORS.primary} />
-                                </View>
-                                <View style={styles.rediscoverContent}>
-                                    <Text style={styles.rediscoverTitle}>Rediscover your wardrobe</Text>
-                                    <Text style={styles.rediscoverSubtitle}>
-                                        You have {analytics.neverWorn} items waiting to be worn!
-                                    </Text>
-                                </View>
-                                <Ionicons name="arrow-forward" size={20} color={COLORS.textMuted} />
-                            </TouchableOpacity>
-                        )}
-                    </Animated.View>
-
-                    {/* Items Grid */}
-                    <Animated.View
-                        entering={FadeInUp.delay(250).springify()}
-                        style={styles.gridSection}
-                    >
-                        <View style={styles.gridHeader}>
-                            <Text style={styles.sectionTitle}>
-                                {selectedCategory === 'all' ? 'All Items' :
-                                    CATEGORIES.find(c => c.id === selectedCategory)?.label}
-                            </Text>
-                            <Text style={styles.itemCount}>{filteredItems.length} items</Text>
-                        </View>
-
-                        {loading ? (
-                            <View style={styles.loadingContainer}>
-                                <ActivityIndicator size="large" color={COLORS.primary} />
-                                <Text style={styles.loadingText}>Loading your closet...</Text>
-                            </View>
-                        ) : filteredItems.length === 0 ? (
-                            <View style={styles.emptyContainer}>
-                                <Ionicons name="shirt-outline" size={64} color={COLORS.textMuted} />
-                                <Text style={styles.emptyTitle}>No items found</Text>
-                                <Text style={styles.emptySubtitle}>
-                                    {searchQuery || selectedCategory !== 'all' || selectedColor !== 'all'
-                                        ? 'Try adjusting your filters'
-                                        : 'Scan your wardrobe to add items'}
-                                </Text>
-                                <TouchableOpacity
-                                    style={styles.addButton}
-                                    onPress={() => (navigation as any).navigate('Camera')}
-                                >
-                                    <Ionicons name="camera-outline" size={20} color={COLORS.background} />
-                                    <Text style={styles.addButtonText}>Scan Wardrobe</Text>
-                                </TouchableOpacity>
-                            </View>
-                        ) : (
-                            <View style={styles.grid}>
-                                {filteredItems.map((item, index) => (
-                                    <ClothingGridItem
-                                        key={item._id || item.id || index}
-                                        item={item}
-                                        onPress={() => {
-                                            // Navigate to item detail
-                                            (navigation as any).navigate('OutfitDetail', {
-                                                image: item.imageUrl || item.image,
-                                                outfit: { id: item._id || item.id, items: [item] }
-                                            });
-                                        }}
-                                    />
-                                ))}
-                            </View>
-                        )}
-                    </Animated.View>
-
                     <View style={{ height: 100 }} />
                 </ScrollView>
 
-                {/* Floating Action Button */}
-                <Animated.View entering={FadeInUp.delay(500).springify()} style={styles.fabContainer}>
-                    <TouchableOpacity
-                        style={styles.fab}
-                        onPress={() => (navigation as any).navigate('Camera')}
-                        activeOpacity={0.8}
-                    >
-                        <Ionicons name="camera" size={28} color="#fff" />
-                    </TouchableOpacity>
-                </Animated.View>
             </SafeAreaView>
         </View>
     );
@@ -607,7 +332,7 @@ const MyClosetScreen = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: COLORS.background,
+        backgroundColor: '#FFFFFF', // iOS System Gray 6 (light mode typical background)
     },
     safeArea: {
         flex: 1,
@@ -619,316 +344,156 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 20,
-        paddingTop: 10,
-        paddingBottom: 16,
+        paddingVertical: 12,
+        backgroundColor: '#FFFFFF',
     },
     headerTitle: {
-        fontSize: 32,
-        fontWeight: '800',
-        color: COLORS.text,
-        letterSpacing: -0.5,
+        ...typography.scale.titleLarge,
+        fontWeight: '700',
+        color: '#0A1931',
+        letterSpacing: 0.3,
     },
-    headerSubtitle: {
-        fontSize: 14,
-        color: COLORS.textSecondary,
-        marginTop: 4,
-        fontWeight: '500',
-    },
-
-    // Search
-    searchSection: {
-        flexDirection: 'row',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        gap: 10,
-    },
-    searchContainer: {
-        flex: 1,
+    headerButtonLeft: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: COLORS.surfaceLight,
-        borderRadius: 12,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-    },
-    searchInput: {
-        flex: 1,
-        marginLeft: 8,
-        fontSize: 15,
-        color: COLORS.text,
-    },
-    filterButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 12,
-        backgroundColor: COLORS.surfaceLight,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: COLORS.border,
-    },
-    filterButtonActive: {
-        backgroundColor: COLORS.primary,
-        borderColor: COLORS.primary,
-    },
-
-    scrollContent: {
-        paddingTop: 10,
-    },
-
-    // Categories
-    categoriesContainer: {
-        paddingHorizontal: 16,
-        gap: 8,
-    },
-    categoryChip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 14,
+        backgroundColor: '#FFFFFF',
         paddingVertical: 8,
-        borderRadius: 20,
-        backgroundColor: COLORS.surfaceLight,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        marginRight: 8,
-    },
-    categoryChipSelected: {
-        backgroundColor: COLORS.primary,
-        borderColor: COLORS.primary,
-    },
-    categoryChipText: {
-        marginLeft: 6,
-        fontSize: 13,
-        fontWeight: '500',
-        color: COLORS.textSecondary,
-    },
-    categoryChipTextSelected: {
-        color: COLORS.background,
-    },
-
-    // Color Filters
-    colorFiltersSection: {
-        paddingTop: 16,
-        paddingLeft: 16,
-    },
-    filterLabel: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: COLORS.textSecondary,
-        marginBottom: 10,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
-    colorsContainer: {
-        paddingRight: 16,
-    },
-    colorChip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 16,
-        backgroundColor: COLORS.surfaceLight,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        marginRight: 8,
-    },
-    colorChipSelected: {
-        borderColor: COLORS.primary,
-        backgroundColor: COLORS.primary + '10',
-    },
-    colorDot: {
-        width: 14,
-        height: 14,
-        borderRadius: 7,
-        marginRight: 6,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-    },
-    colorChipText: {
-        fontSize: 12,
-        color: COLORS.textSecondary,
-    },
-    colorChipTextSelected: {
-        color: COLORS.primary,
-        fontWeight: '600',
-    },
-
-    // Analytics
-    analyticsSection: {
         paddingHorizontal: 16,
-        paddingTop: 24,
-        paddingBottom: 16,
+        borderRadius: 20, // Pill shape
+        // Subtle shadow
+        shadowColor: '#0A1931',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
     },
-    closetVideoContainer: {
-        width: '35%',
-        height: 100,
-        borderRadius: 1,
-        overflow: 'hidden',
-        alignSelf: 'center',
-        marginVertical: 1,
-    },
-    closetVideo: {
-        width: '100%',
-        height: '100%',
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: COLORS.text,
-        marginBottom: 16,
-    },
-    statsRow: {
+    headerButtonRight: {
         flexDirection: 'row',
-        gap: 12,
-    },
-    statCard: {
-        flex: 1,
-        backgroundColor: COLORS.surfaceLight,
-        borderRadius: 16,
-        padding: 16,
         alignItems: 'center',
-        borderWidth: 1,
-        borderColor: COLORS.border,
-    },
-    statIconBg: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 8,
-    },
-    statValue: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: COLORS.text,
-    },
-    statTitle: {
-        fontSize: 11,
-        color: COLORS.textSecondary,
-        marginTop: 4,
-        textAlign: 'center',
-    },
+        backgroundColor: '#FFFFFF',
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 20, // Pill shape
+        shadowColor: '#0A1931',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
 
-    // Rediscover Card
-    rediscoverCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: COLORS.primary + '10',
-        borderRadius: 16,
-        padding: 16,
-        marginTop: 16,
-        borderWidth: 1,
-        borderColor: COLORS.primary + '30',
     },
-    rediscoverIcon: {
-        width: 48,
-        height: 48,
-        borderRadius: 12,
-        backgroundColor: COLORS.background,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 12,
-    },
-    rediscoverContent: {
-        flex: 1,
-    },
-    rediscoverTitle: {
+    headerButtonText: {
         fontSize: 15,
-        fontWeight: '600',
-        color: COLORS.text,
-    },
-    rediscoverSubtitle: {
-        fontSize: 13,
-        color: COLORS.textSecondary,
-        marginTop: 2,
-    },
-
-    // Grid Section
-    gridSection: {
-        paddingHorizontal: 16,
-        paddingTop: 8,
-    },
-    gridHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    itemCount: {
-        fontSize: 14,
-        color: COLORS.textSecondary,
         fontWeight: '500',
+        color: '#3C3C43', // iOS gray
+        marginLeft: 6,
     },
 
-    // Bento Grid
-    bentoGrid: {
+    // Segmented Control
+    segmentContainer: {
+        alignItems: 'center',
+        paddingTop: 15,
+        paddingBottom: 20,
+        backgroundColor: '#FFFFFF',
+    },
+    segmentBackground: {
         flexDirection: 'row',
-        height: 140,
-        marginBottom: 20,
+        backgroundColor: '#E5E5EA', // iOS System Gray 5
+        borderRadius: 24, // Rounded
+        padding: 4,
+        width: 300,
     },
-    bentoItem: {
-        borderRadius: 20,
-        padding: 16,
-        justifyContent: 'space-between',
-        borderWidth: 1,
-    },
-    bentoIcon: {
-        width: 36,
-        height: 36,
-        borderRadius: 12,
+    segmentButton: {
+        flex: 1,
+        paddingVertical: 10,
         alignItems: 'center',
         justifyContent: 'center',
+        borderRadius: 20,
     },
-    bentoValue: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: COLORS.text,
-        marginBottom: 2,
+    segmentButtonActive: {
+        backgroundColor: '#FFFFFF',
+        shadowColor: '#0A1931',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
     },
-    bentoValueLarge: {
-        fontSize: 32,
-        marginBottom: 4,
+    segmentText: {
+        fontSize: 15,
+        fontWeight: '500',
+        color: '#8E8E93',
     },
-    bentoTitle: {
-        fontSize: 12,
+    segmentTextActive: {
+        color: '#0A1931',
         fontWeight: '600',
-        color: COLORS.textSecondary,
     },
 
-    // Grid Items
+    // Filters
+    filterContainer: {
+        marginBottom: 16,
+    },
+    filterContentRaw: {
+        paddingHorizontal: 16,
+        paddingRight: 8,
+    },
+    filterChip: {
+        paddingVertical: 8,
+        paddingHorizontal: 20,
+        borderRadius: 20,
+        marginRight: 8,
+        backgroundColor: '#E5E5EA', // Default gray
+    },
+    filterChipSelected: {
+        backgroundColor: '#303030', // Dark grey/black active state
+    },
+    filterChipUnselected: {
+        backgroundColor: '#E5E5EA',
+    },
+    filterChipText: {
+        fontSize: 15,
+        fontWeight: '500',
+    },
+    filterChipTextSelected: {
+        color: '#FFFFFF',
+    },
+    filterChipTextUnselected: {
+        color: '#3C3C43',
+    },
+
+    // Grid
+    scrollContent: {
+        paddingHorizontal: 16,
+        paddingBottom: 100,
+        flexGrow: 1,
+    },
+    loadingContainer: {
+        paddingTop: 50,
+        alignItems: 'center',
+    },
     grid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 12,
-        paddingBottom: 20,
+        marginHorizontal: -6, // Account for item padding
     },
     gridItemContainer: {
-        width: (width - 44) / 2,
-        marginBottom: 12,
+        width: '50%', // 2 columns
+        padding: 6,
     },
     gridItem: {
-        backgroundColor: COLORS.surface,
+        backgroundColor: '#FFFFFF',
         borderRadius: 16,
         overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
+        // Minimal shadow for clean look
+        shadowColor: '#0A1931',
+        shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 2,
+        shadowRadius: 2,
+        elevation: 1,
     },
     imageContainer: {
-        height: 160,
-        width: '100%',
-        backgroundColor: COLORS.surfaceLight,
+        aspectRatio: 3 / 4, // Portrait ratio for clothes
+        backgroundColor: '#FFFFFF',
         alignItems: 'center',
         justifyContent: 'center',
-        position: 'relative',
     },
     itemImage: {
         width: '100%',
@@ -938,94 +503,46 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    colorBadge: {
-        position: 'absolute',
-        top: 10,
-        right: 10,
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        borderWidth: 2,
-        borderColor: '#fff',
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 2,
-    },
-    itemInfo: {
-        padding: 12,
-    },
-    itemType: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: COLORS.text,
-        marginBottom: 2,
-    },
-    itemCategory: {
-        fontSize: 12,
-        color: COLORS.textSecondary,
-    },
 
-    // Loading & Empty
-    loadingContainer: {
-        alignItems: 'center',
-        paddingVertical: 60,
-    },
-    loadingText: {
-        marginTop: 12,
-        fontSize: 14,
-        color: COLORS.textSecondary,
-    },
-    emptyContainer: {
-        alignItems: 'center',
-        paddingVertical: 60,
-    },
-    emptyTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: COLORS.text,
-        marginTop: 16,
-    },
-    emptySubtitle: {
-        fontSize: 14,
-        color: COLORS.textSecondary,
-        marginTop: 4,
-        textAlign: 'center',
-    },
-    addButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: COLORS.primary,
-        paddingHorizontal: 20,
-        paddingVertical: 12,
-        borderRadius: 24,
-        marginTop: 20,
-        gap: 8,
-    },
-    addButtonText: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: COLORS.background,
-    },
-
-    // FAB
-    fabContainer: {
-        position: 'absolute',
-        bottom: 24,
-        alignSelf: 'center',
-    },
-    fab: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
-        backgroundColor: COLORS.text,
+    // Empty State
+    emptyStateContainer: {
+        flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 10,
-        elevation: 10,
+        paddingTop: 40,
+    },
+    videoContainer: {
+        width: 250,
+        height: 250,
+        marginBottom: 20,
+    },
+    video: {
+        width: '100%',
+        height: '100%',
+    },
+    emptyTitle: {
+        fontSize: 20,
+        fontWeight: '600',
+        color: '#0A1931',
+        marginBottom: 8,
+    },
+    emptySubtitle: {
+        fontSize: 15,
+        color: '#8E8E93',
+        textAlign: 'center',
+        maxWidth: 260,
+        marginBottom: 24,
+    },
+    emptyButton: {
+        backgroundColor: '#0A1931',
+        paddingVertical: 14,
+        paddingHorizontal: 32,
+        borderRadius: 30,
+    },
+    emptyButtonText: {
+        color: '#FFF',
+        fontSize: 16,
+        fontWeight: '600',
     },
 });
 

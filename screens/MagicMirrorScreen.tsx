@@ -17,7 +17,6 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
 import Animated, {
     FadeIn,
     FadeInDown,
@@ -30,8 +29,8 @@ import Animated, {
 
 import SwipeableClothingCarousel from '../components/ui/SwipeableClothingCarousel';
 import { ClosetlyTheme, ClosetlyStyles } from '../constants/ClosetlyTheme';
-// @ts-ignore
-import { API_URL } from '../api/config';
+import { supabase } from '../lib/supabase';
+import useAuthStore from '../store/auth';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -70,6 +69,7 @@ interface MatchedBottom {
  */
 const MagicMirrorScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { user } = useAuthStore(); // Use AuthStore
 
     // State
     const [userPhoto, setUserPhoto] = useState<string | null>(null);
@@ -92,21 +92,30 @@ const MagicMirrorScreen: React.FC = () => {
     // Load wardrobe items
     const loadWardrobeItems = useCallback(async () => {
         try {
+            if (!user) return;
             setLoading(true);
-            const token = await AsyncStorage.getItem('userToken');
+
+            // Fetch from Supabase
+            const { data, error } = await supabase
+                .from('clothing_items')
+                .select('*')
+                .eq('user_id', user.id);
+
+            if (error) throw error;
 
             let items: ClothingItem[] = [];
-
-            if (token) {
-                const response = await axios.get(`${API_URL}/clothing-items`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                items = Array.isArray(response.data) ? response.data : response.data.items || [];
-            } else {
-                const localItems = await AsyncStorage.getItem('wardrobeItems');
-                if (localItems) {
-                    items = JSON.parse(localItems);
-                }
+            if (data) {
+                items = data.map(item => ({
+                    _id: item.id,
+                    id: item.id,
+                    imageUrl: item.image_url,
+                    image: item.image_url,
+                    type: item.type,
+                    category: item.category,
+                    itemType: item.category, // Map category to itemType for logic
+                    color: item.color,
+                    style: item.style
+                }));
             }
 
             // Categorize items
@@ -127,7 +136,7 @@ const MagicMirrorScreen: React.FC = () => {
             setBottoms(bottomsFiltered.length > 0 ? bottomsFiltered : items.slice(Math.ceil(items.length / 2)));
             setSortedBottoms(bottomsFiltered.length > 0 ? bottomsFiltered : items.slice(Math.ceil(items.length / 2)));
 
-            // Load saved user photo
+            // Load saved user photo (Can stick with AsyncStorage for local prefs, or migrate to user metadata)
             const savedPhoto = await AsyncStorage.getItem('userTryOnPhoto');
             if (savedPhoto) {
                 setUserPhoto(savedPhoto);
@@ -139,7 +148,7 @@ const MagicMirrorScreen: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [user]);
 
     useFocusEffect(
         useCallback(() => {
@@ -161,12 +170,12 @@ const MagicMirrorScreen: React.FC = () => {
 
             // Color harmony rules (simplified)
             const colorHarmony: Record<string, string[]> = {
-                'black': ['white', 'gray', 'blue', 'red', 'beige', 'tan', 'khaki'],
-                'white': ['black', 'blue', 'navy', 'gray', 'beige', 'brown'],
+                '#0A1931': ['white', 'gray', 'blue', 'red', 'beige', 'tan', 'khaki'],
+                'white': ['#0A1931', 'blue', 'navy', 'gray', 'beige', 'brown'],
                 'blue': ['white', 'beige', 'khaki', 'gray', 'tan', 'brown'],
                 'navy': ['white', 'beige', 'khaki', 'tan', 'gray'],
-                'gray': ['black', 'white', 'blue', 'navy', 'burgundy'],
-                'beige': ['navy', 'blue', 'brown', 'white', 'black'],
+                'gray': ['#0A1931', 'white', 'blue', 'navy', 'burgundy'],
+                'beige': ['navy', 'blue', 'brown', 'white', '#0A1931'],
                 'brown': ['beige', 'white', 'khaki', 'navy'],
             };
 
@@ -273,6 +282,11 @@ const MagicMirrorScreen: React.FC = () => {
             return;
         }
 
+        if (!user) {
+            Alert.alert("Login Required", "Please login to use Magic Mirror.");
+            return;
+        }
+
         setTryingOn(true);
         setResultImage(null);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -284,36 +298,33 @@ const MagicMirrorScreen: React.FC = () => {
                 throw new Error('No garment image available');
             }
 
-            const response = await fetch(`${API_URL}/tryon`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+            const { data, error } = await supabase.functions.invoke('try-on', {
+                body: {
                     person_image: userPhoto,
                     garment_image: garmentImage,
                     garment_type: 'upper_body',
-                }),
+                }
             });
 
-            if (!response.ok) {
-                throw new Error(`Server error: ${response.status}`);
-            }
-
-            const data = await response.json();
+            if (error) throw error;
 
             if (data.success && data.resultImage) {
                 setResultImage(data.resultImage);
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                if (data.methodUsed === 'mock') {
+                    Alert.alert("Demo Mode", "AI service not configured. Showing demo result.");
+                }
             } else {
                 throw new Error(data.error || 'Try-on failed');
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Try-on error:', error);
-            Alert.alert('Try-On Failed', 'Please try again later.');
+            Alert.alert('Try-On Failed', 'Please try again later. ' + (error.message || ''));
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         } finally {
             setTryingOn(false);
         }
-    }, [userPhoto, selectedTop]);
+    }, [userPhoto, selectedTop, user]);
 
     // Animated styles
     const matchScoreAnimatedStyle = useAnimatedStyle(() => ({

@@ -193,7 +193,7 @@ export const LiquidGlassCard: React.FC<LiquidGlassCardProps> = ({
                         backgroundColor: '#FFFFFF',
                         borderRadius: borderRadiusValue,
                         borderWidth: 2,
-                        borderColor: '#000000',
+                        borderColor: '#0A1931',
                     },
                     style,
                     pressable ? animatedContainerStyle : undefined,

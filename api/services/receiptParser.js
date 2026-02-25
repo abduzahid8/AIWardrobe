@@ -165,7 +165,7 @@ function extractClothingItems(text, html) {
  */
 function extractItemDescription(line, html) {
     // Remove common noise words
-    let clean = line
+    const clean = line
         .replace(/qty:?\s*\d+/gi, '')
         .replace(/quantity:?\s*\d+/gi, '')
         .replace(/size:?\s*[smlxSMLX\d]+/gi, '')

@@ -22,7 +22,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
-import moment from 'moment';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
@@ -252,7 +251,7 @@ const AIHubScreen = () => {
     const [isAgentActive, setIsAgentActive] = useState(false);
 
     const getGreeting = () => {
-        const hour = moment().hour();
+        const hour = new Date().getHours();
         if (hour < 12) return 'Good morning';
         if (hour < 18) return 'Good afternoon';
         return 'Good evening';

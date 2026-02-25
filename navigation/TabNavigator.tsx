@@ -19,7 +19,7 @@ import * as Haptics from "expo-haptics";
 // Original Screens
 import HomeScreen from "../screens/HomeScreen";
 import MyClosetScreen from "../screens/MyClosetScreen";
-import AIHubScreen from "../screens/AIHubScreen";
+import AITryOnScreen from "../screens/AITryOnScreen";
 import InspoScreen from "../screens/InspoScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 
@@ -206,8 +206,12 @@ const TabNavigator = () => {
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Closet" component={MyClosetScreen} />
-      {/* AI Hub has the special Morphing Button inside it */}
-      <Tab.Screen name="AI" component={AIHubScreen} />
+      {/* AI tab: Try On — full-length photo + AI outfit preview */}
+      <Tab.Screen
+        name="AI"
+        component={AITryOnScreen}
+        initialParams={{ asTab: true }}
+      />
       <Tab.Screen name="Inspo" component={InspoScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>

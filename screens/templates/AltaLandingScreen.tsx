@@ -40,7 +40,7 @@ const { width } = Dimensions.get('window');
 const ALTA = {
     bg: '#FFFFFF',
     surface: '#F5F5F5',
-    text: '#000000',
+    text: '#0A1931',
     textSecondary: '#666666',
     textMuted: '#8E8E8E',
     border: '#E5E5E5',

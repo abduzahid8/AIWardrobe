@@ -14,8 +14,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Haptics from 'expo-haptics';
 import Animated, {
@@ -31,9 +29,10 @@ import Animated, {
     Easing,
 } from 'react-native-reanimated';
 import AppColors from '../constants/AppColors';
+import { supabase } from '../lib/supabase';
+import useAuthStore from '../store/auth';
 
 const { width } = Dimensions.get('window');
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
 interface WeatherDay {
     date: string;
@@ -179,6 +178,7 @@ const OccasionChip = ({
 
 const TripPlannerScreen = () => {
     const navigation = useNavigation();
+    const { user } = useAuthStore();
     const [step, setStep] = useState<'input' | 'loading' | 'result'>('input');
 
     // Form inputs
@@ -191,30 +191,11 @@ const TripPlannerScreen = () => {
 
     // Results
     const [tripPlan, setTripPlan] = useState<TripPlan | null>(null);
-    const [userId, setUserId] = useState<string | null>(null);
 
     const buttonScale = useSharedValue(1);
     const buttonAnimStyle = useAnimatedStyle(() => ({
         transform: [{ scale: buttonScale.value }],
     }));
-
-    useEffect(() => {
-        getUserId();
-    }, []);
-
-    const getUserId = async () => {
-        try {
-            const token = await AsyncStorage.getItem('userToken');
-            if (token) {
-                const response = await axios.get(`${API_URL}/me`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                setUserId(response.data._id);
-            }
-        } catch (error) {
-            console.error('Error getting user ID:', error);
-        }
-    };
 
     const occasionOptions = [
         { id: 'casual', emoji: '👕', label: 'Casual' },
@@ -247,26 +228,35 @@ const TripPlannerScreen = () => {
             return;
         }
 
+        if (!user) {
+            Alert.alert('Error', 'You must be logged in to create a trip plan');
+            return;
+        }
+
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         setStep('loading');
 
         try {
-            const response = await axios.post(
-                `${API_URL}/api/trip-planner/create`,
-                {
-                    userId: userId || 'guest',
+            const { data, error } = await supabase.functions.invoke('create-trip-plan', {
+                body: {
                     destination: destination.trim(),
                     startDate: startDate.toISOString().split('T')[0],
                     endDate: endDate.toISOString().split('T')[0],
                     occasions
-                },
-                { timeout: 30000 }
-            );
+                }
+            });
 
-            setTripPlan(response.data);
+            if (error) {
+                console.error("Supabase function error:", error);
+                // Fallback demo data (simplified for resilience)
+                throw new Error(error.message || "Function error");
+            }
+
+            setTripPlan(data);
             setStep('result');
-        } catch (error: unknown) {
-            // Fallback demo data
+        } catch (error: any) {
+            console.error('Trip creation error:', error);
+            // Fallback demo data if function fails or network error
             setTripPlan({
                 destination: destination.trim(),
                 weather: [],
@@ -283,6 +273,8 @@ const TripPlannerScreen = () => {
                     daysPlanned: Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
                 }
             });
+            // Show alert but still show demo result
+            Alert.alert("Note", "Could not connect to planner service. Showing demo plan.");
             setStep('result');
         }
     };

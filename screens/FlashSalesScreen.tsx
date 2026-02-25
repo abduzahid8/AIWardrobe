@@ -183,7 +183,7 @@ const HeroEventCard = ({
                         </Text>
                         <View style={styles.heroShopButton}>
                             <Text style={styles.heroShopButtonText}>Shop Now</Text>
-                            <Ionicons name="arrow-forward" size={16} color="#000" />
+                            <Ionicons name="arrow-forward" size={16} color="#0A1931" />
                         </View>
                     </View>
                 </View>
@@ -543,7 +543,7 @@ const styles = StyleSheet.create({
         height: 400,
         borderRadius: 24,
         overflow: 'hidden',
-        backgroundColor: '#000',
+        backgroundColor: '#0A1931',
     },
     heroImage: {
         width: '100%',
@@ -657,7 +657,7 @@ const styles = StyleSheet.create({
     heroShopButtonText: {
         fontSize: 14,
         fontWeight: '700',
-        color: '#000',
+        color: '#0A1931',
     },
 
     // Countdown
@@ -724,7 +724,7 @@ const styles = StyleSheet.create({
         height: 260,
         borderRadius: 20,
         overflow: 'hidden',
-        backgroundColor: '#000',
+        backgroundColor: '#0A1931',
     },
     eventCardImage: {
         width: '100%',

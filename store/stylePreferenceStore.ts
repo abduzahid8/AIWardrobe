@@ -232,21 +232,50 @@ export const useStylePreferenceStore = create<StylePreferenceState>()(
             },
 
             getLearnedColorPreferences: () => {
-                const { outfitFeedback } = get();
+                const { outfitFeedback, preferences } = get();
+
+                // Start with explicitly set preferences as the base
                 const colorCounts: Record<string, { liked: number; disliked: number }> = {};
 
+                // Seed from explicit preferences (high weight)
+                preferences.favoriteColors.forEach(color => {
+                    const key = color.toLowerCase();
+                    colorCounts[key] = colorCounts[key] || { liked: 0, disliked: 0 };
+                    colorCounts[key].liked += 3;
+                });
+                preferences.avoidColors.forEach(color => {
+                    const key = color.toLowerCase();
+                    colorCounts[key] = colorCounts[key] || { liked: 0, disliked: 0 };
+                    colorCounts[key].disliked += 3;
+                });
+
+                // Learn from outfit feedback — items carry color tags
                 outfitFeedback.forEach(feedback => {
-                    // Would need outfit details to extract colors
-                    // This is a placeholder for the learning algorithm
+                    if (!feedback.items) return;
+                    feedback.items.forEach(itemId => {
+                        // itemId may encode color info as "color:blue" or similar
+                        const colorMatch = itemId.match(/color:([a-z]+)/i);
+                        if (!colorMatch) return;
+                        const color = colorMatch[1].toLowerCase();
+                        colorCounts[color] = colorCounts[color] || { liked: 0, disliked: 0 };
+                        if (feedback.liked || feedback.superLiked) {
+                            colorCounts[color].liked += feedback.superLiked ? 2 : 1;
+                        } else if (!feedback.skipped) {
+                            colorCounts[color].disliked += 1;
+                        }
+                    });
                 });
 
                 const liked: string[] = [];
                 const disliked: string[] = [];
 
                 Object.entries(colorCounts).forEach(([color, counts]) => {
-                    if (counts.liked > counts.disliked * 2) {
+                    const total = counts.liked + counts.disliked;
+                    if (total === 0) return;
+                    const likeRatio = counts.liked / total;
+                    if (likeRatio >= 0.65) {
                         liked.push(color);
-                    } else if (counts.disliked > counts.liked * 2) {
+                    } else if (likeRatio <= 0.35) {
                         disliked.push(color);
                     }
                 });
