@@ -81,6 +81,9 @@ const TabButton = ({ title, isActive, onPress }: { title: string; isActive: bool
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       onPress();
     }}
+    accessibilityLabel={`${title} tab`}
+    accessibilityRole="tab"
+    accessibilityState={{ selected: isActive }}
   >
     <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{title}</Text>
   </TouchableOpacity>
@@ -88,7 +91,7 @@ const TabButton = ({ title, isActive, onPress }: { title: string; isActive: bool
 
 const ProfileScreen = () => {
   const navigation = useNavigation();
-  const { user, logout } = useAuthStore();
+  const { user, logout, deleteAccount } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'looks' | 'trips'>('looks');
 
   // User data
@@ -162,6 +165,46 @@ const ProfileScreen = () => {
     );
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "Delete Account",
+      "This will permanently delete your account and all data (clothing items, outfits, wear history). This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete Permanently",
+          style: "destructive",
+          onPress: () => {
+            Alert.alert(
+              "Final Confirmation",
+              "Are you absolutely sure? All your data will be permanently erased.",
+              [
+                { text: "Keep My Account", style: "cancel" },
+                {
+                  text: "Yes, Delete Everything",
+                  style: "destructive",
+                  onPress: async () => {
+                    try {
+                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                      await deleteAccount();
+                      await AsyncStorage.removeItem("userToken");
+                      (navigation as any).reset({
+                        index: 0,
+                        routes: [{ name: "Auth" }],
+                      });
+                    } catch (err: any) {
+                      Alert.alert("Error", err.message || "Failed to delete account. Please try again.");
+                    }
+                  },
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
+  };
+
   const handleSettings = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     // Navigate to settings or show modal
@@ -176,17 +219,17 @@ const ProfileScreen = () => {
         {/* Header - Alta layout */}
         <View style={styles.header}>
           {/* Left: Share icon */}
-          <TouchableOpacity style={styles.headerIcon} onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}>
+          <TouchableOpacity style={styles.headerIcon} onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)} accessibilityLabel="Share profile" accessibilityRole="button">
             <Ionicons name="share-outline" size={24} color={colors.text.primary} />
           </TouchableOpacity>
 
           {/* Right: Avatar pill + Settings */}
           <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.avatarPill}>
+            <TouchableOpacity style={styles.avatarPill} accessibilityLabel="Your avatar" accessibilityRole="button">
               <Ionicons name="person-outline" size={14} color={colors.text.primary} />
               <Text style={styles.avatarPillText}>Your avatar</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerIcon} onPress={handleSettings}>
+            <TouchableOpacity style={styles.headerIcon} onPress={handleSettings} accessibilityLabel="Settings" accessibilityRole="button">
               <Ionicons name="settings-outline" size={24} color={colors.text.primary} />
             </TouchableOpacity>
           </View>
@@ -202,9 +245,10 @@ const ProfileScreen = () => {
               <Image
                 source={{ uri: userAvatar }}
                 style={styles.avatarImage}
+                accessibilityLabel={`${userName}'s profile photo`}
               />
             </View>
-            <Text style={styles.username}>{userName}</Text>
+            <Text style={styles.username} accessibilityRole="header">{userName}</Text>
             <View style={styles.locationRow}>
               <Text style={styles.location}>{location}</Text>
               <Ionicons name="locate-outline" size={14} color={colors.text.tertiary} />
@@ -272,6 +316,8 @@ const ProfileScreen = () => {
                 <TouchableOpacity
                   style={styles.actionButton}
                   onPress={() => (navigation as any).navigate('AI')}
+                  accessibilityLabel="Create new look"
+                  accessibilityRole="button"
                 >
                   <Text style={styles.actionButtonText}>Create new look</Text>
                 </TouchableOpacity>
@@ -306,6 +352,8 @@ const ProfileScreen = () => {
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => (navigation as any).navigate("AI", { screen: "TripPlanner" } as any)}
+                accessibilityLabel="Plan a trip"
+                accessibilityRole="button"
               >
                 <Text style={styles.actionButtonText}>Plan a trip</Text>
               </TouchableOpacity>
@@ -313,8 +361,13 @@ const ProfileScreen = () => {
           )}
 
           {/* Logout Option (Subtle at bottom) */}
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} accessibilityLabel="Log out" accessibilityRole="button">
             <Text style={styles.logoutText}>Log Out</Text>
+          </TouchableOpacity>
+
+          {/* Delete Account */}
+          <TouchableOpacity style={styles.deleteAccountButton} onPress={handleDeleteAccount} accessibilityLabel="Delete account" accessibilityRole="button">
+            <Text style={styles.deleteAccountText}>Delete Account</Text>
           </TouchableOpacity>
 
           <View style={{ height: 100 }} />
@@ -572,7 +625,17 @@ const styles = StyleSheet.create({
     color: colors.text.tertiary,
     fontSize: 14,
     fontWeight: '500',
-  }
+  },
+  deleteAccountButton: {
+    alignSelf: 'center',
+    marginTop: spacing.md,
+    padding: spacing.md,
+  },
+  deleteAccountText: {
+    color: '#FF3B30',
+    fontSize: 13,
+    fontWeight: '500',
+  },
 });
 
 export default ProfileScreen;

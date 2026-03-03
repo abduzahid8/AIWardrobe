@@ -1,6 +1,7 @@
 import React, { Component, ReactNode, ErrorInfo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import crashReporting from '../services/crashReporting';
 
 interface Props {
   children: ReactNode;
@@ -15,7 +16,7 @@ interface State {
 
 /**
  * ErrorBoundary — catches unhandled render errors in the React tree.
- * Wrap around screens or the entire app in App.tsx to prevent full crashes.
+ * Reports errors via crashReporting service.
  *
  * Usage:
  *   <ErrorBoundary>
@@ -33,8 +34,11 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
-    console.error('[ErrorBoundary] Uncaught error:', error.message);
-    console.error('[ErrorBoundary] Component stack:', info.componentStack);
+    // Report to crash reporting service
+    crashReporting.reportCrash(error, {
+      componentStack: info.componentStack || undefined,
+      source: 'ErrorBoundary',
+    });
     this.props.onError?.(error, info);
   }
 

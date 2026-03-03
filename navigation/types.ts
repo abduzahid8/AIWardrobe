@@ -33,6 +33,8 @@ export type RootStackParamList = {
     // Auth
     SignIn: undefined;
     SignUp: undefined;
+    ForgotPassword: undefined;
+    ResetPassword: undefined;
 
     // Main (tab container)
     Main: NavigatorScreenParams<TabParamList>;
@@ -58,12 +60,17 @@ export type RootStackParamList = {
     };
 
     // AI Features — names match registered Stack.Screen names exactly
-    AIChat: undefined;
+    AIChat: { initialTab?: 'chat' | 'outfit' } | undefined;
     AIOutfit: undefined;
     AITryOn: undefined;
     AIHub: undefined;
-    OutfitAI: undefined;
+    OutfitAI: { initialTab?: 'chat' | 'outfit' } | undefined;
     CreateAvatar: undefined;
+
+    // Core Loop (MVP)
+    DailySuggestion: undefined;
+    WearLog: undefined;
+    WeeklyInsights: undefined;
 
     // Calendar & Planning
     Calendar: undefined;

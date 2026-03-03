@@ -16,7 +16,8 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 20,
-        paddingVertical: 12,
+        paddingTop: 12, // Moved Try On text lower
+        paddingBottom: 14,
         backgroundColor: '#FFFFFF',
     },
     headerTitle: {
@@ -28,34 +29,43 @@ const styles = StyleSheet.create({
     headerSpacer: { width: 28 },
     scrollContent: { padding: 20, paddingBottom: 40 },
 
-    // Segment Container
     segmentContainer: {
         alignItems: 'center',
         paddingTop: 15,
         paddingBottom: 20,
         backgroundColor: '#FFFFFF',
     },
-
     modeToggleWrap: {
         flexDirection: 'row',
-        alignSelf: 'center',
         backgroundColor: '#E5E5EA', // iOS System Gray 5
-        borderRadius: 24,
+        borderRadius: 24, // Rounded
         padding: 4,
-        marginBottom: 10,
         width: 300,
     },
-    modeToggleOption: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 20 },
+    modeToggleOption: {
+        flex: 1,
+        paddingVertical: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 20,
+    },
     modeToggleOptionActive: {
-        backgroundColor: '#0A1931',
+        backgroundColor: '#FFFFFF',
         shadowColor: '#0A1931',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
         elevation: 2,
     },
-    modeToggleText: { fontSize: 15, fontWeight: '500', color: '#8E8E93' },
-    modeToggleTextActive: { color: '#fff', fontWeight: '600' },
+    modeToggleText: {
+        fontSize: 15,
+        fontWeight: '500',
+        color: '#8E8E93',
+    },
+    modeToggleTextActive: {
+        color: '#0A1931',
+        fontWeight: '600',
+    },
 
     // Stacked Cards (Model Mode)
     stackedCardsWrap: { height: 260, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 24 },

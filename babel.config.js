@@ -1,5 +1,15 @@
 module.exports = function (api) {
   api.cache(true);
+
+  const plugins = [
+    "react-native-reanimated/plugin",
+  ];
+
+  // Strip console.* in production to prevent sensitive data leaks
+  if (process.env.NODE_ENV === 'production' || process.env.BABEL_ENV === 'production') {
+    plugins.push('transform-remove-console');
+  }
+
   return {
     presets: [
       [
@@ -11,8 +21,6 @@ module.exports = function (api) {
       ],
       "nativewind/babel",
     ],
-    plugins: [
-      "react-native-reanimated/plugin",
-    ],
+    plugins,
   };
 };

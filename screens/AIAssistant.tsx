@@ -225,7 +225,7 @@ const AIAssistant = () => {
       }
 
     } catch (error: unknown) {
-      console.log("AI error", error);
+      // AI error handled silently - user sees fallback message
       const errorMessage: Message = {
         id: Date.now() + 1,
         text: `Sorry, I couldn't connect to the style server. Please try again! 😔`,

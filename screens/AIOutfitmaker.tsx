@@ -160,7 +160,7 @@ const AIOutfitGenerator = () => {
     }));
 
     try {
-      console.log('🎨 Generating outfits:', { stylePreferences: styleToUse, selectedItemsCount: selectedItemIds.size });
+      // Generate outfits with selected items and style preferences
 
       const { data, error } = await supabase.functions.invoke('generate-outfits', {
         body: {

@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { Session } from '@supabase/supabase-js';
+import { analyticsService } from '../src/services/analyticsService';
+import { crashReporting } from '../src/services/crashReporting';
+import { iapService } from '../src/services/iapService';
 
 // ============================================
 // AUTH TYPES
@@ -42,6 +45,7 @@ export interface AuthActions {
     ) => Promise<void>;
     login: (email: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
+    deleteAccount: () => Promise<void>;
     startTrial: () => void;
     endTrial: () => void;
     fetchUser: () => Promise<void>;
@@ -76,15 +80,17 @@ const useAuthStore = create<AuthStore>((set, get) => ({
                 await get().fetchUser();
             }
 
-            // Listen for auth changes
-            supabase.auth.onAuthStateChange((_event, session) => {
+            // Listen for auth changes (store subscription for cleanup)
+            const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
                 if (session) {
                     set({ session, isAuthenticated: true, isTrialMode: false });
-                    // We could fetch user here, but verify logic to avoid loops
                 } else {
                     set({ session: null, user: null, isAuthenticated: false });
                 }
             });
+
+            // Store unsubscribe for cleanup (e.g. on logout)
+            (useAuthStore as any)._authSubscription = subscription;
 
         } catch (err) {
             console.error('Auth initialization failed', err);
@@ -119,13 +125,17 @@ const useAuthStore = create<AuthStore>((set, get) => ({
             if (data.session) {
                 set({ session: data.session, isAuthenticated: true, isTrialMode: false, loading: false });
                 await get().fetchUser();
+                analyticsService.trackSignup('email');
+                analyticsService.setUserId(data.session.user.id);
+                crashReporting.setUser(data.session.user.id);
+                iapService.identify(data.session.user.id);
             } else {
                 // If email confirmation is enabled, session might be null
                 set({ loading: false, error: "Please checks your email for confirmation link." });
             }
 
         } catch (error: any) {
-            console.log('Registration error details:', error);
+
             set({
                 error: error.message || 'Registration failed',
                 loading: false,
@@ -147,10 +157,14 @@ const useAuthStore = create<AuthStore>((set, get) => ({
             if (data.session) {
                 set({ session: data.session, isAuthenticated: true, isTrialMode: false, loading: false });
                 await get().fetchUser();
+                analyticsService.trackLogin('email');
+                analyticsService.setUserId(data.session.user.id);
+                crashReporting.setUser(data.session.user.id);
+                iapService.identify(data.session.user.id);
             }
 
         } catch (err: any) {
-            console.log('Login error details:', err);
+
             set({
                 error: err.message || 'Login failed',
                 loading: false,
@@ -160,8 +174,61 @@ const useAuthStore = create<AuthStore>((set, get) => ({
     },
 
     logout: async (): Promise<void> => {
+        // Clean up auth listener to prevent memory leak
+        const sub = (useAuthStore as any)._authSubscription;
+        if (sub) {
+            sub.unsubscribe();
+            (useAuthStore as any)._authSubscription = null;
+        }
         await supabase.auth.signOut();
+        analyticsService.trackEvent('logout');
+        analyticsService.clearUserId();
+        crashReporting.clearUser();
         set({ user: null, session: null, isAuthenticated: false, isTrialMode: false });
+    },
+
+    deleteAccount: async (): Promise<void> => {
+        set({ loading: true, error: null });
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.access_token) {
+                throw new Error('Not authenticated');
+            }
+
+            // Call the account deletion API
+            const Config = (await import('../src/config/env')).default;
+            const response = await fetch(`${Config.api.url}/api/account`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Account deletion failed');
+            }
+
+            analyticsService.trackEvent('account_deleted');
+
+            // Clean up local state
+            const sub = (useAuthStore as any)._authSubscription;
+            if (sub) {
+                sub.unsubscribe();
+                (useAuthStore as any)._authSubscription = null;
+            }
+            await supabase.auth.signOut();
+            analyticsService.clearUserId();
+            crashReporting.clearUser();
+            set({ user: null, session: null, isAuthenticated: false, isTrialMode: false, loading: false });
+        } catch (err: any) {
+            set({
+                error: err.message || 'Account deletion failed',
+                loading: false,
+            });
+            throw err;
+        }
     },
 
     startTrial: (): void => {
@@ -184,7 +251,7 @@ const useAuthStore = create<AuthStore>((set, get) => ({
 
             // Fetch profile data from 'profiles' table
             const { data: profile, error } = await supabase
-                .from('user_profiles')
+                .from('profiles')
                 .select('*')
                 .eq('id', user.id)
                 .maybeSingle();

@@ -13,6 +13,7 @@ import {
     Image,
     TouchableOpacity,
     StatusBar,
+    Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -118,10 +119,23 @@ const AltaProfileScreen = () => {
         } catch (e) { }
     };
 
-    const handleLogout = async () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        await AsyncStorage.removeItem('userToken');
-        (navigation as any).reset({ index: 0, routes: [{ name: 'Auth' }] });
+    const handleLogout = () => {
+        Alert.alert(
+            'Log Out',
+            'Are you sure you want to log out?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Log Out',
+                    style: 'destructive',
+                    onPress: async () => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        await AsyncStorage.removeItem('userToken');
+                        (navigation as any).reset({ index: 0, routes: [{ name: 'Auth' }] });
+                    },
+                },
+            ]
+        );
     };
 
     return (

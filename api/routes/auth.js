@@ -1,4 +1,5 @@
 import express from "express";
+import logger from '../utils/logger.js';
 import { createClient } from "@supabase/supabase-js";
 import { authenticateToken } from "../middleware/auth.js";
 import { authLimiter } from "../middleware/rateLimit.js";
@@ -48,7 +49,7 @@ router.get("/me", authLimiter, authenticateToken, async (req, res) => {
 
         res.json({ user: profile });
     } catch (err) {
-        console.error("Get profile error:", err.message);
+        logger.error("Get profile error:", err.message);
         res.status(500).json({
             error: "Failed to get user data",
             code: "FETCH_ERROR"
@@ -85,7 +86,7 @@ router.get("/subscription-status", authLimiter, authenticateToken, async (req, r
             isActive: !isExpired && effectiveTier !== "free",
         });
     } catch (err) {
-        console.error("Subscription status error:", err.message);
+        logger.error("Subscription status error:", err.message);
         res.status(500).json({ error: "Failed to get subscription status", code: "FETCH_ERROR" });
     }
 });

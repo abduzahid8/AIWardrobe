@@ -5,8 +5,9 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "scheme": "com.aiwardrobe",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -15,8 +16,12 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.aiwardrobe",
+      "minimumOsVersion": "16.0",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "AIWardrobe needs camera access to scan your clothing items and create outfit photos.",
+        "NSPhotoLibraryUsageDescription": "AIWardrobe needs photo library access to save and share your outfits.",
+        "NSLocationWhenInUseUsageDescription": "AIWardrobe uses your location for weather-based outfit recommendations."
       }
     },
     "android": {
@@ -25,7 +30,23 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.aiwardrobe"
+      "package": "com.aiwardrobe",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "com.aiwardrobe",
+              "host": "*"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -35,7 +56,8 @@
     },
     "plugins": [
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      "expo-secure-store"
     ],
     "extra": {
       "eas": {

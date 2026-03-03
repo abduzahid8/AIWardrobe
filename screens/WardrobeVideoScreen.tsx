@@ -1,5 +1,5 @@
 /**
- * WardrobeVideoScreen — thin orchestrator
+ * WardrobeVideoScreen — iOS 26 Tahoe "Liquid Glass" redesign
  *
  * All analysis logic lives in:
  *   src/features/wardrobe/useVideoAnalysis.ts  (hook)
@@ -7,12 +7,11 @@
  *   src/features/wardrobe/types.ts             (shared types)
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
     TouchableOpacity,
-    ActivityIndicator,
     StyleSheet,
     ScrollView,
     Alert,
@@ -24,6 +23,22 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import Animated, {
+    useSharedValue,
+    useAnimatedStyle,
+    withRepeat,
+    withSequence,
+    withTiming,
+    withSpring,
+    withDelay,
+    FadeIn,
+    FadeInDown,
+    FadeInUp,
+    Easing,
+    interpolate,
+    useAnimatedProps,
+} from 'react-native-reanimated';
 import CorrectionModal from '../src/components/CorrectionModal';
 import { RootStackParamList } from '../navigation/types';
 import { supabase } from '../lib/supabase';
@@ -31,8 +46,112 @@ import useAuthStore from '../store/auth';
 import { useVideoAnalysis } from '../src/features/wardrobe/useVideoAnalysis';
 import { DetectedItem } from '../src/features/wardrobe/types';
 
-const { width } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
+
+// ─── iOS 26 Tahoe Color Palette ───
+const GLASS = {
+    bg: 'rgba(255, 255, 255, 0.55)',
+    bgLight: 'rgba(255, 255, 255, 0.35)',
+    bgDark: 'rgba(0, 0, 0, 0.06)',
+    border: 'rgba(255, 255, 255, 0.7)',
+    borderSubtle: 'rgba(0, 0, 0, 0.06)',
+    innerShadow: 'rgba(255, 255, 255, 0.9)',
+    accent: '#007AFF',       // iOS system blue
+    accentLight: 'rgba(0, 122, 255, 0.12)',
+    accentGlow: 'rgba(0, 122, 255, 0.25)',
+    textPrimary: '#1C1C1E',
+    textSecondary: 'rgba(60, 60, 67, 0.6)',
+    success: '#30D158',      // iOS system green
+    successGlow: 'rgba(48, 209, 88, 0.2)',
+    cardBg: 'rgba(255, 255, 255, 0.65)',
+    overlayGradient: ['#F2F1F6', '#E8E7ED', '#DDDCE2'] as const,
+};
+
+/** Map YOLOv8 classifier categories to closet filter categories */
+const mapToClosetCategory = (yoloCategory: string): string => {
+    const cat = (yoloCategory || '').toLowerCase();
+    if (['shirt', 't-shirt_top', 't-shirt', 'pullover', 'coat', 'dress', 'jacket', 'hoodie', 'sweater', 'blouse', 'top'].some(k => cat.includes(k))) return 'tops';
+    if (['trouser', 'pants', 'jeans', 'shorts', 'skirt', 'leggings'].some(k => cat.includes(k))) return 'bottoms';
+    if (['sneaker', 'ankle boot', 'sandal', 'shoe', 'boot', 'heel', 'loafer', 'slipper'].some(k => cat.includes(k))) return 'shoes';
+    if (['bag', 'hat', 'scarf', 'belt', 'sunglasses', 'watch', 'jewelry', 'cap', 'beanie'].some(k => cat.includes(k))) return 'accessories';
+    return 'tops';
+};
+
+// ─── Animated Liquid Glass Spinner ───
+const LiquidGlassSpinner = () => {
+    const rotation = useSharedValue(0);
+    const pulse = useSharedValue(1);
+    const innerPulse = useSharedValue(0.6);
+
+    useEffect(() => {
+        rotation.value = withRepeat(
+            withTiming(360, { duration: 2400, easing: Easing.linear }),
+            -1, false
+        );
+        pulse.value = withRepeat(
+            withSequence(
+                withTiming(1.08, { duration: 1200, easing: Easing.inOut(Easing.sin) }),
+                withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.sin) })
+            ),
+            -1, true
+        );
+        innerPulse.value = withRepeat(
+            withSequence(
+                withTiming(1, { duration: 1800, easing: Easing.inOut(Easing.sin) }),
+                withTiming(0.6, { duration: 1800, easing: Easing.inOut(Easing.sin) })
+            ),
+            -1, true
+        );
+    }, []);
+
+    const outerStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: pulse.value }],
+    }));
+
+    const ringStyle = useAnimatedStyle(() => ({
+        transform: [{ rotate: `${rotation.value}deg` }],
+    }));
+
+    const glowStyle = useAnimatedStyle(() => ({
+        opacity: innerPulse.value,
+    }));
+
+    return (
+        <Animated.View style={[styles.spinnerContainer, outerStyle]}>
+            {/* Outer glow ring */}
+            <Animated.View style={[styles.spinnerGlow, glowStyle]} />
+            {/* Rotating ring */}
+            <Animated.View style={[styles.spinnerRing, ringStyle]}>
+                <LinearGradient
+                    colors={['rgba(0,122,255,0.6)', 'rgba(0,122,255,0)', 'rgba(0,122,255,0.3)']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.spinnerRingGradient}
+                />
+            </Animated.View>
+            {/* Inner glass orb */}
+            <BlurView intensity={40} tint="light" style={styles.spinnerInner}>
+                <Ionicons name="sparkles" size={28} color={GLASS.accent} />
+            </BlurView>
+        </Animated.View>
+    );
+};
+
+// ─── Glass Step Indicator ───
+const GlassStep = ({ icon, label, index }: { icon: string; label: string; index: number }) => (
+    <Animated.View entering={FadeInDown.delay(200 + index * 120).springify().damping(18)} style={styles.stepItem}>
+        <BlurView intensity={30} tint="light" style={styles.stepGlass}>
+            <View style={styles.stepIconGlow}>
+                <Ionicons name={icon as any} size={22} color={GLASS.accent} />
+            </View>
+        </BlurView>
+        <Text style={styles.stepLabel}>{label}</Text>
+    </Animated.View>
+);
+
+// ─── Main Screen Component ───
 const WardrobeVideoScreen = () => {
     const navigation = useNavigation();
     const route = useRoute<RouteProp<RootStackParamList, 'WardrobeVideo'>>();
@@ -91,26 +210,50 @@ const WardrobeVideoScreen = () => {
             return;
         }
         try {
-            const itemsToSave = results.detectedItems.map((item: DetectedItem) => ({
-                type: item.itemType,
-                category: item.itemType,
-                color: item.color,
-                style: item.style,
-                description: item.description || item.productDescription || `${item.color} ${item.itemType}`,
-                material: item.material,
-                image: item.frameImage,
-                outfitId: item.outfitId || 1,
-            }));
-            const { error } = await supabase.functions.invoke('save-wardrobe-items', {
-                body: { items: itemsToSave },
+            const itemsToSave = results.detectedItems.map((item: DetectedItem) => {
+                const imgUrl = item.frameImage || item.cutoutImage || null;
+                console.log('[Save] Item:', item.itemType,
+                    'frameImage:', item.frameImage ? `${item.frameImage.substring(0, 50)}... (${item.frameImage.length} chars)` : 'null',
+                    'cutoutImage:', item.cutoutImage ? `${item.cutoutImage.substring(0, 50)}... (${item.cutoutImage.length} chars)` : 'null');
+                return {
+                    user_id: user.id,
+                    type: item.itemType,
+                    category: mapToClosetCategory(item.itemType),
+                    sub_category: item.itemType,
+                    color: item.color,
+                    primary_color: item.color,
+                    style: item.style || 'Casual',
+                    description: item.description || item.productDescription || `${item.color} ${item.itemType}`,
+                    material: item.material || null,
+                    image_url: imgUrl,
+                    outfit_id: item.outfitId || 1,
+                    created_at: new Date().toISOString(),
+                };
             });
+
+            await supabase
+                .from('profiles')
+                .upsert(
+                    { id: user.id, email: user.email, username: user.username || '' },
+                    { onConflict: 'id' }
+                );
+
+            const { error } = await supabase
+                .from('clothing_items')
+                .insert(itemsToSave);
+
             if (error) throw error;
             Alert.alert(
                 'Saved!',
                 `${results.detectedItems.length} item(s) saved to your wardrobe!`,
                 [
-                    { text: 'View Wardrobe', onPress: () => (navigation as any).navigate('Home', { screen: 'Profile' }) },
-                    { text: 'OK' },
+                    {
+                        text: 'View Wardrobe', onPress: () => {
+                            reset();
+                            (navigation as any).navigate('Main', { screen: 'Closet' });
+                        }
+                    },
+                    { text: 'OK', onPress: () => reset() },
                 ]
             );
         } catch (error: any) {
@@ -134,80 +277,101 @@ const WardrobeVideoScreen = () => {
 
     return (
         <View style={styles.container}>
-            <LinearGradient colors={['#ffffff', '#f0f4ff', '#e6eeff']} style={StyleSheet.absoluteFill} />
+            {/* Tahoe-style layered background */}
+            <LinearGradient colors={GLASS.overlayGradient} style={StyleSheet.absoluteFill} />
+
             <SafeAreaView style={styles.safeArea}>
-                {/* Header */}
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <Ionicons name="chevron-back" size={28} color="#1a1a1a" />
-                    </TouchableOpacity>
-                    <Text style={styles.headerTitle}>AI Wardrobe Scan</Text>
-                    <View style={{ width: 28 }} />
-                </View>
-
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-
-                    {/* Hero / Instructions */}
-                    {!results && !analyzing && (
-                        <View style={styles.heroSection}>
-                            <Text style={styles.heroTitle}>Digitize Your Closet</Text>
-                            <Text style={styles.heroSubtitle}>
-                                Upload a quick video of your clothes, and our AI will automatically detect and catalog them.
-                            </Text>
-                            <View style={styles.stepsContainer}>
-                                {[
-                                    { icon: 'videocam-outline', label: 'Record Video' },
-                                    { icon: 'sparkles-outline', label: 'AI Analysis' },
-                                    { icon: 'shirt-outline', label: 'Get Items' },
-                                ].map((step, i) => (
-                                    <React.Fragment key={step.label}>
-                                        <View style={styles.stepItem}>
-                                            <View style={styles.stepIconBg}>
-                                                <Ionicons name={step.icon as any} size={24} color="#4f46e5" />
-                                            </View>
-                                            <Text style={styles.stepText}>{step.label}</Text>
-                                        </View>
-                                        {i < 2 && <View style={styles.stepLine} />}
-                                    </React.Fragment>
-                                ))}
-                            </View>
-                        </View>
-                    )}
-
-                    {/* Upload CTA */}
-                    {!analyzing && !results && (
-                        <TouchableOpacity style={styles.uploadCard} onPress={pickVideo} activeOpacity={0.9}>
-                            <LinearGradient
-                                colors={['#4f46e5', '#3730a3']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 1 }}
-                                style={styles.uploadGradient}
-                            >
-                                <View style={styles.uploadIconContainer}>
-                                    <Ionicons name="images-outline" size={40} color="#fff" />
-                                </View>
-                                <Text style={styles.uploadTitle}>Select from Gallery</Text>
-                                <Text style={styles.uploadSubtitle}>Choose a video from your device</Text>
-                            </LinearGradient>
+                {/* ─── Glass Header ─── */}
+                <Animated.View entering={FadeIn.duration(500)} style={styles.headerWrap}>
+                    <BlurView intensity={60} tint="light" style={styles.headerBlur}>
+                        <TouchableOpacity
+                            onPress={() => navigation.goBack()}
+                            style={styles.backPill}
+                            activeOpacity={0.7}
+                        >
+                            <Ionicons name="chevron-back" size={20} color={GLASS.textPrimary} />
                         </TouchableOpacity>
-                    )}
+                        <Text style={styles.headerTitle}>AI Wardrobe Scan</Text>
+                        <View style={{ width: 36 }} />
+                    </BlurView>
+                </Animated.View>
 
-                    {/* Loading State */}
-                    {analyzing && (
-                        <View style={styles.loadingContainer}>
-                            <View style={styles.loadingCircle}>
-                                <ActivityIndicator size="large" color="#4f46e5" />
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={styles.scrollContent}
+                >
+                    {/* ─── Hero / Instructions ─── */}
+                    {!results && !analyzing && (
+                        <Animated.View entering={FadeInDown.springify().damping(20)} style={styles.heroSection}>
+                            <Animated.Text entering={FadeIn.delay(100)} style={styles.heroTitle}>
+                                Digitize Your Closet
+                            </Animated.Text>
+                            <Animated.Text entering={FadeIn.delay(200)} style={styles.heroSubtitle}>
+                                Upload a quick video of your clothes, and our AI will automatically detect and catalog them.
+                            </Animated.Text>
+
+                            {/* Glass steps */}
+                            <View style={styles.stepsRow}>
+                                <GlassStep icon="videocam-outline" label="Record" index={0} />
+                                <View style={styles.stepConnector}>
+                                    <View style={styles.stepConnectorLine} />
+                                </View>
+                                <GlassStep icon="sparkles-outline" label="Analyze" index={1} />
+                                <View style={styles.stepConnector}>
+                                    <View style={styles.stepConnectorLine} />
+                                </View>
+                                <GlassStep icon="shirt-outline" label="Get Items" index={2} />
                             </View>
-                            <Text style={styles.loadingText}>{progress}</Text>
-                            <Text style={styles.loadingSubtext}>
-                                Our AI is analyzing every frame of your video...
-                            </Text>
-                        </View>
+                        </Animated.View>
                     )}
 
-                    {/* Results */}
+                    {/* ─── Upload CTA ─── */}
+                    {!analyzing && !results && (
+                        <Animated.View entering={FadeInUp.delay(500).springify().damping(16)}>
+                            <TouchableOpacity
+                                style={styles.uploadCard}
+                                onPress={pickVideo}
+                                activeOpacity={0.85}
+                            >
+                                <BlurView intensity={25} tint="light" style={styles.uploadBlur}>
+                                    <LinearGradient
+                                        colors={['rgba(0,122,255,0.08)', 'rgba(0,122,255,0.02)']}
+                                        style={StyleSheet.absoluteFill}
+                                    />
+                                    <View style={styles.uploadIconContainer}>
+                                        <LinearGradient
+                                            colors={[GLASS.accent, '#5856D6']}
+                                            start={{ x: 0, y: 0 }}
+                                            end={{ x: 1, y: 1 }}
+                                            style={styles.uploadIconGradient}
+                                        >
+                                            <Ionicons name="images-outline" size={32} color="#fff" />
+                                        </LinearGradient>
+                                    </View>
+                                    <Text style={styles.uploadTitle}>Select from Gallery</Text>
+                                    <Text style={styles.uploadSubtitle}>Choose a video or photo from your device</Text>
+                                </BlurView>
+                            </TouchableOpacity>
+                        </Animated.View>
+                    )}
+
+                    {/* ─── Analyzing State ─── */}
+                    {analyzing && (
+                        <Animated.View entering={FadeIn.duration(600)} style={styles.analyzingContainer}>
+                            <LiquidGlassSpinner />
+                            <Animated.Text entering={FadeIn.delay(300)} style={styles.analyzingTitle}>
+                                {progress}
+                            </Animated.Text>
+                            <Animated.Text entering={FadeIn.delay(500)} style={styles.analyzingSubtext}>
+                                Our AI is analyzing every frame of your video...
+                            </Animated.Text>
+                        </Animated.View>
+                    )}
+
+                    {/* ─── Results ─── */}
                     {results && !analyzing && (
-                        <View style={styles.resultsContainer}>
+                        <Animated.View entering={FadeIn.duration(400)} style={styles.resultsContainer}>
+                            {/* Results header */}
                             <View style={styles.resultsHeader}>
                                 <View>
                                     <Text style={styles.resultsTitle}>Analysis Complete</Text>
@@ -216,51 +380,82 @@ const WardrobeVideoScreen = () => {
                                     </Text>
                                 </View>
                                 <TouchableOpacity
-                                    style={styles.retryButton}
+                                    style={styles.retryPill}
                                     onPress={() => { reset(); pickVideo(); }}
+                                    activeOpacity={0.7}
                                 >
-                                    <Ionicons name="refresh" size={20} color="#4f46e5" />
+                                    <BlurView intensity={30} tint="light" style={styles.retryBlur}>
+                                        <Ionicons name="refresh" size={18} color={GLASS.accent} />
+                                    </BlurView>
                                 </TouchableOpacity>
                             </View>
 
-                            {/* Items grouped by outfit */}
+                            {/* Outfit groups */}
                             {sortedOutfitIds.map((outfitId, outfitIndex) => (
-                                <View key={outfitId} style={{ marginBottom: 16 }}>
+                                <Animated.View
+                                    key={outfitId}
+                                    entering={FadeInDown.delay(outfitIndex * 100).springify().damping(18)}
+                                    style={styles.outfitGroup}
+                                >
+                                    {/* Outfit badge row */}
                                     <View style={styles.outfitHeader}>
                                         <View style={styles.outfitBadge}>
-                                            <Text style={styles.outfitBadgeText}>{outfitIndex + 1}</Text>
+                                            <LinearGradient
+                                                colors={[GLASS.accent, '#5856D6']}
+                                                style={styles.outfitBadgeGradient}
+                                            >
+                                                <Text style={styles.outfitBadgeText}>{outfitIndex + 1}</Text>
+                                            </LinearGradient>
                                         </View>
                                         <Text style={styles.outfitTitle}>Outfit {outfitIndex + 1}</Text>
-                                        <Text style={styles.outfitCount}>({outfitGroups[outfitId].length} items)</Text>
+                                        <Text style={styles.outfitCount}>
+                                            ({outfitGroups[outfitId].length} items)
+                                        </Text>
                                     </View>
 
+                                    {/* Item cards */}
                                     {outfitGroups[outfitId].map((item, itemIdx) => (
-                                        <View key={itemIdx} style={[styles.resultCard, { marginBottom: 8 }]}>
-                                            <View style={styles.resultIcon}>
-                                                <View style={[styles.colorDot, { backgroundColor: item.colorHex || '#eee' }]}>
-                                                    <Ionicons
-                                                        name={
-                                                            item.position === 'upper' ? 'shirt' :
-                                                            item.position === 'lower' ? 'layers' :
-                                                            item.position === 'feet' ? 'footsteps' : 'shirt'
-                                                        }
-                                                        size={20}
-                                                        color="#fff"
-                                                    />
-                                                </View>
+                                        <Animated.View
+                                            key={itemIdx}
+                                            entering={FadeInDown.delay(150 + itemIdx * 80).springify().damping(20)}
+                                        >
+                                            <View style={styles.resultCard}>
+                                                <BlurView intensity={20} tint="light" style={styles.resultCardBlur}>
+                                                    {/* Item icon */}
+                                                    <View style={styles.resultIconWrap}>
+                                                        <View style={[
+                                                            styles.resultIconBg,
+                                                            { backgroundColor: item.colorHex || GLASS.accentLight }
+                                                        ]}>
+                                                            <Ionicons
+                                                                name={
+                                                                    item.position === 'upper' ? 'shirt' :
+                                                                        item.position === 'lower' ? 'layers' :
+                                                                            item.position === 'feet' ? 'footsteps' : 'shirt'
+                                                                }
+                                                                size={18}
+                                                                color="#fff"
+                                                            />
+                                                        </View>
+                                                    </View>
+
+                                                    {/* Item info */}
+                                                    <View style={styles.resultInfo}>
+                                                        <Text style={styles.resultType}>{item.itemType}</Text>
+                                                        <Text style={styles.resultDetails}>
+                                                            {item.color}{item.material ? ` · ${item.material}` : ''}
+                                                        </Text>
+                                                    </View>
+
+                                                    {/* Check badge */}
+                                                    <View style={styles.checkBadge}>
+                                                        <Ionicons name="checkmark-circle" size={22} color={GLASS.success} />
+                                                    </View>
+                                                </BlurView>
                                             </View>
-                                            <View style={styles.resultInfo}>
-                                                <Text style={styles.resultType}>{item.itemType}</Text>
-                                                <Text style={styles.resultDetails}>
-                                                    {item.color}{item.material ? ` • ${item.material}` : ''}
-                                                </Text>
-                                            </View>
-                                            <View style={styles.checkIcon}>
-                                                <Ionicons name="checkmark-circle" size={24} color="#10b981" />
-                                            </View>
-                                        </View>
+                                        </Animated.View>
                                     ))}
-                                </View>
+                                </Animated.View>
                             ))}
 
                             {/* Correction Modal */}
@@ -278,16 +473,27 @@ const WardrobeVideoScreen = () => {
                                 }}
                             />
 
-                            <TouchableOpacity style={styles.saveButton} onPress={saveToWardrobe}>
-                                <LinearGradient
-                                    colors={['#1a1a1a', '#0A1931']}
-                                    style={styles.saveButtonGradient}
+                            {/* Save Button — Liquid Glass Dark */}
+                            <Animated.View entering={FadeInUp.delay(400).springify().damping(16)}>
+                                <TouchableOpacity
+                                    style={styles.saveButton}
+                                    onPress={saveToWardrobe}
+                                    activeOpacity={0.85}
                                 >
-                                    <Text style={styles.saveButtonText}>Save All to Wardrobe</Text>
-                                    <Ionicons name="arrow-forward" size={20} color="#fff" />
-                                </LinearGradient>
-                            </TouchableOpacity>
-                        </View>
+                                    <LinearGradient
+                                        colors={['#1C1C1E', '#2C2C2E']}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 1 }}
+                                        style={styles.saveGradient}
+                                    >
+                                        <Text style={styles.saveText}>Save All to Wardrobe</Text>
+                                        <View style={styles.saveArrow}>
+                                            <Ionicons name="arrow-forward" size={18} color="#fff" />
+                                        </View>
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                            </Animated.View>
+                        </Animated.View>
                     )}
                 </ScrollView>
             </SafeAreaView>
@@ -295,83 +501,379 @@ const WardrobeVideoScreen = () => {
     );
 };
 
+// ─── iOS 26 Tahoe Liquid Glass Styles ───
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff' },
+    container: { flex: 1, backgroundColor: '#F2F1F6' },
     safeArea: { flex: 1 },
-    header: {
+
+    // Header
+    headerWrap: {
+        marginHorizontal: 16,
+        marginTop: 4,
+        borderRadius: 22,
+        overflow: 'hidden',
+    },
+    headerBlur: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingVertical: 16,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        overflow: 'hidden',
+        borderRadius: 22,
+        borderWidth: 0.5,
+        borderColor: GLASS.border,
     },
-    backButton: {
-        width: 40, height: 40, borderRadius: 20,
-        backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center',
-        shadowColor: '#0A1931', shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+    backPill: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: GLASS.bgLight,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 0.5,
+        borderColor: GLASS.border,
     },
-    headerTitle: { fontSize: 18, fontWeight: '700', color: '#1a1a1a', letterSpacing: 0.5 },
-    scrollContent: { padding: 24, paddingBottom: 40 },
-    heroSection: { marginBottom: 32, alignItems: 'center' },
-    heroTitle: { fontSize: 28, fontWeight: '800', color: '#1a1a1a', marginBottom: 8, textAlign: 'center' },
-    heroSubtitle: { fontSize: 16, color: '#666', textAlign: 'center', lineHeight: 24, marginBottom: 32 },
-    stepsContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%' },
+    headerTitle: {
+        fontSize: 17,
+        fontWeight: '600',
+        color: GLASS.textPrimary,
+        letterSpacing: -0.2,
+    },
+
+    scrollContent: { padding: 20, paddingBottom: 48 },
+
+    // Hero
+    heroSection: { marginBottom: 28, alignItems: 'center' },
+    heroTitle: {
+        fontSize: 30,
+        fontWeight: '700',
+        color: GLASS.textPrimary,
+        marginBottom: 10,
+        textAlign: 'center',
+        letterSpacing: -0.5,
+    },
+    heroSubtitle: {
+        fontSize: 16,
+        color: GLASS.textSecondary,
+        textAlign: 'center',
+        lineHeight: 23,
+        marginBottom: 32,
+        paddingHorizontal: 12,
+    },
+
+    // Steps
+    stepsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '100%',
+    },
     stepItem: { alignItems: 'center' },
-    stepIconBg: {
-        width: 48, height: 48, borderRadius: 24,
-        backgroundColor: '#eef2ff', alignItems: 'center', justifyContent: 'center', marginBottom: 8,
+    stepGlass: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        overflow: 'hidden',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 0.5,
+        borderColor: GLASS.border,
+        marginBottom: 8,
     },
-    stepText: { fontSize: 12, fontWeight: '600', color: '#4f46e5' },
-    stepLine: { width: 30, height: 2, backgroundColor: '#e0e7ff', marginHorizontal: 8, marginBottom: 20 },
+    stepIconGlow: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: GLASS.accentLight,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    stepLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: GLASS.accent,
+        letterSpacing: 0.2,
+    },
+    stepConnector: {
+        width: 28,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 22,
+    },
+    stepConnectorLine: {
+        width: 28,
+        height: 1.5,
+        backgroundColor: 'rgba(0,122,255,0.2)',
+        borderRadius: 1,
+    },
+
+    // Upload CTA
     uploadCard: {
-        width: '100%', height: 200, borderRadius: 24,
-        shadowColor: '#4f46e5', shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.2, shadowRadius: 20, elevation: 10,
+        width: '100%',
+        borderRadius: 24,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.08,
+        shadowRadius: 24,
+        elevation: 6,
     },
-    uploadGradient: { flex: 1, borderRadius: 24, alignItems: 'center', justifyContent: 'center', padding: 20 },
-    uploadIconContainer: {
-        width: 80, height: 80, borderRadius: 40,
-        backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center',
-        marginBottom: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
+    uploadBlur: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 32,
+        overflow: 'hidden',
+        borderRadius: 24,
+        borderWidth: 0.5,
+        borderColor: GLASS.border,
     },
-    uploadTitle: { fontSize: 20, fontWeight: '700', color: '#fff', marginBottom: 4 },
-    uploadSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.8)' },
-    loadingContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 40 },
-    loadingCircle: {
-        width: 80, height: 80, borderRadius: 40, backgroundColor: '#fff',
-        alignItems: 'center', justifyContent: 'center', marginBottom: 24,
-        shadowColor: '#0A1931', shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1, shadowRadius: 12, elevation: 5,
+    uploadIconContainer: { marginBottom: 18 },
+    uploadIconGradient: {
+        width: 68,
+        height: 68,
+        borderRadius: 34,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: GLASS.accent,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
     },
-    loadingText: { fontSize: 18, fontWeight: '700', color: '#1a1a1a', marginBottom: 8 },
-    loadingSubtext: { fontSize: 14, color: '#666', textAlign: 'center' },
+    uploadTitle: {
+        fontSize: 19,
+        fontWeight: '600',
+        color: GLASS.textPrimary,
+        marginBottom: 4,
+        letterSpacing: -0.2,
+    },
+    uploadSubtitle: {
+        fontSize: 14,
+        color: GLASS.textSecondary,
+    },
+
+    // Analyzing state
+    analyzingContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 60,
+    },
+    spinnerContainer: {
+        width: 110,
+        height: 110,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 28,
+    },
+    spinnerGlow: {
+        position: 'absolute',
+        width: 110,
+        height: 110,
+        borderRadius: 55,
+        backgroundColor: GLASS.accentGlow,
+    },
+    spinnerRing: {
+        position: 'absolute',
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        overflow: 'hidden',
+    },
+    spinnerRingGradient: {
+        flex: 1,
+        borderRadius: 50,
+        borderWidth: 2.5,
+        borderColor: 'transparent',
+    },
+    spinnerInner: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        overflow: 'hidden',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 0.5,
+        borderColor: GLASS.border,
+        backgroundColor: GLASS.bg,
+    },
+    analyzingTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: GLASS.textPrimary,
+        marginBottom: 8,
+        letterSpacing: -0.3,
+    },
+    analyzingSubtext: {
+        fontSize: 14,
+        color: GLASS.textSecondary,
+        textAlign: 'center',
+        lineHeight: 20,
+        paddingHorizontal: 32,
+    },
+
+    // Results
     resultsContainer: { width: '100%' },
-    resultsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    resultsTitle: { fontSize: 20, fontWeight: '700', color: '#1a1a1a' },
-    resultsSubtitle: { fontSize: 14, color: '#666' },
-    retryButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#eef2ff', alignItems: 'center', justifyContent: 'center' },
-    outfitHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, paddingHorizontal: 4 },
-    outfitBadge: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#4f46e5', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-    outfitBadgeText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-    outfitTitle: { fontSize: 16, fontWeight: '600', color: '#1a1a1a' },
-    outfitCount: { fontSize: 12, color: '#666', marginLeft: 8 },
-    resultCard: {
-        flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff',
-        padding: 16, borderRadius: 16, marginBottom: 12,
-        shadowColor: '#0A1931', shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
-        borderWidth: 1, borderColor: '#f0f0f0',
+    resultsHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 24,
     },
-    resultIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#eef2ff', alignItems: 'center', justifyContent: 'center', marginRight: 16 },
-    colorDot: { width: 40, height: 40, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+    resultsTitle: {
+        fontSize: 22,
+        fontWeight: '700',
+        color: GLASS.textPrimary,
+        letterSpacing: -0.3,
+    },
+    resultsSubtitle: {
+        fontSize: 14,
+        color: GLASS.textSecondary,
+        marginTop: 2,
+    },
+    retryPill: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        overflow: 'hidden',
+    },
+    retryBlur: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+        borderRadius: 20,
+        borderWidth: 0.5,
+        borderColor: GLASS.border,
+    },
+
+    // Outfit groups
+    outfitGroup: { marginBottom: 20 },
+    outfitHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
+        paddingHorizontal: 2,
+    },
+    outfitBadge: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        overflow: 'hidden',
+        marginRight: 10,
+    },
+    outfitBadgeGradient: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 15,
+    },
+    outfitBadgeText: {
+        color: '#fff',
+        fontWeight: '700',
+        fontSize: 14,
+    },
+    outfitTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: GLASS.textPrimary,
+    },
+    outfitCount: {
+        fontSize: 13,
+        color: GLASS.textSecondary,
+        marginLeft: 6,
+    },
+
+    // Result card
+    resultCard: {
+        marginBottom: 10,
+        borderRadius: 18,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.04,
+        shadowRadius: 12,
+        elevation: 2,
+    },
+    resultCardBlur: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 14,
+        overflow: 'hidden',
+        borderRadius: 18,
+        borderWidth: 0.5,
+        borderColor: GLASS.border,
+        backgroundColor: GLASS.cardBg,
+    },
+    resultIconWrap: {
+        marginRight: 14,
+    },
+    resultIconBg: {
+        width: 42,
+        height: 42,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 6,
+    },
     resultInfo: { flex: 1 },
-    resultType: { fontSize: 16, fontWeight: '600', color: '#1a1a1a', marginBottom: 2, textTransform: 'capitalize' },
-    resultDetails: { fontSize: 12, color: '#666' },
-    checkIcon: { marginLeft: 8 },
-    saveButton: { marginTop: 24, shadowColor: '#0A1931', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8 },
-    saveButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 18, borderRadius: 16 },
-    saveButtonText: { fontSize: 16, fontWeight: '700', color: '#fff', marginRight: 8 },
+    resultType: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: GLASS.textPrimary,
+        marginBottom: 2,
+        textTransform: 'capitalize',
+        letterSpacing: -0.1,
+    },
+    resultDetails: {
+        fontSize: 13,
+        color: GLASS.textSecondary,
+    },
+    checkBadge: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: GLASS.successGlow,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginLeft: 8,
+    },
+
+    // Save button
+    saveButton: {
+        marginTop: 24,
+        borderRadius: 20,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.18,
+        shadowRadius: 20,
+        elevation: 10,
+    },
+    saveGradient: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 18,
+        borderRadius: 20,
+    },
+    saveText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#fff',
+        marginRight: 10,
+        letterSpacing: -0.1,
+    },
+    saveArrow: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
 });
 
 export default WardrobeVideoScreen;

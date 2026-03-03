@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import "dotenv/config";
+import logger from "../utils/logger.js";
 
 /**
  * Unified Auth Middleware — Supabase JWT Validation
@@ -15,8 +16,8 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    console.error("❌ FATAL: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in .env");
-    console.error("   Get the service role key from: Supabase Dashboard → Settings → API");
+    logger.error("❌ FATAL: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in .env");
+    logger.error("   Get the service role key from: Supabase Dashboard → Settings → API");
     process.exit(1);
 }
 
@@ -59,7 +60,7 @@ export const authenticateToken = async (req, res, next) => {
 
         next();
     } catch (err) {
-        console.error("Auth middleware error:", err.message);
+        logger.error("Auth middleware error:", err.message);
         return res.status(500).json({
             error: "Authentication check failed",
             code: "AUTH_ERROR"

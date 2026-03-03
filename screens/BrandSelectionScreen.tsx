@@ -197,6 +197,7 @@ const BrandSelectionScreen = () => {
                         placeholderTextColor="#9CA3AF"
                         value={searchQuery}
                         onChangeText={setSearchQuery}
+                        maxLength={100}
                     />
                     <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
                 </Animated.View>

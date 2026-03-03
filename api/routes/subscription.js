@@ -5,6 +5,7 @@ import User from "../models/user.js";
 import { authenticateToken } from "../middleware/auth.js";
 import { aiLimiter } from "../middleware/rateLimit.js";
 
+import logger from '../utils/logger.js';
 const router = express.Router();
 
 /**
@@ -46,7 +47,7 @@ router.get("/status", authenticateToken, async (req, res) => {
             features
         });
     } catch (error) {
-        console.error("Subscription status error:", error);
+        logger.error("Subscription status error:", error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -63,7 +64,7 @@ router.post("/verify-apple-receipt", authenticateToken, aiLimiter, async (req, r
             return res.status(400).json({ error: "Receipt data is required" });
         }
 
-        console.log(`🍎 Verifying Apple receipt for user ${req.user.id}`);
+        logger.info(`🍎 Verifying Apple receipt for user ${req.user.id}`);
 
         // TODO: Implement actual Apple receipt validation
         // For now, simulating successful validation for development
@@ -125,7 +126,7 @@ router.post("/verify-apple-receipt", authenticateToken, aiLimiter, async (req, r
             subscription.status = 'active';
             await subscription.save();
 
-            console.log(`✅ Updated existing Apple subscription for user ${req.user.id}`);
+            logger.info(`✅ Updated existing Apple subscription for user ${req.user.id}`);
         } else {
             // Create new subscription
             subscription = new Subscription({
@@ -144,7 +145,7 @@ router.post("/verify-apple-receipt", authenticateToken, aiLimiter, async (req, r
             });
             await subscription.save();
 
-            console.log(`✅ Created new Apple subscription for user ${req.user.id}`);
+            logger.info(`✅ Created new Apple subscription for user ${req.user.id}`);
         }
 
         // Record payment
@@ -177,7 +178,7 @@ router.post("/verify-apple-receipt", authenticateToken, aiLimiter, async (req, r
             }
         });
     } catch (error) {
-        console.error("Apple receipt verification error:", error);
+        logger.error("Apple receipt verification error:", error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -194,7 +195,7 @@ router.post("/verify-google-receipt", authenticateToken, aiLimiter, async (req, 
             return res.status(400).json({ error: "Purchase token and product ID are required" });
         }
 
-        console.log(`🤖 Verifying Google Play receipt for user ${req.user.id}`);
+        logger.info(`🤖 Verifying Google Play receipt for user ${req.user.id}`);
 
         // TODO: Implement actual Google Play receipt validation
         // In production, use Google Play Developer API:
@@ -269,7 +270,7 @@ router.post("/verify-google-receipt", authenticateToken, aiLimiter, async (req, 
             }
         });
     } catch (error) {
-        console.error("Google receipt verification error:", error);
+        logger.error("Google receipt verification error:", error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -291,7 +292,7 @@ router.post("/cancel", authenticateToken, async (req, res) => {
         // Note: Subscription remains active until endDate
         await subscription.save();
 
-        console.log(`🚫 Subscription cancelled for user ${req.user.id}`);
+        logger.info(`🚫 Subscription cancelled for user ${req.user.id}`);
 
         res.json({
             success: true,
@@ -300,7 +301,7 @@ router.post("/cancel", authenticateToken, async (req, res) => {
             daysRemaining: subscription.getDaysRemaining()
         });
     } catch (error) {
-        console.error("Subscription cancellation error:", error);
+        logger.error("Subscription cancellation error:", error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -313,7 +314,7 @@ router.post("/restore", authenticateToken, async (req, res) => {
     try {
         const { platform, receiptData, purchaseToken } = req.body;
 
-        console.log(`🔄 Restoring purchases for user ${req.user.id}`);
+        logger.info(`🔄 Restoring purchases for user ${req.user.id}`);
 
         // Find any existing active subscription
         const subscription = await Subscription.getActiveSubscription(req.user.id);
@@ -337,7 +338,7 @@ router.post("/restore", authenticateToken, async (req, res) => {
             });
         }
     } catch (error) {
-        console.error("Restore purchases error:", error);
+        logger.error("Restore purchases error:", error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -364,7 +365,7 @@ router.get("/history", authenticateToken, async (req, res) => {
             }))
         });
     } catch (error) {
-        console.error("Payment history error:", error);
+        logger.error("Payment history error:", error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -375,14 +376,14 @@ router.get("/history", authenticateToken, async (req, res) => {
  */
 router.post("/webhook/apple", async (req, res) => {
     try {
-        console.log("📱 Apple webhook received");
+        logger.info("📱 Apple webhook received");
 
         // TODO: Verify webhook signature
         // TODO: Process notification type (CANCEL, DID_RENEW, etc.)
 
         const { notification_type, unified_receipt } = req.body;
 
-        console.log(`   Type: ${notification_type}`);
+        logger.info(`   Type: ${notification_type}`);
 
         // Handle different notification types
         switch (notification_type) {
@@ -415,7 +416,7 @@ router.post("/webhook/apple", async (req, res) => {
 
         res.status(200).json({ success: true });
     } catch (error) {
-        console.error("Apple webhook error:", error);
+        logger.error("Apple webhook error:", error);
         res.status(500).json({ error: error.message });
     }
 });

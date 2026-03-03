@@ -28,11 +28,12 @@ import Animated, {
     Easing,
 } from 'react-native-reanimated';
 import AppColors from '../constants/AppColors';
+import Config from '../src/config/env';
 
 const { width } = Dimensions.get('window');
 const ITEM_SIZE = (width - 60) / 2; // 2 column grid with padding
 
-const ALICEVISION_API = process.env.EXPO_PUBLIC_ALICEVISION_API || 'http://localhost:5050';
+const ALICEVISION_API = Config.api.alicevisionUrl;
 
 // Outfit item type
 interface OutfitItem {
@@ -48,7 +49,7 @@ const PulsingDot = ({ delay = 0 }: { delay?: number }) => {
     const opacity = useSharedValue(0.3);
 
     useEffect(() => {
-        setTimeout(() => {
+        const timer = setTimeout(() => {
             opacity.value = withRepeat(
                 withSequence(
                     withTiming(1, { duration: 500 }),
@@ -58,6 +59,7 @@ const PulsingDot = ({ delay = 0 }: { delay?: number }) => {
                 false
             );
         }, delay);
+        return () => clearTimeout(timer);
     }, []);
 
     const animatedStyle = useAnimatedStyle(() => ({
@@ -448,6 +450,7 @@ const MeetingOutfitScreen = () => {
                     onChangeText={setDescription}
                     multiline
                     numberOfLines={5}
+                    maxLength={500}
                 />
             </Animated.View>
 

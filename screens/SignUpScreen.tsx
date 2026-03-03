@@ -149,6 +149,8 @@ const SignUpScreen = () => {
               placeholderTextColor="rgba(255,255,255,0.4)"
               keyboardType="email-address"
               autoCapitalize="none"
+              accessibilityLabel="Email address"
+              maxLength={255}
             />
             {email && !isEmailValid && (
               <Text style={styles.errorHint}>Please enter a valid email</Text>
@@ -164,6 +166,8 @@ const SignUpScreen = () => {
               placeholder={t('auth.password')}
               placeholderTextColor="rgba(255,255,255,0.4)"
               secureTextEntry
+              accessibilityLabel="Password"
+              maxLength={128}
             />
 
             {/* Password Requirements Checklist */}
@@ -187,24 +191,44 @@ const SignUpScreen = () => {
               placeholder={t('auth.username')}
               placeholderTextColor="rgba(255,255,255,0.4)"
               autoCapitalize="none"
+              accessibilityLabel="Username"
+              maxLength={30}
             />
             {username && !isUsernameValid && (
               <Text style={styles.errorHint}>3-30 chars, letters/numbers/underscores only</Text>
             )}
           </View>
 
-          {/* Gender */}
+          {/* Gender Picker */}
           <View style={styles.inputContainer}>
-            <TextInput
-              style={[styles.input, gender && !isGenderValid && styles.inputError]}
-              value={gender}
-              onChangeText={setGender}
-              placeholder="Gender (Male, Female, Other)"
-              placeholderTextColor="rgba(255,255,255,0.4)"
-            />
-            {gender && !isGenderValid && (
-              <Text style={styles.errorHint}>Enter: Male, Female, Other, or Prefer not to say</Text>
-            )}
+            <Text style={styles.genderLabel}>Gender</Text>
+            <View style={styles.genderRow}>
+              {['male', 'female', 'other', 'prefer_not_to_say'].map((g) => (
+                <TouchableOpacity
+                  key={g}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setGender(g);
+                  }}
+                  style={[
+                    styles.genderChip,
+                    gender === g && styles.genderChipActive,
+                  ]}
+                  accessibilityLabel={g === 'prefer_not_to_say' ? 'Prefer not to say' : g}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: gender === g }}
+                >
+                  <Text
+                    style={[
+                      styles.genderChipText,
+                      gender === g && styles.genderChipTextActive,
+                    ]}
+                  >
+                    {g === 'prefer_not_to_say' ? 'Skip' : g.charAt(0).toUpperCase() + g.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
 
           {/* Profile Image (Optional) */}
@@ -216,6 +240,8 @@ const SignUpScreen = () => {
               placeholder="Profile Image URL (optional)"
               placeholderTextColor="rgba(255,255,255,0.4)"
               autoCapitalize="none"
+              accessibilityLabel="Profile image URL, optional"
+              maxLength={500}
             />
           </View>
 
@@ -228,6 +254,8 @@ const SignUpScreen = () => {
             style={[styles.signUpButton, !canSubmit && styles.signUpButtonDisabled]}
             disabled={isLoading || !canSubmit}
             activeOpacity={0.8}
+            accessibilityLabel={isLoading ? 'Creating account' : 'Sign up'}
+            accessibilityRole="button"
           >
             <Text style={styles.signUpButtonText}>
               {isLoading ? "Creating Account..." : t("auth.signUp")}
@@ -398,5 +426,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#FFF",
+  },
+  genderLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.5)",
+    marginBottom: 10,
+  },
+  genderRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  genderChip: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.1)",
+  },
+  genderChipActive: {
+    backgroundColor: "rgba(255, 215, 0, 0.15)",
+    borderColor: "#FFD700",
+  },
+  genderChipText: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: "rgba(255,255,255,0.5)",
+  },
+  genderChipTextActive: {
+    color: "#FFD700",
+    fontWeight: "600",
   },
 });

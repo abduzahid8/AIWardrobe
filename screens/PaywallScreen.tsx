@@ -24,6 +24,8 @@ import Animated, {
 import useSubscriptionStore, { SUBSCRIPTION_PRICING } from "../store/subscriptionStore";
 import { useStylePreferenceStore } from '../store/stylePreferenceStore';
 import AppColors from "../constants/AppColors";
+import { iapService } from "../src/services/iapService";
+import analyticsService from "../src/services/analyticsService";
 
 const { width } = Dimensions.get("window");
 
@@ -148,29 +150,57 @@ const PaywallScreen = () => {
         setIsLoading(tier);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-        // Simulate API call
-        setTimeout(async () => {
-            await setSubscription(tier);
+        try {
+            const productId = tier === 'premium'
+                ? 'com.aiwardrobe.premium.monthly' as const
+                : 'com.aiwardrobe.vip.yearly' as const;
+
+            const result = await iapService.purchase(productId);
+
+            if (result.success) {
+                analyticsService.trackSubscriptionPurchased(
+                    tier,
+                    tier === 'premium' ? SUBSCRIPTION_PRICING.premium.price : SUBSCRIPTION_PRICING.vip.price
+                );
+                completeOnboarding();
+                navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Main' as never }],
+                });
+            } else if (result.error) {
+                // Show user-friendly error but don't crash
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            }
+        } catch {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        } finally {
             setIsLoading(null);
-
-            completeOnboarding();
-
-            navigation.reset({
-                index: 0,
-                routes: [{ name: 'Main' as never }],
-            });
-        }, 2000);
+        }
     };
 
     const handleRestore = async () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        // Restore purchases will be implemented with RevenueCat/StoreKit
-        // For now, show a placeholder message
         setIsLoading('restore');
-        setTimeout(() => {
+
+        try {
+            const result = await iapService.restorePurchases();
+
+            if (result.success) {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                completeOnboarding();
+                navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Main' as never }],
+                });
+            } else {
+                // No purchases found — show message
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            }
+        } catch {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        } finally {
             setIsLoading(null);
-            // Show alert or toast that no purchases found
-        }, 1500);
+        }
     };
 
     return (

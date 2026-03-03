@@ -51,7 +51,7 @@ const AddOutfitScreen = () => {
     setLoadingLink(true);
 
     try {
-      console.log("Sending request to:", `${API_URL}/scrape-item`); // Лог для проверки
+
       const response = await fetch(`${API_URL}/scrape-item`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -61,7 +61,7 @@ const AddOutfitScreen = () => {
       const data = await response.json();
 
       if (data.image) {
-        console.log("Item found:", data.title);
+
         const newItem = {
           id: Date.now(),
           image: data.image,
@@ -79,7 +79,7 @@ const AddOutfitScreen = () => {
         Alert.alert(t('common.error'), t('addOutfit.errors.noImage'));
       }
     } catch (error) {
-      console.log("Scrape Error:", error);
+
       Alert.alert(t('common.error'), t('addOutfit.errors.connectionFailed'));
     } finally {
       setLoadingLink(false);
@@ -123,6 +123,7 @@ const AddOutfitScreen = () => {
             placeholder={t('addOutfit.pasteLink')}
             value={link}
             onChangeText={setLink}
+            maxLength={2000}
           />
           <TouchableOpacity
             onPress={handleLinkPaste}

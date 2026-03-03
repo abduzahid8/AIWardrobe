@@ -227,6 +227,7 @@ const AddItemModal = ({
                                 placeholderTextColor={AppColors.textMuted}
                                 value={name}
                                 onChangeText={setName}
+                                maxLength={200}
                             />
                         </View>
 
@@ -238,6 +239,7 @@ const AddItemModal = ({
                                 placeholderTextColor={AppColors.textMuted}
                                 value={brand}
                                 onChangeText={setBrand}
+                                maxLength={100}
                             />
                         </View>
 
@@ -251,6 +253,7 @@ const AddItemModal = ({
                                     keyboardType="decimal-pad"
                                     value={price}
                                     onChangeText={setPrice}
+                                    maxLength={10}
                                 />
                             </View>
                             <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
@@ -262,6 +265,7 @@ const AddItemModal = ({
                                     keyboardType="decimal-pad"
                                     value={targetPrice}
                                     onChangeText={setTargetPrice}
+                                    maxLength={10}
                                 />
                             </View>
                         </View>
@@ -275,6 +279,7 @@ const AddItemModal = ({
                                 value={imageUrl}
                                 onChangeText={setImageUrl}
                                 autoCapitalize="none"
+                                maxLength={2000}
                             />
                         </View>
                     </View>

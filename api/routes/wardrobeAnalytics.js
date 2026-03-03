@@ -6,6 +6,8 @@
 import express from 'express';
 import ClothingItem from '../models/ClothingItem.js';
 import User from '../models/user.js';
+import { authenticateToken } from '../middleware/auth.js';
+import logger from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -13,11 +15,11 @@ const router = express.Router();
  * GET /api/wardrobe-analytics/:userId
  * Get comprehensive wardrobe analytics
  */
-router.get('/:userId', async (req, res) => {
+router.get('/:userId', authenticateToken, async (req, res) => {
     const { userId } = req.params;
 
     try {
-        console.log(`Fetching analytics for user ${userId}`);
+        logger.info(`Fetching analytics for user ${userId}`, null, 'analytics');
 
         // Get all clothing items for user
         const items = await ClothingItem.find({ userId }).lean();
@@ -131,7 +133,7 @@ router.get('/:userId', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Analytics error:', error);
+        logger.error('Analytics error:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -140,11 +142,11 @@ router.get('/:userId', async (req, res) => {
  * POST /api/wardrobe-analytics/log-wear
  * Log that items were worn (auto-called when saving outfit to calendar)
  */
-router.post('/log-wear', async (req, res) => {
+router.post('/log-wear', authenticateToken, async (req, res) => {
     const { userId, itemIds, date } = req.body;
 
     try {
-        console.log(`Logging wear for ${itemIds.length} items`);
+        logger.info(`Logging wear for ${itemIds.length} items`, null, 'analytics');
 
         const wearDate = date ? new Date(date) : new Date();
 
@@ -173,7 +175,7 @@ router.post('/log-wear', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Log wear error:', error);
+        logger.error('Log wear error:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -182,11 +184,11 @@ router.post('/log-wear', async (req, res) => {
  * POST /api/wardrobe-analytics/calculate-historical
  * One-time migration: Calculate wear counts from existing calendar data
  */
-router.post('/calculate-historical', async (req, res) => {
+router.post('/calculate-historical', authenticateToken, async (req, res) => {
     const { userId } = req.body;
 
     try {
-        console.log(`Calculating historical wears for user ${userId}`);
+        logger.info(`Calculating historical wears for user ${userId}`, null, 'analytics');
 
         // TODO: If you have OutfitCalendar model, parse it here
         // For now, just reset all counts to 0
@@ -203,7 +205,7 @@ router.post('/calculate-historical', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Historical calculation error:', error);
+        logger.error('Historical calculation error:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -212,7 +214,7 @@ router.post('/calculate-historical', async (req, res) => {
  * GET /api/wardrobe-analytics/item/:itemId
  * Get detailed analytics for a single item
  */
-router.get('/item/:itemId', async (req, res) => {
+router.get('/item/:itemId', authenticateToken, async (req, res) => {
     const { itemId } = req.params;
 
     try {

@@ -176,7 +176,7 @@ const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
                 hasActiveSubscription: tier !== 'free',
             });
 
-            console.log(`Subscription set to ${tier} until ${expiry}`);
+            // Subscription updated
         } catch (error) {
             console.error('Failed to set subscription:', error);
         }

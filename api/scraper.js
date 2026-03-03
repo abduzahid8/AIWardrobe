@@ -22,7 +22,7 @@ export const scrapeProduct = async (url) => {
 
     // Use Puppeteer for hard-to-scrape domains
     if (domain.includes('zara') || domain.includes('massimodutti') || domain.includes('ralphlauren')) {
-      console.log(`Using Puppeteer for ${domain}...`);
+      logger.info(`Using Puppeteer for ${domain}...`);
       return await scrapeProductPuppeteer(url);
     }
 
@@ -78,14 +78,14 @@ export const scrapeProduct = async (url) => {
   } catch (error) {
     // Return more specific error for 403
     if (error.response && error.response.status === 403) {
-      console.error(`Access Denied (403) for ${url}`);
+      logger.error(`Access Denied (403) for ${url}`);
       return {
         success: false,
         error: "Access Denied by retailer (Bot Protection). Try a different product or store."
       };
     }
 
-    console.error("Scraping Error:", error.message);
+    logger.error("Scraping Error:", error.message);
     return {
       success: false,
       error: "Could not parse this link. Try another one."

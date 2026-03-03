@@ -48,8 +48,10 @@ const ALTA = {
   textMuted: AppColors.textMuted,
 };
 
-// AliceVision API URL
-const ALICEVISION_URL = 'http://192.168.100.214:5050';
+import Config from '../src/config/env';
+
+// AliceVision API URL from centralized config
+const ALICEVISION_URL = Config.api.alicevisionUrl;
 
 // Detected clothing item interface
 interface DetectedClothingItem {
@@ -261,7 +263,7 @@ const DesignRoomScreen = () => {
         }));
 
         setDetectedItems(items);
-        console.log(`✅ Detected ${items.length} items:`, items.map(i => i.specificType || i.category));
+
 
         setTimeout(() => setAnalysisProgress(''), 2000);
       } else {
@@ -317,7 +319,7 @@ const DesignRoomScreen = () => {
       setSavedItems(prev => new Set([...prev, index]));
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      console.log(`✅ Saved ${item.specificType || item.category} to wardrobe`);
+
 
     } catch (error) {
       console.error('Failed to save item:', error);

@@ -33,12 +33,13 @@ import Animated, {
 import { TahoeIconButton } from '../components/TahoeButton';
 import AppColors from '../constants/AppColors';
 import { useWardrobeItems } from '../src/hooks';
+import Config from '../src/config/env';
 
 const { width, height } = Dimensions.get('window');
 
-// API URLs from environment
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://aiwardrobe-ivh4.onrender.com';
-const ALICEVISION_API = process.env.EXPO_PUBLIC_ALICEVISION_API || 'http://localhost:5050';
+// API URLs from centralized config
+const API_URL = Config.api.url;
+const ALICEVISION_API = Config.api.alicevisionUrl;
 
 // Use unified AppColors
 const COLORS = {
@@ -154,7 +155,7 @@ const TypingIndicator = () => {
             ),
             -1
         );
-        setTimeout(() => {
+        const timer2 = setTimeout(() => {
             dot2Opacity.value = withRepeat(
                 withSequence(
                     withTiming(1, { duration: 400 }),
@@ -163,7 +164,7 @@ const TypingIndicator = () => {
                 -1
             );
         }, 150);
-        setTimeout(() => {
+        const timer3 = setTimeout(() => {
             dot3Opacity.value = withRepeat(
                 withSequence(
                     withTiming(1, { duration: 400 }),
@@ -172,6 +173,10 @@ const TypingIndicator = () => {
                 -1
             );
         }, 300);
+        return () => {
+            clearTimeout(timer2);
+            clearTimeout(timer3);
+        };
     }, []);
 
     const dot1Style = useAnimatedStyle(() => ({ opacity: dot1Opacity.value }));
@@ -348,10 +353,7 @@ const OutfitAIScreen = () => {
                 hasImage: !!(item.image || item.imageUrl)
             }));
 
-            console.log(`🤖 Sending to AI Stylist:`);
-            console.log(`   - Message: ${text.trim()}`);
-            console.log(`   - Wardrobe items: ${formattedWardrobe.length}`);
-            console.log(`   - Weather: ${weather.temp}°C, ${weather.condition}`);
+
 
             // Try AliceVision /stylist/chat endpoint first
             let response = await fetch(`${ALICEVISION_API}/stylist/chat`, {
@@ -382,7 +384,7 @@ const OutfitAIScreen = () => {
 
             if (response?.ok) {
                 const data = await response.json();
-                console.log('✅ AI Response received');
+
 
                 // Add AI response
                 const aiMessage: ChatMessage = {
@@ -596,6 +598,7 @@ const OutfitAIScreen = () => {
                                 returnKeyType="send"
                                 onSubmitEditing={() => sendMessage(message)}
                                 editable={!isLoading}
+                                maxLength={500}
                             />
                             <TouchableOpacity
                                 style={[

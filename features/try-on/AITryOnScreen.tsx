@@ -56,6 +56,14 @@ const AITryOnScreen = () => {
     const [loadingWardrobe, setLoadingWardrobe] = useState(false);
     const [selectedWardrobeItem, setSelectedWardrobeItem] = useState<WardrobeItem | null>(null);
 
+    /** Derive garment_type from selected item's category */
+    const getGarmentType = (): string => {
+        const cat = (selectedWardrobeItem?.category || selectedWardrobeItem?.type || '').toLowerCase();
+        if (['pants', 'jeans', 'shorts', 'skirt', 'lower'].some((k) => cat.includes(k))) return 'lower_body';
+        if (['dress', 'full'].some((k) => cat.includes(k))) return 'dresses';
+        return 'upper_body';
+    };
+
     const loadWardrobeItems = useCallback(async () => {
         try {
             if (!user) return;
@@ -67,9 +75,9 @@ const AITryOnScreen = () => {
                 .order('created_at', { ascending: false });
             if (error) throw error;
             if (data) {
-                const items: WardrobeItem[] = data.map((item) => ({
-                    _id: item.id, id: item.id,
-                    imageUrl: item.image_url, image: item.image_url,
+                const items: WardrobeItem[] = data.map((item: any) => ({
+                    id: item.id,
+                    imageUrl: item.image_url,
                     type: item.type, category: item.category, color: item.color,
                 }));
                 const tryable = items.filter((i) => {
@@ -79,7 +87,6 @@ const AITryOnScreen = () => {
                 setWardrobeItems(tryable.length > 0 ? tryable : items.slice(0, 20));
             }
         } catch (err) {
-            console.error('Failed to load wardrobe:', err);
         } finally {
             setLoadingWardrobe(false);
         }
@@ -93,8 +100,7 @@ const AITryOnScreen = () => {
 
     const handleSelectWardrobeItem = (item: WardrobeItem) => {
         setSelectedWardrobeItem(item);
-        const url = item.imageUrl || item.image;
-        if (url) setClothImage(url);
+        if (item.imageUrl) setClothImage(item.imageUrl);
     };
 
     // ─── RENDER ──────────────────────────────────────
@@ -279,12 +285,11 @@ const AITryOnScreen = () => {
                                         ) : (
                                             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.wardrobeScroll}>
                                                 {wardrobeItems.map((item) => {
-                                                    const imageUrl = item.imageUrl || item.image;
-                                                    const isSelected = selectedWardrobeItem?._id === item._id;
+                                                    const isSelected = selectedWardrobeItem?.id === item.id;
                                                     return (
-                                                        <TouchableOpacity key={item._id || item.id} style={[styles.wardrobeItemCard, isSelected && styles.wardrobeItemCardSelected]} onPress={() => handleSelectWardrobeItem(item)}>
-                                                            {imageUrl ? (
-                                                                <Image source={{ uri: imageUrl }} style={styles.wardrobeItemImage} />
+                                                        <TouchableOpacity key={item.id} style={[styles.wardrobeItemCard, isSelected && styles.wardrobeItemCardSelected]} onPress={() => handleSelectWardrobeItem(item)}>
+                                                            {item.imageUrl ? (
+                                                                <Image source={{ uri: item.imageUrl }} style={styles.wardrobeItemImage} />
                                                             ) : (
                                                                 <View style={styles.wardrobeItemPlaceholder}>
                                                                     <Ionicons name="shirt-outline" size={24} color={AppColors.textLight} />
@@ -352,7 +357,7 @@ const AITryOnScreen = () => {
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={[styles.primaryButtonFlex, loading && styles.primaryButtonDisabled]}
-                                        onPress={() => handleTryOn(humanImage, clothImage)}
+                                        onPress={() => handleTryOn(humanImage, clothImage, getGarmentType())}
                                         disabled={loading}
                                     >
                                         <Text style={styles.primaryButtonText}>
@@ -363,8 +368,8 @@ const AITryOnScreen = () => {
                             </>
                         )}
 
-                        {/* Save button */}
-                        {resultImage && (
+                        {/* Save button — shown only on step 3 */}
+                        {tryOnStep === 3 && resultImage && (
                             <TouchableOpacity style={styles.saveButton} onPress={handleSaveToWardrobe} disabled={saving}>
                                 <Ionicons name="heart" size={20} color="#fff" style={{ marginRight: 8 }} />
                                 <Text style={styles.saveButtonText}>{saving ? t('aiTryOn.saving') : t('aiTryOn.saveToWardrobe')}</Text>

@@ -6,6 +6,7 @@ import {
     StyleSheet,
     Dimensions,
     ScrollView,
+    FlatList,
     Image,
     ActivityIndicator,
 } from 'react-native';
@@ -75,6 +76,9 @@ const FilterChip = ({
                 onPress();
             }}
             activeOpacity={0.8}
+            accessibilityLabel={`${label} filter`}
+            accessibilityRole="button"
+            accessibilityState={{ selected: isSelected }}
         >
             <Text style={[
                 styles.filterChipText,
@@ -104,6 +108,8 @@ const ClothingGridItem = ({
                 onPress();
             }}
             activeOpacity={0.9}
+            accessibilityLabel={`${item.category || item.type || 'Clothing'} item${item.color ? `, ${item.color}` : ''}`}
+            accessibilityRole="button"
         >
             <Animated.View style={styles.gridItem}>
                 <View style={styles.imageContainer}>
@@ -160,6 +166,8 @@ const MyClosetScreen = () => {
                 }));
 
                 setItems(mappedItems);
+                console.log('[Closet] Loaded', mappedItems.length, 'items. Image URLs:',
+                    mappedItems.map(i => ({ type: i.type, hasImage: !!i.imageUrl, imgLen: i.imageUrl?.length || 0 })));
             }
         } catch (error) {
             console.error('Failed to load wardrobe:', error);
@@ -190,10 +198,18 @@ const MyClosetScreen = () => {
                 } else {
                     result = result.filter(item => {
                         const category = (item.category || item.type || '').toLowerCase();
-                        // Simple inclusion check for now, can be robustified
-                        return category.includes(selectedCategory.replace('s', '')) || // remove plural s for matching
-                            (selectedCategory === 'tops' && (category.includes('shirt') || category.includes('blouse'))) ||
-                            (selectedCategory === 'bottoms' && (category.includes('pant') || category.includes('skirt') || category.includes('jean')));
+                        switch (selectedCategory) {
+                            case 'tops':
+                                return ['top', 'shirt', 'blouse', 'coat', 'dress', 'pullover', 'jacket', 'hoodie', 'sweater', 't-shirt'].some(k => category.includes(k));
+                            case 'bottoms':
+                                return ['bottom', 'pant', 'skirt', 'jean', 'trouser', 'short', 'legging'].some(k => category.includes(k));
+                            case 'shoes':
+                                return ['shoe', 'sneaker', 'boot', 'sandal', 'heel', 'loafer', 'slipper', 'feet'].some(k => category.includes(k));
+                            case 'accessories':
+                                return ['accessor', 'bag', 'hat', 'scarf', 'belt', 'sunglasses', 'watch', 'jewelry'].some(k => category.includes(k));
+                            default:
+                                return category.includes(selectedCategory.replace('s', ''));
+                        }
                     });
                 }
             }
@@ -209,10 +225,10 @@ const MyClosetScreen = () => {
                 {/* Header */}
                 <View style={[styles.header, items.length === 0 && { justifyContent: 'center' }]}>
                     <View style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]} pointerEvents="none">
-                        <Text style={styles.headerTitle}>My Closet</Text>
+                        <Text style={styles.headerTitle} accessibilityRole="header">My Closet</Text>
                     </View>
                     {items.length > 0 && (
-                        <TouchableOpacity style={styles.headerButtonLeft}>
+                        <TouchableOpacity style={styles.headerButtonLeft} accessibilityLabel="Search closet" accessibilityRole="button">
                             <Ionicons name="search" size={20} color={colors.text.secondary} />
                             <Text style={styles.headerButtonText}>Search</Text>
                         </TouchableOpacity>
@@ -223,6 +239,8 @@ const MyClosetScreen = () => {
                         <TouchableOpacity
                             style={styles.headerButtonRight}
                             onPress={() => (navigation as any).navigate('Camera')} // Navigate to Camera/Upload
+                            accessibilityLabel="Upload clothing item"
+                            accessibilityRole="button"
                         >
                             <Ionicons name="add" size={22} color={colors.text.secondary} />
                             <Text style={styles.headerButtonText}>Upload</Text>
@@ -239,6 +257,9 @@ const MyClosetScreen = () => {
                                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                 setViewMode('clothes');
                             }}
+                            accessibilityLabel="Clothes"
+                            accessibilityRole="tab"
+                            accessibilityState={{ selected: viewMode === 'clothes' }}
                         >
                             <Text style={[styles.segmentText, viewMode === 'clothes' && styles.segmentTextActive]}>Clothes</Text>
                         </TouchableOpacity>
@@ -248,6 +269,9 @@ const MyClosetScreen = () => {
                                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                 setViewMode('collections');
                             }}
+                            accessibilityLabel="Collections"
+                            accessibilityRole="tab"
+                            accessibilityState={{ selected: viewMode === 'collections' }}
                         >
                             <Text style={[styles.segmentText, viewMode === 'collections' && styles.segmentTextActive]}>Collections</Text>
                         </TouchableOpacity>
@@ -275,54 +299,55 @@ const MyClosetScreen = () => {
                 )}
 
                 {/* Content */}
-                <ScrollView
-                    contentContainerStyle={styles.scrollContent}
-                    showsVerticalScrollIndicator={false}
-                >
-                    {loading ? (
-                        <View style={styles.loadingContainer}>
-                            <ActivityIndicator size="small" color={colors.text.primary} />
+                {loading ? (
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="small" color={colors.text.primary} />
+                    </View>
+                ) : items.length === 0 ? (
+                    <View style={styles.emptyStateContainer}>
+                        <View style={styles.videoContainer}>
+                            <Video
+                                source={require('../assets/videos/closet.mov')}
+                                style={styles.video}
+                                resizeMode={ResizeMode.CONTAIN}
+                                shouldPlay={true}
+                                isLooping
+                                isMuted
+                            />
                         </View>
-                    ) : items.length === 0 ? (
-                        <View style={styles.emptyStateContainer}>
-                            <View style={styles.videoContainer}>
-                                <Video
-                                    source={require('../assets/videos/closet.mov')}
-                                    style={styles.video}
-                                    resizeMode={ResizeMode.CONTAIN}
-                                    shouldPlay={true}
-                                    isLooping
-                                    isMuted
-                                />
-                            </View>
-                            <Text style={styles.emptyTitle}>Your closet is empty</Text>
-                            <Text style={styles.emptySubtitle}>Start adding items to build your digital wardrobe.</Text>
+                        <Text style={styles.emptyTitle}>Your closet is empty</Text>
+                        <Text style={styles.emptySubtitle}>Start adding items to build your digital wardrobe.</Text>
 
-                            <TouchableOpacity
-                                style={styles.emptyButton}
-                                onPress={() => (navigation as any).navigate('Camera')}
-                            >
-                                <Text style={styles.emptyButtonText}>Scan Wardrobe</Text>
-                            </TouchableOpacity>
-                        </View>
-                    ) : (
-                        <View style={styles.grid}>
-                            {filteredItems.map((item, index) => (
-                                <ClothingGridItem
-                                    key={item._id || item.id || index}
-                                    item={item}
-                                    onPress={() => {
-                                        (navigation as any).navigate('OutfitDetail', {
-                                            image: item.imageUrl || item.image,
-                                            outfit: { id: item._id || item.id, items: [item] }
-                                        });
-                                    }}
-                                />
-                            ))}
-                        </View>
-                    )}
-                    <View style={{ height: 100 }} />
-                </ScrollView>
+                        <TouchableOpacity
+                            style={styles.emptyButton}
+                            onPress={() => (navigation as any).navigate('Camera')}
+                            accessibilityLabel="Scan wardrobe"
+                            accessibilityRole="button"
+                        >
+                            <Text style={styles.emptyButtonText}>Scan Wardrobe</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                    <FlatList
+                        data={filteredItems}
+                        keyExtractor={(item, index) => item._id || item.id || String(index)}
+                        numColumns={2}
+                        contentContainerStyle={styles.scrollContent}
+                        showsVerticalScrollIndicator={false}
+                        renderItem={({ item }) => (
+                            <ClothingGridItem
+                                item={item}
+                                onPress={() => {
+                                    (navigation as any).navigate('OutfitDetail', {
+                                        image: item.imageUrl || item.image,
+                                        outfit: { id: item._id || item.id, items: [item] }
+                                    });
+                                }}
+                            />
+                        )}
+                        ListFooterComponent={<View style={{ height: 100 }} />}
+                    />
+                )}
 
             </SafeAreaView>
         </View>
@@ -508,8 +533,8 @@ const styles = StyleSheet.create({
     emptyStateContainer: {
         flex: 1,
         alignItems: 'center',
-        justifyContent: 'center',
-        paddingTop: 40,
+        justifyContent: 'flex-start',
+        paddingTop: 60,
     },
     videoContainer: {
         width: 250,

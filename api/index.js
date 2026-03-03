@@ -16,13 +16,20 @@ import authRoutes from "./routes/auth.js";
 import clothingRoutes from "./routes/clothing.js";
 import outfitRoutes from "./routes/outfits.js";
 import weatherRoutes from "./routes/weather.js";
-import aiRoutes from "./routes/ai.js";
+import {
+  analyzeRouter, clothingRouter, productPhotoRouter,
+  tryonRouter, wardrobeRouter, chatRouter, outfitsRouter,
+  imageProcessorRouter
+} from "./routes/ai/index.js";
 import statsRoutes from "./routes/stats.js";
 import alicevisionRoutes from "./routes/alicevision.js";
 import emailIngestionRoutes from "./routes/emailIngestion.js";
 import tripPlannerRoutes from "./routes/tripPlanner.js";
 import wardrobeAnalyticsRoutes from "./routes/wardrobeAnalytics.js";
 import subscriptionRoutes from "./routes/subscription.js";
+import geminiRoutes from "./routes/gemini.js";
+import analyticsRoutes from "./routes/analytics.js";
+import accountRoutes from "./routes/account.js";
 
 // Import middleware
 import { apiLimiter, aiLimiter } from "./middleware/rateLimit.js";
@@ -31,6 +38,7 @@ import { auditLogger } from "./middleware/security.js";
 // Import models for seeding
 import Outfit from "./models/outfit.js";
 import { HfInference } from "@huggingface/inference";
+import logger from "./utils/logger.js";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -45,28 +53,39 @@ app.use(helmet({
   contentSecurityPolicy: false, // Disable CSP for API
 }));
 
-// CORS configuration
-const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['*'];
+// CORS configuration — deny-by-default in production
+const isProduction = process.env.NODE_ENV === 'production';
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').map(s => s.trim()) || [];
+
+// In development, allow localhost origins for convenience
+if (!isProduction && allowedOrigins.length === 0) {
+  allowedOrigins.push('http://localhost:3000', 'http://localhost:8081', 'http://localhost:19006');
+}
+
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, Postman)
+    // Allow requests with no origin (mobile apps, Postman, server-to-server)
     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else if (!isProduction) {
+      // In dev, warn but allow
+      console.warn(`CORS: allowing unlisted origin in dev: ${origin}`);
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      callback(new Error(`Not allowed by CORS: ${origin}`));
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
-  maxAge: 86400 // Cache preflight for 24 hours
+  maxAge: 86400
 }));
 
-// Body parsing with size limits
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
+// Body parsing with size limits (10MB max to prevent memory exhaustion)
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
 // Apply general rate limiting to all routes
 app.use(apiLimiter);
@@ -81,9 +100,9 @@ app.use(auditLogger);
 const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
 
 if (!MONGODB_URI) {
-  console.error("❌ FATAL: MONGODB_URI environment variable is not set!");
-  console.error("   Please add MONGODB_URI to your .env file");
-  console.error("   Example: MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/dbname");
+  logger.error("❌ FATAL: MONGODB_URI environment variable is not set!");
+  logger.error("   Please add MONGODB_URI to your .env file");
+  logger.error("   Example: MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/dbname");
   process.exit(1);
 }
 
@@ -93,17 +112,17 @@ mongoose
     serverSelectionTimeoutMS: 5000,
     socketTimeoutMS: 45000,
   })
-  .then(() => console.log("✅ Connected to MongoDB"))
+  .then(() => logger.info("✅ Connected to MongoDB"))
   .catch((err) => {
-    console.error("❌ Error connecting to MongoDB:", err.message);
+    logger.error("❌ Error connecting to MongoDB:", err.message);
     process.exit(1);
   });
 
 // Graceful shutdown handling
 process.on('SIGINT', async () => {
-  console.log('🔄 Gracefully shutting down...');
+  logger.info('🔄 Gracefully shutting down...');
   await mongoose.connection.close();
-  console.log('✅ MongoDB connection closed');
+  logger.info('✅ MongoDB connection closed');
   process.exit(0);
 });
 
@@ -127,9 +146,18 @@ app.use("/weather", weatherRoutes);
 // Statistics & Analytics
 app.use("/stats", statsRoutes);
 
-// AI-powered features (with stricter rate limiting)
-app.use("/api", aiLimiter, aiRoutes);
-app.use("/", aiRoutes); // For routes like /try-on, /scan-wardrobe
+// AI-powered features (split into domain-specific routers)
+app.use("/api", aiLimiter, analyzeRouter);      // /api/analyze-frames
+app.use("/api", aiLimiter, clothingRouter);      // /api/openai/analyze-clothing, /api/openai/generate-image, etc.
+app.use("/api", aiLimiter, productPhotoRouter);  // /api/product-photo/process, /api/v2/product-photo/process-multi
+app.use("/api", aiLimiter, tryonRouter);          // /api/try-on
+app.use("/api", aiLimiter, wardrobeRouter);       // /api/scan-wardrobe
+app.use("/api", aiLimiter, chatRouter);           // /api/smart-search, /api/ai-chat
+app.use("/api", aiLimiter, outfitsRouter);        // /api/generate-outfits
+app.use("/api", aiLimiter, imageProcessorRouter); // /api/process-upload
+
+// Gemini AI proxy (server-side key — never exposed to client)
+app.use("/api/gemini", aiLimiter, geminiRoutes);
 
 // AliceVision computer vision microservice integration
 app.use("/alicevision", aiLimiter, alicevisionRoutes);
@@ -145,6 +173,12 @@ app.use("/api/wardrobe-analytics", wardrobeAnalyticsRoutes);
 
 // Subscription & Payment management
 app.use("/api/subscription", subscriptionRoutes);
+
+// Analytics event ingestion
+app.use("/api/analytics", analyticsRoutes);
+
+// Account management (deletion, GDPR)
+app.use("/api/account", accountRoutes);
 
 // ============================================
 // DATABASE SEEDING
@@ -202,12 +236,12 @@ const seedData = async () => {
         const embedding = await generateEmbedding(text);
         await new Outfit({ ...outfit, embedding }).save();
       }
-      console.log("✅ Database seeded with", outfits.length, "outfits");
+      logger.info("✅ Database seeded with", outfits.length, "outfits");
     } else {
-      console.log("✅ Database already has", count, "outfits");
+      logger.info("✅ Database already has", count, "outfits");
     }
   } catch (err) {
-    console.error("❌ Seeding failed:", err.message);
+    logger.error("❌ Seeding failed:", err.message);
   }
 };
 
@@ -226,20 +260,26 @@ app.get("/health", (req, res) => {
 });
 
 // ============================================
+// GLOBAL ERROR HANDLER
+// Prevents error.message/stack leaking to clients in production
+// ============================================
+
+app.use((err, req, res, _next) => {
+  logger.error(`Unhandled error on ${req.method} ${req.path}:`, err.message);
+
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  res.status(err.status || 500).json({
+    error: isProduction ? 'Internal server error' : err.message,
+    ...(isProduction ? {} : { stack: err.stack }),
+  });
+});
+
+// ============================================
 // START SERVER
 // ============================================
 
 app.listen(port, "0.0.0.0", () => {
-  console.log(`🚀 Server running on port ${port}`);
-  console.log(`📍 Routes mounted:`);
-  console.log(`   - Auth: /register, /login, /me`);
-  console.log(`   - Clothing: /clothing-items`);
-  console.log(`   - Wardrobe: /wardrobe/add-batch`);
-  console.log(`   - Outfits: /save-outfit`);
-  console.log(`   - Weather: /weather`);
-  console.log(`   - AI: /api/*, /try-on, /scan-wardrobe`);
-  console.log(`   - AliceVision: /alicevision/keyframe, /alicevision/segment, /alicevision/lighting, /alicevision/process`);
-  console.log(`   - Email Ingestion: /api/email/auth-url, /api/email/scan-receipts, /api/email/import-items`);
-  console.log(`   - Trip Planner: /api/trip-planner/weather, /api/trip-planner/create`);
-  console.log(`   - Wardrobe Analytics: /api/wardrobe-analytics/:userId, /api/wardrobe-analytics/log-wear`);
+  logger.info(`🚀 Server running on port ${port}`);
+  logger.info(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });

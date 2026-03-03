@@ -31,7 +31,7 @@ async function fetchProductImage(item) {
                 return await genericProductSearch(description, itemType);
         }
     } catch (error) {
-        console.error(`Image fetch failed for ${retailer}:`, error.message);
+        logger.error(`Image fetch failed for ${retailer}:`, error.message);
         // Return fallback placeholder
         return getPlaceholderImage(itemType);
     }
@@ -47,7 +47,7 @@ async function genericProductSearch(description, itemType) {
     // - Bing Image Search API
     // - Direct retailer API if available
 
-    console.log(`Using placeholder for: ${description}`);
+    logger.info(`Using placeholder for: ${description}`);
     return getPlaceholderImage(itemType);
 }
 
