@@ -23,16 +23,18 @@ const SignInScreen = () => {
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuthStore();
   const handleSignIn = async () => {
     if (!email || !password) {
       Alert.alert("Error", "Email and password are required");
       return;
     }
+    if (isLoading) return; // Prevent double-submission
+    setIsLoading(true);
     try {
       await login(email, password);
     } catch (error: any) {
-      console.log("Login error:", error);
       const errorMessage = error.message || "Login failed";
 
       if (errorMessage.includes("Invalid login credentials") || errorMessage.includes("invalid claim")) {
@@ -42,6 +44,8 @@ const SignInScreen = () => {
       } else {
         Alert.alert("Login Failed", errorMessage);
       }
+    } finally {
+      setIsLoading(false);
     }
   };
   // console.log("Мой текущий API URL:", API_URL);
@@ -67,6 +71,8 @@ const SignInScreen = () => {
                 placeholderTextColor="rgba(255,255,255,0.4)"
                 keyboardType="email-address"
                 autoCapitalize="none"
+                accessibilityLabel="Email address"
+                maxLength={255}
               />
             </View>
 
@@ -78,18 +84,37 @@ const SignInScreen = () => {
                 placeholder={t('auth.password')}
                 placeholderTextColor="rgba(255,255,255,0.4)"
                 secureTextEntry
+                accessibilityLabel="Password"
               />
             </View>
+
+            {/* Forgot Password */}
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                (navigation.navigate as any)("ForgotPassword");
+              }}
+              style={styles.forgotButton}
+              accessibilityLabel="Forgot password"
+              accessibilityRole="button"
+            >
+              <Text style={styles.forgotText}>Forgot Password?</Text>
+            </TouchableOpacity>
 
             <TouchableOpacity
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 handleSignIn();
               }}
-              style={styles.primaryButton}
+              style={[styles.primaryButton, isLoading && styles.primaryButtonDisabled]}
+              disabled={isLoading}
               activeOpacity={0.8}
+              accessibilityLabel={isLoading ? "Signing in" : "Sign in"}
+              accessibilityRole="button"
             >
-              <Text style={styles.primaryButtonText}>{t('auth.signIn')}</Text>
+              <Text style={styles.primaryButtonText}>
+                {isLoading ? "Signing In..." : t('auth.signIn')}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -176,10 +201,22 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 20,
   },
+  primaryButtonDisabled: {
+    opacity: 0.5,
+  },
   primaryButtonText: {
     fontSize: 16,
     fontWeight: "700",
     color: "#000",
+  },
+  forgotButton: {
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  forgotText: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.5)",
+    fontWeight: "500",
   },
   linkButton: {
     alignItems: "center",

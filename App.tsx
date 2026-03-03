@@ -9,6 +9,11 @@ import "./i18n";
 import RootNavigator from "./navigation/RootNavigator";
 import { ThemeProvider, useTheme } from "./src/theme/ThemeContext";
 import { ErrorBoundary } from "./src/components/ErrorBoundary";
+import crashReporting from "./src/services/crashReporting";
+import NetworkBanner from "./components/NetworkBanner";
+
+// Initialize crash reporting as early as possible
+crashReporting.initialize();
 
 // React Query client — shared across the app
 const queryClient = new QueryClient({

@@ -23,6 +23,26 @@ import AITryOnScreen from "../screens/AITryOnScreen";
 import InspoScreen from "../screens/InspoScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 
+// Screen-level ErrorBoundary — isolates crashes to individual tabs
+import { ErrorBoundary } from "../src/components/ErrorBoundary";
+
+/** Wraps a screen component in its own ErrorBoundary */
+const withErrorBoundary = (Screen: React.ComponentType<any>, name: string) => {
+  const Wrapped = (props: any) => (
+    <ErrorBoundary>
+      <Screen {...props} />
+    </ErrorBoundary>
+  );
+  Wrapped.displayName = `ErrorBoundary(${name})`;
+  return Wrapped;
+};
+
+const SafeHomeScreen = withErrorBoundary(HomeScreen, 'Home');
+const SafeClosetScreen = withErrorBoundary(MyClosetScreen, 'Closet');
+const SafeAITryOnScreen = withErrorBoundary(AITryOnScreen, 'AI');
+const SafeInspoScreen = withErrorBoundary(InspoScreen, 'Inspo');
+const SafeProfileScreen = withErrorBoundary(ProfileScreen, 'Profile');
+
 // 2026 Design System
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 import { useReducedMotion } from '../hooks/useAccessibility';
@@ -204,16 +224,33 @@ const TabNavigator = () => {
         lazy: true,
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Closet" component={MyClosetScreen} />
+      <Tab.Screen
+        name="Home"
+        component={SafeHomeScreen}
+        options={{ tabBarAccessibilityLabel: t('tabs.home', 'Home') }}
+      />
+      <Tab.Screen
+        name="Closet"
+        component={SafeClosetScreen}
+        options={{ tabBarAccessibilityLabel: t('tabs.closet', 'My Closet') }}
+      />
       {/* AI tab: Try On — full-length photo + AI outfit preview */}
       <Tab.Screen
         name="AI"
-        component={AITryOnScreen}
+        component={SafeAITryOnScreen}
         initialParams={{ asTab: true }}
+        options={{ tabBarAccessibilityLabel: t('tabs.ai', 'AI Try On') }}
       />
-      <Tab.Screen name="Inspo" component={InspoScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen
+        name="Inspo"
+        component={SafeInspoScreen}
+        options={{ tabBarAccessibilityLabel: t('tabs.inspo', 'Inspiration') }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={SafeProfileScreen}
+        options={{ tabBarAccessibilityLabel: t('tabs.profile', 'Profile') }}
+      />
     </Tab.Navigator>
   );
 };

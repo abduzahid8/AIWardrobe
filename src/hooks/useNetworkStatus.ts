@@ -1,54 +1,50 @@
 /**
  * useNetworkStatus — React hook for online/offline detection
  *
- * Uses expo-network to detect connectivity state.
- * Falls back to assuming online if expo-network is unavailable.
+ * Uses a lightweight fetch-based approach to detect connectivity.
+ * Assumes online by default and only marks offline after consecutive failures.
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import * as Network from 'expo-network';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 interface NetworkStatus {
     isOnline: boolean;
-    isWifi: boolean;
-    type: string;
 }
 
 /**
  * Hook to monitor network connectivity.
- * Polls every 10 seconds (expo-network doesn't have listeners on all platforms).
+ * Polls every `pollIntervalMs` milliseconds. Requires 2 consecutive failures before marking offline.
  */
-export function useNetworkStatus(pollIntervalMs: number = 10000): NetworkStatus {
-    const [status, setStatus] = useState<NetworkStatus>({
-        isOnline: true,
-        isWifi: false,
-        type: 'unknown',
-    });
+export function useNetworkStatus(pollIntervalMs: number = 15000): NetworkStatus {
+    const [isOnline, setIsOnline] = useState(true);
+    const failures = useRef(0);
 
     const checkNetwork = useCallback(async () => {
         try {
-            const state = await Network.getNetworkStateAsync();
-            setStatus({
-                isOnline: state.isConnected ?? true,
-                isWifi: state.type === Network.NetworkStateType.WIFI,
-                type: state.type ?? 'unknown',
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 8000);
+            await fetch('https://clients3.google.com/generate_204', {
+                method: 'HEAD',
+                signal: controller.signal,
             });
+            clearTimeout(timeout);
+            failures.current = 0;
+            setIsOnline(true);
         } catch {
-            // If we can't check, assume online
-            setStatus((prev) => ({ ...prev, isOnline: true }));
+            failures.current += 1;
+            if (failures.current >= 2) {
+                setIsOnline(false);
+            }
         }
     }, []);
 
     useEffect(() => {
-        // Check immediately
         checkNetwork();
-
-        // Then poll
         const interval = setInterval(checkNetwork, pollIntervalMs);
         return () => clearInterval(interval);
     }, [checkNetwork, pollIntervalMs]);
 
-    return status;
+    return { isOnline };
 }
 
 export default useNetworkStatus;

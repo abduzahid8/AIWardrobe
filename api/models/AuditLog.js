@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import logger from "../utils/logger.js";
 
 /**
  * AuditLog Model
@@ -91,7 +92,7 @@ auditLogSchema.statics.log = async function (data) {
         await log.save();
         return log;
     } catch (error) {
-        console.error('Failed to create audit log:', error.message);
+        logger.error('Failed to create audit log:', error.message);
         // Don't throw - audit logging should not break the app
     }
 };

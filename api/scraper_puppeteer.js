@@ -12,7 +12,7 @@ export const scrapeProductPuppeteer = async (url) => {
         // Set a real User-Agent
         await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
-        console.log(`Navigating to ${url}...`);
+        logger.info(`Navigating to ${url}...`);
         await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
         // Wait for some content (optional, but good for heavily JS sites)
@@ -54,7 +54,7 @@ export const scrapeProductPuppeteer = async (url) => {
         };
 
     } catch (error) {
-        console.error("Puppeteer Error:", error.message);
+        logger.error("Puppeteer Error:", error.message);
         return {
             success: false,
             error: "Could not scrape with Puppeteer."
@@ -68,6 +68,6 @@ export const scrapeProductPuppeteer = async (url) => {
 if (process.argv[1] === import.meta.url.substring(7)) { // simple check
     (async () => {
         const url = "https://www.zara.com/us/en/woman-dresses-l1066.html";
-        console.log(await scrapeProductPuppeteer(url));
+        logger.info(await scrapeProductPuppeteer(url));
     })();
 }

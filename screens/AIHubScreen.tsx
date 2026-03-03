@@ -257,13 +257,23 @@ const AIHubScreen = () => {
         return 'Good evening';
     };
 
+    const agentTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Cleanup setTimeout on unmount
+    useEffect(() => {
+        return () => {
+            if (agentTimerRef.current) clearTimeout(agentTimerRef.current);
+        };
+    }, []);
+
     const handleSend = () => {
         if (message.trim()) {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             setIsAgentActive(true);
             (navigation as any).navigate('AIChat', { initialMessage: message });
             setMessage('');
-            setTimeout(() => setIsAgentActive(false), 500);
+            if (agentTimerRef.current) clearTimeout(agentTimerRef.current);
+            agentTimerRef.current = setTimeout(() => setIsAgentActive(false), 500);
         }
     };
 
@@ -410,6 +420,7 @@ const AIHubScreen = () => {
                                 returnKeyType="send"
                                 onSubmitEditing={handleSend}
                                 accessibilityLabel="Type your style question"
+                                maxLength={500}
                             />
 
                             {/* Morphing Action Button */}

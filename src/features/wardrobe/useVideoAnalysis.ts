@@ -9,6 +9,8 @@ import * as VideoThumbnails from 'expo-video-thumbnails';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Alert } from 'react-native';
 import Config from '../../config/env';
+
+const API_URL = Config.api.url;
 import {
     DetectedItem,
     AnalysisResult,
@@ -115,7 +117,8 @@ export const useVideoAnalysis = (): UseVideoAnalysisReturn => {
                 });
             });
             return items.length > 0 ? items : null;
-        } catch {
+        } catch (err) {
+            console.warn('[Detection] Timeline analysis failed:', err);
             return null;
         }
     };
@@ -154,7 +157,8 @@ export const useVideoAnalysis = (): UseVideoAnalysisReturn => {
                 items = items.map((item, idx) => ({ ...item, outfitId: Math.min(Math.floor(idx / perOutfit) + 1, numOutfits) }));
             }
             return items.length > 0 ? items : null;
-        } catch {
+        } catch (err) {
+            console.warn('[Detection] ByteTrack analysis failed:', err);
             return null;
         }
     };
@@ -174,7 +178,8 @@ export const useVideoAnalysis = (): UseVideoAnalysisReturn => {
             }));
             items = mergeShoeCategories(items);
             return items.length > 0 ? items : null;
-        } catch {
+        } catch (err) {
+            console.warn('[Detection] SegFormer analysis failed:', err);
             return null;
         }
     };
@@ -206,7 +211,8 @@ export const useVideoAnalysis = (): UseVideoAnalysisReturn => {
             }));
             items = mergeShoeCategories(items);
             return items.length > 0 ? items : null;
-        } catch {
+        } catch (err) {
+            console.warn('[Detection] Fashion Intelligence failed:', err);
             return null;
         }
     };
@@ -243,7 +249,8 @@ export const useVideoAnalysis = (): UseVideoAnalysisReturn => {
             }));
             items = mergeShoeCategories(items);
             return items.length > 0 ? items : null;
-        } catch {
+        } catch (err) {
+            console.warn('[Detection] VLM detection failed:', err);
             return null;
         }
     };
@@ -300,16 +307,172 @@ export const useVideoAnalysis = (): UseVideoAnalysisReturn => {
         return final.length > 0 ? final : null;
     };
 
+    // ─── Strategy 7: API Server / Gemini Fallback ─────────────────────────────────
+
+    /** Strategy 7: Gemini API via backend proxy — uses server-side key */
+    const tryAPIServerFallback = async (frame: string): Promise<DetectedItem[] | null> => {
+        try {
+            setProgress('Cloud AI analyzing...');
+            const cleanImage = frame.replace(/^data:image\/\w+;base64,/, '');
+
+            // Route through backend Gemini proxy (API key stays server-side)
+            const prompt = `Analyze this clothing image and output a raw JSON array of objects (no markdown blocks, just the JSON).
+For each distinct clothing item found in the image, provide an object with:
+- category: general category (tops, bottoms, shoes, accessories)
+- subCategory: specific type (e.g. t-shirt, jeans, jacket, sneakers)
+- primaryColor: concise main color name
+- colorHex: best hex code for the color (e.g. "#000000")
+- material: guess the material (cotton, denim, leather, etc)
+- pattern: guess the pattern (solid, striped, matching etc)
+- confidence: a number from 0.0 to 1.0 (how sure you are)`;
+
+            const response = await axios.post(
+                `${API_URL}/api/gemini/analyze-image`,
+                { imageBase64: cleanImage, prompt },
+                { timeout: 30000 }
+            );
+
+            const data = response.data;
+            let items: any[] = [];
+
+            if (data.result && Array.isArray(data.result)) {
+                items = data.result;
+            } else if (data.raw) {
+                // Try to parse the raw text response
+                try {
+                    let text = data.raw.trim();
+                    if (text.startsWith('```json')) text = text.slice(7);
+                    if (text.startsWith('```')) text = text.slice(3);
+                    if (text.endsWith('```')) text = text.slice(0, -3);
+                    const parsed = JSON.parse(text);
+                    items = Array.isArray(parsed) ? parsed : [parsed];
+                } catch {
+                    return null;
+                }
+            }
+
+            if (!items.length) return null;
+
+            const detected: DetectedItem[] = items.map((item: any) => ({
+                itemType: formatCategoryName(item.subCategory || item.category || 'Clothing'),
+                specificType: item.subCategory || item.category,
+                color: item.primaryColor || 'Unknown',
+                colorHex: item.colorHex || '#000000',
+                material: item.material,
+                pattern: item.pattern,
+                style: 'Casual',
+                description: `${item.primaryColor || ''} ${item.subCategory || item.category || ''}`.trim(),
+                position: (item.category || '').toLowerCase().includes('shoe') || (item.category || '').toLowerCase().includes('foot')
+                    ? 'feet'
+                    : (item.category || '').toLowerCase().includes('bottom') || (item.category || '').toLowerCase().includes('pant')
+                        ? 'lower'
+                        : 'upper',
+                confidence: item.confidence || 0.7,
+                confidenceLevel: (item.confidence || 0) > 0.7 ? 'high' : 'medium',
+                detectionSources: ['Gemini Vision (Backend Proxy)'],
+            }));
+
+            return detected.length > 0 ? detected : null;
+        } catch (err) {
+            console.warn('[Detection] Gemini proxy fallback failed:', err);
+            return null;
+        }
+    };
+
+    /** Strategy 7.5: AliceVision Classifier — uses our local YOLOv8 + rembg (free) */
+    const tryAliceVisionClassifier = async (frame: string): Promise<DetectedItem[] | null> => {
+        try {
+            setProgress('AliceVision AI classifying...');
+            const cleanImage = frame.replace(/^data:image\/\w+;base64,/, '');
+
+            // Try the full /process pipeline first (classify + remove bg + enhance)
+            try {
+                const processRes = await axios.post(
+                    `${ALICEVISION_URL}/process`,
+                    { image: cleanImage, mode: 'clean', generate_description: false },
+                    { timeout: 60000 }
+                );
+
+                if (processRes.data?.success && processRes.data?.classification) {
+                    const cls = processRes.data.classification;
+                    const item: DetectedItem = {
+                        itemType: formatCategoryName(cls.category),
+                        specificType: cls.category,
+                        color: 'Unknown',
+                        colorHex: '#000000',
+                        style: 'Casual',
+                        description: processRes.data.description || `${cls.category}`,
+                        position: getItemPosition(cls.section || ''),
+                        confidence: cls.confidence || 0.8,
+                        confidenceLevel: (cls.confidence || 0) > 0.7 ? 'high' : 'medium',
+                        frameImage: processRes.data.image ? `data:image/jpeg;base64,${processRes.data.image}` : undefined,
+                        cutoutImage: processRes.data.cutout ? `data:image/png;base64,${processRes.data.cutout}` : undefined,
+                        detectionSources: ['AliceVision YOLOv8', 'rembg', 'studio-enhance'],
+                    };
+                    return [item];
+                }
+            } catch {
+                // Full pipeline unavailable, try individual classify endpoint
+            }
+
+            // Fallback: just classify
+            const clsRes = await axios.post(
+                `${ALICEVISION_URL}/classify`,
+                { image: cleanImage },
+                { timeout: 30000 }
+            );
+
+            if (clsRes.data?.success) {
+                const item: DetectedItem = {
+                    itemType: formatCategoryName(clsRes.data.category),
+                    specificType: clsRes.data.category,
+                    color: 'Unknown',
+                    colorHex: '#000000',
+                    style: 'Casual',
+                    description: clsRes.data.category,
+                    position: getItemPosition(clsRes.data.section || ''),
+                    confidence: clsRes.data.confidence || 0.8,
+                    confidenceLevel: (clsRes.data.confidence || 0) > 0.7 ? 'high' : 'medium',
+                    detectionSources: ['AliceVision YOLOv8'],
+                };
+                return [item];
+            }
+            return null;
+        } catch (err) {
+            console.warn('[Detection] AliceVision classifier failed:', err);
+            return null;
+        }
+    };
+
+    /** Strategy 8: Local minimal fallback — returns a generic item so user can correct */
+    const tryLocalFallback = async (frame: string): Promise<DetectedItem[] | null> => {
+        try {
+            setProgress('Using local detection...');
+            // Return a minimal detected item so the user can save and manually correct
+            const item: DetectedItem = {
+                itemType: 'Clothing Item',
+                specificType: 'clothing',
+                color: 'Unknown',
+                colorHex: '#888888',
+                style: 'Casual',
+                description: 'Detected clothing item (manual review suggested)',
+                position: 'upper',
+                confidence: 0.4,
+                confidenceLevel: 'low' as const,
+                detectionSources: ['Local Fallback'],
+            };
+            return [item];
+        } catch {
+            return null;
+        }
+    };
+
     // ─── Main Analysis Orchestrator ──────────────────────────────────────────────
 
     const runAnalysis = async (frames: string[]): Promise<DetectedItem[]> => {
         const strategies = [
-            () => tryTimelineAnalysis(frames),
-            () => tryByteTrackAnalysis(frames),
-            () => trySegFormerAnalysis(frames[0]),
-            () => tryFashionIntelligence(frames[0]),
-            () => tryVLMDetection(frames),
-            () => tryParallelEnsemble(frames),
+            () => tryAliceVisionClassifier(frames[0]),  // Primary: AliceVision /process (SAM + enhance)
+            () => tryLocalFallback(frames[0]),           // Fallback: generic item for user to correct
         ];
 
         for (const strategy of strategies) {

@@ -7,6 +7,8 @@ import express from 'express';
 import axios from 'axios';
 import ClothingItem from '../models/ClothingItem.js';
 import User from '../models/user.js';
+import { authenticateToken } from '../middleware/auth.js';
+import logger from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -18,7 +20,7 @@ const WEATHER_API_URL = 'https://api.openweathermap.org/data/2.5';
  * GET /api/trip-planner/weather
  * Fetch weather forecast for destination
  */
-router.get('/weather', async (req, res) => {
+router.get('/weather', authenticateToken, async (req, res) => {
     const { city, startDate, endDate } = req.query;
 
     try {
@@ -55,7 +57,7 @@ router.get('/weather', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Weather API error:', error.message);
+        logger.error('Weather API error:', error.message);
         res.status(500).json({
             error: 'Failed to fetch weather',
             message: error.message
@@ -67,11 +69,11 @@ router.get('/weather', async (req, res) => {
  * POST /api/trip-planner/create
  * Create trip plan with packing list and daily outfits
  */
-router.post('/create', async (req, res) => {
+router.post('/create', authenticateToken, async (req, res) => {
     const { userId, destination, startDate, endDate, occasions } = req.body;
 
     try {
-        console.log(`Creating trip plan for user ${userId} to ${destination}`);
+        logger.info(`Creating trip plan for user ${userId} to ${destination}`, null, 'trip');
 
         // 1. Fetch weather forecast
         const weatherData = await fetchWeatherForTrip(destination, startDate, endDate);
@@ -111,7 +113,7 @@ router.post('/create', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Trip creation error:', error);
+        logger.error('Trip creation error:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -151,7 +153,7 @@ async function fetchWeatherForTrip(city, startDate, endDate) {
             forecasts: dailyForecasts
         };
     } catch (error) {
-        console.error('Weather fetch error:', error.message);
+        logger.error('Weather fetch error:', error.message);
         // Return dummy data if API fails
         return {
             city,

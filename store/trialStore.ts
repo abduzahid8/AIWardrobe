@@ -69,7 +69,7 @@ const useTrialStore = create<TrialState>((set, get) => ({
                 isTrialExpired,
             });
 
-            console.log(`Trial count incremented to ${newCount}/${MAX_TRIAL_COUNT}`);
+
         } catch (error) {
             console.error("Failed to increment trial count:", error);
         }
@@ -93,7 +93,7 @@ const useTrialStore = create<TrialState>((set, get) => ({
                 firstLaunchDate: null,
                 isTrialExpired: false,
             });
-            console.log("Trial reset successfully");
+
         } catch (error) {
             console.error("Failed to reset trial:", error);
         }

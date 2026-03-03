@@ -1,0 +1,287 @@
+import React, { useState } from 'react';
+import {
+    View,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    Alert,
+    StyleSheet,
+    KeyboardAvoidingView,
+    Platform,
+    TouchableWithoutFeedback,
+    Keyboard,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
+import { supabase } from '../lib/supabase';
+
+/**
+ * ResetPasswordScreen — deep link target for password reset.
+ * User arrives here via the email link from ForgotPasswordScreen.
+ * Allows setting a new password with validation.
+ */
+const ResetPasswordScreen = () => {
+    const navigation = useNavigation();
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+
+    // Password validation
+    const passwordChecks = {
+        minLength: password.length >= 8,
+        hasLowercase: /[a-z]/.test(password),
+        hasUppercase: /[A-Z]/.test(password),
+        hasNumber: /[0-9]/.test(password),
+    };
+    const isPasswordValid = Object.values(passwordChecks).every(Boolean);
+    const passwordsMatch = password === confirmPassword && confirmPassword.length > 0;
+    const canSubmit = isPasswordValid && passwordsMatch;
+
+    const handleResetPassword = async () => {
+        if (!canSubmit || isLoading) return;
+
+        setIsLoading(true);
+        try {
+            const { error } = await supabase.auth.updateUser({ password });
+
+            if (error) throw error;
+
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            Alert.alert(
+                'Password Updated',
+                'Your password has been successfully reset. You can now sign in with your new password.',
+                [
+                    {
+                        text: 'Sign In',
+                        onPress: () => {
+                            (navigation as any).reset({
+                                index: 0,
+                                routes: [{ name: 'SignIn' }],
+                            });
+                        },
+                    },
+                ],
+            );
+        } catch (error: any) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            const msg = error.message || 'Failed to reset password';
+
+            if (msg.includes('same_password') || msg.includes('different from your old')) {
+                Alert.alert('Same Password', 'New password must be different from your current password.');
+            } else if (msg.includes('weak_password') || msg.includes('too weak')) {
+                Alert.alert('Weak Password', 'Please choose a stronger password.');
+            } else {
+                Alert.alert('Error', msg);
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const CheckItem = ({ valid, text }: { valid: boolean; text: string }) => (
+        <View style={styles.checkRow}>
+            <Ionicons
+                name={valid ? 'checkmark-circle' : 'ellipse-outline'}
+                size={16}
+                color={valid ? '#FFD700' : 'rgba(255,255,255,0.3)'}
+            />
+            <Text style={[styles.checkText, valid && styles.checkTextValid]}>{text}</Text>
+        </View>
+    );
+
+    return (
+        <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.container}
+        >
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                <LinearGradient
+                    colors={['#0A0A0A', '#1A1C29', '#16213E']}
+                    style={styles.gradient}
+                >
+                    <View style={styles.formContainer}>
+                        {/* Back Button */}
+                        <TouchableOpacity
+                            onPress={() => navigation.goBack()}
+                            style={styles.backButton}
+                            accessibilityLabel="Go back"
+                            accessibilityRole="button"
+                        >
+                            <Ionicons name="arrow-back" size={24} color="#FFF" />
+                        </TouchableOpacity>
+
+                        <View style={styles.iconContainer}>
+                            <Ionicons name="lock-closed-outline" size={40} color="#FFD700" />
+                        </View>
+
+                        <Text style={styles.title} accessibilityRole="header">
+                            Set New Password
+                        </Text>
+                        <Text style={styles.subtitle}>
+                            Choose a strong password for your account.
+                        </Text>
+
+                        {/* New Password */}
+                        <View style={styles.inputContainer}>
+                            <TextInput
+                                style={styles.input}
+                                value={password}
+                                onChangeText={setPassword}
+                                placeholder="New Password"
+                                placeholderTextColor="rgba(255,255,255,0.4)"
+                                secureTextEntry
+                                accessibilityLabel="New password"
+                                maxLength={128}
+                            />
+                        </View>
+
+                        {/* Password Requirements */}
+                        {password.length > 0 && (
+                            <View style={styles.checksContainer}>
+                                <CheckItem valid={passwordChecks.minLength} text="At least 8 characters" />
+                                <CheckItem valid={passwordChecks.hasLowercase} text="One lowercase letter (a-z)" />
+                                <CheckItem valid={passwordChecks.hasUppercase} text="One uppercase letter (A-Z)" />
+                                <CheckItem valid={passwordChecks.hasNumber} text="One number (0-9)" />
+                            </View>
+                        )}
+
+                        {/* Confirm Password */}
+                        <View style={styles.inputContainer}>
+                            <TextInput
+                                style={[
+                                    styles.input,
+                                    confirmPassword.length > 0 && !passwordsMatch && styles.inputError,
+                                ]}
+                                value={confirmPassword}
+                                onChangeText={setConfirmPassword}
+                                placeholder="Confirm New Password"
+                                placeholderTextColor="rgba(255,255,255,0.4)"
+                                secureTextEntry
+                                accessibilityLabel="Confirm new password"
+                                maxLength={128}
+                            />
+                            {confirmPassword.length > 0 && !passwordsMatch && (
+                                <Text style={styles.errorHint}>Passwords don't match</Text>
+                            )}
+                        </View>
+
+                        {/* Submit */}
+                        <TouchableOpacity
+                            onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                handleResetPassword();
+                            }}
+                            style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
+                            disabled={isLoading || !canSubmit}
+                            activeOpacity={0.8}
+                            accessibilityLabel={isLoading ? 'Resetting password' : 'Reset password'}
+                            accessibilityRole="button"
+                        >
+                            <Text style={styles.submitButtonText}>
+                                {isLoading ? 'Resetting...' : 'Reset Password'}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                </LinearGradient>
+            </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
+    );
+};
+
+export default ResetPasswordScreen;
+
+const styles = StyleSheet.create({
+    container: { flex: 1 },
+    gradient: { flex: 1, justifyContent: 'center' },
+    formContainer: {
+        paddingHorizontal: 24,
+        width: '100%',
+        maxWidth: 400,
+        alignSelf: 'center',
+    },
+    backButton: {
+        position: 'absolute',
+        top: -60,
+        left: 24,
+    },
+    iconContainer: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        backgroundColor: 'rgba(255, 215, 0, 0.1)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        alignSelf: 'center',
+        marginBottom: 20,
+    },
+    title: {
+        fontSize: 24,
+        fontWeight: '800',
+        color: '#FFF',
+        textAlign: 'center',
+        marginBottom: 8,
+    },
+    subtitle: {
+        fontSize: 15,
+        color: 'rgba(255,255,255,0.5)',
+        textAlign: 'center',
+        lineHeight: 22,
+        marginBottom: 28,
+    },
+    inputContainer: { marginBottom: 16 },
+    input: {
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        paddingVertical: 16,
+        paddingHorizontal: 20,
+        borderRadius: 16,
+        fontSize: 16,
+        color: '#FFF',
+    },
+    inputError: {
+        borderColor: '#EF4444',
+    },
+    errorHint: {
+        color: '#EF4444',
+        fontSize: 12,
+        marginTop: 6,
+        marginLeft: 6,
+    },
+    checksContainer: {
+        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        padding: 12,
+        borderRadius: 12,
+        marginBottom: 16,
+    },
+    checkRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 6,
+    },
+    checkText: {
+        fontSize: 13,
+        color: 'rgba(255,255,255,0.4)',
+        marginLeft: 8,
+    },
+    checkTextValid: {
+        color: 'rgba(255,255,255,0.9)',
+    },
+    submitButton: {
+        backgroundColor: '#FFF',
+        paddingVertical: 16,
+        borderRadius: 16,
+        alignItems: 'center',
+        marginTop: 8,
+    },
+    submitButtonDisabled: {
+        opacity: 0.5,
+    },
+    submitButtonText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#000',
+    },
+});

@@ -1,5 +1,6 @@
 // Backend API Route for Clarifai Video Analysis
 const express = require('express');
+import logger from '../utils/logger.js';
 const router = express.Router();
 const multer = require('multer');
 const ffmpeg = require('fluent-ffmpeg');
@@ -14,7 +15,7 @@ const upload = multer({
 });
 
 // Clarifai API configuration
-const CLARIFAI_API_KEY = process.env.CLARIFAI_API_KEY || 'YOUR_API_KEY_HERE';
+const CLARIFAI_API_KEY = process.env.CLARIFAI_API_KEY || '';
 const CLARIFAI_USER_ID = 'clarifai';
 const CLARIFAI_APP_ID = 'main';
 const CLARIFAI_MODEL_ID = 'apparel-detection';
@@ -22,9 +23,9 @@ const CLARIFAI_MODEL_ID = 'apparel-detection';
 // Check if ffmpeg is available
 ffmpeg.getAvailableFormats(function (err, formats) {
     if (err) {
-        console.error('❌ FFmpeg is NOT installed or not found in PATH. Video analysis will fail.');
+        logger.error('❌ FFmpeg is NOT installed or not found in PATH. Video analysis will fail.');
     } else {
-        console.log('✅ FFmpeg is installed and ready.');
+        logger.info('✅ FFmpeg is installed and ready.');
     }
 });
 
@@ -52,7 +53,7 @@ async function extractFrames(videoPath, outputDir) {
                 resolve(frames);
             })
             .on('error', (err) => {
-                console.error('FFmpeg error:', err);
+                logger.error('FFmpeg error:', err);
                 reject(err);
             })
             .run();
@@ -107,7 +108,7 @@ async function analyzeFrameWithClarifai(imagePath) {
 
         return detectedItems;
     } catch (error) {
-        console.error('Clarifai analysis error:', error.response?.data || error.message);
+        logger.error('Clarifai analysis error:', error.response?.data || error.message);
         throw error;
     }
 }
@@ -127,33 +128,33 @@ router.post('/analyze-wardrobe', upload.single('video'), async (req, res) => {
         videoPath = req.file.path;
         framesDir = path.join('uploads', 'frames', Date.now().toString());
 
-        console.log('📹 Video received:', req.file.originalname);
-        console.log('📂 Extracting frames...');
+        logger.info('📹 Video received:', req.file.originalname);
+        logger.info('📂 Extracting frames...');
 
         // Extract frames from video
         const frames = await extractFrames(videoPath, framesDir);
-        console.log(`✅ Extracted ${frames.length} frames`);
+        logger.info(`✅ Extracted ${frames.length} frames`);
 
         if (frames.length === 0) {
             throw new Error('No frames could be extracted from video');
         }
 
         // Analyze each frame with Clarifai
-        console.log('🔍 Analyzing frames with Clarifai...');
+        logger.info('🔍 Analyzing frames with Clarifai...');
         const allDetections = [];
 
         for (let i = 0; i < frames.length; i++) {
-            console.log(`Analyzing frame ${i + 1}/${frames.length}...`);
+            logger.info(`Analyzing frame ${i + 1}/${frames.length}...`);
             try {
                 const detections = await analyzeFrameWithClarifai(frames[i]);
                 allDetections.push(...detections);
             } catch (error) {
-                console.error(`Error analyzing frame ${i + 1}:`, error.message);
+                logger.error(`Error analyzing frame ${i + 1}:`, error.message);
                 // Continue with other frames even if one fails
             }
         }
 
-        console.log(`✅ Total detections: ${allDetections.length}`);
+        logger.info(`✅ Total detections: ${allDetections.length}`);
 
         // Aggregate and deduplicate results
         const itemCounts = {};
@@ -183,11 +184,11 @@ router.post('/analyze-wardrobe', upload.single('video'), async (req, res) => {
             .sort((a, b) => b.detectedInFrames - a.detectedInFrames); // Sort by frequency
 
         // Cleanup temporary files
-        console.log('🧹 Cleaning up...');
+        logger.info('🧹 Cleaning up...');
         if (fs.existsSync(videoPath)) fs.unlinkSync(videoPath);
         if (fs.existsSync(framesDir)) fs.rmSync(framesDir, { recursive: true });
 
-        console.log('✅ Analysis complete!');
+        logger.info('✅ Analysis complete!');
 
         res.json({
             success: true,
@@ -197,7 +198,7 @@ router.post('/analyze-wardrobe', upload.single('video'), async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ Analysis error:', error);
+        logger.error('❌ Analysis error:', error);
 
         // Cleanup on error
         if (videoPath && fs.existsSync(videoPath)) {

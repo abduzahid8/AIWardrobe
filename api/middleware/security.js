@@ -1,16 +1,32 @@
-import AuditLog from "../models/AuditLog.js";
-import User from "../models/user.js";
+import { createClient } from "@supabase/supabase-js";
+import "dotenv/config";
+import logger from "../utils/logger.js";
 
 /**
- * Security Middleware
- * Provides account lockout, audit logging, and suspicious activity detection
+ * Security Middleware — Supabase-backed
+ *
+ * Provides account lockout, audit logging, and suspicious activity detection.
+ * All queries go to Supabase `profiles` table (replaces broken MongoDB User model).
  */
 
 // Configuration
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MINUTES = 30;
 const IP_BLOCK_THRESHOLD = 10;
-const IP_BLOCK_WINDOW_MINUTES = 60;
+
+// Supabase admin client
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+let supabaseAdmin = null;
+if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+    supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { autoRefreshToken: false, persistSession: false },
+    });
+}
+
+// In-memory IP tracking for rate limiting (resets on server restart)
+const ipFailureMap = new Map();
 
 /**
  * Extract client IP from request
@@ -31,14 +47,12 @@ export const getUserAgent = (req) => {
 };
 
 /**
- * Audit logging middleware
- * Use: app.use(auditLogger)
+ * Audit logging middleware — structured log output.
+ * Logs significant actions (mutations, auth events) as JSON for log aggregation.
  */
 export const auditLogger = (req, res, next) => {
-    // Store request start time
     req.startTime = Date.now();
 
-    // Capture response
     const originalEnd = res.end;
     res.end = function (...args) {
         const duration = Date.now() - req.startTime;
@@ -49,23 +63,22 @@ export const auditLogger = (req, res, next) => {
             req.path.includes('/register');
 
         if (shouldLog) {
-            const logData = {
-                userId: req.user?.id,
-                userEmail: req.user?.email,
+            const logEntry = {
+                type: 'audit',
+                timestamp: new Date().toISOString(),
+                userId: req.user?.id || null,
                 action: determineAction(req, res),
-                resource: req.path,
-                ipAddress: getClientIP(req),
-                userAgent: getUserAgent(req),
+                method: req.method,
+                path: req.path,
+                statusCode: res.statusCode,
+                durationMs: duration,
+                ip: getClientIP(req),
+                userAgent: getUserAgent(req).substring(0, 200),
                 success: res.statusCode < 400,
-                details: {
-                    method: req.method,
-                    statusCode: res.statusCode,
-                    durationMs: duration
-                }
             };
 
-            // Don't await - fire and forget
-            AuditLog.log(logData).catch(() => { });
+            // Structured JSON log — parseable by log aggregation services
+            logger.info(JSON.stringify(logEntry));
         }
 
         originalEnd.apply(res, args);
@@ -82,160 +95,168 @@ function determineAction(req, res) {
     const method = req.method;
     const statusCode = res.statusCode;
 
-    if (path.includes('/login')) {
-        return statusCode < 400 ? 'LOGIN_SUCCESS' : 'LOGIN_FAILED';
-    }
-    if (path.includes('/register')) {
-        return 'REGISTER';
-    }
-    if (path.includes('/subscription') && method === 'POST') {
-        return 'SUBSCRIPTION_CREATED';
-    }
-    if (path.includes('/subscription') && path.includes('cancel')) {
-        return 'SUBSCRIPTION_CANCELLED';
-    }
-    if (path.includes('/ai') || path.includes('/stylist') || path.includes('/outfit')) {
-        return 'AI_REQUEST';
-    }
-    if (path.includes('/password')) {
-        return path.includes('reset') ? 'PASSWORD_RESET_REQUEST' : 'PASSWORD_CHANGE';
-    }
-
-    return 'API_REQUEST'; // Generic
+    if (path.includes('/login')) return statusCode < 400 ? 'LOGIN_SUCCESS' : 'LOGIN_FAILED';
+    if (path.includes('/register')) return 'REGISTER';
+    if (path.includes('/subscription') && method === 'POST') return 'SUBSCRIPTION_CREATED';
+    if (path.includes('/subscription') && path.includes('cancel')) return 'SUBSCRIPTION_CANCELLED';
+    if (path.includes('/ai') || path.includes('/gemini') || path.includes('/outfit')) return 'AI_REQUEST';
+    if (path.includes('/password')) return path.includes('reset') ? 'PASSWORD_RESET_REQUEST' : 'PASSWORD_CHANGE';
+    if (path.includes('/account') && method === 'DELETE') return 'ACCOUNT_DELETED';
+    return 'API_REQUEST';
 }
 
 /**
- * Account lockout middleware for login routes
- * Use: router.post('/login', checkAccountLock, ...)
+ * Account lockout middleware for login routes.
+ * Checks Supabase `profiles` table for lockout status.
+ *
+ * Usage: router.post('/login', checkAccountLock, ...)
  */
 export const checkAccountLock = async (req, res, next) => {
     try {
         const { email } = req.body;
-
-        if (!email) {
-            return next();
-        }
+        if (!email || !supabaseAdmin) return next();
 
         // Check if user account is locked
-        const user = await User.findOne({ email: email.toLowerCase() });
+        const { data: profile, error } = await supabaseAdmin
+            .from('profiles')
+            .select('id, locked_until, failed_login_attempts')
+            .eq('email', email.toLowerCase())
+            .maybeSingle();
 
-        if (user?.lockedUntil && user.lockedUntil > new Date()) {
-            const remainingMinutes = Math.ceil((user.lockedUntil - new Date()) / 60000);
+        if (error) {
+            logger.error('Account lock check error:', error);
+            return next(); // Don't block on DB errors
+        }
 
-            // Log the blocked attempt
-            await AuditLog.log({
-                userId: user._id,
-                userEmail: email,
-                action: 'LOGIN_FAILED',
-                resource: '/login',
-                ipAddress: getClientIP(req),
-                userAgent: getUserAgent(req),
-                success: false,
-                errorMessage: 'Account locked',
-                details: { remainingMinutes }
-            });
+        if (profile?.locked_until && new Date(profile.locked_until) > new Date()) {
+            const remainingMinutes = Math.ceil(
+                (new Date(profile.locked_until).getTime() - Date.now()) / 60000
+            );
+
+            logger.info(JSON.stringify({
+                type: 'security',
+                action: 'LOGIN_BLOCKED_LOCKED',
+                email,
+                ip: getClientIP(req),
+                remainingMinutes,
+            }));
 
             return res.status(423).json({
                 error: `Account is locked. Try again in ${remainingMinutes} minutes.`,
                 code: 'ACCOUNT_LOCKED',
-                lockedUntil: user.lockedUntil
+                lockedUntil: profile.locked_until,
             });
         }
 
-        // Check for IP-based blocking
-        const shouldBlock = await AuditLog.shouldBlockIP(
-            getClientIP(req),
-            IP_BLOCK_THRESHOLD,
-            IP_BLOCK_WINDOW_MINUTES
-        );
+        // Check for IP-based blocking (in-memory)
+        const ip = getClientIP(req);
+        const ipRecord = ipFailureMap.get(ip);
+        if (ipRecord && ipRecord.count >= IP_BLOCK_THRESHOLD &&
+            Date.now() - ipRecord.firstFailure < 60 * 60 * 1000) {
 
-        if (shouldBlock) {
-            await AuditLog.log({
-                action: 'SUSPICIOUS_ACTIVITY',
-                resource: '/login',
-                ipAddress: getClientIP(req),
-                userAgent: getUserAgent(req),
-                success: false,
-                errorMessage: 'IP blocked due to too many failed attempts'
-            });
+            logger.info(JSON.stringify({
+                type: 'security',
+                action: 'LOGIN_BLOCKED_IP',
+                ip,
+                failureCount: ipRecord.count,
+            }));
 
             return res.status(429).json({
                 error: 'Too many failed login attempts from this IP. Please try again later.',
-                code: 'IP_BLOCKED'
+                code: 'IP_BLOCKED',
             });
         }
 
         next();
     } catch (error) {
-        console.error('Account lock check error:', error);
+        logger.error('Account lock check error:', error);
         next(); // Don't block on errors
     }
 };
 
 /**
- * Handle failed login - increment counter and potentially lock account
+ * Handle failed login — increment counter and potentially lock account.
  */
-export const handleFailedLogin = async (user, req) => {
-    if (!user) return;
+export const handleFailedLogin = async (email, req) => {
+    if (!email || !supabaseAdmin) return;
 
     try {
-        const failedAttempts = (user.failedLoginAttempts || 0) + 1;
+        // Track IP failures in memory
+        const ip = getClientIP(req);
+        const ipRecord = ipFailureMap.get(ip) || { count: 0, firstFailure: Date.now() };
+        ipRecord.count++;
+        ipFailureMap.set(ip, ipRecord);
 
-        const updateData = {
-            failedLoginAttempts: failedAttempts,
-            lastFailedLogin: new Date()
+        // Look up user in Supabase
+        const { data: profile } = await supabaseAdmin
+            .from('profiles')
+            .select('id, failed_login_attempts')
+            .eq('email', email.toLowerCase())
+            .maybeSingle();
+
+        if (!profile) return;
+
+        const failedAttempts = (profile.failed_login_attempts || 0) + 1;
+        const updates = {
+            failed_login_attempts: failedAttempts,
+            last_failed_login: new Date().toISOString(),
         };
 
         // Lock account if too many failed attempts
         if (failedAttempts >= MAX_LOGIN_ATTEMPTS) {
-            updateData.lockedUntil = new Date(Date.now() + LOCKOUT_DURATION_MINUTES * 60000);
-            updateData.failedLoginAttempts = 0; // Reset counter
+            updates.locked_until = new Date(Date.now() + LOCKOUT_DURATION_MINUTES * 60000).toISOString();
+            updates.failed_login_attempts = 0;
 
-            await AuditLog.log({
-                userId: user._id,
-                userEmail: user.email,
+            logger.info(JSON.stringify({
+                type: 'security',
                 action: 'ACCOUNT_LOCKED',
-                resource: '/login',
-                ipAddress: getClientIP(req),
-                userAgent: getUserAgent(req),
-                success: true,
-                details: { lockDurationMinutes: LOCKOUT_DURATION_MINUTES }
-            });
+                userId: profile.id,
+                lockDurationMinutes: LOCKOUT_DURATION_MINUTES,
+                ip: getClientIP(req),
+            }));
         }
 
-        await User.findByIdAndUpdate(user._id, updateData);
+        await supabaseAdmin
+            .from('profiles')
+            .update(updates)
+            .eq('id', profile.id);
 
         return failedAttempts;
     } catch (error) {
-        console.error('Failed to handle failed login:', error);
+        logger.error('Failed to handle failed login:', error);
     }
 };
 
 /**
- * Handle successful login - reset counters
+ * Handle successful login — reset counters.
  */
-export const handleSuccessfulLogin = async (user, req) => {
-    if (!user) return;
+export const handleSuccessfulLogin = async (email, req) => {
+    if (!email || !supabaseAdmin) return;
 
     try {
-        await User.findByIdAndUpdate(user._id, {
-            failedLoginAttempts: 0,
-            lockedUntil: null,
-            lastLoginAt: new Date(),
-            lastLoginIP: getClientIP(req)
-        });
+        // Clear IP failure tracking
+        const ip = getClientIP(req);
+        ipFailureMap.delete(ip);
 
-        await AuditLog.log({
-            userId: user._id,
-            userEmail: user.email,
-            action: 'LOGIN_SUCCESS',
-            resource: '/login',
-            ipAddress: getClientIP(req),
-            userAgent: getUserAgent(req),
-            success: true
-        });
+        const { data: profile } = await supabaseAdmin
+            .from('profiles')
+            .select('id')
+            .eq('email', email.toLowerCase())
+            .maybeSingle();
+
+        if (!profile) return;
+
+        await supabaseAdmin
+            .from('profiles')
+            .update({
+                failed_login_attempts: 0,
+                locked_until: null,
+                last_login_at: new Date().toISOString(),
+                last_login_ip: getClientIP(req),
+            })
+            .eq('id', profile.id);
     } catch (error) {
-        console.error('Failed to handle successful login:', error);
+        logger.error('Failed to handle successful login:', error);
     }
 };
 
@@ -245,15 +266,23 @@ export const handleSuccessfulLogin = async (user, req) => {
 export const sanitizeHeaders = (headers) => {
     const sanitized = { ...headers };
     const sensitiveHeaders = ['authorization', 'cookie', 'x-api-key'];
-
     sensitiveHeaders.forEach(header => {
         if (sanitized[header]) {
             sanitized[header] = '[REDACTED]';
         }
     });
-
     return sanitized;
 };
+
+// Clean up stale IP records every hour
+setInterval(() => {
+    const cutoff = Date.now() - 60 * 60 * 1000;
+    for (const [ip, record] of ipFailureMap.entries()) {
+        if (record.firstFailure < cutoff) {
+            ipFailureMap.delete(ip);
+        }
+    }
+}, 60 * 60 * 1000);
 
 export default {
     auditLogger,
@@ -262,5 +291,5 @@ export default {
     handleSuccessfulLogin,
     getClientIP,
     getUserAgent,
-    sanitizeHeaders
+    sanitizeHeaders,
 };

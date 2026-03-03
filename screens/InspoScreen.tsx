@@ -99,6 +99,8 @@ const FeaturedCapsuleCard = ({ item }: { item: (typeof FEATURED_CAPSULES)[0] }) 
         style={styles.capsuleCard}
         activeOpacity={0.9}
         onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+        accessibilityLabel={`${item.title} capsule`}
+        accessibilityRole="button"
     >
         <Image
             source={typeof item.image === 'string' ? { uri: item.image } : item.image}
@@ -194,7 +196,7 @@ const InspoScreen = () => {
                 {/* Header Container exactly identical to MyClosetScreen */}
                 <View style={[styles.header, { justifyContent: 'center' }]}>
                     <View style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]} pointerEvents="none">
-                        <Text style={styles.headerTitle}>Inspiration</Text>
+                        <Text style={styles.headerTitle} accessibilityRole="header">Inspiration</Text>
                     </View>
                 </View>
 
@@ -207,6 +209,9 @@ const InspoScreen = () => {
                                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                 setSegment('guide');
                             }}
+                            accessibilityLabel="Guide"
+                            accessibilityRole="tab"
+                            accessibilityState={{ selected: segment === 'guide' }}
                         >
                             <Text style={[styles.segmentText, segment === 'guide' && styles.segmentTextActive]}>Guide</Text>
                         </TouchableOpacity>
@@ -216,6 +221,9 @@ const InspoScreen = () => {
                                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                 setSegment('shop');
                             }}
+                            accessibilityLabel="Shop"
+                            accessibilityRole="tab"
+                            accessibilityState={{ selected: segment === 'shop' }}
                         >
                             <Text style={[styles.segmentText, segment === 'shop' && styles.segmentTextActive]}>Shop</Text>
                         </TouchableOpacity>
@@ -268,12 +276,14 @@ const InspoScreen = () => {
                                     onChangeText={setSearchQuery}
                                     style={styles.searchInput}
                                     returnKeyType="search"
+                                    accessibilityLabel="Search for clothing items"
+                                    maxLength={200}
                                 />
                             </View>
 
                             {/* Featured Capsules (Shop Only now, as Guide has its own content) */}
                             <View style={styles.section}>
-                                <Text style={styles.sectionTitle}>Featured Capsules</Text>
+                                <Text style={styles.sectionTitle} accessibilityRole="header">Featured Capsules</Text>
                                 <ScrollView
                                     horizontal
                                     showsHorizontalScrollIndicator={false}
@@ -287,7 +297,7 @@ const InspoScreen = () => {
 
                             {/* Monnaie's Spring Transition */}
                             <View style={styles.section}>
-                                <Text style={styles.sectionTitle}>Monnaie's Spring Transition</Text>
+                                <Text style={styles.sectionTitle} accessibilityRole="header">Monnaie's Spring Transition</Text>
                                 <View style={styles.productsGrid}>
                                     {SHOPPING_ITEMS.map((item, index) => (
                                         <View

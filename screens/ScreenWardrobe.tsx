@@ -65,13 +65,13 @@ export default function ScanWardrobeScreen() {
         name: 'upload.mp4',
       });
 
-      console.log("🚀 Sending video to:", `${API_URL}/scan-wardrobe`);
+
 
       const response = await axios.post(`${API_URL}/scan-wardrobe`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 180000,
       });
-      console.log("✅ AI Response:", response.data);
+
 
       // Переходим на экран проверки результатов
       if (response.data.detectedItems) {

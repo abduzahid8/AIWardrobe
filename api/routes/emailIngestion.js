@@ -7,6 +7,8 @@ import express from 'express';
 import { google } from 'googleapis';
 import ClothingItem from '../models/ClothingItem.js';
 import User from '../models/user.js';
+import { authenticateToken } from '../middleware/auth.js';
+import logger from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -28,7 +30,7 @@ const SCOPES = ['https://www.googleapis.com/auth/gmail.readonly'];
  * GET /api/email/auth-url
  * Generate Gmail OAuth authorization URL
  */
-router.get('/auth-url', (req, res) => {
+router.get('/auth-url', authenticateToken, (req, res) => {
     try {
         const userId = req.query.userId;
 
@@ -45,7 +47,7 @@ router.get('/auth-url', (req, res) => {
 
         res.json({ authUrl });
     } catch (error) {
-        console.error('Error generating auth URL:', error);
+        logger.error('Error generating auth URL:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -71,7 +73,7 @@ router.get('/callback', async (req, res) => {
         // Redirect to success page (frontend will handle)
         res.redirect(`/email-connected?success=true`);
     } catch (error) {
-        console.error('OAuth callback error:', error);
+        logger.error('OAuth callback error:', error);
         res.redirect(`/email-connected?success=false&error=${encodeURIComponent(error.message)}`);
     }
 });
@@ -80,11 +82,11 @@ router.get('/callback', async (req, res) => {
  * POST /api/email/scan-receipts
  * Scan Gmail for clothing purchase receipts
  */
-router.post('/scan-receipts', async (req, res) => {
+router.post('/scan-receipts', authenticateToken, async (req, res) => {
     const { userId, maxResults = 100, maxAge = '1y' } = req.body;
 
     try {
-        console.log(`📧 Scanning receipts for user ${userId}...`);
+        logger.info(`Scanning receipts for user ${userId}...`, null, 'email');
 
         // Get user's Gmail tokens
         const user = await User.findById(userId);
@@ -125,7 +127,7 @@ router.post('/scan-receipts', async (req, res) => {
             }
         }
 
-        console.log(`Found ${allMessages.length} potential receipt emails`);
+        logger.info(`Found ${allMessages.length} potential receipt emails`, null, 'email');
 
         // Fetch full email content and parse
         const parsedReceipts = [];
@@ -151,17 +153,17 @@ router.post('/scan-receipts', async (req, res) => {
                     }
                 }
             } catch (err) {
-                console.error(`Error processing message ${message.id}:`, err.message);
+                logger.error(`Error processing message ${message.id}:`, err.message);
             }
         }
 
-        console.log(`Parsed ${parsedReceipts.length} clothing receipts`);
+        logger.info(`Parsed ${parsedReceipts.length} clothing receipts`, null, 'email');
 
         // Flatten all items
         const allItems = parsedReceipts.flatMap(r => r.items);
 
         // Fetch product images
-        console.log(`Fetching images for ${allItems.length} items...`);
+        logger.info(`Fetching images for ${allItems.length} items...`, null, 'email');
         const images = await batchFetchImages(allItems);
 
         // Attach images to items
@@ -178,7 +180,7 @@ router.post('/scan-receipts', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error scanning receipts:', error);
+        logger.error('Error scanning receipts:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -187,11 +189,11 @@ router.post('/scan-receipts', async (req, res) => {
  * POST /api/email/import-items
  * Import scanned items into user's wardrobe
  */
-router.post('/import-items', async (req, res) => {
+router.post('/import-items', authenticateToken, async (req, res) => {
     const { userId, items } = req.body;
 
     try {
-        console.log(`Importing ${items.length} items for user ${userId}`);
+        logger.info(`Importing ${items.length} items for user ${userId}`, null, 'email');
 
         const savedItems = [];
 
@@ -219,7 +221,7 @@ router.post('/import-items', async (req, res) => {
             savedItems.push(clothingItem);
         }
 
-        console.log(`✅ Imported ${savedItems.length} items successfully`);
+        logger.info(`Imported ${savedItems.length} items successfully`, null, 'email');
 
         res.json({
             success: true,
@@ -228,7 +230,7 @@ router.post('/import-items', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error importing items:', error);
+        logger.error('Error importing items:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -237,7 +239,7 @@ router.post('/import-items', async (req, res) => {
  * GET /api/email/status
  * Check if user has Gmail connected
  */
-router.get('/status', async (req, res) => {
+router.get('/status', authenticateToken, async (req, res) => {
     const { userId } = req.query;
 
     try {
@@ -257,7 +259,7 @@ router.get('/status', async (req, res) => {
  * DELETE /api/email/disconnect
  * Revoke Gmail access
  */
-router.delete('/disconnect', async (req, res) => {
+router.delete('/disconnect', authenticateToken, async (req, res) => {
     const { userId } = req.body;
 
     try {

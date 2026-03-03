@@ -30,6 +30,7 @@ import Animated, {
     withSpring,
 } from 'react-native-reanimated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Config from '../../src/config/env';
 
 const { width } = Dimensions.get('window');
 
@@ -44,8 +45,8 @@ const ALTA = {
     inputBg: '#F0F0F0',
 };
 
-const ALICEVISION_API = process.env.EXPO_PUBLIC_ALICEVISION_API || 'http://localhost:8000';
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://aiwardrobe-ivh4.onrender.com';
+const ALICEVISION_API = Config.api.alicevisionUrl;
+const API_URL = Config.api.url;
 
 const SUGGESTIONS = [
     'Style me for a date night',
@@ -236,6 +237,7 @@ const AltaAIScreen = () => {
                                 onChangeText={setMessage}
                                 onSubmitEditing={() => sendMessage(message)}
                                 returnKeyType="send"
+                                maxLength={500}
                             />
                             {message.trim() ? (
                                 <TouchableOpacity style={styles.sendButton} onPress={() => sendMessage(message)}>

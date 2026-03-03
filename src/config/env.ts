@@ -21,8 +21,20 @@ export const Config = {
     anonKey: requireEnv('EXPO_PUBLIC_SUPABASE_ANON_KEY'),
   },
   api: {
-    url: process.env.EXPO_PUBLIC_API_URL || (__DEV__ ? 'http://localhost:3000' : 'https://api.aiwardrobe.com'),
-    alicevisionUrl: process.env.EXPO_PUBLIC_ALICEVISION_URL || (__DEV__ ? 'http://localhost:5050' : 'https://alicevision.aiwardrobe.com'),
+    url: requireEnv(
+      'EXPO_PUBLIC_API_URL',
+      __DEV__ ? 'http://localhost:3000' : undefined
+    ),
+    alicevisionUrl: requireEnv(
+      'EXPO_PUBLIC_ALICEVISION_URL',
+      __DEV__ ? 'http://localhost:5050' : undefined
+    ),
+  },
+  sentry: {
+    dsn: process.env.EXPO_PUBLIC_SENTRY_DSN || '',
+  },
+  revenueCat: {
+    apiKey: process.env.EXPO_PUBLIC_REVENUECAT_API_KEY || '',
   },
   weather: {
     apiKey: process.env.EXPO_PUBLIC_WEATHER_API_KEY || '',

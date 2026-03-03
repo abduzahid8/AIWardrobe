@@ -39,11 +39,7 @@ serve(async (req) => {
 
         // Call Replicate if token exists
         if (REPLICATE_API_TOKEN) {
-            console.log("Calling Replicate for Try-On")
-
-            // IDM-VTON model
-            // https://replicate.com/cuuupid/idm-vton
-            const model = "cuuupid/idm-vton:c871bb9b046607b6804fe43f38006d649989acf3333333333333333333333333" // Check exact version if needed, or use latest
+            // IDM-VTON model — https://replicate.com/cuuupid/idm-vton
 
             // Note: Replicate SDK is not in Deno standard lib easily, use fetch
             const response = await fetch("https://api.replicate.com/v1/predictions", {
@@ -53,7 +49,7 @@ serve(async (req) => {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    version: "c871bb9b046607b6804fe43f38006d649989acf3333333333333333333333333", // Example hash
+                    version: "0513734a452173b8173e907e3a59d19a36266e55b48528559432bd21c7d7e985",
                     input: {
                         human_img: person_image,
                         garm_img: garment_image,
@@ -67,7 +63,6 @@ serve(async (req) => {
 
             if (!response.ok) {
                 const err = await response.text();
-                console.error("Replicate Error:", err);
                 // Fallback to mock if API fails? Or throw.
                 throw new Error("AI Try-On Service Error: " + err);
             }
@@ -100,8 +95,7 @@ serve(async (req) => {
             )
 
         } else {
-            // MOCK Response
-            console.log("No Replicate Token, using Mock");
+            // MOCK Response — no REPLICATE_API_TOKEN set
             await new Promise(r => setTimeout(r, 2000)); // Simulate delay
 
             // Return the input garment image overlaying the person image? 

@@ -1,12 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Platform } from "react-native";
+import { CommonActions, useNavigation } from "@react-navigation/native";
 
 // Imports screens...
 import StyleQuizScreen from "../screens/StyleQuizScreen";
 import { useStylePreferenceStore } from "../store/stylePreferenceStore";
 import HomeScreen from "../screens/HomeScreen";
 import AIAssistant from "../screens/AIAssistant";
+import AIStylistScreen from "../screens/AIStylistScreen";
 import AddOutfitScreen from "../screens/AddOutfitScreen";
 import AITryOnScreen from "../screens/AITryOnScreen";
 import ScanWardrobeScreen from "../screens/ScreenWardrobe";
@@ -30,6 +32,8 @@ import EmailOnboardingScreen from "../screens/EmailOnboardingScreen";
 import TripPlannerScreen from "../screens/TripPlannerScreen";
 import OutfitDetailScreen from "../screens/OutfitDetailScreen";
 import PaywallScreen from "../screens/PaywallScreen";
+import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
+import ResetPasswordScreen from "../screens/ResetPasswordScreen";
 import OutfitAIScreen from "../screens/OutfitAIScreen";
 import CreateAvatarScreen from "../screens/CreateAvatarScreen";
 import MeetingOutfitScreen from "../screens/MeetingOutfitScreen";
@@ -38,7 +42,16 @@ import FlashSalesScreen from "../screens/FlashSalesScreen";
 import FlashSaleEventScreen from "../screens/FlashSaleEventScreen";
 import MyClosetScreen from "../screens/MyClosetScreen";
 import StyleGoalsScreen from "../screens/StyleGoalsScreen";
+import DailySuggestionScreen from "../screens/DailySuggestionScreen";
+import WearLogScreen from "../screens/WearLogScreen";
+import WeeklyInsightsScreen from "../screens/WeeklyInsightsScreen";
+import { addNotificationListeners } from "../src/services/notificationService";
+import { notificationService } from "../src/services/notificationService";
 import { RootStackParamList } from "./types";
+import { useSessionGuard } from "../src/hooks/useSessionGuard";
+import analyticsService from "../src/services/analyticsService";
+import { iapService } from "../src/services/iapService";
+import { colors } from "../src/theme";
 
 
 // 2. Передаем этот список в Stack
@@ -58,6 +71,9 @@ const smoothTransitionConfig = {
 };
 
 const RootNavigator = () => {
+  // Session expiry guard — checks token on app foreground
+  useSessionGuard();
+
   const { isAuthenticated, isTrialMode, startTrial } = useAuthStore();
   const { hasCompletedOnboarding, onboardingStep } = useStylePreferenceStore();
   const {
@@ -69,14 +85,27 @@ const RootNavigator = () => {
   const [showTrialModal, setShowTrialModal] = useState(false);
   const [hasIncrementedThisSession, setHasIncrementedThisSession] = useState(false);
 
+  // Navigation ref for notification-driven navigation
+  const navigationRef = React.useRef<any>(null);
+
   useEffect(() => {
     const initialize = async () => {
       const { initializeAuth } = useAuthStore.getState();
       await initializeAuth();
       await initializeTrial();
 
-      // Automatically start trial mode for unauthenticated users
-      const { isAuthenticated: authStatus } = useAuthStore.getState();
+      // Initialize services
+      await notificationService.initialize();
+      analyticsService.initialize();
+      await iapService.initialize();
+
+      // Set analytics user if already authenticated
+      const { isAuthenticated: authStatus, user: currentUser } = useAuthStore.getState();
+      if (authStatus && currentUser?.id) {
+        analyticsService.setUserId(currentUser.id);
+        iapService.identify(currentUser.id);
+      }
+
       const { isTrialExpired: trialExpired } = useTrialStore.getState();
 
       if (!authStatus && !trialExpired) {
@@ -86,6 +115,19 @@ const RootNavigator = () => {
     };
 
     initialize();
+
+    // Listen for notification taps → navigate to correct screen
+    const removeListeners = addNotificationListeners(
+      undefined,
+      (response) => {
+        const screen = response.notification.request.content.data?.screen;
+        if (screen && navigationRef.current) {
+          navigationRef.current.navigate(screen);
+        }
+      }
+    );
+
+    return removeListeners;
   }, []);
 
   // Increment trial counter on app launch (only once per session, and ONLY for non-authenticated users)
@@ -142,7 +184,7 @@ const RootNavigator = () => {
           }),
           // Custom animation
           contentStyle: {
-            backgroundColor: '#FDFCF8',
+            backgroundColor: colors.background,
           },
         }}
       >
@@ -179,8 +221,9 @@ const RootNavigator = () => {
 
             <Stack.Screen
               name="AIChat"
-              component={AIAssistant}
+              component={AIStylistScreen}
               options={{ animation: 'slide_from_right' }}
+              initialParams={{ initialTab: 'chat' }}
             />
             <Stack.Screen
               name="AIOutfit"
@@ -277,10 +320,11 @@ const RootNavigator = () => {
 
             <Stack.Screen
               name="OutfitAI"
-              component={OutfitAIScreen}
+              component={AIStylistScreen}
               options={{
                 animation: 'slide_from_right',
               }}
+              initialParams={{ initialTab: 'outfit' }}
             />
             <Stack.Screen
               name="MeetingOutfit"
@@ -331,6 +375,35 @@ const RootNavigator = () => {
               }}
             />
 
+            {/* ── Core Behavioral Loop (MVP) ── */}
+            <Stack.Screen
+              name="DailySuggestion"
+              component={DailySuggestionScreen}
+              options={{
+                animation: 'slide_from_bottom',
+                presentation: 'modal',
+                gestureEnabled: true,
+                gestureDirection: 'vertical',
+              }}
+            />
+            <Stack.Screen
+              name="WearLog"
+              component={WearLogScreen}
+              options={{
+                animation: 'slide_from_bottom',
+                presentation: 'modal',
+                gestureEnabled: true,
+                gestureDirection: 'vertical',
+              }}
+            />
+            <Stack.Screen
+              name="WeeklyInsights"
+              component={WeeklyInsightsScreen}
+              options={{
+                animation: 'slide_from_right',
+              }}
+            />
+
             {/* Global Paywall explicitly for when onboarding is done */}
             {hasCompletedOnboarding && (
               <Stack.Screen
@@ -356,6 +429,16 @@ const RootNavigator = () => {
             <Stack.Screen
               name="SignUp"
               component={SignUpScreen}
+              options={{ animation: 'slide_from_right' }}
+            />
+            <Stack.Screen
+              name="ForgotPassword"
+              component={ForgotPasswordScreen}
+              options={{ animation: 'slide_from_right' }}
+            />
+            <Stack.Screen
+              name="ResetPassword"
+              component={ResetPasswordScreen}
               options={{ animation: 'slide_from_right' }}
             />
           </>

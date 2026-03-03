@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
     },
     whiteDot: {
         borderWidth: 1,
-        borderColor: colors.border.default,
+        borderColor: colors.border.subtle,
     },
     colorDotActive: {
         borderWidth: 2.5,

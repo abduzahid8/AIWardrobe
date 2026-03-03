@@ -1,4 +1,5 @@
 import express from "express";
+import logger from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -29,13 +30,13 @@ router.get("/", async (req, res) => {
 
         const url = `https://api.weatherapi.com/v1/current.json?key=${WEATHER_API_KEY}&q=${query}&aqi=no`;
 
-        console.log("🌤️ Fetching weather for:", query);
+        logger.info("🌤️ Fetching weather for:", query);
 
         const response = await fetch(url);
 
         if (!response.ok) {
             const errorData = await response.json();
-            console.error("❌ Weather API Error:", errorData);
+            logger.error("❌ Weather API Error:", errorData);
             return res.status(response.status).json({
                 error: errorData.error?.message || "Failed to fetch weather"
             });
@@ -43,7 +44,7 @@ router.get("/", async (req, res) => {
 
         const data = await response.json();
 
-        console.log("✅ Weather fetched:", data.location.name, data.current.temp_c + "°C");
+        logger.info("✅ Weather fetched:", data.location.name, data.current.temp_c + "°C");
 
         res.json({
             temp: Math.round(data.current.temp_c),
@@ -56,7 +57,7 @@ router.get("/", async (req, res) => {
         });
 
     } catch (error) {
-        console.error("❌ Weather fetch error:", error.message);
+        logger.error("❌ Weather fetch error:", error.message);
         res.status(500).json({
             error: "Failed to fetch weather data",
             details: error.message
@@ -81,13 +82,13 @@ router.post("/coords", async (req, res) => {
         const query = `${latitude},${longitude}`;
         const url = `https://api.weatherapi.com/v1/current.json?key=${WEATHER_API_KEY}&q=${query}&aqi=no`;
 
-        console.log("🌤️ Fetching weather by coords:", query);
+        logger.info("🌤️ Fetching weather by coords:", query);
 
         const response = await fetch(url);
 
         if (!response.ok) {
             const errorData = await response.json();
-            console.error("❌ Weather API Error:", errorData);
+            logger.error("❌ Weather API Error:", errorData);
             return res.status(response.status).json({
                 error: errorData.error?.message || "Failed to fetch weather"
             });
@@ -106,7 +107,7 @@ router.post("/coords", async (req, res) => {
         });
 
     } catch (error) {
-        console.error("❌ Weather fetch error:", error.message);
+        logger.error("❌ Weather fetch error:", error.message);
         res.status(500).json({
             error: "Failed to fetch weather data",
             details: error.message

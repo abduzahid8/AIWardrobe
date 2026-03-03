@@ -84,6 +84,17 @@ const UNUSED_ITEM_MESSAGES = [
     { title: "Wardrobe Reminder 📦", body: "Don't forget about your {item}! It's been waiting for {days} days." },
 ];
 
+const EVENING_WEARLOG_MESSAGES = [
+    { title: "What did you wear today? 👗", body: "Log your outfit to keep your streak alive and improve tomorrow's suggestions." },
+    { title: "Quick style log 📝", body: "One tap to log today's outfit. Your streak is counting on you!" },
+    { title: "End of day check-in ✨", body: "How was today's outfit? Log it now to unlock better suggestions." },
+];
+
+const WEEKLY_INSIGHTS_MESSAGES = [
+    { title: "Your week in style 📊", body: "See your closet utilization, top colors, and style patterns!" },
+    { title: "Weekly style report 🏆", body: "Check out your wardrobe stats and discover forgotten items." },
+];
+
 const STYLE_TIPS = [
     { title: "Style Tip 💡", body: "Try tucking your shirt in for a more polished look!" },
     { title: "Color Combo 🎨", body: "Navy and white is always a winning combination." },
@@ -189,10 +200,18 @@ class NotificationService {
         // Cancel existing scheduled notifications
         await Notifications.cancelAllScheduledNotificationsAsync();
 
-        // Schedule daily outfit notification
+        // Schedule daily outfit notification (morning)
         if (this.settings.dailyOutfit.enabled) {
             await this.scheduleDailyOutfitNotification();
         }
+
+        // Schedule evening wear-log reminder
+        if (this.settings.dailyOutfit.enabled) {
+            await this.scheduleEveningWearLogNotification();
+        }
+
+        // Schedule weekly insights (Sunday)
+        await this.scheduleWeeklyInsightsNotification();
 
         // Schedule weekly unused items reminder
         if (this.settings.unusedItems) {
@@ -218,7 +237,7 @@ class NotificationService {
             content: {
                 title: randomMessage.title,
                 body: randomMessage.body,
-                data: { type: 'daily_outfit', screen: 'OutfitAI' },
+                data: { type: 'daily_outfit', screen: 'DailySuggestion' },
                 categoryIdentifier: 'outfit',
             },
             trigger: {
@@ -229,6 +248,55 @@ class NotificationService {
         });
 
         console.log(`📱 Daily outfit notification scheduled for ${hour}:${minute.toString().padStart(2, '0')}`);
+    }
+
+    /**
+     * Schedule evening wear-log reminder (8 PM daily)
+     */
+    async scheduleEveningWearLogNotification() {
+        const randomMessage = EVENING_WEARLOG_MESSAGES[
+            Math.floor(Math.random() * EVENING_WEARLOG_MESSAGES.length)
+        ];
+
+        await Notifications.scheduleNotificationAsync({
+            content: {
+                title: randomMessage.title,
+                body: randomMessage.body,
+                data: { type: 'evening_wearlog', screen: 'WearLog' },
+            },
+            trigger: {
+                type: Notifications.SchedulableTriggerInputTypes.DAILY,
+                hour: 20,
+                minute: 0,
+            },
+        });
+
+        console.log('📱 Evening wear-log notification scheduled for 20:00');
+    }
+
+    /**
+     * Schedule weekly insights notification (Sunday 10 AM)
+     */
+    async scheduleWeeklyInsightsNotification() {
+        const randomMessage = WEEKLY_INSIGHTS_MESSAGES[
+            Math.floor(Math.random() * WEEKLY_INSIGHTS_MESSAGES.length)
+        ];
+
+        await Notifications.scheduleNotificationAsync({
+            content: {
+                title: randomMessage.title,
+                body: randomMessage.body,
+                data: { type: 'weekly_insights', screen: 'WeeklyInsights' },
+            },
+            trigger: {
+                type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+                weekday: 1, // Sunday
+                hour: 10,
+                minute: 0,
+            },
+        });
+
+        console.log('📱 Weekly insights notification scheduled for Sunday 10:00');
     }
 
     /**
@@ -275,7 +343,7 @@ class NotificationService {
             content: {
                 title: message.title,
                 body: message.body,
-                data: { type: 'weather_alert', condition, screen: 'OutfitAI' },
+                data: { type: 'weather_alert', condition, screen: 'DailySuggestion' },
             },
             trigger: null, // Send immediately
         });
@@ -289,7 +357,7 @@ class NotificationService {
             content: {
                 title: "📦 Wardrobe Check",
                 body: "Some items haven't been worn lately. Give them a chance!",
-                data: { type: 'unused_items', screen: 'WardrobeAnalytics' },
+                data: { type: 'unused_items', screen: 'WeeklyInsights' },
             },
             trigger: {
                 type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
@@ -407,8 +475,8 @@ export const addNotificationListeners = (
         // Handle navigation based on notification data
         const data = response.notification.request.content.data;
         if (data?.screen) {
-            // Navigation would happen here
-            console.log(`Navigate to: ${data.screen}`);
+            // Navigation handled by RootNavigator's notification listener
+            console.log(`[Notifications] Navigate to: ${data.screen}`);
         }
     });
 

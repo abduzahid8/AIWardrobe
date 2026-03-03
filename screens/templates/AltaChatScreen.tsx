@@ -215,6 +215,7 @@ const AltaChatScreen = () => {
                                 onChangeText={setMessage}
                                 onSubmitEditing={() => sendMessage(message)}
                                 returnKeyType="send"
+                                maxLength={500}
                             />
 
                             {/* Send or Mic */}

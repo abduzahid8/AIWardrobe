@@ -18,7 +18,7 @@ export function useTryOnAPI() {
     const [saving, setSaving] = useState(false);
     const [resultImage, setResultImage] = useState<string | null>(null);
 
-    const handleTryOn = async (humanImage: string | null, clothImage: string | null) => {
+    const handleTryOn = async (humanImage: string | null, clothImage: string | null, garmentType: string = 'upper_body') => {
         if (!humanImage || !clothImage) {
             Alert.alert(t('aiTryOn.errors.missingPhotos'), t('aiTryOn.errors.missingPhotos'));
             return;
@@ -36,7 +36,7 @@ export function useTryOnAPI() {
                 body: {
                     person_image: humanImage,
                     garment_image: clothImage,
-                    garment_type: 'upper_body',
+                    garment_type: garmentType,
                 },
             });
 
@@ -51,7 +51,6 @@ export function useTryOnAPI() {
                 throw new Error(data?.error || 'Try-On failed');
             }
         } catch (err: any) {
-            console.error('Try-On Error:', err);
             Alert.alert(t('aiTryOn.errorTitle'), `${t('aiTryOn.errorMessage')} ${err?.message || ''}`);
         } finally {
             setLoading(false);
@@ -78,7 +77,6 @@ export function useTryOnAPI() {
                 { text: 'OK' },
             ]);
         } catch (err: any) {
-            console.error('Save error:', err);
             Alert.alert(t('aiTryOn.errorTitle'), t('aiTryOn.saveFailed'));
         } finally {
             setSaving(false);

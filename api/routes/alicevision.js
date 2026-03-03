@@ -7,6 +7,9 @@
 
 import express from "express";
 import axios from "axios";
+import { authenticateToken } from "../middleware/auth.js";
+import { aiLimiter } from "../middleware/rateLimit.js";
+import logger from "../utils/logger.js";
 
 const router = express.Router();
 
@@ -24,7 +27,7 @@ const callAliceVision = async (endpoint, data, timeout = 60000) => {
         });
         return response.data;
     } catch (error) {
-        console.error(`AliceVision ${endpoint} error:`, error.message);
+        logger.error(`AliceVision ${endpoint} error:`, error.message);
         if (error.response) {
             throw new Error(error.response.data?.detail || error.message);
         }
@@ -40,7 +43,7 @@ const callAliceVision = async (endpoint, data, timeout = 60000) => {
  * POST /alicevision/keyframe
  * Select the best frame from video frames
  */
-router.post("/keyframe", async (req, res) => {
+router.post("/keyframe", authenticateToken, async (req, res) => {
     try {
         const { frames, sharpness_weight, blur_penalty, centering_weight } = req.body;
 
@@ -48,7 +51,7 @@ router.post("/keyframe", async (req, res) => {
             return res.status(400).json({ error: "Frames array is required" });
         }
 
-        console.log(`🎬 Selecting best frame from ${frames.length} frames...`);
+        logger.info(`Selecting best frame from ${frames.length} frames...`, null, 'alicevision');
 
         const result = await callAliceVision("/keyframe", {
             frames,
@@ -57,11 +60,11 @@ router.post("/keyframe", async (req, res) => {
             centering_weight: centering_weight || 0.2
         });
 
-        console.log(`✅ Best frame: ${result.bestFrameIndex} (score: ${result.scores.totalScore})`);
+        logger.info(`Best frame: ${result.bestFrameIndex}`, null, 'alicevision');
 
         res.json(result);
     } catch (error) {
-        console.error("Keyframe selection error:", error.message);
+        logger.error("Keyframe selection error:", error.message);
         res.status(500).json({ error: error.message });
     }
 });
@@ -74,7 +77,7 @@ router.post("/keyframe", async (req, res) => {
  * POST /alicevision/segment
  * Segment clothing from an image with edge refinement
  */
-router.post("/segment", async (req, res) => {
+router.post("/segment", authenticateToken, async (req, res) => {
     try {
         const { image, add_white_background } = req.body;
 
@@ -82,18 +85,18 @@ router.post("/segment", async (req, res) => {
             return res.status(400).json({ error: "Image is required" });
         }
 
-        console.log("✂️ Segmenting clothing from image...");
+        logger.info('Segmenting clothing from image...', null, 'alicevision');
 
         const result = await callAliceVision("/segment", {
             image,
             add_white_background: add_white_background !== false
         });
 
-        console.log(`✅ Segmentation complete (confidence: ${result.confidence})`);
+        logger.info(`Segmentation complete (confidence: ${result.confidence})`, null, 'alicevision');
 
         res.json(result);
     } catch (error) {
-        console.error("Segmentation error:", error.message);
+        logger.error("Segmentation error:", error.message);
         res.status(500).json({ error: error.message });
     }
 });
@@ -106,7 +109,7 @@ router.post("/segment", async (req, res) => {
  * POST /alicevision/lighting
  * Normalize image lighting for catalog-quality photos
  */
-router.post("/lighting", async (req, res) => {
+router.post("/lighting", authenticateToken, async (req, res) => {
     try {
         const { image, target_brightness, target_temperature, add_vignette } = req.body;
 
@@ -114,7 +117,7 @@ router.post("/lighting", async (req, res) => {
             return res.status(400).json({ error: "Image is required" });
         }
 
-        console.log("💡 Normalizing image lighting...");
+        logger.info('Normalizing image lighting...', null, 'alicevision');
 
         const result = await callAliceVision("/lighting", {
             image,
@@ -123,11 +126,11 @@ router.post("/lighting", async (req, res) => {
             add_vignette: add_vignette || false
         });
 
-        console.log("✅ Lighting normalization complete");
+        logger.info('Lighting normalization complete', null, 'alicevision');
 
         res.json(result);
     } catch (error) {
-        console.error("Lighting normalization error:", error.message);
+        logger.error("Lighting normalization error:", error.message);
         res.status(500).json({ error: error.message });
     }
 });
@@ -140,7 +143,7 @@ router.post("/lighting", async (req, res) => {
  * POST /alicevision/process
  * Full pipeline: keyframe → segmentation → lighting
  */
-router.post("/process", async (req, res) => {
+router.post("/process", authenticateToken, aiLimiter, async (req, res) => {
     try {
         const {
             frames,
@@ -154,7 +157,7 @@ router.post("/process", async (req, res) => {
             return res.status(400).json({ error: "Frames array is required" });
         }
 
-        console.log(`🚀 Running full AliceVision pipeline on ${frames.length} frames...`);
+        logger.info(`Running full AliceVision pipeline on ${frames.length} frames...`, null, 'alicevision');
 
         const result = await callAliceVision("/process", {
             frames,
@@ -164,11 +167,11 @@ router.post("/process", async (req, res) => {
             target_temperature: target_temperature || 6000
         }, 120000); // 2 minute timeout for full pipeline
 
-        console.log(`✅ Full pipeline complete: ${result.processingSteps.join(" → ")}`);
+        logger.info(`Full pipeline complete: ${result.processingSteps.join(" → ")}`, null, 'alicevision');
 
         res.json(result);
     } catch (error) {
-        console.error("Full pipeline error:", error.message);
+        logger.error("Full pipeline error:", error.message);
         res.status(500).json({ error: error.message });
     }
 });
@@ -182,7 +185,7 @@ router.post("/process", async (req, res) => {
  * Local AI clothing detection - uses SegFormer + attribute extraction
  * No external API keys required!
  */
-router.post("/analyze", async (req, res) => {
+router.post("/analyze", authenticateToken, async (req, res) => {
     try {
         const { frames } = req.body;
 
@@ -190,7 +193,7 @@ router.post("/analyze", async (req, res) => {
             return res.status(400).json({ error: "Frames array is required" });
         }
 
-        console.log(`🤖 Local AI analyzing ${frames.length} frames...`);
+        logger.info(`Local AI analyzing ${frames.length} frames...`, null, 'alicevision');
 
         // Use first frame for analysis
         const image = frames[0].replace(/^data:image\/\w+;base64,/, '');
@@ -228,7 +231,7 @@ router.post("/analyze", async (req, res) => {
             });
         }
 
-        console.log(`✅ Local AI detected ${detectedItems.length} items`);
+        logger.info(`Local AI detected ${detectedItems.length} items`, null, 'alicevision');
 
         res.json({
             detectedItems,
@@ -236,7 +239,7 @@ router.post("/analyze", async (req, res) => {
             segmentationConfidence: segResult.confidence
         });
     } catch (error) {
-        console.error("Local AI analysis error:", error.message);
+        logger.error("Local AI analysis error:", error.message);
         res.status(500).json({ error: error.message });
     }
 });
@@ -264,7 +267,7 @@ function getPosition(category) {
  * POST /alicevision/analyze-video-timeline
  * Analyze video and detect outfit changes
  */
-router.post("/analyze-video-timeline", async (req, res) => {
+router.post("/analyze-video-timeline", authenticateToken, aiLimiter, async (req, res) => {
     try {
         const { frames, detect_outfit_changes, min_agreement } = req.body;
 
@@ -272,7 +275,7 @@ router.post("/analyze-video-timeline", async (req, res) => {
             return res.status(400).json({ error: "At least 2 frames required" });
         }
 
-        console.log(`📹 Timeline analysis: ${frames.length} frames...`);
+        logger.info(`Timeline analysis: ${frames.length} frames...`, null, 'alicevision');
 
         const result = await callAliceVision("/analyze-video-timeline", {
             frames,
@@ -280,11 +283,11 @@ router.post("/analyze-video-timeline", async (req, res) => {
             min_agreement: min_agreement || 0.5
         }, 180000);
 
-        console.log(`✅ Timeline analysis complete: ${result.items?.length || 0} items, ${result.outfits?.length || 0} outfits`);
+        logger.info(`Timeline complete: ${result.items?.length || 0} items, ${result.outfits?.length || 0} outfits`, null, 'alicevision');
 
         res.json(result);
     } catch (error) {
-        console.error("Timeline analysis error:", error.message);
+        logger.error("Timeline analysis error:", error.message);
         res.status(500).json({ error: error.message });
     }
 });
@@ -297,7 +300,7 @@ router.post("/analyze-video-timeline", async (req, res) => {
  * POST /alicevision/detect-ensemble
  * Multi-model ensemble detection for maximum accuracy
  */
-router.post("/detect-ensemble", async (req, res) => {
+router.post("/detect-ensemble", authenticateToken, aiLimiter, async (req, res) => {
     try {
         const { image } = req.body;
 
@@ -305,17 +308,17 @@ router.post("/detect-ensemble", async (req, res) => {
             return res.status(400).json({ error: "Image is required" });
         }
 
-        console.log("🎯 Running ensemble detection...");
+        logger.info('Running ensemble detection...', null, 'alicevision');
 
         const result = await callAliceVision("/detect-ensemble", {
             image
         }, 90000);
 
-        console.log(`✅ Ensemble: ${result.items?.length || 0} items detected`);
+        logger.info(`Ensemble: ${result.items?.length || 0} items detected`, null, 'alicevision');
 
         res.json(result);
     } catch (error) {
-        console.error("Ensemble detection error:", error.message);
+        logger.error("Ensemble detection error:", error.message);
         res.status(500).json({ error: error.message });
     }
 });
@@ -328,7 +331,7 @@ router.post("/detect-ensemble", async (req, res) => {
  * POST /alicevision/segment-multi-frame
  * Analyze multiple frames with temporal voting
  */
-router.post("/segment-multi-frame", async (req, res) => {
+router.post("/segment-multi-frame", authenticateToken, aiLimiter, async (req, res) => {
     try {
         const { frames, min_agreement } = req.body;
 
@@ -336,18 +339,18 @@ router.post("/segment-multi-frame", async (req, res) => {
             return res.status(400).json({ error: "At least 2 frames required" });
         }
 
-        console.log(`📹 Multi-frame segmentation: ${frames.length} frames...`);
+        logger.info(`Multi-frame segmentation: ${frames.length} frames...`, null, 'alicevision');
 
         const result = await callAliceVision("/segment-multi-frame", {
             frames,
             min_agreement: min_agreement || 0.5
         }, 120000);
 
-        console.log(`✅ Multi-frame: ${result.items?.length || 0} items from ${result.framesAnalyzed} frames`);
+        logger.info(`Multi-frame: ${result.items?.length || 0} items from ${result.framesAnalyzed} frames`, null, 'alicevision');
 
         res.json(result);
     } catch (error) {
-        console.error("Multi-frame error:", error.message);
+        logger.error("Multi-frame error:", error.message);
         res.status(500).json({ error: error.message });
     }
 });
@@ -360,7 +363,7 @@ router.post("/segment-multi-frame", async (req, res) => {
  * POST /alicevision/outfit/recommend
  * AI-powered outfit recommendations
  */
-router.post("/outfit/recommend", async (req, res) => {
+router.post("/outfit/recommend", authenticateToken, async (req, res) => {
     try {
         const { wardrobe_items, occasion, weather, preferences, max_outfits } = req.body;
 
@@ -368,7 +371,7 @@ router.post("/outfit/recommend", async (req, res) => {
             return res.status(400).json({ error: "Wardrobe items required" });
         }
 
-        console.log(`🧠 Generating outfit for: ${occasion}`);
+        logger.info(`Generating outfit for: ${occasion}`, null, 'alicevision');
 
         const result = await callAliceVision("/outfit/recommend", {
             wardrobe_items,
@@ -378,11 +381,11 @@ router.post("/outfit/recommend", async (req, res) => {
             max_outfits: max_outfits || 3
         }, 60000);
 
-        console.log(`✅ Generated ${result.outfits?.length || 0} outfit recommendations`);
+        logger.info(`Generated ${result.outfits?.length || 0} outfit recommendations`, null, 'alicevision');
 
         res.json(result);
     } catch (error) {
-        console.error("Outfit recommendation error:", error.message);
+        logger.error("Outfit recommendation error:", error.message);
         res.status(500).json({ error: error.message });
     }
 });
@@ -395,7 +398,7 @@ router.post("/outfit/recommend", async (req, res) => {
  * POST /alicevision/outfit/chat
  * Conversational AI stylist
  */
-router.post("/outfit/chat", async (req, res) => {
+router.post("/outfit/chat", authenticateToken, async (req, res) => {
     try {
         const { message, wardrobe_items, conversation_history, context } = req.body;
 
@@ -403,7 +406,7 @@ router.post("/outfit/chat", async (req, res) => {
             return res.status(400).json({ error: "Message is required" });
         }
 
-        console.log(`💬 Stylist chat: ${message.slice(0, 50)}...`);
+        logger.info(`Stylist chat: ${message.slice(0, 50)}...`, null, 'alicevision');
 
         const result = await callAliceVision("/outfit/chat", {
             message,
@@ -412,11 +415,11 @@ router.post("/outfit/chat", async (req, res) => {
             context
         }, 30000);
 
-        console.log(`✅ Chat response generated`);
+        logger.info('Chat response generated', null, 'alicevision');
 
         res.json(result);
     } catch (error) {
-        console.error("Chat error:", error.message);
+        logger.error("Chat error:", error.message);
         res.status(500).json({ error: error.message });
     }
 });
@@ -429,7 +432,7 @@ router.post("/outfit/chat", async (req, res) => {
  * POST /alicevision/wardrobe/search
  * Natural language wardrobe search
  */
-router.post("/wardrobe/search", async (req, res) => {
+router.post("/wardrobe/search", authenticateToken, async (req, res) => {
     try {
         const { query, wardrobe_items, top_k } = req.body;
 
@@ -437,7 +440,7 @@ router.post("/wardrobe/search", async (req, res) => {
             return res.status(400).json({ error: "Query is required" });
         }
 
-        console.log(`🔎 Wardrobe search: ${query}`);
+        logger.info(`Wardrobe search: ${query}`, null, 'alicevision');
 
         const result = await callAliceVision("/wardrobe/search", {
             query,
@@ -445,11 +448,11 @@ router.post("/wardrobe/search", async (req, res) => {
             top_k: top_k || 5
         }, 15000);
 
-        console.log(`✅ Found ${result.results?.length || 0} matching items`);
+        logger.info(`Found ${result.results?.length || 0} matching items`, null, 'alicevision');
 
         res.json(result);
     } catch (error) {
-        console.error("Search error:", error.message);
+        logger.error("Search error:", error.message);
         res.status(500).json({ error: error.message });
     }
 });

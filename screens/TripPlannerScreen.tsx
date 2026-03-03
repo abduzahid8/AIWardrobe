@@ -74,7 +74,7 @@ const PulsingDot = ({ delay = 0 }: { delay?: number }) => {
     const opacity = useSharedValue(0.3);
 
     useEffect(() => {
-        setTimeout(() => {
+        const timer = setTimeout(() => {
             opacity.value = withRepeat(
                 withSequence(
                     withTiming(1, { duration: 500 }),
@@ -84,6 +84,7 @@ const PulsingDot = ({ delay = 0 }: { delay?: number }) => {
                 false
             );
         }, delay);
+        return () => clearTimeout(timer);
     }, []);
 
     const animatedStyle = useAnimatedStyle(() => ({
@@ -316,6 +317,7 @@ const TripPlannerScreen = () => {
                     placeholderTextColor={AppColors.textMuted}
                     value={destination}
                     onChangeText={setDestination}
+                    maxLength={200}
                 />
             </Animated.View>
 

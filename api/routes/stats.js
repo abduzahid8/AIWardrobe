@@ -3,6 +3,7 @@ import ClothingItem from "../models/ClothingItem.js";
 import WearLog from "../models/WearLog.js";
 import { authenticateToken } from "../middleware/auth.js";
 
+import logger from '../utils/logger.js';
 const router = express.Router();
 
 /**
@@ -17,7 +18,7 @@ router.get("/", authenticateToken, async (req, res) => {
             data: stats
         });
     } catch (error) {
-        console.error("Stats error:", error.message);
+        logger.error("Stats error:", error.message);
         res.status(500).json({
             error: "Failed to fetch statistics",
             details: error.message
@@ -46,7 +47,7 @@ router.get("/most-worn", authenticateToken, async (req, res) => {
             data: items
         });
     } catch (error) {
-        console.error("Most worn error:", error.message);
+        logger.error("Most worn error:", error.message);
         res.status(500).json({ error: "Failed to fetch most worn items" });
     }
 });
@@ -72,7 +73,7 @@ router.get("/least-worn", authenticateToken, async (req, res) => {
             data: items
         });
     } catch (error) {
-        console.error("Least worn error:", error.message);
+        logger.error("Least worn error:", error.message);
         res.status(500).json({ error: "Failed to fetch least worn items" });
     }
 });
@@ -97,7 +98,7 @@ router.get("/never-worn", authenticateToken, async (req, res) => {
             count: items.length
         });
     } catch (error) {
-        console.error("Never worn error:", error.message);
+        logger.error("Never worn error:", error.message);
         res.status(500).json({ error: "Failed to fetch never worn items" });
     }
 });
@@ -125,7 +126,7 @@ router.get("/cost-per-wear", authenticateToken, async (req, res) => {
             data: items
         });
     } catch (error) {
-        console.error("Cost per wear error:", error.message);
+        logger.error("Cost per wear error:", error.message);
         res.status(500).json({ error: "Failed to fetch cost per wear data" });
     }
 });
@@ -179,7 +180,7 @@ router.post("/log-wear", authenticateToken, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error("Log wear error:", error.message);
+        logger.error("Log wear error:", error.message);
         res.status(500).json({ error: "Failed to log wear" });
     }
 });
@@ -206,7 +207,7 @@ router.get("/calendar/:year/:month", authenticateToken, async (req, res) => {
             year
         });
     } catch (error) {
-        console.error("Calendar error:", error.message);
+        logger.error("Calendar error:", error.message);
         res.status(500).json({ error: "Failed to fetch calendar data" });
     }
 });
@@ -230,7 +231,7 @@ router.get("/history", authenticateToken, async (req, res) => {
             data: history
         });
     } catch (error) {
-        console.error("History error:", error.message);
+        logger.error("History error:", error.message);
         res.status(500).json({ error: "Failed to fetch wear history" });
     }
 });
@@ -267,7 +268,7 @@ router.get("/wardrobe-value", authenticateToken, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error("Wardrobe value error:", error.message);
+        logger.error("Wardrobe value error:", error.message);
         res.status(500).json({ error: "Failed to calculate wardrobe value" });
     }
 });

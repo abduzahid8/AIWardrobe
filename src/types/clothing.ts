@@ -1,65 +1,31 @@
 /**
- * Clothing Item Types
- * Types for wardrobe and clothing management
+ * Clothing Types — Re-exports from domain.ts + legacy display/input types
  *
- * NOTE: Canonical domain types live in ./domain.ts
- * Legacy types below are kept for backward compatibility.
+ * Canonical domain types live in ./domain.ts (single source of truth).
+ * This file provides backward-compatible legacy types for UI layers
+ * that haven't migrated yet.
  */
 
-// Re-export canonical types for new code
+// Re-export canonical types
 export type {
-    ClothingItem as DomainClothingItem,
+    ClothingItem,
     Outfit,
     WearLog,
-    ClothingCategory as DomainClothingCategory,
-    Season as DomainSeason,
+    ClothingCategory,
+    Season,
     Occasion,
 } from './domain';
 
-import { ClothingStyle } from './api';
+import type { ClothingStyle } from './api';
 
 /**
- * Clothing item stored in database
+ * Clothing item for display in UI (extends domain ClothingItem)
  */
-export interface ClothingItem {
-    _id: string;
-    userId: string;
-    type: string;
-    color: string;
-    style: string;
-    description: string;
-    season: Season;
+export interface ClothingItemDisplay {
+    id: string;
     imageUrl: string;
-    createdAt: Date;
-    updatedAt?: Date;
-}
-
-/**
- * Season type for clothing items
- */
-export type Season =
-    | 'Spring'
-    | 'Summer'
-    | 'Fall'
-    | 'Winter'
-    | 'All Seasons';
-
-/**
- * Clothing category type
- */
-export type ClothingCategory =
-    | 'Tops'
-    | 'Bottoms'
-    | 'Dresses'
-    | 'Outerwear'
-    | 'Shoes'
-    | 'Accessories'
-    | 'All';
-
-/**
- * Clothing item for display in UI
- */
-export interface ClothingItemDisplay extends ClothingItem {
+    category: string;
+    primaryColor: string;
     isFavorite?: boolean;
     isSelected?: boolean;
 }
@@ -72,7 +38,7 @@ export interface ClothingItemInput {
     color: string;
     style?: string;
     description?: string;
-    season?: Season;
+    season?: string;
     imageUrl?: string;
 }
 
@@ -95,8 +61,8 @@ export interface BatchAddResponse {
  * Clothing filter options
  */
 export interface ClothingFilter {
-    category?: ClothingCategory;
-    season?: Season;
+    category?: string;
+    season?: string;
     style?: ClothingStyle;
     color?: string;
     searchQuery?: string;
@@ -107,7 +73,7 @@ export interface ClothingFilter {
  */
 export interface WardrobeStats {
     totalItems: number;
-    byCategory: Record<ClothingCategory, number>;
-    bySeason: Record<Season, number>;
+    byCategory: Record<string, number>;
+    bySeason: Record<string, number>;
     byColor: Record<string, number>;
 }

@@ -3,6 +3,7 @@ import User from "../models/user.js";
 import SavedOutfit from "../models/savedoutfit.js";
 import { authenticateToken } from "../middleware/auth.js";
 
+import logger from '../utils/logger.js';
 const router = express.Router();
 
 /**
@@ -59,10 +60,10 @@ router.post("/", authenticateToken, async (req, res) => {
         user.outfits.push(newOutfit._id);
         await user.save();
 
-        console.log("✅ Outfit saved for user:", userId);
+        logger.info("✅ Outfit saved for user:", userId);
         res.status(201).json({ outfit: newOutfit });
     } catch (err) {
-        console.error("Error in save-outfit:", err.message);
+        logger.error("Error in save-outfit:", err.message);
         res.status(500).json({ error: "Internal server error", details: err.message });
     }
 });
@@ -86,7 +87,7 @@ router.get("/user/:userId", authenticateToken, async (req, res) => {
 
         res.status(200).json(user.outfits);
     } catch (error) {
-        console.error("Error fetching outfits:", error);
+        logger.error("Error fetching outfits:", error);
         res.status(500).json({ error: "Internal server error", details: error.message });
     }
 });

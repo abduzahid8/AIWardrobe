@@ -136,6 +136,7 @@ const NewOutfitScreen = () => {
           placeholder="Add a caption..."
           value={caption}
           onChangeText={setCaption}
+          maxLength={500}
         />
         <View className="mt-4">
           <View className="flex-row items-center justify-between">

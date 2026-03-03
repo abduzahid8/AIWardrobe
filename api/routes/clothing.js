@@ -6,7 +6,9 @@ import Replicate from "replicate";
 import axios from "axios";
 import { createClient } from "@supabase/supabase-js";
 import { authenticateToken } from "../middleware/auth.js";
+import { validateClothingItem } from "../middleware/validators.js";
 
+import logger from '../utils/logger.js';
 const router = express.Router();
 
 // Initialize Supabase
@@ -21,7 +23,7 @@ const replicate = new Replicate({
  * POST /clothing-items
  * Save a single clothing item from video scan
  */
-router.post("/", authenticateToken, async (req, res) => {
+router.post("/", authenticateToken, validateClothingItem, async (req, res) => {
     try {
         const { type, color, style, description, season, imageUrl } = req.body;
 
@@ -40,11 +42,11 @@ router.post("/", authenticateToken, async (req, res) => {
         });
 
         await newItem.save();
-        console.log("✅ Saved clothing item:", newItem.type, "for user:", userId);
+        logger.info("✅ Saved clothing item:", newItem.type, "for user:", userId);
         res.status(201).json({ success: true, item: newItem });
     } catch (error) {
-        console.error("Error saving clothing item:", error);
-        res.status(500).json({ error: error.message });
+        logger.error("Error saving clothing item:", error);
+        res.status(500).json({ error: "Failed to save clothing item" });
     }
 });
 
@@ -56,11 +58,11 @@ router.get("/", authenticateToken, async (req, res) => {
     try {
         const userId = req.user.id;
         const items = await ClothingItem.find({ userId }).sort({ createdAt: -1 });
-        console.log("📦 Found", items.length, "items for user:", userId);
+        logger.info("📦 Found", items.length, "items for user:", userId);
         res.json({ items });
     } catch (error) {
-        console.error("Error fetching clothing items:", error);
-        res.status(500).json({ error: error.message });
+        logger.error("Error fetching clothing items:", error);
+        res.status(500).json({ error: "Failed to fetch clothing items" });
     }
 });
 
@@ -77,7 +79,7 @@ router.post("/add-batch", authenticateToken, async (req, res) => {
             return res.status(400).json({ error: "No items provided" });
         }
 
-        console.log(`🎨 Processing ${items.length} items via Supabase...`);
+        logger.info(`🎨 Processing ${items.length} items via Supabase...`);
 
         const itemsWithImages = await Promise.all(
             items.map(async (item) => {
@@ -119,7 +121,7 @@ router.post("/add-batch", authenticateToken, async (req, res) => {
                             });
 
                         if (error) {
-                            console.error("Supabase error:", error);
+                            logger.error("Supabase error:", error);
                             throw error;
                         }
 
@@ -131,7 +133,7 @@ router.post("/add-batch", authenticateToken, async (req, res) => {
                         finalImageUrl = publicUrlData.publicUrl;
                     }
                 } catch (genError) {
-                    console.error(`Error with item ${item.itemType}:`, genError.message);
+                    logger.error(`Error with item ${item.itemType}:`, genError.message);
                 }
 
                 // Return object for MongoDB
@@ -155,11 +157,11 @@ router.post("/add-batch", authenticateToken, async (req, res) => {
             $push: { outfits: { $each: savedItems.map((i) => i._id) } },
         });
 
-        console.log(`✅ Successfully saved: ${savedItems.length} items`);
+        logger.info(`✅ Successfully saved: ${savedItems.length} items`);
         res.status(201).json({ success: true, count: savedItems.length });
     } catch (err) {
-        console.error("Critical Error:", err);
-        res.status(500).json({ error: err.message });
+        logger.error("Critical Error:", err);
+        res.status(500).json({ error: "Failed to save wardrobe items" });
     }
 });
 

@@ -51,6 +51,23 @@ export interface ChatResult {
     suggestions?: string[];
 }
 
+export interface ProcessUploadResult {
+    imageUrl: string | null;
+    cutoutUrl: string | null;
+    classification: {
+        category: string;
+        section: string;
+        confidence: number;
+        top5?: Array<{ category: string; section: string; confidence: number }>;
+        attributes?: { color?: string; material?: string; pattern?: string; style?: string };
+    } | null;
+    description: string | null;
+    style: string;
+    steps: Array<string | { step: string; ms: number }>;
+    provider: string;
+    processingTimeMs: number;
+}
+
 export interface AIProviderStatus {
     isAvailable: boolean;
     latencyMs: number;
@@ -246,6 +263,61 @@ class AIProviderService {
             return {
                 response: "I'm currently offline. Please check your connection and try again.",
                 suggestions: ['Try checking your internet connection', 'Retry in a moment'],
+            };
+        }
+    }
+
+    /**
+     * Process an uploaded image through the full pipeline:
+     * background removal → clothing classification → studio enhancement → style description.
+     *
+     * Uses local AliceVision service (free) with Gemini/Replicate fallbacks.
+     */
+    async processUpload(imageBase64: string): Promise<ProcessUploadResult> {
+        const start = Date.now();
+
+        try {
+            const response = await this.fetchWithRetry(
+                `${Config.api.url}/api/process-upload`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        imageBase64: imageBase64.replace(/^data:image\/\w+;base64,/, ''),
+                        generateDescription: true,
+                    }),
+                }
+            );
+
+            const data = await response.json();
+            const latency = Date.now() - start;
+            this.tracker.record(latency, true);
+
+            return {
+                imageUrl: data.imageUrl || null,
+                cutoutUrl: data.cutoutUrl || null,
+                classification: data.classification || null,
+                description: data.description || null,
+                style: data.style || 'massimo_dutti',
+                steps: data.steps || [],
+                provider: data.provider || 'unknown',
+                processingTimeMs: latency,
+            };
+        } catch (error: unknown) {
+            const latency = Date.now() - start;
+            const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+            this.tracker.record(latency, false, errorMsg);
+
+            console.warn('[AIProvider] processUpload failed:', errorMsg);
+            return {
+                imageUrl: null,
+                cutoutUrl: null,
+                classification: null,
+                description: null,
+                style: 'massimo_dutti',
+                steps: [],
+                provider: 'error',
+                processingTimeMs: latency,
             };
         }
     }

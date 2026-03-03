@@ -36,6 +36,13 @@ import {
 import { useAccessibility } from '../hooks/useAccessibility';
 import Config from '../src/config/env';
 
+// Core loop components
+
+import StreakBadge from '../components/StreakBadge';
+import { StyleInsightsList } from '../components/StyleInsightCard';
+import useWardrobeStore from '../store/wardrobeStore';
+import { generateStyleInsights } from '../src/services/retentionService';
+
 import { mpants, mshirts, pants, shoes, tops } from '../images';
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -66,6 +73,17 @@ const HomeScreen = () => {
   const [loadingWeather, setLoadingWeather] = useState(true);
   const [videoUri, setVideoUri] = useState<string | null>(null);
   const [greeting, setGreeting] = useState('Good morning');
+
+  // Wardrobe store data for core loop
+  const items = useWardrobeStore((state) => state.items);
+  const wearLogs = useWardrobeStore((state) => state.wearLogs);
+  const streak = useWardrobeStore((state) => state.streak);
+
+  // Style insights (memoized)
+  const styleInsights = useMemo(
+    () => generateStyleInsights(items, wearLogs),
+    [items, wearLogs]
+  );
 
   // Determine greeting based on time
   useEffect(() => {
@@ -176,6 +194,7 @@ const HomeScreen = () => {
             <Image
               source={{ uri: `https://openweathermap.org/img/wn/${weather.icon}@2x.png` }}
               style={styles.weatherIcon}
+              accessibilityLabel={`Weather icon: ${weather.description}`}
             />
             <View style={styles.weatherInfo}>
               <Text style={styles.weatherTemp}>{weather.temp}°C</Text>
@@ -257,6 +276,8 @@ const HomeScreen = () => {
       <TouchableOpacity
         style={styles.createOutfitButton}
         onPress={() => console.log('Create outfit')}
+        accessibilityLabel="Create outfit"
+        accessibilityRole="button"
       >
         <Text style={styles.createOutfitText}>Create outfit</Text>
       </TouchableOpacity>
@@ -266,7 +287,7 @@ const HomeScreen = () => {
   // Wardrobe Essentials Grid
   const renderEssentials = () => (
     <View style={styles.essentialsSection}>
-      <Text style={styles.sectionTitle}>Wardrobe Essentials</Text>
+      <Text style={styles.sectionTitle} accessibilityRole="header">Wardrobe Essentials</Text>
       <View style={styles.gridContainer}>
         {suggestions.map((item, index) => (
           <LiquidGlassCard
@@ -284,6 +305,8 @@ const HomeScreen = () => {
               <TouchableOpacity
                 style={[styles.addButton, item.added && styles.addedButton]}
                 onPress={() => !item.added && handleAddToWardrobe(item)}
+                accessibilityLabel={item.added ? 'Item added to wardrobe' : 'Add item to wardrobe'}
+                accessibilityRole="button"
               >
                 <Ionicons
                   name={item.added ? "checkmark" : "add"}
@@ -321,27 +344,38 @@ const HomeScreen = () => {
         >
           {/* Greeting */}
           <View style={styles.headerSection}>
-            <Text style={styles.appTitleText}>AIWardrobe</Text>
+            <Text style={styles.appTitleText} accessibilityRole="header">AIWardrobe</Text>
             <View style={styles.greetingSection}>
               <Text style={styles.greetingText} numberOfLines={1}>
                 {greeting}, {userName}
               </Text>
-              <TouchableOpacity
-                style={styles.buzzerButton}
-                onPress={() => {
-                  // TODO: Navigate to calendar or open calendar modal
-                  console.log("Calendar buzzer pressed");
-                }}
-                accessibilityLabel="Open calendar"
-              >
-                <Ionicons name="calendar-outline" size={24} color={colors.text.primary} />
-                <View style={styles.buzzerDot} />
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                <StreakBadge variant="inline" />
+                <TouchableOpacity
+                  style={styles.buzzerButton}
+                  onPress={() => (navigation as any).navigate('Calendar')}
+                  accessibilityLabel="Open calendar"
+                >
+                  <Ionicons name="calendar-outline" size={24} color={colors.text.primary} />
+                  <View style={styles.buzzerDot} />
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
 
           {/* Weather Widget */}
           {renderWeatherWidget()}
+
+
+          {/* ── Core Loop: Style Insights ── */}
+          {styleInsights.length > 0 && (
+            <Animated.View
+              entering={isReducedMotionEnabled ? undefined : FadeInDown.delay(400).duration(400)}
+              style={{ paddingHorizontal: spacing.screenPadding, marginBottom: spacing.lg }}
+            >
+              <StyleInsightsList insights={styleInsights} maxVisible={3} />
+            </Animated.View>
+          )}
 
           {/* Today's Look Hero */}
           {renderTodaysLook()}
@@ -636,6 +670,7 @@ const styles = StyleSheet.create({
   addedButtonText: {
     color: '#FFF',
   },
+
 
   // Scan CTA
   scanCTASection: {

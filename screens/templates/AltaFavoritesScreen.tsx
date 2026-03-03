@@ -13,6 +13,7 @@ import {
     Image,
     TouchableOpacity,
     StatusBar,
+    Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -123,10 +124,23 @@ const AltaFavoritesScreen = () => {
 
     useFocusEffect(useCallback(() => { loadFavorites(); }, [loadFavorites]));
 
-    const removeFavorite = async (item: FavoriteItemType) => {
-        const updated = favorites.filter(f => (f._id || f.id) !== (item._id || item.id));
-        setFavorites(updated);
-        await AsyncStorage.setItem('favoriteItems', JSON.stringify(updated));
+    const removeFavorite = (item: FavoriteItemType) => {
+        Alert.alert(
+            'Remove Favorite',
+            'Are you sure you want to remove this item from favorites?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Remove',
+                    style: 'destructive',
+                    onPress: async () => {
+                        const updated = favorites.filter(f => (f._id || f.id) !== (item._id || item.id));
+                        setFavorites(updated);
+                        await AsyncStorage.setItem('favoriteItems', JSON.stringify(updated));
+                    },
+                },
+            ]
+        );
     };
 
     const handleItemPress = (item: FavoriteItemType) => {

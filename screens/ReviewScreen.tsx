@@ -18,7 +18,7 @@ export default function ReviewScanScreen() {
     const handleSaveToWardrobe = async () => {
         setIsSaving(true);
         try {
-            console.log(`📤 Отправляем ${reviewedItems.length} вещей на генерацию...`);
+
 
             const { user } = useAuthStore.getState();
             if (!user) {
@@ -52,9 +52,22 @@ export default function ReviewScanScreen() {
 
     // Удаление лишней вещи из списка (если ИИ ошибся)
     const removeItem = (index: number) => {
-        const newItems = [...reviewedItems];
-        newItems.splice(index, 1);
-        setReviewedItems(newItems);
+        Alert.alert(
+            'Remove Item',
+            'Are you sure you want to remove this item?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Remove',
+                    style: 'destructive',
+                    onPress: () => {
+                        const newItems = [...reviewedItems];
+                        newItems.splice(index, 1);
+                        setReviewedItems(newItems);
+                    },
+                },
+            ]
+        );
     };
 
     if (isSaving) {
