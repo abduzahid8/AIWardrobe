@@ -1,7 +1,5 @@
 import express from "express";
-import Subscription from "../models/Subscription.js";
-import Payment from "../models/Payment.js";
-import User from "../models/user.js";
+import { supabase } from "../lib/supabase.js";
 import { authenticateToken } from "../middleware/auth.js";
 import { aiLimiter } from "../middleware/rateLimit.js";
 
@@ -14,9 +12,21 @@ const router = express.Router();
  */
 router.get("/status", authenticateToken, async (req, res) => {
     try {
-        const subscription = await Subscription.getActiveSubscription(req.user.id);
+        const userId = req.user.id;
 
-        if (!subscription) {
+        // Fetch active subscription
+        const now = new Date().toISOString();
+        const { data: subscription, error } = await supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('status', 'active')
+            .gte('end_date', now)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (error || !subscription) {
             return res.json({
                 tier: 'free',
                 status: 'none',
@@ -35,14 +45,17 @@ router.get("/status", authenticateToken, async (req, res) => {
 
         const features = getFeaturesByTier(subscription.tier);
 
+        const endDateObj = new Date(subscription.end_date);
+        const daysRemaining = Math.max(0, Math.ceil((endDateObj.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+
         res.json({
             tier: subscription.tier,
             status: subscription.status,
-            hasActiveSubscription: subscription.isActive(),
-            startDate: subscription.startDate,
-            endDate: subscription.endDate,
-            daysRemaining: subscription.getDaysRemaining(),
-            autoRenew: subscription.autoRenew,
+            hasActiveSubscription: true,
+            startDate: subscription.start_date,
+            endDate: subscription.end_date,
+            daysRemaining,
+            autoRenew: subscription.auto_renew ?? true,
             platform: subscription.platform,
             features
         });
@@ -113,68 +126,84 @@ router.post("/verify-apple-receipt", authenticateToken, aiLimiter, async (req, r
         const price = tier === 'vip' ? 99.99 : 9.99;
 
         // Check for existing subscription
-        let subscription = await Subscription.findOne({
-            userId: req.user.id,
-            appleOriginalTransactionId: original_transaction_id
-        });
+        let { data: subscription, error } = await supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', req.user.id)
+            .eq('apple_original_transaction_id', original_transaction_id)
+            .maybeSingle();
 
         if (subscription) {
             // Update existing subscription
-            subscription.endDate = new Date(parseInt(expires_date_ms));
-            subscription.lastReceiptData = receiptData;
-            subscription.lastReceiptValidatedAt = new Date();
-            subscription.status = 'active';
-            await subscription.save();
+            const { data: updatedSub } = await supabase
+                .from('subscriptions')
+                .update({
+                    end_date: new Date(parseInt(expires_date_ms)).toISOString(),
+                    last_receipt_data: receiptData,
+                    last_receipt_validated_at: new Date().toISOString(),
+                    status: 'active'
+                })
+                .eq('id', subscription.id)
+                .select()
+                .single();
 
+            subscription = updatedSub;
             logger.info(`✅ Updated existing Apple subscription for user ${req.user.id}`);
         } else {
             // Create new subscription
-            subscription = new Subscription({
-                userId: req.user.id,
-                tier,
-                status: 'active',
-                platform: 'apple',
-                startDate: new Date(),
-                endDate: new Date(parseInt(expires_date_ms)),
-                appleOriginalTransactionId: original_transaction_id,
-                lastReceiptData: receiptData,
-                lastReceiptValidatedAt: new Date(),
-                price,
-                currency: 'USD',
-                productId: product_id
-            });
-            await subscription.save();
+            const { data: newSub, error: insertError } = await supabase
+                .from('subscriptions')
+                .insert([{
+                    user_id: req.user.id,
+                    tier,
+                    status: 'active',
+                    platform: 'apple',
+                    start_date: new Date().toISOString(),
+                    end_date: new Date(parseInt(expires_date_ms)).toISOString(),
+                    apple_original_transaction_id: original_transaction_id,
+                    last_receipt_data: receiptData,
+                    last_receipt_validated_at: new Date().toISOString(),
+                    price,
+                    currency: 'USD',
+                    product_id: product_id
+                }])
+                .select()
+                .single();
 
+            if (insertError) throw insertError;
+            subscription = newSub;
             logger.info(`✅ Created new Apple subscription for user ${req.user.id}`);
         }
 
         // Record payment
-        const payment = new Payment({
-            userId: req.user.id,
-            subscriptionId: subscription._id,
+        await supabase.from('payments').insert([{
+            user_id: req.user.id,
+            subscription_id: subscription.id,
             amount: price,
             currency: 'USD',
             status: 'completed',
             type: 'subscription',
             platform: 'apple',
-            appleTransactionId: transaction_id,
-            appleOriginalTransactionId: original_transaction_id,
-            productId: product_id,
+            apple_transaction_id: transaction_id,
+            apple_original_transaction_id: original_transaction_id,
+            product_id: product_id,
             tier,
-            receiptData,
-            receiptValidated: true,
-            receiptValidatedAt: new Date(),
-            completedAt: new Date()
-        });
-        await payment.save();
+            receipt_data: receiptData,
+            receipt_validated: true,
+            receipt_validated_at: new Date().toISOString(),
+            completed_at: new Date().toISOString()
+        }]);
+
+        const endDateObj = new Date(subscription.end_date);
+        const daysRemaining = Math.max(0, Math.ceil((endDateObj.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
 
         res.json({
             success: true,
             subscription: {
                 tier: subscription.tier,
                 status: subscription.status,
-                endDate: subscription.endDate,
-                daysRemaining: subscription.getDaysRemaining()
+                endDate: subscription.end_date,
+                daysRemaining
             }
         });
     } catch (error) {
@@ -215,58 +244,73 @@ router.post("/verify-google-receipt", authenticateToken, aiLimiter, async (req, 
         const price = tier === 'vip' ? 99.99 : 9.99;
 
         // Check for existing subscription
-        let subscription = await Subscription.findOne({
-            userId: req.user.id,
-            googlePurchaseToken: purchaseToken
-        });
+        let { data: subscription } = await supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', req.user.id)
+            .eq('google_purchase_token', purchaseToken)
+            .maybeSingle();
 
         if (subscription) {
             // Update existing
-            subscription.endDate = new Date(parseInt(googleResponse.expiryTimeMillis));
-            subscription.status = 'active';
-            await subscription.save();
+            const { data: updatedSub } = await supabase
+                .from('subscriptions')
+                .update({
+                    end_date: new Date(parseInt(googleResponse.expiryTimeMillis)).toISOString(),
+                    status: 'active'
+                })
+                .eq('id', subscription.id)
+                .select().single();
+            subscription = updatedSub;
         } else {
             // Create new
-            subscription = new Subscription({
-                userId: req.user.id,
-                tier,
-                status: 'active',
-                platform: 'google',
-                startDate: new Date(),
-                endDate: new Date(parseInt(googleResponse.expiryTimeMillis)),
-                googlePurchaseToken: purchaseToken,
-                price,
-                currency: 'USD',
-                productId
-            });
-            await subscription.save();
+            const { data: newSub, error: insertError } = await supabase
+                .from('subscriptions')
+                .insert([{
+                    user_id: req.user.id,
+                    tier,
+                    status: 'active',
+                    platform: 'google',
+                    start_date: new Date().toISOString(),
+                    end_date: new Date(parseInt(googleResponse.expiryTimeMillis)).toISOString(),
+                    google_purchase_token: purchaseToken,
+                    price,
+                    currency: 'USD',
+                    product_id: productId
+                }])
+                .select().single();
+
+            if (insertError) throw insertError;
+            subscription = newSub;
         }
 
         // Record payment
-        const payment = new Payment({
-            userId: req.user.id,
-            subscriptionId: subscription._id,
+        await supabase.from('payments').insert([{
+            user_id: req.user.id,
+            subscription_id: subscription.id,
             amount: price,
             currency: 'USD',
             status: 'completed',
             type: 'subscription',
             platform: 'google',
-            googleOrderId: googleResponse.orderId,
-            googlePurchaseToken: purchaseToken,
-            productId,
+            google_order_id: googleResponse.orderId,
+            google_purchase_token: purchaseToken,
+            product_id: productId,
             tier,
-            receiptValidated: true,
-            completedAt: new Date()
-        });
-        await payment.save();
+            receipt_validated: true,
+            completed_at: new Date().toISOString()
+        }]);
+
+        const endDateObj = new Date(subscription.end_date);
+        const daysRemaining = Math.max(0, Math.ceil((endDateObj.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
 
         res.json({
             success: true,
             subscription: {
                 tier: subscription.tier,
                 status: subscription.status,
-                endDate: subscription.endDate,
-                daysRemaining: subscription.getDaysRemaining()
+                endDate: subscription.end_date,
+                daysRemaining
             }
         });
     } catch (error) {
@@ -281,24 +325,40 @@ router.post("/verify-google-receipt", authenticateToken, aiLimiter, async (req, 
  */
 router.post("/cancel", authenticateToken, async (req, res) => {
     try {
-        const subscription = await Subscription.getActiveSubscription(req.user.id);
+        const userId = req.user.id;
+        const now = new Date().toISOString();
+        const { data: subscription } = await supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('status', 'active')
+            .gte('end_date', now)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
         if (!subscription) {
             return res.status(404).json({ error: "No active subscription found" });
         }
 
-        subscription.autoRenew = false;
-        subscription.cancelledAt = new Date();
-        // Note: Subscription remains active until endDate
-        await subscription.save();
+        await supabase
+            .from('subscriptions')
+            .update({
+                auto_renew: false,
+                cancelled_at: new Date().toISOString()
+            })
+            .eq('id', subscription.id);
 
-        logger.info(`🚫 Subscription cancelled for user ${req.user.id}`);
+        logger.info(`🚫 Subscription cancelled for user ${userId}`);
+
+        const endDateObj = new Date(subscription.end_date);
+        const daysRemaining = Math.max(0, Math.ceil((endDateObj.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
 
         res.json({
             success: true,
             message: "Subscription cancelled. You will retain access until the end of your billing period.",
-            endDate: subscription.endDate,
-            daysRemaining: subscription.getDaysRemaining()
+            endDate: subscription.end_date,
+            daysRemaining
         });
     } catch (error) {
         logger.error("Subscription cancellation error:", error);
@@ -316,18 +376,30 @@ router.post("/restore", authenticateToken, async (req, res) => {
 
         logger.info(`🔄 Restoring purchases for user ${req.user.id}`);
 
-        // Find any existing active subscription
-        const subscription = await Subscription.getActiveSubscription(req.user.id);
+        const userId = req.user.id;
+        const now = new Date().toISOString();
+        const { data: subscription } = await supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('status', 'active')
+            .gte('end_date', now)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
         if (subscription) {
+            const endDateObj = new Date(subscription.end_date);
+            const daysRemaining = Math.max(0, Math.ceil((endDateObj.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+
             res.json({
                 success: true,
                 restored: true,
                 subscription: {
                     tier: subscription.tier,
                     status: subscription.status,
-                    endDate: subscription.endDate,
-                    daysRemaining: subscription.getDaysRemaining()
+                    endDate: subscription.end_date,
+                    daysRemaining
                 }
             });
         } else {
@@ -349,19 +421,27 @@ router.post("/restore", authenticateToken, async (req, res) => {
  */
 router.get("/history", authenticateToken, async (req, res) => {
     try {
-        const payments = await Payment.getUserPaymentHistory(req.user.id, 50);
+        const userId = req.user.id;
+        const { data: payments, error } = await supabase
+            .from('payments')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(50);
+
+        if (error) throw error;
 
         res.json({
-            payments: payments.map(p => ({
-                id: p._id,
+            payments: (payments || []).map(p => ({
+                id: p.id,
                 amount: p.amount,
                 currency: p.currency,
                 status: p.status,
                 type: p.type,
                 platform: p.platform,
                 tier: p.tier,
-                createdAt: p.createdAt,
-                completedAt: p.completedAt
+                createdAt: p.created_at,
+                completedAt: p.completed_at
             }))
         });
     } catch (error) {
@@ -392,10 +472,10 @@ router.post("/webhook/apple", async (req, res) => {
                 // Find and update subscription
                 if (unified_receipt?.latest_receipt_info?.[0]) {
                     const { original_transaction_id } = unified_receipt.latest_receipt_info[0];
-                    await Subscription.findOneAndUpdate(
-                        { appleOriginalTransactionId: original_transaction_id },
-                        { autoRenew: false, status: 'cancelled' }
-                    );
+                    await supabase
+                        .from('subscriptions')
+                        .update({ auto_renew: false, status: 'cancelled' })
+                        .eq('apple_original_transaction_id', original_transaction_id);
                 }
                 break;
 
@@ -403,13 +483,13 @@ router.post("/webhook/apple", async (req, res) => {
                 // Extend subscription
                 if (unified_receipt?.latest_receipt_info?.[0]) {
                     const { original_transaction_id, expires_date_ms } = unified_receipt.latest_receipt_info[0];
-                    await Subscription.findOneAndUpdate(
-                        { appleOriginalTransactionId: original_transaction_id },
-                        {
-                            endDate: new Date(parseInt(expires_date_ms)),
+                    await supabase
+                        .from('subscriptions')
+                        .update({
+                            end_date: new Date(parseInt(expires_date_ms)).toISOString(),
                             status: 'active'
-                        }
-                    );
+                        })
+                        .eq('apple_original_transaction_id', original_transaction_id);
                 }
                 break;
         }

@@ -1,6 +1,5 @@
 import express from "express";
-import User from "../models/user.js";
-import SavedOutfit from "../models/savedoutfit.js";
+import { supabase } from "../lib/supabase.js";
 import { authenticateToken } from "../middleware/auth.js";
 
 import logger from '../utils/logger.js';
@@ -14,11 +13,6 @@ router.post("/", authenticateToken, async (req, res) => {
     try {
         const { date, items, caption, occasion, visibility, isOotd } = req.body;
         const userId = req.user.id;
-
-        const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({ error: "User not found" });
-        }
 
         const itemsWithImages = items?.map((item) => {
             if (!item || typeof item !== "object") {
@@ -45,20 +39,25 @@ router.post("/", authenticateToken, async (req, res) => {
             return res.status(400).json({ error: "No valid items provided" });
         }
 
-        const newOutfit = new SavedOutfit({
-            userId: user._id,
-            date,
-            items: validItems,
-            caption: caption || "",
-            occasion: occasion || "",
-            visibility: visibility || "Everyone",
-            isOotd: isOotd || false,
-        });
+        // The existing frontend payload parses items with X/Y coordinates.
+        // Let's store the raw JSON array in Supabase 
+        const { data: newOutfit, error } = await supabase
+            .from('outfits')
+            .insert([{
+                user_id: userId,
+                occasion: occasion || "",
+                style: validItems[0]?.style || "casual", // derive style if missing
+                items: validItems.map(i => i.id !== "null" ? i.id : null).filter(Boolean), // array of uuids
+                notes: caption || "",
+                // Store UI mapping data (x, y coordinates, images) in a metadata column if needed,
+                // but for now, we'll store the core details and assume imageUrl is generated elsewhere
+                image_url: validItems[0]?.image || ""
+                // Alternatively, if there is a 'metadata' JSONB column, we could store validItems whole
+            }])
+            .select()
+            .single();
 
-        await newOutfit.save();
-
-        user.outfits.push(newOutfit._id);
-        await user.save();
+        if (error) throw error;
 
         logger.info("✅ Outfit saved for user:", userId);
         res.status(201).json({ outfit: newOutfit });
@@ -80,12 +79,15 @@ router.get("/user/:userId", authenticateToken, async (req, res) => {
             return res.status(403).json({ error: "Unauthorized access" });
         }
 
-        const user = await User.findById(userId).populate("outfits");
-        if (!user) {
-            return res.status(404).json({ error: "User not found" });
-        }
+        const { data: outfits, error } = await supabase
+            .from('outfits')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false });
 
-        res.status(200).json(user.outfits);
+        if (error) throw error;
+
+        res.status(200).json(outfits || []);
     } catch (error) {
         logger.error("Error fetching outfits:", error);
         res.status(500).json({ error: "Internal server error", details: error.message });

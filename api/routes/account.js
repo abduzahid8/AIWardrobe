@@ -1,20 +1,10 @@
 import express from "express";
-import { createClient } from "@supabase/supabase-js";
+import { supabase as supabaseAdmin } from "../lib/supabase.js";
 import { authenticateToken } from "../middleware/auth.js";
 import "dotenv/config";
 
 import logger from '../utils/logger.js';
 const router = express.Router();
-
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-let supabaseAdmin = null;
-if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
-    supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-        auth: { autoRefreshToken: false, persistSession: false },
-    });
-}
 
 /**
  * DELETE /api/account

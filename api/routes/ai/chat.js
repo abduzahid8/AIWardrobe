@@ -1,29 +1,21 @@
 /**
  * AI Chat & Smart Search Routes
  * GET  /smart-search — Semantic outfit search with embeddings
- * POST /ai-chat      — HuggingFace fashion stylist chat
+ * POST /ai-chat      — OpenAI GPT-4o-mini fashion stylist chat (Gemini → HF fallback)
  */
 import express from "express";
-import { HfInference } from "@huggingface/inference";
 import cosineSimilarity from "compute-cosine-similarity";
-import Outfit from "../../models/outfit.js";
+import { supabase } from "../../lib/supabase.js";
 import { authenticateToken } from "../../middleware/auth.js";
 import logger from "../../utils/logger.js";
 import { validateAIChat } from "../../middleware/validators.js";
+import hfService from "../../services/huggingface.js";
+import geminiService from "../../services/gemini.js";
+import openaiService from "../../services/openai.js";
 
 const router = express.Router();
-const hf = new HfInference(process.env.HF_TOKEN);
 
 // ── Helpers ──
-
-/** Generate text embedding using HuggingFace */
-const generateEmbedding = async (text) => {
-    const response = await hf.featureExtraction({
-        model: "sentence-transformers/all-MiniLM-L6-v2",
-        inputs: text,
-    });
-    return response;
-};
 
 /** Normalize search query */
 const normalizeQuery = (query) => {
@@ -55,8 +47,13 @@ router.get("/smart-search", authenticateToken, async (req, res) => {
 
     try {
         const normalizedQuery = normalizeQuery(query);
-        const queryEmbedding = await generateEmbedding(normalizedQuery);
-        const outfits = await Outfit.find();
+        const queryEmbedding = await hfService.generateEmbedding(normalizedQuery);
+        const { data: rawOutfits } = await supabase.from('outfits').select('*');
+        const outfits = (rawOutfits || []).map(o => ({
+            ...o,
+            _id: o.id,
+            toObject: function () { return this; }
+        }));
 
         const MIN_SIMILARITY = query.length > 20 ? 0.3 : 0.4;
 
@@ -84,37 +81,51 @@ router.get("/smart-search", authenticateToken, async (req, res) => {
 
         res.json(scored.slice(0, 5));
     } catch (err) {
-        logger.error(" AI ERROR:", err);
+        logger.error("AI ERROR:", err);
         res.status(500).json({ error: "Search failed" });
     }
 });
 
 // ── POST /ai-chat ──
+// Primary: OpenAI GPT-4o-mini → Gemini → HuggingFace
 router.post("/ai-chat", authenticateToken, validateAIChat, async (req, res) => {
     const { query } = req.body;
-    logger.info(" Chat request:", query);
+    logger.info("💬 Chat request:", query);
 
-    try {
-        const result = await hf.chatCompletion({
-            model: "meta-llama/Meta-Llama-3-8B-Instruct",
-            messages: [
-                {
-                    role: "system",
-                    content: "You are a helpful fashion stylist. Keep answers short and fun with emojis.",
-                },
-                { role: "user", content: query },
-            ],
-            max_tokens: 500,
-            temperature: 0.7,
-        });
+    const systemPrompt = "You are a helpful, friendly fashion stylist AI assistant. Keep answers concise, actionable, and fun. Use emojis. Provide specific brand and style recommendations when relevant.";
 
-        if (result && result.choices && result.choices.length > 0) {
-            res.json({ text: result.choices[0].message.content });
-        } else {
-            throw new Error("AI returned empty response");
+    // Strategy 1: OpenAI GPT-4o-mini
+    if (openaiService.isAvailable()) {
+        try {
+            const text = await openaiService.generateText(query, systemPrompt, 500);
+            logger.info("✅ Chat response via OpenAI");
+            return res.json({ text, provider: "openai" });
+        } catch (oaiErr) {
+            logger.warn("OpenAI chat failed:", oaiErr.message);
         }
+    }
+
+    // Strategy 2: Gemini 2.0 Flash
+    if (geminiService.isAvailable()) {
+        try {
+            const text = await geminiService.generateText(query, systemPrompt, 500);
+            logger.info("✅ Chat response via Gemini");
+            return res.json({ text, provider: "gemini" });
+        } catch (geminiErr) {
+            logger.warn("Gemini chat failed:", geminiErr.message);
+        }
+    }
+
+    // Strategy 3: HuggingFace Llama 3
+    try {
+        const text = await hfService.generateText(
+            query,
+            "You are a helpful fashion stylist. Keep answers short and fun with emojis.",
+            500
+        );
+        res.json({ text, provider: "huggingface" });
     } catch (err) {
-        logger.error(" HF Error:", err.message);
+        logger.error("All AI providers failed:", err.message);
         res.status(500).json({ error: "AI model is busy, try again later." });
     }
 });

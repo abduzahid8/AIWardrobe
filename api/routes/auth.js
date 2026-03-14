@@ -21,11 +21,7 @@ import "dotenv/config";
 
 const router = express.Router();
 
-const supabaseAdmin = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-);
+import { supabase } from '../lib/supabase.js';
 
 /**
  * GET /me
@@ -34,7 +30,7 @@ const supabaseAdmin = createClient(
  */
 router.get("/me", authLimiter, authenticateToken, async (req, res) => {
     try {
-        const { data: profile, error } = await supabaseAdmin
+        const { data: profile, error } = await supabase
             .from("profiles")
             .select("id, email, username, gender, profile_image, subscription_tier, subscription_expires_at, created_at")
             .eq("id", req.user.id)
@@ -64,7 +60,7 @@ router.get("/me", authLimiter, authenticateToken, async (req, res) => {
  */
 router.get("/subscription-status", authLimiter, authenticateToken, async (req, res) => {
     try {
-        const { data: profile, error } = await supabaseAdmin
+        const { data: profile, error } = await supabase
             .from("profiles")
             .select("subscription_tier, subscription_expires_at")
             .eq("id", req.user.id)

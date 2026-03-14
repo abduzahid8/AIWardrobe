@@ -11,7 +11,7 @@ import rateLimit from 'express-rate-limit';
  */
 export const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100,
+    max: 500,
     message: {
         error: 'Too many requests from this IP, please try again after 15 minutes.',
         retryAfter: 900 // seconds
@@ -57,7 +57,7 @@ export const registrationLimiter = rateLimit({
  */
 export const aiLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
-    max: 10,
+    max: 50,
     message: {
         error: 'AI rate limit exceeded. Please wait a moment before trying again.',
         retryAfter: 60

@@ -12,19 +12,8 @@ import logger from "../utils/logger.js";
  * Mobile sends: Authorization: Bearer <supabase_access_token>
  */
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    logger.error("❌ FATAL: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in .env");
-    logger.error("   Get the service role key from: Supabase Dashboard → Settings → API");
-    process.exit(1);
-}
-
-// Use service role client to validate tokens server-side
-const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { autoRefreshToken: false, persistSession: false }
-});
+// Use global supabase client to validate tokens server-side
+import { supabase } from "../lib/supabase.js";
 
 /**
  * Middleware to authenticate Supabase JWT tokens.
@@ -42,7 +31,7 @@ export const authenticateToken = async (req, res, next) => {
     }
 
     try {
-        const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+        const { data: { user }, error } = await supabase.auth.getUser(token);
 
         if (error || !user) {
             return res.status(401).json({
@@ -82,7 +71,7 @@ export const optionalAuth = async (req, res, next) => {
     }
 
     try {
-        const { data: { user } } = await supabaseAdmin.auth.getUser(token);
+        const { data: { user } } = await supabase.auth.getUser(token);
         req.user = user
             ? { id: user.id, email: user.email, username: user.user_metadata?.username || '' }
             : null;

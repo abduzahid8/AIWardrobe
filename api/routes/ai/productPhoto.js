@@ -2,10 +2,12 @@
  * Product Photo Pipeline Routes
  * POST /product-photo/process           — Single-item Massimo Dutti pipeline
  * POST /v2/product-photo/process-multi  — Multi-item detection with Grounded SAM2
+ *
+ * Primary: AliceVision (free, local)
+ * Removed Replicate paid fallback — keeps costs at $0
  */
 import express from "express";
 import axios from "axios";
-import Replicate from "replicate";
 import { authenticateToken } from "../../middleware/auth.js";
 import { requireTier } from "../../middleware/subscriptionGuard.js";
 import { aiLimiter } from "../../middleware/rateLimit.js";
@@ -13,7 +15,6 @@ import { ALICEVISION_URL } from "../../config.js";
 import logger from "../../utils/logger.js";
 
 const router = express.Router();
-const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
 
 // ── POST /product-photo/process ──
 router.post("/product-photo/process", authenticateToken, requireTier('premium'), aiLimiter, async (req, res) => {
@@ -35,7 +36,7 @@ router.post("/product-photo/process", authenticateToken, requireTier('premium'),
         // STEP 1: Try AliceVision comprehensive analysis
         if (useAliceVision) {
             try {
-                logger.info(" Step 1: AliceVision comprehensive AI analysis...");
+                logger.info("📊 Step 1: AliceVision comprehensive AI analysis...");
                 const comprehensiveResponse = await axios.post(`${ALICEVISION_URL}/comprehensive-analysis`, {
                     image: frames[0],
                     include_detection: true,
@@ -48,11 +49,11 @@ router.post("/product-photo/process", authenticateToken, requireTier('premium'),
                     analysisData = comprehensiveResponse.data;
                     steps.push("comprehensive_ai_analysis");
 
-                    logger.info(` AI Analysis complete`);
+                    logger.info(`✅ AI Analysis complete`);
 
                     // If quality is poor, try another frame
                     if (analysisData.quality && analysisData.quality.overall < 60 && frames.length > 1) {
-                        logger.warn(" Quality score low, trying alternate frame...");
+                        logger.warn("⚠️ Quality score low, trying alternate frame...");
                         const altResponse = await axios.post(`${ALICEVISION_URL}/comprehensive-analysis`, {
                             image: frames[Math.floor(frames.length / 2)],
                             include_detection: true,
@@ -67,13 +68,13 @@ router.post("/product-photo/process", authenticateToken, requireTier('premium'),
                     }
                 }
             } catch (aiError) {
-                logger.warn(" AliceVision comprehensive analysis unavailable:", aiError.message);
+                logger.warn("⚠️ AliceVision comprehensive analysis unavailable:", aiError.message);
             }
         }
 
         // STEP 2: Segmentation fallback
         if (!analysisData.segmentation) {
-            logger.info(" Step 2: Advanced clothing segmentation...");
+            logger.info("✂️ Step 2: Advanced clothing segmentation...");
 
             if (useAliceVision) {
                 try {
@@ -93,15 +94,14 @@ router.post("/product-photo/process", authenticateToken, requireTier('premium'),
                         steps.push("advanced_segmentation");
                     }
                 } catch (segError) {
-                    logger.warn(" Advanced segmentation failed:", segError.message);
+                    logger.warn("Advanced segmentation failed:", segError.message);
                 }
             }
 
-            // Fallback: AliceVision local rembg (free) → Replicate rembg (paid)
+            // Fallback: AliceVision local rembg only (free, no paid API)
             if (!finalImageUrl) {
-                // Try AliceVision local rembg first (free)
                 try {
-                    logger.info(" Fallback: AliceVision local background removal...");
+                    logger.info("✂️ Fallback: AliceVision local background removal...");
                     const imageDataForAV = bestFrame.includes(',') ? bestFrame.split(',')[1] : bestFrame;
                     const avBgRes = await axios.post(`${ALICEVISION_URL}/remove-bg`, {
                         image: imageDataForAV,
@@ -110,28 +110,18 @@ router.post("/product-photo/process", authenticateToken, requireTier('premium'),
                     if (avBgRes.data && avBgRes.data.success) {
                         finalImageUrl = `data:image/png;base64,${avBgRes.data.image}`;
                         steps.push("alicevision_background_removal");
-                        logger.info(` ✅ Background removed via AliceVision (free, ${avBgRes.data.processingTimeMs}ms)`);
+                        logger.info(`✅ Background removed via AliceVision (free, ${avBgRes.data.processingTimeMs}ms)`);
                     }
                 } catch (avBgErr) {
-                    logger.warn(" AliceVision bg removal failed:", avBgErr.message);
+                    logger.warn("AliceVision bg removal failed:", avBgErr.message);
                 }
             }
 
-            // Last resort: Replicate rembg (paid)
+            // If AliceVision is completely down, just return the raw frame
             if (!finalImageUrl) {
-                logger.info(" Last resort: Replicate background removal (paid)...");
-                try {
-                    const imageDataUrl = `data:image/jpeg;base64,${bestFrame}`;
-                    finalImageUrl = await replicate.run(
-                        "cjwbw/rembg:fb8af171cfa1616ddcf1242c093f9c46bcada5ad4cf6f2fbe8b81b330ec5c003",
-                        { input: { image: imageDataUrl } }
-                    );
-                    steps.push("replicate_background_removal");
-                } catch (rembgError) {
-                    logger.warn("Background removal failed:", rembgError.message);
-                    finalImageUrl = `data:image/jpeg;base64,${bestFrame}`;
-                    steps.push("no_processing");
-                }
+                logger.warn("⚠️ No background removal available. Returning raw image.");
+                finalImageUrl = `data:image/jpeg;base64,${bestFrame}`;
+                steps.push("no_processing");
             }
         } else {
             // Extract segmented image from comprehensive analysis
@@ -171,7 +161,7 @@ router.post("/product-photo/process", authenticateToken, requireTier('premium'),
                     steps.push("lighting_normalization");
                 }
             } catch (lightError) {
-                logger.warn(" Lighting normalization skipped:", lightError.message);
+                logger.warn("Lighting normalization skipped:", lightError.message);
             }
         }
 
@@ -221,7 +211,7 @@ router.post("/v2/product-photo/process-multi", authenticateToken, requireTier('p
         const steps = [];
 
         try {
-            // STEP 1: Grounded SAM2 detection
+            // STEP 1: Grounded SAM2 detection (AliceVision)
             const detectionResponse = await axios.post(
                 `${ALICEVISION_URL}/api/v2/detect-clothing`,
                 {
@@ -247,7 +237,7 @@ router.post("/v2/product-photo/process-multi", authenticateToken, requireTier('p
                 const detection = detections[i];
 
                 try {
-                    // Extract fashion attributes
+                    // Extract fashion attributes (AliceVision)
                     const attributesResponse = await axios.post(
                         `${ALICEVISION_URL}/api/v2/extract-fashion-attributes`,
                         { image: frames[0], roi: detection.bbox },
@@ -259,7 +249,7 @@ router.post("/v2/product-photo/process-multi", authenticateToken, requireTier('p
                     const attributes = attributesResponse.data;
                     steps.push(`fashion_clip_${detection.category}`);
 
-                    // Generate card prompt
+                    // Generate card prompt (AliceVision)
                     const cardPromptResponse = await axios.post(
                         `${ALICEVISION_URL}/api/v2/generate-card-prompt`,
                         { attributes, style: "massimo_dutti", include_model: false },
@@ -271,7 +261,7 @@ router.post("/v2/product-photo/process-multi", authenticateToken, requireTier('p
                     const cardPrompt = cardPromptResponse.data;
                     steps.push(`card_prompt_${detection.category}`);
 
-                    // Segment item
+                    // Segment item (AliceVision)
                     const segmentResponse = await axios.post(
                         `${ALICEVISION_URL}/segment`,
                         { image: frames[0], add_white_background: true, use_advanced: true },
@@ -336,7 +326,7 @@ router.post("/v2/product-photo/process-multi", authenticateToken, requireTier('p
             });
 
         } catch (detectionError) {
-            logger.error(" Grounded SAM2 detection failed:", detectionError.message);
+            logger.error("Grounded SAM2 detection failed:", detectionError.message);
             return res.status(503).json({
                 error: "Multi-item detection service unavailable",
                 message: "The AI vision service (Grounded SAM2) is not available.",

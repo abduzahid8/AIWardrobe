@@ -5,8 +5,7 @@
 
 import express from 'express';
 import { google } from 'googleapis';
-import ClothingItem from '../models/ClothingItem.js';
-import User from '../models/user.js';
+import { supabase } from '../lib/supabase.js';
 import { authenticateToken } from '../middleware/auth.js';
 import logger from '../utils/logger.js';
 
@@ -64,11 +63,14 @@ router.get('/callback', async (req, res) => {
         const { tokens } = await oauth2Client.getToken(code);
 
         // Save tokens to user record
-        await User.findByIdAndUpdate(userId, {
-            gmailRefreshToken: tokens.refresh_token,
-            gmailAccessToken: tokens.access_token,
-            gmailTokenExpiry: tokens.expiry_date
-        });
+        await supabase
+            .from('profiles')
+            .update({
+                gmail_refresh_token: tokens.refresh_token,
+                gmail_access_token: tokens.access_token,
+                gmail_token_expiry: new Date(tokens.expiry_date).toISOString()
+            })
+            .eq('id', userId);
 
         // Redirect to success page (frontend will handle)
         res.redirect(`/email-connected?success=true`);
@@ -89,8 +91,13 @@ router.post('/scan-receipts', authenticateToken, async (req, res) => {
         logger.info(`Scanning receipts for user ${userId}...`, null, 'email');
 
         // Get user's Gmail tokens
-        const user = await User.findById(userId);
-        if (!user || !user.gmailRefreshToken) {
+        const { data: user } = await supabase
+            .from('profiles')
+            .select('gmail_refresh_token, gmail_access_token')
+            .eq('id', userId)
+            .single();
+
+        if (!user || !user.gmail_refresh_token) {
             return res.status(400).json({
                 error: 'Gmail not connected. Please authorize first.'
             });
@@ -98,8 +105,8 @@ router.post('/scan-receipts', authenticateToken, async (req, res) => {
 
         // Set OAuth credentials
         oauth2Client.setCredentials({
-            refresh_token: user.gmailRefreshToken,
-            access_token: user.gmailAccessToken
+            refresh_token: user.gmail_refresh_token,
+            access_token: user.gmail_access_token
         });
 
         const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
@@ -197,28 +204,34 @@ router.post('/import-items', authenticateToken, async (req, res) => {
 
         const savedItems = [];
 
-        for (const item of items) {
-            const clothingItem = new ClothingItem({
-                userId,
-                itemType: item.itemType,
-                color: item.color,
-                style: item.description,
-                material: item.material,
-                brand: item.retailer,
-                size: item.size,
-                price: item.price,
-                purchaseDate: item.purchaseDate,
-                imageUrl: item.imageUrl,
-                description: item.description,
-                source: 'email_receipt',
-                sourceMetadata: {
-                    rawText: item.rawText,
-                    retailer: item.retailer
-                }
-            });
+        const itemData = {
+            user_id: userId,
+            type: item.itemType,
+            category: "tops", // Fallback
+            color: item.color,
+            style: item.description || item.style,
+            material: item.material,
+            brand: item.retailer,
+            size: item.size,
+            price: item.price,
+            purchase_date: item.purchaseDate,
+            image_url: item.imageUrl,
+            description: item.description,
+            source_metadata: {
+                rawText: item.rawText,
+                retailer: item.retailer,
+                source: 'email_receipt'
+            }
+        };
 
-            await clothingItem.save();
-            savedItems.push(clothingItem);
+        const { data: savedItem, error } = await supabase
+            .from('clothing_items')
+            .insert([itemData])
+            .select()
+            .single();
+
+        if (!error && savedItem) {
+            savedItems.push(savedItem);
         }
 
         logger.info(`Imported ${savedItems.length} items successfully`, null, 'email');
@@ -243,8 +256,13 @@ router.get('/status', authenticateToken, async (req, res) => {
     const { userId } = req.query;
 
     try {
-        const user = await User.findById(userId);
-        const connected = !!(user && user.gmailRefreshToken);
+        const { data: user } = await supabase
+            .from('profiles')
+            .select('gmail_refresh_token, email')
+            .eq('id', userId)
+            .single();
+
+        const connected = !!(user && user.gmail_refresh_token);
 
         res.json({
             connected,
@@ -263,13 +281,14 @@ router.delete('/disconnect', authenticateToken, async (req, res) => {
     const { userId } = req.body;
 
     try {
-        await User.findByIdAndUpdate(userId, {
-            $unset: {
-                gmailRefreshToken: '',
-                gmailAccessToken: '',
-                gmailTokenExpiry: ''
-            }
-        });
+        await supabase
+            .from('profiles')
+            .update({
+                gmail_refresh_token: null,
+                gmail_access_token: null,
+                gmail_token_expiry: null
+            })
+            .eq('id', userId);
 
         res.json({ success: true, message: 'Gmail disconnected' });
     } catch (error) {
