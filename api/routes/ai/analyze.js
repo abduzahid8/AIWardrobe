@@ -1,15 +1,19 @@
+/**
+ * Frame Analysis Route
+ * POST /api/analyze-frames — Analyze video frames using HuggingFace BLIP-2 + CLIP
+ * (Replaced Gemini Pro Vision)
+ */
 import express from "express";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { authenticateToken } from "../../middleware/auth.js";
 import { aiLimiter } from "../../middleware/rateLimit.js";
 import logger from "../../utils/logger.js";
+import hfService from "../../services/huggingface.js";
 
 const router = express.Router();
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 /**
  * POST /api/analyze-frames
- * Analyze video frames using Gemini Vision
+ * Analyze video frames for clothing items using HuggingFace models
  */
 router.post("/analyze-frames", authenticateToken, aiLimiter, async (req, res) => {
     try {
@@ -19,73 +23,74 @@ router.post("/analyze-frames", authenticateToken, aiLimiter, async (req, res) =>
             return res.status(400).json({ error: "No frames provided" });
         }
 
-        logger.info(` Received ${frames.length} frames for analysis`);
+        logger.info(`📸 Received ${frames.length} frames for analysis (HuggingFace)`);
 
-        // Check if API key is set
-        if (!process.env.GEMINI_API_KEY) {
-            logger.error(' GEMINI_API_KEY not set in .env file!');
-            return res.status(500).json({ error: "Gemini API key not configured" });
-        }
-        logger.debug(` Gemini API key: ${process.env.GEMINI_API_KEY.substring(0, 6)}...`);
+        // Analyze up to 3 frames (balance between accuracy and speed)
+        const framesToAnalyze = frames.slice(0, 3);
+        const allItems = [];
 
-        // Use gemini-pro-vision for image analysis (v1beta API)
-        const model = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
-        logger.info(` Using model: gemini-pro-vision`);
+        for (let i = 0; i < framesToAnalyze.length; i++) {
+            try {
+                const frame = framesToAnalyze[i].replace(/^data:image\/\w+;base64,/, "");
 
-        const imageParts = frames.slice(0, 5).map((base64Data) => ({
-            inlineData: {
-                data: base64Data.replace(/^data:image\/\w+;base64,/, ""),
-                mimeType: "image/jpeg",
-            },
-        }));
+                // Get clothing analysis for this frame
+                const analysis = await hfService.analyzeClothingImage(frame);
 
-        const prompt = `IMPORTANT: Identify EVERY SINGLE clothing item visible in these video frames.
-    There are likely MULTIPLE items (2-5 or more). Check ALL body areas carefully:
-    
-    1. 👕 UPPER BODY: shirts, t-shirts, blouses, jackets, coats, hoodies, sweaters
-    2. 👖 LOWER BODY: pants, jeans, shorts, skirts, trousers
-    3. 👗 FULL BODY: dresses, jumpsuits, overalls
-    4. 👟 FEET: shoes, sneakers, boots, sandals, heels
-    5. 👜 ACCESSORIES: bags, hats, scarves, belts, watches, jewelry
-    
-    For EACH item found, provide:
-    - itemType: specific type (e.g., "Denim Jacket", "V-neck T-shirt", "Slim-fit Jeans")
-    - color: exact color(s)
-    - style: Casual, Formal, Sport, or Streetwear
-    - description: brief product description
-    - position: where on body (upper, lower, feet, accessory, full)
-    - confidence: your confidence level (high, medium, low)
-    
-    CRITICAL: Do NOT return just 1 item if multiple are visible!
-    Return EVERY item as a JSON array:
-    [{"itemType": "...", "color": "...", "style": "...", "description": "...", "position": "...", "confidence": "..."}]`;
+                // Check if this item type was already detected in a previous frame
+                const isDuplicate = allItems.some(
+                    (item) => item.itemType.toLowerCase() === analysis.itemType.toLowerCase()
+                );
 
-        const result = await model.generateContent([prompt, ...imageParts]);
-        const responseText = result.response.text();
+                if (!isDuplicate) {
+                    allItems.push({
+                        itemType: analysis.itemType.charAt(0).toUpperCase() + analysis.itemType.slice(1),
+                        color: "Detected from image",
+                        style: analysis.style.charAt(0).toUpperCase() + analysis.style.slice(1),
+                        description: analysis.description,
+                        position: analysis.position,
+                        confidence: analysis.confidence > 50 ? "high" : analysis.confidence > 30 ? "medium" : "low",
+                    });
+                }
 
-        logger.info(" Gemini response:", responseText);
-
-        let detectedItems = [];
-        try {
-            const jsonMatch = responseText.match(/\[[\s\S]*\]/);
-            if (jsonMatch) {
-                detectedItems = JSON.parse(jsonMatch[0]);
+                // Add strong secondary categories too
+                for (const cat of analysis.categories.slice(1, 3)) {
+                    if (cat.score > 0.15) {
+                        const catDup = allItems.some(
+                            (item) => item.itemType.toLowerCase() === cat.label.toLowerCase()
+                        );
+                        if (!catDup) {
+                            allItems.push({
+                                itemType: cat.label.charAt(0).toUpperCase() + cat.label.slice(1),
+                                color: "Detected from image",
+                                style: analysis.style.charAt(0).toUpperCase() + analysis.style.slice(1),
+                                description: analysis.description,
+                                position: analysis.position,
+                                confidence: cat.score > 0.3 ? "high" : "medium",
+                            });
+                        }
+                    }
+                }
+            } catch (frameErr) {
+                logger.warn(`Frame ${i + 1} analysis failed:`, frameErr.message);
             }
-        } catch (parseError) {
-            logger.error("Parse error:", parseError);
-            detectedItems = [
-                {
-                    itemType: "Unknown Item",
-                    color: "Unknown",
-                    style: "Casual",
-                    description: "Could not parse response",
-                },
-            ];
         }
 
-        res.json({ detectedItems });
+        if (allItems.length === 0) {
+            // Return a fallback item if no analysis worked
+            allItems.push({
+                itemType: "Clothing Item",
+                color: "Unknown",
+                style: "Casual",
+                description: "Could not identify specific items",
+                position: "upper",
+                confidence: "low",
+            });
+        }
+
+        logger.info(`✅ Detected ${allItems.length} unique clothing items across ${framesToAnalyze.length} frames`);
+        res.json({ detectedItems: allItems });
     } catch (error) {
-        logger.error("Frame analysis error:", error);
+        logger.error("Frame analysis error:", error.message);
         res.status(500).json({ error: error.message });
     }
 });

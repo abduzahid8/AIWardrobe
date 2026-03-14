@@ -1,18 +1,12 @@
 import express from "express";
-import mongoose from "mongoose";
-import ClothingItem from "../models/ClothingItem.js";
-import User from "../models/user.js";
 import Replicate from "replicate";
 import axios from "axios";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../lib/supabase.js";
 import { authenticateToken } from "../middleware/auth.js";
 import { validateClothingItem } from "../middleware/validators.js";
-
 import logger from '../utils/logger.js';
-const router = express.Router();
 
-// Initialize Supabase
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+const router = express.Router();
 
 // Initialize Replicate
 const replicate = new Replicate({
@@ -27,25 +21,34 @@ router.post("/", authenticateToken, validateClothingItem, async (req, res) => {
     try {
         const { type, color, style, description, season, imageUrl } = req.body;
 
-        // Get userId from the authenticated token and convert to ObjectId
-        const userId = new mongoose.Types.ObjectId(req.user.id);
+        const userId = req.user.id; // From authenticateToken
 
-        const newItem = new ClothingItem({
-            userId: userId,
+        // Map to Postgres schema shape
+        const itemData = {
+            user_id: userId,
             type: type || "Unknown",
+            category: "tops", // Default fallback, should ideally come from client
+            sub_category: type || "Unknown",
             color: color || "Unknown",
             style: style || "Casual",
             description: description || "",
-            season: season || "All Seasons",
-            imageUrl: imageUrl || "https://via.placeholder.com/150",
-            createdAt: new Date(),
-        });
+            // 'season' is an array in PG, cast it or wrap it
+            season: season ? [season] : ["All Seasons"],
+            image_url: imageUrl || "https://via.placeholder.com/150",
+        };
 
-        await newItem.save();
+        const { data: newItem, error } = await supabase
+            .from('clothing_items')
+            .insert([itemData])
+            .select()
+            .single();
+
+        if (error) throw error;
+
         logger.info("✅ Saved clothing item:", newItem.type, "for user:", userId);
         res.status(201).json({ success: true, item: newItem });
     } catch (error) {
-        logger.error("Error saving clothing item:", error);
+        logger.error("Error saving clothing item:", error.message || error);
         res.status(500).json({ error: "Failed to save clothing item" });
     }
 });
@@ -57,11 +60,18 @@ router.post("/", authenticateToken, validateClothingItem, async (req, res) => {
 router.get("/", authenticateToken, async (req, res) => {
     try {
         const userId = req.user.id;
-        const items = await ClothingItem.find({ userId }).sort({ createdAt: -1 });
-        logger.info("📦 Found", items.length, "items for user:", userId);
-        res.json({ items });
+        const { data: items, error } = await supabase
+            .from('clothing_items')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        logger.info("📦 Found", items?.length || 0, "items for user:", userId);
+        res.json({ items: items || [] });
     } catch (error) {
-        logger.error("Error fetching clothing items:", error);
+        logger.error("Error fetching clothing items:", error.message || error);
         res.status(500).json({ error: "Failed to fetch clothing items" });
     }
 });
@@ -136,31 +146,32 @@ router.post("/add-batch", authenticateToken, async (req, res) => {
                     logger.error(`Error with item ${item.itemType}:`, genError.message);
                 }
 
-                // Return object for MongoDB
+                // Return object mapped to Postgres schema
                 return {
-                    userId: userId,
-                    type: item.itemType,
+                    user_id: userId,
+                    type: item.itemType || "Unknown",
+                    category: "tops", // Fallback
                     color: item.color,
-                    season: item.season,
+                    season: item.season ? [item.season] : [],
                     style: item.style,
                     description: item.description,
-                    imageUrl: finalImageUrl,
+                    image_url: finalImageUrl,
                 };
             })
         );
 
-        // Save to MongoDB
-        const savedItems = await ClothingItem.insertMany(itemsWithImages);
+        // Save directly to Supabase
+        const { data: savedItems, error: insertError } = await supabase
+            .from('clothing_items')
+            .insert(itemsWithImages)
+            .select();
 
-        // Update user
-        await User.findByIdAndUpdate(userId, {
-            $push: { outfits: { $each: savedItems.map((i) => i._id) } },
-        });
+        if (insertError) throw insertError;
 
-        logger.info(`✅ Successfully saved: ${savedItems.length} items`);
-        res.status(201).json({ success: true, count: savedItems.length });
+        logger.info(`✅ Successfully saved: ${savedItems?.length || 0} items`);
+        res.status(201).json({ success: true, count: savedItems?.length || 0 });
     } catch (err) {
-        logger.error("Critical Error:", err);
+        logger.error("Critical Error:", err.message || err);
         res.status(500).json({ error: "Failed to save wardrobe items" });
     }
 });

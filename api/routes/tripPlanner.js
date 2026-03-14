@@ -5,8 +5,7 @@
 
 import express from 'express';
 import axios from 'axios';
-import ClothingItem from '../models/ClothingItem.js';
-import User from '../models/user.js';
+import { supabase } from '../lib/supabase.js';
 import { authenticateToken } from '../middleware/auth.js';
 import logger from '../utils/logger.js';
 
@@ -79,7 +78,21 @@ router.post('/create', authenticateToken, async (req, res) => {
         const weatherData = await fetchWeatherForTrip(destination, startDate, endDate);
 
         // 2. Get user's wardrobe
-        const wardrobe = await ClothingItem.find({ userId });
+        const { data: rawWardrobe } = await supabase
+            .from('clothing_items')
+            .select('*')
+            .eq('user_id', userId);
+
+        const wardrobe = (rawWardrobe || []).map(item => ({
+            ...item,
+            _id: item.id,
+            userId: item.user_id,
+            itemType: item.type || item.category,
+            imageUrl: item.image_url,
+            purchaseDate: item.purchase_date,
+            sourceMetadata: item.source_metadata,
+            toObject: function () { return this; }
+        }));
 
         if (wardrobe.length === 0) {
             return res.status(400).json({

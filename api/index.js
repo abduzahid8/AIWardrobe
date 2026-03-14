@@ -6,7 +6,6 @@
  */
 
 import express from "express";
-import mongoose from "mongoose";
 import cors from "cors";
 import helmet from "helmet";
 import "dotenv/config";
@@ -19,7 +18,7 @@ import weatherRoutes from "./routes/weather.js";
 import {
   analyzeRouter, clothingRouter, productPhotoRouter,
   tryonRouter, wardrobeRouter, chatRouter, outfitsRouter,
-  imageProcessorRouter
+  imageProcessorRouter, studioRouter
 } from "./routes/ai/index.js";
 import statsRoutes from "./routes/stats.js";
 import alicevisionRoutes from "./routes/alicevision.js";
@@ -35,10 +34,8 @@ import accountRoutes from "./routes/account.js";
 import { apiLimiter, aiLimiter } from "./middleware/rateLimit.js";
 import { auditLogger } from "./middleware/security.js";
 
-// Import models for seeding
-import Outfit from "./models/outfit.js";
-import { HfInference } from "@huggingface/inference";
 import logger from "./utils/logger.js";
+import "./lib/supabase.js"; // Initialize Supabase client globally
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -94,35 +91,12 @@ app.use(apiLimiter);
 app.use(auditLogger);
 
 // ============================================
-// DATABASE CONNECTION
+// SYSTEM SHUTDOWN
 // ============================================
-
-const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
-
-if (!MONGODB_URI) {
-  logger.error("❌ FATAL: MONGODB_URI environment variable is not set!");
-  logger.error("   Please add MONGODB_URI to your .env file");
-  logger.error("   Example: MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/dbname");
-  process.exit(1);
-}
-
-mongoose
-  .connect(MONGODB_URI, {
-    maxPoolSize: 10,
-    serverSelectionTimeoutMS: 5000,
-    socketTimeoutMS: 45000,
-  })
-  .then(() => logger.info("✅ Connected to MongoDB"))
-  .catch((err) => {
-    logger.error("❌ Error connecting to MongoDB:", err.message);
-    process.exit(1);
-  });
 
 // Graceful shutdown handling
 process.on('SIGINT', async () => {
   logger.info('🔄 Gracefully shutting down...');
-  await mongoose.connection.close();
-  logger.info('✅ MongoDB connection closed');
   process.exit(0);
 });
 
@@ -155,6 +129,7 @@ app.use("/api", aiLimiter, wardrobeRouter);       // /api/scan-wardrobe
 app.use("/api", aiLimiter, chatRouter);           // /api/smart-search, /api/ai-chat
 app.use("/api", aiLimiter, outfitsRouter);        // /api/generate-outfits
 app.use("/api", aiLimiter, imageProcessorRouter); // /api/process-upload
+app.use("/api/studio", aiLimiter, studioRouter);  // /api/studio/analyze, /api/studio/generate
 
 // Gemini AI proxy (server-side key — never exposed to client)
 app.use("/api/gemini", aiLimiter, geminiRoutes);
@@ -180,76 +155,7 @@ app.use("/api/analytics", analyticsRoutes);
 // Account management (deletion, GDPR)
 app.use("/api/account", accountRoutes);
 
-// ============================================
-// DATABASE SEEDING
-// ============================================
-
-const hf = new HfInference(process.env.HF_TOKEN);
-
-const generateEmbedding = async (text) => {
-  const response = await hf.featureExtraction({
-    model: "sentence-transformers/all-MiniLM-L6-v2",
-    inputs: text,
-  });
-  return response;
-};
-
-const seedData = async () => {
-  try {
-    const count = await Outfit.countDocuments();
-    if (count === 0) {
-      const outfits = [
-        {
-          occasion: "date",
-          style: "casual",
-          items: ["White linen shirt", "Dark jeans", "Loafers"],
-          image: "https://i.pinimg.com/736x/b2/6e/c7/b26ec7bc30ca9459b918ae8f7bf66305.jpg",
-        },
-        {
-          occasion: "date",
-          style: "elegant",
-          items: ["White flared pants", "sandals", "sunglasses"],
-          image: "https://i.pinimg.com/736x/8c/61/12/8c6112457ae46fa1e0aea8b8f5ed18ec.jpg",
-        },
-        {
-          occasion: "coffee",
-          style: "casual",
-          items: ["cropped t-shirt", "wide-leg beige trousers", "Samba sneakers"],
-          image: "https://i.pinimg.com/736x/d7/2d/26/d72d268ca4ff150db1db560b25afb843.jpg",
-        },
-        {
-          occasion: "interview",
-          style: "formal",
-          items: ["Light blue shirt", "wide-leg jeans", "Silver wristwatch"],
-          image: "https://i.pinimg.com/736x/1c/50/bc/1c50bcef1b46efe5db4008252ea8cfa5.jpg",
-        },
-        {
-          occasion: "beach",
-          style: "beach",
-          items: ["brown T shirt", "beige shorts", "Sunglasses"],
-          image: "https://i.pinimg.com/1200x/86/57/59/8657592bd659335ffd081fdab10b87a4.jpg",
-        },
-      ];
-
-      for (const outfit of outfits) {
-        const text = `${outfit.occasion} ${outfit.style} ${outfit.items.join(", ")}`;
-        const embedding = await generateEmbedding(text);
-        await new Outfit({ ...outfit, embedding }).save();
-      }
-      logger.info("✅ Database seeded with", outfits.length, "outfits");
-    } else {
-      logger.info("✅ Database already has", count, "outfits");
-    }
-  } catch (err) {
-    logger.error("❌ Seeding failed:", err.message);
-  }
-};
-
-// Only seed when explicitly requested (e.g. SEED_DB=true npm start)
-// Never runs automatically in production to avoid cold-start latency
-if (process.env.SEED_DB === 'true') {
-  seedData();
-}
+// No local DB seeding. Handled via Supabase directly.
 
 // ============================================
 // HEALTH CHECK

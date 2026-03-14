@@ -4,8 +4,7 @@
  */
 
 import express from 'express';
-import ClothingItem from '../models/ClothingItem.js';
-import User from '../models/user.js';
+import { supabase } from '../lib/supabase.js';
 import { authenticateToken } from '../middleware/auth.js';
 import logger from '../utils/logger.js';
 
@@ -22,7 +21,20 @@ router.get('/:userId', authenticateToken, async (req, res) => {
         logger.info(`Fetching analytics for user ${userId}`, null, 'analytics');
 
         // Get all clothing items for user
-        const items = await ClothingItem.find({ userId }).lean();
+        const { data: rawItems } = await supabase
+            .from('clothing_items')
+            .select('*')
+            .eq('user_id', userId);
+
+        const items = (rawItems || []).map(item => ({
+            ...item,
+            _id: item.id,
+            itemType: item.type || item.category,
+            wearCount: item.wear_count || 0,
+            lastWornDate: item.last_worn_date,
+            purchaseDate: item.purchase_date,
+            imageUrl: item.image_url
+        }));
 
         if (items.length === 0) {
             return res.json({
@@ -151,26 +163,35 @@ router.post('/log-wear', authenticateToken, async (req, res) => {
         const wearDate = date ? new Date(date) : new Date();
 
         // Update each item
-        const updatePromises = itemIds.map(itemId =>
-            ClothingItem.findByIdAndUpdate(
-                itemId,
-                {
-                    $inc: { wearCount: 1 },
-                    lastWornDate: wearDate
-                },
-                { new: true }
-            )
-        );
+        const updatedItems = [];
+        for (const itemId of itemIds) {
+            const { data: item } = await supabase
+                .from('clothing_items')
+                .select('wear_count')
+                .eq('id', itemId)
+                .single();
 
-        const updatedItems = await Promise.all(updatePromises);
+            if (item) {
+                const { data: updated } = await supabase
+                    .from('clothing_items')
+                    .update({
+                        wear_count: (item.wear_count || 0) + 1,
+                        last_worn_date: wearDate.toISOString()
+                    })
+                    .eq('id', itemId)
+                    .select()
+                    .single();
+                if (updated) updatedItems.push(updated);
+            }
+        }
 
         res.json({
             success: true,
             itemsUpdated: updatedItems.length,
             items: updatedItems.map(item => ({
-                itemId: item._id,
-                wearCount: item.wearCount,
-                lastWornDate: item.lastWornDate
+                itemId: item.id,
+                wearCount: item.wear_count,
+                lastWornDate: item.last_worn_date
             }))
         });
 
@@ -193,10 +214,10 @@ router.post('/calculate-historical', authenticateToken, async (req, res) => {
         // TODO: If you have OutfitCalendar model, parse it here
         // For now, just reset all counts to 0
 
-        await ClothingItem.updateMany(
-            { userId },
-            { $set: { wearCount: 0, lastWornDate: null } }
-        );
+        await supabase
+            .from('clothing_items')
+            .update({ wear_count: 0, last_worn_date: null })
+            .eq('user_id', userId);
 
         res.json({
             success: true,
@@ -218,11 +239,25 @@ router.get('/item/:itemId', authenticateToken, async (req, res) => {
     const { itemId } = req.params;
 
     try {
-        const item = await ClothingItem.findById(itemId).lean();
+        const { data: rawItem } = await supabase
+            .from('clothing_items')
+            .select('*')
+            .eq('id', itemId)
+            .maybeSingle();
 
-        if (!item) {
+        if (!rawItem) {
             return res.status(404).json({ error: 'Item not found' });
         }
+
+        const item = {
+            ...rawItem,
+            _id: rawItem.id,
+            itemType: rawItem.type || rawItem.category,
+            wearCount: rawItem.wear_count || 0,
+            lastWornDate: rawItem.last_worn_date,
+            purchaseDate: rawItem.purchase_date,
+            imageUrl: rawItem.image_url
+        };
 
         const cpw = item.price && item.wearCount > 0
             ? (item.price / item.wearCount).toFixed(2)

@@ -10,3 +10,4 @@ export { default as wardrobeRouter } from "./wardrobe.js";
 export { default as chatRouter } from "./chat.js";
 export { default as outfitsRouter } from "./outfits.js";
 export { default as imageProcessorRouter } from "./imageProcessor.js";
+export { default as studioRouter } from "./studio.js";
