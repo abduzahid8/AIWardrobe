@@ -8,7 +8,7 @@ import type { TryOnMode, TryOnStep, PhotoTab } from '../types';
 export function useTryOnWizard() {
     const [tryOnMode, setTryOnMode] = useState<TryOnMode>('try your self');
     const [tryOnStep, setTryOnStep] = useState<TryOnStep>(1);
-    const [activeTab, setActiveTab] = useState<PhotoTab>('upload');
+    const [activeTab, setActiveTab] = useState<PhotoTab>('shop');
 
     const goToStep = (step: TryOnStep) => setTryOnStep(step);
 

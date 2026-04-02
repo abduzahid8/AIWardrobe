@@ -22,6 +22,9 @@ import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { DESIGNER_STYLES, getStylePromptSuffix } from "../src/styles/designerStyles";
 import StyleSelector from "../components/StyleSelector";
 import Config from "../src/config/env";
+import useWardrobeStore from '../store/wardrobeStore';
+import useAppContextStore from '../src/store/contextStore';
+
 const API_URL = Config.api.url;
 import { colors, spacing, borderRadius, shadows } from "../src/theme";
 
@@ -188,11 +191,37 @@ const AIAssistant = () => {
         content: m.text,
       }));
 
+      // Build context from stores
+      const items = useWardrobeStore.getState().items;
+      const { weather, todaysOutfit } = useAppContextStore.getState();
+
+      let contextString = '<SYSTEM_CONTEXT>\n';
+      contextString += `User's Wardrobe (${items.length} items):\n`;
+      if (items.length > 0) {
+        // Group by category to save tokens
+        const categories = items.reduce((acc: Record<string, number>, item: any) => {
+          const type = item.subCategory || item.category || 'clothing';
+          acc[type] = (acc[type] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+        contextString += Object.entries(categories).map(([type, count]) => `- ${count} ${type}`).join('\n') + '\n';
+      } else {
+        contextString += 'Wardrobe is empty.\n';
+      }
+
+      if (weather) {
+        contextString += `\nCurrent Weather: ${Math.round(weather.temp)}°C, ${weather.description}\n`;
+      }
+      if (todaysOutfit) {
+        contextString += `\nToday's Suggested Outfit ID: ${todaysOutfit.outfit.itemIds.join(', ')}\n`;
+      }
+      contextString += '</SYSTEM_CONTEXT>\n\n';
+
       // Add style context
       const styleContext = selectedStyleId ? getStylePromptSuffix(selectedStyleId) : '';
-      const enhancedQuery = styleContext
+      const enhancedQuery = contextString + (styleContext
         ? `${textToSend}\n\n[User's preferred style: ${styleContext}]`
-        : textToSend;
+        : textToSend);
 
       const response = await fetch(`${baseUrl}/ai-chat`, {
         method: "POST",

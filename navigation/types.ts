@@ -49,7 +49,9 @@ export type RootStackParamList = {
     ScanWardrobe: undefined;
     ReviewScan: { items: ScannedItem[] };
     WardrobeVideo: { videoUri?: string; imageUri?: string };
+    ClothingStudio: undefined;
     Camera: undefined;
+    ClothingDetailEditor: { imageUri?: string; detectedType?: string; detectedColor?: string; detectedItem?: any };
 
     // Creation & Design
     DesignRoom: undefined;
@@ -66,6 +68,8 @@ export type RootStackParamList = {
     AIHub: undefined;
     OutfitAI: { initialTab?: 'chat' | 'outfit' } | undefined;
     CreateAvatar: undefined;
+    /** Gemini AI Stylist chat — accessible from any outfit/clothing context */
+    StylistChat: { initialMessage?: string } | undefined;
 
     // Core Loop (MVP)
     DailySuggestion: undefined;
@@ -81,12 +85,17 @@ export type RootStackParamList = {
     PriceTracker: undefined;
     FlashSales: undefined;
     FlashSaleEvent: { eventId: string };
+    BusinessCasual: undefined;
 
     // Profile & Settings
     EmailOnboarding: undefined;
     OutfitDetail: { image?: string; outfit?: OutfitItem };
     MyCloset: undefined;
+    ClothingDetail: { itemId: string; fullItem?: any };
     StyleGoals: undefined;
+    WardrobeAnalytics: undefined;
+    PrivacyPolicy: undefined;
+    TermsOfService: undefined;
 };
 
 export type TabParamList = {

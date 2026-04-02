@@ -19,6 +19,7 @@ import { useTranslation } from "react-i18next";
 // import { API_URL } from "../api/config";
 
 const SignInScreen = () => {
+  console.log('[SignInScreen] Component rendering');
   const navigation = useNavigation();
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
@@ -26,15 +27,23 @@ const SignInScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuthStore();
   const handleSignIn = async () => {
+    console.log('[SignInScreen] Sign in attempt - email:', email);
     if (!email || !password) {
+      console.log('[SignInScreen] Validation failed - missing email or password');
       Alert.alert("Error", "Email and password are required");
       return;
     }
-    if (isLoading) return; // Prevent double-submission
+    if (isLoading) {
+      console.log('[SignInScreen] Sign in already in progress, ignoring');
+      return; // Prevent double-submission
+    }
     setIsLoading(true);
     try {
+      console.log('[SignInScreen] Attempting login...');
       await login(email, password);
+      console.log('[SignInScreen] Login successful');
     } catch (error: any) {
+      console.log('[SignInScreen] Login failed:', error.message);
       const errorMessage = error.message || "Login failed";
 
       if (errorMessage.includes("Invalid login credentials") || errorMessage.includes("invalid claim")) {
@@ -91,6 +100,7 @@ const SignInScreen = () => {
             {/* Forgot Password */}
             <TouchableOpacity
               onPress={() => {
+                console.log('[SignInScreen] Forgot password button pressed');
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 (navigation.navigate as any)("ForgotPassword");
               }}
@@ -103,6 +113,7 @@ const SignInScreen = () => {
 
             <TouchableOpacity
               onPress={() => {
+                console.log('[SignInScreen] Sign in button pressed');
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 handleSignIn();
               }}
@@ -119,6 +130,7 @@ const SignInScreen = () => {
 
             <TouchableOpacity
               onPress={() => {
+                console.log('[SignInScreen] Sign up link pressed');
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 (navigation.navigate as any)("SignUp");
               }}
@@ -138,6 +150,7 @@ const SignInScreen = () => {
 
             <TouchableOpacity
               onPress={() => {
+                console.log('[SignInScreen] Trial button pressed');
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 const { startTrial } = useAuthStore.getState();
                 startTrial();

@@ -1,103 +1,96 @@
-import { create } from "zustand";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+/**
+ * trialStore.ts — Free trial usage tracking
+ *
+ * Uses Zustand persist (AsyncStorage) — no manual AsyncStorage calls.
+ *
+ * Paywall timing:
+ *   - When trialCount reaches MAX_TRIAL_COUNT the flag `pendingPaywall` is
+ *     set to true.  The UI reads this and shows the bottom sheet after a
+ *     SHORT_DELAY_MS delay so it never interrupts the current gesture.
+ *   - Call dismissPaywall() to clear the flag once the sheet has been shown.
+ */
 
-const TRIAL_COUNT_KEY = "trial_count";
-const TRIAL_FIRST_LAUNCH_KEY = "trial_first_launch";
-const MAX_TRIAL_COUNT = 5; // 5 free uses before paywall
+import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const MAX_TRIAL_COUNT   = 5;   // free AI calls before paywall
+const SHORT_DELAY_MS    = 800; // delay before bottom sheet appears
 
 interface TrialState {
-    trialCount: number;
+    trialCount:      number;
     firstLaunchDate: string | null;
-    isTrialExpired: boolean;
-    loading: boolean;
+    isTrialExpired:  boolean;
+    /** True after the trial expires and before the paywall sheet is shown. */
+    pendingPaywall:  boolean;
 
     // Actions
-    initializeTrial: () => Promise<void>;
-    incrementTrialCount: () => Promise<void>;
-    checkTrialExpired: () => boolean;
-    resetTrial: () => Promise<void>; // For testing purposes
+    initializeTrial:    () => void;
+    incrementTrialCount: () => void;
+    checkTrialExpired:  () => boolean;
     getTrialsRemaining: () => number;
+    /** Called by the paywall sheet once it is visible — clears the pending flag. */
+    dismissPaywall:     () => void;
+    resetTrial:         () => void;
 }
 
-const useTrialStore = create<TrialState>((set, get) => ({
-    trialCount: 0,
-    firstLaunchDate: null,
-    isTrialExpired: false,
-    loading: false,
+const useTrialStore = create<TrialState>()(
+    persist(
+        (set, get) => ({
+            trialCount:      0,
+            firstLaunchDate: null,
+            isTrialExpired:  false,
+            pendingPaywall:  false,
 
-    initializeTrial: async () => {
-        try {
-            set({ loading: true });
+            initializeTrial: () => {
+                const { firstLaunchDate } = get();
+                if (!firstLaunchDate) {
+                    set({ firstLaunchDate: new Date().toISOString() });
+                }
+            },
 
-            // Get stored trial count
-            const storedCount = await AsyncStorage.getItem(TRIAL_COUNT_KEY);
-            const storedDate = await AsyncStorage.getItem(TRIAL_FIRST_LAUNCH_KEY);
+            incrementTrialCount: () => {
+                const newCount       = get().trialCount + 1;
+                const isTrialExpired = newCount >= MAX_TRIAL_COUNT;
 
-            const trialCount = storedCount ? parseInt(storedCount, 10) : 0;
-            const firstLaunchDate = storedDate || new Date().toISOString();
+                set({
+                    trialCount: newCount,
+                    isTrialExpired,
+                    // Schedule the paywall flag after a short delay so UI can
+                    // finish the current animation before showing the sheet.
+                    pendingPaywall: false,
+                });
 
-            // If first time, save the launch date
-            if (!storedDate) {
-                await AsyncStorage.setItem(TRIAL_FIRST_LAUNCH_KEY, firstLaunchDate);
-            }
+                if (isTrialExpired) {
+                    setTimeout(() => {
+                        set({ pendingPaywall: true });
+                    }, SHORT_DELAY_MS);
+                }
+            },
 
-            const isTrialExpired = trialCount >= MAX_TRIAL_COUNT;
+            checkTrialExpired: () => get().trialCount >= MAX_TRIAL_COUNT,
 
-            set({
-                trialCount,
-                firstLaunchDate,
-                isTrialExpired,
-                loading: false,
-            });
-        } catch (error) {
-            console.error("Failed to initialize trial:", error);
-            set({ loading: false });
-        }
-    },
+            getTrialsRemaining: () => Math.max(0, MAX_TRIAL_COUNT - get().trialCount),
 
-    incrementTrialCount: async () => {
-        try {
-            const currentCount = get().trialCount;
-            const newCount = currentCount + 1;
+            dismissPaywall: () => set({ pendingPaywall: false }),
 
-            await AsyncStorage.setItem(TRIAL_COUNT_KEY, newCount.toString());
-
-            const isTrialExpired = newCount >= MAX_TRIAL_COUNT;
-
-            set({
-                trialCount: newCount,
-                isTrialExpired,
-            });
-
-
-        } catch (error) {
-            console.error("Failed to increment trial count:", error);
-        }
-    },
-
-    checkTrialExpired: () => {
-        return get().trialCount >= MAX_TRIAL_COUNT;
-    },
-
-    getTrialsRemaining: () => {
-        const remaining = MAX_TRIAL_COUNT - get().trialCount;
-        return Math.max(0, remaining);
-    },
-
-    resetTrial: async () => {
-        try {
-            await AsyncStorage.removeItem(TRIAL_COUNT_KEY);
-            await AsyncStorage.removeItem(TRIAL_FIRST_LAUNCH_KEY);
-            set({
-                trialCount: 0,
+            resetTrial: () => set({
+                trialCount:      0,
                 firstLaunchDate: null,
-                isTrialExpired: false,
-            });
-
-        } catch (error) {
-            console.error("Failed to reset trial:", error);
+                isTrialExpired:  false,
+                pendingPaywall:  false,
+            }),
+        }),
+        {
+            name: 'trial-storage',
+            storage: createJSONStorage(() => AsyncStorage),
+            partialize: (state) => ({
+                trialCount:      state.trialCount,
+                firstLaunchDate: state.firstLaunchDate,
+                isTrialExpired:  state.isTrialExpired,
+            }),
         }
-    },
-}));
+    )
+);
 
 export default useTrialStore;

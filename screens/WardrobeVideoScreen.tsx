@@ -43,6 +43,7 @@ import CorrectionModal from '../src/components/CorrectionModal';
 import { RootStackParamList } from '../navigation/types';
 import { supabase } from '../lib/supabase';
 import useAuthStore from '../store/auth';
+import useWardrobeStore from '../store/wardrobeStore';
 import { useVideoAnalysis } from '../src/features/wardrobe/useVideoAnalysis';
 import { DetectedItem } from '../src/features/wardrobe/types';
 
@@ -174,32 +175,191 @@ const WardrobeVideoScreen = () => {
     }, [route.params]);
 
     const requestPermissions = async (): Promise<boolean> => {
-        if (Platform.OS !== 'web') {
+        if (Platform.OS === 'web') {
+            // Web doesn't need permissions for file input
+            return true;
+        }
+        
+        try {
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (status !== 'granted') {
-                Alert.alert('Permission Required', 'Please grant camera roll permissions to upload videos.');
+            console.log('Media library permission status:', status);
+            
+            // Handle Expo Go limitations
+            if (status === 'denied') {
+                Alert.alert(
+                    'Permission Required', 
+                    'Please grant photo library permissions. Note: Expo Go has limited media access. For full functionality, use a development build.',
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Try Anyway', onPress: () => console.log('User wants to try anyway') }
+                    ]
+                );
                 return false;
             }
+            
+            if (status !== 'granted') {
+                console.log('Permission not granted, status:', status);
+                return false;
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('Permission request error:', error);
+            // In Expo Go, sometimes permissions work differently
+            return true; // Try anyway
         }
-        return true;
+    };
+
+    const pickVideoWeb = () => {
+        console.log('Web file picker activated');
+        
+        // Create a file input element
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*'; // Only accept images on web
+        input.multiple = false;
+        
+        input.onchange = async (event) => {
+            const file = (event.target as HTMLInputElement).files?.[0];
+            if (file) {
+                console.log('Web file selected:', file);
+                
+                try {
+                    // Convert file to base64
+                    const base64 = await fileToBase64(file);
+                    console.log('File converted to base64, length:', base64.length);
+                    
+                    // Process as image
+                    console.log('Web: Processing image file');
+                    analyzeImage(base64);
+                } catch (error) {
+                    console.error('Web file processing error:', error);
+                    Alert.alert('Error', 'Failed to process the selected file.');
+                }
+            }
+        };
+        
+        // Trigger the file picker
+        input.click();
+    };
+
+    const fileToBase64 = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const result = reader.result as string;
+                // Remove data URL prefix to get pure base64
+                const base64 = result.split(',')[1];
+                resolve(base64);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
     };
 
     const pickVideo = async () => {
+        console.log('pickVideo called, platform:', Platform.OS);
         const hasPermission = await requestPermissions();
+        console.log('Permission granted:', hasPermission);
         if (!hasPermission) return;
-        try {
-            const result = await ImagePicker.launchImageLibraryAsync({
-                // @ts-ignore — mediaTypes accepts string array in newer Expo versions
-                mediaTypes: ['videos'],
-                allowsEditing: false,
-                quality: 1,
-            });
-            if (!result.canceled && result.assets[0]) {
-                analyzeVideo(result.assets[0].uri);
-            }
-        } catch (error) {
-            Alert.alert('Error', 'Failed to pick video. Please try again.');
+        
+        if (Platform.OS === 'web') {
+            // Web: Use HTML file input
+            console.log('Web: Using web file picker');
+            pickVideoWeb();
+            return;
         }
+        
+        try {
+            console.log('Native: Attempting to launch image library...');
+            
+            // Try different approaches for Expo Go vs development builds
+            let result;
+            try {
+                // First try with All media types
+                result = await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ['images', 'videos'],
+                    allowsEditing: false,
+                    quality: 1,
+                });
+            } catch (error) {
+                console.warn('All media types failed, trying images only:', error);
+                // Fallback to images only for Expo Go
+                result = await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ['images'],
+                    allowsEditing: false,
+                    quality: 1,
+                });
+            }
+            
+            console.log('Native: ImagePicker result received:', JSON.stringify(result, null, 2));
+            
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                const asset = result.assets[0];
+                console.log('Native: Selected asset details:', {
+                    uri: asset.uri,
+                    fileName: asset.fileName,
+                    mimeType: asset.mimeType,
+                    duration: asset.duration,
+                    type: asset.type
+                });
+                
+                if (asset.uri) {
+                    // Determine if video or image based on mimeType or duration
+                    const isVideo = asset.mimeType?.includes('video') || asset.duration || asset.type === 'video';
+                    
+                    if (isVideo) {
+                        console.log('Native: Detected video file, analyzing as video');
+                        analyzeVideo(asset.uri);
+                    } else {
+                        console.log('Native: Detected image file, analyzing as image');
+                        analyzeImage(asset.uri);
+                    }
+                }
+            } else {
+                console.log('Native: User cancelled selection or no assets found');
+                
+                // Provide helpful message for Expo Go users
+                if (__DEV__) {
+                    Alert.alert(
+                        'No Media Selected', 
+                        'If you\'re using Expo Go, media access may be limited. Try:\n\n1. Selecting images\n2. Using a development build for full access\n3. Using a physical device',
+                        [{ text: 'OK' }]
+                    );
+                } else {
+                    Alert.alert('Info', 'No media selected or selection was cancelled.');
+                }
+            }
+        } catch (error: any) {
+            console.error('Native: Media picker error:', error);
+            
+            // Provide specific error message for Expo Go limitations
+            if (error.message?.includes('media library') || error.message?.includes('permission')) {
+                Alert.alert(
+                    'Expo Go Limitation', 
+                    'Media library access is limited in Expo Go. For full functionality, create a development build.\n\nYou can still try uploading images.',
+                    [{ text: 'OK' }]
+                );
+            } else {
+                Alert.alert('Error', `Failed to pick media: ${error?.message || 'Unknown error'}. Check console for details.`);
+            }
+        }
+    };
+
+    // Navigate to detail editor for the first detected item
+    const handleReviewAndSave = () => {
+        if (!results || results.detectedItems.length === 0) return;
+        
+        const firstItem = results.detectedItems[0];
+        const imgUrl = firstItem.frameImage || firstItem.cutoutImage || '';
+        
+        // Navigate to detail editor with detected data
+        (navigation as any).navigate('ClothingDetailEditor', {
+            imageUri: imgUrl,
+            detectedType: mapToClosetCategory(firstItem.itemType),
+            detectedColor: firstItem.color?.toLowerCase() || 'beige',
+            detectedItem: firstItem,
+        });
     };
 
     const saveToWardrobe = async () => {
@@ -210,27 +370,9 @@ const WardrobeVideoScreen = () => {
             return;
         }
         try {
-            const itemsToSave = results.detectedItems.map((item: DetectedItem) => {
-                const imgUrl = item.frameImage || item.cutoutImage || null;
-                console.log('[Save] Item:', item.itemType,
-                    'frameImage:', item.frameImage ? `${item.frameImage.substring(0, 50)}... (${item.frameImage.length} chars)` : 'null',
-                    'cutoutImage:', item.cutoutImage ? `${item.cutoutImage.substring(0, 50)}... (${item.cutoutImage.length} chars)` : 'null');
-                return {
-                    user_id: user.id,
-                    type: item.itemType,
-                    category: mapToClosetCategory(item.itemType),
-                    sub_category: item.itemType,
-                    color: item.color,
-                    primary_color: item.color,
-                    style: item.style || 'Casual',
-                    description: item.description || item.productDescription || `${item.color} ${item.itemType}`,
-                    material: item.material || null,
-                    image_url: imgUrl,
-                    outfit_id: item.outfitId || 1,
-                    created_at: new Date().toISOString(),
-                };
-            });
+            const { addItem } = useWardrobeStore.getState();
 
+            // Optionally upsert profile metadata if needed, though auth usually handles it
             await supabase
                 .from('profiles')
                 .upsert(
@@ -238,14 +380,30 @@ const WardrobeVideoScreen = () => {
                     { onConflict: 'id' }
                 );
 
-            const { error } = await supabase
-                .from('clothing_items')
-                .insert(itemsToSave);
+            for (const item of results.detectedItems) {
+                const imgUrl = item.frameImage || item.cutoutImage || '';
+                console.log('[Save] Adding Item to Queue:', item.itemType);
 
-            if (error) throw error;
+                await addItem({
+                    userId: user.id,
+                    imageUrl: imgUrl,
+                    category: mapToClosetCategory(item.itemType) as any,
+                    subCategory: item.itemType,
+                    primaryColor: item.color,
+                    colorHex: '#000000',
+                    pattern: 'solid',
+                    material: item.material || '',
+                    brand: '',
+                    name: item.description || item.productDescription || `${item.color} ${item.itemType}`,
+                    seasons: [],
+                    occasions: [],
+                    detectionConfidence: item.confidence || 0.8,
+                });
+            }
+
             Alert.alert(
-                'Saved!',
-                `${results.detectedItems.length} item(s) saved to your wardrobe!`,
+                'Saved Locally!',
+                `${results.detectedItems.length} item(s) saved to your wardrobe. They will sync automatically.`,
                 [
                     {
                         text: 'View Wardrobe', onPress: () => {
@@ -349,7 +507,12 @@ const WardrobeVideoScreen = () => {
                                         </LinearGradient>
                                     </View>
                                     <Text style={styles.uploadTitle}>Select from Gallery</Text>
-                                    <Text style={styles.uploadSubtitle}>Choose a video or photo from your device</Text>
+                                    <Text style={styles.uploadSubtitle}>
+                                        {Platform.OS === 'web' 
+                                            ? 'Choose a photo from your device' 
+                                            : 'Choose a video or photo from your device'
+                                        }
+                                    </Text>
                                 </BlurView>
                             </TouchableOpacity>
                         </Animated.View>
@@ -477,7 +640,7 @@ const WardrobeVideoScreen = () => {
                             <Animated.View entering={FadeInUp.delay(400).springify().damping(16)}>
                                 <TouchableOpacity
                                     style={styles.saveButton}
-                                    onPress={saveToWardrobe}
+                                    onPress={handleReviewAndSave}
                                     activeOpacity={0.85}
                                 >
                                     <LinearGradient
@@ -486,7 +649,7 @@ const WardrobeVideoScreen = () => {
                                         end={{ x: 1, y: 1 }}
                                         style={styles.saveGradient}
                                     >
-                                        <Text style={styles.saveText}>Save All to Wardrobe</Text>
+                                        <Text style={styles.saveText}>Review & Save</Text>
                                         <View style={styles.saveArrow}>
                                             <Ionicons name="arrow-forward" size={18} color="#fff" />
                                         </View>

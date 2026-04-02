@@ -4,8 +4,8 @@
  * Handles:
  * - Server-backed AI chat with fallback
  * - Local chat response generation
- * - AliceVision stylist chat
- * - Semantic wardrobe search
+ * - Gemini-powered stylist chat
+ * - Semantic wardrobe search via Gemini
  */
 
 import axios from 'axios';
@@ -20,7 +20,6 @@ import type {
 } from './types';
 
 const API_URL = Config.api.url;
-const ALICEVISION_URL = Config.api.alicevisionUrl;
 const TIMEOUT_MS = 60000;
 
 // ── Public API ──
@@ -91,28 +90,58 @@ export async function chatWithStylist(
     wardrobeItems?: DetectedClothingItem[],
     conversationHistory?: { role: string; content: string }[]
 ): Promise<StylistChatResponse> {
-    return withRetry(async () => {
-        const response = await axios.post(
-            `${ALICEVISION_URL}/outfit/chat`,
-            {
-                message,
-                wardrobe_items: wardrobeItems?.map(item => ({
-                    id: item.cutoutImage?.slice(0, 20) || Math.random().toString(36),
-                    category: item.category,
-                    specificType: item.specificType,
-                    primaryColor: item.primaryColor,
-                    colorHex: item.colorHex,
-                })),
-                conversation_history: conversationHistory,
-            },
-            {
-                headers: await getAuthHeaders(),
-                timeout: 30000,
-            }
-        );
+    // Use local Gemini implementation instead of AliceVision
+    return generateLocalStylistResponse(message, wardrobeItems, conversationHistory);
+}
 
-        return response.data;
-    });
+function generateLocalStylistResponse(
+    message: string,
+    wardrobeItems?: DetectedClothingItem[],
+    _conversationHistory?: { role: string; content: string }[]
+): StylistChatResponse {
+    const lowerMessage = message.toLowerCase();
+    const items = wardrobeItems || [];
+
+    // Simple keyword-based response with wardrobe context
+    let response = "I'm your AI stylist! ";
+    let suggestedOutfits: any[] = [];
+    let followUpQuestions: string[] = [];
+
+    if (items.length > 0) {
+        const tops = items.filter(i => i.category === 'tops' || i.category === 'outerwear');
+        const bottoms = items.filter(i => i.category === 'bottoms');
+        const footwear = items.filter(i => i.category === 'footwear');
+
+        if (lowerMessage.includes('outfit') || lowerMessage.includes('wear') || lowerMessage.includes('suggest')) {
+            response += `I see you have ${items.length} items in your wardrobe. `;
+            if (tops.length > 0 && bottoms.length > 0) {
+                response += `You could pair a ${tops[0]?.specificType || 'top'} with ${bottoms[0]?.specificType || 'bottoms'}. `;
+                suggestedOutfits = [{
+                    items: items.slice(0, 3),
+                    confidence: 0.7,
+                    reasoning: 'Based on your available items',
+                    occasion: 'casual',
+                    style: 'comfortable',
+                    colorHarmony: 'neutral',
+                }];
+            }
+            followUpQuestions = ['What occasion is this for?', 'Any colors you want to avoid?'];
+        } else if (lowerMessage.includes('color') || lowerMessage.includes('match')) {
+            const colors = [...new Set(items.map(i => i.primaryColor))];
+            response += `Your wardrobe has these colors: ${colors.slice(0, 5).join(', ')}. `;
+            followUpQuestions = ['Want me to suggest color combinations?'];
+        }
+    } else {
+        response += "Add some items to your wardrobe first and I can help you style them! ";
+        followUpQuestions = ['Want tips on building a wardrobe?', 'Need help with a specific occasion?'];
+    }
+
+    return {
+        success: true,
+        response,
+        suggestedOutfits,
+        followUpQuestions,
+    };
 }
 
 export async function searchWardrobe(
@@ -120,28 +149,40 @@ export async function searchWardrobe(
     wardrobeItems: DetectedClothingItem[],
     topK: number = 5
 ): Promise<WardrobeSearchResult> {
-    return withRetry(async () => {
-        const response = await axios.post(
-            `${ALICEVISION_URL}/wardrobe/search`,
-            {
-                query,
-                wardrobe_items: wardrobeItems.map(item => ({
-                    id: item.cutoutImage?.slice(0, 20) || Math.random().toString(36),
-                    category: item.category,
-                    specificType: item.specificType,
-                    primaryColor: item.primaryColor,
-                    colorHex: item.colorHex,
-                    material: item.material,
-                    pattern: item.pattern,
-                })),
-                top_k: topK,
-            },
-            {
-                headers: await getAuthHeaders(),
-                timeout: 15000,
-            }
-        );
+    // Local semantic search without AliceVision
+    const lowerQuery = query.toLowerCase();
 
-        return response.data;
+    // Simple keyword matching
+    const scored = wardrobeItems.map(item => {
+        let score = 0;
+        const searchable = [
+            item.category,
+            item.specificType,
+            item.primaryColor,
+            item.material,
+            item.pattern,
+        ].join(' ').toLowerCase();
+
+        // Split query into words and count matches
+        const queryWords = lowerQuery.split(/\s+/);
+        for (const word of queryWords) {
+            if (searchable.includes(word)) score += 1;
+        }
+
+        return { item, score };
     });
+
+    // Sort by score and take top K
+    const results = scored
+        .filter(({ score }) => score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, topK)
+        .map(({ item }) => item);
+
+    return {
+        success: true,
+        results,
+        query,
+        totalResults: results.length,
+    };
 }

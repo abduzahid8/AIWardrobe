@@ -23,7 +23,9 @@ import AppColors from '../../constants/AppColors';
 import { usePhotoPicker } from './hooks/usePhotoPicker';
 import { useTryOnWizard } from './hooks/useTryOnWizard';
 import { useTryOnAPI } from './hooks/useTryOnAPI';
-import type { WardrobeItem } from './types';
+import { useMannequin, getMannequinBase64 } from './hooks/useMannequin';
+import type { WardrobeItem, ShopCatalogItem } from './types';
+import { SHOP_CATALOG_ITEMS, SHOP_CATEGORIES } from '../../data/shopCatalogItems';
 import styles from './styles';
 
 type AITryOnRouteParams = { asTab?: boolean };
@@ -51,6 +53,30 @@ const AITryOnScreen = () => {
 
     const { loading, saving, resultImage, handleTryOn, handleSaveToWardrobe } = useTryOnAPI();
 
+    // Mannequin mode hook
+    const {
+        mannequinSize, setMannequinSize,
+        mannequinGender, setMannequinGender,
+        mannequinView, setMannequinView,
+        selectedShopItem: mannequinShopItem, setSelectedShopItem: setMannequinShopItem,
+        shopFilter: mannequinShopFilter, setShopFilter: setMannequinShopFilter,
+        currentPreset, currentAsset, presets,
+    } = useMannequin();
+
+    const handleMannequinTryOn = async () => {
+        if (!mannequinShopItem) return;
+        try {
+            const base64Image = await getMannequinBase64(currentAsset);
+            handleTryOn(base64Image, mannequinShopItem.imageUrl, mannequinShopItem.garmentType);
+        } catch {
+            Alert.alert('Error', 'Could not prepare mannequin image. Please try again.');
+        }
+    };
+
+    // Try-yourself mode: selected shop item
+    const [selectedShopItemForSelf, setSelectedShopItemForSelf] = useState<ShopCatalogItem | null>(null);
+    const [selfShopFilter, setSelfShopFilter] = useState<string>('all');
+
     // Wardrobe items (local state — lightweight)
     const [wardrobeItems, setWardrobeItems] = useState<WardrobeItem[]>([]);
     const [loadingWardrobe, setLoadingWardrobe] = useState(false);
@@ -58,11 +84,18 @@ const AITryOnScreen = () => {
 
     /** Derive garment_type from selected item's category */
     const getGarmentType = (): string => {
+        if (selectedShopItemForSelf) return selectedShopItemForSelf.garmentType;
         const cat = (selectedWardrobeItem?.category || selectedWardrobeItem?.type || '').toLowerCase();
         if (['pants', 'jeans', 'shorts', 'skirt', 'lower'].some((k) => cat.includes(k))) return 'lower_body';
         if (['dress', 'full'].some((k) => cat.includes(k))) return 'dresses';
         return 'upper_body';
     };
+
+    /** Filtered shop items helper */
+    const getFilteredShopItems = (filter: string) =>
+        filter === 'all'
+            ? SHOP_CATALOG_ITEMS
+            : SHOP_CATALOG_ITEMS.filter((i) => i.garmentType === filter);
 
     const loadWardrobeItems = useCallback(async () => {
         try {
@@ -144,37 +177,169 @@ const AITryOnScreen = () => {
 
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 {tryOnMode === 'model' ? (
-                    /* ── Model Mode ── */
+                    /* ── Model Mode — Mannequin Try-On ── */
                     <>
-                        <View style={styles.stackedCardsWrap}>
-                            {['Left', 'Center', 'Right'].map((pos) => (
-                                <View key={pos} style={[styles.stackedCard, (styles as any)[`stackedCard${pos}`]]}>
-                                    <View style={styles.stackedCardPlaceholder}>
-                                        <Ionicons name="person" size={48} color={AppColors.textLight} />
-                                    </View>
+                        {/* Mannequin card */}
+                        <View style={styles.mannequinCard}>
+                            <Image source={currentAsset} style={styles.mannequinImage} />
+                            {loading && (
+                                <View style={styles.mannequinLoadingOverlay}>
+                                    <ActivityIndicator size="large" color={AppColors.primary} />
+                                    <Text style={[styles.loadingText, { marginTop: 12 }]}>{t('aiTryOn.generating')}</Text>
                                 </View>
+                            )}
+                            {resultImage && !loading && (
+                                <View style={styles.mannequinResultOverlay}>
+                                    <Image source={{ uri: resultImage }} style={styles.mannequinResultImage} />
+                                </View>
+                            )}
+                            {!mannequinShopItem && !resultImage && !loading && (
+                                <View style={styles.mannequinPlaceholderOverlay}>
+                                    <Ionicons name="shirt-outline" size={36} color="#0055FF" style={{ marginBottom: 10 }} />
+                                    <Text style={styles.mannequinPlaceholderText}>
+                                        Select a garment below to see it on the mannequin
+                                    </Text>
+                                </View>
+                            )}
+                            {/* Front / Side toggle */}
+                            {!resultImage && (
+                                <View style={styles.mannequinViewToggle}>
+                                    {(['front', 'side'] as const).map((v) => (
+                                        <TouchableOpacity
+                                            key={v}
+                                            style={[styles.mannequinViewButton, mannequinView === v && styles.mannequinViewButtonActive]}
+                                            onPress={() => setMannequinView(v)}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Text style={[styles.mannequinViewButtonText, mannequinView === v && styles.mannequinViewButtonTextActive]}>
+                                                {v === 'front' ? 'Front' : 'Side'}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            )}
+                        </View>
+
+                        {/* Gender toggle */}
+                        <View style={styles.genderToggleRow}>
+                            {(['female', 'male'] as const).map((g) => (
+                                <TouchableOpacity
+                                    key={g}
+                                    style={[styles.genderToggleOption, mannequinGender === g && styles.genderToggleActive]}
+                                    onPress={() => setMannequinGender(g)}
+                                    activeOpacity={0.8}
+                                >
+                                    <Text style={[styles.genderToggleText, mannequinGender === g && styles.genderToggleTextActive]}>
+                                        {g === 'female' ? 'Female' : 'Male'}
+                                    </Text>
+                                </TouchableOpacity>
                             ))}
                         </View>
-                        <View style={styles.digitalModelSection}>
-                            <View style={styles.digitalModelTitleRow}>
-                                <Text style={styles.digitalModelTitle}>{t('aiTryOn.digitalModelTitle')}</Text>
-                                {!isPremium && (
-                                    <View style={styles.proBadge}>
-                                        <Text style={styles.proBadgeText}>{t('aiTryOn.digitalModelPro')}</Text>
-                                    </View>
-                                )}
-                            </View>
-                            <Text style={styles.digitalModelDescription}>{t('aiTryOn.digitalModelDescription')}</Text>
+
+                        {/* Size selector */}
+                        <View style={styles.sizeRow}>
+                            {presets.map((preset) => (
+                                <TouchableOpacity
+                                    key={preset.size}
+                                    style={[styles.sizeButton, mannequinSize === preset.size && styles.sizeButtonActive]}
+                                    onPress={() => setMannequinSize(preset.size)}
+                                    activeOpacity={0.8}
+                                >
+                                    <Text style={[styles.sizeButtonText, mannequinSize === preset.size && styles.sizeButtonTextActive]}>
+                                        {preset.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
                         </View>
+
+                        {/* Measurements */}
+                        <View style={styles.measurementsRow}>
+                            <View style={styles.measurementChip}>
+                                <Text style={styles.measurementChipLabel}>Height</Text>
+                                <Text style={styles.measurementChipText}>{currentPreset.heightCm} cm</Text>
+                            </View>
+                            <View style={styles.measurementChip}>
+                                <Text style={styles.measurementChipLabel}>{mannequinGender === 'female' ? 'Bust' : 'Chest'}</Text>
+                                <Text style={styles.measurementChipText}>{currentPreset.bustCm} cm</Text>
+                            </View>
+                            <View style={styles.measurementChip}>
+                                <Text style={styles.measurementChipLabel}>Waist</Text>
+                                <Text style={styles.measurementChipText}>{currentPreset.waistCm} cm</Text>
+                            </View>
+                            <View style={styles.measurementChip}>
+                                <Text style={styles.measurementChipLabel}>Hips</Text>
+                                <Text style={styles.measurementChipText}>{currentPreset.hipsCm} cm</Text>
+                            </View>
+                        </View>
+
+                        {/* Shop Catalog */}
+                        <Text style={styles.shopSectionLabel}>Shop Catalog</Text>
+
+                        {/* Category filter */}
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shopFilterRow}>
+                            {SHOP_CATEGORIES.map((cat) => (
+                                <TouchableOpacity
+                                    key={cat.key}
+                                    style={[styles.shopFilterChip, mannequinShopFilter === cat.key && styles.shopFilterChipActive]}
+                                    onPress={() => setMannequinShopFilter(cat.key)}
+                                    activeOpacity={0.8}
+                                >
+                                    <Text style={[styles.shopFilterChipText, mannequinShopFilter === cat.key && styles.shopFilterChipTextActive]}>
+                                        {cat.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+
+                        {/* Items grid */}
+                        <View style={styles.shopCatalogGrid}>
+                            {getFilteredShopItems(mannequinShopFilter).map((item) => {
+                                const isSelected = mannequinShopItem?.id === item.id;
+                                return (
+                                    <TouchableOpacity
+                                        key={item.id}
+                                        style={[styles.shopItemCard, isSelected && styles.shopItemCardSelected]}
+                                        onPress={() => setMannequinShopItem(isSelected ? null : item)}
+                                        activeOpacity={0.85}
+                                    >
+                                        <Image source={{ uri: item.imageUrl }} style={styles.shopItemImage} />
+                                        <View style={styles.shopItemInfo}>
+                                            <Text style={styles.shopItemBrand}>{item.brand}</Text>
+                                            <Text style={styles.shopItemName} numberOfLines={1}>{item.name}</Text>
+                                            <Text style={styles.shopItemPrice}>${item.price.toFixed(2)}</Text>
+                                        </View>
+                                        {isSelected && (
+                                            <View style={styles.shopItemSelectedBadge}>
+                                                <Ionicons name="checkmark-circle" size={22} color="#0055FF" />
+                                            </View>
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+
+                        {/* Generate button */}
                         <TouchableOpacity
-                            style={styles.upgradeButton}
-                            onPress={() => (navigation as any).navigate(isPremium ? 'CreateAvatar' : 'Paywall')}
+                            style={[styles.mannequinGenerateButton, (!mannequinShopItem || loading) && styles.mannequinGenerateButtonDisabled]}
+                            onPress={handleMannequinTryOn}
+                            disabled={!mannequinShopItem || loading}
                             activeOpacity={0.85}
                         >
-                            <Text style={styles.upgradeButtonText}>
-                                {isPremium ? 'Create Your Digital Avatar' : t('aiTryOn.upgradeToPro')}
+                            <Ionicons name="sparkles" size={20} color="#fff" />
+                            <Text style={styles.mannequinGenerateButtonText}>
+                                {loading ? t('aiTryOn.processing') : mannequinShopItem ? `Try on ${mannequinShopItem.name}` : 'Select a garment first'}
                             </Text>
                         </TouchableOpacity>
+
+                        {/* Save result */}
+                        {resultImage && !loading && (
+                            <TouchableOpacity style={styles.mannequinSaveButton} onPress={handleSaveToWardrobe} disabled={saving}>
+                                <Ionicons name="heart" size={18} color="#fff" />
+                                <Text style={styles.mannequinSaveButtonText}>
+                                    {saving ? t('aiTryOn.saving') : t('aiTryOn.saveToWardrobe')}
+                                </Text>
+                            </TouchableOpacity>
+                        )}
                     </>
                 ) : (
                     /* ── Try Your Self Mode (Wizard) ── */
@@ -223,21 +388,31 @@ const AITryOnScreen = () => {
                             <>
                                 <Text style={styles.stepLabel}>2. Outfit to try on</Text>
                                 <View style={styles.tabContainer}>
-                                    {(['upload', 'wardrobe'] as const).map((tab) => (
+                                    {(['upload', 'wardrobe', 'shop'] as const).map((tab) => (
                                         <TouchableOpacity
                                             key={tab}
                                             style={[styles.tab, activeTab === tab && styles.tabActive]}
-                                            onPress={() => { setActiveTab(tab); if (tab === 'upload') setSelectedWardrobeItem(null); }}
+                                            onPress={() => {
+                                                setActiveTab(tab);
+                                                if (tab !== 'wardrobe') setSelectedWardrobeItem(null);
+                                                if (tab !== 'shop') setSelectedShopItemForSelf(null);
+                                            }}
                                         >
-                                            <Ionicons name={tab === 'upload' ? 'cloud-upload-outline' : 'shirt-outline'} size={16} color={activeTab === tab ? '#fff' : AppColors.textMuted} />
-                                            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{t(tab === 'upload' ? 'aiTryOn.upload' : 'aiTryOn.myWardrobe')}</Text>
+                                            <Ionicons
+                                                name={tab === 'upload' ? 'cloud-upload-outline' : tab === 'wardrobe' ? 'shirt-outline' : 'bag-handle-outline'}
+                                                size={15}
+                                                color={activeTab === tab ? '#fff' : AppColors.textMuted}
+                                            />
+                                            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+                                                {tab === 'upload' ? t('aiTryOn.upload') : tab === 'wardrobe' ? t('aiTryOn.myWardrobe') : 'Shop'}
+                                            </Text>
                                         </TouchableOpacity>
                                     ))}
                                 </View>
 
-                                {activeTab === 'upload' ? (
+                                {activeTab === 'upload' && (
                                     <View style={styles.garmentCard}>
-                                        {clothImage && !selectedWardrobeItem ? (
+                                        {clothImage && !selectedWardrobeItem && !selectedShopItemForSelf ? (
                                             <TouchableOpacity onPress={showGarmentPhotoOptions} style={{ flex: 1 }} activeOpacity={0.85}>
                                                 <Image source={{ uri: clothImage }} style={styles.garmentImage} />
                                             </TouchableOpacity>
@@ -267,7 +442,9 @@ const AITryOnScreen = () => {
                                             </View>
                                         )}
                                     </View>
-                                ) : (
+                                )}
+
+                                {activeTab === 'wardrobe' && (
                                     <View style={styles.wardrobeSection}>
                                         {loadingWardrobe ? (
                                             <View style={styles.wardrobeLoading}>
@@ -316,14 +493,71 @@ const AITryOnScreen = () => {
                                     </View>
                                 )}
 
+                                {activeTab === 'shop' && (
+                                    <View>
+                                        {/* Category filter */}
+                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.shopFilterRow, { marginBottom: 14 }]}>
+                                            {SHOP_CATEGORIES.map((cat) => (
+                                                <TouchableOpacity
+                                                    key={cat.key}
+                                                    style={[styles.shopFilterChip, selfShopFilter === cat.key && styles.shopFilterChipActive]}
+                                                    onPress={() => setSelfShopFilter(cat.key)}
+                                                    activeOpacity={0.8}
+                                                >
+                                                    <Text style={[styles.shopFilterChipText, selfShopFilter === cat.key && styles.shopFilterChipTextActive]}>
+                                                        {cat.label}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </ScrollView>
+                                        <View style={styles.shopCatalogGrid}>
+                                            {getFilteredShopItems(selfShopFilter).map((item) => {
+                                                const isSelected = selectedShopItemForSelf?.id === item.id;
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={item.id}
+                                                        style={[styles.shopItemCard, isSelected && styles.shopItemCardSelected]}
+                                                        onPress={() => {
+                                                            const next = isSelected ? null : item;
+                                                            setSelectedShopItemForSelf(next);
+                                                            setClothImage(next ? next.imageUrl : null);
+                                                        }}
+                                                        activeOpacity={0.85}
+                                                    >
+                                                        <Image source={{ uri: item.imageUrl }} style={styles.shopItemImage} />
+                                                        <View style={styles.shopItemInfo}>
+                                                            <Text style={styles.shopItemBrand}>{item.brand}</Text>
+                                                            <Text style={styles.shopItemName} numberOfLines={1}>{item.name}</Text>
+                                                            <Text style={styles.shopItemPrice}>${item.price.toFixed(2)}</Text>
+                                                        </View>
+                                                        {isSelected && (
+                                                            <View style={styles.shopItemSelectedBadge}>
+                                                                <Ionicons name="checkmark-circle" size={22} color="#0055FF" />
+                                                            </View>
+                                                        )}
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
+                                        </View>
+                                        {selectedShopItemForSelf && (
+                                            <View style={styles.selectedInfo}>
+                                                <Ionicons name="checkmark-circle" size={16} color="#0055FF" />
+                                                <Text style={[styles.selectedInfoText, { color: '#0055FF' }]}>
+                                                    {selectedShopItemForSelf.name} — {selectedShopItemForSelf.brand}
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                )}
+
                                 <View style={styles.wizardNavigation}>
                                     <TouchableOpacity style={styles.secondaryButton} onPress={() => goToStep(1)}>
                                         <Text style={styles.secondaryButtonText}>Back</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
-                                        style={[styles.primaryButtonFlex, (!clothImage && !selectedWardrobeItem) && styles.primaryButtonDisabled]}
+                                        style={[styles.primaryButtonFlex, (!clothImage && !selectedWardrobeItem && !selectedShopItemForSelf) && styles.primaryButtonDisabled]}
                                         onPress={() => goToStep(3)}
-                                        disabled={!clothImage && !selectedWardrobeItem}
+                                        disabled={!clothImage && !selectedWardrobeItem && !selectedShopItemForSelf}
                                     >
                                         <Text style={styles.primaryButtonText}>Continue</Text>
                                     </TouchableOpacity>

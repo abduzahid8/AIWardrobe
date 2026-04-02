@@ -1,6 +1,6 @@
 /**
- * ProfileScreen - "5 Page"
- * Rebuilt to match Alta design with "Looks" and "Trips" tabs
+ * ProfileScreen - User Profile
+ * Minimalist Liquid Glass design with Looks and Trips tabs
  */
 
 import React, { useState, useCallback, useMemo } from 'react';
@@ -21,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import Animated, {
+  FadeInDown,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -29,6 +30,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import useAuthStore from '../store/auth';
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
+import { NavigationMenu } from '../src/components/NavigationMenu';
 
 const { width, height } = Dimensions.get('window');
 const { colors, spacing, radius, typography } = LiquidGlass2026Theme;
@@ -73,7 +75,7 @@ const PressableScale = ({ children, onPress, style }: PressableScaleProps) => {
   );
 };
 
-// Tab Button - Alta style
+// Tab Button
 const TabButton = ({ title, isActive, onPress }: { title: string; isActive: boolean; onPress: () => void }) => (
   <TouchableOpacity
     style={[styles.tabButton, isActive && styles.tabButtonActive]}
@@ -93,6 +95,7 @@ const ProfileScreen = () => {
   const navigation = useNavigation();
   const { user, logout, deleteAccount } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'looks' | 'trips'>('looks');
+  const [showNavMenu, setShowNavMenu] = useState(false);
 
   // User data
   // User data
@@ -155,10 +158,6 @@ const ProfileScreen = () => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             await AsyncStorage.removeItem("userToken");
             logout();
-            (navigation as any).reset({
-              index: 0,
-              routes: [{ name: "Auth" }],
-            });
           }
         }
       ]
@@ -188,10 +187,6 @@ const ProfileScreen = () => {
                       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
                       await deleteAccount();
                       await AsyncStorage.removeItem("userToken");
-                      (navigation as any).reset({
-                        index: 0,
-                        routes: [{ name: "Auth" }],
-                      });
                     } catch (err: any) {
                       Alert.alert("Error", err.message || "Failed to delete account. Please try again.");
                     }
@@ -218,16 +213,13 @@ const ProfileScreen = () => {
 
         {/* Header - Alta layout */}
         <View style={styles.header}>
-          {/* Left: Share icon */}
-          <TouchableOpacity style={styles.headerIcon} onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)} accessibilityLabel="Share profile" accessibilityRole="button">
-            <Ionicons name="share-outline" size={24} color={colors.text.primary} />
-          </TouchableOpacity>
+          {/* Left: Empty spacer for balance */}
+          <View style={styles.headerIcon} />
 
-          {/* Right: Avatar pill + Settings */}
+          {/* Right: Menu + Settings buttons */}
           <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.avatarPill} accessibilityLabel="Your avatar" accessibilityRole="button">
-              <Ionicons name="person-outline" size={14} color={colors.text.primary} />
-              <Text style={styles.avatarPillText}>Your avatar</Text>
+            <TouchableOpacity style={styles.headerIcon} onPress={() => setShowNavMenu(true)} accessibilityLabel="Open navigation menu" accessibilityRole="button">
+              <Ionicons name="menu" size={24} color={colors.text.primary} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerIcon} onPress={handleSettings} accessibilityLabel="Settings" accessibilityRole="button">
               <Ionicons name="settings-outline" size={24} color={colors.text.primary} />
@@ -255,38 +247,6 @@ const ProfileScreen = () => {
             </View>
           </View>
 
-          {/* Friends Card */}
-          <View style={styles.friendsCard}>
-            <Text style={styles.friendsTitle}>Alta is better with friends</Text>
-            <Text style={styles.friendsSubtitle}>
-              Share your style and try on your friends' looks!
-            </Text>
-
-            {/* Overlapping avatars */}
-            <View style={styles.avatarsRow}>
-              <Image
-                source={require('../assets/friends/friend1.png')}
-                style={styles.friendAvatar}
-              />
-              <Image
-                source={require('../assets/friends/friend2.png')}
-                style={[styles.friendAvatar, styles.avatarOverlap]}
-              />
-              <Image
-                source={require('../assets/friends/friend3.png')}
-                style={[styles.friendAvatar, styles.avatarOverlap]}
-              />
-            </View>
-
-            {/* Add friends button */}
-            <PressableScale onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}>
-              <View style={styles.addFriendsButton}>
-                <Ionicons name="add" size={18} color="#FFF" />
-                <Text style={styles.addFriendsText}>Add friends</Text>
-              </View>
-            </PressableScale>
-          </View>
-
           {/* Tabs */}
           <View style={styles.tabsContainer}>
             <TabButton
@@ -312,10 +272,10 @@ const ProfileScreen = () => {
                   resizeMode="contain"
                 />
                 <Text style={styles.emptyTitle}>Style it, save it</Text>
-                <Text style={styles.emptySubtitle}>Your saved looks live here. Customize looks with ALTA or add your own to get started!</Text>
+                <Text style={styles.emptySubtitle}>Your saved looks live here. Create outfits with AI or add your own to get started!</Text>
                 <TouchableOpacity
                   style={styles.actionButton}
-                  onPress={() => (navigation as any).navigate('AI')}
+                  onPress={() => (navigation as any).navigate('AIOutfit')}
                   accessibilityLabel="Create new look"
                   accessibilityRole="button"
                 >
@@ -349,16 +309,46 @@ const ProfileScreen = () => {
               <Ionicons name="airplane-outline" size={64} color={colors.text.tertiary} style={{ marginBottom: 16, opacity: 0.5 }} />
               <Text style={styles.emptyTitle}>No trips planned</Text>
               <Text style={styles.emptySubtitle}>Plan a trip to get packing suggestions</Text>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => (navigation as any).navigate("AI", { screen: "TripPlanner" } as any)}
-                accessibilityLabel="Plan a trip"
-                accessibilityRole="button"
-              >
-                <Text style={styles.actionButtonText}>Plan a trip</Text>
-              </TouchableOpacity>
             </View>
           )}
+
+          {/* Quick Links */}
+          <View style={styles.quickLinksSection}>
+            <TouchableOpacity
+              style={styles.quickLink}
+              onPress={() => (navigation as any).navigate('WardrobeAnalytics')}
+              accessibilityLabel="Wardrobe Analytics"
+              accessibilityRole="button"
+            >
+              <Ionicons name="analytics-outline" size={20} color={colors.text.secondary} />
+              <Text style={styles.quickLinkText}>Wardrobe Analytics</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.text.tertiary} />
+            </TouchableOpacity>
+
+            <View style={styles.quickLinkDivider} />
+
+            <TouchableOpacity
+              style={styles.quickLink}
+              onPress={() => (navigation as any).navigate('PrivacyPolicy')}
+              accessibilityLabel="Privacy Policy"
+              accessibilityRole="button"
+            >
+              <Ionicons name="shield-checkmark-outline" size={20} color={colors.text.secondary} />
+              <Text style={styles.quickLinkText}>Privacy Policy</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.text.tertiary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.quickLink}
+              onPress={() => (navigation as any).navigate('TermsOfService')}
+              accessibilityLabel="Terms of Service"
+              accessibilityRole="button"
+            >
+              <Ionicons name="document-text-outline" size={20} color={colors.text.secondary} />
+              <Text style={styles.quickLinkText}>Terms of Service</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.text.tertiary} />
+            </TouchableOpacity>
+          </View>
 
           {/* Logout Option (Subtle at bottom) */}
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} accessibilityLabel="Log out" accessibilityRole="button">
@@ -374,6 +364,9 @@ const ProfileScreen = () => {
         </ScrollView>
 
       </SafeAreaView>
+
+      {/* Navigation Menu */}
+      <NavigationMenu visible={showNavMenu} onClose={() => setShowNavMenu(false)} />
     </View>
   );
 };
@@ -635,6 +628,33 @@ const styles = StyleSheet.create({
     color: '#FF3B30',
     fontSize: 13,
     fontWeight: '500',
+  },
+
+  // Quick Links
+  quickLinksSection: {
+    marginHorizontal: spacing.screenPadding,
+    marginTop: spacing.xl,
+    backgroundColor: colors.background.secondary,
+    borderRadius: radius.xl,
+    overflow: 'hidden',
+  },
+  quickLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: spacing.lg,
+    gap: spacing.md,
+  },
+  quickLinkText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '500',
+    color: colors.text.primary,
+  },
+  quickLinkDivider: {
+    height: 1,
+    backgroundColor: colors.border.subtle,
+    marginHorizontal: spacing.lg,
   },
 });
 
