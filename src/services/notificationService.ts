@@ -237,7 +237,7 @@ class NotificationService {
             content: {
                 title: randomMessage.title,
                 body: randomMessage.body,
-                data: { type: 'daily_outfit', screen: 'DailySuggestion' },
+                data: { type: 'daily_outfit', screen: 'Main' },
                 categoryIdentifier: 'outfit',
             },
             trigger: {
@@ -262,7 +262,7 @@ class NotificationService {
             content: {
                 title: randomMessage.title,
                 body: randomMessage.body,
-                data: { type: 'evening_wearlog', screen: 'WearLog' },
+                data: { type: 'evening_wearlog', screen: 'MyCloset' },
             },
             trigger: {
                 type: Notifications.SchedulableTriggerInputTypes.DAILY,
@@ -286,7 +286,7 @@ class NotificationService {
             content: {
                 title: randomMessage.title,
                 body: randomMessage.body,
-                data: { type: 'weekly_insights', screen: 'WeeklyInsights' },
+                data: { type: 'weekly_insights', screen: 'WardrobeAnalytics' },
             },
             trigger: {
                 type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
@@ -343,7 +343,7 @@ class NotificationService {
             content: {
                 title: message.title,
                 body: message.body,
-                data: { type: 'weather_alert', condition, screen: 'DailySuggestion' },
+                data: { type: 'weather_alert', condition, screen: 'Main' },
             },
             trigger: null, // Send immediately
         });
@@ -357,7 +357,7 @@ class NotificationService {
             content: {
                 title: "📦 Wardrobe Check",
                 body: "Some items haven't been worn lately. Give them a chance!",
-                data: { type: 'unused_items', screen: 'WeeklyInsights' },
+                data: { type: 'unused_items', screen: 'WardrobeAnalytics' },
             },
             trigger: {
                 type: Notifications.SchedulableTriggerInputTypes.WEEKLY,

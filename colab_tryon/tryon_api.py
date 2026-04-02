@@ -61,6 +61,12 @@ def load_models():
     log.info("Loading IDM-VTON models... (this takes 2-5 minutes)")
     t0 = time.time()
 
+    # MONKEYPATCH: diffusers==0.25.0 tries to import cached_download from huggingface_hub
+    # but it was removed in huggingface_hub v0.23. We must patch it before importing diffusers.
+    import huggingface_hub
+    if not hasattr(huggingface_hub, "cached_download"):
+        huggingface_hub.cached_download = huggingface_hub.hf_hub_download
+
     from src.tryon_pipeline import StableDiffusionXLInpaintPipeline as TryonPipeline
     from src.unet_hacked_garmnet import UNet2DConditionModel as UNet2DConditionModel_ref
     from src.unet_hacked_tryon import UNet2DConditionModel

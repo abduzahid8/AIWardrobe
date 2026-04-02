@@ -16,7 +16,10 @@ export type ClothingCategory = 'top' | 'bottom' | 'shoes' | 'outerwear' | 'acces
 export type Season = 'spring' | 'summer' | 'fall' | 'winter';
 
 /** Occasions for wearing items */
-export type Occasion = 'casual' | 'work' | 'formal' | 'sport' | 'date' | 'travel';
+export type Occasion =
+  | 'casual' | 'work' | 'formal' | 'sport' | 'date' | 'travel'
+  | 'business-meeting' | 'alpine-skiing' | 'workout' | 'beach'
+  | 'wedding' | 'night-out' | 'interview';
 
 /** Core clothing item — stored in Supabase and cached locally */
 export interface ClothingItem {
@@ -32,6 +35,9 @@ export interface ClothingItem {
     colorHex: string;
     pattern: string;              // "solid", "striped", "plaid" etc.
     material: string;             // "cotton", "denim", "leather" etc.
+
+    // Layering support
+    layer?: ClothingLayer;        // base, mid, outer, accessory
 
     // User-provided
     brand?: string;
@@ -56,6 +62,9 @@ export interface ClothingItem {
 // OUTFIT
 // ============================================
 
+/** Clothing layer for outfit assembly */
+export type ClothingLayer = 'base' | 'mid' | 'outer' | 'accessory';
+
 export interface Outfit {
     id: string;
     userId: string;
@@ -63,6 +72,14 @@ export interface Outfit {
     occasion: Occasion | string;
     generatedBy: 'ai' | 'user';
     previewImageUrl?: string;
+
+    // Layering support — items grouped by layer
+    layers?: {
+        base?: string[];
+        mid?: string[];
+        outer?: string[];
+        accessory?: string[];
+    };
 
     // Engagement
     saved: boolean;

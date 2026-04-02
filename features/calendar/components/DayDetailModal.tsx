@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius } from '../../../src/theme';
-import { OCCASIONS, type OutfitLog, getOccasionColor } from '../hooks/useOutfitCalendar';
+import { OCCASIONS, type OutfitLog, getOccasionColor } from '../types';
 
 interface DayDetailModalProps {
     visible: boolean;

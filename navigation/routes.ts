@@ -47,6 +47,9 @@ export const ROUTES = {
     OUTFIT_DETAIL: 'OutfitDetail',
     MY_CLOSET: 'MyCloset',
     STYLE_GOALS: 'StyleGoals',
+    WARDROBE_ANALYTICS: 'WardrobeAnalytics',
+    PRIVACY_POLICY: 'PrivacyPolicy',
+    TERMS_OF_SERVICE: 'TermsOfService',
 } as const;
 
 // Tab names

@@ -5,7 +5,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { OutfitLog } from './useCalendarState';
+import { type OutfitLog, type OutfitItem, type OccasionId, type OutfitRating, createOutfitLog } from '../types';
 
 const STORAGE_KEY = '@outfit_logs';
 
@@ -36,22 +36,16 @@ export function useOutfitLogs() {
     const saveOutfit = useCallback(
         async (
             dateStr: string,
-            selectedItems: Array<{ id: string; type: string; image: string; color?: string }>,
-            occasion: string,
+            selectedItems: OutfitItem[],
+            occasion: OccasionId,
             note?: string,
-            rating?: number
+            rating?: OutfitRating
         ) => {
             if (selectedItems.length === 0) {
                 Alert.alert('No items', 'Please select at least one item');
                 return false;
             }
-            const newLog: OutfitLog = {
-                date: dateStr,
-                items: selectedItems,
-                occasion,
-                note,
-                rating,
-            };
+            const newLog = createOutfitLog(dateStr, [...selectedItems], occasion, note, rating);
             const updated = { ...outfitLogs, [dateStr]: newLog };
             await saveLogs(updated);
             return true;

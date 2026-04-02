@@ -13,8 +13,10 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
-import { fetchItemsFromServer, processPendingActions } from './wardrobeSyncService';
+import { wardrobeApi, wearLogApi, ApiClothingItem } from '../src/lib/api';
+import { fetchItemsFromServer, fetchWearLogsFromServer, processPendingActions } from './wardrobeSyncService';
 import type { PendingAction } from './wardrobeSyncService';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 import type {
     ClothingItem,
@@ -68,14 +70,27 @@ interface WardrobeState {
     setDailySuggestion: (suggestion: DailySuggestion) => void;
     clearDailySuggestion: () => void;
 
-    // Data fetching
+    // Data fetching & cloud sync
     fetchItems: () => Promise<void>;
     syncToServer: () => Promise<void>;
+    rehydrateFromCloud: () => Promise<void>;
+    subscribeToRealtime: () => void;
+    unsubscribeRealtime: () => void;
 
     // Filters / queries
     getItemsByCategory: (category: ClothingCategory) => ClothingItem[];
     getItemsBySeason: (season: Season) => ClothingItem[];
     getRecentWearLogs: (count?: number) => WearLog[];
+
+    // Disliked outfits (used to avoid suggesting the same combos)
+    /** Sorted comma-joined itemId keys of outfits the user has disliked. */
+    dislikedOutfitKeys: string[];
+    /** Record a dislike for an outfit by its item IDs. */
+    dislikeOutfit: (itemIds: string[]) => void;
+    /** Remove a dislike (undo). */
+    undislikeOutfit: (itemIds: string[]) => void;
+    /** Return human-readable summaries for the AI context prompt. */
+    getDislikedSummaries: () => string[];
 }
 
 // PendingAction type is imported from wardrobeSyncService.ts
@@ -84,7 +99,16 @@ interface WardrobeState {
 // HELPERS
 // ============================================
 
-const generateId = () => `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+const generateId = (): string => {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+};
 
 const getTodayDate = () => {
     const now = new Date();
@@ -137,14 +161,27 @@ const useWardrobeStore = create<WardrobeState>()(
             isSyncing: false,
             lastSyncedAt: null,
             pendingActions: [],
+            dislikedOutfitKeys: [],
 
             // ── Item CRUD ──────────────────────────────
 
             addItem: async (itemInput) => {
                 const now = new Date().toISOString();
-                const newItem: ClothingItem = {
+                const tempId = generateId();
+
+                // Normalize category to match DB CHECK constraint values
+                const categoryMap: Record<string, string> = {
+                    top: 'Tops', tops: 'Tops',
+                    bottom: 'Bottoms', bottoms: 'Bottoms',
+                    shoe: 'Shoes', shoes: 'Shoes',
+                    outerwear: 'Outerwear',
+                    accessory: 'Accessories', accessories: 'Accessories',
+                    dress: 'Dresses', dresses: 'Dresses',
+                };
+                const normalizedCategory = categoryMap[(itemInput.category || '').toLowerCase()] ?? 'Other';
+                const optimisticItem: ClothingItem = {
                     ...itemInput,
-                    id: generateId(),
+                    id: tempId,
                     wearCount: 0,
                     lastWornAt: null,
                     isFavorite: false,
@@ -152,52 +189,112 @@ const useWardrobeStore = create<WardrobeState>()(
                     updatedAt: now,
                 };
 
-                set((state) => ({
-                    items: [newItem, ...state.items],
-                    pendingActions: [
-                        ...state.pendingActions,
-                        {
-                            id: generateId(),
-                            type: 'add_item',
-                            payload: newItem as unknown as Record<string, unknown>,
-                            createdAt: now,
-                        },
-                    ],
-                }));
+                // Optimistic add
+                set((state) => ({ items: [optimisticItem, ...state.items] }));
 
-                // Try to sync immediately
+                const { data: sessionData } = await supabase.auth.getSession();
+                const userId = sessionData?.session?.user?.id;
+
+                if (!userId) {
+                    // No session — queue for later sync
+                    set((state) => ({
+                        pendingActions: [
+                            ...state.pendingActions,
+                            {
+                                id: generateId(),
+                                type: 'add_item',
+                                payload: optimisticItem as unknown as Record<string, unknown>,
+                                createdAt: now,
+                            },
+                        ],
+                    }));
+                    return;
+                }
+
                 try {
-                    await get().syncToServer();
-                } catch {
-                    // Will be synced later when online
-                    // Item saved offline, will sync later
+                    // Save directly to Supabase
+                    const { data, error } = await supabase
+                        .from('clothing_items')
+                        .insert({
+                            user_id: userId,
+                            image_url: itemInput.imageUrl,
+                            thumbnail_url: itemInput.thumbnailUrl,
+                            category: normalizedCategory,
+                            sub_category: itemInput.subCategory,
+                            type: itemInput.subCategory,
+                            primary_color: itemInput.primaryColor,
+                            color_hex: itemInput.colorHex,
+                            pattern: itemInput.pattern,
+                            material: itemInput.material,
+                            brand: itemInput.brand,
+                            name: itemInput.name,
+                            seasons: itemInput.seasons ?? [],
+                            occasions: itemInput.occasions ?? [],
+                            wear_count: 0,
+                            is_favorite: false,
+                            detection_confidence: (itemInput as any).detectionConfidence,
+                            created_at: now,
+                            updated_at: now,
+                        })
+                        .select()
+                        .single();
+
+                    if (error) throw error;
+
+                    const serverItem: ClothingItem = {
+                        ...optimisticItem,
+                        id: data.id,
+                        createdAt: data.created_at,
+                        updatedAt: data.updated_at,
+                    };
+                    set((state) => ({
+                        items: state.items.map((i) => i.id === tempId ? serverItem : i),
+                        lastSyncedAt: new Date().toISOString(),
+                    }));
+                } catch (err) {
+                    console.warn('[WardrobeStore] addItem Supabase insert failed, queuing for later sync:', err);
+                    // Offline — queue for later sync
+                    set((state) => ({
+                        pendingActions: [
+                            ...state.pendingActions,
+                            {
+                                id: generateId(),
+                                type: 'add_item',
+                                payload: optimisticItem as unknown as Record<string, unknown>,
+                                createdAt: now,
+                            },
+                        ],
+                    }));
                 }
             },
 
             removeItem: async (id) => {
                 const now = new Date().toISOString();
 
+                // Optimistic removal
                 set((state) => ({
                     items: state.items.filter((item) => item.id !== id),
                     outfits: state.outfits.map((outfit) => ({
                         ...outfit,
                         itemIds: outfit.itemIds.filter((itemId) => itemId !== id),
                     })),
-                    pendingActions: [
-                        ...state.pendingActions,
-                        {
-                            id: generateId(),
-                            type: 'remove_item',
-                            payload: { itemId: id },
-                            createdAt: now,
-                        },
-                    ],
                 }));
 
                 try {
-                    await get().syncToServer();
+                    await wardrobeApi.remove(id);
                 } catch {
-                    // Remove queued offline
+                    // Offline — queue for later sync
+                    set((state) => ({
+                        pendingActions: [
+                            ...state.pendingActions,
+                            {
+                                id: generateId(),
+                                type: 'remove_item',
+                                payload: { itemId: id },
+                                createdAt: now,
+                            },
+                        ],
+                    }));
                 }
             },
 
@@ -212,6 +309,7 @@ const useWardrobeStore = create<WardrobeState>()(
             },
 
             toggleFavorite: (id) => {
+                // Optimistic toggle
                 set((state) => ({
                     items: state.items.map((item) =>
                         item.id === id
@@ -219,23 +317,45 @@ const useWardrobeStore = create<WardrobeState>()(
                             : item
                     ),
                 }));
+                // Persist to backend (fire and forget — local state already updated)
+                wardrobeApi.toggleFavorite(id).catch(() => {
+                    // Revert on failure
+                    set((state) => ({
+                        items: state.items.map((item) =>
+                            item.id === id
+                                ? { ...item, isFavorite: !item.isFavorite }
+                                : item
+                        ),
+                    }));
+                });
             },
 
             // ── Outfit Management ──────────────────────
 
             addOutfit: (outfitInput) => {
-                const newOutfit: Outfit = {
-                    ...outfitInput,
-                    id: generateId(),
-                    saved: false,
-                    wornCount: 0,
-                    lastWornAt: null,
-                    createdAt: new Date().toISOString(),
-                };
+                set((state) => {
+                    // De-duplicate: keep at most 1 item per clothing category
+                    const seenCategories = new Set<string>();
+                    const validItemIds = outfitInput.itemIds.filter((id) => {
+                        const item = state.items.find((i) => i.id === id);
+                        if (!item) return true; // keep IDs not in wardrobe (shop items etc.)
+                        if (seenCategories.has(item.category)) return false;
+                        seenCategories.add(item.category);
+                        return true;
+                    });
 
-                set((state) => ({
-                    outfits: [newOutfit, ...state.outfits],
-                }));
+                    const newOutfit: Outfit = {
+                        ...outfitInput,
+                        itemIds: validItemIds,
+                        id: generateId(),
+                        saved: false,
+                        wornCount: 0,
+                        lastWornAt: null,
+                        createdAt: new Date().toISOString(),
+                    };
+
+                    return { outfits: [newOutfit, ...state.outfits] };
+                });
             },
 
             saveOutfit: (id) => {
@@ -298,7 +418,7 @@ const useWardrobeStore = create<WardrobeState>()(
                         )
                         : state.outfits;
 
-                    const newLogs = [newLog, ...state.wearLogs].slice(0, 500); // Keep last 500
+                    const newLogs = [newLog, ...state.wearLogs].slice(0, 1000); // Keep last 1000
                     const newStreak = calculateStreak(newLogs);
 
                     return {
@@ -354,20 +474,24 @@ const useWardrobeStore = create<WardrobeState>()(
                 set({ dailySuggestion: null });
             },
 
-            // ── Data Fetching ──────────────────────────
+            // ── Data Fetching & Cloud Sync ─────────────
 
             fetchItems: async () => {
                 try {
                     set({ isLoading: true });
-                    const items = await fetchItemsFromServer();
-                    if (items) {
-                        set({ items, isLoading: false, lastSyncedAt: new Date().toISOString() });
-                    } else {
+                    const apiItems = await wardrobeApi.list();
+                    const items: ClothingItem[] = apiItems.map(mapApiItem);
+                    set({ items, isLoading: false, lastSyncedAt: new Date().toISOString() });
+                } catch {
+                    // Fallback to legacy Supabase sync if backend is unreachable
+                    try {
+                        const items = await fetchItemsFromServer();
+                        if (items) set({ items, isLoading: false, lastSyncedAt: new Date().toISOString() });
+                        else set({ isLoading: false });
+                    } catch (err) {
+                        console.error('[WardrobeStore] Fetch failed:', err);
                         set({ isLoading: false });
                     }
-                } catch (err) {
-                    console.error('[WardrobeStore] Fetch failed:', err);
-                    set({ isLoading: false });
                 }
             },
 
@@ -397,6 +521,136 @@ const useWardrobeStore = create<WardrobeState>()(
                 }
             },
 
+            /**
+             * Rehydrate from cloud — called after login/session restore.
+             * Merges server items with any un-synced local items to prevent data loss.
+             */
+            rehydrateFromCloud: async () => {
+                set({ isLoading: true });
+                try {
+                    // 1. Flush pending offline actions first
+                    const { pendingActions } = get();
+                    if (pendingActions.length > 0) {
+                        await get().syncToServer();
+                    }
+
+                    // 2. Fetch from new backend API
+                    const [apiItems, apiLogs] = await Promise.all([
+                        wardrobeApi.list(),
+                        wearLogApi.list(),
+                    ]);
+
+                    const items: ClothingItem[] = apiItems.map(mapApiItem);
+                    const wearLogs: WearLog[] = apiLogs.map((l) => ({
+                        id: l.id,
+                        userId: l.userId,
+                        itemIds: l.itemIds,
+                        outfitId: l.outfitId ?? undefined,
+                        date: l.date,
+                        occasion: l.occasion ?? undefined,
+                        weatherTemp: l.weatherTemp ?? undefined,
+                        weatherCondition: l.weatherCondition ?? undefined,
+                        notes: l.notes ?? undefined,
+                        createdAt: l.createdAt,
+                    }));
+
+                    set({
+                        items,
+                        wearLogs,
+                        streak: calculateStreak(wearLogs),
+                        isLoading: false,
+                        lastSyncedAt: new Date().toISOString(),
+                    });
+                } catch {
+                    // Fallback to legacy Supabase direct fetch
+                    try {
+                        const serverItems = await fetchItemsFromServer();
+                        const serverLogs = await fetchWearLogsFromServer();
+                        if (serverItems) {
+                            set({
+                                items: serverItems,
+                                wearLogs: serverLogs || get().wearLogs,
+                                isLoading: false,
+                                lastSyncedAt: new Date().toISOString(),
+                            });
+                        } else {
+                            set({ isLoading: false });
+                        }
+                    } catch (err) {
+                        console.error('[WardrobeStore] Rehydrate failed:', err);
+                        set({ isLoading: false });
+                    }
+                }
+            },
+
+            /**
+             * Subscribe to Supabase realtime changes on clothing_items table.
+             * Keeps local store in sync with server-side changes.
+             */
+            subscribeToRealtime: () => {
+                // Avoid duplicate subscriptions
+                if ((useWardrobeStore as any)._realtimeChannel) return;
+
+                const channel: RealtimeChannel = supabase
+                    .channel('wardrobe-realtime')
+                    .on(
+                        'postgres_changes',
+                        { event: '*', schema: 'public', table: 'clothing_items' },
+                        (payload) => {
+                            const { eventType } = payload;
+                            if (eventType === 'INSERT' || eventType === 'UPDATE') {
+                                const row = payload.new as Record<string, unknown>;
+                                // Only process if it's for current user
+                                const { items } = get();
+                                const mappedItem: ClothingItem = {
+                                    id: row.id as string,
+                                    userId: row.user_id as string,
+                                    imageUrl: row.image_url as string,
+                                    thumbnailUrl: row.thumbnail_url as string | undefined,
+                                    category: (row.category as ClothingCategory) || 'top',
+                                    subCategory: (row.sub_category as string) || '',
+                                    primaryColor: (row.primary_color as string) || '',
+                                    colorHex: (row.color_hex as string) || '#000000',
+                                    pattern: (row.pattern as string) || 'solid',
+                                    material: (row.material as string) || '',
+                                    brand: row.brand as string | undefined,
+                                    name: row.name as string | undefined,
+                                    seasons: (row.seasons as Season[]) || [],
+                                    occasions: (row.occasions as Occasion[]) || [],
+                                    wearCount: (row.wear_count as number) || 0,
+                                    lastWornAt: row.last_worn_at as string | null,
+                                    isFavorite: (row.is_favorite as boolean) || false,
+                                    createdAt: row.created_at as string,
+                                    updatedAt: row.updated_at as string,
+                                    detectionConfidence: row.detection_confidence as number | undefined,
+                                };
+
+                                const exists = items.find(i => i.id === mappedItem.id);
+                                if (exists) {
+                                    set({ items: items.map(i => i.id === mappedItem.id ? mappedItem : i) });
+                                } else {
+                                    set({ items: [mappedItem, ...items] });
+                                }
+                            } else if (eventType === 'DELETE') {
+                                const oldRow = payload.old as Record<string, unknown>;
+                                set({ items: get().items.filter(i => i.id !== oldRow.id) });
+                            }
+                        }
+                    )
+                    .subscribe();
+
+                (useWardrobeStore as any)._realtimeChannel = channel;
+            },
+
+            /** Unsubscribe from realtime — called on logout */
+            unsubscribeRealtime: () => {
+                const channel = (useWardrobeStore as any)._realtimeChannel;
+                if (channel) {
+                    supabase.removeChannel(channel);
+                    (useWardrobeStore as any)._realtimeChannel = null;
+                }
+            },
+
             // ── Filters / Queries ──────────────────────
 
             getItemsByCategory: (category) => {
@@ -410,23 +664,106 @@ const useWardrobeStore = create<WardrobeState>()(
             getRecentWearLogs: (count = 10) => {
                 return get().wearLogs.slice(0, count);
             },
+
+            // ── Disliked Outfits ───────────────────────
+
+            dislikeOutfit: (itemIds) => {
+                const key = [...itemIds].sort().join(',');
+                set((state) => ({
+                    dislikedOutfitKeys: state.dislikedOutfitKeys.includes(key)
+                        ? state.dislikedOutfitKeys
+                        : [...state.dislikedOutfitKeys, key],
+                }));
+            },
+
+            undislikeOutfit: (itemIds) => {
+                const key = [...itemIds].sort().join(',');
+                set((state) => ({
+                    dislikedOutfitKeys: state.dislikedOutfitKeys.filter((k) => k !== key),
+                }));
+            },
+
+            getDislikedSummaries: () => {
+                const { dislikedOutfitKeys, items } = get();
+                return dislikedOutfitKeys.slice(0, 10).map((key) => {
+                    const ids = key.split(',');
+                    const names = ids
+                        .map((id) => {
+                            const item = items.find((i) => i.id === id);
+                            return item ? (item.name || item.subCategory || item.category) : id;
+                        })
+                        .join(' + ');
+                    return `Disliked combo: ${names}`;
+                });
+            },
         }),
         {
             name: 'wardrobe-storage',
+            version: 1,
             storage: createJSONStorage(() => AsyncStorage),
+            migrate: (persistedState: unknown, version: number) => {
+                const state = persistedState as Record<string, unknown>;
+                if (version < 1) {
+                    const isUUID = (id: unknown) =>
+                        typeof id === 'string' &&
+                        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+                    // Drop pending actions whose item payload has a non-UUID id
+                    if (Array.isArray(state.pendingActions)) {
+                        state.pendingActions = (state.pendingActions as PendingAction[]).filter((a) => {
+                            if (a.type === 'add_item') {
+                                return isUUID((a.payload as { id?: unknown }).id);
+                            }
+                            return true;
+                        });
+                    }
+                    // Drop local-only items with non-UUID ids (they can never be synced)
+                    if (Array.isArray(state.items)) {
+                        state.items = (state.items as ClothingItem[]).filter((i) => isUUID(i.id));
+                    }
+                }
+                return state;
+            },
             // Only persist essential data, not loading states
             partialize: (state) => ({
                 items: state.items,
                 outfits: state.outfits,
-                wearLogs: state.wearLogs.slice(0, 200), // Cap persisted logs
+                wearLogs: state.wearLogs.slice(0, 1000), // Cap persisted logs
                 dailySuggestion: state.dailySuggestion,
                 streak: state.streak,
                 lastWearDate: state.lastWearDate,
                 lastSyncedAt: state.lastSyncedAt,
                 pendingActions: state.pendingActions,
+                dislikedOutfitKeys: state.dislikedOutfitKeys,
             }),
         }
     )
 );
+
+// ── API → domain mapper ────────────────────────────────────────────────────
+
+function mapApiItem(a: ApiClothingItem): ClothingItem {
+    return {
+        id: a.id,
+        userId: a.userId,
+        imageUrl: a.imageUrl,
+        thumbnailUrl: a.thumbnailUrl ?? undefined,
+        category: a.category as ClothingCategory,
+        subCategory: a.subCategory,
+        primaryColor: a.primaryColor,
+        colorHex: a.colorHex,
+        pattern: a.pattern,
+        material: a.material,
+        brand: a.brand ?? undefined,
+        name: a.name ?? undefined,
+        seasons: a.seasons as Season[],
+        occasions: a.occasions as Occasion[],
+        wearCount: a.wearCount,
+        lastWornAt: a.lastWornAt ?? null,
+        isFavorite: a.isFavorite,
+        detectionConfidence: a.detectionConfidence ?? undefined,
+        createdAt: a.createdAt,
+        updatedAt: a.updatedAt,
+    };
+}
 
 export default useWardrobeStore;

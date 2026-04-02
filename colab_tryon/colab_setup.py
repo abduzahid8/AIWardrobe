@@ -35,7 +35,7 @@ def check_gpu():
         sys.exit(1)
 
     gpu_name = torch.cuda.get_device_name(0)
-    vram_gb = torch.cuda.get_device_properties(0).total_mem / (1024**3)
+    vram_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3)
     print(f"✅ GPU: {gpu_name} ({vram_gb:.1f} GB VRAM)")
 
     if vram_gb < 14:
@@ -47,22 +47,26 @@ def main():
     print("=" * 60)
 
     # ── Step 1: Install core Python packages ─────────────────
+    # Use Colab's pre-installed PyTorch (already has CUDA support)
     run(
-        "pip install -q torch torchvision --index-url https://download.pytorch.org/whl/cu118",
-        "Step 1/6: Installing PyTorch with CUDA 11.8",
+        "pip install -q torch torchvision",
+        "Step 1/7: Ensuring PyTorch is installed",
     )
 
-    # ── Step 2: Install IDM-VTON dependencies ────────────────
+    # ── Step 2: Install critical version-pinned packages first ─
+    # These MUST be specific versions for IDM-VTON compatibility
+    run(
+        "pip install -q diffusers==0.25.0 transformers==4.36.2 accelerate==0.25.0",
+        "Step 2/7: Installing version-pinned diffusers/transformers",
+    )
+
+    # ── Step 3: Install remaining dependencies ───────────────
     packages = [
-        "diffusers==0.25.0",
-        "transformers==4.36.2",
-        "accelerate==0.25.0",
         "safetensors",
         "einops==0.7.0",
         "opencv-python",
         "gradio==4.24.0",
-        "onnxruntime-gpu==1.16.2",
-        "bitsandbytes==0.39.0",
+        "onnxruntime-gpu",
         "scipy==1.11.1",
         "fvcore",
         "cloudpickle",
@@ -79,27 +83,28 @@ def main():
     ]
     run(
         f"pip install -q {' '.join(packages)}",
-        "Step 2/6: Installing IDM-VTON + API dependencies",
+        "Step 3/7: Installing remaining dependencies",
     )
 
-    # ── Step 3: Install detectron2 (for DensePose) ───────────
+    # ── Step 4: Install detectron2 (for DensePose) ───────────
+    # Use archive URL instead of git clone (more reliable on Colab)
     run(
-        "pip install -q 'git+https://github.com/facebookresearch/detectron2.git'",
-        "Step 3/6: Installing detectron2 (DensePose)",
+        "pip install -q 'detectron2 @ https://github.com/facebookresearch/detectron2/archive/refs/heads/main.zip'",
+        "Step 4/7: Installing detectron2 (DensePose)",
     )
 
-    # ── Step 4: Clone IDM-VTON repo ──────────────────────────
+    # ── Step 5: Clone IDM-VTON repo ──────────────────────────
     if not os.path.exists("/content/IDM-VTON"):
         run(
             "git clone https://github.com/yisol/IDM-VTON.git /content/IDM-VTON",
-            "Step 4/6: Cloning IDM-VTON repository",
+            "Step 5/7: Cloning IDM-VTON repository",
         )
     else:
         print("\n✅ IDM-VTON already cloned at /content/IDM-VTON")
 
-    # ── Step 5: Download model checkpoints ───────────────────
+    # ── Step 6: Download model checkpoints ───────────────────
     print(f"\n{'='*60}")
-    print("  Step 5/6: Downloading model checkpoints from HuggingFace")
+    print("  Step 6/7: Downloading model checkpoints from HuggingFace")
     print("  This downloads ~15 GB of models. Be patient...")
     print(f"{'='*60}")
 
@@ -166,12 +171,23 @@ print("✅ All preprocessing checkpoints downloaded")
         f.write(download_script)
     run("python /tmp/download_models.py", "")
 
-    # ── Step 6: Verify everything ────────────────────────────
+    # ── Step 7: Verify everything ────────────────────────────
     print(f"\n{'='*60}")
-    print("  Step 6/6: Verifying installation")
+    print("  Step 7/7: Verifying installation")
     print(f"{'='*60}")
 
     check_gpu()
+
+    # Verify diffusers version is correct
+    try:
+        import diffusers
+        print(f"  diffusers version: {diffusers.__version__}")
+        if diffusers.__version__ != "0.25.0":
+            print(f"  ⚠️  Expected diffusers==0.25.0, got {diffusers.__version__}")
+            print(f"  Running: pip install diffusers==0.25.0 --force-reinstall")
+            run("pip install -q diffusers==0.25.0 --force-reinstall", "")
+    except ImportError:
+        print("  ❌ diffusers not installed!")
 
     # Check key files exist
     checks = [

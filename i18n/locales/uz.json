@@ -122,9 +122,9 @@
         "loginRequired": "AI Kiyib ko'rishdan foydalanish uchun kiring.",
         "try your self": "Try your self",
         "model": "Model",
-        "digitalModelTitle": "Sizning raqamli modelingiz",
+        "digitalModelTitle": "Manekenда kiyib ko'rish",
         "digitalModelPro": "PRO",
-        "digitalModelDescription": "Rasmlar yarating va kiyimlarni shaxsiy avataringizda kiyib ko'ring.",
+        "digitalModelDescription": "Kiyimlarni manekenда kiyib ko'ring va istalgan libos qanday ko'rinishini bilining.",
         "upgradeToPro": "Pro ga o'tish",
         "errors": {
             "missingPhotos": "To'liq bo'yli rasm va kiyib ko'riladigan kiyimni qo'shing.",
