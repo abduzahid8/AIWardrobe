@@ -118,7 +118,7 @@ export const SHOP_CATALOG_ITEMS: ShopCatalogItem[] = [
         currency: 'USD',
         garmentType: 'upper_body',
         description: 'relaxed-fit denim jacket with button front and washed finish',
-        imageUrl: 'https://images.unsplash.com/photo-1544441892-794166f1e3be?w=600&h=800&fit=crop&q=85',
+        imageUrl: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=600&h=800&fit=crop&q=85',
     },
     {
         id: 'zara-002',
@@ -128,7 +128,7 @@ export const SHOP_CATALOG_ITEMS: ShopCatalogItem[] = [
         currency: 'USD',
         garmentType: 'lower_body',
         description: 'high-rise straight-leg jeans in mid-blue wash',
-        imageUrl: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=600&h=800&fit=crop&q=85',
+        imageUrl: 'https://images.unsplash.com/photo-1555689502-c4b22d76c56f?w=600&h=800&fit=crop&q=85',
     },
     {
         id: 'zara-003',

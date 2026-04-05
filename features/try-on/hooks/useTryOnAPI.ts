@@ -17,6 +17,7 @@ export function useTryOnAPI() {
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [resultImage, setResultImage] = useState<string | null>(null);
+    const [isMock, setIsMock] = useState(false);
 
     const handleTryOn = async (humanImage: string | null, clothImage: string | null, garmentType: string = 'upper_body') => {
         if (!humanImage || !clothImage) {
@@ -32,23 +33,75 @@ export function useTryOnAPI() {
         setResultImage(null);
 
         try {
-            const { data, error } = await supabase.functions.invoke('try-on', {
-                body: {
-                    person_image: humanImage,
-                    garment_image: clothImage,
-                    garment_type: garmentType,
-                },
-            });
+            const replicateToken = process.env.EXPO_PUBLIC_REPLICATE_TOKEN;
 
-            if (error) throw error;
+            if (replicateToken) {
+                // Bypass Edge Function and hit Replicate API directly
+                const predictionRes = await fetch("https://api.replicate.com/v1/predictions", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Token ${replicateToken}`,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        version: "0513734a452173b8173e907e3a59d19a36266e55b48528559432bd21c7d7e985",
+                        input: {
+                            human_img: humanImage,
+                            garm_img: clothImage,
+                            garment_des: "clothing",
+                            category: garmentType === 'lower_body' ? 'lower_body' : 'upper_body',
+                            n_samples: 1,
+                            seed: 42
+                        }
+                    })
+                });
 
-            if (data?.success && data?.resultImage) {
-                setResultImage(data.resultImage);
-                if (data.methodUsed === 'mock') {
-                    Alert.alert(t('aiTryOn.demoTitle'), t('aiTryOn.demoMessage'));
+                if (!predictionRes.ok) {
+                    const err = await predictionRes.text();
+                    throw new Error("Replicate API Error: " + err);
                 }
+
+                const prediction = await predictionRes.json();
+                let result = prediction;
+
+                // Poll Replicate
+                while (result.status !== "succeeded" && result.status !== "failed") {
+                    await new Promise(r => setTimeout(r, 2000));
+                    const pollRes = await fetch(result.urls.get, {
+                        headers: { "Authorization": `Token ${replicateToken}` }
+                    });
+                    result = await pollRes.json();
+                }
+
+                if (result.status === "failed") {
+                    throw new Error(`AI Processing Failed: ${result.error || 'Unknown error from Replicate'}`);
+                }
+
+                const outputImage = Array.isArray(result.output) ? result.output[0] : result.output;
+                setResultImage(outputImage);
+                setIsMock(false);
+
             } else {
-                throw new Error(data?.error || 'Try-On failed');
+                // Fallback to missing Edge Function / Mock call
+                const { data, error } = await supabase.functions.invoke('try-on', {
+                    body: {
+                        person_image: humanImage,
+                        garment_image: clothImage,
+                        garment_type: garmentType,
+                    },
+                });
+
+                if (error) throw error;
+
+                if (data?.success && data?.resultImage) {
+                    setResultImage(data.resultImage);
+                    setIsMock(data.methodUsed === 'mock');
+                    if (data.methodUsed === 'mock') {
+                        Alert.alert(t('aiTryOn.demoTitle'), t('aiTryOn.demoMessage'));
+                    }
+                } else {
+                    throw new Error(data?.error || 'Try-On failed');
+                }
             }
         } catch (err: any) {
             Alert.alert(t('aiTryOn.errorTitle'), `${t('aiTryOn.errorMessage')} ${err?.message || ''}`);
@@ -87,6 +140,7 @@ export function useTryOnAPI() {
         loading,
         saving,
         resultImage,
+        isMock,
         handleTryOn,
         handleSaveToWardrobe,
     };
