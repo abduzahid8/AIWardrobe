@@ -168,6 +168,10 @@ const AltaShopScreen = () => {
                 {/* Header */}
                 <View style={styles.header}>
                     <Text style={styles.headerTitle}>Shop</Text>
+                    <TouchableOpacity style={styles.avatarPill}>
+                        <Ionicons name="person-outline" size={14} color={ALTA.text} />
+                        <Text style={styles.avatarPillText}>Your avatar</Text>
+                    </TouchableOpacity>
                 </View>
 
                 <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>

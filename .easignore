@@ -1,0 +1,62 @@
+# EAS Build ignore file — excludes files from the tarball
+# uploaded to EAS, but keeps .env so EXPO_PUBLIC_* vars are
+# embedded in the JS bundle at build time.
+
+# Dependencies (rebuilt on the build server)
+node_modules/
+
+# Expo build artifacts
+.expo/
+dist/
+dist-*/
+web-build/
+expo-env.d.ts
+*.hbc
+
+# Metro
+.metro-health-check*
+
+# Debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+
+# TypeScript incremental
+*.tsbuildinfo
+
+# AI training artifacts (if present)
+alicevision-service/weights/
+alicevision-service/datasets/
+alicevision-service/training/
+
+# Scratch / stale directories
+Github/
+clothing-studio/
+colab_tryon/
+design-agents/
+goal/
+pictures/
+pitch-deck/
+run/
+basic_clothing/
+tmp/
+test/
+tests/
+uniqlo_test.html
+appleconnect_settings.png
+
+# Test coverage
+coverage/
+
+# Supabase local
+supabase/.temp/
+
+# Keep the 3D mannequin asset — outfit try-on needs it.
+# (If you drop the 3D try-on feature, re-add: assets/models/*.glb)
+
+# Git internals
+.git/
+.github/

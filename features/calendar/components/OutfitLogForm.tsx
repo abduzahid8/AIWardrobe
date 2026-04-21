@@ -1,9 +1,8 @@
 /**
- * OutfitLogForm — Slot-based Outfit Logger
- * Clear flow: tap a slot (Top/Bottoms/Shoes) → pick item from grid below
+ * OutfitLogForm — Modal for selecting wardrobe items and logging an outfit.
  */
 
-import React, { useState, useCallback } from 'react';
+import React from 'react';
 import {
     View,
     Text,
@@ -16,53 +15,25 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { OCCASIONS, type WardrobeItem, type OccasionId, type ClothingCategory, matchesCategory } from '../types';
-import type { Product } from '../../../src/services/shoppingService';
-import type { InspoShopItem } from '../../../data/inspoShopItems';
+import { colors, spacing, borderRadius } from '../../../src/theme';
+import { OCCASIONS } from '../hooks/useOutfitCalendar';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const SLOT_WIDTH = (SCREEN_WIDTH - 48 - 24) / 3;
-const GRID_ITEM = (SCREEN_WIDTH - 48 - 16) / 3;
-
-interface Slot {
-    readonly id: ClothingCategory;
-    readonly label: string;
-    readonly icon: string;
-    readonly hint: string;
-}
-
-const SLOTS: readonly Slot[] = [
-    { id: 'top',   label: 'Top',     icon: '👕', hint: 'Shirt, jacket, sweater…' },
-    { id: 'pants', label: 'Bottoms', icon: '👖', hint: 'Pants, jeans, shorts…' },
-    { id: 'shoes', label: 'Shoes',   icon: '👟', hint: 'Sneakers, boots, heels…' },
-] as const;
 
 interface OutfitLogFormProps {
     visible: boolean;
-    wardrobeItems: WardrobeItem[];
-    shopItems?: Product[];
-    inspoShopItems?: InspoShopItem[];
-    selectedItems: WardrobeItem[];
-    selectedOccasion: OccasionId;
+    wardrobeItems: any[];
+    selectedItems: any[];
+    selectedOccasion: string;
     onClose: () => void;
-    onToggleItem: (item: WardrobeItem) => void;
-    onSelectOccasion: (id: OccasionId) => void;
+    onToggleItem: (item: any) => void;
+    onSelectOccasion: (id: string) => void;
     onSave: () => void;
-}
-
-// Combined item type for display
-interface DisplayItem extends WardrobeItem {
-    isShopItem?: boolean;
-    price?: number;
-    brand?: string;
-    localImage?: number;
 }
 
 export const OutfitLogForm: React.FC<OutfitLogFormProps> = ({
     visible,
     wardrobeItems,
-    shopItems = [],
-    inspoShopItems = [],
     selectedItems,
     selectedOccasion,
     onClose,
@@ -70,311 +41,96 @@ export const OutfitLogForm: React.FC<OutfitLogFormProps> = ({
     onSelectOccasion,
     onSave,
 }) => {
-    // Helper: Convert Product to WardrobeItem format
-    const productToWardrobeItem = useCallback((product: Product): DisplayItem => ({
-        id: `shop-${product.id}`,
-        type: product.category,
-        image: product.imageUrl,
-        imageUrl: product.imageUrl,
-        color: product.color,
-        name: product.name,
-        category: product.category,
-        isShopItem: true,
-        price: product.price,
-        brand: product.brand,
-    }), []);
-
-    // Convert inspo shop items (local require images) to DisplayItem format
-    const inspoDisplayItems: DisplayItem[] = inspoShopItems.map(item => ({
-        id: item.id,
-        type: item.category,
-        image: '',
-        imageUrl: '',
-        color: '',
-        name: item.name,
-        category: item.category,
-        isShopItem: true,
-        price: item.price,
-        brand: item.brand,
-        localImage: item.image,
-    }));
-
-    // Convert shop items to wardrobe format
-    const displayShopItems = shopItems.map(productToWardrobeItem);
-    const [activeSlot, setActiveSlot] = useState<ClothingCategory>('top');
-
-    const currentSlot = SLOTS.find(s => s.id === activeSlot)!;
-
-    // Items visible in the grid — filtered by active slot category (wardrobe + shop)
-    const wardrobeGridItems: DisplayItem[] = wardrobeItems.filter(item => {
-        const typeStr = (item.type || item.category || '').toLowerCase();
-        return matchesCategory(typeStr, currentSlot.id);
-    });
-
-    const allDisplayShopItems: DisplayItem[] = [...displayShopItems, ...inspoDisplayItems];
-
-    const shopGridItems: DisplayItem[] = allDisplayShopItems.filter(item =>
-        matchesCategory(item.type || item.category || '', currentSlot.id)
-    );
-
-    // Fallback: if no items match the slot, show all wardrobe items so the user always sees something
-    const wardrobeDisplay: DisplayItem[] = wardrobeGridItems.length > 0
-        ? wardrobeGridItems
-        : wardrobeItems.map(item => ({ ...item, isShopItem: false }));
-
-    const shopDisplay: DisplayItem[] = shopGridItems;
-
-    // Which item is currently assigned to each slot
-    const slotItem = useCallback((slotId: ClothingCategory): WardrobeItem | null => {
-        return selectedItems.find(item => matchesCategory(item.type, slotId)) ?? null;
-    }, [selectedItems]);
-
-    const handleSlotTap = (slotId: ClothingCategory) => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        setActiveSlot(slotId);
-    };
-
-    const handleItemTap = (item: WardrobeItem) => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        const existing = slotItem(activeSlot);
-        if (existing && existing.id !== item.id) {
-            onToggleItem(existing);
-        }
-        onToggleItem(item);
-        // Auto-advance to next unfilled slot
-        const slots = SLOTS;
-        const currentIdx = slots.findIndex(s => s.id === activeSlot);
-        const nextSlot = slots.slice(currentIdx + 1).find(s => !slotItem(s.id));
-        if (nextSlot) {
-            setTimeout(() => setActiveSlot(nextSlot.id), 160);
-        }
-    };
-
-    const filledCount = SLOTS.filter(s => slotItem(s.id)).length;
-
-    // Get image URI with fallback
-    const getImageUri = (item: WardrobeItem): string => {
-        return item.image || item.imageUrl || '';
-    };
-
     return (
         <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
             <View style={styles.overlay}>
-                <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
-
-                <View style={styles.sheet}>
-                    {/* Handle */}
+                <View style={styles.modal}>
                     <View style={styles.handle} />
 
-                    {/* Header */}
                     <View style={styles.header}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.title}>What did you wear?</Text>
-                            <Text style={styles.subtitle}>
-                                Tap a slot below, then pick from your wardrobe
-                            </Text>
-                        </View>
-                        <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-                            <Ionicons name="close" size={18} color="#475569" />
+                        <Text style={styles.title}>Log Outfit</Text>
+                        <TouchableOpacity onPress={onClose}>
+                            <Ionicons name="close" size={24} color={colors.text.primary} />
                         </TouchableOpacity>
                     </View>
 
-                    {/* ── OUTFIT SLOTS ────────────────────────── */}
-                    <View style={styles.slotsRow}>
-                        {SLOTS.map(slot => {
-                            const picked = slotItem(slot.id);
-                            const isActive = activeSlot === slot.id;
-                            return (
-                                <TouchableOpacity
-                                    key={slot.id}
-                                    style={[
-                                        styles.slotCard,
-                                        isActive && styles.slotCardActive,
-                                        picked && !isActive && styles.slotCardFilled,
-                                    ]}
-                                    onPress={() => handleSlotTap(slot.id)}
-                                    activeOpacity={0.8}
-                                >
-                                    {picked ? (
-                                        <Image
-                                            source={{ uri: getImageUri(picked) }}
-                                            style={styles.slotImg}
-                                            resizeMode="cover"
-                                        />
-                                    ) : (
-                                        <View style={styles.slotEmpty}>
-                                            <Text style={styles.slotEmoji}>{slot.icon}</Text>
-                                        </View>
-                                    )}
-                                    <Text style={[styles.slotLabel, isActive && styles.slotLabelActive]}>
-                                        {slot.label}
-                                    </Text>
-                                    {/* Active indicator dot */}
-                                    {isActive && <View style={styles.activeDot} />}
-                                    {/* Filled checkmark */}
-                                    {picked && (
-                                        <View style={styles.filledCheck}>
-                                            <Ionicons name="checkmark" size={10} color="#FFF" />
-                                        </View>
-                                    )}
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </View>
-
-                    {/* Progress indicator */}
-                    <View style={styles.progressRow}>
-                        <Text style={styles.progressText}>
-                            {filledCount === 0
-                                ? `Tap a slot to start — now picking ${currentSlot.label}`
-                                : filledCount === 3
-                                ? '✓ All slots filled — ready to save!'
-                                : `${filledCount}/3 filled — now picking ${currentSlot.label}`}
-                        </Text>
-                    </View>
-
-                    {/* ── WARDROBE GRID ───────────────────────── */}
-                    <View style={styles.gridHeader}>
-                        <Text style={styles.gridTitle}>
-                            {currentSlot.icon}  Choose {currentSlot.label}
-                        </Text>
-                        <Text style={styles.gridHint}>{currentSlot.hint}</Text>
-                    </View>
-
-                    <ScrollView
-                        style={styles.gridScroll}
-                        showsVerticalScrollIndicator={false}
-                        contentContainerStyle={styles.gridContent}
-                    >
-                        {wardrobeDisplay.length === 0 && shopDisplay.length === 0 ? (
-                            <View style={styles.emptyGrid}>
-                                <Text style={styles.emptyEmoji}>{currentSlot.icon}</Text>
-                                <Text style={styles.emptyTitle}>No items yet</Text>
-                                <Text style={styles.emptyHint}>Add clothes to your wardrobe to get started</Text>
-                            </View>
-                        ) : (
-                            <>
-                                {/* ── MY WARDROBE SECTION ── */}
-                                {wardrobeDisplay.length > 0 && (
-                                    <>
-                                        <View style={styles.sectionHeader}>
-                                            <Ionicons name="shirt-outline" size={14} color="#6366F1" />
-                                            <Text style={styles.sectionTitle}>My Wardrobe</Text>
-                                            <Text style={styles.sectionCount}>{wardrobeDisplay.length}</Text>
-                                        </View>
-                                        <View style={styles.grid}>
-                                            {wardrobeDisplay.map((item, idx) => {
-                                                const isPicked = slotItem(activeSlot)?.id === item.id;
-                                                const imageUri = getImageUri(item);
-                                                return (
-                                                    <TouchableOpacity
-                                                        key={item.id || idx}
-                                                        style={[styles.gridItem, isPicked && styles.gridItemPicked]}
-                                                        onPress={() => handleItemTap(item)}
-                                                        activeOpacity={0.82}
-                                                    >
-                                                        {imageUri ? (
-                                                            <Image source={{ uri: imageUri }} style={styles.gridImg} resizeMode="cover" />
-                                                        ) : (
-                                                            <View style={[styles.gridImg, styles.gridImgPlaceholder]}>
-                                                                <Ionicons name="shirt-outline" size={32} color="#94A3B8" />
-                                                            </View>
-                                                        )}
-                                                        {isPicked && <View style={styles.pickedOverlay} />}
-                                                        {isPicked && (
-                                                            <View style={styles.pickedCheck}>
-                                                                <Ionicons name="checkmark" size={16} color="#FFF" />
-                                                            </View>
-                                                        )}
-                                                    </TouchableOpacity>
-                                                );
-                                            })}
-                                        </View>
-                                    </>
-                                )}
-
-                                {/* ── FROM SHOP SECTION ── */}
-                                {shopGridItems.length > 0 && (
-                                    <>
-                                        <View style={[styles.sectionHeader, styles.sectionHeaderShop]}>
-                                            <Ionicons name="bag-outline" size={14} color="#F59E0B" />
-                                            <Text style={[styles.sectionTitle, styles.sectionTitleShop]}>From Shop</Text>
-                                            <Text style={[styles.sectionCount, styles.sectionCountShop]}>{shopGridItems.length}</Text>
-                                        </View>
-                                        <View style={styles.grid}>
-                                            {shopGridItems.map((item, idx) => {
-                                                const isPicked = slotItem(activeSlot)?.id === item.id;
-                                                const imageUri = getImageUri(item);
-                                                return (
-                                                    <TouchableOpacity
-                                                        key={item.id || idx}
-                                                        style={[
-                                                            styles.gridItem,
-                                                            styles.gridItemShop,
-                                                            isPicked && styles.gridItemPicked,
-                                                        ]}
-                                                        onPress={() => handleItemTap(item)}
-                                                        activeOpacity={0.82}
-                                                    >
-                                                        {item.localImage != null ? (
-                                                            <Image source={item.localImage} style={styles.gridImg} resizeMode="cover" />
-                                                        ) : imageUri ? (
-                                                            <Image source={{ uri: imageUri }} style={styles.gridImg} resizeMode="cover" />
-                                                        ) : (
-                                                            <View style={[styles.gridImg, styles.gridImgPlaceholder]}>
-                                                                <Ionicons name="bag-outline" size={32} color="#F59E0B" />
-                                                            </View>
-                                                        )}
-                                                        <View style={styles.shopBadge}>
-                                                            <Ionicons name="bag" size={10} color="#FFF" />
-                                                        </View>
-                                                        {item.price != null && (
-                                                            <View style={styles.priceBadge}>
-                                                                <Text style={styles.priceText}>${item.price}</Text>
-                                                            </View>
-                                                        )}
-                                                        {isPicked && <View style={styles.pickedOverlay} />}
-                                                        {isPicked && (
-                                                            <View style={styles.pickedCheck}>
-                                                                <Ionicons name="checkmark" size={16} color="#FFF" />
-                                                            </View>
-                                                        )}
-                                                    </TouchableOpacity>
-                                                );
-                                            })}
-                                        </View>
-                                    </>
-                                )}
-                            </>
-                        )}
+                    {/* Occasion Selection */}
+                    <Text style={styles.label}>Occasion</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.occasionScroll}>
+                        {OCCASIONS.map(occ => (
+                            <TouchableOpacity
+                                key={occ.id}
+                                style={[
+                                    styles.occasionChip,
+                                    selectedOccasion === occ.id && { backgroundColor: occ.color },
+                                ]}
+                                onPress={() => {
+                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                    onSelectOccasion(occ.id);
+                                }}
+                            >
+                                <Text style={styles.occasionEmoji}>{occ.icon}</Text>
+                                <Text style={[
+                                    styles.occasionLabel,
+                                    selectedOccasion === occ.id && { color: '#FFF' },
+                                ]}>
+                                    {occ.label}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
                     </ScrollView>
 
-                    {/* ── OCCASION + SAVE ─────────────────────── */}
-                    <View style={styles.bottomSection}>
-                        {/* Save */}
-                        <TouchableOpacity
-                            style={[styles.saveBtn, filledCount === 0 && styles.saveBtnDisabled]}
-                            onPress={() => {
-                                if (filledCount > 0) {
-                                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                                    onSave();
-                                }
-                            }}
-                            disabled={filledCount === 0}
-                            activeOpacity={0.85}
-                        >
-                            <Ionicons
-                                name={filledCount > 0 ? 'checkmark-circle' : 'shirt-outline'}
-                                size={22}
-                                color={filledCount > 0 ? '#FFF' : '#94A3B8'}
-                            />
-                            <Text style={[styles.saveBtnText, filledCount === 0 && styles.saveBtnTextOff]}>
-                                {filledCount === 0
-                                    ? 'Fill at least one slot'
-                                    : `Save Outfit  ·  ${filledCount} item${filledCount > 1 ? 's' : ''}`}
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
+                    {/* Selected Items Preview */}
+                    {selectedItems.length > 0 && (
+                        <View style={styles.selectedRow}>
+                            {selectedItems.map((item, idx) => (
+                                <View key={idx} style={styles.selectedItem}>
+                                    <Image source={{ uri: item.image || item.imageUrl }} style={styles.selectedImage} />
+                                    <TouchableOpacity style={styles.removeBtn} onPress={() => onToggleItem(item)}>
+                                        <Ionicons name="close-circle" size={18} color="#EF4444" />
+                                    </TouchableOpacity>
+                                </View>
+                            ))}
+                        </View>
+                    )}
+
+                    {/* Wardrobe Grid */}
+                    <Text style={styles.label}>Select Items ({selectedItems.length}/6)</Text>
+                    <ScrollView style={styles.wardrobeScroll}>
+                        <View style={styles.wardrobeGrid}>
+                            {wardrobeItems.map((item, idx) => {
+                                const isSelected = selectedItems.find(i => i.id === item.id);
+                                return (
+                                    <TouchableOpacity
+                                        key={item.id || idx}
+                                        style={[styles.wardrobeItem, isSelected && styles.wardrobeItemSelected]}
+                                        onPress={() => onToggleItem(item)}
+                                    >
+                                        <Image
+                                            source={{ uri: item.image || item.imageUrl }}
+                                            style={styles.wardrobeImage}
+                                        />
+                                        {isSelected && (
+                                            <View style={styles.check}>
+                                                <Ionicons name="checkmark" size={16} color="#FFF" />
+                                            </View>
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    </ScrollView>
+
+                    {/* Save */}
+                    <TouchableOpacity
+                        style={[styles.saveBtn, selectedItems.length === 0 && styles.saveBtnDisabled]}
+                        onPress={onSave}
+                        disabled={selectedItems.length === 0}
+                    >
+                        <Text style={styles.saveBtnText}>
+                            Save Outfit ({selectedItems.length} items)
+                        </Text>
+                    </TouchableOpacity>
                 </View>
             </View>
         </Modal>
@@ -382,320 +138,83 @@ export const OutfitLogForm: React.FC<OutfitLogFormProps> = ({
 };
 
 const styles = StyleSheet.create({
-    overlay: { flex: 1, justifyContent: 'flex-end' },
-    backdrop: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(15,23,42,0.6)',
+    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    modal: {
+        backgroundColor: colors.background,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        padding: spacing.l,
+        maxHeight: '85%',
     },
-    sheet: {
-        backgroundColor: '#F2F4FA',
-        borderTopLeftRadius: 38,
-        borderTopRightRadius: 38,
-        paddingTop: 14,
-        paddingBottom: 32,
-        maxHeight: '94%',
-        shadowColor: '#0F172A',
-        shadowOffset: { width: 0, height: -10 },
-        shadowOpacity: 0.2,
-        shadowRadius: 36,
-        elevation: 24,
-    },
-
-    // Handle
     handle: {
-        width: 44, height: 5,
-        borderRadius: 3,
-        backgroundColor: '#CBD5E1',
+        width: 40, height: 4,
+        backgroundColor: colors.border,
+        borderRadius: 2,
         alignSelf: 'center',
-        marginBottom: 20,
+        marginBottom: spacing.m,
     },
-
-    // Header
     header: {
         flexDirection: 'row',
-        alignItems: 'flex-start',
-        paddingHorizontal: 24,
-        marginBottom: 22,
-        gap: 12,
-    },
-    title: {
-        fontSize: 24,
-        fontWeight: '800',
-        color: '#0F172A',
-        letterSpacing: -0.4,
-    },
-    subtitle: {
-        fontSize: 13,
-        color: '#94A3B8',
-        fontWeight: '500',
-        marginTop: 3,
-        lineHeight: 18,
-    },
-    closeBtn: {
-        width: 36, height: 36, borderRadius: 18,
-        backgroundColor: 'rgba(255,255,255,0.9)',
-        borderWidth: 1.5, borderColor: '#E2E8F0',
-        justifyContent: 'center', alignItems: 'center',
-        shadowColor: '#7C8DB5',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1, shadowRadius: 6,
-        elevation: 2,
-    },
-
-    // Outfit slots
-    slotsRow: {
-        flexDirection: 'row',
-        paddingHorizontal: 24,
-        gap: 8,
-        marginBottom: 12,
-    },
-    slotCard: {
-        width: SLOT_WIDTH,
-        backgroundColor: 'rgba(255,255,255,0.8)',
-        borderRadius: 22,
-        alignItems: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: 6,
-        borderWidth: 2,
-        borderColor: 'rgba(255,255,255,0.9)',
-        shadowColor: '#7C8DB5',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.1, shadowRadius: 10,
-        elevation: 2,
-        position: 'relative',
-    },
-    slotCardActive: {
-        borderColor: '#6366F1',
-        backgroundColor: 'rgba(99,102,241,0.07)',
-        shadowColor: '#6366F1',
-        shadowOpacity: 0.18,
-    },
-    slotCardFilled: {
-        borderColor: '#10B981',
-        backgroundColor: 'rgba(16,185,129,0.05)',
-    },
-    slotEmpty: {
-        width: SLOT_WIDTH - 20,
-        height: SLOT_WIDTH - 20,
-        borderRadius: 16,
-        backgroundColor: '#EEF0F8',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    slotEmoji: { fontSize: 28 },
-    slotImg: {
-        width: SLOT_WIDTH - 20,
-        height: SLOT_WIDTH - 20,
-        borderRadius: 16,
-        backgroundColor: '#EEF0F8',
-        marginBottom: 8,
-    },
-    slotLabel: {
-        fontSize: 11,
-        fontWeight: '700',
-        color: '#64748B',
-        letterSpacing: 0.3,
-    },
-    slotLabelActive: { color: '#6366F1' },
-    activeDot: {
-        position: 'absolute',
-        bottom: 6,
-        width: 6, height: 6,
-        borderRadius: 3,
-        backgroundColor: '#6366F1',
-    },
-    filledCheck: {
-        position: 'absolute',
-        top: 6, right: 6,
-        width: 20, height: 20,
-        borderRadius: 10,
-        backgroundColor: '#10B981',
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 2,
-        borderColor: '#F2F4FA',
-    },
-
-    // Progress
-    progressRow: {
-        paddingHorizontal: 24,
-        marginBottom: 16,
-    },
-    progressText: {
-        fontSize: 12,
-        color: '#6366F1',
-        fontWeight: '600',
-    },
-
-    // Grid header
-    gridHeader: {
-        paddingHorizontal: 24,
-        marginBottom: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
         justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: spacing.m,
     },
-    gridTitle: {
-        fontSize: 15,
-        fontWeight: '800',
-        color: '#0F172A',
+    title: { fontSize: 20, fontWeight: '700', color: colors.text.primary },
+    label: {
+        fontSize: 14, fontWeight: '600',
+        color: colors.text.secondary,
+        marginBottom: spacing.s,
+        marginTop: spacing.m,
     },
-    gridHint: {
-        fontSize: 12,
-        color: '#94A3B8',
-        fontWeight: '500',
-    },
-
-    // Section headers
-    sectionHeader: {
+    occasionScroll: { marginBottom: spacing.m },
+    occasionChip: {
         flexDirection: 'row',
         alignItems: 'center',
+        backgroundColor: colors.surfaceHighlight,
+        paddingHorizontal: spacing.m,
+        paddingVertical: spacing.s,
+        borderRadius: borderRadius.full,
+        marginRight: spacing.s,
         gap: 6,
-        marginBottom: 10,
-        marginTop: 4,
     },
-    sectionHeaderShop: {
-        marginTop: 18,
+    occasionEmoji: { fontSize: 16 },
+    occasionLabel: { fontSize: 14, fontWeight: '600', color: colors.text.primary },
+    selectedRow: {
+        flexDirection: 'row', flexWrap: 'wrap', gap: spacing.s, marginBottom: spacing.m,
     },
-    sectionTitle: {
-        fontSize: 13,
-        fontWeight: '700',
-        color: '#6366F1',
-        flex: 1,
+    selectedItem: { position: 'relative' },
+    selectedImage: {
+        width: 56, height: 56, borderRadius: 12, backgroundColor: colors.surfaceHighlight,
     },
-    sectionTitleShop: {
-        color: '#F59E0B',
-    },
-    sectionCount: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#6366F1',
-        backgroundColor: 'rgba(99,102,241,0.1)',
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 10,
-    },
-    sectionCountShop: {
-        color: '#F59E0B',
-        backgroundColor: 'rgba(245,158,11,0.1)',
-    },
-
-    // Items grid
-    gridScroll: { maxHeight: 300 },
-    gridContent: { paddingHorizontal: 24, paddingVertical: 8 },
-    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    gridItem: {
-        width: GRID_ITEM,
-        height: GRID_ITEM,
-        borderRadius: 18,
+    removeBtn: { position: 'absolute', top: -6, right: -6 },
+    wardrobeScroll: { maxHeight: 240 },
+    wardrobeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.s },
+    wardrobeItem: {
+        width: (SCREEN_WIDTH - spacing.l * 2 - spacing.s * 3) / 4,
+        aspectRatio: 1,
+        backgroundColor: colors.surfaceHighlight,
+        borderRadius: 12,
         overflow: 'hidden',
-        backgroundColor: '#E4E8F2',
-        borderWidth: 2.5,
+        borderWidth: 2,
         borderColor: 'transparent',
     },
-    gridItemPicked: {
-        borderColor: '#6366F1',
+    wardrobeItemSelected: { borderColor: colors.text.accent },
+    wardrobeImage: { width: '100%', height: '100%' },
+    check: {
+        position: 'absolute', top: 4, right: 4,
+        width: 22, height: 22, borderRadius: 11,
+        backgroundColor: colors.text.accent,
+        justifyContent: 'center', alignItems: 'center',
     },
-    gridItemShop: {
-        borderColor: '#F59E0B',
-        borderWidth: 2,
-    },
-    shopBadge: {
-        position: 'absolute',
-        top: 6,
-        left: 6,
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        backgroundColor: '#F59E0B',
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 2,
-        borderColor: '#FFF',
-    },
-    priceBadge: {
-        position: 'absolute',
-        bottom: 6,
-        left: 4,
-        right: 4,
-        backgroundColor: 'rgba(0,0,0,0.55)',
-        borderRadius: 8,
-        paddingVertical: 2,
-        alignItems: 'center',
-    },
-    priceText: {
-        fontSize: 11,
-        fontWeight: '700',
-        color: '#FFF',
-    },
-    gridImg: { width: '100%', height: '100%' },
-    gridImgPlaceholder: {
-        backgroundColor: '#E2E8F0',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    pickedOverlay: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(99,102,241,0.15)',
-    },
-    pickedCheck: {
-        position: 'absolute',
-        top: 6, right: 6,
-        width: 28, height: 28,
-        borderRadius: 14,
-        backgroundColor: '#6366F1',
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 2.5,
-        borderColor: '#FFF',
-    },
-    emptyGrid: {
-        alignItems: 'center',
-        paddingVertical: 32,
-    },
-    emptyEmoji: { fontSize: 40, marginBottom: 10 },
-    emptyTitle: { fontSize: 15, fontWeight: '700', color: '#475569', marginBottom: 4 },
-    emptyHint: { fontSize: 12, color: '#94A3B8' },
-
-    // Bottom section
-    bottomSection: {
-        paddingTop: 14,
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(226,232,240,0.8)',
-        marginTop: 6,
-    },
-
-    // Save button
     saveBtn: {
-        flexDirection: 'row',
+        backgroundColor: colors.button.primary,
+        paddingVertical: spacing.m,
+        borderRadius: borderRadius.m,
         alignItems: 'center',
-        justifyContent: 'center',
-        gap: 10,
-        marginHorizontal: 24,
-        backgroundColor: '#0F172A',
-        paddingVertical: 18,
-        borderRadius: 30,
-        shadowColor: '#0F172A',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 18,
-        elevation: 8,
+        marginTop: spacing.m,
     },
-    saveBtnDisabled: {
-        backgroundColor: 'rgba(255,255,255,0.75)',
-        borderWidth: 1.5,
-        borderColor: '#E2E8F0',
-        shadowOpacity: 0,
-        elevation: 0,
-    },
-    saveBtnText: {
-        color: '#FFF',
-        fontSize: 16,
-        fontWeight: '800',
-        letterSpacing: 0.1,
-    },
-    saveBtnTextOff: { color: '#94A3B8' },
+    saveBtnDisabled: { backgroundColor: colors.border },
+    saveBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
 });
 
 export default OutfitLogForm;

@@ -15,29 +15,20 @@ const requireEnv = (key: string, fallback?: string): string => {
   return value;
 };
 
-const getDefaultApiUrl = (): string | undefined => {
-  if (__DEV__) {
-    return 'http://localhost:3000';
-  }
-  return undefined;
-};
-
 export const Config = {
   supabase: {
     url: requireEnv('EXPO_PUBLIC_SUPABASE_URL'),
     anonKey: requireEnv('EXPO_PUBLIC_SUPABASE_ANON_KEY'),
   },
   api: {
-    // No server needed - using external AI APIs directly
-    url: process.env.EXPO_PUBLIC_API_URL || '', // Optional: for any legacy endpoints
-    alicevisionUrl: process.env.EXPO_PUBLIC_ALICEVISION_URL || '',
-  },
-  ai: {
-    provider: (process.env.EXPO_PUBLIC_AI_VISION_PROVIDER as 'gemini' | 'nvidia') || 'gemini',
-    geminiApiKey: process.env.EXPO_PUBLIC_GEMINI_API_KEY || '',
-    nvidiaApiKey: process.env.EXPO_PUBLIC_NVIDIA_API_KEY || '',
-    huggingfaceToken: process.env.EXPO_PUBLIC_HF_TOKEN || '',
-    replicateToken: process.env.EXPO_PUBLIC_REPLICATE_TOKEN || '',
+    url: requireEnv(
+      'EXPO_PUBLIC_API_URL',
+      __DEV__ ? 'http://localhost:3000' : undefined
+    ),
+    alicevisionUrl: requireEnv(
+      'EXPO_PUBLIC_ALICEVISION_URL',
+      __DEV__ ? 'http://localhost:5050' : undefined
+    ),
   },
   sentry: {
     dsn: process.env.EXPO_PUBLIC_SENTRY_DSN || '',

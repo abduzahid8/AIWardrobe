@@ -9,97 +9,22 @@ import {
     FlatList,
     Image,
     ActivityIndicator,
-    Alert,
-    TextInput,
-    StatusBar,
-    Platform,
-    Linking,
 } from 'react-native';
-import { useVideoPlayer, VideoView } from 'expo-video';
+import { Video, ResizeMode } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect, useIsFocused } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/types';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import Animated, {
     FadeIn,
     FadeInUp,
     FadeInDown,
-    FadeOut,
-    FadeOutDown,
-    ZoomIn,
-    ZoomOut,
-    useSharedValue,
-    useAnimatedStyle,
-    withRepeat,
-    withSequence,
-    withTiming,
-    Easing
 } from 'react-native-reanimated';
-import { BlurView } from 'expo-blur';
-import * as ImagePicker from 'expo-image-picker';
-import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
-import Config from '../src/config/env';
-import useAuthStore from '../store/auth';
-import { ExternalAIService } from '../src/services/externalAIService';
 
-const GLASS = {
-    bg: 'rgba(255, 255, 255, 0.55)',
-    bgLight: 'rgba(255, 255, 255, 0.35)',
-    border: 'rgba(255, 255, 255, 0.7)',
-    accent: '#007AFF',
-    accentGlow: 'rgba(0, 122, 255, 0.25)',
-    textPrimary: '#1C1C1E',
-    textSecondary: 'rgba(60, 60, 67, 0.6)',
-};
-
-const LiquidGlassSpinner = () => {
-    const rotation = useSharedValue(0);
-    const pulse = useSharedValue(1);
-    const innerPulse = useSharedValue(0.6);
-
-    useEffect(() => {
-        rotation.value = withRepeat(withTiming(360, { duration: 2400, easing: Easing.linear }), -1, false);
-        pulse.value = withRepeat(
-            withSequence(
-                withTiming(1.08, { duration: 1200, easing: Easing.inOut(Easing.sin) }),
-                withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.sin) })
-            ), -1, true
-        );
-        innerPulse.value = withRepeat(
-            withSequence(
-                withTiming(1, { duration: 1800, easing: Easing.inOut(Easing.sin) }),
-                withTiming(0.6, { duration: 1800, easing: Easing.inOut(Easing.sin) })
-            ), -1, true
-        );
-    }, []);
-
-    const outerStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
-    const ringStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${rotation.value}deg` }] }));
-    const glowStyle = useAnimatedStyle(() => ({ opacity: innerPulse.value }));
-
-    return (
-        <Animated.View style={[styles.spinnerContainer, outerStyle]}>
-            <Animated.View style={[styles.spinnerGlow, glowStyle]} />
-            <Animated.View style={[styles.spinnerRing, ringStyle]}>
-                <LinearGradient
-                    colors={['rgba(0,122,255,0.6)', 'rgba(0,122,255,0)', 'rgba(0,122,255,0.3)']}
-                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                    style={styles.spinnerRingGradient}
-                />
-            </Animated.View>
-            <BlurView intensity={40} tint="light" style={styles.spinnerInner}>
-                <Ionicons name="sparkles" size={28} color={GLASS.accent} />
-            </BlurView>
-        </Animated.View>
-    );
-};
-
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 const { colors, spacing, radius, typography } = LiquidGlass2026Theme;
 
 // Updated Category filters to match design
@@ -206,248 +131,12 @@ const ClothingGridItem = ({
 };
 
 const MyClosetScreen = () => {
-    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-    const isFocused = useIsFocused();
+    const navigation = useNavigation();
     const [items, setItems] = useState<ClothingItem[]>([]);
-    
-    const player = useVideoPlayer(require('../assets/videos/closet.mov'), (player) => {
-        player.loop = true;
-        player.muted = true;
-        player.play();
-    });
-
-    useEffect(() => {
-        if (isFocused) {
-            player.play();
-        } else {
-            player.pause();
-        }
-    }, [isFocused, player]);
     const [filteredItems, setFilteredItems] = useState<ClothingItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState('tops'); // Default from screenshot
     const [viewMode, setViewMode] = useState<'clothes' | 'collections'>('clothes');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [isSearching, setIsSearching] = useState(false);
-    const [filterCategory, setFilterCategory] = useState('All');
-
-    // AI Studio State
-    const { user } = useAuthStore();
-    const [isUploadingOverlay, setIsUploadingOverlay] = useState(false);
-    const [uploadStatusMsg, setUploadStatusMsg] = useState('');
-
-    // AI Studio Upload & Auto-Generate Logic (Serverless - External AI)
-    const pickImage = async (useCamera = false) => {
-        try {
-            const options: ImagePicker.ImagePickerOptions = {
-                mediaTypes: ['images'],
-                allowsEditing: true,
-                quality: 0.8,
-                base64: true,
-            };
-
-            let result;
-            if (useCamera) {
-                const current = await ImagePicker.getCameraPermissionsAsync();
-                if (!current.granted) {
-                    if (!current.canAskAgain) {
-                        Alert.alert(
-                            'Camera Access Disabled',
-                            'Enable camera access in Settings to continue.',
-                            [
-                                { text: 'Cancel', style: 'cancel' },
-                                {
-                                    text: 'Open Settings',
-                                    onPress: () => Platform.OS === 'ios' ? Linking.openURL('app-settings:') : Linking.openSettings(),
-                                },
-                            ]
-                        );
-                        return;
-                    }
-                    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-                    if (status !== 'granted') {
-                        Alert.alert('Permission needed', 'Camera permission is required.');
-                        return;
-                    }
-                }
-                result = await ImagePicker.launchCameraAsync(options);
-            } else {
-                result = await ImagePicker.launchImageLibraryAsync(options);
-            }
-
-            if (!result.canceled && result.assets[0]) {
-                const asset = result.assets[0];
-                runMagicPipeline(asset.base64 || null);
-            }
-        } catch (error: any) {
-            const msg: string = error?.message ?? '';
-            if (msg.toLowerCase().includes('simulator') || msg.toLowerCase().includes('not available')) {
-                Alert.alert('Simulator Detected', 'Camera is not available on the simulator. Please use a physical device or pick from your gallery instead.');
-            } else {
-                console.error('Image picker error:', error);
-                Alert.alert('Error', 'Failed to open camera');
-            }
-        }
-    };
-
-    const runMagicPipeline = async (b64: string | null) => {
-        if (!b64) {
-            Alert.alert("Error", "Could not read image data");
-            return;
-        }
-
-        setIsUploadingOverlay(true);
-        setUploadStatusMsg("Analyzing with AI...");
-
-        try {
-            // Call External AI Service directly (serverless)
-            const result = await ExternalAIService.processClothingImage(b64);
-            
-            if (!result.success) {
-                throw new Error("AI processing failed");
-            }
-
-            setUploadStatusMsg("Saving to Your Wardrobe...");
-
-            // Map category
-            let categoryStr = "tops";
-            const cat = (result.classification?.category || '').toLowerCase();
-            if (cat.includes("bottom") || cat.includes("pant") || cat.includes("skirt")) categoryStr = "bottoms";
-            else if (cat.includes("shoe")) categoryStr = "shoes";
-            else if (cat.includes("accessory") || cat.includes("hat") || cat.includes("bag")) categoryStr = "accessories";
-            else if (cat.includes("dress")) categoryStr = "tops";
-            else if (cat.includes("outerwear")) categoryStr = "tops";
-
-            const itemToSave = {
-                user_id: user?.id,
-                type: result.classification?.category || 'clothing',
-                category: categoryStr,
-                sub_category: (result.classification?.category || 'clothing').toLowerCase(),
-                color: ['various'], // Could be enhanced with color detection
-                primary_color: 'various',
-                style: result.classification?.attributes?.style || "Casual",
-                description: result.description || `${result.classification?.category || 'clothing'}`,
-                material: null,
-                image_url: result.imageUrl,
-                created_at: new Date().toISOString(),
-            };
-
-            const { data: savedData, error: saveError } = await supabase.from('clothing_items').insert([itemToSave]).select().single();
-            if (saveError) throw saveError;
-
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            loadItems();
-            setIsUploadingOverlay(false);
-
-            // Navigate to detail screen
-            if (savedData) {
-                const mappedItem = {
-                    _id: savedData.id,
-                    id: savedData.id,
-                    type: savedData.type,
-                    itemType: savedData.type,
-                    color: savedData.color && savedData.color.length > 0 ? savedData.color[0] : 'various',
-                    imageUrl: savedData.image_url,
-                    image: savedData.image_url,
-                    category: savedData.category,
-                    wearCount: savedData.wear_count,
-                    createdAt: savedData.created_at,
-                    isFavorite: false,
-                };
-
-                navigation.navigate('ClothingDetail', {
-                    itemId: mappedItem.id,
-                    fullItem: mappedItem
-                });
-            }
-
-        } catch (error: any) {
-            console.error(error);
-            Alert.alert("Upload Error", error.message);
-        } finally {
-            setIsUploadingOverlay(false);
-        }
-    };
-
-    const openLegacyCamera = async () => {
-        try {
-            const { status } = await ImagePicker.requestCameraPermissionsAsync();
-            if (status !== 'granted') {
-                Alert.alert('Permission needed', 'Camera permission is required.');
-                return;
-            }
-            
-            const result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ['images'],
-                allowsEditing: false,
-                quality: 0.8,
-            });
-
-            if (!result.canceled && result.assets[0]) {
-                navigation.navigate('ClothingDetailEditor', { 
-                    imageUri: result.assets[0].uri 
-                });
-            }
-        } catch (error: any) {
-            const msg: string = error?.message ?? '';
-            if (msg.toLowerCase().includes('simulator') || msg.toLowerCase().includes('not available')) {
-                Alert.alert("Simulator Detected", "Camera is not available on the simulator. Please use a physical device or pick from your gallery instead.");
-            } else {
-                console.error('Legacy camera error:', error);
-                Alert.alert("Error", "Failed to open camera");
-            }
-        }
-    };
-
-    const handleUploadChoice = () => {
-        Alert.alert(
-            "Add to Closet",
-            "Upload a photo to be carefully scanned and magically enhanced by AI, or just use the standard camera mode?",
-            [
-                { text: "AI Studio Photo", onPress: () => pickImage(false) },
-                { text: "AI Studio Camera", onPress: () => pickImage(true) },
-                { text: "Legacy Camera", onPress: openLegacyCamera },
-                { text: "Cancel", style: "cancel" }
-            ]
-        );
-    };
-
-    const confirmDelete = (item: ClothingItem) => {
-        Alert.alert(
-            "Delete Item",
-            "Are you sure you want to delete this clothing piece? This action cannot be undone.",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Delete",
-                    style: "destructive",
-                    onPress: () => deleteItem(item)
-                }
-            ]
-        );
-    };
-
-    const deleteItem = async (item: ClothingItem) => {
-        const idToDelete = item._id || item.id;
-        if (!idToDelete) return;
-
-        try {
-            // Optimistic UI update
-            setItems(prev => prev.filter(i => (i._id || i.id) !== idToDelete));
-
-            const { error } = await supabase
-                .from('clothing_items')
-                .delete()
-                .eq('id', idToDelete);
-
-            if (error) throw error;
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        } catch (error) {
-            console.error('Failed to delete item:', error);
-            Alert.alert("Error", "Failed to delete item. It has been restored to your closet.");
-            loadItems(); // Revert on failure
-        }
-    };
 
     // Load wardrobe items
     const loadItems = useCallback(async () => {
@@ -508,95 +197,55 @@ const MyClosetScreen = () => {
                     result = result.filter(item => item.isFavorite);
                 } else {
                     result = result.filter(item => {
-                        const cat = (item.category || '').toLowerCase();
-                        const type = (item.type || item.itemType || '').toLowerCase();
+                        const category = (item.category || item.type || '').toLowerCase();
                         switch (selectedCategory) {
                             case 'tops':
-                                if (cat === 'tops' || cat === 'top') return true;
-                                return ['top', 'shirt', 'blouse', 'coat', 'dress', 'pullover', 'jacket', 'hoodie', 'sweater', 't-shirt', 'polo', 'cardigan'].some(k => cat.includes(k) || type.includes(k));
+                                return ['top', 'shirt', 'blouse', 'coat', 'dress', 'pullover', 'jacket', 'hoodie', 'sweater', 't-shirt'].some(k => category.includes(k));
                             case 'bottoms':
-                                if (cat === 'bottoms' || cat === 'bottom') return true;
-                                return ['bottom', 'pant', 'skirt', 'jean', 'trouser', 'short', 'legging'].some(k => cat.includes(k) || type.includes(k));
+                                return ['bottom', 'pant', 'skirt', 'jean', 'trouser', 'short', 'legging'].some(k => category.includes(k));
                             case 'shoes':
-                                if (cat === 'shoes' || cat === 'shoe') return true;
-                                return ['shoe', 'sneaker', 'boot', 'sandal', 'heel', 'loafer', 'slipper', 'feet'].some(k => cat.includes(k) || type.includes(k));
+                                return ['shoe', 'sneaker', 'boot', 'sandal', 'heel', 'loafer', 'slipper', 'feet'].some(k => category.includes(k));
                             case 'accessories':
-                                if (cat === 'accessories' || cat === 'accessory') return true;
-                                return ['accessor', 'bag', 'hat', 'scarf', 'belt', 'sunglasses', 'watch', 'jewelry'].some(k => cat.includes(k) || type.includes(k));
+                                return ['accessor', 'bag', 'hat', 'scarf', 'belt', 'sunglasses', 'watch', 'jewelry'].some(k => category.includes(k));
                             default:
-                                return cat.includes(selectedCategory.replace('s', '')) || type.includes(selectedCategory.replace('s', ''));
+                                return category.includes(selectedCategory.replace('s', ''));
                         }
                     });
                 }
             }
         }
 
-        // Text Search
-        if (searchQuery.trim().length > 0) {
-            const query = searchQuery.toLowerCase();
-            result = result.filter(item => {
-                const nameMatch = (item.type || item.itemType || item.category || '').toLowerCase().includes(query);
-                const colorMatch = (item.color || '').toLowerCase().includes(query);
-                const descMatch = (item.description || '').toLowerCase().includes(query);
-                return nameMatch || colorMatch || descMatch;
-            });
-        }
-
         setFilteredItems(result);
-    }, [items, selectedCategory, viewMode, searchQuery]);
+    }, [items, selectedCategory, viewMode]);
 
 
     return (
         <View style={styles.container}>
-            <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-                {/* Header - raised 15px */}
-                <View style={{ marginTop: -6 }}>
-                    <View style={[styles.header, items.length === 0 && { justifyContent: 'center' }]}>
-                    {isSearching ? (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, backgroundColor: '#E5E5EA', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, marginHorizontal: 10 }}>
+            <SafeAreaView style={styles.safeArea} edges={['top']}>
+                {/* Header */}
+                <View style={[styles.header, items.length === 0 && { justifyContent: 'center' }]}>
+                    <View style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]} pointerEvents="none">
+                        <Text style={styles.headerTitle} accessibilityRole="header">My Closet</Text>
+                    </View>
+                    {items.length > 0 && (
+                        <TouchableOpacity style={styles.headerButtonLeft} accessibilityLabel="Search closet" accessibilityRole="button">
                             <Ionicons name="search" size={20} color={colors.text.secondary} />
-                            <TextInput
-                                style={{ flex: 1, marginLeft: 8, fontSize: 15, color: colors.text.primary }}
-                                placeholder="Search closet..."
-                                value={searchQuery}
-                                onChangeText={setSearchQuery}
-                                autoFocus
-                                returnKeyType="search"
-                            />
-                            <TouchableOpacity onPress={() => { setIsSearching(false); setSearchQuery(''); }}>
-                                <Ionicons name="close-circle" size={18} color={colors.text.tertiary} />
-                            </TouchableOpacity>
-                        </View>
-                    ) : (
-                        <>
-                            <View style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]} pointerEvents="none">
-                                <Text style={styles.headerTitle} accessibilityRole="header">My Closet</Text>
-                            </View>
-                            {items.length > 0 ? (
-                                <>
-                                    <TouchableOpacity
-                                        style={styles.headerButtonLeft}
-                                        onPress={() => setIsSearching(true)}
-                                        accessibilityLabel="Search closet"
-                                        accessibilityRole="button"
-                                    >
-                                        <Ionicons name="search" size={20} color={colors.text.secondary} />
-                                        <Text style={styles.headerButtonText}>Search</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={styles.headerButtonRight}
-                                        onPress={handleUploadChoice}
-                                        accessibilityLabel="Upload clothing item"
-                                        accessibilityRole="button"
-                                    >
-                                        <Ionicons name="add" size={22} color={colors.text.secondary} />
-                                        <Text style={styles.headerButtonText}>Upload</Text>
-                                    </TouchableOpacity>
-                                </>
-                            ) : <View style={{ width: 40 }} />}
-                        </>
+                            <Text style={styles.headerButtonText}>Search</Text>
+                        </TouchableOpacity>
                     )}
-                </View>
+
+
+                    {items.length > 0 && (
+                        <TouchableOpacity
+                            style={styles.headerButtonRight}
+                            onPress={() => (navigation as any).navigate('Camera')} // Navigate to Camera/Upload
+                            accessibilityLabel="Upload clothing item"
+                            accessibilityRole="button"
+                        >
+                            <Ionicons name="add" size={22} color={colors.text.secondary} />
+                            <Text style={styles.headerButtonText}>Upload</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
 
                 {/* Segmented Control */}
@@ -650,38 +299,20 @@ const MyClosetScreen = () => {
                 )}
 
                 {/* Content */}
-                {viewMode === 'collections' ? (
-                    /* ── Collections View ── */
-                    <View style={styles.emptyStateContainer}>
-                        <View style={styles.collectionsIconWrap}>
-                            <Ionicons name="albums-outline" size={56} color={colors.text.tertiary} />
-                        </View>
-                        <Text style={styles.emptyTitle}>No collections yet</Text>
-                        <Text style={styles.emptySubtitle}>
-                            Group your outfits into collections — for work, weekends, seasons, or any occasion.
-                        </Text>
-                        <TouchableOpacity
-                            style={styles.emptyButton}
-                            onPress={() => (navigation as any).navigate('AIOutfit')}
-                            accessibilityLabel="Create first collection"
-                            accessibilityRole="button"
-                        >
-                            <Text style={styles.emptyButtonText}>Create First Look</Text>
-                        </TouchableOpacity>
-                    </View>
-                ) : loading ? (
+                {loading ? (
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="small" color={colors.text.primary} />
                     </View>
                 ) : items.length === 0 ? (
                     <View style={styles.emptyStateContainer}>
                         <View style={styles.videoContainer}>
-                            <VideoView
+                            <Video
+                                source={require('../assets/videos/closet.mov')}
                                 style={styles.video}
-                                player={player}
-                                allowsFullscreen={false}
-                                allowsPictureInPicture={false}
-                                contentFit="contain"
+                                resizeMode={ResizeMode.CONTAIN}
+                                shouldPlay={true}
+                                isLooping
+                                isMuted
                             />
                         </View>
                         <Text style={styles.emptyTitle}>Your closet is empty</Text>
@@ -689,7 +320,7 @@ const MyClosetScreen = () => {
 
                         <TouchableOpacity
                             style={styles.emptyButton}
-                            onPress={handleUploadChoice}
+                            onPress={() => (navigation as any).navigate('Camera')}
                             accessibilityLabel="Scan wardrobe"
                             accessibilityRole="button"
                         >
@@ -707,10 +338,9 @@ const MyClosetScreen = () => {
                             <ClothingGridItem
                                 item={item}
                                 onPress={() => {
-                                    Haptics.selectionAsync();
-                                    navigation.navigate('ClothingDetail', {
-                                        itemId: item.id || (item as any)._id,
-                                        fullItem: item
+                                    (navigation as any).navigate('OutfitDetail', {
+                                        image: item.imageUrl || item.image,
+                                        outfit: { id: item._id || item.id, items: [item] }
                                     });
                                 }}
                             />
@@ -720,35 +350,7 @@ const MyClosetScreen = () => {
                 )}
 
             </SafeAreaView>
-
-            {/* Floating Ask Stylist button — Liquid Glass */}
-            <TouchableOpacity
-                style={styles.stylistFAB}
-                onPress={() => (navigation as any).navigate('StylistChat')}
-                activeOpacity={0.88}
-                accessibilityLabel="Ask AI Stylist"
-                accessibilityRole="button"
-            >
-                <View style={styles.stylistFABGlass}>
-                    <Ionicons name="chatbubble-ellipses" size={20} color={colors.text.primary} />
-                    <Text style={styles.stylistFABText}>Ask Stylist</Text>
-                </View>
-            </TouchableOpacity>
-
-            {isUploadingOverlay && (
-                <Animated.View entering={FadeIn.duration(300)} style={StyleSheet.absoluteFill}>
-                    <BlurView intensity={70} tint="light" style={styles.overlayBlur}>
-                        <LiquidGlassSpinner />
-                        <Animated.Text entering={FadeInUp.delay(200)} style={styles.overlayTitle}>
-                            AI Studio
-                        </Animated.Text>
-                        <Animated.Text entering={FadeInUp.delay(300)} style={styles.overlaySubtitle}>
-                            {uploadStatusMsg}
-                        </Animated.Text>
-                    </BlurView>
-                </Animated.View>
-            )}
-        </View >
+        </View>
     );
 };
 
@@ -767,8 +369,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 20,
-        paddingTop: 0,
-        paddingBottom: 4,
+        paddingVertical: 12,
         backgroundColor: '#FFFFFF',
     },
     headerTitle: {
@@ -815,8 +416,8 @@ const styles = StyleSheet.create({
     // Segmented Control
     segmentContainer: {
         alignItems: 'center',
-        paddingTop: 8,
-        paddingBottom: 12,
+        paddingTop: 15,
+        paddingBottom: 20,
         backgroundColor: '#FFFFFF',
     },
     segmentBackground: {
@@ -935,15 +536,6 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-start',
         paddingTop: 60,
     },
-    collectionsIconWrap: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        backgroundColor: '#F5F5F5',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 20,
-    },
     videoContainer: {
         width: 250,
         height: 250,
@@ -976,95 +568,6 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontSize: 16,
         fontWeight: '600',
-    },
-    // Overlay logic
-    overlayBlur: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 40,
-    },
-    overlayTitle: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: GLASS.textPrimary,
-        marginBottom: 8,
-    },
-    overlaySubtitle: {
-        fontSize: 16,
-        color: GLASS.textSecondary,
-        textAlign: 'center',
-        lineHeight: 22,
-    },
-    spinnerContainer: {
-        width: 110,
-        height: 110,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 28,
-    },
-    spinnerGlow: {
-        position: 'absolute',
-        width: 110,
-        height: 110,
-        borderRadius: 55,
-        backgroundColor: GLASS.accentGlow,
-    },
-    spinnerRing: {
-        position: 'absolute',
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        overflow: 'hidden',
-    },
-    spinnerRingGradient: {
-        flex: 1,
-        borderRadius: 50,
-        borderWidth: 2.5,
-        borderColor: 'transparent',
-    },
-    spinnerInner: {
-        width: 72,
-        height: 72,
-        borderRadius: 36,
-        overflow: 'hidden',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 0.5,
-        borderColor: GLASS.border,
-        backgroundColor: GLASS.bg,
-    },
-
-    // Floating Ask Stylist button — Liquid Glass
-    stylistFAB: {
-        position: 'absolute',
-        bottom: 100,
-        left: '50%',
-        transform: [{ translateX: -58 }],
-        borderRadius: 28,
-        overflow: 'hidden',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.12,
-        shadowRadius: 12,
-        elevation: 8,
-    },
-    stylistFABGlass: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 7,
-        backgroundColor: 'rgba(255,255,255,0.72)',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderRadius: 28,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.5)',
-    },
-    stylistFABText: {
-        color: colors.text.primary,
-        fontSize: 14,
-        fontWeight: '700',
-        letterSpacing: 0.2,
     },
 });
 

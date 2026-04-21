@@ -11,8 +11,6 @@ import {
     StyleSheet,
     StatusBar,
     Alert,
-    Platform,
-    Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, CameraType, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
@@ -132,10 +130,9 @@ const CameraScreen = () => {
         try {
             // Always allow both images and videos
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ['images', 'videos'],
+                mediaTypes: ImagePicker.MediaTypeOptions.All,
                 allowsEditing: false,
                 quality: 0.9,
-                exif: false,
             });
 
             if (!result.canceled && result.assets[0]) {
@@ -156,53 +153,14 @@ const CameraScreen = () => {
         transform: [{ scale: recordScale.value }],
     }));
 
-    const handleGrantAccess = async () => {
-        try {
-            await requestCameraPermission();
-        } catch (error) {
-            console.error('Error requesting camera permission:', error);
-        }
-    };
-
-    const openAppSettings = () => {
-        if (Platform.OS === 'ios') {
-            Linking.openURL('app-settings:');
-        } else {
-            Linking.openSettings();
-        }
-    };
-
-    // Loading state while checking permissions
-    if (!cameraPermission) {
-        return (
-            <View style={styles.permissionContainer}>
-                <Ionicons name="camera-outline" size={64} color="#666" />
-                <Text style={styles.permissionText}>Loading camera...</Text>
-            </View>
-        );
-    }
-
     // Permission screen
-    if (!cameraPermission.granted) {
-        const canAsk = cameraPermission.canAskAgain;
+    if (!cameraPermission?.granted) {
         return (
             <View style={styles.permissionContainer}>
                 <Ionicons name="camera-outline" size={64} color="#666" />
-                <Text style={styles.permissionText}>
-                    {canAsk ? 'Camera permission needed' : 'Camera access is disabled'}
-                </Text>
-                {!canAsk && (
-                    <Text style={styles.permissionSubText}>
-                        Enable camera access in Settings to continue.
-                    </Text>
-                )}
-                <TouchableOpacity
-                    style={styles.permissionButton}
-                    onPress={canAsk ? handleGrantAccess : openAppSettings}
-                >
-                    <Text style={styles.permissionButtonText}>
-                        {canAsk ? 'Grant Access' : 'Open Settings'}
-                    </Text>
+                <Text style={styles.permissionText}>Camera permission needed</Text>
+                <TouchableOpacity style={styles.permissionButton} onPress={requestCameraPermission}>
+                    <Text style={styles.permissionButtonText}>Grant Access</Text>
                 </TouchableOpacity>
             </View>
         );
@@ -314,15 +272,6 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 18,
         marginTop: 16,
-        marginBottom: 8,
-        textAlign: 'center',
-        paddingHorizontal: 32,
-    },
-    permissionSubText: {
-        color: 'rgba(255,255,255,0.6)',
-        fontSize: 14,
-        textAlign: 'center',
-        paddingHorizontal: 40,
         marginBottom: 24,
     },
     permissionButton: {

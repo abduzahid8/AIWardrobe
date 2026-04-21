@@ -122,9 +122,9 @@
         "loginRequired": "Войдите, чтобы пользоваться ИИ-примеркой.",
         "try your self": "Попробуйте сами",
         "model": "Модель",
-        "digitalModelTitle": "Примерка на манекене",
+        "digitalModelTitle": "Ваша цифровая модель",
         "digitalModelPro": "PRO",
-        "digitalModelDescription": "Примеряйте одежду на манекене и смотрите, как любой образ выглядит, прежде чем надеть его.",
+        "digitalModelDescription": "Создавайте изображения и примеряйте одежду на своём аватаре.",
         "upgradeToPro": "Перейти на Pro",
         "errors": {
             "missingPhotos": "Добавьте фото в полный рост и одежду для примерки.",

@@ -33,6 +33,14 @@ interface QuickAction {
 
 const ACTIONS: QuickAction[] = [
     {
+        id: 'hub',
+        icon: 'grid',
+        label: 'AI Hub',
+        route: 'AIHub',
+        color: '#FFFFFF',
+        bgColor: '#6366F1',
+    },
+    {
         id: 'scan',
         icon: 'videocam',
         label: 'Scan Wardrobe',
@@ -47,6 +55,14 @@ const ACTIONS: QuickAction[] = [
         route: 'AIChat',
         color: '#FFFFFF',
         bgColor: '#8B5CF6',
+    },
+    {
+        id: 'add',
+        icon: 'add-circle',
+        label: 'Add Item',
+        route: 'AddOutfit',
+        color: '#FFFFFF',
+        bgColor: '#22C55E',
     },
 ];
 

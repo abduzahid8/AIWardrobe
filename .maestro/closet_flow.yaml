@@ -1,0 +1,27 @@
+appId: com.aiwardrobe
+---
+- launchApp
+# Verify we are on the home screen or navigation works
+- assertVisible: "My Closet"
+
+# Test Searching
+- tapOn:
+    id: "Search closet" # Using the accessibilityLabel defined in MyClosetScreen.tsx
+- inputText: "Shirt"
+- assertVisible: "Search closet..." # Placeholder text in TextInput
+- tapOn: "close-circle" # Icon name or identifier
+- assertNotVisible: "Search closet..."
+
+# Test Category Switching
+- tapOn: "Tops filter" # accessibilityLabel
+- tapOn: "Bottoms filter"
+
+# Test Empty State or Item Interaction
+# If items exist, they should be visible. If not, the video container is shown.
+- runScript: |
+    // Logic to handle both empty and filled states if needed
+    // Maestro scripts can help with branching, but keep it simple for now.
+    true
+- tapOn: "Scan Wardrobe"
+- assertVisible: "Add to Closet"
+- tapOn: "Cancel"

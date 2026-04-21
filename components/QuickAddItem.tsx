@@ -20,7 +20,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
-import { useNavigation } from '@react-navigation/native';
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 import useWardrobeStore from '../store/wardrobeStore';
 import type { ClothingCategory, Season, Occasion } from '../src/types/domain';
@@ -71,7 +70,6 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({ onItemAdded, onCancel }) =>
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const addItem = useWardrobeStore((state) => state.addItem);
-    const navigation = useNavigation<any>();
 
     const pickImage = useCallback(async () => {
         try {
@@ -83,19 +81,12 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({ onItemAdded, onCancel }) =>
             });
 
             if (!result.canceled && result.assets[0]) {
-                const uri = result.assets[0].uri;
-                setImageUri(uri);
-                // Navigate to detail editor after picking image
-                navigation.navigate('ClothingDetailEditor', {
-                    imageUri: uri,
-                    detectedType: category,
-                    detectedColor: selectedColor.name.toLowerCase(),
-                });
+                setImageUri(result.assets[0].uri);
             }
         } catch (error) {
             console.error('Image picker error:', error);
         }
-    }, [category, selectedColor, navigation]);
+    }, []);
 
     const takePhoto = useCallback(async () => {
         try {
@@ -112,19 +103,12 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({ onItemAdded, onCancel }) =>
             });
 
             if (!result.canceled && result.assets[0]) {
-                const uri = result.assets[0].uri;
-                setImageUri(uri);
-                // Navigate to detail editor after taking photo
-                navigation.navigate('ClothingDetailEditor', {
-                    imageUri: uri,
-                    detectedType: category,
-                    detectedColor: selectedColor.name.toLowerCase(),
-                });
+                setImageUri(result.assets[0].uri);
             }
         } catch (error) {
             console.error('Camera error:', error);
         }
-    }, [category, selectedColor, navigation]);
+    }, []);
 
     const handleSubmit = useCallback(async () => {
         if (!imageUri) {

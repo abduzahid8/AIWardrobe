@@ -1,34 +1,22 @@
 /**
- * CalendarGrid — 2050 Futuristic Style
- * Glassmorphism, neon accents, day-by-day outfit visualization
+ * CalendarGrid — Pure visual calendar grid with day press callback.
  */
 
 import React from 'react';
-import {
-    View,
-    Text,
-    TouchableOpacity,
-    StyleSheet,
-    Dimensions,
-    Image,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { colors, spacing } from '../../../src/theme';
 import {
     WEEKDAYS,
+    MONTHS,
     getDaysInMonth,
     getFirstDayOfMonth,
     formatDate,
+    getOccasionColor,
     type OutfitLog,
-    matchesCategory,
-} from '../types';
+} from '../hooks/useOutfitCalendar';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const HORIZONTAL_PADDING = 16;
-const DAY_GAP = 10;
-const DAYS_PER_ROW = 7;
-const DAY_CELL_WIDTH = (SCREEN_WIDTH - HORIZONTAL_PADDING * 2 - DAY_GAP * (DAYS_PER_ROW - 1)) / DAYS_PER_ROW;
-const SLOT_HEIGHT = (DAY_CELL_WIDTH - 20) / 3;
+const DAY_SIZE = (SCREEN_WIDTH - spacing.l * 2 - spacing.xs * 12) / 7;
 
 interface CalendarGridProps {
     currentMonth: number;
@@ -36,13 +24,10 @@ interface CalendarGridProps {
     todayStr: string;
     today: Date;
     outfitLogs: Record<string, OutfitLog>;
-    selectedDate: string | null;
-    streak: number;
     onDayPress: (day: number) => void;
     onPrevMonth: () => void;
     onNextMonth: () => void;
-    onClose?: () => void;
-    onShare?: () => void;
+    monthlyStats: { logged: number; total: number };
 }
 
 export const CalendarGrid: React.FC<CalendarGridProps> = ({
@@ -51,27 +36,19 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
     todayStr,
     today,
     outfitLogs,
-    selectedDate,
-    streak,
     onDayPress,
     onPrevMonth,
     onNextMonth,
-    onClose,
-    onShare,
+    monthlyStats,
 }) => {
     const daysInMonth = getDaysInMonth(currentYear, currentMonth);
     const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
-
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const monthYearText = `${monthNames[currentMonth]} ${currentYear}`;
 
     const renderDays = () => {
         const days = [];
 
         for (let i = 0; i < firstDay; i++) {
-            days.push(
-                <View key={`empty-${i}`} style={[styles.dayCell, styles.emptyDay]} />
-            );
+            days.push(<View key={`empty-${i}`} style={styles.dayCell} />);
         }
 
         for (let day = 1; day <= daysInMonth; day++) {
@@ -79,82 +56,25 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
             const log = outfitLogs[dateStr];
             const isToday = dateStr === todayStr;
             const isFuture = new Date(dateStr) > today;
-            const isSelected = selectedDate === dateStr;
-            const hasOutfit = log && log.items.length > 0;
 
             days.push(
-                <Animated.View
-                    key={`day-${dateStr}`}
-                    entering={FadeInUp.delay(day * 20).duration(300)}
-                    style={[
-                        styles.dayCell,
-                        isSelected && styles.selectedDayCell,
-                        hasOutfit && styles.dayCellWithOutfit,
-                    ]}
+                <TouchableOpacity
+                    key={day}
+                    style={[styles.dayCell, isToday && styles.todayCell]}
+                    onPress={() => onDayPress(day)}
+                    activeOpacity={0.7}
                 >
-                    <TouchableOpacity
-                        style={styles.dayButton}
-                        onPress={() => onDayPress(day)}
-                        activeOpacity={0.8}
-                    >
-                        <View style={[
-                            styles.dayNumberContainer,
-                            isToday && styles.todayNumberContainer,
-                            isSelected && styles.selectedNumberContainer,
-                        ]}>
-                            <Text style={[
-                                styles.dayText,
-                                isToday && styles.todayText,
-                                isSelected && styles.selectedText,
-                                isFuture && styles.futureDayText,
-                            ]}>
-                                {day}
-                            </Text>
-                        </View>
-
-                        <View style={styles.slotsContainer}>
-                            {[
-                                { type: 'top', icon: '👕', label: 'Top' },
-                                { type: 'pants', icon: '👖', label: 'Pants' },
-                                { type: 'shoes', icon: '👟', label: 'Shoes' },
-                            ].map(({ type, icon, label }, idx) => {
-                                const item = log?.items.find((i) =>
-                                    matchesCategory(i.type, type as 'top' | 'pants' | 'shoes')
-                                );
-
-                                return (
-                                    <View
-                                        key={`${dateStr}-${type}-${item?.id || idx}`}
-                                        style={[
-                                            styles.slot,
-                                            item && styles.slotFilled,
-                                            isSelected && styles.slotSelected,
-                                        ]}
-                                    >
-                                        {item ? (
-                                            <Image
-                                                source={{ uri: item.image }}
-                                                style={styles.slotImage}
-                                                resizeMode="cover"
-                                            />
-                                        ) : (
-                                            <View style={styles.slotEmpty}>
-                                                <Text style={styles.slotIcon}>{icon}</Text>
-                                                <Text style={styles.slotLabel}>{label}</Text>
-                                            </View>
-                                        )}
-                                    </View>
-                                );
-                            })}
-                        </View>
-
-                        {hasOutfit && (
-                            <View style={styles.outfitIndicator}>
-                                <View style={[styles.indicatorDot, isSelected && styles.indicatorDotSelected]} />
-                            </View>
-                        )}
-                    </TouchableOpacity>
-                </Animated.View>
+                    <Text style={[
+                        styles.dayText,
+                        isToday && styles.todayText,
+                        isFuture && styles.futureDayText,
+                    ]}>
+                        {day}
+                    </Text>
+                    {log && (
+                        <View style={[styles.outfitDot, { backgroundColor: getOccasionColor(log.occasion) }]} />
+                    )}
+                </TouchableOpacity>
             );
         }
 
@@ -162,27 +82,35 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
     };
 
     return (
-        <View style={styles.container}>
-            <View style={styles.header}>
+        <View style={styles.calendarCard}>
+            {/* Month Header */}
+            <View style={styles.monthHeader}>
                 <TouchableOpacity onPress={onPrevMonth} style={styles.navButton}>
-                    <Ionicons name="chevron-back" size={28} color="#64748B" />
+                    <Text style={styles.navText}>‹</Text>
                 </TouchableOpacity>
-
-                <Text style={styles.monthTitle}>{monthYearText}</Text>
-
+                <View style={styles.monthInfo}>
+                    <Text style={styles.monthTitle}>
+                        {MONTHS[currentMonth]} {currentYear}
+                    </Text>
+                    <Text style={styles.monthStats}>
+                        {monthlyStats.logged}/{monthlyStats.total} days logged
+                    </Text>
+                </View>
                 <TouchableOpacity onPress={onNextMonth} style={styles.navButton}>
-                    <Ionicons name="chevron-forward" size={28} color="#64748B" />
+                    <Text style={styles.navText}>›</Text>
                 </TouchableOpacity>
             </View>
 
+            {/* Weekday Headers */}
             <View style={styles.weekdayRow}>
-                {WEEKDAYS.map((w) => (
-                    <View key={`weekday-${w}`} style={styles.weekdayCell}>
-                        <Text style={styles.weekdayText}>{w.charAt(0)}</Text>
+                {WEEKDAYS.map((day, idx) => (
+                    <View key={idx} style={styles.weekdayCell}>
+                        <Text style={styles.weekdayText}>{day}</Text>
                     </View>
                 ))}
             </View>
 
+            {/* Calendar Grid */}
             <View style={styles.calendarGrid}>
                 {renderDays()}
             </View>
@@ -191,165 +119,48 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#FFFFFF',
-        paddingHorizontal: HORIZONTAL_PADDING,
-        paddingTop: 20,
+    calendarCard: {
+        marginHorizontal: spacing.l,
+        backgroundColor: colors.surface,
+        borderRadius: 20,
+        padding: spacing.m,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        elevation: 3,
     },
-    header: {
+    monthHeader: {
         flexDirection: 'row',
-        justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 24,
-        gap: 32,
+        justifyContent: 'space-between',
+        marginBottom: spacing.m,
     },
-    navButton: {
-        width: 48,
-        height: 48,
-        borderRadius: 14,
-        backgroundColor: '#F1F5F9',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    monthTitle: {
-        fontSize: 28,
-        fontWeight: '800',
-        color: '#94A3B8',
-        letterSpacing: -0.5,
-    },
-    weekdayRow: {
-        flexDirection: 'row',
-        marginBottom: 12,
-        paddingHorizontal: 4,
-    },
-    weekdayCell: {
-        width: DAY_CELL_WIDTH,
-        alignItems: 'center',
-    },
-    weekdayText: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#CBD5E1',
-    },
-    calendarGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: DAY_GAP,
-    },
+    navButton: { padding: spacing.xs },
+    navText: { fontSize: 28, color: colors.text.primary },
+    monthInfo: { alignItems: 'center' },
+    monthTitle: { fontSize: 18, fontWeight: '700', color: colors.text.primary },
+    monthStats: { fontSize: 12, color: colors.text.secondary, marginTop: 2 },
+    weekdayRow: { flexDirection: 'row', marginBottom: spacing.xs },
+    weekdayCell: { width: DAY_SIZE, alignItems: 'center', marginHorizontal: spacing.xs },
+    weekdayText: { fontSize: 12, fontWeight: '600', color: colors.text.secondary },
+    calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
     dayCell: {
-        width: DAY_CELL_WIDTH,
-        minHeight: DAY_CELL_WIDTH * 1.4,
-        backgroundColor: '#FAFBFC',
-        borderRadius: 24,
-        padding: 10,
-        borderWidth: 2,
-        borderColor: 'transparent',
-    },
-    emptyDay: {
-        backgroundColor: 'transparent',
-    },
-    selectedDayCell: {
-        backgroundColor: '#0F172A',
-        borderColor: '#0F172A',
-        shadowColor: '#0F172A',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 4,
-    },
-    dayCellWithOutfit: {
-        borderColor: '#E2E8F0',
-    },
-    dayButton: {
+        width: DAY_SIZE,
+        height: DAY_SIZE + 4,
         alignItems: 'center',
-    },
-    dayNumberContainer: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
         justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 10,
+        marginHorizontal: spacing.xs,
+        marginBottom: spacing.xs,
     },
-    todayNumberContainer: {
-        backgroundColor: '#0F172A',
+    todayCell: {
+        backgroundColor: colors.button.primary,
+        borderRadius: DAY_SIZE / 2,
     },
-    selectedNumberContainer: {
-        backgroundColor: 'transparent',
-    },
-    dayText: {
-        fontSize: 20,
-        fontWeight: '800',
-        color: '#0F172A',
-    },
-    todayText: {
-        color: '#FFFFFF',
-    },
-    selectedText: {
-        color: '#FFFFFF',
-    },
-    futureDayText: {
-        color: '#CBD5E1',
-    },
-    slotsContainer: {
-        width: '100%',
-        gap: 6,
-        marginTop: 8,
-    },
-    slot: {
-        width: '100%',
-        height: SLOT_HEIGHT * 1.4,
-        borderRadius: 14,
-        overflow: 'hidden',
-        backgroundColor: '#F1F5F9',
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 2,
-        borderColor: '#E2E8F0',
-    },
-    slotFilled: {
-        backgroundColor: '#FFFFFF',
-        borderColor: '#6366F1',
-        borderWidth: 3,
-    },
-    slotSelected: {
-        borderColor: 'rgba(255,255,255,0.8)',
-    },
-    slotEmpty: {
-        width: '100%',
-        height: '100%',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: 2,
-    },
-    slotIcon: {
-        fontSize: 20,
-    },
-    slotLabel: {
-        fontSize: 10,
-        fontWeight: '600',
-        color: '#94A3B8',
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
-    slotImage: {
-        width: '100%',
-        height: '100%',
-    },
-    outfitIndicator: {
-        marginTop: 4,
-        alignItems: 'center',
-    },
-    indicatorDot: {
-        width: 4,
-        height: 4,
-        borderRadius: 2,
-        backgroundColor: '#6366F1',
-    },
-    indicatorDotSelected: {
-        backgroundColor: '#FFFFFF',
-    },
+    dayText: { fontSize: 14, fontWeight: '500', color: colors.text.primary },
+    todayText: { fontWeight: '700', color: '#FFF' },
+    futureDayText: { color: colors.text.muted },
+    outfitDot: { width: 5, height: 5, borderRadius: 2.5, marginTop: 2 },
 });
 
 export default CalendarGrid;

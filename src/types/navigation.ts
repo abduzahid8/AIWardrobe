@@ -38,6 +38,11 @@ export type RootStackParamList = {
     ClothingDetail: {
         itemId: string;
     };
+
+    // Outfit detail
+    OutfitDetail: {
+        outfitId: string;
+    };
 };
 
 /**

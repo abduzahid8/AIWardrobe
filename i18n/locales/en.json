@@ -122,9 +122,9 @@
         "loginRequired": "Please sign in to use AI Try-On.",
         "try your self": "Try your self",
         "model": "Model",
-        "digitalModelTitle": "Try On with Mannequin",
+        "digitalModelTitle": "Your digital Model",
         "digitalModelPro": "PRO",
-        "digitalModelDescription": "Try on clothes on a mannequin and see how any outfit looks before you wear it.",
+        "digitalModelDescription": "Create images and try on clothes on your personal avatar.",
         "upgradeToPro": "Upgrade to Pro",
         "errors": {
             "missingPhotos": "Please add a full-length photo and an outfit to try on.",

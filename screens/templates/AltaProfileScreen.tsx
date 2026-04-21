@@ -152,6 +152,10 @@ const AltaProfileScreen = () => {
 
                     {/* Right: Avatar pill + Settings */}
                     <View style={styles.headerRight}>
+                        <TouchableOpacity style={styles.avatarPill}>
+                            <Ionicons name="person-outline" size={14} color={ALTA.text} />
+                            <Text style={styles.avatarPillText}>Your avatar</Text>
+                        </TouchableOpacity>
                         <TouchableOpacity style={styles.headerIcon}>
                             <Ionicons name="settings-outline" size={22} color={ALTA.text} />
                         </TouchableOpacity>
@@ -172,6 +176,38 @@ const AltaProfileScreen = () => {
                             <Text style={styles.location}>{location}</Text>
                             <Ionicons name="location" size={12} color={ALTA.textMuted} />
                         </View>
+                    </View>
+
+                    {/* Friends Card - Exact Alta style */}
+                    <View style={styles.friendsCard}>
+                        <Text style={styles.friendsTitle}>Alta is better with friends</Text>
+                        <Text style={styles.friendsSubtitle}>
+                            Share your style and try on your friends' looks!
+                        </Text>
+
+                        {/* Overlapping avatars - 48px size, -12px overlap */}
+                        <View style={styles.avatarsRow}>
+                            <Image
+                                source={{ uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100' }}
+                                style={styles.friendAvatar}
+                            />
+                            <Image
+                                source={{ uri: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100' }}
+                                style={[styles.friendAvatar, styles.avatarOverlap]}
+                            />
+                            <Image
+                                source={{ uri: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100' }}
+                                style={[styles.friendAvatar, styles.avatarOverlap]}
+                            />
+                        </View>
+
+                        {/* Add friends button - Black, 14px vertical, 28px radius */}
+                        <PressableScale onPress={() => { }}>
+                            <View style={styles.addFriendsButton}>
+                                <Ionicons name="add" size={18} color={ALTA.background} />
+                                <Text style={styles.addFriendsText}>Add friends</Text>
+                            </View>
+                        </PressableScale>
                     </View>
 
                     {/* Tabs - 24px gap, 2px underline */}

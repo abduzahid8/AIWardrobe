@@ -1,0 +1,3 @@
+external_id,brand,name,price,currency,category,garment_type,description,image_url,source_url
+MD-1001,Massimo Dutti,Oxford Cotton Shirt,79.90,USD,tops,upper_body,Classic oxford shirt,https://example.com/img1.jpg,https://example.com/p/1001
+ZARA-2002,Zara,High-Rise Jeans,59.90,USD,bottoms,lower_body,Mid blue straight leg,https://example.com/img2.jpg,https://example.com/p/2002

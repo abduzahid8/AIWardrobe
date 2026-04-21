@@ -162,7 +162,7 @@ const AltaAIScreen = () => {
 
     const pickImage = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ['images'],
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
             quality: 0.8,
         });
 

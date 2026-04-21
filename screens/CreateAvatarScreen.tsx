@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import {
     View,
     Text,
@@ -7,266 +7,379 @@ import {
     Dimensions,
     Platform,
     ScrollView,
-    TextInput,
-    KeyboardAvoidingView,
-    Keyboard,
-    TouchableWithoutFeedback,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
+import Slider from "@react-native-community/slider";
 import { BlurView } from "expo-blur";
 import { WebView } from "react-native-webview";
 
 import AppColors from "../constants/AppColors";
 import LiquidGlass2026Theme from "../constants/LiquidGlass2026Theme";
 
-const { width, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
 
-import { generate3Dhtml, BODY_TYPES, BodyTypeId } from "../features/try-on/utils/mannequin3D";
+// Generate the inline HTML that runs Three.js inside the WebView's Safari engine
+function generate3Dhtml() {
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+  * { margin: 0; padding: 0; }
+  body { overflow: hidden; background: transparent; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>
+<script>
+  // Scene setup
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+  camera.position.set(0, 0.8, 5);
+  
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setClearColor(0x000000, 0);
+  document.body.appendChild(renderer.domElement);
+
+  // Lighting
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+  scene.add(ambientLight);
+  const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+  dirLight.position.set(5, 10, 7);
+  scene.add(dirLight);
+  const rimLight = new THREE.DirectionalLight(0x8899aa, 0.5);
+  rimLight.position.set(-5, 3, -5);
+  scene.add(rimLight);
+
+  // Materials
+  const skinMat = new THREE.MeshStandardMaterial({ color: 0x94A3B8, roughness: 0.35, metalness: 0.15 });
+  const darkMat = new THREE.MeshStandardMaterial({ color: 0x64748B, roughness: 0.4, metalness: 0.1 });
+  const darkerMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.1 });
+
+  // Mannequin group
+  const mannequin = new THREE.Group();
+
+  // Head
+  const headGeo = new THREE.SphereGeometry(0.22, 32, 32);
+  const head = new THREE.Mesh(headGeo, skinMat);
+  head.position.set(0, 1.85, 0);
+  mannequin.add(head);
+
+  // Neck
+  const neckGeo = new THREE.CylinderGeometry(0.08, 0.1, 0.15, 16);
+  const neck = new THREE.Mesh(neckGeo, skinMat);
+  neck.position.set(0, 1.58, 0);
+  mannequin.add(neck);
+
+  // Shoulders
+  const shouldersGeo = new THREE.CylinderGeometry(0.32, 0.3, 0.2, 32);
+  const shoulders = new THREE.Mesh(shouldersGeo, darkMat);
+  shoulders.position.set(0, 1.4, 0);
+  mannequin.add(shoulders);
+
+  // Upper Torso (Chest)
+  const chestGeo = new THREE.CylinderGeometry(0.3, 0.27, 0.35, 32);
+  const chest = new THREE.Mesh(chestGeo, darkerMat);
+  chest.position.set(0, 1.12, 0);
+  mannequin.add(chest);
+
+  // Lower Torso (Waist)
+  const waistGeo = new THREE.CylinderGeometry(0.27, 0.3, 0.35, 32);
+  const waist = new THREE.Mesh(waistGeo, darkMat);
+  waist.position.set(0, 0.78, 0);
+  mannequin.add(waist);
+
+  // Hips
+  const hipsGeo = new THREE.SphereGeometry(0.3, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+  const hips = new THREE.Mesh(hipsGeo, darkMat);
+  hips.position.set(0, 0.6, 0);
+  mannequin.add(hips);
+
+  // Left Arm
+  const armGeo = new THREE.CylinderGeometry(0.07, 0.055, 0.85, 16);
+  const leftArm = new THREE.Mesh(armGeo, darkMat);
+  leftArm.position.set(-0.42, 1.05, 0);
+  leftArm.rotation.z = 0.12;
+  mannequin.add(leftArm);
+
+  // Right Arm
+  const rightArm = new THREE.Mesh(armGeo, darkMat);
+  rightArm.position.set(0.42, 1.05, 0);
+  rightArm.rotation.z = -0.12;
+  mannequin.add(rightArm);
+
+  // Left Leg
+  const legGeo = new THREE.CylinderGeometry(0.11, 0.08, 1.0, 16);
+  const leftLeg = new THREE.Mesh(legGeo, darkerMat);
+  leftLeg.position.set(-0.15, 0.05, 0);
+  mannequin.add(leftLeg);
+
+  // Right Leg
+  const rightLeg = new THREE.Mesh(legGeo, darkerMat);
+  rightLeg.position.set(0.15, 0.05, 0);
+  mannequin.add(rightLeg);
+
+  // Left Foot
+  const footGeo = new THREE.BoxGeometry(0.12, 0.06, 0.22);
+  const leftFoot = new THREE.Mesh(footGeo, darkerMat);
+  leftFoot.position.set(-0.15, -0.48, 0.05);
+  mannequin.add(leftFoot);
+  
+  // Right Foot  
+  const rightFoot = new THREE.Mesh(footGeo, darkerMat);
+  rightFoot.position.set(0.15, -0.48, 0.05);
+  mannequin.add(rightFoot);
+
+  scene.add(mannequin);
+
+  // State
+  let targetRotation = 0;
+  let currentRotation = 0;
+  let heightScale = 1;
+  let weightScale = 1;
+  let shoulderScale = 1;
+  let chestScale = 1;
+  let waistScale = 1;
+
+  // Listen for messages from React Native
+  window.addEventListener('message', function(event) {
+    try {
+      const data = JSON.parse(event.data);
+      if (data.type === 'update') {
+        heightScale = 0.85 + (data.height / 100) * 0.3;
+        weightScale = 0.85 + (data.weight / 100) * 0.3;
+        shoulderScale = 0.8 + (data.shoulders / 100) * 0.4;
+        chestScale = 0.85 + (data.chest / 100) * 0.3;
+        waistScale = 0.8 + (data.waist / 100) * 0.4;
+      } else if (data.type === 'view') {
+        targetRotation = data.view === 'front' ? 0 : Math.PI / 2;
+      }
+    } catch(e) {}
+  });
+
+  // Animation loop
+  function animate() {
+    requestAnimationFrame(animate);
+
+    // Smooth rotation
+    currentRotation += (targetRotation - currentRotation) * 0.08;
+    mannequin.rotation.y = currentRotation;
+
+    // Apply scaling
+    mannequin.scale.set(weightScale, heightScale, weightScale);
+    shoulders.scale.set(shoulderScale, 1, shoulderScale);
+    chest.scale.set(chestScale, 1, chestScale);
+    waist.scale.set(waistScale, 1, waistScale);
+    hips.scale.set(waistScale, 1, waistScale);
+    leftArm.position.x = -0.42 * shoulderScale;
+    rightArm.position.x = 0.42 * shoulderScale;
+    leftLeg.position.x = -0.15 * waistScale;
+    rightLeg.position.x = 0.15 * waistScale;
+    leftFoot.position.x = -0.15 * waistScale;
+    rightFoot.position.x = 0.15 * waistScale;
+
+    // Subtle idle animation
+    mannequin.position.y = Math.sin(Date.now() * 0.001) * 0.02;
+
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  // Handle resize
+  window.addEventListener('resize', function() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+<\/script>
+</body>
+</html>
+`;
+}
 
 export default function CreateAvatarScreen() {
     const navigation = useNavigation();
     const webViewRef = useRef<WebView>(null);
 
-    // State for real measurements
-    const [heightCm, setHeightCm] = useState("175");
-    const [weightKg, setWeightKg] = useState("70");
-    const [bodyType, setBodyType] = useState<BodyTypeId>("average");
-    const [gender, setGender] = useState<"male" | "female">("male");
+    // State for body proportions (0 to 100)
+    const [heightValue, setHeightValue] = useState(50);
+    const [weightValue, setWeightValue] = useState(50);
+    const [shouldersValue, setShouldersValue] = useState(50);
+    const [chestValue, setChestValue] = useState(50);
+    const [waistValue, setWaistValue] = useState(50);
+
+    const [activeTab, setActiveTab] = useState<"front" | "side">("front");
 
     const handleContinue = () => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         (navigation as any).navigate('AIOutfit');
     };
 
-    // Send measurements to 3D WebView
+    // Send slider updates to the WebView
     const sendUpdate = useCallback(() => {
-        const h = parseInt(heightCm) || 175;
-        const w = parseInt(weightKg) || 70;
         webViewRef.current?.postMessage(JSON.stringify({
             type: 'update',
-            heightCm: h,
-            weightKg: w,
-            bodyType: bodyType,
+            height: heightValue,
+            weight: weightValue,
+            shoulders: shouldersValue,
+            chest: chestValue,
+            waist: waistValue,
         }));
-    }, [heightCm, weightKg, bodyType]);
+    }, [heightValue, weightValue, shouldersValue, chestValue, waistValue]);
 
-    // Trigger update on value change
-    useEffect(() => {
-        const timeout = setTimeout(() => {
-            sendUpdate();
-        }, 150); // Small debounce
-        return () => clearTimeout(timeout);
-    }, [heightCm, weightKg, bodyType, sendUpdate]);
+    // Send view toggle to WebView
+    const sendViewToggle = useCallback((view: "front" | "side") => {
+        webViewRef.current?.postMessage(JSON.stringify({
+            type: 'view',
+            view: view,
+        }));
+    }, []);
 
-    const handleHeightChange = (text: string) => {
-        const clean = text.replace(/[^0-9]/g, '');
-        if (clean.length <= 3) setHeightCm(clean);
-    };
+    // Trigger update when sliders change
+    React.useEffect(() => {
+        sendUpdate();
+    }, [heightValue, weightValue, shouldersValue, chestValue, waistValue, sendUpdate]);
 
-    const handleWeightChange = (text: string) => {
-        const clean = text.replace(/[^0-9]/g, '');
-        if (clean.length <= 3) setWeightKg(clean);
+    React.useEffect(() => {
+        sendViewToggle(activeTab);
+    }, [activeTab, sendViewToggle]);
+
+    const renderSlider = (
+        label: string,
+        value: number,
+        setValue: React.Dispatch<React.SetStateAction<number>>,
+        icon: string
+    ) => {
+        return (
+            <View style={styles.sliderContainer} key={label}>
+                <View style={styles.sliderHeader}>
+                    <View style={styles.sliderLabelGroup}>
+                        <Ionicons name={icon as any} size={16} color={LiquidGlass2026Theme.colors.text.secondary} />
+                        <Text style={styles.sliderLabel}>{label}</Text>
+                    </View>
+                    <Text style={styles.sliderValue}>{Math.round(value)}</Text>
+                </View>
+                <Slider
+                    style={styles.slider}
+                    minimumValue={0}
+                    maximumValue={100}
+                    value={value}
+                    onValueChange={(val) => {
+                        setValue(val);
+                    }}
+                    onSlidingComplete={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+                    minimumTrackTintColor={AppColors.primary}
+                    maximumTrackTintColor="rgba(0,0,0,0.1)"
+                    thumbTintColor={AppColors.primary}
+                />
+            </View>
+        );
     };
 
     return (
-        <KeyboardAvoidingView
-            style={styles.container}
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-        >
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                <View style={styles.container}>
-                    <SafeAreaView style={styles.safeArea}>
-                        {/* Header */}
-                        <View style={styles.header}>
-                            <TouchableOpacity
-                                style={styles.backButton}
-                                onPress={() => navigation.goBack()}
-                                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                            >
-                                <Ionicons name="arrow-back" size={22} color={LiquidGlass2026Theme.colors.text.primary} />
-                            </TouchableOpacity>
-                            <View style={styles.headerCenter}>
-                                <Text style={styles.headerTitle}>3D Body Model</Text>
-                                <Text style={styles.headerSubtitle}>Enter your measurements</Text>
-                            </View>
-                            <View style={{ width: 44 }} />
-                        </View>
-
-                        {/* 3D Mannequin via WebView */}
-                        <View style={styles.mannequinViewer}>
-                            <WebView
-                                ref={webViewRef}
-                                source={{ html: generate3Dhtml() }}
-                                style={styles.webview}
-                                scrollEnabled={false}
-                                bounces={false}
-                                javaScriptEnabled={true}
-                                allowsInlineMediaPlayback={true}
-                                originWhitelist={['*']}
-                                onMessage={() => { }}
-                            />
-                            {/* Rotation hint */}
-                            <View style={styles.rotateHint}>
-                                <BlurView intensity={30} tint="light" style={styles.rotateHintInner}>
-                                    <Ionicons name="finger-print-outline" size={14} color="rgba(0,0,0,0.5)" />
-                                    <Text style={styles.rotateHintText}>Drag to rotate</Text>
-                                </BlurView>
-                            </View>
-                        </View>
-                    </SafeAreaView>
-
-                    {/* Controls Bottom Sheet */}
-                    <View style={styles.bottomSheetContainer}>
-                        <BlurView
-                            intensity={80}
-                            tint="light"
-                            style={styles.glassSheet}
-                        >
-                            <View style={styles.sheetHandle} />
-
-                            <ScrollView
-                                style={styles.controlsScroll}
-                                showsVerticalScrollIndicator={false}
-                                contentContainerStyle={styles.controlsContent}
-                                keyboardShouldPersistTaps="handled"
-                            >
-                                {/* Measurement Inputs */}
-                                <Text style={styles.sectionTitle}>Measurements</Text>
-                                <View style={styles.measurementRow}>
-                                    {/* Height */}
-                                    <View style={styles.measurementCard}>
-                                        <View style={styles.measurementIconRow}>
-                                            <View style={styles.measurementIcon}>
-                                                <Ionicons name="resize-outline" size={18} color="#fff" />
-                                            </View>
-                                            <Text style={styles.measurementLabel}>Height</Text>
-                                        </View>
-                                        <View style={styles.inputRow}>
-                                            <TextInput
-                                                style={styles.measurementInput}
-                                                value={heightCm}
-                                                onChangeText={handleHeightChange}
-                                                keyboardType="number-pad"
-                                                maxLength={3}
-                                                placeholder="175"
-                                                placeholderTextColor="rgba(0,0,0,0.2)"
-                                                returnKeyType="done"
-                                                onSubmitEditing={Keyboard.dismiss}
-                                            />
-                                            <Text style={styles.unitText}>cm</Text>
-                                        </View>
-                                        <Text style={styles.rangeText}>100–230 cm</Text>
-                                    </View>
-
-                                    {/* Weight */}
-                                    <View style={styles.measurementCard}>
-                                        <View style={styles.measurementIconRow}>
-                                            <View style={[styles.measurementIcon, { backgroundColor: '#4A5568' }]}>
-                                                <Ionicons name="scale-outline" size={18} color="#fff" />
-                                            </View>
-                                            <Text style={styles.measurementLabel}>Weight</Text>
-                                        </View>
-                                        <View style={styles.inputRow}>
-                                            <TextInput
-                                                style={styles.measurementInput}
-                                                value={weightKg}
-                                                onChangeText={handleWeightChange}
-                                                keyboardType="number-pad"
-                                                maxLength={3}
-                                                placeholder="70"
-                                                placeholderTextColor="rgba(0,0,0,0.2)"
-                                                returnKeyType="done"
-                                                onSubmitEditing={Keyboard.dismiss}
-                                            />
-                                            <Text style={styles.unitText}>kg</Text>
-                                        </View>
-                                        <Text style={styles.rangeText}>30–200 kg</Text>
-                                    </View>
-                                </View>
-
-                                {/* Body Type Selection */}
-                                <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Body Type</Text>
-                                <View style={styles.bodyTypeGrid}>
-                                    {BODY_TYPES.map((bt) => {
-                                        const isActive = bodyType === bt.id;
-                                        return (
-                                            <TouchableOpacity
-                                                key={bt.id}
-                                                style={[
-                                                    styles.bodyTypeChip,
-                                                    isActive && styles.bodyTypeChipActive,
-                                                ]}
-                                                onPress={() => {
-                                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                                    setBodyType(bt.id);
-                                                }}
-                                                activeOpacity={0.7}
-                                            >
-                                                <Ionicons
-                                                    name={bt.icon as any}
-                                                    size={20}
-                                                    color={isActive ? "#fff" : LiquidGlass2026Theme.colors.text.secondary}
-                                                />
-                                                <Text style={[
-                                                    styles.bodyTypeLabel,
-                                                    isActive && styles.bodyTypeLabelActive,
-                                                ]}>
-                                                    {bt.label}
-                                                </Text>
-                                                <Text style={[
-                                                    styles.bodyTypeDesc,
-                                                    isActive && styles.bodyTypeDescActive,
-                                                ]}>
-                                                    {bt.desc}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </View>
-
-                                {/* BMI Info Badge */}
-                                {heightCm && weightKg && parseInt(heightCm) > 0 && parseInt(weightKg) > 0 && (
-                                    <View style={styles.bmiCard}>
-                                        <View style={styles.bmiRow}>
-                                            <Text style={styles.bmiLabel}>BMI</Text>
-                                            <Text style={styles.bmiValue}>
-                                                {(parseInt(weightKg) / Math.pow(parseInt(heightCm) / 100, 2)).toFixed(1)}
-                                            </Text>
-                                        </View>
-                                        <Text style={styles.bmiDesc}>
-                                            {(() => {
-                                                const bmi = parseInt(weightKg) / Math.pow(parseInt(heightCm) / 100, 2);
-                                                if (bmi < 18.5) return "Underweight";
-                                                if (bmi < 25) return "Normal weight";
-                                                if (bmi < 30) return "Overweight";
-                                                return "Obese";
-                                            })()}
-                                        </Text>
-                                    </View>
-                                )}
-                            </ScrollView>
-                        </BlurView>
-                    </View>
-
-                    {/* Floating Save Button */}
-                    <View style={styles.floatingActionContainer}>
-                        <BlurView intensity={20} tint="light" style={styles.fabGlass}>
-                            <TouchableOpacity
-                                style={styles.continueButton}
-                                onPress={handleContinue}
-                                activeOpacity={0.85}
-                            >
-                                <Ionicons name="checkmark-circle-outline" size={22} color="#fff" style={{ marginRight: 8 }} />
-                                <Text style={styles.continueButtonText}>Save Body Model</Text>
-                            </TouchableOpacity>
-                        </BlurView>
-                    </View>
+        <View style={styles.container}>
+            <SafeAreaView style={styles.safeArea}>
+                {/* Header */}
+                <View style={styles.header}>
+                    <TouchableOpacity
+                        style={styles.backButton}
+                        onPress={() => navigation.goBack()}
+                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                    >
+                        <Ionicons name="arrow-back" size={24} color={LiquidGlass2026Theme.colors.text.primary} />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Customize Body</Text>
+                    <View style={{ width: 44 }} />
                 </View>
-            </TouchableWithoutFeedback>
-        </KeyboardAvoidingView>
+
+                {/* 3D Mannequin via WebView */}
+                <View style={styles.mannequinViewer}>
+                    <WebView
+                        ref={webViewRef}
+                        source={{ html: generate3Dhtml() }}
+                        style={styles.webview}
+                        scrollEnabled={false}
+                        bounces={false}
+                        javaScriptEnabled={true}
+                        allowsInlineMediaPlayback={true}
+                        originWhitelist={['*']}
+                        onMessage={() => { }}
+                    />
+                </View>
+
+                {/* Toggle View Type */}
+                <View style={styles.viewToggleWrap}>
+                    <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
+                    <TouchableOpacity
+                        style={[styles.viewToggleOption, activeTab === "front" && styles.viewToggleActive]}
+                        onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            setActiveTab("front");
+                        }}
+                    >
+                        <Text style={[styles.viewToggleText, activeTab === "front" && styles.viewToggleTextActive]}>
+                            Front View
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.viewToggleOption, activeTab === "side" && styles.viewToggleActive]}
+                        onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            setActiveTab("side");
+                        }}
+                    >
+                        <Text style={[styles.viewToggleText, activeTab === "side" && styles.viewToggleTextActive]}>
+                            Side View
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+
+            </SafeAreaView>
+
+            {/* Controls Liquid Glass Bottom Sheet */}
+            <View style={styles.bottomSheetContainer}>
+                <BlurView
+                    intensity={80}
+                    tint="light"
+                    style={styles.glassSheet}
+                >
+                    <View style={styles.sheetHandle} />
+                    <Text style={styles.controlsTitle}>Adjust Proportions</Text>
+
+                    <ScrollView
+                        style={styles.slidersScroll}
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={styles.slidersContentContainer}
+                    >
+                        {renderSlider("Height", heightValue, setHeightValue, "resize")}
+                        {renderSlider("Weight", weightValue, setWeightValue, "barbell-outline")}
+                        {renderSlider("Shoulder Width", shouldersValue, setShouldersValue, "body-outline")}
+                        {renderSlider("Chest/Bust", chestValue, setChestValue, "shirt-outline")}
+                        {renderSlider("Waist", waistValue, setWaistValue, "contract-outline")}
+                    </ScrollView>
+                </BlurView>
+            </View>
+
+            {/* Floating Action Button */}
+            <View style={styles.floatingActionContainer}>
+                <BlurView intensity={20} tint="light" style={styles.fabGlass}>
+                    <TouchableOpacity
+                        style={styles.continueButton}
+                        onPress={handleContinue}
+                        activeOpacity={0.85}
+                    >
+                        <Text style={styles.continueButtonText}>Save & Finalize</Text>
+                    </TouchableOpacity>
+                </BlurView>
+            </View>
+        </View>
     );
 }
 
@@ -277,10 +390,8 @@ const styles = StyleSheet.create({
     },
     safeArea: {
         flex: 1,
-        paddingBottom: SCREEN_HEIGHT * 0.48,
+        paddingBottom: height * 0.52,
     },
-
-    // ── Header ────────────────────────────────────
     header: {
         flexDirection: "row",
         alignItems: "center",
@@ -294,32 +405,58 @@ const styles = StyleSheet.create({
         width: 44,
         height: 44,
         borderRadius: 22,
-        backgroundColor: "rgba(255,255,255,0.9)",
+        backgroundColor: "#fff",
         alignItems: "center",
         justifyContent: "center",
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
+        shadowOpacity: 0.05,
+        shadowRadius: 5,
         elevation: 2,
-    },
-    headerCenter: {
-        alignItems: "center",
     },
     headerTitle: {
         fontSize: 18,
         fontWeight: "700",
         color: LiquidGlass2026Theme.colors.text.primary,
-        letterSpacing: -0.3,
-    },
-    headerSubtitle: {
-        fontSize: 12,
-        fontWeight: "500",
-        color: LiquidGlass2026Theme.colors.text.tertiary,
-        marginTop: 2,
     },
 
-    // ── 3D Viewer ─────────────────────────────────
+    // Toggle
+    viewToggleWrap: {
+        flexDirection: "row",
+        alignSelf: "center",
+        borderRadius: 24,
+        padding: 6,
+        marginTop: 16,
+        marginBottom: 8,
+        overflow: "hidden",
+        backgroundColor: "rgba(255,255,255,0.6)",
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.8)",
+        zIndex: 10,
+    },
+    viewToggleOption: {
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        borderRadius: 18,
+    },
+    viewToggleActive: {
+        backgroundColor: "#fff",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
+        elevation: 2,
+    },
+    viewToggleText: {
+        fontSize: 14,
+        fontWeight: "600",
+        color: LiquidGlass2026Theme.colors.text.secondary,
+    },
+    viewToggleTextActive: {
+        color: LiquidGlass2026Theme.colors.text.primary,
+    },
+
+    // 3D Mannequin WebView
     mannequinViewer: {
         flex: 1,
         zIndex: 1,
@@ -329,213 +466,86 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: "transparent",
     },
-    rotateHint: {
-        position: "absolute",
-        bottom: 12,
-        alignSelf: "center",
-        borderRadius: 20,
-        overflow: "hidden",
-    },
-    rotateHintInner: {
-        flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: 14,
-        paddingVertical: 6,
-        gap: 6,
-        backgroundColor: "rgba(255,255,255,0.5)",
-    },
-    rotateHintText: {
-        fontSize: 12,
-        fontWeight: "500",
-        color: "rgba(0,0,0,0.45)",
-    },
 
-    // ── Bottom Sheet ──────────────────────────────
+    // Liquid Glass Bottom Sheet
     bottomSheetContainer: {
         position: "absolute",
         bottom: 0,
         left: 0,
         right: 0,
-        height: SCREEN_HEIGHT * 0.48,
-        borderTopLeftRadius: 32,
-        borderTopRightRadius: 32,
+        height: height * 0.52,
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
         overflow: "hidden",
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: -6 },
-        shadowOpacity: 0.1,
-        shadowRadius: 20,
-        elevation: 12,
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 16,
+        elevation: 10,
     },
     glassSheet: {
         flex: 1,
-        borderTopLeftRadius: 32,
-        borderTopRightRadius: 32,
-        paddingHorizontal: 20,
-        paddingTop: 14,
-        backgroundColor: "rgba(255, 255, 255, 0.78)",
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
+        paddingHorizontal: 24,
+        paddingTop: 16,
+        backgroundColor: "rgba(255, 255, 255, 0.75)",
     },
     sheetHandle: {
-        width: 44,
+        width: 48,
         height: 5,
         borderRadius: 3,
-        backgroundColor: "rgba(0,0,0,0.12)",
+        backgroundColor: "rgba(0,0,0,0.15)",
         alignSelf: "center",
-        marginBottom: 16,
+        marginBottom: 20,
     },
-    controlsScroll: {
+    controlsTitle: {
+        fontSize: 20,
+        fontWeight: "700",
+        color: LiquidGlass2026Theme.colors.text.primary,
+        marginBottom: 24,
+    },
+    slidersScroll: {
         flex: 1,
     },
-    controlsContent: {
+    slidersContentContainer: {
         paddingBottom: 110,
     },
-
-    // ── Section titles ────────────────────────────
-    sectionTitle: {
-        fontSize: 16,
-        fontWeight: "700",
-        color: LiquidGlass2026Theme.colors.text.primary,
-        marginBottom: 12,
-        letterSpacing: -0.2,
-    },
-
-    // ── Measurement inputs ────────────────────────
-    measurementRow: {
-        flexDirection: "row",
-        gap: 12,
-    },
-    measurementCard: {
-        flex: 1,
-        backgroundColor: "rgba(255,255,255,0.75)",
-        borderRadius: 20,
+    sliderContainer: {
+        marginBottom: 20,
+        backgroundColor: "rgba(255,255,255,0.6)",
         padding: 16,
+        borderRadius: 24,
         borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.8)",
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.03,
-        shadowRadius: 8,
-        elevation: 1,
+        borderColor: "rgba(255,255,255,0.7)",
     },
-    measurementIconRow: {
+    sliderHeader: {
         flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-        marginBottom: 10,
-    },
-    measurementIcon: {
-        width: 32,
-        height: 32,
-        borderRadius: 10,
-        backgroundColor: "#0A1931",
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    measurementLabel: {
-        fontSize: 14,
-        fontWeight: "600",
-        color: LiquidGlass2026Theme.colors.text.secondary,
-    },
-    inputRow: {
-        flexDirection: "row",
-        alignItems: "baseline",
-        gap: 4,
-    },
-    measurementInput: {
-        fontSize: 32,
-        fontWeight: "800",
-        color: LiquidGlass2026Theme.colors.text.primary,
-        letterSpacing: -0.5,
-        minWidth: 60,
-        paddingVertical: 0,
-    },
-    unitText: {
-        fontSize: 16,
-        fontWeight: "600",
-        color: LiquidGlass2026Theme.colors.text.tertiary,
-    },
-    rangeText: {
-        fontSize: 11,
-        fontWeight: "500",
-        color: LiquidGlass2026Theme.colors.text.tertiary,
-        marginTop: 6,
-    },
-
-    // ── Body type grid ────────────────────────────
-    bodyTypeGrid: {
-        flexDirection: "row",
-        flexWrap: "wrap",
-        gap: 8,
-    },
-    bodyTypeChip: {
-        width: (width - 40 - 16) / 3,
-        backgroundColor: "rgba(255,255,255,0.7)",
-        borderRadius: 16,
-        padding: 12,
-        alignItems: "center",
-        borderWidth: 1.5,
-        borderColor: "rgba(0,0,0,0.06)",
-    },
-    bodyTypeChipActive: {
-        backgroundColor: "#0A1931",
-        borderColor: "#0A1931",
-        shadowColor: "#0A1931",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 10,
-        elevation: 4,
-    },
-    bodyTypeLabel: {
-        fontSize: 12,
-        fontWeight: "700",
-        color: LiquidGlass2026Theme.colors.text.primary,
-        marginTop: 6,
-    },
-    bodyTypeLabelActive: {
-        color: "#fff",
-    },
-    bodyTypeDesc: {
-        fontSize: 9,
-        fontWeight: "500",
-        color: LiquidGlass2026Theme.colors.text.tertiary,
-        marginTop: 3,
-        textAlign: "center",
-    },
-    bodyTypeDescActive: {
-        color: "rgba(255,255,255,0.7)",
-    },
-
-    // ── BMI card ──────────────────────────────────
-    bmiCard: {
-        marginTop: 16,
-        backgroundColor: "rgba(10,25,49,0.05)",
-        borderRadius: 16,
-        padding: 14,
-        flexDirection: "row",
-        alignItems: "center",
         justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 12,
     },
-    bmiRow: {
+    sliderLabelGroup: {
         flexDirection: "row",
-        alignItems: "baseline",
+        alignItems: "center",
         gap: 8,
     },
-    bmiLabel: {
-        fontSize: 13,
+    sliderLabel: {
+        fontSize: 15,
         fontWeight: "600",
-        color: LiquidGlass2026Theme.colors.text.secondary,
-    },
-    bmiValue: {
-        fontSize: 22,
-        fontWeight: "800",
         color: LiquidGlass2026Theme.colors.text.primary,
     },
-    bmiDesc: {
-        fontSize: 13,
-        fontWeight: "600",
-        color: LiquidGlass2026Theme.colors.text.tertiary,
+    sliderValue: {
+        fontSize: 15,
+        fontWeight: "800",
+        color: AppColors.primary,
+    },
+    slider: {
+        width: "100%",
+        height: 30,
     },
 
-    // ── Floating action ───────────────────────────
+    // Floating Finish Action
     floatingActionContainer: {
         position: "absolute",
         bottom: Platform.OS === "ios" ? 34 : 24,
@@ -545,19 +555,18 @@ const styles = StyleSheet.create({
         overflow: "hidden",
         shadowColor: "#0A1931",
         shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.2,
-        shadowRadius: 24,
-        elevation: 10,
+        shadowOpacity: 0.15,
+        shadowRadius: 20,
+        elevation: 8,
     },
     fabGlass: {
-        padding: 5,
-        backgroundColor: "rgba(255,255,255,0.3)",
+        padding: 6,
+        backgroundColor: "rgba(255,255,255,0.4)",
     },
     continueButton: {
         backgroundColor: "#0A1931",
         height: 56,
         borderRadius: 28,
-        flexDirection: "row",
         alignItems: "center",
         justifyContent: "center",
     },

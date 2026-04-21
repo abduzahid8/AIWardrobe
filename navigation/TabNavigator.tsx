@@ -122,7 +122,6 @@ const AnimatedTabItem = ({ focused, iconName, color, size, label }: AnimatedTabI
 
 // Liquid Parallax Tab Bar
 const LiquidParallaxTabBar = ({ state, descriptors, navigation }: any) => {
-  console.log('[TabNavigator] LiquidParallaxTabBar rendering - current tab index:', state.index);
   const { width } = useWindowDimensions();
   // Adjust width for margins: Full width - (2 * horizontal margin)
   const MARGIN_H = 20;
@@ -173,7 +172,6 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation }: any) => {
           const iconColor = isFocused ? activeColor : inactiveColor;
 
           const onPress = () => {
-            console.log('[TabNavigator] Tab pressed:', route.name, 'isFocused:', isFocused);
             const event = navigation.emit({
               type: 'tabPress',
               target: route.key,
@@ -181,11 +179,8 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation }: any) => {
             });
 
             if (!isFocused && !event.defaultPrevented) {
-              console.log('[TabNavigator] Navigating to tab:', route.name);
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               navigation.navigate(route.name);
-            } else {
-              console.log('[TabNavigator] Tab already focused or event prevented');
             }
           };
 
@@ -216,7 +211,6 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation }: any) => {
 };
 
 const TabNavigator = () => {
-  console.log('[TabNavigator] TabNavigator component rendering');
   const { t } = useTranslation();
 
   return (
@@ -311,11 +305,10 @@ const styles = StyleSheet.create({
   indicatorContainer: {
     position: 'absolute',
     left: spacing.xs,
-    height: '100%',
-    justifyContent: 'flex-end',
+    height: 54,
+    justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1,
-    paddingBottom: 7,
   },
   liquidBlob: {
     width: 56,

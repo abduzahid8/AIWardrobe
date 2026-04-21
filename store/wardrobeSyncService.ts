@@ -75,41 +75,6 @@ export async function fetchItemsFromServer(): Promise<ClothingItem[] | null> {
 }
 
 /**
- * Fetch all wear logs for the current user from Supabase.
- * Returns null if no session or on error.
- */
-export async function fetchWearLogsFromServer(): Promise<WearLog[] | null> {
-    const { data: session } = await supabase.auth.getSession();
-    if (!session?.session?.user) return null;
-
-    const { data, error } = await supabase
-        .from('wear_logs')
-        .select('*')
-        .eq('user_id', session.session.user.id)
-        .order('date', { ascending: false })
-        .limit(500);
-
-    if (error) {
-        console.error('[WardrobeSyncService] Fetch wear logs error:', error);
-        return null;
-    }
-
-    if (!data) return null;
-
-    return data.map((row: Record<string, unknown>): WearLog => ({
-        id: row.id as string,
-        userId: row.user_id as string,
-        outfitId: row.outfit_id as string | undefined,
-        itemIds: (row.item_ids as string[]) || [],
-        date: row.date as string,
-        occasion: row.occasion as Occasion | string | undefined,
-        weatherTemp: row.weather_temp as number | undefined,
-        weatherCondition: row.weather_condition as string | undefined,
-        createdAt: row.created_at as string,
-    }));
-}
-
-/**
  * Process pending sync actions against Supabase.
  * Uses conflict resolution: server version wins if newer.
  *
@@ -131,81 +96,90 @@ export async function processPendingActions(
     const processed: string[] = [];
     let items = [...localItems];
 
-    try {
-        // --- 1. Batch Add Items ---
-        const addActions = pendingActions.filter(a => a.type === 'add_item');
-        if (addActions.length > 0) {
-            const itemsToUpsert = addActions.map(action => {
-                const item = action.payload as unknown as ClothingItem;
-                return {
-                    id: item.id,
-                    user_id: session.session.user.id,
-                    image_url: item.imageUrl,
-                    thumbnail_url: item.thumbnailUrl,
-                    category: item.category,
-                    sub_category: item.subCategory,
-                    primary_color: item.primaryColor,
-                    color_hex: item.colorHex,
-                    pattern: item.pattern,
-                    material: item.material,
-                    brand: item.brand,
-                    name: item.name,
-                    seasons: item.seasons,
-                    occasions: item.occasions,
-                    wear_count: item.wearCount,
-                    is_favorite: item.isFavorite,
-                    created_at: item.createdAt,
-                    updated_at: item.updatedAt,
-                };
-            });
-            const { error } = await supabase.from('clothing_items').upsert(itemsToUpsert);
-            if (!error) {
-                processed.push(...addActions.map(a => a.id));
-            } else {
-                console.error('[WardrobeSyncService] Batch add_item failed:', error);
-            }
-        }
+    for (const action of pendingActions) {
+        try {
+            switch (action.type) {
+                case 'add_item': {
+                    const item = action.payload as unknown as ClothingItem;
 
-        // --- 2. Batch Remove Items ---
-        const removeActions = pendingActions.filter(a => a.type === 'remove_item');
-        if (removeActions.length > 0) {
-            const idsToDelete = removeActions.map(a => (a.payload as { itemId: string }).itemId);
-            const { error } = await supabase.from('clothing_items').delete().in('id', idsToDelete);
-            if (!error) {
-                processed.push(...removeActions.map(a => a.id));
-                // Update local items to reflect deletions in memory
-                items = items.filter(item => !idsToDelete.includes(item.id));
-            } else {
-                console.error('[WardrobeSyncService] Batch remove_item failed:', error);
-            }
-        }
+                    // Conflict resolution: check server version
+                    const { data: serverItem } = await supabase
+                        .from('clothing_items')
+                        .select('updated_at')
+                        .eq('id', item.id)
+                        .maybeSingle();
 
-        // --- 3. Batch Add Wear Logs ---
-        const logActions = pendingActions.filter(a => a.type === 'add_wear_log');
-        if (logActions.length > 0) {
-            const logsToUpsert = logActions.map(action => {
-                const log = action.payload as unknown as WearLog;
-                return {
-                    id: log.id,
-                    user_id: session.session.user.id,
-                    outfit_id: log.outfitId,
-                    item_ids: log.itemIds,
-                    date: log.date,
-                    occasion: log.occasion,
-                    weather_temp: log.weatherTemp,
-                    weather_condition: log.weatherCondition,
-                    created_at: log.createdAt,
-                };
-            });
-            const { error } = await supabase.from('wear_logs').upsert(logsToUpsert);
-            if (!error) {
-                processed.push(...logActions.map(a => a.id));
-            } else {
-                console.error('[WardrobeSyncService] Batch add_wear_log failed:', error);
+                    if (
+                        serverItem?.updated_at &&
+                        item.updatedAt &&
+                        new Date(serverItem.updated_at) > new Date(item.updatedAt)
+                    ) {
+                        // Server wins — re-fetch this item
+                        const { data: freshItem } = await supabase
+                            .from('clothing_items')
+                            .select('*')
+                            .eq('id', item.id)
+                            .single();
+
+                        if (freshItem) {
+                            items = items.map((existing) =>
+                                existing.id === item.id ? mapRowToItem(freshItem) : existing
+                            );
+                        }
+                        processed.push(action.id);
+                        break;
+                    }
+
+                    await supabase.from('clothing_items').upsert({
+                        id: item.id,
+                        user_id: session.session.user.id,
+                        image_url: item.imageUrl,
+                        thumbnail_url: item.thumbnailUrl,
+                        category: item.category,
+                        sub_category: item.subCategory,
+                        primary_color: item.primaryColor,
+                        color_hex: item.colorHex,
+                        pattern: item.pattern,
+                        material: item.material,
+                        brand: item.brand,
+                        name: item.name,
+                        seasons: item.seasons,
+                        occasions: item.occasions,
+                        wear_count: item.wearCount,
+                        is_favorite: item.isFavorite,
+                        created_at: item.createdAt,
+                        updated_at: item.updatedAt,
+                    });
+                    processed.push(action.id);
+                    break;
+                }
+                case 'remove_item': {
+                    const { itemId } = action.payload as { itemId: string };
+                    await supabase.from('clothing_items').delete().eq('id', itemId);
+                    processed.push(action.id);
+                    break;
+                }
+                case 'add_wear_log': {
+                    const log = action.payload as unknown as WearLog;
+                    await supabase.from('wear_logs').upsert({
+                        id: log.id,
+                        user_id: session.session.user.id,
+                        outfit_id: log.outfitId,
+                        item_ids: log.itemIds,
+                        date: log.date,
+                        occasion: log.occasion,
+                        weather_temp: log.weatherTemp,
+                        weather_condition: log.weatherCondition,
+                        created_at: log.createdAt,
+                    });
+                    processed.push(action.id);
+                    break;
+                }
             }
+        } catch (err) {
+            console.error(`[WardrobeSyncService] Action ${action.type} failed:`, err);
+            // Keep in queue for retry
         }
-    } catch (err) {
-        console.error('[WardrobeSyncService] Batch process failed:', err);
     }
 
     return { processedIds: processed, updatedItems: items };

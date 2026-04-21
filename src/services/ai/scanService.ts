@@ -2,7 +2,7 @@
  * Scan Service — Clothing analysis, video scanning, and virtual try-on.
  *
  * Handles:
- * - Single-image clothing analysis with Gemini Vision
+ * - Single-image clothing analysis with local fallback
  * - Video frame analysis with temporal ensemble
  * - Ensemble detection for max accuracy
  * - Multi-frame segmentation with voting
@@ -11,7 +11,6 @@
 
 import axios from 'axios';
 import Config from '../../config/env';
-import { aiVisionService } from '../aiVisionService';
 import { withRetry, handleAPIError, getAuthHeaders } from './shared';
 import type {
     AIAnalysisResult,
@@ -21,7 +20,9 @@ import type {
 } from './types';
 
 const API_URL = Config.api.url;
+const ALICEVISION_URL = Config.api.alicevisionUrl;
 const TIMEOUT_MS = 60000;
+const VIDEO_TIMEOUT_MS = 180000;
 
 // ── Public API ──
 
@@ -103,7 +104,22 @@ export async function analyzeVideoFrames(
         minAgreement?: number;
     }
 ): Promise<VideoAnalysisResult> {
-    return aiVisionService.analyzeVideoFrames(frames, options);
+    return withRetry(async () => {
+        const response = await axios.post(
+            `${ALICEVISION_URL}/analyze-video-timeline`,
+            {
+                frames,
+                detect_outfit_changes: options?.detectOutfitChanges ?? true,
+                min_agreement: options?.minAgreement ?? 0.5,
+            },
+            {
+                headers: await getAuthHeaders(),
+                timeout: VIDEO_TIMEOUT_MS,
+            }
+        );
+
+        return response.data;
+    });
 }
 
 export async function detectClothingEnsemble(
@@ -114,7 +130,18 @@ export async function detectClothingEnsemble(
     processingTimeMs: number;
     modelsUsed: string[];
 }> {
-    return aiVisionService.detectClothingEnsemble(imageBase64);
+    return withRetry(async () => {
+        const response = await axios.post(
+            `${ALICEVISION_URL}/detect-ensemble`,
+            { image: imageBase64 },
+            {
+                headers: await getAuthHeaders(),
+                timeout: 90000,
+            }
+        );
+
+        return response.data;
+    });
 }
 
 export async function segmentMultiFrame(
@@ -126,11 +153,19 @@ export async function segmentMultiFrame(
     framesAnalyzed: number;
     strategy: string;
 }> {
-    const result = await aiVisionService.analyzeVideoFrames(frames, { minAgreement });
-    return {
-        success: result.success,
-        items: result.items,
-        framesAnalyzed: frames.length,
-        strategy: `${aiVisionService.getProvider()}-vision-voting`,
-    };
+    return withRetry(async () => {
+        const response = await axios.post(
+            `${ALICEVISION_URL}/segment-multi-frame`,
+            {
+                frames,
+                min_agreement: minAgreement,
+            },
+            {
+                headers: await getAuthHeaders(),
+                timeout: 120000,
+            }
+        );
+
+        return response.data;
+    });
 }
