@@ -35,19 +35,20 @@ interface RevenueCatEvent {
     product_id?: string;
     price?: number;
     currency?: string;
-    store?: 'app_store' | 'play_store' | 'stripe' | 'amazon';
-    trial_start_at?: string;
-    trial_end_at?: string;
-    cancellation_reason?: 'UNSUBSCRIBE' | 'BILLING_ERROR' | 'REFUND' | 'UNKNOWN';
-    expiration_at?: string;
+    store?: string;
+    trial_start_at_ms?: number;
+    trial_end_at_ms?: number;
+    cancel_reason?: 'UNSUBSCRIBE' | 'BILLING_ERROR' | 'REFUND' | 'UNKNOWN';
+    expiration_at_ms?: number;
     entitlement_id?: string;
     entitlement_ids?: string[];
     presented_offering_id?: string;
-    transaction_timestamp?: number;
+    purchased_at_ms?: number;
+    event_timestamp_ms?: number;
   }
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -99,6 +100,10 @@ serve(async (req) => {
     switch (event.type) {
       case 'INITIAL_PURCHASE':
       case 'RENEWAL':
+        if (tier === 'free') {
+          console.error('[RevenueCat] Ignoring purchase event with unmapped product:', productId)
+          break
+        }
         await handlePurchase(supabaseAdmin, userId, event, tier, platform, event.type === 'INITIAL_PURCHASE')
         break
       case 'CANCELLATION':
@@ -114,6 +119,10 @@ serve(async (req) => {
         await handleUncancellation(supabaseAdmin, userId, event)
         break
       case 'PRODUCT_CHANGE':
+        if (tier === 'free') {
+          console.error('[RevenueCat] Ignoring product change event with unmapped product:', productId)
+          break
+        }
         await handleProductChange(supabaseAdmin, userId, event, tier, platform)
         break
       default:
@@ -140,12 +149,17 @@ function mapProductToTier(productId: string): 'premium' | 'vip' | 'free' {
 }
 
 function mapStoreToPlatform(store?: string): 'apple' | 'google' | 'stripe' | 'manual' {
-  switch (store) {
+  switch ((store || '').toLowerCase()) {
     case 'app_store': return 'apple'
     case 'play_store': return 'google'
     case 'stripe': return 'stripe'
     default: return 'manual'
   }
+}
+
+function toIsoFromMs(timestampMs?: number | null): string | null {
+  if (!timestampMs || Number.isNaN(timestampMs)) return null
+  return new Date(timestampMs).toISOString()
 }
 
 async function handlePurchase(
@@ -156,8 +170,8 @@ async function handlePurchase(
   platform: 'apple' | 'google' | 'stripe' | 'manual',
   isInitial: boolean
 ) {
-  const expiryDate = event.expiration_at ? new Date(event.expiration_at * 1000).toISOString() : null
-  const startDate = new Date((event.transaction_timestamp || Date.now()) * 1000).toISOString()
+  const expiryDate = toIsoFromMs(event.expiration_at_ms)
+  const startDate = toIsoFromMs(event.purchased_at_ms || event.event_timestamp_ms || Date.now()) || new Date().toISOString()
   const endDate = expiryDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
 
   // Insert subscription record
@@ -169,7 +183,7 @@ async function handlePurchase(
       status: 'active',
       start_date: startDate,
       end_date: endDate,
-      trial_end_date: event.trial_end_at ? new Date(event.trial_end_at * 1000).toISOString() : null,
+      trial_end_date: toIsoFromMs(event.trial_end_at_ms),
       auto_renew: true,
       product_id: event.product_id,
       platform,
@@ -279,7 +293,7 @@ async function handleRefund(supabase: any, userId: string, event: RevenueCatEven
 async function handleBillingIssue(supabase: any, userId: string, event: RevenueCatEvent['event']) {
   // Log billing issue but don't change subscription status immediately
   // RevenueCat will send a CANCELLATION event if the billing issue is not resolved
-  console.log(`[RevenueCat] Billing issue for ${userId}:`, event.cancellation_reason)
+  console.log(`[RevenueCat] Billing issue for ${userId}:`, event.cancel_reason)
 }
 
 async function handleUncancellation(supabase: any, userId: string, event: RevenueCatEvent['event']) {

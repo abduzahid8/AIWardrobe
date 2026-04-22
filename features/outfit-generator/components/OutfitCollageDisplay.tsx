@@ -18,6 +18,15 @@ function resolveClothingImage(src: string | number | undefined | null): string |
 
 interface OutfitCollageDisplayProps {
   items: OutfitItem[];
+  height?: number;
+  /**
+   * When true (cold / rainy / windy weather) the collage shows 4 tiles in a
+   * 2×2 grid: outerwear + top + bottom + shoes. When false it shows 3 tiles
+   * (top + bottom on the first row, shoes alone on the second). Shoes always
+   * appear. Defaults to `true` so callers that don't pass weather still get
+   * the richer layout.
+   */
+  needsOuterwear?: boolean;
 }
 
 const CollageImage: React.FC<{ src: string | number | undefined | null }> = ({ src }) => {
@@ -38,8 +47,12 @@ const CollageImage: React.FC<{ src: string | number | undefined | null }> = ({ s
   );
 };
 
-const OutfitCollageDisplay: React.FC<OutfitCollageDisplayProps> = ({ items }) => {
-  const previewSlots = getOutfitPreviewSlots(items).slice(0, 4);
+const OutfitCollageDisplay: React.FC<OutfitCollageDisplayProps> = ({
+  items,
+  height = 400,
+  needsOuterwear = true,
+}) => {
+  const previewSlots = getOutfitPreviewSlots(items);
 
   if (previewSlots.length === 0) {
     const first = items[0];
@@ -48,19 +61,55 @@ const OutfitCollageDisplay: React.FC<OutfitCollageDisplayProps> = ({ items }) =>
     return (
       <Image
         source={typeof firstResolved === 'number' ? firstResolved : { uri: firstResolved }}
-        style={styles.outfitImage}
+        style={[styles.outfitImage, { height }]}
         resizeMode="cover"
       />
     );
   }
 
-  const rows = [];
-  for (let index = 0; index < previewSlots.length; index += 2) {
-    rows.push(previewSlots.slice(index, index + 2));
+  // Pick the first item per canonical slot so the same piece never appears
+  // twice in the collage (was the cause of "3 identical t-shirts" on Home).
+  // We intentionally DO NOT fall back to leftover items when a canonical slot
+  // is empty — filling "Shoes" with a random shirt is what produced the
+  // duplicate `lower_body` tile in production.
+  const pickFirst = (cat: 'outerwear' | 'top' | 'bottom' | 'shoes') =>
+    previewSlots.find((s) => s.macroCategory === cat);
+
+  const outerSlot = pickFirst('outerwear');
+  const topSlot = pickFirst('top');
+  const bottomSlot = pickFirst('bottom');
+  const shoesSlot = pickFirst('shoes');
+
+  // Slots rendered in order. Shoes ALWAYS render — if we have no shoe item
+  // we emit a `null` placeholder slot so the tile shows "Shoes" + placeholder
+  // icon, honoring the "shoes are always present" UX rule.
+  type RenderSlot = { item: OutfitItem | null; label: string; key: string };
+  const orderedSlots: RenderSlot[] = [];
+
+  if (needsOuterwear && outerSlot) {
+    orderedSlots.push({ item: outerSlot.item, label: 'Outerwear', key: 'outerwear' });
+  }
+  if (topSlot) {
+    orderedSlots.push({ item: topSlot.item, label: 'Top', key: 'top' });
+  }
+  if (bottomSlot) {
+    orderedSlots.push({ item: bottomSlot.item, label: 'Bottom', key: 'bottom' });
+  }
+  orderedSlots.push({
+    item: shoesSlot ? shoesSlot.item : null,
+    label: 'Shoes',
+    key: 'shoes',
+  });
+
+  // 2-per-row layout. Cold → 4 tiles in 2×2. Warm → 3 tiles (top+bottom on
+  // row 1, shoes alone on row 2).
+  const rows: (typeof orderedSlots)[] = [];
+  for (let i = 0; i < orderedSlots.length; i += 2) {
+    rows.push(orderedSlots.slice(i, i + 2));
   }
 
   return (
-    <View style={styles.outfitCollage}>
+    <View style={[styles.outfitCollage, { height }] }>
       {rows.map((row, rowIndex) => (
         <View
           key={`row_${rowIndex}`}
@@ -71,21 +120,21 @@ const OutfitCollageDisplay: React.FC<OutfitCollageDisplayProps> = ({ items }) =>
         >
           {row.map((slot, columnIndex) => (
             <View
-              key={String(slot.item.id || `${rowIndex}_${columnIndex}`)}
+              key={`${slot.key}_${String(slot.item?.id ?? `${rowIndex}_${columnIndex}`)}`}
               style={[
                 styles.collageSlot,
-                columnIndex === 0 ? styles.collageSlotRightSpacing : null,
+                columnIndex === 0 && row.length === 2 ? styles.collageSlotRightSpacing : null,
               ]}
             >
-              <CollageImage src={slot.item.image} />
+              <CollageImage src={slot.item ? slot.item.image : null} />
               <View style={styles.collageSlotLabel}>
                 <Text style={styles.collageSlotLabelText} numberOfLines={1}>
-                  {getOutfitPreviewTitle(slot.item)}
+                  {slot.item ? getOutfitPreviewTitle(slot.item) : slot.label}
                 </Text>
               </View>
             </View>
           ))}
-          {row.length === 1 ? <View style={styles.collageSlot} /> : null}
+          {row.length === 1 ? <View style={styles.collageSlotSpacer} /> : null}
         </View>
       ))}
     </View>
@@ -124,6 +173,12 @@ const styles = StyleSheet.create({
   },
   collageSlotRightSpacing: {
     marginRight: 12,
+  },
+  // Invisible filler keeping a lone tile (e.g. shoes on warm-weather days)
+  // at the same width as the tiles in full rows.
+  collageSlotSpacer: {
+    flex: 1,
+    marginLeft: 12,
   },
   collageSlotImage: {
     width: '78%',

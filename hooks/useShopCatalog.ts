@@ -69,8 +69,12 @@ export function useShopCatalog({
             q = q.eq('garment_type', 'outfit');
         } else if (cat === 'all') {
             /* no filter */
-        } else if (cat === 'tops' || cat === 'bottoms' || cat === 'outerwear') {
-            q = q.eq('category', cat);
+        } else if (cat === 'tops') {
+            q = q.or('category.eq.tops,garment_type.eq.upper_body');
+        } else if (cat === 'bottoms') {
+            q = q.or('category.eq.bottoms,garment_type.eq.lower_body');
+        } else if (cat === 'outerwear') {
+            q = q.or('category.eq.outerwear,garment_type.eq.outerwear');
         } else {
             q = q.eq('garment_type', cat);
         }

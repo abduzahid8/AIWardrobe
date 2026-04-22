@@ -476,11 +476,11 @@ function buildShopQueryForSlot(slot: OutfitSlotId, limit: number) {
 
     switch (slot) {
         case 'outerwear':
-            return base.eq('category', 'outerwear');
+            return base.or('category.eq.outerwear,garment_type.eq.outerwear');
         case 'top':
-            return base.eq('category', 'tops');
+            return base.or('category.eq.tops,garment_type.eq.upper_body');
         case 'bottom':
-            return base.eq('category', 'bottoms');
+            return base.or('category.eq.bottoms,garment_type.eq.lower_body');
         case 'shoes':
             return base.or('category.eq.shoes,garment_type.eq.shoes');
         default:
@@ -504,6 +504,63 @@ function rowToShopFillItem(row: ShopCatalogRow, slot: OutfitSlotId): ShopFillIte
         recommendation: `Suggested from shop to complete your ${slot === 'outerwear' ? 'main-top layer' : slot}`,
         missingSlot: slot,
     };
+}
+
+/**
+ * Fetch multiple style-ranked shop items for ALL outfit slots, not just
+ * missing ones. Used by the local outfit fallback so that style-specific
+ * sections on Home ("Business Casual", "Old Money") get shop items that
+ * actually match the aesthetic, even when the user's wardrobe has items
+ * in those macro-categories that clash with the style.
+ *
+ * Returns up to `perSlot` items per slot, style-ranked best-first.
+ */
+export async function fetchShopPoolForStyle(
+    slots: OutfitSlotId[],
+    style: string | null | undefined,
+    perSlot = 5,
+): Promise<ShopFillItem[]> {
+    if (!slots || slots.length === 0) return [];
+    const normalizedStyle: StyleId = normalizeStyleId(style || 'casual');
+    const pool: ShopFillItem[] = [];
+
+    for (const slot of slots) {
+        try {
+            const { data, error } = await buildShopQueryForSlot(slot, 30);
+            if (error || !data || data.length === 0) continue;
+
+            const scored = (data as ShopCatalogRow[])
+                .map((row) => ({
+                    row,
+                    score: scoreItemForStyle(
+                        {
+                            name: row.name || undefined,
+                            description: row.description || undefined,
+                            brand: row.brand || undefined,
+                            color: row.primary_color || undefined,
+                            type: row.garment_type || undefined,
+                            category: row.category || undefined,
+                            macroCategory: slot,
+                        },
+                        normalizedStyle,
+                    ),
+                }))
+                .sort((a, b) => b.score - a.score);
+
+            let added = 0;
+            for (const candidate of scored) {
+                if (added >= perSlot) break;
+                const fill = rowToShopFillItem(candidate.row, slot);
+                if (fill) {
+                    pool.push(fill);
+                    added++;
+                }
+            }
+        } catch (err) {
+            logger.warn(`fetchShopPoolForStyle failed for slot=${slot}: ${String(err)}`);
+        }
+    }
+    return pool;
 }
 
 /**

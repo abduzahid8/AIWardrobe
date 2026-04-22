@@ -55,6 +55,10 @@ export {
     PressableGlassCard,
 } from './LiquidGlassCard';
 
+// Navigation Transition Components
+export { ScreenTransitionWrapper } from '../ScreenTransitionWrapper';
+export { CrossfadeTabView, TabTransitionContext } from '../CrossfadeTabView';
+
 // Re-export types
 export type { BentoGridProps, BentoItemProps } from './BentoGrid';
 export type { LiquidGlassCardProps, GlassVariant, GlassElevation } from './LiquidGlassCard';

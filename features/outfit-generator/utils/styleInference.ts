@@ -19,7 +19,8 @@ export type StyleId =
   | 'minimalist'
   | 'y2k'
   | 'business_casual'
-  | 'casual';
+  | 'casual'
+  | 'classic';
 
 export interface InferredItemAttributes {
   /** Ranked list of matching aesthetics, most-likely first. */
@@ -97,14 +98,17 @@ const STYLE_SIGNALS: Record<StyleId, Signal[]> = {
   old_money: [
     kw('cashmere', 4), kw('merino', 3), kw('wool', 3), kw('linen', 3),
     kw('silk', 2), kw('cotton', 1),
-    kw('blazer', 4), kw('loafer', 5), kw('loafers', 5), kw('oxford', 3), kw('polo', 3),
+    kw('blazer', 4), kw('loafer', 5), kw('loafers', 5), kw('oxford', 3),
+    kw('knit polo', 4), kw('polo', 2),
     kw('cardigan', 3), kw('chino', 3), kw('chinos', 3), kw('trouser', 3),
     kw('trousers', 3), kw('tailored', 3), kw('pleated', 3), kw('pinstripe', 2),
-    kw('houndstooth', 3), kw('herringbone', 3), kw('tweed', 3),
+    kw('houndstooth', 3), kw('herringbone', 3), kw('tweed', 3), kw('flannel', 3),
     kw('suit', 3), kw('suiting', 3), kw('knit sweater', 3), kw('pullover', 2),
+    kw('turtleneck', 3),
     kw('relaxed-fit', 1), kw('classic', 2), kw('regular-fit', 1),
     kw('cream', 2), kw('camel', 3), kw('navy', 2), kw('beige', 2),
-    kw('burgundy', 2), kw('forest', 2), kw('ralph lauren', 5), kw('brunello', 5),
+    kw('burgundy', 2), kw('forest', 2), kw('tan', 2),
+    kw('ralph lauren', 5), kw('brunello', 5),
     kw('loro piana', 5), kw('massimo dutti', 3), kw('arket', 2), kw('brooks', 3),
     kw('brooks brothers', 5),
     // Shoes-specific positives (loafers, penny loafers, bit loafers, boat shoes,
@@ -113,12 +117,14 @@ const STYLE_SIGNALS: Record<StyleId, Signal[]> = {
     kw('bit loafers', 5), kw('metal bit', 4), kw('boat shoe', 4), kw('boat shoes', 4),
     kw('derby', 4), kw('dress shoes', 4), kw('dress shoe', 4), kw('leather shoes', 3),
     kw('leather loafer', 5), kw('leather loafers', 5), kw('moc toe', 2),
-    kw('double buckle', 3), kw('raised seam', 1),
+    kw('double buckle', 3), kw('raised seam', 1), kw('suede', 3),
     // Negatives
     kw('hoodie', -4), kw('graphic', -3), kw('logo', -2), kw('oversized', -2),
     kw('cargo', -3), kw('track pants', -4), kw('sweatpants', -3),
     kw('ripped', -3), kw('distressed', -3),
     kw('neon', -4), kw('sequin', -4), kw('rhinestone', -4),
+    kw('square-toe', -4), kw('square toe', -4), kw('low-rise', -3), kw('low rise', -3),
+    kw('skinny', -2), kw('backpack', -2),
     // Footwear to AVOID for old_money
     kw('chunky sneaker', -4), kw('chunky sneakers', -4), kw('basketball', -5),
     kw('skate sneaker', -4), kw('skate sneakers', -4), kw('thick-soled', -3),
@@ -146,10 +152,11 @@ const STYLE_SIGNALS: Record<StyleId, Signal[]> = {
     kw('essential', 3), kw('basic', 2), kw('plain', 3), kw('solid', 2),
     kw('cos', 5), kw('uniqlo', 4), kw('acne', 4), kw('jil sander', 5),
     kw('the row', 5), kw('everlane', 4), kw('arket', 3),
-    kw('crew neck', 2), kw('turtleneck', 2), kw('mock neck', 2),
+    kw('crew neck', 2), kw('turtleneck', 2), kw('mock neck', 2), kw('knit polo', 3),
     kw('merino', 3), kw('wool', 2), kw('cotton', 1),
     kw('black', 2), kw('white', 2), kw('grey', 2), kw('gray', 2),
-    kw('beige', 2), kw('navy', 1),
+    kw('beige', 2), kw('navy', 1), kw('stone', 2), kw('cream', 2), kw('sand', 2),
+    kw('suede', 2), kw('poplin', 2), kw('linen', 2),
     // Minimalist footwear: clean leather sneakers, minimal loafers, plain boots
     kw('minimal sneaker', 5), kw('minimal sneakers', 5), kw('leather sneaker', 3),
     kw('leather sneakers', 3), kw('leather loafer', 3), kw('leather loafers', 3),
@@ -157,7 +164,7 @@ const STYLE_SIGNALS: Record<StyleId, Signal[]> = {
     // Negatives
     kw('graphic', -4), kw('logo', -3), kw('print', -3), kw('neon', -5),
     kw('sequin', -5), kw('rhinestone', -5), kw('floral', -3),
-    kw('colorblock', -2), kw('color-block', -2),
+    kw('colorblock', -3), kw('color-block', -3),
     kw('chunky', -3), kw('basketball', -4), kw('retro sneaker', -2),
   ],
   y2k: [
@@ -176,22 +183,66 @@ const STYLE_SIGNALS: Record<StyleId, Signal[]> = {
     kw('trousers', 4), kw('oxford', 4), kw('button-down', 3), kw('button down', 3),
     kw('loafer', 4), kw('loafers', 4), kw('dress shirt', 4), kw('dress shoes', 4),
     kw('dress shoe', 4), kw('derby', 4), kw('poplin', 3), kw('tailored', 4),
+    kw('knit polo', 3), kw('turtleneck', 3), kw('cardigan', 3),
+    kw('flannel', 3), kw('herringbone', 3), kw('tweed', 3), kw('suede', 3),
     kw('slim-fit', 2), kw('slim fit', 2), kw('straight-fit', 1),
     kw('shirt', 2), kw('polo', 2),
     kw('penny loafer', 4), kw('penny loafers', 4), kw('bit loafer', 4),
     kw('bit loafers', 4), kw('leather shoes', 3), kw('leather loafer', 4),
     kw('leather loafers', 4),
     kw('navy', 2), kw('charcoal', 2), kw('tan', 2), kw('white', 1),
+    kw('cream', 2), kw('brown', 2), kw('burgundy', 2), kw('light blue', 2),
     kw('hugo boss', 4), kw('theory', 4), kw('everlane', 2),
     // Negatives
     kw('hoodie', -4), kw('graphic', -3), kw('cargo', -4), kw('ripped', -4),
     kw('sweatpants', -4), kw('sequin', -5), kw('neon', -5), kw('crop', -2),
     kw('chunky', -3), kw('basketball', -5), kw('skate', -3),
+    kw('low-rise', -3), kw('low rise', -3), kw('skinny', -2),
+    kw('square-toe', -4), kw('square toe', -4),
   ],
   casual: [
     kw('t-shirt', 2), kw('tee', 2), kw('jeans', 2), kw('jean', 1),
     kw('sweater', 2), kw('cardigan', 1), kw('sneaker', 2), kw('sneakers', 2),
     kw('polo', 1), kw('shorts', 1), kw('denim', 2), kw('regular-fit', 1),
+    kw('knit', 2), kw('slack', 2), kw('slacks', 2), kw('loafer', 2), kw('loafers', 2),
+    kw('chino', 2), kw('chinos', 2), kw('canvas', 1), kw('suede', 2),
+    kw('basketball', -3), kw('graphic hoodie', -3), kw('sweatpants', -2),
+  ],
+  classic: [
+    // Core tailored pieces
+    kw('suit', 5), kw('blazer', 4), kw('sport coat', 4), kw('sport jacket', 4),
+    kw('tailored', 4), kw('trouser', 4), kw('trousers', 4), kw('pleated', 3),
+    kw('slack', 3), kw('slacks', 3),
+    kw('oxford', 4), kw('button-down', 3), kw('button down', 3), kw('dress shirt', 5),
+    kw('cardigan', 3), kw('turtleneck', 4), kw('knit polo', 4),
+    // Fabrics
+    kw('flannel', 4), kw('tweed', 4), kw('herringbone', 4), kw('cashmere', 4),
+    kw('merino', 3), kw('wool', 3), kw('linen', 2), kw('silk', 2),
+    kw('poplin', 3), kw('oxford cloth', 3), kw('suede', 3),
+    // Colors
+    kw('navy', 3), kw('charcoal', 3), kw('cream', 2), kw('burgundy', 3),
+    kw('camel', 3), kw('beige', 2), kw('tan', 2), kw('forest', 2),
+    // Shoes
+    kw('loafer', 4), kw('loafers', 4), kw('oxford shoe', 5), kw('oxford shoes', 5),
+    kw('derby', 4), kw('dress shoes', 5), kw('dress shoe', 5),
+    kw('leather shoes', 3), kw('suede shoes', 3),
+    kw('penny loafer', 5), kw('penny loafers', 5), kw('bit loafer', 5), kw('bit loafers', 5),
+    kw('brogue', 4), kw('brogues', 4), kw('monk strap', 4), kw('chelsea boot', 3), kw('chelsea boots', 3),
+    // Brands
+    kw('brooks brothers', 5), kw('ralph lauren', 4), kw('brunello', 5),
+    kw('loro piana', 5), kw('massimo dutti', 3), kw('arket', 2),
+    // Accessories
+    kw('tie', 3), kw('pocket square', 3), kw('scarf', 2),
+    // Negatives
+    kw('hoodie', -4), kw('graphic', -3), kw('logo', -2),
+    kw('cargo', -4), kw('sweatpants', -4), kw('joggers', -4),
+    kw('track pants', -4), kw('shorts', -3), kw('bermuda', -3),
+    kw('puffer', -3), kw('bomber', -3), kw('denim jacket', -2),
+    kw('chunky sneaker', -4), kw('chunky sneakers', -4), kw('athletic', -3),
+    kw('square-toe', -4), kw('square toe', -4),
+    kw('neon', -4), kw('sequin', -4), kw('ripped', -3),
+    kw('low-rise', -3), kw('low rise', -3), kw('skinny', -2), kw('oversized', -2),
+    kw('backpack', -2),
   ],
 };
 
@@ -388,7 +439,7 @@ export function needsLayering(
   const coldCondition = /\b(cold|chilly|freezing|snow|rain|drizzle|wind|storm)\b/.test(condition);
   if (coldTemp || coldCondition) return true;
 
-  if (normalized === 'old_money' || normalized === 'business_casual') return true;
+  if (normalized === 'old_money' || normalized === 'business_casual' || normalized === 'classic') return true;
   if (normalized === 'streetwear') return true; // hoodie-over-tee is canonical
   if (normalized === 'y2k') return false;
   return false;
@@ -407,7 +458,8 @@ export function normalizeStyleId(raw: string | null | undefined): StyleId {
     key === 'minimalist' ||
     key === 'y2k' ||
     key === 'business_casual' ||
-    key === 'casual'
+    key === 'casual' ||
+    key === 'classic'
   ) {
     return key as StyleId;
   }

@@ -19,9 +19,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
-import type { ClothingItem, ClothingLayer } from '../src/types/domain';
+import type { ClothingItem } from '../src/types/domain';
 
 const { colors, spacing, radius, typography } = LiquidGlass2026Theme;
+
+type ClothingLayer = 'outer' | 'mid' | 'base' | 'accessory';
 
 interface LayeredOutfitViewProps {
     items: ClothingItem[];
@@ -40,7 +42,6 @@ const LAYER_CONFIG: { key: ClothingLayer; label: string; icon: string; color: st
 
 /** Get default layer from category if item doesn't have one set */
 function getEffectiveLayer(item: ClothingItem): ClothingLayer {
-    if (item.layer) return item.layer;
     switch (item.category) {
         case 'outerwear': return 'outer';
         case 'accessory': return 'accessory';

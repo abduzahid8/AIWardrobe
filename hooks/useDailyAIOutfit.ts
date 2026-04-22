@@ -87,7 +87,7 @@ function todayKey(d: Date = new Date()): string {
 }
 
 function storageKey(userId: string | null | undefined, style: string): string {
-    return `daily_ai_outfit::${userId ?? 'anon'}::${style}`;
+    return `daily_ai_outfit_v3::${userId ?? 'anon'}::${style}`;
 }
 
 /**
@@ -97,7 +97,7 @@ function storageKey(userId: string | null | undefined, style: string): string {
  * as blank boxes on the outfit card, which is what the user was seeing.
  */
 function isRenderableImage(url: unknown): url is string {
-    return typeof url === 'string' && /^(https?:|file:|data:)/i.test(url);
+    return typeof url === 'string' && (/^(https?:|file:|data:)/i.test(url) || url.startsWith('basic_clothing_'));
 }
 
 function itemHasRenderableImage(item: GeneratedOutfit['items'][number]): boolean {
@@ -107,9 +107,9 @@ function itemHasRenderableImage(item: GeneratedOutfit['items'][number]): boolean
 }
 
 /**
- * Keep only outfits that Home can actually display. We require at least two
- * items with real image URLs so the card never shows a single floating piece
- * surrounded by empty slots.
+ * Keep only outfits that Home can actually display. We require Top + Bottom +
+ * Shoes (the mandatory 3-slot composition) and no duplicate macro categories
+ * (e.g. two bottoms slipping through from a shop-catalog mis-tag).
  */
 function filterRenderableOutfits(outfits: GeneratedOutfit[]): GeneratedOutfit[] {
     return outfits
@@ -118,14 +118,32 @@ function filterRenderableOutfits(outfits: GeneratedOutfit[]): GeneratedOutfit[] 
             items: (o.items ?? []).filter(itemHasRenderableImage),
         }))
         .filter((o) => {
-            // Ensure the outfit has sufficient clothing pieces to form a complete look
-            const hasTop = o.items.some(i => ['top', 'outerwear'].includes((i.macroCategory || '').toLowerCase()) || ['top', 'shirt', 'jacket', 't-shirt', 'blouse', 'coat', 'blazer', 'sweater', 'hoodie', 'polo'].some(c => (i.type || '').toLowerCase().includes(c)));
-            const hasBottom = o.items.some(i => ['bottom', 'pants', 'jeans', 'trousers', 'skirt', 'trouser', 'short'].some(c => (i.macroCategory || '').toLowerCase().includes(c) || (i.type || '').toLowerCase().includes(c)));
-            const hasShoes = o.items.some(i => ['shoes', 'shoe', 'sneaker', 'boot', 'footwear'].some(c => (i.macroCategory || '').toLowerCase().includes(c) || (i.type || '').toLowerCase().includes(c)));
-            
-            // A complete outfit should have at least a top, a bottom, and ideally shoes.
-            // Reject outfits with less than 3 items, or those missing a top or bottom.
-            return o.items.length >= 3 && hasTop && hasBottom;
+            const macros = o.items.map((i) => {
+                const raw = (i.macroCategory || '').toLowerCase();
+                if (raw === 'outerwear') return 'outerwear';
+                if (raw === 'top' || raw === 'upper_body') return 'top';
+                if (raw === 'bottom' || raw === 'lower_body') return 'bottom';
+                if (raw === 'shoes') return 'shoes';
+                const t = (i.type || '').toLowerCase();
+                if (/\b(blazer|coat|jacket|cardigan|sweater|hoodie|vest|outerwear)\b/.test(t)) return 'outerwear';
+                if (/\b(shirt|t-shirt|tee|blouse|polo|top|dress|upper[_\s-]?body)\b/.test(t)) return 'top';
+                if (/\b(pant|trouser|jeans|short|skirt|bottom|lower[_\s-]?body)\b/.test(t)) return 'bottom';
+                if (/\b(shoe|sneaker|boot|loafer|sandal|heel|footwear)\b/.test(t)) return 'shoes';
+                return 'other';
+            });
+
+            const hasTop = macros.includes('top') || macros.includes('outerwear');
+            const hasBottom = macros.includes('bottom');
+            const hasShoes = macros.includes('shoes');
+
+            // Reject duplicate bottoms / duplicate shoes — Home's collage only
+            // renders one tile per slot, so dupes caused the "two lower_body"
+            // render bug when a mis-tagged shirt took the empty shoes slot.
+            const bottoms = macros.filter((m) => m === 'bottom').length;
+            const shoes = macros.filter((m) => m === 'shoes').length;
+            if (bottoms > 1 || shoes > 1) return false;
+
+            return o.items.length >= 3 && hasTop && hasBottom && hasShoes;
         });
 }
 
@@ -203,10 +221,12 @@ export function useDailyAIOutfit({
                 const fresh = filterRenderableOutfits(rawOutfits);
 
                 if (fresh.length === 0) {
-                    // Nothing the UI can actually paint — surface an empty
-                    // list so the caller falls back to its curated strip
-                    // instead of showing blank image slots.
-                    logger.warn('No renderable outfits returned; falling back', {
+                    // Previously we had a "structuralFallback" here that
+                    // accepted any outfit with >=3 items regardless of
+                    // composition. That's what let the shoes-less / duplicate-
+                    // bottom outfits reach Home. Empty state is safer than a
+                    // broken card — Home will render a friendly placeholder.
+                    logger.warn('No renderable outfits returned; showing empty state', {
                         style,
                         raw: rawOutfits.length,
                     });

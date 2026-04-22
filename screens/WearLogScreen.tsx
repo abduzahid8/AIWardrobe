@@ -75,7 +75,7 @@ const WearLogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     const suggestionItems = useMemo(() => {
         if (!dailySuggestion) return [];
         return dailySuggestion.outfit.itemIds
-            .map((id) => items.find((i) => i.id === id))
+            .map((id: string) => items.find((i) => i.id === id))
             .filter(Boolean) as ClothingItem[];
     }, [dailySuggestion, items]);
 

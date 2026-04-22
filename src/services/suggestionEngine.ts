@@ -166,20 +166,39 @@ const OCCASION_TIER_MAP: Record<string, [number, number, FormalityTier]> = {
     'alpine-skiing': [5, 5, 5],
 };
 
-/** Color harmony rules (complementary pairs) */
+/** Color harmony rules (complementary pairs)
+ *  Expanded with the "Golden 8" formulas from expert style guides:
+ *  white, blue, light blue, brown, green, cream/milk, burgundy, grey.
+ *  Key pairings: blue+brown, blue+green, green+brown always work.
+ *  Black is NOT universal — it only pairs with white for classic looks.
+ *  Navy, charcoal, dark brown are far more versatile replacements for black.
+ */
 const COLOR_HARMONIES: Record<string, string[]> = {
-    navy: ['white', 'cream', 'beige', 'khaki', 'light blue', 'camel'],
-    black: ['white', 'gray', 'red', 'cream', 'beige', 'camel'],
-    white: ['navy', 'black', 'blue', 'gray', 'beige', 'olive'],
-    gray: ['black', 'white', 'navy', 'blue', 'pink', 'burgundy'],
-    blue: ['white', 'gray', 'beige', 'brown', 'khaki', 'cream'],
-    brown: ['white', 'cream', 'blue', 'green', 'beige', 'navy'],
-    beige: ['navy', 'white', 'brown', 'olive', 'blue', 'black'],
-    olive: ['white', 'cream', 'beige', 'brown', 'khaki', 'navy'],
-    red: ['black', 'white', 'navy', 'gray', 'denim blue'],
-    green: ['white', 'cream', 'brown', 'beige', 'navy', 'black'],
-    pink: ['gray', 'navy', 'white', 'cream', 'black'],
-    burgundy: ['gray', 'cream', 'white', 'navy', 'camel'],
+    navy: ['white', 'cream', 'beige', 'khaki', 'light blue', 'camel', 'brown', 'burgundy', 'tan', 'charcoal', 'grey'],
+    black: ['white', 'gray', 'grey', 'cream'],
+    white: ['navy', 'blue', 'light blue', 'gray', 'grey', 'beige', 'olive', 'brown', 'burgundy', 'camel', 'charcoal'],
+    gray: ['white', 'navy', 'blue', 'light blue', 'pink', 'burgundy', 'charcoal', 'beige'],
+    grey: ['white', 'navy', 'blue', 'light blue', 'pink', 'burgundy', 'charcoal', 'beige'],
+    charcoal: ['white', 'light blue', 'cream', 'beige', 'navy', 'grey', 'burgundy', 'tan'],
+    blue: ['white', 'cream', 'beige', 'brown', 'khaki', 'light blue', 'navy', 'green', 'grey', 'tan'],
+    'light blue': ['navy', 'white', 'cream', 'brown', 'charcoal', 'grey', 'beige', 'tan', 'camel'],
+    brown: ['white', 'cream', 'blue', 'light blue', 'green', 'beige', 'navy', 'olive', 'tan', 'camel', 'burgundy'],
+    beige: ['navy', 'white', 'brown', 'olive', 'blue', 'light blue', 'black', 'camel', 'tan', 'charcoal', 'burgundy'],
+    cream: ['navy', 'brown', 'beige', 'blue', 'light blue', 'camel', 'charcoal', 'burgundy', 'tan', 'green', 'olive'],
+    olive: ['white', 'cream', 'beige', 'brown', 'khaki', 'navy', 'blue', 'tan', 'camel'],
+    camel: ['navy', 'cream', 'white', 'brown', 'beige', 'charcoal', 'burgundy', 'olive', 'tan'],
+    tan: ['navy', 'white', 'cream', 'brown', 'beige', 'olive', 'blue', 'light blue', 'charcoal', 'camel'],
+    khaki: ['navy', 'white', 'cream', 'brown', 'olive', 'blue', 'beige'],
+    burgundy: ['grey', 'gray', 'cream', 'white', 'navy', 'camel', 'charcoal', 'beige', 'brown'],
+    red: ['white', 'navy', 'grey', 'gray', 'denim blue', 'charcoal'],
+    green: ['white', 'cream', 'brown', 'beige', 'navy', 'blue', 'tan', 'olive'],
+    'forest green': ['cream', 'white', 'navy', 'brown', 'beige', 'tan', 'camel'],
+    pink: ['grey', 'gray', 'navy', 'white', 'cream', 'charcoal'],
+    sand: ['navy', 'white', 'brown', 'beige', 'cream', 'charcoal', 'olive'],
+    stone: ['navy', 'white', 'brown', 'beige', 'cream', 'charcoal', 'black'],
+    chocolate: ['cream', 'white', 'navy', 'beige', 'light blue', 'camel', 'tan'],
+    'midnight blue': ['cream', 'white', 'beige', 'camel', 'charcoal', 'silver'],
+    ivory: ['navy', 'brown', 'beige', 'charcoal', 'camel', 'burgundy', 'forest green'],
 };
 
 // ============================================

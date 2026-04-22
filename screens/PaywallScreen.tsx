@@ -19,6 +19,7 @@ import {
     ScrollView,
     Platform,
     ActivityIndicator,
+    Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,15 +33,11 @@ import Animated, {
     useSharedValue,
     withSpring,
 } from 'react-native-reanimated';
-import useSubscriptionStore, {
-    SUBSCRIPTION_PRICING,
-    TIER_DISPLAY_NAMES,
-} from '../store/subscriptionStore';
+import { SUBSCRIPTION_PRICING } from '../store/subscriptionStore';
 import useDailyUsageStore from '../store/dailyUsageStore';
 import { useStylePreferenceStore } from '../store/stylePreferenceStore';
 import AppColors from '../constants/AppColors';
 import { iapService } from '../src/services/iapService';
-import analyticsService from '../src/services/analyticsService';
 
 const COLORS = {
     background: '#0A0A0A',
@@ -80,7 +77,7 @@ const TIER_CARDS = {
     pro: {
         label: 'Pro',
         sublabel: 'The complete AI wardrobe',
-        productId: 'com.aiwardrobe.premium.monthly' as const,
+        productId: 'monthly' as const,
         price: null as string | null,
         period: '/month',
         features: [
@@ -126,10 +123,10 @@ const PressableCard: React.FC<{
 
 const PaywallScreen = () => {
     const navigation = useNavigation<any>();
-    const { verifySubscriptionFromServer } = useSubscriptionStore();
     const { completeOnboarding } = useStylePreferenceStore();
     const [isLoading, setIsLoading] = useState<string | null>(null);
     const [livePrice, setLivePrice] = useState<string | null>(null);
+    const [liveProductId, setLiveProductId] = useState<string | null>(null);
     const canGoBack = navigation.canGoBack();
 
     useEffect(() => {
@@ -138,9 +135,16 @@ const PaywallScreen = () => {
             if (cancelled) return;
             const proProduct = products.find(
                 (p) => p.id === TIER_CARDS.pro.productId
-            );
+            ) || products.find((p) => {
+                const id = String(p.id || '').toLowerCase();
+                const title = String(p.title || '').toLowerCase();
+                return id.includes('premium') || id.includes('pro') || title.includes('premium') || title.includes('pro');
+            }) || (products.length === 1 ? products[0] : undefined);
             if (proProduct?.price) {
                 setLivePrice(proProduct.price);
+            }
+            if (proProduct?.id) {
+                setLiveProductId(proProduct.id);
             }
         }).catch(() => {
             // Keep fallback empty; UI will show nothing or a placeholder
@@ -149,9 +153,7 @@ const PaywallScreen = () => {
     }, []);
 
     const purchase = async (
-        productId: 'com.aiwardrobe.premium.monthly',
-        analyticsTier: 'premium',
-        analyticsPrice: number,
+        productId: string,
     ) => {
         setIsLoading(productId);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -162,16 +164,20 @@ const PaywallScreen = () => {
                 completeOnboarding();
                 // Give the user a fresh daily bucket after upgrading.
                 await useDailyUsageStore.getState().resetToday();
-                await verifySubscriptionFromServer();
                 navigation.reset({
                     index: 0,
                     routes: [{ name: 'Main' as never }],
                 });
             } else if (result.error) {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                Alert.alert('Purchase failed', result.error);
             }
-        } catch {
+        } catch (error) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            Alert.alert(
+                'Purchase failed',
+                error instanceof Error ? error.message : 'Something went wrong while starting the purchase.'
+            );
         } finally {
             setIsLoading(null);
         }
@@ -186,16 +192,20 @@ const PaywallScreen = () => {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 completeOnboarding();
                 await useDailyUsageStore.getState().resetToday();
-                await verifySubscriptionFromServer();
                 navigation.reset({
                     index: 0,
                     routes: [{ name: 'Main' as never }],
                 });
             } else {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                Alert.alert('Restore failed', result.error || 'No previous purchases found.');
             }
-        } catch {
+        } catch (error) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            Alert.alert(
+                'Restore failed',
+                error instanceof Error ? error.message : 'Something went wrong while restoring purchases.'
+            );
         } finally {
             setIsLoading(null);
         }
@@ -274,13 +284,7 @@ const PaywallScreen = () => {
                         <Animated.View entering={FadeInUp.delay(200).springify()}>
                             <PressableCard
                                 style={styles.card}
-                                onPress={() =>
-                                    purchase(
-                                        TIER_CARDS.pro.productId,
-                                        'premium',
-                                        SUBSCRIPTION_PRICING.premium.price,
-                                    )
-                                }
+                                onPress={() => purchase(liveProductId ?? TIER_CARDS.pro.productId)}
                             >
                                 <LinearGradient
                                     colors={[COLORS.premium, COLORS.premiumDark]}
@@ -294,7 +298,7 @@ const PaywallScreen = () => {
                                     <Text style={styles.tierNameLight}>{TIER_CARDS.pro.label}</Text>
                                     <Text style={styles.tierSubLight}>{TIER_CARDS.pro.sublabel}</Text>
                                     <View style={styles.priceRow}>
-                                        <Text style={styles.priceBig}>{livePrice ?? TIER_CARDS.pro.price ?? ''}</Text>
+                                        <Text style={styles.priceBig}>{livePrice ?? `$${SUBSCRIPTION_PRICING.premium.price.toFixed(2)}`}</Text>
                                         <Text style={styles.pricePeriod}>{TIER_CARDS.pro.period}</Text>
                                     </View>
                                     <View style={styles.featuresBlock}>
@@ -306,7 +310,7 @@ const PaywallScreen = () => {
                                         ))}
                                     </View>
                                     <View style={styles.ctaButton}>
-                                        {isLoading === TIER_CARDS.pro.productId ? (
+                                        {isLoading === (liveProductId ?? TIER_CARDS.pro.productId) ? (
                                             <ActivityIndicator color={COLORS.premium} />
                                         ) : (
                                             <Text style={[styles.ctaText, { color: COLORS.premium }]}>

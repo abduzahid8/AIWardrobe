@@ -21,11 +21,11 @@ function isDressItem(item: any): boolean {
     return /\bdress(es)?\b/.test(blob)
 }
 
-// Decide whether an outfit needs a two-top layered composition
-// (base top + outerwear + bottom + shoes). Mirrors the client-side
-// `needsLayering` in features/outfit-generator/utils/styleInference.ts.
-function needsLayering(style: string | null | undefined, weather: any, prompt: string | null | undefined): boolean {
-    const normalized = (style || '').toLowerCase().replace(/[\s-]+/g, '_')
+// Decide whether an outfit needs a layered composition (outerwear + top +
+// bottom + shoes). Layering now follows WEATHER ONLY — the user confirmed
+// the composition rule is "Top + Bottom + Shoes always; Layer only when
+// cold". Style alone no longer forces a jacket in summer.
+function needsLayering(_style: string | null | undefined, weather: any, prompt: string | null | undefined): boolean {
     const promptBlob = (prompt || '').toLowerCase()
     if (/\b(summer|hot|heatwave|tee[-\s]?only|no jacket|no outerwear|beach)\b/.test(promptBlob)) return false
 
@@ -33,12 +33,27 @@ function needsLayering(style: string | null | undefined, weather: any, prompt: s
     const temp = typeof weather?.temp === 'number' ? weather.temp : null
     const coldTemp = temp != null && temp < 18
     const coldCondition = /\b(cold|chilly|freezing|snow|rain|drizzle|wind|storm)\b/.test(condition)
-    if (coldTemp || coldCondition) return true
+    return coldTemp || coldCondition
+}
 
-    if (normalized === 'old_money' || normalized === 'business_casual') return true
-    if (normalized === 'streetwear') return true
-    if (normalized === 'y2k') return false
-    return false
+// Formal outerwear = blazer/suit jacket/overcoat/topcoat/trench/peacoat/sport
+// coat/tuxedo. Never paired with shorts per the user's "never with formal
+// layers" rule. Casual layers (denim jacket, cardigan, hoodie, bomber,
+// puffer, windbreaker, fleece) intentionally fall through.
+function isFormalLayerItem(item: any): boolean {
+    const blob = `${item?.type || ''} ${item?.name || ''} ${item?.sub_category || ''} ${item?.subCategory || ''} ${item?.description || ''}`.toLowerCase()
+    const macro = String(item?.macroCategory || '').toLowerCase()
+    const isOuter = macro === 'outerwear' || /jacket|coat|blazer|vest|outerwear/.test(blob)
+    if (!isOuter) return false
+    return /\b(blazer|suit\s*jacket|sport\s*coat|sports\s*coat|overcoat|top\s*coat|topcoat|trench|peacoat|pea\s*coat|tuxedo)\b/.test(blob)
+}
+
+function isShortsItem(item: any): boolean {
+    const blob = `${item?.type || ''} ${item?.name || ''} ${item?.sub_category || ''} ${item?.subCategory || ''} ${item?.description || ''}`.toLowerCase()
+    const macro = String(item?.macroCategory || '').toLowerCase()
+    const isBottom = macro === 'bottom' || /pant|trouser|jeans|bottom|shorts?|skirt|lower[_\s-]?body/.test(blob)
+    if (!isBottom) return false
+    return /\b(shorts?|bermudas?)\b/.test(blob)
 }
 
 // ── Lightweight style inference (mirrors features/outfit-generator/utils/styleInference.ts)
@@ -51,21 +66,25 @@ const STYLE_SIGNALS_EDGE: Record<string, Array<[RegExp, number]>> = {
     old_money: [
         [/\bcashmere\b/i, 4], [/\bmerino\b/i, 3], [/\bwool\b/i, 3], [/\blinen\b/i, 3],
         [/\bsilk\b/i, 2], [/\bblazer\b/i, 4], [/\bloafer(s)?\b/i, 5], [/\boxford\b/i, 3],
-        [/\bpolo\b/i, 3], [/\bcardigan\b/i, 3], [/\bchino(s)?\b/i, 3], [/\btrouser(s)?\b/i, 3],
+        [/\bknit polo\b/i, 4], [/\bpolo\b/i, 2], [/\bcardigan\b/i, 3], [/\bchino(s)?\b/i, 3], [/\btrouser(s)?\b/i, 3],
         [/\btailored\b/i, 3], [/\bpleated\b/i, 3], [/\bpinstripe\b/i, 2], [/\bhoundstooth\b/i, 3],
-        [/\btweed\b/i, 3], [/\bsuit\b/i, 3], [/\bknit sweater\b/i, 3],
+        [/\btweed\b/i, 3], [/\bherringbone\b/i, 3], [/\bflannel\b/i, 3],
+        [/\bsuit\b/i, 3], [/\bknit sweater\b/i, 3], [/\bturtleneck\b/i, 3],
         [/\bcream\b/i, 2], [/\bcamel\b/i, 3], [/\bnavy\b/i, 2], [/\bbeige\b/i, 2],
+        [/\bburgundy\b/i, 2], [/\bforest\b/i, 2], [/\btan\b/i, 2],
         [/\bralph lauren\b/i, 5], [/\bbrunello\b/i, 5], [/\bloro piana\b/i, 5], [/\bmassimo dutti\b/i, 3],
         // Shoes-specific positives
         [/\bpenny loafer(s)?\b/i, 5], [/\bbit loafer(s)?\b/i, 5], [/\bmetal bit\b/i, 4],
         [/\bboat shoe(s)?\b/i, 4], [/\bderby\b/i, 4], [/\bdress shoe(s)?\b/i, 4],
         [/\bleather shoe(s)?\b/i, 3], [/\bleather loafer(s)?\b/i, 5],
-        [/\bmoc toe\b/i, 2], [/\bdouble buckle\b/i, 3],
+        [/\bsuede\b/i, 3], [/\bmoc toe\b/i, 2], [/\bdouble buckle\b/i, 3],
         // Negatives
         [/\bhoodie\b/i, -4], [/\bgraphic\b/i, -3], [/\blogo\b/i, -2], [/\boversized\b/i, -2],
         [/\bcargo\b/i, -3], [/\btrack pants\b/i, -4], [/\bsweatpants\b/i, -3],
         [/\bripped\b/i, -3], [/\bdistressed\b/i, -3], [/\bneon\b/i, -4],
         [/\bsequin\b/i, -4], [/\brhinestone\b/i, -4],
+        [/\bsquare[-\s]?toe\b/i, -4], [/\blow[-\s]?rise\b/i, -3], [/\bskinny\b/i, -2],
+        [/\bbackpack\b/i, -2],
         // Shoes to avoid
         [/\bchunky sneaker(s)?\b/i, -4], [/\bbasketball\b/i, -5],
         [/\bskate sneaker(s)?\b/i, -4], [/\bthick[-\s]?soled\b/i, -3],
@@ -78,14 +97,18 @@ const STYLE_SIGNALS_EDGE: Record<string, Array<[RegExp, number]>> = {
         [/\bgraphic\b/i, 4], [/\blogo\b/i, 3], [/\bprint(ed)?\b/i, 3], [/\bsneaker\b/i, 3],
         [/\bpuffer\b/i, 4], [/\bbomber\b/i, 3], [/\btrack\b/i, 3], [/\bsweatpants\b/i, 3],
         [/\bjoggers\b/i, 4], [/\butility\b/i, 3], [/\bparka\b/i, 3],
+        [/\bnylon\b/i, 2], [/\bfleece\b/i, 2], [/\bterry\b/i, 2], [/\bjersey\b/i, 2],
         [/\bblazer\b/i, -3], [/\bloafer\b/i, -3], [/\btailored\b/i, -3],
     ],
     minimalist: [
         [/\bminimal\b/i, 4], [/\bessential\b/i, 3], [/\bbasic\b/i, 2], [/\bplain\b/i, 3],
         [/\bmerino\b/i, 3], [/\bwool\b/i, 2], [/\bcos\b/i, 5], [/\buniqlo\b/i, 4],
-        [/\bcrew neck\b/i, 2], [/\bturtleneck\b/i, 2], [/\bblack\b/i, 2], [/\bwhite\b/i, 2],
-        [/\bgrey\b/i, 2], [/\bgray\b/i, 2], [/\bbeige\b/i, 2],
+        [/\bcrew neck\b/i, 2], [/\bturtleneck\b/i, 2], [/\bknit polo\b/i, 3],
+        [/\bblack\b/i, 2], [/\bwhite\b/i, 2], [/\bgrey\b/i, 2], [/\bgray\b/i, 2],
+        [/\bbeige\b/i, 2], [/\bstone\b/i, 2], [/\bcream\b/i, 2], [/\bsand\b/i, 2],
+        [/\bsuede\b/i, 2], [/\bpoplin\b/i, 2], [/\blinen\b/i, 2],
         [/\bgraphic\b/i, -4], [/\blogo\b/i, -3], [/\bneon\b/i, -5], [/\bsequin\b/i, -5],
+        [/\bcolor[-\s]?block\b/i, -3],
     ],
     y2k: [
         [/\by2k\b/i, 5], [/\blow[-\s]?rise\b/i, 4], [/\bcrop(ped)?\b/i, 3], [/\brhinestone\b/i, 5],
@@ -99,14 +122,54 @@ const STYLE_SIGNALS_EDGE: Record<string, Array<[RegExp, number]>> = {
         [/\bbutton[-\s]?down\b/i, 3], [/\bloafer(s)?\b/i, 4], [/\bdress shirt\b/i, 4],
         [/\bdress shoe(s)?\b/i, 4], [/\bderby\b/i, 4], [/\bpenny loafer(s)?\b/i, 4],
         [/\bbit loafer(s)?\b/i, 4], [/\bleather loafer(s)?\b/i, 4], [/\bleather shoe(s)?\b/i, 3],
-        [/\bpoplin\b/i, 3], [/\btailored\b/i, 4], [/\bslim[-\s]?fit\b/i, 2],
-        [/\bnavy\b/i, 2], [/\bcharcoal\b/i, 2], [/\btan\b/i, 2],
+        [/\bpoplin\b/i, 3], [/\btailored\b/i, 4], [/\bknit polo\b/i, 3],
+        [/\bturtleneck\b/i, 3], [/\bcardigan\b/i, 3],
+        [/\bflannel\b/i, 3], [/\bherringbone\b/i, 3], [/\btweed\b/i, 3], [/\bsuede\b/i, 3],
+        [/\bnavy\b/i, 2], [/\bcharcoal\b/i, 2], [/\btan\b/i, 2], [/\bcream\b/i, 2],
+        [/\bbrown\b/i, 2], [/\bburgundy\b/i, 2], [/\blight blue\b/i, 2],
         [/\bhoodie\b/i, -4], [/\bgraphic\b/i, -3], [/\bcargo\b/i, -4], [/\bripped\b/i, -4],
         [/\bchunky\b/i, -3], [/\bbasketball\b/i, -5], [/\bskate\b/i, -3],
+        [/\blow[-\s]?rise\b/i, -3], [/\bskinny\b/i, -2], [/\bsquare[-\s]?toe\b/i, -4],
     ],
     casual: [
         [/\bt[-\s]?shirt\b/i, 2], [/\btee\b/i, 2], [/\bjeans\b/i, 2], [/\bsweater\b/i, 2],
         [/\bsneaker(s)?\b/i, 2], [/\bpolo\b/i, 1], [/\bdenim\b/i, 2],
+        [/\bknit\b/i, 2], [/\bslacks?\b/i, 2], [/\bcardigan\b/i, 2], [/\bloafer(s)?\b/i, 2],
+        [/\bchino(s)?\b/i, 2], [/\bcanvas\b/i, 1], [/\bsuede\b/i, 2],
+        [/\bbasketball\b/i, -3], [/\bgraphic hoodie\b/i, -3], [/\bsweatpants\b/i, -2],
+    ],
+    classic: [
+        // Core tailored pieces
+        [/\bsuit\b/i, 5], [/\bblazer\b/i, 4], [/\bsport coat\b/i, 4], [/\bsport jacket\b/i, 4],
+        [/\btailored\b/i, 4], [/\btrouser(s)?\b/i, 4], [/\bpleated\b/i, 3], [/\bslacks?\b/i, 3],
+        [/\boxford\b/i, 4], [/\bbutton[-\s]?down\b/i, 3], [/\bdress shirt\b/i, 5],
+        [/\bcardigan\b/i, 3], [/\bturtleneck\b/i, 4], [/\bknit polo\b/i, 4],
+        // Fabrics
+        [/\bflannel\b/i, 4], [/\btweed\b/i, 4], [/\bherringbone\b/i, 4], [/\bcashmere\b/i, 4],
+        [/\bmerino\b/i, 3], [/\bwool\b/i, 3], [/\blinen\b/i, 2], [/\bsilk\b/i, 2],
+        [/\bpoplin\b/i, 3], [/\boxford cloth\b/i, 3], [/\bsuede\b/i, 3],
+        // Colors
+        [/\bnavy\b/i, 3], [/\bcharcoal\b/i, 3], [/\bcream\b/i, 2], [/\bburgundy\b/i, 3],
+        [/\bcamel\b/i, 3], [/\bbeige\b/i, 2], [/\btan\b/i, 2], [/\bforest\b/i, 2],
+        // Shoes
+        [/\bloafer(s)?\b/i, 4], [/\boxford shoe(s)?\b/i, 5], [/\bderby\b/i, 4],
+        [/\bdress shoe(s)?\b/i, 5], [/\bleather shoe(s)?\b/i, 3], [/\bsuede shoe(s)?\b/i, 3],
+        [/\bpenny loafer(s)?\b/i, 5], [/\bbit loafer(s)?\b/i, 5], [/\bbrogue(s)?\b/i, 4],
+        [/\bmonk strap\b/i, 4], [/\bchelsea boot(s)?\b/i, 3],
+        // Brands
+        [/\bbrooks brothers\b/i, 5], [/\bralph lauren\b/i, 4], [/\bbrunello\b/i, 5],
+        [/\bloro piana\b/i, 5], [/\bmassimo dutti\b/i, 3], [/\barket\b/i, 2],
+        // Accessories
+        [/\btie\b/i, 3], [/\bpocket square\b/i, 3], [/\bscarf\b/i, 2],
+        // Negatives
+        [/\bhoodie\b/i, -4], [/\bgraphic\b/i, -3], [/\blogo\b/i, -2],
+        [/\bcargo\b/i, -4], [/\bsweatpants\b/i, -4], [/\bjoggers\b/i, -4],
+        [/\btrack pants\b/i, -4], [/\bshorts\b/i, -3], [/\bbermuda\b/i, -3],
+        [/\bpuffer\b/i, -3], [/\bbomber\b/i, -3], [/\bdenim jacket\b/i, -2],
+        [/\bchunky sneaker(s)?\b/i, -4], [/\bathletic\b/i, -3], [/\bsquare[-\s]?toe\b/i, -4],
+        [/\bneon\b/i, -4], [/\bsequin\b/i, -4], [/\bripped\b/i, -3],
+        [/\blow[-\s]?rise\b/i, -3], [/\bskinny\b/i, -2], [/\boversized\b/i, -2],
+        [/\bbackpack\b/i, -2], [/\bbi[kc]ini\b/i, -2],
     ],
 }
 
@@ -183,28 +246,55 @@ function rankItemsForStyleEdge<T extends { macroCategory?: string }>(
     return final.map(s => s.item)
 }
 
+// ── Universal style knowledge distilled from 18 expert style-guide transcripts ──
+// These rules apply across ALL styles and are injected into every system prompt.
+const STYLE_KNOWLEDGE = `
+UNIVERSAL STYLE PRINCIPLES (apply to every outfit regardless of style):
+1. FIT IS KING: Medium-tapered silhouettes always beat skinny/oversized for classic looks. No pulling buttons, no excess fabric. Shoulders must align.
+2. HIGH/MID-RISE TROUSERS: Always prefer mid-to-high rise. Low-rise breaks body proportions and looks sloppy. Bottom hem width ~19-20cm for classic; slightly narrower for smart casual.
+3. NEVER MIX STYLES: Do not pair sportswear with tailored pieces in one outfit. A suit jacket over a sports tee or sneakers with a blazer violates formality coherence.
+4. BLACK IS NOT UNIVERSAL: Black only pairs with white. For classic/smart-casual wardrobes, replace black with navy, charcoal, dark brown, or burgundy — all far more versatile.
+5. GOLDEN 8 COLORS: white, blue, light blue, brown, green, cream/milk, burgundy, grey. These 8 intermix freely: blue+brown, blue+green, green+brown always work.
+6. TEXTURE ELEVATES: Same color in cheap cotton looks like underwear; in textured linen, cashmere, or suede it reads as luxury. Favor texture over trend.
+7. SEASONAL FABRICS: Linen/tropical wool/silk-cotton for summer; flannel/tweed/heavy wool for winter. Accessories follow seasons too (linen ties in summer, wool in winter).
+8. KNIT OVER WOVEN: For polos and t-shirts, knit (fine-gauge) reads as elegant and versatile; piqué reads as sporty; basic woven cotton reads as cheap.
+9. COLLAR SIZE MATTERS: Large shirt collars frame the face and tuck under jacket lapels cleanly. Small collars, mandarin/stand collars cheapen any look.
+10. LAPEL WIDTH: Minimum 8.5cm. Narrow lapels cheapen the look. Lapel should cover ~half the distance from neck to shoulder seam.
+11. FOOTWEAR RULES: Loafers/oxfords/derbies for smart and classic; clean minimal sneakers only for casual; never athletic trainers with tailored clothing. Suede is more versatile than leather for smart-casual.
+12. ACCESSORIES COMPLETE: Pocket squares, ties, seasonal scarves, watches elevate any outfit from ordinary to polished.
+13. FORMALITY COHERENCE: Every item in one outfit should sit within 1-2 formality tiers of each other. A formal blazer + gym shorts = hard clash.
+14. QUALITY OVER QUANTITY: One well-made piece in a good fabric outperforms three cheap ones. Natural fibers (wool, linen, cotton, silk) always look more expensive than synthetics.
+15. AVOID: puffer jackets with suits, square-toe shoes, backpacks with tailored clothing, sports watches with formal outfits, graphic tees in any non-streetwear look.`
+
 // ── Style-specific fashion context ───────────────────────────────────────
 // Each block has: vibe paragraph + MUST / REJECT rules that the model must
 // honor. The REJECT list is what forced the model to stop picking graphic
 // tees, cargo shorts, and hoodies when the user asked for "Old Money".
 const STYLE_CONTEXT: Record<string, { vibe: string; must: string[]; reject: string[]; palette: string[]; fabrics: string[] }> = {
     old_money: {
-        vibe: `Old Money / Quiet Luxury — the wardrobe of someone who summers in the Hamptons, sails in Capri, and owns a Brunello Cucinelli cardigan. Think Ralph Lauren Purple Label, Loro Piana, Brooks Brothers. Nothing flashy, everything expensive. The outfit should feel understated, tonal, and timeless.`,
+        vibe: `Old Money / Quiet Luxury — the wardrobe of someone who summers in the Hamptons, sails in Capri, and owns a Brunello Cucinelli cardigan. Think Ralph Lauren Purple Label, Loro Piana, Brooks Brothers. Nothing flashy, everything expensive. The outfit should feel understated, tonal, and timeless. Medium-tapered fit, never skinny. High-rise trousers. Texture over trend.`,
         must: [
-            'Use only tonal / monochromatic / analogous palettes (e.g. camel + cream + white; navy + cream + brown).',
-            'Prefer tailored silhouettes: blazers, cardigans, oxford shirts, polo shirts, chinos, trousers, pleated pants.',
-            'Footwear must be loafers, oxfords, boat shoes, or minimal clean white/cream sneakers.',
+            'Use only tonal / monochromatic / analogous palettes (e.g. camel + cream + white; navy + cream + brown; blue + green + brown).',
+            'Prefer tailored silhouettes with medium taper: blazers, cardigans, oxford shirts, knit polos, chinos, pleated trousers, slacks. NEVER skinny/super-slim fit.',
+            'Trousers must be mid-to-high rise. Low-rise is disallowed for this style.',
+            'Footwear must be loafers (penny, bit, tassel), oxfords, derbies, boat shoes, or minimal clean white/cream leather sneakers.',
+            'Prefer knit polos and knit tees over piqué or basic cotton — they read as more elegant and versatile.',
+            'Shirts must have large collars that tuck cleanly under jacket lapels. Small collars or mandarin collars are disallowed.',
+            'Blazer lapels must be ≥8.5cm wide. Narrow lapels cheapen the look.',
+            'Favor textured fabrics: flannel, tweed, herringbone, cashmere, merino, linen blends. Smooth flat fabrics look cheaper.',
             'Every piece should look like it could be from Ralph Lauren, Brunello Cucinelli, Loro Piana, Massimo Dutti, or Brooks Brothers.',
         ],
         reject: [
             'NEVER include: graphic tees, logo tees, 3-pack basic tees, printed tees, baby tees, tank tops, crop tops.',
-            'NEVER include: cargo shorts, athletic shorts, basketball shorts, track pants, sweatpants, joggers.',
+            'NEVER include: cargo shorts, athletic shorts, basketball shorts, track pants, sweatpants, joggers, shorts/bermudas.',
             'NEVER include: hoodies, zip-ups, puffers, bomber jackets, denim jackets, graphic sweatshirts.',
-            'NEVER include: chunky sneakers, high-tops, platform shoes, athletic trainers.',
+            'NEVER include: chunky sneakers, high-tops, platform shoes, athletic trainers, square-toe shoes.',
             'NEVER include: neon, rhinestone, sequin, metallic, or tie-dye pieces.',
+            'NEVER include: black as a primary color — replace with navy, charcoal, or dark brown. Black only for formal eveningwear.',
+            'NEVER pair: formal outerwear with shorts, backpacks with tailored clothing, sports watches with formal outfits.',
         ],
-        palette: ['navy', 'cream', 'ivory', 'beige', 'camel', 'chocolate', 'forest green', 'burgundy', 'white', 'charcoal'],
-        fabrics: ['cashmere', 'wool', 'merino', 'linen', 'silk', 'cotton', 'poplin', 'tweed'],
+        palette: ['navy', 'cream', 'ivory', 'beige', 'camel', 'chocolate', 'forest green', 'burgundy', 'white', 'charcoal', 'midnight blue', 'tan', 'olive'],
+        fabrics: ['cashmere', 'wool', 'merino', 'linen', 'silk', 'cotton', 'poplin', 'tweed', 'flannel', 'herringbone', 'suede'],
     },
     streetwear: {
         vibe: `Streetwear — oversized silhouettes, bold graphics, sneaker culture. Think Stüssy, Off-White, Supreme, early Virgil, Travis Scott energy. Layering is key; contrast is king.`,
@@ -213,27 +303,30 @@ const STYLE_CONTEXT: Record<string, { vibe: string; must: string[]; reject: stri
             'Graphic tees, hoodies, bombers, and cargo pants are the backbone.',
             'Footwear must be sneakers (chunky, runners, skate), chunky boots, or Y2K-adjacent trainers.',
             'Color-blocking and statement pieces are welcome.',
+            'Mix textures: nylon with fleece, denim with technical fabrics for visual depth.',
         ],
         reject: [
             'Avoid: tailored blazers, oxford shirts, wool trousers, loafers, boat shoes.',
             'Avoid: cashmere sweaters, pinstripe suits, herringbone tweed.',
         ],
         palette: ['black', 'white', 'neon', 'bright red', 'bright blue', 'earth tones as contrast'],
-        fabrics: ['cotton', 'fleece', 'denim', 'nylon', 'technical'],
+        fabrics: ['cotton', 'fleece', 'denim', 'nylon', 'technical', 'terry', 'jersey'],
     },
     minimalist: {
-        vibe: `Minimalist — quiet, clean, intentional. Think COS, Uniqlo U, Acne Studios, The Row, Jil Sander. Every piece should feel essential.`,
+        vibe: `Minimalist — quiet, clean, intentional. Think COS, Uniqlo U, Acne Studios, The Row, Jil Sander. Every piece should feel essential. Texture and cut do the talking; color stays restrained.`,
         must: [
-            'Stick to a tight palette: black, white, grey, beige, navy. Monochromatic outfits are ideal.',
-            'Silhouettes must be simple and clean; no busy patterns.',
+            'Stick to a tight palette: black, white, grey, beige, navy, stone. Monochromatic outfits are ideal.',
+            'Silhouettes must be simple and clean; no busy patterns. Medium taper, never skinny.',
             'Prefer structured, tailored fits over trendy oversized looks.',
+            'Use texture to add depth within monochromatic looks: ribbed knits, brushed wool, matte leather, raw linen.',
+            'Knit polos and fine-gauge tees over piqué or basic cotton for a more polished minimal look.',
         ],
         reject: [
             'NEVER include: graphic prints, logos, tie-dye, floral prints, neon colors, rhinestones, sequins.',
             'Avoid: color-blocking, chunky sneakers, puffers with branding.',
         ],
-        palette: ['black', 'white', 'grey', 'charcoal', 'beige', 'navy', 'stone'],
-        fabrics: ['merino', 'wool', 'cotton', 'linen', 'cashmere'],
+        palette: ['black', 'white', 'grey', 'charcoal', 'beige', 'navy', 'stone', 'cream', 'sand'],
+        fabrics: ['merino', 'wool', 'cotton', 'linen', 'cashmere', 'poplin', 'suede'],
     },
     y2k: {
         vibe: `Y2K — nostalgic 2000s maximalism. Think Paris Hilton, early Britney, Juicy Couture. Low-rise, cropped, shiny, playful.`,
@@ -249,30 +342,69 @@ const STYLE_CONTEXT: Record<string, { vibe: string; must: string[]; reject: stri
         fabrics: ['satin', 'velour', 'denim', 'nylon', 'metallic'],
     },
     business_casual: {
-        vibe: `Modern Professional — sharp tailoring that still feels comfortable. Hugo Boss meets Everlane meets Theory.`,
+        vibe: `Modern Professional — sharp tailoring that still feels comfortable. Hugo Boss meets Everlane meets Theory. Smart Casual with a corporate edge. Blazers with texture, knit polos, well-cut trousers.`,
         must: [
-            'Blazers paired with chinos or tailored trousers. Oxford or poplin button-downs.',
-            'Polished shoes: loafers, oxfords, or minimal clean white sneakers.',
-            'Palette: navy, charcoal, tan, white, light blue.',
+            'Blazers (textured: flannel, tweed, herringbone) paired with chinos or tailored trousers. Oxford or poplin button-downs with large collars.',
+            'Knit polos and fine-gauge tees are excellent under blazers — more elegant than piqué or basic cotton.',
+            'Polished shoes: leather loafers, oxfords, derbies, or minimal clean white leather sneakers.',
+            'Trousers must be mid-to-high rise. Low-rise is disallowed.',
+            'Blazer lapels ≥8.5cm. Narrow lapels cheapen the professional look.',
+            'Palette: navy, charcoal, tan, white, light blue, cream, brown, burgundy.',
+            'Favor tonal/analogous combinations: navy + cream + brown; charcoal + light blue + tan.',
         ],
         reject: [
-            'Avoid: hoodies, graphic tees, cargo pants, ripped jeans, sweatpants.',
+            'Avoid: hoodies, graphic tees, cargo pants, ripped jeans, sweatpants, shorts.',
             'Avoid: sequins, rhinestones, neon colors, crop tops.',
+            'Avoid: black as primary color — use navy or charcoal instead.',
+            'Avoid: skinny/super-slim fit, low-rise trousers, small shirt collars, narrow lapels.',
         ],
-        palette: ['navy', 'charcoal', 'tan', 'white', 'light blue', 'grey'],
-        fabrics: ['wool', 'cotton', 'poplin', 'oxford cloth', 'linen'],
+        palette: ['navy', 'charcoal', 'tan', 'white', 'light blue', 'grey', 'cream', 'brown', 'burgundy', 'beige'],
+        fabrics: ['wool', 'cotton', 'poplin', 'oxford cloth', 'linen', 'flannel', 'tweed', 'merino', 'cashmere'],
     },
     casual: {
-        vibe: `Smart Casual — relaxed but intentional. Well-fitted basics, clean color combinations.`,
+        vibe: `Smart Casual — relaxed but intentional. Well-fitted basics, clean color combinations. The bridge between sport and classic. Knit tees, slacks, loafers or clean sneakers.`,
         must: [
-            'Well-fitted tees or polos with chinos or well-cut jeans.',
-            'Clean sneakers, loafers, or desert boots.',
+            'Well-fitted knit tees or knit polos with chinos, slacks, or well-cut jeans. Medium taper, not skinny.',
+            'Clean minimal sneakers, loafers (suede or leather), or desert boots.',
+            'Trousers at mid-rise. Low-rise breaks proportions.',
+            'Stick to the golden 8 colors: white, blue, light blue, brown, green, cream, burgundy, grey — they all intermix.',
+            'Add texture: ribbed knits, brushed cotton, linen blends elevate simple outfits.',
+            'Lightweight cardigans (cotton/silk) are excellent smart-casual layers — more relaxed than a blazer but more polished than a hoodie.',
         ],
         reject: [
             'Avoid: sweatpants, basketball shorts, graphic hoodies.',
+            'Avoid: athletic sneakers with trousers, piqué polos with dressy bottoms.',
         ],
-        palette: ['navy', 'white', 'grey', 'beige', 'olive'],
-        fabrics: ['cotton', 'linen', 'denim', 'wool'],
+        palette: ['navy', 'white', 'grey', 'beige', 'olive', 'cream', 'brown', 'light blue', 'burgundy', 'tan'],
+        fabrics: ['cotton', 'linen', 'denim', 'wool', 'merino', 'knit', 'suede', 'canvas'],
+    },
+    classic: {
+        vibe: `Classic Menswear — timeless elegance rooted in traditional tailoring. Think Savile Row, Italian sartoria, Alexander from Strokanor. Suits, sport jackets, high-rise trousers, knitwear, and proper shoes. Formality levels from business suit to smart-casual separates. Never trendy, always refined.`,
+        must: [
+            'Suits (same-fabric top+bottom) or sport-jacket separates with complementary trousers. Striped suits must only be worn as matching sets — never mix a striped jacket with different trousers.',
+            'Trousers must be mid-to-high rise with a hem width of ~19-20cm for classic, slightly narrower for smart-casual. NEVER skinny/super-slim.',
+            'Shirts must have large collars that tuck under lapels. Small collars, mandarin/stand collars are disallowed.',
+            'Blazer/suit lapels must be ≥8.5cm wide. Narrow lapels are a style error.',
+            'Knit polos, turtlenecks, and fine-gauge tees are the correct base layers under jackets. Piqué polos and basic cotton tees are too sporty for classic looks.',
+            'Footwear: oxfords and derbies with suits; loafers (leather for dressy, suede for smart-casual); clean minimal leather sneakers only with casual trousers.',
+            'Suits with smooth/office fabric require a shirt + tie. To go tieless, the suit must be in a seasonal/textured fabric (flannel, tweed, linen).',
+            'Favor the golden 8 colors: white, blue, light blue, brown, green, cream, burgundy, grey. Blue+brown, blue+green, green+brown are foolproof formulas.',
+            'Favor textured fabrics: flannel, tweed, herringbone, cashmere, merino, linen blends. Texture = luxury.',
+            'Accessories complete the look: pocket squares, ties, seasonal scarves, watches. Tie and pocket square must coordinate but NOT be identical fabric.',
+        ],
+        reject: [
+            'NEVER include: graphic tees, logo tees, printed tees, tank tops, crop tops, shorts/bermudas in city settings.',
+            'NEVER include: cargo pants, athletic shorts, track pants, sweatpants, joggers.',
+            'NEVER include: hoodies, puffer jackets, bomber jackets, denim jackets worn with suits.',
+            'NEVER include: chunky sneakers, athletic trainers, square-toe shoes, high-tops with tailored clothing.',
+            'NEVER include: black as a primary everyday color — navy, charcoal, dark brown are more versatile and elegant.',
+            'NEVER pair: formal outerwear with shorts, sportswear with tailored pieces, backpacks with suits.',
+            'NEVER: mix a striped suit jacket with non-matching trousers. Striped jackets only go with their matching pants.',
+            'NEVER: wear a bow tie with a business suit — bow ties are for tuxedos/evening jackets only.',
+            'NEVER: identical tie + pocket square fabric. They must coordinate, not match exactly.',
+        ],
+        palette: ['navy', 'charcoal', 'cream', 'white', 'beige', 'camel', 'brown', 'burgundy', 'forest green', 'light blue', 'grey', 'olive', 'tan'],
+        fabrics: ['wool', 'flannel', 'tweed', 'herringbone', 'cashmere', 'merino', 'linen', 'silk', 'cotton', 'poplin', 'oxford cloth', 'suede'],
     },
 }
 
@@ -290,7 +422,7 @@ function buildSystemPrompt(limit: number, style: string, layered: boolean): stri
     (3) a BOTTOM (macroCategory="bottom" — pants, trousers, jeans, shorts, skirt)
     (4) SHOES (macroCategory="shoes")
   A 3-item outfit is INVALID unless the base top is a dress (in which case skip the bottom slot but STILL include outerwear + shoes). Never return fewer than 4 items for a layered look.`
-        : `- EVERY outfit MUST contain exactly these three macroCategory slots, no exceptions: (1) a TOP (or a dress), (2) a BOTTOM (skip this slot only if the top is a dress), and (3) SHOES. Optionally add one OUTERWEAR layer for a 4-item look.`
+        : `- EVERY outfit MUST contain exactly THREE items and exactly these three macroCategory slots, no exceptions: (1) a TOP (or a dress), (2) a BOTTOM (skip this slot only if the top is a dress — then the outfit has 2 items: dress + shoes), and (3) SHOES. Do NOT add a fourth outerwear/layer item — the weather does not require layering. A non-layered outfit with 4+ items is INVALID.`
 
     return `You are a world-class fashion stylist curating outfits for a specific aesthetic. You must obey the STYLE DIRECTION below as if your reputation depends on it.
 
@@ -303,7 +435,10 @@ ${slotRules}
 - Pick items whose styleTags, name, description, or material indicate they FIT the requested style. If an item's tags or description clash with the style, do NOT use it (unless it is the only option for that slot — see shoes rule above).
 - Favor color harmony (tonal, monochromatic, or analogous palettes from the style's preferred palette). When layering, the base top must color-coordinate with the outerwear (tonal or complementary — never clashing).
 - Do not reuse the same item across outfits unless unavoidable.
+- NEVER pair formal outerwear (blazer, suit jacket, sport coat, overcoat, topcoat, trench, peacoat, tuxedo) with shorts or bermudas. If the only available bottom is shorts, drop the formal outerwear and return a non-layered 3-item look instead.
 - Each outfit needs a vivid 1-2 sentence description and 2 actionable styling tips.
+
+${STYLE_KNOWLEDGE}
 
 STYLE DIRECTION — ${style.toUpperCase()}:
 ${ctx.vibe}
@@ -427,55 +562,190 @@ function extractRejectKeywords(rejectRules: string[]): string[] {
     return Array.from(new Set(out))
 }
 
+// Reject outfits that mix formal outerwear (blazer, suit jacket, overcoat,
+// trench, peacoat, tuxedo, sport coat) with shorts/bermudas. This is a hard
+// styling rule the model occasionally violates even when on-palette.
+function validateOutfitCompatibility(outfit: any, itemMap: Map<string, any>): { ok: boolean; reason?: string } {
+    const items = Array.isArray(outfit.items) ? outfit.items : []
+    let hasFormalLayer = false
+    let hasShorts = false
+    for (const it of items) {
+        const src = itemMap.get(it.id) || {}
+        const merged = { ...src, ...it }
+        if (isFormalLayerItem(merged)) hasFormalLayer = true
+        if (isShortsItem(merged)) hasShorts = true
+    }
+    if (hasFormalLayer && hasShorts) {
+        return { ok: false, reason: 'formal outerwear paired with shorts (disallowed)' }
+    }
+    return { ok: true }
+}
+
 function filterValidOutfits(outfits: any[], style: string, itemMap: Map<string, any>, layered: boolean): any[] {
     const kept: any[] = []
     for (const o of outfits) {
         const v = validateOutfitAgainstStyle(o, style, itemMap, layered)
-        if (v.ok) kept.push(o)
-        else console.log(`[validate] rejected outfit for ${style} (layered=${layered}): ${v.reason}`)
+        if (!v.ok) {
+            console.log(`[validate] rejected outfit for ${style} (layered=${layered}): ${v.reason}`)
+            continue
+        }
+        const c = validateOutfitCompatibility(o, itemMap)
+        if (!c.ok) {
+            console.log(`[validate] rejected outfit for ${style} (layered=${layered}): ${c.reason}`)
+            continue
+        }
+        kept.push(o)
     }
     return kept
 }
 
-function localFallback(items: any[], style: string, occasion: string, limit: number, layered: boolean): any[] {
+// Placeholder shoes item injected when the wardrobe has no shoes at all.
+const PLACEHOLDER_SHOES: Record<string, any> = {
+    id: 'placeholder_shoes',
+    type: 'shoes',
+    macroCategory: 'shoes',
+    color: 'neutral',
+    name: 'Shoes',
+    imageUrl: 'basic_clothing_shoes',
+    image: 'basic_clothing_shoes',
+    recommendation: 'Add shoes to your wardrobe for better outfits',
+    isShopItem: false,
+}
+
+// ── Shop-catalog fill for missing slots (shoes, outerwear, etc.) ───────
+// Mirrors the client-side fillMissingSlots from shoppingService.ts.
+// Queries shop_catalog for 1 style-matching item per missing macro slot.
+async function fillMissingSlotsEdge(
+    supabaseClient: any,
+    missingSlots: string[],
+    style: string,
+): Promise<any[]> {
+    const picks: any[] = []
+    for (const slot of missingSlots) {
+        try {
+            let q = supabaseClient
+                .from('shop_catalog')
+                .select('id, brand, name, price, image_url, garment_type, category, description, primary_color, source')
+                .eq('is_active', true)
+                .limit(30)
+            if (slot === 'shoes') q = q.or('category.eq.shoes,garment_type.eq.shoes')
+            else if (slot === 'outerwear') q = q.or('category.eq.outerwear,garment_type.eq.outerwear')
+            else if (slot === 'top') q = q.or('category.eq.tops,garment_type.eq.upper_body')
+            else if (slot === 'bottom') q = q.or('category.eq.bottoms,garment_type.eq.lower_body')
+            const { data, error } = await q
+            if (error || !data || data.length === 0) continue
+            // Pick the first active row (style scoring is client-side only).
+            const row = data[0]
+            if (row && row.image_url) {
+                picks.push({
+                    id: `shop_${row.id}`,
+                    type: row.garment_type || row.category || slot,
+                    category: row.category || slot,
+                    macroCategory: slot,
+                    name: row.name || row.brand || 'Shop pick',
+                    brand: row.brand || '',
+                    color: row.primary_color || 'neutral',
+                    imageUrl: row.image_url,
+                    image: row.image_url,
+                    style: style || 'Casual',
+                    isShopItem: true,
+                    price: row.price || undefined,
+                    recommendation: `Suggested from shop to complete your ${slot}`,
+                })
+            }
+        } catch (_) {
+            // Shop catalog unreachable — skip.
+        }
+    }
+    return picks
+}
+
+async function localFallback(items: any[], style: string, occasion: string, limit: number, layered: boolean, supabaseClient?: any): Promise<any[]> {
     const baseTops = items.filter(i => i.macroCategory === 'top')
     const outerwear = items.filter(i => i.macroCategory === 'outerwear')
     const legacyTops = items.filter(i => ['top','outerwear'].includes(i.macroCategory))
     const bottoms = items.filter(i => i.macroCategory === 'bottom')
+    const nonShortsBottoms = bottoms.filter(b => !isShortsItem(b))
+    const casualOuterwear = outerwear.filter(o => !isFormalLayerItem(o))
     const shoes = items.filter(i => i.macroCategory === 'shoes')
+
+    // ── Fill missing slots from shop_catalog ────────────────────────────
+    // If the wardrobe has no shoes (or no outerwear when layered), query
+    // the shop catalog so the AI / local builder can still produce a
+    // complete outfit.
+    const macros = new Set(items.map((i: any) => (i.macroCategory || '').toLowerCase()))
+    const missingSlots: string[] = []
+    if (!macros.has('shoes')) missingSlots.push('shoes')
+    if (!macros.has('bottom')) missingSlots.push('bottom')
+    if (!macros.has('top')) missingSlots.push('top')
+    if (layered && !macros.has('outerwear')) missingSlots.push('outerwear')
+    let shopFills: any[] = []
+    if (missingSlots.length > 0 && supabaseClient) {
+        shopFills = await fillMissingSlotsEdge(supabaseClient, missingSlots, style)
+    }
+    // Merge shop items into the pool so the builder picks them naturally.
+    const allItems = [...items, ...shopFills]
+    // Re-derive category buckets from the merged pool.
+    const allBaseTops = allItems.filter((i: any) => i.macroCategory === 'top')
+    const allOuterwear = allItems.filter((i: any) => i.macroCategory === 'outerwear')
+    const allLegacyTops = allItems.filter((i: any) => ['top','outerwear'].includes(i.macroCategory))
+    const allBottoms = allItems.filter((i: any) => i.macroCategory === 'bottom')
+    const allNonShortsBottoms = allBottoms.filter((b: any) => !isShortsItem(b))
+    const allCasualOuterwear = allOuterwear.filter((o: any) => !isFormalLayerItem(o))
+    const allShoes = allItems.filter((i: any) => i.macroCategory === 'shoes')
+
     const outfits: any[] = []
-    const seed = layered ? Math.max(baseTops.length, outerwear.length, 1) : Math.max(legacyTops.length, 1)
+    const seed = layered ? Math.max(allBaseTops.length, allOuterwear.length, 1) : Math.max(allLegacyTops.length, 1)
 
     for (let i = 0; i < Math.min(limit, seed); i++) {
         const parts: any[] = []
+        // Pre-pick the bottom so we can decide whether a formal layer is safe.
+        const bottom = allBottoms[i % Math.max(allBottoms.length, 1)] || allBottoms[0]
+        const bottomIsShorts = !!bottom && isShortsItem(bottom)
         if (layered) {
-            // Always include outerwear slot (use any top if no outerwear available)
-            const outer = outerwear[i % Math.max(outerwear.length, 1)]
-            const base = baseTops[i % Math.max(baseTops.length, 1)]
+            // If the bottom is shorts, never pair with a formal outerwear piece;
+            // prefer casual outerwear, else fall back to a safe non-shorts bottom.
+            let outer = allOuterwear[i % Math.max(allOuterwear.length, 1)]
+            if (bottomIsShorts && outer && isFormalLayerItem(outer)) {
+                outer = allCasualOuterwear[i % Math.max(allCasualOuterwear.length, 1)] || undefined
+            }
+            const base = allBaseTops[i % Math.max(allBaseTops.length, 1)]
             // Use outerwear if available, otherwise fallback to any top item
-            const mainTop = outer || legacyTops[i % Math.max(legacyTops.length, 1)]
+            const mainTop = outer || allLegacyTops[i % Math.max(allLegacyTops.length, 1)]
             if (mainTop) parts.push({ ...mainTop, recommendation: 'Main top / outerwear layer' })
             // Always include base top (use baseTop if available, otherwise reuse mainTop or any top)
-            const baseTopItem = base || outer || legacyTops[(i + 1) % Math.max(legacyTops.length, 1)]
+            const baseTopItem = base || outer || allLegacyTops[(i + 1) % Math.max(allLegacyTops.length, 1)]
             if (baseTopItem) parts.push({ ...baseTopItem, recommendation: 'Base top worn underneath' })
         } else {
-            const top = legacyTops[i % Math.max(legacyTops.length, 1)]
+            const top = allLegacyTops[i % Math.max(allLegacyTops.length, 1)]
             if (top) parts.push({ ...top, recommendation: 'Key piece' })
         }
-        // Always include bottom and shoes - reuse items if necessary
-        const bottom = bottoms[i % Math.max(bottoms.length, 1)] || bottoms[0]
-        const shoe = shoes[i % Math.max(shoes.length, 1)] || shoes[0]
-        if (bottom) parts.push({ ...bottom, recommendation: 'Pairs well' })
+        // Always include bottom and shoes - reuse items if necessary.
+        // For layered looks we keep the pre-picked bottom; if there's a formal
+        // layer + shorts conflict we still couldn't resolve, swap to a
+        // non-shorts bottom when one exists.
+        let finalBottom = bottom
+        if (layered && bottomIsShorts) {
+            const mainTopItem = parts[0]
+            if (mainTopItem && isFormalLayerItem(mainTopItem) && allNonShortsBottoms.length > 0) {
+                finalBottom = allNonShortsBottoms[i % allNonShortsBottoms.length]
+            }
+        }
+        const shoe = allShoes[i % Math.max(allShoes.length, 1)] || allShoes[0]
+        if (finalBottom) parts.push({ ...finalBottom, recommendation: 'Pairs well' })
         if (shoe) parts.push({ ...shoe, recommendation: 'Completes the look' })
-        // Ensure minimum items for valid outfit (3 for non-layered, 4 for layered)
-        const minItems = layered ? 4 : 3
-        if (parts.length < minItems && items.length > 0) {
-            // Fill remaining slots with available items
-            while (parts.length < minItems && parts.length < items.length) {
-                const fillItem = items[parts.length % items.length]
+        else parts.push({ ...PLACEHOLDER_SHOES })
+        // Exact item contract: 3 for non-layered, 4 for layered.
+        const targetItems = layered ? 4 : 3
+        if (layered && parts.length < targetItems && items.length > 0) {
+            // Only pad layered outfits — non-layered must stay at exactly 3.
+            while (parts.length < targetItems && parts.length < allItems.length) {
+                const fillItem = allItems[parts.length % allItems.length]
                 parts.push({ ...fillItem, recommendation: 'Complementary piece' })
             }
         }
+        // For non-layered, trim any accidental extras down to 3.
+        if (!layered && parts.length > targetItems) parts.length = targetItems
         if (!parts.length) continue
         outfits.push({
             id: `local_${i}_${Date.now()}`,
@@ -490,26 +760,37 @@ function localFallback(items: any[], style: string, occasion: string, limit: num
         })
     }
     // If no outfits generated, create at least one with available items
-    if (outfits.length === 0 && items.length > 0) {
+    if (outfits.length === 0 && allItems.length > 0) {
         const parts: any[] = []
         if (layered) {
-            // For layered: try to get 4 items (outerwear, base, bottom, shoes)
-            const outer = outerwear[0] || legacyTops[0]
-            const base = baseTops[0] || legacyTops[0] || outer
-            const bottom = bottoms[0] || items[0]
-            const shoe = shoes[0] || items[1] || items[0]
+            // For layered: try to get 4 items (outerwear, base, bottom, shoes).
+            // If only shorts are available, avoid formal outerwear.
+            const candidateBottom = allBottoms[0] || allItems[0]
+            const bottomIsShorts = !!candidateBottom && isShortsItem(candidateBottom)
+            let outer = allOuterwear[0] || allLegacyTops[0]
+            if (bottomIsShorts && outer && isFormalLayerItem(outer)) {
+                outer = allCasualOuterwear[0] || allLegacyTops.find((t: any) => !isFormalLayerItem(t)) || outer
+            }
+            const base = allBaseTops[0] || allLegacyTops[0] || outer
+            const finalBottom = (bottomIsShorts && outer && isFormalLayerItem(outer) && allNonShortsBottoms[0])
+                ? allNonShortsBottoms[0]
+                : candidateBottom
+            const shoe = allShoes[0]
             if (outer) parts.push({ ...outer, recommendation: 'Main top / outerwear layer' })
             if (base && base.id !== outer?.id) parts.push({ ...base, recommendation: 'Base top worn underneath' })
-            if (bottom) parts.push({ ...bottom, recommendation: 'Pairs well' })
-            if (shoe && shoe.id !== bottom?.id) parts.push({ ...shoe, recommendation: 'Completes the look' })
+            if (finalBottom) parts.push({ ...finalBottom, recommendation: 'Pairs well' })
+            if (shoe && shoe.id !== finalBottom?.id) parts.push({ ...shoe, recommendation: 'Completes the look' })
+            else parts.push({ ...PLACEHOLDER_SHOES })
         } else {
-            // For non-layered: try to get 3 items (top, bottom, shoes)
-            const top = legacyTops[0] || items[0]
-            const bottom = bottoms[0] || items[1] || items[0]
-            const shoe = shoes[0] || items[2] || items[0]
+            // For non-layered: exactly 3 items (top, bottom, shoes)
+            const top = allLegacyTops[0] || allItems[0]
+            const bottom = allBottoms[0] || allItems[1] || allItems[0]
+            const shoe = allShoes[0]
             if (top) parts.push({ ...top, recommendation: 'Key piece' })
             if (bottom && bottom.id !== top?.id) parts.push({ ...bottom, recommendation: 'Pairs well' })
             if (shoe && shoe.id !== bottom?.id) parts.push({ ...shoe, recommendation: 'Completes the look' })
+            else parts.push({ ...PLACEHOLDER_SHOES })
+            if (parts.length > 3) parts.length = 3
         }
         if (parts.length > 0) {
             outfits.push({
@@ -531,7 +812,7 @@ function localFallback(items: any[], style: string, occasion: string, limit: num
         occasion: occasion || 'Everyday',
         description: 'Add more items to your wardrobe for better suggestions.',
         confidence: 0.5,
-        items: items.slice(0, layered ? 4 : 3).map(i => ({ ...i, recommendation: 'From your wardrobe' })),
+        items: items.slice(0, layered ? 4 : 3).map((i: any) => ({ ...i, recommendation: 'From your wardrobe' })),
         stylingTips: ['Scan more items'],
     }]
 }
@@ -741,7 +1022,24 @@ serve(async (req) => {
             }
         })
 
-        // ── 3c. Rank + trim the pool for the requested style so the LLM only
+        // ── 3c. Fill missing macro-category slots from shop_catalog ────────
+        // If the user's wardrobe has no shoes (or no outerwear/top/bottom),
+        // pull matching items from the shop catalog so the AI prompt includes
+        // them and can produce a complete outfit.
+        const wardrobeMacros = new Set(wardrobeItems.map((i: any) => (i.macroCategory || '').toLowerCase()))
+        const requiredSlots = ['top', 'bottom', 'shoes']
+        if (needsLayering(stylePreferences, weather, prompt)) requiredSlots.push('outerwear')
+        const missingWardrobeSlots = requiredSlots.filter(s => !wardrobeMacros.has(s))
+        if (missingWardrobeSlots.length > 0) {
+            const svcClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+            const shopFills = await fillMissingSlotsEdge(svcClient, missingWardrobeSlots, stylePreferences)
+            if (shopFills.length > 0) {
+                console.log(`[shop-fill] Added ${shopFills.length} shop item(s) for missing slots: ${missingWardrobeSlots.join(', ')}`)
+                wardrobeItems = [...wardrobeItems, ...shopFills]
+            }
+        }
+
+        // ── 3d. Rank + trim the pool for the requested style so the LLM only
         // sees plausible candidates. In manual mode (selectedItemIds) we keep
         // the user's picks as-is. The client already pre-filters shop items,
         // so this mainly helps the wardrobe + legacy branches.
@@ -788,7 +1086,8 @@ serve(async (req) => {
 
         // ── 5b. No AI key → local fallback ────────────────────────────────
         if (!nvidiaKey && !geminiKey) {
-            const outfits = localFallback(wardrobeItems, stylePreferences, occasion, limit, layered)
+            const svcClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+            const outfits = await localFallback(wardrobeItems, stylePreferences, occasion, limit, layered, svcClient)
             return new Response(JSON.stringify({ success: true, outfits, source: 'local', layered }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             })
@@ -835,7 +1134,8 @@ serve(async (req) => {
         }
 
         if (!aiOutfits || aiOutfits.length === 0) {
-            aiOutfits = localFallback(wardrobeItems, stylePreferences, occasion, limit, layered)
+            const svcClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+            aiOutfits = await localFallback(wardrobeItems, stylePreferences, occasion, limit, layered, svcClient)
         }
 
         // ── 8. Enrich items with imageUrl from DB ──────────────────────────

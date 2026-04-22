@@ -35,7 +35,8 @@ const { colors, spacing, typography, radius } = LiquidGlass2026Theme;
 
 // ─── Event definitions with icons ────────────────────────────
 interface EventOption {
-  id: Occasion;
+  id: string;
+  occasion: Occasion;
   label: string;
   icon: string;
   iconFamily: 'ionicons' | 'material';
@@ -45,6 +46,7 @@ interface EventOption {
 const EVENT_OPTIONS: EventOption[] = [
   {
     id: 'business-meeting',
+    occasion: 'work',
     label: 'Business Meeting',
     icon: 'briefcase-outline',
     iconFamily: 'ionicons',
@@ -52,6 +54,7 @@ const EVENT_OPTIONS: EventOption[] = [
   },
   {
     id: 'alpine-skiing',
+    occasion: 'sport',
     label: 'Alpine Skiing',
     icon: 'snow-outline',
     iconFamily: 'ionicons',
@@ -59,6 +62,7 @@ const EVENT_OPTIONS: EventOption[] = [
   },
   {
     id: 'casual',
+    occasion: 'casual',
     label: 'Casual Day',
     icon: 'sunny-outline',
     iconFamily: 'ionicons',
@@ -66,6 +70,7 @@ const EVENT_OPTIONS: EventOption[] = [
   },
   {
     id: 'date',
+    occasion: 'date',
     label: 'Date Night',
     icon: 'heart-outline',
     iconFamily: 'ionicons',
@@ -73,6 +78,7 @@ const EVENT_OPTIONS: EventOption[] = [
   },
   {
     id: 'workout',
+    occasion: 'sport',
     label: 'Workout',
     icon: 'fitness-outline',
     iconFamily: 'ionicons',
@@ -80,6 +86,7 @@ const EVENT_OPTIONS: EventOption[] = [
   },
   {
     id: 'beach',
+    occasion: 'travel',
     label: 'Beach Day',
     icon: 'water-outline',
     iconFamily: 'ionicons',
@@ -87,6 +94,7 @@ const EVENT_OPTIONS: EventOption[] = [
   },
   {
     id: 'wedding',
+    occasion: 'formal',
     label: 'Wedding',
     icon: 'sparkles-outline',
     iconFamily: 'ionicons',
@@ -94,6 +102,7 @@ const EVENT_OPTIONS: EventOption[] = [
   },
   {
     id: 'interview',
+    occasion: 'work',
     label: 'Job Interview',
     icon: 'person-outline',
     iconFamily: 'ionicons',
@@ -101,6 +110,7 @@ const EVENT_OPTIONS: EventOption[] = [
   },
   {
     id: 'night-out',
+    occasion: 'date',
     label: 'Night Out',
     icon: 'moon-outline',
     iconFamily: 'ionicons',
@@ -108,6 +118,7 @@ const EVENT_OPTIONS: EventOption[] = [
   },
   {
     id: 'travel',
+    occasion: 'travel',
     label: 'Travel',
     icon: 'airplane-outline',
     iconFamily: 'ionicons',
@@ -192,7 +203,7 @@ const AIOutfitCreatorModal: React.FC<AIOutfitCreatorModalProps> = ({
         contentContainerStyle={styles.chipsScroll}
       >
         {EVENT_OPTIONS.map((event, index) => {
-          const isSelected = selectedEvent === event.id;
+          const isSelected = selectedEvent === event.occasion;
           return (
             <Animated.View
               key={event.id}
@@ -204,7 +215,7 @@ const AIOutfitCreatorModal: React.FC<AIOutfitCreatorModalProps> = ({
                   isSelected && styles.eventChipSelected,
                   isSelected && { backgroundColor: event.gradient[0] },
                 ]}
-                onPress={() => handleSelectEvent(event.id)}
+                onPress={() => handleSelectEvent(event.occasion)}
                 activeOpacity={0.7}
                 accessibilityLabel={`Select ${event.label} event`}
                 accessibilityRole="button"

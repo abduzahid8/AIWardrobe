@@ -23,17 +23,26 @@ const PREVIEW_LABELS: Record<PreviewMacroCategory, string> = {
 const LEGACY_CATEGORY_MAP: Record<string, PreviewMacroCategory> = {
   top: 'top',
   tops: 'top',
+  upper_body: 'top',
+  'upper-body': 'top',
   outerwear: 'outerwear',
   bottom: 'bottom',
   bottoms: 'bottom',
+  lower_body: 'bottom',
+  'lower-body': 'bottom',
   pant: 'bottom',
   pants: 'bottom',
   shoe: 'shoes',
   shoes: 'shoes',
+  dress: 'top',
+  dresses: 'top',
   accessory: 'accessory',
   accessories: 'accessory',
   other: 'other',
 };
+
+// Raw garmentType strings we must never surface to users as labels.
+const RAW_GARMENT_TYPE_RE = /^(upper|lower)[_\s-]?body$|^dresses?$/i;
 
 export function getOutfitItemMacroCategory(item: OutfitItem): PreviewMacroCategory {
   const normalizedRawCategory = LEGACY_CATEGORY_MAP[String(item.macroCategory || '').toLowerCase().trim()];
@@ -68,5 +77,13 @@ export function getOutfitPreviewSlots(items: OutfitItem[]): OutfitPreviewSlot[] 
 }
 
 export function getOutfitPreviewTitle(item: OutfitItem): string {
-  return item.name || item.type || PREVIEW_LABELS[getOutfitItemMacroCategory(item)] || PREVIEW_LABELS.other;
+  // Prefer a human-friendly name. If the only available fallback is a raw
+  // garmentType string (e.g. "upper_body" / "lower_body" / "dresses"), surface
+  // the macroCategory label ("Top", "Bottom", etc.) instead so the collage
+  // never shows machine tags to the user.
+  const name = typeof item.name === 'string' ? item.name.trim() : '';
+  if (name) return name;
+  const type = typeof item.type === 'string' ? item.type.trim() : '';
+  if (type && !RAW_GARMENT_TYPE_RE.test(type)) return type;
+  return PREVIEW_LABELS[getOutfitItemMacroCategory(item)] || PREVIEW_LABELS.other;
 }

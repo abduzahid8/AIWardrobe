@@ -176,6 +176,23 @@ function pickAvailableCandidate(
   return allCandidates[0].candidate;
 }
 
+function pickCandidateByPriority(
+  generatedCandidates: Candidate[],
+  availableItems: WardrobeDisplayItem[],
+  usedKeys: Set<string>,
+  priorityGroups: OutfitMacroCategory[][],
+  style?: StyleId,
+): Candidate | null {
+  for (const categories of priorityGroups) {
+    const generated = pickGeneratedCandidate(generatedCandidates, usedKeys, categories);
+    if (generated) return generated;
+    const available = pickAvailableCandidate(availableItems, usedKeys, categories, style);
+    if (available) return available;
+  }
+
+  return null;
+}
+
 function addCandidate(
   result: OutfitItem[],
   usedKeys: Set<string>,
@@ -256,10 +273,15 @@ export function sanitizeGeneratedOutfitItemsDetailed(
 
   // Slot 1: outerwear / main top. Always try when layered, also try for non-layered to ensure 2 tops.
   const outerwear =
-    pickGeneratedCandidate(generatedCandidates, usedKeys, ['outerwear']) ||
-    (layered && !isDressOutfit
-      ? pickAvailableCandidate(availableItems, usedKeys, ['outerwear'], normalizedStyle)
-      : null);
+    layered && !isDressOutfit
+      ? pickCandidateByPriority(
+          generatedCandidates,
+          availableItems,
+          usedKeys,
+          [['outerwear']],
+          normalizedStyle,
+        )
+      : null;
   if (outerwear) {
     addCandidate(sanitizedItems, usedKeys, outerwear);
   } else if (layered && !isDressOutfit) {
@@ -268,27 +290,13 @@ export function sanitizeGeneratedOutfitItemsDetailed(
 
   // Slot 2: base top. For non-layered outfits this is still the primary top.
   // ALWAYS try to fill this slot - use any available top if needed.
-  let baseTop =
-    pickGeneratedCandidate(generatedCandidates, usedKeys, ['top']) ||
-    pickAvailableCandidate(availableItems, usedKeys, ['top'], normalizedStyle);
-  // If no base top found but we have outerwear, try to find a different top item
-  if (!baseTop && outerwear && availableItems.length > 0) {
-    // Find any item that could be a base top (different from outerwear)
-    const fallbackTop = availableItems.find(i => 
-      i.macroCategory === 'top' || 
-      (!usedKeys.has(String(i.id)) && i.macroCategory !== 'outerwear')
-    );
-    if (fallbackTop) {
-      baseTop = buildCandidate(fallbackTop, fallbackTop, 0);
-    }
-  }
-  // If still no base top but we have available items, use any available item
-  if (!baseTop && availableItems.length > 0) {
-    const anyAvailable = availableItems.find(i => !usedKeys.has(String(i.id)));
-    if (anyAvailable) {
-      baseTop = buildCandidate(anyAvailable, anyAvailable, 0);
-    }
-  }
+  let baseTop = pickCandidateByPriority(
+    generatedCandidates,
+    availableItems,
+    usedKeys,
+    [['top']],
+    normalizedStyle,
+  );
   if (baseTop) {
     addCandidate(sanitizedItems, usedKeys, baseTop);
   } else if (!isDressOutfit && !(layered === false && outerwear)) {
@@ -297,18 +305,26 @@ export function sanitizeGeneratedOutfitItemsDetailed(
     missingSlots.push('top');
   }
 
+  if (layered && !isDressOutfit) {
+    const secondTop = pickCandidateByPriority(
+      generatedCandidates,
+      availableItems,
+      usedKeys,
+      [['top']],
+      normalizedStyle,
+    );
+    if (secondTop) {
+      addCandidate(sanitizedItems, usedKeys, secondTop);
+    } else {
+      missingSlots.push('top');
+    }
+  }
+
   // Slot 3: bottom (skipped when the "top" is a dress).
   if (!isDressOutfit) {
     let bottom =
       pickGeneratedCandidate(generatedCandidates, usedKeys, ['bottom']) ||
       pickAvailableCandidate(availableItems, usedKeys, ['bottom'], normalizedStyle);
-    // If no bottom found, try any available item
-    if (!bottom && availableItems.length > 0) {
-      const fallbackBottom = availableItems.find(i => !usedKeys.has(String(i.id)));
-      if (fallbackBottom) {
-        bottom = buildCandidate(fallbackBottom, fallbackBottom, 0);
-      }
-    }
     if (bottom) {
       addCandidate(sanitizedItems, usedKeys, bottom);
     } else {
@@ -320,35 +336,11 @@ export function sanitizeGeneratedOutfitItemsDetailed(
   let shoes =
     pickGeneratedCandidate(generatedCandidates, usedKeys, ['shoes']) ||
     pickAvailableCandidate(availableItems, usedKeys, ['shoes'], normalizedStyle);
-  // If no shoes found, try any available item that hasn't been used
-  if (!shoes && availableItems.length > 0) {
-    const fallbackShoe = availableItems.find(i => !usedKeys.has(String(i.id)));
-    if (fallbackShoe) {
-      shoes = buildCandidate(fallbackShoe, fallbackShoe, 0);
-    }
-  }
-  // If still no shoes, we MUST have something - duplicate an item if necessary
-  if (!shoes && availableItems.length > 0) {
-    const duplicateItem = availableItems[0];
-    shoes = buildCandidate(duplicateItem, duplicateItem, 0);
-  }
   if (shoes) {
     addCandidate(sanitizedItems, usedKeys, shoes);
   } else {
     missingSlots.push('shoes');
   }
-
-  // Optional accessory / other — only surfaced if room remains.
-  addCandidate(
-    sanitizedItems,
-    usedKeys,
-    pickGeneratedCandidate(generatedCandidates, usedKeys, ['accessory'])
-  );
-  addCandidate(
-    sanitizedItems,
-    usedKeys,
-    pickGeneratedCandidate(generatedCandidates, usedKeys, ['other'])
-  );
 
   if (sanitizedItems.length === 0) {
     return {

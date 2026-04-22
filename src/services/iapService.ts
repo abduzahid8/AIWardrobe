@@ -21,13 +21,11 @@ import analyticsService from './analyticsService';
 import crashReporting from './crashReporting';
 import Config from '../config/env';
 
-export type ProductId =
-    | 'com.aiwardrobe.premium.monthly'
-    | 'com.aiwardrobe.premium.yearly';
+export type ProductId = string;
 
-const TIER_BY_PRODUCT_ID: Record<ProductId, SubscriptionTier> = {
-    'com.aiwardrobe.premium.monthly': 'premium',
-    'com.aiwardrobe.premium.yearly': 'premium',
+const TIER_BY_PRODUCT_ID: Record<string, SubscriptionTier> = {
+    'monthly': 'premium',
+    'yearly': 'premium',
 };
 
 // RevenueCat lazy import — loaded when API key is configured
@@ -81,10 +79,44 @@ class IAPService {
         }
     }
 
+    private async getAvailablePackages(): Promise<any[]> {
+        if (!this.isInitialized) {
+            await this.initialize();
+        }
+
+        if (!this.isRevenueCatAvailable) {
+            return [];
+        }
+
+        const offerings = await Purchases.getOfferings();
+        const currentPackages = offerings.current?.availablePackages || [];
+        if (currentPackages.length > 0) {
+            return currentPackages;
+        }
+
+        const allOfferings = Object.values(offerings.all || {}) as Array<{ availablePackages?: any[] }>;
+        const seenProductIds = new Set<string>();
+
+        return allOfferings
+            .flatMap((offering) => offering.availablePackages || [])
+            .filter((pkg: any) => {
+                const productId = pkg?.product?.identifier;
+                if (!productId || seenProductIds.has(productId)) {
+                    return false;
+                }
+                seenProductIds.add(productId);
+                return true;
+            });
+    }
+
     /**
      * Get available products with pricing from the store.
      */
     async getProducts(): Promise<{ id: string; title: string; price: string; packageType?: string }[]> {
+        if (!this.isInitialized) {
+            await this.initialize();
+        }
+
         if (!this.isRevenueCatAvailable) {
             // Mock products for development
             return [
@@ -93,12 +125,12 @@ class IAPService {
         }
 
         try {
-            const offerings = await Purchases.getOfferings();
-            if (!offerings.current?.availablePackages?.length) {
+            const packages = await this.getAvailablePackages();
+            if (!packages.length) {
                 return [];
             }
 
-            return offerings.current.availablePackages.map((pkg: any) => ({
+            return packages.map((pkg: any) => ({
                 id: pkg.product.identifier,
                 title: pkg.product.title,
                 price: pkg.product.priceString,
@@ -118,6 +150,10 @@ class IAPService {
      */
     async purchase(productId: ProductId): Promise<PurchaseResult> {
         try {
+            if (!this.isInitialized) {
+                await this.initialize();
+            }
+
             crashReporting.logBreadcrumb(`IAP purchase started: ${productId}`);
 
             if (!this.isRevenueCatAvailable) {
@@ -138,18 +174,23 @@ class IAPService {
             }
 
             // Get the offering and find the matching package
-            const offerings = await Purchases.getOfferings();
-            const packages = offerings.current?.availablePackages || [];
-            const targetPackage = packages.find(
-                (pkg: any) => pkg.product.identifier === productId
-            );
+            const packages = await this.getAvailablePackages();
+            const exactPackage = packages.find((pkg: any) => pkg.product.identifier === productId);
+            const premiumLikePackage = packages.find((pkg: any) => {
+                const identifier = String(pkg?.product?.identifier || '').toLowerCase();
+                const title = String(pkg?.product?.title || '').toLowerCase();
+                return identifier.includes('premium') || identifier.includes('pro') || title.includes('premium') || title.includes('pro');
+            });
+            const targetPackage = exactPackage || premiumLikePackage || (packages.length === 1 ? packages[0] : null);
 
             if (!targetPackage) {
                 return {
                     success: false,
-                    error: 'Product not found. Please try again later.',
+                    error: 'Product not found. Please check your RevenueCat offering or App Store product IDs.',
                 };
             }
+
+            const resolvedProductId = targetPackage.product.identifier as string;
 
             // Execute the purchase through RevenueCat
             const { customerInfo } = await Purchases.purchasePackage(targetPackage);
@@ -157,12 +198,12 @@ class IAPService {
             // Sync subscription status from RevenueCat customer info
             await this.syncSubscriptionStatus(customerInfo);
 
-            const tier = this.getTierByProductId(productId);
+            const tier = this.getTierByProductId(resolvedProductId);
             analyticsService.trackSubscriptionPurchased(tier, 9.99);
 
             return {
                 success: true,
-                productId,
+                productId: resolvedProductId,
                 transactionId: customerInfo.originalAppUserId,
             };
         } catch (error: any) {
@@ -195,6 +236,10 @@ class IAPService {
      */
     async restorePurchases(): Promise<PurchaseResult> {
         try {
+            if (!this.isInitialized) {
+                await this.initialize();
+            }
+
             if (!this.isRevenueCatAvailable) {
                 // Fallback: check server
                 const { verifySubscriptionFromServer } = useSubscriptionStore.getState();
@@ -291,6 +336,10 @@ class IAPService {
      * Call after login.
      */
     async identify(userId: string): Promise<void> {
+        if (!this.isInitialized) {
+            await this.initialize();
+        }
+
         if (!this.isRevenueCatAvailable) return;
         try {
             const { customerInfo } = await Purchases.logIn(userId);

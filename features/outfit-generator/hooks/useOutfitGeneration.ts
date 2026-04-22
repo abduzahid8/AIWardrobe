@@ -197,7 +197,7 @@ export function useOutfitGeneration({
         const anchorFirst = [
           anchorItem,
           ...patchedItems.filter((i) => String(i.id) !== String(anchor.id)),
-        ].slice(0, 4);
+        ].slice(0, 5);
 
         return {
           ...outfit,

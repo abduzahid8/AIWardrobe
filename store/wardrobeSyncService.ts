@@ -74,6 +74,34 @@ export async function fetchItemsFromServer(): Promise<ClothingItem[] | null> {
     return data ? data.map(mapRowToItem) : null;
 }
 
+export async function fetchWearLogsFromServer(): Promise<WearLog[] | null> {
+    const { data: session } = await supabase.auth.getSession();
+    if (!session?.session?.user) return null;
+
+    const { data, error } = await supabase
+        .from('wear_logs')
+        .select('*')
+        .eq('user_id', session.session.user.id)
+        .order('date', { ascending: false });
+
+    if (error) {
+        console.error('[WardrobeSyncService] Wear log fetch error:', error);
+        return null;
+    }
+
+    return (data || []).map((row: any): WearLog => ({
+        id: row.id,
+        userId: row.user_id,
+        outfitId: row.outfit_id ?? undefined,
+        itemIds: Array.isArray(row.item_ids) ? row.item_ids : [],
+        date: row.date,
+        occasion: row.occasion ?? undefined,
+        weatherTemp: row.weather_temp ?? undefined,
+        weatherCondition: row.weather_condition ?? undefined,
+        createdAt: row.created_at,
+    }));
+}
+
 /**
  * Process pending sync actions against Supabase.
  * Uses conflict resolution: server version wins if newer.

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { Platform } from "react-native";
+import { createStackNavigator } from "@react-navigation/stack";
 
 // Imports screens...
 import AIStylistScreen from "../screens/AIStylistScreen";
@@ -39,22 +38,10 @@ import { useSessionGuard } from "../src/hooks/useSessionGuard";
 import analyticsService from "../src/services/analyticsService";
 import { iapService } from "../src/services/iapService";
 import { colors } from "../src/theme";
+import { LiquidPresets } from "./liquidTransitions";
 
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
-
-// iOS 26-style smooth transition config
-const smoothTransitionConfig = {
-  animation: 'spring' as const,
-  config: {
-    stiffness: 1000,
-    damping: 500,
-    mass: 3,
-    overshootClamping: true,
-    restDisplacementThreshold: 0.01,
-    restSpeedThreshold: 0.01,
-  },
-};
+const Stack = createStackNavigator<RootStackParamList>();
 
 const RootNavigator = () => {
   useSessionGuard();
@@ -156,18 +143,9 @@ const RootNavigator = () => {
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
-          // iOS 26-style smooth animations
-          animation: 'slide_from_right',
-          animationDuration: 350,
-          gestureEnabled: true,
-          gestureDirection: 'horizontal',
-          // Smooth spring-based transitions
-          ...(Platform.OS === 'ios' && {
-            animation: 'default',
-            animationTypeForReplace: 'push',
-          }),
-          // Custom animation
-          contentStyle: {
+          // Liquid transition as default
+          ...LiquidPresets.slide,
+          cardStyle: {
             backgroundColor: colors.background,
           },
         }}
@@ -185,66 +163,62 @@ const RootNavigator = () => {
               component={ReviewScreen}   // Component itself (from file)
               options={{
                 headerShown: false,
-                animation: 'fade_from_bottom',
+                ...LiquidPresets.rise,
               }}
             />
 
             <Stack.Screen
               name="AIChat"
               component={AIStylistScreen}
-              options={{ animation: 'slide_from_right' }}
+              options={{ ...LiquidPresets.rise }}
               initialParams={{ initialTab: 'chat' }}
             />
             <Stack.Screen
               name="AIOutfit"
               component={AIOutfitmaker}
-              options={{ animation: 'slide_from_right' }}
+              options={{ ...LiquidPresets.rise }}
             />
             <Stack.Screen
               name="AITryOn"
               component={AITryOnScreen}
-              options={{ animation: 'slide_from_right' }}
+              options={{ ...LiquidPresets.rise }}
             />
             <Stack.Screen
               name="CreateAvatar"
               component={CreateAvatarScreen}
-              options={{ animation: 'slide_from_right' }}
+              options={{ ...LiquidPresets.rise }}
             />
             <Stack.Screen
               name="ScanWardrobe"
               component={ScanWardrobeScreen}
-              options={{ animation: 'slide_from_bottom' }}
+              options={{ ...LiquidPresets.rise }}
             />
             <Stack.Screen
               name="WardrobeVideo"
               component={WardrobeVideoScreen}
               options={{
-                animation: 'slide_from_bottom',
-                presentation: 'modal',
-                gestureEnabled: true,
-                gestureDirection: 'vertical',
+                ...LiquidPresets.rise,
               }}
             />
             <Stack.Screen
               name="Camera"
               component={CameraScreen}
               options={{
-                animation: 'slide_from_bottom',
-                presentation: 'fullScreenModal',
+                ...LiquidPresets.rise,
                 headerShown: false,
               }}
             />
             <Stack.Screen
               name="Calendar"
               component={OutfitCalendarScreen}
-              options={{ animation: 'slide_from_right' }}
+              options={{ ...LiquidPresets.slide }}
             />
 
             <Stack.Screen
               name="OutfitAI"
               component={AIStylistScreen}
               options={{
-                animation: 'slide_from_right',
+                ...LiquidPresets.rise,
               }}
               initialParams={{ initialTab: 'outfit' }}
             />
@@ -252,57 +226,49 @@ const RootNavigator = () => {
               name="MyCloset"
               component={MyClosetScreen}
               options={{
-                animation: 'slide_from_right',
+                ...LiquidPresets.slide,
               }}
             />
             <Stack.Screen
               name="WardrobeAnalytics"
               component={WardrobeAnalyticsScreen}
               options={{
-                animation: 'slide_from_right',
+                ...LiquidPresets.slide,
               }}
             />
             <Stack.Screen
               name="StylistChat"
               component={ChatScreen}
               options={{
-                animation: 'slide_from_bottom',
-                presentation: 'modal',
-                gestureEnabled: true,
-                gestureDirection: 'vertical',
+                ...LiquidPresets.rise,
               }}
             />
             <Stack.Screen
               name="PrivacyPolicy"
               component={PrivacyPolicyScreen}
               options={{
-                animation: 'slide_from_right',
+                ...LiquidPresets.slide,
               }}
             />
             <Stack.Screen
               name="TermsOfService"
               component={TermsOfServiceScreen}
               options={{
-                animation: 'slide_from_right',
+                ...LiquidPresets.slide,
               }}
             />
             <Stack.Screen
               name="ClothingDetailEditor"
               component={ClothingDetailEditor}
               options={{
-                animation: 'slide_from_bottom',
-                presentation: 'fullScreenModal',
-                gestureEnabled: true,
-                gestureDirection: 'vertical',
+                ...LiquidPresets.rise,
               }}
             />
             <Stack.Screen
               name="ClothingDetail"
               component={ClothingDetailScreen}
               options={{
-                animation: 'slide_from_right',
-                gestureEnabled: true,
-                gestureDirection: 'horizontal',
+                ...LiquidPresets.slide,
               }}
             />
 
@@ -311,10 +277,7 @@ const RootNavigator = () => {
               name="Paywall"
               component={PaywallScreen}
               options={{
-                animation: 'slide_from_bottom',
-                presentation: 'modal',
-                gestureEnabled: true,
-                gestureDirection: 'vertical',
+                ...LiquidPresets.rise,
               }}
             />
 
@@ -322,7 +285,7 @@ const RootNavigator = () => {
             <Stack.Screen
               name="TrialExpired"
               component={TrialExpiredScreen}
-              options={{ animation: 'fade', gestureEnabled: false }}
+              options={{ ...LiquidPresets.fade }}
             />
           </>
         ) : (
@@ -330,22 +293,22 @@ const RootNavigator = () => {
             <Stack.Screen
               name="SignIn"
               component={SignInScreen}
-              options={{ animation: 'fade' }}
+              options={{ ...LiquidPresets.fade }}
             />
             <Stack.Screen
               name="SignUp"
               component={SignUpScreen}
-              options={{ animation: 'slide_from_right' }}
+              options={{ ...LiquidPresets.slide }}
             />
             <Stack.Screen
               name="ForgotPassword"
               component={ForgotPasswordScreen}
-              options={{ animation: 'slide_from_right' }}
+              options={{ ...LiquidPresets.slide }}
             />
             <Stack.Screen
               name="ResetPassword"
               component={ResetPasswordScreen}
-              options={{ animation: 'slide_from_right' }}
+              options={{ ...LiquidPresets.slide }}
             />
           </>
         )}

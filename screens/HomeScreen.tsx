@@ -57,6 +57,7 @@ import { supabase } from '../lib/supabase';
 import { quickSuggest } from '../src/services/suggestionEngine';
 import { useDailyAIOutfit } from '../hooks/useDailyAIOutfit';
 import { useShopCatalog } from '../hooks/useShopCatalog';
+import OutfitCollageDisplay from '../features/outfit-generator/components/OutfitCollageDisplay';
 import TrialCountdownBanner from '../components/TrialCountdownBanner';
 import type { ShopCatalogItem } from '../features/try-on/types';
 import type { ClothingCategory } from '../src/types/domain';
@@ -581,59 +582,46 @@ const HomeScreen = () => {
     );
   };
 
-  // ── AI outfit → card slots (top / bottom / outer / shoes) ───────────────
-  // The edge function returns a `GeneratedOutfit` with items tagged by
-  // `macroCategory`. We map those items onto the 4 visual slots the existing
-  // Home cards expect so the layout stays identical.
-  const aiOutfitToSlots = (outfit: {
-    items: Array<{ macroCategory?: string; imageUrl?: string; image?: string | number }>;
-  }) => {
-    const getUri = (it?: { imageUrl?: string; image?: string | number }) => {
-      if (!it) return undefined;
-      return it.imageUrl ?? (typeof it.image === 'string' ? it.image : undefined);
-    };
+  // ── AI outfit → tiles (2-per-row grid) ──────────────────────────────────
+  // Cold / rainy / windy season: 4 tiles (outerwear + top + bottom + shoes)
+  // Warm season: 3 tiles (top + bottom + shoes). Shoes always present.
+  const needsOuterwear = React.useMemo(() => {
+    if (!weather) return true;
+    const t = weather.temp;
+    const c = (weather.description || '').toLowerCase();
+    if (t < 18) return true;
+    return /\b(rain|drizzle|shower|storm|wind|gust|breezy|snow|sleet|hail)\b/.test(c);
+  }, [weather]);
 
-    const hasCat = (item: any, cats: string[]) => {
-      const mc = (item.macroCategory || '').toLowerCase();
-      const tc = (item.type || '').toLowerCase();
-      const c = (item.category || '').toLowerCase();
-      return cats.some(cat => mc.includes(cat) || tc.includes(cat) || c.includes(cat));
-    };
-
-    let remainingItems = [...outfit.items];
-    
-    // Pick Outerwear
-    const outerIndex = remainingItems.findIndex(i => hasCat(i, ['outerwear', 'jacket', 'coat', 'blazer', 'sweater', 'hoodie']));
-    const outer = outerIndex !== -1 ? remainingItems.splice(outerIndex, 1)[0] : undefined;
-
-    // Pick Top
-    const topIndex = remainingItems.findIndex(i => hasCat(i, ['top', 'shirt', 't-shirt', 'blouse', 'polo']));
-    let top = topIndex !== -1 ? remainingItems.splice(topIndex, 1)[0] : undefined;
-
-    // Pick Bottom
-    const bottomIndex = remainingItems.findIndex(i => hasCat(i, ['bottom', 'pant', 'jeans', 'trouser', 'skirt', 'short']));
-    let bottom = bottomIndex !== -1 ? remainingItems.splice(bottomIndex, 1)[0] : undefined;
-
-    // Pick Shoes
-    const shoesIndex = remainingItems.findIndex(i => hasCat(i, ['shoe', 'sneaker', 'boot', 'footwear']));
-    let shoes = shoesIndex !== -1 ? remainingItems.splice(shoesIndex, 1)[0] : undefined;
-
-    // Fill missing core slots with remaining items if any
-    if (!top && remainingItems.length > 0) top = remainingItems.shift();
-    if (!bottom && remainingItems.length > 0) bottom = remainingItems.shift();
-    if (!shoes && remainingItems.length > 0) shoes = remainingItems.shift();
-    
-    // Note: mainTopUri is the large top box, typically used for outerwear or hero top.
-    // mainBottomUri is the large bottom box, typically used for the base top/shirt.
-    // outerLayerUri is the small top-right box, typically used for bottoms.
-    // shoesUri is the small bottom-right box.
-    return {
-      mainTopUri:    getUri(outer || (top && !outer && bottom ? top : undefined)),
-      mainBottomUri: getUri(outer ? top : undefined) || getUri(top),
-      outerLayerUri: getUri(bottom),
-      shoesUri:      getUri(shoes),
-    };
+  // Convert a legacy curated outfit combination into the OutfitItem[] shape
+  // that `OutfitCollageDisplay` expects, tagging each piece with a
+  // macroCategory so the collage's slot logic keeps one item per category
+  // (and drops outerwear in warm weather via the `needsOuterwear` prop).
+  const mapLegacyOutfitItemsForCollage = (c: any) => {
+    const items: Array<{ id: string; image: any; type: string; name: string; macroCategory: string }> = [];
+    if (c?.outerLayer) items.push({ id: `legacy_outer_${c.id}`, image: c.outerLayer.image, type: c.outerLayer.type || 'Outerwear', name: c.outerLayer.name || 'Outerwear', macroCategory: 'outerwear' });
+    if (c?.mainTop)    items.push({ id: `legacy_top_${c.id}`,   image: c.mainTop.image,    type: c.mainTop.type    || 'Top',       name: c.mainTop.name    || 'Top',       macroCategory: 'top' });
+    if (c?.mainBottom) items.push({ id: `legacy_btm_${c.id}`,   image: c.mainBottom.image, type: c.mainBottom.type || 'Bottom',    name: c.mainBottom.name || 'Bottom',    macroCategory: 'bottom' });
+    if (c?.shoes)      items.push({ id: `legacy_shoe_${c.id}`,  image: c.shoes.image,      type: c.shoes.type      || 'Shoes',     name: c.shoes.name      || 'Shoes',     macroCategory: 'shoes' });
+    return items;
   };
+
+  const mapAiOutfitItemsForCollage = (outfit: {
+    items: Array<{
+      id?: string;
+      imageUrl?: string;
+      image?: string | number;
+      type?: string;
+      name?: string;
+      macroCategory?: string;
+    }>;
+  }) => (outfit.items || []).map((item, index) => ({
+    id: item.id || `home_ai_${index}`,
+    image: item.imageUrl || item.image || '',
+    type: item.type || item.name || 'Item',
+    name: item.name || item.type || 'Item',
+    macroCategory: item.macroCategory,
+  }));
 
   // Team Collaboration — Business Casual (regenerates daily via AI)
   const renderPremiumOutfitSuggestion = () => {
@@ -673,14 +661,9 @@ const HomeScreen = () => {
       : outfitCombinations.map((c) => ({ id: String(c.id), legacy: c }));
 
     const renderOutfitItem = ({ item }: { item: { id: string; outfit?: any; legacy?: any } }) => {
-      const slots = item.outfit
-        ? aiOutfitToSlots(item.outfit)
-        : {
-            mainTopUri: item.legacy?.outerLayer?.image,
-            mainBottomUri: item.legacy?.mainTop?.image,
-            outerLayerUri: item.legacy?.mainBottom?.image,
-            shoesUri: item.legacy?.shoes?.image,
-          };
+      const collageItems = item.outfit
+        ? (mapAiOutfitItemsForCollage(item.outfit) as any)
+        : (mapLegacyOutfitItemsForCollage(item.legacy) as any);
 
       return (
         <View style={{ width: SCREEN_WIDTH, paddingHorizontal: spacing.screenPadding}}>
@@ -689,31 +672,17 @@ const HomeScreen = () => {
             style={styles.premiumCard}
             contentStyle={styles.premiumCardContent}
           >
-            <View style={styles.outfitGridMain}>
-              <View style={styles.outfitGridLeft}>
-                {slots.mainTopUri && <Image source={{ uri: slots.mainTopUri }} style={styles.outfitLargeImage as any} resizeMode="contain" />}
-                {slots.mainBottomUri && <Image source={{ uri: slots.mainBottomUri }} style={styles.outfitLargeImage as any} resizeMode="contain" />}
-              </View>
-              <View style={styles.outfitGridRight}>
-                <View style={styles.outfitSmallBox}>
-                  {slots.outerLayerUri && <Image source={{ uri: slots.outerLayerUri }} style={styles.outfitSmallImage as any} resizeMode="contain" />}
-                </View>
-                <View style={styles.outfitSmallBox}>
-                  {slots.shoesUri && <Image source={{ uri: slots.shoesUri }} style={styles.outfitSmallImage as any} resizeMode="contain" />}
-                </View>
-              </View>
-            </View>
+            <OutfitCollageDisplay
+              items={collageItems}
+              height={300}
+              needsOuterwear={needsOuterwear}
+            />
 
             <View style={styles.premiumSuggestionInfo}>
               <Text style={styles.premiumSuggestionText}>
                 {useAI
                   ? `AI · refreshes tomorrow`
-                  : `${[
-                      slots.mainTopUri    && !userCategories.has('tops'),
-                      slots.mainBottomUri && !userCategories.has('bottoms'),
-                      slots.outerLayerUri && !userCategories.has('tops') && !userCategories.has('outerwear'),
-                      slots.shoesUri      && !userCategories.has('shoes'),
-                    ].filter(Boolean).length} items suggested`}
+                  : `${collageItems.length} items suggested`}
               </Text>
               <Ionicons name={useAI ? 'sparkles-outline' : 'information-circle-outline'} size={16} color={colors.text.tertiary} />
             </View>
@@ -819,43 +788,24 @@ const HomeScreen = () => {
       : dinnerOutfitCombinations.map((c) => ({ id: String(c.id), legacy: c }));
 
     const renderDinnerItem = ({ item }: { item: { id: string; outfit?: any; legacy?: any } }) => {
-      const slots = item.outfit
-        ? aiOutfitToSlots(item.outfit)
-        : {
-            mainTopUri: item.legacy?.outerLayer?.image,
-            mainBottomUri: item.legacy?.mainTop?.image,
-            outerLayerUri: item.legacy?.mainBottom?.image,
-            shoesUri: item.legacy?.shoes?.image,
-          };
+      const collageItems = item.outfit
+        ? (mapAiOutfitItemsForCollage(item.outfit) as any)
+        : (mapLegacyOutfitItemsForCollage(item.legacy) as any);
 
       return (
         <View style={{ width: SCREEN_WIDTH, paddingHorizontal: spacing.screenPadding }}>
           <View style={styles.dinnerCard}>
-            <View style={styles.outfitGridMain}>
-              <View style={styles.outfitGridLeft}>
-                {slots.mainTopUri && <Image source={{ uri: slots.mainTopUri }} style={styles.dinnerLargeImage as any} resizeMode="contain" />}
-                {slots.mainBottomUri && <Image source={{ uri: slots.mainBottomUri }} style={styles.dinnerLargeImage as any} resizeMode="contain" />}
-              </View>
-              <View style={styles.outfitGridRight}>
-                <View style={styles.dinnerSmallBox}>
-                  {slots.outerLayerUri && <Image source={{ uri: slots.outerLayerUri }} style={styles.outfitSmallImage as any} resizeMode="contain" />}
-                </View>
-                <View style={styles.dinnerSmallBox}>
-                  {slots.shoesUri && <Image source={{ uri: slots.shoesUri }} style={styles.outfitSmallImage as any} resizeMode="contain" />}
-                </View>
-              </View>
-            </View>
+            <OutfitCollageDisplay
+              items={collageItems}
+              height={300}
+              needsOuterwear={needsOuterwear}
+            />
 
             <View style={styles.premiumSuggestionInfo}>
               <Text style={styles.dinnerSuggestionText}>
                 {useAI
                   ? 'AI · refreshes tomorrow'
-                  : `${[
-                      slots.mainTopUri    && !userCategories.has('tops'),
-                      slots.mainBottomUri && !userCategories.has('bottoms'),
-                      slots.outerLayerUri && !userCategories.has('tops') && !userCategories.has('outerwear'),
-                      slots.shoesUri      && !userCategories.has('shoes'),
-                    ].filter(Boolean).length} items suggested`}
+                  : `${collageItems.length} items suggested`}
               </Text>
               <Ionicons name={useAI ? 'sparkles-outline' : 'information-circle-outline'} size={16} color="rgba(255,255,255,0.4)" />
             </View>

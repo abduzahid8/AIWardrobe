@@ -37,6 +37,22 @@ const SLOT_META = [
     { key: 'shoes', label: 'Shoes', shortLabel: 'S' },
 ] as const;
 
+// Layer (outerwear) keywords — checked BEFORE the generic top matcher in
+// `matchesCategory` so a blazer/jacket lands in the dedicated Layer slot
+// instead of hijacking the Top slot and pushing the real t-shirt into Extras.
+const LAYER_KEYWORDS = [
+    'jacket', 'blazer', 'coat', 'outerwear', 'vest',
+    'cardigan', 'hoodie', 'sweater', 'pullover',
+    'puffer', 'bomber', 'parka', 'windbreaker', 'overcoat',
+    'trench', 'peacoat', 'tuxedo',
+];
+
+const isLayerItem = (item: OutfitItem | null | undefined): boolean => {
+    if (!item) return false;
+    const blob = `${item.type || ''} ${item.name || ''}`.toLowerCase();
+    return LAYER_KEYWORDS.some((k) => blob.includes(k));
+};
+
 const formatReadableDate = (date: Date) =>
     date.toLocaleDateString('en-US', {
         weekday: 'short',
@@ -119,6 +135,7 @@ const OutfitCalendarScreen = () => {
     const selectedSlots = useMemo(() => {
         if (!selectedLog) {
             return {
+                layer: null,
                 top: null,
                 pants: null,
                 shoes: null,
@@ -126,15 +143,28 @@ const OutfitCalendarScreen = () => {
             };
         }
 
-        const top = selectedLog.items.find((item) => matchesCategory(item.type, 'top')) ?? null;
+        // Classify layer FIRST — `matchesCategory('jacket', 'top')` returns
+        // true for blazers/coats, so without this dedicated pass a blazer
+        // would occupy the Top slot and the real t-shirt would be pushed
+        // into Extras (see screenshot bug report).
+        const layer = selectedLog.items.find(isLayerItem) ?? null;
+        const top =
+            selectedLog.items.find(
+                (item) => item.id !== layer?.id && !isLayerItem(item) && matchesCategory(item.type, 'top'),
+            ) ?? null;
         const pants = selectedLog.items.find((item) => matchesCategory(item.type, 'pants')) ?? null;
         const shoes = selectedLog.items.find((item) => matchesCategory(item.type, 'shoes')) ?? null;
 
-        const usedIds = new Set([top?.id, pants?.id, shoes?.id].filter(Boolean));
+        const usedIds = new Set([layer?.id, top?.id, pants?.id, shoes?.id].filter(Boolean));
         const extras = selectedLog.items.filter((item) => !usedIds.has(item.id));
 
-        return { top, pants, shoes, extras };
+        return { layer, top, pants, shoes, extras };
     }, [selectedLog]);
+
+    // Show the Layer tile only when a layer was actually logged. Keeps the
+    // UI in lock-step with the "Top + Bottom + Shoes always; Layer only when
+    // needed" composition rule.
+    const showLayer = Boolean(selectedSlots.layer);
 
     const visibleDays = useMemo(() => {
         const count = Math.min(5, daysInMonth);
@@ -184,17 +214,8 @@ const OutfitCalendarScreen = () => {
         </View>
     );
 
-    const renderPreviewTile = (
-        label: string,
-        item: OutfitItem | null,
-        variant: 'large' | 'small'
-    ) => (
-        <View
-            style={[
-                styles.previewTile,
-                variant === 'large' ? styles.previewTileLarge : styles.previewTileSmall,
-            ]}
-        >
+    const renderPreviewTile = (label: string, item: OutfitItem | null) => (
+        <View style={[styles.previewTile, styles.previewTileGrid]}>
             {item?.image ? (
                 <View style={styles.previewMedia}>
                     <Image source={{ uri: item.image }} style={styles.previewImage} resizeMode="contain" />
@@ -391,15 +412,11 @@ const OutfitCalendarScreen = () => {
                             </View>
 
                             <View style={styles.boardShell}>
-                                <View style={styles.previewRow}>
-                                    <View style={styles.previewPrimaryColumn}>
-                                        {renderPreviewTile('Top', selectedSlots.top, 'large')}
-                                    </View>
-
-                                    <View style={styles.previewSecondaryColumn}>
-                                        {renderPreviewTile('Bottom', selectedSlots.pants, 'small')}
-                                        {renderPreviewTile('Shoes', selectedSlots.shoes, 'small')}
-                                    </View>
+                                <View style={styles.previewGrid}>
+                                    {renderPreviewTile('Top', selectedSlots.top)}
+                                    {renderPreviewTile('Bottom', selectedSlots.pants)}
+                                    {showLayer && renderPreviewTile('Layer', selectedSlots.layer)}
+                                    {renderPreviewTile('Shoes', selectedSlots.shoes)}
                                 </View>
                             </View>
 
@@ -407,6 +424,12 @@ const OutfitCalendarScreen = () => {
                                 {renderDockItem('Top', selectedSlots.top)}
                                 <View style={styles.pieceDockDivider} />
                                 {renderDockItem('Bottom', selectedSlots.pants)}
+                                {showLayer ? (
+                                    <>
+                                        <View style={styles.pieceDockDivider} />
+                                        {renderDockItem('Layer', selectedSlots.layer)}
+                                    </>
+                                ) : null}
                                 <View style={styles.pieceDockDivider} />
                                 {renderDockItem('Shoes', selectedSlots.shoes)}
                             </View>
@@ -843,6 +866,14 @@ const styles = StyleSheet.create({
         alignItems: 'flex-start',
         gap: 12,
     },
+    // 2-per-row grid. Cold outfits (4 tiles) render as 2×2; warm outfits
+    // (3 tiles) render as Top + Bottom on row 1 and Shoes + spacer on row 2.
+    previewGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        rowGap: 12,
+    },
     previewPrimaryColumn: {
         flex: 1.08,
     },
@@ -857,6 +888,10 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#EDF2F7',
         position: 'relative',
+    },
+    previewTileGrid: {
+        width: '48.5%',
+        height: 150,
     },
     previewTileLarge: {
         height: 248,

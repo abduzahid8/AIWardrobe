@@ -247,7 +247,7 @@ export function getCategoryBreakdown(items: ClothingItem[]): CategoryBreakdownEn
 // DEFAULT LAYER ASSIGNMENT
 // ============================================
 
-import type { ClothingLayer } from '../../src/types/domain';
+type ClothingLayer = 'outer' | 'mid' | 'base' | 'accessory';
 
 /** Auto-assign a layer based on item category */
 export function getDefaultLayer(category: ClothingCategory): ClothingLayer {

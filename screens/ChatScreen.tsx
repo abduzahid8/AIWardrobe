@@ -39,7 +39,6 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 import useWardrobeStore from '../store/wardrobeStore';
 import { aiProvider } from '../src/services/aiProviderService';
-import type { GeminiContextData } from '../src/services/aiProviderService';
 
 const { colors, spacing } = LiquidGlass2026Theme;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -124,11 +123,7 @@ const ChatScreen = () => {
     const listRef                            = useRef<FlatList<ChatMessage>>(null);
     const inputRef                           = useRef<TextInput>(null);
 
-    /** Contextual data passed to every Gemini request. */
-    const geminiContext = useMemo<GeminiContextData>(() => ({
-        items,
-        wearLogs,
-    }), [items, wearLogs]);
+    const wardrobeSize = useMemo(() => items.length, [items.length]);
 
     /** Add a greeting when user first opens the screen with items. */
     useEffect(() => {
@@ -166,11 +161,11 @@ const ChatScreen = () => {
         scrollToBottom();
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-        const result = await aiProvider.chat(
-            trimmed,
-            geminiContext,
-            () => setIsThinking(true)          // fires after 5 seconds
-        );
+        const thinkingTimer = setTimeout(() => setIsThinking(true), 5000);
+        const result = await aiProvider.chat(trimmed, {
+            wardrobeSize,
+        });
+        clearTimeout(thinkingTimer);
 
         setIsThinking(false);
         setIsLoading(false);
@@ -180,12 +175,11 @@ const ChatScreen = () => {
             role: 'assistant',
             text: result.response,
             timestamp: new Date(),
-            fromCache: result.fromCache,
         };
 
         setMessages((prev) => [...prev, aiMessage]);
         scrollToBottom();
-    }, [isLoading, geminiContext, scrollToBottom]);
+    }, [isLoading, wardrobeSize, scrollToBottom]);
 
     const handleSend = useCallback(() => {
         void sendMessage(inputText);
