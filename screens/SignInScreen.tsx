@@ -6,9 +6,9 @@ import {
   TouchableOpacity,
   View,
   KeyboardAvoidingView,
-  Platform,
   TouchableWithoutFeedback,
   Keyboard,
+  ScrollView,
 } from "react-native";
 import React, { useState } from "react";
 import { useNavigation } from "@react-navigation/native";
@@ -16,36 +16,26 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import useAuthStore from "../store/auth";
 import { useTranslation } from "react-i18next";
-// import { API_URL } from "../api/config";
 
 const SignInScreen = () => {
-  console.log('[SignInScreen] Component rendering');
   const navigation = useNavigation();
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuthStore();
+
   const handleSignIn = async () => {
-    console.log('[SignInScreen] Sign in attempt - email:', email);
     if (!email || !password) {
-      console.log('[SignInScreen] Validation failed - missing email or password');
       Alert.alert("Error", "Email and password are required");
       return;
     }
-    if (isLoading) {
-      console.log('[SignInScreen] Sign in already in progress, ignoring');
-      return; // Prevent double-submission
-    }
+    if (isLoading) return;
     setIsLoading(true);
     try {
-      console.log('[SignInScreen] Attempting login...');
       await login(email, password);
-      console.log('[SignInScreen] Login successful');
     } catch (error: any) {
-      console.log('[SignInScreen] Login failed:', error.message);
       const errorMessage = error.message || "Login failed";
-
       if (errorMessage.includes("Invalid login credentials") || errorMessage.includes("invalid claim")) {
         Alert.alert("Login Failed", "Invalid email or password.");
       } else if (errorMessage.includes("Email not confirmed")) {
@@ -57,10 +47,10 @@ const SignInScreen = () => {
       setIsLoading(false);
     }
   };
-  // console.log("Мой текущий API URL:", API_URL);
+
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      behavior="padding"
       style={styles.container}
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -68,101 +58,83 @@ const SignInScreen = () => {
           colors={["#0A0A0A", "#1A1C29", "#16213E"]}
           style={styles.gradient}
         >
-          <View style={styles.formContainer}>
-            <Text style={styles.title}>{t('auth.signIn')}</Text>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.formContainer}>
+              <Text style={styles.title}>{t('auth.signIn')}</Text>
 
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.input}
-                value={email}
-                onChangeText={setEmail}
-                placeholder={t('auth.email')}
-                placeholderTextColor="rgba(255,255,255,0.4)"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                accessibilityLabel="Email address"
-                maxLength={255}
-              />
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.input}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder={t('auth.email')}
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  accessibilityLabel="Email address"
+                  maxLength={255}
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.input}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder={t('auth.password')}
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  secureTextEntry
+                  accessibilityLabel="Password"
+                />
+              </View>
+
+              {/* Forgot Password */}
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  (navigation.navigate as any)("ForgotPassword");
+                }}
+                style={styles.forgotButton}
+                accessibilityLabel="Forgot password"
+                accessibilityRole="button"
+              >
+                <Text style={styles.forgotText}>Forgot Password?</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  handleSignIn();
+                }}
+                style={[styles.primaryButton, isLoading && styles.primaryButtonDisabled]}
+                disabled={isLoading}
+                activeOpacity={0.8}
+                accessibilityLabel={isLoading ? "Signing in" : "Sign in"}
+                accessibilityRole="button"
+              >
+                <Text style={styles.primaryButtonText}>
+                  {isLoading ? "Signing In..." : t('auth.signIn')}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  (navigation.navigate as any)("SignUp");
+                }}
+                style={styles.linkButton}
+              >
+                <Text style={styles.linkText}>
+                  <Text style={styles.linkTextMuted}>{t('auth.noAccount')} </Text>
+                  {t('auth.signUp')}
+                </Text>
+              </TouchableOpacity>
             </View>
-
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.input}
-                value={password}
-                onChangeText={setPassword}
-                placeholder={t('auth.password')}
-                placeholderTextColor="rgba(255,255,255,0.4)"
-                secureTextEntry
-                accessibilityLabel="Password"
-              />
-            </View>
-
-            {/* Forgot Password */}
-            <TouchableOpacity
-              onPress={() => {
-                console.log('[SignInScreen] Forgot password button pressed');
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                (navigation.navigate as any)("ForgotPassword");
-              }}
-              style={styles.forgotButton}
-              accessibilityLabel="Forgot password"
-              accessibilityRole="button"
-            >
-              <Text style={styles.forgotText}>Forgot Password?</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => {
-                console.log('[SignInScreen] Sign in button pressed');
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                handleSignIn();
-              }}
-              style={[styles.primaryButton, isLoading && styles.primaryButtonDisabled]}
-              disabled={isLoading}
-              activeOpacity={0.8}
-              accessibilityLabel={isLoading ? "Signing in" : "Sign in"}
-              accessibilityRole="button"
-            >
-              <Text style={styles.primaryButtonText}>
-                {isLoading ? "Signing In..." : t('auth.signIn')}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => {
-                console.log('[SignInScreen] Sign up link pressed');
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                (navigation.navigate as any)("SignUp");
-              }}
-              style={styles.linkButton}
-            >
-              <Text style={styles.linkText}>
-                <Text style={styles.linkTextMuted}>{t('auth.noAccount')} </Text>
-                {t('auth.signUp')}
-              </Text>
-            </TouchableOpacity>
-
-            <View style={styles.dividerContainer}>
-              <View style={styles.divider} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.divider} />
-            </View>
-
-            <TouchableOpacity
-              onPress={() => {
-                console.log('[SignInScreen] Trial button pressed');
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                const { startTrial } = useAuthStore.getState();
-                startTrial();
-              }}
-              style={styles.trialButton}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.trialButtonText}>
-                Try App First (3 free tries)
-              </Text>
-            </TouchableOpacity>
-          </View>
+          </ScrollView>
         </LinearGradient>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
@@ -177,7 +149,11 @@ const styles = StyleSheet.create({
   },
   gradient: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: "center",
+    paddingVertical: 40,
   },
   formContainer: {
     paddingHorizontal: 24,
@@ -242,33 +218,5 @@ const styles = StyleSheet.create({
   },
   linkTextMuted: {
     color: "rgba(255,255,255,0.6)",
-  },
-  dividerContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 24,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-  },
-  dividerText: {
-    color: "rgba(255, 255, 255, 0.4)",
-    marginHorizontal: 16,
-    fontSize: 14,
-  },
-  trialButton: {
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.2)",
-    paddingVertical: 16,
-    borderRadius: 16,
-    alignItems: "center",
-  },
-  trialButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#FFF",
   },
 });

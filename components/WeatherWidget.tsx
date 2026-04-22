@@ -7,6 +7,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import Animated, { FadeIn } from 'react-native-reanimated';
+import { createLogger } from '../src/utils/logger';
+
+const logger = createLogger('WeatherWidget');
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://aiwardrobe-ivh4.onrender.com';
 
@@ -69,7 +72,7 @@ const WeatherWidget: React.FC = () => {
                 });
             }
         } catch (error) {
-            console.log('Weather fetch failed:', error);
+            logger.error('Weather fetch failed', error);
         } finally {
             setLoading(false);
         }

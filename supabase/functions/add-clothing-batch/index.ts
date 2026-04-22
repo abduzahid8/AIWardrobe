@@ -13,23 +13,37 @@ serve(async (req) => {
     }
 
     try {
+        // ── Authenticate user via JWT ──────────────────────────────────
+        const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+        const authHeader = req.headers.get('Authorization') || ''
+
+        const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+            global: { headers: { Authorization: authHeader } }
+        })
+        const { data: { user }, error: authError } = await userClient.auth.getUser()
+
+        if (authError || !user) {
+            return new Response(
+                JSON.stringify({ error: 'Unauthorized — valid JWT required' }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+            )
+        }
+
+        // Use authenticated user ID instead of trusting client-provided userId
+        const userId = user.id
+
+        // Service-role client for DB operations
         const supabase = createClient(
-            Deno.env.get('SUPABASE_URL') ?? '',
+            supabaseUrl,
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
 
-        const { items, userId } = await req.json()
+        const { items } = await req.json()
 
         if (!items || !Array.isArray(items) || items.length === 0) {
             return new Response(
                 JSON.stringify({ error: 'No items provided' }),
-                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-            )
-        }
-
-        if (!userId) {
-            return new Response(
-                JSON.stringify({ error: 'User ID required' }),
                 { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
             )
         }

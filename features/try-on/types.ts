@@ -16,11 +16,12 @@ export interface ShopCatalogItem {
     name: string;
     price: number;
     currency?: string;
-    imageUrl: string;
-    garmentType: 'upper_body' | 'lower_body' | 'dresses';
+    imageUrl: string | any;
+    garmentType: 'upper_body' | 'lower_body' | 'dresses' | 'shoes' | 'outfit';
     description?: string;
+    outfitItems?: ShopCatalogItem[];
 }
 
-export type TryOnMode = 'try your self' | 'model';
+export type TryOnMode = 'model';
 export type TryOnStep = 1 | 2 | 3;
 export type PhotoTab = 'upload' | 'wardrobe' | 'shop';

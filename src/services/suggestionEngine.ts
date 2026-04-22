@@ -335,9 +335,11 @@ function buildShoppingSuggestions(
     const defaults: Record<ClothingCategory, { subCategory: string; primaryColor: string }> = {
         top:       { subCategory: preferredTier <= 2 ? 'dress shirt' : preferredTier === 3 ? 'polo shirt' : 't-shirt', primaryColor: 'white' },
         bottom:    { subCategory: preferredTier <= 2 ? 'chinos' : preferredTier === 3 ? 'slim jeans' : 'jeans', primaryColor: 'navy' },
+        dress:     { subCategory: preferredTier <= 2 ? 'cocktail dress' : 'casual dress', primaryColor: 'black' },
         shoes:     { subCategory: preferredTier <= 2 ? 'loafers' : preferredTier === 3 ? 'chelsea boots' : 'sneakers', primaryColor: 'black' },
         outerwear: { subCategory: preferredTier <= 2 ? 'blazer' : 'casual jacket', primaryColor: 'navy' },
         accessory: { subCategory: 'watch', primaryColor: 'silver' },
+        other:     { subCategory: 'item', primaryColor: 'black' },
     };
 
     return missingCategories.map((cat) => ({
@@ -353,9 +355,11 @@ function groupByCategory(items: ClothingItem[]): Record<ClothingCategory, Clothi
     const groups: Record<string, ClothingItem[]> = {
         top: [],
         bottom: [],
+        dress: [],
         shoes: [],
         outerwear: [],
         accessory: [],
+        other: [],
     };
 
     items.forEach((item) => {

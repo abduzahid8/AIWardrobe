@@ -14,6 +14,7 @@
 
 import { supabase } from '../../lib/supabase';
 import type { ClothingItem, ClothingCategory } from '../types/domain';
+import { mapDbCategory as canonicalMapDbCategory, getMacroCategory as canonicalGetMacroCategory } from '../utils/categoryMapper';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public types
@@ -67,6 +68,8 @@ export interface GenerateOutfitsResult {
     outfits: GeneratedOutfit[];
     error?: string;
     source?: 'ai' | 'local';
+    /** Whether the backend applied the 4-slot layered schema. */
+    layered?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -81,8 +84,9 @@ export interface GenerateOutfitsResult {
 export async function generateOutfitsFromDB(
     params: GenerateOutfitsParams
 ): Promise<GenerateOutfitsResult> {
+    const TIMEOUT_MS = 45_000;
     try {
-        const { data, error } = await supabase.functions.invoke('generate-outfits', {
+        const invokePromise = supabase.functions.invoke('generate-outfits', {
             body: {
                 prompt: params.prompt || '',
                 stylePreferences: params.stylePreferences || 'Casual',
@@ -92,6 +96,12 @@ export async function generateOutfitsFromDB(
                 selectedItemIds: params.selectedItemIds ?? [],
             },
         });
+
+        const timeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('outfit_generation_timeout')), TIMEOUT_MS)
+        );
+
+        const { data, error } = await Promise.race([invokePromise, timeoutPromise]) as Awaited<typeof invokePromise>;
 
         if (error) {
             console.warn('[outfitGenerationService] Edge function error, using local fallback:', error);
@@ -103,10 +113,21 @@ export async function generateOutfitsFromDB(
             return generateOutfitsLocally(params);
         }
 
+        // Check that outfits actually contain items — edge function may return outfits with 0 items
+        const hasItems = data.outfits.some((o: any) => Array.isArray(o.items) && o.items.length > 0);
+        if (!hasItems) {
+            console.warn('[outfitGenerationService] AI returned outfits with no items, using local fallback');
+            return generateOutfitsLocally(params);
+        }
+
         const outfits: GeneratedOutfit[] = data.outfits.map((o: any) => mapRawOutfit(o, params));
-        return { success: true, outfits, source: data.source ?? 'ai' };
+        return { success: true, outfits, source: data.source ?? 'ai', layered: Boolean(data.layered) };
 
     } catch (err: any) {
+        if (err?.message === 'outfit_generation_timeout') {
+            console.warn('[outfitGenerationService] Edge function timed out, using local fallback');
+            return generateOutfitsLocally(params);
+        }
         console.error('[outfitGenerationService] Unexpected error:', err);
         return generateOutfitsLocally(params);
     }
@@ -160,9 +181,8 @@ export async function fetchWardrobeDisplayItems(
 
     let query = supabase
         .from('clothing_items')
-        .select('id, type, category, color, primary_color, sub_category, image_url, brand, is_archived, wear_count')
+        .select('id, type, category, color, primary_color, sub_category, image_url, brand, wear_count')
         .eq('user_id', userId)
-        .eq('is_archived', false)
         .order('created_at', { ascending: false })
         .limit(100);
 
@@ -209,7 +229,6 @@ async function fetchClothingItemsFromDB(selectedIds?: string[]): Promise<Clothin
         .from('clothing_items')
         .select('*')
         .eq('user_id', userId)
-        .eq('is_archived', false)
         .order('created_at', { ascending: false })
         .limit(100);
 
@@ -244,24 +263,11 @@ async function fetchClothingItemsFromDB(selectedIds?: string[]): Promise<Clothin
 }
 
 function mapDbCategory(category: string): ClothingCategory {
-    const map: Record<string, ClothingCategory> = {
-        Tops: 'top', tops: 'top',
-        Bottoms: 'bottom', bottoms: 'bottom',
-        Shoes: 'shoes', shoes: 'shoes',
-        Outerwear: 'outerwear', outerwear: 'outerwear',
-        Accessories: 'accessory', accessories: 'accessory',
-        Dresses: 'top', dresses: 'top',
-    };
-    return map[category] || 'top';
+    return canonicalMapDbCategory(category);
 }
 
 function getMacroCategory(category: string, type: string): string {
-    const t = `${category} ${type}`.toLowerCase();
-    if (t.match(/jacket|coat|blazer|hoodie|cardigan|sweater|pullover|vest|puffer|outerwear/)) return 'outerwear';
-    if (t.match(/shirt|t-shirt|tee|blouse|polo|tops|top|dress/)) return 'top';
-    if (t.match(/pant|trouser|jeans|bottom|shorts|skirt/)) return 'bottom';
-    if (t.match(/shoe|sneaker|boot|loafer|sandal/)) return 'shoes';
-    return 'other';
+    return canonicalGetMacroCategory(category, type);
 }
 
 function buildLocalOutfits(items: ClothingItem[], params: GenerateOutfitsParams): GeneratedOutfit[] {
@@ -278,13 +284,31 @@ function buildLocalOutfits(items: ClothingItem[], params: GenerateOutfitsParams)
     for (let i = 0; i < limit; i++) {
         const outfitItems: GeneratedOutfitItem[] = [];
 
-        const top = tops[i % Math.max(tops.length, 1)];
-        const bottom = bottoms[i % Math.max(bottoms.length, 1)];
-        const shoe = shoes[i % Math.max(shoes.length, 1)];
+        // Always include top (reuse if necessary)
+        const top = tops[i % Math.max(tops.length, 1)] || tops[0];
+        // Always include bottom (reuse if necessary)
+        const bottom = bottoms[i % Math.max(bottoms.length, 1)] || bottoms[0] || items[0];
+        // Always include shoes (reuse if necessary)
+        const shoe = shoes[i % Math.max(shoes.length, 1)] || shoes[0] || items[1] || items[0];
 
         if (top) outfitItems.push(toDisplayItem(top, 'Key piece for this look'));
         if (bottom) outfitItems.push(toDisplayItem(bottom, 'Pairs well with the top'));
         if (shoe) outfitItems.push(toDisplayItem(shoe, 'Completes the look'));
+
+        // Ensure at least 3 items for a complete outfit
+        if (outfitItems.length < 3 && items.length > 0) {
+            // Fill remaining slots with available items
+            let fillIndex = 0;
+            while (outfitItems.length < 3 && fillIndex < items.length) {
+                const fillItem = items[fillIndex];
+                // Avoid adding duplicate items
+                const alreadyAdded = outfitItems.some(oi => oi.id === fillItem.id);
+                if (!alreadyAdded) {
+                    outfitItems.push(toDisplayItem(fillItem, 'Complementary piece'));
+                }
+                fillIndex++;
+            }
+        }
 
         if (outfitItems.length === 0) continue;
 
@@ -298,6 +322,31 @@ function buildLocalOutfits(items: ClothingItem[], params: GenerateOutfitsParams)
             items: outfitItems,
             stylingTips: ['Add accessories to personalize', 'Experiment with layering for visual depth'],
         });
+    }
+
+    // If no outfits were created but we have items, create at least one outfit
+    if (outfits.length === 0 && items.length > 0) {
+        const outfitItems: GeneratedOutfitItem[] = [];
+        const top = tops[0] || items[0];
+        const bottom = bottoms[0] || items[1] || items[0];
+        const shoe = shoes[0] || items[2] || items[0];
+        
+        if (top) outfitItems.push(toDisplayItem(top, 'Key piece for this look'));
+        if (bottom && bottom.id !== top?.id) outfitItems.push(toDisplayItem(bottom, 'Pairs well with the top'));
+        if (shoe && shoe.id !== bottom?.id) outfitItems.push(toDisplayItem(shoe, 'Completes the look'));
+        
+        if (outfitItems.length > 0) {
+            outfits.push({
+                id: `local_0_${Date.now()}`,
+                description: `A ${style} look built from your wardrobe.`,
+                style,
+                occasion: occ,
+                confidence: 0.75,
+                matchScore: 0.75,
+                items: outfitItems,
+                stylingTips: ['Add accessories to personalize', 'Experiment with layering for visual depth'],
+            });
+        }
     }
 
     return outfits;
@@ -334,12 +383,13 @@ function mapRawOutfit(o: any, params: GenerateOutfitsParams): GeneratedOutfit {
         shopUrl: item.shopUrl,
     }));
 
-    // De-duplicate by macro category — keep first occurrence
+    // De-duplicate exact duplicate ids first.
     const seen = new Set<string>();
     const dedupedItems = items.filter(item => {
-        const mc = item.macroCategory || item.type || item.id;
-        if (seen.has(mc)) return false;
-        seen.add(mc);
+        const key = String(item.id || '');
+        if (!key) return true;
+        if (seen.has(key)) return false;
+        seen.add(key);
         return true;
     });
 

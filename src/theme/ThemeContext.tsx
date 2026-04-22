@@ -1,7 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Appearance, ColorSchemeName, useColorScheme } from 'react-native';
+import { Appearance, ColorSchemeName, useColorScheme, View, ActivityIndicator, StyleSheet as RNStyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { lightColors, darkColors, getThemeColors } from './index';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('Theme');
 
 type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -31,7 +34,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                     setThemeModeState(savedMode as ThemeMode);
                 }
             } catch (error) {
-                console.log('Error loading theme:', error);
+                logger.error('Error loading theme', error);
             } finally {
                 setIsInitialized(true);
             }
@@ -53,7 +56,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         try {
             await AsyncStorage.setItem(THEME_STORAGE_KEY, mode);
         } catch (error) {
-            console.log('Error saving theme:', error);
+            logger.error('Error saving theme', error);
         }
     };
 
@@ -77,7 +80,11 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }, [themeMode]);
 
     if (!isInitialized) {
-        return null; // Or a loading spinner
+        return (
+            <View style={splashStyles.container}>
+                <ActivityIndicator size="small" color="#0A1931" />
+            </View>
+        );
     }
 
     return (
@@ -109,5 +116,14 @@ export const useThemeColors = () => {
     const { colors } = useTheme();
     return colors;
 };
+
+const splashStyles = RNStyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+});
 
 export default ThemeContext;

@@ -24,8 +24,8 @@ export interface ContextualPrompt {
     icon: string;
     action: {
         label: string;
-        route: string;
-        params?: any;
+        route: keyof import('../../navigation/types').RootStackParamList;
+        params?: Record<string, unknown>;
     };
     priority: number; // higher = more important
     color: string;

@@ -1,728 +1,620 @@
-/**
- * AITryOnScreen — Slim composition layer
- *
- * Business logic lives in:
- *   - hooks/usePhotoPicker.ts
- *   - hooks/useTryOnWizard.ts
- *   - hooks/useTryOnAPI.ts
- *
- * Styles live in: ./styles.ts
- * Types live in:  ./types.ts
- */
-
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, SafeAreaView, Dimensions, StyleSheet, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../lib/supabase';
-import useAuthStore from '../../store/auth';
-import useSubscriptionStore from '../../store/subscriptionStore';
-import AppColors from '../../constants/AppColors';
-import LiquidGlass2026Theme from '../../constants/LiquidGlass2026Theme';
-import { WebView } from 'react-native-webview';
+import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
+import { Asset } from 'expo-asset';
+import * as FileSystem from 'expo-file-system/legacy';
 
-import { usePhotoPicker } from './hooks/usePhotoPicker';
-import { useTryOnWizard } from './hooks/useTryOnWizard';
-import { useTryOnAPI } from './hooks/useTryOnAPI';
-import type { WardrobeItem, ShopCatalogItem } from './types';
-import { SHOP_CATALOG_ITEMS, SHOP_CATEGORIES } from '../../data/shopCatalogItems';
+import type { ShopCatalogItem } from './types';
+import { SHOP_CATEGORIES } from '../../data/shopCatalogItems';
+import { INSPO_MENS_SHOP_ITEMS } from '../../data/inspoMensShopItems';
+import { useShopCatalog } from '../../hooks/useShopCatalog';
 import styles from './styles';
-import { generate3Dhtml, BODY_TYPES, BodyTypeId } from './utils/mannequin3D';
-import { MANNEQUIN_MODEL_URL, MANNEQUIN_USE_PROCEDURAL_FALLBACK } from './utils/mannequinConfig';
-import { getMannequinBase64 } from './hooks/useMannequin';
+import useTryOnLooksStore from '../../store/tryOnLooksStore';
 
-type AITryOnRouteParams = { asTab?: boolean };
+const MANNEQUIN_IMAGE = require('../../assets/images/mannequin_front.png');
+const TRY_ON_CATEGORY_KEYS = new Set(['upper_body', 'lower_body', 'shoes']);
+const GARMENT_LABELS: Record<ShopCatalogItem['garmentType'], string> = {
+    upper_body: 'Top',
+    lower_body: 'Bottom',
+    dresses: 'Dress',
+    shoes: 'Shoes',
+    outfit: 'Outfit',
+};
+
+type AITryOnRouteParams = { asTab?: boolean; initialGarmentUri?: string; initialGarmentType?: string };
+
+const formatPrice = (item: ShopCatalogItem | null) => {
+    if (!item) return '--';
+    return `$${item.price % 1 === 0 ? item.price.toFixed(0) : item.price.toFixed(2)}`;
+};
 
 const AITryOnScreen = () => {
     const navigation = useNavigation();
     const route = useRoute<RouteProp<{ params: AITryOnRouteParams }, 'params'>>();
     const asTab = (route.params as AITryOnRouteParams)?.asTab === true;
-    const { user } = useAuthStore();
-    const { isPremium } = useSubscriptionStore();
     const { t } = useTranslation();
 
-    // Hooks
-    const {
-        humanImage, clothImage, setClothImage,
-        pickFullLengthPhoto, pickGarmentPhoto,
-        showFullLengthPhotoOptions, showGarmentPhotoOptions,
-    } = usePhotoPicker();
-
-    const {
-        tryOnMode, setTryOnMode,
-        tryOnStep, goToStep,
-        activeTab, setActiveTab,
-    } = useTryOnWizard();
-
-    const { loading, saving, resultImage, isMock, handleTryOn, handleSaveToWardrobe } = useTryOnAPI();
-
-    // ── Mannequin Try-On State ───────────────────────────────────────────
-    // Uses fashn.ai tryon-v1.6 API:
-    //   model_image  = mannequin_front.png (the grey mannequin asset)
-    //   garment_image = selected shop item
-    // Result: AI renders the mannequin actually wearing the garment.
-    const [mannequinShopItem, setMannequinShopItem] = useState<ShopCatalogItem | null>(null);
+    const [selectedItem, setSelectedItem] = useState<ShopCatalogItem | null>(null);
     const [mannequinShopFilter, setMannequinShopFilter] = useState<string>('upper_body');
-    const [mannequinLoading, setMannequinLoading] = useState(false);
-    const [mannequinResult, setMannequinResult] = useState<string | null>(null);
-    const [mannequinSaving, setMannequinSaving] = useState(false);
+    const [aiResultImage, setAiResultImage] = useState<string | null>(null);
+    const [aiLoading, setAiLoading] = useState(false);
+    const [aiError, setAiError] = useState<string | null>(null);
+    const [tryOnCount, setTryOnCount] = useState(0);
+    const [lookSaved, setLookSaved] = useState(false);
+    const [isModelReady, setIsModelReady] = useState(false);
+    const {
+        items: syncedShopItems,
+        loading: shopCatalogLoading,
+        loadingMore: shopCatalogLoadingMore,
+        error: shopCatalogError,
+        hasMore: shopCatalogHasMore,
+        loadMore: loadMoreShopCatalog,
+        refresh: refreshShopCatalog,
+    } = useShopCatalog({ category: mannequinShopFilter });
 
+    const { requireFeature, getRemaining, hasActiveSubscription } = useSubscriptionGate();
+    const tryOnsRemaining = getRemaining('tryOns');
+    const saveLook = useTryOnLooksStore((s) => s.saveLook);
+    const mannequinB64Ref = useRef<string | null>(null);
 
-    const handleMannequinTryOn = async () => {
-        if (!mannequinShopItem) return;
-        if (!user) {
-            Alert.alert('Sign in required', 'Please sign in to use the virtual try-on.');
+    useEffect(() => {
+        (async () => {
+            try {
+                const asset = Asset.fromModule(MANNEQUIN_IMAGE);
+                await asset.downloadAsync();
+                const b64 = await FileSystem.readAsStringAsync(asset.localUri!, { encoding: 'base64' as any });
+                mannequinB64Ref.current = `data:image/png;base64,${b64}`;
+                setIsModelReady(true);
+            } catch (error) {
+                console.warn('Failed to preload mannequin image:', error);
+                setAiError('Model preview is still loading. Please wait a moment and try again.');
+            }
+        })();
+    }, []);
+
+    const fallbackShopItems = useMemo(() => {
+        if (!TRY_ON_CATEGORY_KEYS.has(mannequinShopFilter)) {
+            return INSPO_MENS_SHOP_ITEMS;
+        }
+
+        return INSPO_MENS_SHOP_ITEMS.filter((item) => item.garmentType === mannequinShopFilter);
+    }, [mannequinShopFilter]);
+    const showingFallbackCatalog = syncedShopItems.length === 0;
+    const isInitialCatalogLoad = !showingFallbackCatalog && shopCatalogLoading && syncedShopItems.length === 0;
+    const shopItems = showingFallbackCatalog ? fallbackShopItems : syncedShopItems;
+
+    const selectedCategoryLabel = selectedItem ? GARMENT_LABELS[selectedItem.garmentType] ?? 'Item' : 'None';
+    const remainingCountLabel = tryOnsRemaining === -1 ? '∞' : String(tryOnsRemaining);
+    const statusLabel = aiLoading ? 'Live' : aiResultImage ? 'Done' : selectedItem ? 'Ready' : isModelReady ? 'Idle' : 'Prep';
+
+    const summaryStats = useMemo(
+        () => [
+            { label: 'TRY-ONS', value: remainingCountLabel, warning: tryOnsRemaining !== -1 && tryOnsRemaining <= 1 },
+            { label: 'TYPE', value: selectedCategoryLabel },
+            { label: 'STATUS', value: statusLabel },
+            { label: 'PLAN', value: hasActiveSubscription ? 'Pro' : 'Free' },
+        ],
+        [hasActiveSubscription, remainingCountLabel, selectedCategoryLabel, statusLabel, tryOnsRemaining]
+    );
+
+    const statusCard = useMemo(() => {
+        if (aiLoading) {
+            return {
+                icon: 'sparkles' as const,
+                title: 'Generating your preview',
+                body: 'We are fitting the selected garment onto the mannequin now. This usually takes 15-30 seconds.',
+                tone: 'accent' as const,
+            };
+        }
+
+        if (aiError) {
+            return {
+                icon: 'alert-circle' as const,
+                title: 'Try-on needs another attempt',
+                body: aiError,
+                tone: 'error' as const,
+            };
+        }
+
+        if (aiResultImage) {
+            return {
+                icon: 'checkmark-circle' as const,
+                title: 'Preview is ready',
+                body: 'Save this look or swap garments to create another AI try-on.',
+                tone: 'success' as const,
+            };
+        }
+
+        if (!isModelReady) {
+            return {
+                icon: 'time-outline' as const,
+                title: 'Preparing the model',
+                body: 'Your mannequin assets are loading so your first preview feels instant.',
+                tone: 'neutral' as const,
+            };
+        }
+
+        if (selectedItem) {
+            return {
+                icon: 'shirt-outline' as const,
+                title: 'Ready to generate',
+                body: `${selectedItem.name} is selected. Tap "Try On With AI" to create the preview.`,
+                tone: 'accent' as const,
+            };
+        }
+
+        return {
+            icon: 'hand-left-outline' as const,
+            title: 'Pick one garment',
+            body: 'Choose a top, bottom, or pair of shoes below to preview it on the mannequin.',
+            tone: 'neutral' as const,
+        };
+    }, [aiError, aiLoading, aiResultImage, isModelReady, selectedItem]);
+
+    const getGarmentImageUrl = useCallback(async (item: ShopCatalogItem): Promise<string> => {
+        if (typeof item.imageUrl === 'number') {
+            const asset = Asset.fromModule(item.imageUrl);
+            await asset.downloadAsync();
+            const localUri = asset.localUri!;
+            const b64 = await FileSystem.readAsStringAsync(localUri, { encoding: 'base64' as any });
+            const ext = localUri.split('.').pop()?.toLowerCase() ?? 'png';
+            const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png';
+            return `data:${mime};base64,${b64}`;
+        }
+
+        return item.imageUrl as string;
+    }, []);
+
+    const handleClear = useCallback(() => {
+        setSelectedItem(null);
+        setAiResultImage(null);
+        setAiError(null);
+        setLookSaved(false);
+    }, []);
+
+    const handleSelectItem = useCallback((item: ShopCatalogItem) => {
+        setAiError(null);
+        setLookSaved(false);
+        setAiResultImage(null);
+        setSelectedItem((prev) => (prev?.id === item.id ? null : item));
+    }, []);
+
+    const handleAITryOn = useCallback(async () => {
+        if (!selectedItem) {
+            setAiError('Select a garment first to generate a try-on.');
             return;
         }
 
-        setMannequinLoading(true);
-        setMannequinResult(null);
-
-        try {
-            // Convert local mannequin asset to base64 — works offline, no Supabase URL needed.
-            // Both fashn.ai and Replicate accept data URIs: data:image/png;base64,...
-            const mannequinBase64 = await getMannequinBase64(
-                require('../../assets/images/mannequin_front.png')
-            );
-
-            const fashnKey = process.env.EXPO_PUBLIC_FASHN_API_KEY;
-            const replicateToken = process.env.EXPO_PUBLIC_REPLICATE_TOKEN;
-
-            // ── Path A: fashn.ai (purpose-built for mannequin try-on) ──────
-            if (fashnKey) {
-                const startRes = await fetch('https://api.fashn.ai/v1/run', {
-                    method: 'POST',
-                    headers: {
-                        Authorization: `Bearer ${fashnKey}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        model_name: 'tryon-v1.6',
-                        inputs: {
-                            model_image: mannequinBase64,
-                            garment_image: mannequinShopItem.imageUrl,
-                            garment_photo_type: 'flat_lay',
-                        },
-                    }),
-                });
-                if (!startRes.ok) throw new Error(await startRes.text());
-                const { id } = await startRes.json();
-
-                // Poll status
-                let output: string | null = null;
-                for (let i = 0; i < 40; i++) {
-                    await new Promise(r => setTimeout(r, 2000));
-                    const poll = await fetch(`https://api.fashn.ai/v1/status/${id}`, {
-                        headers: { Authorization: `Bearer ${fashnKey}` },
-                    });
-                    const status = await poll.json();
-                    if (status.status === 'completed' && status.output?.image_url) {
-                        output = status.output.image_url;
-                        break;
-                    }
-                    if (status.status === 'failed') throw new Error(status.error || 'fashn.ai failed');
-                }
-                if (!output) throw new Error('Timed out — please try again.');
-                setMannequinResult(output);
-
-            // ── Path B: Replicate IDM-VTON with mannequin reference ────────
-            } else if (replicateToken) {
-                const startRes = await fetch('https://api.replicate.com/v1/predictions', {
-                    method: 'POST',
-                    headers: {
-                        Authorization: `Token ${replicateToken}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        version: '0513734a452173b8173e907e3a59d19a36266e55b48528559432bd21c7d7e985',
-                        input: {
-                            human_img: mannequinBase64,
-                            garm_img: mannequinShopItem.imageUrl,
-                            garment_des: mannequinShopItem.name || 'clothing',
-                            category: mannequinShopItem.garmentType === 'lower_body' ? 'lower_body' : 'upper_body',
-                            n_samples: 1,
-                            seed: 42,
-                        },
-                    }),
-                });
-                if (!startRes.ok) throw new Error(await startRes.text());
-                let result = await startRes.json();
-
-                while (result.status !== 'succeeded' && result.status !== 'failed') {
-                    await new Promise(r => setTimeout(r, 2000));
-                    const poll = await fetch(result.urls.get, {
-                        headers: { Authorization: `Token ${replicateToken}` },
-                    });
-                    result = await poll.json();
-                }
-                if (result.status === 'failed') throw new Error(result.error || 'Replicate failed');
-                const output = Array.isArray(result.output) ? result.output[0] : result.output;
-                setMannequinResult(output);
-
-            } else {
-                throw new Error('No API key configured. Add EXPO_PUBLIC_FASHN_API_KEY or EXPO_PUBLIC_REPLICATE_TOKEN to .env');
-            }
-        } catch (err: any) {
-            Alert.alert('Try-On Failed', err?.message || 'Please try again.');
-        } finally {
-            setMannequinLoading(false);
+        if (!requireFeature('tryOns')) return;
+        if (tryOnsRemaining === 0) {
+            setAiError("You've used all your free try-ons. Upgrade for more!");
+            return;
         }
-    };
 
-    const handleMannequinSave = async () => {
-        if (!user || !mannequinResult) return;
-        setMannequinSaving(true);
+        setAiLoading(true);
+        setAiResultImage(null);
+        setAiError(null);
+
         try {
-            const { error } = await supabase.from('clothing_items').insert({
-                user_id: user.id,
-                type: 'AI Try-On Result',
-                color: 'Mixed',
-                style: 'Casual',
-                description: `Mannequin try-on — ${mannequinShopItem?.name || 'outfit'}`,
-                season: 'All Seasons',
-                image_url: mannequinResult,
-                category: 'outfit',
+            const garmentUrl = await getGarmentImageUrl(selectedItem);
+            const mannequinImage = mannequinB64Ref.current;
+
+            if (!mannequinImage) {
+                setAiError('Model preview is still loading. Please wait a moment and try again.');
+                return;
+            }
+
+            const { data, error } = await supabase.functions.invoke('mannequin-tryon', {
+                body: {
+                    mannequin_image: mannequinImage,
+                    garment_image: garmentUrl,
+                    garment_type: selectedItem.garmentType || 'upper_body',
+                },
             });
-            if (error) throw error;
-            Alert.alert(t('aiTryOn.savedTitle'), t('aiTryOn.savedMessage'));
-        } catch {
-            Alert.alert(t('aiTryOn.errorTitle'), t('aiTryOn.saveFailed'));
-        } finally {
-            setMannequinSaving(false);
-        }
-    };
 
-
-    // ── Try Yourself State ──────────────────────────────────────────────
-    const [selectedShopItemForSelf, setSelectedShopItemForSelf] = useState<ShopCatalogItem | null>(null);
-    const [selfShopFilter, setSelfShopFilter] = useState<string>('all');
-
-    // Wardrobe items (local state — lightweight)
-    const [wardrobeItems, setWardrobeItems] = useState<WardrobeItem[]>([]);
-    const [loadingWardrobe, setLoadingWardrobe] = useState(false);
-    const [selectedWardrobeItem, setSelectedWardrobeItem] = useState<WardrobeItem | null>(null);
-
-    const getGarmentType = (): string => {
-        if (selectedShopItemForSelf) return selectedShopItemForSelf.garmentType;
-        const cat = (selectedWardrobeItem?.category || selectedWardrobeItem?.type || '').toLowerCase();
-        if (['pants', 'jeans', 'shorts', 'skirt', 'lower'].some((k) => cat.includes(k))) return 'lower_body';
-        if (['dress', 'full'].some((k) => cat.includes(k))) return 'dresses';
-        return 'upper_body';
-    };
-
-    const getFilteredShopItems = (filter: string) =>
-        filter === 'all'
-            ? SHOP_CATALOG_ITEMS
-            : SHOP_CATALOG_ITEMS.filter((i) => i.garmentType === filter);
-
-    const loadWardrobeItems = useCallback(async () => {
-        try {
-            if (!user) return;
-            setLoadingWardrobe(true);
-            const { data, error } = await supabase
-                .from('clothing_items')
-                .select('*')
-                .eq('user_id', user.id)
-                .order('created_at', { ascending: false });
-            if (error) throw error;
-            if (data) {
-                const items: WardrobeItem[] = data.map((item: any) => ({
-                    id: item.id,
-                    imageUrl: item.image_url,
-                    type: item.type, category: item.category, color: item.color,
-                }));
-                const tryable = items.filter((i) => {
-                    const cat = (i.category || i.type || '').toLowerCase();
-                    return ['shirt', 'top', 'dress', 'jacket', 'blouse', 'sweater', 'upper'].some((k) => cat.includes(k));
-                });
-                setWardrobeItems(tryable.length > 0 ? tryable : items.slice(0, 20));
+            if (!error && data?.success && data?.resultUrl) {
+                setAiResultImage(data.resultUrl);
+                setLookSaved(false);
+                setTryOnCount((prev) => prev + 1);
+            } else {
+                const message = error?.message || data?.error || 'Try-on failed. Please try again.';
+                console.warn('AI try-on failed:', message);
+                setAiError(message);
             }
-        } catch (err) {
+        } catch (error: any) {
+            const message = error?.message || 'Unexpected error during try-on.';
+            console.warn('AI try-on error:', message);
+            setAiError(message);
         } finally {
-            setLoadingWardrobe(false);
+            setAiLoading(false);
         }
-    }, [user]);
+    }, [getGarmentImageUrl, requireFeature, selectedItem, tryOnsRemaining]);
 
-    useFocusEffect(
-        useCallback(() => {
-            if (activeTab === 'wardrobe') loadWardrobeItems();
-        }, [activeTab, loadWardrobeItems])
-    );
+    const handleSaveLook = useCallback(() => {
+        if (!aiResultImage || !selectedItem || lookSaved) {
+            return;
+        }
 
-    const handleSelectWardrobeItem = (item: WardrobeItem) => {
-        setSelectedWardrobeItem(item);
-        if (item.imageUrl) setClothImage(item.imageUrl);
-    };
+        saveLook({
+            resultUrl: aiResultImage,
+            garmentName: selectedItem.name ?? 'Look',
+            garmentBrand: selectedItem.brand,
+            garmentType: selectedItem.garmentType ?? 'upper_body',
+            garmentImageUrl: typeof selectedItem.imageUrl === 'string' ? selectedItem.imageUrl : undefined,
+        });
 
-    // ─── RENDER ──────────────────────────────────────
+        setLookSaved(true);
+        Alert.alert('Saved!', 'Your look has been saved to your Profile.');
+    }, [aiResultImage, lookSaved, saveLook, selectedItem]);
+
+    const selectedImageSource = selectedItem
+        ? typeof selectedItem.imageUrl === 'string'
+            ? { uri: selectedItem.imageUrl }
+            : selectedItem.imageUrl
+        : null;
+    const canReset = Boolean(selectedItem || aiResultImage || aiError);
+
     return (
-        <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : "height"}>
-            <SafeAreaView style={styles.container}>
-                {/* Header */}
-                <View style={[styles.header, { justifyContent: 'center' }]}>
-                    {asTab ? (
-                        <View style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]} pointerEvents="none">
-                            <Text style={styles.headerTitle}>{t('aiTryOn.title')}</Text>
-                        </View>
-                    ) : (
-                        <>
-                            <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={{ position: 'absolute', left: 20, zIndex: 10 }}>
-                                <Ionicons name="chevron-back" size={28} color="#0A1931" />
-                            </TouchableOpacity>
-                            <View style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]} pointerEvents="none">
-                                <Text style={styles.headerTitle}>{t('aiTryOn.title')}</Text>
-                            </View>
-                        </>
-                    )}
-                </View>
+        <LinearGradient colors={['#F6FAFF', '#EEF4FF', '#FFFFFF']} style={styles.backgroundGradient}>
+            <View style={styles.backgroundOrbTop} />
+            <View style={styles.backgroundOrbBottom} />
 
-                {/* Segmented Control */}
-                <View style={styles.segmentContainer}>
-                    <View style={styles.modeToggleWrap}>
-                        {(['try your self', 'model'] as const).map((mode) => (
+            <SafeAreaView style={styles.safeArea}>
+                <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                    <View style={styles.headerRow}>
+                        {asTab ? (
+                            <View style={styles.headerPill}>
+                                <Ionicons name="sparkles" size={16} color="#183A67" />
+                                <Text style={styles.headerPillText}>AI Studio</Text>
+                            </View>
+                        ) : (
                             <TouchableOpacity
-                                key={mode}
-                                style={[styles.modeToggleOption, tryOnMode === mode && styles.modeToggleOptionActive]}
-                                onPress={() => setTryOnMode(mode)}
-                                activeOpacity={0.8}
+                                onPress={() => navigation.goBack()}
+                                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                                style={styles.headerPill}
+                                activeOpacity={0.85}
                             >
-                                <Text style={[styles.modeToggleText, tryOnMode === mode && styles.modeToggleTextActive]}>
-                                    {mode === 'try your self' ? 'Try your self' : '3D Body Model'}
-                                </Text>
+                                <Ionicons name="chevron-back" size={18} color="#183A67" />
+                                <Text style={styles.headerPillText}>Back</Text>
                             </TouchableOpacity>
+                        )}
+
+                        <TouchableOpacity
+                            style={[styles.headerPill, !canReset && styles.headerPillDisabled]}
+                            onPress={handleClear}
+                            disabled={!canReset}
+                            activeOpacity={0.85}
+                        >
+                            <Ionicons name="refresh-outline" size={16} color="#183A67" />
+                            <Text style={styles.headerPillText}>Reset</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    <Text style={styles.pageTitle}>{t('aiTryOn.title')}</Text>
+
+                    <View style={styles.heroCard}>
+                        <View style={styles.heroHeaderRow}>
+                            <View style={styles.heroCopy}>
+                                <Text style={styles.heroEyebrow}>VIRTUAL FIT STUDIO</Text>
+                                <Text style={styles.heroTitle}>
+                                    {aiResultImage ? 'Your preview is ready' : 'Preview on mannequin'}
+                                </Text>
+                            </View>
+
+                            <View style={styles.planPill}>
+                                <Ionicons name="sparkles" size={14} color="#183A67" />
+                                <Text style={styles.planPillText}>
+                                    {hasActiveSubscription ? 'Pro Plan' : 'Free Plan'}
+                                </Text>
+                            </View>
+                        </View>
+
+                        <View style={styles.previewShell}>
+                            <Image
+                                source={aiResultImage ? { uri: aiResultImage } : MANNEQUIN_IMAGE}
+                                style={styles.previewImage}
+                                resizeMode={aiResultImage ? 'cover' : 'contain'}
+                            />
+
+                            {lookSaved && aiResultImage && !aiLoading && (
+                                <View style={styles.savedBadge}>
+                                    <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" />
+                                    <Text style={styles.savedBadgeText}>Saved to looks</Text>
+                                </View>
+                            )}
+
+                            {aiLoading && (
+                                <View style={styles.previewLoadingOverlay}>
+                                    <View style={styles.loadingCard}>
+                                        <ActivityIndicator size="large" color="#183A67" />
+                                        <Text style={styles.loadingTitle}>Generating preview</Text>
+                                        <Text style={styles.loadingText}>
+                                            Building your AI try-on with the selected garment. This usually takes 15-30 seconds.
+                                        </Text>
+                                    </View>
+                                </View>
+                            )}
+
+                            {!aiLoading && (
+                                <View style={styles.previewCaptionWrap}>
+                                    <View style={[styles.previewCaptionPill, aiResultImage && styles.previewCaptionPillDark]}>
+                                        <Text style={[styles.previewCaptionText, aiResultImage && styles.previewCaptionTextDark]}>
+                                            {selectedItem ? selectedItem.name : 'Select a garment below to get started'}
+                                        </Text>
+                                    </View>
+                                </View>
+                            )}
+                        </View>
+
+                        <View style={styles.heroActionsRow}>
+                            {aiResultImage ? (
+                                <>
+                                    <TouchableOpacity
+                                        style={[styles.primaryActionButton, lookSaved && styles.buttonDisabled]}
+                                        onPress={handleSaveLook}
+                                        disabled={lookSaved}
+                                        activeOpacity={0.88}
+                                    >
+                                        <LinearGradient
+                                            colors={['#244F85', '#112A4A']}
+                                            start={{ x: 0, y: 0.5 }}
+                                            end={{ x: 1, y: 0.5 }}
+                                            style={styles.primaryActionGradient}
+                                        >
+                                            <Ionicons
+                                                name={lookSaved ? 'checkmark-circle' : 'bookmark-outline'}
+                                                size={18}
+                                                color="#FFFFFF"
+                                            />
+                                            <Text style={styles.primaryActionText}>{lookSaved ? 'Saved' : 'Save Look'}</Text>
+                                        </LinearGradient>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity style={styles.secondaryActionButton} onPress={handleClear} activeOpacity={0.88}>
+                                        <Ionicons name="refresh-outline" size={18} color="#183A67" />
+                                        <Text style={styles.secondaryActionText}>Start Over</Text>
+                                    </TouchableOpacity>
+                                </>
+                            ) : (
+                                <>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.primaryActionButton,
+                                            (!selectedItem || aiLoading || !isModelReady) && styles.buttonDisabled,
+                                        ]}
+                                        onPress={handleAITryOn}
+                                        disabled={!selectedItem || aiLoading || !isModelReady}
+                                        activeOpacity={0.88}
+                                    >
+                                        <LinearGradient
+                                            colors={['#244F85', '#112A4A']}
+                                            start={{ x: 0, y: 0.5 }}
+                                            end={{ x: 1, y: 0.5 }}
+                                            style={styles.primaryActionGradient}
+                                        >
+                                            <Ionicons name="sparkles" size={18} color="#FFFFFF" />
+                                            <Text style={styles.primaryActionText}>
+                                                {!isModelReady ? 'Preparing Model' : selectedItem ? 'Try On With AI' : 'Choose a Garment'}
+                                            </Text>
+                                        </LinearGradient>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        style={[styles.secondaryActionButton, !selectedItem && styles.secondaryActionDisabled]}
+                                        onPress={handleClear}
+                                        disabled={!selectedItem}
+                                        activeOpacity={0.88}
+                                    >
+                                        <Ionicons name="close-outline" size={18} color="#183A67" />
+                                        <Text style={styles.secondaryActionText}>Clear</Text>
+                                    </TouchableOpacity>
+                                </>
+                            )}
+                        </View>
+                    </View>
+
+                    <View style={styles.statsCard}>
+                        {summaryStats.map((stat, index) => (
+                            <React.Fragment key={stat.label}>
+                                <View style={styles.statItem}>
+                                    <Text style={[styles.statValue, stat.warning && styles.statValueWarning]}>{stat.value}</Text>
+                                    <Text style={styles.statLabel}>{stat.label}</Text>
+                                </View>
+                                {index < summaryStats.length - 1 && <View style={styles.statDivider} />}
+                            </React.Fragment>
                         ))}
                     </View>
-                </View>
 
-                <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-                    {tryOnMode === 'model' ? (
-                        /* ── Model Mode — AI Mannequin Try-On ── */
-                        <>
-                            {/* Mannequin preview card */}
-                            <View style={[styles.mannequinCard, { minHeight: 380, overflow: 'hidden', justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8F9FB' }]}>
+                    <View
+                        style={[
+                            styles.statusCard,
+                            statusCard.tone === 'accent' && styles.statusCardAccent,
+                            statusCard.tone === 'success' && styles.statusCardSuccess,
+                            statusCard.tone === 'error' && styles.statusCardError,
+                        ]}
+                    >
+                        <View
+                            style={[
+                                styles.statusIconWrap,
+                                statusCard.tone === 'accent' && styles.statusIconWrapAccent,
+                                statusCard.tone === 'success' && styles.statusIconWrapSuccess,
+                                statusCard.tone === 'error' && styles.statusIconWrapError,
+                            ]}
+                        >
+                            <Ionicons
+                                name={statusCard.icon}
+                                size={18}
+                                color={
+                                    statusCard.tone === 'success'
+                                        ? '#157347'
+                                        : statusCard.tone === 'error'
+                                            ? '#C14444'
+                                            : '#183A67'
+                                }
+                            />
+                        </View>
 
-                                {mannequinResult ? (
-                                    /* ── AI Result ── */
-                                    <>
-                                        <Image
-                                            source={{ uri: mannequinResult }}
-                                            style={{ width: '100%', height: '100%', borderRadius: 20 }}
-                                            resizeMode="contain"
-                                        />
-                                        {/* Close result */}
-                                        <TouchableOpacity
-                                            onPress={() => setMannequinResult(null)}
-                                            style={{ position: 'absolute', top: 12, right: 12, backgroundColor: 'rgba(0,0,0,0.45)', borderRadius: 20, padding: 6 }}
-                                        >
-                                            <Ionicons name="close" size={18} color="#fff" />
-                                        </TouchableOpacity>
-                                        <View style={{ position: 'absolute', top: 12, left: 12, backgroundColor: 'rgba(0,85,255,0.9)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 }}>
-                                            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>✨ AI Mannequin Try-On</Text>
-                                        </View>
-                                    </>
-                                ) : mannequinLoading ? (
-                                    /* ── Generating ── */
-                                    <View style={{ alignItems: 'center', gap: 16 }}>
-                                        <ActivityIndicator size="large" color={AppColors.primary} />
-                                        <Text style={{ fontSize: 14, fontWeight: '700', color: AppColors.primary }}>Generating try-on…</Text>
-                                        <Text style={{ fontSize: 12, color: AppColors.textMuted, textAlign: 'center', paddingHorizontal: 24 }}>
-                                            The AI is placing the garment on the mannequin. This takes ~20–40 seconds.
-                                        </Text>
-                                    </View>
-                                ) : (
-                                    /* ── Default: mannequin preview + optional selected garment thumbnail ── */
-                                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 20 }}>
-                                        <View style={{ position: 'relative' }}>
-                                            <Image
-                                                source={require('../../assets/images/mannequin_front.png')}
-                                                style={{ width: 180, height: 300, borderRadius: 12 }}
-                                                resizeMode="contain"
-                                            />
-                                            {/* Garment badge in corner when selected */}
-                                            {mannequinShopItem && (
-                                                <View style={{ position: 'absolute', top: -8, right: -8, borderRadius: 12, overflow: 'hidden', borderWidth: 2, borderColor: AppColors.primary }}>
-                                                    <Image
-                                                        source={{ uri: mannequinShopItem.imageUrl }}
-                                                        style={{ width: 56, height: 56 }}
-                                                        resizeMode="cover"
-                                                    />
-                                                </View>
-                                            )}
-                                        </View>
-                                        {mannequinShopItem ? (
-                                            <Text style={{ marginTop: 12, fontSize: 13, fontWeight: '700', color: AppColors.primary }}>
-                                                {mannequinShopItem.brand} — {mannequinShopItem.name}
-                                            </Text>
-                                        ) : (
-                                            <Text style={{ marginTop: 12, fontSize: 13, color: AppColors.textMuted }}>
-                                                Select a garment below, then tap Try On
-                                            </Text>
-                                        )}
-                                    </View>
-                                )}
+                        <View style={styles.statusCopy}>
+                            <Text style={styles.statusTitle}>{statusCard.title}</Text>
+                            <Text style={styles.statusText}>{statusCard.body}</Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.catalogCard}>
+                        <View style={styles.catalogHeaderRow}>
+                            <View>
+                                <Text style={styles.catalogEyebrow}>STYLE</Text>
+                                <Text style={styles.catalogTitle}>Choose Garment</Text>
                             </View>
 
-                            {/* Try On button */}
-                            <View style={{ paddingHorizontal: 20, marginTop: 16 }}>
+                            <View style={styles.catalogCountPill}>
+                                <Text style={styles.catalogCountText}>{shopItems.length} items</Text>
+                            </View>
+                        </View>
+
+                        {selectedItem && selectedImageSource && (
+                            <View style={styles.selectedGarmentCard}>
+                                <View style={styles.selectedGarmentImageWrap}>
+                                    <Image source={selectedImageSource} style={styles.selectedGarmentImage} resizeMode="contain" />
+                                </View>
+
+                                <View style={styles.selectedGarmentCopy}>
+                                    <Text style={styles.selectedGarmentBrand}>{selectedItem.brand}</Text>
+                                    <Text style={styles.selectedGarmentName} numberOfLines={1}>
+                                        {selectedItem.name}
+                                    </Text>
+                                    <Text style={styles.selectedGarmentMeta}>
+                                        {selectedCategoryLabel} • {formatPrice(selectedItem)}
+                                    </Text>
+                                </View>
+
+                                <View style={styles.selectedBadge}>
+                                    <Text style={styles.selectedBadgeText}>Selected</Text>
+                                </View>
+                            </View>
+                        )}
+
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+                            {SHOP_CATEGORIES.filter((cat) => TRY_ON_CATEGORY_KEYS.has(cat.key)).map((cat) => (
                                 <TouchableOpacity
-                                    style={[styles.mannequinGenerateButton, (!mannequinShopItem || mannequinLoading) && styles.mannequinGenerateButtonDisabled]}
-                                    onPress={handleMannequinTryOn}
-                                    disabled={!mannequinShopItem || mannequinLoading}
+                                    key={cat.key}
+                                    style={[styles.filterChip, mannequinShopFilter === cat.key && styles.filterChipActive]}
+                                    onPress={() => setMannequinShopFilter(cat.key)}
                                     activeOpacity={0.85}
                                 >
-                                    <Ionicons name="sparkles" size={20} color="#fff" />
-                                    <Text style={styles.mannequinGenerateButtonText}>
-                                        {mannequinLoading
-                                            ? 'Generating…'
-                                            : mannequinShopItem
-                                                ? `✨ Try On — ${mannequinShopItem.brand}`
-                                                : 'Select a garment first'}
+                                    <Text
+                                        style={[
+                                            styles.filterChipText,
+                                            mannequinShopFilter === cat.key && styles.filterChipTextActive,
+                                        ]}
+                                    >
+                                        {cat.label}
                                     </Text>
                                 </TouchableOpacity>
+                            ))}
+                        </ScrollView>
 
-                                {/* Save result */}
-                                {mannequinResult && !mannequinLoading && (
-                                    <TouchableOpacity
-                                        style={[styles.mannequinSaveButton, { marginTop: 12 }]}
-                                        onPress={handleMannequinSave}
-                                        disabled={mannequinSaving}
-                                    >
-                                        <Ionicons name="heart" size={18} color="#fff" />
-                                        <Text style={styles.mannequinSaveButtonText}>
-                                            {mannequinSaving ? t('aiTryOn.saving') : t('aiTryOn.saveToWardrobe')}
-                                        </Text>
-                                    </TouchableOpacity>
-                                )}
+                        {(shopCatalogError || showingFallbackCatalog) && (
+                            <View style={styles.catalogStatusBanner}>
+                                <Text style={styles.catalogStatusText}>
+                                    {showingFallbackCatalog
+                                        ? 'Live Zara menswear is empty right now. Showing backup menswear.'
+                                        : 'Live catalog refresh failed. Showing the latest synced menswear.'}
+                                </Text>
+                                <TouchableOpacity onPress={refreshShopCatalog} activeOpacity={0.85}>
+                                    <Text style={styles.catalogStatusAction}>Retry</Text>
+                                </TouchableOpacity>
                             </View>
+                        )}
 
-                            {/* Shop Catalog */}
-                            <Text style={[styles.shopSectionLabel, { marginTop: 24 }]}>Choose Garment</Text>
+                        <View style={styles.catalogGrid}>
+                            {isInitialCatalogLoad ? (
+                                <View style={styles.loadingCatalogCard}>
+                                    <ActivityIndicator size="large" color="#183A67" />
+                                    <Text style={styles.loadingCatalogTitle}>Loading menswear catalog</Text>
+                                    <Text style={styles.loadingCatalogText}>
+                                        Pulling a larger set of live men&apos;s items for try-on previews.
+                                    </Text>
+                                </View>
+                            ) : shopItems.length === 0 ? (
+                                <View style={styles.emptyStateCard}>
+                                    <Ionicons name="shirt-outline" size={28} color="#7D889A" />
+                                    <Text style={styles.emptyStateTitle}>No items in this category yet</Text>
+                                    <Text style={styles.emptyStateText}>
+                                        Switch filters or add more catalog pieces for try-on previews.
+                                    </Text>
+                                </View>
+                            ) : (
+                                shopItems.map((item) => {
+                                    const isSelected = selectedItem?.id === item.id;
 
-                            {/* Category filter */}
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shopFilterRow}>
-                                {SHOP_CATEGORIES.filter((cat) => cat.key !== 'all').map((cat) => (
-                                    <TouchableOpacity
-                                        key={cat.key}
-                                        style={[styles.shopFilterChip, mannequinShopFilter === cat.key && styles.shopFilterChipActive]}
-                                        onPress={() => { setMannequinShopFilter(cat.key); setMannequinShopItem(null); setMannequinResult(null); }}
-                                        activeOpacity={0.8}
-                                    >
-                                        <Text style={[styles.shopFilterChipText, mannequinShopFilter === cat.key && styles.shopFilterChipTextActive]}>
-                                            {cat.label}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-
-                            {/* Items grid */}
-                            <View style={styles.shopCatalogGrid}>
-                                {getFilteredShopItems(mannequinShopFilter).map((item) => {
-                                    const isSelected = mannequinShopItem?.id === item.id;
                                     return (
                                         <TouchableOpacity
                                             key={item.id}
-                                            style={[styles.shopItemCard, isSelected && styles.shopItemCardSelected]}
-                                            onPress={() => { setMannequinShopItem(isSelected ? null : item); setMannequinResult(null); }}
-                                            activeOpacity={0.85}
+                                            style={[styles.itemCard, isSelected && styles.itemCardSelected]}
+                                            onPress={() => handleSelectItem(item)}
+                                            activeOpacity={0.9}
+                                            disabled={aiLoading}
                                         >
-                                            <Image source={{ uri: item.imageUrl }} style={styles.shopItemImage} />
-                                            <View style={styles.shopItemInfo}>
-                                                <Text style={styles.shopItemBrand}>{item.brand}</Text>
-                                                <Text style={styles.shopItemName} numberOfLines={1}>{item.name}</Text>
-                                                <Text style={styles.shopItemPrice}>${item.price.toFixed(2)}</Text>
-                                            </View>
-                                            {isSelected && (
-                                                <View style={styles.shopItemSelectedBadge}>
-                                                    <Ionicons name="checkmark-circle" size={22} color="#0055FF" />
-                                                </View>
-                                            )}
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </View>
-                        </>
-                    ) : (
-                        /* ── Try Your Self Mode (Wizard) ── */
-                        <>
-                            {/* Step 1 — Full-length photo */}
-                            {tryOnStep === 1 && (
-                                <>
-                                    <Text style={styles.stepLabel}>1. Your full-length photo</Text>
-                                    <Text style={styles.stepHint}>Stand clearly with your full body in frame for best results.</Text>
-                                    <View style={styles.fullLengthCard}>
-                                        {humanImage ? (
-                                            <TouchableOpacity onPress={() => showFullLengthPhotoOptions(() => goToStep(2))} style={{ flex: 1 }} activeOpacity={0.85}>
-                                                <Image source={{ uri: humanImage }} style={styles.fullLengthImage} />
-                                            </TouchableOpacity>
-                                        ) : (
-                                            <View style={styles.fullLengthPlaceholder}>
-                                                <View style={styles.placeholderIconWrap}>
-                                                    <View style={styles.placeholderIconCircle}>
-                                                        <Ionicons name="person" size={56} color="#0055FF" />
-                                                    </View>
-                                                </View>
-                                                <Text style={styles.placeholderTitle}>Add full-length photo</Text>
-                                                <Text style={styles.placeholderSub}>Camera or gallery — full body works best</Text>
-                                                <View style={styles.photoOptionsRow}>
-                                                    <TouchableOpacity style={styles.photoOption} onPress={() => pickFullLengthPhoto('camera', () => goToStep(2))} activeOpacity={0.8}>
-                                                        <View style={styles.photoOptionIconWrap}>
-                                                            <Ionicons name="camera" size={22} color="#0055FF" />
-                                                        </View>
-                                                        <Text style={styles.photoOptionText}>Camera</Text>
-                                                    </TouchableOpacity>
-                                                    <TouchableOpacity style={styles.photoOption} onPress={() => pickFullLengthPhoto('library', () => goToStep(2))} activeOpacity={0.8}>
-                                                        <View style={styles.photoOptionIconWrap}>
-                                                            <Ionicons name="image" size={22} color="#0055FF" />
-                                                        </View>
-                                                        <Text style={styles.photoOptionText}>Gallery</Text>
-                                                    </TouchableOpacity>
-                                                </View>
-                                            </View>
-                                        )}
-                                    </View>
-                                </>
-                            )}
-
-                            {/* Step 2 — Garment selection */}
-                            {tryOnStep === 2 && (
-                                <>
-                                    <Text style={styles.stepLabel}>2. Outfit to try on</Text>
-                                    <View style={styles.tabContainer}>
-                                        {(['upload', 'wardrobe', 'shop'] as const).map((tab) => (
-                                            <TouchableOpacity
-                                                key={tab}
-                                                style={[styles.tab, activeTab === tab && styles.tabActive]}
-                                                onPress={() => {
-                                                    setActiveTab(tab);
-                                                    if (tab !== 'wardrobe') setSelectedWardrobeItem(null);
-                                                    if (tab !== 'shop') setSelectedShopItemForSelf(null);
-                                                }}
-                                            >
-                                                <Ionicons
-                                                    name={tab === 'upload' ? 'cloud-upload-outline' : tab === 'wardrobe' ? 'shirt-outline' : 'bag-handle-outline'}
-                                                    size={15}
-                                                    color={activeTab === tab ? '#fff' : AppColors.textMuted}
+                                            <View style={styles.itemImageWrap}>
+                                                <Image
+                                                    source={typeof item.imageUrl === 'string' ? { uri: item.imageUrl } : item.imageUrl}
+                                                    style={styles.itemImage}
+                                                    resizeMode="contain"
                                                 />
-                                                <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-                                                    {tab === 'upload' ? t('aiTryOn.upload') : tab === 'wardrobe' ? t('aiTryOn.myWardrobe') : 'Shop'}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                    </View>
 
-                                    {activeTab === 'upload' && (
-                                        <View style={styles.garmentCard}>
-                                            {clothImage && !selectedWardrobeItem && !selectedShopItemForSelf ? (
-                                                <TouchableOpacity onPress={showGarmentPhotoOptions} style={{ flex: 1 }} activeOpacity={0.85}>
-                                                    <Image source={{ uri: clothImage }} style={styles.garmentImage} />
-                                                </TouchableOpacity>
-                                            ) : (
-                                                <View style={styles.fullLengthPlaceholder}>
-                                                    <View style={styles.placeholderIconWrap}>
-                                                        <View style={styles.placeholderIconCircle}>
-                                                            <Ionicons name="shirt" size={52} color="#0055FF" />
-                                                        </View>
-                                                    </View>
-                                                    <Text style={styles.placeholderTitle}>Add clothing photo</Text>
-                                                    <Text style={styles.placeholderSub}>Camera or gallery — item on flat surface</Text>
-                                                    <View style={styles.photoOptionsRow}>
-                                                        <TouchableOpacity style={styles.photoOption} onPress={() => pickGarmentPhoto('camera')} activeOpacity={0.8}>
-                                                            <View style={styles.photoOptionIconWrap}>
-                                                                <Ionicons name="camera" size={22} color="#0055FF" />
-                                                            </View>
-                                                            <Text style={styles.photoOptionText}>Camera</Text>
-                                                        </TouchableOpacity>
-                                                        <TouchableOpacity style={styles.photoOption} onPress={() => pickGarmentPhoto('library')} activeOpacity={0.8}>
-                                                            <View style={styles.photoOptionIconWrap}>
-                                                                <Ionicons name="image" size={22} color="#0055FF" />
-                                                            </View>
-                                                            <Text style={styles.photoOptionText}>Gallery</Text>
-                                                        </TouchableOpacity>
-                                                    </View>
-                                                </View>
-                                            )}
-                                        </View>
-                                    )}
-
-                                    {activeTab === 'wardrobe' && (
-                                        <View style={styles.wardrobeSection}>
-                                            {loadingWardrobe ? (
-                                                <View style={styles.wardrobeLoading}>
-                                                    <ActivityIndicator size="small" color={AppColors.primary} />
-                                                    <Text style={styles.wardrobeLoadingText}>{t('aiTryOn.loadingWardrobe')}</Text>
-                                                </View>
-                                            ) : wardrobeItems.length === 0 ? (
-                                                <View style={styles.wardrobeEmpty}>
-                                                    <Ionicons name="shirt-outline" size={36} color={AppColors.textLight} />
-                                                    <Text style={styles.wardrobeEmptyText}>{t('aiTryOn.noWardrobeItems')}</Text>
-                                                    <TouchableOpacity style={styles.scanButton} onPress={() => (navigation as any).navigate('WardrobeVideo')}>
-                                                        <Text style={styles.scanButtonText}>{t('aiTryOn.scanWardrobe')}</Text>
-                                                    </TouchableOpacity>
-                                                </View>
-                                            ) : (
-                                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.wardrobeScroll}>
-                                                    {wardrobeItems.map((item) => {
-                                                        const isSelected = selectedWardrobeItem?.id === item.id;
-                                                        return (
-                                                            <TouchableOpacity key={item.id} style={[styles.wardrobeItemCard, isSelected && styles.wardrobeItemCardSelected]} onPress={() => handleSelectWardrobeItem(item)}>
-                                                                {item.imageUrl ? (
-                                                                    <Image source={{ uri: item.imageUrl }} style={styles.wardrobeItemImage} />
-                                                                ) : (
-                                                                    <View style={styles.wardrobeItemPlaceholder}>
-                                                                        <Ionicons name="shirt-outline" size={24} color={AppColors.textLight} />
-                                                                    </View>
-                                                                )}
-                                                                {isSelected && (
-                                                                    <View style={styles.selectedBadge}>
-                                                                        <Ionicons name="checkmark-circle" size={20} color="#34C759" />
-                                                                    </View>
-                                                                )}
-                                                            </TouchableOpacity>
-                                                        );
-                                                    })}
-                                                </ScrollView>
-                                            )}
-                                            {selectedWardrobeItem && (
-                                                <View style={styles.selectedInfo}>
-                                                    <Ionicons name="checkmark-circle" size={16} color="#34C759" />
-                                                    <Text style={styles.selectedInfoText}>
-                                                        {selectedWardrobeItem.type || selectedWardrobeItem.category || 'Item'} {t('aiTryOn.selected')}
-                                                    </Text>
-                                                </View>
-                                            )}
-                                        </View>
-                                    )}
-
-                                    {activeTab === 'shop' && (
-                                        <View>
-                                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.shopFilterRow, { marginBottom: 14 }]}>
-                                                {SHOP_CATEGORIES.map((cat) => (
-                                                    <TouchableOpacity
-                                                        key={cat.key}
-                                                        style={[styles.shopFilterChip, selfShopFilter === cat.key && styles.shopFilterChipActive]}
-                                                        onPress={() => setSelfShopFilter(cat.key)}
-                                                        activeOpacity={0.8}
-                                                    >
-                                                        <Text style={[styles.shopFilterChipText, selfShopFilter === cat.key && styles.shopFilterChipTextActive]}>
-                                                            {cat.label}
-                                                        </Text>
-                                                    </TouchableOpacity>
-                                                ))}
-                                            </ScrollView>
-                                            <View style={styles.shopCatalogGrid}>
-                                                {getFilteredShopItems(selfShopFilter).map((item) => {
-                                                    const isSelected = selectedShopItemForSelf?.id === item.id;
-                                                    return (
-                                                        <TouchableOpacity
-                                                            key={item.id}
-                                                            style={[styles.shopItemCard, isSelected && styles.shopItemCardSelected]}
-                                                            onPress={() => {
-                                                                const next = isSelected ? null : item;
-                                                                setSelectedShopItemForSelf(next);
-                                                                setClothImage(next ? next.imageUrl : null);
-                                                            }}
-                                                            activeOpacity={0.85}
-                                                        >
-                                                            <Image source={{ uri: item.imageUrl }} style={styles.shopItemImage} />
-                                                            <View style={styles.shopItemInfo}>
-                                                                <Text style={styles.shopItemBrand}>{item.brand}</Text>
-                                                                <Text style={styles.shopItemName} numberOfLines={1}>{item.name}</Text>
-                                                                <Text style={styles.shopItemPrice}>${item.price.toFixed(2)}</Text>
-                                                            </View>
-                                                            {isSelected && (
-                                                                <View style={styles.shopItemSelectedBadge}>
-                                                                    <Ionicons name="checkmark-circle" size={22} color="#0055FF" />
-                                                                </View>
-                                                            )}
-                                                        </TouchableOpacity>
-                                                    );
-                                                })}
-                                            </View>
-                                            {selectedShopItemForSelf && (
-                                                <View style={styles.selectedInfo}>
-                                                    <Ionicons name="checkmark-circle" size={16} color="#0055FF" />
-                                                    <Text style={[styles.selectedInfoText, { color: '#0055FF' }]}>
-                                                        {selectedShopItemForSelf.name} — {selectedShopItemForSelf.brand}
-                                                    </Text>
-                                                </View>
-                                            )}
-                                        </View>
-                                    )}
-
-                                    <View style={styles.wizardNavigation}>
-                                        <TouchableOpacity style={styles.secondaryButton} onPress={() => goToStep(1)}>
-                                            <Text style={styles.secondaryButtonText}>Back</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            style={[styles.primaryButtonFlex, (!clothImage && !selectedWardrobeItem && !selectedShopItemForSelf) && styles.primaryButtonDisabled]}
-                                            onPress={() => goToStep(3)}
-                                            disabled={!clothImage && !selectedWardrobeItem && !selectedShopItemForSelf}
-                                        >
-                                            <Text style={styles.primaryButtonText}>Continue</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </>
-                            )}
-
-                            {/* Step 3 — Preview & Generate */}
-                            {tryOnStep === 3 && (
-                                <>
-                                    <Text style={styles.stepLabel}>3. Preview</Text>
-                                    <View style={styles.resultContainer}>
-                                        {loading ? (
-                                            <View style={styles.loadingBox}>
-                                                <ActivityIndicator size="large" color={AppColors.primary} />
-                                                <Text style={styles.loadingText}>{t('aiTryOn.generating')}</Text>
-                                                <Text style={styles.loadingSub}>{t('aiTryOn.takesTime')}</Text>
-                                            </View>
-                                        ) : resultImage ? (
-                                            <View style={{ flex: 1, backgroundColor: isMock ? '#E2E8F0' : 'transparent', justifyContent: 'center' }}>
-                                                <Image source={{ uri: resultImage }} style={isMock ? [styles.resultImage, { opacity: 0.9, resizeMode: 'contain' }] : styles.resultImage} />
-                                                {isMock && (
-                                                    <View style={{ position: 'absolute', top: 10, left: 0, right: 0, alignItems: 'center' }}>
-                                                        <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', padding: 6, borderRadius: 8 }}>
-                                                            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>Demo Output</Text>
-                                                        </View>
+                                                {isSelected && (
+                                                    <View style={styles.itemSelectedBadge}>
+                                                        <Ionicons name="checkmark-circle" size={22} color="#183A67" />
                                                     </View>
                                                 )}
                                             </View>
-                                        ) : (
-                                            <View style={styles.resultPlaceholder}>
-                                                <Ionicons name="sparkles-outline" size={44} color={AppColors.textLight} />
-                                                <Text style={styles.resultPlaceholderText}>Result will appear here</Text>
-                                            </View>
-                                        )}
-                                    </View>
-                                    <View style={styles.wizardNavigation}>
-                                        <TouchableOpacity style={styles.secondaryButton} onPress={() => goToStep(2)}>
-                                            <Text style={styles.secondaryButtonText}>Back</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            style={[styles.primaryButtonFlex, loading && styles.primaryButtonDisabled]}
-                                            onPress={() => handleTryOn(humanImage, clothImage, getGarmentType())}
-                                            disabled={loading}
-                                        >
-                                            <Text style={styles.primaryButtonText}>
-                                                {loading ? t('aiTryOn.processing') : t('aiTryOn.generate')}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </>
-                            )}
 
-                            {/* Save button — shown only on step 3 */}
-                            {tryOnStep === 3 && resultImage && (
-                                <TouchableOpacity style={styles.saveButton} onPress={handleSaveToWardrobe} disabled={saving}>
-                                    <Ionicons name="heart" size={20} color="#fff" style={{ marginRight: 8 }} />
-                                    <Text style={styles.saveButtonText}>{saving ? t('aiTryOn.saving') : t('aiTryOn.saveToWardrobe')}</Text>
-                                </TouchableOpacity>
+                                            <View style={styles.itemInfo}>
+                                                <Text style={styles.itemBrand}>{item.brand}</Text>
+                                                <Text style={styles.itemName} numberOfLines={2}>
+                                                    {item.name}
+                                                </Text>
+
+                                                <View style={styles.itemFooter}>
+                                                    <Text style={styles.itemPrice}>{formatPrice(item)}</Text>
+                                                    <View style={styles.itemTypePill}>
+                                                        <Text style={styles.itemTypeText}>
+                                                            {GARMENT_LABELS[item.garmentType] ?? 'Item'}
+                                                        </Text>
+                                                    </View>
+                                                </View>
+                                            </View>
+                                        </TouchableOpacity>
+                                    );
+                                })
                             )}
-                        </>
-                    )}
+                        </View>
+
+                        {!showingFallbackCatalog && shopCatalogHasMore && !isInitialCatalogLoad && (
+                            <TouchableOpacity
+                                style={styles.loadMoreButton}
+                                onPress={loadMoreShopCatalog}
+                                disabled={shopCatalogLoadingMore}
+                                activeOpacity={0.88}
+                            >
+                                {shopCatalogLoadingMore ? (
+                                    <ActivityIndicator size="small" color="#183A67" />
+                                ) : (
+                                    <Text style={styles.loadMoreButtonText}>Load more menswear</Text>
+                                )}
+                            </TouchableOpacity>
+                        )}
+                    </View>
                 </ScrollView>
             </SafeAreaView>
-        </KeyboardAvoidingView>
+        </LinearGradient>
     );
 };
 

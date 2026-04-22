@@ -18,9 +18,8 @@ import {
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect, useIsFocused } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/types';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
+import { useAppNavigation } from '../hooks/useAppNavigation';
 import * as Haptics from 'expo-haptics';
 import Animated, {
     FadeIn,
@@ -46,6 +45,10 @@ import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 import Config from '../src/config/env';
 import useAuthStore from '../store/auth';
 import { ExternalAIService } from '../src/services/externalAIService';
+import { BASIC_CLOTHING_ITEMS } from '../data/basicClothingItems';
+import { createLogger } from '../src/utils/logger';
+
+const logger = createLogger('MyCloset');
 
 const GLASS = {
     bg: 'rgba(255, 255, 255, 0.55)',
@@ -101,6 +104,32 @@ const LiquidGlassSpinner = () => {
 
 const { width, height } = Dimensions.get('window');
 const { colors, spacing, radius, typography } = LiquidGlass2026Theme;
+
+// ── AI clothing analysis helpers ────────────────────────────────────────────
+const mapCategoryToType = (category: string, section: string): string => {
+    const cat = category.toLowerCase();
+    const sec = section.toLowerCase();
+    if (sec === 'tops' || cat.includes('shirt') || cat.includes('blouse') || cat.includes('sweater') || cat.includes('hoodie') || cat === 't-shirt') return 'tops';
+    if (sec === 'bottoms' || cat.includes('pant') || cat.includes('jean') || cat.includes('skirt') || cat.includes('short')) return 'bottoms';
+    if (sec === 'shoes' || cat.includes('shoe') || cat.includes('sneaker') || cat.includes('boot') || cat.includes('sandal')) return 'shoes';
+    if (sec === 'accessories' || cat.includes('bag') || cat.includes('hat') || cat.includes('scarf') || cat.includes('belt') || cat.includes('watch')) return 'accessories';
+    if (sec === 'outerwear' || cat.includes('jacket') || cat.includes('coat')) return 'outerwear';
+    if (cat.includes('sport') || cat.includes('gym') || cat.includes('legging')) return 'sportswear';
+    return 'tops';
+};
+
+const mapColorToId = (colorName: string): string => {
+    const name = (colorName || '').toLowerCase();
+    if (name.includes('black') || name.includes('charcoal') || name.includes('ebony')) return 'black';
+    if (name.includes('grey') || name.includes('gray') || name.includes('silver')) return 'grey';
+    if (name.includes('beige') || name.includes('cream') || name.includes('tan') || name.includes('khaki') || name.includes('sand')) return 'beige';
+    if (name.includes('white') || name.includes('off-white') || name.includes('ivory')) return 'white';
+    if (name.includes('brown') || name.includes('camel') || name.includes('chocolate') || name.includes('rust')) return 'brown';
+    if (name.includes('green') || name.includes('olive') || name.includes('forest') || name.includes('mint')) return 'green';
+    if (name.includes('red') || name.includes('burgundy') || name.includes('wine') || name.includes('pink') || name.includes('coral') || name.includes('maroon')) return 'red';
+    if (name.includes('blue') || name.includes('navy') || name.includes('indigo') || name.includes('denim') || name.includes('cobalt') || name.includes('teal')) return 'blue';
+    return 'beige';
+};
 
 // Updated Category filters to match design
 const CATEGORIES = [
@@ -173,7 +202,16 @@ const ClothingGridItem = ({
     item: ClothingItem;
     onPress: () => void;
 }) => {
-    const imageUrl = item.imageUrl || item.image;
+    let imageUrl = item.imageUrl || item.image;
+    let finalImageSource: { uri: string } | null = imageUrl ? { uri: imageUrl } : null;
+
+    if (imageUrl && imageUrl.startsWith('basic_clothing_')) {
+        const basicId = imageUrl.replace('basic_clothing_', '');
+        const basicItem = BASIC_CLOTHING_ITEMS.find(b => b.id === basicId);
+        if (basicItem && basicItem.image) {
+            finalImageSource = { uri: basicItem.image };
+        }
+    }
 
     return (
         <TouchableOpacity
@@ -188,9 +226,9 @@ const ClothingGridItem = ({
         >
             <Animated.View style={styles.gridItem}>
                 <View style={styles.imageContainer}>
-                    {imageUrl ? (
+                    {finalImageSource ? (
                         <Image
-                            source={{ uri: imageUrl }}
+                            source={finalImageSource}
                             style={styles.itemImage}
                             resizeMode="cover"
                         />
@@ -206,10 +244,10 @@ const ClothingGridItem = ({
 };
 
 const MyClosetScreen = () => {
-    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    const navigation = useAppNavigation();
     const isFocused = useIsFocused();
     const [items, setItems] = useState<ClothingItem[]>([]);
-    
+
     const player = useVideoPlayer(require('../assets/videos/closet.mov'), (player) => {
         player.loop = true;
         player.muted = true;
@@ -297,69 +335,34 @@ const MyClosetScreen = () => {
         }
 
         setIsUploadingOverlay(true);
-        setUploadStatusMsg("Analyzing with AI...");
+        setUploadStatusMsg("Analyzing item and removing background...");
 
         try {
-            // Call External AI Service directly (serverless)
-            const result = await ExternalAIService.processClothingImage(b64);
-            
+            // AI Studio should preserve the garment and only remove the background.
+            const result = await ExternalAIService.processStudioPhoto(b64);
+
             if (!result.success) {
                 throw new Error("AI processing failed");
             }
 
-            setUploadStatusMsg("Saving to Your Wardrobe...");
+            setUploadStatusMsg('Background removed. Review details...');
 
-            // Map category
-            let categoryStr = "tops";
             const cat = (result.classification?.category || '').toLowerCase();
-            if (cat.includes("bottom") || cat.includes("pant") || cat.includes("skirt")) categoryStr = "bottoms";
-            else if (cat.includes("shoe")) categoryStr = "shoes";
-            else if (cat.includes("accessory") || cat.includes("hat") || cat.includes("bag")) categoryStr = "accessories";
-            else if (cat.includes("dress")) categoryStr = "tops";
-            else if (cat.includes("outerwear")) categoryStr = "tops";
+            const sec = (result.classification?.section || '').toLowerCase();
 
-            const itemToSave = {
-                user_id: user?.id,
-                type: result.classification?.category || 'clothing',
-                category: categoryStr,
-                sub_category: (result.classification?.category || 'clothing').toLowerCase(),
-                color: ['various'], // Could be enhanced with color detection
-                primary_color: 'various',
-                style: result.classification?.attributes?.style || "Casual",
-                description: result.description || `${result.classification?.category || 'clothing'}`,
-                material: null,
-                image_url: result.imageUrl,
-                created_at: new Date().toISOString(),
-            };
-
-            const { data: savedData, error: saveError } = await supabase.from('clothing_items').insert([itemToSave]).select().single();
-            if (saveError) throw saveError;
-
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            loadItems();
             setIsUploadingOverlay(false);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-            // Navigate to detail screen
-            if (savedData) {
-                const mappedItem = {
-                    _id: savedData.id,
-                    id: savedData.id,
-                    type: savedData.type,
-                    itemType: savedData.type,
-                    color: savedData.color && savedData.color.length > 0 ? savedData.color[0] : 'various',
-                    imageUrl: savedData.image_url,
-                    image: savedData.image_url,
-                    category: savedData.category,
-                    wearCount: savedData.wear_count,
-                    createdAt: savedData.created_at,
-                    isFavorite: false,
-                };
-
-                navigation.navigate('ClothingDetail', {
-                    itemId: mappedItem.id,
-                    fullItem: mappedItem
-                });
-            }
+            // Navigate to editor for user review before saving
+            navigation.navigate('ClothingDetailEditor', {
+                imageUri: result.imageUrl,
+                detectedType: mapCategoryToType(cat, sec),
+                detectedColor: mapColorToId(result.classification?.attributes?.color || ''),
+                detectedStyle: result.classification?.attributes?.style,
+                detectedMaterial: result.classification?.attributes?.material ?? undefined,
+                aiConfidence: result.classification?.confidence,
+                detectedDescription: result.description ?? undefined,
+            });
 
         } catch (error: any) {
             console.error(error);
@@ -376,17 +379,35 @@ const MyClosetScreen = () => {
                 Alert.alert('Permission needed', 'Camera permission is required.');
                 return;
             }
-            
+
             const result = await ImagePicker.launchCameraAsync({
                 mediaTypes: ['images'],
                 allowsEditing: false,
                 quality: 0.8,
+                base64: true,
             });
 
             if (!result.canceled && result.assets[0]) {
-                navigation.navigate('ClothingDetailEditor', { 
-                    imageUri: result.assets[0].uri 
-                });
+                const asset = result.assets[0];
+                setIsUploadingOverlay(true);
+                setUploadStatusMsg('AI is analyzing your clothing...');
+                try {
+                    const aiResult = await ExternalAIService.classifyOnly(asset.base64 || '');
+                    const cat = (aiResult.classification?.category || '').toLowerCase();
+                    const sec = (aiResult.classification?.section || '').toLowerCase();
+                    navigation.navigate('ClothingDetailEditor', {
+                        imageUri: asset.uri,
+                        detectedType: mapCategoryToType(cat, sec),
+                        detectedColor: mapColorToId(aiResult.classification?.attributes?.color || ''),
+                        detectedStyle: aiResult.classification?.attributes?.style,
+                        detectedMaterial: aiResult.classification?.attributes?.material ?? undefined,
+                        aiConfidence: aiResult.classification?.confidence,
+                    });
+                } catch {
+                    navigation.navigate('ClothingDetailEditor', { imageUri: asset.uri });
+                } finally {
+                    setIsUploadingOverlay(false);
+                }
             }
         } catch (error: any) {
             const msg: string = error?.message ?? '';
@@ -402,7 +423,7 @@ const MyClosetScreen = () => {
     const handleUploadChoice = () => {
         Alert.alert(
             "Add to Closet",
-            "Upload a photo to be carefully scanned and magically enhanced by AI, or just use the standard camera mode?",
+            "Upload a photo to scan the item and remove the background, or use the standard camera mode.",
             [
                 { text: "AI Studio Photo", onPress: () => pickImage(false) },
                 { text: "AI Studio Camera", onPress: () => pickImage(true) },
@@ -477,8 +498,9 @@ const MyClosetScreen = () => {
                 }));
 
                 setItems(mappedItems);
-                console.log('[Closet] Loaded', mappedItems.length, 'items. Image URLs:',
-                    mappedItems.map(i => ({ type: i.type, hasImage: !!i.imageUrl, imgLen: i.imageUrl?.length || 0 })));
+                logger.debug(`Loaded ${mappedItems.length} items`, {
+                    images: mappedItems.map(i => ({ type: i.type, hasImage: !!i.imageUrl, imgLen: i.imageUrl?.length || 0 })),
+                });
             }
         } catch (error) {
             console.error('Failed to load wardrobe:', error);
@@ -548,15 +570,21 @@ const MyClosetScreen = () => {
 
     return (
         <View style={styles.container}>
+            <LinearGradient
+                colors={['#F6FAFF', '#EEF4FF', '#FFFFFF']}
+                style={StyleSheet.absoluteFill}
+                pointerEvents="none"
+            />
+            <View pointerEvents="none" style={styles.backgroundOrbTop} />
+            <View pointerEvents="none" style={styles.backgroundOrbBottom} />
             <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-                {/* Header - raised 15px */}
-                <View style={{ marginTop: -6 }}>
-                    <View style={[styles.header, items.length === 0 && { justifyContent: 'center' }]}>
+                {/* Header */}
+                <View style={styles.headerContainer}>
                     {isSearching ? (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, backgroundColor: '#E5E5EA', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, marginHorizontal: 10 }}>
+                        <View style={styles.searchBarContainer}>
                             <Ionicons name="search" size={20} color={colors.text.secondary} />
                             <TextInput
-                                style={{ flex: 1, marginLeft: 8, fontSize: 15, color: colors.text.primary }}
+                                style={styles.searchBarInput}
                                 placeholder="Search closet..."
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
@@ -568,36 +596,41 @@ const MyClosetScreen = () => {
                             </TouchableOpacity>
                         </View>
                     ) : (
-                        <>
-                            <View style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]} pointerEvents="none">
-                                <Text style={styles.headerTitle} accessibilityRole="header">My Closet</Text>
-                            </View>
-                            {items.length > 0 ? (
-                                <>
+                        <View style={styles.headerContent}>
+                            <View style={styles.headerLeft}>
+                                {items.length > 0 && (
                                     <TouchableOpacity
-                                        style={styles.headerButtonLeft}
+                                        style={styles.headerIconButton}
                                         onPress={() => setIsSearching(true)}
                                         accessibilityLabel="Search closet"
                                         accessibilityRole="button"
                                     >
-                                        <Ionicons name="search" size={20} color={colors.text.secondary} />
-                                        <Text style={styles.headerButtonText}>Search</Text>
+                                        <Ionicons name="search" size={22} color={colors.text.secondary} />
                                     </TouchableOpacity>
+                                )}
+                            </View>
+
+                            <View style={styles.headerCenter}>
+                                <Text style={styles.headerTitle} accessibilityRole="header">My Closet</Text>
+                            </View>
+
+                            <View style={styles.headerRight}>
+                                {items.length > 0 && (
                                     <TouchableOpacity
-                                        style={styles.headerButtonRight}
+                                        style={styles.headerUploadButton}
                                         onPress={handleUploadChoice}
-                                        accessibilityLabel="Upload clothing item"
+                                        accessibilityLabel="Upload clothing"
                                         accessibilityRole="button"
                                     >
-                                        <Ionicons name="add" size={22} color={colors.text.secondary} />
-                                        <Text style={styles.headerButtonText}>Upload</Text>
+                                        <Ionicons name="add" size={18} color="#0A1931" />
+                                        <Text style={styles.headerUploadText}>Upload</Text>
                                     </TouchableOpacity>
-                                </>
-                            ) : <View style={{ width: 40 }} />}
-                        </>
+                                )}
+                            </View>
+                        </View>
                     )}
                 </View>
-                </View>
+
 
                 {/* Segmented Control */}
                 <View style={styles.segmentContainer}>
@@ -662,7 +695,7 @@ const MyClosetScreen = () => {
                         </Text>
                         <TouchableOpacity
                             style={styles.emptyButton}
-                            onPress={() => (navigation as any).navigate('AIOutfit')}
+                            onPress={() => navigation.navigate('AIOutfit')}
                             accessibilityLabel="Create first collection"
                             accessibilityRole="button"
                         >
@@ -724,7 +757,7 @@ const MyClosetScreen = () => {
             {/* Floating Ask Stylist button — Liquid Glass */}
             <TouchableOpacity
                 style={styles.stylistFAB}
-                onPress={() => (navigation as any).navigate('StylistChat')}
+                onPress={() => navigation.navigate('AIOutfit')}
                 activeOpacity={0.88}
                 accessibilityLabel="Ask AI Stylist"
                 accessibilityRole="button"
@@ -755,76 +788,143 @@ const MyClosetScreen = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF', // iOS System Gray 6 (light mode typical background)
+        backgroundColor: '#FFFFFF',
+    },
+    backgroundOrbTop: {
+        position: 'absolute',
+        top: -100,
+        right: -80,
+        width: 280,
+        height: 280,
+        borderRadius: 140,
+        backgroundColor: 'rgba(188, 210, 245, 0.42)',
+    },
+    backgroundOrbBottom: {
+        position: 'absolute',
+        left: -120,
+        bottom: 120,
+        width: 300,
+        height: 300,
+        borderRadius: 150,
+        backgroundColor: 'rgba(216, 229, 252, 0.34)',
     },
     safeArea: {
         flex: 1,
     },
 
     // Header
-    header: {
+    headerContainer: {
+        backgroundColor: 'transparent',
+        marginTop: -5,
+        paddingBottom: 10,
+    },
+    headerContent: {
+        minHeight: 52,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingTop: 0,
-        paddingBottom: 4,
-        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 16,
+    },
+    headerLeft: {
+        flex: 1,
+        alignItems: 'flex-start',
+    },
+    headerCenter: {
+        flex: 2,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    headerRight: {
+        flex: 1,
+        alignItems: 'flex-end',
     },
     headerTitle: {
-        ...typography.scale.titleLarge,
+        fontSize: 18,
         fontWeight: '700',
         color: '#0A1931',
         letterSpacing: 0.3,
     },
-    headerButtonLeft: {
+    headerIconButton: {
+        width: 44,
+        height: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 22,
+        backgroundColor: 'rgba(255,255,255,0.82)',
+        borderWidth: 1,
+        borderColor: 'rgba(24,58,103,0.08)',
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+        elevation: 3,
+    },
+    headerUploadButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        borderRadius: 20, // Pill shape
-        // Subtle shadow
-        shadowColor: '#0A1931',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
+        backgroundColor: 'rgba(255,255,255,0.84)',
+        paddingHorizontal: 14,
+        paddingVertical: 9,
+        borderRadius: 18,
+        marginRight: 2,
+        borderWidth: 1,
+        borderColor: 'rgba(24,58,103,0.08)',
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+        elevation: 3,
     },
-    headerButtonRight: {
+    headerUploadText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#0A1931',
+        marginLeft: 2,
+    },
+    searchBarContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        borderRadius: 20, // Pill shape
-        shadowColor: '#0A1931',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
-
+        backgroundColor: 'rgba(255,255,255,0.88)',
+        borderRadius: 18,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        marginHorizontal: 16,
+        marginVertical: 4,
+        borderWidth: 1,
+        borderColor: 'rgba(24,58,103,0.08)',
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+        elevation: 3,
     },
-    headerButtonText: {
-        fontSize: 15,
-        fontWeight: '500',
-        color: '#3C3C43', // iOS gray
-        marginLeft: 6,
+    searchBarInput: {
+        flex: 1,
+        marginLeft: 8,
+        fontSize: 16,
+        color: '#000',
     },
 
     // Segmented Control
     segmentContainer: {
         alignItems: 'center',
-        paddingTop: 8,
-        paddingBottom: 12,
-        backgroundColor: '#FFFFFF',
+        paddingTop: 0,
+        paddingBottom: 14,
+        backgroundColor: 'transparent',
     },
     segmentBackground: {
         flexDirection: 'row',
-        backgroundColor: '#E5E5EA', // iOS System Gray 5
-        borderRadius: 24, // Rounded
+        backgroundColor: 'rgba(255,255,255,0.84)',
+        borderRadius: 26,
         padding: 4,
         width: 300,
+        borderWidth: 1,
+        borderColor: 'rgba(24,58,103,0.08)',
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.06,
+        shadowRadius: 16,
+        elevation: 4,
     },
     segmentButton: {
         flex: 1,
@@ -835,10 +935,10 @@ const styles = StyleSheet.create({
     },
     segmentButtonActive: {
         backgroundColor: '#FFFFFF',
-        shadowColor: '#0A1931',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
         elevation: 2,
     },
     segmentText: {
@@ -853,24 +953,27 @@ const styles = StyleSheet.create({
 
     // Filters
     filterContainer: {
-        marginBottom: 16,
+        marginBottom: 18,
     },
     filterContentRaw: {
         paddingHorizontal: 16,
         paddingRight: 8,
     },
     filterChip: {
-        paddingVertical: 8,
+        paddingVertical: 10,
         paddingHorizontal: 20,
-        borderRadius: 20,
+        borderRadius: 18,
         marginRight: 8,
-        backgroundColor: '#E5E5EA', // Default gray
+        backgroundColor: 'rgba(255,255,255,0.86)',
+        borderWidth: 1,
+        borderColor: 'rgba(24,58,103,0.08)',
     },
     filterChipSelected: {
-        backgroundColor: '#303030', // Dark grey/black active state
+        backgroundColor: '#173A65',
+        borderColor: '#173A65',
     },
     filterChipUnselected: {
-        backgroundColor: '#E5E5EA',
+        backgroundColor: 'rgba(255,255,255,0.86)',
     },
     filterChipText: {
         fontSize: 15,
@@ -903,19 +1006,20 @@ const styles = StyleSheet.create({
         padding: 6,
     },
     gridItem: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 16,
+        backgroundColor: 'rgba(255,255,255,0.92)',
+        borderRadius: 22,
         overflow: 'hidden',
-        // Minimal shadow for clean look
-        shadowColor: '#0A1931',
-        shadowOffset: { width: 0, height: 1 },
+        borderWidth: 1,
+        borderColor: 'rgba(24,58,103,0.06)',
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
+        shadowRadius: 12,
+        elevation: 3,
     },
     imageContainer: {
         aspectRatio: 3 / 4, // Portrait ratio for clothes
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#F9FBFF',
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -934,12 +1038,25 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'flex-start',
         paddingTop: 60,
+        marginHorizontal: 16,
+        marginTop: 4,
+        paddingHorizontal: 20,
+        paddingBottom: 24,
+        borderRadius: 30,
+        backgroundColor: 'rgba(255,255,255,0.88)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.72)',
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.08,
+        shadowRadius: 20,
+        elevation: 6,
     },
     collectionsIconWrap: {
         width: 100,
         height: 100,
         borderRadius: 50,
-        backgroundColor: '#F5F5F5',
+        backgroundColor: '#F4F8FF',
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 20,
@@ -967,7 +1084,7 @@ const styles = StyleSheet.create({
         marginBottom: 24,
     },
     emptyButton: {
-        backgroundColor: '#0A1931',
+        backgroundColor: '#173A65',
         paddingVertical: 14,
         paddingHorizontal: 32,
         borderRadius: 30,

@@ -1,30 +1,15 @@
 /**
- * AI Service — Backward-compatible re-export.
+ * AI Service — Re-exports from domain services.
  *
- * The monolithic AIService class has been split into domain services:
+ * Domain services:
  *   - ai/outfitService.ts — Outfit generation + weather recommendations
  *   - ai/chatService.ts   — Chat + semantic search
  *   - ai/scanService.ts   — Clothing analysis + video scanning + VTON
  *   - ai/healthService.ts  — Server + AliceVision health checks
  *
- * New code should import from the domain services directly.
- * This file maintains backward compatibility for existing imports.
+ * Prefer importing from the domain services directly:
+ *   import { generateOutfitSuggestions } from './ai/outfitService';
  */
 
-export { AIService, aiServiceInstance as aiService } from './ai';
-export type {
-    AIOutfitSuggestion,
-    AIAnalysisResult,
-    VirtualTryOnResult,
-    ChatMessage,
-    ChatResponse,
-    VideoAnalysisResult,
-    DetectedClothingItem,
-    OutfitGroup,
-    OutfitRecommendation,
-    RecommendedItem,
-    StylistChatResponse,
-    WardrobeSearchResult,
-} from './ai/types';
-
-export default new (require('./ai').AIService)();
+// Re-export all domain functions, types, and shared utilities
+export * from './ai';

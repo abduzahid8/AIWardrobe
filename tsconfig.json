@@ -3,6 +3,18 @@
   "compilerOptions": {
     "strict": true,
     "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@components/*": ["components/*"],
+      "@screens/*": ["screens/*"],
+      "@store/*": ["store/*"],
+      "@hooks/*": ["hooks/*"],
+      "@navigation/*": ["navigation/*"],
+      "@constants/*": ["constants/*"],
+      "@lib/*": ["lib/*"],
+      "@assets/*": ["assets/*"]
+    },
     "types": [
       "jest"
     ]

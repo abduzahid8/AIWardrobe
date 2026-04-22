@@ -5,10 +5,10 @@
 import { getMacroCategory } from '../../features/outfit-generator/hooks/useItemSelection';
 
 describe('getMacroCategory', () => {
-    it('categorizes sweaters correctly', () => {
-        expect(getMacroCategory('sweater')).toBe('sweater');
-        expect(getMacroCategory('Hoodie')).toBe('sweater');
-        expect(getMacroCategory('cardigan')).toBe('sweater');
+    it('categorizes sweaters/hoodies as outerwear', () => {
+        expect(getMacroCategory('sweater')).toBe('outerwear');
+        expect(getMacroCategory('Hoodie')).toBe('outerwear');
+        expect(getMacroCategory('cardigan')).toBe('outerwear');
     });
 
     it('categorizes tops correctly', () => {
@@ -41,10 +41,14 @@ describe('getMacroCategory', () => {
         expect(getMacroCategory('vest')).toBe('outerwear');
     });
 
+    it('categorizes accessories correctly', () => {
+        expect(getMacroCategory('hat')).toBe('accessory');
+        expect(getMacroCategory('bag')).toBe('accessory');
+        expect(getMacroCategory('belt')).toBe('accessory');
+    });
+
     it('returns "other" for unrecognized types', () => {
-        expect(getMacroCategory('hat')).toBe('other');
-        expect(getMacroCategory('accessory')).toBe('other');
-        expect(getMacroCategory('bag')).toBe('other');
         expect(getMacroCategory('')).toBe('other');
+        expect(getMacroCategory('something random')).toBe('other');
     });
 });

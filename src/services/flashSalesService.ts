@@ -6,6 +6,9 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FlashSaleEvent, FlashSaleProduct, FlashSaleStatus } from '../types/flashSales';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('FlashSales');
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://aiwardrobe-ivh4.onrender.com';
 
@@ -429,7 +432,7 @@ class FlashSalesService {
      * Track product view
      */
     async trackProductView(product: FlashSaleProduct) {
-        console.log(`[FlashSales] Product viewed: ${product.name}`);
+        logger.info(`Product viewed: ${product.name}`);
         this.trackEventAction(product.eventId, 'product_view');
     }
 

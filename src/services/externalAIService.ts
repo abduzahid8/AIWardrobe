@@ -15,11 +15,74 @@ export interface ProcessingResult {
     category: string;
     section: string;
     confidence: number;
-    attributes: { style: string; confidence: number };
+    attributes: { style: string; confidence?: number; color?: string; material?: string | null };
   } | null;
   description: string | null;
   steps: string[];
   processingTimeMs: number;
+}
+
+type ProcessingOperation = 'all' | 'classify' | 'studio_photo';
+
+const buildImageDataUrl = (imageBase64: string) =>
+  imageBase64.startsWith('data:')
+    ? imageBase64
+    : `data:image/jpeg;base64,${imageBase64}`;
+
+async function invokeProcessingOperation(
+  imageBase64: string,
+  operation: ProcessingOperation,
+  steps: string[],
+  fallbackSteps: string[] = ['error_fallback']
+): Promise<ProcessingResult> {
+  const startTime = Date.now();
+
+  try {
+    const { data, error } = await supabase.functions.invoke('ai-process', {
+      body: {
+        image: imageBase64,
+        operation,
+      },
+    });
+
+    if (error) {
+      console.error('[ExternalAI] Edge Function error:', error);
+      throw error;
+    }
+
+    if (!data?.success) {
+      throw new Error(data?.error || 'AI processing failed');
+    }
+
+    const processingTimeMs = Date.now() - startTime;
+    const finalImage = data.cutoutUrl || buildImageDataUrl(imageBase64);
+
+    return {
+      success: true,
+      imageUrl: finalImage,
+      cutoutUrl: data.cutoutUrl || null,
+      enhancedUrl: data.enhancedUrl || null,
+      normalizedUrl: data.normalizedUrl || null,
+      classification: data.classification || null,
+      description: data.description || null,
+      steps,
+      processingTimeMs,
+    };
+  } catch (error) {
+    console.error('[ExternalAI] Processing failed:', error);
+
+    return {
+      success: false,
+      imageUrl: buildImageDataUrl(imageBase64),
+      cutoutUrl: null,
+      enhancedUrl: null,
+      normalizedUrl: null,
+      classification: null,
+      description: null,
+      steps: fallbackSteps,
+      processingTimeMs: Date.now() - startTime,
+    };
+  }
 }
 
 export const ExternalAIService = {
@@ -28,106 +91,35 @@ export const ExternalAIService = {
    * API keys stay secure in Supabase, never reach mobile app
    */
   async processClothingImage(imageBase64: string): Promise<ProcessingResult> {
-    const startTime = Date.now();
-    const steps: string[] = [];
+    return invokeProcessingOperation(
+      imageBase64,
+      'all',
+      ['nvidia_classify', 'replicate_normalize_angle', 'replicate_remove_bg', 'replicate_iron_enhance']
+    );
+  },
 
-    try {
-      // Call Supabase Edge Function (keys are secure on server side)
-      const { data, error } = await supabase.functions.invoke('ai-process', {
-        body: { 
-          image: imageBase64,
-          operation: 'all' // classify + describe + remove_bg
-        },
-      });
-
-      if (error) {
-        console.error('[ExternalAI] Edge Function error:', error);
-        throw error;
-      }
-
-      if (!data?.success) {
-        throw new Error(data?.error || 'AI processing failed');
-      }
-
-      const processingTimeMs = Date.now() - startTime;
-
-      // Build enhanced image URL (combine original + cutout if available)
-      const base64WithPrefix = imageBase64.startsWith('data:')
-        ? imageBase64
-        : `data:image/jpeg;base64,${imageBase64}`;
-      const finalImage = data.cutoutUrl || base64WithPrefix;
-
-      return {
-        success: true,
-        imageUrl: finalImage,
-        cutoutUrl: data.cutoutUrl || null,
-        enhancedUrl: data.enhancedUrl || null,
-        normalizedUrl: data.normalizedUrl || null,
-        classification: data.classification || null,
-        description: data.description || null,
-        steps: ['nvidia_classify', 'replicate_normalize_angle', 'replicate_remove_bg', 'replicate_iron_enhance'],
-        processingTimeMs,
-      };
-    } catch (error) {
-      console.error('[ExternalAI] Processing failed:', error);
-      
-      // Return fallback on error
-      return {
-        success: false,
-        imageUrl: imageBase64,
-        cutoutUrl: null,
-        enhancedUrl: null,
-        normalizedUrl: null,
-        classification: null,
-        description: null,
-        steps: ['error_fallback'],
-        processingTimeMs: Date.now() - startTime,
-      };
-    }
+  /**
+   * AI Studio photo flow: classify the item and remove the background only.
+   * This avoids generative angle or texture changes that can alter the garment.
+   */
+  async processStudioPhoto(imageBase64: string): Promise<ProcessingResult> {
+    return invokeProcessingOperation(
+      imageBase64,
+      'studio_photo',
+      ['nvidia_classify', 'nvidia_grounding_dino', 'local_cutout']
+    );
   },
 
   /**
    * Quick classification only (faster, no background removal)
    */
   async classifyOnly(imageBase64: string): Promise<ProcessingResult> {
-    const startTime = Date.now();
-
-    try {
-      const { data, error } = await supabase.functions.invoke('ai-process', {
-        body: { 
-          image: imageBase64,
-          operation: 'classify' // Only classification
-        },
-      });
-
-      if (error || !data?.success) {
-        throw error || new Error('Classification failed');
-      }
-
-      return {
-        success: true,
-        imageUrl: imageBase64,
-        cutoutUrl: null,
-        enhancedUrl: null,
-        normalizedUrl: null,
-        classification: data.classification,
-        description: data.description,
-        steps: ['nvidia_classify'],
-        processingTimeMs: Date.now() - startTime,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        imageUrl: imageBase64,
-        cutoutUrl: null,
-        enhancedUrl: null,
-        normalizedUrl: null,
-        classification: null,
-        description: null,
-        steps: ['error'],
-        processingTimeMs: Date.now() - startTime,
-      };
-    }
+    return invokeProcessingOperation(
+      imageBase64,
+      'classify',
+      ['nvidia_classify'],
+      ['error']
+    );
   },
 };
 

@@ -34,6 +34,9 @@ import { TahoeIconButton } from '../components/TahoeButton';
 import AppColors from '../constants/AppColors';
 import { useWardrobeItems } from '../src/hooks';
 import Config from '../src/config/env';
+import { createLogger } from '../src/utils/logger';
+
+const logger = createLogger('OutfitAI');
 
 const { width, height } = Dimensions.get('window');
 
@@ -136,7 +139,7 @@ async function fetchWeather(): Promise<WeatherContext> {
             };
         }
     } catch (error) {
-        console.log('Weather fetch failed, using defaults:', error);
+        logger.warn('Weather fetch failed, using defaults', error);
     }
     return { temp: 20, condition: 'clear' };
 }

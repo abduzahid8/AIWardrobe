@@ -10,6 +10,9 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { Alert } from 'react-native';
 import { ExternalAIService } from '../../services/externalAIService';
 import useUploadQueueStore from '../../store/uploadQueueStore';
+import { createLogger } from '../../utils/logger';
+
+const logger = createLogger('useVideoAnalysis');
 
 const FRAME_TIME_POINTS = [0, 1000, 2000]; // ms
 
@@ -61,7 +64,7 @@ export const useVideoAnalysis = (): UseVideoAnalysisReturn => {
     const frames: string[] = [];
     
     if (Platform.OS === 'web') {
-      console.log('Web: Video frame extraction not fully implemented');
+      logger.warn('Web: Video frame extraction not fully implemented');
       return [];
     }
     
@@ -136,7 +139,7 @@ export const useVideoAnalysis = (): UseVideoAnalysisReturn => {
 
   // Analyze video
   const analyzeVideo = async (videoUri: string): Promise<void> => {
-    console.log('analyzeVideo called with URI:', videoUri);
+    logger.info('analyzeVideo called', { videoUri });
     setAnalyzing(true);
     setResults(null);
     setProgress('Extracting frames...');

@@ -17,7 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, CameraType, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useAppNavigation } from '../hooks/useAppNavigation';
 import * as Haptics from 'expo-haptics';
 import * as MediaLibrary from 'expo-media-library';
 import * as ImagePicker from 'expo-image-picker';
@@ -28,7 +28,7 @@ import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withSpring } from '
 type CameraMode = 'photo' | 'video';
 
 const CameraScreen = () => {
-    const navigation = useNavigation();
+    const navigation = useAppNavigation();
     const cameraRef = useRef<CameraView>(null);
 
     const [cameraPermission, requestCameraPermission] = useCameraPermissions();
@@ -74,7 +74,7 @@ const CameraScreen = () => {
                 await MediaLibrary.saveToLibraryAsync(photo.uri);
                 Alert.alert('Photo Saved', 'Photo saved to your gallery!');
                 // Navigate to WardrobeVideo to analyze
-                (navigation as any).navigate('WardrobeVideo', { imageUri: photo.uri });
+                navigation.navigate('WardrobeVideo', { imageUri: photo.uri });
             }
         } catch (error) {
             console.error('Error taking photo:', error);
@@ -98,7 +98,7 @@ const CameraScreen = () => {
                 await MediaLibrary.saveToLibraryAsync(video.uri);
                 Alert.alert('Video Saved', 'Video saved to your gallery!');
                 // Navigate to WardrobeVideo to analyze
-                (navigation as any).navigate('WardrobeVideo', { videoUri: video.uri });
+                navigation.navigate('WardrobeVideo', { videoUri: video.uri });
             }
         } catch (error) {
             console.error('Error recording video:', error);
@@ -141,9 +141,9 @@ const CameraScreen = () => {
             if (!result.canceled && result.assets[0]) {
                 const asset = result.assets[0];
                 if (asset.type === 'video') {
-                    (navigation as any).navigate('WardrobeVideo', { videoUri: asset.uri });
+                    navigation.navigate('WardrobeVideo', { videoUri: asset.uri });
                 } else {
-                    (navigation as any).navigate('WardrobeVideo', { imageUri: asset.uri });
+                    navigation.navigate('WardrobeVideo', { imageUri: asset.uri });
                 }
             }
         } catch (error) {

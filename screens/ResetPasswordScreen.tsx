@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useAppNavigation } from '../hooks/useAppNavigation';
 import * as Haptics from 'expo-haptics';
 import { supabase } from '../lib/supabase';
 
@@ -23,7 +23,7 @@ import { supabase } from '../lib/supabase';
  * Allows setting a new password with validation.
  */
 const ResetPasswordScreen = () => {
-    const navigation = useNavigation();
+    const navigation = useAppNavigation();
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -56,7 +56,7 @@ const ResetPasswordScreen = () => {
                     {
                         text: 'Sign In',
                         onPress: () => {
-                            (navigation as any).reset({
+                            navigation.reset({
                                 index: 0,
                                 routes: [{ name: 'SignIn' }],
                             });

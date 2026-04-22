@@ -3,6 +3,9 @@
  */
 
 import { supabase } from '../lib/supabase';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('ApiHealth');
 
 export interface ApiHealthResult {
   supabaseAuth: boolean;
@@ -25,7 +28,7 @@ export async function checkApiHealth(): Promise<ApiHealthResult> {
   try {
     const { data: sessionData } = await supabase.auth.getSession();
     result.supabaseAuth = !!sessionData.session;
-    console.log('[API Health] Supabase auth:', result.supabaseAuth ? '✓' : '✗ (no session)');
+    logger.info(`Supabase auth: ${result.supabaseAuth ? '✓' : '✗ (no session)'}`);
   } catch (err) {
     console.error('[API Health] Supabase auth error:', err);
   }
@@ -44,10 +47,10 @@ export async function checkApiHealth(): Promise<ApiHealthResult> {
       console.error('[API Health] Edge Function error:', error.message);
     } else {
       result.edgeFunction = data?.success || false;
-      console.log('[API Health] Edge Function:', result.edgeFunction ? '✓' : '✗ (returned error)');
+      logger.info(`Edge Function: ${result.edgeFunction ? '✓' : '✗ (returned error)'}`);
       if (data?.error) {
         result.edgeFunctionError = data.error;
-        console.log('[API Health] Edge Function response error:', data.error);
+        logger.warn('Edge Function response error', data.error);
       }
     }
   } catch (err) {
@@ -56,7 +59,7 @@ export async function checkApiHealth(): Promise<ApiHealthResult> {
   }
 
   // Summary
-  console.log('[API Health] Result:', JSON.stringify(result, null, 2));
+  logger.info('Result', result);
   return result;
 }
 
@@ -64,6 +67,6 @@ export async function checkApiHealth(): Promise<ApiHealthResult> {
  * Log all API configuration for debugging
  */
 export function logApiConfig(): void {
-  console.log('[API Config] Supabase URL:', process.env.EXPO_PUBLIC_SUPABASE_URL?.slice(0, 30) + '...');
-  console.log('[API Config] Anon Key present:', !!process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY);
+  logger.info('Supabase URL', process.env.EXPO_PUBLIC_SUPABASE_URL?.slice(0, 30) + '...');
+  logger.info('Anon Key present', !!process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY);
 }

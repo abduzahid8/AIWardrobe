@@ -3,22 +3,15 @@
  */
 
 import { useState, useCallback } from 'react';
+import { getMacroCategory } from '@/utils/categoryMapper';
+
+export { getMacroCategory } from '@/utils/categoryMapper';
 
 interface SelectableItem {
     id: string;
     type?: string;
     category?: string;
     [key: string]: any;
-}
-
-export function getMacroCategory(type: string): string {
-    const t = type.toLowerCase();
-    if (t.includes('sweater') || t.includes('hoodie') || t.includes('cardigan')) return 'sweater';
-    if (t.includes('shirt') || t.includes('tee') || t.includes('top') || t.includes('blouse') || t.includes('polo')) return 'top';
-    if (t.includes('pant') || t.includes('jean') || t.includes('trouser') || t.includes('short') || t.includes('skirt')) return 'bottom';
-    if (t.includes('shoe') || t.includes('boot') || t.includes('sneaker') || t.includes('sandal') || t.includes('loafer')) return 'shoes';
-    if (t.includes('jacket') || t.includes('coat') || t.includes('blazer') || t.includes('vest')) return 'outerwear';
-    return 'other';
 }
 
 export function useItemSelection() {

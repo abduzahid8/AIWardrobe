@@ -77,7 +77,6 @@ const OutfitSuggestionCarousel = ({
     const flatListRef = useRef<FlatList<ScoredOutfit>>(null);
 
     const validOutfits = outfits.filter(Boolean);
-    if (validOutfits.length === 0) return null;
 
     /** Scroll to a specific index via the FlatList API */
     const scrollToIndex = useCallback((index: number) => {
@@ -123,6 +122,8 @@ const OutfitSuggestionCarousel = ({
             />
         );
     }, [allItems, onSave, handleDislike, onEdit, onAvatarPress, onStylistChat, savedOutfitKeys]);
+
+    if (validOutfits.length === 0) return null;
 
     return (
         <View style={styles.container}>

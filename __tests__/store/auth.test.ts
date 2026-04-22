@@ -37,7 +37,6 @@ beforeEach(() => {
         loading: false,
         error: null,
         isAuthenticated: false,
-        isTrialMode: false,
     });
 });
 
@@ -50,24 +49,6 @@ describe('auth store', () => {
             expect(state.loading).toBe(false);
             expect(state.error).toBeNull();
             expect(state.isAuthenticated).toBe(false);
-            expect(state.isTrialMode).toBe(false);
-        });
-    });
-
-    describe('startTrial', () => {
-        it('should set isTrialMode to true and isAuthenticated to false', () => {
-            useAuthStore.getState().startTrial();
-            const state = useAuthStore.getState();
-            expect(state.isTrialMode).toBe(true);
-            expect(state.isAuthenticated).toBe(false);
-        });
-    });
-
-    describe('endTrial', () => {
-        it('should set isTrialMode to false', () => {
-            useAuthStore.setState({ isTrialMode: true });
-            useAuthStore.getState().endTrial();
-            expect(useAuthStore.getState().isTrialMode).toBe(false);
         });
     });
 
@@ -94,7 +75,6 @@ describe('auth store', () => {
             expect(state.user).toBeNull();
             expect(state.session).toBeNull();
             expect(state.isAuthenticated).toBe(false);
-            expect(state.isTrialMode).toBe(false);
             expect(mockSignOut).toHaveBeenCalledTimes(1);
         });
     });
@@ -161,7 +141,6 @@ describe('auth store', () => {
 
             const state = useAuthStore.getState();
             expect(state.isAuthenticated).toBe(true);
-            expect(state.isTrialMode).toBe(false);
         });
     });
 });

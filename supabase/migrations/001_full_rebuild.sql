@@ -9,13 +9,18 @@
 CREATE TABLE IF NOT EXISTS public.profiles (
     id              UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email           TEXT UNIQUE NOT NULL,
-    username        TEXT DEFAULT '',
-    gender          TEXT CHECK (gender IN ('male', 'female', 'other', 'prefer_not_to_say')),
+    username        TEXT UNIQUE NOT NULL DEFAULT '',
+    gender          TEXT CHECK (gender IN ('male', 'female', 'other', 'prefer_not_to_say')) DEFAULT 'prefer_not_to_say',
     profile_image   TEXT,
 
     -- Subscription (denormalized for fast reads)
     subscription_tier       TEXT DEFAULT 'free' CHECK (subscription_tier IN ('free', 'premium', 'vip')),
     subscription_expires_at TIMESTAMPTZ,
+    trial_started_at        TIMESTAMPTZ,
+
+    -- Account Status
+    is_active               BOOLEAN DEFAULT true,
+    is_email_verified       BOOLEAN DEFAULT false,
 
     -- Security (account lockout)
     failed_login_attempts   INT DEFAULT 0,
@@ -30,14 +35,17 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
 CREATE POLICY "Users can view own profile"
     ON public.profiles FOR SELECT
     USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile"
     ON public.profiles FOR UPDATE
     USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
 CREATE POLICY "Users can insert own profile"
     ON public.profiles FOR INSERT
     WITH CHECK (auth.uid() = id);
@@ -107,24 +115,28 @@ CREATE TABLE IF NOT EXISTS public.clothing_items (
     updated_at          TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX idx_clothing_items_user ON public.clothing_items(user_id);
-CREATE INDEX idx_clothing_items_user_created ON public.clothing_items(user_id, created_at DESC);
-CREATE INDEX idx_clothing_items_category ON public.clothing_items(user_id, category);
+CREATE INDEX IF NOT EXISTS idx_clothing_items_user ON public.clothing_items(user_id);
+CREATE INDEX IF NOT EXISTS idx_clothing_items_user_created ON public.clothing_items(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_clothing_items_category ON public.clothing_items(user_id, category);
 
 ALTER TABLE public.clothing_items ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own items" ON public.clothing_items;
 CREATE POLICY "Users can view own items"
     ON public.clothing_items FOR SELECT
     USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own items" ON public.clothing_items;
 CREATE POLICY "Users can insert own items"
     ON public.clothing_items FOR INSERT
     WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own items" ON public.clothing_items;
 CREATE POLICY "Users can update own items"
     ON public.clothing_items FOR UPDATE
     USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own items" ON public.clothing_items;
 CREATE POLICY "Users can delete own items"
     ON public.clothing_items FOR DELETE
     USING (auth.uid() = user_id);
@@ -148,22 +160,26 @@ CREATE TABLE IF NOT EXISTS public.saved_outfits (
     updated_at  TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX idx_saved_outfits_user ON public.saved_outfits(user_id);
+CREATE INDEX IF NOT EXISTS idx_saved_outfits_user ON public.saved_outfits(user_id);
 
 ALTER TABLE public.saved_outfits ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own outfits" ON public.saved_outfits;
 CREATE POLICY "Users can view own outfits"
     ON public.saved_outfits FOR SELECT
     USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own outfits" ON public.saved_outfits;
 CREATE POLICY "Users can insert own outfits"
     ON public.saved_outfits FOR INSERT
     WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own outfits" ON public.saved_outfits;
 CREATE POLICY "Users can update own outfits"
     ON public.saved_outfits FOR UPDATE
     USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own outfits" ON public.saved_outfits;
 CREATE POLICY "Users can delete own outfits"
     ON public.saved_outfits FOR DELETE
     USING (auth.uid() = user_id);
@@ -184,23 +200,27 @@ CREATE TABLE IF NOT EXISTS public.wear_logs (
     created_at          TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX idx_wear_logs_user ON public.wear_logs(user_id);
-CREATE INDEX idx_wear_logs_date ON public.wear_logs(user_id, date);
+CREATE INDEX IF NOT EXISTS idx_wear_logs_user ON public.wear_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_wear_logs_date ON public.wear_logs(user_id, date);
 
 ALTER TABLE public.wear_logs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own wear logs" ON public.wear_logs;
 CREATE POLICY "Users can view own wear logs"
     ON public.wear_logs FOR SELECT
     USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own wear logs" ON public.wear_logs;
 CREATE POLICY "Users can insert own wear logs"
     ON public.wear_logs FOR INSERT
     WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own wear logs" ON public.wear_logs;
 CREATE POLICY "Users can update own wear logs"
     ON public.wear_logs FOR UPDATE
     USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own wear logs" ON public.wear_logs;
 CREATE POLICY "Users can delete own wear logs"
     ON public.wear_logs FOR DELETE
     USING (auth.uid() = user_id);
@@ -216,27 +236,31 @@ CREATE TABLE IF NOT EXISTS public.subscriptions (
     status      TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'trial', 'cancelled', 'expired')),
     start_date  TIMESTAMPTZ DEFAULT now(),
     end_date    TIMESTAMPTZ,
+    trial_end_date TIMESTAMPTZ,
+    cancelled_at TIMESTAMPTZ,
+    auto_renew  BOOLEAN DEFAULT true,
     product_id  TEXT,
     platform    TEXT,    -- 'ios', 'android', 'web'
+    apple_original_transaction_id TEXT,
+    google_purchase_token TEXT,
+    stripe_subscription_id TEXT,
+    stripe_customer_id TEXT,
+    last_receipt_data TEXT,
+    last_receipt_validated_at TIMESTAMPTZ,
     created_at  TIMESTAMPTZ DEFAULT now(),
     updated_at  TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX idx_subscriptions_user ON public.subscriptions(user_id);
-CREATE INDEX idx_subscriptions_active ON public.subscriptions(user_id, status, end_date);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON public.subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_active ON public.subscriptions(user_id, status, end_date);
 
 ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
 
+-- Only service_role (edge functions) can write subscriptions.
+-- Users may only VIEW their own subscription rows.
+DROP POLICY IF EXISTS "Users can view own subscriptions" ON public.subscriptions;
 CREATE POLICY "Users can view own subscriptions"
     ON public.subscriptions FOR SELECT
-    USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert own subscriptions"
-    ON public.subscriptions FOR INSERT
-    WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own subscriptions"
-    ON public.subscriptions FOR UPDATE
     USING (auth.uid() = user_id);
 
 
@@ -257,17 +281,16 @@ CREATE TABLE IF NOT EXISTS public.payments (
     created_at      TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX idx_payments_user ON public.payments(user_id);
+CREATE INDEX IF NOT EXISTS idx_payments_user ON public.payments(user_id);
 
 ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
 
+-- Only service_role (edge functions) can write payments.
+-- Users may only VIEW their own payment rows.
+DROP POLICY IF EXISTS "Users can view own payments" ON public.payments;
 CREATE POLICY "Users can view own payments"
     ON public.payments FOR SELECT
     USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert own payments"
-    ON public.payments FOR INSERT
-    WITH CHECK (auth.uid() = user_id);
 
 
 -- ── 7. STORAGE BUCKETS ──────────────────────────────────────
@@ -282,6 +305,7 @@ VALUES ('user_uploads', 'user_uploads', false)
 ON CONFLICT (id) DO NOTHING;
 
 -- Storage policies: authenticated users can upload to their own folder
+DROP POLICY IF EXISTS "Users can upload to AIWARDROBE" ON storage.objects;
 CREATE POLICY "Users can upload to AIWARDROBE"
     ON storage.objects FOR INSERT
     WITH CHECK (
@@ -289,10 +313,12 @@ CREATE POLICY "Users can upload to AIWARDROBE"
         AND auth.role() = 'authenticated'
     );
 
+DROP POLICY IF EXISTS "Public read AIWARDROBE" ON storage.objects;
 CREATE POLICY "Public read AIWARDROBE"
     ON storage.objects FOR SELECT
     USING (bucket_id = 'AIWARDROBE');
 
+DROP POLICY IF EXISTS "Users can upload own files" ON storage.objects;
 CREATE POLICY "Users can upload own files"
     ON storage.objects FOR INSERT
     WITH CHECK (
@@ -300,6 +326,7 @@ CREATE POLICY "Users can upload own files"
         AND auth.uid()::text = (storage.foldername(name))[1]
     );
 
+DROP POLICY IF EXISTS "Users can read own files" ON storage.objects;
 CREATE POLICY "Users can read own files"
     ON storage.objects FOR SELECT
     USING (
@@ -307,6 +334,7 @@ CREATE POLICY "Users can read own files"
         AND auth.uid()::text = (storage.foldername(name))[1]
     );
 
+DROP POLICY IF EXISTS "Users can delete own files" ON storage.objects;
 CREATE POLICY "Users can delete own files"
     ON storage.objects FOR DELETE
     USING (
@@ -325,18 +353,22 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_profiles_updated_at ON public.profiles;
 CREATE TRIGGER set_profiles_updated_at
     BEFORE UPDATE ON public.profiles
     FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
+DROP TRIGGER IF EXISTS set_clothing_items_updated_at ON public.clothing_items;
 CREATE TRIGGER set_clothing_items_updated_at
     BEFORE UPDATE ON public.clothing_items
     FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
+DROP TRIGGER IF EXISTS set_saved_outfits_updated_at ON public.saved_outfits;
 CREATE TRIGGER set_saved_outfits_updated_at
     BEFORE UPDATE ON public.saved_outfits
     FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
+DROP TRIGGER IF EXISTS set_subscriptions_updated_at ON public.subscriptions;
 CREATE TRIGGER set_subscriptions_updated_at
     BEFORE UPDATE ON public.subscriptions
     FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();

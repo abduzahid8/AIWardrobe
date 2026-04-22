@@ -209,6 +209,7 @@ class CrashReportingService {
             Sentry.captureMessage(message, level);
         }
         if (__DEV__) {
+            // eslint-disable-next-line no-console -- avoid circular dep via logger
             console.log(`[CrashReporting:${level}]`, message);
         }
     }

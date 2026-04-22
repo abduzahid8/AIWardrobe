@@ -9,6 +9,7 @@ import { Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Asset } from 'expo-asset';
 
 import {
     type OutfitLog,
@@ -24,7 +25,6 @@ import {
     getOccasionColor,
     createOutfitLog,
     wardrobeToOutfitItem,
-    isValidOccasion,
 } from '../types';
 import { supabase } from '../../../lib/supabase';
 
@@ -62,6 +62,19 @@ export function useOutfitCalendar() {
     const [selectedItems, setSelectedItems] = useState<WardrobeItem[]>([]);
     const [selectedOccasion, setSelectedOccasion] = useState<OccasionId>('casual');
 
+    const calculateStreakFromLogs = useCallback((logs: Record<string, OutfitLog>) => {
+        let streakCount = 0;
+        const [year, month, day] = todayStr.split('-').map(Number);
+        const checkDate = new Date(year, month - 1, day);
+
+        while (logs[formatDate(checkDate.getFullYear(), checkDate.getMonth(), checkDate.getDate())]) {
+            streakCount++;
+            checkDate.setDate(checkDate.getDate() - 1);
+        }
+
+        return streakCount;
+    }, [todayStr]);
+
     // Load data
     const loadOutfitLogs = useCallback(async () => {
         try {
@@ -69,19 +82,17 @@ export function useOutfitCalendar() {
             if (data) {
                 const logs = JSON.parse(data);
                 setOutfitLogs(logs);
-                if (logs[todayStr]) setTodaysOutfit(logs[todayStr]);
-                let streakCount = 0;
-                const checkDate = new Date(today);
-                while (logs[formatDate(checkDate.getFullYear(), checkDate.getMonth(), checkDate.getDate())]) {
-                    streakCount++;
-                    checkDate.setDate(checkDate.getDate() - 1);
-                }
-                setStreak(streakCount);
+                setTodaysOutfit(logs[todayStr] ?? null);
+                setStreak(calculateStreakFromLogs(logs));
+            } else {
+                setOutfitLogs({});
+                setTodaysOutfit(null);
+                setStreak(0);
             }
         } catch (error) {
             console.error('Error loading outfit logs:', error);
         }
-    }, [todayStr]);
+    }, [calculateStreakFromLogs, todayStr]);
 
     const loadWardrobeItems = useCallback(async () => {
         try {
@@ -115,6 +126,36 @@ export function useOutfitCalendar() {
         } catch (error) {
             console.error('Error loading wardrobe:', error);
         }
+    }, []);
+
+    const resetLogDraft = useCallback(() => {
+        setSelectedItems([]);
+        setSelectedOccasion('casual');
+    }, []);
+
+    const closeLogModal = useCallback(() => {
+        setShowLogModal(false);
+        resetLogDraft();
+    }, [resetLogDraft]);
+
+    const openLogModalForDate = useCallback((dateStr: string) => {
+        setSelectedDate(dateStr);
+        setShowAddPopover(false);
+        resetLogDraft();
+        setShowLogModal(true);
+    }, [resetLogDraft]);
+
+    const resolveWardrobeImage = useCallback(async (item: WardrobeItem) => {
+        const directImage = item.image || item.imageUrl || '';
+        if (directImage) return directImage;
+
+        if (item.localImage != null) {
+            const asset = Asset.fromModule(item.localImage);
+            await asset.downloadAsync();
+            return asset.localUri || asset.uri || '';
+        }
+
+        return '';
     }, []);
 
     useFocusEffect(useCallback(() => {
@@ -159,11 +200,15 @@ export function useOutfitCalendar() {
     // Item selection
     const toggleItemSelection = (item: WardrobeItem) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        if (selectedItems.find(i => i.id === item.id)) {
-            setSelectedItems(selectedItems.filter(i => i.id !== item.id));
-        } else if (selectedItems.length < 6) {
-            setSelectedItems([...selectedItems, item]);
-        }
+        setSelectedItems(prevSelectedItems => {
+            if (prevSelectedItems.find(i => i.id === item.id)) {
+                return prevSelectedItems.filter(i => i.id !== item.id);
+            }
+            if (prevSelectedItems.length >= 6) {
+                return prevSelectedItems;
+            }
+            return [...prevSelectedItems, item];
+        });
     };
 
     // Save
@@ -172,20 +217,21 @@ export function useOutfitCalendar() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
         const dateToSave = selectedDate || todayStr;
-        const outfitItems = selectedItems.map(wardrobeToOutfitItem);
+        const outfitItems = await Promise.all(
+            selectedItems.map(async item => ({
+                ...wardrobeToOutfitItem(item),
+                image: await resolveWardrobeImage(item),
+            }))
+        );
         const newLog = createOutfitLog(dateToSave, outfitItems, selectedOccasion);
 
         const updatedLogs = { ...outfitLogs, [dateToSave]: newLog };
         try {
             await AsyncStorage.setItem('outfitLogs', JSON.stringify(updatedLogs));
             setOutfitLogs(updatedLogs);
-            if (dateToSave === todayStr) {
-                setTodaysOutfit(newLog);
-                setStreak(prev => prev + 1);
-            }
-            setShowLogModal(false);
-            setSelectedItems([]);
-            setSelectedOccasion('casual' as OccasionId);
+            setTodaysOutfit(updatedLogs[todayStr] ?? null);
+            setStreak(calculateStreakFromLogs(updatedLogs));
+            closeLogModal();
         } catch (error) {
             console.error('Error saving outfit:', error);
         }
@@ -198,7 +244,8 @@ export function useOutfitCalendar() {
         try {
             await AsyncStorage.setItem('outfitLogs', JSON.stringify(updatedLogs));
             setOutfitLogs(updatedLogs);
-            if (dateStr === todayStr) setTodaysOutfit(null);
+            setTodaysOutfit(updatedLogs[todayStr] ?? null);
+            setStreak(calculateStreakFromLogs(updatedLogs));
             setShowDayModal(false);
         } catch (error) {
             console.error('Error deleting outfit:', error);
@@ -246,6 +293,8 @@ export function useOutfitCalendar() {
         setShowLogModal,
         setShowAddPopover,
         setSelectedOccasion,
+        openLogModalForDate,
+        closeLogModal,
         goToPrevMonth,
         goToNextMonth,
         handleDayPress,

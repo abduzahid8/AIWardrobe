@@ -16,9 +16,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { OCCASIONS, type WardrobeItem, type OccasionId, type ClothingCategory, matchesCategory } from '../types';
+import { type WardrobeItem, type OccasionId, type ClothingCategory, matchesCategory } from '../types';
 import type { Product } from '../../../src/services/shoppingService';
-import type { InspoShopItem } from '../../../data/inspoShopItems';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SLOT_WIDTH = (SCREEN_WIDTH - 48 - 24) / 3;
@@ -41,7 +40,6 @@ interface OutfitLogFormProps {
     visible: boolean;
     wardrobeItems: WardrobeItem[];
     shopItems?: Product[];
-    inspoShopItems?: InspoShopItem[];
     selectedItems: WardrobeItem[];
     selectedOccasion: OccasionId;
     onClose: () => void;
@@ -55,19 +53,18 @@ interface DisplayItem extends WardrobeItem {
     isShopItem?: boolean;
     price?: number;
     brand?: string;
-    localImage?: number;
+    localImage?: string;
 }
 
 export const OutfitLogForm: React.FC<OutfitLogFormProps> = ({
     visible,
     wardrobeItems,
     shopItems = [],
-    inspoShopItems = [],
     selectedItems,
-    selectedOccasion,
+    selectedOccasion: _selectedOccasion,
     onClose,
     onToggleItem,
-    onSelectOccasion,
+    onSelectOccasion: _onSelectOccasion,
     onSave,
 }) => {
     // Helper: Convert Product to WardrobeItem format
@@ -84,21 +81,6 @@ export const OutfitLogForm: React.FC<OutfitLogFormProps> = ({
         brand: product.brand,
     }), []);
 
-    // Convert inspo shop items (local require images) to DisplayItem format
-    const inspoDisplayItems: DisplayItem[] = inspoShopItems.map(item => ({
-        id: item.id,
-        type: item.category,
-        image: '',
-        imageUrl: '',
-        color: '',
-        name: item.name,
-        category: item.category,
-        isShopItem: true,
-        price: item.price,
-        brand: item.brand,
-        localImage: item.image,
-    }));
-
     // Convert shop items to wardrobe format
     const displayShopItems = shopItems.map(productToWardrobeItem);
     const [activeSlot, setActiveSlot] = useState<ClothingCategory>('top');
@@ -111,9 +93,7 @@ export const OutfitLogForm: React.FC<OutfitLogFormProps> = ({
         return matchesCategory(typeStr, currentSlot.id);
     });
 
-    const allDisplayShopItems: DisplayItem[] = [...displayShopItems, ...inspoDisplayItems];
-
-    const shopGridItems: DisplayItem[] = allDisplayShopItems.filter(item =>
+    const shopGridItems: DisplayItem[] = displayShopItems.filter(item =>
         matchesCategory(item.type || item.category || '', currentSlot.id)
     );
 
@@ -152,9 +132,15 @@ export const OutfitLogForm: React.FC<OutfitLogFormProps> = ({
 
     const filledCount = SLOTS.filter(s => slotItem(s.id)).length;
 
-    // Get image URI with fallback
-    const getImageUri = (item: WardrobeItem): string => {
-        return item.image || item.imageUrl || '';
+    // Resolve remote or local asset images for slot previews.
+    const getImageSource = (item: WardrobeItem) => {
+        const localImage = (item as DisplayItem).localImage;
+        if (typeof localImage === 'string' && localImage.length > 0) {
+            return { uri: localImage };
+        }
+
+        const imageUri = item.image || item.imageUrl || '';
+        return imageUri ? { uri: imageUri } : null;
     };
 
     return (
@@ -196,11 +182,17 @@ export const OutfitLogForm: React.FC<OutfitLogFormProps> = ({
                                     activeOpacity={0.8}
                                 >
                                     {picked ? (
-                                        <Image
-                                            source={{ uri: getImageUri(picked) }}
-                                            style={styles.slotImg}
-                                            resizeMode="cover"
-                                        />
+                                        getImageSource(picked) ? (
+                                            <Image
+                                                source={getImageSource(picked)!}
+                                                style={styles.slotImg}
+                                                resizeMode="cover"
+                                            />
+                                        ) : (
+                                            <View style={styles.slotEmpty}>
+                                                <Text style={styles.slotEmoji}>{slot.icon}</Text>
+                                            </View>
+                                        )
                                     ) : (
                                         <View style={styles.slotEmpty}>
                                             <Text style={styles.slotEmoji}>{slot.icon}</Text>
@@ -265,7 +257,7 @@ export const OutfitLogForm: React.FC<OutfitLogFormProps> = ({
                                         <View style={styles.grid}>
                                             {wardrobeDisplay.map((item, idx) => {
                                                 const isPicked = slotItem(activeSlot)?.id === item.id;
-                                                const imageUri = getImageUri(item);
+                                                const imageSource = getImageSource(item);
                                                 return (
                                                     <TouchableOpacity
                                                         key={item.id || idx}
@@ -273,8 +265,8 @@ export const OutfitLogForm: React.FC<OutfitLogFormProps> = ({
                                                         onPress={() => handleItemTap(item)}
                                                         activeOpacity={0.82}
                                                     >
-                                                        {imageUri ? (
-                                                            <Image source={{ uri: imageUri }} style={styles.gridImg} resizeMode="cover" />
+                                                        {imageSource ? (
+                                                            <Image source={imageSource} style={styles.gridImg} resizeMode="cover" />
                                                         ) : (
                                                             <View style={[styles.gridImg, styles.gridImgPlaceholder]}>
                                                                 <Ionicons name="shirt-outline" size={32} color="#94A3B8" />
@@ -304,7 +296,7 @@ export const OutfitLogForm: React.FC<OutfitLogFormProps> = ({
                                         <View style={styles.grid}>
                                             {shopGridItems.map((item, idx) => {
                                                 const isPicked = slotItem(activeSlot)?.id === item.id;
-                                                const imageUri = getImageUri(item);
+                                                const imageSource = getImageSource(item);
                                                 return (
                                                     <TouchableOpacity
                                                         key={item.id || idx}
@@ -316,10 +308,8 @@ export const OutfitLogForm: React.FC<OutfitLogFormProps> = ({
                                                         onPress={() => handleItemTap(item)}
                                                         activeOpacity={0.82}
                                                     >
-                                                        {item.localImage != null ? (
-                                                            <Image source={item.localImage} style={styles.gridImg} resizeMode="cover" />
-                                                        ) : imageUri ? (
-                                                            <Image source={{ uri: imageUri }} style={styles.gridImg} resizeMode="cover" />
+                                                        {imageSource ? (
+                                                            <Image source={imageSource} style={styles.gridImg} resizeMode="cover" />
                                                         ) : (
                                                             <View style={[styles.gridImg, styles.gridImgPlaceholder]}>
                                                                 <Ionicons name="bag-outline" size={32} color="#F59E0B" />
