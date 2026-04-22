@@ -12,7 +12,7 @@ import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 import useWardrobeStore from '../store/wardrobeStore';
 import WearLogButton from './WearLogButton';
 import StreakBadge from './StreakBadge';
-import type { DailySuggestion } from '../src/types/domain';
+import type { DailySuggestion, ClothingItem } from '../src/types/domain';
 
 const { colors, spacing, radius, typography } = LiquidGlass2026Theme;
 
@@ -41,9 +41,9 @@ const DailySuggestionCard: React.FC<DailySuggestionCardProps> = ({ suggestion, o
         );
     }
 
-    const outfitItems = activeSuggestion.outfit.itemIds
-        .map((id) => items.find((item) => item.id === id))
-        .filter(Boolean);
+    const outfitItems: ClothingItem[] = activeSuggestion.outfit.itemIds
+        .map((id: string) => items.find((item: ClothingItem) => item.id === id))
+        .filter((item: ClothingItem | undefined): item is ClothingItem => Boolean(item));
 
     return (
         <View style={styles.card}>

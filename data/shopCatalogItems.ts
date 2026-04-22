@@ -20,10 +20,12 @@ export interface ShopCategory {
 }
 
 export const SHOP_CATEGORIES: ShopCategory[] = [
-    { key: 'all',        label: 'All'     },
-    { key: 'upper_body', label: 'Tops'    },
+    { key: 'all', label: 'All' },
+    { key: 'outfits', label: 'Outfits' },
+    { key: 'upper_body', label: 'Tops' },
     { key: 'lower_body', label: 'Bottoms' },
-    { key: 'dresses',    label: 'Dresses' },
+    { key: 'shoes', label: 'Shoes' },
+    { key: 'dresses', label: 'Dresses' },
 ];
 
 export const SHOP_CATALOG_ITEMS: ShopCatalogItem[] = [
@@ -191,4 +193,35 @@ export const SHOP_BRANDS = [
     'Zara',
     'Mango',
     'Arket',
+];
+
+export const SHOP_OUTFITS: ShopCatalogItem[] = [
+    {
+        id: 'outfit-001',
+        brand: 'Curated Look',
+        name: 'Summer Linen Suit',
+        price: 239.99,
+        currency: 'USD',
+        garmentType: 'outfit',
+        description: 'Complete summer look with Mango linen blazer and wide trousers',
+        imageUrl: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=600&h=800&fit=crop&q=85',
+        outfitItems: [
+            SHOP_CATALOG_ITEMS.find(i => i.id === 'mango-001')!,
+            SHOP_CATALOG_ITEMS.find(i => i.id === 'cos-002')!
+        ]
+    },
+    {
+        id: 'outfit-002',
+        brand: 'Curated Look',
+        name: 'Casual Streetwear',
+        price: 149.80,
+        currency: 'USD',
+        garmentType: 'outfit',
+        description: 'Relaxed denim jacket with classic high-rise jeans',
+        imageUrl: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&h=800&fit=crop&q=85',
+        outfitItems: [
+            SHOP_CATALOG_ITEMS.find(i => i.id === 'zara-001')!,
+            SHOP_CATALOG_ITEMS.find(i => i.id === 'zara-002')!
+        ]
+    }
 ];

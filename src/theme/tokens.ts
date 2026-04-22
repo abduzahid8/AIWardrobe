@@ -108,15 +108,19 @@ export const lightColors = {
 
     border: '#E0E0E0',
     borderLight: '#F0F0F0',
+    borderSubtle: 'rgba(0,0,0,0.08)',
 
-    success: '#0A1931',
-    error: '#0A1931',
-    warning: '#0A1931',
-    info: '#0A1931',
+    // Semantic colors — used across screens for status/actions
+    accent: '#7B61FF',
+    accentSoft: 'rgba(123,97,255,0.15)',
+    success: '#30D158',
+    error: '#FF453A',
+    warning: '#FF9F0A',
+    info: '#0A84FF',
 
-    favorite: '#0A1931',
-    delete: '#0A1931',
-    edit: '#0A1931',
+    favorite: '#FF453A',
+    delete: '#FF453A',
+    edit: '#7B61FF',
 
     button: {
         primary: '#0A1931',
@@ -175,15 +179,19 @@ export const darkColors = {
 
     border: '#333333',
     borderLight: '#1A1A1A',
+    borderSubtle: 'rgba(255,255,255,0.08)',
 
-    success: '#FFFFFF',
-    error: '#FFFFFF',
-    warning: '#FFFFFF',
-    info: '#FFFFFF',
+    // Semantic colors — used across screens for status/actions
+    accent: '#9B7BFF',
+    accentSoft: 'rgba(155,123,255,0.20)',
+    success: '#32D74B',
+    error: '#FF453A',
+    warning: '#FFD60A',
+    info: '#0A84FF',
 
-    favorite: '#FFFFFF',
-    delete: '#FFFFFF',
-    edit: '#FFFFFF',
+    favorite: '#FF453A',
+    delete: '#FF6961',
+    edit: '#9B7BFF',
 
     button: {
         primary: '#FFFFFF',

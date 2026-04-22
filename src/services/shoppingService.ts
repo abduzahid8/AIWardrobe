@@ -4,6 +4,15 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createLogger } from '../utils/logger';
+import { supabase } from '../../lib/supabase';
+import {
+    scoreItemForStyle,
+    normalizeStyleId,
+    type StyleId,
+} from '../../features/outfit-generator/utils/styleInference';
+
+const logger = createLogger('Shopping');
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://aiwardrobe-ivh4.onrender.com';
 
@@ -397,7 +406,7 @@ class ShoppingService {
      * Track product click for analytics
      */
     async trackProductClick(product: Product, source: string) {
-        console.log(`[Shopping] Product clicked: ${product.name} from ${source}`);
+        logger.info(`Product clicked: ${product.name} from ${source}`);
 
         // In production, send to analytics
         try {
@@ -462,3 +471,135 @@ class ShoppingService {
 // Export singleton instance
 export const shoppingService = new ShoppingService();
 export default shoppingService;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// fillMissingSlots — queries shop_catalog for 1 style-matching item per
+// missing outfit slot. Used by the outfit generator to auto-complete
+// looks when the wardrobe lacks, say, an outerwear piece for an
+// Old-Money layered look.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type OutfitSlotId = 'outerwear' | 'top' | 'bottom' | 'shoes';
+
+export interface ShopFillItem {
+    id: string;
+    name: string;
+    image: string;
+    type: string;
+    macroCategory: OutfitSlotId;
+    color: string;
+    brand?: string;
+    price?: number;
+    shopUrl?: string;
+    isShopItem: true;
+    recommendation: string;
+    missingSlot: OutfitSlotId;
+}
+
+interface ShopCatalogRow {
+    id: string;
+    brand?: string | null;
+    name?: string | null;
+    price?: number | null;
+    currency?: string | null;
+    image_url?: string | null;
+    garment_type?: string | null;
+    category?: string | null;
+    description?: string | null;
+    primary_color?: string | null;
+    source?: string | null;
+}
+
+/**
+ * Map a missing outfit slot to the Supabase query that narrows shop_catalog
+ * to candidates for that slot. We target both `category` and `garment_type`
+ * because the two columns evolved independently across ingestion scripts.
+ */
+function buildShopQueryForSlot(slot: OutfitSlotId, limit: number) {
+    const base = supabase
+        .from('shop_catalog')
+        .select('id, brand, name, price, currency, image_url, garment_type, category, description, primary_color, source')
+        .eq('is_active', true)
+        .limit(limit);
+
+    switch (slot) {
+        case 'outerwear':
+            return base.eq('category', 'outerwear');
+        case 'top':
+            return base.eq('category', 'tops');
+        case 'bottom':
+            return base.eq('category', 'bottoms');
+        case 'shoes':
+            return base.or('category.eq.shoes,garment_type.eq.shoes');
+        default:
+            return base;
+    }
+}
+
+function rowToShopFillItem(row: ShopCatalogRow, slot: OutfitSlotId): ShopFillItem | null {
+    if (!row?.id || !row?.image_url) return null;
+    return {
+        id: `shop_${row.id}`,
+        name: row.name || row.brand || 'Shop pick',
+        image: row.image_url,
+        type: row.garment_type || row.category || slot,
+        macroCategory: slot,
+        color: row.primary_color || 'neutral',
+        brand: row.brand || undefined,
+        price: typeof row.price === 'number' ? row.price : undefined,
+        shopUrl: undefined,
+        isShopItem: true,
+        recommendation: `Suggested from shop to complete your ${slot === 'outerwear' ? 'main-top layer' : slot}`,
+        missingSlot: slot,
+    };
+}
+
+/**
+ * Return 1 shop item per missing slot, style-ranked. Safe to call with an
+ * empty list — returns an empty array. Errors are swallowed so outfit
+ * generation never fails because the shop table is unreachable.
+ */
+export async function fillMissingSlots(
+    missingSlots: OutfitSlotId[],
+    style: string | null | undefined,
+): Promise<ShopFillItem[]> {
+    if (!missingSlots || missingSlots.length === 0) return [];
+    const normalizedStyle: StyleId = normalizeStyleId(style || 'casual');
+    const picks: ShopFillItem[] = [];
+
+    for (const slot of missingSlots) {
+        try {
+            const { data, error } = await buildShopQueryForSlot(slot, 30);
+            if (error || !data || data.length === 0) continue;
+
+            const scored = (data as ShopCatalogRow[])
+                .map((row) => ({
+                    row,
+                    score: scoreItemForStyle(
+                        {
+                            name: row.name || undefined,
+                            description: row.description || undefined,
+                            brand: row.brand || undefined,
+                            color: row.primary_color || undefined,
+                            type: row.garment_type || undefined,
+                            category: row.category || undefined,
+                            macroCategory: slot,
+                        },
+                        normalizedStyle,
+                    ),
+                }))
+                .sort((a, b) => b.score - a.score);
+
+            for (const candidate of scored) {
+                const fill = rowToShopFillItem(candidate.row, slot);
+                if (fill) {
+                    picks.push(fill);
+                    break;
+                }
+            }
+        } catch (err) {
+            logger.warn(`fillMissingSlots failed for slot=${slot}: ${String(err)}`);
+        }
+    }
+    return picks;
+}

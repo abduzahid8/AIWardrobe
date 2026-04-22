@@ -1,3 +1,15 @@
+/**
+ * Legacy static "basic clothing" catalog — now a stub.
+ *
+ * Previously this file bundled raw PNGs from a local `basic_clothing/`
+ * directory into the IPA. That directory was scratch content and has
+ * been removed. The real catalog now lives in the Supabase
+ * `shop_catalog` table and is fetched via `src/hooks/useShopCatalog.ts`.
+ *
+ * We keep the export + type so existing callers continue to compile.
+ * New callers should use `useShopCatalog()` directly.
+ */
+
 export interface BasicClothingItem {
     id: string;
     name: string;
@@ -9,163 +21,9 @@ export interface BasicClothingItem {
     material: string;
     seasons: Array<'spring' | 'summer' | 'fall' | 'winter'>;
     occasions: Array<'casual' | 'work' | 'formal' | 'sport' | 'date' | 'travel'>;
-    image: ReturnType<typeof require>;
+    /** Remote URL. Historically this was a bundled require(...) asset. */
+    image: string;
     description: string;
 }
 
-export const BASIC_CLOTHING_ITEMS: BasicClothingItem[] = [
-    {
-        id: 'basic-1',
-        name: 'White T-Shirt',
-        category: 'top',
-        subCategory: 't-shirt',
-        primaryColor: 'white',
-        colorHex: '#F5F2EE',
-        pattern: 'solid',
-        material: 'cotton',
-        seasons: ['spring', 'summer', 'fall', 'winter'],
-        occasions: ['casual', 'sport', 'travel'],
-        image: require('../assets/images/basic_white_tshirt.png'),
-        description: 'Essential white crewneck tee — perfect base layer',
-    },
-    {
-        id: 'basic-2',
-        name: 'Navy Zip Cardigan',
-        category: 'top',
-        subCategory: 'cardigan',
-        primaryColor: 'navy',
-        colorHex: '#1A1F2E',
-        pattern: 'solid',
-        material: 'wool',
-        seasons: ['spring', 'fall', 'winter'],
-        occasions: ['casual', 'work', 'date'],
-        image: require('../assets/images/basic_cardigan.png'),
-        description: 'Slim navy zip-up cardigan with polo collar',
-    },
-    {
-        id: 'basic-3',
-        name: 'Striped Sweater',
-        category: 'top',
-        subCategory: 'sweater',
-        primaryColor: 'navy',
-        colorHex: '#1C1C2E',
-        pattern: 'striped',
-        material: 'cotton knit',
-        seasons: ['fall', 'winter'],
-        occasions: ['casual', 'travel', 'date'],
-        image: require('../assets/images/basic_sweater.png'),
-        description: 'Navy & white Breton stripe crewneck sweater',
-    },
-    {
-        id: 'basic-4',
-        name: 'Zip Hoodie',
-        category: 'top',
-        subCategory: 'hoodie',
-        primaryColor: 'navy',
-        colorHex: '#1E2533',
-        pattern: 'solid',
-        material: 'merino wool',
-        seasons: ['fall', 'winter', 'spring'],
-        occasions: ['casual', 'sport', 'travel'],
-        image: require('../assets/images/basic_zip_hoodie.png'),
-        description: 'Relaxed full-zip hoodie in premium merino',
-    },
-    {
-        id: 'basic-5',
-        name: 'Brown Polo',
-        category: 'top',
-        subCategory: 'polo',
-        primaryColor: 'brown',
-        colorHex: '#3D2314',
-        pattern: 'solid',
-        material: 'merino wool',
-        seasons: ['spring', 'fall', 'winter'],
-        occasions: ['casual', 'work', 'date'],
-        image: require('../assets/images/basic_polo_brown.png'),
-        description: 'Long-sleeve open-collar polo in chocolate brown',
-    },
-    {
-        id: 'basic-6',
-        name: 'Navy Polo',
-        category: 'top',
-        subCategory: 'polo',
-        primaryColor: 'navy',
-        colorHex: '#1A2540',
-        pattern: 'solid',
-        material: 'cotton knit',
-        seasons: ['spring', 'fall', 'winter'],
-        occasions: ['casual', 'work', 'date'],
-        image: require('../assets/images/basic_polo_navy.png'),
-        description: 'Buttoned long-sleeve polo in deep navy',
-    },
-    {
-        id: 'basic-7',
-        name: 'Argyle Polo',
-        category: 'top',
-        subCategory: 'polo',
-        primaryColor: 'brown',
-        colorHex: '#4A2E1A',
-        pattern: 'argyle',
-        material: 'wool blend',
-        seasons: ['fall', 'winter'],
-        occasions: ['casual', 'date', 'travel'],
-        image: require('../assets/images/basic_polo_argyle.png'),
-        description: 'Argyle knit open-collar polo in warm brown tones',
-    },
-    {
-        id: 'basic-8',
-        name: 'Brown Pinstripe Trousers',
-        category: 'bottom',
-        subCategory: 'trousers',
-        primaryColor: 'brown',
-        colorHex: '#5A4235',
-        pattern: 'pinstripe',
-        material: 'linen blend',
-        seasons: ['spring', 'summer', 'fall'],
-        occasions: ['casual', 'work', 'date'],
-        image: require('../assets/images/basic_brown_pants.png'),
-        description: 'Tailored brown trousers with subtle pinstripe',
-    },
-    {
-        id: 'basic-9',
-        name: 'White High-Waist Trousers',
-        category: 'bottom',
-        subCategory: 'trousers',
-        primaryColor: 'white',
-        colorHex: '#F0EDE8',
-        pattern: 'solid',
-        material: 'wool blend',
-        seasons: ['spring', 'summer'],
-        occasions: ['formal', 'work', 'date'],
-        image: require('../assets/images/basic_white_trousers.png'),
-        description: 'High-waist pleated trousers in ivory white',
-    },
-    {
-        id: 'basic-10',
-        name: 'Brown Boat Shoes',
-        category: 'shoes',
-        subCategory: 'loafers',
-        primaryColor: 'brown',
-        colorHex: '#6B3E26',
-        pattern: 'solid',
-        material: 'leather',
-        seasons: ['spring', 'summer', 'fall'],
-        occasions: ['casual', 'travel', 'date'],
-        image: require('../assets/images/basic_brown_loafers.png'),
-        description: 'Classic brown leather boat shoes',
-    },
-    {
-        id: 'basic-11',
-        name: 'Suede Loafers',
-        category: 'shoes',
-        subCategory: 'loafers',
-        primaryColor: 'charcoal',
-        colorHex: '#2D2D2D',
-        pattern: 'solid',
-        material: 'suede',
-        seasons: ['spring', 'fall', 'winter'],
-        occasions: ['casual', 'work', 'date'],
-        image: require('../assets/images/basic_grey_loafers.png'),
-        description: 'Loro Piana-style charcoal suede loafers',
-    },
-];
+export const BASIC_CLOTHING_ITEMS: BasicClothingItem[] = [];

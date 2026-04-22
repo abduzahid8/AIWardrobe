@@ -5,66 +5,48 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
-  ActivityIndicator,
   Dimensions,
   StyleSheet,
+  Animated,
   Platform,
-  Alert,
-  TextInput,
+  Modal,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from 'expo-linear-gradient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BlurView } from 'expo-blur';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
+import { useShopCatalog } from '../hooks/useShopCatalog';
 import LiquidGlass2026Theme, { SpatialElevation } from '../constants/LiquidGlass2026Theme';
-import useWardrobeStore from '../store/wardrobeStore';
-import useAuthStore from '../store/auth';
-import { useStylePreferenceStore } from '../store/stylePreferenceStore';
-import { type ShopItem } from '../src/services/ai/mixedOutfitService';
-import { generateOutfitsFromDB, fetchWardrobeDisplayItems } from '../src/services/outfitGenerationService';
-import { INSPO_SHOP_ITEMS } from '../data/inspoShopItems';
-
-const shopItems: ShopItem[] = [
-  { id: 'shop_1', name: 'Mini Dress', brand: 'ZARA', price: 59.90, image: require('../pictures/shop/image.png'), type: 'outerwear', category: 'tops' },
-  { id: 'shop_2', name: 'Oversized Blazer', brand: 'ZARA', price: 129.00, image: require('../pictures/shop/image copy.png'), type: 'outerwear', category: 'tops' },
-  { id: 'shop_3', name: 'Wide Leg Trousers', brand: 'ZARA', price: 89.90, image: require('../pictures/shop/image copy 2.png'), type: 'pants', category: 'bottoms' },
-  { id: 'shop_4', name: 'Structured Jacket', brand: 'ZARA', price: 69.90, image: require('../pictures/shop/image copy 3.png'), type: 'outerwear', category: 'tops' },
-  { id: 'shop_5', name: 'Slim Fit Jeans', brand: 'ZARA', price: 15.90, image: require('../pictures/shop/image copy 4.png'), type: 'pants', category: 'bottoms' },
-  { id: 'shop_6', name: 'Ribbed Knit Top', brand: 'ZARA', price: 35.90, image: require('../pictures/shop/image copy 5.png'), type: 'top', category: 'tops' },
-  { id: 'shop_7', name: 'Leather Ankle Boots', brand: 'ZARA', price: 99.90, image: require('../pictures/shop/image copy 6.png'), type: 'shoes', category: 'shoes' },
-  { id: 'shop_8', name: 'Brown Trousers', brand: 'ZARA', price: 45.90, image: require('../pictures/shop/Brown-pants-with_line.png'), type: 'pants', category: 'bottoms' },
-  { id: 'shop_9', name: 'High Waist Trousers', brand: 'ZARA', price: 55.90, image: require('../pictures/shop/highweist_trousers_whte.png'), type: 'pants', category: 'bottoms' },
-  { id: 'shop_10', name: 'Brown Loafers', brand: 'Loro Piana', price: 850.00, image: require('../pictures/shop/Brown_loafers.png.png'), type: 'shoes', category: 'shoes' },
-  { id: 'shop_11', name: 'Grey Loafers', brand: 'Loro Piana', price: 850.00, image: require('../pictures/shop/Grey_loafers_loropiana.png'), type: 'shoes', category: 'shoes' },
-];
+import * as Location from 'expo-location';
+import Config from '../src/config/env';
+import { createOutfitLog, type OutfitItem as CalendarOutfitItem, type OutfitLog } from '../features/calendar/types';
 
 const { width, height } = Dimensions.get('window');
 
 interface OutfitItem {
-  name?: string;
-  image?: string | number;
-  id?: string | number;
-  color?: string;
+  id?: string;
+  name: string;
+  image: string;
+  imageUrl?: string;
   type?: string;
-  isShopItem?: boolean;
-  price?: number;
+  category?: string;
+  macroCategory?: string;
+  color?: string;
   brand?: string;
-  shopUrl?: string;
 }
 
 interface GeneratedOutfit {
   id: string;
-  mainImage?: string | number;
+  mainImage: string;
   matchScore: number;
   description: string;
   items: OutfitItem[];
-  stylingTips?: string | string[];
-  wardrobeItemCount?: number;
-  shopItemCount?: number;
+  stylingTips?: string;
+  weather?: { temp: number; condition: string; city?: string };
 }
 
 const aiStyles = [
@@ -77,420 +59,481 @@ const aiStyles = [
 
 const AIOutfitGenerator = () => {
   const navigation = useNavigation();
-  const { user } = useAuthStore();
-  const storeItems = useWardrobeStore((state) => state.items);
-  const stylePersonality = useStylePreferenceStore((state) => state.preferences.stylePersonality);
-  const likeOutfit = useStylePreferenceStore((state) => state.likeOutfit);
-  const [activeMode, setActiveMode] = useState<'auto' | 'manual'>('auto');
+  const route = useRoute<any>();
+  const source = route.params?.source;
   const [selectedStyle, setSelectedStyle] = useState('old_money');
   const [loading, setLoading] = useState(false);
   const [outfits, setOutfits] = useState<GeneratedOutfit[]>([]);
   const [error, setError] = useState('');
-  const [promptText, setPromptText] = useState('');
+  const insets = useSafeAreaInsets();
+
+  // ── Weather State ─────────────────────────────────────────────────
+  const [weather, setWeather] = useState<{ temp: number; condition: string; icon?: string; city?: string } | undefined>(undefined);
+
+  // ── Calendar Modal State ──────────────────────────────────────────
+  const [calendarVisible, setCalendarVisible] = useState(false);
+  const [calendarOutfit, setCalendarOutfit] = useState<GeneratedOutfit | null>(null);
+  const [calendarDate, setCalendarDate] = useState<Date>(new Date());
+
+  // ── Design Tokens (Liquid Glass prestige style) ──────────────────
+  function useDesignTokens() {
+    const isDark = false; // keep light theme consistent with existing
+    return {
+      isDark,
+      bg: LiquidGlass2026Theme.colors.background.primary,
+      glass: 'rgba(255, 255, 255, 0.56)',
+      glassStrong: 'rgba(255, 255, 255, 0.76)',
+      heroGradient: ['#F2F7FC', '#ECF3FA', '#FAFCFF'] as readonly [string, string, string],
+      panelHighlight: ['#FFFFFF', '#F6F8FA'] as readonly [string, string],
+      textPrimary: LiquidGlass2026Theme.colors.text.primary,
+      textSecondary: LiquidGlass2026Theme.colors.text.secondary,
+      accent: '#2B5CE9',
+      success: '#10B981',
+      borderGlass: 'rgba(255, 255, 255, 0.5)',
+    };
+  }
+  const D = useDesignTokens();
 
   // Wardrobe Items State
   const [wardrobeItems, setWardrobeItems] = useState<any[]>([]);
-  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+
+  // Use the live catalog from Supabase
+  const { items: liveShopCatalog, loading: shopCatalogLoading } = useShopCatalog({
+    enabled: true, // we always want it ready for fallback/shop injections
+  });
+
+  // Map the new catalog format into what the outfit generator expects
+  const liveShopMapped = React.useMemo(() => liveShopCatalog.map((item) => ({
+    id: item.id,
+    image: item.imageUrl,
+    imageUrl: item.imageUrl,
+    type: item.garmentType === 'upper_body' ? 'tops' : item.garmentType === 'lower_body' ? 'bottoms' : 'shoes',
+    category: item.garmentType === 'upper_body' ? 'tops' : item.garmentType === 'lower_body' ? 'bottoms' : 'shoes',
+    name: item.name,
+    brand: item.brand,
+    description: item.description || `${item.name} by ${item.brand}`,
+  })), [liveShopCatalog]);
+
+  // Prevent setState after unmount
+  const isMounted = React.useRef(true);
+  const fallbackTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    loadWardrobeItems();
-  }, [storeItems]);
-
-  useEffect(() => {
-    const styleMap: Record<string, string> = {
-      classic: 'old_money',
-      trendy: 'streetwear',
-      minimalist: 'minimalist',
-      bohemian: 'y2k',
-      edgy: 'streetwear',
-      romantic: 'old_money',
-      sporty: 'streetwear',
-    };
-    if (stylePersonality && styleMap[stylePersonality]) {
-      setSelectedStyle(styleMap[stylePersonality]);
+    isMounted.current = true;
+    
+    // We only want to load items once the live shop catalog has responded (so we have fallbacks/shop items)
+    if (!shopCatalogLoading) {
+      loadWardrobeItems();
     }
-  }, [stylePersonality]);
+    
+    return () => {
+      isMounted.current = false;
+      if (fallbackTimer.current) clearTimeout(fallbackTimer.current);
+    };
+  }, [shopCatalogLoading, liveShopMapped]);
 
   const loadWardrobeItems = async () => {
     try {
-      // Primary: fetch directly from Supabase DB
-      const dbItems = await fetchWardrobeDisplayItems();
-      if (dbItems.length > 0) {
-        setWardrobeItems(dbItems.map(item => ({
-          id: item.id,
-          image: item.imageUrl,
-          type: item.type,
-          color: item.color,
-          name: item.name,
-          macroCategory: item.macroCategory,
-        })));
+      // ── Shop mode: use ONLY live Supabase shop catalog items.
+      // Real Supabase UUIDs MUST be preserved so the edge function can enrich
+      // items with imageUrl via its itemMap lookup. Do NOT mix in AsyncStorage.
+      if (source === 'shop') {
+        if (!isMounted.current) return;
+        setWardrobeItems(
+          liveShopMapped.map((item: any) => ({
+            ...item,
+            // Preserve the real UUID from shop_catalog — never overwrite with a fake id
+            type: item.type || item.category || 'Clothing Piece',
+            imageUrl: item.imageUrl || (typeof item.image === 'string' ? item.image : '') || '',
+            name: item.name || item.type || 'Clothing item',
+            description: item.description || item.name || '',
+          }))
+        );
         return;
       }
-      // Fallback: merge store + AsyncStorage items
+
+      // ── Wardrobe mode: merge AsyncStorage + shop items ──────────────────
       const data = await AsyncStorage.getItem('myWardrobeItems');
-      const localItems = data ? JSON.parse(data) : [];
-      const normalizedStoreItems = storeItems.map((item) => ({
-        id: item.id,
-        image: item.imageUrl,
-        type: item.subCategory || item.category,
-        color: item.primaryColor,
-        name: item.name,
+      let items = data ? JSON.parse(data) : [];
+
+      // Normalise image/imageUrl so both fields are always populated
+      items = items.map((i: any) => ({
+        ...i,
+        image: i.image || i.imageUrl,
+        imageUrl: i.imageUrl || (typeof i.image === 'string' ? i.image : undefined),
       }));
-      const mergedByImage = new Map<string, any>();
-      [...localItems, ...normalizedStoreItems].forEach((item: any) => {
-        const image = item?.image || item?.imageUrl;
-        if (!image) return;
-        mergedByImage.set(String(image), item);
-      });
-      const personalItems = Array.from(mergedByImage.values());
-      const existingIds = new Set(personalItems.map((i: any) => String(i.id || i.uniqueId || i.image || '')));
-      const mergedItems = [
-        ...shopItems.filter(s => !existingIds.has(String(s.id))),
-        ...personalItems,
-      ];
-      const normalized = mergedItems.map((item: any, index: number) => ({
+
+      // Drop items with no usable image
+      items = items.filter((i: any) => i && (i.imageUrl || typeof i.image === 'string'));
+
+      const existingIds = new Set(items.map((i: any) => i.id));
+      const newShopItems = liveShopMapped.filter(s => !existingIds.has(s.id));
+      items = [...newShopItems, ...items];
+
+      if (!isMounted.current) return;
+      setWardrobeItems(items.map((item: any, index: number) => ({
         ...item,
-        id: String(item.id || item.uniqueId || `uniq_item_${index}_${item.type || 'unknown'}`),
-        image: item.image || item.imageUrl,
-        type: item.type || item.itemType || item.subCategory || item.category || 'Clothing Piece',
-      })).filter((item) => item.image);
-      setWardrobeItems(normalized);
+        // For personal wardrobe items that have no real id, generate a stable key.
+        // For shop items merged here, preserve their real UUID.
+        id: item.id || `local_item_${index}_${item.type || item.category || 'unknown'}`,
+        type: item.type || item.category || 'Clothing Piece',
+        imageUrl: item.imageUrl || (typeof item.image === 'string' ? item.image : undefined) || '',
+        name: item.name || item.type || 'Clothing item',
+        description: item.description || item.name || '',
+      })));
     } catch (e) {
       console.error('Failed to load wardrobe', e);
     }
   };
 
+  // Client-side 3-slot display category (used for UI grouping & selection logic)
   const getMacroCategory = (type: string) => {
     const t = (type || '').toLowerCase();
-    if (t.includes('jacket') || t.includes('coat') || t.includes('outer') || t.includes('zip') || t.includes('sweater') || t.includes('switer') || t.includes('pullover') || t.includes('hoodie') || t.includes('cardigan') || t.includes('vest') || t.includes('puffer')) return 'outerwear';
-    if (t.includes('polo') || t.includes('shirt') || t.includes('t-shirt') || t.includes('tee') || t.includes('blouse') || t.includes('top')) return 'top';
+    if (t.includes('jacket') || t.includes('coat') || t.includes('outer') || t.includes('zip') || t.includes('sweater') || t.includes('pullover') || t.includes('hoodie') || t.includes('polo') || t.includes('shirt') || t.includes('t-shirt') || t.includes('top')) return 'outerwear';
     if (t.includes('pant') || t.includes('bottom') || t.includes('trouser') || t.includes('jeans')) return 'pants';
-    if (t.includes('shoe') || t.includes('sneaker') || t.includes('boot') || t.includes('loafer')) return 'shoes';
-    return t; // Unknown type is its own category
+    if (t.includes('shoe') || t.includes('sneaker') || t.includes('boot')) return 'shoes';
+    return t;
   };
 
-  const toggleItemSelection = (id: string) => {
-    setSelectedItemIds(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        const itemToAdd = wardrobeItems.find(i => i.id === id);
-        const itemType = itemToAdd?.type || 'Clothing Piece';
-        const macroCat = getMacroCategory(itemType);
+  // Backend-compatible macroCategory matching the edge function's slot model:
+  // 'top' (base layer), 'outerwear' (jacket/blazer/sweater), 'bottom', 'shoes'
+  const getBackendMacroCategory = (type: string, category?: string) => {
+    const t = `${type || ''} ${category || ''}`.toLowerCase();
+    if (t.match(/jacket|coat|blazer|hoodie|cardigan|sweater|pullover|vest|puffer|outerwear/)) return 'outerwear';
+    if (t.match(/shirt|t-shirt|tee|blouse|polo|tops?(?:\b)/)) return 'top';
+    if (t.match(/pant|trouser|jeans?|bottom|shorts?|skirt/)) return 'bottom';
+    if (t.match(/shoe|sneaker|boot|loafer|sandal/)) return 'shoes';
+    if (t.match(/dress/)) return 'top';
+    return 'top'; // fallback keeps the backend happy
+  };
 
-        // Enforce max 1 item per macro category ALWAYS!
-        const existingOfSameType = wardrobeItems.find(i =>
-          newSet.has(i.id) && getMacroCategory(i.type || '') === macroCat
-        );
-        if (existingOfSameType) {
-          newSet.delete(existingOfSameType.id);
-        }
-
-        newSet.add(id);
+  // ── Weather Fetch ────────────────────────────────────────────────
+  const fetchWeather = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') return;
+      const loc = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = loc.coords;
+      const response = await fetch(
+        `${Config.weather.baseUrl}/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${Config.weather.apiKey}`
+      );
+      const data = await response.json();
+      if (data.main && data.weather) {
+        setWeather({
+          temp: Math.round(data.main.temp),
+          condition: data.weather[0].description,
+          icon: data.weather[0].icon,
+          city: data.name,
+        });
       }
-      return newSet;
-    });
+    } catch (e) {
+      console.warn('Weather fetch error', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchWeather();
+  }, []);
+
+  // ── 4-Slot Outfit Normalisation ──────────────────────────────────
+  // Ensures every outfit has: main-top, second-top (layer), pants, shoes
+  const normalizeTo4Slots = (items: OutfitItem[], styleId?: string): OutfitItem[] => {
+    const pool = source === 'shop'
+      ? liveShopMapped
+      : [...wardrobeItems, ...liveShopMapped];
+    const candidatePool = pool.map((it: any) => ({
+      id: it.id || it.imageUrl || it.name,
+      name: it.name || it.type || 'Item',
+      image: (typeof it.image === 'string' ? it.image : undefined) || it.imageUrl || '',
+      imageUrl: it.imageUrl || (typeof it.image === 'string' ? it.image : ''),
+      type: it.type || it.category || 'top',
+      macroCategory: getBackendMacroCategory(it.type || '', it.category || ''),
+      color: it.color || 'neutral',
+      brand: it.brand || '',
+    }));
+
+    const resolveImage = (it: any) => (typeof it.image === 'string' ? it.image : undefined) || it.imageUrl || '';
+
+    // Step 1: place incoming items into buckets by macroCategory
+    const incoming = (items || []).map((it) => ({
+      ...it,
+      image: it.image || it.imageUrl || '',
+      macroCategory: getBackendMacroCategory(it.type || '', it.category || ''),
+    }));
+
+    const topBase = incoming.find(i => i.macroCategory === 'top') || incoming.find(i => ['top', 'outerwear'].includes(i.macroCategory || ''));
+    const outerLayer = incoming.find(i => i.macroCategory === 'outerwear') || incoming.find(i => ['jacket', 'coat', 'blazer', 'hoodie', 'cardigan', 'sweater'].some(k => (i.type || '').toLowerCase().includes(k)));
+    const bottoms = incoming.find(i => i.macroCategory === 'bottom');
+    const shoes = incoming.find(i => i.macroCategory === 'shoes');
+
+    const needsLayer = (weather?.temp != null && weather.temp < 18) ||
+      /\b(cold|chilly|freezing|snow|rain|drizzle|wind|storm)\b/.test((weather?.condition || '').toLowerCase());
+    const styleNeedsLayer = styleId === 'old_money' || styleId === 'business_casual' || styleId === 'streetwear';
+
+    const pickFromPool = (cat: string) => {
+      const found = candidatePool.find(c => c.macroCategory === cat);
+      if (found) return { ...found, image: found.image || found.imageUrl || '' };
+      const fallback = candidatePool[0];
+      return fallback ? { ...fallback, image: fallback.image || fallback.imageUrl || '' } : { id: 'fallback', name: 'Item', image: '', type: 'top', macroCategory: 'top' };
+    };
+
+    const slotMainTop = topBase || pickFromPool('top');
+    const slotPants = bottoms || pickFromPool('bottom');
+    const slotShoes = shoes || pickFromPool('shoes');
+
+    // For second-top, if weather or style demands layering, pick outerwear; otherwise pick another top
+    let slotSecondTop = outerLayer;
+    if (!slotSecondTop) {
+      if (needsLayer || styleNeedsLayer) {
+        slotSecondTop = pickFromPool('outerwear');
+      } else {
+        slotSecondTop = candidatePool.find(c => c.macroCategory === 'top' && c.id !== slotMainTop.id) || slotMainTop;
+      }
+    }
+
+    return [
+      { ...slotMainTop, image: resolveImage(slotMainTop) || slotMainTop.image || '' },
+      { ...slotSecondTop, image: resolveImage(slotSecondTop) || slotSecondTop.image || '' },
+      { ...slotPants, image: resolveImage(slotPants) || slotPants.image || '' },
+      { ...slotShoes, image: resolveImage(slotShoes) || slotShoes.image || '' },
+    ];
+  };
+
+  // ── Add to Calendar ─────────────────────────────────────────────
+  const addToCalendar = async (outfit: GeneratedOutfit, date: Date) => {
+    try {
+      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      const mappedItems: CalendarOutfitItem[] = outfit.items.map(it => ({
+        id: it.id || it.name || `${Date.now()}`,
+        type: it.type || 'top',
+        image: it.image || it.imageUrl || '',
+        color: it.color,
+        name: it.name,
+      }));
+      const log = createOutfitLog(dateStr, mappedItems, (selectedStyle as any) || 'casual');
+      const raw = await AsyncStorage.getItem('outfitLogs');
+      const logs: Record<string, OutfitLog> = raw ? JSON.parse(raw) : {};
+      logs[dateStr] = log;
+      await AsyncStorage.setItem('outfitLogs', JSON.stringify(logs));
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setCalendarVisible(false);
+      setCalendarOutfit(null);
+    } catch (e) {
+      console.error('Calendar save error', e);
+    }
   };
 
   const generateOutfits = async (overrideStyle?: string) => {
     const styleToUse = overrideStyle || selectedStyle;
 
+    if (!isMounted.current) return;
     setLoading(true);
     setError('');
     setOutfits([]);
 
-    const selectedIds =
-      activeMode === 'manual' && selectedItemIds.size > 0
-        ? Array.from(selectedItemIds)
-        : undefined;
+    const selectedClothing: any[] = [];
+
+    // Build a clean payload for the backend — strip non-serialisable fields
+    // (require() numbers) and ensure every item has macroCategory + imageUrl.
+    const payloadItems = wardrobeItems.map((item: any) => ({
+      id: item.id,
+      name: item.name || item.type || 'Clothing item',
+      type: item.type || 'top',
+      category: item.category || item.type || 'tops',
+      color: item.color || 'neutral',
+      brand: item.brand || '',
+      description: item.description || item.name || '',
+      imageUrl: item.imageUrl || (typeof item.image === 'string' ? item.image : '') || '',
+      macroCategory: getBackendMacroCategory(item.type || '', item.category || ''),
+    }));
 
     try {
-      const result = await generateOutfitsFromDB({
-        prompt: promptText.trim() || undefined,
-        stylePreferences: styleToUse,
-        occasion: 'Everyday',
-        limit: 3,
-        selectedItemIds: selectedIds,
+      // Generate outfits with selected items and style preferences.
+      // NOTE: do NOT set useProvidedWardrobeOnly:true — the edge function's
+      // enrichment step (step 8) needs to match item ids against itemMap to
+      // attach real imageUrls. When wardrobeItems is provided the edge fn
+      // already uses it as the candidate pool (step 3), so this is safe.
+      const { data, error: invokeError } = await supabase.functions.invoke('generate-outfits', {
+        body: {
+          stylePreferences: styleToUse,
+          occasion: 'Any',
+          selectedItemIds: [],
+          wardrobeItems: payloadItems,
+          weather: weather ?? undefined,
+          limit: 3,
+        },
       });
 
-      if (result.success && result.outfits.length > 0) {
-        const mappedOutfits: GeneratedOutfit[] = result.outfits.map(outfit => ({
-          id: outfit.id,
-          mainImage: outfit.items[0]?.imageUrl || outfit.items[0]?.image,
-          matchScore: outfit.matchScore,
-          description: outfit.description,
-          items: outfit.items.map(item => ({
-            id: item.id,
-            name: item.name,
-            image: item.imageUrl || item.image,
-            color: item.color,
-            type: item.type,
-            isShopItem: item.isShopItem,
-            price: item.price,
-            brand: item.brand,
-            shopUrl: item.shopUrl,
-          })),
-          stylingTips: outfit.stylingTips,
-          wardrobeItemCount: outfit.items.filter(i => !i.isShopItem).length,
-          shopItemCount: outfit.items.filter(i => i.isShopItem).length,
-        }));
-        setOutfits(mappedOutfits);
-      } else {
-        setError(result.error || 'No outfits found. Add more items to your wardrobe!');
+      if (invokeError) throw invokeError;
+
+      if (data && data.success && data.outfits && data.outfits.length > 0) {
+        // Post-process backend output: normalize to strict 4-slot structure
+        const cleanedOutfits = data.outfits.map((outfit: any, index: number) => {
+          const normalized = normalizeTo4Slots(outfit.items || [], styleToUse);
+          return {
+            ...outfit,
+            items: normalized,
+            mainImage: normalized[0]?.image || outfit.mainImage || '',
+            matchScore: outfit.confidence ?? outfit.matchScore ?? 0.9,
+            stylingTips: Array.isArray(outfit.stylingTips)
+              ? outfit.stylingTips.join(' · ')
+              : (outfit.stylingTips || ''),
+            weather,
+          };
+        });
+
+        if (isMounted.current) {
+          setOutfits(cleanedOutfits);
+          setLoading(false);
+        }
+        return;
       }
+
+      // Backend returned success=false or empty outfits — fall through to local fallback
+      throw new Error(data?.error || 'No outfits returned from AI');
     } catch (err: any) {
-      console.error('Outfit generation error:', err);
-      setError('Generation failed. Please try again.');
+      console.error('[AIOutfitmaker] Outfit generation error:', err);
+
+      // Local fallback — normalize wardrobe into 4 slots
+      const demoItems = normalizeTo4Slots(wardrobeItems.slice(0, 12), styleToUse);
+      const firstImageUrl = demoItems[0]?.image || '';
+
+      if (fallbackTimer.current) clearTimeout(fallbackTimer.current);
+      fallbackTimer.current = setTimeout(() => {
+        if (!isMounted.current) return;
+        setOutfits([{
+          id: `demo_${Date.now()}`,
+          mainImage: firstImageUrl,
+          matchScore: 0.92,
+          description: `A curated ${styleToUse.replace(/_/g, ' ')} look styled from your wardrobe.`,
+          items: demoItems,
+          stylingTips: 'Pair this with some simple accessories to complete the look.',
+          weather,
+        }]);
+        setLoading(false);
+        setError('');
+      }, 800);
     }
-    setLoading(false);
-  };
-
-  const saveOutfit = async (outfit: GeneratedOutfit) => {
-    const itemIds = outfit.items
-      .map((item) => String(item.id || item.image))
-      .filter(Boolean);
-    if (itemIds.length === 0) {
-      Alert.alert('Cannot Save', 'This outfit has no valid items to save.');
-      return;
-    }
-
-    const store = useWardrobeStore.getState();
-    store.addOutfit({
-      userId: user?.id || 'guest',
-      itemIds,
-      occasion: 'casual',
-      generatedBy: 'ai',
-      previewImageUrl: typeof outfit.mainImage === 'string' ? outfit.mainImage : undefined,
-      reasoning: outfit.description,
-      style: selectedStyle,
-    });
-    const latestOutfit = useWardrobeStore.getState().outfits[0];
-    if (latestOutfit?.id) {
-      store.saveOutfit(latestOutfit.id);
-      likeOutfit(latestOutfit.id, itemIds, 'casual');
-    }
-
-    try {
-      const today = new Date();
-      const dateKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-      const existing = await AsyncStorage.getItem('outfitLogs');
-      const logs = existing ? JSON.parse(existing) : {};
-      logs[dateKey] = {
-        date: dateKey,
-        items: outfit.items.slice(0, 6).map((item) => ({
-          id: String(item.id || item.image),
-          type: item.type || 'Clothing Piece',
-          image: item.image,
-          color: item.color,
-        })),
-        occasion: 'casual',
-      };
-      await AsyncStorage.setItem('outfitLogs', JSON.stringify(logs));
-    } catch (calendarError) {
-      console.error('Failed to schedule outfit log', calendarError);
-    }
-
-    if (user?.id) {
-      try {
-        await supabase
-          .from('saved_outfits')
-          .insert({
-            user_id: user.id,
-            items: outfit.items.map((item) => ({
-              id: String(item.id || item.image),
-              type: item.type || 'Clothing Piece',
-              image: item.image,
-            })),
-            date: new Date().toISOString().split('T')[0],
-            occasion: 'casual',
-            season: 'All',
-            name: `${selectedStyle} outfit`,
-            caption: outfit.description,
-            visibility: 'Everyone',
-            is_ootd: false,
-          });
-      } catch (saveError) {
-        console.error('Failed to sync saved outfit', saveError);
-      }
-    }
-
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert('Saved', 'Outfit saved to your closet and calendar.');
-  };
-
-  const OutfitCollageDisplay = ({ items }: { items: OutfitItem[] }) => {
-    const top = items.find(i => getMacroCategory(i.type || '') === 'top') ||
-                 items.find(i => getMacroCategory(i.type || '') === 'outerwear');
-    const pants = items.find(i => getMacroCategory(i.type || '') === 'pants');
-    const shoes = items.find(i => getMacroCategory(i.type || '') === 'shoes');
-    const hasTop = !!top;
-    const hasPants = !!pants;
-    const hasShoes = !!shoes;
-
-    if (!hasTop && !hasPants && !hasShoes) {
-      const first = items[0];
-      if (!first?.image) return null;
-      return (
-        <Image
-          source={typeof first.image === 'number' ? first.image : { uri: first.image }}
-          style={styles.outfitImage}
-          resizeMode="cover"
-        />
-      );
-    }
-
-    return (
-      <View style={styles.outfitCollage}>
-        {/* Left Column: Top + Pants */}
-        <View style={styles.collageColumn}>
-          {hasTop && (
-            <View style={styles.collageSlotHalf}>
-              <Image
-                source={typeof top!.image === 'number' ? top!.image : { uri: top!.image }}
-                style={styles.collageSlotImage}
-                resizeMode="contain"
-              />
-              <View style={styles.collageSlotLabel}>
-                <Text style={styles.collageSlotLabelText}>Top</Text>
-              </View>
-            </View>
-          )}
-          {hasPants && (
-            <View style={styles.collageSlotHalf}>
-              <Image
-                source={typeof pants!.image === 'number' ? pants!.image : { uri: pants!.image }}
-                style={styles.collageSlotImage}
-                resizeMode="contain"
-              />
-              <View style={styles.collageSlotLabel}>
-                <Text style={styles.collageSlotLabelText}>Pants</Text>
-              </View>
-            </View>
-          )}
-        </View>
-
-        {/* Right Column: Empty top + Shoes bottom */}
-        <View style={styles.collageColumn}>
-          <View style={styles.collageSlotHalf} />
-          {hasShoes && (
-            <View style={styles.collageSlotHalf}>
-              <Image
-                source={typeof shoes!.image === 'number' ? shoes!.image : { uri: shoes!.image }}
-                style={styles.collageSlotImage}
-                resizeMode="contain"
-              />
-              <View style={styles.collageSlotLabel}>
-                <Text style={styles.collageSlotLabelText}>Shoes</Text>
-              </View>
-            </View>
-          )}
-        </View>
-      </View>
-    );
   };
 
   if (outfits.length > 0) {
     return (
       <View style={styles.container}>
-        <SafeAreaView style={{ flex: 1 }}>
+        <LinearGradient colors={D.heroGradient} style={StyleSheet.absoluteFill} />
+        <View style={[styles.orbTop, { backgroundColor: 'rgba(43,92,233,0.06)', top: insets.top + 40 }]} />
+        <View style={[styles.orbBottom, { backgroundColor: 'rgba(236,72,153,0.05)' }]} />
+
+        <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
           <View style={styles.header}>
             <TouchableOpacity onPress={() => setOutfits([])} style={styles.backButton}>
-              <Ionicons name="chevron-back" size={28} color="#1a1a1a" />
+              <Ionicons name="chevron-back" size={26} color={D.textPrimary} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Your Outfits</Text>
             <View style={{ width: 40 }} />
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20 }}>
-            {outfits.map((outfit) => (
-              <View key={outfit.id} style={styles.outfitCard}>
-                <OutfitCollageDisplay items={outfit.items} />
-                <View style={styles.matchBadge}>
-                  <Text style={styles.matchBadgeText}>{Math.round((outfit.matchScore || 0.78) * 100)}% Match</Text>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}>
+            {outfits.map((outfit, index) => (
+              <Animated.View key={outfit.id} style={[styles.glassCard, { marginTop: index === 0 ? 8 : 24 }]}>
+                <BlurView intensity={Platform.OS === 'ios' ? 48 : 90} tint="light" style={StyleSheet.absoluteFill} />
+                <LinearGradient colors={['rgba(255,255,255,0.45)', 'rgba(255,255,255,0.15)']} style={StyleSheet.absoluteFill} />
+
+                <View style={styles.cardHeaderRow}>
+                  {outfit.weather ? (
+                    <View style={styles.weatherChip}>
+                      <Ionicons name="cloud-outline" size={14} color={D.textSecondary} />
+                      <Text style={styles.weatherChipText}>{outfit.weather.temp}°C · {outfit.weather.condition}</Text>
+                    </View>
+                  ) : <View />}
+                  <LinearGradient colors={[D.accent, '#5B7CF9']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.matchPill}>
+                    <Text style={styles.matchPillText}>{Math.round(outfit.matchScore * 100)}% Match</Text>
+                  </LinearGradient>
                 </View>
 
-                <View style={{ padding: 20 }}>
-                  <Text style={styles.outfitDesc}>{outfit.description}</Text>
-                  <Text style={styles.itemsLabel}>Items in this outfit:</Text>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ paddingHorizontal: 2, paddingVertical: 4, marginBottom: 16 }}
-                  >
-                    {outfit.items.length === 0 && (
-                      <Text style={{ color: '#999', fontStyle: 'italic' }}>No items available</Text>
-                    )}
-                    {outfit.items.map((item: OutfitItem, idx: number) => {
-                      console.log(`Rendering item ${idx}:`, item.id, item.type, item.image ? 'has image' : 'no image');
-                      const categoryLabel = (() => {
-                        const cat = getMacroCategory(item.type || '');
-                        if (cat === 'top') return 'Top';
-                        if (cat === 'outerwear') return 'Outerwear';
-                        if (cat === 'pants') return 'Pants';
-                        if (cat === 'shoes') return 'Shoes';
-                        return item.type || 'Item';
-                      })();
-                      return (
-                        <View key={idx} style={styles.individualItemCard}>
-                          {item.image ? (
-                            <Image
-                              source={typeof item.image === 'number' ? item.image : { uri: item.image }}
-                              style={styles.individualItemImage}
-                              resizeMode="contain"
-                            />
-                          ) : (
-                            <View style={[styles.individualItemImage, { backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center' }]}>
-                              <Ionicons name="shirt-outline" size={40} color="#ccc" />
-                            </View>
-                          )}
-                          <Text style={styles.individualItemType} numberOfLines={1}>
-                            {categoryLabel}
-                          </Text>
-                          {item.isShopItem && item.price && (
-                            <Text style={{ fontSize: 11, color: '#0A1931', fontWeight: '600' }}>
-                              ${item.price}
-                            </Text>
-                          )}
-                          {item.color ? (
-                            <View style={styles.individualItemColorRow}>
-                              <View style={[styles.individualItemColorDot, { backgroundColor: item.color }]} />
-                              <Text style={styles.individualItemColorText} numberOfLines={1}>{item.color}</Text>
-                            </View>
-                          ) : null}
+                <View style={styles.slotGrid}>
+                  {outfit.items.slice(0, 4).map((item, idx) => {
+                    const slotLabels = ['Main Top', 'Layer', 'Pants', 'Shoes'];
+                    return (
+                      <View key={`${outfit.id}-${idx}`} style={styles.slotCell}>
+                        <Image
+                          source={typeof item.image === 'string' && item.image ? { uri: item.image } : require('../assets/images/basic_cardigan.png')}
+                          style={styles.slotImage}
+                          resizeMode="cover"
+                        />
+                        <View style={styles.slotLabelWrap}>
+                          <Text style={styles.slotLabel}>{slotLabels[idx]}</Text>
+                          <Text style={styles.slotName} numberOfLines={1}>{item.name || 'Item'}</Text>
                         </View>
-                      );
-                    })}
-                  </ScrollView>
-                  <View style={styles.stylingTipsBox}>
-                    <Text style={styles.stylingTipsText}>
-                      💡 <Text style={{ fontWeight: '600' }}>Styling Tip:</Text>{' '}
-                      {Array.isArray(outfit.stylingTips) ? outfit.stylingTips[0] : outfit.stylingTips}
-                    </Text>
-                  </View>
+                      </View>
+                    );
+                  })}
+                </View>
 
+                <Text style={styles.outfitDesc}>{outfit.description}</Text>
+
+                <View style={styles.tipCard}>
+                  <LinearGradient colors={D.panelHighlight} style={StyleSheet.absoluteFill} />
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Ionicons name="sparkles-outline" size={16} color={D.accent} />
+                    <Text style={styles.tipCardText}>{outfit.stylingTips}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.actionRow}>
                   <TouchableOpacity
-                    style={styles.wishlistButton}
-                    onPress={() => saveOutfit(outfit)}
-                    activeOpacity={0.8}
+                    activeOpacity={0.85}
+                    style={styles.primaryAction}
+                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setCalendarOutfit(outfit); setCalendarDate(new Date()); setCalendarVisible(true); }}
                   >
-                    <Ionicons name="bookmark-outline" size={20} color={LiquidGlass2026Theme.colors.text.primary} />
-                    <Text style={styles.wishlistButtonText}>Save outfit</Text>
+                    <LinearGradient colors={[D.accent, '#5B7CF9']} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
+                    <Ionicons name="calendar-outline" size={18} color="#fff" />
+                    <Text style={styles.primaryActionText}>Add to Calendar</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={styles.wishlistButton}
-                    onPress={() => navigation.navigate('AITryOn' as never)}
-                    activeOpacity={0.8}
+                    activeOpacity={0.85}
+                    style={styles.secondaryAction}
+                    onPress={() => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); navigation.navigate('Main' as never); }}
                   >
-                    <Ionicons name="sparkles-outline" size={20} color={LiquidGlass2026Theme.colors.text.primary} />
-                    <Text style={styles.wishlistButtonText}>Validate in try-on</Text>
+                    <Ionicons name="heart-outline" size={18} color={D.textPrimary} />
+                    <Text style={styles.secondaryActionText}>Wishlist</Text>
                   </TouchableOpacity>
                 </View>
-              </View>
+              </Animated.View>
             ))}
           </ScrollView>
         </SafeAreaView>
+
+        <Modal animationType="slide" transparent visible={calendarVisible} onRequestClose={() => setCalendarVisible(false)}>
+          <View style={styles.modalOverlay}>
+            <BlurView intensity={Platform.OS === 'ios' ? 60 : 100} tint="light" style={StyleSheet.absoluteFill} />
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Save to Calendar</Text>
+              <Text style={styles.modalSubtitle}>Pick a date for this outfit</Text>
+              <View style={styles.datePickerRow}>
+                <TouchableOpacity onPress={() => setCalendarDate(new Date(calendarDate.getTime() - 86400000))}>
+                  <Ionicons name="chevron-back" size={24} color={D.textPrimary} />
+                </TouchableOpacity>
+                <Text style={styles.datePickerValue}>{calendarDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
+                <TouchableOpacity onPress={() => setCalendarDate(new Date(calendarDate.getTime() + 86400000))}>
+                  <Ionicons name="chevron-forward" size={24} color={D.textPrimary} />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.modalActions}>
+                <TouchableOpacity style={styles.modalCancel} onPress={() => setCalendarVisible(false)}>
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalConfirm}
+                  onPress={() => calendarOutfit && addToCalendar(calendarOutfit, calendarDate)}
+                >
+                  <LinearGradient colors={[D.accent, '#5B7CF9']} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
+                  <Text style={styles.modalConfirmText}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
     );
   }
@@ -504,8 +547,8 @@ const AIOutfitGenerator = () => {
       />
 
       <SafeAreaView
-        edges={activeMode === 'manual' ? ['top', 'left', 'right', 'bottom'] : ['top', 'left', 'right']}
-        style={{ flex: 1, paddingBottom: activeMode === 'manual' ? 100 : 0 }}
+        edges={['top', 'left', 'right']}
+        style={{ flex: 1 }}
       >
         {/* Header */}
         <View style={styles.header}>
@@ -516,63 +559,14 @@ const AIOutfitGenerator = () => {
           <Ionicons name="sparkles" size={24} color="#F59E0B" />
         </View>
 
-        {/* Dual-Mode Toggle */}
-        <View style={styles.viewToggleWrap}>
-          <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
-          <TouchableOpacity
-            style={[styles.viewToggleOption, activeMode === "auto" && styles.viewToggleActive]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setActiveMode("auto");
-            }}
-          >
-            <Text style={[styles.viewToggleText, activeMode === "auto" && styles.viewToggleTextActive]}>
-              Auto-Stylist
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.viewToggleOption, activeMode === "manual" && styles.viewToggleActive]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setActiveMode("manual");
-            }}
-          >
-            <Text style={[styles.viewToggleText, activeMode === "manual" && styles.viewToggleTextActive]}>
-              Build My Own
-            </Text>
-          </TouchableOpacity>
-        </View>
-
         {/* Title Area */}
-        <View style={{ paddingHorizontal: 20, paddingTop: 36, paddingBottom: 16 }}>
+        <View style={{ paddingHorizontal: 20, paddingTop: 36, paddingBottom: 24 }}>
           <Text style={styles.sectionTitle}>
-            {activeMode === 'auto' ? "Discover Your Vibe" : "Select Your Base"}
+            Discover Your Vibe
           </Text>
           <Text style={styles.sectionSubtitle}>
-            {activeMode === 'auto'
-              ? "Tap a style card below and AI will instantly build a complete look from your wardrobe."
-              : "Choose 1 or more items from your closet, and AI will style the rest around them."}
+            Tap a style card below and AI will instantly build a complete look from your wardrobe.
           </Text>
-        </View>
-
-        {/* AI Prompt Input */}
-        <View style={styles.promptContainer}>
-          <Ionicons name="sparkles-outline" size={18} color="#6B7280" style={{ marginRight: 10 }} />
-          <TextInput
-            style={styles.promptInput}
-            placeholder="Describe the vibe... (e.g. beach trip, business meeting)"
-            placeholderTextColor="#9CA3AF"
-            value={promptText}
-            onChangeText={setPromptText}
-            returnKeyType="done"
-            multiline={false}
-            maxLength={120}
-          />
-          {promptText.length > 0 && (
-            <TouchableOpacity onPress={() => setPromptText('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="close-circle" size={18} color="#9CA3AF" />
-            </TouchableOpacity>
-          )}
         </View>
 
 
@@ -585,145 +579,36 @@ const AIOutfitGenerator = () => {
           </View>
         ) : null}
 
-        {/* Dynamic Content based on Mode */}
-        {activeMode === 'auto' ? (
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20 }}>
-            {aiStyles.map((styleObj) => {
-              return (
-                <TouchableOpacity
-                  key={styleObj.id}
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    setSelectedStyle(styleObj.id);
-                    generateOutfits(styleObj.id);
-                  }}
-                  style={styles.vibeCard}
-                >
-                  <View style={styles.vibeCardInner}>
-                    <View style={styles.vibeIconWrap}>
-                      <Ionicons name={styleObj.icon as any} size={24} color={'#FFFFFF'} />
-                    </View>
-                    <View style={{ flex: 1, marginLeft: 20 }}>
-                      <Text style={styles.vibeTitle}>{styleObj.label}</Text>
-                      <Text style={styles.vibeDesc}>{styleObj.desc}</Text>
-                    </View>
-                    <View style={{ paddingLeft: 12 }}>
-                      <Ionicons name="chevron-forward" size={24} color={'#4B5563'} />
-                    </View>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20 }}>
+          {aiStyles.map((styleObj) => {
+            return (
+              <TouchableOpacity
+                key={styleObj.id}
+                activeOpacity={0.8}
+                onPress={() => {
+                  setSelectedStyle(styleObj.id);
+                  generateOutfits(styleObj.id);
+                }}
+                style={styles.vibeCard}
+              >
+                <View style={styles.vibeCardInner}>
+                  <View style={styles.vibeIconWrap}>
+                    <Ionicons name={styleObj.icon as any} size={24} color={'#FFFFFF'} />
                   </View>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        ) : (
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 140 }}>
-            {/* Category sections */}
-            {[
-              { category: 'top', label: 'Tops', icon: 'shirt' as const },
-              { category: 'outerwear', label: 'Outerwear', icon: 'shirt' as const },
-              { category: 'pants', label: 'Bottoms', icon: 'resize' as const },
-              { category: 'shoes', label: 'Shoes', icon: 'footsteps' as const },
-            ].map((section) => {
-              const categoryItems = wardrobeItems.filter((item) => {
-                const mc = item.macroCategory || getMacroCategory(item.type || '');
-                if (section.category === 'pants') return mc === 'pants' || mc === 'bottom';
-                if (section.category === 'top') return mc === 'top';
-                return mc === section.category;
-              });
-              if (categoryItems.length === 0) return null;
-
-              return (
-                <View key={section.category} style={{ marginBottom: 24 }}>
-                  {/* Section Header */}
-                  <View style={styles.categorySectionHeader}>
-                    <Ionicons name={section.icon} size={18} color={LiquidGlass2026Theme.colors.text.primary} />
-                    <Text style={styles.categorySectionTitle}>{section.label}</Text>
-                    <Text style={styles.categorySectionBadge}>Select 1</Text>
+                  <View style={{ flex: 1, marginLeft: 20 }}>
+                    <Text style={styles.vibeTitle}>{styleObj.label}</Text>
+                    <Text style={styles.vibeDesc}>{styleObj.desc}</Text>
                   </View>
-
-                  {/* Horizontal Scroll of Items */}
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
-                  >
-                    {categoryItems.map((item) => {
-                      const itemId = item.id;
-                      const isSelected = selectedItemIds.has(itemId);
-                      return (
-                        <TouchableOpacity
-                          key={itemId}
-                          onPress={() => toggleItemSelection(itemId)}
-                          activeOpacity={0.8}
-                        >
-                          <View style={[styles.categoryGridItem, isSelected && styles.gridItemActive]}>
-                            {item.image ? (
-                              <Image
-                                source={typeof item.image === 'number' ? item.image : { uri: item.image }}
-                                style={styles.categoryGridItemImage}
-                                resizeMode="contain"
-                              />
-                            ) : (
-                              <Ionicons name="shirt-outline" size={40} color={LiquidGlass2026Theme.colors.text.disabled} />
-                            )}
-                            {isSelected && (
-                              <View style={styles.checkBadge}>
-                                <Ionicons name="checkmark" size={16} color="#FFF" />
-                              </View>
-                            )}
-                          </View>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
+                  <View style={{ paddingLeft: 12 }}>
+                    <Ionicons name="chevron-forward" size={24} color={'#4B5563'} />
+                  </View>
                 </View>
-              );
-            })}
-            {wardrobeItems.length === 0 ? (
-              <View style={styles.emptyManualState}>
-                <Ionicons name="shirt-outline" size={42} color={LiquidGlass2026Theme.colors.text.secondary} />
-                <Text style={styles.emptyManualTitle}>Your wardrobe is empty</Text>
-                <Text style={styles.emptyManualSubtitle}>Scan your wardrobe to start building outfits.</Text>
-                <TouchableOpacity
-                  style={styles.emptyManualCta}
-                  onPress={() => navigation.navigate('WardrobeVideo' as never)}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.emptyManualCtaText}>Scan wardrobe</Text>
-                </TouchableOpacity>
-              </View>
-            ) : null}
-          </ScrollView>
-        )}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </SafeAreaView>
 
-      {/* Floating Action Button */}
-      {activeMode === 'manual' && selectedItemIds.size > 0 && (
-        <View style={styles.fabContainer}>
-          <BlurView intensity={40} tint="light" style={styles.fabGlass}>
-            <TouchableOpacity
-              style={[
-                styles.generateBtn,
-                (activeMode === 'manual' && selectedItemIds.size === 0) && styles.generateBtnDisabled
-              ]}
-              onPress={() => generateOutfits(selectedStyle)}
-              disabled={loading || (activeMode === 'manual' && selectedItemIds.size === 0)}
-              activeOpacity={0.85}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="sparkles" size={20} color="#fff" style={{ marginRight: 8 }} />
-                  <Text style={styles.generateBtnText}>
-                    Generate ({selectedItemIds.size})
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </BlurView>
-        </View>
-      )}
     </View>
   );
 };
@@ -892,120 +777,6 @@ const styles = StyleSheet.create({
     ...LiquidGlass2026Theme.typography.scale.bodyMedium,
     fontWeight: '500',
   },
-  // Liquid Glass FAB - Matching CreateAvatarScreen
-  fabContainer: {
-    position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 34 : 24,
-    left: 20,
-    right: 20,
-    borderRadius: LiquidGlass2026Theme.radius.pill,
-    overflow: "hidden",
-    ...SpatialElevation.getShadow(SpatialElevation.levels.floating),
-  },
-  fabGlass: {
-    padding: 6,
-    backgroundColor: "rgba(255,255,255,0.4)",
-  },
-  generateBtn: {
-    flexDirection: 'row',
-    backgroundColor: LiquidGlass2026Theme.colors.accent.primary,
-    height: 56,
-    borderRadius: LiquidGlass2026Theme.radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  generateBtnDisabled: {
-    backgroundColor: 'rgba(10, 25, 49, 0.4)', // Faded black
-  },
-  generateBtnText: {
-    color: LiquidGlass2026Theme.colors.text.onDark,
-    ...LiquidGlass2026Theme.typography.scale.titleMedium,
-    letterSpacing: 0.2,
-  },
-
-  // Outfit collage display styles
-  outfitCollage: {
-    width: '100%',
-    height: 400,
-    backgroundColor: '#F7F8FA',
-    overflow: 'hidden',
-    flexDirection: 'row',
-  },
-  collageColumn: {
-    flex: 1,
-    flexDirection: 'column',
-  },
-  collageSlotHalf: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-    backgroundColor: '#F7F8FA',
-  },
-  collageSlotImage: {
-    width: '85%',
-    height: '85%',
-  },
-  collageSlotLabel: {
-    position: 'absolute',
-    bottom: 10,
-    left: 12,
-    backgroundColor: 'rgba(10,25,49,0.62)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  collageSlotLabelText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.4,
-  },
-  // Individual item cards below collage
-  individualItemCard: {
-    width: 120,
-    marginRight: 14,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    overflow: 'hidden',
-    alignItems: 'center',
-    paddingBottom: 12,
-    ...SpatialElevation.getShadow(SpatialElevation.levels.card),
-  },
-  individualItemImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 18,
-  },
-  individualItemType: {
-    fontSize: 12,
-    color: '#1a1a2e',
-    fontWeight: '700',
-    marginTop: 8,
-    paddingHorizontal: 8,
-    textAlign: 'center',
-    textTransform: 'capitalize',
-    letterSpacing: 0.1,
-  },
-  individualItemColorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-    gap: 5,
-  },
-  individualItemColorDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 5,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
-  },
-  individualItemColorText: {
-    fontSize: 11,
-    color: '#6B7280',
-    textTransform: 'capitalize',
-    maxWidth: 80,
-  },
   // Results styles
   outfitCard: {
     marginBottom: 32,
@@ -1155,58 +926,225 @@ const styles = StyleSheet.create({
     color: LiquidGlass2026Theme.colors.text.primary,
     fontWeight: '600',
   },
-  promptContainer: {
+
+  // ── Liquid Glass Result Card Styles ──────────────────────────────
+  orbTop: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    left: -60,
+  },
+  orbBottom: {
+    position: 'absolute',
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    right: -80,
+    bottom: 100,
+  },
+  glassCard: {
+    borderRadius: LiquidGlass2026Theme.radius.card,
+    overflow: 'hidden',
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
+    ...SpatialElevation.getShadow(SpatialElevation.levels.card),
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  weatherChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 20,
-    marginBottom: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    backgroundColor: 'rgba(255,255,255,0.75)',
-    borderRadius: 18,
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.6)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: LiquidGlass2026Theme.radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(200,200,210,0.6)',
+    borderColor: 'rgba(255,255,255,0.5)',
+  },
+  weatherChipText: {
+    ...LiquidGlass2026Theme.typography.scale.labelMedium,
+    color: LiquidGlass2026Theme.colors.text.secondary,
+    fontWeight: '500',
+  },
+  matchPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: LiquidGlass2026Theme.radius.pill,
+  },
+  matchPillText: {
+    color: '#FFFFFF',
+    ...LiquidGlass2026Theme.typography.scale.labelMedium,
+    fontWeight: '700',
+  },
+  slotGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  slotCell: {
+    width: (width - 72) / 2,
+    marginBottom: 12,
+    borderRadius: LiquidGlass2026Theme.radius.md,
+    backgroundColor: 'rgba(255,255,255,0.4)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
+    overflow: 'hidden',
     ...SpatialElevation.getShadow(SpatialElevation.levels.surface),
   },
-  promptInput: {
-    flex: 1,
-    fontSize: 14,
-    color: '#1a1a2e',
-    paddingVertical: 0,
+  slotImage: {
+    width: '100%',
+    height: (width - 72) / 2,
   },
-  emptyManualState: {
-    marginTop: 24,
-    marginHorizontal: 20,
-    alignItems: 'center',
-    padding: 24,
-    borderRadius: LiquidGlass2026Theme.radius.card,
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    borderWidth: 1,
-    borderColor: LiquidGlass2026Theme.colors.border.subtle,
-    ...SpatialElevation.getShadow(SpatialElevation.levels.surface),
+  slotLabelWrap: {
+    padding: 10,
   },
-  emptyManualTitle: {
-    ...LiquidGlass2026Theme.typography.scale.titleMedium,
+  slotLabel: {
+    ...LiquidGlass2026Theme.typography.scale.labelSmall,
+    color: LiquidGlass2026Theme.colors.text.secondary,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  slotName: {
+    ...LiquidGlass2026Theme.typography.scale.bodyMedium,
     color: LiquidGlass2026Theme.colors.text.primary,
-    marginTop: 12,
+    fontWeight: '600',
+    marginTop: 2,
   },
-  emptyManualSubtitle: {
+  tipCard: {
+    borderRadius: LiquidGlass2026Theme.radius.md,
+    overflow: 'hidden',
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
+  },
+  tipCardText: {
     ...LiquidGlass2026Theme.typography.scale.bodyMedium,
     color: LiquidGlass2026Theme.colors.text.secondary,
-    marginTop: 8,
-    textAlign: 'center',
+    flex: 1,
   },
-  emptyManualCta: {
-    marginTop: 16,
-    backgroundColor: LiquidGlass2026Theme.colors.accent.primary,
+  actionRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  primaryAction: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
     borderRadius: LiquidGlass2026Theme.radius.pill,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
+    overflow: 'hidden',
   },
-  emptyManualCtaText: {
+  primaryActionText: {
+    color: '#FFFFFF',
     ...LiquidGlass2026Theme.typography.scale.labelLarge,
-    color: LiquidGlass2026Theme.colors.text.onDark,
+    fontWeight: '700',
+  },
+  secondaryAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: LiquidGlass2026Theme.radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.5)',
+    ...SpatialElevation.getShadow(SpatialElevation.levels.surface),
+  },
+  secondaryActionText: {
+    color: LiquidGlass2026Theme.colors.text.primary,
+    ...LiquidGlass2026Theme.typography.scale.labelLarge,
     fontWeight: '600',
+  },
+
+  // ── Calendar Modal Styles ──────────────────────────────────────
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalCard: {
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 24,
+    paddingTop: 28,
+    paddingBottom: 36,
+    marginHorizontal: 0,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.5)',
+    ...SpatialElevation.getShadow(SpatialElevation.levels.floating),
+  },
+  modalTitle: {
+    ...LiquidGlass2026Theme.typography.scale.titleLarge,
+    color: LiquidGlass2026Theme.colors.text.primary,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  modalSubtitle: {
+    ...LiquidGlass2026Theme.typography.scale.bodyMedium,
+    color: LiquidGlass2026Theme.colors.text.secondary,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  datePickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255,255,255,0.6)',
+    borderRadius: LiquidGlass2026Theme.radius.md,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  datePickerValue: {
+    ...LiquidGlass2026Theme.typography.scale.bodyLarge,
+    color: LiquidGlass2026Theme.colors.text.primary,
+    fontWeight: '600',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalCancel: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: LiquidGlass2026Theme.radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.6)',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  modalCancelText: {
+    ...LiquidGlass2026Theme.typography.scale.labelLarge,
+    color: LiquidGlass2026Theme.colors.text.primary,
+    fontWeight: '600',
+  },
+  modalConfirm: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: LiquidGlass2026Theme.radius.pill,
+    overflow: 'hidden',
+    alignItems: 'center',
+  },
+  modalConfirmText: {
+    color: '#FFFFFF',
+    ...LiquidGlass2026Theme.typography.scale.labelLarge,
+    fontWeight: '700',
   },
 });
 

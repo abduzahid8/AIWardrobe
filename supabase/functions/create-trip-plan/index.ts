@@ -33,6 +33,25 @@ serve(async (req) => {
             throw new Error("User not authenticated")
         }
 
+        // Check subscription tier - trip planner is premium-only
+        const { data: profile } = await supabaseClient
+            .from('profiles')
+            .select('subscription_tier, subscription_expires_at')
+            .eq('id', user.id)
+            .single();
+
+        const tier = profile?.subscription_tier || 'free';
+        const isExpired = profile?.subscription_expires_at 
+            ? new Date(profile.subscription_expires_at) <= new Date() 
+            : true;
+
+        if ((tier === 'free' || isExpired) && tier !== 'free') {
+            return new Response(
+                JSON.stringify({ error: 'Premium required', message: 'Trip planner requires an active subscription' }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
+            );
+        }
+
         console.log(`Creating trip plan for user ${user.id} to ${destination}`);
 
         // 1. Fetch weather forecast (or dummy)

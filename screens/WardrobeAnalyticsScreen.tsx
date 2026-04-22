@@ -29,8 +29,11 @@ import Animated, {
     FadeInDown,
     FadeInRight,
 } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 import useWardrobeStore from '../store/wardrobeStore';
+import { useSubscriptionGate } from '../src/hooks/useSubscriptionGate';
+import FeatureLockOverlay from '../components/paywall/FeatureLockOverlay';
 import { scoreDiversity, getColorDistribution, getCategoryBreakdown } from '../src/services/diversityEngine';
 import type { ColorDistEntry, CategoryBreakdownEntry } from '../src/services/diversityEngine';
 
@@ -123,6 +126,9 @@ const ColorSwatch = ({ color, name, count, total }: {
 // ============================================
 
 export default function WardrobeAnalyticsScreen({ navigation }: any) {
+    const { canAccess } = useSubscriptionGate();
+    const hasAccess = canAccess('analytics');
+
     const items = useWardrobeStore((s) => s.items);
     const wearLogs = useWardrobeStore((s) => s.wearLogs);
 
@@ -155,6 +161,26 @@ export default function WardrobeAnalyticsScreen({ navigation }: any) {
         return { diversity, colorDist, categoryBreakdown, mostWorn, totalWears, avgWears };
     }, [items, wearLogs]);
 
+    // Analytics is gated for Free users. We render a tease overlay instead of
+    // navigating away — seeing "locked, but your data is waiting" drives
+    // meaningfully higher upgrade rates than a silent redirect.
+    if (!hasAccess) {
+        return (
+            <FeatureLockOverlay
+                requiredTier="Pro"
+                featureName="Wardrobe Insights"
+                tagline="See which pieces you actually wear and what's just sitting in your closet."
+                icon="bar-chart"
+                bullets={[
+                    'Your real closet utilization score',
+                    'Most-worn items and hidden gems',
+                    'Color palette and category breakdown',
+                    'Unworn items nudge so nothing goes to waste',
+                ]}
+            />
+        );
+    }
+
     const CATEGORY_COLORS: Record<string, string> = {
         top: '#60A5FA',
         bottom: '#A78BFA',
@@ -165,6 +191,13 @@ export default function WardrobeAnalyticsScreen({ navigation }: any) {
 
     return (
         <SafeAreaView style={styles.container}>
+            <LinearGradient
+                colors={['#F6FAFF', '#EEF4FF', '#FFFFFF']}
+                style={StyleSheet.absoluteFill}
+                pointerEvents="none"
+            />
+            <View pointerEvents="none" style={styles.backgroundOrbTop} />
+            <View pointerEvents="none" style={styles.backgroundOrbBottom} />
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -338,6 +371,24 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: colors.background.primary,
     },
+    backgroundOrbTop: {
+        position: 'absolute',
+        top: -100,
+        right: -80,
+        width: 280,
+        height: 280,
+        borderRadius: 140,
+        backgroundColor: 'rgba(188, 210, 245, 0.42)',
+    },
+    backgroundOrbBottom: {
+        position: 'absolute',
+        left: -120,
+        bottom: 140,
+        width: 300,
+        height: 300,
+        borderRadius: 150,
+        backgroundColor: 'rgba(216, 229, 252, 0.34)',
+    },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -350,6 +401,10 @@ const styles = StyleSheet.create({
         height: 32,
         alignItems: 'center',
         justifyContent: 'center',
+        borderRadius: 16,
+        backgroundColor: 'rgba(255,255,255,0.84)',
+        borderWidth: 1,
+        borderColor: 'rgba(24,58,103,0.08)',
     },
     headerTitle: {
         ...typography.scale.titleLarge,
@@ -368,13 +423,18 @@ const styles = StyleSheet.create({
         gap: spacing.lg,
     },
     heroCard: {
-        backgroundColor: colors.glass.frosted,
-        borderRadius: radius.xl,
+        backgroundColor: 'rgba(255,255,255,0.9)',
+        borderRadius: 28,
         padding: spacing.lg,
         borderWidth: 1,
-        borderColor: colors.border.glass,
+        borderColor: 'rgba(24,58,103,0.08)',
         alignItems: 'center',
         justifyContent: 'center',
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.06,
+        shadowRadius: 16,
+        elevation: 4,
     },
     heroStatsColumn: {
         flex: 1,
@@ -382,12 +442,12 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     heroStat: {
-        backgroundColor: colors.glass.frosted,
-        borderRadius: radius.lg,
+        backgroundColor: 'rgba(255,255,255,0.9)',
+        borderRadius: 22,
         paddingVertical: spacing.sm,
         paddingHorizontal: spacing.md,
         borderWidth: 1,
-        borderColor: colors.border.glass,
+        borderColor: 'rgba(24,58,103,0.08)',
     },
     heroStatValue: {
         ...typography.scale.titleMedium,
@@ -415,11 +475,16 @@ const styles = StyleSheet.create({
     card: {
         marginHorizontal: spacing.lg,
         marginBottom: spacing.lg,
-        backgroundColor: colors.glass.frosted,
-        borderRadius: radius.xl,
+        backgroundColor: 'rgba(255,255,255,0.9)',
+        borderRadius: 28,
         padding: spacing.lg,
         borderWidth: 1,
-        borderColor: colors.border.glass,
+        borderColor: 'rgba(24,58,103,0.08)',
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.06,
+        shadowRadius: 16,
+        elevation: 4,
     },
     cardHeader: {
         flexDirection: 'row',

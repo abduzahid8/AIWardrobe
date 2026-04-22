@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 beforeEach(() => {
-  jest.resetAllMocks();
+  jest.clearAllMocks();
   (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
   (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
   (AsyncStorage.removeItem as jest.Mock).mockResolvedValue(undefined);
@@ -9,21 +9,26 @@ beforeEach(() => {
 
 const getStore = () => {
   const store = require('../../store/subscriptionStore').default;
-  store.setState({ tier: 'free', hasActiveSubscription: false, isPremium: false, isVIP: false, expiresAt: null });
+  store.setState({
+    tier: 'free',
+    effectiveTier: 'free',
+    hasActiveSubscription: false,
+    isPremium: false,
+    expiryDate: null,
+  });
   return store;
 };
 
-describe('subscriptionStore', () => {
+describe('subscriptionStore (Free / Pro matrix)', () => {
   it('initializes with free tier when AsyncStorage is empty', async () => {
     const useSubscriptionStore = getStore();
     await useSubscriptionStore.getState().initializeSubscription();
     expect(useSubscriptionStore.getState().tier).toBe('free');
     expect(useSubscriptionStore.getState().hasActiveSubscription).toBe(false);
     expect(useSubscriptionStore.getState().isPremium).toBe(false);
-    expect(useSubscriptionStore.getState().isVIP).toBe(false);
   });
 
-  it('loads active premium subscription from AsyncStorage', async () => {
+  it('loads active premium (Pro) subscription from AsyncStorage', async () => {
     const futureDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     (AsyncStorage.getItem as jest.Mock).mockImplementation((key: string) => {
       if (key === 'subscription_tier') return Promise.resolve('premium');
@@ -52,10 +57,9 @@ describe('subscriptionStore', () => {
 
   it('setSubscription persists tier and expiry to AsyncStorage', async () => {
     const useSubscriptionStore = getStore();
-    await useSubscriptionStore.getState().setSubscription('vip');
-    expect(AsyncStorage.setItem).toHaveBeenCalledWith('subscription_tier', 'vip');
-    expect(useSubscriptionStore.getState().tier).toBe('vip');
-    expect(useSubscriptionStore.getState().isVIP).toBe(true);
+    await useSubscriptionStore.getState().setSubscription('premium');
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith('subscription_tier', 'premium');
+    expect(useSubscriptionStore.getState().tier).toBe('premium');
     expect(useSubscriptionStore.getState().isPremium).toBe(true);
   });
 
@@ -69,25 +73,54 @@ describe('subscriptionStore', () => {
     expect(AsyncStorage.removeItem).toHaveBeenCalledWith('subscription_expiry');
   });
 
-  it('checkFeatureAccess returns false for analytics on free tier', () => {
-    const useSubscriptionStore = getStore();
-    expect(useSubscriptionStore.getState().checkFeatureAccess('analytics')).toBe(false);
+  describe('feature gates', () => {
+    it('free tier: analytics is locked', () => {
+      const useSubscriptionStore = getStore();
+      expect(useSubscriptionStore.getState().checkFeatureAccess('analytics')).toBe(false);
+    });
+
+    it('free tier: trip planner is locked', () => {
+      const useSubscriptionStore = getStore();
+      expect(useSubscriptionStore.getState().checkFeatureAccess('tripPlanner')).toBe(false);
+    });
+
+    it('free tier: virtual try-on is locked', () => {
+      const useSubscriptionStore = getStore();
+      expect(useSubscriptionStore.getState().checkFeatureAccess('tryOns')).toBe(false);
+    });
+
+    it('free tier: AI outfits are available (daily limited)', () => {
+      const useSubscriptionStore = getStore();
+      expect(useSubscriptionStore.getState().checkFeatureAccess('aiOutfits')).toBe(true);
+    });
+
+    it('Pro (premium): all features are unlocked', async () => {
+      const useSubscriptionStore = getStore();
+      await useSubscriptionStore.getState().setSubscription('premium');
+      expect(useSubscriptionStore.getState().checkFeatureAccess('analytics')).toBe(true);
+      expect(useSubscriptionStore.getState().checkFeatureAccess('tripPlanner')).toBe(true);
+      expect(useSubscriptionStore.getState().checkFeatureAccess('tryOns')).toBe(true);
+      expect(useSubscriptionStore.getState().checkFeatureAccess('earlyAccess')).toBe(true);
+      expect(useSubscriptionStore.getState().checkFeatureAccess('prioritySupport')).toBe(true);
+    });
   });
 
-  it('checkFeatureAccess returns true for analytics on premium tier', async () => {
-    const useSubscriptionStore = getStore();
-    await useSubscriptionStore.getState().setSubscription('premium');
-    expect(useSubscriptionStore.getState().checkFeatureAccess('analytics')).toBe(true);
-  });
+  describe('getTriesRemaining (lifetime shim — daily tracking lives in dailyUsageStore)', () => {
+    it('free tier AI outfits: 10 - used', () => {
+      const useSubscriptionStore = getStore();
+      expect(useSubscriptionStore.getState().getTriesRemaining('aiOutfits', 3)).toBe(7);
+    });
 
-  it('getTriesRemaining returns correct count for free tier', () => {
-    const useSubscriptionStore = getStore();
-    expect(useSubscriptionStore.getState().getTriesRemaining(2)).toBe(3);
-  });
+    it('free tier wardrobe items: 20 - used', () => {
+      const useSubscriptionStore = getStore();
+      expect(useSubscriptionStore.getState().getTriesRemaining('wardrobeItems', 15)).toBe(5);
+    });
 
-  it('getTriesRemaining returns -1 (unlimited) for premium tier', async () => {
-    const useSubscriptionStore = getStore();
-    await useSubscriptionStore.getState().setSubscription('premium');
-    expect(useSubscriptionStore.getState().getTriesRemaining(100)).toBe(-1);
+    it('Pro tier: unlimited (-1) everywhere', async () => {
+      const useSubscriptionStore = getStore();
+      await useSubscriptionStore.getState().setSubscription('premium');
+      expect(useSubscriptionStore.getState().getTriesRemaining('aiOutfits', 500)).toBe(-1);
+      expect(useSubscriptionStore.getState().getTriesRemaining('tryOns', 500)).toBe(-1);
+    });
   });
 });

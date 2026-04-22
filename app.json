@@ -1,8 +1,12 @@
 {
   "expo": {
-    "name": "wardrobe-app",
-    "slug": "wardrobe-app",
+    "name": "AIWardrobe",
+    "slug": "aiwardrobe",
     "version": "1.0.0",
+    "assetBundlePatterns": [
+      "assets/**",
+      "assets/models/*.glb"
+    ],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -19,9 +23,12 @@
       "minimumOsVersion": "16.0",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSCameraUsageDescription": "AIWardrobe needs camera access to scan your clothing items and create outfit photos.",
-        "NSPhotoLibraryUsageDescription": "AIWardrobe needs photo library access to save and share your outfits.",
-        "NSLocationWhenInUseUsageDescription": "AIWardrobe uses your location for weather-based outfit recommendations."
+        "NSCameraUsageDescription": "AIWardrobe uses the camera to photograph clothing items you choose to add to your wardrobe and to capture outfit photos.",
+        "NSPhotoLibraryUsageDescription": "AIWardrobe accesses the photo library only to import clothing images you select and to save or share outfit photos you create.",
+        "NSPhotoLibraryAddUsageDescription": "AIWardrobe saves outfit photos you create to your photo library when you choose to share or export them.",
+        "NSLocationWhenInUseUsageDescription": "Your current location is used once per session to fetch local weather so AIWardrobe can suggest weather-appropriate outfits. Location is not stored or shared.",
+        "NSUserTrackingUsageDescription": "AIWardrobe does not track you across other apps. This permission is required only if a future update introduces ad personalization.",
+        "NSMicrophoneUsageDescription": "AIWardrobe uses the microphone only while recording a wardrobe video you choose to capture."
       }
     },
     "android": {
@@ -31,6 +38,13 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.aiwardrobe",
+      "permissions": [
+        "CAMERA",
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ],
       "intentFilters": [
         {
           "action": "VIEW",
@@ -58,11 +72,12 @@
       "expo-asset",
       "expo-font",
       "expo-secure-store",
-      "expo-video"
+      "expo-video",
+      "expo-apple-authentication"
     ],
     "extra": {
       "eas": {
-        "projectId": "d6144b97-f2bf-405d-82df-533a80b0b16c"
+        "projectId": "7a8932b2-cbe7-4536-bae0-e8d6b36d6dea"
       }
     }
   }

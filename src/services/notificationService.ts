@@ -7,6 +7,9 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('Notifications');
 
 const NOTIFICATION_STORAGE_KEY = 'notificationSettings';
 
@@ -126,7 +129,7 @@ class NotificationService {
                 await this.scheduleRecurringNotifications();
             }
 
-            console.log('📱 Notification service initialized');
+            logger.info('📱 Notification service initialized');
         } catch (error) {
             console.error('Failed to initialize notifications:', error);
         }
@@ -134,7 +137,7 @@ class NotificationService {
 
     async requestPermissions(): Promise<boolean> {
         if (!Device.isDevice) {
-            console.log('Notifications only work on physical devices');
+            logger.warn('Notifications only work on physical devices');
             return false;
         }
 
@@ -147,7 +150,7 @@ class NotificationService {
         }
 
         if (finalStatus !== 'granted') {
-            console.log('Notification permission denied');
+            logger.warn('Notification permission denied');
             return false;
         }
 
@@ -157,7 +160,7 @@ class NotificationService {
                 projectId: process.env.EXPO_PUBLIC_PROJECT_ID,
             });
             this.expoPushToken = token.data;
-            console.log('📱 Push token:', this.expoPushToken);
+            logger.info('📱 Push token', this.expoPushToken);
         } catch (error) {
             console.error('Failed to get push token:', error);
         }
@@ -247,7 +250,7 @@ class NotificationService {
             },
         });
 
-        console.log(`📱 Daily outfit notification scheduled for ${hour}:${minute.toString().padStart(2, '0')}`);
+        logger.info(`📱 Daily outfit notification scheduled for ${hour}:${minute.toString().padStart(2, '0')}`);
     }
 
     /**
@@ -271,7 +274,7 @@ class NotificationService {
             },
         });
 
-        console.log('📱 Evening wear-log notification scheduled for 20:00');
+        logger.info('📱 Evening wear-log notification scheduled for 20:00');
     }
 
     /**
@@ -296,7 +299,7 @@ class NotificationService {
             },
         });
 
-        console.log('📱 Weekly insights notification scheduled for Sunday 10:00');
+        logger.info('📱 Weekly insights notification scheduled for Sunday 10:00');
     }
 
     /**
@@ -328,7 +331,7 @@ class NotificationService {
             },
         });
 
-        console.log(`📱 Event reminder scheduled for ${event.title}`);
+        logger.info(`📱 Event reminder scheduled for ${event.title}`);
     }
 
     /**
@@ -464,19 +467,19 @@ export const addNotificationListeners = (
     onNotificationPressed?: (response: Notifications.NotificationResponse) => void
 ) => {
     const receivedListener = Notifications.addNotificationReceivedListener((notification: Notifications.Notification) => {
-        console.log('📩 Notification received:', notification);
+        logger.debug('📩 Notification received', notification);
         onNotificationReceived?.(notification);
     });
 
     const responseListener = Notifications.addNotificationResponseReceivedListener((response: Notifications.NotificationResponse) => {
-        console.log('📱 Notification pressed:', response);
+        logger.debug('📱 Notification pressed', response);
         onNotificationPressed?.(response);
 
         // Handle navigation based on notification data
         const data = response.notification.request.content.data;
         if (data?.screen) {
             // Navigation handled by RootNavigator's notification listener
-            console.log(`[Notifications] Navigate to: ${data.screen}`);
+            logger.debug(`Navigate to: ${data.screen}`);
         }
     });
 

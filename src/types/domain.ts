@@ -9,8 +9,9 @@
 // CLOTHING ITEM
 // ============================================
 
-/** The 5 macro categories — keeps taxonomy simple and consistent */
-export type ClothingCategory = 'top' | 'bottom' | 'shoes' | 'outerwear' | 'accessory';
+/** Macro categories — keeps taxonomy simple and consistent.
+ *  Must stay in sync with the CHECK constraint in supabase/schema.sql */
+export type ClothingCategory = 'top' | 'bottom' | 'dress' | 'shoes' | 'outerwear' | 'accessory' | 'other';
 
 /** Seasons for clothing items */
 export type Season = 'spring' | 'summer' | 'fall' | 'winter';
@@ -118,7 +119,7 @@ export interface WearLog {
 // USER PROFILE
 // ============================================
 
-export type SubscriptionTier = 'free' | 'premium' | 'vip';
+export type SubscriptionTier = 'free' | 'premium';
 
 export interface UserProfile {
     id: string;

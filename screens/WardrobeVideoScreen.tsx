@@ -21,7 +21,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useRoute, RouteProp } from '@react-navigation/native';
+import { useAppNavigation } from '../hooks/useAppNavigation';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import Animated, {
@@ -46,6 +47,9 @@ import useAuthStore from '../store/auth';
 import useWardrobeStore from '../store/wardrobeStore';
 import { useVideoAnalysis } from '../src/features/wardrobe/useVideoAnalysis';
 import { DetectedItem } from '../src/features/wardrobe/types';
+import { createLogger } from '../src/utils/logger';
+
+const logger = createLogger('WardrobeVideo');
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -154,7 +158,7 @@ const GlassStep = ({ icon, label, index }: { icon: string; label: string; index:
 
 // ─── Main Screen Component ───
 const WardrobeVideoScreen = () => {
-    const navigation = useNavigation();
+    const navigation = useAppNavigation();
     const route = useRoute<RouteProp<RootStackParamList, 'WardrobeVideo'>>();
 
     const { analyzing, progress, results, analyzeVideo, analyzeImage, reset } = useVideoAnalysis();
@@ -182,7 +186,7 @@ const WardrobeVideoScreen = () => {
         
         try {
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            console.log('Media library permission status:', status);
+            logger.debug('Media library permission status', status);
             
             // Handle Expo Go limitations
             if (status === 'denied') {
@@ -191,14 +195,14 @@ const WardrobeVideoScreen = () => {
                     'Please grant photo library permissions. Note: Expo Go has limited media access. For full functionality, use a development build.',
                     [
                         { text: 'Cancel', style: 'cancel' },
-                        { text: 'Try Anyway', onPress: () => console.log('User wants to try anyway') }
+                        { text: 'Try Anyway', onPress: () => logger.debug('User wants to try anyway') }
                     ]
                 );
                 return false;
             }
             
             if (status !== 'granted') {
-                console.log('Permission not granted, status:', status);
+                logger.warn('Permission not granted', status);
                 return false;
             }
             
@@ -211,7 +215,7 @@ const WardrobeVideoScreen = () => {
     };
 
     const pickVideoWeb = () => {
-        console.log('Web file picker activated');
+        logger.debug('Web file picker activated');
         
         // Create a file input element
         const input = document.createElement('input');
@@ -222,15 +226,15 @@ const WardrobeVideoScreen = () => {
         input.onchange = async (event) => {
             const file = (event.target as HTMLInputElement).files?.[0];
             if (file) {
-                console.log('Web file selected:', file);
+                logger.debug('Web file selected', file);
                 
                 try {
                     // Convert file to base64
                     const base64 = await fileToBase64(file);
-                    console.log('File converted to base64, length:', base64.length);
+                    logger.debug('File converted to base64', { length: base64.length });
                     
                     // Process as image
-                    console.log('Web: Processing image file');
+                    logger.debug('Web: Processing image file');
                     analyzeImage(base64);
                 } catch (error) {
                     console.error('Web file processing error:', error);
@@ -258,20 +262,20 @@ const WardrobeVideoScreen = () => {
     };
 
     const pickVideo = async () => {
-        console.log('pickVideo called, platform:', Platform.OS);
+        logger.debug('pickVideo called', { platform: Platform.OS });
         const hasPermission = await requestPermissions();
-        console.log('Permission granted:', hasPermission);
+        logger.debug('Permission granted', hasPermission);
         if (!hasPermission) return;
         
         if (Platform.OS === 'web') {
             // Web: Use HTML file input
-            console.log('Web: Using web file picker');
+            logger.debug('Web: Using web file picker');
             pickVideoWeb();
             return;
         }
         
         try {
-            console.log('Native: Attempting to launch image library...');
+            logger.debug('Native: Attempting to launch image library...');
             
             // Try different approaches for Expo Go vs development builds
             let result;
@@ -292,11 +296,11 @@ const WardrobeVideoScreen = () => {
                 });
             }
             
-            console.log('Native: ImagePicker result received:', JSON.stringify(result, null, 2));
+            logger.debug('Native: ImagePicker result received', result);
             
             if (!result.canceled && result.assets && result.assets.length > 0) {
                 const asset = result.assets[0];
-                console.log('Native: Selected asset details:', {
+                logger.debug('Native: Selected asset details', {
                     uri: asset.uri,
                     fileName: asset.fileName,
                     mimeType: asset.mimeType,
@@ -309,15 +313,15 @@ const WardrobeVideoScreen = () => {
                     const isVideo = asset.mimeType?.includes('video') || asset.duration || asset.type === 'video';
                     
                     if (isVideo) {
-                        console.log('Native: Detected video file, analyzing as video');
+                        logger.debug('Native: Detected video file, analyzing as video');
                         analyzeVideo(asset.uri);
                     } else {
-                        console.log('Native: Detected image file, analyzing as image');
+                        logger.debug('Native: Detected image file, analyzing as image');
                         analyzeImage(asset.uri);
                     }
                 }
             } else {
-                console.log('Native: User cancelled selection or no assets found');
+                logger.debug('Native: User cancelled selection or no assets found');
                 
                 // Provide helpful message for Expo Go users
                 if (__DEV__) {
@@ -354,7 +358,7 @@ const WardrobeVideoScreen = () => {
         const imgUrl = firstItem.frameImage || firstItem.cutoutImage || '';
         
         // Navigate to detail editor with detected data
-        (navigation as any).navigate('ClothingDetailEditor', {
+        navigation.navigate('ClothingDetailEditor', {
             imageUri: imgUrl,
             detectedType: mapToClosetCategory(firstItem.itemType),
             detectedColor: firstItem.color?.toLowerCase() || 'beige',
@@ -382,7 +386,7 @@ const WardrobeVideoScreen = () => {
 
             for (const item of results.detectedItems) {
                 const imgUrl = item.frameImage || item.cutoutImage || '';
-                console.log('[Save] Adding Item to Queue:', item.itemType);
+                logger.info('Adding item to queue', item.itemType);
 
                 await addItem({
                     userId: user.id,
@@ -408,7 +412,7 @@ const WardrobeVideoScreen = () => {
                     {
                         text: 'View Wardrobe', onPress: () => {
                             reset();
-                            (navigation as any).navigate('Main', { screen: 'Closet' });
+                            navigation.navigate('Main', { screen: 'Closet' });
                         }
                     },
                     { text: 'OK', onPress: () => reset() },

@@ -15,10 +15,12 @@ import {
     Image,
     StatusBar,
     TextInput,
+    ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
+import { useAppNavigation } from '../hooks/useAppNavigation';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -28,24 +30,22 @@ import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 import useWardrobeStore from '../store/wardrobeStore';
 import { generateVarietyOutfits } from '../src/services/suggestionEngine';
 import type { ScoredOutfit } from '../src/services/suggestionEngine';
-import { NavigationMenu } from '../src/components/NavigationMenu';
-import { INSPO_SHOP_ITEMS } from '../data/inspoShopItems';
+import type { ShopCatalogItem } from '../features/try-on/types';
+import { INSPO_MENS_SHOP_ITEMS, CLASSIC_MENS_ITEMS } from '../data/inspoMensShopItems';
+import { useShopCatalog } from '../hooks/useShopCatalog';
+import { useFeaturedCapsules, type FeaturedCapsule } from '../hooks/useFeaturedCapsules';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const { colors, spacing, typography, radius } = LiquidGlass2026Theme;
 
 // ── Data ──────────────────────────────────────
-const FEATURED_CAPSULES = [
-    { id: '1', title: 'Winter Dressing Guide', image: require('../pictures/image copy.png') },
-    { id: '2', title: 'The Cozy Edit', image: require('../pictures/image.png') },
-    { id: '3', title: 'Capsule Wardrobe Picks', image: 'https://images.unsplash.com/photo-1555069519-127aadedf1ee?w=400&q=80' },
-];
 
-const SHOPPING_ITEMS = INSPO_SHOP_ITEMS;
+// Featured Capsules now come from Supabase (`featured_capsules` table) via
+// `useFeaturedCapsules`. Rows are admin-editable from the Supabase dashboard.
 
 const GUIDE_ITEMS = [
-    { id: '1', title: 'Lewis Hamilton', subtitle: 'Street Style Icon', image: require('../pictures/image.png') },
-    { id: '2', title: 'A$AP Rocky', subtitle: 'Experimental Luxury', image: require('../pictures/image copy.png') },
+    { id: '1', title: 'Lewis Hamilton', subtitle: 'Street Style Icon', image: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=600&q=80' },
+    { id: '2', title: 'A$AP Rocky', subtitle: 'Experimental Luxury', image: 'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=600&q=80' },
 ];
 
 const CAPSULE_CARD_WIDTH = 180;
@@ -54,7 +54,7 @@ const PRODUCT_CARD_WIDTH = (SCREEN_WIDTH - spacing.screenPadding * 2 - spacing.s
 
 // ── Sub-Components ──────────────────────────────────────
 
-const FeaturedCapsuleCard = ({ item, index }: { item: (typeof FEATURED_CAPSULES)[0]; index: number }) => (
+const FeaturedCapsuleCard = ({ item, index }: { item: FeaturedCapsule; index: number }) => (
     <Animated.View entering={FadeInDown.delay(100 + index * 80).duration(400)}>
         <TouchableOpacity
             style={styles.capsuleCard}
@@ -64,7 +64,7 @@ const FeaturedCapsuleCard = ({ item, index }: { item: (typeof FEATURED_CAPSULES)
             accessibilityRole="button"
         >
             <Image
-                source={typeof item.image === 'string' ? { uri: item.image } : item.image}
+                source={{ uri: item.imageUrl }}
                 style={styles.capsuleImage}
                 resizeMode="cover"
             />
@@ -84,18 +84,21 @@ const ProductCard = ({
     onSave,
     index,
 }: {
-    item: (typeof SHOPPING_ITEMS)[0];
+    item: ShopCatalogItem;
     isSaved: boolean;
     onSave: () => void;
     index: number;
 }) => (
-    <Animated.View entering={FadeInDown.delay(150 + index * 60).duration(400)}>
+    // Cap the stagger so later pages (index 100+) don't wait many seconds
+    // before their entering animation starts — otherwise pressing "Load more"
+    // appears to do nothing because new cards are invisible until the delay elapses.
+    <Animated.View entering={FadeInDown.delay(Math.min(150 + (index % 12) * 40, 600)).duration(320)}>
         <View style={styles.productCard}>
             <View style={styles.productImageBox}>
                 <Image
-                    source={typeof item.image === 'string' ? { uri: item.image } : item.image}
+                    source={typeof item.imageUrl === 'string' ? { uri: item.imageUrl } : item.imageUrl}
                     style={styles.productImage}
-                    resizeMode="cover"
+                    resizeMode="contain"
                 />
                 <TouchableOpacity
                     style={styles.saveButton}
@@ -169,14 +172,27 @@ const VariationCard = ({ outfit, items, onPress }: VariationCardProps) => {
 type SegmentType = 'guide' | 'shop';
 
 const InspoScreen = () => {
-    const navigation = useNavigation();
+    const navigation = useAppNavigation();
     const items    = useWardrobeStore((s) => s.items);
     const wearLogs = useWardrobeStore((s) => s.wearLogs);
+    const {
+        items: syncedShopItems,
+        loading: shopCatalogLoading,
+        loadingMore: shopCatalogLoadingMore,
+        error: shopCatalogError,
+        hasMore: shopCatalogHasMore,
+        loadMore: loadMoreShopCatalog,
+        refresh: refreshShopCatalog,
+    } = useShopCatalog();
 
-    const [savedInspo, setSavedInspo] = useState<typeof SHOPPING_ITEMS>([]);
+    const {
+        items: featuredCapsules,
+        loading: featuredCapsulesLoading,
+    } = useFeaturedCapsules();
+
+    const [savedInspo, setSavedInspo] = useState<ShopCatalogItem[]>([]);
     const [segment, setSegment] = useState<SegmentType>('guide');
     const [searchQuery, setSearchQuery] = useState('');
-    const [showNavMenu, setShowNavMenu] = useState(false);
 
     const varietyOutfits = useMemo<ScoredOutfit[]>(() => {
         if (items.length < 3) return [];
@@ -197,7 +213,7 @@ const InspoScreen = () => {
         }, [])
     );
 
-    const saveInspo = useCallback(async (item: (typeof SHOPPING_ITEMS)[0]) => {
+    const saveInspo = useCallback(async (item: ShopCatalogItem) => {
         setSavedInspo((prev) => {
             const has = prev.some((s) => s.id === item.id);
             const next = has ? prev.filter((s) => s.id !== item.id) : [...prev, item];
@@ -206,8 +222,36 @@ const InspoScreen = () => {
         });
     }, []);
 
+    const showingFallbackCatalog = syncedShopItems.length === 0;
+    const isInitialShopLoad = !showingFallbackCatalog && shopCatalogLoading && syncedShopItems.length === 0;
+
+    const shopItems = useMemo(() => {
+        const baseItems = showingFallbackCatalog ? INSPO_MENS_SHOP_ITEMS : syncedShopItems;
+
+        // Always append curated men's classics so they surface alongside the
+        // live Zara feed. Dedupe by id in case fallback already includes them.
+        const seenIds = new Set(baseItems.map((item) => item.id));
+        const classicsToAppend = CLASSIC_MENS_ITEMS.filter((item) => !seenIds.has(item.id));
+        const sourceItems = [...baseItems, ...classicsToAppend];
+
+        const query = searchQuery.trim().toLowerCase();
+        if (!query) return sourceItems;
+
+        return sourceItems.filter((item) => {
+            const haystack = `${item.brand} ${item.name} ${item.description ?? ''}`.toLowerCase();
+            return haystack.includes(query);
+        });
+    }, [searchQuery, showingFallbackCatalog, syncedShopItems]);
+
     return (
         <View style={styles.container}>
+            <LinearGradient
+                colors={['#F6FAFF', '#EEF4FF', '#FFFFFF']}
+                style={StyleSheet.absoluteFill}
+                pointerEvents="none"
+            />
+            <View pointerEvents="none" style={styles.backgroundOrbTop} />
+            <View pointerEvents="none" style={styles.backgroundOrbBottom} />
             <StatusBar barStyle="dark-content" backgroundColor={colors.background.primary} />
             <SafeAreaView style={styles.safeArea} edges={['top']}>
                 {/* Header */}
@@ -215,15 +259,6 @@ const InspoScreen = () => {
                     <View style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]} pointerEvents="none">
                         <Text style={styles.headerTitle} accessibilityRole="header">Inspiration</Text>
                     </View>
-                    <TouchableOpacity
-                        style={styles.headerChatButton}
-                        onPress={() => setShowNavMenu(true)}
-                        accessibilityLabel="Open navigation menu"
-                        accessibilityRole="button"
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
-                        <Ionicons name="menu" size={22} color={colors.text.primary} />
-                    </TouchableOpacity>
                 </View>
 
                 {/* Segmented Control */}
@@ -295,7 +330,7 @@ const InspoScreen = () => {
                                                 items={items}
                                                 onPress={() => {
                                                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                                    (navigation as any).navigate('Home');
+                                                    navigation.navigate('Main', { screen: 'Home' });
                                                 }}
                                             />
                                         )}
@@ -313,7 +348,7 @@ const InspoScreen = () => {
                                 <View style={styles.searchContainer}>
                                     <Ionicons name="search" size={20} color={colors.text.tertiary} style={styles.searchIcon} />
                                     <TextInput
-                                        placeholder="Flared jeans in light wash, high-waisted..."
+                                        placeholder="Brown knit polo, tailored trousers, loafers..."
                                         placeholderTextColor={colors.text.tertiary}
                                         value={searchQuery}
                                         onChangeText={setSearchQuery}
@@ -325,41 +360,127 @@ const InspoScreen = () => {
                                 </View>
                             </Animated.View>
 
-                            {/* Featured Capsules */}
-                            <View style={styles.section}>
-                                <Text style={styles.sectionTitle} accessibilityRole="header">Featured Capsules</Text>
-                                <ScrollView
-                                    horizontal
-                                    showsHorizontalScrollIndicator={false}
-                                    contentContainerStyle={styles.capsulesScroll}
+                            {(shopCatalogError || showingFallbackCatalog) && (
+                                <Animated.View entering={FadeInDown.delay(90).duration(300)}>
+                                    <View style={styles.catalogStatusBanner}>
+                                        <Text style={styles.catalogStatusText}>
+                                            {showingFallbackCatalog
+                                                ? 'Live Zara menswear is empty right now. Showing backup men products for now.'
+                                                : 'Live catalog refresh failed. Showing the latest synced results.'}
+                                        </Text>
+                                        <TouchableOpacity onPress={refreshShopCatalog} accessibilityRole="button">
+                                            <Text style={styles.catalogStatusAction}>Retry</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </Animated.View>
+                            )}
+
+                            {/* Personal Stylist Button */}
+                            <Animated.View entering={FadeInDown.delay(120).duration(400)}>
+                                <TouchableOpacity
+                                    style={styles.personalStylistButton}
+                                    onPress={() => {
+                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                        navigation.navigate('AIOutfit', { source: 'shop' });
+                                    }}
+                                    accessibilityLabel="Personal Stylist"
+                                    accessibilityRole="button"
                                 >
-                                    {FEATURED_CAPSULES.map((item, index) => (
-                                        <FeaturedCapsuleCard key={item.id} item={item} index={index} />
-                                    ))}
-                                </ScrollView>
-                            </View>
+                                    <LinearGradient
+                                        colors={['#0A1931', '#1a3a5c']}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 1 }}
+                                        style={styles.personalStylistGradient}
+                                    >
+                                        <Ionicons name="sparkles" size={20} color="#FFF" />
+                                        <Text style={styles.personalStylistText}>Personal Stylist</Text>
+                                        <Ionicons name="arrow-forward" size={18} color="rgba(255,255,255,0.8)" />
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                            </Animated.View>
+
+                            {/* Featured Capsules — sourced from Supabase (`featured_capsules`) */}
+                            {(featuredCapsulesLoading || featuredCapsules.length > 0) && (
+                                <View style={styles.section}>
+                                    <Text style={styles.sectionTitle} accessibilityRole="header">Featured Capsules</Text>
+                                    {featuredCapsulesLoading && featuredCapsules.length === 0 ? (
+                                        <View style={styles.capsulesLoadingRow}>
+                                            <ActivityIndicator size="small" color={colors.text.primary} />
+                                        </View>
+                                    ) : (
+                                        <ScrollView
+                                            horizontal
+                                            showsHorizontalScrollIndicator={false}
+                                            contentContainerStyle={styles.capsulesScroll}
+                                        >
+                                            {featuredCapsules.map((item, index) => (
+                                                <FeaturedCapsuleCard key={item.id} item={item} index={index} />
+                                            ))}
+                                        </ScrollView>
+                                    )}
+                                </View>
+                            )}
 
                             {/* Product Grid */}
                             <View style={styles.section}>
-                                <Text style={styles.sectionTitle} accessibilityRole="header">Spring Transition</Text>
-                                <View style={styles.productsGrid}>
-                                    {SHOPPING_ITEMS.map((item, index) => (
-                                        <View
-                                            key={item.id}
-                                            style={[
-                                                styles.productCardWrap,
-                                                index % 2 === 0 && styles.productCardWrapLeft,
-                                            ]}
-                                        >
-                                            <ProductCard
-                                                item={item}
-                                                isSaved={savedInspo.some((s) => s.id === item.id)}
-                                                onSave={() => saveInspo(item)}
-                                                index={index}
+                                <Text style={styles.sectionTitle} accessibilityRole="header">
+                                    Shop
+                                </Text>
+                                {isInitialShopLoad ? (
+                                    <View style={styles.loadingRow}>
+                                        {[0, 1, 2, 3].map((idx) => (
+                                            <View
+                                                key={`shop-skeleton-${idx}`}
+                                                style={[
+                                                    styles.productCardWrap,
+                                                    idx % 2 === 0 && styles.productCardWrapLeft,
+                                                    styles.skeletonCard,
+                                                ]}
                                             />
+                                        ))}
+                                    </View>
+                                ) : shopItems.length === 0 ? (
+                                    <View style={styles.emptyState}>
+                                        <Text style={styles.emptyStateText}>No menswear matches that search.</Text>
+                                    </View>
+                                ) : (
+                                    <>
+                                        <View style={styles.productsGrid}>
+                                            {shopItems.map((item, index) => (
+                                                <View
+                                                    key={item.id}
+                                                    style={[
+                                                        styles.productCardWrap,
+                                                        index % 2 === 0 && styles.productCardWrapLeft,
+                                                    ]}
+                                                >
+                                                    <ProductCard
+                                                        item={item}
+                                                        isSaved={savedInspo.some((s) => s.id === item.id)}
+                                                        onSave={() => saveInspo(item)}
+                                                        index={index}
+                                                    />
+                                                </View>
+                                            ))}
                                         </View>
-                                    ))}
-                                </View>
+
+                                        {!showingFallbackCatalog && shopCatalogHasMore && (
+                                            <TouchableOpacity
+                                                style={styles.loadMoreButton}
+                                                onPress={loadMoreShopCatalog}
+                                                disabled={shopCatalogLoadingMore}
+                                                accessibilityRole="button"
+                                                accessibilityLabel="Load more shop products"
+                                            >
+                                                {shopCatalogLoadingMore ? (
+                                                    <ActivityIndicator size="small" color={colors.text.primary} />
+                                                ) : (
+                                                    <Text style={styles.loadMoreButtonText}>Load more products</Text>
+                                                )}
+                                            </TouchableOpacity>
+                                        )}
+                                    </>
+                                )}
                             </View>
                         </>
                     )}
@@ -367,9 +488,6 @@ const InspoScreen = () => {
                     <View style={{ height: 120 }} />
                 </ScrollView>
             </SafeAreaView>
-
-            {/* Navigation Menu */}
-            <NavigationMenu visible={showNavMenu} onClose={() => setShowNavMenu(false)} />
         </View>
     );
 };
@@ -381,6 +499,24 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: colors.background.primary,
     },
+    backgroundOrbTop: {
+        position: 'absolute',
+        top: -100,
+        right: -80,
+        width: 280,
+        height: 280,
+        borderRadius: 140,
+        backgroundColor: 'rgba(188, 210, 245, 0.42)',
+    },
+    backgroundOrbBottom: {
+        position: 'absolute',
+        left: -120,
+        bottom: 140,
+        width: 300,
+        height: 300,
+        borderRadius: 150,
+        backgroundColor: 'rgba(216, 229, 252, 0.34)',
+    },
     safeArea: {
         flex: 1,
     },
@@ -391,7 +527,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         paddingHorizontal: spacing.screenPadding,
-        paddingVertical: 12,
+        paddingVertical: 14,
     },
     headerTitle: {
         ...typography.scale.titleLarge,
@@ -408,10 +544,17 @@ const styles = StyleSheet.create({
     },
     segmentBackground: {
         flexDirection: 'row',
-        backgroundColor: colors.background.tertiary,
-        borderRadius: 24,
+        backgroundColor: 'rgba(255,255,255,0.84)',
+        borderRadius: 26,
         padding: 4,
         width: 300,
+        borderWidth: 1,
+        borderColor: 'rgba(24,58,103,0.08)',
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.06,
+        shadowRadius: 16,
+        elevation: 4,
     },
     segmentButton: {
         flex: 1,
@@ -422,10 +565,10 @@ const styles = StyleSheet.create({
     },
     segmentButtonActive: {
         backgroundColor: colors.background.primary,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.08,
-        shadowRadius: 4,
+        shadowRadius: 10,
         elevation: 2,
     },
     segmentText: {
@@ -447,12 +590,19 @@ const styles = StyleSheet.create({
     searchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: colors.background.secondary,
+        backgroundColor: 'rgba(255,255,255,0.88)',
         marginHorizontal: spacing.screenPadding,
         paddingHorizontal: spacing.md,
         paddingVertical: spacing.sm + 2,
         borderRadius: 999,
         marginBottom: spacing.lg,
+        borderWidth: 1,
+        borderColor: 'rgba(24,58,103,0.08)',
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.06,
+        shadowRadius: 16,
+        elevation: 4,
     },
     searchIcon: {
         marginRight: spacing.sm,
@@ -485,10 +635,17 @@ const styles = StyleSheet.create({
     guideCard: {
         width: '100%',
         aspectRatio: 1,
-        borderRadius: radius.xl,
+        borderRadius: 28,
         overflow: 'hidden',
         backgroundColor: colors.background.secondary,
         position: 'relative',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.72)',
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.08,
+        shadowRadius: 18,
+        elevation: 5,
     },
     guideImage: {
         width: '100%',
@@ -519,12 +676,25 @@ const styles = StyleSheet.create({
         paddingHorizontal: spacing.screenPadding,
         gap: spacing.md,
     },
+    capsulesLoadingRow: {
+        height: CAPSULE_CARD_HEIGHT,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: spacing.screenPadding,
+    },
     capsuleCard: {
         width: CAPSULE_CARD_WIDTH,
         height: CAPSULE_CARD_HEIGHT,
-        borderRadius: radius.lg,
+        borderRadius: 24,
         overflow: 'hidden',
         backgroundColor: colors.background.secondary,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.72)',
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.07,
+        shadowRadius: 16,
+        elevation: 4,
     },
     capsuleImage: {
         width: '100%',
@@ -555,6 +725,17 @@ const styles = StyleSheet.create({
         flexWrap: 'wrap',
         paddingHorizontal: spacing.screenPadding,
     },
+    loadingRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        paddingHorizontal: spacing.screenPadding,
+    },
+    skeletonCard: {
+        height: PRODUCT_CARD_WIDTH * (4 / 3) + 40,
+        backgroundColor: colors.background.secondary,
+        borderRadius: radius.lg,
+        marginBottom: spacing.md,
+    },
     productCardWrap: {
         width: PRODUCT_CARD_WIDTH,
         marginBottom: spacing.md,
@@ -568,10 +749,18 @@ const styles = StyleSheet.create({
     productImageBox: {
         width: '100%',
         aspectRatio: 3 / 4,
-        backgroundColor: colors.background.secondary,
-        borderRadius: radius.lg,
+        backgroundColor: 'rgba(255,255,255,0.92)',
+        borderRadius: 22,
         overflow: 'hidden',
         marginBottom: spacing.xs,
+        padding: spacing.sm,
+        borderWidth: 1,
+        borderColor: 'rgba(24,58,103,0.06)',
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.05,
+        shadowRadius: 12,
+        elevation: 3,
     },
     productImage: {
         width: '100%',
@@ -609,6 +798,64 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: colors.text.primary,
     },
+    emptyState: {
+        paddingHorizontal: spacing.screenPadding,
+        marginHorizontal: spacing.screenPadding,
+        paddingVertical: 20,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255,255,255,0.88)',
+        borderWidth: 1,
+        borderColor: 'rgba(24,58,103,0.06)',
+    },
+    emptyStateText: {
+        ...typography.scale.bodyMedium,
+        color: colors.text.tertiary,
+    },
+    catalogStatusBanner: {
+        marginHorizontal: spacing.screenPadding,
+        marginBottom: spacing.lg,
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.sm + 2,
+        borderRadius: 22,
+        backgroundColor: 'rgba(255,255,255,0.88)',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: spacing.md,
+        borderWidth: 1,
+        borderColor: 'rgba(24,58,103,0.08)',
+    },
+    catalogStatusText: {
+        ...typography.scale.bodySmall,
+        color: colors.text.secondary,
+        flex: 1,
+    },
+    catalogStatusAction: {
+        ...typography.scale.labelMedium,
+        color: colors.text.primary,
+        fontWeight: '700',
+    },
+    loadMoreButton: {
+        marginTop: spacing.sm,
+        marginHorizontal: spacing.screenPadding,
+        paddingVertical: spacing.md,
+        borderRadius: 22,
+        backgroundColor: 'rgba(255,255,255,0.9)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(24,58,103,0.08)',
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.06,
+        shadowRadius: 16,
+        elevation: 4,
+    },
+    loadMoreButtonText: {
+        ...typography.scale.bodyMedium,
+        color: colors.text.primary,
+        fontWeight: '600',
+    },
 
     // Variation cards — From Your Closet
     variationsScroll: {
@@ -617,9 +864,16 @@ const styles = StyleSheet.create({
     },
     variationCard: {
         width: 140,
-        backgroundColor: colors.background.secondary,
-        borderRadius: radius.lg,
+        backgroundColor: 'rgba(255,255,255,0.9)',
+        borderRadius: 22,
         overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(24,58,103,0.06)',
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.05,
+        shadowRadius: 12,
+        elevation: 3,
     },
     variationGrid: {
         flexDirection: 'row',
@@ -630,7 +884,7 @@ const styles = StyleSheet.create({
     variationCell: {
         width: 70,
         height: 70,
-        backgroundColor: colors.background.tertiary,
+        backgroundColor: '#F4F7FD',
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -676,6 +930,33 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.08,
         shadowRadius: 6,
         elevation: 4,
+    },
+
+    // Personal Stylist Button
+    personalStylistButton: {
+        marginHorizontal: spacing.screenPadding,
+        marginBottom: spacing.lg,
+        borderRadius: 24,
+        overflow: 'hidden',
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.14,
+        shadowRadius: 18,
+        elevation: 6,
+    },
+    personalStylistGradient: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.md + 6,
+    },
+    personalStylistText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#FFF',
+        flex: 1,
+        marginLeft: spacing.sm,
     },
 });
 

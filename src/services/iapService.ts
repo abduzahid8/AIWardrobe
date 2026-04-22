@@ -14,19 +14,24 @@
  *
  * Products:
  * - com.aiwardrobe.premium.monthly ($9.99/month)
- * - com.aiwardrobe.vip.yearly ($99.99/year)
  */
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import useSubscriptionStore, { SubscriptionTier } from '../../store/subscriptionStore';
 import analyticsService from './analyticsService';
 import crashReporting from './crashReporting';
 import Config from '../config/env';
 
-export type ProductId = 'com.aiwardrobe.premium.monthly' | 'com.aiwardrobe.vip.yearly';
+export type ProductId =
+    | 'com.aiwardrobe.premium.monthly'
+    | 'com.aiwardrobe.premium.yearly';
+
+const TIER_BY_PRODUCT_ID: Record<ProductId, SubscriptionTier> = {
+    'com.aiwardrobe.premium.monthly': 'premium',
+    'com.aiwardrobe.premium.yearly': 'premium',
+};
 
 // RevenueCat lazy import — loaded when API key is configured
 let Purchases: any = null;
-let PACKAGE_TYPE: any = null;
 
 interface PurchaseResult {
     success: boolean;
@@ -57,7 +62,6 @@ class IAPService {
             // Dynamic import to avoid crash when SDK isn't installed
             const RC = require('react-native-purchases');
             Purchases = RC.default || RC.Purchases;
-            PACKAGE_TYPE = RC.PACKAGE_TYPE;
 
             if (Platform.OS === 'ios' || Platform.OS === 'android') {
                 await Purchases.configure({ apiKey });
@@ -85,7 +89,6 @@ class IAPService {
             // Mock products for development
             return [
                 { id: 'com.aiwardrobe.premium.monthly', title: 'Premium Monthly', price: '$9.99' },
-                { id: 'com.aiwardrobe.vip.yearly', title: 'VIP Yearly', price: '$99.99' },
             ];
         }
 
@@ -118,12 +121,10 @@ class IAPService {
             crashReporting.logBreadcrumb(`IAP purchase started: ${productId}`);
 
             if (!this.isRevenueCatAvailable) {
-                // Mock mode — for development/simulator only
+                // Mock mode — for development/simulator only.
+                // IMPORTANT: never sync mock purchases to the server.
                 if (__DEV__) {
-                    const tier: SubscriptionTier = productId.includes('premium') ? 'premium' : 'vip';
-                    const { setSubscription } = useSubscriptionStore.getState();
-                    await setSubscription(tier);
-                    analyticsService.trackSubscriptionPurchased(tier, tier === 'premium' ? 9.99 : 99.99);
+                    analyticsService.trackSubscriptionPurchased('premium', 9.99);
                     return {
                         success: true,
                         productId,
@@ -156,8 +157,8 @@ class IAPService {
             // Sync subscription status from RevenueCat customer info
             await this.syncSubscriptionStatus(customerInfo);
 
-            const tier: SubscriptionTier = productId.includes('premium') ? 'premium' : 'vip';
-            analyticsService.trackSubscriptionPurchased(tier, tier === 'premium' ? 9.99 : 99.99);
+            const tier = this.getTierByProductId(productId);
+            analyticsService.trackSubscriptionPurchased(tier, 9.99);
 
             return {
                 success: true,
@@ -238,14 +239,37 @@ class IAPService {
 
             // Check active entitlements from RevenueCat
             const activeEntitlements = customerInfo.entitlements?.active || {};
+            const entitlementEntries = Object.entries(activeEntitlements) as Array<[string, any]>;
 
-            if (activeEntitlements['vip'] || activeEntitlements['VIP']) {
-                const expiry = activeEntitlements['vip']?.expirationDate ||
-                    activeEntitlements['VIP']?.expirationDate;
-                await setSubscription('vip', expiry);
-            } else if (activeEntitlements['premium'] || activeEntitlements['Premium']) {
-                const expiry = activeEntitlements['premium']?.expirationDate ||
-                    activeEntitlements['Premium']?.expirationDate;
+            const findEntitlement = (aliases: string[]) => {
+                const normalizedAliases = aliases.map((alias) => alias.toLowerCase());
+                return entitlementEntries.find(([entitlementKey]) =>
+                    normalizedAliases.includes(entitlementKey.toLowerCase())
+                )?.[1];
+            };
+
+            // Fallback to active subscriptions by product ID in case
+            // entitlement keys differ across environments.
+            const activeProductIds = new Set<string>(customerInfo.activeSubscriptions || []);
+            const findProductForTier = (tier: SubscriptionTier): string | null => {
+                const productEntries = Object.entries(TIER_BY_PRODUCT_ID) as Array<[ProductId, SubscriptionTier]>;
+                const matched = productEntries.find(([productId, mappedTier]) =>
+                    mappedTier === tier && activeProductIds.has(productId)
+                );
+                return matched?.[0] || null;
+            };
+
+            const getExpiryForProduct = (productId: string | null): string | undefined => {
+                if (!productId) return undefined;
+                const byProduct = customerInfo.allExpirationDatesByProduct || customerInfo.allExpirationDates || {};
+                return byProduct[productId] || undefined;
+            };
+
+            const premiumEntitlement = findEntitlement(['premium', 'pro']);
+            const premiumProductId = findProductForTier('premium');
+
+            if (premiumEntitlement || premiumProductId) {
+                const expiry = premiumEntitlement?.expirationDate || getExpiryForProduct(premiumProductId);
                 await setSubscription('premium', expiry);
             } else {
                 await clearSubscription();
@@ -256,6 +280,10 @@ class IAPService {
                 { source: 'iapService.syncSubscriptionStatus' }
             );
         }
+    }
+
+    private getTierByProductId(productId: ProductId): SubscriptionTier {
+        return TIER_BY_PRODUCT_ID[productId] || 'premium';
     }
 
     /**

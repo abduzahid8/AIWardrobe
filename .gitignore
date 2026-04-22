@@ -1,13 +1,15 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
-# dependencies
+# Dependencies
 node_modules/
 
-# Expo
+# Expo build artifacts — NEVER commit
 .expo/
 dist/
+dist-*/
 web-build/
 expo-env.d.ts
+*.hbc
 
 # Native
 .kotlin/
@@ -21,7 +23,7 @@ expo-env.d.ts
 # Metro
 .metro-health-check*
 
-# debug
+# Debug
 npm-debug.*
 yarn-debug.*
 yarn-error.*
@@ -30,13 +32,13 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
+# Local env files — committed version is .env.example only
 .env
 .env.*
 .env*.local
 !.env.example
 
-# typescript
+# TypeScript
 *.tsbuildinfo
 
 # Python
@@ -51,3 +53,34 @@ alicevision-service/datasets/
 # Training Artifacts
 alicevision-service/training/datasets/
 alicevision-service/training/runs/
+
+# Scratch / stale / non-app directories — NEVER commit
+Github/
+clothing-studio/
+colab_tryon/
+design-agents/
+goal/
+pictures/
+pitch-deck/
+run/
+basic_clothing/
+tmp/
+test/
+tests/
+/dist*/
+
+# One-off test/demo files
+uniqlo_test.html
+appleconnect_settings.png
+
+# Test coverage
+coverage/
+
+# Supabase local
+supabase/.temp/
+
+# IDE / tool folders
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json

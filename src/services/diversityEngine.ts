@@ -130,7 +130,7 @@ export function surpriseMe(
     }
 
     // Pick one from each category using weighted random
-    const categories: ClothingCategory[] = ['top', 'bottom', 'shoes', 'outerwear', 'accessory'];
+    const categories: ClothingCategory[] = ['top', 'bottom', 'dress', 'shoes', 'outerwear', 'accessory'];
     const picked: string[] = [];
     const pickedNames: string[] = [];
 
@@ -253,15 +253,15 @@ import type { ClothingLayer } from '../../src/types/domain';
 export function getDefaultLayer(category: ClothingCategory): ClothingLayer {
     switch (category) {
         case 'top':
-            return 'base';
         case 'bottom':
+        case 'dress':
+        case 'shoes':
             return 'base';
         case 'outerwear':
             return 'outer';
-        case 'shoes':
-            return 'base';
         case 'accessory':
             return 'accessory';
+        case 'other':
         default:
             return 'mid';
     }

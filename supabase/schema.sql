@@ -48,7 +48,7 @@ CREATE TABLE public.clothing_items (
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
     
     type TEXT NOT NULL,
-    category TEXT CHECK (category IN ('Tops', 'Bottoms', 'Dresses', 'Outerwear', 'Shoes', 'Accessories', 'Other')) DEFAULT 'Other',
+    category TEXT CHECK (category IN ('top', 'bottom', 'dress', 'shoes', 'outerwear', 'accessory', 'other')) DEFAULT 'other',
     
     -- Visuals
     image_url TEXT DEFAULT 'https://via.placeholder.com/150',
@@ -193,7 +193,17 @@ CREATE TABLE public.payments (
 );
 
 -- ============================================
--- 7. ENABLE ROW LEVEL SECURITY (RLS)
+-- 7. APP CONFIG (Server-side secrets)
+-- ============================================
+CREATE TABLE IF NOT EXISTS public.app_config (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- ============================================
+-- 8. ENABLE ROW LEVEL SECURITY (RLS)
 -- ============================================
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.clothing_items ENABLE ROW LEVEL SECURITY;
@@ -201,9 +211,12 @@ ALTER TABLE public.saved_outfits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.wear_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.app_config ENABLE ROW LEVEL SECURITY;
+-- No SELECT/INSERT/UPDATE/DELETE policies for app_config.
+-- Only service_role (edge functions) can access this table.
 
 -- ============================================
--- 8. CREATE RLS POLICIES
+-- 9. CREATE RLS POLICIES
 -- ============================================
 
 -- Profiles
@@ -238,7 +251,7 @@ CREATE POLICY "Users can view own subscriptions" ON public.subscriptions FOR SEL
 CREATE POLICY "Users can view own payments" ON public.payments FOR SELECT USING (auth.uid() = user_id);
 
 -- ============================================
--- 9. FUNCTIONS & TRIGGERS
+-- 10. FUNCTIONS & TRIGGERS
 -- ============================================
 
 -- Handle new user signup -> Create Profile
@@ -277,7 +290,7 @@ CREATE TRIGGER update_outfits_updated_at BEFORE UPDATE ON public.saved_outfits F
 CREATE TRIGGER update_wear_logs_updated_at BEFORE UPDATE ON public.wear_logs FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
 -- ============================================
--- 10. STORAGE BUCKETS (Script cannot create buckets, but here is policy)
+-- 11. STORAGE BUCKETS (Script cannot create buckets, but here is policy)
 -- ============================================
 -- You must manually create a bucket named 'user_uploads' in Supabase Dashboard.
 

@@ -18,9 +18,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useNavigation, useIsFocused } from "@react-navigation/native";
+import { useIsFocused } from "@react-navigation/native";
+import { useAppNavigation } from '../hooks/useAppNavigation';
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { jwtDecode } from "jwt-decode";
+import useAuthStore from '../store/auth';
 import { LinearGradient } from "expo-linear-gradient";
 import { useVideoPlayer, VideoView } from 'expo-video';
 import * as Location from 'expo-location';
@@ -49,11 +50,101 @@ import {
   dismissPrompt,
 } from '../src/services/contextualPromptService';
 
+import { Swipeable } from 'react-native-gesture-handler';
+import { BlurView } from 'expo-blur';
+
+import { supabase } from '../lib/supabase';
 import { quickSuggest } from '../src/services/suggestionEngine';
-import { INSPO_SHOP_ITEMS } from '../data/inspoShopItems';
-import { BASIC_CLOTHING_ITEMS, type BasicClothingItem } from '../data/basicClothingItems';
-import AIOutfitCreatorModal from '../components/AIOutfitCreatorModal';
-import { NavigationMenu } from '../src/components/NavigationMenu';
+import { useDailyAIOutfit } from '../hooks/useDailyAIOutfit';
+import { useShopCatalog } from '../hooks/useShopCatalog';
+import TrialCountdownBanner from '../components/TrialCountdownBanner';
+import type { ShopCatalogItem } from '../features/try-on/types';
+import type { ClothingCategory } from '../src/types/domain';
+import { createLogger } from '../src/utils/logger';
+
+type EssentialSlot = 'main_top' | 'second_top' | 'lower_body' | 'shoes';
+
+const ESSENTIALS_REQUIREMENTS: Record<EssentialSlot, number> = {
+  main_top: 2,
+  second_top: 2,
+  lower_body: 2,
+  shoes: 2,
+};
+
+const ESSENTIALS_LIMIT = Object.values(ESSENTIALS_REQUIREMENTS).reduce(
+  (sum, count) => sum + count,
+  0
+);
+
+const MAIN_TOP_KEYWORDS = [
+  'jacket', 'blazer', 'coat', 'overcoat', 'sweater', 'knit', 'hoodie',
+  'cardigan', 'pullover', 'fleece', 'bomber', 'parka', 'trench',
+  'crew neck', 'crewneck', 'turtleneck',
+];
+
+const SECOND_TOP_KEYWORDS = [
+  't-shirt', 'tshirt', 'tee', 'shirt', 'polo', 'blouse', 'tank', 'top',
+  'henley', 'camisole',
+];
+
+const classifyUpperBodyItem = (item: ShopCatalogItem): 'main_top' | 'second_top' => {
+  const text = `${item.name} ${item.description || ''}`.toLowerCase();
+  if (MAIN_TOP_KEYWORDS.some((k) => text.includes(k))) return 'main_top';
+  if (SECOND_TOP_KEYWORDS.some((k) => text.includes(k))) return 'second_top';
+  return 'second_top'; // default to second top if unclear
+};
+
+const selectEssentialShoppingMix = (items: ShopCatalogItem[]): ShopCatalogItem[] => {
+  const pickedCounts: Record<EssentialSlot, number> = {
+    main_top: 0,
+    second_top: 0,
+    lower_body: 0,
+    shoes: 0,
+  };
+
+  const selected: ShopCatalogItem[] = [];
+
+  for (const item of items) {
+    let slot: EssentialSlot | null = null;
+
+    if (item.garmentType === 'upper_body') {
+      slot = classifyUpperBodyItem(item);
+    } else if (item.garmentType === 'lower_body') {
+      slot = 'lower_body';
+    } else if (item.garmentType === 'shoes') {
+      slot = 'shoes';
+    }
+
+    if (!slot) continue;
+    if (pickedCounts[slot] >= ESSENTIALS_REQUIREMENTS[slot]) continue;
+
+    selected.push(item);
+    pickedCounts[slot] += 1;
+
+    if (selected.length >= ESSENTIALS_LIMIT) break;
+  }
+
+  return selected;
+};
+
+const garmentTypeToCategory = (
+  garmentType: ShopCatalogItem['garmentType']
+): ClothingCategory => {
+  switch (garmentType) {
+    case 'upper_body':
+      return 'top';
+    case 'lower_body':
+      return 'bottom';
+    case 'shoes':
+      return 'shoes';
+    case 'dresses':
+      return 'dress';
+    default:
+      return 'other';
+  }
+};
+
+const logger = createLogger('HomeScreen');
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -72,8 +163,8 @@ interface WeatherData {
 // ============================================
 
 const HomeScreen = () => {
-  console.log('[HomeScreen] Component rendering');
-  const navigation = useNavigation();
+  logger.debug('Component rendering');
+  const navigation = useAppNavigation();
   const isFocused = useIsFocused();
   const { isReducedMotionEnabled } = useAccessibility();
 
@@ -98,9 +189,7 @@ const HomeScreen = () => {
   const [loadingWeather, setLoadingWeather] = useState(true);
   const [videoUri, setVideoUri] = useState<string | null>(null);
   const [greeting, setGreeting] = useState('Good morning');
-  const [showAICreator, setShowAICreator] = useState(false);
   const [showHiddenGems, setShowHiddenGems] = useState(true);
-  const [showNavMenu, setShowNavMenu] = useState(false);
   const [currentOutfitIndex, setCurrentOutfitIndex] = useState(0);
   const outfitFlatListRef = useRef<FlatList>(null);
   const [currentDinnerOutfitIndex, setCurrentDinnerOutfitIndex] = useState(0);
@@ -113,6 +202,27 @@ const HomeScreen = () => {
 
   // Contextual prompt
   const [activePrompt, setActivePrompt] = useState<ContextualPrompt | null>(null);
+
+  // Daily AI outfits — one batch per category, regenerates once per calendar day.
+  // Each Home section feeds its own category in so the AI styles its variants
+  // to match the section title ("Team Collaboration / Business Casual", etc.).
+  const weatherForAI = weather
+    ? { temp: weather.temp, condition: weather.description }
+    : null;
+
+  const dailyBusinessCasual = useDailyAIOutfit({
+    style: 'business_casual',
+    occasion: 'Team Collaboration',
+    weather: weatherForAI,
+    variants: 3,
+  });
+
+  const dailyOldMoney = useDailyAIOutfit({
+    style: 'old_money',
+    occasion: 'Night-Time Dinner',
+    weather: weatherForAI,
+    variants: 3,
+  });
 
   // Today's Look Suggestion
   const todaysOutfit = useMemo(() => {
@@ -148,26 +258,26 @@ const HomeScreen = () => {
     else setGreeting('Good evening');
   }, []);
 
+  // Read username from Supabase auth store (no JWT decode needed)
+  const authUser = useAuthStore(s => s.user);
   useEffect(() => {
-    const fetchUserData = async () => {
+    if (authUser?.username) {
+      setUserName(authUser.username);
+    }
+  }, [authUser?.username]);
+
+  useEffect(() => {
+    const loadSavedVideo = async () => {
       try {
-        const token = await AsyncStorage.getItem("userToken");
-        if (token) {
-          const decoded = jwtDecode<{ name?: string; username?: string }>(token);
-          setUserName(decoded.name || decoded.username || "User");
-        }
-
-
-
         const savedVideo = await AsyncStorage.getItem('lastWardrobeVideo');
         if (savedVideo) {
           setVideoUri(savedVideo);
         }
       } catch (error) {
-        console.log("Error fetching user:", error);
+        logger.error('Error loading saved video', error);
       }
     };
-    fetchUserData();
+    loadSavedVideo();
     fetchWeather();
   }, []);
 
@@ -196,104 +306,136 @@ const HomeScreen = () => {
         });
       }
     } catch (error) {
-      console.log('Weather fetch error:', error);
+      logger.error('Weather fetch error', error);
     } finally {
       setLoadingWeather(false);
     }
   };
 
-  // Basic Wardrobe Suggestions — from basic_clothing/
+  // Wardrobe Essentials — sourced from Supabase `shop_catalog`
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
   const addItem = useWardrobeStore((state) => state.addItem);
 
-  // Shop items filtered by category
-  const shopTops = useMemo(() => INSPO_SHOP_ITEMS.filter(item => item.category === 'tops'), []);
-  const shopBottoms = useMemo(() => INSPO_SHOP_ITEMS.filter(item => item.category === 'bottoms'), []);
-  const shopShoes = useMemo(() => INSPO_SHOP_ITEMS.filter(item => item.category === 'shoes'), []);
+  const {
+    items: catalogEssentials,
+    loading: essentialsLoading,
+    error: essentialsError,
+  } = useShopCatalog({ enabled: true });
+
+  const essentialsItems = useMemo(
+    () => selectEssentialShoppingMix(catalogEssentials),
+    [catalogEssentials]
+  );
+
+  // Shop items filtered by category directly from real catalog
+  const shopTops = useMemo(() => catalogEssentials.filter(item => item.garmentType === 'upper_body'), [catalogEssentials]);
+  const shopBottoms = useMemo(() => catalogEssentials.filter(item => item.garmentType === 'lower_body'), [catalogEssentials]);
+  const shopShoes = useMemo(() => catalogEssentials.filter(item => item.garmentType === 'shoes'), [catalogEssentials]);
+
+  // User's wardrobe categories (lowercase) — used to determine which outfit slots are truly "suggested"
+  const userCategories = useMemo(
+    () => new Set(items.map(i => (i.category as string).toLowerCase())),
+    [items]
+  );
 
   // Night-Time Dinner outfit combinations (elegant classic)
-  // Each outfit: 1 shirt/top + 1 bottom + 1 outer layer (jacket) + 1 shoes
-  const dinnerOutfitCombinations = useMemo(() => [
-    {
-      id: 1,
-      mainTop: shopTops[2],      // Ribbed Knit Top
-      mainBottom: shopBottoms[0], // Wide Leg Trousers
-      outerLayer: shopTops[0],   // Oversized Blazer
-      shoes: shopShoes[1],       // Brown Loafers
-    },
-    {
-      id: 2,
-      mainTop: shopTops[3],       // Satin Mini Dress
-      mainBottom: shopBottoms[3], // High Waist Trousers
-      outerLayer: shopTops[1],    // Structured Jacket
-      shoes: shopShoes[2] || shopShoes[0],
-    },
-    {
-      id: 3,
-      mainTop: shopTops[2],      // Ribbed Knit Top
-      mainBottom: shopBottoms[1], // Slim Fit Jeans
-      outerLayer: shopTops[0],   // Oversized Blazer
-      shoes: shopShoes[0],
-    },
-  ], [shopTops, shopBottoms, shopShoes]);
+  // Safely index into fetched shop arrays using modulo
+  const dinnerOutfitCombinations = useMemo(() => {
+    if (!shopTops.length || !shopBottoms.length || !shopShoes.length) return [];
+    
+    return [
+      {
+        id: 1,
+        mainTop: shopTops[2 % shopTops.length],
+        mainBottom: shopBottoms[0 % shopBottoms.length],
+        outerLayer: shopTops[0 % shopTops.length],
+        shoes: shopShoes[1 % shopShoes.length],
+      },
+      {
+        id: 2,
+        mainTop: shopTops[3 % shopTops.length],
+        mainBottom: shopBottoms[3 % shopBottoms.length],
+        outerLayer: shopTops[1 % shopTops.length],
+        shoes: shopShoes[2 % shopShoes.length],
+      },
+      {
+        id: 3,
+        mainTop: shopTops[2 % shopTops.length],
+        mainBottom: shopBottoms[1 % shopBottoms.length],
+        outerLayer: shopTops[0 % shopTops.length],
+        shoes: shopShoes[0 % shopShoes.length],
+      },
+    ];
+  }, [shopTops, shopBottoms, shopShoes]);
 
-  // Create multiple outfit combinations
-  // Each outfit: 1 shirt/top + 1 bottom + 1 outer layer (jacket) + 1 shoes
-  const outfitCombinations = useMemo(() => [
-    {
-      id: 1,
-      mainTop: shopTops[2],       // Ribbed Knit Top
-      mainBottom: shopBottoms[0], // Wide Leg Trousers
-      outerLayer: shopTops[0],    // Oversized Blazer
-      shoes: shopShoes[0],
-    },
-    {
-      id: 2,
-      mainTop: shopTops[3],       // Satin Mini Dress
-      mainBottom: shopBottoms[1], // Slim Fit Jeans
-      outerLayer: shopTops[1],    // Structured Jacket
-      shoes: shopShoes[1],
-    },
-    {
-      id: 3,
-      mainTop: shopTops[2],       // Ribbed Knit Top
-      mainBottom: shopBottoms[2], // Brown Pants
-      outerLayer: shopTops[0],    // Oversized Blazer
-      shoes: shopShoes[2],
-    },
-    {
-      id: 4,
-      mainTop: shopTops[3],       // Satin Mini Dress
-      mainBottom: shopBottoms[3], // High Waist Trousers
-      outerLayer: shopTops[1],    // Structured Jacket
-      shoes: shopShoes[1],
-    },
-  ], [shopTops, shopBottoms, shopShoes]);
+  const outfitCombinations = useMemo(() => {
+    if (!shopTops.length || !shopBottoms.length || !shopShoes.length) return [];
 
-  const handleAddToWardrobe = async (item: BasicClothingItem) => {
+    return [
+      {
+        id: 1,
+        mainTop: shopTops[2 % shopTops.length],
+        mainBottom: shopBottoms[0 % shopBottoms.length],
+        outerLayer: shopTops[0 % shopTops.length],
+        shoes: shopShoes[0 % shopShoes.length],
+      },
+      {
+        id: 2,
+        mainTop: shopTops[3 % shopTops.length],
+        mainBottom: shopBottoms[1 % shopBottoms.length],
+        outerLayer: shopTops[1 % shopTops.length],
+        shoes: shopShoes[1 % shopShoes.length],
+      },
+      {
+        id: 3,
+        mainTop: shopTops[2 % shopTops.length],
+        mainBottom: shopBottoms[2 % shopBottoms.length],
+        outerLayer: shopTops[0 % shopTops.length],
+        shoes: shopShoes[2 % shopShoes.length],
+      },
+      {
+        id: 4,
+        mainTop: shopTops[3 % shopTops.length],
+        mainBottom: shopBottoms[3 % shopBottoms.length],
+        outerLayer: shopTops[1 % shopTops.length],
+        shoes: shopShoes[1 % shopShoes.length],
+      },
+    ];
+  }, [shopTops, shopBottoms, shopShoes]);
+
+  const handleAddToWardrobe = async (item: ShopCatalogItem) => {
     if (addedItems.has(item.id)) return;
-    console.log('[HomeScreen] Adding basic clothing item to wardrobe:', item.name);
+    logger.info('Adding catalog essential to wardrobe', item.name);
 
-    // Optimistic UI update
     setAddedItems(prev => new Set(prev).add(item.id));
+
+    const imageUrl = typeof item.imageUrl === 'string' ? item.imageUrl : '';
+
+    const subCategory =
+      item.garmentType === 'upper_body'
+        ? classifyUpperBodyItem(item)
+        : item.garmentType === 'lower_body'
+          ? 'pants'
+          : item.garmentType;
 
     try {
       await addItem({
         userId: '',
-        imageUrl: `basic_clothing_${item.id}`,
-        category: item.category,
-        subCategory: item.subCategory,
-        primaryColor: item.primaryColor,
-        colorHex: item.colorHex,
-        pattern: item.pattern,
-        material: item.material,
+        imageUrl,
+        category: garmentTypeToCategory(item.garmentType),
+        subCategory,
+        primaryColor: '',
+        colorHex: '',
+        pattern: 'solid',
+        material: '',
+        brand: item.brand,
         name: item.name,
-        seasons: item.seasons,
-        occasions: item.occasions,
+        seasons: [],
+        occasions: [],
       });
-      console.log('[HomeScreen] Basic clothing item added to wardrobe:', item.name);
+      logger.info('Catalog essential added to wardrobe', item.name);
     } catch (err) {
-      console.log('[HomeScreen] Failed to add item, reverting:', err);
+      logger.error('Failed to add item, reverting', err);
       setAddedItems(prev => {
         const next = new Set(prev);
         next.delete(item.id);
@@ -382,19 +524,13 @@ const HomeScreen = () => {
         <TouchableOpacity
               style={styles.createOutfitButton}
               onPress={() => {
-                console.log('[HomeScreen] Create outfit button pressed - hasEnoughItems:', hasEnoughItems);
-                if (hasEnoughItems) {
-                  console.log('[HomeScreen] Opening AI creator modal');
-                  setShowAICreator(true);
-                } else {
-                  console.log('[HomeScreen] Navigating to WardrobeVideo');
-                  (navigation as any).navigate('WardrobeVideo');
-                }
+                logger.debug('Navigating to AI outfit maker with shop source');
+                navigation.navigate('AIOutfit', { source: 'shop' });
               }}
-              accessibilityLabel={hasEnoughItems ? 'Create outfit with AI' : 'Add items to closet'}
+              accessibilityLabel="Create outfit from shop items"
               accessibilityRole="button"
             >
-              <Text style={styles.createOutfitText}>{hasEnoughItems ? 'Create outfit' : 'Digitize Closet First'}</Text>
+              <Text style={styles.createOutfitText}>Create outfit</Text>
         </TouchableOpacity>
 
         {/* Unified Nudge Section (Prompts & Home Cards) */}
@@ -412,7 +548,7 @@ const HomeScreen = () => {
                 </View>
                 <TouchableOpacity 
                   onPress={() => {
-                    console.log('[HomeScreen] Dismissing prompt:', activePrompt.id);
+                    logger.debug('Dismissing prompt', activePrompt.id);
                     dismissPrompt(activePrompt.id);
                     setActivePrompt(null);
                   }}
@@ -429,10 +565,10 @@ const HomeScreen = () => {
               <TouchableOpacity 
                 style={[styles.viewAnalyticsButton, { backgroundColor: activePrompt.color || '#F39C12' }]}
                 onPress={() => {
-                  console.log('[HomeScreen] Prompt action pressed:', activePrompt.action.route, activePrompt.action.params);
+                  logger.debug('Prompt action pressed', { route: activePrompt.action.route, params: activePrompt.action.params });
                   markPromptShown();
                   setActivePrompt(null);
-                  (navigation as any).navigate(activePrompt.action.route, activePrompt.action.params);
+                  navigation.navigate(activePrompt.action.route as any, activePrompt.action.params as any);
                 }}
               >
                 <Text style={styles.viewAnalyticsText}>{activePrompt.action.label.toUpperCase()}</Text>
@@ -445,46 +581,152 @@ const HomeScreen = () => {
     );
   };
 
-  // Premium Outfit Suggestion (Shown when items >= 5)
+  // ── AI outfit → card slots (top / bottom / outer / shoes) ───────────────
+  // The edge function returns a `GeneratedOutfit` with items tagged by
+  // `macroCategory`. We map those items onto the 4 visual slots the existing
+  // Home cards expect so the layout stays identical.
+  const aiOutfitToSlots = (outfit: {
+    items: Array<{ macroCategory?: string; imageUrl?: string; image?: string | number }>;
+  }) => {
+    const getUri = (it?: { imageUrl?: string; image?: string | number }) => {
+      if (!it) return undefined;
+      return it.imageUrl ?? (typeof it.image === 'string' ? it.image : undefined);
+    };
+
+    const hasCat = (item: any, cats: string[]) => {
+      const mc = (item.macroCategory || '').toLowerCase();
+      const tc = (item.type || '').toLowerCase();
+      const c = (item.category || '').toLowerCase();
+      return cats.some(cat => mc.includes(cat) || tc.includes(cat) || c.includes(cat));
+    };
+
+    let remainingItems = [...outfit.items];
+    
+    // Pick Outerwear
+    const outerIndex = remainingItems.findIndex(i => hasCat(i, ['outerwear', 'jacket', 'coat', 'blazer', 'sweater', 'hoodie']));
+    const outer = outerIndex !== -1 ? remainingItems.splice(outerIndex, 1)[0] : undefined;
+
+    // Pick Top
+    const topIndex = remainingItems.findIndex(i => hasCat(i, ['top', 'shirt', 't-shirt', 'blouse', 'polo']));
+    let top = topIndex !== -1 ? remainingItems.splice(topIndex, 1)[0] : undefined;
+
+    // Pick Bottom
+    const bottomIndex = remainingItems.findIndex(i => hasCat(i, ['bottom', 'pant', 'jeans', 'trouser', 'skirt', 'short']));
+    let bottom = bottomIndex !== -1 ? remainingItems.splice(bottomIndex, 1)[0] : undefined;
+
+    // Pick Shoes
+    const shoesIndex = remainingItems.findIndex(i => hasCat(i, ['shoe', 'sneaker', 'boot', 'footwear']));
+    let shoes = shoesIndex !== -1 ? remainingItems.splice(shoesIndex, 1)[0] : undefined;
+
+    // Fill missing core slots with remaining items if any
+    if (!top && remainingItems.length > 0) top = remainingItems.shift();
+    if (!bottom && remainingItems.length > 0) bottom = remainingItems.shift();
+    if (!shoes && remainingItems.length > 0) shoes = remainingItems.shift();
+    
+    // Note: mainTopUri is the large top box, typically used for outerwear or hero top.
+    // mainBottomUri is the large bottom box, typically used for the base top/shirt.
+    // outerLayerUri is the small top-right box, typically used for bottoms.
+    // shoesUri is the small bottom-right box.
+    return {
+      mainTopUri:    getUri(outer || (top && !outer && bottom ? top : undefined)),
+      mainBottomUri: getUri(outer ? top : undefined) || getUri(top),
+      outerLayerUri: getUri(bottom),
+      shoesUri:      getUri(shoes),
+    };
+  };
+
+  // Team Collaboration — Business Casual (regenerates daily via AI)
   const renderPremiumOutfitSuggestion = () => {
-    const renderOutfitItem = ({ item }: { item: typeof outfitCombinations[0] }) => (
-      <View style={{ width: SCREEN_WIDTH, paddingHorizontal: spacing.screenPadding}}>
-        <LiquidGlassCard
-          variant="light"
-          style={styles.premiumCard}
-          contentStyle={styles.premiumCardContent}
-        >
-          <View style={styles.outfitGridMain}>
-          {/* Left Column - Top + Bottom */}
-          <View style={styles.outfitGridLeft}>
-            {item.mainTop && <Image source={item.mainTop.image} style={styles.outfitLargeImage as any} resizeMode="contain" />}
-            {item.mainBottom && <Image source={item.mainBottom.image} style={styles.outfitLargeImage as any} resizeMode="contain" />}
+    const loading = dailyBusinessCasual.loading && dailyBusinessCasual.outfits.length === 0;
+
+    // Skeleton while the first-ever batch is loading.
+    if (loading) {
+      return (
+        <View style={styles.premiumSection}>
+          <View style={[styles.premiumHeader, { paddingHorizontal: spacing.screenPadding }]}>
+            <Text style={styles.premiumHeaderTitle}>Team Collaboration</Text>
+            <Text style={styles.premiumHeaderSubtitle}>Business casual ›</Text>
           </View>
-
-          {/* Right Column - Outer Layer + Shoes */}
-          <View style={styles.outfitGridRight}>
-            <View style={styles.outfitSmallBox}>
-              {item.outerLayer && <Image source={item.outerLayer.image} style={styles.outfitSmallImage as any} resizeMode="contain" />}
-            </View>
-            <View style={styles.outfitSmallBox}>
-              {item.shoes && <Image source={item.shoes.image} style={styles.outfitSmallImage as any} resizeMode="contain" />}
-            </View>
+          <View style={{ paddingHorizontal: spacing.screenPadding }}>
+            <LiquidGlassCard
+              variant="light"
+              style={styles.premiumCard}
+              contentStyle={[styles.premiumCardContent, { minHeight: 340, justifyContent: 'center' }]}
+            >
+              <ActivityIndicator size="small" color={colors.accent.primary} />
+              <Text style={[styles.premiumSuggestionText, { marginTop: spacing.sm }]}>
+                Styling today&apos;s business-casual looks…
+              </Text>
+            </LiquidGlassCard>
           </View>
         </View>
+      );
+    }
 
-        <View style={styles.premiumSuggestionInfo}>
-          <Text style={styles.premiumSuggestionText}>2 items suggested</Text>
-          <Ionicons name="information-circle-outline" size={16} color={colors.text.tertiary} />
-        </View>
+    const aiOutfits = dailyBusinessCasual.outfits;
 
-        <View style={styles.premiumPager}>
-          {outfitCombinations.map((_, index) => (
-            <View key={index} style={[styles.pagerBar, index === currentOutfitIndex && styles.pagerBarActive]} />
-          ))}
+    // If AI returned no outfits, fall back to the curated strip so the UI still
+    // looks good on cold starts or network failures.
+    const useAI = aiOutfits.length > 0;
+    const data = useAI
+      ? aiOutfits.map((o, i) => ({ id: o.id || `ai-bc-${i}`, outfit: o }))
+      : outfitCombinations.map((c) => ({ id: String(c.id), legacy: c }));
+
+    const renderOutfitItem = ({ item }: { item: { id: string; outfit?: any; legacy?: any } }) => {
+      const slots = item.outfit
+        ? aiOutfitToSlots(item.outfit)
+        : {
+            mainTopUri: item.legacy?.outerLayer?.image,
+            mainBottomUri: item.legacy?.mainTop?.image,
+            outerLayerUri: item.legacy?.mainBottom?.image,
+            shoesUri: item.legacy?.shoes?.image,
+          };
+
+      return (
+        <View style={{ width: SCREEN_WIDTH, paddingHorizontal: spacing.screenPadding}}>
+          <LiquidGlassCard
+            variant="light"
+            style={styles.premiumCard}
+            contentStyle={styles.premiumCardContent}
+          >
+            <View style={styles.outfitGridMain}>
+              <View style={styles.outfitGridLeft}>
+                {slots.mainTopUri && <Image source={{ uri: slots.mainTopUri }} style={styles.outfitLargeImage as any} resizeMode="contain" />}
+                {slots.mainBottomUri && <Image source={{ uri: slots.mainBottomUri }} style={styles.outfitLargeImage as any} resizeMode="contain" />}
+              </View>
+              <View style={styles.outfitGridRight}>
+                <View style={styles.outfitSmallBox}>
+                  {slots.outerLayerUri && <Image source={{ uri: slots.outerLayerUri }} style={styles.outfitSmallImage as any} resizeMode="contain" />}
+                </View>
+                <View style={styles.outfitSmallBox}>
+                  {slots.shoesUri && <Image source={{ uri: slots.shoesUri }} style={styles.outfitSmallImage as any} resizeMode="contain" />}
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.premiumSuggestionInfo}>
+              <Text style={styles.premiumSuggestionText}>
+                {useAI
+                  ? `AI · refreshes tomorrow`
+                  : `${[
+                      slots.mainTopUri    && !userCategories.has('tops'),
+                      slots.mainBottomUri && !userCategories.has('bottoms'),
+                      slots.outerLayerUri && !userCategories.has('tops') && !userCategories.has('outerwear'),
+                      slots.shoesUri      && !userCategories.has('shoes'),
+                    ].filter(Boolean).length} items suggested`}
+              </Text>
+              <Ionicons name={useAI ? 'sparkles-outline' : 'information-circle-outline'} size={16} color={colors.text.tertiary} />
+            </View>
+
+            <View style={styles.premiumPager}>
+              {(useAI ? aiOutfits : outfitCombinations).map((_, index) => (
+                <View key={index} style={[styles.pagerBar, index === currentOutfitIndex && styles.pagerBarActive]} />
+              ))}
+            </View>
+          </LiquidGlassCard>
         </View>
-      </LiquidGlassCard>
-      </View>
-    );
+      );
+    };
 
     return (
       <View style={styles.premiumSection}>
@@ -495,9 +737,9 @@ const HomeScreen = () => {
 
         <FlatList
           ref={outfitFlatListRef}
-          data={outfitCombinations}
+          data={data}
           renderItem={renderOutfitItem}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => item.id}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
@@ -515,8 +757,16 @@ const HomeScreen = () => {
             <TouchableOpacity style={styles.actionIconButton}>
               <Ionicons name="heart-outline" size={24} color={colors.text.primary} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionIconButton}>
-              <Ionicons name="pencil-outline" size={22} color={colors.text.primary} />
+            <TouchableOpacity
+              style={styles.actionIconButton}
+              onPress={() => {
+                logger.debug('Regenerate business-casual daily outfits');
+                dailyBusinessCasual.regenerate();
+              }}
+              accessibilityLabel="Regenerate today's business casual outfits"
+              accessibilityRole="button"
+            >
+              <Ionicons name="refresh-outline" size={22} color={colors.text.primary} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionIconButton}>
               <Ionicons name="thumbs-down-outline" size={24} color={colors.text.primary} />
@@ -528,73 +778,110 @@ const HomeScreen = () => {
           <TouchableOpacity
             style={styles.createAvatarButton}
             onPress={() => {
-              console.log('[HomeScreen] Create avatar button pressed');
-              (navigation as any).navigate('CreateAvatar');
+              logger.debug('Try On button pressed');
+              navigation.navigate('AITryOn');
             }}
           >
-            <Text style={styles.createAvatarText}>Create Avatar</Text>
+            <Text style={styles.createAvatarText}>Try On</Text>
           </TouchableOpacity>
         </View>
       </View>
     );
   };
 
-  // Night-Time Dinner — Elegant Classic
+  // Night-Time Dinner — Elegant Classic / Old Money (regenerates daily via AI)
   const renderNightDinnerSection = () => {
-    const renderDinnerItem = ({ item }: { item: typeof dinnerOutfitCombinations[0] }) => (
-      <View style={{ width: SCREEN_WIDTH, paddingHorizontal: spacing.screenPadding }}>
-        <View style={styles.dinnerCard}>
-          <View style={styles.outfitGridMain}>
-            {/* Left Column - Top + Bottom */}
-            <View style={styles.outfitGridLeft}>
-              {item.mainTop && <Image source={item.mainTop.image} style={styles.dinnerLargeImage as any} resizeMode="contain" />}
-              {item.mainBottom && <Image source={item.mainBottom.image} style={styles.dinnerLargeImage as any} resizeMode="contain" />}
-            </View>
-            {/* Right Column - Outer Layer + Shoes */}
-            <View style={styles.outfitGridRight}>
-              <View style={styles.dinnerSmallBox}>
-                {item.outerLayer && <Image source={item.outerLayer.image} style={styles.outfitSmallImage as any} resizeMode="contain" />}
-              </View>
-              <View style={styles.dinnerSmallBox}>
-                {item.shoes && <Image source={item.shoes.image} style={styles.outfitSmallImage as any} resizeMode="contain" />}
-              </View>
-            </View>
-          </View>
+    const loading = dailyOldMoney.loading && dailyOldMoney.outfits.length === 0;
 
-          {/* Occasion badge */}
-          <View style={styles.dinnerBadgeRow}>
-            <View style={styles.dinnerBadge}>
-              <Ionicons name="wine" size={13} color="#D4AF37" />
-              <Text style={styles.dinnerBadgeText}>Black Tie Optional</Text>
+    if (loading) {
+      return (
+        <View style={styles.premiumSection}>
+          <View style={[styles.premiumHeader, { paddingHorizontal: spacing.screenPadding }]}>
+            <Text style={styles.premiumHeaderTitle}>Night-Time Dinner</Text>
+            <Text style={styles.dinnerHeaderSubtitle}>Night-time dinner ›</Text>
+          </View>
+          <View style={{ paddingHorizontal: spacing.screenPadding }}>
+            <View style={[styles.dinnerCard, { minHeight: 340, alignItems: 'center', justifyContent: 'center' }]}>
+              <ActivityIndicator size="small" color={colors.accent.primary} />
+              <Text style={[styles.dinnerSuggestionText, { marginTop: spacing.sm }]}>
+                Styling tonight&apos;s elegant looks…
+              </Text>
             </View>
-          </View>
-
-          <View style={styles.premiumSuggestionInfo}>
-            <Text style={styles.dinnerSuggestionText}>3 items suggested</Text>
-            <Ionicons name="information-circle-outline" size={16} color="rgba(255,255,255,0.4)" />
-          </View>
-
-          <View style={styles.premiumPager}>
-            {dinnerOutfitCombinations.map((_, index) => (
-              <View key={index} style={[styles.pagerBar, index === currentDinnerOutfitIndex && styles.dinnerPagerBarActive]} />
-            ))}
           </View>
         </View>
-      </View>
-    );
+      );
+    }
+
+    const aiOutfits = dailyOldMoney.outfits;
+    const useAI = aiOutfits.length > 0;
+    const data = useAI
+      ? aiOutfits.map((o, i) => ({ id: o.id || `ai-om-${i}`, outfit: o }))
+      : dinnerOutfitCombinations.map((c) => ({ id: String(c.id), legacy: c }));
+
+    const renderDinnerItem = ({ item }: { item: { id: string; outfit?: any; legacy?: any } }) => {
+      const slots = item.outfit
+        ? aiOutfitToSlots(item.outfit)
+        : {
+            mainTopUri: item.legacy?.outerLayer?.image,
+            mainBottomUri: item.legacy?.mainTop?.image,
+            outerLayerUri: item.legacy?.mainBottom?.image,
+            shoesUri: item.legacy?.shoes?.image,
+          };
+
+      return (
+        <View style={{ width: SCREEN_WIDTH, paddingHorizontal: spacing.screenPadding }}>
+          <View style={styles.dinnerCard}>
+            <View style={styles.outfitGridMain}>
+              <View style={styles.outfitGridLeft}>
+                {slots.mainTopUri && <Image source={{ uri: slots.mainTopUri }} style={styles.dinnerLargeImage as any} resizeMode="contain" />}
+                {slots.mainBottomUri && <Image source={{ uri: slots.mainBottomUri }} style={styles.dinnerLargeImage as any} resizeMode="contain" />}
+              </View>
+              <View style={styles.outfitGridRight}>
+                <View style={styles.dinnerSmallBox}>
+                  {slots.outerLayerUri && <Image source={{ uri: slots.outerLayerUri }} style={styles.outfitSmallImage as any} resizeMode="contain" />}
+                </View>
+                <View style={styles.dinnerSmallBox}>
+                  {slots.shoesUri && <Image source={{ uri: slots.shoesUri }} style={styles.outfitSmallImage as any} resizeMode="contain" />}
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.premiumSuggestionInfo}>
+              <Text style={styles.dinnerSuggestionText}>
+                {useAI
+                  ? 'AI · refreshes tomorrow'
+                  : `${[
+                      slots.mainTopUri    && !userCategories.has('tops'),
+                      slots.mainBottomUri && !userCategories.has('bottoms'),
+                      slots.outerLayerUri && !userCategories.has('tops') && !userCategories.has('outerwear'),
+                      slots.shoesUri      && !userCategories.has('shoes'),
+                    ].filter(Boolean).length} items suggested`}
+              </Text>
+              <Ionicons name={useAI ? 'sparkles-outline' : 'information-circle-outline'} size={16} color="rgba(255,255,255,0.4)" />
+            </View>
+
+            <View style={styles.premiumPager}>
+              {(useAI ? aiOutfits : dinnerOutfitCombinations).map((_, index) => (
+                <View key={index} style={[styles.pagerBar, index === currentDinnerOutfitIndex && styles.dinnerPagerBarActive]} />
+              ))}
+            </View>
+          </View>
+        </View>
+      );
+    };
 
     return (
       <View style={styles.premiumSection}>
         <View style={[styles.premiumHeader, { paddingHorizontal: spacing.screenPadding }]}>
-          <Text style={styles.premiumHeaderTitle}>Team Collaboration</Text>
+          <Text style={styles.premiumHeaderTitle}>Night-Time Dinner</Text>
           <Text style={styles.dinnerHeaderSubtitle}>Night-time dinner ›</Text>
         </View>
 
         <FlatList
           ref={dinnerOutfitFlatListRef}
-          data={dinnerOutfitCombinations}
+          data={data}
           renderItem={renderDinnerItem}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => item.id}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
@@ -612,8 +899,16 @@ const HomeScreen = () => {
             <TouchableOpacity style={styles.actionIconButton}>
               <Ionicons name="heart-outline" size={24} color={colors.text.primary} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionIconButton}>
-              <Ionicons name="pencil-outline" size={22} color={colors.text.primary} />
+            <TouchableOpacity
+              style={styles.actionIconButton}
+              onPress={() => {
+                logger.debug('Regenerate old-money daily outfits');
+                dailyOldMoney.regenerate();
+              }}
+              accessibilityLabel="Regenerate tonight's dinner outfits"
+              accessibilityRole="button"
+            >
+              <Ionicons name="refresh-outline" size={22} color={colors.text.primary} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionIconButton}>
               <Ionicons name="thumbs-down-outline" size={24} color={colors.text.primary} />
@@ -625,7 +920,7 @@ const HomeScreen = () => {
           <TouchableOpacity
             style={styles.dinnerAvatarButton}
             onPress={() => {
-              (navigation as any).navigate('CreateAvatar');
+              navigation.navigate('AITryOn');
             }}
           >
             <Text style={styles.createAvatarText}>Try On</Text>
@@ -635,54 +930,83 @@ const HomeScreen = () => {
     );
   };
 
-  // Wardrobe Essentials Grid — basic clothing from basic_clothing/
-  const renderEssentials = () => (
-    <View style={styles.essentialsSection}>
-      <Text style={styles.sectionTitle} accessibilityRole="header">Wardrobe Essentials</Text>
-      <View style={styles.gridContainer}>
-        {BASIC_CLOTHING_ITEMS.map((item) => {
-          const isAdded = addedItems.has(item.id);
-          return (
-            <LiquidGlassCard
-              key={item.id}
-              style={styles.gridItem}
-              contentStyle={styles.gridItemContent}
-              variant="light"
-            >
-              <Image
-                source={item.image}
-                style={styles.gridImage as any}
-                resizeMode="cover"
-              />
-              <Text style={styles.essentialItemName} numberOfLines={1}>{item.name}</Text>
-              <View style={styles.gridActions}>
-                <TouchableOpacity
-                  style={[styles.addButton, isAdded && styles.addedButton]}
-                  onPress={() => {
-                    if (!isAdded) {
-                      console.log('[HomeScreen] Add button pressed for:', item.name);
-                      handleAddToWardrobe(item);
-                    }
-                  }}
-                  accessibilityLabel={isAdded ? `${item.name} added to wardrobe` : `Add ${item.name} to wardrobe`}
-                  accessibilityRole="button"
+  // Wardrobe Essentials Grid — Supabase-backed catalog picks
+  const renderEssentials = () => {
+    const showSkeleton = essentialsLoading && essentialsItems.length === 0;
+    const showEmpty = !essentialsLoading && essentialsItems.length === 0;
+
+    return (
+      <View style={styles.essentialsSection}>
+        <Text style={styles.sectionTitle} accessibilityRole="header">Wardrobe Essentials</Text>
+
+        {showSkeleton ? (
+          <View style={styles.essentialsLoadingBlock}>
+            <ActivityIndicator size="small" color={colors.accent.primary} />
+            <Text style={styles.essentialsLoadingText}>Loading essentials…</Text>
+          </View>
+        ) : showEmpty ? (
+          <View style={styles.essentialsEmptyBlock}>
+            <Ionicons
+              name={essentialsError ? 'alert-circle-outline' : 'shirt-outline'}
+              size={22}
+              color={colors.text.tertiary}
+            />
+            <Text style={styles.essentialsEmptyText}>
+              {essentialsError
+                ? 'Could not load essentials. Pull to refresh.'
+                : 'No essentials available yet.'}
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.gridContainer}>
+            {essentialsItems.map((item) => {
+              const isAdded = addedItems.has(item.id);
+              const imageSrc =
+                typeof item.imageUrl === 'string' ? { uri: item.imageUrl } : item.imageUrl;
+
+              return (
+                <LiquidGlassCard
+                  key={item.id}
+                  style={styles.gridItem}
+                  contentStyle={styles.gridItemContent}
+                  variant="light"
                 >
-                  <Ionicons
-                    name={isAdded ? "checkmark" : "add"}
-                    size={20}
-                    color={isAdded ? "#FFF" : colors.text.primary}
-                  />
-                  <Text style={[styles.addButtonText, isAdded && styles.addedButtonText]}>
-                    {isAdded ? "Added" : "Add"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </LiquidGlassCard>
-          );
-        })}
+                  <Image source={imageSrc} style={styles.gridImage as any} resizeMode="cover" />
+                  <Text style={styles.essentialItemName} numberOfLines={1}>{item.name}</Text>
+                  <View style={styles.gridActions}>
+                    <TouchableOpacity
+                      style={[styles.addButton, isAdded && styles.addedButton]}
+                      onPress={() => {
+                        if (!isAdded) {
+                          logger.debug('Add button pressed', item.name);
+                          handleAddToWardrobe(item);
+                        }
+                      }}
+                      accessibilityLabel={
+                        isAdded
+                          ? `${item.name} added to wardrobe`
+                          : `Add ${item.name} to wardrobe`
+                      }
+                      accessibilityRole="button"
+                    >
+                      <Ionicons
+                        name={isAdded ? 'checkmark' : 'add'}
+                        size={20}
+                        color={isAdded ? '#FFF' : colors.text.primary}
+                      />
+                      <Text style={[styles.addButtonText, isAdded && styles.addedButtonText]}>
+                        {isAdded ? 'Added' : 'Add'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </LiquidGlassCard>
+              );
+            })}
+          </View>
+        )}
       </View>
-    </View>
-  );
+    );
+  };
 
 
 
@@ -756,6 +1080,13 @@ const HomeScreen = () => {
 
   return (
     <View style={styles.container}>
+      <LinearGradient
+        colors={['#F6FAFF', '#EEF4FF', '#FFFFFF']}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+      <View pointerEvents="none" style={styles.backgroundOrbTop} />
+      <View pointerEvents="none" style={styles.backgroundOrbBottom} />
       <SafeAreaView style={styles.safeArea}>
         <ScrollView
           style={styles.scrollView}
@@ -766,6 +1097,9 @@ const HomeScreen = () => {
           <View style={styles.headerSection}>
             <Text style={styles.appTitleText} accessibilityRole="header">AIWardrobe</Text>
           </View>
+
+          {/* Trial Countdown Banner — visible only during active 7-day trial */}
+          <TrialCountdownBanner />
 
           {/* Weekly Planner (Swapped position with Greeting) */}
           {renderWeeklyPlanner()}
@@ -783,8 +1117,8 @@ const HomeScreen = () => {
               <TouchableOpacity
                 style={styles.buzzerButton}
                 onPress={() => {
-                  console.log('[HomeScreen] Calendar button pressed');
-                  (navigation as any).navigate('Calendar');
+                  logger.debug('Calendar button pressed');
+                  navigation.navigate('Calendar');
                 }}
                 accessibilityLabel="Open calendar"
               >
@@ -800,7 +1134,7 @@ const HomeScreen = () => {
           {/* Today's Look Hero */}
           {renderTodaysLook()}
 
-          {/* Wardrobe Essentials Grid OR Premium Outfit (Conditional) */}
+          {/* Wardrobe Essentials Grid OR Team Collaboration (Conditional) */}
           {items.length < 5 ? renderEssentials() : renderPremiumOutfitSuggestion()}
 
           {/* Night-Time Dinner — Elegant Classic */}
@@ -811,17 +1145,6 @@ const HomeScreen = () => {
         </ScrollView>
       </SafeAreaView>
 
-      {/* Navigation Menu */}
-      <NavigationMenu visible={showNavMenu} onClose={() => setShowNavMenu(false)} />
-
-      {/* AI Outfit Creator Modal */}
-      <AIOutfitCreatorModal
-        visible={showAICreator}
-        onClose={() => {
-          console.log('[HomeScreen] AI creator modal closed');
-          setShowAICreator(false);
-        }}
-      />
     </View>
   );
 };
@@ -834,6 +1157,24 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background.primary,
+  },
+  backgroundOrbTop: {
+    position: 'absolute',
+    top: -100,
+    right: -80,
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: 'rgba(188, 210, 245, 0.42)',
+  },
+  backgroundOrbBottom: {
+    position: 'absolute',
+    left: -120,
+    bottom: 140,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: 'rgba(216, 229, 252, 0.34)',
   },
   stylistFAB: {
     position: 'absolute',
@@ -955,9 +1296,15 @@ const styles = StyleSheet.create({
     color: colors.text.tertiary,
   },
   premiumCard: {
-    borderRadius: radius.xl,
-    backgroundColor: '#F7F7F7',
-    borderWidth: 0,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderWidth: 1,
+    borderColor: 'rgba(24,58,103,0.06)',
+    shadowColor: '#173A65',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 18,
+    elevation: 4,
   },
   premiumCardContent: {
     padding: spacing.md,
@@ -983,11 +1330,13 @@ const styles = StyleSheet.create({
   },
   outfitSmallBox: {
     flex: 1,
-    backgroundColor: '#FFF',
+    backgroundColor: '#FBFCFF',
     borderRadius: radius.md,
     padding: spacing.xs,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(24,58,103,0.06)',
   },
   outfitSmallImage: {
     width: '100%',
@@ -1039,10 +1388,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   createAvatarButton: {
-    backgroundColor: '#000',
+    backgroundColor: '#173A65',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm + 2,
-    borderRadius: radius.pill,
+    borderRadius: 22,
+    shadowColor: '#173A65',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 4,
   },
   createAvatarText: {
     color: '#FFF',
@@ -1051,10 +1405,17 @@ const styles = StyleSheet.create({
   },
   // Night-Time Dinner styles
   dinnerCard: {
-    borderRadius: radius.xl,
-    backgroundColor: '#F7F7F7',
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.92)',
     padding: spacing.md,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(24,58,103,0.06)',
+    shadowColor: '#173A65',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 18,
+    elevation: 4,
   },
   dinnerLargeImage: {
     flex: 1,
@@ -1063,13 +1424,13 @@ const styles = StyleSheet.create({
   },
   dinnerSmallBox: {
     flex: 1,
-    backgroundColor: '#FFF',
+    backgroundColor: '#FBFCFF',
     borderRadius: radius.md,
     padding: spacing.xs,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(212,175,55,0.2)',
+    borderColor: 'rgba(24,58,103,0.06)',
   },
   dinnerBadgeRow: {
     flexDirection: 'row',
@@ -1096,24 +1457,29 @@ const styles = StyleSheet.create({
   },
   dinnerSuggestionText: {
     ...typography.scale.bodySmall,
-    color: 'rgba(255,255,255,0.45)',
+    color: colors.text.secondary,
   },
   dinnerHeaderSubtitle: {
     ...typography.scale.bodyMedium,
-    color: '#8B6914',
+    color: colors.text.tertiary,
     fontStyle: 'italic',
   },
   dinnerPagerBarActive: {
-    backgroundColor: '#D4AF37',
+    backgroundColor: '#000000',
     opacity: 1,
   },
   dinnerAvatarButton: {
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#173A65',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm + 2,
-    borderRadius: radius.pill,
+    borderRadius: 22,
     borderWidth: 1,
-    borderColor: '#D4AF37',
+    borderColor: '#173A65',
+    shadowColor: '#173A65',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 4,
   },
   // Header & Greeting
   headerSection: {
@@ -1128,10 +1494,21 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   greetingSection: {
-    paddingHorizontal: spacing.screenPadding,
+    marginHorizontal: spacing.screenPadding,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    borderRadius: 26,
+    backgroundColor: 'rgba(255,255,255,0.88)',
+    borderWidth: 1,
+    borderColor: 'rgba(24,58,103,0.08)',
+    shadowColor: '#173A65',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.07,
+    shadowRadius: 16,
+    elevation: 4,
   },
   greetingText: {
     ...typography.scale.titleMedium,
@@ -1143,10 +1520,17 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.background.secondary,
+    backgroundColor: 'rgba(255,255,255,0.92)',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
+    borderWidth: 1,
+    borderColor: 'rgba(24,58,103,0.08)',
+    shadowColor: '#173A65',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
   },
   buzzerDot: {
     position: 'absolute',
@@ -1164,6 +1548,16 @@ const styles = StyleSheet.create({
   weatherWidget: {
     marginHorizontal: spacing.screenPadding,
     marginBottom: spacing.xxl, // Increased again per request
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.88)',
+    borderWidth: 1,
+    borderColor: 'rgba(24,58,103,0.08)',
+    shadowColor: '#173A65',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 4,
+    padding: 14,
   },
   weatherContent: {
     flexDirection: 'row',
@@ -1210,6 +1604,14 @@ const styles = StyleSheet.create({
   heroCard: {
     height: 360, // Increased from 320 (Little bigger)
     overflow: 'hidden',
+    borderRadius: 32,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.72)',
+    shadowColor: '#173A65',
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    elevation: 8,
   },
   heroContent: {
     padding: 0,
@@ -1248,12 +1650,17 @@ const styles = StyleSheet.create({
   },
 
   createOutfitButton: {
-    backgroundColor: '#0A1931',
-    paddingVertical: 14,
-    borderRadius: radius.pill,
+    backgroundColor: '#173A65',
+    paddingVertical: 15,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: spacing.md,
+    shadowColor: '#173A65',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 5,
   },
   createOutfitText: {
     color: '#FFF',
@@ -1375,6 +1782,7 @@ const styles = StyleSheet.create({
   gridItem: {
     width: (SCREEN_WIDTH - (spacing.screenPadding * 2) - spacing.md) / 2,
     aspectRatio: 0.8,
+    borderRadius: 24,
   },
   gridItemContent: {
     padding: spacing.sm,
@@ -1395,7 +1803,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.background.tertiary,
+    backgroundColor: '#F4F7FD',
+    borderWidth: 1,
+    borderColor: 'rgba(24,58,103,0.08)',
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: radius.pill,
@@ -1403,7 +1813,8 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   addedButton: {
-    backgroundColor: '#0A1931', // Success color (Dark blue)
+    backgroundColor: '#173A65',
+    borderColor: '#173A65',
   },
   addButtonText: {
     ...typography.scale.labelSmall,
@@ -1420,6 +1831,28 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
     marginBottom: 2,
     textAlign: 'center',
+  },
+  essentialsLoadingBlock: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
+    gap: spacing.sm,
+  },
+  essentialsLoadingText: {
+    ...typography.scale.bodySmall,
+    color: colors.text.tertiary,
+  },
+  essentialsEmptyBlock: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
+    gap: spacing.sm,
+  },
+  essentialsEmptyText: {
+    ...typography.scale.bodySmall,
+    color: colors.text.tertiary,
+    textAlign: 'center',
+    paddingHorizontal: spacing.screenPadding,
   },
 
 
@@ -1486,17 +1919,17 @@ const styles = StyleSheet.create({
   // Hidden Gems Styles — Match Screenshot
   hiddenGemsCard: {
     marginTop: spacing.lg,
-    backgroundColor: '#FFF',
-    borderRadius: radius.xl,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderRadius: 28,
     flexDirection: 'row',
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#F0F0F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 3,
+    borderColor: 'rgba(24,58,103,0.06)',
+    shadowColor: '#173A65',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 4,
   },
   hiddenGemsAccent: {
     width: 6,
