@@ -1,11 +1,11 @@
-import { StyleSheet, Text, TouchableOpacity, View, Platform, useWindowDimensions } from "react-native";
-import React, { useMemo, useCallback } from "react";
+import { LayoutChangeEvent, Platform, StyleSheet, TouchableOpacity, View, useWindowDimensions } from "react-native";
+import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
-  FadeIn,
   useSharedValue,
   useAnimatedStyle,
   withSpring,
@@ -25,6 +25,9 @@ import ProfileScreen from "../screens/ProfileScreen";
 
 // Screen-level ErrorBoundary — isolates crashes to individual tabs
 import { ErrorBoundary } from "../src/components/ErrorBoundary";
+import { createLogger } from "../src/utils/logger";
+
+const logger = createLogger('TabNavigator');
 
 /** Wraps a screen component in its own ErrorBoundary */
 const withErrorBoundary = (Screen: React.ComponentType<any>, name: string) => {
@@ -45,9 +48,10 @@ const SafeProfileScreen = withErrorBoundary(ProfileScreen, 'Profile');
 
 // 2026 Design System
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
-import { useReducedMotion } from '../hooks/useAccessibility';
 
-const { colors, spacing, radius, animation } = LiquidGlass2026Theme;
+const { colors, spacing } = LiquidGlass2026Theme;
+const TAB_BAR_HORIZONTAL_MARGIN = 20;
+const TAB_BAR_HORIZONTAL_PADDING = spacing.xs;
 
 const Tab = createBottomTabNavigator();
 
@@ -122,28 +126,40 @@ const AnimatedTabItem = ({ focused, iconName, color, size, label }: AnimatedTabI
 
 // Liquid Parallax Tab Bar
 const LiquidParallaxTabBar = ({ state, descriptors, navigation }: any) => {
+  logger.debug('LiquidParallaxTabBar rendering', { tabIndex: state.index });
   const { width } = useWindowDimensions();
-  // Adjust width for margins: Full width - (2 * horizontal margin)
-  const MARGIN_H = 20;
-  const EFFECTIVE_WIDTH = width - (MARGIN_H * 2);
-  const TAB_WIDTH = EFFECTIVE_WIDTH / state.routes.length;
+  const fallbackTabBarWidth = Math.max(width - (TAB_BAR_HORIZONTAL_MARGIN * 2), 0);
+  const [tabBarWidth, setTabBarWidth] = React.useState(fallbackTabBarWidth);
+  const tabWidth =
+    Math.max(tabBarWidth - (TAB_BAR_HORIZONTAL_PADDING * 2), 0) / Math.max(state.routes.length, 1);
 
   // Shared value for the sliding indicator
-  const translateX = useSharedValue(0);
+  const translateX = useSharedValue(state.index * tabWidth);
+
+  React.useEffect(() => {
+    setTabBarWidth(fallbackTabBarWidth);
+  }, [fallbackTabBarWidth]);
+
+  const handleTabBarLayout = React.useCallback((event: LayoutChangeEvent) => {
+    const nextWidth = event.nativeEvent.layout.width;
+    if (nextWidth > 0) {
+      setTabBarWidth(nextWidth);
+    }
+  }, []);
 
   // Update position when index changes
   React.useEffect(() => {
-    translateX.value = withSpring(state.index * TAB_WIDTH, {
+    translateX.value = withSpring(state.index * tabWidth, {
       damping: 12, // Lower damping for more bounce (15 -> 12)
       stiffness: 150, // Higher stiffness for faster snap (120 -> 150)
       mass: 1, // Heavier mass for momentum (0.8 -> 1)
     });
-  }, [state.index, TAB_WIDTH]);
+  }, [state.index, tabWidth, translateX]);
 
   const animatedIndicatorStyle = useAnimatedStyle(() => ({
     // Indicator needs to start from 0 relative to the container
     transform: [{ translateX: translateX.value }],
-    width: TAB_WIDTH,
+    width: tabWidth,
   }));
 
   return (
@@ -151,7 +167,14 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation }: any) => {
       intensity={Platform.OS === 'ios' ? 80 : 100}
       tint="light"
       style={styles.tabBarContainer}
+      onLayout={handleTabBarLayout}
     >
+      <LinearGradient
+        colors={['rgba(255,255,255,0.94)', 'rgba(240,246,255,0.88)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.tabBarGradient}
+      />
       {/* Glass overlay for extra depth */}
       <View style={styles.glassOverlay} />
 
@@ -172,6 +195,7 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation }: any) => {
           const iconColor = isFocused ? activeColor : inactiveColor;
 
           const onPress = () => {
+            logger.debug('Tab pressed', { name: route.name, isFocused });
             const event = navigation.emit({
               type: 'tabPress',
               target: route.key,
@@ -179,8 +203,11 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation }: any) => {
             });
 
             if (!isFocused && !event.defaultPrevented) {
+              logger.debug('Navigating to tab', route.name);
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               navigation.navigate(route.name);
+            } else {
+              logger.debug('Tab already focused or event prevented');
             }
           };
 
@@ -211,6 +238,7 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation }: any) => {
 };
 
 const TabNavigator = () => {
+  logger.debug('TabNavigator component rendering');
   const { t } = useTranslation();
 
   return (
@@ -259,23 +287,25 @@ const styles = StyleSheet.create({
   tabBarContainer: {
     position: 'absolute',
     bottom: 30,
-    left: 20,
-    right: 20,
+    left: TAB_BAR_HORIZONTAL_MARGIN,
+    right: TAB_BAR_HORIZONTAL_MARGIN,
     height: 72,
     borderRadius: 36,
     overflow: 'hidden',
-    // Enhanced shadow for floating effect
-    shadowColor: "#000",
+    shadowColor: "#173A65",
     shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.18,
-    shadowRadius: 20,
+    shadowOpacity: 0.12,
+    shadowRadius: 22,
     elevation: 12,
+  },
+  tabBarGradient: {
+    ...StyleSheet.absoluteFillObject,
   },
   glassOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: colors.glass.frosted,
+    backgroundColor: 'rgba(255,255,255,0.42)',
     borderWidth: 1,
-    borderColor: colors.border.glass,
+    borderColor: 'rgba(24,58,103,0.08)',
     borderRadius: 36,
   },
   tabBarContent: {
@@ -283,7 +313,7 @@ const styles = StyleSheet.create({
     height: '100%',
     zIndex: 2,
     alignItems: 'center',
-    paddingHorizontal: spacing.xs,
+    paddingHorizontal: TAB_BAR_HORIZONTAL_PADDING,
   },
   tabButton: {
     flex: 1,
@@ -304,20 +334,23 @@ const styles = StyleSheet.create({
   },
   indicatorContainer: {
     position: 'absolute',
-    left: spacing.xs,
-    height: 54,
-    justifyContent: 'center',
+    left: TAB_BAR_HORIZONTAL_PADDING,
+    height: '100%',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     zIndex: 1,
+    paddingBottom: 7,
   },
   liquidBlob: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.glass.opaque,
-    shadowColor: colors.accent.primary,
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(24,58,103,0.08)',
+    shadowColor: '#173A65',
+    shadowOpacity: 0.14,
+    shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
   },

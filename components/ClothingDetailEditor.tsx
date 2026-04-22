@@ -3,7 +3,7 @@
  * Allows users to verify and edit AI-detected clothing attributes
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     View,
     Text,
@@ -13,6 +13,7 @@ import {
     Image,
     StatusBar,
     Alert,
+    ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +22,8 @@ import * as Haptics from 'expo-haptics';
 import useWardrobeStore from '../store/wardrobeStore';
 import useAuthStore from '../store/auth';
 import type { Season, Occasion } from '../src/types/domain';
+import { ExternalAIService } from '../src/services/externalAIService';
+import * as FileSystem from 'expo-file-system';
 
 interface ClothingDetailEditorProps {
     imageUri?: string;
@@ -75,6 +78,34 @@ const WEATHER = [
     { id: 'wind', icon: 'flag-outline', label: 'Wind' },
 ];
 
+// ── AI inference helpers ───────────────────────────────────────────────
+const inferSeasonFromType = (type: string, material?: string | null): string => {
+    const t = type.toLowerCase();
+    const m = (material || '').toLowerCase();
+    if (m.includes('wool') || m.includes('fur') || m.includes('fleece') || m.includes('cashmere') || m.includes('down')) return 'winter';
+    if (m.includes('linen') || m.includes('silk')) return 'summer';
+    if (t === 'outerwear') return 'winter';
+    if (t === 'sportswear' || t === 'shoes') return 'spring';
+    if (t === 'bottoms' && !m) return 'spring';
+    return 'spring';
+};
+
+const inferWeatherFromType = (type: string, material?: string | null): string[] => {
+    const t = type.toLowerCase();
+    const m = (material || '').toLowerCase();
+    if (t === 'outerwear' || m.includes('wool') || m.includes('fleece')) return ['snow', 'wind'];
+    if (t === 'sportswear') return ['sun', 'wind'];
+    return ['sun'];
+};
+
+const styleToOccasions = (style?: string): Occasion[] => {
+    const s = (style || '').toLowerCase();
+    if (s.includes('formal') || s.includes('elegant') || s.includes('business')) return ['formal', 'work'] as Occasion[];
+    if (s.includes('sport')) return ['sport', 'casual'] as Occasion[];
+    if (s.includes('streetwear') || s.includes('urban')) return ['casual', 'outdoor'] as Occasion[];
+    return ['casual'] as Occasion[];
+};
+
 const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
     imageUri,
     initialData,
@@ -86,13 +117,81 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
 
     // Get data from route params or props
     const itemImageUri = route.params?.imageUri || imageUri;
-    const detectedType = route.params?.detectedType || initialData?.type || 'outerwear';
+    const detectedType = route.params?.detectedType || initialData?.type || 'tops';
     const detectedColor = route.params?.detectedColor || initialData?.color || 'beige';
+    const detectedStyle: string | undefined = route.params?.detectedStyle;
+    const detectedMaterial: string | undefined = route.params?.detectedMaterial;
+    const aiConfidence: number | undefined = route.params?.aiConfidence;
+    const detectedDescription: string | undefined = route.params?.detectedDescription;
+
+    // AI analysis for images opened without pre-detected data
+    const [isAnalyzing, setIsAnalyzing] = useState(!route.params?.detectedType && !!itemImageUri);
+    const hasRunAnalysis = useRef(false);
 
     const [selectedType, setSelectedType] = useState(detectedType);
     const [selectedColor, setSelectedColor] = useState(detectedColor);
-    const [selectedSeason, setSelectedSeason] = useState('winter');
-    const [selectedWeather, setSelectedWeather] = useState<string[]>(['snow', 'wind']);
+    const [selectedSeason, setSelectedSeason] = useState(
+        route.params?.detectedType
+            ? inferSeasonFromType(detectedType, detectedMaterial)
+            : 'spring'
+    );
+    const [selectedWeather, setSelectedWeather] = useState<string[]>(
+        route.params?.detectedType
+            ? inferWeatherFromType(detectedType, detectedMaterial)
+            : ['sun']
+    );
+
+    // Live AI analysis when editor opened with just imageUri (no pre-classified data)
+    useEffect(() => {
+        if (!isAnalyzing || !itemImageUri || hasRunAnalysis.current) return;
+        hasRunAnalysis.current = true;
+
+        (async () => {
+            try {
+                const b64 = await FileSystem.readAsStringAsync(itemImageUri, {
+                    encoding: 'base64' as any,
+                });
+                const aiResult = await ExternalAIService.classifyOnly(b64);
+                if (aiResult.success && aiResult.classification) {
+                    const cat = aiResult.classification.category.toLowerCase();
+                    const sec = aiResult.classification.section.toLowerCase();
+
+                    const mapType = (c: string, s: string) => {
+                        if (s === 'tops' || c.includes('shirt') || c.includes('blouse') || c.includes('sweater') || c.includes('hoodie') || c === 't-shirt') return 'tops';
+                        if (s === 'bottoms' || c.includes('pant') || c.includes('jean') || c.includes('skirt') || c.includes('short')) return 'bottoms';
+                        if (s === 'shoes' || c.includes('shoe') || c.includes('sneaker') || c.includes('boot') || c.includes('sandal')) return 'shoes';
+                        if (s === 'accessories' || c.includes('bag') || c.includes('hat') || c.includes('scarf') || c.includes('belt')) return 'accessories';
+                        if (s === 'outerwear' || c.includes('jacket') || c.includes('coat')) return 'outerwear';
+                        return 'tops';
+                    };
+
+                    const mapColor = (colorName: string) => {
+                        const n = (colorName || '').toLowerCase();
+                        if (n.includes('black') || n.includes('charcoal')) return 'black';
+                        if (n.includes('grey') || n.includes('gray') || n.includes('silver')) return 'grey';
+                        if (n.includes('beige') || n.includes('cream') || n.includes('tan') || n.includes('khaki')) return 'beige';
+                        if (n.includes('white') || n.includes('ivory')) return 'white';
+                        if (n.includes('brown') || n.includes('camel')) return 'brown';
+                        if (n.includes('green') || n.includes('olive')) return 'green';
+                        if (n.includes('red') || n.includes('burgundy') || n.includes('pink')) return 'red';
+                        if (n.includes('blue') || n.includes('navy') || n.includes('denim')) return 'blue';
+                        return 'beige';
+                    };
+
+                    const newType = mapType(cat, sec);
+                    const newColor = mapColor(aiResult.classification.attributes?.color || '');
+                    setSelectedType(newType);
+                    setSelectedColor(newColor);
+                    setSelectedSeason(inferSeasonFromType(newType, aiResult.classification.attributes?.material));
+                    setSelectedWeather(inferWeatherFromType(newType, aiResult.classification.attributes?.material));
+                }
+            } catch {
+                // silently ignore
+            } finally {
+                setIsAnalyzing(false);
+            }
+        })();
+    }, []);
 
     const handleTypeSelect = (typeId: string) => {
         setSelectedType(typeId);
@@ -153,11 +252,13 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
                 primaryColor: selectedColorData.label,
                 colorHex: selectedColorData.hex,
                 pattern: 'solid',
-                material: '',
+                material: detectedMaterial || '',
                 brand: '',
-                name: `${selectedColorData.label} ${selectedType}`,
+                name: detectedDescription
+                    ? detectedDescription.slice(0, 60)
+                    : `${selectedColorData.label} ${selectedType}`,
                 seasons: [selectedSeason] as Season[],
-                occasions: ['casual'] as Occasion[],
+                occasions: styleToOccasions(detectedStyle),
             });
 
             Alert.alert(
@@ -165,7 +266,22 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
                 'Item added to your wardrobe.',
                 [{ text: 'OK', onPress: () => navigation.goBack() }]
             );
-        } catch (error) {
+        } catch (error: any) {
+            if (error?.code === 'WARDROBE_LIMIT_REACHED') {
+                Alert.alert(
+                    'Wardrobe is full',
+                    `Free plan keeps closets at ${error.limit ?? 20} items. Upgrade to Pro for an unlimited wardrobe.`,
+                    [
+                        { text: 'Maybe later', style: 'cancel' },
+                        {
+                            text: 'Upgrade',
+                            style: 'default',
+                            onPress: () => (navigation as any).navigate('Paywall'),
+                        },
+                    ]
+                );
+                return;
+            }
             console.error('Failed to save item:', error);
             Alert.alert('Error', 'Failed to save item. Please try again.');
         }
@@ -197,6 +313,33 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
                     contentContainerStyle={styles.content}
                     showsVerticalScrollIndicator={false}
                 >
+                    {/* AI Analysis Banner */}
+                    {isAnalyzing && (
+                        <View style={styles.aiBanner}>
+                            <ActivityIndicator size="small" color="#007AFF" style={{ marginRight: 8 }} />
+                            <Text style={styles.aiBannerText}>AI is analyzing your clothing...</Text>
+                        </View>
+                    )}
+                    {!isAnalyzing && aiConfidence !== undefined && (
+                        <View style={styles.aiBanner}>
+                            <Ionicons name="sparkles" size={14} color="#007AFF" style={{ marginRight: 6 }} />
+                            <Text style={styles.aiBannerText}>
+                                AI Detected
+                            </Text>
+                            <View style={styles.aiBannerBadge}>
+                                <Text style={styles.aiBannerBadgeText}>
+                                    {Math.round(aiConfidence * 100)}% confidence
+                                </Text>
+                            </View>
+                            {detectedMaterial ? (
+                                <Text style={styles.aiBannerMaterial}> · {detectedMaterial}</Text>
+                            ) : null}
+                        </View>
+                    )}
+                    {detectedDescription ? (
+                        <Text style={styles.aiDescription}>{detectedDescription}</Text>
+                    ) : null}
+
                     {/* Clothing Image */}
                     <View style={styles.imageContainer}>
                         {itemImageUri ? (
@@ -501,6 +644,46 @@ const styles = StyleSheet.create({
     weatherCircleSelected: {
         backgroundColor: '#1C1C1E',
         borderColor: '#1C1C1E',
+    },
+    // AI Banner
+    aiBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#EEF4FF',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        marginBottom: 12,
+        flexWrap: 'wrap',
+    },
+    aiBannerText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#007AFF',
+    },
+    aiBannerBadge: {
+        backgroundColor: '#007AFF',
+        borderRadius: 8,
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        marginLeft: 8,
+    },
+    aiBannerBadgeText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    aiBannerMaterial: {
+        fontSize: 13,
+        color: '#3C3C43',
+        marginLeft: 2,
+    },
+    aiDescription: {
+        fontSize: 13,
+        color: '#636366',
+        marginBottom: 16,
+        lineHeight: 18,
+        fontStyle: 'italic',
     },
     // Save Button
     saveButtonContainer: {

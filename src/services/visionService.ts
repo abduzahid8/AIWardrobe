@@ -13,6 +13,9 @@
 
 import axios from 'axios';
 import Config from '../config/env';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('VisionService');
 
 const ALICEVISION_URL = Config.api.alicevisionUrl;
 const TIMEOUT_MS = 60000;
@@ -67,7 +70,7 @@ async function withRetry<T>(
         return await fn();
     } catch (error) {
         if (retries > 0) {
-            console.log(`[VisionService] Retrying... (${MAX_RETRIES - retries + 1}/${MAX_RETRIES})`);
+            logger.debug(`Retrying... (${MAX_RETRIES - retries + 1}/${MAX_RETRIES})`);
             await new Promise((resolve) => setTimeout(resolve, delay));
             return withRetry(fn, retries - 1, delay * 1.5);
         }

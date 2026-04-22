@@ -1,60 +1,46 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Platform } from "react-native";
-import { CommonActions, useNavigation } from "@react-navigation/native";
 
 // Imports screens...
-import StyleQuizScreen from "../screens/StyleQuizScreen";
-import { useStylePreferenceStore } from "../store/stylePreferenceStore";
-import HomeScreen from "../screens/HomeScreen";
-import AIAssistant from "../screens/AIAssistant";
 import AIStylistScreen from "../screens/AIStylistScreen";
-import AddOutfitScreen from "../screens/AddOutfitScreen";
 import AITryOnScreen from "../screens/AITryOnScreen";
 import ScanWardrobeScreen from "../screens/ScreenWardrobe";
 import SignInScreen from "../screens/SignInScreen";
 import SignUpScreen from "../screens/SignUpScreen";
 import AIOutfitmaker from "../screens/AIOutfitmaker";
-import DesignRoomScreen from "../screens/DesignRoomScreen";
-import NewOutfitScreen from "../screens/NewOutfitScreen";
 import TabNavigator from "../navigation/TabNavigator";
-// import TabNavigator from "../navigation/TabNavigator"; // Ensure correct path
 import WardrobeVideoScreen from "../screens/WardrobeVideoScreen";
 import CameraScreen from "../screens/CameraScreen";
+import ChatScreen from "../screens/ChatScreen";
 
 import useAuthStore from "../store/auth";
-import useTrialStore from "../store/trialStore";
-import TrialLimitModal from "../components/TrialLimitModal";
+import useSubscriptionStore from "../store/subscriptionStore";
+import useDailyUsageStore from "../store/dailyUsageStore";
 import ReviewScreen from "../screens/ReviewScreen";
 import OutfitCalendarScreen from "../screens/OutfitCalendarScreen";
-import AIHubScreen from "../screens/AIHubScreen";
-import EmailOnboardingScreen from "../screens/EmailOnboardingScreen";
-import TripPlannerScreen from "../screens/TripPlannerScreen";
-import OutfitDetailScreen from "../screens/OutfitDetailScreen";
 import PaywallScreen from "../screens/PaywallScreen";
 import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
 import ResetPasswordScreen from "../screens/ResetPasswordScreen";
 import OutfitAIScreen from "../screens/OutfitAIScreen";
 import CreateAvatarScreen from "../screens/CreateAvatarScreen";
-import MeetingOutfitScreen from "../screens/MeetingOutfitScreen";
-import PriceTrackerScreen from "../screens/PriceTrackerScreen";
-import FlashSalesScreen from "../screens/FlashSalesScreen";
-import FlashSaleEventScreen from "../screens/FlashSaleEventScreen";
 import MyClosetScreen from "../screens/MyClosetScreen";
-import StyleGoalsScreen from "../screens/StyleGoalsScreen";
-import DailySuggestionScreen from "../screens/DailySuggestionScreen";
-import WearLogScreen from "../screens/WearLogScreen";
-import WeeklyInsightsScreen from "../screens/WeeklyInsightsScreen";
+import WardrobeAnalyticsScreen from "../screens/WardrobeAnalyticsScreen";
+import PrivacyPolicyScreen from "../screens/PrivacyPolicyScreen";
+import TermsOfServiceScreen from "../screens/TermsOfServiceScreen";
+import ClothingDetailEditor from "../components/ClothingDetailEditor";
+import ClothingDetailScreen from "../screens/ClothingDetailScreen";
+import TrialExpiredScreen from "../screens/TrialExpiredScreen";
 import { addNotificationListeners } from "../src/services/notificationService";
 import { notificationService } from "../src/services/notificationService";
 import { RootStackParamList } from "./types";
+import { navigationRef, navigateTo } from "./navigationRef";
 import { useSessionGuard } from "../src/hooks/useSessionGuard";
 import analyticsService from "../src/services/analyticsService";
 import { iapService } from "../src/services/iapService";
 import { colors } from "../src/theme";
 
 
-// 2. Передаем этот список в Stack
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 // iOS 26-style smooth transition config
@@ -71,58 +57,79 @@ const smoothTransitionConfig = {
 };
 
 const RootNavigator = () => {
-  // Session expiry guard — checks token on app foreground
   useSessionGuard();
 
-  const { isAuthenticated, isTrialMode, startTrial } = useAuthStore();
-  const { hasCompletedOnboarding, onboardingStep } = useStylePreferenceStore();
+  const { isAuthenticated } = useAuthStore();
   const {
-    trialCount,
+    tier,
+    hasActiveSubscription,
     isTrialExpired,
-    initializeTrial,
-    incrementTrialCount
-  } = useTrialStore();
-  const [showTrialModal, setShowTrialModal] = useState(false);
-  const [hasIncrementedThisSession, setHasIncrementedThisSession] = useState(false);
+    isTrialPending,
+    initializeSubscription,
+    verifySubscriptionFromServer,
+  } = useSubscriptionStore();
 
-  // Navigation ref for notification-driven navigation
-  const navigationRef = React.useRef<any>(null);
+  // Show the non-dismissable TrialExpiredScreen when the 7-day trial ends
+  // and the user has no paid subscription.
+  // IMPORTANT: isTrialPending or isLoading must be false — we never show the gate
+  // while the trial date is still being resolved from storage or the server.
+  const showTrialGate =
+    isAuthenticated &&
+    isTrialExpired &&
+    !hasActiveSubscription &&
+    !isTrialPending &&
+    !useSubscriptionStore.getState().isLoading;
 
   useEffect(() => {
     const initialize = async () => {
+      // 1. Auth must happen first — every other service wants to know who
+      // the user is before initializing (for user-scoped analytics, IAP, etc.)
       const { initializeAuth } = useAuthStore.getState();
       await initializeAuth();
-      await initializeTrial();
 
-      // Initialize services
-      await notificationService.initialize();
+      // 2. Analytics is synchronous — start it immediately so early events
+      // (like "app_opened") land in the queue.
       analyticsService.initialize();
-      await iapService.initialize();
 
-      // Set analytics user if already authenticated
+      // 3. Everything else is independent of each other and of the render
+      // path. Run them in parallel and never block the UI on them.
+      // Individual failures are swallowed so one slow service can't
+      // block the others.
+      await Promise.all([
+        initializeSubscription().catch((err) =>
+          console.warn('[RootNavigator] initializeSubscription failed', err),
+        ),
+        useDailyUsageStore.getState().hydrate().catch((err) =>
+          console.warn('[RootNavigator] dailyUsage hydrate failed', err),
+        ),
+        notificationService.initialize().catch((err) =>
+          console.warn('[RootNavigator] notificationService failed', err),
+        ),
+        iapService.initialize().catch((err) =>
+          console.warn('[RootNavigator] iapService failed', err),
+        ),
+      ]);
+
+      // 4. Identify the user once services are ready. Verification against
+      // the server is fire-and-forget — the UI doesn't need to block on it.
       const { isAuthenticated: authStatus, user: currentUser } = useAuthStore.getState();
       if (authStatus && currentUser?.id) {
         analyticsService.setUserId(currentUser.id);
         iapService.identify(currentUser.id);
-      }
-
-      const { isTrialExpired: trialExpired } = useTrialStore.getState();
-
-      if (!authStatus && !trialExpired) {
-        // Auto-start trial mode - no need to show auth screens
-        startTrial();
+        verifySubscriptionFromServer().catch((err) =>
+          console.warn('[RootNavigator] verifySubscriptionFromServer failed', err),
+        );
       }
     };
 
     initialize();
 
-    // Listen for notification taps → navigate to correct screen
     const removeListeners = addNotificationListeners(
       undefined,
       (response) => {
         const screen = response.notification.request.content.data?.screen;
-        if (screen && navigationRef.current) {
-          navigationRef.current.navigate(screen);
+        if (screen) {
+          navigateTo(screen as keyof RootStackParamList);
         }
       }
     );
@@ -130,45 +137,22 @@ const RootNavigator = () => {
     return removeListeners;
   }, []);
 
-  // Increment trial counter on app launch (only once per session, and ONLY for non-authenticated users)
   useEffect(() => {
-    if (!isAuthenticated && isTrialMode && !isTrialExpired && !hasIncrementedThisSession) {
-      incrementTrialCount();
-      setHasIncrementedThisSession(true);
+    if (isAuthenticated) {
+      verifySubscriptionFromServer();
     }
-  }, [isAuthenticated, isTrialMode, isTrialExpired, hasIncrementedThisSession, incrementTrialCount]);
+  }, [isAuthenticated]);
 
-  // Show modal when trial expires
+  // Auto-navigate to the trial-expired gate when the user has no active
+  // subscription and the 7-day trial has ended. isTrialPending guards
+  // against flashing the gate before initialization finishes.
   useEffect(() => {
-    if (isTrialExpired && !isAuthenticated) {
-      setShowTrialModal(true);
+    if (showTrialGate) {
+      navigateTo('TrialExpired');
     }
-  }, [isTrialExpired, isAuthenticated]);
-
-  const handleNavigateToSignUp = () => {
-    setShowTrialModal(false);
-    const { endTrial } = useAuthStore.getState();
-    endTrial();
-  };
-
-  const handleNavigateToSignIn = () => {
-    setShowTrialModal(false);
-    const { endTrial } = useAuthStore.getState();
-    endTrial();
-  };
-
-
-  // Determine what to show based on authentication and trial state
-  // Modified flow: Auth -> Onboarding (StyleQuiz) -> Paywall -> Main
-  const shouldShowApp = isAuthenticated || (isTrialMode && !isTrialExpired);
+  }, [showTrialGate]);
 
   return (
-    <>
-      <TrialLimitModal
-        visible={showTrialModal}
-        onSignUp={handleNavigateToSignUp}
-        onSignIn={handleNavigateToSignIn}
-      />
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
@@ -188,26 +172,12 @@ const RootNavigator = () => {
           },
         }}
       >
-        {shouldShowApp ? (
+        {isAuthenticated ? (
           <>
-            {!hasCompletedOnboarding ? (
-              <Stack.Screen name="StyleQuiz" component={StyleQuizScreen} />
-            ) : (
-              <Stack.Screen name="Main" component={TabNavigator} />
-            )}
+            <Stack.Screen name="Main" component={TabNavigator} />
 
             {/* Main tab navigation with Home, Add, and Profile */}
             {/* <Stack.Screen name="Home" component={TabNavigator} /> */}
-
-            <Stack.Screen
-              name="AddOutfit"
-              component={AddOutfitScreen}
-              options={{
-                presentation: 'modal',
-                animation: 'slide_from_bottom',
-                title: "Add New Item",
-              }}
-            />
 
             {/* Important: name should match ParamList */}
             <Stack.Screen
@@ -264,58 +234,10 @@ const RootNavigator = () => {
                 headerShown: false,
               }}
             />
-
-            <Stack.Screen
-              name="DesignRoom"
-              component={DesignRoomScreen}
-              options={{ animation: 'slide_from_right' }}
-            />
             <Stack.Screen
               name="Calendar"
               component={OutfitCalendarScreen}
               options={{ animation: 'slide_from_right' }}
-            />
-            <Stack.Screen
-              name="NewOutfit"
-              component={NewOutfitScreen}
-              options={{
-                animation: 'fade_from_bottom',
-                presentation: 'transparentModal',
-              }}
-            />
-            <Stack.Screen
-              name="AIHub"
-              component={AIHubScreen}
-              options={{ animation: 'slide_from_bottom' }}
-            />
-            <Stack.Screen
-              name="EmailOnboarding"
-              component={EmailOnboardingScreen}
-              options={{
-                animation: 'slide_from_bottom',
-                presentation: 'modal',
-                gestureEnabled: true,
-                gestureDirection: 'vertical',
-              }}
-            />
-            <Stack.Screen
-              name="TripPlanner"
-              component={TripPlannerScreen}
-              options={{
-                animation: 'slide_from_bottom',
-                presentation: 'modal',
-                gestureEnabled: true,
-                gestureDirection: 'vertical',
-              }}
-            />
-            <Stack.Screen
-              name="OutfitDetail"
-              component={OutfitDetailScreen}
-              options={{
-                animation: 'fade',
-                presentation: 'fullScreenModal',
-                gestureEnabled: true,
-              }}
             />
 
             <Stack.Screen
@@ -327,40 +249,6 @@ const RootNavigator = () => {
               initialParams={{ initialTab: 'outfit' }}
             />
             <Stack.Screen
-              name="MeetingOutfit"
-              component={MeetingOutfitScreen}
-              options={{
-                animation: 'slide_from_bottom',
-                presentation: 'modal',
-                gestureEnabled: true,
-                gestureDirection: 'vertical',
-              }}
-            />
-            <Stack.Screen
-              name="PriceTracker"
-              component={PriceTrackerScreen}
-              options={{
-                animation: 'slide_from_right',
-              }}
-            />
-            <Stack.Screen
-              name="FlashSales"
-              component={FlashSalesScreen}
-              options={{
-                animation: 'slide_from_bottom',
-                presentation: 'modal',
-                gestureEnabled: true,
-                gestureDirection: 'vertical',
-              }}
-            />
-            <Stack.Screen
-              name="FlashSaleEvent"
-              component={FlashSaleEventScreen}
-              options={{
-                animation: 'slide_from_right',
-              }}
-            />
-            <Stack.Screen
               name="MyCloset"
               component={MyClosetScreen}
               options={{
@@ -368,17 +256,15 @@ const RootNavigator = () => {
               }}
             />
             <Stack.Screen
-              name="StyleGoals"
-              component={StyleGoalsScreen}
+              name="WardrobeAnalytics"
+              component={WardrobeAnalyticsScreen}
               options={{
                 animation: 'slide_from_right',
               }}
             />
-
-            {/* ── Core Behavioral Loop (MVP) ── */}
             <Stack.Screen
-              name="DailySuggestion"
-              component={DailySuggestionScreen}
+              name="StylistChat"
+              component={ChatScreen}
               options={{
                 animation: 'slide_from_bottom',
                 presentation: 'modal',
@@ -387,8 +273,43 @@ const RootNavigator = () => {
               }}
             />
             <Stack.Screen
-              name="WearLog"
-              component={WearLogScreen}
+              name="PrivacyPolicy"
+              component={PrivacyPolicyScreen}
+              options={{
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="TermsOfService"
+              component={TermsOfServiceScreen}
+              options={{
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="ClothingDetailEditor"
+              component={ClothingDetailEditor}
+              options={{
+                animation: 'slide_from_bottom',
+                presentation: 'fullScreenModal',
+                gestureEnabled: true,
+                gestureDirection: 'vertical',
+              }}
+            />
+            <Stack.Screen
+              name="ClothingDetail"
+              component={ClothingDetailScreen}
+              options={{
+                animation: 'slide_from_right',
+                gestureEnabled: true,
+                gestureDirection: 'horizontal',
+              }}
+            />
+
+            {/* Global Paywall */}
+            <Stack.Screen
+              name="Paywall"
+              component={PaywallScreen}
               options={{
                 animation: 'slide_from_bottom',
                 presentation: 'modal',
@@ -396,28 +317,13 @@ const RootNavigator = () => {
                 gestureDirection: 'vertical',
               }}
             />
+
+            {/* Trial Expired (always available in stack for deep links / manual nav) */}
             <Stack.Screen
-              name="WeeklyInsights"
-              component={WeeklyInsightsScreen}
-              options={{
-                animation: 'slide_from_right',
-              }}
+              name="TrialExpired"
+              component={TrialExpiredScreen}
+              options={{ animation: 'fade', gestureEnabled: false }}
             />
-
-            {/* Global Paywall explicitly for when onboarding is done */}
-            {hasCompletedOnboarding && (
-              <Stack.Screen
-                name="Paywall"
-                component={PaywallScreen}
-                options={{
-                  animation: 'slide_from_bottom',
-                  presentation: 'modal',
-                  gestureEnabled: true,
-                  gestureDirection: 'vertical',
-                }}
-              />
-            )}
-
           </>
         ) : (
           <>
@@ -444,7 +350,6 @@ const RootNavigator = () => {
           </>
         )}
       </Stack.Navigator>
-    </>
   );
 };
 

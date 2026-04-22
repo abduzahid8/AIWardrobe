@@ -5,10 +5,18 @@
  * This is the brain of the daily suggestion system.
  *
  * Architecture:
- *   1. FILTER  — Remove items incompatible with context (weather, occasion)
- *   2. COMBINE — Generate candidate outfits (top + bottom + shoes [+ outerwear])
- *   3. SCORE   — Rank by (preference × weather × novelty × color_harmony)
- *   4. RETURN  — Top 3 candidates with reasoning
+ *   1. TIER    — Assign formality tier (1–5) to every item
+ *   2. FILTER  — Remove items incompatible with context (weather, occasion tier)
+ *   3. COMBINE — Generate candidate outfits (top + bottom + shoes [+ outerwear])
+ *   4. SCORE   — Rank by formality(30%) + novelty(25%) + color_harmony(25%) + weather(20%)
+ *   5. RETURN  — Top N candidates with reasoning
+ *
+ * Formality Tiers:
+ *   1 = Formal        (suits, dress shirts, Oxford shoes, ties)
+ *   2 = Business Casual (blazers, chinos, loafers, turtlenecks)
+ *   3 = Smart Casual  (clean jeans, polos, Chelsea boots, minimal sneakers)
+ *   4 = Casual        (t-shirts, hoodies, joggers, casual sneakers)
+ *   5 = Sport/Active  (athletic wear, trainers, technical fabrics)
  */
 
 import type {
@@ -21,8 +29,55 @@ import type {
 } from '../types/domain';
 
 // ============================================
+// FORMALITY TIER TYPES
+// ============================================
+
+/** 1=Formal, 2=Business Casual, 3=Smart Casual, 4=Casual, 5=Sport/Active */
+export type FormalityTier = 1 | 2 | 3 | 4 | 5;
+
+export const FORMALITY_TIER_LABELS: Record<FormalityTier, string> = {
+    1: 'Formal',
+    2: 'Business Casual',
+    3: 'Smart Casual',
+    4: 'Casual',
+    5: 'Sport / Active',
+};
+
+/** Dress code label shown in UI carousel badges */
+export const DRESS_CODE_BADGE: Record<FormalityTier, string> = {
+    1: 'Black Tie / Formal',
+    2: 'Business Casual',
+    3: 'Smart Casual',
+    4: 'Casual',
+    5: 'Activewear',
+};
+
+/** Occasion label shown in UI carousel cards */
+export const OCCASION_LABEL: Record<string, string> = {
+    work: 'Team Collaboration',
+    date: 'Date Night',
+    casual: 'Weekend',
+    formal: 'Formal Event',
+    sport: 'Active Day',
+    travel: 'Travel Ready',
+    'night-out': 'Night Out',
+    wedding: 'Wedding Guest',
+    interview: 'Interview',
+};
+
+// ============================================
 // TYPES
 // ============================================
+
+/** A clothing item that may be a shopping suggestion (user doesn't own it). */
+export interface ShoppingSuggestion {
+    category: ClothingCategory;
+    subCategory: string;
+    primaryColor: string;
+    reason: string;
+    /** Always true — used by UI to show the black dot badge */
+    isSuggestion: true;
+}
 
 export interface WeatherContext {
     temp: number;          // Celsius
@@ -43,36 +98,73 @@ export interface SuggestionRequest {
     occasion: Occasion;
     weather?: WeatherContext;
     preferences?: UserPreferences;
-    excludeOutfitIds?: string[];  // Already shown today
+    excludeOutfitIds?: string[];
+    /** When set, only generate outfits containing this item ID. */
+    anchorItemId?: string;
 }
 
 export interface ScoredOutfit {
     outfit: Omit<Outfit, 'id' | 'userId' | 'createdAt' | 'saved' | 'wornCount' | 'lastWornAt'>;
     score: number;
     reasoning: string;
+    /** Average formality tier of outfit items */
+    formalityTier: FormalityTier;
+    /** Dress code label for carousel badge */
+    dressCode: string;
+    /** Occasion label for carousel card */
+    occasionLabel: string;
+    /** Items that are shopping suggestions (not owned) */
+    shoppingSuggestions: ShoppingSuggestion[];
     breakdown: {
         preferenceScore: number;
         weatherScore: number;
         noveltyScore: number;
         harmonyScore: number;
+        formalityScore: number;
     };
+}
+
+/** Result of generateDailyOutfits — 4 occasion-targeted outfits */
+export interface DailyOutfits {
+    work: ScoredOutfit | null;
+    smartCasual: ScoredOutfit | null;
+    weekendCasual: ScoredOutfit | null;
+    wildcard: ScoredOutfit | null;
 }
 
 // ============================================
 // CONSTANTS
 // ============================================
 
+/** Scoring weights per spec: formality 30%, novelty 25%, harmony 25%, weather 20%. */
 const WEIGHTS = {
-    preference: 0.25,
-    weather: 0.30,
+    formality: 0.30,
     novelty: 0.25,
-    harmony: 0.20,
+    harmony: 0.25,
+    weather: 0.20,
+    preference: 0.0,  // Folded into formality tier selection
 };
 
-/** Materials suitable for temperature ranges */
-const WARM_MATERIALS = ['wool', 'fleece', 'cashmere', 'down', 'sherpa', 'corduroy'];
-const COOL_MATERIALS = ['linen', 'cotton', 'silk', 'rayon', 'chiffon', 'mesh'];
-const RAIN_MATERIALS = ['nylon', 'polyester', 'gore-tex', 'leather'];
+/** Materials suitable for temperature ranges — used for SCORING only, not hard exclusion */
+const WARM_MATERIALS = ['wool', 'fleece', 'cashmere', 'down', 'sherpa', 'corduroy', 'tweed'];
+const COOL_MATERIALS = ['linen', 'cotton', 'silk', 'rayon', 'chiffon', 'mesh', 'seersucker'];
+const RAIN_MATERIALS = ['nylon', 'polyester', 'gore-tex', 'leather', 'waxed'];
+
+/** Occasion → allowed formality tier range [min, max, preferred] */
+const OCCASION_TIER_MAP: Record<string, [number, number, FormalityTier]> = {
+    formal:    [1, 1, 1],
+    work:      [1, 3, 2],
+    interview: [1, 2, 1],
+    wedding:   [1, 2, 1],
+    date:      [2, 3, 3],
+    'night-out': [2, 3, 2],
+    casual:    [3, 4, 3],
+    travel:    [3, 4, 3],
+    beach:     [4, 4, 4],
+    sport:     [5, 5, 5],
+    workout:   [5, 5, 5],
+    'alpine-skiing': [5, 5, 5],
+};
 
 /** Color harmony rules (complementary pairs) */
 const COLOR_HARMONIES: Record<string, string[]> = {
@@ -89,6 +181,77 @@ const COLOR_HARMONIES: Record<string, string[]> = {
     pink: ['gray', 'navy', 'white', 'cream', 'black'],
     burgundy: ['gray', 'cream', 'white', 'navy', 'camel'],
 };
+
+// ============================================
+// FORMALITY TIER ASSIGNMENT
+// ============================================
+
+/**
+ * Determines the formality tier (1–5) of a clothing item based on its
+ * subCategory, category, and material.
+ *
+ * Tier 1 = Formal | Tier 2 = Business Casual | Tier 3 = Smart Casual
+ * Tier 4 = Casual | Tier 5 = Sport/Active
+ *
+ * Default is tier 3 (Smart Casual) when tier cannot be determined.
+ */
+export function getFormalityTier(item: ClothingItem): FormalityTier {
+    const type = (item.subCategory || item.category || '').toLowerCase();
+    const mat  = (item.material || '').toLowerCase();
+    const cat  = (item.category || '').toLowerCase();
+
+    // Tier 1 — Formal
+    const tier1 = ['suit', 'tuxedo', 'oxford shoe', 'dress shoe', 'tie', 'bow tie',
+        'dress shirt', 'waistcoat', 'vest', 'cummerbund', 'pocket square', 'blazer suit'];
+    if (tier1.some((t) => type.includes(t))) return 1;
+    if (mat.includes('satin') && cat === 'top') return 1;
+
+    // Tier 2 — Business Casual
+    const tier2 = ['blazer', 'chinos', 'loafer', 'monk strap', 'turtleneck',
+        'dress pant', 'trouser', 'button-down', 'button down', 'slacks',
+        'polo shirt', 'smart shoe', 'brogues', 'derby'];
+    if (tier2.some((t) => type.includes(t))) return 2;
+    if (mat.includes('tweed') || mat.includes('wool') && cat === 'top') return 2;
+
+    // Tier 3 — Smart Casual
+    const tier3 = ['polo', 'chino', 'chelsea boot', 'clean jeans', 'dark jeans',
+        'cardigan', 'crewneck', 'merino', 'boat shoe', 'minimalist sneaker',
+        'slim jeans', 'tapered trouser', 'henley', 'quarter-zip'];
+    if (tier3.some((t) => type.includes(t))) return 3;
+    if (type.includes('jean') && !type.includes('distressed')) return 3;
+    if (type.includes('sneaker') && (mat.includes('leather') || mat.includes('suede'))) return 3;
+
+    // Tier 5 — Sport/Active
+    const tier5 = ['athletic', 'running', 'gym', 'trainer', 'tracksuit', 'jogger',
+        'compression', 'legging', 'cycling', 'technical', 'windbreaker sport',
+        'board short', 'swim', 'activewear'];
+    if (tier5.some((t) => type.includes(t))) return 5;
+    if (mat.includes('lycra') || mat.includes('spandex') || mat.includes('dri-fit')) return 5;
+
+    // Tier 4 — Casual (widest net — catches remaining items)
+    const tier4 = ['t-shirt', 'tee', 'hoodie', 'sweatshirt', 'sweater', 'jeans',
+        'denim', 'shorts', 'sneaker', 'sandal', 'flip-flop', 'tank', 'cap',
+        'casual jacket', 'bomber', 'puffer', 'joggers', 'sweatpant'];
+    if (tier4.some((t) => type.includes(t))) return 4;
+    if (mat.includes('fleece') || mat.includes('sweat') || mat.includes('terry')) return 4;
+
+    return 3; // Default: Smart Casual
+}
+
+/**
+ * Check whether two formality tiers can coexist in the same outfit.
+ * Tiers 2+3 mixing is intentional (business casual). No other cross-tier mixing.
+ */
+function tiersCompatible(tierA: FormalityTier, tierB: FormalityTier): boolean {
+    const diff = Math.abs(tierA - tierB);
+    if (diff === 0) return true;
+    // Tier 2 + Tier 3 = intentional business casual mixing
+    if ((tierA === 2 && tierB === 3) || (tierA === 3 && tierB === 2)) return true;
+    // 1 tier apart is acceptable
+    if (diff === 1) return true;
+    // 2+ tiers apart = clash (e.g., formal + casual = invalid)
+    return false;
+}
 
 // ============================================
 // SEASON INFERENCE
@@ -110,49 +273,33 @@ function tempToSeason(temp: number): Season[] {
 }
 
 // ============================================
-// STEP 1: FILTER
+// STEP 1: FILTER (soft — no hard exclusions)
 // ============================================
 
+/**
+ * Filter by weather using SOFT scoring hints only.
+ * Per spec: no absolute exclusions — just score items lower when weather-mismatched.
+ * This function only removes items with 0% weather fit (extreme outliers).
+ */
 function filterByWeather(items: ClothingItem[], weather?: WeatherContext): ClothingItem[] {
     if (!weather) return items;
 
-    return items.filter((item) => {
-        const temp = weather.temp;
-        const material = (item.material || '').toLowerCase();
-
-        // Hard rules: don't suggest shorts in freezing weather
-        if (temp < 5) {
-            if (item.subCategory?.toLowerCase().includes('short')) return false;
-            if (item.subCategory?.toLowerCase().includes('sandal')) return false;
-            if (item.subCategory?.toLowerCase().includes('tank')) return false;
-        }
-
-        // Hard rules: don't suggest heavy coat in 30°C+
-        if (temp > 28) {
-            if (WARM_MATERIALS.some((m) => material.includes(m))) return false;
-            if (item.category === 'outerwear' && !material.includes('light')) return false;
-        }
-
-        // Rain: prefer water-resistant
-        if (weather.condition === 'rain' || weather.condition === 'snow') {
-            if (item.category === 'shoes') {
-                // Prefer closed shoes
-                if (item.subCategory?.toLowerCase().includes('sandal')) return false;
-            }
-        }
-
-        return true;
-    });
+    // Keep all items — extreme mismatches are handled by scoreWeather() returning ~0
+    return items;
 }
 
+/**
+ * Filter items by occasion-compatible formality tier.
+ * Items outside the allowed tier range for the occasion are excluded.
+ * Untagged items (no subCategory) default to tier 3 and are always included.
+ */
 function filterByOccasion(items: ClothingItem[], occasion: Occasion): ClothingItem[] {
+    const tierRange = OCCASION_TIER_MAP[occasion as string] ?? [1, 5, 3];
+    const [minTier, maxTier] = tierRange;
+
     return items.filter((item) => {
-        // If item has occasions set, use them
-        if (item.occasions && item.occasions.length > 0) {
-            return item.occasions.includes(occasion);
-        }
-        // Otherwise, include it (user hasn't tagged it yet)
-        return true;
+        const tier = getFormalityTier(item);
+        return tier >= minTier && tier <= maxTier;
     });
 }
 
@@ -172,13 +319,47 @@ function filterBySeason(items: ClothingItem[], weather?: WeatherContext): Clothi
 // STEP 2: COMBINE — Generate candidate outfits
 // ============================================
 
+/**
+ * Build shopping suggestions for outfit slots that have no owned items.
+ * Returns placeholder ShoppingSuggestion objects so the outfit card can display
+ * what the user should buy to complete the look.
+ */
+function buildShoppingSuggestions(
+    occasion: Occasion,
+    missingCategories: ClothingCategory[]
+): ShoppingSuggestion[] {
+    const tierRange = OCCASION_TIER_MAP[occasion as string] ?? [3, 4, 3];
+    const preferredTier = tierRange[2];
+    const tierLabel = FORMALITY_TIER_LABELS[preferredTier];
+
+    const defaults: Record<ClothingCategory, { subCategory: string; primaryColor: string }> = {
+        top:       { subCategory: preferredTier <= 2 ? 'dress shirt' : preferredTier === 3 ? 'polo shirt' : 't-shirt', primaryColor: 'white' },
+        bottom:    { subCategory: preferredTier <= 2 ? 'chinos' : preferredTier === 3 ? 'slim jeans' : 'jeans', primaryColor: 'navy' },
+        dress:     { subCategory: preferredTier <= 2 ? 'cocktail dress' : 'casual dress', primaryColor: 'black' },
+        shoes:     { subCategory: preferredTier <= 2 ? 'loafers' : preferredTier === 3 ? 'chelsea boots' : 'sneakers', primaryColor: 'black' },
+        outerwear: { subCategory: preferredTier <= 2 ? 'blazer' : 'casual jacket', primaryColor: 'navy' },
+        accessory: { subCategory: 'watch', primaryColor: 'silver' },
+        other:     { subCategory: 'item', primaryColor: 'black' },
+    };
+
+    return missingCategories.map((cat) => ({
+        category: cat,
+        subCategory: defaults[cat]?.subCategory ?? cat,
+        primaryColor: defaults[cat]?.primaryColor ?? 'black',
+        reason: `Complete this ${tierLabel} look`,
+        isSuggestion: true as const,
+    }));
+}
+
 function groupByCategory(items: ClothingItem[]): Record<ClothingCategory, ClothingItem[]> {
     const groups: Record<string, ClothingItem[]> = {
         top: [],
         bottom: [],
+        dress: [],
         shoes: [],
         outerwear: [],
         accessory: [],
+        other: [],
     };
 
     items.forEach((item) => {
@@ -190,48 +371,58 @@ function groupByCategory(items: ClothingItem[]): Record<ClothingCategory, Clothi
     return groups as Record<ClothingCategory, ClothingItem[]>;
 }
 
+/**
+ * Generate outfit candidate item-ID arrays.
+ * Only combines items whose formality tiers are compatible.
+ * Cold weather adds outerwear if available.
+ * anchorItemId forces every candidate to include that specific item.
+ */
 function generateCandidates(
     groups: Record<ClothingCategory, ClothingItem[]>,
     weather?: WeatherContext,
-    maxCandidates: number = 50
+    maxCandidates: number = 60,
+    anchorItemId?: string
 ): string[][] {
-    const tops = groups.top;
-    const bottoms = groups.bottom;
-    const shoes = groups.shoes;
+    const tops      = groups.top;
+    const bottoms   = groups.bottom;
+    const shoes     = groups.shoes;
     const outerwear = groups.outerwear;
 
-    if (tops.length === 0 || bottoms.length === 0) return [];
+    // Minimum: need at least one top and one bottom
+    if (tops.length === 0 && bottoms.length === 0) return [];
+
+    // If only one category available, still return a partial outfit
+    const effectiveTops    = tops.length > 0    ? tops    : [{ id: '__missing_top__',    category: 'top'    } as ClothingItem];
+    const effectiveBottoms = bottoms.length > 0 ? bottoms : [{ id: '__missing_bottom__', category: 'bottom' } as ClothingItem];
 
     const candidates: string[][] = [];
-    const needsOuterwear = weather ? weather.temp < 15 : false;
+    const needsOuterwear = weather ? weather.temp < 14 : false;
 
-    for (const top of tops) {
-        for (const bottom of bottoms) {
-            const baseOutfit = [top.id, bottom.id];
+    for (const top of effectiveTops) {
+        for (const bottom of effectiveBottoms) {
+            // Skip tier-incompatible pairs (unless one is a placeholder)
+            if (!top.id.startsWith('__') && !bottom.id.startsWith('__')) {
+                if (!tiersCompatible(getFormalityTier(top), getFormalityTier(bottom))) continue;
+            }
 
-            // Add shoes if available
-            if (shoes.length > 0) {
-                for (const shoe of shoes) {
-                    const outfit = [...baseOutfit, shoe.id];
-                    // Add outerwear if cold
-                    if (needsOuterwear && outerwear.length > 0) {
-                        for (const outer of outerwear) {
-                            candidates.push([...outfit, outer.id]);
-                            if (candidates.length >= maxCandidates) return candidates;
-                        }
-                    } else {
-                        candidates.push(outfit);
-                        if (candidates.length >= maxCandidates) return candidates;
-                    }
+            const baseOutfit = [top.id, bottom.id].filter((id) => !id.startsWith('__'));
+
+            const shoeList = shoes.length > 0 ? shoes : [null];
+            const outerList = needsOuterwear && outerwear.length > 0 ? outerwear : [null];
+
+            for (const shoe of shoeList) {
+                if (shoe && !shoe.id.startsWith('__')) {
+                    if (!tiersCompatible(getFormalityTier(top.id.startsWith('__') ? ({ category: 'top', subCategory: '' } as ClothingItem) : top), getFormalityTier(shoe))) continue;
                 }
-            } else {
-                if (needsOuterwear && outerwear.length > 0) {
-                    for (const outer of outerwear) {
-                        candidates.push([...baseOutfit, outer.id]);
-                        if (candidates.length >= maxCandidates) return candidates;
-                    }
-                } else {
-                    candidates.push(baseOutfit);
+                const withShoe = shoe ? [...baseOutfit, shoe.id] : baseOutfit;
+
+                for (const outer of outerList) {
+                    const full = outer ? [...withShoe, outer.id] : withShoe;
+
+                    // Enforce anchor constraint
+                    if (anchorItemId && !full.includes(anchorItemId)) continue;
+
+                    candidates.push(full);
                     if (candidates.length >= maxCandidates) return candidates;
                 }
             }
@@ -245,60 +436,60 @@ function generateCandidates(
 // STEP 3: SCORE
 // ============================================
 
+/**
+ * Score outfit against user color preferences.
+ * Preferred colors boost score; avoided colors penalize.
+ */
 function scorePreference(
     itemIds: string[],
     items: ClothingItem[],
     preferences?: UserPreferences
 ): number {
-    if (!preferences) return 0.5; // Neutral
+    if (!preferences) return 0.5;
 
     const outfitItems = itemIds.map((id) => items.find((i) => i.id === id)).filter(Boolean) as ClothingItem[];
     let score = 0.5;
-    let factors = 0;
 
     outfitItems.forEach((item) => {
         const color = (item.primaryColor || '').toLowerCase();
-
-        // Preferred colors boost
-        if (preferences.preferredColors.some((c) => color.includes(c.toLowerCase()))) {
-            score += 0.15;
-            factors++;
-        }
-
-        // Avoided colors penalty
-        if (preferences.avoidColors.some((c) => color.includes(c.toLowerCase()))) {
-            score -= 0.2;
-            factors++;
-        }
+        if (preferences.preferredColors.some((c) => color.includes(c.toLowerCase()))) score += 0.15;
+        if (preferences.avoidColors.some((c) => color.includes(c.toLowerCase()))) score -= 0.2;
     });
 
     return Math.max(0, Math.min(1, score));
 }
 
+/**
+ * Score outfit by weather fit.
+ * Uses fabric weight vs temperature range — no absolute exclusions.
+ * A heavy wool coat in 30°C scores low but is NOT removed from the pool.
+ */
 function scoreWeather(
     itemIds: string[],
     items: ClothingItem[],
     weather?: WeatherContext
 ): number {
-    if (!weather) return 0.7; // Slightly positive when no weather data
+    if (!weather) return 0.7;
 
     const outfitItems = itemIds.map((id) => items.find((i) => i.id === id)).filter(Boolean) as ClothingItem[];
-    let score = 0.5;
-
     const temp = weather.temp;
     const hasOuterwear = outfitItems.some((i) => i.category === 'outerwear');
+    let score = 0.5;
 
-    // Temperature appropriateness
-    if (temp < 10 && hasOuterwear) score += 0.2;
-    if (temp < 10 && !hasOuterwear) score -= 0.15;
-    if (temp > 25 && hasOuterwear) score -= 0.2;
+    // Outerwear presence vs temperature
+    if (temp < 8)  { if (hasOuterwear) score += 0.25; else score -= 0.15; }
+    if (temp > 25) { if (hasOuterwear) score -= 0.25; }
+    if (temp >= 8 && temp <= 20 && hasOuterwear) score += 0.10;
 
-    // Material appropriateness
+    // Material fabric-weight scoring
     outfitItems.forEach((item) => {
         const material = (item.material || '').toLowerCase();
-        if (temp < 15 && WARM_MATERIALS.some((m) => material.includes(m))) score += 0.1;
-        if (temp > 25 && COOL_MATERIALS.some((m) => material.includes(m))) score += 0.1;
-        if (weather.condition === 'rain' && RAIN_MATERIALS.some((m) => material.includes(m))) score += 0.1;
+        if (temp < 12 && WARM_MATERIALS.some((m) => material.includes(m)))  score += 0.10;
+        if (temp < 12 && COOL_MATERIALS.some((m) => material.includes(m)))  score -= 0.08;
+        if (temp > 22 && COOL_MATERIALS.some((m) => material.includes(m)))  score += 0.10;
+        if (temp > 22 && WARM_MATERIALS.some((m) => material.includes(m)))  score -= 0.10;
+        if ((weather.condition === 'rain' || weather.condition === 'snow') &&
+            RAIN_MATERIALS.some((m) => material.includes(m))) score += 0.08;
     });
 
     return Math.max(0, Math.min(1, score));
@@ -382,6 +573,60 @@ function scoreColorHarmony(
     return comparisons > 0 ? Math.min(1, harmonyHits / comparisons) : 0.5;
 }
 
+/** @deprecated Use getFormalityTier() instead. Kept for backward compatibility. */
+function getFormalityLevel(item: ClothingItem): number {
+    return getFormalityTier(item);
+}
+
+/**
+ * Score outfit formality coherence (30% of total score).
+ *
+ * Two factors:
+ *   1. Internal coherence — items should not span more than 1 tier apart
+ *      (exception: tiers 2+3 intentional business casual mixing = no penalty)
+ *   2. Occasion alignment — outfit average tier should match occasion target tier
+ */
+function scoreFormality(
+    itemIds: string[],
+    items: ClothingItem[],
+    occasion?: Occasion
+): number {
+    const outfitItems = itemIds
+        .map((id) => items.find((i) => i.id === id))
+        .filter(Boolean) as ClothingItem[];
+    if (outfitItems.length === 0) return 0.5;
+
+    const tiers = outfitItems.map(getFormalityTier);
+    const minTier = Math.min(...tiers) as FormalityTier;
+    const maxTier = Math.max(...tiers) as FormalityTier;
+    const avgTier = tiers.reduce((a, b) => a + b, 0) / tiers.length;
+
+    let score = 1.0;
+
+    // Internal coherence — penalize tier clashes
+    const spread = maxTier - minTier;
+    if (spread > 2) score -= 0.7;      // Hard clash (e.g., formal suit + hoodie)
+    else if (spread === 2) {
+        // Allow tier 2+3 = 0 penalty; tier 1+3, 3+5 etc = moderate penalty
+        const isBizCasualMix = (minTier === 2 && maxTier === 3) || (minTier === 3 && maxTier === 4);
+        if (!isBizCasualMix) score -= 0.25;
+    }
+
+    // Occasion alignment
+    if (occasion) {
+        const tierRange = OCCASION_TIER_MAP[occasion as string] ?? [1, 5, 3];
+        const targetTier = tierRange[2];
+        const diff = Math.abs(avgTier - targetTier);
+        score -= diff * 0.18;
+    }
+
+    return Math.max(0, Math.min(1, score));
+}
+
+/**
+ * Generate human-readable reasoning string for a scored outfit.
+ * Used in suggestion cards and AI chat context.
+ */
 function generateReasoning(
     itemIds: string[],
     items: ClothingItem[],
@@ -389,66 +634,125 @@ function generateReasoning(
     weather?: WeatherContext,
     occasion?: Occasion
 ): string {
-    const outfitItems = itemIds.map((id) => items.find((i) => i.id === id)).filter(Boolean) as ClothingItem[];
+    const outfitItems = itemIds
+        .map((id) => items.find((i) => i.id === id))
+        .filter(Boolean) as ClothingItem[];
     const parts: string[] = [];
 
-    // Weather reasoning
-    if (weather) {
-        parts.push(`${Math.round(weather.temp)}°C ${weather.condition}`);
-    }
+    if (weather) parts.push(`${Math.round(weather.temp)}°C · ${weather.condition}`);
 
-    // Novelty reasoning
-    if (breakdown.noveltyScore > 0.7) {
+    if (breakdown.noveltyScore > 0.7 && outfitItems.length > 0) {
         const leastWorn = outfitItems.reduce((a, b) => (a.wearCount < b.wearCount ? a : b));
-        parts.push(`features your ${leastWorn.subCategory || leastWorn.category} (worn ${leastWorn.wearCount}×)`);
+        parts.push(`surfaces your ${leastWorn.subCategory || leastWorn.category} (worn ${leastWorn.wearCount}×)`);
     }
 
-    // Harmony reasoning
     if (breakdown.harmonyScore > 0.7) {
         const colors = outfitItems.map((i) => i.primaryColor).filter(Boolean).slice(0, 2);
-        if (colors.length >= 2) {
-            parts.push(`${colors[0]} + ${colors[1]} color harmony`);
-        }
+        if (colors.length >= 2) parts.push(`${colors[0]} + ${colors[1]} harmony`);
     }
 
-    // Occasion
-    if (occasion) {
-        parts.push(`suited for ${occasion}`);
-    }
+    if (breakdown.formalityScore > 0.8) parts.push(`cohesive dress code`);
 
-    return parts.length > 0
-        ? parts.join(' · ')
-        : 'A balanced outfit from your wardrobe';
+    if (occasion) parts.push(OCCASION_LABEL[occasion as string] ?? occasion);
+
+    return parts.length > 0 ? parts.join(' · ') : 'A sharp look from your wardrobe';
 }
 
 // ============================================
 // MAIN: generateSuggestions
 // ============================================
 
+/**
+ * Generate scored outfit suggestions from the user's wardrobe.
+ * Never returns empty — falls back through progressive relaxation:
+ *   1. Full filter (weather + occasion tier + season)
+ *   2. Without season filter
+ *   3. Without occasion tier filter
+ *   4. Bare minimum: any top + any bottom
+ */
 export function generateSuggestions(request: SuggestionRequest): ScoredOutfit[] {
-    const { items, wearLogs, occasion, weather, preferences } = request;
+    const { items, wearLogs, occasion, weather, preferences, anchorItemId } = request;
 
-    if (items.length === 0) return [];
+    if (items.length === 0) {
+        // Return one shopping suggestion outfit when wardrobe is empty
+        return [buildEmptyStateSuggestion(occasion)];
+    }
 
-    // Step 1: Filter
+    // Step 1: Filter with full constraints
     let filtered = filterByWeather(items, weather);
     filtered = filterByOccasion(filtered, occasion);
     filtered = filterBySeason(filtered, weather);
 
-    // Step 2: Combine
-    const groups = groupByCategory(filtered);
-    const candidates = generateCandidates(groups, weather);
+    let groups = groupByCategory(filtered);
+    let candidates = generateCandidates(groups, weather, 60, anchorItemId);
 
+    // Fallback 1: drop season filter
     if (candidates.length === 0) {
-        // Fallback: try without occasion filter
-        const fallbackFiltered = filterByWeather(items, weather);
-        const fallbackGroups = groupByCategory(fallbackFiltered);
-        const fallbackCandidates = generateCandidates(fallbackGroups, weather);
-        if (fallbackCandidates.length === 0) return [];
-        return scoreCandidates(fallbackCandidates, items, wearLogs, weather, preferences, occasion);
+        filtered = filterByOccasion(items, occasion);
+        groups = groupByCategory(filtered);
+        candidates = generateCandidates(groups, weather, 60, anchorItemId);
+    }
+
+    // Fallback 2: drop occasion tier filter
+    if (candidates.length === 0) {
+        groups = groupByCategory(items);
+        candidates = generateCandidates(groups, weather, 60, anchorItemId);
+    }
+
+    // Fallback 3: bare minimum — any top + any bottom (guaranteed non-empty)
+    if (candidates.length === 0) {
+        groups = groupByCategory(items);
+        const allTops    = items.filter((i) => i.category === 'top');
+        const allBottoms = items.filter((i) => i.category === 'bottom');
+        if (allTops.length > 0 && allBottoms.length > 0) {
+            candidates = [[allTops[0].id, allBottoms[0].id]];
+        } else if (allTops.length > 0) {
+            candidates = [[allTops[0].id]];
+        } else if (allBottoms.length > 0) {
+            candidates = [[allBottoms[0].id]];
+        } else {
+            return [buildEmptyStateSuggestion(occasion)];
+        }
     }
 
     return scoreCandidates(candidates, items, wearLogs, weather, preferences, occasion);
+}
+
+/** Build a placeholder suggestion outfit when the wardrobe is completely empty. */
+function buildEmptyStateSuggestion(occasion: Occasion): ScoredOutfit {
+    const tierRange = OCCASION_TIER_MAP[occasion as string] ?? [3, 4, 3];
+    const tier = tierRange[2] as FormalityTier;
+    return {
+        outfit: {
+            itemIds: [],
+            occasion,
+            generatedBy: 'ai' as const,
+            reasoning: 'Add items to your closet to get real suggestions',
+            style: FORMALITY_TIER_LABELS[tier].toLowerCase(),
+        },
+        score: 0,
+        reasoning: 'Add items to your closet to get real suggestions',
+        formalityTier: tier,
+        dressCode: DRESS_CODE_BADGE[tier],
+        occasionLabel: OCCASION_LABEL[occasion as string] ?? occasion,
+        shoppingSuggestions: buildShoppingSuggestions(occasion, ['top', 'bottom', 'shoes']),
+        breakdown: { preferenceScore: 0, weatherScore: 0, noveltyScore: 0, harmonyScore: 0, formalityScore: 0 },
+    };
+}
+
+/**
+ * Returns true only if every clothing category appears at most once in the outfit.
+ * Ensures no outfit has 2 tops, 2 bottoms, 2 shoes, etc.
+ */
+function hasNoDuplicateCategories(itemIds: string[], items: ClothingItem[]): boolean {
+    const seen = new Set<string>();
+    for (const id of itemIds) {
+        const item = items.find((i) => i.id === id);
+        if (!item) continue;
+        if (seen.has(item.category)) return false;
+        seen.add(item.category);
+    }
+    return true;
 }
 
 function scoreCandidates(
@@ -459,42 +763,58 @@ function scoreCandidates(
     preferences?: UserPreferences,
     occasion?: Occasion
 ): ScoredOutfit[] {
-    // Step 3: Score all candidates
-    const scored: ScoredOutfit[] = candidates.map((itemIds) => {
+    const validCandidates = candidates.filter((ids) => hasNoDuplicateCategories(ids, items));
+    const scored: ScoredOutfit[] = validCandidates.map((itemIds) => {
+        const formalityScore = scoreFormality(itemIds, items, occasion);
+        const noveltyScore   = scoreNovelty(itemIds, items, wearLogs);
+        const harmonyScore   = scoreColorHarmony(itemIds, items);
+        const weatherScore   = scoreWeather(itemIds, items, weather);
         const preferenceScore = scorePreference(itemIds, items, preferences);
-        const weatherScore = scoreWeather(itemIds, items, weather);
-        const noveltyScore = scoreNovelty(itemIds, items, wearLogs);
-        const harmonyScore = scoreColorHarmony(itemIds, items);
 
         const totalScore =
-            preferenceScore * WEIGHTS.preference +
-            weatherScore * WEIGHTS.weather +
-            noveltyScore * WEIGHTS.novelty +
-            harmonyScore * WEIGHTS.harmony;
+            formalityScore * WEIGHTS.formality +
+            noveltyScore   * WEIGHTS.novelty   +
+            harmonyScore   * WEIGHTS.harmony   +
+            weatherScore   * WEIGHTS.weather;
 
-        const breakdown = { preferenceScore, weatherScore, noveltyScore, harmonyScore };
+        const breakdown = { preferenceScore, weatherScore, noveltyScore, harmonyScore, formalityScore };
+        const reasoning = generateReasoning(itemIds, items, breakdown, weather, occasion);
+
+        // Compute dominant tier and shopping suggestions for missing slots
+        const outfitItems = itemIds.map((id) => items.find((i) => i.id === id)).filter(Boolean) as ClothingItem[];
+        const tiers = outfitItems.map(getFormalityTier);
+        const avgTier = tiers.length > 0
+            ? Math.round(tiers.reduce((a, b) => a + b, 0) / tiers.length)
+            : 3;
+        const formalityTier = Math.max(1, Math.min(5, avgTier)) as FormalityTier;
+
+        const ownedCategories = new Set(outfitItems.map((i) => i.category));
+        const requiredCats: ClothingCategory[] = ['top', 'bottom', 'shoes'];
+        const missing = requiredCats.filter((c) => !ownedCategories.has(c));
+        const shoppingSuggestions = missing.length > 0
+            ? buildShoppingSuggestions(occasion ?? 'casual', missing)
+            : [];
 
         return {
             outfit: {
                 itemIds,
-                occasion: occasion || 'casual',
+                occasion: occasion ?? 'casual',
                 generatedBy: 'ai' as const,
-                reasoning: generateReasoning(itemIds, items, breakdown, weather, occasion),
-                style: 'smart-casual',
+                reasoning,
+                style: FORMALITY_TIER_LABELS[formalityTier].toLowerCase(),
             },
             score: totalScore,
-            reasoning: generateReasoning(itemIds, items, breakdown, weather, occasion),
+            reasoning,
+            formalityTier,
+            dressCode: DRESS_CODE_BADGE[formalityTier],
+            occasionLabel: OCCASION_LABEL[occasion as string ?? ''] ?? (occasion as string ?? 'Outfit'),
+            shoppingSuggestions,
             breakdown,
         };
     });
 
-    // Step 4: Sort by score descending, return top 3
     scored.sort((a, b) => b.score - a.score);
-
-    // Deduplicate: don't show two outfits that differ by only one item
-    const diverse = diversifyResults(scored, 3);
-
-    return diverse;
+    return diversifyResults(scored, 4);
 }
 
 function diversifyResults(scored: ScoredOutfit[], count: number): ScoredOutfit[] {
@@ -530,20 +850,129 @@ function diversifyResults(scored: ScoredOutfit[], count: number): ScoredOutfit[]
 }
 
 // ============================================
+// GENERATE DAILY OUTFITS — 4 occasion variants
+// ============================================
+
+/**
+ * Generate 4 daily outfit variants covering work, smart casual, weekend casual,
+ * and a weather-appropriate wildcard. Used by the Home screen carousel.
+ *
+ * Each variant is scored independently with its occasion's tier targets.
+ * Returns nulls when a variant cannot be generated (closet too small for that tier).
+ */
+export function generateDailyOutfits(
+    items: ClothingItem[],
+    wearLogs: WearLog[],
+    weather?: WeatherContext,
+    preferences?: UserPreferences
+): DailyOutfits {
+    const base: SuggestionRequest = { items, wearLogs, weather, preferences, occasion: 'casual' };
+
+    const work        = generateSuggestions({ ...base, occasion: 'work' })[0]        ?? null;
+    const smartCasual = generateSuggestions({ ...base, occasion: 'date' })[0]        ?? null;
+    const weekendCasual = generateSuggestions({ ...base, occasion: 'casual' })[0]    ?? null;
+
+    // Wildcard: pick occasion based on weather
+    let wildcardOccasion: Occasion = 'casual';
+    if (weather) {
+        if (weather.temp > 25) wildcardOccasion = 'casual';
+        else if (weather.temp < 8) wildcardOccasion = 'work';
+        else if (weather.condition === 'rain') wildcardOccasion = 'travel';
+        else wildcardOccasion = 'date';
+    }
+    const wildcard = generateSuggestions({ ...base, occasion: wildcardOccasion })[1] ?? null;
+
+    return { work, smartCasual, weekendCasual, wildcard };
+}
+
+// ============================================
+// ANCHOR-PIECE MODE — Build outfits around one item
+// ============================================
+
+/**
+ * Generate outfit suggestions anchored to a specific item.
+ * Every returned outfit MUST contain the anchor item.
+ * Used by the "Build an outfit with this" CTA on unworn items.
+ */
+export function generateOutfitsForItem(
+    anchorItemId: string,
+    items: ClothingItem[],
+    wearLogs: WearLog[],
+    weather?: WeatherContext
+): ScoredOutfit[] {
+    const anchor = items.find((i) => i.id === anchorItemId);
+    if (!anchor) return [];
+
+    // Determine suitable occasion from anchor's formality tier
+    const tier = getFormalityTier(anchor);
+    let occasion: Occasion = 'casual';
+    if (tier <= 1) occasion = 'formal';
+    else if (tier === 2) occasion = 'work';
+    else if (tier === 3) occasion = 'date';
+    else if (tier >= 5) occasion = 'sport';
+
+    return generateSuggestions({
+        items,
+        wearLogs,
+        occasion,
+        weather,
+        anchorItemId,
+    });
+}
+
+// ============================================
 // QUICK SUGGEST — Single best outfit for notifications
 // ============================================
 
+/**
+ * Return the single best outfit suggestion for quick use
+ * (e.g. push notification preview at 8pm).
+ */
 export function quickSuggest(
     items: ClothingItem[],
     wearLogs: WearLog[],
     weather?: WeatherContext
 ): ScoredOutfit | null {
-    const suggestions = generateSuggestions({
-        items,
-        wearLogs,
-        occasion: 'casual',
-        weather,
-    });
+    const suggestions = generateSuggestions({ items, wearLogs, occasion: 'casual', weather });
+    return suggestions[0] ?? null;
+}
 
-    return suggestions[0] || null;
+// ============================================
+// VARIETY MODE — For Inspo tab masonry grid
+// ============================================
+
+/**
+ * Generate up to 20 diverse outfit combinations for the Inspo tab.
+ * Excludes any combination worn in the last 30 days.
+ * Works entirely offline — no external calls.
+ */
+export function generateVarietyOutfits(
+    items: ClothingItem[],
+    wearLogs: WearLog[]
+): ScoredOutfit[] {
+    const occasions: Occasion[] = ['work', 'date', 'casual', 'formal', 'sport'];
+    const allOutfits: ScoredOutfit[] = [];
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+    const recentLogs = wearLogs.filter((l) => l.date >= thirtyDaysAgo);
+
+    // Build set of recently-worn item combinations to exclude
+    const recentCombos = new Set(
+        recentLogs.map((l) => [...l.itemIds].sort().join(','))
+    );
+
+    for (const occasion of occasions) {
+        const results = generateSuggestions({ items, wearLogs, occasion });
+        for (const result of results) {
+            const key = [...result.outfit.itemIds].sort().join(',');
+            if (!recentCombos.has(key)) {
+                allOutfits.push(result);
+            }
+        }
+        if (allOutfits.length >= 20) break;
+    }
+
+    // Sort by novelty (most-novel first)
+    allOutfits.sort((a, b) => b.breakdown.noveltyScore - a.breakdown.noveltyScore);
+    return allOutfits.slice(0, 20);
 }

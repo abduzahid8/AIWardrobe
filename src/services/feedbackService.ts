@@ -6,6 +6,9 @@
  */
 
 import { supabase } from '../lib/supabase';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('Feedback');
 
 // Types for feedback
 export interface DetectionCorrection {
@@ -140,7 +143,7 @@ export const submitCorrection = async (
             created_at: new Date().toISOString()
         };
 
-        console.log('📝 Submitting correction:', correction);
+        logger.info('📝 Submitting correction', correction);
 
         const { error } = await supabase
             .from('detection_corrections')
@@ -153,7 +156,7 @@ export const submitCorrection = async (
             return true;
         }
 
-        console.log('✅ Correction submitted successfully');
+        logger.info('✅ Correction submitted successfully');
         return true;
     } catch (error) {
         console.error('Failed to submit correction:', error);
@@ -171,7 +174,7 @@ const storeLocalCorrection = async (correction: DetectionCorrection): Promise<vo
         const corrections = existing ? JSON.parse(existing) : [];
         corrections.push(correction);
         await AsyncStorage.setItem('pending_corrections', JSON.stringify(corrections));
-        console.log('💾 Correction stored locally for later sync');
+        logger.info('💾 Correction stored locally for later sync');
     } catch (e) {
         console.error('Failed to store local correction:', e);
     }
@@ -195,7 +198,7 @@ export const syncPendingCorrections = async (): Promise<number> => {
 
         if (!error) {
             await AsyncStorage.removeItem('pending_corrections');
-            console.log(`✅ Synced ${corrections.length} pending corrections`);
+            logger.info(`✅ Synced ${corrections.length} pending corrections`);
             return corrections.length;
         }
         return 0;

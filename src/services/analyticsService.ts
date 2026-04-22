@@ -10,6 +10,9 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState, AppStateStatus } from 'react-native';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('Analytics');
 
 const ANALYTICS_QUEUE_KEY = 'analytics_event_queue';
 const MAX_QUEUE_SIZE = 200;
@@ -80,7 +83,7 @@ class AnalyticsService {
         };
 
         if (__DEV__) {
-            console.log('[Analytics]', name, properties || '');
+            logger.debug(name, properties);
         }
 
         try {

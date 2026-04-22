@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -23,7 +23,7 @@ import { useShopCatalog } from '../hooks/useShopCatalog';
 import LiquidGlass2026Theme, { SpatialElevation } from '../constants/LiquidGlass2026Theme';
 import * as Location from 'expo-location';
 import Config from '../src/config/env';
-import { createOutfitLog, type OutfitItem as CalendarOutfitItem, type OutfitLog } from '../features/calendar/types';
+import { createOutfitLog, formatDate, type OutfitItem as CalendarOutfitItem, type OutfitLog } from '../features/calendar/types';
 
 const { width, height } = Dimensions.get('window');
 
@@ -419,121 +419,58 @@ const AIOutfitGenerator = () => {
   if (outfits.length > 0) {
     return (
       <View style={styles.container}>
-        <LinearGradient colors={D.heroGradient} style={StyleSheet.absoluteFill} />
-        <View style={[styles.orbTop, { backgroundColor: 'rgba(43,92,233,0.06)', top: insets.top + 40 }]} />
-        <View style={[styles.orbBottom, { backgroundColor: 'rgba(236,72,153,0.05)' }]} />
-
-        <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
+        <SafeAreaView style={{ flex: 1 }}>
           <View style={styles.header}>
             <TouchableOpacity onPress={() => setOutfits([])} style={styles.backButton}>
-              <Ionicons name="chevron-back" size={26} color={D.textPrimary} />
+              <Ionicons name="chevron-back" size={28} color="#1a1a1a" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Your Outfits</Text>
             <View style={{ width: 40 }} />
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}>
-            {outfits.map((outfit, index) => (
-              <Animated.View key={outfit.id} style={[styles.glassCard, { marginTop: index === 0 ? 8 : 24 }]}>
-                <BlurView intensity={Platform.OS === 'ios' ? 48 : 90} tint="light" style={StyleSheet.absoluteFill} />
-                <LinearGradient colors={['rgba(255,255,255,0.45)', 'rgba(255,255,255,0.15)']} style={StyleSheet.absoluteFill} />
-
-                <View style={styles.cardHeaderRow}>
-                  {outfit.weather ? (
-                    <View style={styles.weatherChip}>
-                      <Ionicons name="cloud-outline" size={14} color={D.textSecondary} />
-                      <Text style={styles.weatherChipText}>{outfit.weather.temp}°C · {outfit.weather.condition}</Text>
-                    </View>
-                  ) : <View />}
-                  <LinearGradient colors={[D.accent, '#5B7CF9']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.matchPill}>
-                    <Text style={styles.matchPillText}>{Math.round(outfit.matchScore * 100)}% Match</Text>
-                  </LinearGradient>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20 }}>
+            {outfits.map((outfit) => (
+              <View key={outfit.id} style={styles.outfitCard}>
+                <Image source={typeof outfit.mainImage === 'number' ? outfit.mainImage : { uri: outfit.mainImage }} style={styles.outfitImage} resizeMode="cover" />
+                <View style={styles.matchBadge}>
+                  <Text style={styles.matchBadgeText}>{Math.round(outfit.matchScore * 100)}% Match</Text>
                 </View>
 
-                <View style={styles.slotGrid}>
-                  {outfit.items.slice(0, 4).map((item, idx) => {
-                    const slotLabels = ['Main Top', 'Layer', 'Pants', 'Shoes'];
-                    return (
-                      <View key={`${outfit.id}-${idx}`} style={styles.slotCell}>
-                        <Image
-                          source={typeof item.image === 'string' && item.image ? { uri: item.image } : require('../assets/images/basic_cardigan.png')}
-                          style={styles.slotImage}
-                          resizeMode="cover"
-                        />
-                        <View style={styles.slotLabelWrap}>
-                          <Text style={styles.slotLabel}>{slotLabels[idx]}</Text>
-                          <Text style={styles.slotName} numberOfLines={1}>{item.name || 'Item'}</Text>
+                <View style={{ padding: 20 }}>
+                  <Text style={styles.outfitDesc}>{outfit.description}</Text>
+                  <Text style={styles.itemsLabel}>Items Included (Max 5):</Text>
+                  <View style={[styles.collageContainer, { flexDirection: 'row', flexWrap: 'wrap' }]}>
+                    {outfit.items.map((item: any, idx: number) => {
+                      if (!item) return null;
+                      return (
+                        <View key={idx} style={styles.collageItem}>
+                          <Image source={typeof item.image === 'number' ? item.image : { uri: item.image }} style={styles.collageItemImage} resizeMode="cover" />
                         </View>
-                      </View>
-                    );
-                  })}
-                </View>
-
-                <Text style={styles.outfitDesc}>{outfit.description}</Text>
-
-                <View style={styles.tipCard}>
-                  <LinearGradient colors={D.panelHighlight} style={StyleSheet.absoluteFill} />
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Ionicons name="sparkles-outline" size={16} color={D.accent} />
-                    <Text style={styles.tipCardText}>{outfit.stylingTips}</Text>
+                      );
+                    })}
                   </View>
-                </View>
-
-                <View style={styles.actionRow}>
-                  <TouchableOpacity
-                    activeOpacity={0.85}
-                    style={styles.primaryAction}
-                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setCalendarOutfit(outfit); setCalendarDate(new Date()); setCalendarVisible(true); }}
-                  >
-                    <LinearGradient colors={[D.accent, '#5B7CF9']} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
-                    <Ionicons name="calendar-outline" size={18} color="#fff" />
-                    <Text style={styles.primaryActionText}>Add to Calendar</Text>
-                  </TouchableOpacity>
+                  <View style={styles.stylingTipsBox}>
+                    <Text style={styles.stylingTipsText}>
+                      💡 <Text style={{ fontWeight: '600' }}>Styling Tip:</Text> {outfit.stylingTips}
+                    </Text>
+                  </View>
 
                   <TouchableOpacity
-                    activeOpacity={0.85}
-                    style={styles.secondaryAction}
-                    onPress={() => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); navigation.navigate('Main' as never); }}
+                    style={styles.wishlistButton}
+                    onPress={() => {
+                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                      navigation.navigate('Main' as never); // Returns user to main page
+                    }}
+                    activeOpacity={0.8}
                   >
-                    <Ionicons name="heart-outline" size={18} color={D.textPrimary} />
-                    <Text style={styles.secondaryActionText}>Wishlist</Text>
+                    <Ionicons name="heart-outline" size={20} color={LiquidGlass2026Theme.colors.text.primary} />
+                    <Text style={styles.wishlistButtonText}>Add to wishlist</Text>
                   </TouchableOpacity>
                 </View>
-              </Animated.View>
+              </View>
             ))}
           </ScrollView>
         </SafeAreaView>
-
-        <Modal animationType="slide" transparent visible={calendarVisible} onRequestClose={() => setCalendarVisible(false)}>
-          <View style={styles.modalOverlay}>
-            <BlurView intensity={Platform.OS === 'ios' ? 60 : 100} tint="light" style={StyleSheet.absoluteFill} />
-            <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>Save to Calendar</Text>
-              <Text style={styles.modalSubtitle}>Pick a date for this outfit</Text>
-              <View style={styles.datePickerRow}>
-                <TouchableOpacity onPress={() => setCalendarDate(new Date(calendarDate.getTime() - 86400000))}>
-                  <Ionicons name="chevron-back" size={24} color={D.textPrimary} />
-                </TouchableOpacity>
-                <Text style={styles.datePickerValue}>{calendarDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
-                <TouchableOpacity onPress={() => setCalendarDate(new Date(calendarDate.getTime() + 86400000))}>
-                  <Ionicons name="chevron-forward" size={24} color={D.textPrimary} />
-                </TouchableOpacity>
-              </View>
-              <View style={styles.modalActions}>
-                <TouchableOpacity style={styles.modalCancel} onPress={() => setCalendarVisible(false)}>
-                  <Text style={styles.modalCancelText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.modalConfirm}
-                  onPress={() => calendarOutfit && addToCalendar(calendarOutfit, calendarDate)}
-                >
-                  <LinearGradient colors={[D.accent, '#5B7CF9']} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
-                  <Text style={styles.modalConfirmText}>Save</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
       </View>
     );
   }
@@ -925,226 +862,6 @@ const styles = StyleSheet.create({
     ...LiquidGlass2026Theme.typography.scale.labelLarge,
     color: LiquidGlass2026Theme.colors.text.primary,
     fontWeight: '600',
-  },
-
-  // ── Liquid Glass Result Card Styles ──────────────────────────────
-  orbTop: {
-    position: 'absolute',
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    left: -60,
-  },
-  orbBottom: {
-    position: 'absolute',
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    right: -80,
-    bottom: 100,
-  },
-  glassCard: {
-    borderRadius: LiquidGlass2026Theme.radius.card,
-    overflow: 'hidden',
-    padding: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.35)',
-    ...SpatialElevation.getShadow(SpatialElevation.levels.card),
-  },
-  cardHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  weatherChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.6)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: LiquidGlass2026Theme.radius.pill,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.5)',
-  },
-  weatherChipText: {
-    ...LiquidGlass2026Theme.typography.scale.labelMedium,
-    color: LiquidGlass2026Theme.colors.text.secondary,
-    fontWeight: '500',
-  },
-  matchPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: LiquidGlass2026Theme.radius.pill,
-  },
-  matchPillText: {
-    color: '#FFFFFF',
-    ...LiquidGlass2026Theme.typography.scale.labelMedium,
-    fontWeight: '700',
-  },
-  slotGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  slotCell: {
-    width: (width - 72) / 2,
-    marginBottom: 12,
-    borderRadius: LiquidGlass2026Theme.radius.md,
-    backgroundColor: 'rgba(255,255,255,0.4)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.35)',
-    overflow: 'hidden',
-    ...SpatialElevation.getShadow(SpatialElevation.levels.surface),
-  },
-  slotImage: {
-    width: '100%',
-    height: (width - 72) / 2,
-  },
-  slotLabelWrap: {
-    padding: 10,
-  },
-  slotLabel: {
-    ...LiquidGlass2026Theme.typography.scale.labelSmall,
-    color: LiquidGlass2026Theme.colors.text.secondary,
-    fontWeight: '500',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  slotName: {
-    ...LiquidGlass2026Theme.typography.scale.bodyMedium,
-    color: LiquidGlass2026Theme.colors.text.primary,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  tipCard: {
-    borderRadius: LiquidGlass2026Theme.radius.md,
-    overflow: 'hidden',
-    padding: 14,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.35)',
-  },
-  tipCardText: {
-    ...LiquidGlass2026Theme.typography.scale.bodyMedium,
-    color: LiquidGlass2026Theme.colors.text.secondary,
-    flex: 1,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  primaryAction: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: LiquidGlass2026Theme.radius.pill,
-    overflow: 'hidden',
-  },
-  primaryActionText: {
-    color: '#FFFFFF',
-    ...LiquidGlass2026Theme.typography.scale.labelLarge,
-    fontWeight: '700',
-  },
-  secondaryAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: LiquidGlass2026Theme.radius.pill,
-    backgroundColor: 'rgba(255,255,255,0.55)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.5)',
-    ...SpatialElevation.getShadow(SpatialElevation.levels.surface),
-  },
-  secondaryActionText: {
-    color: LiquidGlass2026Theme.colors.text.primary,
-    ...LiquidGlass2026Theme.typography.scale.labelLarge,
-    fontWeight: '600',
-  },
-
-  // ── Calendar Modal Styles ──────────────────────────────────────
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  modalCard: {
-    backgroundColor: 'rgba(255,255,255,0.85)',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 24,
-    paddingTop: 28,
-    paddingBottom: 36,
-    marginHorizontal: 0,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.5)',
-    ...SpatialElevation.getShadow(SpatialElevation.levels.floating),
-  },
-  modalTitle: {
-    ...LiquidGlass2026Theme.typography.scale.titleLarge,
-    color: LiquidGlass2026Theme.colors.text.primary,
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  modalSubtitle: {
-    ...LiquidGlass2026Theme.typography.scale.bodyMedium,
-    color: LiquidGlass2026Theme.colors.text.secondary,
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  datePickerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(255,255,255,0.6)',
-    borderRadius: LiquidGlass2026Theme.radius.md,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.4)',
-  },
-  datePickerValue: {
-    ...LiquidGlass2026Theme.typography.scale.bodyLarge,
-    color: LiquidGlass2026Theme.colors.text.primary,
-    fontWeight: '600',
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  modalCancel: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: LiquidGlass2026Theme.radius.pill,
-    backgroundColor: 'rgba(255,255,255,0.6)',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.4)',
-  },
-  modalCancelText: {
-    ...LiquidGlass2026Theme.typography.scale.labelLarge,
-    color: LiquidGlass2026Theme.colors.text.primary,
-    fontWeight: '600',
-  },
-  modalConfirm: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: LiquidGlass2026Theme.radius.pill,
-    overflow: 'hidden',
-    alignItems: 'center',
-  },
-  modalConfirmText: {
-    color: '#FFFFFF',
-    ...LiquidGlass2026Theme.typography.scale.labelLarge,
-    fontWeight: '700',
   },
 });
 

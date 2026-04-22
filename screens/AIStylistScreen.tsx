@@ -20,6 +20,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, borderRadius } from '../src/theme';
 
 // Lazy import existing screens as embedded views
@@ -47,6 +48,13 @@ const AIStylistScreen = () => {
 
     return (
         <View style={styles.container}>
+            <LinearGradient
+                colors={['#F6FAFF', '#EEF4FF', '#FFFFFF']}
+                style={StyleSheet.absoluteFill}
+                pointerEvents="none"
+            />
+            <View pointerEvents="none" style={styles.backgroundOrbTop} />
+            <View pointerEvents="none" style={styles.backgroundOrbBottom} />
             <SafeAreaView style={styles.safeArea} edges={['top']}>
                 {/* Header */}
                 <Animated.View entering={FadeIn} style={styles.header}>
@@ -113,6 +121,24 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: colors.background,
     },
+    backgroundOrbTop: {
+        position: 'absolute',
+        top: -100,
+        right: -80,
+        width: 280,
+        height: 280,
+        borderRadius: 140,
+        backgroundColor: 'rgba(188, 210, 245, 0.42)',
+    },
+    backgroundOrbBottom: {
+        position: 'absolute',
+        left: -120,
+        bottom: 140,
+        width: 300,
+        height: 300,
+        borderRadius: 150,
+        backgroundColor: 'rgba(216, 229, 252, 0.34)',
+    },
     safeArea: {
         flex: 1,
     },
@@ -129,6 +155,14 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         alignItems: 'center',
         justifyContent: 'center',
+        backgroundColor: 'rgba(255,255,255,0.84)',
+        borderWidth: 1,
+        borderColor: 'rgba(24,58,103,0.08)',
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+        elevation: 3,
     },
     title: {
         fontSize: 18,
@@ -144,9 +178,16 @@ const styles = StyleSheet.create({
     },
     segmentControl: {
         flexDirection: 'row',
-        backgroundColor: colors.surface,
-        borderRadius: borderRadius.l,
+        backgroundColor: 'rgba(255,255,255,0.84)',
+        borderRadius: 26,
         padding: 3,
+        borderWidth: 1,
+        borderColor: 'rgba(24,58,103,0.08)',
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.06,
+        shadowRadius: 16,
+        elevation: 4,
     },
     segment: {
         flex: 1,
@@ -158,7 +199,7 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     segmentActive: {
-        backgroundColor: colors.button.primary,
+        backgroundColor: '#173A65',
     },
     segmentText: {
         fontSize: 14,

@@ -2,15 +2,16 @@
  * Calendar Feature — Single Source of Truth for Types & Constants
  *
  * All calendar-related types, constants, and factory functions live here.
- * No other file in the calendar feature should define these.
+ * Re-exports canonical domain types where possible to avoid duplication.
  */
 
-// ── Clothing Types ──────────────────────────────────────────────
+import type { ClothingCategory as DomainClothingCategory } from '../../src/types/domain';
+import { getMacroCategory } from '../../src/utils/categoryMapper';
 
 export const CLOTHING_CATEGORIES = {
-    top: ['top', 'shirt', 't-shirt', 'tshirt', 'sweater', 'hoodie', 'blouse', 'jacket', 'blazer', 'coat', 'outerwear', 'vest'],
-    pants: ['pants', 'jeans', 'shorts', 'skirt', 'trousers', 'bottoms'],
-    shoes: ['shoes', 'sneakers', 'boots', 'heels', 'flats', 'sandals'],
+    top: ['top', 'tops', 'shirt', 't-shirt', 'tshirt', 'tee', 'sweater', 'hoodie', 'blouse', 'jacket', 'blazer', 'coat', 'outerwear', 'vest'],
+    pants: ['bottom', 'bottoms', 'pant', 'pants', 'jean', 'jeans', 'short', 'shorts', 'skirt', 'trouser', 'trousers'],
+    shoes: ['shoe', 'shoes', 'sneaker', 'sneakers', 'boot', 'boots', 'heel', 'heels', 'flat', 'flats', 'sandal', 'sandals', 'loafer', 'loafers'],
 } as const;
 
 export type ClothingCategory = keyof typeof CLOTHING_CATEGORIES;
@@ -79,6 +80,7 @@ export interface OutfitItem {
     readonly type: string;
     readonly image: string;
     readonly color?: string;
+    readonly name?: string;
 }
 
 /**
@@ -150,6 +152,7 @@ export interface WardrobeItem {
     readonly type: string;
     readonly image: string;
     readonly imageUrl?: string;
+    readonly localImage?: string;
     readonly color?: string;
     readonly name?: string;
     readonly category?: string;
@@ -163,4 +166,5 @@ export const wardrobeToOutfitItem = (w: WardrobeItem): OutfitItem => ({
     type: w.type || w.category || '',
     image: w.image || w.imageUrl || '',
     color: w.color,
+    name: w.name,
 });

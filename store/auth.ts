@@ -1,26 +1,35 @@
 import { create } from 'zustand';
-import { supabase } from '../lib/supabase';
+import { Platform } from 'react-native';
 import { Session } from '@supabase/supabase-js';
+import type { Subscription } from '@supabase/supabase-js';
+
+import { supabase } from '../lib/supabase';
 import { analyticsService } from '../src/services/analyticsService';
 import { crashReporting } from '../src/services/crashReporting';
 import { iapService } from '../src/services/iapService';
+import useSubscriptionStore from './subscriptionStore';
+import { createLogger } from '../src/utils/logger';
+import { clearAllPersistedUserData } from '../src/lib/persistence';
+import { authEvents } from './authEvents';
+
+const log = createLogger('AuthStore');
 
 // ============================================
-// AUTH TYPES
+// TYPES
 // ============================================
+
+export type AuthMethod = 'email' | 'apple';
 
 export interface AuthUser {
-    id: string; // Changed from _id to id to match Supabase
+    id: string;
     email: string;
     username: string;
     gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
-    profile_image?: string; // Changed from profileImage to snake_case to match DB, or we map it
+    profile_image?: string;
 
-    // Subscription
-    subscription_tier?: 'free' | 'premium' | 'vip';
+    subscription_tier?: 'free' | 'premium';
     subscription_expires_at?: string;
 
-    // Legacy/Metadata
     created_at?: string;
     updated_at?: string;
 }
@@ -31,7 +40,6 @@ export interface AuthState {
     loading: boolean;
     error: string | null;
     isAuthenticated: boolean;
-    isTrialMode: boolean;
 }
 
 export interface AuthActions {
@@ -41,13 +49,12 @@ export interface AuthActions {
         password: string,
         username: string,
         gender?: string,
-        profileImage?: string
+        profileImage?: string,
     ) => Promise<void>;
     login: (email: string, password: string) => Promise<void>;
+    signInWithApple: () => Promise<void>;
     logout: () => Promise<void>;
     deleteAccount: () => Promise<void>;
-    startTrial: () => void;
-    endTrial: () => void;
     fetchUser: () => Promise<void>;
     clearError: () => void;
 }
@@ -55,237 +62,320 @@ export interface AuthActions {
 export type AuthStore = AuthState & AuthActions;
 
 // ============================================
-// AUTH STORE
+// SHARED HELPERS
+// ============================================
+
+let _authSubscription: Subscription | null = null;
+
+/**
+ * Central side-effect pipeline for every successful authentication.
+ * Exactly one place where we tag analytics, crash reporting, IAP,
+ * and emit the in-app login event.
+ */
+async function onAuthSuccess(
+    set: (partial: Partial<AuthStore>) => void,
+    get: () => AuthStore,
+    session: Session,
+    method: AuthMethod,
+): Promise<void> {
+    set({ session, isAuthenticated: true, loading: false, error: null });
+
+    await get().fetchUser();
+
+    if (method === 'email') analyticsService.trackLogin('email');
+    else if (method === 'apple') analyticsService.trackLogin('apple');
+
+    analyticsService.setUserId(session.user.id);
+    crashReporting.setUser(session.user.id);
+    iapService.identify(session.user.id);
+    authEvents.emitLogin(session.user.id);
+    
+    // Ensure subscription and trial status are resolved immediately
+    await useSubscriptionStore.getState().verifySubscriptionFromServer().catch(() => {});
+
+    // Idempotent: start the 7-day free trial for every new authenticated session.
+    // If the user already has a trial date (local or Supabase), this is a no-op.
+    await useSubscriptionStore.getState().initializeTrial(session.user.id).catch(() => {});
+
+    log.info('Authentication succeeded', { method, userId: session.user.id });
+}
+
+function setAuthError(
+    set: (partial: Partial<AuthStore>) => void,
+    error: unknown,
+    fallback: string,
+): never {
+    // Accept Error instances, Supabase { message } objects, or bare strings.
+    let message: string = fallback;
+    if (error instanceof Error) {
+        message = error.message || fallback;
+    } else if (typeof error === 'string') {
+        message = error;
+    } else if (error && typeof error === 'object' && 'message' in error) {
+        const m = (error as { message?: unknown }).message;
+        if (typeof m === 'string' && m) message = m;
+    }
+
+    log.error(fallback, error);
+    set({ error: message, loading: false });
+    throw error instanceof Error ? error : new Error(message);
+}
+
+// ============================================
+// STORE
 // ============================================
 
 const useAuthStore = create<AuthStore>((set, get) => ({
-    // Initial state
     user: null,
     session: null,
     loading: false,
     error: null,
     isAuthenticated: false,
-    isTrialMode: false,
 
-    initializeAuth: async (): Promise<void> => {
+    initializeAuth: async () => {
+        log.debug('initializeAuth called');
         set({ loading: true });
         try {
-            // Check for existing session
             const { data: { session }, error } = await supabase.auth.getSession();
-
             if (error) throw error;
 
             if (session) {
-                set({ session, isAuthenticated: true, isTrialMode: false });
+                set({ session, isAuthenticated: true });
                 await get().fetchUser();
+                iapService.identify(session.user.id);
+                authEvents.emitLogin(session.user.id);
+                log.info('Restored existing session', { userId: session.user.id });
             }
 
-            // Listen for auth changes (store subscription for cleanup)
-            const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-                if (session) {
-                    set({ session, isAuthenticated: true, isTrialMode: false });
+            const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
+                log.debug('Auth state changed', { event, hasSession: !!nextSession });
+                if (nextSession) {
+                    set({ session: nextSession, isAuthenticated: true });
                 } else {
                     set({ session: null, user: null, isAuthenticated: false });
                 }
             });
 
-            // Store unsubscribe for cleanup (e.g. on logout)
-            (useAuthStore as any)._authSubscription = subscription;
-
+            _authSubscription = subscription;
         } catch (err) {
-            console.error('Auth initialization failed', err);
+            log.error('Auth initialization failed', err);
         } finally {
             set({ loading: false });
         }
     },
 
-    register: async (
-        email: string,
-        password: string,
-        username: string,
-        gender?: string,
-        profileImage?: string
-    ): Promise<void> => {
+    register: async (email, password, username, gender, profileImage) => {
+        log.debug('Register attempt', { email, username });
         set({ loading: true, error: null });
         try {
             const { data, error } = await supabase.auth.signUp({
                 email,
                 password,
                 options: {
-                    data: {
-                        username,
-                        gender,
-                        profile_image: profileImage,
-                    },
+                    data: { username, gender, profile_image: profileImage },
                 },
             });
-
             if (error) throw error;
 
             if (data.session) {
-                set({ session: data.session, isAuthenticated: true, isTrialMode: false, loading: false });
-                await get().fetchUser();
+                await onAuthSuccess(set, get, data.session, 'email');
                 analyticsService.trackSignup('email');
-                analyticsService.setUserId(data.session.user.id);
-                crashReporting.setUser(data.session.user.id);
-                iapService.identify(data.session.user.id);
             } else {
-                // If email confirmation is enabled, session might be null
-                set({ loading: false, error: "Please checks your email for confirmation link." });
+                set({
+                    loading: false,
+                    error: 'Please check your email for a confirmation link.',
+                });
             }
-
-        } catch (error: any) {
-
-            set({
-                error: error.message || 'Registration failed',
-                loading: false,
-            });
-            throw error;
+        } catch (err) {
+            setAuthError(set, err, 'Registration failed');
         }
     },
 
-    login: async (email: string, password: string): Promise<void> => {
+    login: async (email, password) => {
+        log.debug('Login attempt', { email });
         set({ loading: true, error: null });
         try {
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email,
-                password,
-            });
-
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
             if (error) throw error;
-
-            if (data.session) {
-                set({ session: data.session, isAuthenticated: true, isTrialMode: false, loading: false });
-                await get().fetchUser();
-                analyticsService.trackLogin('email');
-                analyticsService.setUserId(data.session.user.id);
-                crashReporting.setUser(data.session.user.id);
-                iapService.identify(data.session.user.id);
-            }
-
-        } catch (err: any) {
-
-            set({
-                error: err.message || 'Login failed',
-                loading: false,
-            });
-            throw err;
+            if (data.session) await onAuthSuccess(set, get, data.session, 'email');
+        } catch (err) {
+            setAuthError(set, err, 'Login failed');
         }
     },
 
-    logout: async (): Promise<void> => {
-        // Clean up auth listener to prevent memory leak
-        const sub = (useAuthStore as any)._authSubscription;
-        if (sub) {
-            sub.unsubscribe();
-            (useAuthStore as any)._authSubscription = null;
+    signInWithApple: async () => {
+        // Apple Sign-In is iOS-only. On Android, fail fast with a clear message.
+        if (Platform.OS !== 'ios') {
+            throw new Error('Sign in with Apple is only available on iOS.');
         }
-        await supabase.auth.signOut();
+
+        set({ loading: true, error: null });
+        try {
+            // Dynamic import so Android and Expo Go don't crash on missing module.
+            const AppleAuthentication = await import('expo-apple-authentication').catch(() => null);
+            if (!AppleAuthentication) {
+                throw new Error(
+                    'Sign in with Apple requires a native development build with expo-apple-authentication installed.',
+                );
+            }
+
+            const available = await AppleAuthentication.isAvailableAsync();
+            if (!available) {
+                throw new Error('Sign in with Apple is not available on this device.');
+            }
+
+            const credential = await AppleAuthentication.signInAsync({
+                requestedScopes: [
+                    AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+                    AppleAuthentication.AppleAuthenticationScope.EMAIL,
+                ],
+            });
+
+            if (!credential.identityToken) {
+                throw new Error('No identity token returned by Apple.');
+            }
+
+            const { data, error } = await supabase.auth.signInWithIdToken({
+                provider: 'apple',
+                token: credential.identityToken,
+            });
+            if (error) throw error;
+            if (!data.session) throw new Error('Supabase did not return a session for Apple sign-in.');
+
+            // Apple only returns the user's name on FIRST sign-in. Capture it
+            // into the profiles row if present, so future logins still show it.
+            const fullName = credential.fullName;
+            if (fullName && (fullName.givenName || fullName.familyName)) {
+                const username = [fullName.givenName, fullName.familyName]
+                    .filter(Boolean)
+                    .join(' ')
+                    .trim();
+                if (username) {
+                    await supabase
+                        .from('profiles')
+                        .update({ username })
+                        .eq('id', data.session.user.id)
+                        .then(({ error: updateErr }) => {
+                            if (updateErr) log.warn('Failed to persist Apple display name', updateErr);
+                        });
+                }
+            }
+
+            await onAuthSuccess(set, get, data.session, 'apple');
+        } catch (err) {
+            const anyErr = err as { code?: string };
+            // User cancelling the Apple sheet is not an error the UI should show.
+            if (anyErr?.code === 'ERR_REQUEST_CANCELED') {
+                set({ loading: false, error: null });
+                return;
+            }
+            setAuthError(set, err, 'Apple sign-in failed');
+        }
+    },
+
+    logout: async () => {
+        if (_authSubscription) {
+            _authSubscription.unsubscribe();
+            _authSubscription = null;
+        }
+        authEvents.emitLogout();
+
+        try {
+            await supabase.auth.signOut();
+        } catch (err) {
+            log.warn('supabase.auth.signOut failed — continuing local cleanup', err);
+        }
+
         analyticsService.trackEvent('logout');
         analyticsService.clearUserId();
         crashReporting.clearUser();
-        set({ user: null, session: null, isAuthenticated: false, isTrialMode: false });
+        await iapService.logout().catch(() => undefined);
+
+        // Wipe per-user local state so subsequent logins on shared
+        // devices never inherit the previous user's data.
+        await clearAllPersistedUserData();
+
+        set({ user: null, session: null, isAuthenticated: false });
+        log.info('User logged out');
     },
 
-    deleteAccount: async (): Promise<void> => {
+    deleteAccount: async () => {
         set({ loading: true, error: null });
         try {
             const { data: { session } } = await supabase.auth.getSession();
-            if (!session?.access_token) {
-                throw new Error('Not authenticated');
-            }
+            if (!session?.access_token) throw new Error('Not authenticated');
 
-            // Call the account deletion API
-            const Config = (await import('../src/config/env')).default;
-            const response = await fetch(`${Config.api.url}/api/account`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Content-Type': 'application/json',
-                },
+            const { data, error: fnError } = await supabase.functions.invoke('delete-account', {
+                method: 'POST',
             });
-
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || 'Account deletion failed');
-            }
+            if (fnError) throw new Error(fnError.message || 'Account deletion failed');
+            if (data && !data.success) throw new Error(data.error || 'Account deletion failed');
 
             analyticsService.trackEvent('account_deleted');
 
-            // Clean up local state
-            const sub = (useAuthStore as any)._authSubscription;
-            if (sub) {
-                sub.unsubscribe();
-                (useAuthStore as any)._authSubscription = null;
+            if (_authSubscription) {
+                _authSubscription.unsubscribe();
+                _authSubscription = null;
             }
-            await supabase.auth.signOut();
+            authEvents.emitLogout();
+
+            // The auth user may already be deleted server-side; ignore failures.
+            await supabase.auth.signOut().catch(() => undefined);
+
             analyticsService.clearUserId();
             crashReporting.clearUser();
-            set({ user: null, session: null, isAuthenticated: false, isTrialMode: false, loading: false });
-        } catch (err: any) {
-            set({
-                error: err.message || 'Account deletion failed',
-                loading: false,
-            });
-            throw err;
+            await iapService.logout().catch(() => undefined);
+
+            await clearAllPersistedUserData();
+
+            set({ user: null, session: null, isAuthenticated: false, loading: false });
+            log.info('Account deleted and local data cleared');
+        } catch (err) {
+            setAuthError(set, err, 'Account deletion failed');
         }
     },
 
-    startTrial: (): void => {
-        set({ isTrialMode: true, isAuthenticated: false });
-    },
-
-    endTrial: (): void => {
-        set({ isTrialMode: false });
-    },
-
-    fetchUser: async (): Promise<void> => {
+    fetchUser: async () => {
+        log.debug('fetchUser called');
         try {
             const { data: sessionData } = await supabase.auth.getSession();
             const user = sessionData.session?.user;
-
             if (!user) {
                 set({ user: null });
                 return;
             }
 
-            // Fetch profile data from 'profiles' table
             const { data: profile, error } = await supabase
                 .from('profiles')
                 .select('*')
                 .eq('id', user.id)
                 .maybeSingle();
 
-            if (error) {
-                console.error('Error fetching profile:', error);
-            }
+            if (error) log.warn('Error fetching profile', error);
 
             if (profile) {
                 set({ user: profile as AuthUser, error: null });
-            } else {
-                // Fallback to auth metadata if no profile row exists yet
-                const fallbackUser: AuthUser = {
-                    id: user.id,
-                    email: user.email || '',
-                    username: user.user_metadata?.username || '',
-                    gender: user.user_metadata?.gender,
-                    profile_image: user.user_metadata?.profile_image,
-                };
-                set({ user: fallbackUser, error: null });
+                return;
             }
-        } catch (err: any) {
-            console.error('Failed to fetch user:', err);
+
+            const fallbackUser: AuthUser = {
+                id: user.id,
+                email: user.email || '',
+                username: user.user_metadata?.username || '',
+                gender: user.user_metadata?.gender,
+                profile_image: user.user_metadata?.profile_image,
+            };
+            set({ user: fallbackUser, error: null });
+        } catch (err) {
+            log.error('Failed to fetch user', err);
             set({
                 user: null,
-                error: err.message || 'Failed to fetch user',
+                error: err instanceof Error ? err.message : 'Failed to fetch user',
             });
         }
     },
 
-    clearError: (): void => {
-        set({ error: null });
-    },
+    clearError: () => set({ error: null }),
 }));
 
 export default useAuthStore;
-

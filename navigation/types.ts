@@ -14,7 +14,11 @@ export type ScannedItem = {
     description?: string;
 };
 
-export type ClothingItem = {
+/**
+ * Layout-positioned clothing item for canvas/collage views.
+ * NOT the same as the domain ClothingItem (src/types/domain.ts).
+ */
+export type PositionedClothingItem = {
     id: number;
     image: string;
     x?: number;
@@ -23,6 +27,9 @@ export type ClothingItem = {
     type?: string;
     gender?: string;
 };
+
+/** @deprecated Use PositionedClothingItem instead */
+export type ClothingItem = PositionedClothingItem;
 
 export type OutfitItem = {
     id?: string;
@@ -38,55 +45,42 @@ export type RootStackParamList = {
 
     // Main (tab container)
     Main: NavigatorScreenParams<TabParamList>;
-    StyleQuiz: undefined;
     Paywall: undefined;
+    TrialExpired: undefined;
 
     // Wardrobe & Scanning
-    AddOutfit: {
-        date?: string;
-        savedOutfits?: { [key: string]: ClothingItem[] };
-    };
     ScanWardrobe: undefined;
     ReviewScan: { items: ScannedItem[] };
     WardrobeVideo: { videoUri?: string; imageUri?: string };
     Camera: undefined;
-
-    // Creation & Design
-    DesignRoom: undefined;
-    NewOutfit: {
-        selectedItems?: ClothingItem[];
-        date?: string;
-        savedOutfits?: { [key: string]: any[] };
-    };
+    ClothingDetailEditor: { imageUri?: string; detectedType?: string; detectedColor?: string; detectedItem?: any; detectedStyle?: string; detectedMaterial?: string; aiConfidence?: number; detectedDescription?: string };
 
     // AI Features — names match registered Stack.Screen names exactly
     AIChat: { initialTab?: 'chat' | 'outfit' } | undefined;
-    AIOutfit: undefined;
+    AIOutfit: {
+        source?: 'wardrobe' | 'shop';
+        calendarDate?: string;
+        initialStyle?: string;
+        /** If set, AI generates outfits that always include this wardrobe item as the anchor. */
+        baseItemId?: string;
+        /** Optional preview of the anchor item shown immediately while the AI loads. */
+        baseItem?: { id: string; imageUrl?: string; name?: string; type?: string; macroCategory?: string; color?: string };
+    } | undefined;
     AITryOn: undefined;
-    AIHub: undefined;
     OutfitAI: { initialTab?: 'chat' | 'outfit' } | undefined;
     CreateAvatar: undefined;
+    /** Gemini AI Stylist chat — accessible from any outfit/clothing context */
+    StylistChat: { initialMessage?: string } | undefined;
 
-    // Core Loop (MVP)
-    DailySuggestion: undefined;
-    WearLog: undefined;
-    WeeklyInsights: undefined;
-
-    // Calendar & Planning
+    // Calendar
     Calendar: undefined;
-    TripPlanner: undefined;
-    MeetingOutfit: undefined;
-
-    // Shopping
-    PriceTracker: undefined;
-    FlashSales: undefined;
-    FlashSaleEvent: { eventId: string };
 
     // Profile & Settings
-    EmailOnboarding: undefined;
-    OutfitDetail: { image?: string; outfit?: OutfitItem };
     MyCloset: undefined;
-    StyleGoals: undefined;
+    ClothingDetail: { itemId: string; fullItem?: any };
+    WardrobeAnalytics: undefined;
+    PrivacyPolicy: undefined;
+    TermsOfService: undefined;
 };
 
 export type TabParamList = {

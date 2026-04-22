@@ -16,6 +16,9 @@ import * as Haptics from "expo-haptics";
 import useAuthStore from "../store/auth";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
+import { createLogger } from "../src/utils/logger";
+
+const logger = createLogger('SignUp');
 
 const SignUpScreen = () => {
   const { t } = useTranslation();
@@ -91,7 +94,7 @@ const SignUpScreen = () => {
       await register(email, password, username, gender.toLowerCase(), profileImage);
     } catch (error: any) {
       const errorMessage = error.message || "Registration failed";
-      console.log('Signup error:', errorMessage);
+      logger.error('Signup error', errorMessage);
 
       // Parse specific error messages
       if (errorMessage.includes("User already registered") || errorMessage.includes("already registered")) {
@@ -276,24 +279,6 @@ const SignUpScreen = () => {
             </Text>
           </TouchableOpacity>
 
-          {/* Trial Mode */}
-          <View style={styles.dividerContainer}>
-            <View style={styles.divider} />
-            <Text style={styles.orText}>or</Text>
-            <View style={styles.divider} />
-          </View>
-
-          <TouchableOpacity
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              const { startTrial } = useAuthStore.getState();
-              startTrial();
-            }}
-            style={styles.trialButton}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.trialButtonText}>Try App First (3 free tries)</Text>
-          </TouchableOpacity>
         </ScrollView>
       </LinearGradient>
     </KeyboardAvoidingView>
@@ -398,34 +383,6 @@ const styles = StyleSheet.create({
   },
   signInLinkTextMuted: {
     color: "rgba(255,255,255,0.6)",
-  },
-  dividerContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 24,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-  },
-  orText: {
-    color: "rgba(255, 255, 255, 0.4)",
-    marginHorizontal: 16,
-    fontSize: 14,
-  },
-  trialButton: {
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.2)",
-    paddingVertical: 16,
-    borderRadius: 16,
-    alignItems: "center",
-  },
-  trialButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#FFF",
   },
   genderLabel: {
     fontSize: 13,

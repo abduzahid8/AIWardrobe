@@ -7,6 +7,9 @@
  */
 
 import { supabase } from '../../lib/supabase';
+import { createLogger } from '../../utils/logger';
+
+const logger = createLogger('MixedOutfit');
 
 export interface ShopItem {
     id: string;
@@ -97,7 +100,7 @@ export async function generateMixedOutfits(
             isShopItem: true,
         }));
 
-        console.log(`🎨 Generating mixed outfits: ${formattedWardrobe.length} wardrobe + ${formattedShop.length} shop items`);
+        logger.info(`🎨 Generating mixed outfits: ${formattedWardrobe.length} wardrobe + ${formattedShop.length} shop items`);
 
         // Call Supabase Edge Function
         const { data, error } = await supabase.functions.invoke('generate-outfits', {
@@ -117,17 +120,17 @@ export async function generateMixedOutfits(
         }
 
         if (data && data.success && data.outfits) {
-            console.log(`✅ Received ${data.outfits.length} outfits from AI`);
+            logger.info(`✅ Received ${data.outfits.length} outfits from AI`);
             // Process and enhance the outfits
             const processedOutfits: MixedOutfit[] = data.outfits.map((outfit: any, outfitIdx: number) => {
-                console.log(`Processing outfit ${outfitIdx}: ${outfit.id}, items: ${outfit.items?.length || 0}`);
+                logger.debug(`Processing outfit ${outfitIdx}: ${outfit.id}, items: ${outfit.items?.length || 0}`);
                 
                 // Handle edge case where items might be missing or malformed
                 const rawItems = outfit.items || [];
                 
                 const items: MixedOutfitItem[] = rawItems.map((item: any, itemIdx: number) => {
                     // Debug logging
-                    console.log(`  Item ${itemIdx}: id=${item.id}, type=${item.type}, hasImage=${!!item.image}`);
+                    logger.debug(`  Item ${itemIdx}: id=${item.id}, type=${item.type}, hasImage=${!!item.image}`);
                     
                     // Find the original item to get the image - try multiple ID formats
                     const wardrobeMatch = wardrobeItems.find(w => {
@@ -151,7 +154,7 @@ export async function generateMixedOutfits(
                         || wardrobeMatch?.imageUrl 
                         || shopMatch?.image;
 
-                    console.log(`    Resolved: image=${!!resolvedImage}, isShopItem=${isShopItem}, match=${wardrobeMatch ? 'wardrobe' : shopMatch ? 'shop' : 'none'}`);
+                    logger.debug(`    Resolved: image=${!!resolvedImage}, isShopItem=${isShopItem}, match=${wardrobeMatch ? 'wardrobe' : shopMatch ? 'shop' : 'none'}`);
 
                     return {
                         id: item.id || `item_${Date.now()}_${itemIdx}`,
@@ -167,7 +170,7 @@ export async function generateMixedOutfits(
                     };
                 }); // Keep all items, even without images - UI will handle placeholders
 
-                console.log(`  Final items count: ${items.length}/${rawItems.length}`);
+                logger.debug(`  Final items count: ${items.length}/${rawItems.length}`);
 
                 // Strip duplicate-category items from AI response (e.g. 2 outerwear items)
                 const seenTypes = new Set<string>();
@@ -182,7 +185,7 @@ export async function generateMixedOutfits(
 
                 // If no items resolved, pick one per category from wardrobe as fallback
                 if (items.length === 0 && wardrobeItems.length > 0) {
-                    console.log('  Using fallback wardrobe items');
+                    logger.debug('  Using fallback wardrobe items');
                     const fallbackSeen = new Set<string>();
                     const fallbackItems = wardrobeItems
                         .filter((w: any) => {

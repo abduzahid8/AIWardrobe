@@ -119,9 +119,9 @@ function filterRenderableOutfits(outfits: GeneratedOutfit[]): GeneratedOutfit[] 
         }))
         .filter((o) => {
             // Ensure the outfit has sufficient clothing pieces to form a complete look
-            const hasTop = o.items.some(i => ['top', 'outerwear'].includes((i.macroCategory || '').toLowerCase()) || ['top', 'shirt', 'jacket', 't-shirt', 'blouse', 'coat', 'blazer', 'sweater', 'hoodie', 'polo'].some(c => (i.type || i.category || '').toLowerCase().includes(c)));
-            const hasBottom = o.items.some(i => ['bottom', 'pants', 'jeans', 'trousers', 'skirt', 'trouser', 'short'].some(c => (i.macroCategory || '').toLowerCase().includes(c) || (i.type || i.category || '').toLowerCase().includes(c)));
-            const hasShoes = o.items.some(i => ['shoes', 'shoe', 'sneaker', 'boot', 'footwear'].some(c => (i.macroCategory || '').toLowerCase().includes(c) || (i.type || i.category || '').toLowerCase().includes(c)));
+            const hasTop = o.items.some(i => ['top', 'outerwear'].includes((i.macroCategory || '').toLowerCase()) || ['top', 'shirt', 'jacket', 't-shirt', 'blouse', 'coat', 'blazer', 'sweater', 'hoodie', 'polo'].some(c => (i.type || '').toLowerCase().includes(c)));
+            const hasBottom = o.items.some(i => ['bottom', 'pants', 'jeans', 'trousers', 'skirt', 'trouser', 'short'].some(c => (i.macroCategory || '').toLowerCase().includes(c) || (i.type || '').toLowerCase().includes(c)));
+            const hasShoes = o.items.some(i => ['shoes', 'shoe', 'sneaker', 'boot', 'footwear'].some(c => (i.macroCategory || '').toLowerCase().includes(c) || (i.type || '').toLowerCase().includes(c)));
             
             // A complete outfit should have at least a top, a bottom, and ideally shoes.
             // Reject outfits with less than 3 items, or those missing a top or bottom.

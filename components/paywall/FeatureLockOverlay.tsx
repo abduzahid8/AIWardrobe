@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface FeatureLockOverlayProps {
     /** Which tier unlocks this feature (displayed in copy). */
-    requiredTier: 'Pro' | 'Max';
+    requiredTier: 'Pro';
     /** Feature name, shown in the title. */
     featureName: string;
     /** One-line tagline about the feature. */
@@ -45,8 +45,8 @@ const FeatureLockOverlay: React.FC<FeatureLockOverlayProps> = ({
         navigation.navigate('Paywall');
     };
 
-    const accent = requiredTier === 'Max' ? '#FFD700' : '#8B5CF6';
-    const accentDark = requiredTier === 'Max' ? '#B8860B' : '#6D28D9';
+    const accent = '#8B5CF6';
+    const accentDark = '#6D28D9';
 
     const Content = (
         <View style={styles.container}>
@@ -65,7 +65,7 @@ const FeatureLockOverlay: React.FC<FeatureLockOverlayProps> = ({
 
                 <View style={[styles.tierPill, { backgroundColor: `${accent}22`, borderColor: accent }]}>
                     <Ionicons
-                        name={requiredTier === 'Max' ? 'diamond' : 'star'}
+                        name='star'
                         size={12}
                         color={accent}
                     />

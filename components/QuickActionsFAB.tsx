@@ -13,11 +13,12 @@ import Animated, {
     withTiming,
     interpolate,
     Extrapolate,
+    type SharedValue,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
-import { useNavigation } from '@react-navigation/native';
+import { useAppNavigation } from '../hooks/useAppNavigation';
 import { colors, spacing, shadows, animations } from '../src/theme';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -68,8 +69,62 @@ const ACTIONS: QuickAction[] = [
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
+interface ActionItemProps {
+    action: QuickAction;
+    index: number;
+    progress: SharedValue<number>;
+    onPress: (route: string) => void;
+}
+
+const ActionItem: React.FC<ActionItemProps> = ({ action, index, progress, onPress }) => {
+    const actionStyle = useAnimatedStyle(() => {
+        const angle = -90 + (index * 30);
+        const radius = 90;
+        const x = Math.cos((angle * Math.PI) / 180) * radius * progress.value;
+        const y = Math.sin((angle * Math.PI) / 180) * radius * progress.value;
+
+        return {
+            transform: [
+                { translateX: x },
+                { translateY: y },
+                {
+                    scale: interpolate(
+                        progress.value,
+                        [0, 0.5, 1],
+                        [0, 0.5, 1],
+                        Extrapolate.CLAMP
+                    ),
+                },
+            ],
+            opacity: progress.value,
+        };
+    });
+
+    const labelStyle = useAnimatedStyle(() => ({
+        opacity: interpolate(progress.value, [0.7, 1], [0, 1]),
+        transform: [
+            { translateX: interpolate(progress.value, [0.7, 1], [20, 0]) },
+        ],
+    }));
+
+    return (
+        <Animated.View style={[styles.actionContainer, actionStyle]}>
+            <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: action.bgColor }]}
+                onPress={() => onPress(action.route)}
+                activeOpacity={0.9}
+            >
+                <Ionicons name={action.icon} size={24} color={action.color} />
+            </TouchableOpacity>
+            <Animated.View style={[styles.labelContainer, labelStyle]}>
+                <Text style={styles.label}>{action.label}</Text>
+            </Animated.View>
+        </Animated.View>
+    );
+};
+
 export const QuickActionsFAB: React.FC = () => {
-    const navigation = useNavigation();
+    const navigation = useAppNavigation();
     const [isOpen, setIsOpen] = useState(false);
 
     const progress = useSharedValue(0);
@@ -100,7 +155,7 @@ export const QuickActionsFAB: React.FC = () => {
 
         // Navigate after a short delay
         setTimeout(() => {
-            (navigation as any).navigate(route);
+            navigation.navigate(route as any);
         }, 150);
     };
 
@@ -118,46 +173,6 @@ export const QuickActionsFAB: React.FC = () => {
         pointerEvents: progress.value > 0.5 ? 'auto' : 'none',
     }));
 
-    // Action button animations
-    const getActionStyle = (index: number) => {
-        return useAnimatedStyle(() => {
-            const angle = -90 + (index * 30); // Spread actions in an arc
-            const radius = 90;
-            const baseDelay = index * 50;
-
-            const x = Math.cos((angle * Math.PI) / 180) * radius * progress.value;
-            const y = Math.sin((angle * Math.PI) / 180) * radius * progress.value;
-
-            return {
-                transform: [
-                    { translateX: x },
-                    { translateY: y },
-                    {
-                        scale: interpolate(
-                            progress.value,
-                            [0, 0.5, 1],
-                            [0, 0.5, 1],
-                            Extrapolate.CLAMP
-                        )
-                    },
-                ],
-                opacity: progress.value,
-            };
-        });
-    };
-
-    // Label animations
-    const getLabelStyle = (index: number) => {
-        return useAnimatedStyle(() => ({
-            opacity: interpolate(progress.value, [0.7, 1], [0, 1]),
-            transform: [
-                {
-                    translateX: interpolate(progress.value, [0.7, 1], [20, 0])
-                },
-            ],
-        }));
-    };
-
     return (
         <>
             {/* Overlay */}
@@ -174,21 +189,13 @@ export const QuickActionsFAB: React.FC = () => {
             {/* Action Buttons */}
             <View style={styles.container}>
                 {ACTIONS.map((action, index) => (
-                    <Animated.View
+                    <ActionItem
                         key={action.id}
-                        style={[styles.actionContainer, getActionStyle(index)]}
-                    >
-                        <TouchableOpacity
-                            style={[styles.actionButton, { backgroundColor: action.bgColor }]}
-                            onPress={() => handleAction(action.route)}
-                            activeOpacity={0.9}
-                        >
-                            <Ionicons name={action.icon} size={24} color={action.color} />
-                        </TouchableOpacity>
-                        <Animated.View style={[styles.labelContainer, getLabelStyle(index)]}>
-                            <Text style={styles.label}>{action.label}</Text>
-                        </Animated.View>
-                    </Animated.View>
+                        action={action}
+                        index={index}
+                        progress={progress}
+                        onPress={handleAction}
+                    />
                 ))}
 
                 {/* Main FAB */}

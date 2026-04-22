@@ -10,5 +10,12 @@ export {
     useScreenReader,
 } from './useAccessibility';
 
+// Subscription gating
+export { useSubscriptionGate } from '../src/hooks/useSubscriptionGate';
+
+// Typed navigation
+export { useAppNavigation } from './useAppNavigation';
+export type { AppNavigationProp } from './useAppNavigation';
+
 // Re-export types
 export type { UseAccessibilityReturn } from './useAccessibility';

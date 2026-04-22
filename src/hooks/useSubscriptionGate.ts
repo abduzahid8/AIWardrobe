@@ -39,7 +39,6 @@ interface SubscriptionGate {
     effectiveTier: SubscriptionTier;
     hasActiveSubscription: boolean;
     isPremium: boolean;
-    isVIP: boolean;
 
     /** Does the tier grant ANY access to this feature (ignoring daily usage)? */
     canAccess: (feature: FeatureKey) => boolean;
@@ -88,7 +87,6 @@ export function useSubscriptionGate(): SubscriptionGate {
         effectiveTier,
         hasActiveSubscription,
         isPremium,
-        isVIP,
         checkFeatureAccess,
     } = useSubscriptionStore();
 
@@ -189,7 +187,6 @@ export function useSubscriptionGate(): SubscriptionGate {
         effectiveTier,
         hasActiveSubscription,
         isPremium,
-        isVIP,
         canAccess,
         canUseNow,
         requireFeature,

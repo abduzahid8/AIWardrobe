@@ -9,23 +9,127 @@ import {
     FlatList,
     Image,
     ActivityIndicator,
+    Alert,
+    TextInput,
+    StatusBar,
+    Platform,
+    Linking,
 } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
+import { useAppNavigation } from '../hooks/useAppNavigation';
 import * as Haptics from 'expo-haptics';
 import Animated, {
     FadeIn,
     FadeInUp,
     FadeInDown,
+    FadeOut,
+    FadeOutDown,
+    ZoomIn,
+    ZoomOut,
+    useSharedValue,
+    useAnimatedStyle,
+    withRepeat,
+    withSequence,
+    withTiming,
+    Easing
 } from 'react-native-reanimated';
+import { BlurView } from 'expo-blur';
+import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
+import Config from '../src/config/env';
+import useAuthStore from '../store/auth';
+import { ExternalAIService } from '../src/services/externalAIService';
+import { BASIC_CLOTHING_ITEMS } from '../data/basicClothingItems';
+import { createLogger } from '../src/utils/logger';
 
-const { width } = Dimensions.get('window');
+const logger = createLogger('MyCloset');
+
+const GLASS = {
+    bg: 'rgba(255, 255, 255, 0.55)',
+    bgLight: 'rgba(255, 255, 255, 0.35)',
+    border: 'rgba(255, 255, 255, 0.7)',
+    accent: '#007AFF',
+    accentGlow: 'rgba(0, 122, 255, 0.25)',
+    textPrimary: '#1C1C1E',
+    textSecondary: 'rgba(60, 60, 67, 0.6)',
+};
+
+const LiquidGlassSpinner = () => {
+    const rotation = useSharedValue(0);
+    const pulse = useSharedValue(1);
+    const innerPulse = useSharedValue(0.6);
+
+    useEffect(() => {
+        rotation.value = withRepeat(withTiming(360, { duration: 2400, easing: Easing.linear }), -1, false);
+        pulse.value = withRepeat(
+            withSequence(
+                withTiming(1.08, { duration: 1200, easing: Easing.inOut(Easing.sin) }),
+                withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.sin) })
+            ), -1, true
+        );
+        innerPulse.value = withRepeat(
+            withSequence(
+                withTiming(1, { duration: 1800, easing: Easing.inOut(Easing.sin) }),
+                withTiming(0.6, { duration: 1800, easing: Easing.inOut(Easing.sin) })
+            ), -1, true
+        );
+    }, []);
+
+    const outerStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
+    const ringStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${rotation.value}deg` }] }));
+    const glowStyle = useAnimatedStyle(() => ({ opacity: innerPulse.value }));
+
+    return (
+        <Animated.View style={[styles.spinnerContainer, outerStyle]}>
+            <Animated.View style={[styles.spinnerGlow, glowStyle]} />
+            <Animated.View style={[styles.spinnerRing, ringStyle]}>
+                <LinearGradient
+                    colors={['rgba(0,122,255,0.6)', 'rgba(0,122,255,0)', 'rgba(0,122,255,0.3)']}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                    style={styles.spinnerRingGradient}
+                />
+            </Animated.View>
+            <BlurView intensity={40} tint="light" style={styles.spinnerInner}>
+                <Ionicons name="sparkles" size={28} color={GLASS.accent} />
+            </BlurView>
+        </Animated.View>
+    );
+};
+
+const { width, height } = Dimensions.get('window');
 const { colors, spacing, radius, typography } = LiquidGlass2026Theme;
+
+// ── AI clothing analysis helpers ────────────────────────────────────────────
+const mapCategoryToType = (category: string, section: string): string => {
+    const cat = category.toLowerCase();
+    const sec = section.toLowerCase();
+    if (sec === 'tops' || cat.includes('shirt') || cat.includes('blouse') || cat.includes('sweater') || cat.includes('hoodie') || cat === 't-shirt') return 'tops';
+    if (sec === 'bottoms' || cat.includes('pant') || cat.includes('jean') || cat.includes('skirt') || cat.includes('short')) return 'bottoms';
+    if (sec === 'shoes' || cat.includes('shoe') || cat.includes('sneaker') || cat.includes('boot') || cat.includes('sandal')) return 'shoes';
+    if (sec === 'accessories' || cat.includes('bag') || cat.includes('hat') || cat.includes('scarf') || cat.includes('belt') || cat.includes('watch')) return 'accessories';
+    if (sec === 'outerwear' || cat.includes('jacket') || cat.includes('coat')) return 'outerwear';
+    if (cat.includes('sport') || cat.includes('gym') || cat.includes('legging')) return 'sportswear';
+    return 'tops';
+};
+
+const mapColorToId = (colorName: string): string => {
+    const name = (colorName || '').toLowerCase();
+    if (name.includes('black') || name.includes('charcoal') || name.includes('ebony')) return 'black';
+    if (name.includes('grey') || name.includes('gray') || name.includes('silver')) return 'grey';
+    if (name.includes('beige') || name.includes('cream') || name.includes('tan') || name.includes('khaki') || name.includes('sand')) return 'beige';
+    if (name.includes('white') || name.includes('off-white') || name.includes('ivory')) return 'white';
+    if (name.includes('brown') || name.includes('camel') || name.includes('chocolate') || name.includes('rust')) return 'brown';
+    if (name.includes('green') || name.includes('olive') || name.includes('forest') || name.includes('mint')) return 'green';
+    if (name.includes('red') || name.includes('burgundy') || name.includes('wine') || name.includes('pink') || name.includes('coral') || name.includes('maroon')) return 'red';
+    if (name.includes('blue') || name.includes('navy') || name.includes('indigo') || name.includes('denim') || name.includes('cobalt') || name.includes('teal')) return 'blue';
+    return 'beige';
+};
 
 // Updated Category filters to match design
 const CATEGORIES = [
@@ -98,7 +202,16 @@ const ClothingGridItem = ({
     item: ClothingItem;
     onPress: () => void;
 }) => {
-    const imageUrl = item.imageUrl || item.image;
+    let imageUrl = item.imageUrl || item.image;
+    let finalImageSource: { uri: string } | null = imageUrl ? { uri: imageUrl } : null;
+
+    if (imageUrl && imageUrl.startsWith('basic_clothing_')) {
+        const basicId = imageUrl.replace('basic_clothing_', '');
+        const basicItem = BASIC_CLOTHING_ITEMS.find(b => b.id === basicId);
+        if (basicItem && basicItem.image) {
+            finalImageSource = { uri: basicItem.image };
+        }
+    }
 
     return (
         <TouchableOpacity
@@ -113,9 +226,9 @@ const ClothingGridItem = ({
         >
             <Animated.View style={styles.gridItem}>
                 <View style={styles.imageContainer}>
-                    {imageUrl ? (
+                    {finalImageSource ? (
                         <Image
-                            source={{ uri: imageUrl }}
+                            source={finalImageSource}
                             style={styles.itemImage}
                             resizeMode="cover"
                         />
@@ -131,12 +244,231 @@ const ClothingGridItem = ({
 };
 
 const MyClosetScreen = () => {
-    const navigation = useNavigation();
+    const navigation = useAppNavigation();
+    const isFocused = useIsFocused();
     const [items, setItems] = useState<ClothingItem[]>([]);
+
+    const player = useVideoPlayer(require('../assets/videos/closet.mov'), (player) => {
+        player.loop = true;
+        player.muted = true;
+        player.play();
+    });
+
+    useEffect(() => {
+        if (isFocused) {
+            player.play();
+        } else {
+            player.pause();
+        }
+    }, [isFocused, player]);
     const [filteredItems, setFilteredItems] = useState<ClothingItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState('tops'); // Default from screenshot
     const [viewMode, setViewMode] = useState<'clothes' | 'collections'>('clothes');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isSearching, setIsSearching] = useState(false);
+    const [filterCategory, setFilterCategory] = useState('All');
+
+    // AI Studio State
+    const { user } = useAuthStore();
+    const [isUploadingOverlay, setIsUploadingOverlay] = useState(false);
+    const [uploadStatusMsg, setUploadStatusMsg] = useState('');
+
+    // AI Studio Upload & Auto-Generate Logic (Serverless - External AI)
+    const pickImage = async (useCamera = false) => {
+        try {
+            const options: ImagePicker.ImagePickerOptions = {
+                mediaTypes: ['images'],
+                allowsEditing: true,
+                quality: 0.8,
+                base64: true,
+            };
+
+            let result;
+            if (useCamera) {
+                const current = await ImagePicker.getCameraPermissionsAsync();
+                if (!current.granted) {
+                    if (!current.canAskAgain) {
+                        Alert.alert(
+                            'Camera Access Disabled',
+                            'Enable camera access in Settings to continue.',
+                            [
+                                { text: 'Cancel', style: 'cancel' },
+                                {
+                                    text: 'Open Settings',
+                                    onPress: () => Platform.OS === 'ios' ? Linking.openURL('app-settings:') : Linking.openSettings(),
+                                },
+                            ]
+                        );
+                        return;
+                    }
+                    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+                    if (status !== 'granted') {
+                        Alert.alert('Permission needed', 'Camera permission is required.');
+                        return;
+                    }
+                }
+                result = await ImagePicker.launchCameraAsync(options);
+            } else {
+                result = await ImagePicker.launchImageLibraryAsync(options);
+            }
+
+            if (!result.canceled && result.assets[0]) {
+                const asset = result.assets[0];
+                runMagicPipeline(asset.base64 || null);
+            }
+        } catch (error: any) {
+            const msg: string = error?.message ?? '';
+            if (msg.toLowerCase().includes('simulator') || msg.toLowerCase().includes('not available')) {
+                Alert.alert('Simulator Detected', 'Camera is not available on the simulator. Please use a physical device or pick from your gallery instead.');
+            } else {
+                console.error('Image picker error:', error);
+                Alert.alert('Error', 'Failed to open camera');
+            }
+        }
+    };
+
+    const runMagicPipeline = async (b64: string | null) => {
+        if (!b64) {
+            Alert.alert("Error", "Could not read image data");
+            return;
+        }
+
+        setIsUploadingOverlay(true);
+        setUploadStatusMsg("Analyzing item and removing background...");
+
+        try {
+            // AI Studio should preserve the garment and only remove the background.
+            const result = await ExternalAIService.processStudioPhoto(b64);
+
+            if (!result.success) {
+                throw new Error("AI processing failed");
+            }
+
+            setUploadStatusMsg('Background removed. Review details...');
+
+            const cat = (result.classification?.category || '').toLowerCase();
+            const sec = (result.classification?.section || '').toLowerCase();
+
+            setIsUploadingOverlay(false);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+            // Navigate to editor for user review before saving
+            navigation.navigate('ClothingDetailEditor', {
+                imageUri: result.imageUrl,
+                detectedType: mapCategoryToType(cat, sec),
+                detectedColor: mapColorToId(result.classification?.attributes?.color || ''),
+                detectedStyle: result.classification?.attributes?.style,
+                detectedMaterial: result.classification?.attributes?.material ?? undefined,
+                aiConfidence: result.classification?.confidence,
+                detectedDescription: result.description ?? undefined,
+            });
+
+        } catch (error: any) {
+            console.error(error);
+            Alert.alert("Upload Error", error.message);
+        } finally {
+            setIsUploadingOverlay(false);
+        }
+    };
+
+    const openLegacyCamera = async () => {
+        try {
+            const { status } = await ImagePicker.requestCameraPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission needed', 'Camera permission is required.');
+                return;
+            }
+
+            const result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ['images'],
+                allowsEditing: false,
+                quality: 0.8,
+                base64: true,
+            });
+
+            if (!result.canceled && result.assets[0]) {
+                const asset = result.assets[0];
+                setIsUploadingOverlay(true);
+                setUploadStatusMsg('AI is analyzing your clothing...');
+                try {
+                    const aiResult = await ExternalAIService.classifyOnly(asset.base64 || '');
+                    const cat = (aiResult.classification?.category || '').toLowerCase();
+                    const sec = (aiResult.classification?.section || '').toLowerCase();
+                    navigation.navigate('ClothingDetailEditor', {
+                        imageUri: asset.uri,
+                        detectedType: mapCategoryToType(cat, sec),
+                        detectedColor: mapColorToId(aiResult.classification?.attributes?.color || ''),
+                        detectedStyle: aiResult.classification?.attributes?.style,
+                        detectedMaterial: aiResult.classification?.attributes?.material ?? undefined,
+                        aiConfidence: aiResult.classification?.confidence,
+                    });
+                } catch {
+                    navigation.navigate('ClothingDetailEditor', { imageUri: asset.uri });
+                } finally {
+                    setIsUploadingOverlay(false);
+                }
+            }
+        } catch (error: any) {
+            const msg: string = error?.message ?? '';
+            if (msg.toLowerCase().includes('simulator') || msg.toLowerCase().includes('not available')) {
+                Alert.alert("Simulator Detected", "Camera is not available on the simulator. Please use a physical device or pick from your gallery instead.");
+            } else {
+                console.error('Legacy camera error:', error);
+                Alert.alert("Error", "Failed to open camera");
+            }
+        }
+    };
+
+    const handleUploadChoice = () => {
+        Alert.alert(
+            "Add to Closet",
+            "Upload a photo to scan the item and remove the background, or use the standard camera mode.",
+            [
+                { text: "AI Studio Photo", onPress: () => pickImage(false) },
+                { text: "AI Studio Camera", onPress: () => pickImage(true) },
+                { text: "Legacy Camera", onPress: openLegacyCamera },
+                { text: "Cancel", style: "cancel" }
+            ]
+        );
+    };
+
+    const confirmDelete = (item: ClothingItem) => {
+        Alert.alert(
+            "Delete Item",
+            "Are you sure you want to delete this clothing piece? This action cannot be undone.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: () => deleteItem(item)
+                }
+            ]
+        );
+    };
+
+    const deleteItem = async (item: ClothingItem) => {
+        const idToDelete = item._id || item.id;
+        if (!idToDelete) return;
+
+        try {
+            // Optimistic UI update
+            setItems(prev => prev.filter(i => (i._id || i.id) !== idToDelete));
+
+            const { error } = await supabase
+                .from('clothing_items')
+                .delete()
+                .eq('id', idToDelete);
+
+            if (error) throw error;
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        } catch (error) {
+            console.error('Failed to delete item:', error);
+            Alert.alert("Error", "Failed to delete item. It has been restored to your closet.");
+            loadItems(); // Revert on failure
+        }
+    };
 
     // Load wardrobe items
     const loadItems = useCallback(async () => {
@@ -166,8 +498,9 @@ const MyClosetScreen = () => {
                 }));
 
                 setItems(mappedItems);
-                console.log('[Closet] Loaded', mappedItems.length, 'items. Image URLs:',
-                    mappedItems.map(i => ({ type: i.type, hasImage: !!i.imageUrl, imgLen: i.imageUrl?.length || 0 })));
+                logger.debug(`Loaded ${mappedItems.length} items`, {
+                    images: mappedItems.map(i => ({ type: i.type, hasImage: !!i.imageUrl, imgLen: i.imageUrl?.length || 0 })),
+                });
             }
         } catch (error) {
             console.error('Failed to load wardrobe:', error);
@@ -197,56 +530,107 @@ const MyClosetScreen = () => {
                     result = result.filter(item => item.isFavorite);
                 } else {
                     result = result.filter(item => {
-                        const category = (item.category || item.type || '').toLowerCase();
+                        const cat = (item.category || '').toLowerCase();
+                        const type = (item.type || item.itemType || '').toLowerCase();
                         switch (selectedCategory) {
                             case 'tops':
-                                return ['top', 'shirt', 'blouse', 'coat', 'dress', 'pullover', 'jacket', 'hoodie', 'sweater', 't-shirt'].some(k => category.includes(k));
+                                if (cat === 'tops' || cat === 'top') return true;
+                                return ['top', 'shirt', 'blouse', 'coat', 'dress', 'pullover', 'jacket', 'hoodie', 'sweater', 't-shirt', 'polo', 'cardigan'].some(k => cat.includes(k) || type.includes(k));
                             case 'bottoms':
-                                return ['bottom', 'pant', 'skirt', 'jean', 'trouser', 'short', 'legging'].some(k => category.includes(k));
+                                if (cat === 'bottoms' || cat === 'bottom') return true;
+                                return ['bottom', 'pant', 'skirt', 'jean', 'trouser', 'short', 'legging'].some(k => cat.includes(k) || type.includes(k));
                             case 'shoes':
-                                return ['shoe', 'sneaker', 'boot', 'sandal', 'heel', 'loafer', 'slipper', 'feet'].some(k => category.includes(k));
+                                if (cat === 'shoes' || cat === 'shoe') return true;
+                                return ['shoe', 'sneaker', 'boot', 'sandal', 'heel', 'loafer', 'slipper', 'feet'].some(k => cat.includes(k) || type.includes(k));
                             case 'accessories':
-                                return ['accessor', 'bag', 'hat', 'scarf', 'belt', 'sunglasses', 'watch', 'jewelry'].some(k => category.includes(k));
+                                if (cat === 'accessories' || cat === 'accessory') return true;
+                                return ['accessor', 'bag', 'hat', 'scarf', 'belt', 'sunglasses', 'watch', 'jewelry'].some(k => cat.includes(k) || type.includes(k));
                             default:
-                                return category.includes(selectedCategory.replace('s', ''));
+                                return cat.includes(selectedCategory.replace('s', '')) || type.includes(selectedCategory.replace('s', ''));
                         }
                     });
                 }
             }
         }
 
+        // Text Search
+        if (searchQuery.trim().length > 0) {
+            const query = searchQuery.toLowerCase();
+            result = result.filter(item => {
+                const nameMatch = (item.type || item.itemType || item.category || '').toLowerCase().includes(query);
+                const colorMatch = (item.color || '').toLowerCase().includes(query);
+                const descMatch = (item.description || '').toLowerCase().includes(query);
+                return nameMatch || colorMatch || descMatch;
+            });
+        }
+
         setFilteredItems(result);
-    }, [items, selectedCategory, viewMode]);
+    }, [items, selectedCategory, viewMode, searchQuery]);
 
 
     return (
         <View style={styles.container}>
-            <SafeAreaView style={styles.safeArea} edges={['top']}>
+            <LinearGradient
+                colors={['#F6FAFF', '#EEF4FF', '#FFFFFF']}
+                style={StyleSheet.absoluteFill}
+                pointerEvents="none"
+            />
+            <View pointerEvents="none" style={styles.backgroundOrbTop} />
+            <View pointerEvents="none" style={styles.backgroundOrbBottom} />
+            <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
                 {/* Header */}
-                <View style={[styles.header, items.length === 0 && { justifyContent: 'center' }]}>
-                    <View style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]} pointerEvents="none">
-                        <Text style={styles.headerTitle} accessibilityRole="header">My Closet</Text>
-                    </View>
-                    {items.length > 0 && (
-                        <TouchableOpacity style={styles.headerButtonLeft} accessibilityLabel="Search closet" accessibilityRole="button">
+                <View style={styles.headerContainer}>
+                    {isSearching ? (
+                        <View style={styles.searchBarContainer}>
                             <Ionicons name="search" size={20} color={colors.text.secondary} />
-                            <Text style={styles.headerButtonText}>Search</Text>
-                        </TouchableOpacity>
-                    )}
+                            <TextInput
+                                style={styles.searchBarInput}
+                                placeholder="Search closet..."
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                                autoFocus
+                                returnKeyType="search"
+                            />
+                            <TouchableOpacity onPress={() => { setIsSearching(false); setSearchQuery(''); }}>
+                                <Ionicons name="close-circle" size={18} color={colors.text.tertiary} />
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        <View style={styles.headerContent}>
+                            <View style={styles.headerLeft}>
+                                {items.length > 0 && (
+                                    <TouchableOpacity
+                                        style={styles.headerIconButton}
+                                        onPress={() => setIsSearching(true)}
+                                        accessibilityLabel="Search closet"
+                                        accessibilityRole="button"
+                                    >
+                                        <Ionicons name="search" size={22} color={colors.text.secondary} />
+                                    </TouchableOpacity>
+                                )}
+                            </View>
 
+                            <View style={styles.headerCenter}>
+                                <Text style={styles.headerTitle} accessibilityRole="header">My Closet</Text>
+                            </View>
 
-                    {items.length > 0 && (
-                        <TouchableOpacity
-                            style={styles.headerButtonRight}
-                            onPress={() => (navigation as any).navigate('Camera')} // Navigate to Camera/Upload
-                            accessibilityLabel="Upload clothing item"
-                            accessibilityRole="button"
-                        >
-                            <Ionicons name="add" size={22} color={colors.text.secondary} />
-                            <Text style={styles.headerButtonText}>Upload</Text>
-                        </TouchableOpacity>
+                            <View style={styles.headerRight}>
+                                {items.length > 0 && (
+                                    <TouchableOpacity
+                                        style={styles.headerUploadButton}
+                                        onPress={handleUploadChoice}
+                                        accessibilityLabel="Upload clothing"
+                                        accessibilityRole="button"
+                                    >
+                                        <Ionicons name="add" size={18} color="#0A1931" />
+                                        <Text style={styles.headerUploadText}>Upload</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                        </View>
                     )}
                 </View>
+
 
                 {/* Segmented Control */}
                 <View style={styles.segmentContainer}>
@@ -299,20 +683,38 @@ const MyClosetScreen = () => {
                 )}
 
                 {/* Content */}
-                {loading ? (
+                {viewMode === 'collections' ? (
+                    /* ── Collections View ── */
+                    <View style={styles.emptyStateContainer}>
+                        <View style={styles.collectionsIconWrap}>
+                            <Ionicons name="albums-outline" size={56} color={colors.text.tertiary} />
+                        </View>
+                        <Text style={styles.emptyTitle}>No collections yet</Text>
+                        <Text style={styles.emptySubtitle}>
+                            Group your outfits into collections — for work, weekends, seasons, or any occasion.
+                        </Text>
+                        <TouchableOpacity
+                            style={styles.emptyButton}
+                            onPress={() => navigation.navigate('AIOutfit')}
+                            accessibilityLabel="Create first collection"
+                            accessibilityRole="button"
+                        >
+                            <Text style={styles.emptyButtonText}>Create First Look</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : loading ? (
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="small" color={colors.text.primary} />
                     </View>
                 ) : items.length === 0 ? (
                     <View style={styles.emptyStateContainer}>
                         <View style={styles.videoContainer}>
-                            <Video
-                                source={require('../assets/videos/closet.mov')}
+                            <VideoView
                                 style={styles.video}
-                                resizeMode={ResizeMode.CONTAIN}
-                                shouldPlay={true}
-                                isLooping
-                                isMuted
+                                player={player}
+                                allowsFullscreen={false}
+                                allowsPictureInPicture={false}
+                                contentFit="contain"
                             />
                         </View>
                         <Text style={styles.emptyTitle}>Your closet is empty</Text>
@@ -320,7 +722,7 @@ const MyClosetScreen = () => {
 
                         <TouchableOpacity
                             style={styles.emptyButton}
-                            onPress={() => (navigation as any).navigate('Camera')}
+                            onPress={handleUploadChoice}
                             accessibilityLabel="Scan wardrobe"
                             accessibilityRole="button"
                         >
@@ -338,9 +740,10 @@ const MyClosetScreen = () => {
                             <ClothingGridItem
                                 item={item}
                                 onPress={() => {
-                                    (navigation as any).navigate('OutfitDetail', {
-                                        image: item.imageUrl || item.image,
-                                        outfit: { id: item._id || item.id, items: [item] }
+                                    Haptics.selectionAsync();
+                                    navigation.navigate('ClothingDetail', {
+                                        itemId: item.id || (item as any)._id,
+                                        fullItem: item
                                     });
                                 }}
                             />
@@ -350,82 +753,178 @@ const MyClosetScreen = () => {
                 )}
 
             </SafeAreaView>
-        </View>
+
+            {/* Floating Ask Stylist button — Liquid Glass */}
+            <TouchableOpacity
+                style={styles.stylistFAB}
+                onPress={() => navigation.navigate('AIOutfit')}
+                activeOpacity={0.88}
+                accessibilityLabel="Ask AI Stylist"
+                accessibilityRole="button"
+            >
+                <View style={styles.stylistFABGlass}>
+                    <Ionicons name="chatbubble-ellipses" size={20} color={colors.text.primary} />
+                    <Text style={styles.stylistFABText}>Ask Stylist</Text>
+                </View>
+            </TouchableOpacity>
+
+            {isUploadingOverlay && (
+                <Animated.View entering={FadeIn.duration(300)} style={StyleSheet.absoluteFill}>
+                    <BlurView intensity={70} tint="light" style={styles.overlayBlur}>
+                        <LiquidGlassSpinner />
+                        <Animated.Text entering={FadeInUp.delay(200)} style={styles.overlayTitle}>
+                            AI Studio
+                        </Animated.Text>
+                        <Animated.Text entering={FadeInUp.delay(300)} style={styles.overlaySubtitle}>
+                            {uploadStatusMsg}
+                        </Animated.Text>
+                    </BlurView>
+                </Animated.View>
+            )}
+        </View >
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF', // iOS System Gray 6 (light mode typical background)
+        backgroundColor: '#FFFFFF',
+    },
+    backgroundOrbTop: {
+        position: 'absolute',
+        top: -100,
+        right: -80,
+        width: 280,
+        height: 280,
+        borderRadius: 140,
+        backgroundColor: 'rgba(188, 210, 245, 0.42)',
+    },
+    backgroundOrbBottom: {
+        position: 'absolute',
+        left: -120,
+        bottom: 120,
+        width: 300,
+        height: 300,
+        borderRadius: 150,
+        backgroundColor: 'rgba(216, 229, 252, 0.34)',
     },
     safeArea: {
         flex: 1,
     },
 
     // Header
-    header: {
+    headerContainer: {
+        backgroundColor: 'transparent',
+        marginTop: -5,
+        paddingBottom: 10,
+    },
+    headerContent: {
+        minHeight: 52,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingVertical: 12,
-        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 16,
+    },
+    headerLeft: {
+        flex: 1,
+        alignItems: 'flex-start',
+    },
+    headerCenter: {
+        flex: 2,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    headerRight: {
+        flex: 1,
+        alignItems: 'flex-end',
     },
     headerTitle: {
-        ...typography.scale.titleLarge,
+        fontSize: 18,
         fontWeight: '700',
         color: '#0A1931',
         letterSpacing: 0.3,
     },
-    headerButtonLeft: {
+    headerIconButton: {
+        width: 44,
+        height: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 22,
+        backgroundColor: 'rgba(255,255,255,0.82)',
+        borderWidth: 1,
+        borderColor: 'rgba(24,58,103,0.08)',
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+        elevation: 3,
+    },
+    headerUploadButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        borderRadius: 20, // Pill shape
-        // Subtle shadow
-        shadowColor: '#0A1931',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
+        backgroundColor: 'rgba(255,255,255,0.84)',
+        paddingHorizontal: 14,
+        paddingVertical: 9,
+        borderRadius: 18,
+        marginRight: 2,
+        borderWidth: 1,
+        borderColor: 'rgba(24,58,103,0.08)',
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+        elevation: 3,
     },
-    headerButtonRight: {
+    headerUploadText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#0A1931',
+        marginLeft: 2,
+    },
+    searchBarContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        borderRadius: 20, // Pill shape
-        shadowColor: '#0A1931',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
-
+        backgroundColor: 'rgba(255,255,255,0.88)',
+        borderRadius: 18,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        marginHorizontal: 16,
+        marginVertical: 4,
+        borderWidth: 1,
+        borderColor: 'rgba(24,58,103,0.08)',
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+        elevation: 3,
     },
-    headerButtonText: {
-        fontSize: 15,
-        fontWeight: '500',
-        color: '#3C3C43', // iOS gray
-        marginLeft: 6,
+    searchBarInput: {
+        flex: 1,
+        marginLeft: 8,
+        fontSize: 16,
+        color: '#000',
     },
 
     // Segmented Control
     segmentContainer: {
         alignItems: 'center',
-        paddingTop: 15,
-        paddingBottom: 20,
-        backgroundColor: '#FFFFFF',
+        paddingTop: 0,
+        paddingBottom: 14,
+        backgroundColor: 'transparent',
     },
     segmentBackground: {
         flexDirection: 'row',
-        backgroundColor: '#E5E5EA', // iOS System Gray 5
-        borderRadius: 24, // Rounded
+        backgroundColor: 'rgba(255,255,255,0.84)',
+        borderRadius: 26,
         padding: 4,
         width: 300,
+        borderWidth: 1,
+        borderColor: 'rgba(24,58,103,0.08)',
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.06,
+        shadowRadius: 16,
+        elevation: 4,
     },
     segmentButton: {
         flex: 1,
@@ -436,10 +935,10 @@ const styles = StyleSheet.create({
     },
     segmentButtonActive: {
         backgroundColor: '#FFFFFF',
-        shadowColor: '#0A1931',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
         elevation: 2,
     },
     segmentText: {
@@ -454,24 +953,27 @@ const styles = StyleSheet.create({
 
     // Filters
     filterContainer: {
-        marginBottom: 16,
+        marginBottom: 18,
     },
     filterContentRaw: {
         paddingHorizontal: 16,
         paddingRight: 8,
     },
     filterChip: {
-        paddingVertical: 8,
+        paddingVertical: 10,
         paddingHorizontal: 20,
-        borderRadius: 20,
+        borderRadius: 18,
         marginRight: 8,
-        backgroundColor: '#E5E5EA', // Default gray
+        backgroundColor: 'rgba(255,255,255,0.86)',
+        borderWidth: 1,
+        borderColor: 'rgba(24,58,103,0.08)',
     },
     filterChipSelected: {
-        backgroundColor: '#303030', // Dark grey/black active state
+        backgroundColor: '#173A65',
+        borderColor: '#173A65',
     },
     filterChipUnselected: {
-        backgroundColor: '#E5E5EA',
+        backgroundColor: 'rgba(255,255,255,0.86)',
     },
     filterChipText: {
         fontSize: 15,
@@ -504,19 +1006,20 @@ const styles = StyleSheet.create({
         padding: 6,
     },
     gridItem: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 16,
+        backgroundColor: 'rgba(255,255,255,0.92)',
+        borderRadius: 22,
         overflow: 'hidden',
-        // Minimal shadow for clean look
-        shadowColor: '#0A1931',
-        shadowOffset: { width: 0, height: 1 },
+        borderWidth: 1,
+        borderColor: 'rgba(24,58,103,0.06)',
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
+        shadowRadius: 12,
+        elevation: 3,
     },
     imageContainer: {
         aspectRatio: 3 / 4, // Portrait ratio for clothes
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#F9FBFF',
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -535,6 +1038,28 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'flex-start',
         paddingTop: 60,
+        marginHorizontal: 16,
+        marginTop: 4,
+        paddingHorizontal: 20,
+        paddingBottom: 24,
+        borderRadius: 30,
+        backgroundColor: 'rgba(255,255,255,0.88)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.72)',
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.08,
+        shadowRadius: 20,
+        elevation: 6,
+    },
+    collectionsIconWrap: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        backgroundColor: '#F4F8FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 20,
     },
     videoContainer: {
         width: 250,
@@ -559,7 +1084,7 @@ const styles = StyleSheet.create({
         marginBottom: 24,
     },
     emptyButton: {
-        backgroundColor: '#0A1931',
+        backgroundColor: '#173A65',
         paddingVertical: 14,
         paddingHorizontal: 32,
         borderRadius: 30,
@@ -568,6 +1093,95 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontSize: 16,
         fontWeight: '600',
+    },
+    // Overlay logic
+    overlayBlur: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 40,
+    },
+    overlayTitle: {
+        fontSize: 24,
+        fontWeight: '700',
+        color: GLASS.textPrimary,
+        marginBottom: 8,
+    },
+    overlaySubtitle: {
+        fontSize: 16,
+        color: GLASS.textSecondary,
+        textAlign: 'center',
+        lineHeight: 22,
+    },
+    spinnerContainer: {
+        width: 110,
+        height: 110,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 28,
+    },
+    spinnerGlow: {
+        position: 'absolute',
+        width: 110,
+        height: 110,
+        borderRadius: 55,
+        backgroundColor: GLASS.accentGlow,
+    },
+    spinnerRing: {
+        position: 'absolute',
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        overflow: 'hidden',
+    },
+    spinnerRingGradient: {
+        flex: 1,
+        borderRadius: 50,
+        borderWidth: 2.5,
+        borderColor: 'transparent',
+    },
+    spinnerInner: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        overflow: 'hidden',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 0.5,
+        borderColor: GLASS.border,
+        backgroundColor: GLASS.bg,
+    },
+
+    // Floating Ask Stylist button — Liquid Glass
+    stylistFAB: {
+        position: 'absolute',
+        bottom: 100,
+        left: '50%',
+        transform: [{ translateX: -58 }],
+        borderRadius: 28,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.12,
+        shadowRadius: 12,
+        elevation: 8,
+    },
+    stylistFABGlass: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 7,
+        backgroundColor: 'rgba(255,255,255,0.72)',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderRadius: 28,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.5)',
+    },
+    stylistFABText: {
+        color: colors.text.primary,
+        fontSize: 14,
+        fontWeight: '700',
+        letterSpacing: 0.2,
     },
 });
 

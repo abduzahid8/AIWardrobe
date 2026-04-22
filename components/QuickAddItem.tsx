@@ -33,9 +33,11 @@ const { colors, spacing, radius, typography } = LiquidGlass2026Theme;
 const CATEGORIES: { value: ClothingCategory; label: string; icon: string }[] = [
     { value: 'top', label: 'Top', icon: 'shirt-outline' },
     { value: 'bottom', label: 'Bottom', icon: 'resize-outline' },
+    { value: 'dress', label: 'Dress', icon: 'body-outline' },
     { value: 'shoes', label: 'Shoes', icon: 'footsteps-outline' },
     { value: 'outerwear', label: 'Outerwear', icon: 'cloudy-outline' },
     { value: 'accessory', label: 'Accessory', icon: 'watch-outline' },
+    { value: 'other', label: 'Other', icon: 'ellipsis-horizontal-outline' },
 ];
 
 const BASIC_COLORS: { name: string; hex: string }[] = [

@@ -3,6 +3,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('useWardrobeItems');
 
 // Storage keys
 const WARDROBE_KEY = 'myWardrobeItems';
@@ -73,7 +76,7 @@ export const useWardrobeItems = (options: UseWardrobeItemsOptions = {}): UseWard
                     isSaved: true,
                 }));
                 setItems(normalizedItems);
-                console.log(`📦 useWardrobeItems: Loaded ${normalizedItems.length} items`);
+                logger.debug(`📦 Loaded ${normalizedItems.length} items`);
             } else {
                 setItems([]);
             }
