@@ -31,6 +31,7 @@ import AppColors from '../constants/AppColors';
 import flashSalesService from '../src/services/flashSalesService';
 import { FlashSaleEvent } from '../src/types/flashSales';
 import { RootStackParamList } from '../navigation/types';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -39,10 +40,12 @@ const { width } = Dimensions.get('window');
 // ============================================
 const CountdownTimer = ({
     event,
-    compact = false
+    compact = false,
+    t
 }: {
     event: FlashSaleEvent;
     compact?: boolean
+    t: any
 }) => {
     const [timeRemaining, setTimeRemaining] = useState(
         flashSalesService.getTimeRemaining(event)
@@ -80,19 +83,19 @@ const CountdownTimer = ({
             <View style={styles.countdownDigits}>
                 <View style={styles.countdownBlock}>
                     <Text style={styles.countdownNumber}>{String(hours).padStart(2, '0')}</Text>
-                    <Text style={styles.countdownUnit}>HRS</Text>
+                    <Text style={styles.countdownUnit}>{t('flashSales.hrs')}</Text>
                 </View>
                 <Text style={styles.countdownSeparator}>:</Text>
                 <View style={styles.countdownBlock}>
                     <Text style={styles.countdownNumber}>{String(minutes).padStart(2, '0')}</Text>
-                    <Text style={styles.countdownUnit}>MIN</Text>
+                    <Text style={styles.countdownUnit}>{t('flashSales.min')}</Text>
                 </View>
                 <Text style={styles.countdownSeparator}>:</Text>
                 <View style={styles.countdownBlock}>
                     <Text style={[styles.countdownNumber, isEnding && styles.countdownEndingText]}>
                         {String(seconds).padStart(2, '0')}
                     </Text>
-                    <Text style={styles.countdownUnit}>SEC</Text>
+                    <Text style={styles.countdownUnit}>{t('flashSales.sec')}</Text>
                 </View>
             </View>
         </View>
@@ -104,10 +107,12 @@ const CountdownTimer = ({
 // ============================================
 const HeroEventCard = ({
     event,
-    onPress
+    onPress,
+    t
 }: {
     event: FlashSaleEvent;
     onPress: () => void
+    t: any
 }) => {
     const pulseAnim = useSharedValue(1);
 
@@ -146,7 +151,7 @@ const HeroEventCard = ({
                 {event.status === 'active' && (
                     <Animated.View style={[styles.liveBadge, pulseStyle]}>
                         <View style={styles.liveDot} />
-                        <Text style={styles.liveText}>LIVE</Text>
+                        <Text style={styles.liveText}>{t('flashSales.live')}</Text>
                     </Animated.View>
                 )}
 
@@ -154,7 +159,7 @@ const HeroEventCard = ({
                 {event.isExclusive && (
                     <View style={styles.exclusiveBadge}>
                         <Ionicons name="diamond" size={12} color="#FFD700" />
-                        <Text style={styles.exclusiveText}>EXCLUSIVE</Text>
+                        <Text style={styles.exclusiveText}>{t('flashSales.exclusive')}</Text>
                     </View>
                 )}
 
@@ -167,7 +172,7 @@ const HeroEventCard = ({
                                 resizeMode="contain"
                             />
                         )}
-                        <Text style={styles.heroDiscount}>Up to {event.discountPercentage}% OFF</Text>
+                        <Text style={styles.heroDiscount}>{t('flashSales.upToOff', { discount: event.discountPercentage })}</Text>
                     </View>
 
                     <Text style={styles.heroTitle}>{event.title}</Text>
@@ -175,14 +180,14 @@ const HeroEventCard = ({
                         {event.description}
                     </Text>
 
-                    <CountdownTimer event={event} />
+                    <CountdownTimer event={event} t={t} />
 
                     <View style={styles.heroFooter}>
                         <Text style={styles.heroItemCount}>
                             {event.itemCount} exclusive pieces
                         </Text>
                         <View style={styles.heroShopButton}>
-                            <Text style={styles.heroShopButtonText}>Shop Now</Text>
+                            <Text style={styles.heroShopButtonText}>{t('flashSales.shopNow')}</Text>
                             <Ionicons name="arrow-forward" size={16} color="#0A1931" />
                         </View>
                     </View>
@@ -199,10 +204,12 @@ const EventCard = ({
     event,
     onPress,
     index,
+    t
 }: {
     event: FlashSaleEvent;
-    onPress: () => void;
-    index: number;
+    onPress: () => void
+    index: number
+    t: any
 }) => {
     const [isSubscribed, setIsSubscribed] = useState(
         flashSalesService.isSubscribed(event.id)
@@ -240,7 +247,7 @@ const EventCard = ({
 
                 {/* Countdown */}
                 <View style={styles.eventCardCountdown}>
-                    <CountdownTimer event={event} compact />
+                    <CountdownTimer event={event} compact={true} t={t} />
                 </View>
 
                 <View style={styles.eventCardContent}>
@@ -278,6 +285,7 @@ const EventCard = ({
 // MAIN SCREEN
 // ============================================
 const FlashSalesScreen = () => {
+    const { t } = useTranslation();
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
     const [activeEvents, setActiveEvents] = useState<FlashSaleEvent[]>([]);
@@ -322,7 +330,7 @@ const FlashSalesScreen = () => {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={AppColors.accent} />
-                <Text style={styles.loadingText}>Loading exclusive sales...</Text>
+                <Text style={styles.loadingText}>{t('flashSales.loading')}</Text>
             </View>
         );
     }
@@ -338,9 +346,9 @@ const FlashSalesScreen = () => {
                     <Ionicons name="chevron-back" size={24} color={AppColors.text} />
                 </TouchableOpacity>
                 <View style={styles.headerTitleContainer}>
-                    <Text style={styles.headerTitle}>Flash Sales</Text>
+                    <Text style={styles.headerTitle}>{t('flashSales.title')}</Text>
                     <View style={styles.headerBadge}>
-                        <Text style={styles.headerBadgeText}>🔥 LIVE</Text>
+                        <Text style={styles.headerBadgeText}>{t('flashSales.liveBadge')}</Text>
                     </View>
                 </View>
                 <TouchableOpacity style={styles.filterButton}>
@@ -362,6 +370,7 @@ const FlashSalesScreen = () => {
                         <HeroEventCard
                             event={featuredEvent}
                             onPress={() => navigateToEvent(featuredEvent)}
+                            t={t}
                         />
                     </View>
                 )}
@@ -370,7 +379,7 @@ const FlashSalesScreen = () => {
                 {activeEvents.length > 0 && (
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>⚡ Happening Now</Text>
+                            <Text style={styles.sectionTitle}>{t('flashSales.happeningNow')}</Text>
                             <Text style={styles.sectionSubtitle}>
                                 {activeEvents.length} active {activeEvents.length === 1 ? 'sale' : 'sales'}
                             </Text>
@@ -386,6 +395,7 @@ const FlashSalesScreen = () => {
                                     event={event}
                                     index={index}
                                     onPress={() => navigateToEvent(event)}
+                                    t={t}
                                 />
                             ))}
                         </ScrollView>
@@ -396,7 +406,7 @@ const FlashSalesScreen = () => {
                 {upcomingEvents.length > 0 && (
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>🗓️ Coming Soon</Text>
+                            <Text style={styles.sectionTitle}>{t('flashSales.comingSoon')}</Text>
                             <Text style={styles.sectionSubtitle}>
                                 Don't miss out - get notified
                             </Text>
@@ -412,6 +422,7 @@ const FlashSalesScreen = () => {
                                     event={event}
                                     index={index}
                                     onPress={() => navigateToEvent(event)}
+                                    t={t}
                                 />
                             ))}
                         </ScrollView>
@@ -427,7 +438,7 @@ const FlashSalesScreen = () => {
                         <View style={styles.infoIcon}>
                             <Ionicons name="diamond-outline" size={28} color={AppColors.accent} />
                         </View>
-                        <Text style={styles.infoTitle}>Exclusive Access</Text>
+                        <Text style={styles.infoTitle}>{t('flashSales.exclusiveAccess')}</Text>
                         <Text style={styles.infoText}>
                             Premium brands offer their excess inventory at exclusive prices.
                             Limited time, limited stock – first come, first served.

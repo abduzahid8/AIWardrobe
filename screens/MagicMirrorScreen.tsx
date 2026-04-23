@@ -31,6 +31,7 @@ import SwipeableClothingCarousel from '../components/ui/SwipeableClothingCarouse
 import { ClosetlyTheme, ClosetlyStyles } from '../constants/ClosetlyTheme';
 import { supabase } from '../lib/supabase';
 import useAuthStore from '../store/auth';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -68,6 +69,7 @@ interface MatchedBottom {
  * - Glassmorphism action buttons
  */
 const MagicMirrorScreen: React.FC = () => {
+    const { t } = useTranslation();
     const navigation = useNavigation();
     const { user } = useAuthStore(); // Use AuthStore
 
@@ -338,7 +340,7 @@ const MagicMirrorScreen: React.FC = () => {
                 <StatusBar barStyle="dark-content" />
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={ClosetlyTheme.colors.text} />
-                    <Text style={styles.loadingText}>Loading your wardrobe...</Text>
+                    <Text style={styles.loadingText}>{t('magicMirror.loading')}</Text>
                 </View>
             </SafeAreaView>
         );
@@ -363,7 +365,7 @@ const MagicMirrorScreen: React.FC = () => {
                         <Ionicons name="chevron-back" size={28} color={ClosetlyTheme.colors.text} />
                     </TouchableOpacity>
 
-                    <Text style={styles.headerTitle}>Magic Mirror</Text>
+                    <Text style={styles.headerTitle}>{t('magicMirror.title')}</Text>
 
                     {/* Match Score Badge */}
                     {overallMatchScore > 0 && (
@@ -380,7 +382,7 @@ const MagicMirrorScreen: React.FC = () => {
 
                     {/* TOPS Section */}
                     <Animated.View entering={FadeInUp.delay(100).duration(400)} style={styles.section}>
-                        <Text style={styles.sectionLabel}>TOPS</Text>
+                        <Text style={styles.sectionLabel}>{t('magicMirror.tops')}</Text>
                         <SwipeableClothingCarousel
                             items={tops}
                             onItemChange={handleTopChange}
@@ -406,7 +408,7 @@ const MagicMirrorScreen: React.FC = () => {
                                     <View style={styles.modelIconCircle}>
                                         <Ionicons name="person" size={40} color={ClosetlyTheme.colors.textMuted} />
                                     </View>
-                                    <Text style={styles.modelPlaceholderText}>Tap to add your photo</Text>
+                                    <Text style={styles.modelPlaceholderText}>{t('magicMirror.tapToAddPhoto')}</Text>
                                 </View>
                             )}
 
@@ -414,7 +416,7 @@ const MagicMirrorScreen: React.FC = () => {
                             {tryingOn && (
                                 <BlurView intensity={80} style={styles.tryOnOverlay}>
                                     <ActivityIndicator size="large" color={ClosetlyTheme.colors.text} />
-                                    <Text style={styles.tryOnText}>Creating magic...</Text>
+                                    <Text style={styles.tryOnText}>{t('magicMirror.creatingMagic')}</Text>
                                 </BlurView>
                             )}
                         </TouchableOpacity>
@@ -422,7 +424,7 @@ const MagicMirrorScreen: React.FC = () => {
 
                     {/* BOTTOMS Section */}
                     <Animated.View entering={FadeInDown.delay(300).duration(400)} style={styles.section}>
-                        <Text style={styles.sectionLabel}>BOTTOMS</Text>
+                        <Text style={styles.sectionLabel}>{t('magicMirror.bottoms')}</Text>
                         <SwipeableClothingCarousel
                             items={sortedBottoms}
                             onItemChange={handleBottomChange}
@@ -448,14 +450,14 @@ const MagicMirrorScreen: React.FC = () => {
                                 color={ClosetlyTheme.colors.background}
                             />
                             <Text style={styles.tryOnButtonText}>
-                                {tryingOn ? 'Generating...' : 'Try On'}
+                                {tryingOn ? t('magicMirror.generating') : t('magicMirror.tryOn')}
                             </Text>
                         </TouchableOpacity>
 
                         {resultImage && (
                             <TouchableOpacity style={styles.saveButton}>
                                 <Ionicons name="heart-outline" size={20} color={ClosetlyTheme.colors.text} />
-                                <Text style={styles.saveButtonText}>Save</Text>
+                                <Text style={styles.saveButtonText}>{t('common.save')}</Text>
                             </TouchableOpacity>
                         )}
                     </BlurView>

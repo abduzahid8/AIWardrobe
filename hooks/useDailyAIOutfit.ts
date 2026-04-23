@@ -87,64 +87,126 @@ function todayKey(d: Date = new Date()): string {
 }
 
 function storageKey(userId: string | null | undefined, style: string): string {
-    return `daily_ai_outfit_v3::${userId ?? 'anon'}::${style}`;
+    // Bumped to v6: added shop catalog fallback for placeholder items
+    // in edge function enrichment step. Old v5 caches may have placeholder
+    // items without images.
+    return `daily_ai_outfit_v6::${userId ?? 'anon'}::${style}`;
 }
 
 /**
- * An outfit is only useful on Home if its items actually have renderable
- * image URLs. Legacy wardrobe entries sometimes carry placeholder strings
- * like `basic_clothing_sweater` instead of a real URL; those items render
- * as blank boxes on the outfit card, which is what the user was seeing.
+ * Decide whether an image value is worth keeping. We're intentionally
+ * permissive here — the collage's <CollageImage> already gracefully falls
+ * back to a placeholder icon if the image fails to load, so it's much
+ * better to show "something" than to silently discard the whole outfit.
+ *
+ * The only things we reject are clearly empty / non-string values and
+ * literal sentinels the backend sometimes returns when it has nothing
+ * useful (e.g. "null", "undefined").
  */
 function isRenderableImage(url: unknown): url is string {
-    return typeof url === 'string' && (/^(https?:|file:|data:)/i.test(url) || url.startsWith('basic_clothing_'));
+    if (typeof url !== 'string') return false;
+    const trimmed = url.trim();
+    if (trimmed.length === 0) return false;
+    if (/^(null|undefined|none|false|0)$/i.test(trimmed)) return false;
+    return true;
 }
 
 function itemHasRenderableImage(item: GeneratedOutfit['items'][number]): boolean {
     if (isRenderableImage(item.imageUrl)) return true;
-    if (typeof item.image === 'string' && isRenderableImage(item.image)) return true;
+    if (isRenderableImage(item.image)) return true;
+    // Allow number-based require()'d local assets through as well.
+    if (typeof item.image === 'number' && item.image > 0) return true;
     return false;
 }
 
 /**
- * Keep only outfits that Home can actually display. We require Top + Bottom +
- * Shoes (the mandatory 3-slot composition) and no duplicate macro categories
- * (e.g. two bottoms slipping through from a shop-catalog mis-tag).
+ * Normalize a heterogeneous macroCategory / type value into the canonical
+ * slot the collage understands.
+ *
+ * Strategy: blob match FIRST (most specific — a "sweater polo" must be
+ * outerwear even if the server tagged it macroCategory="top"), then fall
+ * back to the raw `macroCategory` field, then declare it `other`.
+ *
+ * This mirrors `getOutfitItemMacroCategory()` in `outfitPreview.ts` so the
+ * filter's classification and the collage's slot-picker can never disagree.
+ */
+function canonicalMacro(item: GeneratedOutfit['items'][number]): 'top' | 'outerwear' | 'bottom' | 'shoes' | 'other' {
+    const blob = `${item.type || ''} ${item.name || ''}`.toLowerCase();
+
+    // Outerwear first — sweaters, blazers, jackets must not be collapsed
+    // into the base-top slot otherwise a layered look loses its main layer.
+    if (/\b(blazer|overcoat|topcoat|peacoat|trench|parka|puffer|windbreaker|bomber)\b/.test(blob)) return 'outerwear';
+    if (/\b(coat|jacket|cardigan|sweater|hoodie|vest|pullover|fleece)\b/.test(blob)) return 'outerwear';
+    if (/\b(pant|trouser|jeans|short|skirt|chino|slack|jogger|sweatpant)\b/.test(blob)) return 'bottom';
+    if (/\b(shoe|sneaker|boot|loafer|sandal|heel|trainer|oxford|derby|mule)\b/.test(blob)) return 'shoes';
+    if (/\b(t-shirt|tshirt|tee|polo|blouse|shirt|dress)\b/.test(blob)) return 'top';
+    if (/upper[_\s-]?body/.test(blob)) return 'top';
+    if (/lower[_\s-]?body/.test(blob)) return 'bottom';
+
+    // Fallback to the macroCategory tag the server supplied.
+    const raw = (item.macroCategory || '').toLowerCase().trim();
+    if (raw === 'outerwear' || raw === 'outer_layer' || raw === 'layer') return 'outerwear';
+    if (raw === 'top' || raw === 'tops' || raw === 'upper_body' || raw === 'upper-body' || raw === 'shirt' || raw === 'dress' || raw === 'dresses') return 'top';
+    if (raw === 'bottom' || raw === 'bottoms' || raw === 'lower_body' || raw === 'lower-body' || raw === 'pants' || raw === 'pant') return 'bottom';
+    if (raw === 'shoes' || raw === 'shoe' || raw === 'footwear') return 'shoes';
+
+    return 'other';
+}
+
+/**
+ * Normalize AI outfit items so Home can always display *something*.
+ *
+ * Previously we dropped any item without a matching http/file/data image
+ * URL, then required an exact top+bottom+shoes composition. In production
+ * that rejected 100% of valid AI outfits because the edge function
+ * sometimes returns items whose IDs were hallucinated by the LLM (so
+ * wardrobe lookup fails and imageUrl ends up empty) — the empty-card bug
+ * the user was seeing.
+ *
+ * New policy:
+ *   1. Keep every item the server returned. If an item has no usable
+ *      image, stamp its `macroCategory` on so the collage can render a
+ *      labelled placeholder tile ("Top", "Bottom", "Shoes") instead of a
+ *      blank card.
+ *   2. Deduplicate within each canonical slot so the collage never gets
+ *      two bottoms or two pairs of shoes.
+ *   3. Keep any outfit that ended up with at least 1 item. The collage
+ *      already fills missing slots with shirt-icon placeholders.
  */
 function filterRenderableOutfits(outfits: GeneratedOutfit[]): GeneratedOutfit[] {
     return outfits
-        .map((o) => ({
-            ...o,
-            items: (o.items ?? []).filter(itemHasRenderableImage),
-        }))
-        .filter((o) => {
-            const macros = o.items.map((i) => {
-                const raw = (i.macroCategory || '').toLowerCase();
-                if (raw === 'outerwear') return 'outerwear';
-                if (raw === 'top' || raw === 'upper_body') return 'top';
-                if (raw === 'bottom' || raw === 'lower_body') return 'bottom';
-                if (raw === 'shoes') return 'shoes';
-                const t = (i.type || '').toLowerCase();
-                if (/\b(blazer|coat|jacket|cardigan|sweater|hoodie|vest|outerwear)\b/.test(t)) return 'outerwear';
-                if (/\b(shirt|t-shirt|tee|blouse|polo|top|dress|upper[_\s-]?body)\b/.test(t)) return 'top';
-                if (/\b(pant|trouser|jeans|short|skirt|bottom|lower[_\s-]?body)\b/.test(t)) return 'bottom';
-                if (/\b(shoe|sneaker|boot|loafer|sandal|heel|footwear)\b/.test(t)) return 'shoes';
-                return 'other';
-            });
+        .map((o) => {
+            const seenMacro = new Set<string>();
+            const items: GeneratedOutfit['items'] = [];
+            for (const rawItem of o.items ?? []) {
+                const macro = canonicalMacro(rawItem);
 
-            const hasTop = macros.includes('top') || macros.includes('outerwear');
-            const hasBottom = macros.includes('bottom');
-            const hasShoes = macros.includes('shoes');
+                // Force a canonical macroCategory so the collage's slot
+                // logic (`top` / `outerwear` / `bottom` / `shoes`) always
+                // has something to bucket the item into.
+                const item: GeneratedOutfit['items'][number] = {
+                    ...rawItem,
+                    macroCategory: macro,
+                };
 
-            // Reject duplicate bottoms / duplicate shoes — Home's collage only
-            // renders one tile per slot, so dupes caused the "two lower_body"
-            // render bug when a mis-tagged shirt took the empty shoes slot.
-            const bottoms = macros.filter((m) => m === 'bottom').length;
-            const shoes = macros.filter((m) => m === 'shoes').length;
-            if (bottoms > 1 || shoes > 1) return false;
+                // Items without a clearly renderable image still render — the
+                // collage's CollageImage component will attempt to load the
+                // URL and fall back to a shirt-icon placeholder via onError
+                // if it fails.  We no longer blank out imageUrl/image here
+                // because that prevented the Image component from even trying
+                // to load potentially valid URLs (e.g. non-http schemes,
+                // relative paths that RN might resolve, etc.).
+                // if (!itemHasRenderableImage(item)) { item.imageUrl = ''; item.image = ''; }
 
-            return o.items.length >= 3 && hasTop && hasBottom && hasShoes;
-        });
+                if (macro !== 'other') {
+                    if (seenMacro.has(macro)) continue;
+                    seenMacro.add(macro);
+                }
+                items.push(item);
+            }
+            return { ...o, items };
+        })
+        .filter((o) => o.items.length >= 1);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -206,12 +268,19 @@ export function useDailyAIOutfit({
             setLoading(true);
             setError(null);
             try {
+                // Default to a "cool" (15°C) weather when none is available.
+                // Without this, the edge function's `needsLayering()` returns
+                // false and builds 3-item non-layered outfits — which then
+                // fail our 4-slot renderability filter because there is no
+                // base top underneath the blazer/jacket. See
+                // `supabase/functions/generate-outfits/index.ts::needsLayering`.
+                const effectiveWeather = weather
+                    ? { temp: weather.temp, condition: weather.condition }
+                    : { temp: 15, condition: 'cool' };
                 const result = await generateOutfitsFromDB({
                     stylePreferences: style,
                     occasion,
-                    weather: weather
-                        ? { temp: weather.temp, condition: weather.condition }
-                        : undefined,
+                    weather: effectiveWeather,
                     limit: variants,
                 });
 
@@ -220,12 +289,24 @@ export function useDailyAIOutfit({
                 );
                 const fresh = filterRenderableOutfits(rawOutfits);
 
+                logger.debug('Outfit generation result', {
+                    style,
+                    source: result.source,
+                    raw: rawOutfits.length,
+                    fresh: fresh.length,
+                    sampleItem: rawOutfits[0]?.items?.[0]
+                        ? {
+                            id: rawOutfits[0].items[0].id,
+                            hasImageUrl: Boolean(rawOutfits[0].items[0].imageUrl),
+                            hasImage: Boolean(rawOutfits[0].items[0].image),
+                            macroCategory: rawOutfits[0].items[0].macroCategory,
+                            type: rawOutfits[0].items[0].type,
+                            name: rawOutfits[0].items[0].name,
+                        }
+                        : null,
+                });
+
                 if (fresh.length === 0) {
-                    // Previously we had a "structuralFallback" here that
-                    // accepted any outfit with >=3 items regardless of
-                    // composition. That's what let the shoes-less / duplicate-
-                    // bottom outfits reach Home. Empty state is safer than a
-                    // broken card — Home will render a friendly placeholder.
                     logger.warn('No renderable outfits returned; showing empty state', {
                         style,
                         raw: rawOutfits.length,

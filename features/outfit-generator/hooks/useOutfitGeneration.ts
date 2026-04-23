@@ -583,6 +583,19 @@ export function useOutfitGeneration({
     setLoading(false);
   };
 
+  const styleToOccasion = (styleId?: string): string => {
+    switch (styleId) {
+      case 'business_casual': return 'work';
+      case 'old_money': return 'formal';
+      case 'streetwear':
+      case 'minimalist':
+      case 'y2k':
+        return 'casual';
+      default:
+        return 'casual';
+    }
+  };
+
   const saveOutfit = async (outfit: GeneratedOutfit) => {
     const itemIds = outfit.items
       .map((item) => String(item.id || item.image))
@@ -592,20 +605,20 @@ export function useOutfitGeneration({
       return;
     }
 
+    const occasion = styleToOccasion(selectedStyle);
     const store = useWardrobeStore.getState();
-    store.addOutfit({
+    const newOutfitId = store.addOutfit({
       userId: user?.id || 'guest',
       itemIds,
-      occasion: 'casual',
+      occasion,
       generatedBy: 'ai',
       previewImageUrl: typeof outfit.mainImage === 'string' ? outfit.mainImage : undefined,
       reasoning: outfit.description,
       style: selectedStyle,
     });
-    const latestOutfit = useWardrobeStore.getState().outfits[0];
-    if (latestOutfit?.id) {
-      store.saveOutfit(latestOutfit.id);
-      likeOutfit(latestOutfit.id, itemIds, 'casual');
+    if (newOutfitId) {
+      store.saveOutfit(newOutfitId);
+      likeOutfit(newOutfitId, itemIds, occasion);
     }
 
     if (user?.id) {
@@ -620,7 +633,7 @@ export function useOutfitGeneration({
               image: item.image,
             })),
             date: new Date().toISOString().split('T')[0],
-            occasion: 'casual',
+            occasion,
             season: 'All',
             name: `${selectedStyle} outfit`,
             caption: outfit.description,
@@ -658,7 +671,7 @@ export function useOutfitGeneration({
       logs[dateKey] = {
         date: dateKey,
         items: calendarItems,
-        occasion: 'casual',
+        occasion: styleToOccasion(selectedStyle),
       };
       await AsyncStorage.setItem('outfitLogs', JSON.stringify(logs));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

@@ -33,6 +33,7 @@ import {
     generateStyleInsights,
 } from '../src/services/retentionService';
 import type { ClothingItem } from '../src/types/domain';
+import { useTranslation } from 'react-i18next';
 
 const { colors, spacing, radius, typography } = LiquidGlass2026Theme;
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -42,6 +43,7 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 // ============================================
 
 const WeeklyInsightsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+    const { t } = useTranslation();
     const items = useWardrobeStore((state) => state.items);
     const wearLogs = useWardrobeStore((state) => state.wearLogs);
 
@@ -80,7 +82,7 @@ const WeeklyInsightsScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
                     <TouchableOpacity onPress={() => navigation.goBack()}>
                         <Ionicons name="chevron-back" size={28} color={colors.text.primary} />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Style Insights</Text>
+                    <Text style={styles.headerTitle}>{t('weeklyInsights.title')}</Text>
                     <View style={{ width: 28 }} />
                 </View>
 
@@ -89,17 +91,17 @@ const WeeklyInsightsScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
                     <View style={styles.heroCard}>
                         <Text style={styles.heroEmoji}>👗</Text>
                         <Text style={styles.heroValue}>{items.length}</Text>
-                        <Text style={styles.heroLabel}>Total Items</Text>
+                        <Text style={styles.heroLabel}>{t('weeklyInsights.totalItems')}</Text>
                     </View>
                     <View style={styles.heroCard}>
                         <Text style={styles.heroEmoji}>🔥</Text>
                         <Text style={styles.heroValue}>{streak}</Text>
-                        <Text style={styles.heroLabel}>Day Streak</Text>
+                        <Text style={styles.heroLabel}>{t('weeklyInsights.dayStreak')}</Text>
                     </View>
                     <View style={styles.heroCard}>
                         <Text style={styles.heroEmoji}>📊</Text>
                         <Text style={styles.heroValue}>{totalWears}</Text>
-                        <Text style={styles.heroLabel}>Total Wears</Text>
+                        <Text style={styles.heroLabel}>{t('weeklyInsights.totalWears')}</Text>
                     </View>
                 </Animated.View>
 
@@ -109,7 +111,7 @@ const WeeklyInsightsScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
                         <View style={[styles.iconBadge, { backgroundColor: 'rgba(59,130,246,0.12)' }]}>
                             <Ionicons name="pie-chart-outline" size={20} color="#3B82F6" />
                         </View>
-                        <Text style={styles.cardTitle}>Closet Utilization</Text>
+                        <Text style={styles.cardTitle}>{t('weeklyInsights.closetUtilization')}</Text>
                     </View>
                     <Text style={styles.bigStat}>{utilization}%</Text>
                     <View style={styles.progressTrack}>
@@ -153,7 +155,7 @@ const WeeklyInsightsScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
                             <View style={[styles.iconBadge, { backgroundColor: 'rgba(16,185,129,0.12)' }]}>
                                 <Ionicons name="trending-up-outline" size={20} color="#10B981" />
                             </View>
-                            <Text style={styles.cardTitle}>Most Worn</Text>
+                            <Text style={styles.cardTitle}>{t('weeklyInsights.mostWorn')}</Text>
                         </View>
                         {mostWorn.map((item, index) => (
                             <View key={item.id} style={styles.rankRow}>
@@ -188,7 +190,7 @@ const WeeklyInsightsScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
                             <View style={[styles.iconBadge, { backgroundColor: 'rgba(139,92,246,0.12)' }]}>
                                 <Ionicons name="grid-outline" size={20} color="#8B5CF6" />
                             </View>
-                            <Text style={styles.cardTitle}>Wardrobe Breakdown</Text>
+                            <Text style={styles.cardTitle}>{t('weeklyInsights.wardrobeBreakdown')}</Text>
                         </View>
                         {categoryBreakdown.map(([category, count]) => {
                             const percentage = Math.round((count / items.length) * 100);
@@ -219,7 +221,7 @@ const WeeklyInsightsScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
                             <View style={[styles.iconBadge, { backgroundColor: 'rgba(239,68,68,0.12)' }]}>
                                 <Ionicons name="bulb-outline" size={20} color="#EF4444" />
                             </View>
-                            <Text style={styles.cardTitle}>Patterns & Habits</Text>
+                            <Text style={styles.cardTitle}>{t('weeklyInsights.patternsHabits')}</Text>
                         </View>
                         {insights
                             .filter((i) => i.type !== 'utilization' && i.type !== 'streak')
@@ -237,7 +239,7 @@ const WeeklyInsightsScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
                 {items.length === 0 && (
                     <View style={styles.emptyState}>
                         <Ionicons name="analytics-outline" size={56} color={colors.text.tertiary} />
-                        <Text style={styles.emptyTitle}>No data yet</Text>
+                        <Text style={styles.emptyTitle}>{t('weeklyInsights.noDataYet')}</Text>
                         <Text style={styles.emptySubtext}>
                             Start scanning and logging outfits to see your style insights
                         </Text>

@@ -49,6 +49,7 @@ import {
     PressableGlassCard,
 } from '../components/ui';
 import { useAccessibility } from '../hooks/useAccessibility';
+import { useTranslation } from 'react-i18next';
 import { TahoeIconButton } from '../components/TahoeButton';
 import WeatherWidget from '../components/WeatherWidget';
 
@@ -247,6 +248,7 @@ const QuickActionCard = ({
 const AIHubScreen = () => {
     const navigation = useNavigation();
     const { isReducedMotionEnabled, scaleFontSize } = useAccessibility();
+    const { t } = useTranslation();
     const [message, setMessage] = useState('');
     const [isAgentActive, setIsAgentActive] = useState(false);
 
@@ -329,9 +331,9 @@ const AIHubScreen = () => {
                     >
                         <FloatingAIAvatar />
 
-                        <Text style={styles.heroTitle}>Dress with{'\n'}confidence</Text>
+                        <Text style={styles.heroTitle}>{t('aiHub.heroTitle')}</Text>
                         <Text style={styles.heroSubtitle}>
-                            Your AI stylist that gets you — from the clothes in your closet to the looks you love.
+                            {t('aiHub.heroSubtitle')}
                         </Text>
                     </Animated.View>
 
@@ -356,7 +358,7 @@ const AIHubScreen = () => {
                                 style={styles.talkButtonGradient}
                             >
                                 <Ionicons name="chatbubble-ellipses" size={20} color="#FFF" />
-                                <Text style={styles.talkButtonText}>Talk to AI Stylist</Text>
+                                <Text style={styles.talkButtonText}>{t('aiHub.talkToStylist')}</Text>
                             </LinearGradient>
                         </TouchableOpacity>
                     </Animated.View>
@@ -366,7 +368,7 @@ const AIHubScreen = () => {
                         entering={isReducedMotionEnabled ? undefined : FadeInUp.delay(180).springify()}
                         style={styles.goalsSection}
                     >
-                        <Text style={styles.sectionTitle}>What's your style goal?</Text>
+                        <Text style={styles.sectionTitle}>{t('aiHub.styleGoal')}</Text>
 
                         <FrostedGlassCard contentStyle={styles.goalsCard}>
                             {STYLE_GOALS.map((goal, index) => (
@@ -382,7 +384,7 @@ const AIHubScreen = () => {
 
                     {/* Quick Actions Bento Grid */}
                     <View style={styles.quickActionsSection}>
-                        <Text style={styles.sectionTitle}>Get started</Text>
+                        <Text style={styles.sectionTitle}>{t('aiHub.getStarted')}</Text>
 
                         <BentoGrid columns={2} gap={spacing.md} padding={spacing.screenPadding}>
                             {quickActions.map((action, index) => (

@@ -11,7 +11,7 @@ export interface OutfitsSlice {
     outfits: Outfit[];
     dislikedOutfitKeys: string[];
 
-    addOutfit: (outfit: Omit<Outfit, 'id' | 'createdAt' | 'wornCount' | 'lastWornAt' | 'saved'>) => void;
+    addOutfit: (outfit: Omit<Outfit, 'id' | 'createdAt' | 'wornCount' | 'lastWornAt' | 'saved'>) => string;
     saveOutfit: (id: string) => void;
     rateOutfit: (id: string, rating: 1 | 2 | 3 | 4 | 5) => void;
     dislikeOutfit: (itemIds: string[]) => void;
@@ -24,20 +24,29 @@ export const createOutfitsSlice: StateCreator<WardrobeState, [], [], OutfitsSlic
     dislikedOutfitKeys: [],
 
     addOutfit: (outfitInput) => {
+        let newId = '';
         set((state) => {
-            const seenCategories = new Set<string>();
+            // For AI-generated outfits, allow up to 2 items per category
+            // (layered outfits have base top + outerwear which may both
+            // share category 'tops'). For user-created outfits, keep the
+            // stricter 1-per-category rule.
+            const maxPerCategory = outfitInput.generatedBy === 'ai' ? 2 : 1;
+            const categoryCounts = new Map<string, number>();
             const validItemIds = outfitInput.itemIds.filter((id) => {
                 const item = state.items.find((i) => i.id === id);
                 if (!item) return true;
-                if (seenCategories.has(item.category)) return false;
-                seenCategories.add(item.category);
+                const count = categoryCounts.get(item.category) ?? 0;
+                if (count >= maxPerCategory) return false;
+                categoryCounts.set(item.category, count + 1);
                 return true;
             });
 
+            const id = generateId();
+            newId = id;
             const newOutfit: Outfit = {
                 ...outfitInput,
                 itemIds: validItemIds,
-                id: generateId(),
+                id,
                 saved: false,
                 wornCount: 0,
                 lastWornAt: null,
@@ -46,6 +55,7 @@ export const createOutfitsSlice: StateCreator<WardrobeState, [], [], OutfitsSlic
 
             return { outfits: [newOutfit, ...state.outfits] };
         });
+        return newId;
     },
 
     saveOutfit: (id) => {

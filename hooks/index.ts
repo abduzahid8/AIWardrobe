@@ -19,3 +19,7 @@ export type { AppNavigationProp } from './useAppNavigation';
 
 // Re-export types
 export type { UseAccessibilityReturn } from './useAccessibility';
+
+// Language
+export { default as useLanguageStore } from '../store/languageStore';
+export type { Language } from '../store/languageStore';

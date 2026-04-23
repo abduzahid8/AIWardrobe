@@ -36,6 +36,7 @@ import { useSubscriptionGate } from '../src/hooks/useSubscriptionGate';
 import FeatureLockOverlay from '../components/paywall/FeatureLockOverlay';
 import { scoreDiversity, getColorDistribution, getCategoryBreakdown } from '../src/services/diversityEngine';
 import type { ColorDistEntry, CategoryBreakdownEntry } from '../src/services/diversityEngine';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const { colors, spacing, radius, typography } = LiquidGlass2026Theme;
@@ -45,7 +46,7 @@ const { colors, spacing, radius, typography } = LiquidGlass2026Theme;
 // ============================================
 
 /** Circular progress indicator for utilization score */
-const CircularProgress = ({ percentage, size = 120 }: { percentage: number; size?: number }) => {
+const CircularProgress = ({ percentage, size = 120, t }: { percentage: number; size?: number; t: any }) => {
     const strokeWidth = 10;
     const r = (size - strokeWidth) / 2;
     const circumference = 2 * Math.PI * r;
@@ -81,7 +82,7 @@ const CircularProgress = ({ percentage, size = 120 }: { percentage: number; size
                 transform: [{ rotate: '-90deg' }],
             }} />
             <Text style={styles.circularValue}>{percentage}%</Text>
-            <Text style={styles.circularLabel}>Utilized</Text>
+            <Text style={styles.circularLabel}>{t('analytics.utilized')}</Text>
         </View>
     );
 };
@@ -127,6 +128,7 @@ const ColorSwatch = ({ color, name, count, total }: {
 
 export default function WardrobeAnalyticsScreen({ navigation }: any) {
     const { canAccess } = useSubscriptionGate();
+    const { t } = useTranslation();
     const hasAccess = canAccess('analytics');
 
     const items = useWardrobeStore((s) => s.items);
@@ -203,7 +205,7 @@ export default function WardrobeAnalyticsScreen({ navigation }: any) {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Wardrobe Analytics</Text>
+                <Text style={styles.headerTitle}>{t('analytics.title')}</Text>
                 <View style={{ width: 32 }} />
             </View>
 
@@ -214,24 +216,24 @@ export default function WardrobeAnalyticsScreen({ navigation }: any) {
                 {/* Hero Stats Row */}
                 <Animated.View entering={FadeInDown.duration(500)} style={styles.heroRow}>
                     <View style={styles.heroCard}>
-                        <CircularProgress percentage={utilization} />
+                        <CircularProgress percentage={utilization} t={t} />
                     </View>
                     <View style={styles.heroStatsColumn}>
                         <View style={styles.heroStat}>
                             <Text style={styles.heroStatValue}>{items.length}</Text>
-                            <Text style={styles.heroStatLabel}>Total Items</Text>
+                            <Text style={styles.heroStatLabel}>{t('analytics.totalItems')}</Text>
                         </View>
                         <View style={styles.heroStat}>
                             <Text style={styles.heroStatValue}>{analytics.totalWears}</Text>
-                            <Text style={styles.heroStatLabel}>Total Wears</Text>
+                            <Text style={styles.heroStatLabel}>{t('analytics.totalWears')}</Text>
                         </View>
                         <View style={styles.heroStat}>
                             <Text style={styles.heroStatValue}>{analytics.avgWears}</Text>
-                            <Text style={styles.heroStatLabel}>Avg/Item</Text>
+                            <Text style={styles.heroStatLabel}>{t('analytics.avgItem')}</Text>
                         </View>
                         <View style={styles.heroStat}>
                             <Text style={styles.heroStatValue}>🔥 {streak}</Text>
-                            <Text style={styles.heroStatLabel}>Day Streak</Text>
+                            <Text style={styles.heroStatLabel}>{t('analytics.dayStreak')}</Text>
                         </View>
                     </View>
                 </Animated.View>
@@ -239,7 +241,7 @@ export default function WardrobeAnalyticsScreen({ navigation }: any) {
                 {/* Diversity Score */}
                 <Animated.View entering={FadeInDown.duration(500).delay(100)} style={styles.card}>
                     <View style={styles.cardHeader}>
-                        <Text style={styles.cardTitle}>Style Diversity</Text>
+                        <Text style={styles.cardTitle}>{t('analytics.styleDiversity')}</Text>
                         <View style={[styles.scoreBadge, {
                             backgroundColor: analytics.diversity >= 70 ? '#DCFCE7' :
                                 analytics.diversity >= 40 ? '#FEF9C3' : '#FEE2E2'
@@ -270,7 +272,7 @@ export default function WardrobeAnalyticsScreen({ navigation }: any) {
                 {/* Most Worn Items */}
                 {analytics.mostWorn.length > 0 ? (
                     <Animated.View entering={FadeInDown.duration(500).delay(200)} style={styles.card}>
-                        <Text style={styles.cardTitle}>Most Worn</Text>
+                        <Text style={styles.cardTitle}>{t('analytics.mostWorn')}</Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mostWornScroll}>
                             {analytics.mostWorn.map((item, idx) => (
                                 <View key={item.id} style={styles.mostWornItem}>
@@ -294,7 +296,7 @@ export default function WardrobeAnalyticsScreen({ navigation }: any) {
                 {/* Color Palette */}
                 {analytics.colorDist.length > 0 ? (
                     <Animated.View entering={FadeInDown.duration(500).delay(300)} style={styles.card}>
-                        <Text style={styles.cardTitle}>Your Color Palette</Text>
+                        <Text style={styles.cardTitle}>{t('analytics.colorPalette')}</Text>
                         <View style={styles.swatchRow}>
                             {analytics.colorDist.slice(0, 8).map(({ color, name, count }: ColorDistEntry) => (
                                 <ColorSwatch
@@ -311,7 +313,7 @@ export default function WardrobeAnalyticsScreen({ navigation }: any) {
 
                 {/* Category Breakdown */}
                 <Animated.View entering={FadeInDown.duration(500).delay(400)} style={styles.card}>
-                    <Text style={styles.cardTitle}>Category Breakdown</Text>
+                    <Text style={styles.cardTitle}>{t('analytics.categoryBreakdown')}</Text>
                     {analytics.categoryBreakdown.map(({ category, count }: CategoryBreakdownEntry) => (
                         <CategoryBar
                             key={category}
@@ -351,7 +353,7 @@ export default function WardrobeAnalyticsScreen({ navigation }: any) {
                 {items.length === 0 ? (
                     <View style={styles.emptyState}>
                         <Ionicons name="analytics-outline" size={64} color={colors.text.tertiary} />
-                        <Text style={styles.emptyTitle}>No Data Yet</Text>
+                        <Text style={styles.emptyTitle}>{t('analytics.noDataYet')}</Text>
                         <Text style={styles.emptySubtitle}>
                             Add items to your wardrobe and log what you wear to see analytics.
                         </Text>

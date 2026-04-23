@@ -14,22 +14,24 @@ import React from 'react';
 import TryOnFeatureScreen from '../features/try-on/AITryOnScreen';
 import FeatureLockOverlay from '../components/paywall/FeatureLockOverlay';
 import { useSubscriptionGate } from '../src/hooks/useSubscriptionGate';
+import { useTranslation } from 'react-i18next';
 
 export default function AITryOnScreen(props: any) {
+    const { t } = useTranslation();
     const { canAccess } = useSubscriptionGate();
 
     if (!canAccess('tryOns')) {
         return (
             <FeatureLockOverlay
                 requiredTier="Pro"
-                featureName="AI Virtual Try-On"
-                tagline="See any outfit on a realistic model of yourself — before you wear it."
+                featureName={t('aiTryOn.featureName')}
+                tagline={t('aiTryOn.tagline')}
                 icon="sparkles"
                 bullets={[
-                    'Unlimited photorealistic try-ons',
-                    'Mix your wardrobe + shop items on one model',
-                    'Share looks with friends in seconds',
-                    'Priority AI model — highest quality renders',
+                    t('aiTryOn.bullet1'),
+                    t('aiTryOn.bullet2'),
+                    t('aiTryOn.bullet3'),
+                    t('aiTryOn.bullet4'),
                 ]}
             />
         );

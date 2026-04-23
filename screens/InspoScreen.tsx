@@ -34,6 +34,7 @@ import type { ShopCatalogItem } from '../features/try-on/types';
 import { INSPO_MENS_SHOP_ITEMS, CLASSIC_MENS_ITEMS } from '../data/inspoMensShopItems';
 import { useShopCatalog } from '../hooks/useShopCatalog';
 import { useFeaturedCapsules, type FeaturedCapsule } from '../hooks/useFeaturedCapsules';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const { colors, spacing, typography, radius } = LiquidGlass2026Theme;
@@ -172,6 +173,7 @@ const VariationCard = ({ outfit, items, onPress }: VariationCardProps) => {
 type SegmentType = 'guide' | 'shop';
 
 const InspoScreen = () => {
+    const { t } = useTranslation();
     const navigation = useAppNavigation();
     const items    = useWardrobeStore((s) => s.items);
     const wearLogs = useWardrobeStore((s) => s.wearLogs);
@@ -257,7 +259,7 @@ const InspoScreen = () => {
                 {/* Header */}
                 <View style={styles.header}>
                     <View style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]} pointerEvents="none">
-                        <Text style={styles.headerTitle} accessibilityRole="header">Inspiration</Text>
+                        <Text style={styles.headerTitle} accessibilityRole="header">{t('inspo.title')}</Text>
                     </View>
                 </View>
 
@@ -317,7 +319,7 @@ const InspoScreen = () => {
                             {/* From Your Closet — variety outfits */}
                             {varietyOutfits.length > 0 && (
                                 <Animated.View entering={FadeInDown.delay(350).duration(400)} style={styles.section}>
-                                    <Text style={styles.sectionTitle} accessibilityRole="header">From Your Closet</Text>
+                                    <Text style={styles.sectionTitle} accessibilityRole="header">{t('inspo.fromYourCloset')}</Text>
                                     <FlatList
                                         data={varietyOutfits}
                                         horizontal
@@ -369,7 +371,7 @@ const InspoScreen = () => {
                                                 : 'Live catalog refresh failed. Showing the latest synced results.'}
                                         </Text>
                                         <TouchableOpacity onPress={refreshShopCatalog} accessibilityRole="button">
-                                            <Text style={styles.catalogStatusAction}>Retry</Text>
+                                            <Text style={styles.catalogStatusAction}>{t('common.retry')}</Text>
                                         </TouchableOpacity>
                                     </View>
                                 </Animated.View>
@@ -393,7 +395,7 @@ const InspoScreen = () => {
                                         style={styles.personalStylistGradient}
                                     >
                                         <Ionicons name="sparkles" size={20} color="#FFF" />
-                                        <Text style={styles.personalStylistText}>Personal Stylist</Text>
+                                        <Text style={styles.personalStylistText}>{t('inspo.personalStylist')}</Text>
                                         <Ionicons name="arrow-forward" size={18} color="rgba(255,255,255,0.8)" />
                                     </LinearGradient>
                                 </TouchableOpacity>
@@ -402,7 +404,7 @@ const InspoScreen = () => {
                             {/* Featured Capsules — sourced from Supabase (`featured_capsules`) */}
                             {(featuredCapsulesLoading || featuredCapsules.length > 0) && (
                                 <View style={styles.section}>
-                                    <Text style={styles.sectionTitle} accessibilityRole="header">Featured Capsules</Text>
+                                    <Text style={styles.sectionTitle} accessibilityRole="header">{t('inspo.featuredCapsules')}</Text>
                                     {featuredCapsulesLoading && featuredCapsules.length === 0 ? (
                                         <View style={styles.capsulesLoadingRow}>
                                             <ActivityIndicator size="small" color={colors.text.primary} />
@@ -441,7 +443,7 @@ const InspoScreen = () => {
                                     </View>
                                 ) : shopItems.length === 0 ? (
                                     <View style={styles.emptyState}>
-                                        <Text style={styles.emptyStateText}>No menswear matches that search.</Text>
+                                        <Text style={styles.emptyStateText}>{t('inspo.noMenswearMatches')}</Text>
                                     </View>
                                 ) : (
                                     <>
@@ -475,7 +477,7 @@ const InspoScreen = () => {
                                                 {shopCatalogLoadingMore ? (
                                                     <ActivityIndicator size="small" color={colors.text.primary} />
                                                 ) : (
-                                                    <Text style={styles.loadMoreButtonText}>Load more products</Text>
+                                                    <Text style={styles.loadMoreButtonText}>{t('inspo.loadMoreProducts')}</Text>
                                                 )}
                                             </TouchableOpacity>
                                         )}

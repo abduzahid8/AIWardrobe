@@ -56,6 +56,7 @@ export interface AuthActions {
     logout: () => Promise<void>;
     deleteAccount: () => Promise<void>;
     fetchUser: () => Promise<void>;
+    handleDeepLink: (url: string) => Promise<void>;
     clearError: () => void;
 }
 
@@ -66,6 +67,21 @@ export type AuthStore = AuthState & AuthActions;
 // ============================================
 
 let _authSubscription: Subscription | null = null;
+
+/**
+ * Parses the access_token and refresh_token from a Supabase auth URL hash.
+ */
+function parseSupabaseUrl(url: string) {
+    const hash = url.split('#')[1];
+    if (!hash) return null;
+
+    const params = new URLSearchParams(hash);
+    const accessToken = params.get('access_token');
+    const refreshToken = params.get('refresh_token');
+
+    if (!accessToken || !refreshToken) return null;
+    return { accessToken, refreshToken };
+}
 
 /**
  * Central side-effect pipeline for every successful authentication.
@@ -93,9 +109,8 @@ async function onAuthSuccess(
     // Ensure subscription and trial status are resolved immediately
     await useSubscriptionStore.getState().verifySubscriptionFromServer().catch(() => {});
 
-    // Idempotent: start the 7-day free trial for every new authenticated session.
-    // If the user already has a trial date (local or Supabase), this is a no-op.
-    await useSubscriptionStore.getState().initializeTrial(session.user.id).catch(() => {});
+    // Note: trial is NO longer auto-started on auth.
+    // Users must enter a promo code (via PromoCodeScreen) to activate their trial.
 
     log.info('Authentication succeeded', { method, userId: session.user.id });
 }
@@ -159,6 +174,30 @@ const useAuthStore = create<AuthStore>((set, get) => ({
             _authSubscription = subscription;
         } catch (err) {
             log.error('Auth initialization failed', err);
+        } finally {
+            set({ loading: false });
+        }
+    },
+
+    handleDeepLink: async (url: string) => {
+        log.debug('handleDeepLink called', { url });
+        const tokens = parseSupabaseUrl(url);
+        if (!tokens) return;
+
+        set({ loading: true, error: null });
+        try {
+            const { data, error } = await supabase.auth.setSession({
+                access_token: tokens.accessToken,
+                refresh_token: tokens.refreshToken,
+            });
+            if (error) throw error;
+            if (data.session) {
+                await onAuthSuccess(set, get, data.session, 'email');
+                log.info('Deep link auth successful', { userId: data.session.user.id });
+            }
+        } catch (err) {
+            log.error('Deep link auth failed', err);
+            set({ error: 'Session expired or invalid link. Please try again.' });
         } finally {
             set({ loading: false });
         }

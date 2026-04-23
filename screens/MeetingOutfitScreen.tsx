@@ -29,6 +29,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import AppColors from '../constants/AppColors';
 import Config from '../src/config/env';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 const ITEM_SIZE = (width - 60) / 2; // 2 column grid with padding
@@ -202,6 +203,7 @@ const OutfitItemCard = ({ item, index }: { item: OutfitItem; index: number }) =>
 
 const MeetingOutfitScreen = () => {
     const navigation = useNavigation();
+    const { t } = useTranslation();
 
     // Simple state
     const [step, setStep] = useState<'input' | 'loading' | 'result'>('input');
@@ -415,7 +417,7 @@ const MeetingOutfitScreen = () => {
                     marginBottom: 12,
                     letterSpacing: -0.5,
                 }}>
-                    Create your style
+                    {t('meetingOutfit.createYourStyle')}
                 </Text>
 
                 <Text style={{
@@ -425,7 +427,7 @@ const MeetingOutfitScreen = () => {
                     lineHeight: 24,
                     paddingHorizontal: 20,
                 }}>
-                    Describe your event and get a complete outfit with photos
+                    {t('meetingOutfit.describeEvent')}
                 </Text>
             </Animated.View>
 
@@ -444,7 +446,7 @@ const MeetingOutfitScreen = () => {
                         borderColor: AppColors.border,
                         lineHeight: 26,
                     }}
-                    placeholder="E.g., Job interview at a tech startup, client dinner, casual Friday..."
+                    placeholder={t('meetingOutfit.placeholder')}
                     placeholderTextColor={AppColors.textMuted}
                     value={description}
                     onChangeText={setDescription}
@@ -488,7 +490,7 @@ const MeetingOutfitScreen = () => {
                             fontWeight: '600',
                             color: AppColors.background,
                         }}>
-                            Create Style
+                            {t('meetingOutfit.generateOutfit')}
                         </Text>
                     </Animated.View>
                 </TouchableOpacity>

@@ -4,17 +4,34 @@ import useSubscriptionStore, {
   TIER_FEATURES,
   type FeatureKey,
 } from './subscriptionStore';
+import { supabase } from '../lib/supabase';
+
+// ─────────────────────────────────────────────────────────────
+// Source-of-truth: Supabase RPC `check_and_increment_usage`.
+// AsyncStorage is a read-through cache only (used when offline
+// and on cold start so the UI is not blank).
+// ─────────────────────────────────────────────────────────────
 
 type DailyUsageSnapshot = {
   date: string;
   counts: Partial<Record<FeatureKey, number>>;
 };
 
+type ConsumeResult = {
+  allowed: boolean;
+  used: number;
+  remaining: number;
+};
+
 type DailyUsageState = {
   snapshot: DailyUsageSnapshot;
   hydrated: boolean;
   hydrate: () => Promise<void>;
-  consume: (feature: FeatureKey, amount?: number) => Promise<number>;
+  /**
+   * Atomically check quota on the server and increment on success.
+   * Falls back to the local cache only if the server is unreachable.
+   */
+  consume: (feature: FeatureKey, amount?: number) => Promise<ConsumeResult>;
   getUsed: (feature: FeatureKey) => number;
   getRemaining: (feature: FeatureKey) => number;
   canUse: (feature: FeatureKey) => boolean;
@@ -82,15 +99,55 @@ const useDailyUsageStore = create<DailyUsageState>((set, get) => ({
   },
 
   consume: async (feature, amount = 1) => {
+    const tier = useSubscriptionStore.getState().effectiveTier;
+    const rawLimit = TIER_FEATURES[tier][feature];
+    const limit = typeof rawLimit === 'number' ? rawLimit : rawLimit ? -1 : 0;
+
+    // Try the server RPC first — it is atomic and tamper-proof.
+    try {
+      const { data, error } = await supabase.rpc('check_and_increment_usage', {
+        p_feature: feature,
+        p_limit: limit,
+        p_amount: amount,
+      });
+
+      if (!error && Array.isArray(data) && data.length > 0) {
+        const row = data[0] as { allowed: boolean; used: number; remaining: number };
+
+        // Mirror to local cache so the UI updates immediately even offline.
+        const current = rollover(get().snapshot);
+        const next = {
+          date: current.date,
+          counts: { ...current.counts, [feature]: row.used },
+        };
+        set({ snapshot: next });
+        await persist(next);
+
+        return { allowed: row.allowed, used: row.used, remaining: row.remaining };
+      }
+    } catch (err) {
+      console.warn('[dailyUsageStore] RPC failed, falling back to local cache', err);
+    }
+
+    // Offline fallback — best-effort enforcement against the cached counter.
     const current = rollover(get().snapshot);
-    const nextCount = (current.counts[feature] ?? 0) + amount;
+    const used = (current.counts[feature] ?? 0);
+    const allowed = limit === -1 ? true : used + amount <= limit;
+    if (!allowed) {
+      return { allowed: false, used, remaining: Math.max(0, limit - used) };
+    }
+    const nextCount = used + amount;
     const next = {
       date: current.date,
       counts: { ...current.counts, [feature]: nextCount },
     };
     set({ snapshot: next });
     await persist(next);
-    return nextCount;
+    return {
+      allowed: true,
+      used: nextCount,
+      remaining: limit === -1 ? -1 : Math.max(0, limit - nextCount),
+    };
   },
 
   getUsed: (feature) => {

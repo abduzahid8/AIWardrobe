@@ -5,8 +5,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import useAuthStore from '../store/auth';
 import { supabase } from '../lib/supabase';
+import { useTranslation } from 'react-i18next';
 
 export default function ReviewScanScreen() {
+    const { t } = useTranslation();
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
     const { items } = route.params; // Получаем данные от Gemini
@@ -22,7 +24,7 @@ export default function ReviewScanScreen() {
 
             const { user } = useAuthStore.getState();
             if (!user) {
-                Alert.alert("Ошибка", "Вы не авторизованы");
+                Alert.alert(t('review.error'), t('review.notAuthorized'));
                 return;
             }
 
@@ -37,14 +39,14 @@ export default function ReviewScanScreen() {
 
             if (data && data.success) {
                 Alert.alert(
-                    "Готово! 🎉",
-                    `Добавлено ${data.count} вещей. Сейчас мы генерируем для них красивые фото.`,
-                    [{ text: "ОК", onPress: () => navigation.navigate("Home") }]
+                    t('review.done'),
+                    t('review.itemsAdded', { count: data.count }),
+                    [{ text: t('common.ok'), onPress: () => navigation.navigate("Home") }]
                 );
             }
         } catch (error: any) {
             console.error("Ошибка сохранения:", error);
-            Alert.alert("Ошибка", `Не удалось сохранить вещи: ${error.message || "Unknown error"}`);
+            Alert.alert(t('review.error'), t('review.saveFailed', { error: error.message || "Unknown error" }));
         } finally {
             setIsSaving(false);
         }
@@ -53,12 +55,12 @@ export default function ReviewScanScreen() {
     // Удаление лишней вещи из списка (если ИИ ошибся)
     const removeItem = (index: number) => {
         Alert.alert(
-            'Remove Item',
-            'Are you sure you want to remove this item?',
+            t('review.removeItem'),
+            t('review.confirmRemove'),
             [
-                { text: 'Cancel', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Remove',
+                    text: t('common.remove'),
                     style: 'destructive',
                     onPress: () => {
                         const newItems = [...reviewedItems];
@@ -74,8 +76,8 @@ export default function ReviewScanScreen() {
         return (
             <View className="flex-1 bg-[#0A1931] justify-center items-center">
                 <ActivityIndicator size="large" color="#fff" />
-                <Text className="text-white text-lg font-bold mt-4">Генерируем одежду...</Text>
-                <Text className="text-gray-400 text-sm mt-2">Рисуем фото и сохраняем в облако</Text>
+                <Text className="text-white text-lg font-bold mt-4">{t('review.generating')}</Text>
+                <Text className="text-gray-400 text-sm mt-2">{t('review.savingToCloud')}</Text>
             </View>
         );
     }
@@ -87,7 +89,7 @@ export default function ReviewScanScreen() {
                 <TouchableOpacity onPress={() => navigation.goBack()} className="mr-4">
                     <Ionicons name="arrow-back" size={24} color="#0A1931" />
                 </TouchableOpacity>
-                <Text className="text-xl font-bold">Найдено {reviewedItems.length} вещей</Text>
+                <Text className="text-xl font-bold">{t('review.itemsFound', { count: reviewedItems.length })}</Text>
             </View>
 
             {/* Список найденного */}
@@ -126,7 +128,7 @@ export default function ReviewScanScreen() {
                     className="bg-[#0A1931] py-4 rounded-2xl items-center shadow-lg"
                 >
                     <Text className="text-white font-bold text-lg">
-                        Добавить в гардероб ({reviewedItems.length})
+                        {t('review.addToWardrobe', { count: reviewedItems.length })}
                     </Text>
                 </TouchableOpacity>
             </View>

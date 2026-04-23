@@ -13,6 +13,7 @@ import React, { useState } from "react";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { supabase } from '../lib/supabase';
 import useAuthStore from '../store/auth';
+import { useTranslation } from 'react-i18next';
 // Removed missing import: import { ClothingItem } from '../types';
 
 interface ClothingItem {
@@ -25,6 +26,7 @@ interface ClothingItem {
 }
 
 const NewOutfitScreen = () => {
+  const { t } = useTranslation();
   const route = useRoute();
   const params = (route.params || {}) as {
     selectedItems?: ClothingItem[];
@@ -107,9 +109,9 @@ const NewOutfitScreen = () => {
     <SafeAreaView className="flex-1 bg-white">
       <View className="flex-row justify-between items-center p-4">
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text className="text-[#0A1931]">Back</Text>
+          <Text className="text-[#0A1931]">{t('common.back')}</Text>
         </TouchableOpacity>
-        <Text className="text-lg font-semibold">New Outfit</Text>
+        <Text className="text-lg font-semibold">{t('newOutfit.title')}</Text>
       </View>
       <View className="flex-1 items-center justify-center">
         {selectedItems
@@ -140,19 +142,19 @@ const NewOutfitScreen = () => {
         />
         <View className="mt-4">
           <View className="flex-row items-center justify-between">
-            <Text className="text-gray-500">Date</Text>
+            <Text className="text-gray-500">{t('newOutfit.date')}</Text>
             <Text className="text-[#0A1931]">{date || "Today"}</Text>
           </View>
           <View className="flex-row items-center justify-between mt-2">
-            <Text className="text-gray-500">Add to OOTD story</Text>
+            <Text className="text-gray-500">{t('newOutfit.addToOotd')}</Text>
             <Switch value={isOotd} onValueChange={setIsOotd} />
           </View>
           <View className="flex-row items-center justify-between mt-2">
-            <Text className="text-gray-500">Ocassion</Text>
+            <Text className="text-gray-500">{t('newOutfit.occasion')}</Text>
             <Text className="text-[#0A1931]">{occasion}</Text>
           </View>
           <View className="flex-row items-center justify-between mt-2">
-            <Text className="text-gray-500">Visibility</Text>
+            <Text className="text-gray-500">{t('newOutfit.visibility')}</Text>
             <Text className="text-[#0A1931]">{visiblilty}</Text>
           </View>
         </View>
@@ -161,7 +163,7 @@ const NewOutfitScreen = () => {
         {loading ? (
           <ActivityIndicator color="#ffffff" />
         ) : (
-          <Text className="text-white text-center font-semibold">Save outfit</Text>
+          <Text className="text-white text-center font-semibold">{t('newOutfit.save')}</Text>
         )}
       </TouchableOpacity>
     </SafeAreaView>

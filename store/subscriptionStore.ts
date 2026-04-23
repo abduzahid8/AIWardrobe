@@ -142,6 +142,9 @@ interface SubscriptionState {
     isTrialPending: boolean;
     /** Days left in the trial (0-7). */
     trialDaysRemaining: number;
+    /** True when free-tier user has no trial date and no promo code redeemed.
+     *  They should see the PromoCodeScreen instead of TrialExpiredScreen. */
+    needsPromoCode: boolean;
 
     // Actions
     initializeSubscription: () => Promise<void>;
@@ -210,11 +213,15 @@ function deriveState(
     // During an active trial, feature checks use Pro (premium) limits
     const effectiveTier: SubscriptionTier = trial.isTrialActive ? 'premium' : tier;
 
+    // Free-tier user with no trial date and not pending → needs promo code
+    const needsPromoCode = tier === 'free' && !trial.isTrialActive && !trial.isTrialExpired && !trial.isTrialPending && !trialStartedAt;
+
     return {
         isPremium: tier === 'premium' || trial.isTrialActive,
         hasActiveSubscription: (tier !== 'free' && !isExpired) || trial.isTrialActive,
         isSubscriptionExpired: isExpired,
         effectiveTier,
+        needsPromoCode,
         ...trial,
     };
 }
@@ -353,12 +360,9 @@ const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
                 // verifySubscriptionFromServer will set isPending=false once done
                 await get().verifySubscriptionFromServer();
 
-                // Post-verification check: if we STILL don't have a trial date after syncing
-                // from server, we must initialize one now (Legacy User Case).
-                const finalTrial = get().trialStartedAt;
-                if (!finalTrial && userId) {
-                    await get().initializeTrial(userId);
-                }
+                // Post-verification check: if we user has no trial date after syncing
+                // from server, they need to enter a promo code first.
+                // (No longer auto-start trial — promo code is required.)
             } else {
                 // We have a cached trial date (or user is not logged in) — resolve immediately
                 set({

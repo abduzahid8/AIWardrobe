@@ -30,6 +30,8 @@ import TermsOfServiceScreen from "../screens/TermsOfServiceScreen";
 import ClothingDetailEditor from "../components/ClothingDetailEditor";
 import ClothingDetailScreen from "../screens/ClothingDetailScreen";
 import TrialExpiredScreen from "../screens/TrialExpiredScreen";
+import PromoCodeScreen from "../screens/PromoCodeScreen";
+import usePromoCodeStore from "../store/promoCodeStore";
 import { addNotificationListeners } from "../src/services/notificationService";
 import { notificationService } from "../src/services/notificationService";
 import { RootStackParamList } from "./types";
@@ -52,9 +54,12 @@ const RootNavigator = () => {
     hasActiveSubscription,
     isTrialExpired,
     isTrialPending,
+    needsPromoCode,
     initializeSubscription,
     verifySubscriptionFromServer,
   } = useSubscriptionStore();
+
+  const { hasRedeemedPromo, hasSkippedPromo, isHydrated: isPromoHydrated } = usePromoCodeStore();
 
   // Show the non-dismissable TrialExpiredScreen when the 7-day trial ends
   // and the user has no paid subscription.
@@ -64,6 +69,16 @@ const RootNavigator = () => {
     isAuthenticated &&
     isTrialExpired &&
     !hasActiveSubscription &&
+    !isTrialPending &&
+    !useSubscriptionStore.getState().isLoading;
+
+  // Show PromoCode screen for authenticated free-tier users who haven't
+  // redeemed a promo code yet and don't have a trial date.
+  const showPromoGate =
+    isAuthenticated &&
+    needsPromoCode &&
+    !hasRedeemedPromo &&
+    isPromoHydrated &&
     !isTrialPending &&
     !useSubscriptionStore.getState().isLoading;
 
@@ -85,6 +100,9 @@ const RootNavigator = () => {
       await Promise.all([
         initializeSubscription().catch((err) =>
           console.warn('[RootNavigator] initializeSubscription failed', err),
+        ),
+        usePromoCodeStore.getState().hydrate().catch((err) =>
+          console.warn('[RootNavigator] promoCode hydrate failed', err),
         ),
         useDailyUsageStore.getState().hydrate().catch((err) =>
           console.warn('[RootNavigator] dailyUsage hydrate failed', err),
@@ -130,14 +148,10 @@ const RootNavigator = () => {
     }
   }, [isAuthenticated]);
 
-  // Auto-navigate to the trial-expired gate when the user has no active
-  // subscription and the 7-day trial has ended. isTrialPending guards
-  // against flashing the gate before initialization finishes.
-  useEffect(() => {
-    if (showTrialGate) {
-      navigateTo('TrialExpired');
-    }
-  }, [showTrialGate]);
+  // Gates are now rendered as the initial route (see stack below) instead
+  // of being pushed via navigateTo side-effects. Declarative routing is
+  // race-free: when `showPromoGate` / `showTrialGate` flip back to false,
+  // React Navigation unmounts the gate automatically.
 
   return (
       <Stack.Navigator
@@ -151,6 +165,20 @@ const RootNavigator = () => {
         }}
       >
         {isAuthenticated ? (
+          showPromoGate ? (
+            // After auth: show Paywall with promo code option for free-tier users
+            <Stack.Screen
+              name="Paywall"
+              component={PaywallScreen}
+              options={{ ...LiquidPresets.fade }}
+            />
+          ) : showTrialGate ? (
+            <Stack.Screen
+              name="TrialExpired"
+              component={TrialExpiredScreen}
+              options={{ ...LiquidPresets.fade }}
+            />
+          ) : (
           <>
             <Stack.Screen name="Main" component={TabNavigator} />
 
@@ -272,6 +300,15 @@ const RootNavigator = () => {
               }}
             />
 
+            {/* Promo Code — shown after auth for free-tier users */}
+            <Stack.Screen
+              name="PromoCode"
+              component={PromoCodeScreen}
+              options={{
+                ...LiquidPresets.rise,
+              }}
+            />
+
             {/* Global Paywall */}
             <Stack.Screen
               name="Paywall"
@@ -288,6 +325,7 @@ const RootNavigator = () => {
               options={{ ...LiquidPresets.fade }}
             />
           </>
+          )
         ) : (
           <>
             <Stack.Screen

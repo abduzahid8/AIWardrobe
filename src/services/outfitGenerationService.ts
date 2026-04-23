@@ -373,11 +373,17 @@ function isShortsItem(item: { name?: string; type?: string; brand?: string; macr
 
 function isLayeredWeather(weather?: { temp?: number | null; condition?: string | null }, prompt?: string | null): boolean {
     const promptBlob = (prompt || '').toLowerCase();
+    // Explicit hot/summer keywords override to non-layered, even without weather.
     if (/\b(summer|hot|heatwave|tee[-\s]?only|no jacket|no outerwear|beach)\b/.test(promptBlob)) return false;
     const condition = (weather?.condition || '').toString().toLowerCase();
     const temp = typeof weather?.temp === 'number' ? weather.temp : null;
+    // When we have NEITHER a temperature nor a weather description, default
+    // to layered=true. This matches the client's `needsOuterwear` default
+    // and keeps the pipeline from producing 3-item outfits that render as
+    // "layer + pants + shoes with no base top" on the card.
+    if (temp == null && !condition) return true;
     const coldTemp = temp != null && temp < 18;
-    const coldCondition = /\b(cold|chilly|freezing|snow|rain|drizzle|wind|storm)\b/.test(condition);
+    const coldCondition = /\b(cold|chilly|freezing|snow|rain|drizzle|wind|storm|cool)\b/.test(condition);
     return coldTemp || coldCondition;
 }
 
@@ -448,8 +454,8 @@ const PLACEHOLDER_SHOES: GeneratedOutfitItem = {
     macroCategory: 'shoes',
     color: 'neutral',
     name: 'Shoes',
-    imageUrl: 'basic_clothing_shoes',
-    image: 'basic_clothing_shoes',
+    imageUrl: '',
+    image: '',
     recommendation: 'Add shoes to your wardrobe for better outfits',
     isShopItem: false,
 };
@@ -543,6 +549,17 @@ function buildLocalOutfits(items: ClothingItem[], params: GenerateOutfitsParams)
     const casualOuterwear = outerwear.filter(o => !isFormalLayerItem({
         name: o.name, type: o.subCategory, macroCategory: getMacroCategory(o.category, o.subCategory),
     }));
+
+    // For old_money, classic, and business_casual styles, completely exclude shorts
+    // when formal outerwear is available. This prevents the illogical coat + shorts combination.
+    const isFormalStyle = ['old_money', 'classic', 'business_casual'].includes(styleKey);
+    if (isFormalStyle && outerwear.some(o => isFormalLayerItem({
+        name: o.name, type: o.subCategory, macroCategory: getMacroCategory(o.category, o.subCategory),
+    }))) {
+        // Replace bottoms with only non-shorts options
+        bottoms.length = 0;
+        bottoms.push(...nonShortsBottoms);
+    }
 
     const outfits: GeneratedOutfit[] = [];
     const targetItems = layered ? 4 : 3;
@@ -704,6 +721,19 @@ function mapRawOutfit(o: any, params: GenerateOutfitsParams): GeneratedOutfit {
     const items: GeneratedOutfitItem[] = (o.items || []).map((item: any): GeneratedOutfitItem => {
         const resolvedImage = item.imageUrl || item.image_url || item.image || item.thumbnailUrl || item.thumbnail_url || '';
         const resolvedMacroCategory = item.macroCategory || item.macro_category || item.category || item.garmentType || item.garment_type || '';
+
+        if (__DEV__) {
+            console.log('[mapRawOutfit] item:', {
+                id: String(item.id || '').slice(0, 8),
+                hasImageUrl: Boolean(item.imageUrl),
+                hasImage_url: Boolean(item.image_url),
+                hasImage: Boolean(item.image),
+                resolvedImgLen: typeof resolvedImage === 'string' ? resolvedImage.length : typeof resolvedImage,
+                macro: resolvedMacroCategory,
+                type: item.type,
+                name: item.name,
+            });
+        }
 
         return {
             id: item.id || `item_${Date.now()}_${Math.random()}`,

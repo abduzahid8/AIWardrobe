@@ -407,6 +407,35 @@ function generateCandidates(
     const shoes     = groups.shoes;
     const outerwear = groups.outerwear;
 
+    // Filter out shorts when paired with formal outerwear to prevent illogical combinations
+    // Formal outerwear: blazer, suit jacket, sport coat, overcoat, topcoat, trench, peacoat, tuxedo
+    const isFormalOuterwear = (item: ClothingItem): boolean => {
+        if (!item) return false;
+        const blob = `${item.subCategory || item.category || ''} ${item.name || ''}`.toLowerCase();
+        const macro = (item.category || '').toLowerCase();
+        const isOuter = macro === 'outerwear' || /jacket|coat|blazer|vest|outerwear/.test(blob);
+        if (!isOuter) return false;
+        return /\b(blazer|suit\s*jacket|sport\s*coat|sports\s*coat|overcoat|top\s*coat|topcoat|trench|peacoat|pea\s*coat|tuxedo)\b/.test(blob);
+    };
+
+    const isShorts = (item: ClothingItem): boolean => {
+        if (!item) return false;
+        const blob = `${item.subCategory || item.category || ''} ${item.name || ''}`.toLowerCase();
+        const macro = (item.category || '').toLowerCase();
+        const isBottom = macro === 'bottom' || /pant|trouser|jeans|bottom|shorts?|skirt/.test(blob);
+        if (!isBottom) return false;
+        return /\b(shorts?|bermudas?)\b/.test(blob);
+    };
+
+    // If formal outerwear exists, filter out shorts from bottoms
+    if (outerwear.some(isFormalOuterwear)) {
+        const filteredBottoms = bottoms.filter(b => !isShorts(b));
+        if (filteredBottoms.length > 0) {
+            bottoms.length = 0;
+            bottoms.push(...filteredBottoms);
+        }
+    }
+
     // Minimum: need at least one top and one bottom
     if (tops.length === 0 && bottoms.length === 0) return [];
 
@@ -415,7 +444,9 @@ function generateCandidates(
     const effectiveBottoms = bottoms.length > 0 ? bottoms : [{ id: '__missing_bottom__', category: 'bottom' } as ClothingItem];
 
     const candidates: string[][] = [];
-    const needsOuterwear = weather ? weather.temp < 14 : false;
+    // Default to layered mode so outfits always have 4 slots:
+    // outerwear(layer) + top(main-top) + top(second-top) + bottom + shoes
+    const needsOuterwear = weather ? weather.temp < 18 : true;
 
     for (const top of effectiveTops) {
         for (const bottom of effectiveBottoms) {
@@ -436,7 +467,19 @@ function generateCandidates(
                 const withShoe = shoe ? [...baseOutfit, shoe.id] : baseOutfit;
 
                 for (const outer of outerList) {
-                    const full = outer ? [...withShoe, outer.id] : withShoe;
+                    let full = outer ? [...withShoe, outer.id] : withShoe;
+
+                    // When layering (outerwear present), always add a second top
+                    // so the outfit has: layer + main-top + second-top + bottom + shoes
+                    if (outer && effectiveTops.length >= 2) {
+                        const secondTop = effectiveTops.find((t) => t.id !== top.id && !t.id.startsWith('__')) ?? (top.id.startsWith('__') ? undefined : effectiveTops[0]);
+                        if (secondTop && secondTop.id !== top.id) {
+                            full = [...full, secondTop.id];
+                        } else if (top.id.startsWith('__') === false) {
+                            // Clone the same top as second-top when only 1 top available
+                            full = [...full, top.id];
+                        }
+                    }
 
                     // Enforce anchor constraint
                     if (anchorItemId && !full.includes(anchorItemId)) continue;
@@ -760,16 +803,23 @@ function buildEmptyStateSuggestion(occasion: Occasion): ScoredOutfit {
 }
 
 /**
- * Returns true only if every clothing category appears at most once in the outfit.
- * Ensures no outfit has 2 tops, 2 bottoms, 2 shoes, etc.
+ * Returns true if the outfit has no duplicate categories EXCEPT 'top',
+ * which is allowed to appear up to 2 times (for layering: base top + second top).
+ * Bottoms, shoes, outerwear, etc. may still appear at most once.
  */
 function hasNoDuplicateCategories(itemIds: string[], items: ClothingItem[]): boolean {
+    const topIds: string[] = [];
     const seen = new Set<string>();
     for (const id of itemIds) {
         const item = items.find((i) => i.id === id);
         if (!item) continue;
-        if (seen.has(item.category)) return false;
-        seen.add(item.category);
+        if (item.category === 'top') {
+            topIds.push(id);
+            if (topIds.length > 2) return false; // max 2 tops for layering
+        } else {
+            if (seen.has(item.category)) return false;
+            seen.add(item.category);
+        }
     }
     return true;
 }
@@ -790,17 +840,25 @@ function scoreCandidates(
         const weatherScore   = scoreWeather(itemIds, items, weather);
         const preferenceScore = scorePreference(itemIds, items, preferences);
 
+        // Compute outfit items once for layering bonus + tier + missing slots
+        const outfitItems = itemIds.map((id) => items.find((i) => i.id === id)).filter(Boolean) as ClothingItem[];
+
+        // Layering bonus: outfits with outerwear + 2 tops get a small boost
+        // so the 4-slot format (layer + main-top + second-top + pants + shoes)
+        // is preferred over 3-slot (top + pants + shoes).
+        const topCount = outfitItems.filter((i) => i.category === 'top').length;
+        const hasOuterwear = outfitItems.some((i) => i.category === 'outerwear');
+        const layeringBonus = (hasOuterwear && topCount >= 2) ? 0.08 : 0;
+
         const totalScore =
             formalityScore * WEIGHTS.formality +
             noveltyScore   * WEIGHTS.novelty   +
             harmonyScore   * WEIGHTS.harmony   +
-            weatherScore   * WEIGHTS.weather;
+            weatherScore   * WEIGHTS.weather +
+            layeringBonus;
 
         const breakdown = { preferenceScore, weatherScore, noveltyScore, harmonyScore, formalityScore };
         const reasoning = generateReasoning(itemIds, items, breakdown, weather, occasion);
-
-        // Compute dominant tier and shopping suggestions for missing slots
-        const outfitItems = itemIds.map((id) => items.find((i) => i.id === id)).filter(Boolean) as ClothingItem[];
         const tiers = outfitItems.map(getFormalityTier);
         const avgTier = tiers.length > 0
             ? Math.round(tiers.reduce((a, b) => a + b, 0) / tiers.length)
@@ -808,7 +866,8 @@ function scoreCandidates(
         const formalityTier = Math.max(1, Math.min(5, avgTier)) as FormalityTier;
 
         const ownedCategories = new Set(outfitItems.map((i) => i.category));
-        const requiredCats: ClothingCategory[] = ['top', 'bottom', 'shoes'];
+        // 4-slot format: outerwear(layer) + top(main) + top(second) + bottom + shoes
+        const requiredCats: ClothingCategory[] = ['top', 'bottom', 'shoes', 'outerwear'];
         const missing = requiredCats.filter((c) => !ownedCategories.has(c));
         const shoppingSuggestions = missing.length > 0
             ? buildShoppingSuggestions(occasion ?? 'casual', missing)

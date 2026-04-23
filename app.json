@@ -4,8 +4,7 @@
     "slug": "aiwardrobe",
     "version": "1.0.0",
     "assetBundlePatterns": [
-      "assets/**",
-      "assets/models/*.glb"
+      "assets/**"
     ],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -27,7 +26,6 @@
         "NSPhotoLibraryUsageDescription": "AIWardrobe accesses the photo library only to import clothing images you select and to save or share outfit photos you create.",
         "NSPhotoLibraryAddUsageDescription": "AIWardrobe saves outfit photos you create to your photo library when you choose to share or export them.",
         "NSLocationWhenInUseUsageDescription": "Your current location is used once per session to fetch local weather so AIWardrobe can suggest weather-appropriate outfits. Location is not stored or shared.",
-        "NSUserTrackingUsageDescription": "AIWardrobe does not track you across other apps. This permission is required only if a future update introduces ad personalization.",
         "NSMicrophoneUsageDescription": "AIWardrobe uses the microphone only while recording a wardrobe video you choose to capture."
       }
     },

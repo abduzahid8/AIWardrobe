@@ -6,12 +6,12 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-function macroCategory(category: string, type: string): string {
-    const t = `${category} ${type}`.toLowerCase()
-    if (t.match(/jacket|coat|blazer|hoodie|cardigan|sweater|pullover|vest|puffer|outerwear/)) return 'outerwear'
-    if (t.match(/shirt|t-shirt|tee|blouse|polo|tops|top/)) return 'top'
-    if (t.match(/pant|trouser|jeans|bottom|shorts|skirt/)) return 'bottom'
-    if (t.match(/shoe|sneaker|boot|loafer|sandal/)) return 'shoes'
+function macroCategory(category: string, type: string, name?: string): string {
+    const t = `${category} ${type} ${name || ''}`.toLowerCase()
+    if (t.match(/jacket|coat|blazer|hoodie|cardigan|sweater|pullover|vest|puffer|parka|trench|outerwear/)) return 'outerwear'
+    if (t.match(/shirt|t-shirt|tshirt|tee|blouse|polo|tops|top|upper[_\s-]?body/)) return 'top'
+    if (t.match(/pant|trouser|jeans|bottom|shorts|skirt|lower[_\s-]?body/)) return 'bottom'
+    if (t.match(/shoe|sneaker|boot|loafer|sandal|heel|footwear|trainer/)) return 'shoes'
     if (t.match(/dress/)) return 'top'
     return 'other'
 }
@@ -27,12 +27,23 @@ function isDressItem(item: any): boolean {
 // cold". Style alone no longer forces a jacket in summer.
 function needsLayering(_style: string | null | undefined, weather: any, prompt: string | null | undefined): boolean {
     const promptBlob = (prompt || '').toLowerCase()
+    // Explicit "hot" / "summer" prompt keywords still opt the user OUT of
+    // layered composition, even when weather is missing.
     if (/\b(summer|hot|heatwave|tee[-\s]?only|no jacket|no outerwear|beach)\b/.test(promptBlob)) return false
 
     const condition = (weather?.condition || '').toString().toLowerCase()
     const temp = typeof weather?.temp === 'number' ? weather.temp : null
+
+    // When we have NEITHER a temperature nor a weather description, default
+    // to layered=true. This matches the client's `needsOuterwear` default
+    // and keeps outfits from degrading to 3-item looks that then render as
+    // "layer + pants + shoes with no base top" on the client. A warm-weather
+    // user will only hit this branch if Location permission is denied, in
+    // which case a safe-layered look is the least-broken fallback.
+    if (temp == null && !condition) return true
+
     const coldTemp = temp != null && temp < 18
-    const coldCondition = /\b(cold|chilly|freezing|snow|rain|drizzle|wind|storm)\b/.test(condition)
+    const coldCondition = /\b(cold|chilly|freezing|snow|rain|drizzle|wind|storm|cool)\b/.test(condition)
     return coldTemp || coldCondition
 }
 
@@ -606,8 +617,8 @@ const PLACEHOLDER_SHOES: Record<string, any> = {
     macroCategory: 'shoes',
     color: 'neutral',
     name: 'Shoes',
-    imageUrl: 'basic_clothing_shoes',
-    image: 'basic_clothing_shoes',
+    imageUrl: '',
+    image: '',
     recommendation: 'Add shoes to your wardrobe for better outfits',
     isShopItem: false,
 }
@@ -629,7 +640,7 @@ async function fillMissingSlotsEdge(
                 .eq('is_active', true)
                 .limit(30)
             if (slot === 'shoes') q = q.or('category.eq.shoes,garment_type.eq.shoes')
-            else if (slot === 'outerwear') q = q.or('category.eq.outerwear,garment_type.eq.outerwear')
+            else if (slot === 'outerwear') q = q.or('category.eq.outerwear,garment_type.eq.outerwear,name.ilike.%jacket%,name.ilike.%coat%,name.ilike.%blazer%,name.ilike.%cardigan%,name.ilike.%sweater%,name.ilike.%hoodie%,name.ilike.%puffer%,name.ilike.%vest%')
             else if (slot === 'top') q = q.or('category.eq.tops,garment_type.eq.upper_body')
             else if (slot === 'bottom') q = q.or('category.eq.bottoms,garment_type.eq.lower_body')
             const { data, error } = await q
@@ -693,6 +704,15 @@ async function localFallback(items: any[], style: string, occasion: string, limi
     const allNonShortsBottoms = allBottoms.filter((b: any) => !isShortsItem(b))
     const allCasualOuterwear = allOuterwear.filter((o: any) => !isFormalLayerItem(o))
     const allShoes = allItems.filter((i: any) => i.macroCategory === 'shoes')
+
+    // For old_money, classic, and business_casual styles, completely exclude shorts
+    // when formal outerwear is available. This prevents the illogical coat + shorts combination.
+    const isFormalStyle = ['old_money', 'classic', 'business_casual'].includes(style.toLowerCase())
+    if (isFormalStyle && allOuterwear.some((o: any) => isFormalLayerItem(o))) {
+        // Replace allBottoms with only non-shorts options
+        allBottoms.length = 0
+        allBottoms.push(...allNonShortsBottoms)
+    }
 
     const outfits: any[] = []
     const seed = layered ? Math.max(allBaseTops.length, allOuterwear.length, 1) : Math.max(allLegacyTops.length, 1)
@@ -1134,26 +1154,96 @@ serve(async (req) => {
         }
 
         if (!aiOutfits || aiOutfits.length === 0) {
-            const svcClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-            aiOutfits = await localFallback(wardrobeItems, stylePreferences, occasion, limit, layered, svcClient)
+            return new Response(JSON.stringify({ success: false, outfits: [], error: 'AI failed to generate valid outfits' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            })
         }
 
         // ── 8. Enrich items with imageUrl from DB ──────────────────────────
+        // Also replace placeholder items (without valid images) with shop catalog items
+        const svcClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+        const { data: shopItems, error: shopError } = await svcClient
+            .from('shop_catalog')
+            .select('id, brand, name, price, image_url, garment_type, category, description')
+            .eq('is_active', true)
+            .limit(50)
+        
+        console.log('[enrich] Shop catalog query result:', { count: shopItems?.length || 0, error: shopError })
+        
+        const shopByMacro: Record<string, any[]> = {}
+        if (shopItems) {
+            for (const item of shopItems) {
+                // Use name-based keyword matching to distinguish outerwear from
+                // base tops — both share garment_type='upper_body' in shop_catalog.
+                const nameStr = (item.name || '').toLowerCase()
+                const descStr = (item.description || '').toLowerCase()
+                const blob = `${nameStr} ${descStr}`
+                let macro: string
+                if (/\b(jacket|coat|blazer|cardigan|sweater|hoodie|puffer|bomber|vest|outerwear|trench|peacoat)\b/.test(blob)) {
+                    macro = 'outerwear'
+                } else if (item.garment_type === 'upper_body') {
+                    macro = 'top'
+                } else if (item.garment_type === 'lower_body') {
+                    macro = 'bottom'
+                } else if (item.garment_type === 'shoes') {
+                    macro = 'shoes'
+                } else {
+                    macro = 'other'
+                }
+                if (!shopByMacro[macro]) shopByMacro[macro] = []
+                shopByMacro[macro].push(item)
+            }
+            console.log('[enrich] Shop items by macro:', Object.keys(shopByMacro).map(k => `${k}: ${shopByMacro[k].length}`))
+        }
+        
         const enriched = aiOutfits.map((outfit: any) => ({
             ...outfit,
             items: (outfit.items || []).map((item: any) => {
-                const src: any = itemMap.get(item.id) || {}
+                const src: any = itemMap.get(item.id) || {};
                 // Prioritize DB URL (src.imageUrl) over AI's potentially empty imageUrl
-                // The DB URL is the known-good source; AI may return items without image URLs
-                const imageUrl = src.imageUrl || item.imageUrl || item.image_url || ''
+                const imageUrl = src.imageUrl || item.imageUrl || item.image_url || '';
+                
+                // If no valid image URL, replace with shop catalog item
+                let finalItem = { ...item, imageUrl };
+                if (!imageUrl || imageUrl.length === 0) {
+                    const macro = (src.macroCategory || item.macroCategory || '').toLowerCase();
+                    // Map 'upper_body' alias to the correct slot: if the item name
+                    // contains outerwear keywords, it's outerwear; otherwise top.
+                    let macroNormalized = macro === 'upper_body' ? 'top' : macro;
+                    if (macroNormalized === 'top' || macro === 'upper_body') {
+                        const nameBlob = `${finalItem.name || ''} ${item.name || ''} ${src.name || ''} ${item.description || ''} ${src.description || ''}`.toLowerCase();
+                        if (/\b(jacket|coat|blazer|cardigan|sweater|hoodie|puffer|bomber|vest|outerwear|trench|peacoat)\b/.test(nameBlob)) {
+                            macroNormalized = 'outerwear';
+                        }
+                    }
+                    if (shopByMacro[macroNormalized] && shopByMacro[macroNormalized].length > 0) {
+                        // Pick a random shop catalog item for this macro
+                        const shopItem = shopByMacro[macroNormalized][Math.floor(Math.random() * shopByMacro[macroNormalized].length)]
+                        console.log(`[enrich] Replacing placeholder ${item.id} (${macro}) with shop item ${shopItem.id}`)
+                        finalItem = {
+                            ...item,
+                            id: shopItem.id,
+                            imageUrl: shopItem.image_url,
+                            image: shopItem.image_url,
+                            name: shopItem.name,
+                            brand: shopItem.brand,
+                            isShopItem: true,
+                        }
+                    }
+                }
+                
+                // Canonicalize macroCategory so aliases like 'upper_body' / 'lower_body'
+                // / 'tops' / 'footwear' never reach the client.
+                const rawMacro = (src.macroCategory || item.macroCategory || '').toLowerCase()
+                const itemName = finalItem.name || src.name || item.name || ''
+                const canonicalMacro = macroCategory(rawMacro, '', itemName) || rawMacro
                 return {
-                    ...item,
-                    imageUrl,
+                    ...finalItem,
                     color: item.color || src.color || 'neutral',
                     type: item.type || src.type || 'clothing',
-                    name: src.name || item.name || src.type || src.category || 'Item',
-                    brand: item.brand || src.brand || '',
-                    macroCategory: src.macroCategory || item.macroCategory || '',
+                    name: finalItem.name || src.name || item.name || src.type || src.category || 'Item',
+                    brand: finalItem.brand || item.brand || src.brand || '',
+                    macroCategory: canonicalMacro || rawMacro || '',
                 }
             }),
         }))

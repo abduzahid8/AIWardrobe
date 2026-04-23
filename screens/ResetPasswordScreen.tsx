@@ -16,6 +16,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAppNavigation } from '../hooks/useAppNavigation';
 import * as Haptics from 'expo-haptics';
 import { supabase } from '../lib/supabase';
+import { useTranslation } from 'react-i18next';
+
+import useAuthStore from '../store/auth';
 
 /**
  * ResetPasswordScreen — deep link target for password reset.
@@ -24,9 +27,35 @@ import { supabase } from '../lib/supabase';
  */
 const ResetPasswordScreen = () => {
     const navigation = useAppNavigation();
+    const { t } = useTranslation();
+    const { session, isAuthenticated } = useAuthStore();
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+
+    // If no session is found, the user might have arrived here manually
+    // or the deep link token might have expired.
+    if (!session || !isAuthenticated) {
+        return (
+            <LinearGradient colors={['#0A0A0A', '#1A1C29', '#16213E']} style={styles.container}>
+                <View style={styles.formContainer}>
+                    <View style={styles.iconContainer}>
+                        <Ionicons name="alert-circle-outline" size={40} color="#EF4444" />
+                    </View>
+                    <Text style={styles.title}>Invalid Session</Text>
+                    <Text style={styles.subtitle}>
+                        Your reset link may have expired or is invalid. Please request a new one.
+                    </Text>
+                    <TouchableOpacity
+                        onPress={() => navigation.navigate('SignIn')}
+                        style={styles.submitButton}
+                    >
+                        <Text style={styles.submitButtonText}>Back to Sign In</Text>
+                    </TouchableOpacity>
+                </View>
+            </LinearGradient>
+        );
+    }
 
     // Password validation
     const passwordChecks = {
@@ -69,9 +98,9 @@ const ResetPasswordScreen = () => {
             const msg = error.message || 'Failed to reset password';
 
             if (msg.includes('same_password') || msg.includes('different from your old')) {
-                Alert.alert('Same Password', 'New password must be different from your current password.');
+                Alert.alert(t('resetPassword.samePassword'), t('resetPassword.newPasswordDifferent'));
             } else if (msg.includes('weak_password') || msg.includes('too weak')) {
-                Alert.alert('Weak Password', 'Please choose a stronger password.');
+                Alert.alert(t('resetPassword.weakPassword'), t('resetPassword.chooseStronger'));
             } else {
                 Alert.alert('Error', msg);
             }
@@ -117,10 +146,10 @@ const ResetPasswordScreen = () => {
                         </View>
 
                         <Text style={styles.title} accessibilityRole="header">
-                            Set New Password
+                            {t('resetPassword.title')}
                         </Text>
                         <Text style={styles.subtitle}>
-                            Choose a strong password for your account.
+                            {t('resetPassword.subtitle')}
                         </Text>
 
                         {/* New Password */}
@@ -163,7 +192,7 @@ const ResetPasswordScreen = () => {
                                 maxLength={128}
                             />
                             {confirmPassword.length > 0 && !passwordsMatch && (
-                                <Text style={styles.errorHint}>Passwords don't match</Text>
+                                <Text style={styles.errorHint}>{t('resetPassword.passwordsDontMatch')}</Text>
                             )}
                         </View>
 

@@ -47,6 +47,7 @@ import useAuthStore from '../store/auth';
 import { ExternalAIService } from '../src/services/externalAIService';
 import { BASIC_CLOTHING_ITEMS } from '../data/basicClothingItems';
 import { createLogger } from '../src/utils/logger';
+import { useTranslation } from 'react-i18next';
 
 const logger = createLogger('MyCloset');
 
@@ -246,6 +247,7 @@ const ClothingGridItem = ({
 const MyClosetScreen = () => {
     const navigation = useAppNavigation();
     const isFocused = useIsFocused();
+    const { t } = useTranslation();
     const [items, setItems] = useState<ClothingItem[]>([]);
 
     const player = useVideoPlayer(require('../assets/videos/closet.mov'), (player) => {
@@ -611,7 +613,7 @@ const MyClosetScreen = () => {
                             </View>
 
                             <View style={styles.headerCenter}>
-                                <Text style={styles.headerTitle} accessibilityRole="header">My Closet</Text>
+                                <Text style={styles.headerTitle} accessibilityRole="header">{t('wardrobe.title')}</Text>
                             </View>
 
                             <View style={styles.headerRight}>
@@ -623,7 +625,7 @@ const MyClosetScreen = () => {
                                         accessibilityRole="button"
                                     >
                                         <Ionicons name="add" size={18} color="#0A1931" />
-                                        <Text style={styles.headerUploadText}>Upload</Text>
+                                        <Text style={styles.headerUploadText}>{t('wardrobe.upload')}</Text>
                                     </TouchableOpacity>
                                 )}
                             </View>
@@ -645,7 +647,7 @@ const MyClosetScreen = () => {
                             accessibilityRole="tab"
                             accessibilityState={{ selected: viewMode === 'clothes' }}
                         >
-                            <Text style={[styles.segmentText, viewMode === 'clothes' && styles.segmentTextActive]}>Clothes</Text>
+                            <Text style={[styles.segmentText, viewMode === 'clothes' && styles.segmentTextActive]}>{t('wardrobe.clothes')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[styles.segmentButton, viewMode === 'collections' && styles.segmentButtonActive]}
@@ -657,7 +659,7 @@ const MyClosetScreen = () => {
                             accessibilityRole="tab"
                             accessibilityState={{ selected: viewMode === 'collections' }}
                         >
-                            <Text style={[styles.segmentText, viewMode === 'collections' && styles.segmentTextActive]}>Collections</Text>
+                            <Text style={[styles.segmentText, viewMode === 'collections' && styles.segmentTextActive]}>{t('wardrobe.collections')}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -689,17 +691,17 @@ const MyClosetScreen = () => {
                         <View style={styles.collectionsIconWrap}>
                             <Ionicons name="albums-outline" size={56} color={colors.text.tertiary} />
                         </View>
-                        <Text style={styles.emptyTitle}>No collections yet</Text>
+                        <Text style={styles.emptyTitle}>{t('wardrobe.noCollections')}</Text>
                         <Text style={styles.emptySubtitle}>
                             Group your outfits into collections — for work, weekends, seasons, or any occasion.
                         </Text>
                         <TouchableOpacity
                             style={styles.emptyButton}
-                            onPress={() => navigation.navigate('AIOutfit')}
+                            onPress={() => navigation.navigate('AIOutfit', { source: 'wardrobe' })}
                             accessibilityLabel="Create first collection"
                             accessibilityRole="button"
                         >
-                            <Text style={styles.emptyButtonText}>Create First Look</Text>
+                            <Text style={styles.emptyButtonText}>{t('wardrobe.createFirstLook')}</Text>
                         </TouchableOpacity>
                     </View>
                 ) : loading ? (
@@ -717,8 +719,8 @@ const MyClosetScreen = () => {
                                 contentFit="contain"
                             />
                         </View>
-                        <Text style={styles.emptyTitle}>Your closet is empty</Text>
-                        <Text style={styles.emptySubtitle}>Start adding items to build your digital wardrobe.</Text>
+                        <Text style={styles.emptyTitle}>{t('wardrobe.emptyCloset')}</Text>
+                        <Text style={styles.emptySubtitle}>{t('wardrobe.emptyClosetSubtitle')}</Text>
 
                         <TouchableOpacity
                             style={styles.emptyButton}
@@ -726,7 +728,7 @@ const MyClosetScreen = () => {
                             accessibilityLabel="Scan wardrobe"
                             accessibilityRole="button"
                         >
-                            <Text style={styles.emptyButtonText}>Scan Wardrobe</Text>
+                            <Text style={styles.emptyButtonText}>{t('wardrobe.scanWardrobe')}</Text>
                         </TouchableOpacity>
                     </View>
                 ) : (
@@ -757,14 +759,14 @@ const MyClosetScreen = () => {
             {/* Floating Ask Stylist button — Liquid Glass */}
             <TouchableOpacity
                 style={styles.stylistFAB}
-                onPress={() => navigation.navigate('AIOutfit')}
+                onPress={() => navigation.navigate('AIOutfit', { source: 'wardrobe' })}
                 activeOpacity={0.88}
                 accessibilityLabel="Ask AI Stylist"
                 accessibilityRole="button"
             >
                 <View style={styles.stylistFABGlass}>
                     <Ionicons name="chatbubble-ellipses" size={20} color={colors.text.primary} />
-                    <Text style={styles.stylistFABText}>Ask Stylist</Text>
+                    <Text style={styles.stylistFABText}>{t('wardrobe.askStylist')}</Text>
                 </View>
             </TouchableOpacity>
 

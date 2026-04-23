@@ -35,6 +35,7 @@ import AppColors from '../constants/AppColors';
 import { useWardrobeItems } from '../src/hooks';
 import Config from '../src/config/env';
 import { createLogger } from '../src/utils/logger';
+import { useTranslation } from 'react-i18next';
 
 const logger = createLogger('OutfitAI');
 
@@ -200,7 +201,7 @@ const TypingIndicator = () => {
 };
 
 // Chat Message Bubble with Adjustment Buttons
-const ChatBubble = ({ message, isAI, outfit, onAdjust }: { message: string; isAI: boolean; outfit?: OutfitSuggestion; onAdjust?: (adjustment: string) => void }) => {
+const ChatBubble = ({ message, isAI, outfit, onAdjust, t }: { message: string; isAI: boolean; outfit?: OutfitSuggestion; onAdjust?: (adjustment: string) => void; t: any }) => {
     return (
         <Animated.View
             entering={FadeInUp.springify()}
@@ -247,7 +248,7 @@ const ChatBubble = ({ message, isAI, outfit, onAdjust }: { message: string; isAI
                         {/* Adjustment buttons - "Adjust until right" */}
                         {onAdjust && (
                             <View style={styles.adjustmentSection}>
-                                <Text style={styles.adjustmentLabel}>Not quite right? Adjust:</Text>
+                                <Text style={styles.adjustmentLabel}>{t('outfitAI.notQuiteRight')}</Text>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.adjustmentScroll}>
                                     {ADJUSTMENT_OPTIONS.map((option) => (
                                         <TouchableOpacity
@@ -301,13 +302,14 @@ interface ChatMessage {
 }
 
 const OutfitAIScreen = () => {
+    const { t } = useTranslation();
     const navigation = useNavigation();
     const scrollViewRef = useRef<ScrollView>(null);
     const [message, setMessage] = useState('');
     const [messages, setMessages] = useState<ChatMessage[]>([
         {
             id: '1',
-            text: "Hi! I'm your AI stylist. Tell me about your occasion, and I'll create the perfect outfit from your wardrobe. What are you dressing for today?",
+            text: t('outfitAI.greeting'),
             isAI: true,
         }
     ]);
@@ -517,7 +519,7 @@ const OutfitAIScreen = () => {
                         <View style={styles.headerAIBadge}>
                             <Ionicons name="sparkles" size={14} color={COLORS.primary} />
                         </View>
-                        <Text style={styles.headerTitle}>AI Stylist</Text>
+                        <Text style={styles.headerTitle}>{t('outfitAI.title')}</Text>
                     </View>
 
                     <TahoeIconButton
@@ -542,7 +544,7 @@ const OutfitAIScreen = () => {
                         <View style={styles.aiAvatarLarge}>
                             <Ionicons name="sparkles" size={32} color={COLORS.primary} />
                         </View>
-                        <Text style={styles.welcomeTitle}>Your AI Stylist</Text>
+                        <Text style={styles.welcomeTitle}>{t('outfitAI.welcomeTitle')}</Text>
                         <Text style={styles.welcomeSubtitle}>
                             Powered by vision + fashion intelligence
                         </Text>
@@ -556,6 +558,7 @@ const OutfitAIScreen = () => {
                             isAI={msg.isAI}
                             outfit={msg.outfit}
                             onAdjust={msg.outfit ? handleAdjustOutfit : undefined}
+                            t={t}
                         />
                     ))}
 
@@ -568,8 +571,8 @@ const OutfitAIScreen = () => {
                             entering={FadeInUp.delay(300).springify()}
                             style={styles.suggestionsSection}
                         >
-                            <Text style={styles.suggestionsTitle}>What's the occasion?</Text>
-                            <Text style={styles.suggestionsSubtitle}>Tell me your plans and I'll find the perfect outfit</Text>
+                            <Text style={styles.suggestionsTitle}>{t('outfitAI.occasionTitle')}</Text>
+                            <Text style={styles.suggestionsSubtitle}>{t('outfitAI.occasionSubtitle')}</Text>
                             <View style={styles.occasionGrid}>
                                 {OCCASION_SUGGESTIONS.map((occasion) => (
                                     <OccasionCard

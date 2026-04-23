@@ -133,6 +133,8 @@ const STYLE_SIGNALS: Record<StyleId, Signal[]> = {
     // IMPORTANT: plain "sneaker" is mildly negative (clean whites are ok) and
     // "chunky" alone is bad regardless of what it qualifies.
     kw('sneaker', -1), kw('sneakers', -1), kw('chunky', -3),
+    // NEVER pair shorts with old_money - they're fundamentally incompatible
+    kw('shorts', -5), kw('short', -5), kw('bermuda', -5), kw('bermudas', -5),
   ],
   streetwear: [
     kw('hoodie', 5), kw('oversized', 4), kw('baggy', 4), kw('cargo', 5),
@@ -199,6 +201,8 @@ const STYLE_SIGNALS: Record<StyleId, Signal[]> = {
     kw('chunky', -3), kw('basketball', -5), kw('skate', -3),
     kw('low-rise', -3), kw('low rise', -3), kw('skinny', -2),
     kw('square-toe', -4), kw('square toe', -4),
+    // Shorts are inappropriate for business_casual
+    kw('shorts', -5), kw('short', -5), kw('bermuda', -5), kw('bermudas', -5),
   ],
   casual: [
     kw('t-shirt', 2), kw('tee', 2), kw('jeans', 2), kw('jean', 1),
@@ -236,7 +240,7 @@ const STYLE_SIGNALS: Record<StyleId, Signal[]> = {
     // Negatives
     kw('hoodie', -4), kw('graphic', -3), kw('logo', -2),
     kw('cargo', -4), kw('sweatpants', -4), kw('joggers', -4),
-    kw('track pants', -4), kw('shorts', -3), kw('bermuda', -3),
+    kw('track pants', -4), kw('shorts', -5), kw('short', -5), kw('bermuda', -5), kw('bermudas', -5),
     kw('puffer', -3), kw('bomber', -3), kw('denim jacket', -2),
     kw('chunky sneaker', -4), kw('chunky sneakers', -4), kw('athletic', -3),
     kw('square-toe', -4), kw('square toe', -4),

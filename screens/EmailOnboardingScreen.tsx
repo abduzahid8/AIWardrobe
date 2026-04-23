@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import useAuthStore from '../store/auth';
+import { useTranslation } from 'react-i18next';
 
 // API_URL removed
 
@@ -41,6 +42,7 @@ interface ScanResult {
  * Competitive advantage vs Alta Daily
  */
 const EmailOnboardingScreen = () => {
+    const { t } = useTranslation();
     const navigation = useNavigation();
     const { user } = useAuthStore();
     const [loading, setLoading] = useState(false);
@@ -172,7 +174,7 @@ const EmailOnboardingScreen = () => {
 
                     {/* Features List */}
                     <View className="bg-white/10 rounded-3xl p-6 mb-6 border border-white/20">
-                        <Text className="text-xl font-bold text-white mb-4">How it works:</Text>
+                        <Text className="text-xl font-bold text-white mb-4">{t('emailOnboarding.howItWorks')}</Text>
 
                         {[
                             { icon: '🔒', text: 'We only read purchase receipts (100% safe)' },

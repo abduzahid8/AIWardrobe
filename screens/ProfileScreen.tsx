@@ -49,6 +49,9 @@ import { useShopCatalog } from '../hooks/useShopCatalog';
 import { useTheme } from '../src/theme/ThemeContext';
 import { useSubscriptionGate } from '../src/hooks/useSubscriptionGate';
 import useSubscriptionStore from '../store/subscriptionStore';
+import useLanguageStore, { LANGUAGE_NAMES } from '../store/languageStore';
+import LanguageSwitcher from '../components/LanguageSwitcher';
+import { useTranslation } from 'react-i18next';
 
 const { width, height } = Dimensions.get('window');
 const HERO_HEIGHT = Math.min(height * 0.43, 390);
@@ -133,6 +136,7 @@ const ProfileScreen = () => {
   const navigation = useAppNavigation();
   const insets = useSafeAreaInsets();
   const { requireFeature: requireSubFeature } = useSubscriptionGate();
+  const { t } = useTranslation();
 
   const { user, logout, deleteAccount, fetchUser } = useAuthStore();
   const wardrobeItems = useWardrobeStore((state) => state.items);
@@ -143,9 +147,11 @@ const ProfileScreen = () => {
 
   const { effectiveTier, isTrialActive } = useSubscriptionStore();
   const { items: liveShopCatalog } = useShopCatalog();
+  const { currentLanguage } = useLanguageStore();
 
   const [activeTab, setActiveTab] = useState<'looks' | 'trips'>('looks');
   const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [editName, setEditName] = useState('');
   const [editAvatar, setEditAvatar] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -312,12 +318,12 @@ const ProfileScreen = () => {
 
   const stats = useMemo(
     () => [
-      { icon: 'shirt-outline' as IconName, label: 'Items', value: wardrobeItems.length },
-      { icon: 'sparkles-outline' as IconName, label: 'Looks', value: outfits.length },
-      { icon: 'flame-outline' as IconName, label: 'Streak', value: streak || '0' },
-      { icon: 'checkmark-done-outline' as IconName, label: 'Wears', value: wearLogs.length },
+      { icon: 'shirt-outline' as IconName, label: t('common.items'), value: wardrobeItems.length },
+      { icon: 'sparkles-outline' as IconName, label: t('common.looks'), value: outfits.length },
+      { icon: 'flame-outline' as IconName, label: t('common.streak'), value: streak || '0' },
+      { icon: 'checkmark-done-outline' as IconName, label: t('common.wears'), value: wearLogs.length },
     ],
-    [wardrobeItems.length, outfits.length, streak, wearLogs.length]
+    [wardrobeItems.length, outfits.length, streak, wearLogs.length, t]
   );
 
   const heroAnimStyle = useAnimatedStyle(() => ({
@@ -414,10 +420,10 @@ const ProfileScreen = () => {
   };
 
   const handleLogout = () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('profile.signOut'), t('profile.areYouSure'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Sign Out',
+        text: t('profile.signOut'),
         style: 'destructive',
         onPress: async () => {
           await AsyncStorage.removeItem('userToken');
@@ -428,23 +434,23 @@ const ProfileScreen = () => {
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert('Delete Account', 'Permanently delete your account and all associated data?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('profile.deleteAccount'), t('profile.permanentlyDelete'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: () =>
-          Alert.alert('Confirm Delete', 'This action cannot be undone.', [
-            { text: 'Keep Account', style: 'cancel' },
+          Alert.alert(t('profile.confirmDelete'), t('profile.cannotUndo'), [
+            { text: t('profile.keepAccount'), style: 'cancel' },
             {
-              text: 'Delete Everything',
+              text: t('profile.deleteEverything'),
               style: 'destructive',
               onPress: async () => {
                 try {
                   await deleteAccount();
                   await AsyncStorage.removeItem('userToken');
                 } catch (error: unknown) {
-                  Alert.alert('Error', getErrorMessage(error, 'Failed to delete account.'));
+                  Alert.alert(t('common.error'), getErrorMessage(error, 'Failed to delete account.'));
                 }
               },
             },
@@ -688,7 +694,7 @@ const ProfileScreen = () => {
         <GlassPanel style={styles.contentPanel}>
           <View style={styles.loadingBlock}>
             <ActivityIndicator color={D.accent} />
-            <Text style={styles.loadingText}>Loading your looks...</Text>
+            <Text style={styles.loadingText}>{t('common.loading')}</Text>
           </View>
         </GlassPanel>
       );
@@ -708,14 +714,14 @@ const ProfileScreen = () => {
                 <Ionicons name="sparkles-outline" size={28} color={D.accent} />
               </LinearGradient>
             </View>
-            <Text style={styles.emptyTitle}>No saved looks</Text>
+            <Text style={styles.emptyTitle}>{t('profile.noOutfits')}</Text>
             <Text style={styles.emptySubtitle}>
               Create looks with AI or save your favorite combinations from your wardrobe.
             </Text>
             <PrimaryGradientButton
-              label="New Look"
+              label={t('profile.new')}
               icon="sparkles"
-              onPress={() => navigation.navigate('AIOutfit')}
+              onPress={() => navigation.navigate('AIOutfit', { source: 'wardrobe' })}
               style={styles.emptyAction}
             />
           </View>
@@ -852,10 +858,10 @@ const ProfileScreen = () => {
             <View style={styles.heroTopRow}>
               <View style={styles.profileChip}>
                 <Ionicons name="person-circle-outline" size={14} color={D.textSub} />
-                <Text style={styles.profileChipText}>Account</Text>
+                <Text style={styles.profileChipText}>{t('profile.account')}</Text>
               </View>
 
-              <SecondaryGlassButton label="Edit" icon="create-outline" onPress={openEditProfile} />
+              <SecondaryGlassButton label={t('common.edit')} icon="create-outline" onPress={openEditProfile} />
             </View>
 
             <View style={styles.avatarWrapper}>
@@ -927,14 +933,14 @@ const ProfileScreen = () => {
             <View style={styles.heroActions}>
               {isPro ? (
                 <PrimaryGradientButton
-                  label="Manage Plan"
+                  label={t('common.upgrade')}
                   icon="diamond-outline"
                   onPress={() => navigation.navigate('Paywall')}
                   style={styles.heroActionPrimary}
                 />
               ) : (
                 <PrimaryGradientButton
-                  label="Go Pro"
+                  label={t('profile.goPro')}
                   icon="rocket-outline"
                   onPress={() => navigation.navigate('Paywall')}
                   style={styles.heroActionPrimary}
@@ -942,7 +948,7 @@ const ProfileScreen = () => {
               )}
 
               <SecondaryGlassButton
-                label="Insights"
+                label={t('profile.insights')}
                 icon="stats-chart-outline"
                 onPress={() => navigation.navigate('WardrobeAnalytics')}
                 style={styles.heroActionSecondary}
@@ -1010,18 +1016,18 @@ const ProfileScreen = () => {
         <Animated.View entering={FadeInDown.delay(100).duration(350)} style={styles.sectionBlock}>
           <View style={styles.sectionHeaderRow}>
             <View>
-              <Text style={styles.sectionEyebrow}>{activeTab === 'looks' ? 'STYLE' : 'TRAVEL'}</Text>
-              <Text style={styles.sectionTitle}>{activeTab === 'looks' ? 'Saved Looks' : 'Trips & Packing'}</Text>
+              <Text style={styles.sectionEyebrow}>{activeTab === 'looks' ? t('profile.style') : t('profile.travel')}</Text>
+              <Text style={styles.sectionTitle}>{activeTab === 'looks' ? t('profile.savedLooks') : t('profile.tripsAndPacking')}</Text>
             </View>
             {activeTab === 'looks' ? (
               <SecondaryGlassButton
-                label="New"
+                label={t('profile.new')}
                 icon="add-outline"
-                onPress={() => navigation.navigate('AIOutfit')}
+                onPress={() => navigation.navigate('AIOutfit', { source: 'wardrobe' })}
               />
             ) : (
               <SecondaryGlassButton
-                label="Open Calendar"
+                label={t('profile.openCalendar')}
                 icon="calendar-outline"
                 onPress={openTripPlanner}
               />
@@ -1036,13 +1042,13 @@ const ProfileScreen = () => {
           <GlassPanel radius={28}>
             <MenuRow
               icon="create-outline"
-              label="Edit Profile"
+              label={t('profile.editProfile')}
               onPress={openEditProfile}
             />
             <View style={styles.menuSeparator} />
             <MenuRow
               icon="stats-chart-outline"
-              label="Wardrobe Analytics"
+              label={t('profile.wardrobeAnalytics')}
               onPress={() => navigation.navigate('WardrobeAnalytics')}
             />
           </GlassPanel>
@@ -1053,7 +1059,7 @@ const ProfileScreen = () => {
           <GlassPanel radius={28}>
             <MenuRow
               icon="diamond-outline"
-              label="Subscription"
+              label={t('profile.subscription')}
               trailing={planLabel}
               onPress={() => navigation.navigate('Paywall')}
             />
@@ -1064,25 +1070,35 @@ const ProfileScreen = () => {
           <Text style={styles.groupHeading}>PREFERENCES</Text>
           <GlassPanel radius={28}>
             <MenuRow
+              icon="language-outline"
+              label={t('language.selectLanguage')}
+              trailing={LANGUAGE_NAMES[currentLanguage]}
+              onPress={() => {
+                triggerLightHaptic();
+                setShowLanguageModal(true);
+              }}
+            />
+            <View style={styles.menuSeparator} />
+            <MenuRow
               icon="notifications-outline"
-              label="Notifications"
+              label={t('profile.notifications')}
               onPress={() => Alert.alert('Coming soon', 'Notification settings are not available yet.')}
             />
             <View style={styles.menuSeparator} />
             <MenuRow
               icon="shield-checkmark-outline"
-              label="Privacy Policy"
+              label={t('profile.privacyPolicy')}
               onPress={() => navigation.navigate('PrivacyPolicy')}
             />
           </GlassPanel>
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(205).duration(350)} style={styles.sectionBlock}>
-          <Text style={styles.groupHeading}>SESSION</Text>
+          <Text style={styles.groupHeading}>{t('profile.session')}</Text>
           <GlassPanel radius={28}>
             <MenuRow
               icon="log-out-outline"
-              label="Sign Out"
+              label={t('profile.signOut')}
               onPress={handleLogout}
               danger
             />
@@ -1091,7 +1107,7 @@ const ProfileScreen = () => {
 
         <Animated.View entering={FadeInDown.delay(230).duration(350)} style={styles.deleteAccountWrap}>
           <SecondaryGlassButton
-            label="Delete Account"
+            label={t('profile.deleteAccount')}
             icon="trash-outline"
             onPress={handleDeleteAccount}
             danger
@@ -1134,8 +1150,8 @@ const ProfileScreen = () => {
               <View style={styles.sheetScrim} />
 
               <View style={styles.sheetHandle} />
-              <Text style={styles.sheetTitle}>Edit Account</Text>
-              <Text style={styles.sheetSubtitle}>Update your photo, name, and account details.</Text>
+              <Text style={styles.sheetTitle}>{t('profile.editAccount')}</Text>
+              <Text style={styles.sheetSubtitle}>{t('profile.updateDetails')}</Text>
 
               <TouchableOpacity style={styles.sheetAvatarWrap} activeOpacity={0.85} onPress={pickAvatar}>
                 <LinearGradient
@@ -1166,7 +1182,7 @@ const ProfileScreen = () => {
                 </View>
               </TouchableOpacity>
 
-              <Text style={styles.fieldLabel}>Name</Text>
+              <Text style={styles.fieldLabel}>{t('profile.name')}</Text>
               <View style={styles.fieldCard}>
                 <BlurView
                   intensity={Platform.OS === 'ios' ? 30 : 100}
@@ -1178,14 +1194,14 @@ const ProfileScreen = () => {
                   style={styles.fieldInput}
                   value={editName}
                   onChangeText={setEditName}
-                  placeholder="Enter username"
+                  placeholder={t('profile.enterUsername')}
                   placeholderTextColor={D.textMute}
                   autoCapitalize="none"
                   autoCorrect={false}
                 />
               </View>
 
-              <Text style={styles.fieldLabel}>Email</Text>
+              <Text style={styles.fieldLabel}>{t('profile.email')}</Text>
               <View style={styles.fieldCard}>
                 <BlurView
                   intensity={Platform.OS === 'ios' ? 30 : 100}
@@ -1195,19 +1211,19 @@ const ProfileScreen = () => {
                 <View style={styles.fieldScrim} />
                 <View style={styles.readonlyRow}>
                   <Ionicons name="mail-outline" size={16} color={D.textSub} />
-                  <Text style={styles.readonlyValue}>{userEmail || 'No email available'}</Text>
+                  <Text style={styles.readonlyValue}>{userEmail || t('profile.noEmail')}</Text>
                 </View>
               </View>
 
               <View style={styles.sheetActions}>
                 <PrimaryGradientButton
-                  label={saving ? 'Saving' : 'Save'}
+                  label={saving ? t('common.loading') : t('common.save')}
                   icon={saving ? 'time-outline' : 'checkmark-outline'}
                   onPress={handleSaveProfile}
                   style={styles.sheetPrimaryAction}
                 />
                 <SecondaryGlassButton
-                  label="Cancel"
+                  label={t('common.cancel')}
                   icon="close-outline"
                   onPress={() => setShowEditProfile(false)}
                   style={styles.sheetSecondaryAction}
@@ -1217,7 +1233,7 @@ const ProfileScreen = () => {
               {saving ? (
                 <View style={styles.savingRow}>
                   <ActivityIndicator size="small" color={D.accent} />
-                  <Text style={styles.savingText}>Saving updates...</Text>
+                  <Text style={styles.savingText}>{t('profile.savingUpdates')}</Text>
                 </View>
               ) : null}
             </View>
@@ -1301,12 +1317,12 @@ const ProfileScreen = () => {
                   ) : null}
 
                   <SecondaryGlassButton
-                    label={previewLook.isTryOn ? 'Remove' : 'Close'}
+                    label={previewLook.isTryOn ? 'Remove' : t('common.cancel')}
                     icon={previewLook.isTryOn ? 'trash-outline' : 'close-outline'}
                     onPress={() => {
                       if (previewLook.isTryOn) {
                         Alert.alert('Remove Look', 'Remove this AI try-on look?', [
-                          { text: 'Cancel', style: 'cancel' },
+                          { text: t('common.cancel'), style: 'cancel' },
                           {
                             text: 'Remove',
                             style: 'destructive',
@@ -1330,6 +1346,11 @@ const ProfileScreen = () => {
           </View>
         </Modal>
       ) : null}
+
+      <LanguageSwitcher
+        visible={showLanguageModal}
+        onClose={() => setShowLanguageModal(false)}
+      />
     </View>
   );
 };

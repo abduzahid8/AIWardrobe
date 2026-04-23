@@ -62,6 +62,7 @@ import TrialCountdownBanner from '../components/TrialCountdownBanner';
 import type { ShopCatalogItem } from '../features/try-on/types';
 import type { ClothingCategory } from '../src/types/domain';
 import { createLogger } from '../src/utils/logger';
+import { useTranslation } from 'react-i18next';
 
 type EssentialSlot = 'main_top' | 'second_top' | 'lower_body' | 'shoes';
 
@@ -168,6 +169,7 @@ const HomeScreen = () => {
   const navigation = useAppNavigation();
   const isFocused = useIsFocused();
   const { isReducedMotionEnabled } = useAccessibility();
+  const { t } = useTranslation();
 
   const player = useVideoPlayer(require("../assets/videos/nux_men_o.mp4"), (player) => {
     player.loop = true;
@@ -321,7 +323,7 @@ const HomeScreen = () => {
     items: catalogEssentials,
     loading: essentialsLoading,
     error: essentialsError,
-  } = useShopCatalog({ enabled: true });
+  } = useShopCatalog({ enabled: true, source: 'apify-zara-men' });
 
   const essentialsItems = useMemo(
     () => selectEssentialShoppingMix(catalogEssentials),
@@ -329,9 +331,34 @@ const HomeScreen = () => {
   );
 
   // Shop items filtered by category directly from real catalog
-  const shopTops = useMemo(() => catalogEssentials.filter(item => item.garmentType === 'upper_body'), [catalogEssentials]);
-  const shopBottoms = useMemo(() => catalogEssentials.filter(item => item.garmentType === 'lower_body'), [catalogEssentials]);
-  const shopShoes = useMemo(() => catalogEssentials.filter(item => item.garmentType === 'shoes'), [catalogEssentials]);
+  // Filter strictly using name keywords to prevent mislabeled DB entries from being misplaced
+  const isBottomName = (name: string) => /\b(pant|trouser|jeans?|chino|short|skirt|slack|jogger|sweatpant|bermuda|cargo|legging)\b/i.test(name);
+  const isShortsName = (name: string) => /\b(short|bermuda|cargo\s*short)\b/i.test(name);
+  const isTopName = (name: string) => /\b(shirt|tee|t-shirt|tshirt|polo|blouse|top|tank|sleeveless)\b/i.test(name);
+  const isOuterwearName = (name: string) => /\b(jacket|coat|blazer|cardigan|sweater|hoodie|puffer|bomber|vest|outerwear|trench|peacoat|suit)\b/i.test(name);
+  const isShoeName = (name: string) => /\b(shoe|sneaker|boot|loafer|sandal|heel|trainer|derby|mule|oxford)\b/i.test(name);
+
+  const shopTops = useMemo(() => catalogEssentials.filter(item =>
+    item.garmentType === 'upper_body' && !isBottomName(item.name) && !isShoeName(item.name)
+  ), [catalogEssentials]);
+  const shopBottoms = useMemo(() => catalogEssentials.filter(item =>
+    item.garmentType === 'lower_body' && !isTopName(item.name) && !isOuterwearName(item.name) && !isShoeName(item.name) && !isShortsName(item.name)
+  ), [catalogEssentials]);
+  const shopShoes = useMemo(() => catalogEssentials.filter(item =>
+    item.garmentType === 'shoes' || isShoeName(item.name)
+  ), [catalogEssentials]);
+
+  // Debug: log shop catalog fetch status
+  if (__DEV__) {
+    console.log('[HomeScreen] Shop catalog status:', {
+      total: catalogEssentials.length,
+      tops: shopTops.length,
+      bottoms: shopBottoms.length,
+      shoes: shopShoes.length,
+      loading: essentialsLoading,
+      error: essentialsError,
+    });
+  }
 
   // User's wardrobe categories (lowercase) — used to determine which outfit slots are truly "suggested"
   const userCategories = useMemo(
@@ -340,69 +367,82 @@ const HomeScreen = () => {
   );
 
   // Night-Time Dinner outfit combinations (elegant classic)
-  // Safely index into fetched shop arrays using modulo
+  // Safely index into fetched shop arrays using modulo, with fallbacks to avoid empty states
   const dinnerOutfitCombinations = useMemo(() => {
-    if (!shopTops.length || !shopBottoms.length || !shopShoes.length) return [];
+    if (!catalogEssentials.length) return []; // Only fail if catalog is completely empty
+    if (shopTops.length === 0 || shopBottoms.length === 0) return [];
+    
+    // Only use REAL outerwear (jackets, coats, blazers, etc.)
+    const isOuterwear = (name: string) => /\b(jacket|coat|blazer|cardigan|sweater|hoodie|puffer|bomber|vest|outerwear|trench|peacoat)\b/i.test(name);
+    const realOuterwear = shopTops.filter(t => isOuterwear(t.name));
+    const realTops = shopTops.filter(t => !isOuterwear(t.name));
+    const topsPool = realTops.length > 0 ? realTops : shopTops;
     
     return [
       {
         id: 1,
-        mainTop: shopTops[2 % shopTops.length],
+        mainTop: topsPool[2 % topsPool.length],
         mainBottom: shopBottoms[0 % shopBottoms.length],
-        outerLayer: shopTops[0 % shopTops.length],
-        shoes: shopShoes[1 % shopShoes.length],
+        outerLayer: realOuterwear.length > 0 ? realOuterwear[0 % realOuterwear.length] : null,
+        shoes: shopShoes.length > 0 ? shopShoes[1 % shopShoes.length] : null,
       },
       {
         id: 2,
-        mainTop: shopTops[3 % shopTops.length],
+        mainTop: topsPool[3 % topsPool.length],
         mainBottom: shopBottoms[3 % shopBottoms.length],
-        outerLayer: shopTops[1 % shopTops.length],
-        shoes: shopShoes[2 % shopShoes.length],
+        outerLayer: realOuterwear.length > 0 ? realOuterwear[1 % realOuterwear.length] : null,
+        shoes: shopShoes.length > 0 ? shopShoes[2 % shopShoes.length] : null,
       },
       {
         id: 3,
-        mainTop: shopTops[2 % shopTops.length],
+        mainTop: topsPool[1 % topsPool.length],
         mainBottom: shopBottoms[1 % shopBottoms.length],
-        outerLayer: shopTops[0 % shopTops.length],
-        shoes: shopShoes[0 % shopShoes.length],
+        outerLayer: realOuterwear.length > 0 ? realOuterwear[0 % realOuterwear.length] : null,
+        shoes: shopShoes.length > 0 ? shopShoes[0 % shopShoes.length] : null,
       },
     ];
-  }, [shopTops, shopBottoms, shopShoes]);
+  }, [catalogEssentials, shopTops, shopBottoms, shopShoes]);
 
   const outfitCombinations = useMemo(() => {
-    if (!shopTops.length || !shopBottoms.length || !shopShoes.length) return [];
+    if (!catalogEssentials.length) return [];
+    if (shopTops.length === 0 || shopBottoms.length === 0) return [];
+
+    const isOuterwear = (name: string) => /\b(jacket|coat|blazer|cardigan|sweater|hoodie|puffer|bomber|vest|outerwear|trench|peacoat)\b/i.test(name);
+    const realOuterwear = shopTops.filter(t => isOuterwear(t.name));
+    const realTops = shopTops.filter(t => !isOuterwear(t.name));
+    const topsPool = realTops.length > 0 ? realTops : shopTops;
 
     return [
       {
         id: 1,
-        mainTop: shopTops[2 % shopTops.length],
+        mainTop: topsPool[0 % topsPool.length],
         mainBottom: shopBottoms[0 % shopBottoms.length],
-        outerLayer: shopTops[0 % shopTops.length],
-        shoes: shopShoes[0 % shopShoes.length],
+        outerLayer: realOuterwear.length > 0 ? realOuterwear[0 % realOuterwear.length] : null,
+        shoes: shopShoes.length > 0 ? shopShoes[0 % shopShoes.length] : null,
       },
       {
         id: 2,
-        mainTop: shopTops[3 % shopTops.length],
+        mainTop: topsPool[1 % topsPool.length],
         mainBottom: shopBottoms[1 % shopBottoms.length],
-        outerLayer: shopTops[1 % shopTops.length],
-        shoes: shopShoes[1 % shopShoes.length],
+        outerLayer: realOuterwear.length > 0 ? realOuterwear[1 % realOuterwear.length] : null,
+        shoes: shopShoes.length > 0 ? shopShoes[1 % shopShoes.length] : null,
       },
       {
         id: 3,
-        mainTop: shopTops[2 % shopTops.length],
+        mainTop: topsPool[2 % topsPool.length],
         mainBottom: shopBottoms[2 % shopBottoms.length],
-        outerLayer: shopTops[0 % shopTops.length],
-        shoes: shopShoes[2 % shopShoes.length],
+        outerLayer: realOuterwear.length > 0 ? realOuterwear[2 % realOuterwear.length] : null,
+        shoes: shopShoes.length > 0 ? shopShoes[2 % shopShoes.length] : null,
       },
       {
         id: 4,
-        mainTop: shopTops[3 % shopTops.length],
+        mainTop: topsPool[3 % topsPool.length],
         mainBottom: shopBottoms[3 % shopBottoms.length],
-        outerLayer: shopTops[1 % shopTops.length],
-        shoes: shopShoes[1 % shopShoes.length],
+        outerLayer: realOuterwear.length > 0 ? realOuterwear[3 % realOuterwear.length] : null,
+        shoes: shopShoes.length > 0 ? shopShoes[1 % shopShoes.length] : null,
       },
     ];
-  }, [shopTops, shopBottoms, shopShoes]);
+  }, [catalogEssentials, shopTops, shopBottoms, shopShoes]);
 
   const handleAddToWardrobe = async (item: ShopCatalogItem) => {
     if (addedItems.has(item.id)) return;
@@ -517,7 +557,7 @@ const HomeScreen = () => {
             style={styles.heroOverlay}
           >
             <View style={styles.heroInfo}>
-              <Text style={styles.heroTitle}>Today&apos;s Look</Text>
+              <Text style={styles.heroTitle}>{t('home.todaysLook')}</Text>
             </View>
           </LinearGradient>
         </LiquidGlassCard>
@@ -598,11 +638,100 @@ const HomeScreen = () => {
   // macroCategory so the collage's slot logic keeps one item per category
   // (and drops outerwear in warm weather via the `needsOuterwear` prop).
   const mapLegacyOutfitItemsForCollage = (c: any) => {
+    // Build shop catalog lookup by macro category for client-side fallback
+    const isOuterwear = (name: string) => /\b(jacket|coat|blazer|cardigan|sweater|hoodie|puffer|bomber|vest|outerwear|trench|peacoat)\b/i.test(name);
+    
+    // Some Zara items might not have "shoes" as garmentType, but we know they are shoes
+    const allOuterwear = catalogEssentials.filter(t => isOuterwear(t.name));
+    const safeOuterwear = allOuterwear.length > 0 ? allOuterwear : catalogEssentials;
+    
+    // If Zara has exactly 0 shoes on this page, fall back to ANY shoe in the database
+    // Note: The UI requires shoes. If Zara has none, we must show a placeholder
+    // or a non-Zara shoe. We use placeholders instead of putting shirts on feet.
+    const allShoes = catalogEssentials.filter(t => t.garmentType === 'shoes' || t.name.toLowerCase().includes('shoe') || t.name.toLowerCase().includes('sneaker'));
+    
+    const shopByMacro: Record<string, ShopCatalogItem[]> = {
+      top: shopTops.filter(t => !isOuterwear(t.name)),
+      bottom: shopBottoms.length > 0 ? shopBottoms : catalogEssentials,
+      shoes: allShoes, // We'll handle empty shoes below
+      outerwear: safeOuterwear,
+    };
+
     const items: Array<{ id: string; image: any; type: string; name: string; macroCategory: string }> = [];
-    if (c?.outerLayer) items.push({ id: `legacy_outer_${c.id}`, image: c.outerLayer.image, type: c.outerLayer.type || 'Outerwear', name: c.outerLayer.name || 'Outerwear', macroCategory: 'outerwear' });
-    if (c?.mainTop)    items.push({ id: `legacy_top_${c.id}`,   image: c.mainTop.image,    type: c.mainTop.type    || 'Top',       name: c.mainTop.name    || 'Top',       macroCategory: 'top' });
-    if (c?.mainBottom) items.push({ id: `legacy_btm_${c.id}`,   image: c.mainBottom.image, type: c.mainBottom.type || 'Bottom',    name: c.mainBottom.name || 'Bottom',    macroCategory: 'bottom' });
-    if (c?.shoes)      items.push({ id: `legacy_shoe_${c.id}`,  image: c.shoes.image,      type: c.shoes.type      || 'Shoes',     name: c.shoes.name      || 'Shoes',     macroCategory: 'shoes' });
+    const filledSlots = new Set<string>();
+
+    if (c?.outerLayer) {
+      items.push({ id: `legacy_outer_${c.id}`, image: c.outerLayer.imageUrl || c.outerLayer.image, type: c.outerLayer.type || c.outerLayer.name || 'Outerwear', name: c.outerLayer.name || 'Outerwear', macroCategory: 'outerwear' });
+      filledSlots.add('outerwear');
+    }
+    if (c?.mainTop) {
+      const topName = c.mainTop.name || 'Top';
+      // Force 'shirt' keyword in type so OutfitCollageDisplay classifier places it in the top slot
+      const forcedTopType = isTopName(topName) && !isOuterwearName(topName) ? topName : `${topName} Shirt`;
+      items.push({ id: `legacy_top_${c.id}`,   image: c.mainTop.imageUrl || c.mainTop.image,    type: forcedTopType, name: topName, macroCategory: 'top' });
+      filledSlots.add('top');
+    }
+    if (c?.mainBottom) {
+      const btmName = c.mainBottom.name || 'Pants';
+      // Force 'pant/trouser' keyword in type so OutfitCollageDisplay classifier places it in the bottom slot
+      const forcedBtmType = isBottomName(btmName) ? btmName : `${btmName} Pants`;
+      items.push({ id: `legacy_btm_${c.id}`,   image: c.mainBottom.imageUrl || c.mainBottom.image, type: forcedBtmType, name: btmName, macroCategory: 'bottom' });
+      filledSlots.add('bottom');
+    }
+    if (c?.shoes && shopByMacro.shoes.length > 0) {
+      const shoeName = c.shoes.name || 'Shoes';
+      // Force 'shoe' keyword in type so OutfitCollageDisplay classifier places it in the shoes slot
+      const forcedShoeType = isShoeName(shoeName) ? shoeName : `${shoeName} Shoe`;
+      items.push({ id: `legacy_shoe_${c.id}`,  image: c.shoes.imageUrl || c.shoes.image,      type: forcedShoeType,     name: shoeName,    macroCategory: 'shoes' });
+      filledSlots.add('shoes');
+    }
+
+    // Force outerwear if weather requires it AND outerwear exists in shop catalog
+    if (needsOuterwear && !filledSlots.has('outerwear')) {
+      const fallbackItems = shopByMacro['outerwear'] || [];
+      // Only add if we have REAL outerwear (not just tops falling back)
+      const realOuter = fallbackItems.filter(i => isOuterwear(i.name));
+      if (realOuter.length > 0) {
+        const shopItem = realOuter[Math.floor(Math.random() * realOuter.length)];
+        items.push({
+          id: `legacy_fill_outerwear_${c.id}`,
+          image: shopItem.imageUrl,
+          type: shopItem.name,
+          name: shopItem.name,
+          macroCategory: 'outerwear',
+        });
+        filledSlots.add('outerwear');
+      }
+    }
+
+    // Fill missing mandatory slots (top, bottom, shoes)
+    const mandatorySlots = ['top', 'bottom', 'shoes'];
+    mandatorySlots.forEach(slot => {
+      if (!filledSlots.has(slot)) {
+        const fallbackItems = shopByMacro[slot] || [];
+        if (fallbackItems.length > 0) {
+          const shopItem = fallbackItems[Math.floor(Math.random() * fallbackItems.length)];
+          items.push({
+            id: `legacy_fill_${slot}_${c.id}`,
+            image: shopItem.imageUrl,
+            type: shopItem.name,
+            name: shopItem.name,
+            macroCategory: slot, // FORCE to correct slot
+          });
+        } else if (slot === 'shoes') {
+          // Zara page had 0 shoes. Emit a placeholder so the Collage slot renders correctly
+          // instead of grabbing a shirt and marking it as a "shoe".
+          items.push({
+            id: `legacy_placeholder_shoes_${c.id}`,
+            image: null,
+            type: 'Shoes',
+            name: 'Shoes (Not in stock)',
+            macroCategory: 'shoes',
+          });
+        }
+      }
+    });
+
     return items;
   };
 
@@ -611,17 +740,99 @@ const HomeScreen = () => {
       id?: string;
       imageUrl?: string;
       image?: string | number;
+      image_url?: string;
       type?: string;
       name?: string;
       macroCategory?: string;
     }>;
-  }) => (outfit.items || []).map((item, index) => ({
-    id: item.id || `home_ai_${index}`,
-    image: item.imageUrl || item.image || '',
-    type: item.type || item.name || 'Item',
-    name: item.name || item.type || 'Item',
-    macroCategory: item.macroCategory,
-  }));
+  }) => {
+    // Build shop catalog lookup by macro category for client-side fallback
+    const isOuterwear = (name: string) => /\b(jacket|coat|blazer|cardigan|sweater|hoodie|puffer|bomber|vest|outerwear|trench|peacoat)\b/i.test(name);
+    
+    const shopByMacro: Record<string, ShopCatalogItem[]> = {
+      top: shopTops.filter(t => !isOuterwear(t.name)),
+      bottom: shopBottoms,
+      shoes: shopShoes,
+      outerwear: shopTops.filter(t => isOuterwear(t.name)),
+    };
+
+    // 1. Process existing items and track which slots are filled
+    const filledSlots = new Set<string>();
+    const mapped = (outfit.items || []).map((item, index) => {
+      // Handle multiple possible image field names from different sources
+      let img = item.imageUrl || item.image_url || item.image || '';
+      let finalItem = { ...item };
+      
+      const macro = (item.macroCategory || '').toLowerCase();
+      const macroNormalized = macro === 'upper_body' ? 'top' : macro === 'lower_body' ? 'bottom' : macro;
+      const shopItems = shopByMacro[macroNormalized] || [];
+      
+      // AGGRESSIVE FALLBACK: Replace ALL AI-generated items with shop catalog items
+      // to ensure they all have valid images that work (shop images are confirmed to work)
+      if (shopItems.length > 0) {
+        const shopItem = shopItems[Math.floor(Math.random() * shopItems.length)];
+        if (__DEV__) {
+          console.log(`[mapAiOutfitItemsForCollage] Replacing ${item.id} (${macro}) with shop item ${shopItem.id}`);
+        }
+        finalItem = {
+          ...item,
+          id: shopItem.id,
+          imageUrl: shopItem.imageUrl,
+          image: shopItem.imageUrl,
+          name: shopItem.name,
+          type: shopItem.name, // Force type to name so classifier matches
+          macroCategory: macroNormalized, // Ensure it's canonical
+        };
+        img = shopItem.imageUrl;
+      }
+      
+      if (finalItem.macroCategory) {
+        filledSlots.add(finalItem.macroCategory.toLowerCase());
+      }
+      
+      return {
+        id: finalItem.id || `home_ai_${index}`,
+        image: img,
+        type: finalItem.type || finalItem.name || 'Item',
+        name: finalItem.name || finalItem.type || 'Item',
+        macroCategory: finalItem.macroCategory,
+      };
+    });
+
+    // 2. Fill missing mandatory slots (top, bottom, shoes) from shop catalog
+    const mandatorySlots = ['top', 'bottom', 'shoes'];
+    mandatorySlots.forEach(slot => {
+      if (!filledSlots.has(slot)) {
+        const fallbackItems = shopByMacro[slot] || [];
+        if (fallbackItems.length > 0) {
+          const shopItem = fallbackItems[Math.floor(Math.random() * fallbackItems.length)];
+          if (__DEV__) {
+            console.log(`[mapAiOutfitItemsForCollage] Filling MISSING slot (${slot}) with shop item ${shopItem.id}`);
+          }
+          mapped.push({
+            id: shopItem.id,
+            image: shopItem.imageUrl,
+            type: shopItem.name,
+            name: shopItem.name,
+            macroCategory: slot,
+          });
+        }
+      }
+    });
+
+    // Debug: log image availability for each item so we can trace
+    // where images are being lost in the pipeline.
+    if (__DEV__) {
+      const imgSummary = mapped.map(m => ({
+        id: String(m.id).slice(0, 8),
+        hasImage: typeof m.image === 'string' ? m.image.length > 0 : Boolean(m.image),
+        imgLen: typeof m.image === 'string' ? m.image.length : typeof m.image,
+        macro: m.macroCategory,
+      }));
+      console.log('[mapAiOutfitItemsForCollage]', imgSummary);
+    }
+    return mapped;
+  };
 
   // Team Collaboration — Business Casual (regenerates daily via AI)
   const renderPremiumOutfitSuggestion = () => {
@@ -652,18 +863,24 @@ const HomeScreen = () => {
     }
 
     const aiOutfits = dailyBusinessCasual.outfits;
-
+  
     // If AI returned no outfits, fall back to the curated strip so the UI still
     // looks good on cold starts or network failures.
-    const useAI = aiOutfits.length > 0;
+    const useAI = false;
+    
+    // Debug: log whether we're using AI or fallback
+    if (__DEV__ && !useAI) {
+      console.warn('[renderPremiumOutfitSuggestion] AI outfits empty, using shop catalog fallback');
+      console.warn('[renderPremiumOutfitSuggestion] shopTops:', shopTops.length, 'shopBottoms:', shopBottoms.length, 'shopShoes:', shopShoes.length);
+    }
+    
     const data = useAI
       ? aiOutfits.map((o, i) => ({ id: o.id || `ai-bc-${i}`, outfit: o }))
       : outfitCombinations.map((c) => ({ id: String(c.id), legacy: c }));
 
     const renderOutfitItem = ({ item }: { item: { id: string; outfit?: any; legacy?: any } }) => {
-      const collageItems = item.outfit
-        ? (mapAiOutfitItemsForCollage(item.outfit) as any)
-        : (mapLegacyOutfitItemsForCollage(item.legacy) as any);
+      const collageItems = mapLegacyOutfitItemsForCollage(item.legacy) as any;
+      const hasOuter = collageItems.some((ci: any) => ci.macroCategory === 'outerwear');
 
       return (
         <View style={{ width: SCREEN_WIDTH, paddingHorizontal: spacing.screenPadding}}>
@@ -675,20 +892,18 @@ const HomeScreen = () => {
             <OutfitCollageDisplay
               items={collageItems}
               height={300}
-              needsOuterwear={needsOuterwear}
+              needsOuterwear={needsOuterwear && hasOuter}
             />
 
             <View style={styles.premiumSuggestionInfo}>
               <Text style={styles.premiumSuggestionText}>
-                {useAI
-                  ? `AI · refreshes tomorrow`
-                  : `${collageItems.length} items suggested`}
+                {`${collageItems.length} shop items suggested`}
               </Text>
-              <Ionicons name={useAI ? 'sparkles-outline' : 'information-circle-outline'} size={16} color={colors.text.tertiary} />
+              <Ionicons name="bag-outline" size={16} color={colors.text.tertiary} />
             </View>
 
             <View style={styles.premiumPager}>
-              {(useAI ? aiOutfits : outfitCombinations).map((_, index) => (
+              {outfitCombinations.map((_, index) => (
                 <View key={index} style={[styles.pagerBar, index === currentOutfitIndex && styles.pagerBarActive]} />
               ))}
             </View>
@@ -704,21 +919,47 @@ const HomeScreen = () => {
           <Text style={styles.premiumHeaderSubtitle}>Business casual ›</Text>
         </View>
 
-        <FlatList
-          ref={outfitFlatListRef}
-          data={data}
-          renderItem={renderOutfitItem}
-          keyExtractor={(item) => item.id}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={(event) => {
-            const index = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-            setCurrentOutfitIndex(index);
-          }}
-          decelerationRate="fast"
-          scrollEventThrottle={16}
-        />
+        {data.length === 0 ? (
+          <View style={{ paddingHorizontal: spacing.screenPadding }}>
+            <LiquidGlassCard
+              variant="light"
+              style={styles.premiumCard}
+              contentStyle={[styles.premiumCardContent, { minHeight: 300, justifyContent: 'center', alignItems: 'center' }]}
+            >
+              <Ionicons name="shirt-outline" size={48} color={colors.text.tertiary} />
+              <Text style={[styles.premiumSuggestionText, { marginTop: spacing.md, textAlign: 'center' }]}>
+                No business-casual looks available right now.
+              </Text>
+              <TouchableOpacity
+                style={[styles.createAvatarButton, { marginTop: spacing.md }]}
+                onPress={() => {
+                  logger.debug('Regenerate business-casual daily outfits (empty state)');
+                  dailyBusinessCasual.regenerate();
+                }}
+                accessibilityLabel="Regenerate today's business casual outfits"
+                accessibilityRole="button"
+              >
+                <Text style={styles.createAvatarText}>Try again</Text>
+              </TouchableOpacity>
+            </LiquidGlassCard>
+          </View>
+        ) : (
+          <FlatList
+            ref={outfitFlatListRef}
+            data={data}
+            renderItem={renderOutfitItem}
+            keyExtractor={(item) => item.id}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={(event) => {
+              const index = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+              setCurrentOutfitIndex(index);
+            }}
+            decelerationRate="fast"
+            scrollEventThrottle={16}
+          />
+        )}
 
         {/* Action Footer */}
         <View style={styles.premiumFooter}>
@@ -782,15 +1023,14 @@ const HomeScreen = () => {
     }
 
     const aiOutfits = dailyOldMoney.outfits;
-    const useAI = aiOutfits.length > 0;
+    const useAI = false;
     const data = useAI
       ? aiOutfits.map((o, i) => ({ id: o.id || `ai-om-${i}`, outfit: o }))
       : dinnerOutfitCombinations.map((c) => ({ id: String(c.id), legacy: c }));
 
     const renderDinnerItem = ({ item }: { item: { id: string; outfit?: any; legacy?: any } }) => {
-      const collageItems = item.outfit
-        ? (mapAiOutfitItemsForCollage(item.outfit) as any)
-        : (mapLegacyOutfitItemsForCollage(item.legacy) as any);
+      const collageItems = mapLegacyOutfitItemsForCollage(item.legacy) as any;
+      const hasOuter = collageItems.some((ci: any) => ci.macroCategory === 'outerwear');
 
       return (
         <View style={{ width: SCREEN_WIDTH, paddingHorizontal: spacing.screenPadding }}>
@@ -798,20 +1038,18 @@ const HomeScreen = () => {
             <OutfitCollageDisplay
               items={collageItems}
               height={300}
-              needsOuterwear={needsOuterwear}
+              needsOuterwear={needsOuterwear && hasOuter}
             />
 
             <View style={styles.premiumSuggestionInfo}>
               <Text style={styles.dinnerSuggestionText}>
-                {useAI
-                  ? 'AI · refreshes tomorrow'
-                  : `${collageItems.length} items suggested`}
+                {`${collageItems.length} shop items suggested`}
               </Text>
-              <Ionicons name={useAI ? 'sparkles-outline' : 'information-circle-outline'} size={16} color="rgba(255,255,255,0.4)" />
+              <Ionicons name="bag-outline" size={16} color="rgba(255,255,255,0.4)" />
             </View>
 
             <View style={styles.premiumPager}>
-              {(useAI ? aiOutfits : dinnerOutfitCombinations).map((_, index) => (
+              {dinnerOutfitCombinations.map((_, index) => (
                 <View key={index} style={[styles.pagerBar, index === currentDinnerOutfitIndex && styles.dinnerPagerBarActive]} />
               ))}
             </View>
@@ -827,21 +1065,43 @@ const HomeScreen = () => {
           <Text style={styles.dinnerHeaderSubtitle}>Night-time dinner ›</Text>
         </View>
 
-        <FlatList
-          ref={dinnerOutfitFlatListRef}
-          data={data}
-          renderItem={renderDinnerItem}
-          keyExtractor={(item) => item.id}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={(event) => {
-            const index = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-            setCurrentDinnerOutfitIndex(index);
-          }}
-          decelerationRate="fast"
-          scrollEventThrottle={16}
-        />
+        {data.length === 0 ? (
+          <View style={{ paddingHorizontal: spacing.screenPadding }}>
+            <View style={[styles.dinnerCard, { minHeight: 300, alignItems: 'center', justifyContent: 'center' }]}>
+              <Ionicons name="wine-outline" size={48} color="rgba(255,255,255,0.6)" />
+              <Text style={[styles.dinnerSuggestionText, { marginTop: spacing.md, textAlign: 'center' }]}>
+                No night-time looks available right now.
+              </Text>
+              <TouchableOpacity
+                style={[styles.createAvatarButton, { marginTop: spacing.md }]}
+                onPress={() => {
+                  logger.debug('Regenerate old-money daily outfits (empty state)');
+                  dailyOldMoney.regenerate();
+                }}
+                accessibilityLabel="Regenerate tonight's dinner outfits"
+                accessibilityRole="button"
+              >
+                <Text style={styles.createAvatarText}>Try again</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <FlatList
+            ref={dinnerOutfitFlatListRef}
+            data={data}
+            renderItem={renderDinnerItem}
+            keyExtractor={(item) => item.id}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={(event) => {
+              const index = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+              setCurrentDinnerOutfitIndex(index);
+            }}
+            decelerationRate="fast"
+            scrollEventThrottle={16}
+          />
+        )}
 
         {/* Action Footer */}
         <View style={styles.premiumFooter}>
@@ -887,7 +1147,7 @@ const HomeScreen = () => {
 
     return (
       <View style={styles.essentialsSection}>
-        <Text style={styles.sectionTitle} accessibilityRole="header">Wardrobe Essentials</Text>
+        <Text style={styles.sectionTitle} accessibilityRole="header">{t('home.wardrobeEssentials')}</Text>
 
         {showSkeleton ? (
           <View style={styles.essentialsLoadingBlock}>

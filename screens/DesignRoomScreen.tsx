@@ -32,6 +32,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import AppColors from '../constants/AppColors';
 import { CelebrityClothingCard } from '../components/ui';
+import { useTranslation } from 'react-i18next';
 
 const { width, height } = Dimensions.get('window');
 
@@ -159,6 +160,7 @@ const ToolbarButton = ({ icon, label, onPress, isActive = false }: {
 
 const DesignRoomScreen = () => {
   const navigation = useNavigation();
+  const { t } = useTranslation();
   const [clothingItems, setClothingItems] = useState<DetectedClothingItem[]>([]);
 
   // Celebrity outfit recognition state
@@ -182,7 +184,7 @@ const DesignRoomScreen = () => {
 
   const handleAI = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    (navigation as any).navigate('AIOutfit');
+    (navigation as any).navigate('AIOutfit', { source: 'wardrobe' });
   };
 
   const handleNext = () => {
@@ -367,7 +369,7 @@ const DesignRoomScreen = () => {
           style={styles.header}
         >
           <View style={styles.headerLeft}>
-            <Text style={styles.headerTitle}>Style Room</Text>
+            <Text style={styles.headerTitle}>{t('designRoom.title')}</Text>
             <Text style={styles.headerDate}>{currentDate}</Text>
           </View>
 
@@ -383,7 +385,7 @@ const DesignRoomScreen = () => {
                 style={styles.saveAllButton}
                 onPress={handleSaveAll}
               >
-                <Text style={styles.saveAllText}>Save All</Text>
+                <Text style={styles.saveAllText}>{t('common.saveAll')}</Text>
                 <Ionicons name="checkmark-circle" size={16} color="#fff" />
               </TouchableOpacity>
             </View>
@@ -461,7 +463,7 @@ const DesignRoomScreen = () => {
               style={styles.emptyState}
             >
               <FloatingShirtIcon />
-              <Text style={styles.emptyTitle}>Create Your Outfit</Text>
+              <Text style={styles.emptyTitle}>{t('designRoom.createOutfit')}</Text>
               <Text style={styles.emptyText}>
                 Add clothes from your wardrobe or{'\n'}scan new items to get started
               </Text>
@@ -473,7 +475,7 @@ const DesignRoomScreen = () => {
                   onPress={handleUploadCelebrity}
                 >
                   <Ionicons name="star" size={20} color="#FFD700" />
-                  <Text style={styles.quickActionText}>Celebrity Look</Text>
+                  <Text style={styles.quickActionText}>{t('designRoom.celebrityLook')}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -481,7 +483,7 @@ const DesignRoomScreen = () => {
                   onPress={handleScanVideo}
                 >
                   <Ionicons name="camera-outline" size={20} color={ALTA.primary} />
-                  <Text style={styles.quickActionText}>Scan Wardrobe</Text>
+                  <Text style={styles.quickActionText}>{t('designRoom.scanWardrobe')}</Text>
                 </TouchableOpacity>
               </View>
 
@@ -490,7 +492,7 @@ const DesignRoomScreen = () => {
                 onPress={handleAI}
               >
                 <Ionicons name="sparkles-outline" size={20} color={ALTA.accent} />
-                <Text style={styles.aiSuggestText}>AI Suggest Outfit</Text>
+                <Text style={styles.aiSuggestText}>{t('designRoom.aiSuggestOutfit')}</Text>
               </TouchableOpacity>
             </Animated.View>
           )}

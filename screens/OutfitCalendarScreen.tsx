@@ -23,6 +23,7 @@ import {
 import { OutfitLogForm } from '../features/calendar/components/OutfitLogForm';
 import { type OutfitItem, type WardrobeItem, matchesCategory } from '../features/calendar/types';
 import { shoppingService, type Product } from '../src/services/shoppingService';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PAGE_PADDING = 20;
@@ -64,6 +65,7 @@ const formatItemName = (item: OutfitItem | null) => item?.name || item?.type || 
 
 const OutfitCalendarScreen = () => {
     const navigation = useAppNavigation();
+    const { t } = useTranslation();
     const cal = useOutfitCalendar();
 
     const storeItems = useWardrobeStore((state) => state.items);
@@ -223,7 +225,7 @@ const OutfitCalendarScreen = () => {
             ) : (
                 <View style={styles.previewEmpty}>
                     <Text style={styles.previewEmptyLabel}>{label}</Text>
-                    <Text style={styles.previewEmptyHint}>Not added</Text>
+                    <Text style={styles.previewEmptyHint}>{t('calendar.notAdded')}</Text>
                 </View>
             )}
 
@@ -278,7 +280,7 @@ const OutfitCalendarScreen = () => {
                     <Animated.View entering={FadeIn.duration(220)} style={styles.plannerCard}>
                         <View style={styles.plannerHeader}>
                             <View style={styles.plannerCopy}>
-                                <Text style={styles.plannerTitle}>Plan looks</Text>
+                                <Text style={styles.plannerTitle}>{t('calendar.planLooks')}</Text>
                             </View>
 
                             <TouchableOpacity style={styles.openDayButton} onPress={openSelectedDay}>
@@ -436,7 +438,7 @@ const OutfitCalendarScreen = () => {
 
                             {selectedSlots.extras.length > 0 && (
                                 <View style={styles.extraSection}>
-                                    <Text style={styles.extraTitle}>Extras</Text>
+                                    <Text style={styles.extraTitle}>{t('calendar.extras')}</Text>
                                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                                         {selectedSlots.extras.map((item) => (
                                             <View key={item.id} style={styles.extraCard}>
@@ -476,19 +478,20 @@ const OutfitCalendarScreen = () => {
                                         onPress={() => cal.confirmDelete(selectedDateKey)}
                                     >
                                         <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                                        <Text style={styles.secondaryActionDangerText}>Delete</Text>
+                                        <Text style={styles.secondaryActionDangerText}>{t('common.delete')}</Text>
                                     </TouchableOpacity>
                                 ) : (
                                     <TouchableOpacity
                                         style={styles.secondaryAction}
                                         onPress={() =>
                                             navigation.navigate('AIOutfit', {
+                                                source: 'wardrobe',
                                                 calendarDate: selectedDateKey,
                                             })
                                         }
                                     >
                                         <Ionicons name="sparkles-outline" size={18} color="#0F172A" />
-                                        <Text style={styles.secondaryActionText}>Create with AI</Text>
+                                        <Text style={styles.secondaryActionText}>{t('calendar.createWithAI')}</Text>
                                     </TouchableOpacity>
                                 )}
                             </View>

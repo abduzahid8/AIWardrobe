@@ -9,7 +9,11 @@
         "back": "Orqaga",
         "loading": "Yuklanmoqda...",
         "error": "Xato",
-        "success": "Muvaffaqiyatli"
+        "success": "Muvaffaqiyatli",
+        "items": "Narsalar",
+        "looks": "Kiyimlar",
+        "streak": "Ketma-ketlik",
+        "wears": "Kiyilganlar"
     },
     "home": {
         "title": "Kiyimlar",
@@ -21,6 +25,13 @@
         "askAI": "AI dan so'rash",
         "yourWeek": "Sizning haftangiz",
         "planner": "Rejalashtiruvchi",
+        "wardrobeEssentials": "Shkaf asoslari",
+        "loadingEssentials": "Asoslar yuklanmoqda...",
+        "noEssentials": "Asoslar mavjud emas",
+        "teamCollaboration": "Jamoa ishlashi",
+        "businessCasual": "Biznes uslub",
+        "nightTimeDinner": "Kechki ovqat",
+        "dinner": "Kechki ovqat",
         "popularThisWeek": "Bu hafta mashhur",
         "more": "Ko'proq",
         "weather": {
@@ -60,7 +71,36 @@
             "outerwear": "Ustki kiyim"
         },
         "noClothes": "Bu toifada kiyim yo'q",
-        "noOutfits": "Saqlangan liboslar yo'q"
+        "noOutfits": "Saqlangan liboslar yo'q",
+        "account": "Akkaunt",
+        "goPro": "Pro ga o'tish",
+        "insights": "Tahlillar",
+        "style": "STIL",
+        "travel": "SAYOHAT",
+        "savedLooks": "Saqlangan liboslar",
+        "tripsAndPacking": "Safar va yig'ish",
+        "new": "Yangi",
+        "openCalendar": "Kalanderni ochish",
+        "wardrobeAnalytics": "Shkaf tahlili",
+        "subscription": "Obuna",
+        "notifications": "Bildirishnomalar",
+        "privacyPolicy": "Maxfiylik siyosati",
+        "session": "SESSIYA",
+        "signOut": "Chiqish",
+        "deleteAccount": "Akkauntni o'chirish",
+        "editAccount": "Akkauntni tahrirlash",
+        "updateDetails": "Rasm, nom va akkaunt ma'lumotlarini yangilang.",
+        "name": "Ism",
+        "email": "Elektron pochta",
+        "enterUsername": "Foydalanuvchi nomini kiriting",
+        "noEmail": "Elektron pochta mavjud emas",
+        "savingUpdates": "Yangilanishlar saqlanmoqda...",
+        "keepAccount": "Akkauntni saqlash",
+        "deleteEverything": "Hammasini o'chirish",
+        "confirmDelete": "O'chirishni tasdiqlash",
+        "permanentlyDelete": "Akkauntni va barcha bog'liq ma'lumotlarni abadiy o'chirmoqchimisiz?",
+        "cannotUndo": "Bu amalni bekor qilib bo'lmaydi.",
+        "areYouSure": "Chiqishni xohlaysizmi?"
     },
     "addOutfit": {
         "title": "Libos qo'shish",
@@ -102,6 +142,12 @@
         "selectItem": "Kiyimni tanlang",
         "loadingWardrobe": "Shkafingiz yuklanmoqda...",
         "noWardrobeItems": "Shkafda hali hech narsa yo'q",
+        "featureName": "AI virtual sinab ko'rish",
+        "tagline": "O'zingizning realistik modelida har qanday kiyimni ko'ring — kiyishdan oldin.",
+        "bullet1": "Cheksiz fotoralistik sinab ko'rishlar",
+        "bullet2": "Shkafingizni + do'kon narsalarini bir modelda aralashtiring",
+        "bullet3": "Sekundlarda do'stlaringiz bilan turlarni baham ko'ring",
+        "bullet4": "Prioritet AI modeli — eng yuqori sifatli renderlar",
         "scanWardrobe": "Shkafni skanerlash",
         "selected": "tanlangan",
         "generating": "Yangi ko'rinish yaratilmoqda...",
@@ -159,6 +205,390 @@
         "russian": "Rus",
         "uzbek": "O'zbek"
     },
+    "aiHub": {
+        "heroTitle": "Ishonch bilan\ntaying",
+        "heroSubtitle": "Sizni tushunadigan AI stilist — shkafingizdagi kiyimlardan to sevadigan liboslaringizgacha.",
+        "talkToStylist": "AI stilist bilan suhbatlashish",
+        "styleGoal": "Stil maqsadingiz nima?",
+        "getStarted": "Boshlash"
+    },
+    "outfitMaker": {
+        "yourOutfits": "Sizning liboslaringiz",
+        "saveToCalendar": "Kalanderga saqlash",
+        "pickDate": "Bu libos uchun sanani tanlang",
+        "addToCalendar": "Kalanderga qo'shish",
+        "saveOutfit": "Libosni saqlash",
+        "aiStylist": "AI stilist",
+        "whereGoing": "Qayera ketayapsiz?"
+    },
+    "paywall": {
+        "heroTitle": "Sizning stilingiz ochilgan.",
+        "restorePurchases": "Xaridlarni tiklash"
+    },
+    "promo": {
+        "heroTitle": "Bepul sinov muddatini oching",
+        "heroSubtitle": "Promokodni kiriting va barcha Pro funksiyalariga 7 kunlik bepul kirish huquqini qo'lga kiriting.",
+        "enterCodeLabel": "PROMOKOD",
+        "placeholder": "Kodingizni kiriting",
+        "redeem": "Sinov muddatini faollashtirish",
+        "or": "YOKI",
+        "goPro": "Pro'ga yangilash",
+        "goProSubtitle": "Darhol cheksiz kirish oling",
+        "skip": "Hozircha o'tkazib yuborish",
+        "enterCode": "Iltimos, promokodni kiriting",
+        "invalidCode": "Noto'g'ri yoki muddati o'tgan promokod",
+        "trialActivated": "Sinov muddati faollashtirildi!",
+        "trialActivatedMessage": "Sizning {{days}} kunlik bepul sinov muddatingiz faollashtirildi. Pro'ning to'liq imkoniyatlaridan bahramand bo'ling!"
+    },
+    "analytics": {
+        "title": "Shkaf tahlili",
+        "utilized": "Foydalanilgan",
+        "totalItems": "Jami narsalar",
+        "totalWears": "Jami kiyishlar",
+        "avgItem": "O'rtacha/narsa",
+        "dayStreak": "Kun seriyasi",
+        "styleDiversity": "Stil xilma-xilligi",
+        "mostWorn": "Eng ko'p kiyiladi",
+        "colorPalette": "Sizning rang palitrangiz",
+        "categoryBreakdown": "Kategoriya bo'yicha",
+        "noDataYet": "Hali ma'lumot yo'q"
+    },
+    "tripPlanner": {
+        "planYourTrip": "Safaringizni rejalashtiring",
+        "destination": "📍 Manzil",
+        "travelDates": "📅 Sayohat sanalari",
+        "start": "Boshlash",
+        "end": "Tugash",
+        "occasions": "🎯 Tadbirlar",
+        "createTripPlan": "Safar rejasini yaratish",
+        "yourTripTo": "Sizning sayohatingiz",
+        "days": "Kunlar",
+        "packingList": "Narsalar ro'yxati",
+        "planAnotherTrip": "Boshqa safarni rejalashtirish"
+    },
+    "calendar": {
+        "notAdded": "Qo'shilmagan",
+        "planLooks": "Liboslarni rejalashtirish",
+        "extras": "Qo'shimchalar",
+        "createWithAI": "AI bilan yaratish"
+    },
+    "weeklyInsights": {
+        "title": "Stil tahlillari",
+        "totalItems": "Jami narsalar",
+        "dayStreak": "Kun seriyasi",
+        "totalWears": "Jami kiyishlar",
+        "closetUtilization": "Shkafdan foydalanish",
+        "mostWorn": "Eng ko'p kiyiladi",
+        "wardrobeBreakdown": "Shkaf bo'limi",
+        "patternsHabits": "Namunalar va odatlar",
+        "noDataYet": "Hali ma'lumot yo'q"
+    },
+    "wearLog": {
+        "outfitLogged": "Libos yozildi!",
+        "logTodaysOutfit": "Bugungi libosni yozish",
+        "todaysSuggestion": "Bugungi taklif",
+        "noItemsYet": "Shkafingizda hali narsalar yo'q",
+        "scanWardrobe": "Boshlash uchun shkafni skanerlang",
+        "occasion": "Tadbir"
+    },
+    "styleGoals": {
+        "title": "Stil maqsadlari",
+        "subtitle": "Stil sayohatingizni kuzating",
+        "activeGoals": "Faol maqsadlar",
+        "completed": "Bajarildi",
+        "challenges": "Sinovlar",
+        "yourStyleGoals": "Sizning stil maqsadlaringiz",
+        "weeklyChallenges": "Haftalik sinovlar"
+    },
+    "styleQuiz": {
+        "welcomeTitle": "AIWardrobega xush kelibsiz",
+        "benefit1": "AI sizning noyob stiliringizni o'rganadi",
+        "benefit2": "Libos uchun yaxshi tavsiyalar",
+        "benefit3": "2 daqiqadan kam vaqt oladi",
+        "letsGetStarted": "Boshlaymiz",
+        "stylePersonality": "Sizning stilingiz qanday?",
+        "selectOne": "Sizga eng mos keladiganini tanlang",
+        "favoriteColors": "Qaysi ranglarni yaxshi ko'rasiz?",
+        "selectColors": "Eng ko'p kiyadigan 3-5 rangni tanlang"
+    },
+    "meetingOutfit": {
+        "createYourStyle": "O'z stilingizni yarating",
+        "describeEvent": "Tadbiringizni tasvirlang va to'liq libosni oling",
+        "placeholder": "Masalan, texnologik startapda ish suhbati, mijoz bilan kechki ovqat, juma...",
+        "generateOutfit": "Libos yarating"
+    },
+    "dailySuggestion": {
+        "loading": "Mukammal libosni qidiryapmiz...",
+        "noSuggestions": "Hali takliflar yo'q",
+        "scanWardrobe": "Shkafni skanerlash",
+        "outfitLogged": "Libos yozildi!",
+        "dayStreak": "kun ketma-ket",
+        "backToHome": "Bosh sahifaga qaytish",
+        "todaysOutfit": "Bugungi libos",
+        "tryAnother": "Boshqa sinab ko'ring",
+        "wearToday": "Bugun kiyish"
+    },
+    "aiStylist": {
+        "title": "AI Stilist"
+    },
+    "clothingDetail": {
+        "title": "Kiyim tafsilotlari",
+        "missingImplementation": "Bu tiklangan shobada asl tafsilotlar ekranini amalga oshirish yo'q."
+    },
+    "outfitDetail": {
+        "detecting": "Narsalarni aniqlash...",
+        "shopNow": "Hozir xarid qiling"
+    },
+    "outfitSwipe": {
+        "loading": "Libos g'oyalarini yaratmoqda...",
+        "styleDiscovery": "Stilni kashf qilish",
+        "allDone": "Barchasi tayyor!",
+        "getMoreOutfits": "Ko'proq libos oling"
+    },
+    "priceTracker": {
+        "trackNewItem": "Yangi narsani kuzatish",
+        "itemName": "Narsa nomi *",
+        "brand": "Brend",
+        "currentPrice": "Joriy narx *",
+        "targetPrice": "Maqsad narx",
+        "imageUrl": "Rasm URL (ixtiyoriy)",
+        "addToTracker": "Kuzatuvga qo'shish",
+        "title": "Narx kuzatuvchisi",
+        "tracking": "Kuzatilmoqda",
+        "onSale": "Sotuvda",
+        "savings": "Tejash",
+        "noItems": "Kuzatiladigan narsalar yo'q",
+        "addItem": "Narsa qo'shish",
+        "noAlerts": "Hali bildirishnomalar yo'q"
+    },
+    "newOutfit": {
+        "title": "Yangi libos",
+        "date": "Sana",
+        "addToOotd": "OOTD hikoyasiga qo'shish",
+        "occasion": "Tadbir",
+        "visibility": "Ko'rinchanlik",
+        "save": "Libosni saqlash"
+    },
+    "resetPassword": {
+        "title": "Yangi parol o'rnating",
+        "subtitle": "Hisobingiz uchun kuchli parol tanlang.",
+        "passwordsDontMatch": "Parollar mos kelmaydi",
+        "samePassword": "Xuddi shu parol",
+        "newPasswordDifferent": "Yangi parol joriy paroldan farq qilishi kerak.",
+        "weakPassword": "Kuchsiz parol",
+        "chooseStronger": "Iltimos, kuchliroq parol tanlang."
+    },
+    "designRoom": {
+        "title": "Stil xonasi",
+        "createOutfit": "Libos yarating",
+        "celebrityLook": "Mashhur kishi ko'rinishi",
+        "scanWardrobe": "Shkafni skanerlash",
+        "aiSuggestOutfit": "AI libos taklif qiladi",
+        "next": "Keyingi",
+        "add": "Qo'shish",
+        "scanVideo": "Video skanlash",
+        "stickers": "Stikerlar",
+        "background": "Orqa fon",
+        "emptyState": "Dizaynni boshlash uchun kiyim qo'shing"
+    },
+    "trialExpired": {
+        "title": "Sinov muddati tugadi",
+        "body": "Sizning 7 kunlik bepul sinov muddatingiz tugadi. AI liboslar, cheksiz shkaf skanlashi va barcha premium funksiyalardan foydalanish uchun pullik rejamizga yangilang.",
+        "upgradeToPro": "Pro'ga yangilang",
+        "havePromoCode": "Menda promokod bor"
+    },
+    "inspo": {
+        "title": "I'lhom",
+        "fromYourCloset": "Shkafingizdan",
+        "personalStylist": "Shaxsiy stilist",
+        "featuredCapsules": "Tanlangan kapsulalar",
+        "noMenswearMatches": "Qidirishga mos keladigan erkak kiyimlari yo'q.",
+        "loadMoreProducts": "Ko'proq mahsulot yuklash"
+    },
+    "camera": {
+        "permissionNeeded": "Kamera ruxsat kerak",
+        "grantAccess": "Ruxsat berish",
+        "recording": "Yozilmoqda",
+        "photo": "Rasm",
+        "video": "Video"
+    },
+    "chat": {
+        "title": "Stilist",
+        "emptyTitle": "Qaysi holat uchun kiyinayapsiz?",
+        "thinking": "Hali o'ylanyapman..."
+    },
+    "brandSelection": {
+        "chooseBrands": "3 yoki ko'proq brend tanlang"
+    },
+    "createAvatar": {
+        "title": "3D tana modeli",
+        "subtitle": "O'lchovlaringizni kiriting",
+        "bodyMeasurements": "Tana o'lchovlari",
+        "height": "Bo'y",
+        "heightRange": "Diapazon: 140 – 230 sm",
+        "weight": "Vazn",
+        "weightRange": "Diapazon: 40 – 150 kg",
+        "bodyType": "Tana turi",
+        "saveBodyModel": "Tana modelini saqlash"
+    },
+    "emailOnboarding": {
+        "howItWorks": "Qanday ishlaydi:"
+    },
+    "flashSaleEvent": {
+        "soldOut": "Sotildi",
+        "eventNotFound": "Tadbir topilmadi",
+        "liveNow": "HOZIR JONLI",
+        "exclusive": "EKSKLUZIV",
+        "off": "CHEGIRMA",
+        "items": "MAHSULOTLAR",
+        "waiting": "KUTMOQDA"
+    },
+    "flashSales": {
+        "hrs": "SOAT",
+        "min": "DAQIQA",
+        "sec": "SONIYA",
+        "live": "JONLI",
+        "exclusive": "EKSKLUZIV",
+        "upToOff": "{{discount}}% gacha chegirma",
+        "shopNow": "Hozir sotib olish",
+        "loading": "Ekskluziv chegirmalarni yuklash...",
+        "title": "Chegirmalar",
+        "liveBadge": "🔥 JONLI",
+        "happeningNow": "⚡ Hozir sodir bo'lyapti",
+        "comingSoon": "🗓️ Tez orada",
+        "exclusiveAccess": "Ekskluziv kirish"
+    },
+    "magicMirror": {
+        "loading": "Shkafingizni yuklash...",
+        "title": "Sehrli oyna",
+        "tops": "USTKI KIYIM",
+        "tapToAddPhoto": "Rasm qo'shish uchun bosing",
+        "creatingMagic": "Sehr yaratmoqda...",
+        "bottoms": "PASTKI KIYIM",
+        "generating": "Yaratmoqda...",
+        "tryOn": "Sinab ko'rish"
+    },
+    "outfitAI": {
+        "notQuiteRight": "To'g'ri emasmi? O'zgartirish:",
+        "title": "AI Stilist",
+        "welcomeTitle": "Sizning AI Stilistingiz",
+        "occasionTitle": "Qaysi tadbir?",
+        "occasionSubtitle": "Rejalaringizni ayting va men mukammal kiyimni topaman",
+        "greeting": "Salom! Men sizning AI stilistingizman. Tadbiringiz haqida ayting, men shkafingizdan mukammal kiyim yarataman. Bugun qaysi holat uchun kiynaysiz?"
+    },
+    "privacyPolicy": {
+        "title": "Maxfiylik siyosati",
+        "lastUpdated": "Oxgi yangilanish: 2026 yil Mart",
+        "intro": "AIWardrobe (\"biz\", \"bizning\", \"bizni\") maxfiylikni himoya qilishga sodiqdir. Bu Maxfiylik siyosati mobil ilovamizdan foydalanganda ma'lumotlaringizni qanday yig'amiz, ishlatamiz va himoya qilamizligini tushuntiradi.",
+        "informationWeCollect": {
+            "title": "Yig'adigan ma'lumotlar",
+            "body": "AIWardrobeningizdan foydalanganda, biz quyidagi turdagi ma'lumotlarni yig'amiz:\n\n• Hisob ma'lumotlari: Ro'yxatdan o'tishda taqdim etgan elektron pochta, foydalanuvchi nomi va ixtiyoriy profil ma'lumotlari.\n• Shkaf ma'lumotlari: Yuklagan kiyimlar fotosuratlari va AI aniqlagan xususiyatlar (kategoriya, rang, naqsh, material).\n• Foydalanish ma'lumotlari: Kiyish jurnallari, kiyim tarixi va funktsiyalardan foydalanish naqshalari AI tavsiyalarini yaxshilash uchun.\n• Qurilma ma'lumotlari: Xatolarni tuzatish va optimallashtirish uchun qurilma turi, OS versiyasi va ilova versiyasi.\n• Joylashuv ma'lumotlari: Ixtiyoriy - faqat ruxsat bergan bo'lingiz ob-havoga asoslangan kiyim tavsiyalari uchun ishlatiladi."
+        },
+        "howWeUse": {
+            "title": "Ma'lumotlarni qanday ishlatamiz",
+            "body": "Biz ma'lumotlaringizni quyidagilarga ishlatamiz:\n\n• AI asosidagi kiyim tavsiyalari va shkafni boshqarishni taqdim etish va yaxshilash.\n• Xavfsiz bulut saqlash orqali shkafingizni qurilmalar o'rtasida sinxronlash.\n• Shaxsiylashtirilgan tahlil yaratish (eng ko'p kiyilgan narsalar, uslub xilma-xilligi va hokazo).\n• Tegishli bildirishnomalar yuborish (kunlik kiyim tavsiyalari, seriya eslatmalari).\n• AI modellariimiz va ilova tajribamizni yaxshilash.\n\nBiz shaxsiy ma'lumotlaringizni uchinchi tomonlarga SOTMAYMIZ."
+        },
+        "dataStorage": {
+            "title": "Ma'lumot saqlash va xavfsizlik",
+            "body": "• Ma'lumotlaringiz Supabase (PostgreSQL) bilan qator darajasidagi xavfsizlik bilan xavfsiz saqlanadi.\n• Barcha ma'lumot uzatish TLS/HTTPS bilan shifrlanadi.\n• Fotosuratlar hisobingizga kirish cheklangan xavfsiz bulot saqlashda saqlanadi.\n• Hisobingiz faq bo'lgan ma'lumotlarni saqlaymiz. Hisobingizni va barcha bog'liq ma'lumotlarni istalgan vaqtda o'chirishingiz mumkin."
+        },
+        "thirdParty": {
+            "title": "Uchinchi tomon servislar",
+            "body": "Biz ilovamizni ishga tushirish uchun uchinchi tomon servislaridan foydalanamiz:\n\n• Xavfsiz ma'lumotlar bazasi va autentifikatsiya uchun Supabase.\n• Ilova ishlab chiqish va joylashtirish uchun Expo.\n• Kiyim tavsiyalari va rasm tahlili uchun AI servislar.\n\nBiz barcha uchinchi tomon servislarini ehtiyotkor tekshiramiz va ular maxfiylik standartlarimizga mos kelishini ta'minlaymiz."
+        },
+        "yourRights": {
+            "title": "Huquqlaringiz",
+            "body": "Siz quyidagi huquqlarga egasiz:\n\n• Shaxsiy ma'lumotlaringizga istalgan vaqtda kirish.\n• Hisobingizni va barcha bog'liq ma'lumotlarni o'chirishni so'rash.\n• Muhim bo'lmagan funktsiyalar uchun ma'lumot yig'ishdan voz kechish.\n• Profil ma'lumotlari va sozlamalaringizni yangilash.\n• Ma'lumotlaringizni mashina o'qiy oladigan formatda eksport qilish.\n\nBu huquqlarni amalga oshirish uchun support@aiwardrobe.app manziliga murojaat qiling"
+        },
+        "childrensPrivacy": {
+            "title": "Bolalar maxfiyligi",
+            "body": "Bizning xizmatimiz 13 yoshdan kichik bolalar uchun mo'ljallanmagan. Biz 13 yoshdan kichik bolardan shaxsiy ma'lumotni bilib-oniq yig'maymiz. Agar ota-ona yoki vasiy bo'lsangiz va farzindingiz bizga shaxsiy ma'lumot bergan deb o'ylasangiz, iltimos, biz bilan bog'laning."
+        },
+        "changes": {
+            "title": "Siyosatdagi o'zgarishlar",
+            "body": "Biz bu Maxfiylik siyosatini vaqti-vaqti bilan yangilab turishimiz mumkin. Biz ilova yoki elektron pochta orqali muhim o'zgarishlar haqida xabardor qilamiz. O'zgarishlardan keyin AIWardrobeningizdan davom etilgan yangilangan siyosatni qabul qilish hisoblanadi."
+        },
+        "contact": {
+            "title": "Biz bilan bog'lanish",
+            "body": "Agar bu Maxfiylik siyosati haqida savollaringiz bo'lsa, iltimos, quyidagi manzil bilan bog'laning:\n\n📧 support@aiwardrobe.app"
+        }
+    },
+    "review": {
+        "error": "Xatolik",
+        "notAuthorized": "Siz avtorizatsiyadan o'tmagansiz",
+        "done": "Tayyor! 🎉",
+        "itemsAdded": "{{count}} narsa qo'shildi. Endi ular uchun chiroyli rasmlar yaratmoqdamiz.",
+        "saveFailed": "Narsalarni saqlab bo'lmadi: {{error}}",
+        "removeItem": "Narsani o'chirish",
+        "confirmRemove": "Haqiqatan ham bu narsani o'chirmoqchimisiz?",
+        "generating": "Kiyimlarni yaratmoqdamiz...",
+        "savingToCloud": "Rasmlarni chizmoqdamiz va bulutga saqlamoqdamiz",
+        "itemsFound": "{{count}} narsa topildi",
+        "addToWardrobe": "Shkafga qo'shish ({{count}})"
+    },
+    "termsOfService": {
+        "title": "Foydalanish shartlari",
+        "lastUpdated": "Oxgi yangilanish: 2026 yil Mart",
+        "intro": "AIWardrobeningizdan foydalanishdan oldin iltimos, bu Foydalanish shartlarini ehtiyotkor o'qing.",
+        "acceptance": {
+            "title": "1. Shartlarni qabul qilish",
+            "body": "AIWardrobeningizni yuklab, o'rnatib yoki foydalanib, siz bu Foydalanish shartlariga rioza qilishga rozilik bildirasiz. Agar rozilik bilmagansiz, ilovani ishlating."
+        },
+        "description": {
+            "title": "2. Xizmat tavsifi",
+            "body": "AIWardrobe — AI asosidagi shkafni boshqarish ilovasi bo'lib, quyidagilarni taqdim etadi:\n\n• Kamera/foto skanlash orqali kiyim narsalarini raqamlashtirish\n• AI asosidagi kiyim tavsiyalari\n• Virtual sinab ko'rish funktsiyasi\n• Shkaf tahlili va uslub tushunchalari\n• Qurilmalar o'rtasida bulut sinxronizatsiyasi\n\nBa'zi funktsiyalar faol internet aloqasini talab qiladi va uchinchi tomon AI servislaridan foydalanishi mumkin."
+        },
+        "userAccounts": {
+            "title": "3. Foydalanuvchi akkauntlari",
+            "body": "• Akkaunt yaratishda aniq ma'lumotlarni taqdim etishingiz kerak.\n• Akkaunt ma'lumotlari xavfsizligini saqlash uchun siz javobgarsiz.\n• Akkaunt yaratish uchun siz kamida 13 yoshda bo'lishingiz kerak.\n• Bir kishi birdan ortiq akkauntni saqlab turmasligi kerak.\n• Biz shartlarni buzgan akkauntlarni to'xtatish yoki yopish huquqini o'zimizda saqlab qolamiz."
+        },
+        "userContent": {
+            "title": "4. Foydalanuvchi kontenti",
+            "body": "• Siz yuklagan barcha rasmlar va kontentga egalik huquqini saqlab qolasiz.\n• Kontent yuklash orqali bizga uni ilova ichida qayta ishlash, saqlash va ko'rsatish uchun litsensiya berasiz.\n• Siz noqonuniy, haqoratli yoki boshqalar huquqlarini buzadigan kontent yuklamaslikka rozilik bildirasiz.\n• Biz AI modellarimizni yaxshilash uchun anonimlashtirilgan agregatlangan ma'lumotlardan foydalanishimiz mumkin."
+        },
+        "subscriptions": {
+            "title": "5. Obunalar va to'lovlar",
+            "body": "• AIWardrobe bepul va premium obuna darajalarini taklif qiladi.\n• Premium obunalar App Store orqali to'lanadi.\n• Obunalar joriy davr tugashidan kamida 24 soat oldin bekor qilinmaganda avtomatik ravishda yangilanadi.\n• Qaytarish App Store qaytarish siyosatiga ko'ra amalga oshiriladi."
+        },
+        "aiContent": {
+            "title": "6. AI yaratilgan kontent",
+            "body": "• AI tavsiyalari algoritmik ravishda yaratiladi va har doim ham aniq bo'lmasligi mumkin.\n• Virtual sinab ko'rish natijalari taxminiy bo'lishi mumkin va haqiqiy dunyo ko'rinishini aynan aks ettirmasligi mumkin.\n• Biz rang, naqsh yoki materialni aniqlashning aniqligini kafolatlamaymiz.\n• AI yaratilgan kiyim tavsiyalari faqat ma'lumot maqsadlarida mo'ljallangan."
+        },
+        "prohibited": {
+            "title": "7. Taqiqlangan foydalanish",
+            "body": "Siz quyidagilarni qilmaslikka rozilik bildirasiz:\n\n• Ilovadan manba kodini olish uchun teskari muhandislik, dekomplyatsiya yoki urinish.\n• Ruxsatsiz tijorat maqsadlarida ilovadan foydalanish.\n• Boshqa foydalanuvchilardan ma'lumot yig'ish yoki yig'ish.\n• Obuna yoki autentifikatsiya mexanizmlarini chetlab o'tishga urinish.\n• Zararli dastur yoki zararli kontent uzatish uchun ilovadan foydalanish."
+        },
+        "intellectual": {
+            "title": "8. Intellektual mulk",
+            "body": "• AIWardrobe va uning asl kontenti, funktsiyalari va funksionalligi bizga tegishli va intellektual mulk qonunlari bilan himoyalangan.\n• AIWardrobe nomi, logotipi va brendimiz bizning savdo belgilarimiz."
+        },
+        "liability": {
+            "title": "9. Javobgarlik cheklanishi",
+            "body": "AIWardrobe hech qanday kafolatsiz \"hozirgi holida\" taqdim etiladi. Ilovadan foydalanishingiz natijasida kelib chiqqan bilvosita, tasodifiy, maxsus yoki oqibatli zararlar uchun biz javobgarmiz."
+        },
+        "changes": {
+            "title": "10. Shartlardagi o'zgarishlar",
+            "body": "Biz shartlarni istalgan vaqtda o'zgartirish huquqini o'zimizda saqlab qolamiz. O'zgarishlardan keyin foydalanishni davom ettirish qabul qilishni anglatadi. Biz ilova orqali muhim o'zgarishlar haqida sizga xabar beramiz."
+        },
+        "contact": {
+            "title": "11. Kontaktlar",
+            "body": "Bu Shartlar bo'yicha savollaringiz bo'lsa, quyidagi manzil bilan bog'laning:\n\n📧 support@aiwardrobe.app"
+        }
+    },
+    "wardrobeVideo": {
+        "title": "AI Shkaf skanlash",
+        "selectGallery": "Galereyadan tanlash",
+        "analysisComplete": "Tahlil tugallandi",
+        "outfit": "Kiyim {{index}}",
+        "reviewSave": "Ko'rib chiqish va saqlash",
+        "processFailed": "Tanlangan faylni qayta ishlab bo'lmadi.",
+        "loginRequired": "Kirish talab etiladi",
+        "loginToSave": "Narsalarni saqlash uchun iltimos tizimga kiring.",
+        "info": "Ma'lumot",
+        "noMediaSelected": "Media tanlanmadi yoki tanlash bekor qilindi.",
+        "pickFailed": "Medianini tanlab bo'lmadi: {{error}}",
+        "saveFailed": "Saqlab bo'lmadi. {{error}}"
+    },
     "auth": {
         "signIn": "Kirish",
         "signUp": "Ro'yxatdan o'tish",
@@ -173,6 +603,17 @@
         "getStarted": "Boshlash"
     },
     "wardrobe": {
+        "title": "Mening shkafim",
+        "addItem": "Narsa qo'shish",
+        "upload": "Yuklash",
+        "clothes": "Kiyimlar",
+        "collections": "To'plamlar",
+        "noCollections": "Hali to'plamlar yo'q",
+        "createFirstLook": "Birinchi libos yaratish",
+        "emptyCloset": "Shkafingiz bo'sh",
+        "emptyClosetSubtitle": "Raqamli shkaf yaratish uchun narsalarni qo'shishni boshlang.",
+        "scanWardrobe": "Shkafni skanlash",
+        "askStylist": "Stilistdan so'rash",
         "cameraAccess": "Kameraga ruxsat kerak",
         "allow": "Ruxsat berish",
         "aiAnalyzing": "AI videoni tahlil qilmoqda...",
@@ -183,16 +624,7 @@
         "error": "Xato",
         "selectVideoError": "Videoni tanlab bo'lmadi",
         "cameraNotSimulator": "Kamera simulyatorda ishlamaydi. Galereyadan foydalaning.",
-        "recognitionError": "Kiyimni aniqlab bo'lmadi. Qisqaroq videoni sinab ko'ring."
-    },
-    "designRoom": {
-        "title": "Dizayn xonasi",
-        "next": "Keyingi",
-        "add": "Qo'shish",
-        "scanVideo": "Videoni skanerlash",
-        "stickers": "Stikerlar",
-        "background": "Fon",
-        "emptyState": "Dizayn qilish uchun kiyim qo'shing"
+        "recognitionError": "Kiyimni tanib olish muvaffaqiyatsiz bo'ldi. Qisqaroq videoni sinab ko'ring."
     },
     "tabs": {
         "home": "Bosh sahifa",

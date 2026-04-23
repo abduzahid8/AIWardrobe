@@ -14,12 +14,14 @@ import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
+    TextInput,
     TouchableOpacity,
     StyleSheet,
     ScrollView,
     Platform,
     ActivityIndicator,
     Alert,
+    KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,11 +35,13 @@ import Animated, {
     useSharedValue,
     withSpring,
 } from 'react-native-reanimated';
-import { SUBSCRIPTION_PRICING } from '../store/subscriptionStore';
+import useSubscriptionStore, { SUBSCRIPTION_PRICING } from '../store/subscriptionStore';
 import useDailyUsageStore from '../store/dailyUsageStore';
 import { useStylePreferenceStore } from '../store/stylePreferenceStore';
+import usePromoCodeStore from '../store/promoCodeStore';
 import AppColors from '../constants/AppColors';
 import { iapService } from '../src/services/iapService';
+import { useTranslation } from 'react-i18next';
 
 const COLORS = {
     background: '#0A0A0A',
@@ -51,6 +55,7 @@ const COLORS = {
     success: AppColors.success,
     border: '#333333',
     free: '#6B7280',
+    error: '#EF4444',
 };
 
 // ──────────────────────────────────────────────────────────
@@ -77,7 +82,7 @@ const TIER_CARDS = {
     pro: {
         label: 'Pro',
         sublabel: 'The complete AI wardrobe',
-        productId: 'monthly' as const,
+        productId: 'com.aiwardrobe.premium.monthly' as const,
         price: null as string | null,
         period: '/month',
         features: [
@@ -124,9 +129,15 @@ const PressableCard: React.FC<{
 const PaywallScreen = () => {
     const navigation = useNavigation<any>();
     const { completeOnboarding } = useStylePreferenceStore();
+    const { t } = useTranslation();
     const [isLoading, setIsLoading] = useState<string | null>(null);
     const [livePrice, setLivePrice] = useState<string | null>(null);
     const [liveProductId, setLiveProductId] = useState<string | null>(null);
+    const [promoCode, setPromoCode] = useState('');
+    const [promoError, setPromoError] = useState<string | null>(null);
+    const [isPromoLoading, setIsPromoLoading] = useState(false);
+    const [showPromoInput, setShowPromoInput] = useState(false);
+    const { hasRedeemedPromo } = usePromoCodeStore();
     const canGoBack = navigation.canGoBack();
 
     useEffect(() => {
@@ -160,7 +171,9 @@ const PaywallScreen = () => {
         try {
             const result = await iapService.purchase(productId);
             if (result.success) {
-                // Analytics already tracked inside iapService.purchase()
+                // Re-verify subscription from server to ensure backend is in sync
+                const { verifySubscriptionFromServer } = useSubscriptionStore.getState();
+                await verifySubscriptionFromServer().catch(() => {});
                 completeOnboarding();
                 // Give the user a fresh daily bucket after upgrading.
                 await useDailyUsageStore.getState().resetToday();
@@ -190,6 +203,9 @@ const PaywallScreen = () => {
             const result = await iapService.restorePurchases();
             if (result.success) {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                // Re-verify subscription from server to ensure backend is in sync
+                const { verifySubscriptionFromServer } = useSubscriptionStore.getState();
+                await verifySubscriptionFromServer().catch(() => {});
                 completeOnboarding();
                 await useDailyUsageStore.getState().resetToday();
                 navigation.reset({
@@ -224,6 +240,38 @@ const PaywallScreen = () => {
         }
     };
 
+    const handleRedeemPromo = async () => {
+        const trimmed = promoCode.trim();
+        if (!trimmed) {
+            setPromoError(t('promo.enterCode'));
+            return;
+        }
+        setIsPromoLoading(true);
+        setPromoError(null);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        try {
+            const result = await usePromoCodeStore.getState().redeemPromoCode(trimmed);
+            if (result.success) {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                Alert.alert(
+                    t('promo.trialActivated'),
+                    t('promo.trialActivatedMessage', { days: result.trialDays || 7 }),
+                    [{ text: t('common.next') || 'Continue', onPress: () => {
+                        completeOnboarding();
+                        navigation.reset({ index: 0, routes: [{ name: 'Main' as never }] });
+                    }}],
+                );
+            } else {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                setPromoError(result.error || t('promo.invalidCode'));
+            }
+        } catch {
+            setPromoError(t('promo.invalidCode'));
+        } finally {
+            setIsPromoLoading(false);
+        }
+    };
+
     return (
         <View style={styles.container}>
             <LinearGradient
@@ -247,11 +295,72 @@ const PaywallScreen = () => {
                             <View style={styles.iconContainer}>
                                 <Ionicons name="sparkles" size={40} color={COLORS.premium} />
                             </View>
-                            <Text style={styles.heroTitle}>Your style, unlocked.</Text>
+                            <Text style={styles.heroTitle}>{t('paywall.heroTitle')}</Text>
                             <Text style={styles.heroSubtitle}>
                                 Keep Free forever — or upgrade when you're ready for more.
                             </Text>
                         </Animated.View>
+
+                        {/* Promo Code Section — show if user hasn't redeemed yet */}
+                        {!hasRedeemedPromo && (
+                            <Animated.View entering={FadeInUp.delay(80).springify()} style={styles.promoSection}>
+                                {!showPromoInput ? (
+                                    <TouchableOpacity
+                                        style={styles.promoToggle}
+                                        onPress={() => setShowPromoInput(true)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Ionicons name="gift" size={18} color={COLORS.premium} />
+                                        <Text style={styles.promoToggleText}>{t('promo.heroTitle')}</Text>
+                                        <Ionicons name="chevron-down" size={18} color={COLORS.textSecondary} />
+                                    </TouchableOpacity>
+                                ) : (
+                                    <View style={styles.promoCard}>
+                                        <View style={styles.promoHeader}>
+                                            <Ionicons name="gift" size={20} color={COLORS.premium} />
+                                            <Text style={styles.promoCardTitle}>{t('promo.enterCodeLabel')}</Text>
+                                        </View>
+                                        <View style={styles.promoInputRow}>
+                                            <Ionicons name="ticket" size={18} color={COLORS.textSecondary} />
+                                            <TextInput
+                                                style={styles.promoInput}
+                                                value={promoCode}
+                                                onChangeText={(text) => {
+                                                    setPromoCode(text.toUpperCase());
+                                                    setPromoError(null);
+                                                }}
+                                                placeholder={t('promo.placeholder')}
+                                                placeholderTextColor="rgba(255,255,255,0.3)"
+                                                autoCapitalize="characters"
+                                                autoCorrect={false}
+                                                maxLength={30}
+                                                editable={!isPromoLoading}
+                                                returnKeyType="go"
+                                                onSubmitEditing={handleRedeemPromo}
+                                            />
+                                        </View>
+                                        {promoError && (
+                                            <View style={styles.promoErrorRow}>
+                                                <Ionicons name="alert-circle" size={14} color={COLORS.error} />
+                                                <Text style={styles.promoErrorText}>{promoError}</Text>
+                                            </View>
+                                        )}
+                                        <TouchableOpacity
+                                            style={[styles.promoRedeemButton, (!promoCode.trim() || isPromoLoading) && styles.promoRedeemButtonDisabled]}
+                                            onPress={handleRedeemPromo}
+                                            disabled={!promoCode.trim() || isPromoLoading}
+                                            activeOpacity={0.8}
+                                        >
+                                            {isPromoLoading ? (
+                                                <ActivityIndicator color="#0A0A0A" size="small" />
+                                            ) : (
+                                                <Text style={styles.promoRedeemButtonText}>{t('promo.redeem')}</Text>
+                                            )}
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                            </Animated.View>
+                        )}
 
                         {/* FREE tier (informational — already active) */}
                         <Animated.View entering={FadeInUp.delay(100).springify()}>
@@ -327,7 +436,7 @@ const PaywallScreen = () => {
                             {isLoading === 'restore' ? (
                                 <ActivityIndicator color={COLORS.accent} />
                             ) : (
-                                <Text style={styles.restoreText}>Restore Purchases</Text>
+                                <Text style={styles.restoreText}>{t('paywall.restorePurchases')}</Text>
                             )}
                         </TouchableOpacity>
 
@@ -549,6 +658,88 @@ const styles = StyleSheet.create({
         lineHeight: 16,
         paddingHorizontal: 10,
         marginBottom: 20,
+    },
+
+    // Promo code section
+    promoSection: { marginBottom: 14 },
+    promoToggle: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        backgroundColor: COLORS.surface,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        borderRadius: 14,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+    },
+    promoToggleText: {
+        flex: 1,
+        fontSize: 14,
+        fontWeight: '600',
+        color: COLORS.text,
+    },
+    promoCard: {
+        backgroundColor: COLORS.surface,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        borderRadius: 16,
+        padding: 16,
+    },
+    promoHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 12,
+    },
+    promoCardTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: COLORS.textSecondary,
+        letterSpacing: 0.5,
+    },
+    promoInputRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.05)',
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        paddingVertical: 2,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
+        marginBottom: 10,
+    },
+    promoInput: {
+        flex: 1,
+        fontSize: 16,
+        fontWeight: '700',
+        color: COLORS.text,
+        paddingVertical: 12,
+        paddingHorizontal: 8,
+        letterSpacing: 2,
+    },
+    promoErrorRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 8,
+    },
+    promoErrorText: {
+        fontSize: 13,
+        color: COLORS.error,
+        fontWeight: '500',
+    },
+    promoRedeemButton: {
+        backgroundColor: COLORS.premium,
+        paddingVertical: 12,
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+    promoRedeemButtonDisabled: { opacity: 0.5 },
+    promoRedeemButtonText: {
+        fontSize: 14,
+        fontWeight: '800',
+        color: '#0A0A0A',
     },
 });
 

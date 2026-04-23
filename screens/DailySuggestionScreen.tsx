@@ -35,6 +35,7 @@ import {
     type WeatherContext,
 } from '../src/services/suggestionEngine';
 import type { Occasion, DailySuggestion } from '../src/types/domain';
+import { useTranslation } from 'react-i18next';
 
 const { colors, spacing, radius, typography } = LiquidGlass2026Theme;
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -44,6 +45,7 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 // ============================================
 
 const DailySuggestionScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+    const { t } = useTranslation();
     const items = useWardrobeStore((state) => state.items);
     const wearLogs = useWardrobeStore((state) => state.wearLogs);
     const streak = useWardrobeStore((state) => state.streak);
@@ -150,7 +152,7 @@ const DailySuggestionScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
             <SafeAreaView style={styles.container}>
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={colors.text.primary} />
-                    <Text style={styles.loadingText}>Finding your perfect outfit...</Text>
+                    <Text style={styles.loadingText}>{t('dailySuggestion.loading')}</Text>
                 </View>
             </SafeAreaView>
         );
@@ -162,7 +164,7 @@ const DailySuggestionScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
             <SafeAreaView style={styles.container}>
                 <View style={styles.emptyContainer}>
                     <Ionicons name="shirt-outline" size={56} color={colors.text.tertiary} />
-                    <Text style={styles.emptyTitle}>No suggestions yet</Text>
+                    <Text style={styles.emptyTitle}>{t('dailySuggestion.noSuggestions')}</Text>
                     <Text style={styles.emptySubtext}>
                         {items.length === 0
                             ? 'Scan your wardrobe to get personalized outfit suggestions'
@@ -172,7 +174,7 @@ const DailySuggestionScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                         style={styles.emptyButton}
                         onPress={() => navigation.navigate('ScanWardrobe')}
                     >
-                        <Text style={styles.emptyButtonText}>Scan Wardrobe</Text>
+                        <Text style={styles.emptyButtonText}>{t('dailySuggestion.scanWardrobe')}</Text>
                     </TouchableOpacity>
                 </View>
             </SafeAreaView>
@@ -187,13 +189,13 @@ const DailySuggestionScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                     <Text style={styles.loggedEmoji}>
                         {streak + 1 >= 7 ? '🏆' : streak + 1 >= 3 ? '🔥' : '✅'}
                     </Text>
-                    <Text style={styles.loggedTitle}>Outfit Logged!</Text>
-                    <Text style={styles.loggedStreak}>{streak + 1} day streak</Text>
+                    <Text style={styles.loggedTitle}>{t('dailySuggestion.outfitLogged')}</Text>
+                    <Text style={styles.loggedStreak}>{streak + 1} {t('dailySuggestion.dayStreak')}</Text>
                     <TouchableOpacity
                         style={styles.loggedButton}
                         onPress={() => navigation.goBack()}
                     >
-                        <Text style={styles.loggedButtonText}>Back to Home</Text>
+                        <Text style={styles.loggedButtonText}>{t('dailySuggestion.backToHome')}</Text>
                     </TouchableOpacity>
                 </Animated.View>
             </SafeAreaView>
@@ -206,10 +208,10 @@ const DailySuggestionScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={handleSkip}>
-                    <Text style={styles.skipText}>Skip</Text>
+                    <Text style={styles.skipText}>{t('common.skip')}</Text>
                 </TouchableOpacity>
                 <View style={styles.headerCenter}>
-                    <Text style={styles.headerTitle}>Today's Outfit</Text>
+                    <Text style={styles.headerTitle}>{t('dailySuggestion.todaysOutfit')}</Text>
                     {weather && (
                         <Text style={styles.weatherBadge}>
                             {Math.round(weather.temp)}° · {weather.condition}
@@ -291,7 +293,7 @@ const DailySuggestionScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                         activeOpacity={0.7}
                     >
                         <Ionicons name="shuffle-outline" size={20} color={colors.text.primary} />
-                        <Text style={styles.nextButtonText}>Try another</Text>
+                        <Text style={styles.nextButtonText}>{t('dailySuggestion.tryAnother')}</Text>
                     </TouchableOpacity>
                 )}
                 <TouchableOpacity
@@ -300,7 +302,7 @@ const DailySuggestionScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                     activeOpacity={0.8}
                 >
                     <Ionicons name="checkmark-circle" size={22} color="#FFF" />
-                    <Text style={styles.wearButtonText}>Wear this today</Text>
+                    <Text style={styles.wearButtonText}>{t('dailySuggestion.wearToday')}</Text>
                 </TouchableOpacity>
             </View>
         </SafeAreaView>

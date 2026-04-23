@@ -26,6 +26,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import AppColors from '../constants/AppColors';
 import usePriceTrackingStore, { TrackedItem, PriceAlert } from '../store/priceTrackingStore';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -165,11 +166,13 @@ const AlertCard = ({ alert, onPress }: { alert: PriceAlert; onPress: () => void 
 const AddItemModal = ({
     visible,
     onClose,
-    onAdd
+    onAdd,
+    t
 }: {
     visible: boolean;
     onClose: () => void;
     onAdd: (item: NewItemInput) => void;
+    t: any;
 }) => {
     const [name, setName] = useState('');
     const [brand, setBrand] = useState('');
@@ -212,7 +215,7 @@ const AddItemModal = ({
             >
                 <Animated.View entering={FadeInUp.springify()} style={styles.modalContent}>
                     <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>Track New Item</Text>
+                        <Text style={styles.modalTitle}>{t('priceTracker.trackNewItem')}</Text>
                         <TouchableOpacity onPress={onClose}>
                             <Ionicons name="close" size={24} color={AppColors.text} />
                         </TouchableOpacity>
@@ -220,7 +223,7 @@ const AddItemModal = ({
 
                     <View style={styles.modalBody}>
                         <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>Item Name *</Text>
+                            <Text style={styles.inputLabel}>{t('priceTracker.itemName')}</Text>
                             <TextInput
                                 style={styles.input}
                                 placeholder="e.g., Nike Air Max 90"
@@ -232,7 +235,7 @@ const AddItemModal = ({
                         </View>
 
                         <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>Brand</Text>
+                            <Text style={styles.inputLabel}>{t('priceTracker.brand')}</Text>
                             <TextInput
                                 style={styles.input}
                                 placeholder="e.g., Nike"
@@ -245,7 +248,7 @@ const AddItemModal = ({
 
                         <View style={styles.inputRow}>
                             <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                                <Text style={styles.inputLabel}>Current Price *</Text>
+                                <Text style={styles.inputLabel}>{t('priceTracker.currentPrice')}</Text>
                                 <TextInput
                                     style={styles.input}
                                     placeholder="99.99"
@@ -257,7 +260,7 @@ const AddItemModal = ({
                                 />
                             </View>
                             <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                                <Text style={styles.inputLabel}>Target Price</Text>
+                                <Text style={styles.inputLabel}>{t('priceTracker.targetPrice')}</Text>
                                 <TextInput
                                     style={styles.input}
                                     placeholder="79.99"
@@ -271,7 +274,7 @@ const AddItemModal = ({
                         </View>
 
                         <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>Image URL (optional)</Text>
+                            <Text style={styles.inputLabel}>{t('priceTracker.imageUrl')}</Text>
                             <TextInput
                                 style={styles.input}
                                 placeholder="https://..."
@@ -285,7 +288,7 @@ const AddItemModal = ({
                     </View>
 
                     <TouchableOpacity style={styles.addButton} onPress={handleAdd}>
-                        <Text style={styles.addButtonText}>Add to Tracker</Text>
+                        <Text style={styles.addButtonText}>{t('priceTracker.addToTracker')}</Text>
                     </TouchableOpacity>
                 </Animated.View>
             </KeyboardAvoidingView>
@@ -295,6 +298,7 @@ const AddItemModal = ({
 
 const PriceTrackerScreen = () => {
     const navigation = useNavigation();
+    const { t } = useTranslation();
     const [showAddModal, setShowAddModal] = useState(false);
     const [activeTab, setActiveTab] = useState<'items' | 'alerts'>('items');
 
@@ -329,7 +333,7 @@ const PriceTrackerScreen = () => {
                     >
                         <Ionicons name="arrow-back" size={24} color={AppColors.text} />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Price Tracker</Text>
+                    <Text style={styles.headerTitle}>{t('priceTracker.title')}</Text>
                     <TouchableOpacity
                         onPress={() => setShowAddModal(true)}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -342,19 +346,19 @@ const PriceTrackerScreen = () => {
                 <Animated.View entering={FadeIn.delay(100)} style={styles.statsBar}>
                     <View style={styles.statItem}>
                         <Text style={styles.statNumber}>{trackedItems.length}</Text>
-                        <Text style={styles.statLabel}>Tracking</Text>
+                        <Text style={styles.statLabel}>{t('priceTracker.tracking')}</Text>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.statItem}>
                         <Text style={styles.statNumber}>{itemsOnSale.length}</Text>
-                        <Text style={styles.statLabel}>On Sale</Text>
+                        <Text style={styles.statLabel}>{t('priceTracker.onSale')}</Text>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.statItem}>
                         <Text style={[styles.statNumber, { color: '#34C759' }]}>
                             ${totalSavings.toFixed(0)}
                         </Text>
-                        <Text style={styles.statLabel}>Savings</Text>
+                        <Text style={styles.statLabel}>{t('priceTracker.savings')}</Text>
                     </View>
                 </Animated.View>
 
@@ -395,7 +399,7 @@ const PriceTrackerScreen = () => {
                                 <View style={styles.emptyIcon}>
                                     <Ionicons name="pricetags-outline" size={48} color={AppColors.textMuted} />
                                 </View>
-                                <Text style={styles.emptyTitle}>No items tracked</Text>
+                                <Text style={styles.emptyTitle}>{t('priceTracker.noItems')}</Text>
                                 <Text style={styles.emptyText}>
                                     Add items you want to buy and we'll track price changes for you
                                 </Text>
@@ -404,7 +408,7 @@ const PriceTrackerScreen = () => {
                                     onPress={() => setShowAddModal(true)}
                                 >
                                     <Ionicons name="add" size={20} color={AppColors.background} />
-                                    <Text style={styles.emptyButtonText}>Add Item</Text>
+                                    <Text style={styles.emptyButtonText}>{t('priceTracker.addItem')}</Text>
                                 </TouchableOpacity>
                             </Animated.View>
                         ) : (
@@ -426,7 +430,7 @@ const PriceTrackerScreen = () => {
                                 <View style={styles.emptyIcon}>
                                     <Ionicons name="notifications-outline" size={48} color={AppColors.textMuted} />
                                 </View>
-                                <Text style={styles.emptyTitle}>No alerts yet</Text>
+                                <Text style={styles.emptyTitle}>{t('priceTracker.noAlerts')}</Text>
                                 <Text style={styles.emptyText}>
                                     We'll notify you when prices drop on your tracked items
                                 </Text>
@@ -452,6 +456,7 @@ const PriceTrackerScreen = () => {
                 visible={showAddModal}
                 onClose={() => setShowAddModal(false)}
                 onAdd={handleAddItem}
+                t={t}
             />
         </View>
     );

@@ -9,7 +9,11 @@
         "back": "Back",
         "loading": "Loading...",
         "error": "Error",
-        "success": "Success"
+        "success": "Success",
+        "items": "Items",
+        "looks": "Looks",
+        "streak": "Streak",
+        "wears": "Wears"
     },
     "home": {
         "title": "Fits",
@@ -18,11 +22,16 @@
         "stylistInsight": "Stylist Insight",
         "askStylist": "Ask Stylist",
         "todaysSuggestion": "Today's Suggestion",
+        "askAI": "Ask AI",
         "yourWeek": "Your Week",
         "planner": "Planner",
-        "popularThisWeek": "Popular This Week",
-        "more": "More",
-        "askAI": "Ask AI"
+        "wardrobeEssentials": "Wardrobe Essentials",
+        "loadingEssentials": "Loading essentials…",
+        "noEssentials": "No essentials available",
+        "teamCollaboration": "Team Collaboration",
+        "businessCasual": "Business casual",
+        "nightTimeDinner": "Night-Time Dinner",
+        "dinner": "Night-time dinner"
     },
     "discover": {
         "title": "Discover",
@@ -60,7 +69,36 @@
             "outerwear": "Outerwear"
         },
         "noClothes": "No Clothes available in this category",
-        "noOutfits": "No Outfits saved"
+        "noOutfits": "No Outfits saved",
+        "account": "Account",
+        "goPro": "Go Pro",
+        "insights": "Insights",
+        "style": "STYLE",
+        "travel": "TRAVEL",
+        "savedLooks": "Saved Looks",
+        "tripsAndPacking": "Trips & Packing",
+        "new": "New",
+        "openCalendar": "Open Calendar",
+        "wardrobeAnalytics": "Wardrobe Analytics",
+        "subscription": "Subscription",
+        "notifications": "Notifications",
+        "privacyPolicy": "Privacy Policy",
+        "session": "SESSION",
+        "signOut": "Sign Out",
+        "deleteAccount": "Delete Account",
+        "editAccount": "Edit Account",
+        "updateDetails": "Update your photo, name, and account details.",
+        "name": "Name",
+        "email": "Email",
+        "enterUsername": "Enter username",
+        "noEmail": "No email available",
+        "savingUpdates": "Saving updates...",
+        "keepAccount": "Keep Account",
+        "deleteEverything": "Delete Everything",
+        "confirmDelete": "Confirm Delete",
+        "permanentlyDelete": "Permanently delete your account and all associated data?",
+        "cannotUndo": "This action cannot be undone.",
+        "areYouSure": "Are you sure you want to sign out?"
     },
     "addOutfit": {
         "title": "Add outfit",
@@ -94,6 +132,12 @@
         "takePhoto": "Take photo",
         "choosePhoto": "Choose from gallery",
         "cancel": "Cancel",
+        "featureName": "AI Virtual Try-On",
+        "tagline": "See any outfit on a realistic model of yourself — before you wear it.",
+        "bullet1": "Unlimited photorealistic try-ons",
+        "bullet2": "Mix your wardrobe + shop items on one model",
+        "bullet3": "Share looks with friends in seconds",
+        "bullet4": "Priority AI model — highest quality renders",
         "permissionTitle": "Permission required",
         "cameraPermission": "Allow camera access to take a full-length photo.",
         "photoPermission": "Allow photo library access to choose a full-length photo.",
@@ -159,6 +203,390 @@
         "russian": "Russian",
         "uzbek": "Uzbek"
     },
+    "aiHub": {
+        "heroTitle": "Dress with\nconfidence",
+        "heroSubtitle": "Your AI stylist that gets you — from the clothes in your closet to the looks you love.",
+        "talkToStylist": "Talk to AI Stylist",
+        "styleGoal": "What's your style goal?",
+        "getStarted": "Get started"
+    },
+    "outfitMaker": {
+        "yourOutfits": "Your Outfits",
+        "saveToCalendar": "Save to Calendar",
+        "pickDate": "Pick a date for this outfit",
+        "addToCalendar": "Add to Calendar",
+        "saveOutfit": "Save Outfit",
+        "aiStylist": "AI Stylist",
+        "whereGoing": "Where are you going?"
+    },
+    "paywall": {
+        "heroTitle": "Your style, unlocked.",
+        "restorePurchases": "Restore Purchases"
+    },
+    "promo": {
+        "heroTitle": "Unlock Your Free Trial",
+        "heroSubtitle": "Enter a promo code to start your 7-day free trial with full access to all Pro features.",
+        "enterCodeLabel": "PROMO CODE",
+        "placeholder": "Enter your code",
+        "redeem": "Activate Free Trial",
+        "or": "OR",
+        "goPro": "Upgrade to Pro",
+        "goProSubtitle": "Get unlimited access instantly",
+        "skip": "Skip for now",
+        "enterCode": "Please enter a promo code",
+        "invalidCode": "Invalid or expired promo code",
+        "trialActivated": "Trial Activated!",
+        "trialActivatedMessage": "Your {{days}}-day free trial is now active. Enjoy full Pro access!"
+    },
+    "analytics": {
+        "title": "Wardrobe Analytics",
+        "utilized": "Utilized",
+        "totalItems": "Total Items",
+        "totalWears": "Total Wears",
+        "avgItem": "Avg/Item",
+        "dayStreak": "Day Streak",
+        "styleDiversity": "Style Diversity",
+        "mostWorn": "Most Worn",
+        "colorPalette": "Your Color Palette",
+        "categoryBreakdown": "Category Breakdown",
+        "noDataYet": "No Data Yet"
+    },
+    "tripPlanner": {
+        "planYourTrip": "Plan your trip",
+        "destination": "📍 Destination",
+        "travelDates": "📅 Travel Dates",
+        "start": "Start",
+        "end": "End",
+        "occasions": "🎯 Occasions",
+        "createTripPlan": "Create Trip Plan",
+        "yourTripTo": "Your Trip to",
+        "days": "Days",
+        "packingList": "Packing List",
+        "planAnotherTrip": "Plan Another Trip"
+    },
+    "calendar": {
+        "notAdded": "Not added",
+        "planLooks": "Plan looks",
+        "extras": "Extras",
+        "createWithAI": "Create with AI"
+    },
+    "weeklyInsights": {
+        "title": "Style Insights",
+        "totalItems": "Total Items",
+        "dayStreak": "Day Streak",
+        "totalWears": "Total Wears",
+        "closetUtilization": "Closet Utilization",
+        "mostWorn": "Most Worn",
+        "wardrobeBreakdown": "Wardrobe Breakdown",
+        "patternsHabits": "Patterns & Habits",
+        "noDataYet": "No data yet"
+    },
+    "wearLog": {
+        "outfitLogged": "Outfit Logged!",
+        "logTodaysOutfit": "Log Today's Outfit",
+        "todaysSuggestion": "Today's suggestion",
+        "noItemsYet": "No items in your closet yet",
+        "scanWardrobe": "Scan your wardrobe to get started",
+        "occasion": "Occasion"
+    },
+    "styleGoals": {
+        "title": "Style Goals",
+        "subtitle": "Track your fashion journey",
+        "activeGoals": "Active Goals",
+        "completed": "Completed",
+        "challenges": "Challenges",
+        "yourStyleGoals": "Your Style Goals",
+        "weeklyChallenges": "Weekly Challenges"
+    },
+    "styleQuiz": {
+        "welcomeTitle": "Welcome to AIWardrobe",
+        "benefit1": "AI learns your unique style",
+        "benefit2": "Better outfit recommendations",
+        "benefit3": "Takes less than 2 minutes",
+        "letsGetStarted": "Let's Get Started",
+        "stylePersonality": "What's your style personality?",
+        "selectOne": "Select the one that resonates most with you",
+        "favoriteColors": "Which colors do you love?",
+        "selectColors": "Select 3-5 colors you wear most often"
+    },
+    "meetingOutfit": {
+        "createYourStyle": "Create your style",
+        "describeEvent": "Describe your event and get a complete outfit with photos",
+        "placeholder": "E.g., Job interview at a tech startup, client dinner, casual Friday...",
+        "generateOutfit": "Generate Outfit"
+    },
+    "dailySuggestion": {
+        "loading": "Finding your perfect outfit...",
+        "noSuggestions": "No suggestions yet",
+        "scanWardrobe": "Scan Wardrobe",
+        "outfitLogged": "Outfit Logged!",
+        "dayStreak": "day streak",
+        "backToHome": "Back to Home",
+        "todaysOutfit": "Today's Outfit",
+        "tryAnother": "Try another",
+        "wearToday": "Wear this today"
+    },
+    "aiStylist": {
+        "title": "AI Stylist"
+    },
+    "clothingDetail": {
+        "title": "Clothing Detail",
+        "missingImplementation": "This recovered branch is missing the original detail screen implementation."
+    },
+    "outfitDetail": {
+        "detecting": "Detecting items...",
+        "shopNow": "Shop Now"
+    },
+    "outfitSwipe": {
+        "loading": "Generating outfit ideas...",
+        "styleDiscovery": "Style Discovery",
+        "allDone": "All Done!",
+        "getMoreOutfits": "Get More Outfits"
+    },
+    "priceTracker": {
+        "trackNewItem": "Track New Item",
+        "itemName": "Item Name *",
+        "brand": "Brand",
+        "currentPrice": "Current Price *",
+        "targetPrice": "Target Price",
+        "imageUrl": "Image URL (optional)",
+        "addToTracker": "Add to Tracker",
+        "title": "Price Tracker",
+        "tracking": "Tracking",
+        "onSale": "On Sale",
+        "savings": "Savings",
+        "noItems": "No items tracked",
+        "addItem": "Add Item",
+        "noAlerts": "No alerts yet"
+    },
+    "newOutfit": {
+        "title": "New Outfit",
+        "date": "Date",
+        "addToOotd": "Add to OOTD story",
+        "occasion": "Occasion",
+        "visibility": "Visibility",
+        "save": "Save outfit"
+    },
+    "resetPassword": {
+        "title": "Set New Password",
+        "subtitle": "Choose a strong password for your account.",
+        "passwordsDontMatch": "Passwords don't match",
+        "samePassword": "Same Password",
+        "newPasswordDifferent": "New password must be different from your current password.",
+        "weakPassword": "Weak Password",
+        "chooseStronger": "Please choose a stronger password."
+    },
+    "designRoom": {
+        "title": "Style Room",
+        "createOutfit": "Create Your Outfit",
+        "celebrityLook": "Celebrity Look",
+        "scanWardrobe": "Scan Wardrobe",
+        "aiSuggestOutfit": "AI Suggest Outfit",
+        "next": "Next",
+        "add": "Add",
+        "scanVideo": "Scan Video",
+        "stickers": "Stickers",
+        "background": "Bg",
+        "emptyState": "Add clothes to start designing"
+    },
+    "trialExpired": {
+        "title": "Trial Expired",
+        "body": "Your 7-day free trial has ended. Upgrade to a paid plan to continue using AI outfits, unlimited wardrobe scans, and all premium features.",
+        "upgradeToPro": "Upgrade to Pro",
+        "havePromoCode": "I have a promo code"
+    },
+    "inspo": {
+        "title": "Inspiration",
+        "fromYourCloset": "From Your Closet",
+        "personalStylist": "Personal Stylist",
+        "featuredCapsules": "Featured Capsules",
+        "noMenswearMatches": "No menswear matches that search.",
+        "loadMoreProducts": "Load more products"
+    },
+    "camera": {
+        "permissionNeeded": "Camera permission needed",
+        "grantAccess": "Grant Access",
+        "recording": "Recording",
+        "photo": "Photo",
+        "video": "Video"
+    },
+    "chat": {
+        "title": "Stylist",
+        "emptyTitle": "What are you dressing for?",
+        "thinking": "Still thinking..."
+    },
+    "brandSelection": {
+        "chooseBrands": "Choose 3 or more brands"
+    },
+    "createAvatar": {
+        "title": "3D Body Model",
+        "subtitle": "Enter your measurements",
+        "bodyMeasurements": "Body Measurements",
+        "height": "Height",
+        "heightRange": "Range: 140 – 230 cm",
+        "weight": "Weight",
+        "weightRange": "Range: 40 – 150 kg",
+        "bodyType": "Body Type",
+        "saveBodyModel": "Save Body Model"
+    },
+    "emailOnboarding": {
+        "howItWorks": "How it works:"
+    },
+    "flashSaleEvent": {
+        "soldOut": "Sold Out",
+        "eventNotFound": "Event not found",
+        "liveNow": "LIVE NOW",
+        "exclusive": "EXCLUSIVE",
+        "off": "OFF",
+        "items": "ITEMS",
+        "waiting": "WAITING"
+    },
+    "flashSales": {
+        "hrs": "HRS",
+        "min": "MIN",
+        "sec": "SEC",
+        "live": "LIVE",
+        "exclusive": "EXCLUSIVE",
+        "upToOff": "Up to {{discount}}% OFF",
+        "shopNow": "Shop Now",
+        "loading": "Loading exclusive sales...",
+        "title": "Flash Sales",
+        "liveBadge": "🔥 LIVE",
+        "happeningNow": "⚡ Happening Now",
+        "comingSoon": "🗓️ Coming Soon",
+        "exclusiveAccess": "Exclusive Access"
+    },
+    "magicMirror": {
+        "loading": "Loading your wardrobe...",
+        "title": "Magic Mirror",
+        "tops": "TOPS",
+        "tapToAddPhoto": "Tap to add your photo",
+        "creatingMagic": "Creating magic...",
+        "bottoms": "BOTTOMS",
+        "generating": "Generating...",
+        "tryOn": "Try On"
+    },
+    "outfitAI": {
+        "notQuiteRight": "Not quite right? Adjust:",
+        "title": "AI Stylist",
+        "welcomeTitle": "Your AI Stylist",
+        "occasionTitle": "What's the occasion?",
+        "occasionSubtitle": "Tell me your plans and I'll find the perfect outfit",
+        "greeting": "Hi! I'm your AI stylist. Tell me about your occasion, and I'll create the perfect outfit from your wardrobe. What are you dressing for today?"
+    },
+    "privacyPolicy": {
+        "title": "Privacy Policy",
+        "lastUpdated": "Last updated: March 2026",
+        "intro": "AIWardrobe (\"we\", \"our\", \"us\") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our mobile application.",
+        "informationWeCollect": {
+            "title": "Information We Collect",
+            "body": "When you use AIWardrobe, we collect the following types of information:\n\n• Account Information: Email address, username, and optional profile details you provide during registration.\n• Wardrobe Data: Photos of clothing items you upload, along with AI-detected attributes (category, color, pattern, material).\n• Usage Data: Wear logs, outfit history, and feature usage patterns to improve AI suggestions.\n• Device Information: Device type, OS version, and app version for bug fixing and optimization.\n• Location Data: Optional — used only for weather-based outfit recommendations when you grant permission."
+        },
+        "howWeUse": {
+            "title": "How We Use Your Information",
+            "body": "We use your information to:\n\n• Provide and improve AI-powered outfit suggestions and wardrobe management.\n• Sync your wardrobe across devices via secure cloud storage.\n• Generate personalized analytics (most worn items, style diversity, etc.).\n• Send relevant notifications (daily outfit suggestions, streak reminders).\n• Improve our AI models and app experience.\n\nWe do NOT sell your personal data to third parties."
+        },
+        "dataStorage": {
+            "title": "Data Storage & Security",
+            "body": "• Your data is stored securely using Supabase (PostgreSQL) with row-level security.\n• All data transmission is encrypted via TLS/HTTPS.\n• Photos are stored in secure cloud storage with access restricted to your account.\n• We retain your data as long as your account is active. You can delete your account and all associated data at any time."
+        },
+        "thirdParty": {
+            "title": "Third-Party Services",
+            "body": "We use third-party services to power our app:\n\n• Supabase for secure database and authentication.\n• Expo for app development and deployment.\n• AI services for outfit recommendations and image analysis.\n\nWe carefully vet all third-party services and ensure they comply with our privacy standards."
+        },
+        "yourRights": {
+            "title": "Your Rights",
+            "body": "You have the right to:\n\n• Access your personal data at any time.\n• Request deletion of your account and all associated data.\n• Opt out of data collection for non-essential features.\n• Update your profile information and preferences.\n• Export your data in a machine-readable format.\n\nTo exercise these rights, contact us at support@aiwardrobe.app"
+        },
+        "childrensPrivacy": {
+            "title": "Children's Privacy",
+            "body": "Our service is not intended for children under 13. We do not knowingly collect personal information from children under 13. If you are a parent or guardian and believe your child has provided us with personal information, please contact us."
+        },
+        "changes": {
+            "title": "Changes to This Policy",
+            "body": "We may update this Privacy Policy from time to time. We will notify you of significant changes through the app or via email. Continued use of AIWardrobe after changes constitutes acceptance of the updated policy."
+        },
+        "contact": {
+            "title": "Contact Us",
+            "body": "If you have questions about this Privacy Policy, please contact us at:\n\n📧 support@aiwardrobe.app"
+        }
+    },
+    "review": {
+        "error": "Error",
+        "notAuthorized": "You are not authorized",
+        "done": "Done! 🎉",
+        "itemsAdded": "Added {{count}} items. Now we're generating beautiful photos for them.",
+        "saveFailed": "Failed to save items: {{error}}",
+        "removeItem": "Remove Item",
+        "confirmRemove": "Are you sure you want to remove this item?",
+        "generating": "Generating clothes...",
+        "savingToCloud": "Drawing photos and saving to cloud",
+        "itemsFound": "Found {{count}} items",
+        "addToWardrobe": "Add to wardrobe ({{count}})"
+    },
+    "termsOfService": {
+        "title": "Terms of Service",
+        "lastUpdated": "Last updated: March 2026",
+        "intro": "Please read these Terms of Service carefully before using AIWardrobe.",
+        "acceptance": {
+            "title": "1. Acceptance of Terms",
+            "body": "By downloading, installing, or using AIWardrobe, you agree to be bound by these Terms of Service. If you do not agree, do not use the application."
+        },
+        "description": {
+            "title": "2. Description of Service",
+            "body": "AIWardrobe is an AI-powered wardrobe management application that provides:\n\n• Clothing item digitization via camera/photo scanning\n• AI-generated outfit suggestions\n• Virtual try-on functionality\n• Wardrobe analytics and style insights\n• Cloud synchronization across devices\n\nSome features require an active internet connection and may use third-party AI services."
+        },
+        "userAccounts": {
+            "title": "3. User Accounts",
+            "body": "• You must provide accurate information when creating an account.\n• You are responsible for maintaining the security of your account credentials.\n• You must be at least 13 years old to create an account.\n• One person may not maintain more than one account.\n• We reserve the right to suspend or terminate accounts that violate these terms."
+        },
+        "userContent": {
+            "title": "4. User Content",
+            "body": "• You retain ownership of all photos and content you upload.\n• By uploading content, you grant us a license to process, store, and display it within the app.\n• You agree not to upload content that is illegal, offensive, or infringes on others' rights.\n• We may use anonymized, aggregated data to improve our AI models."
+        },
+        "subscriptions": {
+            "title": "5. Subscriptions & Payments",
+            "body": "• AIWardrobe offers free and premium subscription tiers.\n• Premium subscriptions are billed through the App Store.\n• Subscriptions auto-renew unless cancelled at least 24 hours before the end of the current period.\n• Refunds are handled according to the App Store's refund policy."
+        },
+        "aiContent": {
+            "title": "6. AI-Generated Content",
+            "body": "• AI suggestions are generated algorithmically and may not always be accurate.\n• Virtual try-on results are approximations and may not perfectly represent real-world appearance.\n• We do not guarantee the accuracy of AI color, pattern, or material detection.\n• AI-generated outfit suggestions are for informational purposes only."
+        },
+        "prohibited": {
+            "title": "7. Prohibited Uses",
+            "body": "You agree not to:\n\n• Reverse engineer, decompile, or attempt to extract source code from the app.\n• Use the app for commercial purposes without authorization.\n• Scrape, harvest, or collect data from other users.\n• Attempt to bypass subscription or authentication mechanisms.\n• Use the app to transmit malware or malicious content."
+        },
+        "intellectual": {
+            "title": "8. Intellectual Property",
+            "body": "• AIWardrobe and its original content, features, and functionality are owned by us and protected by intellectual property laws.\n• The AIWardrobe name, logo, and branding are our trademarks."
+        },
+        "liability": {
+            "title": "9. Limitation of Liability",
+            "body": "AIWardrobe is provided \"as is\" without warranty of any kind. We are not liable for any indirect, incidental, special, or consequential damages resulting from your use of the app."
+        },
+        "changes": {
+            "title": "10. Changes to Terms",
+            "body": "We reserve the right to modify these terms at any time. Continued use after changes constitutes acceptance. We will notify you of significant changes through the app."
+        },
+        "contact": {
+            "title": "11. Contact",
+            "body": "For questions about these Terms, contact us at:\n\n📧 support@aiwardrobe.app"
+        }
+    },
+    "wardrobeVideo": {
+        "title": "AI Wardrobe Scan",
+        "selectGallery": "Select from Gallery",
+        "analysisComplete": "Analysis Complete",
+        "outfit": "Outfit {{index}}",
+        "reviewSave": "Review & Save",
+        "processFailed": "Failed to process the selected file.",
+        "loginRequired": "Login Required",
+        "loginToSave": "Please login to save items.",
+        "info": "Info",
+        "noMediaSelected": "No media selected or selection was cancelled.",
+        "pickFailed": "Failed to pick media: {{error}}",
+        "saveFailed": "Failed to save. {{error}}"
+    },
     "auth": {
         "signIn": "Sign In",
         "signUp": "Sign Up",
@@ -173,6 +601,17 @@
         "getStarted": "Get Started"
     },
     "wardrobe": {
+        "title": "My Wardrobe",
+        "addItem": "Add Item",
+        "upload": "Upload",
+        "clothes": "Clothes",
+        "collections": "Collections",
+        "noCollections": "No collections yet",
+        "createFirstLook": "Create First Look",
+        "emptyCloset": "Your closet is empty",
+        "emptyClosetSubtitle": "Start adding items to build your digital wardrobe.",
+        "scanWardrobe": "Scan Wardrobe",
+        "askStylist": "Ask Stylist",
         "cameraAccess": "Camera access required",
         "allow": "Allow",
         "aiAnalyzing": "AI is analyzing video...",
@@ -184,15 +623,6 @@
         "selectVideoError": "Failed to select video",
         "cameraNotSimulator": "Camera doesn't work on simulator. Use gallery.",
         "recognitionError": "Failed to recognize clothing. Try a shorter video."
-    },
-    "designRoom": {
-        "title": "Design Room",
-        "next": "Next",
-        "add": "Add",
-        "scanVideo": "Scan Video",
-        "stickers": "Stickers",
-        "background": "Bg",
-        "emptyState": "Add clothes to start designing"
     },
     "tabs": {
         "home": "Home",

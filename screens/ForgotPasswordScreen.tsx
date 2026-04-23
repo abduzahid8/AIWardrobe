@@ -16,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
+import * as Linking from 'expo-linking';
 import { supabase } from '../lib/supabase';
 import { useTranslation } from 'react-i18next';
 
@@ -36,8 +37,9 @@ const ForgotPasswordScreen = () => {
 
         setIsLoading(true);
         try {
+            const redirectTo = Linking.createURL('reset-password');
             const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: 'com.aiwardrobe://reset-password',
+                redirectTo,
             });
 
             if (error) throw error;

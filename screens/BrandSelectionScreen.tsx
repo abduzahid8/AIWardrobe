@@ -20,6 +20,7 @@ import Animated, {
     useSharedValue,
     withSpring,
 } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -118,6 +119,7 @@ const BrandRow = ({
 };
 
 const BrandSelectionScreen = () => {
+    const { t } = useTranslation();
     const navigation = useNavigation();
     const [searchQuery, setSearchQuery] = useState('');
     const [likedBrands, setLikedBrands] = useState<string[]>([]);
@@ -159,7 +161,7 @@ const BrandSelectionScreen = () => {
                 >
                     <ProgressBar steps={5} currentStep={4} />
                     <TouchableOpacity onPress={handleSkip} style={styles.skipButton}>
-                        <Text style={styles.skipText}>Skip</Text>
+                        <Text style={styles.skipText}>{t('common.skip')}</Text>
                     </TouchableOpacity>
                 </Animated.View>
 
@@ -179,7 +181,7 @@ const BrandSelectionScreen = () => {
                     style={styles.titleContainer}
                 >
                     <Text style={styles.title}>
-                        Choose 3 or{'\n'}more <Text style={styles.titleItalic}>brands</Text>
+                        {t('brandSelection.chooseBrands')}
                     </Text>
                     <Text style={styles.subtitle}>
                         Choose brands of clothes you currently own or want

@@ -26,6 +26,7 @@ import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-g
 import AppColors from '../constants/AppColors';
 import { useStylePreferenceStore } from '../store/stylePreferenceStore';
 import { useWardrobeItems } from '../src/hooks';
+import { useTranslation } from 'react-i18next';
 
 const { width, height } = Dimensions.get('window');
 
@@ -306,6 +307,7 @@ const OutfitCard = ({ outfit, index, onSwipe, isTop }: OutfitCardProps) => {
 
 const OutfitSwipeScreen = () => {
     const navigation = useNavigation();
+    const { t } = useTranslation();
     const { items: wardrobeItems } = useWardrobeItems();
     const { likeOutfit, dislikeOutfit, superLikeOutfit, totalLikes, totalDislikes } = useStylePreferenceStore();
 
@@ -350,7 +352,7 @@ const OutfitSwipeScreen = () => {
         return (
             <View style={[styles.container, styles.centered]}>
                 <ActivityIndicator size="large" color={COLORS.primary} />
-                <Text style={styles.loadingText}>Generating outfit ideas...</Text>
+                <Text style={styles.loadingText}>{t('outfitSwipe.loading')}</Text>
             </View>
         );
     }
@@ -369,7 +371,7 @@ const OutfitSwipeScreen = () => {
                         </TouchableOpacity>
 
                         <View style={styles.headerCenter}>
-                            <Text style={styles.headerTitle}>Style Discovery</Text>
+                            <Text style={styles.headerTitle}>{t('outfitSwipe.styleDiscovery')}</Text>
                             <Text style={styles.headerSubtitle}>
                                 Swipe to teach AI your style
                             </Text>
@@ -401,7 +403,7 @@ const OutfitSwipeScreen = () => {
                                 entering={FadeIn}
                             >
                                 <Text style={styles.emptyEmoji}>🎉</Text>
-                                <Text style={styles.emptyTitle}>All Done!</Text>
+                                <Text style={styles.emptyTitle}>{t('outfitSwipe.allDone')}</Text>
                                 <Text style={styles.emptySubtitle}>
                                     You've rated all outfits. Your AI stylist is now smarter!
                                 </Text>
@@ -414,7 +416,7 @@ const OutfitSwipeScreen = () => {
                                     }}
                                 >
                                     <Ionicons name="refresh" size={20} color="#FFF" />
-                                    <Text style={styles.refreshButtonText}>Get More Outfits</Text>
+                                    <Text style={styles.refreshButtonText}>{t('outfitSwipe.getMoreOutfits')}</Text>
                                 </TouchableOpacity>
                             </Animated.View>
                         )}

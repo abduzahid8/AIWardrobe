@@ -296,7 +296,7 @@ const TabNavigator = () => {
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarShowLabel: false,
-        animation: Platform.OS === 'ios' ? 'shift' : 'fade',
+        animation: 'fade',
         lazy: true,
       })}
     >

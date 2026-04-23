@@ -1,9 +1,12 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
+import * as SplashScreen from "expo-splash-screen";
+import { useEffect } from "react";
 import { StyleSheet, View, Text } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import * as Linking from 'expo-linking';
 import "./global.css";
 import "./i18n";
 import RootNavigator from "./navigation/RootNavigator";
@@ -13,6 +16,23 @@ import { ErrorBoundary } from "./src/components/ErrorBoundary";
 import crashReporting from "./src/services/crashReporting";
 import { bootstrapStores } from "./store/bootstrap";
 import { validateConfig } from "./src/config/env";
+import useAuthStore from "./store/auth";
+
+// Deep linking configuration
+const linking = {
+  prefixes: [Linking.createURL('/')],
+  config: {
+    screens: {
+      ResetPassword: 'reset-password',
+    },
+  },
+};
+
+// Keep splash visible until the app is actually ready to render.
+// Must run before the first React render.
+SplashScreen.preventAutoHideAsync().catch(() => {
+  // Already prevented or not supported (e.g. web) — safe to ignore.
+});
 
 try {
   crashReporting.initialize();
@@ -52,6 +72,31 @@ const AppContent = () => {
   const { colors } = useTheme();
   const missingVars = validateConfig();
 
+  // Hide the splash once the first frame renders. We hide it even on the
+  // MissingConfigScreen path so the user can see the actionable error
+  // instead of an indefinite splash.
+  useEffect(() => {
+    SplashScreen.hideAsync().catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    const handleDeepLink = async (event: { url: string }) => {
+      const { handleDeepLink: processLink } = useAuthStore.getState();
+      await processLink(event.url);
+    };
+
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+
+    // Check if app was opened from a link
+    Linking.getInitialURL().then((url) => {
+      if (url) handleDeepLink({ url });
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
   if (missingVars.length > 0) {
     return <MissingConfigScreen missing={missingVars} />;
   }
@@ -59,7 +104,7 @@ const AppContent = () => {
   return (
     <GestureHandlerRootView style={[styles.container, { backgroundColor: colors.background }]}>
       <SafeAreaProvider>
-        <NavigationContainer ref={navigationRef}>
+        <NavigationContainer ref={navigationRef} linking={linking}>
           <ThemedStatusBar />
           <RootNavigator />
         </NavigationContainer>

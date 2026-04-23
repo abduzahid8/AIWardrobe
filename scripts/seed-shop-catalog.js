@@ -38,7 +38,7 @@ const ROOT     = path.join(__dirname, '..');
 const CATALOG = [
     {
         id: 'shop-inspo-1',
-        brand: 'ZARA',
+        brand: 'Classic',
         name: 'Oversized Blazer',
         price: 129.00,
         currency: 'USD',
@@ -46,11 +46,11 @@ const CATALOG = [
         garment_type: 'upper_body',
         description: 'Relaxed oversized blazer with structured shoulders',
         sort_order: 10,
-        localImage: 'pictures/shop/image copy.png',
+        imageUrl: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=600&q=80',
     },
     {
         id: 'shop-inspo-2',
-        brand: 'ZARA',
+        brand: 'Classic',
         name: 'Wide Leg Trousers',
         price: 89.90,
         currency: 'USD',
@@ -58,11 +58,11 @@ const CATALOG = [
         garment_type: 'lower_body',
         description: 'Wide-leg trousers with a relaxed silhouette',
         sort_order: 20,
-        localImage: 'pictures/shop/image copy 2.png',
+        imageUrl: 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=600&q=80',
     },
     {
         id: 'shop-inspo-3',
-        brand: 'ZARA',
+        brand: 'Classic',
         name: 'Structured Jacket',
         price: 69.90,
         currency: 'USD',
@@ -70,11 +70,11 @@ const CATALOG = [
         garment_type: 'upper_body',
         description: 'Structured cropped jacket with button closure',
         sort_order: 30,
-        localImage: 'pictures/shop/image copy 3.png',
+        imageUrl: 'https://images.unsplash.com/photo-1551028919-ac66c5f85b4f?w=600&q=80',
     },
     {
         id: 'shop-inspo-4',
-        brand: 'ZARA',
+        brand: 'Classic',
         name: 'Slim Fit Jeans',
         price: 15.90,
         currency: 'USD',
@@ -82,11 +82,11 @@ const CATALOG = [
         garment_type: 'lower_body',
         description: 'Classic slim-fit jeans in mid-wash denim',
         sort_order: 40,
-        localImage: 'pictures/shop/image copy 4.png',
+        imageUrl: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=600&q=80',
     },
     {
         id: 'shop-inspo-5',
-        brand: 'ZARA',
+        brand: 'Classic',
         name: 'Ribbed Knit Top',
         price: 35.90,
         currency: 'USD',
@@ -94,11 +94,11 @@ const CATALOG = [
         garment_type: 'upper_body',
         description: 'Fine ribbed knit top with crew neck',
         sort_order: 50,
-        localImage: 'pictures/shop/image copy 5.png',
+        imageUrl: 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=600&q=80',
     },
     {
         id: 'shop-inspo-6',
-        brand: 'ZARA',
+        brand: 'Classic',
         name: 'Leather Ankle Boots',
         price: 99.90,
         currency: 'USD',
@@ -106,11 +106,11 @@ const CATALOG = [
         garment_type: 'shoes',
         description: 'Leather ankle boots with block heel',
         sort_order: 60,
-        localImage: 'pictures/shop/image copy 6.png',
+        imageUrl: 'https://images.unsplash.com/photo-1449505278894-297fdb3edbc1?w=600&q=80',
     },
     {
         id: 'shop-inspo-7',
-        brand: 'ZARA',
+        brand: 'Classic',
         name: 'Satin Mini Dress',
         price: 59.90,
         currency: 'USD',
@@ -118,11 +118,11 @@ const CATALOG = [
         garment_type: 'dresses',
         description: 'Satin mini dress with thin shoulder straps',
         sort_order: 70,
-        localImage: 'pictures/shop/image.png',
+        imageUrl: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=600&q=80',
     },
     {
         id: 'shop-inspo-8',
-        brand: 'ZARA',
+        brand: 'Classic',
         name: 'Brown Pants',
         price: 79.90,
         currency: 'USD',
@@ -130,11 +130,11 @@ const CATALOG = [
         garment_type: 'lower_body',
         description: 'Tailored brown trousers with straight leg',
         sort_order: 80,
-        localImage: 'pictures/shop/Brown-pants-with_line.png',
+        imageUrl: 'https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=600&q=80',
     },
     {
         id: 'shop-inspo-9',
-        brand: 'ZARA',
+        brand: 'Classic',
         name: 'Brown Loafers',
         price: 89.90,
         currency: 'USD',
@@ -142,11 +142,11 @@ const CATALOG = [
         garment_type: 'shoes',
         description: 'Classic brown leather loafers',
         sort_order: 90,
-        localImage: 'pictures/shop/Brown_loafers.png.png',
+        imageUrl: 'https://images.unsplash.com/photo-1638247025967-b4e38f787b76?w=600&q=80',
     },
     {
         id: 'shop-inspo-10',
-        brand: 'ZARA',
+        brand: 'Classic',
         name: 'Grey Loafers',
         price: 95.90,
         currency: 'USD',
@@ -154,11 +154,11 @@ const CATALOG = [
         garment_type: 'shoes',
         description: 'Premium grey leather loafers',
         sort_order: 100,
-        localImage: 'pictures/shop/Grey_loafers_loropiana.png',
+        imageUrl: 'https://images.unsplash.com/photo-1560769629-975ec94e6a86?w=600&q=80',
     },
     {
         id: 'shop-inspo-11',
-        brand: 'ZARA',
+        brand: 'Classic',
         name: 'High Waist Trousers',
         price: 69.90,
         currency: 'USD',
@@ -166,7 +166,7 @@ const CATALOG = [
         garment_type: 'lower_body',
         description: 'High-waist white trousers with pleated front',
         sort_order: 110,
-        localImage: 'pictures/shop/highweist_trousers_whte.png',
+        imageUrl: 'https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=600&q=80',
     },
 ];
 
@@ -214,14 +214,8 @@ async function main() {
 
     for (const item of CATALOG) {
         process.stdout.write(`  ↑  ${item.id}  ${item.name} … `);
-
-        const imageUrl = await uploadImage(item);
-        if (!imageUrl) {
-            console.log('skipped (no image).');
-            continue;
-        }
-
-        const { localImage, ...rest } = item;
+        
+        const { imageUrl, ...rest } = item;
         rows.push({ ...rest, image_url: imageUrl });
 
         console.log('done.');

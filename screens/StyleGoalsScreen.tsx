@@ -24,6 +24,7 @@ import Animated, {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TahoeIconButton } from '../components/TahoeButton';
 import AppColors from '../constants/AppColors';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -151,6 +152,16 @@ interface ChallengeProgress {
     status: 'active' | 'completed' | 'failed';
 }
 
+interface GoalCardProps {
+    goal: any;
+    userGoal?: UserGoal;
+    isActive: boolean;
+    isCompleted: boolean;
+    progress: number;
+    onPress: () => void;
+    onUpdateProgress: (inc: number) => void;
+}
+
 // Progress Ring Component
 const ProgressRing = ({
     progress,
@@ -206,21 +217,7 @@ const ProgressRing = ({
 };
 
 // Goal Card Component
-const GoalCard = ({
-    goal,
-    userGoal,
-    onPress,
-    onUpdateProgress
-}: {
-    goal: typeof AVAILABLE_GOALS[0];
-    userGoal?: UserGoal;
-    onPress: () => void;
-    onUpdateProgress: (increment: number) => void;
-}) => {
-    const progress = userGoal ? (userGoal.progress / goal.target) * 100 : 0;
-    const isActive = !!userGoal && !userGoal.completedAt;
-    const isCompleted = userGoal?.completedAt;
-
+const GoalCard = ({ goal, isActive, isCompleted, progress, onPress, onUpdateProgress }: GoalCardProps) => {
     return (
         <TouchableOpacity
             style={[
@@ -379,6 +376,7 @@ const ChallengeCard = ({
 
 const StyleGoalsScreen = () => {
     const navigation = useNavigation();
+    const { t } = useTranslation();
     const [userGoals, setUserGoals] = useState<UserGoal[]>([]);
     const [challenges, setChallenges] = useState<ChallengeProgress[]>([]);
     const [activeTab, setActiveTab] = useState<'goals' | 'challenges'>('goals');
@@ -528,8 +526,8 @@ const StyleGoalsScreen = () => {
                     />
 
                     <View style={styles.headerCenter}>
-                        <Text style={styles.headerTitle}>Style Goals</Text>
-                        <Text style={styles.headerSubtitle}>Track your fashion journey</Text>
+                        <Text style={styles.headerTitle}>{t('styleGoals.title')}</Text>
+                        <Text style={styles.headerSubtitle}>{t('styleGoals.subtitle')}</Text>
                     </View>
 
                     <View style={{ width: 40 }} />
@@ -542,17 +540,17 @@ const StyleGoalsScreen = () => {
                 >
                     <View style={styles.statItem}>
                         <Text style={styles.statNumber}>{activeGoalsCount}</Text>
-                        <Text style={styles.statLabel}>Active Goals</Text>
+                        <Text style={styles.statLabel}>{t('styleGoals.activeGoals')}</Text>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.statItem}>
                         <Text style={styles.statNumber}>{completedGoalsCount}</Text>
-                        <Text style={styles.statLabel}>Completed</Text>
+                        <Text style={styles.statLabel}>{t('styleGoals.completed')}</Text>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.statItem}>
                         <Text style={styles.statNumber}>{activeChallengesCount}</Text>
-                        <Text style={styles.statLabel}>Challenges</Text>
+                        <Text style={styles.statLabel}>{t('styleGoals.challenges')}</Text>
                     </View>
                 </Animated.View>
 
@@ -582,18 +580,24 @@ const StyleGoalsScreen = () => {
                 >
                     {activeTab === 'goals' ? (
                         <Animated.View entering={FadeIn.delay(150)}>
-                            <Text style={styles.sectionTitle}>Your Style Goals</Text>
+                            <Text style={styles.sectionTitle}>{t('styleGoals.yourStyleGoals')}</Text>
                             <Text style={styles.sectionSubtitle}>
                                 Set goals to level up your wardrobe
                             </Text>
 
                             {AVAILABLE_GOALS.map((goal) => {
                                 const userGoal = userGoals.find(g => g.goalId === goal.id);
+                                const isActive = !!userGoal && !userGoal.completedAt;
+                                const isCompleted = !!userGoal?.completedAt;
+                                const progress = userGoal?.progress || 0;
                                 return (
                                     <GoalCard
                                         key={goal.id}
                                         goal={goal}
                                         userGoal={userGoal}
+                                        isActive={isActive}
+                                        isCompleted={isCompleted}
+                                        progress={progress}
                                         onPress={() => startGoal(goal.id)}
                                         onUpdateProgress={(inc) => updateGoalProgress(goal.id, inc)}
                                     />
@@ -602,7 +606,7 @@ const StyleGoalsScreen = () => {
                         </Animated.View>
                     ) : (
                         <Animated.View entering={FadeIn.delay(150)}>
-                            <Text style={styles.sectionTitle}>Weekly Challenges</Text>
+                            <Text style={styles.sectionTitle}>{t('styleGoals.weeklyChallenges')}</Text>
                             <Text style={styles.sectionSubtitle}>
                                 Push your style boundaries with fun challenges
                             </Text>

@@ -24,8 +24,8 @@ import Config from '../config/env';
 export type ProductId = string;
 
 const TIER_BY_PRODUCT_ID: Record<string, SubscriptionTier> = {
-    'monthly': 'premium',
-    'yearly': 'premium',
+    'com.aiwardrobe.premium.monthly': 'premium',
+    'com.aiwardrobe.vip.yearly': 'vip',
 };
 
 // RevenueCat lazy import — loaded when API key is configured
@@ -310,10 +310,17 @@ class IAPService {
                 return byProduct[productId] || undefined;
             };
 
+            // Check VIP first (higher tier), then premium
+            const vipEntitlement = findEntitlement(['vip', 'max']);
+            const vipProductId = findProductForTier('vip');
+
             const premiumEntitlement = findEntitlement(['premium', 'pro']);
             const premiumProductId = findProductForTier('premium');
 
-            if (premiumEntitlement || premiumProductId) {
+            if (vipEntitlement || vipProductId) {
+                const expiry = vipEntitlement?.expirationDate || getExpiryForProduct(vipProductId);
+                await setSubscription('vip', expiry);
+            } else if (premiumEntitlement || premiumProductId) {
                 const expiry = premiumEntitlement?.expirationDate || getExpiryForProduct(premiumProductId);
                 await setSubscription('premium', expiry);
             } else {
@@ -328,7 +335,7 @@ class IAPService {
     }
 
     private getTierByProductId(productId: ProductId): SubscriptionTier {
-        return TIER_BY_PRODUCT_ID[productId] || 'premium';
+        return TIER_BY_PRODUCT_ID[productId] || 'free';
     }
 
     /**

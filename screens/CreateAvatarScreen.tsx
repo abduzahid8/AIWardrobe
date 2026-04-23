@@ -21,6 +21,7 @@ import { LinearGradient } from "expo-linear-gradient";
 
 import AppColors from "../constants/AppColors";
 import LiquidGlass2026Theme from "../constants/LiquidGlass2026Theme";
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get("window");
 
@@ -30,6 +31,7 @@ import useAvatarStore from "../store/avatarStore";
 const MANNEQUIN_IMAGE = require('../assets/images/mannequin_front.png');
 
 export default function CreateAvatarScreen() {
+    const { t } = useTranslation();
     const navigation = useAppNavigation();
     
     // Read from persistent store
@@ -51,7 +53,7 @@ export default function CreateAvatarScreen() {
         if (navigation.canGoBack()) {
             navigation.goBack();
         } else {
-            navigation.navigate('AIOutfit');
+            navigation.navigate('AIOutfit', { source: 'wardrobe' });
         }
     };
 
@@ -99,8 +101,8 @@ export default function CreateAvatarScreen() {
                         <Ionicons name="arrow-back" size={22} color={LiquidGlass2026Theme.colors.text.primary} />
                     </TouchableOpacity>
                     <View style={styles.headerCenter}>
-                        <Text style={styles.headerTitle}>3D Body Model</Text>
-                        <Text style={styles.headerSubtitle}>Enter your measurements</Text>
+                        <Text style={styles.headerTitle}>{t('createAvatar.title')}</Text>
+                        <Text style={styles.headerSubtitle}>{t('createAvatar.subtitle')}</Text>
                     </View>
                     <View style={{ width: 44 }} />
                 </View>
@@ -133,7 +135,7 @@ export default function CreateAvatarScreen() {
                     {/* Controls — directly below mannequin */}
                     <View style={styles.sheetHandle} />
 
-                            <Text style={styles.sectionTitle}>Body Measurements</Text>
+                            <Text style={styles.sectionTitle}>{t('createAvatar.bodyMeasurements')}</Text>
                                 <View style={styles.slidersContainer}>
                                     {/* Height Input */}
                                     <View style={styles.sliderCard}>
@@ -142,7 +144,7 @@ export default function CreateAvatarScreen() {
                                                 <View style={styles.measurementIcon}>
                                                     <Ionicons name="resize-outline" size={18} color="#fff" />
                                                 </View>
-                                                <Text style={styles.measurementLabel}>Height</Text>
+                                                <Text style={styles.measurementLabel}>{t('createAvatar.height')}</Text>
                                             </View>
                                             <View style={styles.inputWrapper}>
                                                 <TextInput
@@ -157,7 +159,7 @@ export default function CreateAvatarScreen() {
                                                 <Text style={styles.inputUnit}>cm</Text>
                                             </View>
                                         </View>
-                                        <Text style={styles.inputHint}>Range: 140 – 230 cm</Text>
+                                        <Text style={styles.inputHint}>{t('createAvatar.heightRange')}</Text>
                                     </View>
 
                                     {/* Weight Input */}
@@ -167,7 +169,7 @@ export default function CreateAvatarScreen() {
                                                 <View style={[styles.measurementIcon, { backgroundColor: '#4A5568' }]}>
                                                     <Ionicons name="scale-outline" size={18} color="#fff" />
                                                 </View>
-                                                <Text style={styles.measurementLabel}>Weight</Text>
+                                                <Text style={styles.measurementLabel}>{t('createAvatar.weight')}</Text>
                                             </View>
                                             <View style={styles.inputWrapper}>
                                                 <TextInput
@@ -182,12 +184,12 @@ export default function CreateAvatarScreen() {
                                                 <Text style={styles.inputUnit}>kg</Text>
                                             </View>
                                         </View>
-                                        <Text style={styles.inputHint}>Range: 40 – 150 kg</Text>
+                                        <Text style={styles.inputHint}>{t('createAvatar.weightRange')}</Text>
                                     </View>
                                 </View>
 
                                 {/* Body Type Selection */}
-                                <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Body Type</Text>
+                                <Text style={[styles.sectionTitle, { marginTop: 20 }]}>{t('createAvatar.bodyType')}</Text>
                                 <View style={styles.bodyTypeGrid}>
                                     {BODY_TYPES.map((bt) => {
                                         const isActive = bodyType === bt.id;
@@ -257,7 +259,7 @@ export default function CreateAvatarScreen() {
                             activeOpacity={0.85}
                         >
                             <Ionicons name="checkmark-circle-outline" size={22} color="#fff" style={{ marginRight: 8 }} />
-                            <Text style={styles.continueButtonText}>Save Body Model</Text>
+                            <Text style={styles.continueButtonText}>{t('createAvatar.saveBodyModel')}</Text>
                         </TouchableOpacity>
                     </BlurView>
                 </View>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Image, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BASIC_CLOTHING_ITEMS } from '../../../data/basicClothingItems';
@@ -11,9 +11,21 @@ function resolveClothingImage(src: string | number | undefined | null): string |
   if (typeof src === 'string' && src.startsWith('basic_clothing_')) {
     const id = src.replace('basic_clothing_', '');
     const found = BASIC_CLOTHING_ITEMS.find(b => b.id === id);
-    return found ? found.image : null;
+    if (found) return found.image;
+    // BASIC_CLOTHING_ITEMS is empty — fall through so the string itself
+    // isn't lost.  The caller will treat it as a URI and the <Image>
+    // onError handler will swap to a placeholder if it can't load.
   }
-  return src.length > 0 ? src : null;
+  // Reject clearly empty / sentinel values but keep any other string
+  // (including non-http URIs) so the Image component can attempt to
+  // load it.  onError will catch failures.
+  if (typeof src === 'string') {
+    const trimmed = src.trim();
+    if (trimmed.length === 0) return null;
+    if (/^(null|undefined|none|false|0)$/i.test(trimmed)) return null;
+    return trimmed;
+  }
+  return null;
 }
 
 interface OutfitCollageDisplayProps {
@@ -30,20 +42,29 @@ interface OutfitCollageDisplayProps {
 }
 
 const CollageImage: React.FC<{ src: string | number | undefined | null }> = ({ src }) => {
+  const [imgError, setImgError] = useState(false);
   const resolved = resolveClothingImage(src);
-  if (resolved !== null) {
+
+  // If the image previously failed to load, show placeholder immediately.
+  if (imgError || resolved === null) {
     return (
-      <Image
-        source={typeof resolved === 'number' ? resolved : { uri: resolved }}
-        style={styles.collageSlotImage}
-        resizeMode="contain"
-      />
+      <View style={styles.collageSlotPlaceholder}>
+        <Ionicons name="shirt-outline" size={44} color="#C8D0DA" />
+      </View>
     );
   }
+
   return (
-    <View style={styles.collageSlotPlaceholder}>
-      <Ionicons name="shirt-outline" size={44} color="#C8D0DA" />
-    </View>
+    <Image
+      source={typeof resolved === 'number' ? resolved : { uri: resolved }}
+      style={styles.collageSlotImage}
+      resizeMode="contain"
+      onError={() => {
+        console.warn('[CollageImage] Failed to load image:', typeof resolved === 'string' ? resolved.slice(0, 80) : resolved);
+        setImgError(true);
+      }}
+      onLoad={() => setImgError(false)}
+    />
   );
 };
 
@@ -80,26 +101,21 @@ const OutfitCollageDisplay: React.FC<OutfitCollageDisplayProps> = ({
   const bottomSlot = pickFirst('bottom');
   const shoesSlot = pickFirst('shoes');
 
-  // Slots rendered in order. Shoes ALWAYS render — if we have no shoe item
-  // we emit a `null` placeholder slot so the tile shows "Shoes" + placeholder
-  // icon, honoring the "shoes are always present" UX rule.
+  // A layered/cold-weather outfit always renders 4 slots (Outerwear, Top,
+  // Bottom, Shoes). A warm-weather outfit renders 3 slots (Top, Bottom,
+  // Shoes). Missing items display a labelled placeholder tile with the
+  // slot name so the user can see what the outfit was supposed to include.
+  // This is preferable to silently dropping tiles, which produced cards
+  // with only 1-2 tiles when the AI response was incomplete.
   type RenderSlot = { item: OutfitItem | null; label: string; key: string };
   const orderedSlots: RenderSlot[] = [];
 
-  if (needsOuterwear && outerSlot) {
-    orderedSlots.push({ item: outerSlot.item, label: 'Outerwear', key: 'outerwear' });
+  if (needsOuterwear) {
+    orderedSlots.push({ item: outerSlot ? outerSlot.item : null, label: 'Outerwear', key: 'outerwear' });
   }
-  if (topSlot) {
-    orderedSlots.push({ item: topSlot.item, label: 'Top', key: 'top' });
-  }
-  if (bottomSlot) {
-    orderedSlots.push({ item: bottomSlot.item, label: 'Bottom', key: 'bottom' });
-  }
-  orderedSlots.push({
-    item: shoesSlot ? shoesSlot.item : null,
-    label: 'Shoes',
-    key: 'shoes',
-  });
+  orderedSlots.push({ item: topSlot ? topSlot.item : null, label: 'Top', key: 'top' });
+  orderedSlots.push({ item: bottomSlot ? bottomSlot.item : null, label: 'Bottom', key: 'bottom' });
+  orderedSlots.push({ item: shoesSlot ? shoesSlot.item : null, label: 'Shoes', key: 'shoes' });
 
   // 2-per-row layout. Cold → 4 tiles in 2×2. Warm → 3 tiles (top+bottom on
   // row 1, shoes alone on row 2).

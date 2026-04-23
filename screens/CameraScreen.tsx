@@ -20,12 +20,14 @@ import * as Haptics from 'expo-haptics';
 import * as MediaLibrary from 'expo-media-library';
 import * as ImagePicker from 'expo-image-picker';
 import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
 
 
 
 type CameraMode = 'photo' | 'video';
 
 const CameraScreen = () => {
+    const { t } = useTranslation();
     const navigation = useAppNavigation();
     const cameraRef = useRef<CameraView>(null);
 
@@ -158,9 +160,9 @@ const CameraScreen = () => {
         return (
             <View style={styles.permissionContainer}>
                 <Ionicons name="camera-outline" size={64} color="#666" />
-                <Text style={styles.permissionText}>Camera permission needed</Text>
+                <Text style={styles.permissionText}>{t('camera.permissionNeeded')}</Text>
                 <TouchableOpacity style={styles.permissionButton} onPress={requestCameraPermission}>
-                    <Text style={styles.permissionButtonText}>Grant Access</Text>
+                    <Text style={styles.permissionButtonText}>{t('camera.grantAccess')}</Text>
                 </TouchableOpacity>
             </View>
         );
@@ -192,7 +194,7 @@ const CameraScreen = () => {
                 {isRecording && (
                     <Animated.View entering={FadeIn} style={styles.recordingIndicator}>
                         <View style={styles.recordingDot} />
-                        <Text style={styles.recordingText}>Recording</Text>
+                        <Text style={styles.recordingText}>{t('camera.recording')}</Text>
                     </Animated.View>
                 )}
 
@@ -207,7 +209,7 @@ const CameraScreen = () => {
                                 setMode('photo');
                             }}
                         >
-                            <Text style={[styles.modeText, mode === 'photo' && styles.modeTextActive]}>Photo</Text>
+                            <Text style={[styles.modeText, mode === 'photo' && styles.modeTextActive]}>{t('camera.photo')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[styles.modeButton, mode === 'video' && styles.modeButtonActive]}
@@ -216,7 +218,7 @@ const CameraScreen = () => {
                                 setMode('video');
                             }}
                         >
-                            <Text style={[styles.modeText, mode === 'video' && styles.modeTextActive]}>Video</Text>
+                            <Text style={[styles.modeText, mode === 'video' && styles.modeTextActive]}>{t('camera.video')}</Text>
                         </TouchableOpacity>
                     </View>
 

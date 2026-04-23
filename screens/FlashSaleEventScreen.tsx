@@ -34,6 +34,7 @@ import flashSalesService from '../src/services/flashSalesService';
 import { FlashSaleEvent, FlashSaleProduct } from '../src/types/flashSales';
 import { RootStackParamList } from '../navigation/types';
 import shoppingService from '../src/services/shoppingService';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -79,11 +80,11 @@ const CountdownTimer = ({ event }: { event: FlashSaleEvent }) => {
 // ============================================
 // STOCK BADGE
 // ============================================
-const StockBadge = ({ status, count }: { status: string; count?: number }) => {
+const StockBadge = ({ status, count, t }: { status: string; count?: number; t: any }) => {
     if (status === 'sold_out') {
         return (
             <View style={[styles.stockBadge, styles.stockSoldOut]}>
-                <Text style={styles.stockBadgeText}>Sold Out</Text>
+                <Text style={styles.stockBadgeText}>{t('flashSaleEvent.soldOut')}</Text>
             </View>
         );
     }
@@ -109,11 +110,13 @@ const ProductCard = ({
     index,
     onPress,
     onAddToWishlist,
+    t,
 }: {
     product: FlashSaleProduct;
     index: number;
     onPress: () => void;
     onAddToWishlist: () => void;
+    t: any;
 }) => {
     const [isWishlisted, setIsWishlisted] = useState(false);
     const heartScale = useSharedValue(1);
@@ -162,6 +165,7 @@ const ProductCard = ({
                         <StockBadge
                             status={product.stockStatus}
                             count={product.stockCount}
+                            t={t}
                         />
                     </View>
 
@@ -221,6 +225,7 @@ const ProductCard = ({
 type FlashSaleEventRouteProp = RouteProp<RootStackParamList, 'FlashSaleEvent'>;
 
 const FlashSaleEventScreen = () => {
+    const { t } = useTranslation();
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const route = useRoute<FlashSaleEventRouteProp>();
     const { eventId } = route.params;
@@ -319,12 +324,12 @@ const FlashSaleEventScreen = () => {
         return (
             <View style={styles.errorContainer}>
                 <Ionicons name="alert-circle-outline" size={48} color={AppColors.textSecondary} />
-                <Text style={styles.errorText}>Event not found</Text>
+                <Text style={styles.errorText}>{t('flashSaleEvent.eventNotFound')}</Text>
                 <TouchableOpacity
                     style={styles.errorButton}
                     onPress={() => navigation.goBack()}
                 >
-                    <Text style={styles.errorButtonText}>Go Back</Text>
+                    <Text style={styles.errorButtonText}>{t('common.goBack')}</Text>
                 </TouchableOpacity>
             </View>
         );
@@ -373,13 +378,13 @@ const FlashSaleEventScreen = () => {
                             {event.status === 'active' && (
                                 <View style={styles.liveBadge}>
                                     <View style={styles.liveDot} />
-                                    <Text style={styles.liveText}>LIVE NOW</Text>
+                                    <Text style={styles.liveText}>{t('flashSaleEvent.liveNow')}</Text>
                                 </View>
                             )}
                             {event.isExclusive && (
                                 <View style={styles.exclusiveBadge}>
                                     <Ionicons name="diamond" size={12} color="#FFD700" />
-                                    <Text style={styles.exclusiveText}>EXCLUSIVE</Text>
+                                    <Text style={styles.exclusiveText}>{t('flashSaleEvent.exclusive')}</Text>
                                 </View>
                             )}
                         </View>
@@ -390,19 +395,19 @@ const FlashSaleEventScreen = () => {
                         <View style={styles.heroStats}>
                             <View style={styles.heroStat}>
                                 <Text style={styles.heroStatValue}>{event.discountPercentage}%</Text>
-                                <Text style={styles.heroStatLabel}>OFF</Text>
+                                <Text style={styles.heroStatLabel}>{t('flashSaleEvent.off')}</Text>
                             </View>
                             <View style={styles.heroStatDivider} />
                             <View style={styles.heroStat}>
                                 <Text style={styles.heroStatValue}>{products.length}</Text>
-                                <Text style={styles.heroStatLabel}>ITEMS</Text>
+                                <Text style={styles.heroStatLabel}>{t('flashSaleEvent.items')}</Text>
                             </View>
                             <View style={styles.heroStatDivider} />
                             <View style={styles.heroStat}>
                                 <Text style={styles.heroStatValue}>
                                     {event.subscriberCount?.toLocaleString() || '0'}
                                 </Text>
-                                <Text style={styles.heroStatLabel}>WAITING</Text>
+                                <Text style={styles.heroStatLabel}>{t('flashSaleEvent.waiting')}</Text>
                             </View>
                         </View>
                     </View>
@@ -452,6 +457,7 @@ const FlashSaleEventScreen = () => {
                                 index={index}
                                 onPress={() => handleProductPress(product)}
                                 onAddToWishlist={() => handleAddToWishlist(product)}
+                                t={t}
                             />
                         ))}
                     </View>

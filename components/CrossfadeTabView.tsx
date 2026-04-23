@@ -6,25 +6,40 @@ import Animated, {
   withTiming,
   withSpring,
   withSequence,
-  withDelay,
   Easing,
   interpolate,
   Extrapolation,
   type SharedValue,
 } from 'react-native-reanimated';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// ── "Aurora Flow" Animation Constants ────────────────────────────────
-const PERSPECTIVE = 900;
-const ENTER_ROTATE = 12;
-const EXIT_ROTATE = -8;
-const PARALLAX_RATIO = 0.22;
-const ENTER_MS = 480;
-const EXIT_MS = 300;
+// ── "Aurora Morph" — Innovative Tab Transition ────────────────────────
+// The new page morphs from a rounded card shape into full screen,
+// like an iris/camera aperture opening. Combined with directional
+// parallax, elastic scale bounce, and a sweeping light ray overlay.
 
-const ELASTIC = { damping: 10, stiffness: 180, mass: 0.5 };
-const SETTLE = { damping: 20, stiffness: 300, mass: 0.6 };
+// Morph: borderRadius animates from large (rounded card) → 0 (full screen)
+const MORPH_RADIUS_START = 48;
+const MORPH_RADIUS_END = 0;
+
+// Parallax slide
+const ENTER_PARALLAX = 0.30;
+const EXIT_PARALLAX = 0.12;
+
+// Scale
+const ENTER_SCALE = 0.82;
+const EXIT_SCALE = 0.90;
+const OVERSHOOT = 1.05;
+
+// Timing
+const ENTER_MS = 500;
+const EXIT_MS = 340;
+
+// Spring configs
+const ENTER_SPRING = { damping: 16, stiffness: 150, mass: 0.5 };
+const EXIT_SPRING = { damping: 22, stiffness: 240, mass: 0.6 };
+const SCALE_SPRING = { damping: 12, stiffness: 200, mass: 0.4 };
 
 // ── Context: shared values for tab index tracking ────────────────────
 export const TabTransitionContext = React.createContext<{
@@ -42,16 +57,23 @@ interface CrossfadeTabViewProps {
 }
 
 /**
- * "Aurora Flow" — innovative multi-layered tab transition:
- * 1. 3D perspective card rotation (rotateY)
- * 2. Directional parallax slide (translateX)
- * 3. Elastic scale overshoot (0.88 → 1.06 → 1.0)
- * 4. Aurora shimmer sweep overlay
- * 5. Staggered opacity reveal
+ * "Aurora Morph" — Innovative multi-layered tab transition:
  *
- * Uses useEffect (JS thread) to trigger animations when isActive changes.
- * Direction is read from context shared values (set by TabNavigator).
- * No filter/blur (crashes on most RN versions), no ref mutations in worklets.
+ * 1. **Iris Morph** — New page starts as a rounded card (borderRadius: 48)
+ *    and morphs into full-screen rectangle (borderRadius: 0), creating
+ *    a camera-aperture "iris open" reveal effect
+ *
+ * 2. **Directional Parallax** — Page slides in from the navigation direction
+ *    (left if tab index increases, right if decreases)
+ *
+ * 3. **Elastic Scale Bounce** — Enter: 0.82→1.05→1.0 (overshoot landing),
+ *    Exit: 1.0→0.90 (shrink away)
+ *
+ * 4. **Light Ray Sweep** — A diagonal gradient overlay sweeps across
+ *    the page during entrance, creating a "light passing through" effect
+ *
+ * 5. **Coordinated Timing** — Enter and exit run simultaneously with
+ *    matched durations, so there's never a blank flash between tabs
  */
 export const CrossfadeTabView: React.FC<CrossfadeTabViewProps> = ({
   children,
@@ -63,56 +85,42 @@ export const CrossfadeTabView: React.FC<CrossfadeTabViewProps> = ({
   const progress = useSharedValue(isActive ? 1 : 0);
   const translateX = useSharedValue(0);
   const scale = useSharedValue(1);
-  const rotateY = useSharedValue(0);
-  const shimmer = useSharedValue(0);
+  const borderRadius = useSharedValue(0);
+  const lightSweep = useSharedValue(0);
 
-  const hasMounted = useRef(false);
   const wasActive = useRef(isActive);
 
   useEffect(() => {
-    // Read direction from shared values (updated by TabNavigator before this runs)
     const prevIdx = previousTab.value;
     const direction = prevIdx < index ? 1 : -1;
 
     if (isActive && !wasActive.current) {
       // ── ENTERING ────────────────────────────────────────────
-      if (!hasMounted.current) {
-        // First mount: let screen's own layout animations play
-        progress.value = 1;
-        translateX.value = 0;
-        scale.value = 1;
-        rotateY.value = 0;
-        shimmer.value = 0;
-        hasMounted.current = true;
-        wasActive.current = true;
-        return;
-      }
-
-      // Subsequent focus: full Aurora Flow entrance
+      // Start: rounded card, off-screen, scaled down
       progress.value = 0;
-      translateX.value = direction * SCREEN_WIDTH * PARALLAX_RATIO;
-      scale.value = 0.88;
-      rotateY.value = direction * ENTER_ROTATE;
-      shimmer.value = 0;
+      translateX.value = direction * SCREEN_WIDTH * ENTER_PARALLAX;
+      scale.value = ENTER_SCALE;
+      borderRadius.value = MORPH_RADIUS_START;
+      lightSweep.value = 0;
 
-      // Staggered reveal: slight delay then fade in
-      progress.value = withDelay(30, withTiming(1, {
+      // Coordinated entrance — all fire simultaneously
+      progress.value = withTiming(1, {
         duration: ENTER_MS,
         easing: Easing.out(Easing.cubic),
-      }));
-      // Directional parallax with elastic spring
-      translateX.value = withSpring(0, ELASTIC);
-      // Scale: 0.88 → overshoot 1.06 → settle 1.0
+      });
+      translateX.value = withSpring(0, ENTER_SPRING);
       scale.value = withSequence(
-        withSpring(1.06, ELASTIC),
-        withSpring(1, SETTLE)
+        withSpring(OVERSHOOT, SCALE_SPRING),
+        withSpring(1, { damping: 18, stiffness: 260, mass: 0.5 })
       );
-      // 3D card rotation settles
-      rotateY.value = withSpring(0, { damping: 16, stiffness: 240, mass: 0.6 });
-      // Aurora shimmer sweeps across during entrance
-      shimmer.value = withSequence(
-        withTiming(1, { duration: ENTER_MS * 0.5, easing: Easing.inOut(Easing.quad) }),
-        withTiming(0, { duration: ENTER_MS * 0.5, easing: Easing.out(Easing.quad) })
+      // Iris morph: borderRadius 48→0 with spring for organic feel
+      borderRadius.value = withSpring(MORPH_RADIUS_END, {
+        damping: 14, stiffness: 180, mass: 0.5,
+      });
+      // Light ray sweep: quick pass then fade
+      lightSweep.value = withSequence(
+        withTiming(1, { duration: ENTER_MS * 0.6, easing: Easing.inOut(Easing.quad) }),
+        withTiming(0, { duration: ENTER_MS * 0.4, easing: Easing.out(Easing.quad) })
       );
 
     } else if (!isActive && wasActive.current) {
@@ -121,51 +129,53 @@ export const CrossfadeTabView: React.FC<CrossfadeTabViewProps> = ({
         duration: EXIT_MS,
         easing: Easing.in(Easing.cubic),
       });
-      translateX.value = withSpring(-direction * SCREEN_WIDTH * PARALLAX_RATIO * 0.5, {
-        damping: 24, stiffness: 260, mass: 0.7,
-      });
-      scale.value = withTiming(0.94, {
+      translateX.value = withSpring(-direction * SCREEN_WIDTH * EXIT_PARALLAX, EXIT_SPRING);
+      scale.value = withTiming(EXIT_SCALE, {
         duration: EXIT_MS,
         easing: Easing.in(Easing.cubic),
       });
-      rotateY.value = withTiming(-direction * EXIT_ROTATE, {
+      // Reverse morph: screen rounds off as it leaves
+      borderRadius.value = withTiming(MORPH_RADIUS_START * 0.6, {
         duration: EXIT_MS,
         easing: Easing.in(Easing.cubic),
       });
-      shimmer.value = 0;
+      lightSweep.value = 0;
     }
 
     wasActive.current = isActive;
   }, [isActive, index, currentTab, previousTab]);
 
   const animatedStyle = useAnimatedStyle(() => {
-    const opacityVal = interpolate(progress.value, [0, 0.3, 1], [0, 0.6, 1], Extrapolation.CLAMP);
-    const scaleVal = interpolate(scale.value, [0.88, 1.06, 1], [0.88, 1.06, 1], Extrapolation.CLAMP);
+    const opacityVal = interpolate(
+      progress.value,
+      [0, 0.15, 0.5, 1],
+      [0, 0.3, 0.75, 1],
+      Extrapolation.CLAMP
+    );
 
     return {
       opacity: opacityVal,
       transform: [
-        { perspective: PERSPECTIVE },
         { translateX: translateX.value },
-        { scale: scaleVal },
-        { rotateY: `${rotateY.value}deg` },
+        { scale: scale.value },
       ],
+      borderRadius: borderRadius.value,
     };
   });
 
-  const shimmerStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(shimmer.value, [0, 0.5, 1], [0, 0.12, 0], Extrapolation.CLAMP),
+  const lightSweepStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(lightSweep.value, [0, 0.4, 0.7, 1], [0, 0.18, 0.12, 0], Extrapolation.CLAMP),
     transform: [
-      { translateX: interpolate(shimmer.value, [0, 1], [-SCREEN_WIDTH * 0.3, SCREEN_WIDTH * 0.3], Extrapolation.CLAMP) },
+      { translateX: interpolate(lightSweep.value, [0, 1], [-SCREEN_WIDTH, SCREEN_WIDTH * 0.5], Extrapolation.CLAMP) },
+      { skewX: '-25deg' },
     ],
   }));
 
   return (
     <Animated.View style={[styles.container, animatedStyle]}>
       {children}
-      <Animated.View style={[styles.shimmerOverlay, shimmerStyle]} pointerEvents="none">
-        <Animated.View style={styles.shimmerGradient} />
-      </Animated.View>
+      {/* Light ray sweep overlay */}
+      <Animated.View style={[styles.lightRay, lightSweepStyle]} pointerEvents="none" />
     </Animated.View>
   );
 };
@@ -175,15 +185,12 @@ const styles = StyleSheet.create({
     flex: 1,
     overflow: 'hidden',
   },
-  shimmerOverlay: {
+  lightRay: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 999,
     overflow: 'hidden',
-  },
-  shimmerGradient: {
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.6)',
-    transform: [{ skewX: '-20deg' }],
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    width: SCREEN_WIDTH * 0.6,
   },
 });
 

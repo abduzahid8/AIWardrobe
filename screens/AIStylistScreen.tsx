@@ -22,6 +22,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, borderRadius } from '../src/theme';
+import { useTranslation } from 'react-i18next';
 
 // Lazy import existing screens as embedded views
 import AIAssistant from './AIAssistant';
@@ -35,6 +36,7 @@ interface RouteParams {
 
 const AIStylistScreen = () => {
     const navigation = useNavigation();
+    const { t } = useTranslation();
     const route = useRoute();
     const params = (route.params as RouteParams) || {};
     const [activeTab, setActiveTab] = useState<TabMode>(params.initialTab || 'chat');
@@ -65,7 +67,7 @@ const AIStylistScreen = () => {
                         <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
                     </TouchableOpacity>
 
-                    <Text style={styles.title}>AI Stylist</Text>
+                    <Text style={styles.title}>{t('aiStylist.title')}</Text>
 
                     <View style={styles.placeholder} />
                 </Animated.View>

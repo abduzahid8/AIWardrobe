@@ -87,6 +87,13 @@ module.exports = {
                             'Do not call AI providers from the client. Use supabase.functions.invoke("ai-process").',
                     },
                 ],
+                patterns: [
+                    {
+                        group: ['**/api/**', '../api/*', '../../api/*'],
+                        message:
+                            'The api/ Express tree is deprecated (see docs/ARCHITECTURE.md ADR-001). Call Supabase Edge Functions instead.',
+                    },
+                ],
             },
         ],
     },

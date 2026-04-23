@@ -13,91 +13,66 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
+import { useTranslation } from 'react-i18next';
 
 const { colors, spacing, radius, typography } = LiquidGlass2026Theme;
 
 const SECTIONS = [
     {
-        title: '1. Acceptance of Terms',
-        body: 'By downloading, installing, or using AIWardrobe, you agree to be bound by these Terms of Service. If you do not agree, do not use the application.',
+        title: 'termsOfService.acceptance.title',
+        body: 'termsOfService.acceptance.body',
     },
     {
-        title: '2. Description of Service',
-        body: `AIWardrobe is an AI-powered wardrobe management application that provides:
-
-• Clothing item digitization via camera/photo scanning
-• AI-generated outfit suggestions
-• Virtual try-on functionality
-• Wardrobe analytics and style insights
-• Cloud synchronization across devices
-
-Some features require an active internet connection and may use third-party AI services.`,
+        title: 'termsOfService.description.title',
+        body: 'termsOfService.description.body',
     },
     {
-        title: '3. User Accounts',
-        body: `• You must provide accurate information when creating an account.
-• You are responsible for maintaining the security of your account credentials.
-• You must be at least 13 years old to create an account.
-• One person may not maintain more than one account.
-• We reserve the right to suspend or terminate accounts that violate these terms.`,
+        title: 'termsOfService.userAccounts.title',
+        body: 'termsOfService.userAccounts.body',
     },
     {
-        title: '4. User Content',
-        body: `• You retain ownership of all photos and content you upload.
-• By uploading content, you grant us a license to process, store, and display it within the app.
-• You agree not to upload content that is illegal, offensive, or infringes on others' rights.
-• We may use anonymized, aggregated data to improve our AI models.`,
+        title: 'termsOfService.userContent.title',
+        body: 'termsOfService.userContent.body',
     },
     {
-        title: '5. Subscriptions & Payments',
-        body: `• AIWardrobe offers free and premium subscription tiers.
-• Premium subscriptions are billed through the App Store.
-• Subscriptions auto-renew unless cancelled at least 24 hours before the end of the current period.
-• Refunds are handled according to the App Store's refund policy.`,
+        title: 'termsOfService.subscriptions.title',
+        body: 'termsOfService.subscriptions.body',
     },
     {
-        title: '6. AI-Generated Content',
-        body: `• AI suggestions are generated algorithmically and may not always be accurate.
-• Virtual try-on results are approximations and may not perfectly represent real-world appearance.
-• We do not guarantee the accuracy of AI color, pattern, or material detection.
-• AI-generated outfit suggestions are for informational purposes only.`,
+        title: 'termsOfService.aiContent.title',
+        body: 'termsOfService.aiContent.body',
     },
     {
-        title: '7. Prohibited Uses',
-        body: `You agree not to:
-
-• Reverse engineer, decompile, or attempt to extract source code from the app.
-• Use the app for commercial purposes without authorization.
-• Scrape, harvest, or collect data from other users.
-• Attempt to bypass subscription or authentication mechanisms.
-• Use the app to transmit malware or malicious content.`,
+        title: 'termsOfService.prohibited.title',
+        body: 'termsOfService.prohibited.body',
     },
     {
-        title: '8. Intellectual Property',
-        body: '• AIWardrobe and its original content, features, and functionality are owned by us and protected by intellectual property laws.\n• The AIWardrobe name, logo, and branding are our trademarks.',
+        title: 'termsOfService.intellectual.title',
+        body: 'termsOfService.intellectual.body',
     },
     {
-        title: '9. Limitation of Liability',
-        body: 'AIWardrobe is provided "as is" without warranty of any kind. We are not liable for any indirect, incidental, special, or consequential damages resulting from your use of the app.',
+        title: 'termsOfService.liability.title',
+        body: 'termsOfService.liability.body',
     },
     {
-        title: '10. Changes to Terms',
-        body: 'We reserve the right to modify these terms at any time. Continued use after changes constitutes acceptance. We will notify you of significant changes through the app.',
+        title: 'termsOfService.changes.title',
+        body: 'termsOfService.changes.body',
     },
     {
-        title: '11. Contact',
-        body: 'For questions about these Terms, contact us at:\n\n📧 support@aiwardrobe.app',
+        title: 'termsOfService.contact.title',
+        body: 'termsOfService.contact.body',
     },
 ];
 
 export default function TermsOfServiceScreen({ navigation }: any) {
+    const { t } = useTranslation();
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Terms of Service</Text>
+                <Text style={styles.headerTitle}>{t('termsOfService.title')}</Text>
                 <View style={{ width: 32 }} />
             </View>
 
@@ -105,16 +80,16 @@ export default function TermsOfServiceScreen({ navigation }: any) {
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
-                <Text style={styles.lastUpdated}>Last updated: March 2026</Text>
+                <Text style={styles.lastUpdated}>{t('termsOfService.lastUpdated')}</Text>
 
                 <Text style={styles.intro}>
-                    Please read these Terms of Service carefully before using AIWardrobe.
+                    {t('termsOfService.intro')}
                 </Text>
 
                 {SECTIONS.map((section, idx) => (
                     <View key={idx} style={styles.section}>
-                        <Text style={styles.sectionTitle}>{section.title}</Text>
-                        <Text style={styles.sectionBody}>{section.body}</Text>
+                        <Text style={styles.sectionTitle}>{t(section.title)}</Text>
+                        <Text style={styles.sectionBody}>{t(section.body)}</Text>
                     </View>
                 ))}
             </ScrollView>

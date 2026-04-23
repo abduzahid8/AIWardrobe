@@ -1,3 +1,5 @@
+import useLanguageStore from './languageStore';
+
 let initialized = false;
 
 export function bootstrapStores() {
@@ -6,4 +8,7 @@ export function bootstrapStores() {
   }
 
   initialized = true;
+
+  // Initialize language store
+  void useLanguageStore.getState().initializeLanguage();
 }

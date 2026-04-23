@@ -31,6 +31,7 @@ import Animated, {
 import AppColors from '../constants/AppColors';
 import { supabase } from '../lib/supabase';
 import useAuthStore from '../store/auth';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -180,6 +181,7 @@ const OccasionChip = ({
 const TripPlannerScreen = () => {
     const navigation = useNavigation();
     const { user } = useAuthStore();
+    const { t } = useTranslation();
     const [step, setStep] = useState<'input' | 'loading' | 'result'>('input');
 
     // Form inputs
@@ -302,7 +304,7 @@ const TripPlannerScreen = () => {
             {/* Hero */}
             <Animated.View entering={FadeIn.duration(600)} style={styles.heroSection}>
                 <FloatingIcon />
-                <Text style={styles.heroTitle}>Plan your trip</Text>
+                <Text style={styles.heroTitle}>{t('tripPlanner.planYourTrip')}</Text>
                 <Text style={styles.heroSubtitle}>
                     Get a personalized packing list based on your destination and activities
                 </Text>
@@ -310,7 +312,7 @@ const TripPlannerScreen = () => {
 
             {/* Destination */}
             <Animated.View entering={FadeInUp.delay(100).springify()}>
-                <Text style={styles.sectionLabel}>📍 Destination</Text>
+                <Text style={styles.sectionLabel}>{t('tripPlanner.destination')}</Text>
                 <TextInput
                     style={styles.textInput}
                     placeholder="e.g. Paris, Tokyo, New York"
@@ -323,13 +325,13 @@ const TripPlannerScreen = () => {
 
             {/* Dates */}
             <Animated.View entering={FadeInUp.delay(150).springify()} style={{ marginTop: 20 }}>
-                <Text style={styles.sectionLabel}>📅 Travel Dates</Text>
+                <Text style={styles.sectionLabel}>{t('tripPlanner.travelDates')}</Text>
                 <View style={styles.dateRow}>
                     <TouchableOpacity
                         onPress={() => setShowStartPicker(true)}
                         style={styles.dateButton}
                     >
-                        <Text style={styles.dateLabelSmall}>Start</Text>
+                        <Text style={styles.dateLabelSmall}>{t('tripPlanner.start')}</Text>
                         <Text style={styles.dateValue}>{formatDate(startDate)}</Text>
                     </TouchableOpacity>
 
@@ -341,7 +343,7 @@ const TripPlannerScreen = () => {
                         onPress={() => setShowEndPicker(true)}
                         style={styles.dateButton}
                     >
-                        <Text style={styles.dateLabelSmall}>End</Text>
+                        <Text style={styles.dateLabelSmall}>{t('tripPlanner.end')}</Text>
                         <Text style={styles.dateValue}>{formatDate(endDate)}</Text>
                     </TouchableOpacity>
                 </View>
@@ -374,7 +376,7 @@ const TripPlannerScreen = () => {
 
             {/* Occasions */}
             <Animated.View entering={FadeInUp.delay(200).springify()} style={{ marginTop: 20 }}>
-                <Text style={styles.sectionLabel}>🎯 Occasions</Text>
+                <Text style={styles.sectionLabel}>{t('tripPlanner.occasions')}</Text>
                 <View style={styles.occasionsGrid}>
                     {occasionOptions.map(option => (
                         <OccasionChip
@@ -407,7 +409,7 @@ const TripPlannerScreen = () => {
                             color={AppColors.background}
                             style={{ marginRight: 10 }}
                         />
-                        <Text style={styles.primaryButtonText}>Create Trip Plan</Text>
+                        <Text style={styles.primaryButtonText}>{t('tripPlanner.createTripPlan')}</Text>
                     </Animated.View>
                 </TouchableOpacity>
             </Animated.View>
@@ -451,7 +453,7 @@ const TripPlannerScreen = () => {
             >
                 {/* Header */}
                 <Animated.View entering={FadeInDown.delay(50).springify()} style={styles.resultHeader}>
-                    <Text style={styles.resultSubtitle}>Your Trip to</Text>
+                    <Text style={styles.resultSubtitle}>{t('tripPlanner.yourTripTo')}</Text>
                     <Text style={styles.resultTitle}>{tripPlan.destination}</Text>
                     <Text style={styles.resultDates}>
                         {formatDate(startDate)} - {formatDate(endDate)}
@@ -462,23 +464,23 @@ const TripPlannerScreen = () => {
                 <Animated.View entering={FadeInUp.delay(100).springify()} style={styles.statsCard}>
                     <View style={styles.statItem}>
                         <Text style={styles.statNumber}>{tripPlan.stats.daysPlanned}</Text>
-                        <Text style={styles.statLabel}>Days</Text>
+                        <Text style={styles.statLabel}>{t('tripPlanner.days')}</Text>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.statItem}>
                         <Text style={styles.statNumber}>{tripPlan.stats.totalItems}</Text>
-                        <Text style={styles.statLabel}>Items</Text>
+                        <Text style={styles.statLabel}>{t('common.items')}</Text>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.statItem}>
                         <Text style={styles.statNumber}>{tripPlan.stats.totalOutfits}</Text>
-                        <Text style={styles.statLabel}>Outfits</Text>
+                        <Text style={styles.statLabel}>{t('common.looks')}</Text>
                     </View>
                 </Animated.View>
 
                 {/* Packing List */}
                 <Animated.View entering={FadeInUp.delay(200).springify()}>
-                    <Text style={styles.sectionTitle}>Packing List</Text>
+                    <Text style={styles.sectionTitle}>{t('tripPlanner.packingList')}</Text>
                     <View style={styles.packingListCard}>
                         {tripPlan.packingList.map((item, index) => (
                             <View
@@ -519,7 +521,7 @@ const TripPlannerScreen = () => {
                             color={AppColors.background}
                             style={{ marginRight: 8 }}
                         />
-                        <Text style={styles.primaryButtonText}>Plan Another Trip</Text>
+                        <Text style={styles.primaryButtonText}>{t('tripPlanner.planAnotherTrip')}</Text>
                     </TouchableOpacity>
                 </Animated.View>
             </ScrollView>

@@ -36,6 +36,7 @@ import {
 } from '../features/style-quiz/data';
 import { ProgressBar } from '../features/style-quiz/components/ProgressBar';
 import { SelectableChip } from '../features/style-quiz/components/SelectableChip';
+import { useTranslation } from 'react-i18next';
 
 const { width, height } = Dimensions.get('window');
 
@@ -53,14 +54,14 @@ const COLORS = {
 // STEP SCREENS
 // ============================================
 
-const WelcomeStep = ({ onNext }: { onNext: () => void }) => (
+const WelcomeStep = ({ onNext, t }: { onNext: () => void; t: any }) => (
     <Animated.View
         style={styles.stepContainer}
         entering={FadeIn.duration(500)}
     >
         <View style={styles.welcomeContent}>
             <Text style={styles.welcomeEmoji}>👋</Text>
-            <Text style={styles.welcomeTitle}>Welcome to AIWardrobe</Text>
+            <Text style={styles.welcomeTitle}>{t('styleQuiz.welcomeTitle')}</Text>
             <Text style={styles.welcomeSubtitle}>
                 Let's personalize your experience in just 5 quick steps
             </Text>
@@ -68,15 +69,15 @@ const WelcomeStep = ({ onNext }: { onNext: () => void }) => (
             <View style={styles.benefitsList}>
                 <View style={styles.benefitItem}>
                     <Ionicons name="sparkles" size={24} color={COLORS.primary} />
-                    <Text style={styles.benefitText}>AI learns your unique style</Text>
+                    <Text style={styles.benefitText}>{t('styleQuiz.benefit1')}</Text>
                 </View>
                 <View style={styles.benefitItem}>
                     <Ionicons name="thumbs-up" size={24} color={COLORS.primary} />
-                    <Text style={styles.benefitText}>Better outfit recommendations</Text>
+                    <Text style={styles.benefitText}>{t('styleQuiz.benefit2')}</Text>
                 </View>
                 <View style={styles.benefitItem}>
                     <Ionicons name="time" size={24} color={COLORS.primary} />
-                    <Text style={styles.benefitText}>Takes less than 2 minutes</Text>
+                    <Text style={styles.benefitText}>{t('styleQuiz.benefit3')}</Text>
                 </View>
             </View>
         </View>
@@ -88,7 +89,7 @@ const WelcomeStep = ({ onNext }: { onNext: () => void }) => (
                 end={{ x: 1, y: 0 }}
                 style={styles.gradientButton}
             >
-                <Text style={styles.primaryButtonText}>Let's Get Started</Text>
+                <Text style={styles.primaryButtonText}>{t('styleQuiz.letsGetStarted')}</Text>
                 <Ionicons name="arrow-forward" size={20} color="#FFF" />
             </LinearGradient>
         </TouchableOpacity>
@@ -99,20 +100,22 @@ const StylePersonalityStep = ({
     selected,
     onSelect,
     onNext,
-    onBack
+    onBack,
+    t,
 }: {
     selected: string | undefined;
     onSelect: (id: string) => void;
     onNext: () => void;
     onBack: () => void;
+    t: any;
 }) => (
     <Animated.View
         style={styles.stepContainer}
         entering={SlideInRight.duration(300)}
         exiting={SlideOutLeft.duration(300)}
     >
-        <Text style={styles.stepTitle}>What's your style personality?</Text>
-        <Text style={styles.stepSubtitle}>Select the one that resonates most with you</Text>
+        <Text style={styles.stepTitle}>{t('styleQuiz.stylePersonality')}</Text>
+        <Text style={styles.stepSubtitle}>{t('styleQuiz.selectOne')}</Text>
 
         <ScrollView
             style={styles.optionsScroll}
@@ -153,7 +156,7 @@ const StylePersonalityStep = ({
                 onPress={onNext}
                 disabled={!selected}
             >
-                <Text style={styles.nextButtonText}>Continue</Text>
+                <Text style={styles.nextButtonText}>{t('common.continue')}</Text>
                 <Ionicons name="arrow-forward" size={20} color="#FFF" />
             </TouchableOpacity>
         </View>
@@ -164,20 +167,22 @@ const ColorPreferencesStep = ({
     favoriteColors,
     onToggleColor,
     onNext,
-    onBack
+    onBack,
+    t,
 }: {
     favoriteColors: string[];
     onToggleColor: (id: string) => void;
     onNext: () => void;
     onBack: () => void;
+    t: any;
 }) => (
     <Animated.View
         style={styles.stepContainer}
         entering={SlideInRight.duration(300)}
         exiting={SlideOutLeft.duration(300)}
     >
-        <Text style={styles.stepTitle}>Which colors do you love?</Text>
-        <Text style={styles.stepSubtitle}>Select 3-5 colors you wear most often</Text>
+        <Text style={styles.stepTitle}>{t('styleQuiz.favoriteColors')}</Text>
+        <Text style={styles.stepSubtitle}>{t('styleQuiz.selectColors')}</Text>
 
         <View style={styles.colorGrid}>
             {COLOR_OPTIONS.map((color) => (
@@ -217,7 +222,7 @@ const ColorPreferencesStep = ({
                 onPress={onNext}
                 disabled={favoriteColors.length < 1}
             >
-                <Text style={styles.nextButtonText}>Continue</Text>
+                <Text style={styles.nextButtonText}>{t('common.continue')}</Text>
                 <Ionicons name="arrow-forward" size={20} color="#FFF" />
             </TouchableOpacity>
         </View>
@@ -228,12 +233,14 @@ const OccasionsStep = ({
     selectedOccasions,
     onToggleOccasion,
     onNext,
-    onBack
+    onBack,
+    t,
 }: {
     selectedOccasions: string[];
     onToggleOccasion: (id: string) => void;
     onNext: () => void;
     onBack: () => void;
+    t: any;
 }) => (
     <Animated.View
         style={styles.stepContainer}
@@ -285,7 +292,7 @@ const OccasionsStep = ({
                 onPress={onNext}
                 disabled={selectedOccasions.length < 1}
             >
-                <Text style={styles.nextButtonText}>Continue</Text>
+                <Text style={styles.nextButtonText}>{t('common.continue')}</Text>
                 <Ionicons name="arrow-forward" size={20} color="#FFF" />
             </TouchableOpacity>
         </View>
@@ -296,12 +303,14 @@ const FitPreferenceStep = ({
     selected,
     onSelect,
     onNext,
-    onBack
+    onBack,
+    t,
 }: {
     selected: string;
     onSelect: (id: string) => void;
     onNext: () => void;
     onBack: () => void;
+    t: any;
 }) => (
     <Animated.View
         style={styles.stepContainer}
@@ -344,7 +353,7 @@ const FitPreferenceStep = ({
                 style={styles.nextButton}
                 onPress={onNext}
             >
-                <Text style={styles.nextButtonText}>Continue</Text>
+                <Text style={styles.nextButtonText}>{t('common.continue')}</Text>
                 <Ionicons name="arrow-forward" size={20} color="#FFF" />
             </TouchableOpacity>
         </View>
@@ -354,11 +363,13 @@ const FitPreferenceStep = ({
 const GoalsStep = ({
     selectedGoals,
     onToggleGoal,
-    onComplete
+    onComplete,
+    t
 }: {
     selectedGoals: string[];
     onToggleGoal: (id: string) => void;
     onComplete: () => void;
+    t: any;
 }) => (
     <Animated.View
         style={styles.stepContainer}
@@ -415,6 +426,7 @@ const GoalsStep = ({
 
 const StyleQuizScreen = () => {
     const navigation = useNavigation();
+    const { t } = useTranslation();
     const {
         setPreferences,
         setOnboardingStep, // Add this
@@ -487,7 +499,7 @@ const StyleQuizScreen = () => {
     const renderStep = () => {
         switch (step) {
             case 0:
-                return <WelcomeStep onNext={handleNext} />;
+                return <WelcomeStep onNext={handleNext} t={t} />;
             case 1:
                 return (
                     <StylePersonalityStep
@@ -495,6 +507,7 @@ const StyleQuizScreen = () => {
                         onSelect={setStylePersonality}
                         onNext={handleNext}
                         onBack={handleBack}
+                        t={t}
                     />
                 );
             case 2:
@@ -504,6 +517,7 @@ const StyleQuizScreen = () => {
                         onToggleColor={toggleColor}
                         onNext={handleNext}
                         onBack={handleBack}
+                        t={t}
                     />
                 );
             case 3:
@@ -513,6 +527,7 @@ const StyleQuizScreen = () => {
                         onToggleOccasion={toggleOccasion}
                         onNext={handleNext}
                         onBack={handleBack}
+                        t={t}
                     />
                 );
             case 4:
@@ -522,6 +537,7 @@ const StyleQuizScreen = () => {
                         onSelect={setFitPreference}
                         onNext={handleNext}
                         onBack={handleBack}
+                        t={t}
                     />
                 );
             case 5:
@@ -530,6 +546,7 @@ const StyleQuizScreen = () => {
                         selectedGoals={goals}
                         onToggleGoal={toggleGoal}
                         onComplete={handleComplete}
+                        t={t}
                     />
                 );
             default:

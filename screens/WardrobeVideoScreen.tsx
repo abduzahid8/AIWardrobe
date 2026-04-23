@@ -48,6 +48,7 @@ import useWardrobeStore from '../store/wardrobeStore';
 import { useVideoAnalysis } from '../src/features/wardrobe/useVideoAnalysis';
 import { DetectedItem } from '../src/features/wardrobe/types';
 import { createLogger } from '../src/utils/logger';
+import { useTranslation } from 'react-i18next';
 
 const logger = createLogger('WardrobeVideo');
 
@@ -158,6 +159,7 @@ const GlassStep = ({ icon, label, index }: { icon: string; label: string; index:
 
 // ─── Main Screen Component ───
 const WardrobeVideoScreen = () => {
+    const { t } = useTranslation();
     const navigation = useAppNavigation();
     const route = useRoute<RouteProp<RootStackParamList, 'WardrobeVideo'>>();
 
@@ -238,7 +240,7 @@ const WardrobeVideoScreen = () => {
                     analyzeImage(base64);
                 } catch (error) {
                     console.error('Web file processing error:', error);
-                    Alert.alert('Error', 'Failed to process the selected file.');
+                    Alert.alert(t('common.error'), t('wardrobeVideo.processFailed'));
                 }
             }
         };
@@ -331,7 +333,7 @@ const WardrobeVideoScreen = () => {
                         [{ text: 'OK' }]
                     );
                 } else {
-                    Alert.alert('Info', 'No media selected or selection was cancelled.');
+                    Alert.alert(t('wardrobeVideo.info'), t('wardrobeVideo.noMediaSelected'));
                 }
             }
         } catch (error: any) {
@@ -345,7 +347,7 @@ const WardrobeVideoScreen = () => {
                     [{ text: 'OK' }]
                 );
             } else {
-                Alert.alert('Error', `Failed to pick media: ${error?.message || 'Unknown error'}. Check console for details.`);
+                Alert.alert(t('common.error'), t('wardrobeVideo.pickFailed', { error: error?.message || 'Unknown error' }));
             }
         }
     };
@@ -370,7 +372,7 @@ const WardrobeVideoScreen = () => {
         if (!results || results.detectedItems.length === 0) return;
         const { user } = useAuthStore.getState();
         if (!user) {
-            Alert.alert('Login Required', 'Please login to save items.');
+            Alert.alert(t('wardrobeVideo.loginRequired'), t('wardrobeVideo.loginToSave'));
             return;
         }
         try {
@@ -419,7 +421,7 @@ const WardrobeVideoScreen = () => {
                 ]
             );
         } catch (error: any) {
-            Alert.alert('Error', 'Failed to save. ' + (error.message || ''));
+            Alert.alert(t('common.error'), t('wardrobeVideo.saveFailed', { error: error.message || '' }));
         }
     };
 
@@ -453,7 +455,7 @@ const WardrobeVideoScreen = () => {
                         >
                             <Ionicons name="chevron-back" size={20} color={GLASS.textPrimary} />
                         </TouchableOpacity>
-                        <Text style={styles.headerTitle}>AI Wardrobe Scan</Text>
+                        <Text style={styles.headerTitle}>{t('wardrobeVideo.title')}</Text>
                         <View style={{ width: 36 }} />
                     </BlurView>
                 </Animated.View>
@@ -510,7 +512,7 @@ const WardrobeVideoScreen = () => {
                                             <Ionicons name="images-outline" size={32} color="#fff" />
                                         </LinearGradient>
                                     </View>
-                                    <Text style={styles.uploadTitle}>Select from Gallery</Text>
+                                    <Text style={styles.uploadTitle}>{t('wardrobeVideo.selectGallery')}</Text>
                                     <Text style={styles.uploadSubtitle}>
                                         {Platform.OS === 'web' 
                                             ? 'Choose a photo from your device' 
@@ -541,7 +543,7 @@ const WardrobeVideoScreen = () => {
                             {/* Results header */}
                             <View style={styles.resultsHeader}>
                                 <View>
-                                    <Text style={styles.resultsTitle}>Analysis Complete</Text>
+                                    <Text style={styles.resultsTitle}>{t('wardrobeVideo.analysisComplete')}</Text>
                                     <Text style={styles.resultsSubtitle}>
                                         Found {results.detectedItems.length} items
                                     </Text>
@@ -574,7 +576,7 @@ const WardrobeVideoScreen = () => {
                                                 <Text style={styles.outfitBadgeText}>{outfitIndex + 1}</Text>
                                             </LinearGradient>
                                         </View>
-                                        <Text style={styles.outfitTitle}>Outfit {outfitIndex + 1}</Text>
+                                        <Text style={styles.outfitTitle}>{t('wardrobeVideo.outfit', { index: outfitIndex + 1 })}</Text>
                                         <Text style={styles.outfitCount}>
                                             ({outfitGroups[outfitId].length} items)
                                         </Text>
@@ -653,7 +655,7 @@ const WardrobeVideoScreen = () => {
                                         end={{ x: 1, y: 1 }}
                                         style={styles.saveGradient}
                                     >
-                                        <Text style={styles.saveText}>Review & Save</Text>
+                                        <Text style={styles.saveText}>{t('wardrobeVideo.reviewSave')}</Text>
                                         <View style={styles.saveArrow}>
                                             <Ionicons name="arrow-forward" size={18} color="#fff" />
                                         </View>

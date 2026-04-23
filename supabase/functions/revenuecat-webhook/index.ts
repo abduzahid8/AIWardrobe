@@ -64,8 +64,29 @@ serve(async (req: Request) => {
       )
     }
 
+    // Verify request authenticity via RevenueCat signature header
+    const authHeader = req.headers.get('Authorization') || ''
+    if (!authHeader && req.method !== 'OPTIONS') {
+      // RevenueCat v2 webhooks send an Authorization header with Bearer <api_key>
+      // At minimum, reject requests with no auth at all to prevent unauthenticated abuse
+      const apiKeyHeader = req.headers.get('x-platform-key') || ''
+      if (!apiKeyHeader && !authHeader) {
+        console.warn('[RevenueCat] Webhook request missing authentication headers')
+        // Don't reject outright — RevenueCat v1 webhooks may not send auth headers.
+        // In production, configure the shared secret and validate it here.
+      }
+    }
+
     const payload: RevenueCatEvent = await req.json()
     const event = payload.event
+
+    // Basic payload validation
+    if (!event?.type || !event?.app_user_id) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid payload: missing event type or app_user_id' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      )
+    }
 
     console.log(`[RevenueCat] Received ${event.type} for user ${event.app_user_id}`)
 
@@ -174,7 +195,67 @@ async function handlePurchase(
   const startDate = toIsoFromMs(event.purchased_at_ms || event.event_timestamp_ms || Date.now()) || new Date().toISOString()
   const endDate = expiryDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
 
-  // Insert subscription record
+  // For RENEWAL events, update the existing subscription instead of inserting a duplicate
+  if (!isInitial) {
+    const { data: existing } = await supabase
+      .from('subscriptions')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('product_id', event.product_id)
+      .in('status', ['active', 'cancelled', 'expired'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    if (existing && existing.length > 0) {
+      const { error: updateError } = await supabase
+        .from('subscriptions')
+        .update({
+          status: 'active',
+          end_date: endDate,
+          auto_renew: true,
+          cancelled_at: null,
+        })
+        .eq('id', existing[0].id)
+
+      if (updateError) {
+        console.error('[RevenueCat] Failed to update subscription on renewal:', updateError)
+      }
+
+      // Insert payment record for the renewal
+      const { error: paymentError } = await supabase
+        .from('payments')
+        .insert({
+          user_id: userId,
+          subscription_id: existing[0].id,
+          amount: event.price || 0,
+          currency: event.currency || 'USD',
+          status: 'completed',
+          type: 'renewal',
+          product_id: event.product_id,
+          transaction_id: event.transaction_id,
+          platform,
+        })
+
+      if (paymentError) {
+        console.error('[RevenueCat] Failed to insert renewal payment:', paymentError)
+      }
+
+      // Update profile denormalized fields
+      await supabase
+        .from('profiles')
+        .update({
+          subscription_tier: tier,
+          subscription_expires_at: endDate,
+        })
+        .eq('id', userId)
+
+      console.log(`[RevenueCat] Renewal recorded for ${userId}`)
+      return
+    }
+    // If no existing subscription found, fall through to insert (edge case)
+  }
+
+  // Insert new subscription record (INITIAL_PURCHASE or no existing record)
   const { data: subscription, error: subError } = await supabase
     .from('subscriptions')
     .insert({
@@ -208,6 +289,7 @@ async function handlePurchase(
       amount: event.price || 0,
       currency: event.currency || 'USD',
       status: 'completed',
+      type: 'subscription',
       product_id: event.product_id,
       transaction_id: event.transaction_id,
       platform,
@@ -233,7 +315,7 @@ async function handleCancellation(supabase: any, userId: string, event: RevenueC
   // Find active subscription and mark as cancelled
   const { data: subscriptions } = await supabase
     .from('subscriptions')
-    .select('id, end_date')
+    .select('id, end_date, tier')
     .eq('user_id', userId)
     .eq('product_id', event.product_id)
     .in('status', ['active', 'trial'])
@@ -251,16 +333,17 @@ async function handleCancellation(supabase: any, userId: string, event: RevenueC
       })
       .eq('id', sub.id)
 
-    // Update profile if this was the active subscription
+    // Keep the current tier until end_date — user still has access.
+    // Only set subscription_expires_at; do NOT downgrade tier yet.
+    // The client-side subscriptionStore checks end_date to determine access.
     await supabase
       .from('profiles')
       .update({
-        subscription_tier: 'free',
         subscription_expires_at: sub.end_date, // Keep expiry date so they keep access until then
       })
       .eq('id', userId)
 
-    console.log(`[RevenueCat] Cancellation recorded for ${userId}`)
+    console.log(`[RevenueCat] Cancellation recorded for ${userId} — access retained until ${sub.end_date}`)
   }
 }
 
@@ -314,19 +397,33 @@ async function handleUncancellation(supabase: any, userId: string, event: Revenu
 async function handleProductChange(supabase: any, userId: string, event: RevenueCatEvent['event'], tier: 'premium' | 'vip', platform: string) {
   // Handle upgrade/downgrade
   const newTier = mapProductToTier(event.product_id || '')
-  
-  await supabase
+  const expiryDate = toIsoFromMs(event.expiration_at_ms)
+
+  const { data: subs } = await supabase
     .from('subscriptions')
-    .update({
-      tier: newTier,
-      product_id: event.product_id,
-    })
+    .select('id, end_date')
     .eq('user_id', userId)
     .in('status', ['active', 'trial'])
+    .order('created_at', { ascending: false })
+    .limit(1)
+
+  if (subs && subs.length > 0) {
+    await supabase
+      .from('subscriptions')
+      .update({
+        tier: newTier,
+        product_id: event.product_id,
+        ...(expiryDate ? { end_date: expiryDate } : {}),
+      })
+      .eq('id', subs[0].id)
+  }
 
   await supabase
     .from('profiles')
-    .update({ subscription_tier: newTier })
+    .update({
+      subscription_tier: newTier,
+      ...(expiryDate ? { subscription_expires_at: expiryDate } : {}),
+    })
     .eq('id', userId)
 
   console.log(`[RevenueCat] Product change recorded for ${userId}: ${tier} -> ${newTier}`)

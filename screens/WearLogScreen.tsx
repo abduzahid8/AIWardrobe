@@ -36,6 +36,7 @@ import Animated, {
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 import useWardrobeStore from '../store/wardrobeStore';
 import type { ClothingItem, Occasion } from '../src/types/domain';
+import { useTranslation } from 'react-i18next';
 
 const { colors, spacing, radius, typography } = LiquidGlass2026Theme;
 
@@ -57,6 +58,7 @@ const OCCASIONS: { value: Occasion; label: string; icon: string }[] = [
 // ============================================
 
 const WearLogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+    const { t } = useTranslation();
     const items = useWardrobeStore((state) => state.items);
     const dailySuggestion = useWardrobeStore((state) => state.dailySuggestion);
     const logWear = useWardrobeStore((state) => state.logWear);
@@ -135,7 +137,7 @@ const WearLogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                     <Animated.Text style={[styles.celebrationEmoji, celebrationStyle]}>
                         {newStreak >= 7 ? '🏆' : newStreak >= 3 ? '🔥' : '✅'}
                     </Animated.Text>
-                    <Text style={styles.celebrationTitle}>Outfit Logged!</Text>
+                    <Text style={styles.celebrationTitle}>{t('wearLog.outfitLogged')}</Text>
                     <Text style={styles.celebrationStreak}>
                         {newStreak} day streak
                     </Text>
@@ -156,7 +158,7 @@ const WearLogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                         onPress={() => navigation.goBack()}
                         activeOpacity={0.8}
                     >
-                        <Text style={styles.doneButtonText}>Done</Text>
+                        <Text style={styles.doneButtonText}>{t('common.done')}</Text>
                     </TouchableOpacity>
                 </Animated.View>
             </SafeAreaView>
@@ -172,7 +174,7 @@ const WearLogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                     <TouchableOpacity onPress={() => navigation.goBack()}>
                         <Ionicons name="close" size={28} color={colors.text.primary} />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Log Today's Outfit</Text>
+                    <Text style={styles.headerTitle}>{t('wearLog.logTodaysOutfit')}</Text>
                     <View style={{ width: 28 }} />
                 </View>
 
@@ -201,7 +203,7 @@ const WearLogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 {/* Suggestion Mode */}
                 {mode === 'suggestion' && dailySuggestion && (
                     <Animated.View entering={FadeIn.duration(300)} style={styles.suggestionCard}>
-                        <Text style={styles.suggestionLabel}>Today's suggestion</Text>
+                        <Text style={styles.suggestionLabel}>{t('wearLog.todaysSuggestion')}</Text>
                         <View style={styles.suggestionItems}>
                             {suggestionItems.map((item) => (
                                 <View key={item.id} style={styles.suggestionItem}>
@@ -283,8 +285,8 @@ const WearLogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                         {items.length === 0 && (
                             <View style={styles.emptyState}>
                                 <Ionicons name="shirt-outline" size={48} color={colors.text.tertiary} />
-                                <Text style={styles.emptyText}>No items in your closet yet</Text>
-                                <Text style={styles.emptySubtext}>Scan your wardrobe to get started</Text>
+                                <Text style={styles.emptyText}>{t('wearLog.noItemsYet')}</Text>
+                                <Text style={styles.emptySubtext}>{t('wearLog.scanWardrobe')}</Text>
                             </View>
                         )}
                     </Animated.View>
@@ -292,7 +294,7 @@ const WearLogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
                 {/* Occasion Picker */}
                 <View style={styles.occasionSection}>
-                    <Text style={styles.sectionLabel}>Occasion</Text>
+                    <Text style={styles.sectionLabel}>{t('wearLog.occasion')}</Text>
                     <View style={styles.occasionRow}>
                         {OCCASIONS.map((occ) => (
                             <TouchableOpacity

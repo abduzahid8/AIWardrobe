@@ -26,6 +26,7 @@ import Animated, {
 import { useNavigation, useRoute } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
 import { BlurView } from "expo-blur";
+import { useTranslation } from 'react-i18next';
 
 const { width, height } = Dimensions.get("window");
 
@@ -192,10 +193,12 @@ const ProductDetailModal = ({
     visible,
     item,
     onClose,
+    t,
 }: {
     visible: boolean;
     item: DetectedItemType | null;
     onClose: () => void;
+    t: any;
 }) => {
     if (!item) return null;
 
@@ -244,14 +247,14 @@ const ProductDetailModal = ({
                                 onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
                             >
                                 <Ionicons name="bookmark-outline" size={20} color={COLORS.white} />
-                                <Text style={styles.modalSaveText}>Save</Text>
+                                <Text style={styles.modalSaveText}>{t('common.save')}</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
                                 style={styles.modalShopButton}
                                 onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
                             >
-                                <Text style={styles.modalShopText}>Shop Now</Text>
+                                <Text style={styles.modalShopText}>{t('outfitDetail.shopNow')}</Text>
                                 <Ionicons name="arrow-forward" size={16} color={COLORS.background} />
                             </TouchableOpacity>
                         </View>
@@ -266,6 +269,7 @@ const ProductDetailModal = ({
 const OutfitDetailScreen = () => {
     const navigation = useNavigation();
     const route = useRoute();
+    const { t } = useTranslation();
     const [selectedItem, setSelectedItem] = useState<DetectedItemType | null>(null);
     const [showModal, setShowModal] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -339,7 +343,7 @@ const OutfitDetailScreen = () => {
                 {isLoading ? (
                     <Animated.View entering={FadeIn} style={styles.loadingContainer}>
                         <ActivityIndicator size="small" color={COLORS.white} />
-                        <Text style={styles.loadingText}>Detecting items...</Text>
+                        <Text style={styles.loadingText}>{t('outfitDetail.detecting')}</Text>
                     </Animated.View>
                 ) : (
                     <ScrollView
@@ -418,6 +422,7 @@ const OutfitDetailScreen = () => {
                 visible={showModal}
                 item={selectedItem}
                 onClose={() => setShowModal(false)}
+                t={t}
             />
         </View>
     );

@@ -39,6 +39,7 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 import useWardrobeStore from '../store/wardrobeStore';
 import { aiProvider } from '../src/services/aiProviderService';
+import { useTranslation } from 'react-i18next';
 
 const { colors, spacing } = LiquidGlass2026Theme;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -113,6 +114,7 @@ const MessageBubble = ({ message }: BubbleProps) => {
 // ============================================
 
 const ChatScreen = () => {
+    const { t } = useTranslation();
     const items    = useWardrobeStore((s) => s.items);
     const wearLogs = useWardrobeStore((s) => s.wearLogs);
 
@@ -207,7 +209,7 @@ const ChatScreen = () => {
             {/* Header */}
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.headerTitle}>Stylist</Text>
+                    <Text style={styles.headerTitle}>{t('chat.title')}</Text>
                     <Text style={styles.headerSubtitle}>
                         {items.length > 0 ? `${items.length} items in wardrobe` : 'Add items to get started'}
                     </Text>
@@ -233,7 +235,7 @@ const ChatScreen = () => {
                         <View style={styles.emptyIcon}>
                             <Text style={styles.emptyIconText}>✦</Text>
                         </View>
-                        <Text style={styles.emptyTitle}>What are you dressing for?</Text>
+                        <Text style={styles.emptyTitle}>{t('chat.emptyTitle')}</Text>
                         <Text style={styles.emptySubtitle}>
                             {items.length === 0
                                 ? 'Add items to your wardrobe first so I can suggest real outfits.'
@@ -275,7 +277,7 @@ const ChatScreen = () => {
                         </View>
                         <View style={styles.thinkingBubble}>
                             {isThinking ? (
-                                <Text style={styles.thinkingText}>Still thinking...</Text>
+                                <Text style={styles.thinkingText}>{t('chat.thinking')}</Text>
                             ) : (
                                 <View style={styles.dotsRow}>
                                     {[0, 1, 2].map((i) => (
