@@ -10,27 +10,33 @@ const SUPPRESSED_WARNING_PATTERNS = [
     '`expo-notifications`',
     'Expo Go can no longer provide full access to the media library',
     'Android Push notifications (remote notifications) functionality',
+    'The native store is not available when running inside Expo Go',
 ];
 
-function shouldSuppress(firstArg: unknown): boolean {
-    try {
-        const msg = typeof firstArg === 'string' ? firstArg : String(firstArg ?? '');
-        return SUPPRESSED_WARNING_PATTERNS.some((pat) => msg.includes(pat));
-    } catch {
-        return false;
+function shouldSuppress(...args: unknown[]): boolean {
+    for (const arg of args) {
+        try {
+            const msg = typeof arg === 'string' ? arg : (arg instanceof Error ? arg.message : String(arg ?? ''));
+            if (SUPPRESSED_WARNING_PATTERNS.some((pat) => msg.includes(pat))) {
+                return true;
+            }
+        } catch {
+            // ignore
+        }
     }
+    return false;
 }
 
 const _originalWarn = console.warn;
 console.warn = (...args: unknown[]) => {
-    if (shouldSuppress(args[0])) return;
+    if (shouldSuppress(...args)) return;
     _originalWarn(...(args as []));
 };
 
 // Some Expo/RN warnings are routed through console.error or log. Cover both.
 const _originalError = console.error;
 console.error = (...args: unknown[]) => {
-    if (shouldSuppress(args[0])) return;
+    if (shouldSuppress(...args)) return;
     _originalError(...(args as []));
 };
 
