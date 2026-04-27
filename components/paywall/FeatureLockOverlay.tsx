@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 interface FeatureLockOverlayProps {
     /** Which tier unlocks this feature (displayed in copy). */
@@ -39,6 +40,7 @@ const FeatureLockOverlay: React.FC<FeatureLockOverlayProps> = ({
     withSafeArea = true,
 }) => {
     const navigation = useNavigation<any>();
+    const { t } = useTranslation();
 
     const handleUpgrade = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -70,7 +72,7 @@ const FeatureLockOverlay: React.FC<FeatureLockOverlayProps> = ({
                         color={accent}
                     />
                     <Text style={[styles.tierPillText, { color: accent }]}>
-                        {requiredTier.toUpperCase()} FEATURE
+                        {requiredTier.toUpperCase()} {t('featureLock.feature')}
                     </Text>
                 </View>
 
@@ -98,11 +100,11 @@ const FeatureLockOverlay: React.FC<FeatureLockOverlayProps> = ({
                         style={styles.cta}
                     >
                         <Ionicons name="rocket" size={18} color="#0A0A0A" />
-                        <Text style={styles.ctaText}>Unlock with {requiredTier}</Text>
+                        <Text style={styles.ctaText}>{t('featureLock.unlockWith', { tier: requiredTier })}</Text>
                     </LinearGradient>
                 </TouchableOpacity>
 
-                <Text style={styles.subCta}>Cancel anytime · No hidden fees</Text>
+                <Text style={styles.subCta}>{t('featureLock.cancelAnytime')}</Text>
             </View>
         </View>
     );
@@ -116,7 +118,7 @@ const FeatureLockOverlay: React.FC<FeatureLockOverlayProps> = ({
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#0A0A0A',
+        backgroundColor: '#050816',
     },
     inner: {
         flex: 1,
@@ -141,7 +143,7 @@ const styles = StyleSheet.create({
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: '#0A0A0A',
+        backgroundColor: '#0D111F',
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 2,

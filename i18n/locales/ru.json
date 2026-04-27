@@ -1,628 +1,1645 @@
 {
-    "common": {
-        "upgrade": "Обновить",
-        "cancel": "Отмена",
-        "save": "Сохранить",
-        "delete": "Удалить",
-        "edit": "Редактировать",
-        "next": "Далее",
-        "back": "Назад",
-        "loading": "Загрузка...",
-        "error": "Ошибка",
-        "success": "Успешно",
-        "items": "Вещи",
-        "looks": "Образы",
-        "streak": "Серия",
-        "wears": "Носки"
+  "common": {
+    "upgrade": "Обновить",
+    "cancel": "Отмена",
+    "save": "Сохранить",
+    "delete": "Удалить",
+    "remove": "Удалить",
+    "edit": "Редактировать",
+    "next": "Далее",
+    "back": "Назад",
+    "loading": "Загрузка...",
+    "error": "Ошибка",
+    "success": "Успех",
+    "items": "Предметы",
+    "looks": "Образы",
+    "streak": "Серия",
+    "wears": "Носки",
+    "add": "Добавить",
+    "added": "Добавлено",
+    "all": "Все",
+    "clothingItem": "Предмет одежды",
+    "cached": "кэшировано",
+    "avatar": "Аватар",
+    "noClothingItemsDetected": "Предметы одежды не обнаружены",
+    "noGarmentImageAvailable": "Изображение одежды недоступно",
+    "edgeFunctionError": "Ошибка edge-функции",
+    "functionError": "Ошибка функции",
+    "invalidLoginCredentials": "Неверные учетные данные",
+    "emailNotConfirmed": "Email не подтвержден",
+    "userAlreadyRegistered": "Пользователь уже зарегистрирован",
+    "usernameAlreadyExists": "Имя пользователя уже существует",
+    "databaseError": "Ошибка базы данных",
+    "networkRequestFailed": "Сетевой запрос не удался"
+  },
+  "confirmations": {
+    "thisItem": "этот предмет",
+    "thisOutfit": "этот образ",
+    "removeItem": "Удалить предмет",
+    "removeItemConfirm": "Вы уверены, что хотите удалить {{label}} из гардероба? Это действие нельзя отменить.",
+    "deleteOutfit": "Удалить образ",
+    "deleteOutfitConfirm": "Вы уверены, что хотите удалить {{label}}?"
+  },
+  "api": {
+    "accessDenied": "Доступ запрещен",
+    "accessDeniedMessage": "У вас нет прав для выполнения этого действия.",
+    "serverError": "Ошибка сервера",
+    "serverErrorMessage": "Что-то пошло не так на нашей стороне. Попробуйте позже."
+  },
+  "wardrobeItems": {
+    "failedDeleteItem": "Не удалось удалить предмет",
+    "failedSaveChanges": "Не удалось сохранить изменения"
+  },
+  "sessionGuard": {
+    "sessionExpired": "Сессия истекла",
+    "sessionExpiredMessage": "Ваша сессия истекла. Пожалуйста, войдите снова."
+  },
+  "videoAnalysis": {
+    "videoProcessingLimited": "Обработка видео ограничена",
+    "videoProcessingLimitedMessage": "Не удалось извлечь кадры из этого видео. Вы все еще можете добавить элементы вручную — нажмите \"Просмотр и сохранение\" для продолжения.",
+    "noClothingFound": "Одежда не найдена",
+    "noClothingFoundVideo": "ИИ не смог обнаружить предметы одежды в этом видео.",
+    "noClothingFoundImage": "ИИ не смог обнаружить предметы одежды на этом изображении.",
+    "savedOffline": "Сохранено офлайн",
+    "savedOfflineVideo": "Видео сохранено в офлайн-очередь. Оно будет проанализировано, когда вы будете в сети.",
+    "savedOfflinePhoto": "Фото сохранено в офлайн-очередь. Оно будет проанализировано, когда вы будете в сети.",
+    "analysisFailed": "Анализ не удался",
+    "somethingWrong": "Что-то пошло не так. Попробуйте еще раз."
+  },
+  "tryOn": {
+    "readyToGenerate": "Готов к генерации",
+    "piecesSelected": "{{count}} предмет{{plural}} выбрано: {{names}}. Нажмите \"Примерка с ИИ\", чтобы наложить их на манекен.",
+    "piecesSelected_one": "{{count}} предмет выбран: {{names}}. Нажмите \"Примерка с ИИ\", чтобы наложить его на манекен.",
+    "piecesSelected_other": "{{count}} предметов выбрано: {{names}}. Нажмите \"Примерка с ИИ\", чтобы наложить их на манекен.",
+    "pickYourPieces": "Выберите предметы",
+    "chooseUpToFourPieces": "Выберите до четырех предметов — один слой, одна верхняя одежда, одна пара брюк и одна пара обуви.",
+    "statusLive": "Генерация",
+    "statusDone": "Готово",
+    "statusReady": "Готов",
+    "statusIdle": "Ожидание",
+    "statusPrep": "Подготовка",
+    "tryOns": "Примерки",
+    "pieces": "Предметы",
+    "status": "Статус",
+    "plan": "План",
+    "pro": "Pro",
+    "free": "Бесплатно",
+    "generatingPreview": "Генерация превью…",
+    "tryOnNeedsAnotherAttempt": "Примерка требует повторной попытки",
+    "previewIsReady": "Превью готово!",
+    "previewReadyBody": "{{filledCount}} предмет(ов) наложено на манекен. Сохраните образ ниже.",
+    "preparingModel": "Подготовка модели",
+    "preparingModelBody": "Загрузка ресурсов манекена. Это займёт секунду.",
+    "saved": "Сохранено!",
+    "savedMessage": "Образ сохранён в профиле."
+  },
+  "outfitLogs": {
+    "noItems": "Нет предметов",
+    "selectAtLeastOne": "Пожалуйста, выберите хотя бы один предмет"
+  },
+  "outfitLogForm": {
+    "top": "Верх",
+    "topHint": "Рубашка, куртка, свитер…",
+    "bottoms": "Низ",
+    "bottomsHint": "Брюки, джинсы, шорты…",
+    "shoes": "Обувь",
+    "shoesHint": "Кроссовки, ботинки, туфли…"
+  },
+  "outfitGeneration": {
+    "cannotSave": "Невозможно сохранить",
+    "noValidItems": "Этот образ не имеет допустимых предметов для сохранения.",
+    "saved": "Сохранено",
+    "savedToCloset": "Образ сохранен в гардероб.",
+    "addedToCalendar": "Добавлено в календарь",
+    "outfitLoggedFor": "Образ записан на {{dateKey}}.",
+    "couldNotSaveToCalendar": "Не удалось сохранить образ в календарь."
+  },
+  "home": {
+    "title": "Образы",
+    "dailyBrief": "Ежедневный обзор",
+    "todaysLook": "Сегодняшний образ",
+    "stylistInsight": "Совет стилиста",
+    "openCalendar": "Открыть календарь",
+    "askStylist": "Спросить стилиста",
+    "todaysSuggestion": "Предложение на сегодня",
+    "askAI": "Спросить ИИ",
+    "yourWeek": "Ваша неделя",
+    "createOutfitFromShopItems": "Создать образ из товаров магазина",
+    "regenerateBusinessCasual": "Пересоздать сегодняшние деловые образы",
+    "regenerateDinnerOutfits": "Пересоздать вечерние образы",
+    "planner": "Планировщик",
+    "wardrobeEssentials": "Основы гардероба",
+    "loadingEssentials": "Загрузка основ…",
+    "noEssentials": "Основы недоступны",
+    "teamCollaboration": "Командная работа",
+    "businessCasual": "Деловой стиль",
+    "nightTimeDinner": "Вечерний ужин",
+    "dinner": "Вечерний ужин",
+    "createOutfit": "Создать образ",
+    "businessCasualArrow": "Деловой стиль ›",
+    "tryAgain": "Попробовать снова",
+    "tryOn": "Примерка",
+    "nightTimeDinnerSubtitle": "Вечерний ужин ›",
+    "aiWardrobe": "AIWardrobe",
+    "wearLight": "Одевайтесь легко",
+    "useLayers": "Используйте слои",
+    "dressWarm": "Одевайтесь тепло",
+    "itemAddedToWardrobe": "{{itemName}} добавлен в гардероб",
+    "addItemToWardrobe": "Добавить {{itemName}} в гардероб"
+  },
+  "weeklyPlanner": {
+    "days": [
+      "ВС",
+      "ПН",
+      "ВТ",
+      "СР",
+      "ЧТ",
+      "ПТ",
+      "СБ"
+    ]
+  },
+  "quickAdd": {
+    "title": "Быстро добавить вещь",
+    "subtitle": "Добавьте вещь в свой гардероб за секунды",
+    "change": "Изменить",
+    "camera": "Камера",
+    "gallery": "Галерея",
+    "nameOptional": "Имя (необязательно)",
+    "namePlaceholder": "напр. Синий джинсовый пиджак",
+    "category": "Категория",
+    "primaryColor": "Основной цвет",
+    "adding": "Добавление...",
+    "addToCloset": "Добавить в гардероб",
+    "cancel": "Отмена",
+    "permissionNeeded": "Разрешение требуется",
+    "cameraPermissionRequired": "Разрешение камеры требуется для фото.",
+    "photoRequired": "Фото требуется",
+    "photoRequiredMessage": "Пожалуйста, добавьте фото вещи.",
+    "error": "Ошибка",
+    "addItemFailed": "Не удалось добавить вещь. Попробуйте еще раз.",
+    "categories": {
+      "top": "Верх",
+      "bottom": "Низ",
+      "dress": "Платье",
+      "shoes": "Обувь",
+      "outerwear": "Верхняя одежда",
+      "accessory": "Аксессуар",
+      "other": "Другое"
     },
-    "home": {
-        "title": "Образы",
-        "dailyBrief": "Ежедневная сводка",
-        "todaysLook": "Образ дня",
-        "stylistInsight": "Совет стилиста",
-        "askStylist": "Спросить стилиста",
-        "todaysSuggestion": "Предложение дня",
-        "askAI": "Спросить ИИ",
-        "yourWeek": "Ваша неделя",
-        "planner": "Планировщик",
-        "wardrobeEssentials": "Основы гардероба",
-        "loadingEssentials": "Загрузка основ...",
-        "noEssentials": "Основы недоступны",
-        "teamCollaboration": "Командная работа",
-        "businessCasual": "Деловой стиль",
-        "nightTimeDinner": "Ужин вечером",
-        "dinner": "Вечерний ужин",
-        "popularThisWeek": "Популярное на этой неделе",
-        "more": "Еще",
-        "weather": {
-            "unavailable": "Погода недоступна"
-        }
+    "colors": {
+      "black": "Черный",
+      "white": "Белый",
+      "navy": "Темно-синий",
+      "gray": "Серый",
+      "beige": "Бежевый",
+      "brown": "Коричневый",
+      "red": "Красный",
+      "blue": "Синий",
+      "green": "Зеленый",
+      "pink": "Розовый",
+      "yellow": "Желтый",
+      "purple": "Фиолетовый"
+    }
+  },
+  "completeYourLook": {
+    "findingMatchingItems": "Поиск подходящих вещей...",
+    "title": "Завершите образ",
+    "seeAll": "Посмотреть все",
+    "addCategory": "Добавить {{category}}",
+    "shopNow": "Купить сейчас",
+    "shopSimilar": "Похожие товары"
+  },
+  "aiOutfitCreator": {
+    "title": "AI Создатель образов",
+    "subtitle": "Выберите событие и позвольте AI одеть вас",
+    "chooseEvent": "Выберите событие",
+    "selectEvent": "Выбрать событие {{event}}",
+    "generateOutfitWithAI": "Создать образ с AI",
+    "generateWithAI": "Создать с AI",
+    "tryAnother": "Попробовать другой",
+    "looksGood": "Хорошо выглядит",
+    "addMoreItemsFirst": "Сначала добавьте больше вещей",
+    "needAtLeastThreeItems": "Вам нужно минимум 3 вещи в гардеробе для создания образов AI.",
+    "events": {
+      "businessMeeting": "Деловая встреча",
+      "alpineSkiing": "Горные лыжи",
+      "casualDay": "Повседневный день",
+      "dateNight": "Свидание",
+      "workout": "Тренировка",
+      "beachDay": "День на пляже",
+      "wedding": "Свадьба",
+      "jobInterview": "Собеседование",
+      "nightOut": "Ночь в городе",
+      "travel": "Путешествие"
+    }
+  },
+  "clothingEditor": {
+    "type": "Тип",
+    "colour": "Цвет",
+    "seasonLabel": "Сезон",
+    "weatherLabel": "Погода",
+    "all": "Все >",
+    "save": "Сохранить",
+    "aiAnalyzing": "AI анализирует вашу одежду...",
+    "aiDetected": "AI обнаружено",
+    "confidence": "уверенность",
+    "loginRequired": "Требуется вход",
+    "pleaseLoginToSave": "Пожалуйста, войдите, чтобы сохранять вещи.",
+    "saved": "Сохранено!",
+    "itemAddedToWardrobe": "Вещь добавлена в ваш гардероб.",
+    "ok": "ОК",
+    "wardrobeFull": "Гардероб полон",
+    "freePlanLimit": "Бесплатный план хранит {{limit}} вещей. Обновитесь до Pro для неограниченного гардероба.",
+    "maybeLater": "Позже",
+    "upgrade": "Обновить",
+    "error": "Ошибка",
+    "failedToSaveItem": "Не удалось сохранить вещь. Попробуйте еще раз.",
+    "types": {
+      "tops": "Верхняя одежда",
+      "bottoms": "Нижняя одежда",
+      "shoes": "Обувь",
+      "accessories": "Аксессуары",
+      "outerwear": "Верхняя одежда",
+      "sportswear": "Спортивная одежда",
+      "homewear": "Домашняя одежда"
     },
-    "discover": {
-        "title": "Обзор",
-        "curatedCloset": "Гардероб",
-        "aiStudio": "AI Студия",
-        "trendingNow": "В тренде",
-        "seeAll": "Смотреть все",
-        "filters": {
-            "all": "Все",
-            "tops": "Верх",
-            "bottoms": "Низ",
-            "shoes": "Обувь",
-            "accessories": "Аксессуары"
-        },
-        "aiFeatures": "AI Функции"
+    "colors": {
+      "black": "Черный",
+      "grey": "Серый",
+      "beige": "Бежевый",
+      "white": "Белый",
+      "brown": "Коричневый",
+      "green": "Зеленый",
+      "red": "Красный",
+      "blue": "Синий"
     },
-    "profile": {
-        "editProfile": "Редактировать профиль",
-        "shareProfile": "Поделиться профилем",
-        "followers": "Подписчики",
-        "following": "Подписки",
-        "tabs": {
-            "clothes": "Одежда",
-            "outfits": "Образы",
-            "collections": "Коллекции"
-        },
-        "categories": {
-            "all": "Все",
-            "tops": "Верх",
-            "bottoms": "Низ",
-            "shoes": "Обувь",
-            "outerwear": "Верхняя одежда"
-        },
-        "noClothes": "Нет одежды в этой категории",
-        "noOutfits": "Нет сохраненных образов",
-        "account": "Аккаунт",
-        "goPro": "Перейти на Pro",
-        "insights": "Инсайты",
-        "style": "СТИЛЬ",
-        "travel": "ПУТЕШЕСТВИЯ",
-        "savedLooks": "Сохраненные образы",
-        "tripsAndPacking": "Поездки и сборы",
-        "new": "Новый",
-        "openCalendar": "Открыть календарь",
-        "wardrobeAnalytics": "Аналитика гардероба",
-        "subscription": "Подписка",
-        "notifications": "Уведомления",
-        "privacyPolicy": "Политика конфиденциальности",
-        "session": "СЕССИЯ",
-        "signOut": "Выйти",
-        "deleteAccount": "Удалить аккаунт",
-        "editAccount": "Редактировать аккаунт",
-        "updateDetails": "Обновите фото, имя и данные аккаунта.",
-        "name": "Имя",
-        "email": "Электронная почта",
-        "enterUsername": "Введите имя пользователя",
-        "noEmail": "Электронная почта недоступна",
-        "savingUpdates": "Сохранение изменений...",
-        "keepAccount": "Сохранить аккаунт",
-        "deleteEverything": "Удалить всё",
-        "confirmDelete": "Подтвердить удаление",
-        "permanentlyDelete": "Удалить аккаунт и все связанные данные навсегда?",
-        "cannotUndo": "Это действие нельзя отменить.",
-        "areYouSure": "Вы уверены, что хотите выйти?"
+    "seasons": {
+      "summer": "Лето",
+      "winter": "Зима",
+      "autumn": "Осень",
+      "spring": "Весна"
     },
-    "addOutfit": {
-        "title": "Добавить образ",
-        "importFromWeb": "Импорт из интернета (Zara, Asos...)",
-        "pasteLink": "Вставьте ссылку здесь...",
-        "selfie": "Селфи",
-        "suggestions": "Предложения",
-        "saved": "Сохранено",
-        "popularClothes": "Популярная одежда",
-        "itemImported": "Товар импортирован!",
-        "errors": {
-            "noImage": "Не удалось найти изображение. Попробуйте другую ссылку.",
-            "connectionFailed": "Ошибка подключения. Проверьте сервер."
-        }
+    "weather": {
+      "rain": "Дождь",
+      "sunny": "Солнечно",
+      "snow": "Снег",
+      "wind": "Ветер"
+    }
+  },
+  "weather": {
+    "unavailable": "Погода недоступна",
+    "suggestions": {
+      "wearLight": "Носить легкое",
+      "useLayers": "Используйте слои",
+      "dressWarm": "Одевайтесь тепло"
+    }
+  },
+  "dailySuggestion": {
+    "loading": "Находим идеальный образ...",
+    "noSuggestions": "Пока нет предложений",
+    "scanWardrobe": "Сканировать гардероб",
+    "outfitLogged": "Образ записан!",
+    "dayStreak": "дней подряд",
+    "backToHome": "Назад на главную",
+    "todaysOutfit": "Образ на сегодня",
+    "tryAnother": "Попробовать другой",
+    "wearToday": "Носить сегодня",
+    "scanWardrobeForSuggestions": "Отсканируйте свой гардероб, чтобы получить персонализированные рекомендации по образам",
+    "addMoreItemsForSuggestions": "Добавьте больше вещей в свой шкаф для лучших рекомендаций",
+    "title": "Ваш образ на сегодня"
+  },
+  "quickActions": {
+    "aiHub": "AI Хаб",
+    "menu": "Меню",
+    "profile": "Профиль",
+    "scanWardrobe": "Сканировать гардероб",
+    "aiStylist": "AI Стилист",
+    "addItem": "Добавить вещь"
+  },
+  "styleInsights": {
+    "title": "Стиль инсайты",
+    "subtitle": "Ваша неделя в стиле"
+  },
+  "wearLog": {
+    "outfitLogged": "Образ записан!",
+    "logTodaysOutfit": "Записать сегодняшний образ",
+    "todaysSuggestion": "Предложение на сегодня",
+    "noItemsYet": "В гардеробе пока нет вещей",
+    "scanWardrobe": "Отсканируйте гардероб для начала",
+    "occasion": "Событие",
+    "dayStreak": "{{count}} дневная серия",
+    "streak30": "Невероятно! Полный месяц ежедневного ведения стиля.",
+    "streak14": "Две недели подряд! Ваши предложения становятся умнее.",
+    "streak7": "Целая неделя! Ваши данные о стиле действительно растут.",
+    "streak3": "Сохраняйте импульс!",
+    "streak1": "Отличное начало! Записывайте ежедневно, чтобы разблокировать инсайты о стиле.",
+    "suggestedOutfit": "Предложенный образ",
+    "pickItems": "Выбрать вещи",
+    "selectItemsToLog": "Выберите вещи для записи",
+    "iWoreThisToday": "Я сегодня это носил",
+    "logItems": "Записать {{count}} вещ{{plural}}"
+  },
+  "network": {
+    "noInternetConnection": "Нет подключения к интернету"
+  },
+  "outfitShare": {
+    "instagram": "Instagram",
+    "whatsapp": "WhatsApp",
+    "twitter": "X / Twitter",
+    "facebook": "Facebook",
+    "pinterest": "Pinterest",
+    "copyLink": "Копировать ссылку",
+    "more": "Ещё",
+    "linkCopied": "Ссылка скопирована!",
+    "linkCopiedMessage": "Ссылка на образ скопирована в буфер обмена",
+    "shareMessage": "Посмотрите на образ, который я создал с AIШкаф! 👗✨",
+    "myOutfit": "Мой образ",
+    "shareMessageHashtags": "Посмотрите на образ, который я создал! 👗✨ #AIШкаф #OOTD",
+    "error": "Ошибка",
+    "failedToShare": "Не удалось поделиться образом",
+    "permissionNeeded": "Требуется разрешение",
+    "allowAccess": "Пожалуйста, разрешите доступ к сохранению изображений",
+    "saved": "Сохранено!",
+    "savedToGallery": "Образ сохранен в вашу галерею",
+    "failedToSave": "Не удалось сохранить образ",
+    "cancel": "Отмена",
+    "shareOutfit": "Поделиться образом",
+    "addCaption": "Добавьте описание...",
+    "saveToGallery": "Сохранить в галерею",
+    "shareTo": "Поделиться в",
+    "getFriendFeedback": "Получить отзывы друзей",
+    "friendFeedbackDescription": "Поделитесь с друзьями и пусть они проголосуют реакциями!",
+    "preparingToShare": "Подготовка к публикации...",
+    "friendReactions": "Реакции друзей"
+  },
+  "streak": {
+    "dayStreak": "дней подряд",
+    "amazingConsistency": "Потрясающая последовательность!",
+    "keepItGoing": "Продолжайте!",
+    "greatStart": "Отличное начало!"
+  },
+  "onboarding": {
+    "personalizedLooksUnlocked": "✨ Персонализированные образы разблокированы!",
+    "addItemsToUnlock": "Добавьте {{count}} вещ{{suffix}}{{suffix ? 'и' : 'ь'}}, чтобы разблокировать ежедневные персонализированные образы",
+    "itemsCounter": "{{current}}/{{target}} вещей"
+  },
+  "quota": {
+    "unlimited": "Безлимитно {{label}}",
+    "unlock": "Разблокировать {{label}}",
+    "outOfLabel": "{{label}} закончилось — нажмите для обновления",
+    "remainingToday": "{{remaining}} из {{limit}} {{label}} осталось сегодня"
+  },
+  "theme": {
+    "darkMode": "Темная тема",
+    "light": "Светлая",
+    "dark": "Темная",
+    "system": "Система",
+    "appearance": "Внешний вид"
+  },
+  "layeredOutfit": {
+    "outer": "Верхняя одежда",
+    "mid": "Средний слой",
+    "base": "Базовый слой",
+    "accessories": "Аксессуары",
+    "noItems": "Нет предметов в этом образе",
+    "noLayerItems": "Нет {{layer}} предметов"
+  },
+  "aiThinking": {
+    "scanningWardrobe": "Сканирование гардероба...",
+    "analyzingStyle": "Анализ стиля...",
+    "matchingCombinations": "Подбор комбинаций...",
+    "optimizingOutfits": "Оптимизация образов...",
+    "finalizingLooks": "Финализация образов...",
+    "styleDna": "СТИЛЬ DNA",
+    "synthesizingDna": "Синтез {{style}} DNA"
+  },
+  "discover": {
+    "title": "Обзор",
+    "curatedCloset": "Гардероб",
+    "aiStudio": "AI Студия",
+    "trendingNow": "В тренде",
+    "seeAll": "Смотреть все",
+    "filters": {
+      "all": "Все",
+      "tops": "Верх",
+      "bottoms": "Низ",
+      "shoes": "Обувь",
+      "accessories": "Аксессуары"
     },
-    "aiChat": {
-        "title": "AI Стилист",
-        "placeholder": "Спросите меня о вашем стиле...",
-        "greeting": "Привет! Я ваш AI стилист. Чем могу помочь сегодня?"
+    "aiFeatures": "AI Функции"
+  },
+  "profile": {
+    "permissionNeeded": "Требуется разрешение",
+    "allowPhotoLibrary": "Разрешите доступ к фототеке для изменения аватара.",
+    "failedUpdateProfile": "Не удалось обновить профиль.",
+    "failedDeleteAccount": "Не удалось удалить аккаунт.",
+    "comingSoon": "Скоро",
+    "notificationSettingsUnavailable": "Настройки уведомлений пока недоступны.",
+    "removeLook": "Удалить образ",
+    "removeTryOnLook": "Удалить этот образ примерки AI?",
+    "editProfile": "Редактировать профиль",
+    "shareProfile": "Поделиться профилем",
+    "followers": "Подписчики",
+    "following": "Подписки",
+    "tabs": {
+      "clothes": "Одежда",
+      "outfits": "Образы",
+      "collections": "Коллекции"
+    },
+    "categories": {
+      "all": "Все",
+      "tops": "Верхняя одежда",
+      "bottoms": "Нижняя одежда",
+      "shoes": "Обувь",
+      "outerwear": "Верхняя одежда"
+    },
+    "noClothes": "В этой категории нет одежды",
+    "noOutfits": "Сохраненных образов нет",
+    "account": "Аккаунт",
+    "goPro": "Перейти на Pro",
+    "insights": "Инсайты",
+    "style": "СТИЛЬ",
+    "travel": "ПОЕЗДКИ",
+    "savedLooks": "Сохраненные образы",
+    "tripsAndPacking": "Поездки и сборы",
+    "new": "Новый",
+    "openCalendar": "Открыть календарь",
+    "planTripDescription": "Используйте календарь, чтобы выбрать дату поездки, сгенерировать образ с помощью ИИ и сохранить его на этот день.",
+    "tryAgain": "Попробуйте снова",
+    "wardrobeAnalytics": "Аналитика гардероба",
+    "subscription": "Подписка",
+    "notifications": "Уведомления",
+    "privacyPolicy": "Политика конфиденциальности",
+    "session": "СЕССИЯ",
+    "signOut": "Выйти",
+    "deleteAccount": "Удалить аккаунт",
+    "editAccount": "Редактировать аккаунт",
+    "updateDetails": "Обновите ваше фото, имя и данные аккаунта.",
+    "name": "Имя",
+    "email": "Электронная почта",
+    "enterUsername": "Введите имя пользователя",
+    "noEmail": "Нет электронной почты",
+    "savingUpdates": "Сохранение обновлений...",
+    "keepAccount": "Сохранить аккаунт",
+    "deleteEverything": "Удалить всё",
+    "confirmDelete": "Подтвердить удаление",
+    "permanentlyDelete": "Окончательно удалить ваш аккаунт и все связанные данные?",
+    "cannotUndo": "Это действие нельзя отменить.",
+    "areYouSure": "Вы уверены, что хотите выйти?",
+    "ai": "AI",
+    "planTripOutfits": "Планировать образы для поездки",
+    "accountHeading": "АККАУНТ",
+    "membershipHeading": "ЧЛЕНСТВО",
+    "preferencesHeading": "НАСТРОЙКИ",
+    "tripFlowStep1": "1. Выберите день поездки",
+    "tripFlowStep1Desc": "Выберите дату поездки, для которой вы хотите спланировать образ, в календаре.",
+    "tripFlowStep2": "2. Создайте образ с помощью ИИ",
+    "tripFlowStep2Desc": "Нажмите `Создать образ с ИИ` в этот день, чтобы открыть генератор с прикрепленной датой.",
+    "tripFlowStep3": "3. Сохраните в свой план",
+    "tripFlowStep3Desc": "Образ будет сохранен в вашем календаре и добавлен в список вещей.",
+    "aiTryOn": "AI Примерка"
+  },
+  "addOutfit": {
+    "title": "Добавить образ",
+    "importFromWeb": "Импорт из интернета (Zara, Asos...)",
+    "pasteLink": "Вставьте ссылку здесь...",
+    "selfie": "Селфи",
+    "suggestions": "Предложения",
+    "saved": "Сохранено",
+    "popularClothes": "Популярная одежда",
+    "itemImported": "Товар импортирован!",
+    "errors": {
+      "noImage": "Не удалось найти изображение. Попробуйте другую ссылку.",
+      "connectionFailed": "Ошибка подключения. Проверьте сервер."
+    }
+  },
+  "aiChat": {
+    "title": "AI Стилист",
+    "placeholder": "Спросите меня о вашем стиле...",
+    "greeting": "Привет! Я ваш AI стилист. Чем могу помочь сегодня?"
+  },
+  "aiTryOn": {
+    "title": "Примерка",
+    "featureName": "AI Виртуальная примерка",
+    "tagline": "Посмотрите любой образ на реалистичной модели себя — прежде чем надеть его.",
+    "bullet1": "Безлимитные фотореалистичные примерки",
+    "bullet2": "Смешивайте гардероб + товары магазина на одной модели",
+    "bullet3": "Делитесь образами с друзьями за секунды",
+    "bullet4": "Приоритетная AI модель — рендеры высшего качества",
+    "virtualFitStudio": "ВИРТУАЛЬНАЯ ПРИМЕРКА",
+    "previewReady": "Ваш превью готов",
+    "previewOnMannequin": "Превью на манекене",
+    "proPlan": "Pro План",
+    "freePlan": "Бесплатный План",
+    "savedToLooks": "Сохранено в образы",
+    "generatingPreview": "Генерация превью",
+    "generatingPreviewBody": "Создание AI примерки с выбранным товаром. Обычно занимает 15-30 секунд.",
+    "piecesSelected": "{{count}} вещ(и) выбрано",
+    "pickPiecesBelow": "Выберите слой, верх, штаны и обувь ниже",
+    "saved": "Сохранено",
+    "saveLook": "Сохранить образ",
+    "startOver": "Начать заново",
+    "preparingModel": "Подготовка модели",
+    "tryOnWithAI": "Примерить с AI",
+    "chooseGarments": "Выберите одежду",
+    "clear": "Очистить",
+    "style": "СТИЛЬ",
+    "chooseLabel": "Выбрать {{label}}",
+    "itemsCount": "{{count}} товаров",
+    "tapToChoose": "Нажмите, чтобы выбрать",
+    "liveCatalogEmpty": "Живой каталог Zara пуст сейчас. Показываем резервную мужскую одежду.",
+    "liveCatalogFailed": "Обновление живого каталога не удалось. Показываем последнюю синхронизированную мужскую одежду.",
+    "retry": "Повторить",
+    "loadingCatalog": "Загрузка мужского каталога",
+    "loadingCatalogBody": "Загрузка большего набора живых мужских товаров для примерок.",
+    "noItemsCategory": "Пока нет товаров в этой категории",
+    "noItemsCategoryBody": "Переключите фильтры или добавьте больше товаров каталога для примерок.",
+    "item": "Товар",
+    "loadMoreMenswear": "Загрузить больше мужской одежды",
+    "heroTitle": "Как на вас будет смотреться образ",
+    "heroSubtitle": "Загрузите фото в полный рост. ИИ наденет на вас любую одежду, чтобы вы могли оценить, как это выглядит.",
+    "step1Label": "1. Ваше фото в полный рост",
+    "step1Hint": "Встаньте так, чтобы в кадре был виден весь рост — так результат будет лучше.",
+    "step2Label": "2. Одежда для примерки",
+    "step3Label": "3. Превью",
+    "fullLengthPhoto": "Добавить фото в полный рост",
+    "fullLengthHint": "Камера или галерея — лучше всего фото в полный рост",
+    "takePhoto": "Сделать фото",
+    "choosePhoto": "Выбрать из галереи",
+    "cancel": "Отмена",
+    "permissionTitle": "Нужен доступ",
+    "cameraPermission": "Разрешите доступ к камере для съёмки в полный рост.",
+    "photoPermission": "Разрешите доступ к фото для выбора снимка в полный рост.",
+    "upload": "Загрузить",
+    "myWardrobe": "Мой гардероб",
+    "selectItem": "Выбрать вещь",
+    "loadingWardrobe": "Загружаем гардероб...",
+    "noWardrobeItems": "В гардеробе пока ничего нет",
+    "scanWardrobe": "Сканировать гардероб",
+    "selected": "выбрано",
+    "generating": "Создаём новый образ...",
+    "takesTime": "(Займёт ~20 секунд)",
+    "resultHere": "Результат появится здесь",
+    "generate": "Сгенерировать примерку",
+    "processing": "Обработка...",
+    "savedTitle": "Сохранено!",
+    "savedMessage": "Результат примерки сохранён в ваш гардероб!",
+    "viewWardrobe": "В гардероб",
+    "saveToWardrobe": "Сохранить в гардероб",
+    "saving": "Сохранение...",
+    "saveFailed": "Не удалось сохранить. Попробуйте снова.",
+    "demoTitle": "Демо",
+    "demoMessage": "Сервис ИИ не настроен. Показан демо-результат.",
+    "errorTitle": "Ошибка",
+    "errorMessage": "Не удалось сгенерировать примерку.",
+    "loginRequired": "Войдите, чтобы пользоваться ИИ-примеркой.",
+    "try your self": "Попробуйте сами",
+    "model": "Модель",
+    "digitalModelTitle": "Ваша цифровая модель",
+    "digitalModelPro": "PRO",
+    "digitalModelDescription": "Создавайте изображения и примеряйте одежду на своём аватаре.",
+    "upgradeToPro": "Перейти на Pro",
+    "errors": {
+      "missingPhotos": "Добавьте фото в полный рост и одежду для примерки.",
+      "tryOnFailed": "Примерка не удалась. Проверьте консоль сервера."
+    }
+  },
+  "features": {
+    "aiSuggestions": {
+      "title": "AI Предложения",
+      "subtitle": "Спросите AI о стиле"
+    },
+    "aiOutfitMaker": {
+      "title": "Создатель образов AI",
+      "subtitle": "Создавайте образы"
     },
     "aiTryOn": {
-        "title": "Примерка",
-        "heroTitle": "Как на вас будет смотреться образ",
-        "heroSubtitle": "Загрузите фото в полный рост. ИИ наденет на вас любую одежду, чтобы вы могли оценить, как это выглядит.",
-        "step1Label": "1. Ваше фото в полный рост",
-        "step1Hint": "Встаньте так, чтобы в кадре был виден весь рост — так результат будет лучше.",
-        "step2Label": "2. Одежда для примерки",
-        "step3Label": "3. Превью",
-        "fullLengthPhoto": "Добавить фото в полный рост",
-        "fullLengthHint": "Камера или галерея — лучше всего фото в полный рост",
-        "takePhoto": "Сделать фото",
-        "choosePhoto": "Выбрать из галереи",
-        "cancel": "Отмена",
-        "permissionTitle": "Нужен доступ",
-        "cameraPermission": "Разрешите доступ к камере для съёмки в полный рост.",
-        "photoPermission": "Разрешите доступ к фото для выбора снимка в полный рост.",
-        "upload": "Загрузить",
-        "myWardrobe": "Мой гардероб",
-        "selectItem": "Выбрать вещь",
-        "loadingWardrobe": "Загружаем гардероб...",
-        "noWardrobeItems": "В гардеробе пока ничего нет",
-        "featureName": "AI виртуальная примерка",
-        "tagline": "Посмотрите любой наряд на реалистичной модели себя — прежде чем надеть его.",
-        "bullet1": "Безлимитные фотореалистичные примерки",
-        "bullet2": "Смешивайте свой гардероб + товары из магазина на одной модели",
-        "bullet3": "Делитесь образами с друзьями за секунды",
-        "bullet4": "Приоритетная модель AI — рендеры высочайшего качества",
-        "scanWardrobe": "Сканировать гардероб",
-        "selected": "выбрано",
-        "generating": "Создаём новый образ...",
-        "takesTime": "(Займёт ~20 секунд)",
-        "resultHere": "Результат появится здесь",
-        "generate": "Сгенерировать примерку",
-        "processing": "Обработка...",
-        "savedTitle": "Сохранено!",
-        "savedMessage": "Результат примерки сохранён в ваш гардероб!",
-        "viewWardrobe": "В гардероб",
-        "saveToWardrobe": "Сохранить в гардероб",
-        "saving": "Сохранение...",
-        "saveFailed": "Не удалось сохранить. Попробуйте снова.",
-        "demoTitle": "Демо",
-        "demoMessage": "Сервис ИИ не настроен. Показан демо-результат.",
-        "errorTitle": "Ошибка",
-        "errorMessage": "Не удалось сгенерировать примерку.",
-        "loginRequired": "Войдите, чтобы пользоваться ИИ-примеркой.",
-        "try your self": "Попробуйте сами",
-        "model": "Модель",
-        "digitalModelTitle": "Ваша цифровая модель",
-        "digitalModelPro": "PRO",
-        "digitalModelDescription": "Создавайте изображения и примеряйте одежду на своём аватаре.",
-        "upgradeToPro": "Перейти на Pro",
-        "errors": {
-            "missingPhotos": "Добавьте фото в полный рост и одежду для примерки.",
-            "tryOnFailed": "Примерка не удалась. Проверьте консоль сервера."
-        }
+      "title": "Виртуальная примерка",
+      "subtitle": "Примерьте виртуально"
     },
-    "features": {
-        "aiSuggestions": {
-            "title": "AI Предложения",
-            "subtitle": "Спросите AI о стиле"
-        },
-        "aiOutfitMaker": {
-            "title": "Создатель образов AI",
-            "subtitle": "Создавайте образы"
-        },
-        "aiTryOn": {
-            "title": "Виртуальная примерка",
-            "subtitle": "Примерьте виртуально"
-        },
-        "colorAnalysis": {
-            "title": "Анализ цвета",
-            "subtitle": "Найдите лучшие цвета"
-        },
-        "scanWardrobe": {
-            "title": "Сканировать гардероб",
-            "subtitle": "Оцифруйте гардероб"
-        }
+    "colorAnalysis": {
+      "title": "Анализ цвета",
+      "subtitle": "Найдите лучшие цвета"
     },
-    "language": {
-        "selectLanguage": "Выберите язык",
-        "english": "Английский",
-        "russian": "Русский",
-        "uzbek": "Узбекский"
+    "scanWardrobe": {
+      "title": "Сканировать гардероб",
+      "subtitle": "Оцифруйте гардероб"
+    }
+  },
+  "language": {
+    "selectLanguage": "Выберите язык",
+    "english": "Английский",
+    "russian": "Русский",
+    "uzbek": "Узбекский"
+  },
+  "aiHub": {
+    "askAnythingAboutStyle": "Спросите что угодно о стиле...",
+    "typeYourStyleQuestion": "Введите ваш вопрос о стиле",
+    "sendMessage": "Отправить сообщение",
+    "openMagicMirror": "Открыть Magic Mirror",
+    "talkToStylist": "Поговорить со стилистом",
+    "aiThinking": "ИИ думает...",
+    "readyToHelp": "Готов помочь",
+    "goodMorning": "Доброе утро",
+    "goodAfternoon": "Добрый день",
+    "goodEvening": "Добрый вечер",
+    "scanWardrobe": "Сканировать гардероб",
+    "addClothes": "Добавить одежду",
+    "browseItems": "Просмотреть вещи",
+    "getIdeas": "Получить идеи",
+    "photoToOutfit": "Фото в образ",
+    "virtualFit": "Виртуальная примерка",
+    "planOutfits": "Планировать образы",
+    "weekly": "Еженедельно"
+  },
+  "outfitMaker": {
+    "yourOutfits": "Ваши образы",
+    "saveToCalendar": "Сохранить в календарь",
+    "pickDate": "Выберите дату для этого образа",
+    "addToCalendar": "Добавить в календарь",
+    "saveOutfit": "Сохранить образ",
+    "aiStylist": "ИИ стилист",
+    "whereGoing": "Куда вы идете?",
+    "styleChat": "Чат стиля",
+    "outfitAI": "AI образ",
+    "cannotSave": "Невозможно сохранить",
+    "noValidItems": "Нет действительных предметов для сохранения",
+    "saved": "Сохранено",
+    "outfitSavedCloset": "Образ сохранен в гардероб",
+    "outfitExists": "Образ уже существует",
+    "replaceOutfit": "У вас уже есть образ для этой даты. Заменить его?",
+    "replace": "Заменить",
+    "discoverVibe": "Откройте свой стиль",
+    "tapStyleCard": "Нажмите на карточку стиля ниже, и ИИ мгновенно создаст полный образ из вашего гардероба.",
+    "promptPlaceholder": "напр., Свидание, собеседование, обычный бранч, пляжный отпуск...",
+    "generate": "Сгенерировать",
+    "description1": "Подобранный {{style}} образ из вашего гардероба.",
+    "description2": "Элегантный {{style}} ансамбль с сбалансированными пропорциями.",
+    "description3": "Изящный {{style}} образ, идеально подходящий для случая.",
+    "tip1_1": "Добавьте ненавязчивые аксессуары",
+    "tip1_2": "Держите цвета тональными для связности",
+    "tip2_1": "Добавьте кожаный ремень и часы",
+    "tip2_2": "Носите верхнюю одежду слоями для глубины",
+    "tip3_1": "Выберите минималистичные украшения",
+    "tip3_2": "Подберите обувь под цвет ремня"
+  },
+  "paywall": {
+    "heroTitle": "Ваш стиль, разблокирован.",
+    "heroSubtitle": "Бесплатный навсегда — или обновитесь, когда будете готовы.",
+    "restorePurchases": "Восстановить покупки",
+    "manageSubscription": "Управление подпиской",
+    "current": "ТЕКУЩИЙ",
+    "mostPopular": "САМЫЙ ПОПУЛЯРНЫЙ",
+    "freeTrial": "Бесплатный пробный период {{period}}",
+    "getPro": "Получить Pro",
+    "getMax": "Получить Max",
+    "redeemOfferCode": "Активировать промокод",
+    "privacyPolicy": "Политика конфиденциальности",
+    "termsOfUse": "Условия использования",
+    "termsText": "Оплата будет списана с вашего Apple ID при подтверждении покупки. Подписка автоматически продлевается, если она не отменена минимум за 24 часа до окончания текущего периода. Ваш аккаунт будет списан за продление в течение 24 часов до окончания текущего периода. Вы можете управлять и отменять подписки в настройках аккаунта в App Store после покупки. Неиспользованная часть бесплатного пробного периода будет аннулирована при покупке подписки.",
+    "purchaseFailed": "Покупка не удалась",
+    "somethingWrongPurchase": "Что-то пошло не так при покупке. Попробуйте ещё раз.",
+    "restoreFailed": "Восстановление не удалось",
+    "noPreviousPurchases": "Предыдущих покупок не найдено.",
+    "somethingWrongRestore": "Что-то пошло не так при восстановлении. Попробуйте ещё раз.",
+    "restoreSuccessful": "Восстановление успешно",
+    "premiumActivated": "Ваша подписка Pro восстановлена.",
+    "subscriptionUnavailable": "Подписки сейчас недоступны. Попробуйте позже."
+  },
+  "featureLock": {
+    "feature": "ФУНКЦИЯ",
+    "unlockWith": "Разблокировать с {{tier}}",
+    "cancelAnytime": "Отмените в любое время · Без скрытых платежей"
+  },
+  "trialCountdown": {
+    "lessThanOneHour": "Менее 1 часа осталось в вашем бесплатном пробном периоде",
+    "hoursLeft": "{{hours}}ч осталось в вашем бесплатном пробном периоде — Обновите сейчас",
+    "daysLeft": "{{days}} день{{suffix}} осталось в вашем бесплатном пробном периоде",
+    "openUpgradePlans": "Открыть планы обновления",
+    "upgrade": "Обновить"
+  },
+  "promo": {
+    "heroTitle": "Активируйте бесплатный пробный период",
+    "heroSubtitle": "Введите промокод, чтобы получить 7 дней бесплатного доступа ко всем функциям Pro.",
+    "enterCodeLabel": "ПРОМОКОД",
+    "codePlaceholder": "Введите ваш код",
+    "activateTrial": "Активировать пробный период",
+    "iHavePromoCode": "У меня есть промокод",
+    "or": "ИЛИ",
+    "goPro": "Обновить до Pro",
+    "goProSubtitle": "Получите мгновенный безлимитный доступ",
+    "skip": "Пропустить",
+    "enterCode": "Пожалуйста, введите промокод",
+    "invalidCode": "Недействительный или истёкший промокод",
+    "trialActivated": "Пробный период активирован!",
+    "trialActivatedMessage": "Ваш {{days}}-дневный бесплатный пробный период активирован. Наслаждайтесь полным доступом Pro!"
+  },
+  "guide": {
+    "title": "Наш AI бутик онлайн",
+    "subtitle": "Персонализированное путешествие в стиль Brunello Cucinelli",
+    "cta": "ОТКРЫТЬ НОВЫЙ САЙТ",
+    "ctaUrl": "https://aiwardrobe.club"
+  },
+  "analytics": {
+    "title": "Аналитика гардероба",
+    "utilized": "Использовано",
+    "totalItems": "Всего вещей",
+    "totalWears": "Всего носок",
+    "avgItem": "В среднем/вещь",
+    "dayStreak": "Серия дней",
+    "styleDiversity": "Разнообразие стиля",
+    "mostWorn": "Чаще всего носится",
+    "colorPalette": "Ваша цветовая палитра",
+    "categoryBreakdown": "Разбивка по категориям",
+    "noDataYet": "Данных пока нет"
+  },
+  "tripPlanner": {
+    "enterDestination": "Пожалуйста, введите место назначения",
+    "mustBeLoggedIn": "Вы должны войти в систему, чтобы создать план поездки",
+    "note": "Примечание",
+    "couldNotConnectPlanner": "Не удается подключиться к сервису планирования. Показывается демо-план.",
+    "planYourTrip": "Планируйте свою поездку",
+    "destination": "📍 Место назначения",
+    "travelDates": "📅 Даты поездки",
+    "start": "Начало",
+    "end": "Конец",
+    "occasions": "🎯 Поводы",
+    "createTripPlan": "Создать план поездки",
+    "yourTripTo": "Ваша поездка в",
+    "days": "Дни",
+    "packingList": "Список вещей",
+    "personalizedPackingList": "Получите персонализированный список вещей на основе вашего места назначения и активностей",
+    "destinationPlaceholder": "например, Париж, Токио, Нью-Йорк"
+  },
+  "calendar": {
+    "deleteOutfit": "Удалить образ",
+    "deleteOutfitConfirm": "Вы уверены?",
+    "notAdded": "Не добавлено",
+    "planLooks": "Планировать образы",
+    "extras": "Дополнительно",
+    "createWithAI": "Создать с ИИ",
+    "closeCalendar": "Закрыть календарь",
+    "emptyDay": "Пустой день",
+    "openDay": "Открытый день",
+    "replaceOutfit": "Заменить образ",
+    "logOutfit": "Записать образ",
+    "planOutfit": "Планировать образ",
+    "jan": "Янв",
+    "feb": "Фев",
+    "mar": "Мар",
+    "apr": "Апр",
+    "may": "Май",
+    "jun": "Июн",
+    "jul": "Июл",
+    "aug": "Авг",
+    "sep": "Сен",
+    "oct": "Окт",
+    "nov": "Ноя",
+    "dec": "Дек",
+    "sun": "Вс",
+    "mon": "Пн",
+    "tue": "Вт",
+    "wed": "Ср",
+    "thu": "Чт",
+    "fri": "Пт",
+    "sat": "Сб",
+    "top": "Верх",
+    "bottom": "Низ",
+    "shoes": "Обувь",
+    "notAddedYet": "Еще не добавлено"
+  },
+  "weeklyInsights": {
+    "title": "Стильные инсайты",
+    "totalItems": "Всего вещей",
+    "dayStreak": "Серия дней",
+    "totalWears": "Всего носок",
+    "closetUtilization": "Использование гардероба",
+    "mostWorn": "Чаще всего носится",
+    "wardrobeBreakdown": "Разбивка гардероба",
+    "patternsHabits": "Паттерны и привычки",
+    "noDataYet": "Данных пока нет",
+    "utilization80": "Отлично! Вы отлично используете свой гардероб.",
+    "utilization50": "Вы носили {{percent}}% своего гардероба в этом месяце. Попробуйте добавить забытые вещи.",
+    "utilizationLow": "Только {{percent}}% вашего гардероба было носено в этом месяце. Есть что открыть заново!",
+    "unwornItems": "{{count}} не ношенных вещей",
+    "unwornItemsSubtext": "Эти вещи не носили 30 дней. Попробуйте одну на этой неделе!",
+    "emptySubtext": "Начните сканировать и записывать образы, чтобы увидеть инсайты о стиле"
+  },
+  "styleGoals": {
+    "alreadyActive": "Уже активно",
+    "goalAlreadyProgress": "Эта цель уже в процессе!",
+    "goalAchieved": "🎉 Цель достигнута!",
+    "congratulationsCompleted": "Поздравляем! Вы завершили",
+    "challengeComplete": "🏆 Челлендж завершен!",
+    "amazingCompleted": "Превосходно! Вы завершили",
+    "title": "Цели стиля",
+    "subtitle": "Отслеживайте свой модный путь",
+    "activeGoals": "Активные цели",
+    "completed": "Завершено",
+    "challenges": "Челленджи",
+    "yourStyleGoals": "Ваши цели стиля",
+    "weeklyChallenges": "Еженедельные челленджи",
+    "completedText": "Завершено!",
+    "startGoal": "Начать цель",
+    "logToday": "Записать сегодня",
+    "challengeCompleteText": "Челлендж завершен!",
+    "acceptChallenge": "Принять челлендж",
+    "available": [
+      {
+        "title": "Создать капсульный гардероб",
+        "unit": "универсальные вещи",
+        "description": "Подберите 30 универсальных вещей, которые сочетаются друг с другом"
+      },
+      {
+        "title": "Покупать более устойчиво",
+        "unit": "устойчивые покупки",
+        "description": "Сделайте 10 осознанных модных выборов в этом месяце"
+      },
+      {
+        "title": "Добавить больше цвета",
+        "unit": "цветные вещи",
+        "description": "Выйдите из зоны комфорта с 5 цветными вещами"
+      },
+      {
+        "title": "Принять минимализм",
+        "unit": "убранные вещи",
+        "description": "Уберите 20 вещей, которые вы больше не носите"
+      },
+      {
+        "title": "Поднять рабочий стиль",
+        "unit": "рабочие образы",
+        "description": "Создайте 7 элегантных рабочих комбинаций образов"
+      },
+      {
+        "title": "Планировать полные образы",
+        "unit": "запланированные образы",
+        "description": "Запланируйте 14 полных образов на следующие 2 недели"
+      }
+    ],
+    "weeklyChallengesList": [
+      {
+        "title": "Неделя без повторов",
+        "description": "Носите разные образы каждый день на этой неделе"
+      },
+      {
+        "title": "Монохромный понедельник",
+        "description": "Создайте одноцветный образ в понедельник"
+      },
+      {
+        "title": "Фокус на аксессуарах",
+        "description": "Добавьте новый аксессуар к каждому образу на этой неделе"
+      },
+      {
+        "title": "Переоткрытие гардероба",
+        "description": "Носите 3 вещи, которые вы не носили месяцами"
+      }
+    ]
+  },
+  "styleQuiz": {
+    "welcomeTitle": "Добро пожаловать в AIWardrobe",
+    "welcomeSubtitle": "Персонализируйте ваш опыт всего за 5 быстрых шагов",
+    "benefit1": "ИИ учится вашему уникальному стилю",
+    "benefit2": "Лучшие рекомендации по образам",
+    "benefit3": "Занимает менее 2 минут",
+    "letsGetStarted": "Начнем",
+    "stylePersonality": "Какой у вас стиль?",
+    "selectOne": "Выберите тот, который вам больше всего подходит",
+    "favoriteColors": "Какие цвета вы любите?",
+    "selectColors": "Выберите 3-5 цветов, которые вы носите чаще всего",
+    "whatDressFor": "Для чего вы чаще всего одеваетесь?",
+    "selectAllThatApply": "Выберите все подходящие варианты",
+    "howClothesFit": "Как вы хотите, чтобы одежда сидела?",
+    "helpsSuggestStyles": "Это поможет нам предложить правильные стили",
+    "styleGoalsQuestion": "Какие у вас стильные цели?",
+    "tailorExperience": "Выберите все подходящие варианты - мы адаптируем опыт под вас",
+    "completeSetup": "Завершить настройку",
+    "skip": "Пропустить"
+  },
+  "meetingOutfit": {
+    "createYourStyle": "Создайте свой стиль",
+    "describeEvent": "Опишите ваше событие и получите полный образ с фото",
+    "placeholder": "Например, собеседование в технологическом стартапе, ужин с клиентом, пятница...",
+    "generateOutfit": "Создать образ"
+  },
+  "aiStylist": {
+    "title": "AI Стилист"
+  },
+  "clothingDetail": {
+    "title": "Детали одежды",
+    "missingImplementation": "В этой восстановленной ветке отсутствует оригинальная реализация экрана деталей."
+  },
+  "outfitDetail": {
+    "detecting": "Обнаружение предметов...",
+    "shopNow": "Купить сейчас"
+  },
+  "outfitSwipe": {
+    "loading": "Генерация идей образов...",
+    "styleDiscovery": "Открытие стиля",
+    "swipeToTeach": "Смахните, чтобы научить ИИ вашему стилю",
+    "allDone": "Все готово!",
+    "aiStylistSmarter": "Вы оценили все образы. Ваш ИИ стилист теперь умнее!",
+    "getMoreOutfits": "Больше образов",
+    "like": "НРАВИТСЯ",
+    "nope": "НЕТ",
+    "loveIt": "ОБАЖАЮ!",
+    "swipeHintLeft": "👈 Смахните влево, чтобы пропустить",
+    "swipeHintRight": "👉 Смахните вправо, чтобы лайкнуть",
+    "swipeHintUp": "👆 Смахните вверх, чтобы обожать",
+    "matchScore": "Совпадение"
+  },
+  "priceTracker": {
+    "trackNewItem": "Отслеживать новый товар",
+    "itemName": "Название товара *",
+    "itemNamePlaceholder": "например, Nike Air Max 90",
+    "brand": "Бренд",
+    "brandPlaceholder": "например, Nike",
+    "currentPrice": "Текущая цена *",
+    "currentPricePlaceholder": "99.99",
+    "targetPrice": "Целевая цена",
+    "targetPricePlaceholder": "79.99",
+    "imageUrl": "URL изображения (опционально)",
+    "imageUrlPlaceholder": "https://...",
+    "addToTracker": "Добавить в отслеживание",
+    "title": "Отслеживание цен",
+    "tracking": "Отслеживание",
+    "onSale": "Со скидкой",
+    "savings": "Экономия",
+    "noItems": "Нет отслеживаемых товаров",
+    "addItem": "Добавить товар",
+    "noAlerts": "Пока нет уведомлений",
+    "removeItem": "Удалить товар",
+    "stopTracking": "Перестать отслеживать",
+    "alerts": "Уведомления",
+    "emptyStateText": "Добавьте товары, которые хотите купить, и мы будем отслеживать изменение цен",
+    "emptyAlertsText": "Мы уведомим вас, когда цены на отслеживаемые товары упадут",
+    "target": "Цель",
+    "priceDropped": "Цена упала",
+    "from": "с",
+    "to": "до"
+  },
+  "newOutfit": {
+    "userNotAuthenticated": "Пользователь не авторизован",
+    "addAtLeastOneItem": "Пожалуйста, добавьте хотя бы один предмет в наряд",
+    "outfitSavedSuccessfully": "Наряд успешно сохранен!",
+    "title": "Новый образ",
+    "date": "Дата",
+    "today": "Сегодня",
+    "addToOotd": "Добавить в историю OOTD",
+    "occasion": "Повод",
+    "visibility": "Видимость",
+    "save": "Сохранить образ",
+    "defaultOccasion": "Работа",
+    "defaultVisibility": "Все",
+    "addCaption": "Добавьте подпись..."
+  },
+  "resetPassword": {
+    "title": "Сброс пароля",
+    "subtitle": "Введите новый пароль ниже",
+    "invalidSession": "Недействительная сессия",
+    "resetLinkExpired": "Ссылка для сброса пароля истекла или недействительна. Пожалуйста, запросите новую.",
+    "backToSignIn": "Вернуться к входу",
+    "passwordUpdated": "Пароль обновлен",
+    "passwordResetSuccess": "Ваш пароль успешно сброшен. Теперь вы можете войти с новым паролем.",
+    "failedResetPassword": "Не удалось сбросить пароль",
+    "samePassword": "Тот же пароль",
+    "newPasswordDifferent": "Ваш новый пароль должен отличаться от старого пароля.",
+    "weakPassword": "Слабый пароль",
+    "chooseStronger": "Пожалуйста, выберите более надежный пароль.",
+    "error": "Ошибка",
+    "passwordsDontMatch": "Пароли не совпадают",
+    "goBack": "Назад",
+    "newPassword": "Новый пароль",
+    "confirmPassword": "Подтвердите новый пароль",
+    "minLength": "Минимум 8 символов",
+    "lowercase": "Одна строчная буква (a-z)",
+    "uppercase": "Одна заглавная буква (A-Z)",
+    "number": "Одна цифра (0-9)",
+    "resettingPassword": "Сброс пароля",
+    "resetPassword": "Сбросить пароль",
+    "resetting": "Сброс..."
+  },
+  "designRoom": {
+    "permissionRequired": "Требуется разрешение",
+    "photoLibraryAccess": "Пожалуйста, предоставьте доступ к фототеке для загрузки фотографий.",
+    "failedPickImage": "Не удалось выбрать изображение. Попробуйте еще раз.",
+    "timeout": "Тайм-аут",
+    "analysisTooLong": "AI анализ занял слишком много времени. Попробуйте изображение меньшего размера.",
+    "connectionError": "Ошибка соединения",
+    "cannotConnectAI": "Не удается подключиться к AI сервису. Убедитесь, что сервер запущен.",
+    "analysisFailed": "Анализ не удался",
+    "couldNotDetect": "Не удалось обнаружить предметы одежды. Попробуйте более четкое фото.",
+    "title": "Комната стиля",
+    "createOutfit": "Создайте свой образ",
+    "celebrityLook": "Образ знаменитости",
+    "scanWardrobe": "Сканировать гардероб",
+    "aiSuggestOutfit": "ИИ предложит образ",
+    "next": "Далее",
+    "add": "Добавить",
+    "celebrity": "Знаменитость",
+    "ai": "AI",
+    "scanVideo": "Сканировать видео",
+    "stickers": "Стикеры",
+    "background": "Фон",
+    "emptyState": "Добавьте одежду, чтобы начать дизайн",
+    "processingImage": "📸 Обработка изображения...",
+    "preparingImage": "🔄 Подготовка изображения...",
+    "detectingClothingItems": "🔍 ИИ обнаруживает предметы одежды...",
+    "foundItems": "✅ Найдено {{count}} предметов одежды!"
+  },
+  "trialExpired": {
+    "title": "Пробный период истёк",
+    "body": "Ваш 7-дневный бесплатный пробный период закончился. Обновите до платного плана, чтобы продолжить использовать AI-образы, неограниченное сканирование гардероба и все премиум-функции.",
+    "upgradeToPro": "Обновить до Pro",
+    "havePromoCode": "У меня есть промокод"
+  },
+  "inspo": {
+    "title": "Вдохновение",
+    "fromYourCloset": "Из вашего гардероба",
+    "personalStylist": "Персональный стилист",
+    "featuredCapsules": "Рекомендуемые капсулы",
+    "noMenswearMatches": "Нет мужской одежды, соответствующей поиску.",
+    "loadMoreProducts": "Загрузить больше товаров",
+    "searchForClothingItems": "Поиск одежды",
+    "loadMoreShopProducts": "Загрузить больше товаров магазина",
+    "guide": "Руководство",
+    "shop": "Магазин",
+    "searchPlaceholder": "Коричневый вязаный поло, сшитые брюки, лоферы...",
+    "catalogEmpty": "Живая мужская одежда Zara сейчас пуста. Показываем резервные мужские товары на данный момент.",
+    "catalogRefreshFailed": "Обновление живого каталога не удалось. Показываем последние синхронизированные результаты.",
+    "removeFromSaved": "Удалить из сохраненных",
+    "saveItem": "Сохранить товар",
+    "capsule": "капсула"
+  },
+  "camera": {
+    "permissionNeeded": "Необходимо разрешение камеры",
+    "grantAccess": "Предоставить доступ",
+    "recording": "Запись",
+    "photo": "Фото",
+    "video": "Видео"
+  },
+  "chat": {
+    "title": "Стилист",
+    "emptyTitle": "Для какого случая вы одеваетесь?",
+    "thinking": "Все ещё думаю...",
+    "askYourStylist": "Спросите вашего стилиста...",
+    "itemsInWardrobe": "вещей в гардеробе",
+    "addItemsToGetStarted": "Добавьте вещи, чтобы начать",
+    "greeting": "У вас {{count}} вещ{{plural}} в гардеробе. Для какого случая вы одеваетесь сегодня?",
+    "quickSuggestions": [
+      "Что мне сегодня надеть?",
+      "Дайте мне рабочий образ",
+      "Чего не хватает в моем гардеробе?",
+      "Умный casually на выходные",
+      "Соберите образ вокруг моих темно-синих чиносов",
+      "Лучший образ для первого свидания"
+    ]
+  },
+  "brandSelection": {
+    "chooseBrands": "Выберите 3 или более брендов",
+    "searchOrAddBrands": "Поиск или добавление брендов..."
+  },
+  "createAvatar": {
+    "title": "3D модель тела",
+    "subtitle": "Введите ваши измерения",
+    "bodyMeasurements": "Измерения тела",
+    "height": "Рост",
+    "heightRange": "Диапазон: 140 – 230 см",
+    "weight": "Вес",
+    "weightRange": "Диапазон: 40 – 150 кг",
+    "bodyType": "Тип телосложения",
+    "saveBodyModel": "Сохранить модель тела",
+    "cm": "см",
+    "kg": "кг",
+    "bmi": "ИМТ",
+    "underweight": "Недостаточный вес",
+    "normalWeight": "Нормальный вес",
+    "overweight": "Избыточный вес",
+    "obese": "Ожирение"
+  },
+  "emailOnboarding": {
+    "failedScanReceipts": "Не удалось сканировать чеки. Попробуйте еще раз.",
+    "failedImportItems": "Не удалось импортировать предметы. Попробуйте еще раз.",
+    "howItWorks": "Как это работает:",
+    "scanComplete": "Сканирование завершено!",
+    "scanCompleteMessage": "Найдено {{itemsDetected}} предметов одежды из {{receiptsFound}} чеков.",
+    "importToWardrobe": "Импортировать в шкаф",
+    "viewWardrobe": "Просмотреть шкаф"
+  },
+  "flashSales": {
+    "hrs": "ЧАС",
+    "min": "МИН",
+    "sec": "СЕК",
+    "live": "ПРЯМО",
+    "exclusive": "ЭКСКЛЮЗИВ",
+    "upToOff": "До {{discount}}% СКИДКИ",
+    "shopNow": "Купить сейчас",
+    "loading": "Загрузка эксклюзивных распродаж...",
+    "title": "Распродажи",
+    "liveBadge": "🔥 ПРЯМО",
+    "happeningNow": "⚡ Происходит сейчас",
+    "comingSoon": "🗓️ Скоро",
+    "exclusiveAccess": "Эксклюзивный доступ",
+    "startsIn": "Начинается через",
+    "endsIn": "Заканчивается через",
+    "exclusivePieces": "эксклюзивных товаров",
+    "sale": "распродажа",
+    "sales": "распродаж",
+    "dontMissOut": "Не пропустите - получите уведомление",
+    "infoText": "Премиальные бренды предлагают свои излишки по эксклюзивным ценам. Ограниченное время, ограниченный запас – кто первый пришел, тот и обслуживается."
+  },
+  "closet": {
+    "favorite": "Избранное",
+    "all": "Все",
+    "tops": "Верхняя одежда",
+    "bottoms": "Нижняя одежда",
+    "shoes": "Обувь",
+    "accessories": "Аксессуары"
+  },
+  "myCloset": {
+    "cameraPermissionRequired": "Требуется разрешение камеры.",
+    "simulatorDetected": "Обнаружен симулятор",
+    "cameraNotAvailable": "Камера недоступна на симуляторе. Пожалуйста, используйте физическое устройство или выберите из вашей галереи.",
+    "failedOpenCamera": "Не удалось открыть камеру",
+    "couldNotReadImage": "Не удалось прочитать данные изображения",
+    "uploadError": "Ошибка загрузки",
+    "permissionNeeded": "Требуется разрешение",
+    "openSettings": "Открыть настройки",
+    "cameraAccessDisabled": "Доступ к камере отключен",
+    "addToCloset": "Добавить в шкаф",
+    "uploadPhotoDescription": "Загрузите фото, чтобы отсканировать предмет и удалить фон, или используйте стандартный режим камеры.",
+    "aiStudioPhoto": "AI Studio Фото",
+    "aiStudioCamera": "AI Studio Камера",
+    "legacyCamera": "Старая камера",
+    "deleteItem": "Удалить предмет",
+    "deleteItemConfirmation": "Вы уверены, что хотите удалить этот предмет одежды? Это действие нельзя отменить.",
+    "searchCloset": "Поиск в шкафу...",
+    "uploadClothing": "Загрузить одежду",
+    "createFirstCollection": "Создать первую коллекцию",
+    "scanWardrobe": "Сканировать шкаф",
+    "askAIStylist": "Спросить AI-стилиста",
+    "enableCameraAccess": "Включите доступ к камере в настройках, чтобы продолжить.",
+    "analyzingItem": "Анализ предмета и удаление фона...",
+    "backgroundRemoved": "Фон удален. Просмотрите детали...",
+    "analyzingClothing": "ИИ анализирует вашу одежду..."
+  },
+  "magicMirror": {
+    "loading": "Загрузка вашего гардероба...",
+    "title": "Магическое зеркало",
+    "tops": "ВЕРХНЯЯ ОДЕЖДА",
+    "tapToAddPhoto": "Нажмите, чтобы добавить фото",
+    "creatingMagic": "Создание магии...",
+    "bottoms": "НИЖНЯЯ ОДЕЖДА",
+    "generating": "Генерация...",
+    "tryOn": "Примерить",
+    "failedLoadWardrobe": "Не удалось загрузить гардероб.",
+    "permissionRequired": "Необходимо разрешение",
+    "allowAccessPhotos": "Разрешите доступ к фото, чтобы продолжить.",
+    "photoRequired": "Фото требуется",
+    "addPhotoFirst": "Пожалуйста, сначала добавьте ваше фото.",
+    "selectOutfit": "Выберите образ",
+    "swipeSelectTop": "Смахните, чтобы выбрать верхнюю одежду.",
+    "loginRequired": "Требуется вход",
+    "loginUseMagicMirror": "Пожалуйста, войдите, чтобы использовать Магическое зеркало."
+  },
+  "cameraScreen": {
+    "photoSaved": "Фото сохранено",
+    "photoSavedGallery": "Фото сохранено в вашу галерею!",
+    "failedTakePhoto": "Не удалось сделать фото",
+    "videoSaved": "Видео сохранено",
+    "videoSavedGallery": "Видео сохранено в вашу галерею!",
+    "failedPickGallery": "Не удалось выбрать из галереи"
+  },
+  "flashSaleEvent": {
+    "unableOpenLink": "Не удалось открыть ссылку",
+    "productLinkNotOpened": "Эта ссылка на товар не может быть открыта."
+  },
+  "outfitInspo": {
+    "title": "Вдохновение образом",
+    "uploadTitle": "Загрузите фото",
+    "uploadSubtitleOutfit": "Сфотографируйте образ, который вам нравится, и ИИ найдёт похожие вещи в вашем гардеробе и магазине.",
+    "uploadSubtitleSingle": "Сфотографируйте вещь, и ИИ найдёт похожие или лучшие альтернативы.",
+    "takePhoto": "Снять фото",
+    "chooseGallery": "Выбрать из галереи",
+    "changePhoto": "Изменить",
+    "fullOutfit": "Полный образ",
+    "findSimilar": "Найти похожее",
+    "analyzeOutfit": "Анализировать образ",
+    "findSimilarItems": "Найти похожие вещи",
+    "analyzingOutfit": "Анализируем ваш образ...",
+    "findingSimilar": "Ищем похожие вещи...",
+    "takesMoment": "Это может занять несколько секунд",
+    "detectedItems": "Обнаруженные вещи",
+    "fromYourWardrobe": "Из вашего гардероба",
+    "shopRecommendations": "Рекомендации из магазина",
+    "noMatchesFound": "Похожие вещи не найдены. Добавьте больше вещей в гардероб!",
+    "analysisFailed": "Не удалось проанализировать изображение. Попробуйте снова.",
+    "item": "Вещь",
+    "tryAgain": "Попробовать снова",
+    "cameraPermission": "Доступ к камере",
+    "cameraPermissionMsg": "Разрешите доступ к камере, чтобы сфотографировать образ.",
+    "photoPermission": "Доступ к фото",
+    "photoPermissionMsg": "Разрешите доступ к галерее, чтобы выбрать фото образа.",
+    "imagePickError": "Не удалось выбрать изображение. Попробуйте снова.",
+    "shareMessage": "Посмотрите анализ этого образа от AIWardrobe!"
+  },
+  "aiAssistant": {
+    "noResponseText": "Нет текста ответа от сервера",
+    "couldntConnect": "Извините, я не смог подключиться к стилевому серверу. Попробуйте снова! 😔"
+  },
+  "outfitAI": {
+    "suggestOutfitIdeas": "Давайте я предложу несколько идей для вашего образа!",
+    "troubleConnecting": "У меня проблемы с подключением прямо сейчас. Убедитесь, что служба AI работает, и попробуйте снова!",
+    "describeOccasion": "Опишите ваше мероприятие..."
+  },
+  "privacyPolicy": {
+    "title": "Политика конфиденциальности",
+    "lastUpdated": "Последнее обновление: Март 2026",
+    "intro": "AIWardrobe (\"мы\", \"наш\", \"нас\") обязуется защищать вашу конфиденциальность. Эта Политика конфиденциальности объясняет, как мы собираем, используем и защищаем вашу информацию при использовании нашего мобильного приложения.",
+    "informationWeCollect": {
+      "title": "Информация, которую мы собираем",
+      "body": "При использовании AIWardrobe мы собираем следующие типы информации:\n\n• Информация об аккаунте: Адрес электронной почты, имя пользователя и необязательные данные профиля, которые вы предоставляете при регистрации.\n• Данные гардероба: Фотографии предметов одежды, которые вы загружаете, вместе с атрибутами, обнаруженными AI (категория, цвет, узор, материал).\n• Данные об использовании: Журналы ношения, история нарядов и паттерны использования функций для улучшения рекомендаций AI.\n• Информация об устройстве: Тип устройства, версия ОС и версия приложения для исправления ошибок и оптимизации.\n• Данные о местоположении: Необязательно — используется только для рекомендаций нарядов на основе погоды, когда вы предоставляете разрешение."
     },
-    "aiHub": {
-        "heroTitle": "Носите с\nуверенностью",
-        "heroSubtitle": "Ваш ИИ стилист, который понимает вас — от одежды в гардеробе до образов, которые вы любите.",
-        "talkToStylist": "Поговорить с ИИ стилистом",
-        "styleGoal": "Какова ваша цель стиля?",
-        "getStarted": "Начать"
+    "howWeUse": {
+      "title": "Как мы используем вашу информацию",
+      "body": "Мы используем вашу информацию для:\n\n• Предоставления и улучшения рекомендаций нарядов на основе AI и управления гардеробом.\n• Синхронизации вашего гардероба между устройствами через безопасное облачное хранилище.\n• Генерации персонализированной аналитики (наиболее часто носимые предметы, разнообразие стиля и т.д.).\n• Отправки соответствующих уведомлений (ежедневные рекомендации нарядов, напоминания о сериях).\n• Улучшения наших моделей AI и опыта работы с приложением.\n\nМы НЕ продаем ваши личные данные третьим лицам."
     },
-    "outfitMaker": {
-        "yourOutfits": "Ваши образы",
-        "saveToCalendar": "Сохранить в календарь",
-        "pickDate": "Выберите дату для этого образа",
-        "addToCalendar": "Добавить в календарь",
-        "saveOutfit": "Сохранить образ",
-        "aiStylist": "ИИ стилист",
-        "whereGoing": "Куда вы идете?"
+    "dataStorage": {
+      "title": "Хранение и безопасность данных",
+      "body": "• Ваши данные хранятся безопасно с использованием Supabase (PostgreSQL) с защитой на уровне строк.\n• Вся передача данных зашифрована через TLS/HTTPS.\n• Фотографии хранятся в безопасном облачном хранилище с доступом, ограниченным вашим аккаунтом.\n• Мы храним ваши данные, пока ваш аккаунт активен. Вы можете удалить свой аккаунт и все связанные данные в любое время."
     },
-    "paywall": {
-        "heroTitle": "Ваш стиль, разблокирован.",
-        "restorePurchases": "Восстановить покупки"
+    "thirdParty": {
+      "title": "Сторонние сервисы",
+      "body": "Мы используем сторонние сервисы для работы нашего приложения:\n\n• Supabase для безопасной базы данных и аутентификации.\n• Expo для разработки и развертывания приложений.\n• AI сервисы для рекомендаций нарядов и анализа изображений.\n\nМы тщательно проверяем все сторонние сервисы и гарантируем, что они соответствуют нашим стандартам конфиденциальности."
     },
-    "promo": {
-        "heroTitle": "Активируйте бесплатный пробный период",
-        "heroSubtitle": "Введите промокод, чтобы получить 7 дней бесплатного доступа ко всем функциям Pro.",
-        "enterCodeLabel": "ПРОМОКОД",
-        "placeholder": "Введите ваш код",
-        "redeem": "Активировать пробный период",
-        "or": "ИЛИ",
-        "goPro": "Обновить до Pro",
-        "goProSubtitle": "Получите мгновенный безлимитный доступ",
-        "skip": "Пропустить",
-        "enterCode": "Пожалуйста, введите промокод",
-        "invalidCode": "Недействительный или истёкший промокод",
-        "trialActivated": "Пробный период активирован!",
-        "trialActivatedMessage": "Ваш {{days}}-дневный бесплатный пробный период активирован. Наслаждайтесь полным доступом Pro!"
+    "yourRights": {
+      "title": "Ваши права",
+      "body": "Вы имеете право:\n\n• Получить доступ к вашим личным данным в любое время.\n• Запросить удаление вашего аккаунта и всех связанных данных.\n• Отказаться от сбора данных для несущественных функций.\n• Обновить информацию профиля и настройки.\n• Экспортировать ваши данные в машиночитаемом формате.\n\nДля осуществления этих прав свяжитесь с нами по адресу support@aiwardrobe.app"
     },
-    "analytics": {
-        "title": "Аналитика гардероба",
-        "utilized": "Использовано",
-        "totalItems": "Всего вещей",
-        "totalWears": "Всего носок",
-        "avgItem": "В среднем/вещь",
-        "dayStreak": "Серия дней",
-        "styleDiversity": "Разнообразие стиля",
-        "mostWorn": "Чаще всего носится",
-        "colorPalette": "Ваша цветовая палитра",
-        "categoryBreakdown": "Разбивка по категориям",
-        "noDataYet": "Данных пока нет"
+    "childrensPrivacy": {
+      "title": "Конфиденциальность детей",
+      "body": "Наш сервис не предназначен для детей младше 13 лет. Мы не собираем персональную информацию от детей младше 13 лет намеренно. Если вы родитель или опекун и считаете, что ваш ребенок предоставил нам персональную информацию, пожалуйста, свяжитесь с нами."
     },
-    "tripPlanner": {
-        "planYourTrip": "Запланировать поездку",
-        "destination": "📍 Место назначения",
-        "travelDates": "📅 Даты поездки",
-        "start": "Начало",
-        "end": "Конец",
-        "occasions": "🎯 События",
-        "createTripPlan": "Создать план поездки",
-        "yourTripTo": "Ваша поездка в",
-        "days": "Дней",
-        "packingList": "Список вещей",
-        "planAnotherTrip": "Запланировать еще одну поездку"
+    "changes": {
+      "title": "Изменения в этой политике",
+      "body": "Мы можем обновлять эту Политику конфиденциальности время от времени. Мы уведомим вас о существенных изменениях через приложение или по электронной почте. Продолжение использования AIWardrobe после изменений означает принятие обновленной политики."
     },
-    "calendar": {
-        "notAdded": "Не добавлено",
-        "planLooks": "Планировать образы",
-        "extras": "Дополнительно",
-        "createWithAI": "Создать с ИИ"
+    "contact": {
+      "title": "Свяжитесь с нами",
+      "body": "Если у вас есть вопросы об этой Политике конфиденциальности, пожалуйста, свяжитесь с нами:\n\n📧 support@aiwardrobe.app"
+    }
+  },
+  "review": {
+    "error": "Ошибка",
+    "notAuthorized": "Вы не авторизованы",
+    "done": "Готово! 🎉",
+    "itemsAdded": "Добавлено {{count}} вещей. Сейчас мы генерируем для них красивые фото.",
+    "saveFailed": "Не удалось сохранить вещи: {{error}}",
+    "removeItem": "Удалить вещь",
+    "confirmRemove": "Вы уверены, что хотите удалить эту вещь?",
+    "generating": "Генерируем одежду...",
+    "savingToCloud": "Рисуем фото и сохраняем в облако",
+    "itemsFound": "Найдено {{count}} вещей",
+    "addToWardrobe": "Добавить в гардероб ({{count}})"
+  },
+  "termsOfService": {
+    "title": "Условия использования",
+    "lastUpdated": "Последнее обновление: Март 2026",
+    "intro": "Пожалуйста, внимательно прочитайте эти Условия использования перед использованием AIWardrobe.",
+    "acceptance": {
+      "title": "1. Принятие условий",
+      "body": "Загружая, устанавливая или используя AIWardrobe, вы соглашаетесь соблюдать эти Условия использования. Если вы не согласны, не используйте приложение."
     },
-    "weeklyInsights": {
-        "title": "Стильные инсайты",
-        "totalItems": "Всего вещей",
-        "dayStreak": "Серия дней",
-        "totalWears": "Всего носок",
-        "closetUtilization": "Использование гардероба",
-        "mostWorn": "Чаще всего носится",
-        "wardrobeBreakdown": "Разбивка гардероба",
-        "patternsHabits": "Паттерны и привычки",
-        "noDataYet": "Данных пока нет"
+    "description": {
+      "title": "2. Описание сервиса",
+      "body": "AIWardrobe — это приложение для управления гардеробом на основе AI, которое предоставляет:\n\n• Оцифровку предметов одежды через камеру/сканирование фото\n• Рекомендации нарядов на основе AI\n• Функцию виртуальной примерки\n• Аналитику гардероба и инсайты о стиле\n• Синхронизацию между устройствами в облаке\n\nНекоторые функции требуют активного интернет-соединения и могут использовать сторонние AI сервисы."
     },
-    "wearLog": {
-        "outfitLogged": "Образ записан!",
-        "logTodaysOutfit": "Записать сегодняшний образ",
-        "todaysSuggestion": "Предложение на сегодня",
-        "noItemsYet": "В гардеробе пока нет вещей",
-        "scanWardrobe": "Отсканируйте гардероб для начала",
-        "occasion": "Событие"
+    "userAccounts": {
+      "title": "3. Пользовательские аккаунты",
+      "body": "• Вы должны предоставлять точную информацию при создании аккаунта.\n• Вы несете ответственность за безопасность учетных данных вашего аккаунта.\n• Вам должно быть не менее 13 лет для создания аккаунта.\n• Один человек не может поддерживать более одного аккаунта.\n• Мы оставляем за собой право приостанавливать или закрывать аккаунты, нарушающие эти условия."
     },
-    "styleGoals": {
-        "title": "Стильные цели",
-        "subtitle": "Отслеживайте свой стильный путь",
-        "activeGoals": "Активные цели",
-        "completed": "Выполнено",
-        "challenges": "Челленджи",
-        "yourStyleGoals": "Ваши стильные цели",
-        "weeklyChallenges": "Еженедельные челленджи"
+    "userContent": {
+      "title": "4. Контент пользователя",
+      "body": "• Вы сохраняете право собственности на все фото и контент, который вы загружаете.\n• Загружая контент, вы предоставляете нам лицензию на его обработку, хранение и отображение в приложении.\n• Вы соглашаетесь не загружать контент, который является незаконным, оскорбительным или нарушает права других.\n• Мы можем использовать анонимизированные агрегированные данные для улучшения наших AI моделей."
     },
-    "styleQuiz": {
-        "welcomeTitle": "Добро пожаловать в AIWardrobe",
-        "benefit1": "ИИ учится вашему уникальному стилю",
-        "benefit2": "Лучшие рекомендации по образам",
-        "benefit3": "Занимает менее 2 минут",
-        "letsGetStarted": "Начнем",
-        "stylePersonality": "Какой у вас стиль?",
-        "selectOne": "Выберите тот, который вам больше всего подходит",
-        "favoriteColors": "Какие цвета вы любите?",
-        "selectColors": "Выберите 3-5 цветов, которые вы носите чаще всего"
+    "subscriptions": {
+      "title": "5. Подписки и платежи",
+      "body": "• AIWardrobe предлагает бесплатные и премиум уровни подписки.\n• Премиум подписки оплачиваются через App Store.\n• Подписки продлеваются автоматически, если не отменены как минимум за 24 часа до окончания текущего периода.\n• Возврат средств обрабатывается в соответствии с политикой возврата App Store."
     },
-    "meetingOutfit": {
-        "createYourStyle": "Создайте свой стиль",
-        "describeEvent": "Опишите ваше событие и получите полный образ с фото",
-        "placeholder": "Например, собеседование в технологическом стартапе, ужин с клиентом, пятница...",
-        "generateOutfit": "Создать образ"
+    "aiContent": {
+      "title": "6. Контент, созданный AI",
+      "body": "• Рекомендации AI генерируются алгоритмически и могут не всегда быть точными.\n• Результаты виртуальной примерки являются приблизительными и могут не идеально отражать реальный вид.\n• Мы не гарантируем точность определения цвета, узора или материала AI.\n• Рекомендации нарядов, созданные AI, предназначены только для информационных целей."
     },
-    "dailySuggestion": {
-        "loading": "Находим идеальный образ...",
-        "noSuggestions": "Пока нет предложений",
-        "scanWardrobe": "Сканировать гардероб",
-        "outfitLogged": "Образ записан!",
-        "dayStreak": "дней подряд",
-        "backToHome": "Назад на главную",
-        "todaysOutfit": "Образ на сегодня",
-        "tryAnother": "Попробовать другой",
-        "wearToday": "Носить сегодня"
+    "prohibited": {
+      "title": "7. Запрещенное использование",
+      "body": "Вы соглашаетесь не:\n\n• Обратное проектирование, декомпиляция или попытка извлечь исходный код из приложения.\n• Использование приложения в коммерческих целях без авторизации.\n• Сбор или сбор данных от других пользователей.\n• Попытка обойти механизмы подписки или аутентификации.\n• Использование приложения для передачи вредоносного ПО или вредоносного контента."
     },
-    "aiStylist": {
-        "title": "AI Стилист"
+    "intellectual": {
+      "title": "8. Интеллектуальная собственность",
+      "body": "• AIWardrobe и его оригинальный контент, функции и функциональность принадлежат нам и защищены законами об интеллектуальной собственности.\n• Название AIWardrobe, логотип и брендинг являются нашими товарными знаками."
     },
-    "clothingDetail": {
-        "title": "Детали одежды",
-        "missingImplementation": "В этой восстановленной ветке отсутствует оригинальная реализация экрана деталей."
+    "liability": {
+      "title": "9. Ограничение ответственности",
+      "body": "AIWardrobe предоставляется \"как есть\" без каких-либо гарантий. Мы не несем ответственности за любые косвенные, случайные, специальные или последующие убытки, возникшие в результате использования приложения."
     },
-    "outfitDetail": {
-        "detecting": "Обнаружение предметов...",
-        "shopNow": "Купить сейчас"
+    "changes": {
+      "title": "10. Изменения условий",
+      "body": "Мы оставляем за собой право изменять эти условия в любое время. Продолжение использования после изменений означает принятие. Мы уведомим вас о существенных изменениях через приложение."
     },
-    "outfitSwipe": {
-        "loading": "Генерация идей образов...",
-        "styleDiscovery": "Открытие стиля",
-        "allDone": "Все готово!",
-        "getMoreOutfits": "Больше образов"
+    "contact": {
+      "title": "11. Контакты",
+      "body": "По вопросам об этих Условиях свяжитесь с нами:\n\n📧 support@aiwardrobe.app"
+    }
+  },
+  "wardrobeVideo": {
+    "title": "Сканирование гардероба AI",
+    "selectGallery": "Выбрать из галереи",
+    "analysisComplete": "Анализ завершен",
+    "outfit": "Наряд {{index}}",
+    "reviewSave": "Просмотр и сохранение",
+    "processFailed": "Не удалось обработать выбранный файл.",
+    "loginRequired": "Требуется вход",
+    "loginToSave": "Пожалуйста, войдите, чтобы сохранить вещи.",
+    "info": "Информация",
+    "noMediaSelected": "Медиа не выбрано или выбор был отменен.",
+    "permissionRequired": "Требуется разрешение",
+    "photoLibraryPermission": "Пожалуйста, предоставьте разрешения на доступ к фото библиотеке. Примечание: Expo Go имеет ограниченный доступ к медиа. Для полной функциональности используйте development build.",
+    "tryAnyway": "Попробовать все равно",
+    "expoGoLimitationTitle": "Ограничение Expo Go",
+    "expoGoLimitation": "Доступ к фото библиотеке ограничен в Expo Go. Для полной функциональности создайте development build.\n\nВы все еще можете попробовать загрузить изображения.",
+    "savedLocally": "Сохранено локально!",
+    "itemsSaved": "{{count}} предмет(ов) сохранено в ваш гардероб. Они синхронизируются автоматически.",
+    "viewWardrobe": "Просмотреть гардероб",
+    "digitizeCloset": "Оцифруйте свой гардероб",
+    "uploadVideo": "Загрузите короткое видео вашей одежды, и наш ИИ автоматически обнаружит и каталогизирует их.",
+    "record": "Запись",
+    "analyze": "Анализ",
+    "getItems": "Получить предметы",
+    "choosePhoto": "Выберите фото с вашего устройства",
+    "chooseVideoOrPhoto": "Выберите видео или фото с вашего устройства",
+    "analyzingVideo": "Наш ИИ анализирует каждый кадр вашего видео...",
+    "foundItems": "Найдено {{count}} предметов",
+    "itemsCount": "{{count}} предметов"
+  },
+  "wardrobeAnalytics": {
+    "featureName": "Аналитика гардероба",
+    "tagline": "Узнайте, какие вещи вы действительно носите, а какие просто лежат в вашем гардеробе.",
+    "bullet1": "Ваш реальный показатель использования гардероба",
+    "bullet2": "Самые носимые вещи и скрытые жемчужины",
+    "bullet3": "Цветовая палитра и разбивка по категориям",
+    "bullet4": "Напоминания о не носимых вещах, чтобы ничего не пропадало"
+  },
+  "wardrobe": {
+    "title": "Мой гардероб",
+    "addItem": "Добавить вещь",
+    "upload": "Загрузить",
+    "clothes": "Одежда",
+    "clothing": "Одежда",
+    "collections": "Коллекции",
+    "noCollections": "Коллекций пока нет",
+    "createFirstLook": "Создать первый образ",
+    "emptyCloset": "Ваш гардероб пуст",
+    "emptyClosetSubtitle": "Начните добавлять вещи, чтобы создать свой цифровой гардероб.",
+    "scanWardrobe": "Сканировать гардероб",
+    "askStylist": "Спросить стилиста",
+    "cameraAccess": "Требуется доступ к камере",
+    "allow": "Разрешить",
+    "aiAnalyzing": "AI анализирует видео...",
+    "mayTakeMinute": "Это может занять до минуты",
+    "recording": "Запись...",
+    "holdToScan": "Удерживайте для сканирования",
+    "noItemsFound": "AI не нашел вещей в видео",
+    "error": "Ошибка",
+    "tryAgain": "Попробовать снова",
+    "selectVideoError": "Не удалось выбрать видео",
+    "cameraNotSimulator": "Камера не работает на симуляторе. Используйте галерею.",
+    "recognitionError": "Не удалось распознать одежду. Попробуйте более короткое видео."
+  },
+  "signIn": {
+    "emailPasswordRequired": "Пожалуйста, введите email и пароль",
+    "title": "Войти",
+    "email": "Электронная почта",
+    "password": "Пароль",
+    "signIn": "Войти",
+    "signingIn": "Вход...",
+    "loginFailed": "Ошибка входа",
+    "invalidEmailPassword": "Неверный email или пароль",
+    "emailNotVerified": "Email не подтвержден",
+    "verifyEmailBeforeLogin": "Пожалуйста, подтвердите email перед входом",
+    "appleSignInFailed": "Ошибка входа через Apple",
+    "or": "или"
+  },
+  "auth": {
+    "signIn": "Войти",
+    "email": "Электронная почта",
+    "password": "Пароль",
+    "username": "Имя пользователя",
+    "forgotPassword": "Забыли пароль?",
+    "noAccount": "Нет аккаунта?",
+    "haveAccount": "Уже есть аккаунт?",
+    "signUp": {
+      "signUp": "Регистрация"
+    }
+  },
+  "forgotPassword": {
+    "invalidEmail": "Неверный email",
+    "enterValidEmail": "Пожалуйста, введите действительный email адрес.",
+    "tooManyRequests": "Слишком много запросов",
+    "waitFewMinutes": "Пожалуйста, подождите несколько минут перед повторной попыткой.",
+    "error": "Ошибка",
+    "failedSendResetEmail": "Не удалось отправить письмо для сброса",
+    "resetLinkSent": "Мы отправили ссылку для сброса пароля на",
+    "checkSpamFolder": "Если вы не видите письмо, проверьте папку со спамом."
+  },
+  "forgotPasswordScreen": {
+    "checkYourEmail": "Проверьте вашу почту",
+    "backToSignIn": "Вернуться ко входу",
+    "resetPassword": "Сбросить пароль",
+    "pleaseEnterValidEmail": "Пожалуйста, введите действительный email",
+    "sendResetLink": "Отправить ссылку для сброса",
+    "enterEmail": "Введите ваш email адрес, и мы отправим вам ссылку для сброса пароля."
+  },
+  "tabs": {
+    "home": "Главная",
+    "discover": "Обзор",
+    "add": "Добавить",
+    "design": "Дизайн",
+    "profile": "Профиль"
+  },
+  "styles": {
+    "selectStyle": "Выбрать стиль",
+    "yourStyle": "Ваш стиль",
+    "dior": {
+      "name": "Кристиан Диор",
+      "description": "Элегантный, женственный, высокая мода"
     },
-    "priceTracker": {
-        "trackNewItem": "Отслеживать новый товар",
-        "itemName": "Название товара *",
-        "brand": "Бренд",
-        "currentPrice": "Текущая цена *",
-        "targetPrice": "Целевая цена",
-        "imageUrl": "URL изображения (опционально)",
-        "addToTracker": "Добавить в отслеживание",
-        "title": "Отслеживание цен",
-        "tracking": "Отслеживается",
-        "onSale": "В продаже",
-        "savings": "Экономия",
-        "noItems": "Нет отслеживаемых товаров",
-        "addItem": "Добавить товар",
-        "noAlerts": "Нет уведомлений"
+    "armani": {
+      "name": "Джорджио Армани",
+      "description": "Минималистичный, изысканный, расслабленный крой"
     },
-    "newOutfit": {
-        "title": "Новый образ",
-        "date": "Дата",
-        "addToOotd": "Добавить в OOTD историю",
-        "occasion": "Повод",
-        "visibility": "Видимость",
-        "save": "Сохранить образ"
+    "lauren": {
+      "name": "Ральф Лорен",
+      "description": "Преппи, американская классика, спортивная элегантность"
+    }
+  },
+  "signUp": {
+    "missingFields": "Отсутствуют поля",
+    "fillRequiredFields": "Пожалуйста, заполните все обязательные поля",
+    "invalidEmail": "Неверный email",
+    "enterValidEmail": "Пожалуйста, введите действительный email адрес",
+    "emailTaken": "Email занят",
+    "emailAlreadyRegistered": "Этот email уже зарегистрирован. Попробуйте войти вместо этого.",
+    "usernameTaken": "Имя пользователя занято",
+    "usernameAlreadyUse": "Это имя пользователя уже используется. Пожалуйста, выберите другое.",
+    "connectionFailed": "Соединение не удалось",
+    "cannotConnectServer": "Не удается подключиться к серверу. Проверьте ваше интернет-соединение.",
+    "registrationFailed": "Регистрация не удалась",
+    "signUp": "Зарегистрироваться",
+    "invalidUsername": "Неверное имя пользователя",
+    "usernameRequirements": "3-30 символов, только буквы/цифры/подчеркивания",
+    "passwordRequirements": "Требования к паролю",
+    "passwordRequirementsText": "Ваш пароль должен содержать не менее 8 символов с заглавной, строчной буквой и цифрой."
+  },
+  "manage": {
+    "deleteTitle": "Удалить товар",
+    "deleteConfirm": "Удалить «{{name}}» из магазина?",
+    "editItem": "Редактировать товар",
+    "empty": "Товары не найдены",
+    "videoSavedGallery": "Видео сохранено в вашу галерею!",
+    "failedPickGallery": "Не удалось выбрать из галереи"
+  },
+  "admin": {
+    "title": "Панель администратора",
+    "subtitle": "Управление каталогом магазина",
+    "accessDenied": "Доступ запрещен",
+    "adminPrivilegesRequired": "Требуются права администратора",
+    "tabs": {
+      "add": "Добавить",
+      "manage": "Управление",
+      "inspo": "Вдохновение",
+      "guide": "Гид"
     },
-    "resetPassword": {
-        "title": "Установить новый пароль",
-        "subtitle": "Выберите надежный пароль для вашего аккаунта.",
-        "passwordsDontMatch": "Пароли не совпадают",
-        "samePassword": "Тот же пароль",
-        "newPasswordDifferent": "Новый пароль должен отличаться от текущего.",
-        "weakPassword": "Слабый пароль",
-        "chooseStronger": "Пожалуйста, выберите более надежный пароль."
+    "validation": {
+      "required": "Обязательно",
+      "nameBrand": "Название и бренд обязательны",
+      "imageRequired": "URL изображения или фото обязательно"
     },
-    "designRoom": {
-        "title": "Стильная комната",
-        "createOutfit": "Создать образ",
-        "celebrityLook": "Образ знаменитости",
-        "scanWardrobe": "Сканировать гардероб",
-        "aiSuggestOutfit": "AI предложит образ",
-        "next": "Далее",
-        "add": "Добавить",
-        "scanVideo": "Сканировать видео",
-        "stickers": "Стикеры",
-        "background": "Фон",
-        "emptyState": "Добавьте одежду, чтобы начать дизайн"
+    "add": {
+      "pickImage": "Выбрать фото",
+      "orImageUrl": "Или URL изображения",
+      "imageUrlPlaceholder": "https://...",
+      "brand": "Бренд",
+      "brandPlaceholder": "Zara, Uniqlo, COS...",
+      "name": "Название",
+      "namePlaceholder": "Рубашка Oxford Slim-Fit",
+      "price": "Цена",
+      "pricePlaceholder": "0.00",
+      "currency": "Валюта",
+      "currencyPlaceholder": "USD",
+      "garmentType": "Тип одежды",
+      "category": "Категория",
+      "description": "Описание",
+      "descriptionPlaceholder": "Классическая хлопковая рубашка...",
+      "sortOrder": "Порядок сортировки",
+      "sortOrderPlaceholder": "0",
+      "isActive": "Активен",
+      "addItem": "Добавить в магазин",
+      "success": "Товар добавлен в каталог",
+      "uploadError": "Ошибка загрузки",
+      "failedToAddItem": "Не удалось добавить товар"
     },
-    "trialExpired": {
-        "title": "Пробный период истёк",
-        "body": "Ваш 7-дневный бесплатный пробный период закончился. Обновите до платного плана, чтобы продолжить использовать AI-образы, неограниченное сканирование гардероба и все премиум-функции.",
-        "upgradeToPro": "Обновить до Pro",
-        "havePromoCode": "У меня есть промокод"
+    "manage": {
+      "deleteTitle": "Удалить товар",
+      "deleteConfirm": "Удалить «{{name}}» из магазина?",
+      "editItem": "Редактировать товар",
+      "empty": "Товары не найдены"
     },
     "inspo": {
-        "title": "Вдохновение",
-        "fromYourCloset": "Из вашего гардероба",
-        "personalStylist": "Персональный стилист",
-        "featuredCapsules": "Рекомендуемые капсулы",
-        "noMenswearMatches": "Нет мужской одежды, соответствующей поиску.",
-        "loadMoreProducts": "Загрузить больше товаров"
+      "changePhoto": "Фото",
+      "promote": "Добавить",
+      "promoted": "Добавлено в каталог магазина",
+      "promoteFailed": "Не удалось добавить товар",
+      "uploadError": "Ошибка загрузки",
+      "photoChanged": "Фото обновлено",
+      "empty": "Нет товаров для вдохновения"
     },
-    "camera": {
-        "permissionNeeded": "Необходимо разрешение камеры",
-        "grantAccess": "Предоставить доступ",
-        "recording": "Запись",
-        "photo": "Фото",
-        "video": "Видео"
+    "garmentTypes": {
+      "upperBody": "Верхняя одежда",
+      "lowerBody": "Нижняя одежда",
+      "dresses": "Платья",
+      "shoes": "Обувь",
+      "outfit": "Образ"
     },
-    "chat": {
-        "title": "Стилист",
-        "emptyTitle": "Для какого случая вы одеваетесь?",
-        "thinking": "Все ещё думаю..."
+    "categories": {
+      "tops": "Верх",
+      "bottoms": "Низ",
+      "shoes": "Обувь",
+      "dresses": "Платья",
+      "outerwear": "Верхняя одежда"
     },
-    "brandSelection": {
-        "chooseBrands": "Выберите 3 или более брендов"
-    },
-    "createAvatar": {
-        "title": "3D модель тела",
-        "subtitle": "Введите ваши измерения",
-        "bodyMeasurements": "Измерения тела",
-        "height": "Рост",
-        "heightRange": "Диапазон: 140 – 230 см",
-        "weight": "Вес",
-        "weightRange": "Диапазон: 40 – 150 кг",
-        "bodyType": "Тип телосложения",
-        "saveBodyModel": "Сохранить модель тела"
-    },
-    "emailOnboarding": {
-        "howItWorks": "Как это работает:"
-    },
-    "flashSaleEvent": {
-        "soldOut": "Распродано",
-        "eventNotFound": "Событие не найдено",
-        "liveNow": "ПРЯМО СЕЙЧАС",
-        "exclusive": "ЭКСКЛЮЗИВ",
-        "off": "СКИДКА",
-        "items": "ТОВАРЫ",
-        "waiting": "ОЖИДАЮТ"
-    },
-    "flashSales": {
-        "hrs": "ЧАС",
-        "min": "МИН",
-        "sec": "СЕК",
-        "live": "ПРЯМО",
-        "exclusive": "ЭКСКЛЮЗИВ",
-        "upToOff": "До {{discount}}% СКИДКИ",
-        "shopNow": "Купить сейчас",
-        "loading": "Загрузка эксклюзивных распродаж...",
-        "title": "Распродажи",
-        "liveBadge": "🔥 ПРЯМО",
-        "happeningNow": "⚡ Происходит сейчас",
-        "comingSoon": "🗓️ Скоро",
-        "exclusiveAccess": "Эксклюзивный доступ"
-    },
-    "magicMirror": {
-        "loading": "Загрузка вашего гардероба...",
-        "title": "Магическое зеркало",
-        "tops": "ВЕРХНЯЯ ОДЕЖДА",
-        "tapToAddPhoto": "Нажмите, чтобы добавить фото",
-        "creatingMagic": "Создание магии...",
-        "bottoms": "НИЖНЯЯ ОДЕЖДА",
-        "generating": "Генерация...",
-        "tryOn": "Примерить"
-    },
-    "outfitAI": {
-        "notQuiteRight": "Не совсем то? Изменить:",
-        "title": "AI Стилист",
-        "welcomeTitle": "Ваш AI Стилист",
-        "occasionTitle": "Какой повод?",
-        "occasionSubtitle": "Расскажите о ваших планах, и я найду идеальный наряд",
-        "greeting": "Привет! Я ваш AI стилист. Расскажите о вашем случае, и я создам идеальный наряд из вашего гардероба. Для какого случая вы собираетесь сегодня?"
-    },
-    "privacyPolicy": {
-        "title": "Политика конфиденциальности",
-        "lastUpdated": "Последнее обновление: Март 2026",
-        "intro": "AIWardrobe (\"мы\", \"наш\", \"нас\") обязуется защищать вашу конфиденциальность. Эта Политика конфиденциальности объясняет, как мы собираем, используем и защищаем вашу информацию при использовании нашего мобильного приложения.",
-        "informationWeCollect": {
-            "title": "Информация, которую мы собираем",
-            "body": "При использовании AIWardrobe мы собираем следующие типы информации:\n\n• Информация об аккаунте: Адрес электронной почты, имя пользователя и необязательные данные профиля, которые вы предоставляете при регистрации.\n• Данные гардероба: Фотографии предметов одежды, которые вы загружаете, вместе с атрибутами, обнаруженными AI (категория, цвет, узор, материал).\n• Данные об использовании: Журналы ношения, история нарядов и паттерны использования функций для улучшения рекомендаций AI.\n• Информация об устройстве: Тип устройства, версия ОС и версия приложения для исправления ошибок и оптимизации.\n• Данные о местоположении: Необязательно — используется только для рекомендаций нарядов на основе погоды, когда вы предоставляете разрешение."
-        },
-        "howWeUse": {
-            "title": "Как мы используем вашу информацию",
-            "body": "Мы используем вашу информацию для:\n\n• Предоставления и улучшения рекомендаций нарядов на основе AI и управления гардеробом.\n• Синхронизации вашего гардероба между устройствами через безопасное облачное хранилище.\n• Генерации персонализированной аналитики (наиболее часто носимые предметы, разнообразие стиля и т.д.).\n• Отправки соответствующих уведомлений (ежедневные рекомендации нарядов, напоминания о сериях).\n• Улучшения наших моделей AI и опыта работы с приложением.\n\nМы НЕ продаем ваши личные данные третьим лицам."
-        },
-        "dataStorage": {
-            "title": "Хранение и безопасность данных",
-            "body": "• Ваши данные хранятся безопасно с использованием Supabase (PostgreSQL) с защитой на уровне строк.\n• Вся передача данных зашифрована через TLS/HTTPS.\n• Фотографии хранятся в безопасном облачном хранилище с доступом, ограниченным вашим аккаунтом.\n• Мы храним ваши данные, пока ваш аккаунт активен. Вы можете удалить свой аккаунт и все связанные данные в любое время."
-        },
-        "thirdParty": {
-            "title": "Сторонние сервисы",
-            "body": "Мы используем сторонние сервисы для работы нашего приложения:\n\n• Supabase для безопасной базы данных и аутентификации.\n• Expo для разработки и развертывания приложений.\n• AI сервисы для рекомендаций нарядов и анализа изображений.\n\nМы тщательно проверяем все сторонние сервисы и гарантируем, что они соответствуют нашим стандартам конфиденциальности."
-        },
-        "yourRights": {
-            "title": "Ваши права",
-            "body": "Вы имеете право:\n\n• Получить доступ к вашим личным данным в любое время.\n• Запросить удаление вашего аккаунта и всех связанных данных.\n• Отказаться от сбора данных для несущественных функций.\n• Обновить информацию профиля и настройки.\n• Экспортировать ваши данные в машиночитаемом формате.\n\nДля осуществления этих прав свяжитесь с нами по адресу support@aiwardrobe.app"
-        },
-        "childrensPrivacy": {
-            "title": "Конфиденциальность детей",
-            "body": "Наш сервис не предназначен для детей младше 13 лет. Мы не собираем персональную информацию от детей младше 13 лет намеренно. Если вы родитель или опекун и считаете, что ваш ребенок предоставил нам персональную информацию, пожалуйста, свяжитесь с нами."
-        },
-        "changes": {
-            "title": "Изменения в этой политике",
-            "body": "Мы можем обновлять эту Политику конфиденциальности время от времени. Мы уведомим вас о существенных изменениях через приложение или по электронной почте. Продолжение использования AIWardrobe после изменений означает принятие обновленной политики."
-        },
-        "contact": {
-            "title": "Свяжитесь с нами",
-            "body": "Если у вас есть вопросы об этой Политике конфиденциальности, пожалуйста, свяжитесь с нами:\n\n📧 support@aiwardrobe.app"
-        }
-    },
-    "review": {
-        "error": "Ошибка",
-        "notAuthorized": "Вы не авторизованы",
-        "done": "Готово! 🎉",
-        "itemsAdded": "Добавлено {{count}} вещей. Сейчас мы генерируем для них красивые фото.",
-        "saveFailed": "Не удалось сохранить вещи: {{error}}",
-        "removeItem": "Удалить вещь",
-        "confirmRemove": "Вы уверены, что хотите удалить эту вещь?",
-        "generating": "Генерируем одежду...",
-        "savingToCloud": "Рисуем фото и сохраняем в облако",
-        "itemsFound": "Найдено {{count}} вещей",
-        "addToWardrobe": "Добавить в гардероб ({{count}})"
-    },
-    "termsOfService": {
-        "title": "Условия использования",
-        "lastUpdated": "Последнее обновление: Март 2026",
-        "intro": "Пожалуйста, внимательно прочитайте эти Условия использования перед использованием AIWardrobe.",
-        "acceptance": {
-            "title": "1. Принятие условий",
-            "body": "Загружая, устанавливая или используя AIWardrobe, вы соглашаетесь соблюдать эти Условия использования. Если вы не согласны, не используйте приложение."
-        },
-        "description": {
-            "title": "2. Описание сервиса",
-            "body": "AIWardrobe — это приложение для управления гардеробом на основе AI, которое предоставляет:\n\n• Оцифровку предметов одежды через камеру/сканирование фото\n• Рекомендации нарядов на основе AI\n• Функцию виртуальной примерки\n• Аналитику гардероба и инсайты о стиле\n• Синхронизацию между устройствами в облаке\n\nНекоторые функции требуют активного интернет-соединения и могут использовать сторонние AI сервисы."
-        },
-        "userAccounts": {
-            "title": "3. Пользовательские аккаунты",
-            "body": "• Вы должны предоставлять точную информацию при создании аккаунта.\n• Вы несете ответственность за безопасность учетных данных вашего аккаунта.\n• Вам должно быть не менее 13 лет для создания аккаунта.\n• Один человек не может поддерживать более одного аккаунта.\n• Мы оставляем за собой право приостанавливать или закрывать аккаунты, нарушающие эти условия."
-        },
-        "userContent": {
-            "title": "4. Контент пользователя",
-            "body": "• Вы сохраняете право собственности на все фото и контент, который вы загружаете.\n• Загружая контент, вы предоставляете нам лицензию на его обработку, хранение и отображение в приложении.\n• Вы соглашаетесь не загружать контент, который является незаконным, оскорбительным или нарушает права других.\n• Мы можем использовать анонимизированные агрегированные данные для улучшения наших AI моделей."
-        },
-        "subscriptions": {
-            "title": "5. Подписки и платежи",
-            "body": "• AIWardrobe предлагает бесплатные и премиум уровни подписки.\n• Премиум подписки оплачиваются через App Store.\n• Подписки продлеваются автоматически, если не отменены как минимум за 24 часа до окончания текущего периода.\n• Возврат средств обрабатывается в соответствии с политикой возврата App Store."
-        },
-        "aiContent": {
-            "title": "6. Контент, созданный AI",
-            "body": "• Рекомендации AI генерируются алгоритмически и могут не всегда быть точными.\n• Результаты виртуальной примерки являются приблизительными и могут не идеально отражать реальный вид.\n• Мы не гарантируем точность определения цвета, узора или материала AI.\n• Рекомендации нарядов, созданные AI, предназначены только для информационных целей."
-        },
-        "prohibited": {
-            "title": "7. Запрещенное использование",
-            "body": "Вы соглашаетесь не:\n\n• Обратное проектирование, декомпиляция или попытка извлечь исходный код из приложения.\n• Использование приложения в коммерческих целях без авторизации.\n• Сбор или сбор данных от других пользователей.\n• Попытка обойти механизмы подписки или аутентификации.\n• Использование приложения для передачи вредоносного ПО или вредоносного контента."
-        },
-        "intellectual": {
-            "title": "8. Интеллектуальная собственность",
-            "body": "• AIWardrobe и его оригинальный контент, функции и функциональность принадлежат нам и защищены законами об интеллектуальной собственности.\n• Название AIWardrobe, логотип и брендинг являются нашими товарными знаками."
-        },
-        "liability": {
-            "title": "9. Ограничение ответственности",
-            "body": "AIWardrobe предоставляется \"как есть\" без каких-либо гарантий. Мы не несем ответственности за любые косвенные, случайные, специальные или последующие убытки, возникшие в результате использования приложения."
-        },
-        "changes": {
-            "title": "10. Изменения условий",
-            "body": "Мы оставляем за собой право изменять эти условия в любое время. Продолжение использования после изменений означает принятие. Мы уведомим вас о существенных изменениях через приложение."
-        },
-        "contact": {
-            "title": "11. Контакты",
-            "body": "По вопросам об этих Условиях свяжитесь с нами:\n\n📧 support@aiwardrobe.app"
-        }
-    },
-    "wardrobeVideo": {
-        "title": "Сканирование гардероба AI",
-        "selectGallery": "Выбрать из галереи",
-        "analysisComplete": "Анализ завершен",
-        "outfit": "Наряд {{index}}",
-        "reviewSave": "Просмотр и сохранение",
-        "processFailed": "Не удалось обработать выбранный файл.",
-        "loginRequired": "Требуется вход",
-        "loginToSave": "Пожалуйста, войдите, чтобы сохранить вещи.",
-        "info": "Информация",
-        "noMediaSelected": "Медиа не выбрано или выбор был отменен.",
-        "pickFailed": "Не удалось выбрать медиа: {{error}}",
-        "saveFailed": "Не удалось сохранить. {{error}}"
-    },
-    "auth": {
-        "signIn": "Войти",
-        "signUp": "Регистрация",
-        "email": "Электронная почта",
-        "password": "Пароль",
-        "username": "Имя пользователя",
-        "forgotPassword": "Забыли пароль?",
-        "noAccount": "Нет аккаунта?",
-        "haveAccount": "Уже есть аккаунт?",
-        "stickers": "Стикеры",
-        "background": "Фон",
-        "emptyState": "Добавьте одежду для начала дизайна"
-    },
-    "tabs": {
-        "home": "Главная",
-        "discover": "Обзор",
-        "add": "Добавить",
-        "design": "Дизайн",
-        "profile": "Профиль"
-    },
-    "styles": {
-        "selectStyle": "Выбрать стиль",
-        "yourStyle": "Ваш стиль",
-        "dior": {
-            "name": "Кристиан Диор",
-            "description": "Элегантный, женственный, высокая мода"
-        },
-        "armani": {
-            "name": "Джорджио Армани",
-            "description": "Минималистичный, изысканный, расслабленный крой"
-        },
-        "lauren": {
-            "name": "Ральф Лорен",
-            "description": "Преппи, американская классика, спортивная элегантность"
-        }
+    "guide": {
+      "pickImage": "Выбрать изображение",
+      "title": "Заголовок",
+      "titlePlaceholder": "Наш онлайн бутик AI",
+      "subtitle": "Подзаголовок",
+      "subtitlePlaceholder": "Персонализированное путешествие в стиль Брунелло Кучинелли",
+      "ctaText": "Текст кнопки",
+      "ctaTextPlaceholder": "ОТКРЫТЬ НОВЫЙ САЙТ",
+      "ctaUrl": "URL кнопки",
+      "ctaUrlPlaceholder": "https://aiwardrobe.club",
+      "backgroundColor": "Цвет фона",
+      "isActive": "Активен",
+      "save": "Сохранить",
+      "saved": "Содержание гида успешно сохранено",
+      "fetchFailed": "Не удалось загрузить содержание гида",
+      "uploadError": "Ошибка загрузки",
+      "saveFailed": "Не удалось сохранить содержание гида"
     }
+  },
+  "outfitGenerator": {
+    "placeholderShoes": "Обувь",
+    "placeholderPants": "Брюки"
+  },
+  "subscription": {
+    "tiers": {
+      "free": "Бесплатно",
+      "freeSublabel": "Бесплатно навсегда · без кредитной карты",
+      "freeFeatures": [
+        "10 AI-образов в день",
+        "До 20 предметов в вашем гардеробе",
+        "Базовый календарь на сегодня",
+        "Просмотр вдохновения"
+      ],
+      "freeMissing": [
+        "Нет виртуальной примерки",
+        "Нет аналитики гардероба",
+        "Нет планировщика поездок"
+      ],
+      "pro": "Pro",
+      "proSublabel": "Полный AI-гардероб",
+      "period": "/месяц",
+      "proFeatures": [
+        "Неограниченные AI-образы",
+        "Неограниченная виртуальная примерка",
+        "Неограниченный размер гардероба",
+        "Аналитика и статистика гардероба",
+        "AI-планировщик поездок",
+        "Полный календарь образов",
+        "Приоритетная AI-модель · без рекламы",
+        "Приоритетная поддержка",
+        "Ранний доступ к новым функциям"
+      ],
+      "max": "Max",
+      "maxSublabel": "Лучшая выгода — экономия 17%",
+      "maxPeriod": "/год",
+      "maxSavings": "ЭКОНОМИЯ 17%",
+      "maxFeatures": [
+        "Эксклюзивные сезонные коллекции стилей",
+        "Чат с AI-стилистом и персональные советы"
+      ]
+    }
+  },
+  "description": {
+    "title": "2. Описание услуги",
+    "body": "AIWardrobe — это приложение для управления гардеробом на базе ИИ, которое предоставляет:\n\n• Оцифровка предметов одежды через сканирование камеры/фото\n• Рекомендации по образам на основе ИИ\n• Функция виртуальной примерки\n• Аналитика гардероба и инсайты о стиле\n• Облачная синхронизация между устройствами\n\nНекоторые функции требуют активного интернет-соединения и могут использовать сторонние ИИ-сервисы."
+  }
 }

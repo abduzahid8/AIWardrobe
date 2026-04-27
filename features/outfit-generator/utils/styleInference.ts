@@ -3,7 +3,7 @@
  * name, description, brand, and color, without requiring any extra DB columns.
  *
  * Used to:
- *   1. Score & pre-filter catalog items per vibe (old_money, streetwear, …)
+ *   1. Score & pre-filter catalog items per vibe (old_money, semi_classic, …)
  *      before sending them to the LLM, so the model only picks from genuinely
  *      on-style candidates.
  *   2. Enrich the prompt bullets with structured tags the LLM can reason over.
@@ -15,9 +15,8 @@
 
 export type StyleId =
   | 'old_money'
-  | 'streetwear'
+  | 'semi_classic'
   | 'minimalist'
-  | 'y2k'
   | 'business_casual'
   | 'casual'
   | 'classic';
@@ -136,18 +135,22 @@ const STYLE_SIGNALS: Record<StyleId, Signal[]> = {
     // NEVER pair shorts with old_money - they're fundamentally incompatible
     kw('shorts', -5), kw('short', -5), kw('bermuda', -5), kw('bermudas', -5),
   ],
-  streetwear: [
-    kw('hoodie', 5), kw('oversized', 4), kw('baggy', 4), kw('cargo', 5),
-    kw('graphic', 4), kw('logo', 3), kw('printed', 3), kw('print', 2),
-    kw('sneaker', 3), kw('sneakers', 3), kw('chunky', 3), kw('puffer', 4),
-    kw('bomber', 3), kw('track', 3), kw('sweatpants', 3), kw('joggers', 4),
-    kw('streetwear', 5), kw('utility', 3), kw('workwear', 3), kw('parka', 3),
-    kw('ripped', 2), kw('distressed', 2), kw('washed', 1),
-    kw('stüssy', 5), kw('stussy', 5), kw('off-white', 4), kw('nike', 3),
-    kw('adidas', 3), kw('supreme', 5), kw('palace', 4),
+  semi_classic: [
+    kw('blazer', 3), kw('cardigan', 3), kw('knit polo', 3), kw('turtleneck', 2),
+    kw('chino', 3), kw('chinos', 3), kw('slack', 2), kw('slacks', 2),
+    kw('loafer', 3), kw('loafers', 3), kw('suede', 3), kw('desert boot', 3),
+    kw('merino', 2), kw('cotton', 1), kw('linen', 2), kw('poplin', 2),
+    kw('tailored', 2), kw('structured', 2), kw('regular-fit', 2), kw('relaxed-fit', 1),
+    kw('navy', 2), kw('cream', 2), kw('beige', 2), kw('camel', 2),
+    kw('olive', 2), kw('tan', 2), kw('burgundy', 2), kw('white', 1),
+    kw('massimo dutti', 3), kw('arket', 3), kw('cos', 2),
+    kw('sneaker', 1), kw('sneakers', 1), kw('jeans', 1), kw('denim', 1),
+    kw('sweater', 2), kw('pullover', 1), kw('vest', 1),
     // Negatives
-    kw('blazer', -3), kw('loafer', -3), kw('tailored', -3), kw('cashmere', -2),
-    kw('oxford shirt', -2), kw('pinstripe', -3),
+    kw('hoodie', -2), kw('graphic', -2), kw('cargo', -3),
+    kw('sweatpants', -3), kw('joggers', -3), kw('track', -2),
+    kw('neon', -4), kw('sequin', -4), kw('rhinestone', -4),
+    kw('oversized', -2), kw('baggy', -3), kw('ripped', -2),
   ],
   minimalist: [
     kw('minimal', 5), kw('clean', 2), kw('seamless', 3), kw('structured', 2),
@@ -168,17 +171,6 @@ const STYLE_SIGNALS: Record<StyleId, Signal[]> = {
     kw('sequin', -5), kw('rhinestone', -5), kw('floral', -3),
     kw('colorblock', -3), kw('color-block', -3),
     kw('chunky', -3), kw('basketball', -4), kw('retro sneaker', -2),
-  ],
-  y2k: [
-    kw('y2k', 5), kw('low-rise', 4), kw('low rise', 4), kw('crop', 3),
-    kw('cropped', 3), kw('bedazzled', 5), kw('rhinestone', 5), kw('sequin', 4),
-    kw('metallic', 4), kw('satin', 2), kw('velour', 4), kw('butterfly', 3),
-    kw('baby tee', 4), kw('tube top', 5), kw('halter', 3), kw('mini skirt', 3),
-    kw('platform', 4), kw('iridescent', 4), kw('holographic', 4),
-    kw('pink', 2), kw('fuchsia', 3), kw('neon', 3),
-    kw('juicy couture', 5), kw('ed hardy', 5),
-    // Negatives
-    kw('blazer', -3), kw('tailored', -3), kw('wool', -2), kw('oxford', -3),
   ],
   business_casual: [
     kw('blazer', 4), kw('chino', 4), kw('chinos', 4), kw('trouser', 4),
@@ -417,7 +409,7 @@ export function rankItemsForStyle<T extends ItemForInference>(
 /**
  * Decide whether an outfit should force a two-top layered composition
  * (base top + outerwear/main top + bottom + shoes). Layering is the
- * backbone of old_money / business_casual / streetwear looks, and is
+ * backbone of old_money / business_casual / semi_classic looks, and is
  * always required when the weather is cool. A user prompt that explicitly
  * asks for a summer / no-jacket look disables layering.
  */
@@ -444,8 +436,7 @@ export function needsLayering(
   if (coldTemp || coldCondition) return true;
 
   if (normalized === 'old_money' || normalized === 'business_casual' || normalized === 'classic') return true;
-  if (normalized === 'streetwear') return true; // hoodie-over-tee is canonical
-  if (normalized === 'y2k') return false;
+  if (normalized === 'semi_classic') return true; // cardigan-over-tee is canonical
   return false;
 }
 
@@ -458,9 +449,8 @@ export function normalizeStyleId(raw: string | null | undefined): StyleId {
   const key = raw.toLowerCase().replace(/[\s-]+/g, '_').trim();
   if (
     key === 'old_money' ||
-    key === 'streetwear' ||
+    key === 'semi_classic' ||
     key === 'minimalist' ||
-    key === 'y2k' ||
     key === 'business_casual' ||
     key === 'casual' ||
     key === 'classic'

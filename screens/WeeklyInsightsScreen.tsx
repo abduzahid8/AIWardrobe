@@ -119,10 +119,10 @@ const WeeklyInsightsScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
                     </View>
                     <Text style={styles.cardSubtext}>
                         {utilization >= 80
-                            ? 'Excellent! You\'re making great use of your wardrobe.'
+                            ? t('weeklyInsights.utilization80')
                             : utilization >= 50
-                                ? `You've worn ${utilization}% of your closet this month. Try mixing in forgotten pieces.`
-                                : `Only ${utilization}% of your closet was worn this month. There's a lot to rediscover!`}
+                                ? t('weeklyInsights.utilization50', { percent: utilization })
+                                : t('weeklyInsights.utilizationLow', { percent: utilization })}
                     </Text>
                 </Animated.View>
 
@@ -134,11 +134,11 @@ const WeeklyInsightsScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
                                 <Ionicons name="sparkles-outline" size={20} color="#F97316" />
                             </View>
                             <Text style={styles.cardTitle}>
-                                {unwornItems.length} Unworn Items
+                                {t('weeklyInsights.unwornItems', { count: unwornItems.length })}
                             </Text>
                         </View>
                         <Text style={styles.cardSubtext}>
-                            These items haven't been worn in 30 days. Try one this week!
+                            {t('weeklyInsights.unwornItemsSubtext')}
                         </Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.unwornScroll}>
                             {unwornItems.slice(0, 8).map((item) => (
@@ -241,7 +241,7 @@ const WeeklyInsightsScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
                         <Ionicons name="analytics-outline" size={56} color={colors.text.tertiary} />
                         <Text style={styles.emptyTitle}>{t('weeklyInsights.noDataYet')}</Text>
                         <Text style={styles.emptySubtext}>
-                            Start scanning and logging outfits to see your style insights
+                            {t('weeklyInsights.emptySubtext')}
                         </Text>
                     </View>
                 )}

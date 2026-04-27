@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Animated, StyleSheet, ViewStyle, DimensionValue } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 interface SkeletonLoaderProps {
     width?: DimensionValue;
@@ -22,6 +23,7 @@ export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({
     borderRadius = 8,
     style,
 }) => {
+    const { t } = useTranslation();
     const shimmerAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
@@ -55,7 +57,7 @@ export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({
                 { width, height, borderRadius, opacity },
                 style,
             ]}
-            accessibilityLabel="Loading"
+            accessibilityLabel={t('common.loading')}
             accessibilityRole="progressbar"
         />
     );

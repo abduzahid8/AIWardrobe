@@ -11,7 +11,6 @@ import { Asset } from 'expo-asset';
 import * as FileSystem from 'expo-file-system/legacy';
 
 import type { ShopCatalogItem } from './types';
-import { SHOP_CATEGORIES } from '../../data/shopCatalogItems';
 import { INSPO_MENS_SHOP_ITEMS } from '../../data/inspoMensShopItems';
 import { useShopCatalog } from '../../hooks/useShopCatalog';
 import styles from './styles';
@@ -27,6 +26,32 @@ const GARMENT_LABELS: Record<ShopCatalogItem['garmentType'], string> = {
     outfit: 'Outfit',
 };
 
+type SlotKey = 'layer' | 'top' | 'pants' | 'shoes';
+
+interface SlotDef {
+    key: SlotKey;
+    label: string;
+    category: 'upper_body' | 'lower_body' | 'shoes';
+    icon: 'layers-outline' | 'shirt-outline' | 'bag-handle-outline' | 'footsteps-outline';
+}
+
+const SLOTS: SlotDef[] = [
+    { key: 'layer', label: 'Layer', category: 'upper_body', icon: 'layers-outline' },
+    { key: 'top', label: 'Top', category: 'upper_body', icon: 'shirt-outline' },
+    { key: 'pants', label: 'Pants', category: 'lower_body', icon: 'bag-handle-outline' },
+    { key: 'shoes', label: 'Shoes', category: 'shoes', icon: 'footsteps-outline' },
+];
+
+// Correct fashion dressing order for sequential FLUX.1-Kontext calls:
+// 1. top    — shirt / t-shirt applied to torso
+// 2. layer  — outer jacket / coat applied over the top
+// 3. pants  — trousers applied to lower body
+// 4. shoes  — footwear placed at the very bottom
+const APPLY_ORDER: SlotKey[] = ['top', 'layer', 'pants', 'shoes'];
+
+type Slots = Record<SlotKey, ShopCatalogItem | null>;
+const EMPTY_SLOTS: Slots = { layer: null, top: null, pants: null, shoes: null };
+
 type AITryOnRouteParams = { asTab?: boolean; initialGarmentUri?: string; initialGarmentType?: string };
 
 const formatPrice = (item: ShopCatalogItem | null) => {
@@ -40,14 +65,16 @@ const AITryOnScreen = () => {
     const asTab = (route.params as AITryOnRouteParams)?.asTab === true;
     const { t } = useTranslation();
 
-    const [selectedItem, setSelectedItem] = useState<ShopCatalogItem | null>(null);
-    const [mannequinShopFilter, setMannequinShopFilter] = useState<string>('upper_body');
+    const [slots, setSlots] = useState<Slots>(EMPTY_SLOTS);
+    const [activeSlot, setActiveSlot] = useState<SlotKey>('top');
     const [aiResultImage, setAiResultImage] = useState<string | null>(null);
     const [aiLoading, setAiLoading] = useState(false);
+    const [aiProgress, setAiProgress] = useState<string | null>(null);
     const [aiError, setAiError] = useState<string | null>(null);
-    const [tryOnCount, setTryOnCount] = useState(0);
     const [lookSaved, setLookSaved] = useState(false);
     const [isModelReady, setIsModelReady] = useState(false);
+    const activeSlotDef = useMemo(() => SLOTS.find((s) => s.key === activeSlot)!, [activeSlot]);
+    const mannequinShopFilter = activeSlotDef.category;
     const {
         items: syncedShopItems,
         loading: shopCatalogLoading,
@@ -58,7 +85,7 @@ const AITryOnScreen = () => {
         refresh: refreshShopCatalog,
     } = useShopCatalog({ category: mannequinShopFilter });
 
-    const { requireFeature, getRemaining, hasActiveSubscription } = useSubscriptionGate();
+    const { requireFeature, getRemaining, hasActiveSubscription, consume } = useSubscriptionGate();
     const tryOnsRemaining = getRemaining('tryOns');
     const saveLook = useTryOnLooksStore((s) => s.saveLook);
     const mannequinB64Ref = useRef<string | null>(null);
@@ -68,11 +95,21 @@ const AITryOnScreen = () => {
             try {
                 const asset = Asset.fromModule(MANNEQUIN_IMAGE);
                 await asset.downloadAsync();
-                const b64 = await FileSystem.readAsStringAsync(asset.localUri!, { encoding: 'base64' as any });
+                
+                if (!asset.localUri) {
+                    throw new Error('Asset localUri is null after download');
+                }
+
+                const b64 = await FileSystem.readAsStringAsync(asset.localUri, { encoding: 'base64' as any });
+                if (!b64 || b64.length < 100) {
+                    throw new Error('Read base64 is empty or too short');
+                }
+
                 mannequinB64Ref.current = `data:image/png;base64,${b64}`;
                 setIsModelReady(true);
+                console.log('[AITryOn] Mannequin preloaded successfully, length:', b64.length);
             } catch (error) {
-                console.warn('Failed to preload mannequin image:', error);
+                console.warn('[AITryOn] Failed to preload mannequin image:', error);
                 setAiError('Model preview is still loading. Please wait a moment and try again.');
             }
         })();
@@ -85,20 +122,28 @@ const AITryOnScreen = () => {
 
         return INSPO_MENS_SHOP_ITEMS.filter((item) => item.garmentType === mannequinShopFilter);
     }, [mannequinShopFilter]);
-    const showingFallbackCatalog = syncedShopItems.length === 0;
-    const isInitialCatalogLoad = !showingFallbackCatalog && shopCatalogLoading && syncedShopItems.length === 0;
+
+    const filledSlots = useMemo(
+        () => APPLY_ORDER.filter((k) => slots[k] !== null) as SlotKey[],
+        [slots]
+    );
+    const filledCount = filledSlots.length;
+    const hasAnySelection = filledCount > 0;
+    const showingFallbackCatalog = syncedShopItems.length === 0 && !shopCatalogLoading;
+    // Show a loading spinner only on the very first page load (no items yet and spinner is active)
+    const isInitialCatalogLoad = shopCatalogLoading && syncedShopItems.length === 0;
     const shopItems = showingFallbackCatalog ? fallbackShopItems : syncedShopItems;
 
-    const selectedCategoryLabel = selectedItem ? GARMENT_LABELS[selectedItem.garmentType] ?? 'Item' : 'None';
+    const selectedCategoryLabel = `${filledCount}/4`;
     const remainingCountLabel = tryOnsRemaining === -1 ? '∞' : String(tryOnsRemaining);
-    const statusLabel = aiLoading ? 'Live' : aiResultImage ? 'Done' : selectedItem ? 'Ready' : isModelReady ? 'Idle' : 'Prep';
+    const statusLabel = aiLoading ? t('tryOn.statusLive') : aiResultImage ? t('tryOn.statusDone') : hasAnySelection ? t('tryOn.statusReady') : isModelReady ? t('tryOn.statusIdle') : t('tryOn.statusPrep');
 
     const summaryStats = useMemo(
         () => [
-            { label: 'TRY-ONS', value: remainingCountLabel, warning: tryOnsRemaining !== -1 && tryOnsRemaining <= 1 },
-            { label: 'TYPE', value: selectedCategoryLabel },
-            { label: 'STATUS', value: statusLabel },
-            { label: 'PLAN', value: hasActiveSubscription ? 'Pro' : 'Free' },
+            { label: t('tryOn.tryOns'), value: remainingCountLabel, warning: tryOnsRemaining !== -1 && tryOnsRemaining <= 1 },
+            { label: t('tryOn.pieces'), value: selectedCategoryLabel },
+            { label: t('tryOn.status'), value: statusLabel },
+            { label: t('tryOn.plan'), value: hasActiveSubscription ? t('tryOn.pro') : t('tryOn.free') },
         ],
         [hasActiveSubscription, remainingCountLabel, selectedCategoryLabel, statusLabel, tryOnsRemaining]
     );
@@ -107,8 +152,10 @@ const AITryOnScreen = () => {
         if (aiLoading) {
             return {
                 icon: 'sparkles' as const,
-                title: 'Generating your preview',
-                body: 'We are fitting the selected garment onto the mannequin now. This usually takes 15-30 seconds.',
+                title: t('tryOn.generatingPreview'),
+                body: aiProgress
+                    ? aiProgress
+                    : `Dressing mannequin step by step (${filledCount} piece${filledCount === 1 ? '' : 's'}). Est. ${25 * Math.max(filledCount, 1)}–${50 * Math.max(filledCount, 1)}s.`,
                 tone: 'accent' as const,
             };
         }
@@ -116,7 +163,7 @@ const AITryOnScreen = () => {
         if (aiError) {
             return {
                 icon: 'alert-circle' as const,
-                title: 'Try-on needs another attempt',
+                title: t('tryOn.tryOnNeedsAnotherAttempt'),
                 body: aiError,
                 tone: 'error' as const,
             };
@@ -125,8 +172,8 @@ const AITryOnScreen = () => {
         if (aiResultImage) {
             return {
                 icon: 'checkmark-circle' as const,
-                title: 'Preview is ready',
-                body: 'Save this look or swap garments to create another AI try-on.',
+                title: t('tryOn.previewIsReady'),
+                body: t('tryOn.previewReadyBody', { filledCount }),
                 tone: 'success' as const,
             };
         }
@@ -134,30 +181,32 @@ const AITryOnScreen = () => {
         if (!isModelReady) {
             return {
                 icon: 'time-outline' as const,
-                title: 'Preparing the model',
-                body: 'Your mannequin assets are loading so your first preview feels instant.',
+                title: t('tryOn.preparingModel'),
+                body: t('tryOn.preparingModelBody'),
                 tone: 'neutral' as const,
             };
         }
 
-        if (selectedItem) {
+        if (hasAnySelection) {
+            const names = filledSlots.map((k) => slots[k]!.name).join(' + ');
             return {
                 icon: 'shirt-outline' as const,
-                title: 'Ready to generate',
-                body: `${selectedItem.name} is selected. Tap "Try On With AI" to create the preview.`,
+                title: t('tryOn.readyToGenerate'),
+                body: t('tryOn.piecesSelected', { count: filledCount, names }),
                 tone: 'accent' as const,
             };
         }
 
         return {
             icon: 'hand-left-outline' as const,
-            title: 'Pick one garment',
-            body: 'Choose a top, bottom, or pair of shoes below to preview it on the mannequin.',
+            title: t('tryOn.pickYourPieces'),
+            body: t('tryOn.chooseUpToFourPieces'),
             tone: 'neutral' as const,
         };
-    }, [aiError, aiLoading, aiResultImage, isModelReady, selectedItem]);
+    }, [aiError, aiLoading, aiProgress, aiResultImage, filledCount, filledSlots, hasAnySelection, isModelReady, slots]);
 
     const getGarmentImageUrl = useCallback(async (item: ShopCatalogItem): Promise<string> => {
+        // Local bundled asset (require) → must be converted to base64 to be readable by the edge function.
         if (typeof item.imageUrl === 'number') {
             const asset = Asset.fromModule(item.imageUrl);
             await asset.downloadAsync();
@@ -168,11 +217,27 @@ const AITryOnScreen = () => {
             return `data:${mime};base64,${b64}`;
         }
 
-        return item.imageUrl as string;
+        // Remote URL (Zara catalog etc.) → pass the URL directly.
+        // The edge function fetches it server-side which avoids a large base64 body.
+        const url = item.imageUrl as string;
+        if (url.startsWith('http://') || url.startsWith('https://')) {
+            return url;
+        }
+
+        // Already a data-URI or raw base64 → pass through.
+        return url;
     }, []);
 
     const handleClear = useCallback(() => {
-        setSelectedItem(null);
+        setSlots(EMPTY_SLOTS);
+        setAiResultImage(null);
+        setAiError(null);
+        setLookSaved(false);
+        setAiProgress(null);
+    }, []);
+
+    const handleClearSlot = useCallback((key: SlotKey) => {
+        setSlots((prev) => ({ ...prev, [key]: null }));
         setAiResultImage(null);
         setAiError(null);
         setLookSaved(false);
@@ -182,12 +247,24 @@ const AITryOnScreen = () => {
         setAiError(null);
         setLookSaved(false);
         setAiResultImage(null);
-        setSelectedItem((prev) => (prev?.id === item.id ? null : item));
-    }, []);
+        setSlots((prev) => {
+            // Toggle off if same item is in the active slot.
+            if (prev[activeSlot]?.id === item.id) {
+                return { ...prev, [activeSlot]: null };
+            }
+            return { ...prev, [activeSlot]: item };
+        });
+    }, [activeSlot]);
+
+    // Pipeline is synchronous via NVIDIA NIM — no polling required.
+    // (Helper kept here as a no-op for any legacy call sites.)
+    const pollTask = async (_taskId: string, _slotLabel: string, _step: number, _total: number, _wasComposite: boolean) => {
+        throw new Error('Sync pipeline: results are returned in the submit response, no polling required.');
+    };
 
     const handleAITryOn = useCallback(async () => {
-        if (!selectedItem) {
-            setAiError('Select a garment first to generate a try-on.');
+        if (filledCount === 0) {
+            setAiError('Pick at least one piece (top, layer, pants, or shoes) to generate a try-on.');
             return;
         }
 
@@ -200,65 +277,136 @@ const AITryOnScreen = () => {
         setAiLoading(true);
         setAiResultImage(null);
         setAiError(null);
+        setAiProgress(null);
 
         try {
-            const garmentUrl = await getGarmentImageUrl(selectedItem);
-            const mannequinImage = mannequinB64Ref.current;
-
-            if (!mannequinImage) {
+            let currentMannequin = mannequinB64Ref.current;
+            if (!currentMannequin) {
                 setAiError('Model preview is still loading. Please wait a moment and try again.');
                 return;
             }
 
-            const { data, error } = await supabase.functions.invoke('mannequin-tryon', {
-                body: {
-                    mannequin_image: mannequinImage,
-                    garment_image: garmentUrl,
-                    garment_type: selectedItem.garmentType || 'upper_body',
-                },
-            });
+            // Base dressing order for FLUX.1-Kontext.
+            const orderedSlots = APPLY_ORDER.filter((k) => slots[k] !== null) as SlotKey[];
+            const hasLayer = slots.layer !== null;
+            const visibleTotal = orderedSlots.length;
+            const total = visibleTotal + (hasLayer && visibleTotal > 1 ? 1 : 0);
+            const alreadyWearing: string[] = [];
 
-            if (!error && data?.success && data?.resultUrl) {
-                setAiResultImage(data.resultUrl);
-                setLookSaved(false);
-                setTryOnCount((prev) => prev + 1);
-            } else {
-                const message = error?.message || data?.error || 'Try-on failed. Please try again.';
-                console.warn('AI try-on failed:', message);
-                setAiError(message);
+            for (let i = 0; i < orderedSlots.length; i++) {
+                const slotKey = orderedSlots[i];
+                const item = slots[slotKey]!;
+                const slotDef = SLOTS.find((s) => s.key === slotKey)!;
+
+                setAiProgress(`Submitting ${slotDef.label} (${i + 1}/${visibleTotal})…`);
+
+                const garmentImage = await getGarmentImageUrl(item);
+
+                console.log('[AITryOn] submit step', i + 1, '/', total, slotKey);
+                const { data, error } = await supabase.functions.invoke('mannequin-tryon', {
+                    body: {
+                        action: 'submit',
+                        mannequin_image: currentMannequin,
+                        garment_image: garmentImage,
+                        garment: {
+                            type: slotDef.category,
+                            label: slotKey,
+                            name: item.name,
+                            description: item.description ?? '',
+                        },
+                        already_wearing: [...alreadyWearing],
+                        step: i + 1,
+                        total,
+                    },
+                });
+
+                if (error || !data?.success) {
+                    throw new Error(error?.message || data?.error || `Submission failed at step ${i + 1} (${slotDef.label}).`);
+                }
+
+                // NVIDIA NIM returns the dressed mannequin synchronously.
+                if (!data.resultUrl) throw new Error('No result image returned from Flux Kontext.');
+                currentMannequin = data.resultUrl as string;
+                console.log(`[AITryOn] step ${i + 1} sync OK composite=${data.wasComposite}`);
+
+                alreadyWearing.push(item.description?.trim() || item.name);
+                setAiProgress(`${slotDef.label} done ✓  (${i + 1}/${visibleTotal})`);
+
+                // Light pacing between garment steps to be polite to NVIDIA NIM.
+                if (i < orderedSlots.length - 1) {
+                    await new Promise((r) => setTimeout(r, 1500));
+                }
             }
+
+            if (hasLayer && orderedSlots.length > 1) {
+                const item = slots.layer!;
+                const slotDef = SLOTS.find((s) => s.key === 'layer')!;
+                console.log('[AITryOn] silent layer reinforcement start');
+
+                const garmentImage = await getGarmentImageUrl(item);
+
+                const { data, error } = await supabase.functions.invoke('mannequin-tryon', {
+                    body: {
+                        action: 'submit',
+                        mannequin_image: currentMannequin,
+                        garment_image: garmentImage,
+                        garment: {
+                            type: slotDef.category,
+                            label: 'layer',
+                            name: item.name,
+                            description: item.description ?? '',
+                        },
+                        already_wearing: [...alreadyWearing],
+                        step: total,
+                        total,
+                    },
+                });
+
+                if (error || !data?.success) {
+                    throw new Error(error?.message || data?.error || 'Layer reinforcement failed.');
+                }
+
+                if (!data.resultUrl) throw new Error('No result image returned from Flux Kontext.');
+                currentMannequin = data.resultUrl as string;
+                console.log('[AITryOn] silent layer reinforcement OK');
+            }
+
+            setAiResultImage(currentMannequin);
+            setLookSaved(false);
+            const usage = await consume('tryOns');
+            if (!usage.allowed) console.warn('[TryOn] quota consume denied after success');
         } catch (error: any) {
             const message = error?.message || 'Unexpected error during try-on.';
-            console.warn('AI try-on error:', message);
+            console.warn('[TryOn] error:', message);
             setAiError(message);
         } finally {
             setAiLoading(false);
+            setAiProgress(null);
         }
-    }, [getGarmentImageUrl, requireFeature, selectedItem, tryOnsRemaining]);
+    }, [filledCount, getGarmentImageUrl, requireFeature, slots, tryOnsRemaining]);
 
     const handleSaveLook = useCallback(() => {
-        if (!aiResultImage || !selectedItem || lookSaved) {
+        if (!aiResultImage || !hasAnySelection || lookSaved) {
             return;
         }
 
+        const primary = (slots.top ?? slots.layer ?? slots.pants ?? slots.shoes)!;
+        const name = filledSlots.map((k) => slots[k]!.name).join(' + ');
+
         saveLook({
             resultUrl: aiResultImage,
-            garmentName: selectedItem.name ?? 'Look',
-            garmentBrand: selectedItem.brand,
-            garmentType: selectedItem.garmentType ?? 'upper_body',
-            garmentImageUrl: typeof selectedItem.imageUrl === 'string' ? selectedItem.imageUrl : undefined,
+            garmentName: name || primary.name || 'Look',
+            garmentBrand: primary.brand,
+            garmentType: primary.garmentType ?? 'upper_body',
+            garmentImageUrl: typeof primary.imageUrl === 'string' ? primary.imageUrl : undefined,
         });
 
         setLookSaved(true);
-        Alert.alert('Saved!', 'Your look has been saved to your Profile.');
-    }, [aiResultImage, lookSaved, saveLook, selectedItem]);
+        Alert.alert(t('tryOn.saved'), t('tryOn.savedMessage'));
+    }, [aiResultImage, filledSlots, hasAnySelection, lookSaved, saveLook, slots]);
 
-    const selectedImageSource = selectedItem
-        ? typeof selectedItem.imageUrl === 'string'
-            ? { uri: selectedItem.imageUrl }
-            : selectedItem.imageUrl
-        : null;
-    const canReset = Boolean(selectedItem || aiResultImage || aiError);
+    const activeSlotItem = slots[activeSlot];
+    const canReset = Boolean(hasAnySelection || aiResultImage || aiError);
 
     return (
         <LinearGradient colors={['#F6FAFF', '#EEF4FF', '#FFFFFF']} style={styles.backgroundGradient}>
@@ -285,15 +433,26 @@ const AITryOnScreen = () => {
                             </TouchableOpacity>
                         )}
 
-                        <TouchableOpacity
-                            style={[styles.headerPill, !canReset && styles.headerPillDisabled]}
-                            onPress={handleClear}
-                            disabled={!canReset}
-                            activeOpacity={0.85}
-                        >
-                            <Ionicons name="refresh-outline" size={16} color="#183A67" />
-                            <Text style={styles.headerPillText}>Reset</Text>
-                        </TouchableOpacity>
+                        <View style={styles.headerRightActions}>
+                            <TouchableOpacity
+                                style={styles.headerPill}
+                                onPress={() => (navigation as any).navigate('OutfitInspo')}
+                                activeOpacity={0.85}
+                            >
+                                <Ionicons name="eye-outline" size={16} color="#183A67" />
+                                <Text style={styles.headerPillText}>Inspo</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.headerPill, !canReset && styles.headerPillDisabled]}
+                                onPress={handleClear}
+                                disabled={!canReset}
+                                activeOpacity={0.85}
+                            >
+                                <Ionicons name="refresh-outline" size={16} color="#183A67" />
+                                <Text style={styles.headerPillText}>Reset</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     <Text style={styles.pageTitle}>{t('aiTryOn.title')}</Text>
@@ -301,16 +460,16 @@ const AITryOnScreen = () => {
                     <View style={styles.heroCard}>
                         <View style={styles.heroHeaderRow}>
                             <View style={styles.heroCopy}>
-                                <Text style={styles.heroEyebrow}>VIRTUAL FIT STUDIO</Text>
+                                <Text style={styles.heroEyebrow}>{t('aiTryOn.virtualFitStudio')}</Text>
                                 <Text style={styles.heroTitle}>
-                                    {aiResultImage ? 'Your preview is ready' : 'Preview on mannequin'}
+                                    {aiResultImage ? t('aiTryOn.previewReady') : t('aiTryOn.previewOnMannequin')}
                                 </Text>
                             </View>
 
                             <View style={styles.planPill}>
                                 <Ionicons name="sparkles" size={14} color="#183A67" />
                                 <Text style={styles.planPillText}>
-                                    {hasActiveSubscription ? 'Pro Plan' : 'Free Plan'}
+                                    {hasActiveSubscription ? t('aiTryOn.proPlan') : t('aiTryOn.freePlan')}
                                 </Text>
                             </View>
                         </View>
@@ -325,7 +484,7 @@ const AITryOnScreen = () => {
                             {lookSaved && aiResultImage && !aiLoading && (
                                 <View style={styles.savedBadge}>
                                     <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" />
-                                    <Text style={styles.savedBadgeText}>Saved to looks</Text>
+                                    <Text style={styles.savedBadgeText}>{t('aiTryOn.savedToLooks')}</Text>
                                 </View>
                             )}
 
@@ -333,9 +492,9 @@ const AITryOnScreen = () => {
                                 <View style={styles.previewLoadingOverlay}>
                                     <View style={styles.loadingCard}>
                                         <ActivityIndicator size="large" color="#183A67" />
-                                        <Text style={styles.loadingTitle}>Generating preview</Text>
+                                        <Text style={styles.loadingTitle}>{t('aiTryOn.generatingPreview')}</Text>
                                         <Text style={styles.loadingText}>
-                                            Building your AI try-on with the selected garment. This usually takes 15-30 seconds.
+                                            {t('aiTryOn.generatingPreviewBody')}
                                         </Text>
                                     </View>
                                 </View>
@@ -345,7 +504,9 @@ const AITryOnScreen = () => {
                                 <View style={styles.previewCaptionWrap}>
                                     <View style={[styles.previewCaptionPill, aiResultImage && styles.previewCaptionPillDark]}>
                                         <Text style={[styles.previewCaptionText, aiResultImage && styles.previewCaptionTextDark]}>
-                                            {selectedItem ? selectedItem.name : 'Select a garment below to get started'}
+                                            {hasAnySelection
+                                                ? t('aiTryOn.piecesSelected', { count: filledCount })
+                                                : t('aiTryOn.pickPiecesBelow')}
                                         </Text>
                                     </View>
                                 </View>
@@ -372,13 +533,13 @@ const AITryOnScreen = () => {
                                                 size={18}
                                                 color="#FFFFFF"
                                             />
-                                            <Text style={styles.primaryActionText}>{lookSaved ? 'Saved' : 'Save Look'}</Text>
+                                            <Text style={styles.primaryActionText}>{lookSaved ? t('aiTryOn.saved') : t('aiTryOn.saveLook')}</Text>
                                         </LinearGradient>
                                     </TouchableOpacity>
 
                                     <TouchableOpacity style={styles.secondaryActionButton} onPress={handleClear} activeOpacity={0.88}>
                                         <Ionicons name="refresh-outline" size={18} color="#183A67" />
-                                        <Text style={styles.secondaryActionText}>Start Over</Text>
+                                        <Text style={styles.secondaryActionText}>{t('aiTryOn.startOver')}</Text>
                                     </TouchableOpacity>
                                 </>
                             ) : (
@@ -386,10 +547,10 @@ const AITryOnScreen = () => {
                                     <TouchableOpacity
                                         style={[
                                             styles.primaryActionButton,
-                                            (!selectedItem || aiLoading || !isModelReady) && styles.buttonDisabled,
+                                            (!hasAnySelection || aiLoading || !isModelReady) && styles.buttonDisabled,
                                         ]}
                                         onPress={handleAITryOn}
-                                        disabled={!selectedItem || aiLoading || !isModelReady}
+                                        disabled={!hasAnySelection || aiLoading || !isModelReady}
                                         activeOpacity={0.88}
                                     >
                                         <LinearGradient
@@ -400,19 +561,23 @@ const AITryOnScreen = () => {
                                         >
                                             <Ionicons name="sparkles" size={18} color="#FFFFFF" />
                                             <Text style={styles.primaryActionText}>
-                                                {!isModelReady ? 'Preparing Model' : selectedItem ? 'Try On With AI' : 'Choose a Garment'}
+                                                {!isModelReady
+                                                    ? t('aiTryOn.preparingModel')
+                                                    : hasAnySelection
+                                                        ? `${t('aiTryOn.tryOnWithAI')} (${filledCount})`
+                                                        : t('aiTryOn.chooseGarments')}
                                             </Text>
                                         </LinearGradient>
                                     </TouchableOpacity>
 
                                     <TouchableOpacity
-                                        style={[styles.secondaryActionButton, !selectedItem && styles.secondaryActionDisabled]}
+                                        style={[styles.secondaryActionButton, !hasAnySelection && styles.secondaryActionDisabled]}
                                         onPress={handleClear}
-                                        disabled={!selectedItem}
+                                        disabled={!hasAnySelection}
                                         activeOpacity={0.88}
                                     >
                                         <Ionicons name="close-outline" size={18} color="#183A67" />
-                                        <Text style={styles.secondaryActionText}>Clear</Text>
+                                        <Text style={styles.secondaryActionText}>{t('aiTryOn.clear')}</Text>
                                     </TouchableOpacity>
                                 </>
                             )}
@@ -469,66 +634,133 @@ const AITryOnScreen = () => {
                     <View style={styles.catalogCard}>
                         <View style={styles.catalogHeaderRow}>
                             <View>
-                                <Text style={styles.catalogEyebrow}>STYLE</Text>
-                                <Text style={styles.catalogTitle}>Choose Garment</Text>
+                                <Text style={styles.catalogEyebrow}>{t('aiTryOn.style')}</Text>
+                                <Text style={styles.catalogTitle}>{t('aiTryOn.chooseLabel', { label: activeSlotDef.label })}</Text>
                             </View>
 
                             <View style={styles.catalogCountPill}>
-                                <Text style={styles.catalogCountText}>{shopItems.length} items</Text>
+                                <Text style={styles.catalogCountText}>{t('aiTryOn.itemsCount', { count: shopItems.length })}</Text>
                             </View>
                         </View>
 
-                        {selectedItem && selectedImageSource && (
-                            <View style={styles.selectedGarmentCard}>
-                                <View style={styles.selectedGarmentImageWrap}>
-                                    <Image source={selectedImageSource} style={styles.selectedGarmentImage} resizeMode="contain" />
-                                </View>
-
-                                <View style={styles.selectedGarmentCopy}>
-                                    <Text style={styles.selectedGarmentBrand}>{selectedItem.brand}</Text>
-                                    <Text style={styles.selectedGarmentName} numberOfLines={1}>
-                                        {selectedItem.name}
-                                    </Text>
-                                    <Text style={styles.selectedGarmentMeta}>
-                                        {selectedCategoryLabel} • {formatPrice(selectedItem)}
-                                    </Text>
-                                </View>
-
-                                <View style={styles.selectedBadge}>
-                                    <Text style={styles.selectedBadgeText}>Selected</Text>
-                                </View>
-                            </View>
-                        )}
-
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-                            {SHOP_CATEGORIES.filter((cat) => TRY_ON_CATEGORY_KEYS.has(cat.key)).map((cat) => (
-                                <TouchableOpacity
-                                    key={cat.key}
-                                    style={[styles.filterChip, mannequinShopFilter === cat.key && styles.filterChipActive]}
-                                    onPress={() => setMannequinShopFilter(cat.key)}
-                                    activeOpacity={0.85}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.filterChipText,
-                                            mannequinShopFilter === cat.key && styles.filterChipTextActive,
-                                        ]}
+                            {SLOTS.map((slot) => {
+                                const isActive = activeSlot === slot.key;
+                                const filled = slots[slot.key];
+                                return (
+                                    <TouchableOpacity
+                                        key={slot.key}
+                                        style={[styles.filterChip, isActive && styles.filterChipActive]}
+                                        onPress={() => setActiveSlot(slot.key)}
+                                        activeOpacity={0.85}
                                     >
-                                        {cat.label}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                            <Ionicons
+                                                name={slot.icon}
+                                                size={14}
+                                                color={isActive ? '#FFFFFF' : '#5F6D84'}
+                                            />
+                                            <Text
+                                                style={[
+                                                    styles.filterChipText,
+                                                    isActive && styles.filterChipTextActive,
+                                                ]}
+                                            >
+                                                {slot.label}
+                                            </Text>
+                                            {filled && (
+                                                <View
+                                                    style={{
+                                                        width: 8,
+                                                        height: 8,
+                                                        borderRadius: 4,
+                                                        backgroundColor: isActive ? '#FFFFFF' : '#157347',
+                                                    }}
+                                                />
+                                            )}
+                                        </View>
+                                    </TouchableOpacity>
+                                );
+                            })}
                         </ScrollView>
+
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+                            {SLOTS.map((slot) => {
+                                const item = slots[slot.key];
+                                const isActive = activeSlot === slot.key;
+                                const imgSrc = item
+                                    ? typeof item.imageUrl === 'string'
+                                        ? { uri: item.imageUrl }
+                                        : item.imageUrl
+                                    : null;
+                                return (
+                                    <TouchableOpacity
+                                        key={slot.key}
+                                        onPress={() => setActiveSlot(slot.key)}
+                                        activeOpacity={0.85}
+                                        style={{
+                                            flexBasis: '48%',
+                                            flexGrow: 1,
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            gap: 10,
+                                            padding: 10,
+                                            borderRadius: 14,
+                                            backgroundColor: '#FFFFFF',
+                                            borderWidth: 1.5,
+                                            borderColor: isActive ? '#173A65' : 'rgba(17,46,82,0.08)',
+                                        }}
+                                    >
+                                        <View
+                                            style={{
+                                                width: 44,
+                                                height: 44,
+                                                borderRadius: 10,
+                                                backgroundColor: '#F2F5FB',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                overflow: 'hidden',
+                                            }}
+                                        >
+                                            {imgSrc ? (
+                                                <Image source={imgSrc} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+                                            ) : (
+                                                <Ionicons name={slot.icon} size={20} color="#7D889A" />
+                                            )}
+                                        </View>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#7D889A', letterSpacing: 0.4 }}>
+                                                {slot.label.toUpperCase()}
+                                            </Text>
+                                            <Text
+                                                style={{ fontSize: 13, fontWeight: '600', color: '#183A67' }}
+                                                numberOfLines={1}
+                                            >
+                                                {item ? item.name : 'Tap to choose'}
+                                            </Text>
+                                        </View>
+                                        {item && (
+                                            <TouchableOpacity
+                                                onPress={() => handleClearSlot(slot.key)}
+                                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                            >
+                                                <Ionicons name="close-circle" size={18} color="#C14444" />
+                                            </TouchableOpacity>
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
 
                         {(shopCatalogError || showingFallbackCatalog) && (
                             <View style={styles.catalogStatusBanner}>
                                 <Text style={styles.catalogStatusText}>
                                     {showingFallbackCatalog
-                                        ? 'Live Zara menswear is empty right now. Showing backup menswear.'
-                                        : 'Live catalog refresh failed. Showing the latest synced menswear.'}
+                                        ? t('aiTryOn.liveCatalogEmpty')
+                                        : t('aiTryOn.liveCatalogFailed')}
                                 </Text>
                                 <TouchableOpacity onPress={refreshShopCatalog} activeOpacity={0.85}>
-                                    <Text style={styles.catalogStatusAction}>Retry</Text>
+                                    <Text style={styles.catalogStatusAction}>{t('aiTryOn.retry')}</Text>
                                 </TouchableOpacity>
                             </View>
                         )}
@@ -537,22 +769,22 @@ const AITryOnScreen = () => {
                             {isInitialCatalogLoad ? (
                                 <View style={styles.loadingCatalogCard}>
                                     <ActivityIndicator size="large" color="#183A67" />
-                                    <Text style={styles.loadingCatalogTitle}>Loading menswear catalog</Text>
+                                    <Text style={styles.loadingCatalogTitle}>{t('aiTryOn.loadingCatalog')}</Text>
                                     <Text style={styles.loadingCatalogText}>
-                                        Pulling a larger set of live men&apos;s items for try-on previews.
+                                        {t('aiTryOn.loadingCatalogBody')}
                                     </Text>
                                 </View>
                             ) : shopItems.length === 0 ? (
                                 <View style={styles.emptyStateCard}>
                                     <Ionicons name="shirt-outline" size={28} color="#7D889A" />
-                                    <Text style={styles.emptyStateTitle}>No items in this category yet</Text>
+                                    <Text style={styles.emptyStateTitle}>{t('aiTryOn.noItemsCategory')}</Text>
                                     <Text style={styles.emptyStateText}>
-                                        Switch filters or add more catalog pieces for try-on previews.
+                                        {t('aiTryOn.noItemsCategoryBody')}
                                     </Text>
                                 </View>
                             ) : (
                                 shopItems.map((item) => {
-                                    const isSelected = selectedItem?.id === item.id;
+                                    const isSelected = activeSlotItem?.id === item.id;
 
                                     return (
                                         <TouchableOpacity
@@ -586,7 +818,7 @@ const AITryOnScreen = () => {
                                                     <Text style={styles.itemPrice}>{formatPrice(item)}</Text>
                                                     <View style={styles.itemTypePill}>
                                                         <Text style={styles.itemTypeText}>
-                                                            {GARMENT_LABELS[item.garmentType] ?? 'Item'}
+                                                            {GARMENT_LABELS[item.garmentType] ?? t('aiTryOn.item')}
                                                         </Text>
                                                     </View>
                                                 </View>
@@ -607,7 +839,7 @@ const AITryOnScreen = () => {
                                 {shopCatalogLoadingMore ? (
                                     <ActivityIndicator size="small" color="#183A67" />
                                 ) : (
-                                    <Text style={styles.loadMoreButtonText}>Load more menswear</Text>
+                                    <Text style={styles.loadMoreButtonText}>{t('aiTryOn.loadMoreMenswear')}</Text>
                                 )}
                             </TouchableOpacity>
                         )}

@@ -36,6 +36,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 14,
     },
+    headerRightActions: {
+        flexDirection: 'row',
+        gap: 8,
+    },
     headerPill: {
         flexDirection: 'row',
         alignItems: 'center',

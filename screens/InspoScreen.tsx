@@ -3,7 +3,7 @@
  * Minimalist Liquid Glass design with Guide + Shop tabs
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
     View,
     Text,
@@ -24,6 +24,7 @@ import { useAppNavigation } from '../hooks/useAppNavigation';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '../lib/supabase';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
@@ -55,13 +56,13 @@ const PRODUCT_CARD_WIDTH = (SCREEN_WIDTH - spacing.screenPadding * 2 - spacing.s
 
 // ── Sub-Components ──────────────────────────────────────
 
-const FeaturedCapsuleCard = ({ item, index }: { item: FeaturedCapsule; index: number }) => (
+const FeaturedCapsuleCard = ({ item, index, t }: { item: FeaturedCapsule; index: number; t: (key: string) => string }) => (
     <Animated.View entering={FadeInDown.delay(100 + index * 80).duration(400)}>
         <TouchableOpacity
             style={styles.capsuleCard}
             activeOpacity={0.9}
             onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
-            accessibilityLabel={`${item.title} capsule`}
+            accessibilityLabel={`${item.title} ${t('inspo.capsule')}`}
             accessibilityRole="button"
         >
             <Image
@@ -84,11 +85,13 @@ const ProductCard = ({
     isSaved,
     onSave,
     index,
+    t,
 }: {
     item: ShopCatalogItem;
     isSaved: boolean;
     onSave: () => void;
     index: number;
+    t: (key: string) => string;
 }) => (
     // Cap the stagger so later pages (index 100+) don't wait many seconds
     // before their entering animation starts — otherwise pressing "Load more"
@@ -107,7 +110,7 @@ const ProductCard = ({
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                         onSave();
                     }}
-                    accessibilityLabel={isSaved ? 'Remove from saved' : 'Save item'}
+                    accessibilityLabel={isSaved ? t('inspo.removeFromSaved') : t('inspo.saveItem')}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
                     <View style={styles.saveButtonCircle}>
@@ -185,12 +188,73 @@ const InspoScreen = () => {
         hasMore: shopCatalogHasMore,
         loadMore: loadMoreShopCatalog,
         refresh: refreshShopCatalog,
-    } = useShopCatalog();
+    } = useShopCatalog({ source: 'all' });
 
     const {
         items: featuredCapsules,
         loading: featuredCapsulesLoading,
+        refresh: refreshFeaturedCapsules,
     } = useFeaturedCapsules();
+
+    const { items: guideOutfits } = useShopCatalog({
+        category: 'outfits',
+        source: 'all',
+    });
+
+    const [guideHero, setGuideHero] = useState<any>(null);
+
+    useEffect(() => {
+        const fetchHero = async () => {
+            try {
+                const { data } = await supabase.from('guide_page').select('*').eq('is_active', true).single();
+                if (data) setGuideHero(data);
+            } catch (err) {
+                console.warn('Failed to fetch guide hero', err);
+            }
+        };
+        fetchHero();
+    }, []);
+
+    const displayGuides = useMemo(() => {
+        const results: any[] = [];
+
+        // 1. Add static/dynamic Hero from guide_page
+        if (guideHero) {
+            results.push({
+                id: 'guide_hero',
+                title: guideHero.title,
+                subtitle: guideHero.subtitle,
+                image: guideHero.hero_image_url
+            });
+        }
+
+        // 2. Add Featured Capsules as big cards in the guide tab
+        if (featuredCapsules && featuredCapsules.length > 0) {
+            featuredCapsules.forEach(c => {
+                results.push({
+                    id: c.id,
+                    title: c.title,
+                    subtitle: c.subtitle || '',
+                    image: c.imageUrl
+                });
+            });
+        }
+
+        // 3. Add outfits if we have them
+        if (guideOutfits && guideOutfits.length > 0) {
+            guideOutfits.forEach((item) => {
+                results.push({
+                    id: item.id,
+                    title: item.name,
+                    subtitle: item.description || item.brand,
+                    image: item.imageUrl,
+                });
+            });
+        }
+
+        if (results.length > 0) return results;
+        return GUIDE_ITEMS;
+    }, [guideHero, featuredCapsules, guideOutfits]);
 
     const [savedInspo, setSavedInspo] = useState<ShopCatalogItem[]>([]);
     const [segment, setSegment] = useState<SegmentType>('guide');
@@ -210,9 +274,11 @@ const InspoScreen = () => {
                     if (raw && mounted) setSavedInspo(JSON.parse(raw));
                 } catch (_) { }
             };
+            refreshFeaturedCapsules();
+            refreshShopCatalog();
             load();
             return () => { mounted = false; };
-        }, [])
+        }, [refreshFeaturedCapsules, refreshShopCatalog])
     );
 
     const saveInspo = useCallback(async (item: ShopCatalogItem) => {
@@ -274,12 +340,12 @@ const InspoScreen = () => {
                                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                     setSegment(seg);
                                 }}
-                                accessibilityLabel={seg === 'guide' ? 'Guide' : 'Shop'}
+                                accessibilityLabel={seg === 'guide' ? t('inspo.guide') : t('inspo.shop')}
                                 accessibilityRole="tab"
                                 accessibilityState={{ selected: segment === seg }}
                             >
                                 <Text style={[styles.segmentText, segment === seg && styles.segmentTextActive]}>
-                                    {seg === 'guide' ? 'Guide' : 'Shop'}
+                                    {seg === 'guide' ? t('inspo.guide') : t('inspo.shop')}
                                 </Text>
                             </TouchableOpacity>
                         ))}
@@ -294,7 +360,7 @@ const InspoScreen = () => {
                     {segment === 'guide' && (
                         <>
                             <View style={styles.section}>
-                                {GUIDE_ITEMS.map((item, index) => (
+                                {displayGuides.map((item, index) => (
                                     <Animated.View key={item.id} entering={FadeInDown.delay(100 + index * 120).duration(500)}>
                                         <View style={styles.guideCardContainer}>
                                             <View style={styles.guideCard}>
@@ -350,13 +416,13 @@ const InspoScreen = () => {
                                 <View style={styles.searchContainer}>
                                     <Ionicons name="search" size={20} color={colors.text.tertiary} style={styles.searchIcon} />
                                     <TextInput
-                                        placeholder="Brown knit polo, tailored trousers, loafers..."
+                                        placeholder={t('inspo.searchPlaceholder')}
                                         placeholderTextColor={colors.text.tertiary}
                                         value={searchQuery}
                                         onChangeText={setSearchQuery}
                                         style={styles.searchInput}
                                         returnKeyType="search"
-                                        accessibilityLabel="Search for clothing items"
+                                        accessibilityLabel={t('inspo.searchForClothingItems')}
                                         maxLength={200}
                                     />
                                 </View>
@@ -367,8 +433,8 @@ const InspoScreen = () => {
                                     <View style={styles.catalogStatusBanner}>
                                         <Text style={styles.catalogStatusText}>
                                             {showingFallbackCatalog
-                                                ? 'Live Zara menswear is empty right now. Showing backup men products for now.'
-                                                : 'Live catalog refresh failed. Showing the latest synced results.'}
+                                                ? t('inspo.catalogEmpty')
+                                                : t('inspo.catalogRefreshFailed')}
                                         </Text>
                                         <TouchableOpacity onPress={refreshShopCatalog} accessibilityRole="button">
                                             <Text style={styles.catalogStatusAction}>{t('common.retry')}</Text>
@@ -385,7 +451,7 @@ const InspoScreen = () => {
                                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                         navigation.navigate('AIOutfit', { source: 'shop' });
                                     }}
-                                    accessibilityLabel="Personal Stylist"
+                                    accessibilityLabel={t('inspo.personalStylist')}
                                     accessibilityRole="button"
                                 >
                                     <LinearGradient
@@ -416,7 +482,7 @@ const InspoScreen = () => {
                                             contentContainerStyle={styles.capsulesScroll}
                                         >
                                             {featuredCapsules.map((item, index) => (
-                                                <FeaturedCapsuleCard key={item.id} item={item} index={index} />
+                                                <FeaturedCapsuleCard key={item.id} item={item} index={index} t={t} />
                                             ))}
                                         </ScrollView>
                                     )}
@@ -426,7 +492,7 @@ const InspoScreen = () => {
                             {/* Product Grid */}
                             <View style={styles.section}>
                                 <Text style={styles.sectionTitle} accessibilityRole="header">
-                                    Shop
+                                    {t('inspo.shop')}
                                 </Text>
                                 {isInitialShopLoad ? (
                                     <View style={styles.loadingRow}>
@@ -461,6 +527,7 @@ const InspoScreen = () => {
                                                         isSaved={savedInspo.some((s) => s.id === item.id)}
                                                         onSave={() => saveInspo(item)}
                                                         index={index}
+                                                        t={t}
                                                     />
                                                 </View>
                                             ))}
@@ -472,7 +539,7 @@ const InspoScreen = () => {
                                                 onPress={loadMoreShopCatalog}
                                                 disabled={shopCatalogLoadingMore}
                                                 accessibilityRole="button"
-                                                accessibilityLabel="Load more shop products"
+                                                accessibilityLabel={t('inspo.loadMoreShopProducts')}
                                             >
                                                 {shopCatalogLoadingMore ? (
                                                     <ActivityIndicator size="small" color={colors.text.primary} />

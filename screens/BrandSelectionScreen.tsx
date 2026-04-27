@@ -195,7 +195,7 @@ const BrandSelectionScreen = () => {
                 >
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Search or add brands..."
+                        placeholder={t('brandSelection.searchOrAddBrands')}
                         placeholderTextColor="#9CA3AF"
                         value={searchQuery}
                         onChangeText={setSearchQuery}

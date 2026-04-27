@@ -4,6 +4,7 @@ import * as Haptics from 'expo-haptics';
 import { Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { createLogger } from '../utils/logger';
+import { useTranslation } from 'react-i18next';
 
 const logger = createLogger('useWardrobeItems');
 
@@ -129,14 +130,16 @@ export const useWardrobeItems = (options: UseWardrobeItemsOptions = {}): UseWard
 
     // Delete an item from wardrobe
     const deleteItem = useCallback(async (item: WardrobeItem) => {
+        const { t } = useTranslation();
         return new Promise<void>((resolve) => {
+            const label = item.type || item.itemType || t('confirmations.thisItem');
             Alert.alert(
-                'Delete Item',
-                `Remove ${item.type || item.itemType || 'this item'} from your wardrobe?`,
+                t('confirmations.removeItem'),
+                t('confirmations.removeItemConfirm', { label }),
                 [
-                    { text: 'Cancel', style: 'cancel', onPress: () => resolve() },
+                    { text: t('common.cancel'), style: 'cancel', onPress: () => resolve() },
                     {
-                        text: 'Delete',
+                        text: t('common.delete'),
                         style: 'destructive',
                         onPress: async () => {
                             try {
@@ -154,7 +157,7 @@ export const useWardrobeItems = (options: UseWardrobeItemsOptions = {}): UseWard
                                 resolve();
                             } catch (error) {
                                 console.error('Error deleting item:', error);
-                                Alert.alert('Error', 'Failed to delete item');
+                                Alert.alert(t('common.error'), t('wardrobeItems.failedDeleteItem'));
                                 resolve();
                             }
                         },
@@ -166,6 +169,7 @@ export const useWardrobeItems = (options: UseWardrobeItemsOptions = {}): UseWard
 
     // Update an item in wardrobe
     const updateItem = useCallback(async (item: WardrobeItem, updates: Partial<WardrobeItem>) => {
+        const { t } = useTranslation();
         try {
             const updatedItems = items.map(i =>
                 i.id === item.id ? { ...i, ...updates } : i
@@ -175,7 +179,7 @@ export const useWardrobeItems = (options: UseWardrobeItemsOptions = {}): UseWard
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         } catch (error) {
             console.error('Error updating item:', error);
-            Alert.alert('Error', 'Failed to save changes');
+            Alert.alert(t('common.error'), t('wardrobeItems.failedSaveChanges'));
         }
     }, [items]);
 

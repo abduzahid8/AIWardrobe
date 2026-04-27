@@ -1,5 +1,6 @@
 import {
   Alert,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -10,10 +11,11 @@ import {
   Keyboard,
   ScrollView,
 } from "react-native";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
+import * as AppleAuthentication from "expo-apple-authentication";
 import useAuthStore from "../store/auth";
 import { useTranslation } from "react-i18next";
 
@@ -23,11 +25,32 @@ const SignInScreen = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuthStore();
+  const { login, signInWithApple } = useAuthStore();
+  const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS === 'ios') {
+      AppleAuthentication.isAvailableAsync().then(setAppleAuthAvailable).catch(() => {});
+    }
+  }, []);
+
+  const handleAppleSignIn = async () => {
+    if (isLoading) return;
+    setIsLoading(true);
+    try {
+      await signInWithApple();
+    } catch (error: any) {
+      if (error?.code !== 'ERR_REQUEST_CANCELED') {
+        Alert.alert(t('signIn.loginFailed'), error.message || t('signIn.appleSignInFailed'));
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSignIn = async () => {
     if (!email || !password) {
-      Alert.alert("Error", "Email and password are required");
+      Alert.alert(t('common.error'), t('signIn.emailPasswordRequired'));
       return;
     }
     if (isLoading) return;
@@ -35,13 +58,13 @@ const SignInScreen = () => {
     try {
       await login(email, password);
     } catch (error: any) {
-      const errorMessage = error.message || "Login failed";
+      const errorMessage = error.message || t('signIn.loginFailed');
       if (errorMessage.includes("Invalid login credentials") || errorMessage.includes("invalid claim")) {
-        Alert.alert("Login Failed", "Invalid email or password.");
+        Alert.alert(t('signIn.loginFailed'), t('signIn.invalidEmailPassword'));
       } else if (errorMessage.includes("Email not confirmed")) {
-        Alert.alert("Email Not Verified", "Please verify your email address before logging in.");
+        Alert.alert(t('signIn.emailNotVerified'), t('signIn.verifyEmailBeforeLogin'));
       } else {
-        Alert.alert("Login Failed", errorMessage);
+        Alert.alert(t('signIn.loginFailed'), errorMessage);
       }
     } finally {
       setIsLoading(false);
@@ -66,6 +89,24 @@ const SignInScreen = () => {
             <View style={styles.formContainer}>
               <Text style={styles.title}>{t('auth.signIn')}</Text>
 
+              {/* Sign in with Apple — shown first per Apple HIG prominence requirement */}
+              {appleAuthAvailable && (
+                <>
+                  <AppleAuthentication.AppleAuthenticationButton
+                    buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                    buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE_OUTLINE}
+                    cornerRadius={16}
+                    style={styles.appleButton}
+                    onPress={handleAppleSignIn}
+                  />
+                  <View style={styles.divider}>
+                    <View style={styles.dividerLine} />
+                    <Text style={styles.dividerText}>{t('signIn.or')}</Text>
+                    <View style={styles.dividerLine} />
+                  </View>
+                </>
+              )}
+
               <View style={styles.inputContainer}>
                 <TextInput
                   style={styles.input}
@@ -75,7 +116,7 @@ const SignInScreen = () => {
                   placeholderTextColor="rgba(255,255,255,0.4)"
                   keyboardType="email-address"
                   autoCapitalize="none"
-                  accessibilityLabel="Email address"
+                  accessibilityLabel={t('auth.email')}
                   maxLength={255}
                 />
               </View>
@@ -88,7 +129,7 @@ const SignInScreen = () => {
                   placeholder={t('auth.password')}
                   placeholderTextColor="rgba(255,255,255,0.4)"
                   secureTextEntry
-                  accessibilityLabel="Password"
+                  accessibilityLabel={t('auth.password')}
                 />
               </View>
 
@@ -99,10 +140,10 @@ const SignInScreen = () => {
                   (navigation.navigate as any)("ForgotPassword");
                 }}
                 style={styles.forgotButton}
-                accessibilityLabel="Forgot password"
+                accessibilityLabel={t('auth.forgotPassword')}
                 accessibilityRole="button"
               >
-                <Text style={styles.forgotText}>Forgot Password?</Text>
+                <Text style={styles.forgotText}>{t('auth.forgotPassword')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -113,11 +154,11 @@ const SignInScreen = () => {
                 style={[styles.primaryButton, isLoading && styles.primaryButtonDisabled]}
                 disabled={isLoading}
                 activeOpacity={0.8}
-                accessibilityLabel={isLoading ? "Signing in" : "Sign in"}
+                accessibilityLabel={isLoading ? t('signIn.signingIn') : t('auth.signIn')}
                 accessibilityRole="button"
               >
                 <Text style={styles.primaryButtonText}>
-                  {isLoading ? "Signing In..." : t('auth.signIn')}
+                  {isLoading ? t('signIn.signingIn') : t('auth.signIn')}
                 </Text>
               </TouchableOpacity>
 
@@ -130,7 +171,7 @@ const SignInScreen = () => {
               >
                 <Text style={styles.linkText}>
                   <Text style={styles.linkTextMuted}>{t('auth.noAccount')} </Text>
-                  {t('auth.signUp')}
+                  {t('auth.signUp.signUp')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -218,5 +259,25 @@ const styles = StyleSheet.create({
   },
   linkTextMuted: {
     color: "rgba(255,255,255,0.6)",
+  },
+  appleButton: {
+    width: "100%",
+    height: 50,
+    marginBottom: 8,
+  },
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.15)",
+  },
+  dividerText: {
+    color: "rgba(255,255,255,0.4)",
+    fontSize: 13,
+    marginHorizontal: 12,
   },
 });

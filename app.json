@@ -7,7 +7,7 @@
       "assets/**"
     ],
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/AIWardrobe-mainlogo-square-1024.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "scheme": "com.aiwardrobe",

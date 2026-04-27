@@ -8,6 +8,7 @@
 import React, { useState, useCallback } from 'react';
 import { TouchableOpacity, Text, StyleSheet, View, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
 import Animated, {
     useSharedValue,
@@ -39,6 +40,7 @@ const WearLogButton: React.FC<WearLogButtonProps> = ({
     variant = 'full',
     onLogged,
 }) => {
+    const { t } = useTranslation();
     const [isLogged, setIsLogged] = useState(false);
     const [isLogging, setIsLogging] = useState(false);
     const scale = useSharedValue(1);
@@ -111,8 +113,8 @@ const WearLogButton: React.FC<WearLogButtonProps> = ({
                         />
                         <Text style={[styles.buttonText, isLogged && styles.loggedText]}>
                             {isLogged
-                                ? `Logged! 🔥 ${streak + 1} day streak`
-                                : 'Wearing this today'}
+                                ? t('wearLog.logged', { streak: streak + 1 })
+                                : t('wearLog.wearingToday')}
                         </Text>
                     </>
                 )}

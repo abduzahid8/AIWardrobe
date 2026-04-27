@@ -85,7 +85,7 @@ const AIStylistScreen = () => {
                                 color={activeTab === 'chat' ? '#FFF' : colors.text.secondary}
                             />
                             <Text style={[styles.segmentText, activeTab === 'chat' && styles.segmentTextActive]}>
-                                Style Chat
+                                {t('aiStylist.styleChat')}
                             </Text>
                         </TouchableOpacity>
                         <TouchableOpacity
@@ -98,7 +98,7 @@ const AIStylistScreen = () => {
                                 color={activeTab === 'outfit' ? '#FFF' : colors.text.secondary}
                             />
                             <Text style={[styles.segmentText, activeTab === 'outfit' && styles.segmentTextActive]}>
-                                Outfit AI
+                                {t('aiStylist.outfitAI')}
                             </Text>
                         </TouchableOpacity>
                     </View>

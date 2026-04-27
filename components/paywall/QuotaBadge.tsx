@@ -14,6 +14,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
 import type { FeatureKey } from '../../store/subscriptionStore';
@@ -34,6 +35,7 @@ const QuotaBadge: React.FC<QuotaBadgeProps> = ({
     style,
     hideWhenUnlimited = true,
 }) => {
+    const { t } = useTranslation();
     const navigation = useNavigation<any>();
     const { getRemaining, getDailyLimit, tier } = useSubscriptionGate();
 
@@ -46,7 +48,7 @@ const QuotaBadge: React.FC<QuotaBadgeProps> = ({
         return (
             <View style={[styles.pill, styles.pillUnlimited, style]}>
                 <Ionicons name="infinite" size={12} color="#FFD700" />
-                <Text style={[styles.text, styles.textLight]}>Unlimited {label}</Text>
+                <Text style={[styles.text, styles.textLight]}>{t('quota.unlimited', { label })}</Text>
             </View>
         );
     }
@@ -60,7 +62,7 @@ const QuotaBadge: React.FC<QuotaBadgeProps> = ({
                 activeOpacity={0.85}
             >
                 <Ionicons name="lock-closed" size={11} color="#FFFFFF" />
-                <Text style={[styles.text, styles.textLight]}>Unlock {label}</Text>
+                <Text style={[styles.text, styles.textLight]}>{t('quota.unlock', { label })}</Text>
             </TouchableOpacity>
         );
     }
@@ -95,8 +97,8 @@ const QuotaBadge: React.FC<QuotaBadgeProps> = ({
             />
             <Text style={[styles.text, { color: textColor }]}>
                 {exhausted
-                    ? `Out of ${label} — tap to upgrade`
-                    : `${remaining} of ${limit} ${label} left today`}
+                    ? t('quota.outOfLabel', { label })
+                    : t('quota.remainingToday', { remaining, limit, label })}
             </Text>
         </TouchableOpacity>
     );

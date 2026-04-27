@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 import { type WardrobeItem, type OccasionId, type ClothingCategory, matchesCategory } from '../types';
 import type { Product } from '../../../src/services/shoppingService';
 
@@ -29,12 +30,6 @@ interface Slot {
     readonly icon: string;
     readonly hint: string;
 }
-
-const SLOTS: readonly Slot[] = [
-    { id: 'top',   label: 'Top',     icon: '👕', hint: 'Shirt, jacket, sweater…' },
-    { id: 'pants', label: 'Bottoms', icon: '👖', hint: 'Pants, jeans, shorts…' },
-    { id: 'shoes', label: 'Shoes',   icon: '👟', hint: 'Sneakers, boots, heels…' },
-] as const;
 
 interface OutfitLogFormProps {
     visible: boolean;
@@ -67,6 +62,13 @@ export const OutfitLogForm: React.FC<OutfitLogFormProps> = ({
     onSelectOccasion: _onSelectOccasion,
     onSave,
 }) => {
+    const { t } = useTranslation();
+    
+    const SLOTS: readonly Slot[] = [
+        { id: 'top',   label: t('outfitLogForm.top'),     icon: '👕', hint: t('outfitLogForm.topHint') },
+        { id: 'pants', label: t('outfitLogForm.bottoms'), icon: '👖', hint: t('outfitLogForm.bottomsHint') },
+        { id: 'shoes', label: t('outfitLogForm.shoes'),   icon: '👟', hint: t('outfitLogForm.shoesHint') },
+    ] as const;
     // Helper: Convert Product to WardrobeItem format
     const productToWardrobeItem = useCallback((product: Product): DisplayItem => ({
         id: `shop-${product.id}`,

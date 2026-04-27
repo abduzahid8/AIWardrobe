@@ -60,7 +60,7 @@ const CountdownTimer = ({
     }, [event]);
 
     const { hours, minutes, seconds, isEnding } = timeRemaining;
-    const label = event.status === 'upcoming' ? 'Starts in' : 'Ends in';
+    const label = event.status === 'upcoming' ? t('flashSales.startsIn') : t('flashSales.endsIn');
 
     if (compact) {
         return (
@@ -184,7 +184,7 @@ const HeroEventCard = ({
 
                     <View style={styles.heroFooter}>
                         <Text style={styles.heroItemCount}>
-                            {event.itemCount} exclusive pieces
+                            {event.itemCount} {t('flashSales.exclusivePieces')}
                         </Text>
                         <View style={styles.heroShopButton}>
                             <Text style={styles.heroShopButtonText}>{t('flashSales.shopNow')}</Text>
@@ -256,7 +256,7 @@ const EventCard = ({
                         {event.title}
                     </Text>
                     <Text style={styles.eventCardItems}>
-                        {event.itemCount} items
+                        {event.itemCount} {t('common.items')}
                     </Text>
                 </View>
 
@@ -381,7 +381,7 @@ const FlashSalesScreen = () => {
                         <View style={styles.sectionHeader}>
                             <Text style={styles.sectionTitle}>{t('flashSales.happeningNow')}</Text>
                             <Text style={styles.sectionSubtitle}>
-                                {activeEvents.length} active {activeEvents.length === 1 ? 'sale' : 'sales'}
+                                {activeEvents.length} active {activeEvents.length === 1 ? t('flashSales.sale') : t('flashSales.sales')}
                             </Text>
                         </View>
                         <ScrollView
@@ -408,7 +408,7 @@ const FlashSalesScreen = () => {
                         <View style={styles.sectionHeader}>
                             <Text style={styles.sectionTitle}>{t('flashSales.comingSoon')}</Text>
                             <Text style={styles.sectionSubtitle}>
-                                Don't miss out - get notified
+                                {t('flashSales.dontMissOut')}
                             </Text>
                         </View>
                         <ScrollView
@@ -440,8 +440,7 @@ const FlashSalesScreen = () => {
                         </View>
                         <Text style={styles.infoTitle}>{t('flashSales.exclusiveAccess')}</Text>
                         <Text style={styles.infoText}>
-                            Premium brands offer their excess inventory at exclusive prices.
-                            Limited time, limited stock – first come, first served.
+                            {t('flashSales.infoText')}
                         </Text>
                     </LinearGradient>
                 </View>

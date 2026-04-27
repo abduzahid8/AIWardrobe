@@ -8,6 +8,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 import useWardrobeStore from '../store/wardrobeStore';
 import WearLogButton from './WearLogButton';
@@ -22,6 +23,7 @@ interface DailySuggestionCardProps {
 }
 
 const DailySuggestionCard: React.FC<DailySuggestionCardProps> = ({ suggestion, onRefresh }) => {
+    const { t } = useTranslation();
     const items = useWardrobeStore((state) => state.items);
     const streak = useWardrobeStore((state) => state.streak);
 
@@ -33,9 +35,9 @@ const DailySuggestionCard: React.FC<DailySuggestionCardProps> = ({ suggestion, o
         return (
             <View style={styles.emptyCard}>
                 <Ionicons name="sparkles-outline" size={32} color={colors.text.tertiary} />
-                <Text style={styles.emptyTitle}>No Suggestion Yet</Text>
+                <Text style={styles.emptyTitle}>{t('dailySuggestion.noSuggestionYet')}</Text>
                 <Text style={styles.emptySubtext}>
-                    Add items to your closet to get daily outfit suggestions
+                    {t('dailySuggestion.addItemToCloset')}
                 </Text>
             </View>
         );
@@ -50,7 +52,7 @@ const DailySuggestionCard: React.FC<DailySuggestionCardProps> = ({ suggestion, o
             {/* Header */}
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.title}>Today's Outfit</Text>
+                    <Text style={styles.title}>{t('dailySuggestion.todaysOutfit')}</Text>
                     {activeSuggestion.weatherContext && (
                         <Text style={styles.weatherText}>
                             {Math.round(activeSuggestion.weatherContext.temp)}°

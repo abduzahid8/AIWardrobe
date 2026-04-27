@@ -256,10 +256,10 @@ const HomeScreen = () => {
   // Determine greeting based on time
   useEffect(() => {
     const hour = new Date().getHours();
-    if (hour < 12) setGreeting('Good morning');
-    else if (hour < 18) setGreeting('Good afternoon');
-    else setGreeting('Good evening');
-  }, []);
+    if (hour < 12) setGreeting(t('aiHub.goodMorning'));
+    else if (hour < 18) setGreeting(t('aiHub.goodAfternoon'));
+    else setGreeting(t('aiHub.goodEvening'));
+  }, [t]);
 
   // Read username from Supabase auth store (no JWT decode needed)
   const authUser = useAuthStore(s => s.user);
@@ -325,6 +325,17 @@ const HomeScreen = () => {
     error: essentialsError,
   } = useShopCatalog({ enabled: true, source: 'apify-zara-men' });
 
+  // Dedicated shoes fetch — the mixed catalog above is capped at 100 rows
+  // ordered by `sort_order`, and Zara's shoes category typically lands
+  // outside that window, so we pull shoes explicitly to guarantee the
+  // outfit shoe slot always has real product images instead of a
+  // "Not in stock" placeholder.
+  const { items: catalogShoes } = useShopCatalog({
+    enabled: true,
+    source: 'apify-zara-men',
+    category: 'shoes',
+  });
+
   const essentialsItems = useMemo(
     () => selectEssentialShoppingMix(catalogEssentials),
     [catalogEssentials]
@@ -332,11 +343,11 @@ const HomeScreen = () => {
 
   // Shop items filtered by category directly from real catalog
   // Filter strictly using name keywords to prevent mislabeled DB entries from being misplaced
-  const isBottomName = (name: string) => /\b(pant|trouser|jeans?|chino|short|skirt|slack|jogger|sweatpant|bermuda|cargo|legging)\b/i.test(name);
-  const isShortsName = (name: string) => /\b(short|bermuda|cargo\s*short)\b/i.test(name);
-  const isTopName = (name: string) => /\b(shirt|tee|t-shirt|tshirt|polo|blouse|top|tank|sleeveless)\b/i.test(name);
-  const isOuterwearName = (name: string) => /\b(jacket|coat|blazer|cardigan|sweater|hoodie|puffer|bomber|vest|outerwear|trench|peacoat|suit)\b/i.test(name);
-  const isShoeName = (name: string) => /\b(shoe|sneaker|boot|loafer|sandal|heel|trainer|derby|mule|oxford)\b/i.test(name);
+  const isBottomName = (name: string) => /\b(pants?|trousers?|jeans?|chinos?|shorts?|skirts?|slacks?|joggers?|sweatpants?|bermudas?|cargos?|leggings?)\b/i.test(name);
+  const isShortsName = (name: string) => /\b(shorts?|bermudas?|cargo\s*shorts?)\b/i.test(name);
+  const isTopName = (name: string) => /\b(shirts?|tees?|t-shirts?|tshirts?|polos?|blouses?|tops?|tanks?|sleeveless)\b/i.test(name);
+  const isOuterwearName = (name: string) => /\b(jackets?|coats?|blazers?|cardigans?|sweaters?|hoodies?|puffers?|bombers?|vests?|outerwear|trench(?:es)?|peacoats?|suits?)\b/i.test(name);
+  const isShoeName = (name: string) => /\b(shoes?|sneakers?|boots?|loafers?|sandals?|heels?|trainers?|derbys?|mules?|oxfords?)\b/i.test(name);
 
   const shopTops = useMemo(() => catalogEssentials.filter(item =>
     item.garmentType === 'upper_body' && !isBottomName(item.name) && !isShoeName(item.name)
@@ -344,9 +355,23 @@ const HomeScreen = () => {
   const shopBottoms = useMemo(() => catalogEssentials.filter(item =>
     item.garmentType === 'lower_body' && !isTopName(item.name) && !isOuterwearName(item.name) && !isShoeName(item.name) && !isShortsName(item.name)
   ), [catalogEssentials]);
-  const shopShoes = useMemo(() => catalogEssentials.filter(item =>
-    item.garmentType === 'shoes' || isShoeName(item.name)
-  ), [catalogEssentials]);
+  const shopShoes = useMemo(() => {
+    const fromMixed = catalogEssentials.filter(item =>
+      item.garmentType === 'shoes' || isShoeName(item.name)
+    );
+    const fromDedicated = catalogShoes.filter(item =>
+      item.garmentType === 'shoes' || isShoeName(item.name)
+    );
+    const seen = new Set<string>();
+    const merged: typeof fromMixed = [];
+    for (const it of [...fromMixed, ...fromDedicated]) {
+      if (!seen.has(it.id)) {
+        seen.add(it.id);
+        merged.push(it);
+      }
+    }
+    return merged;
+  }, [catalogEssentials, catalogShoes]);
 
   // Debug: log shop catalog fetch status
   if (__DEV__) {
@@ -372,8 +397,8 @@ const HomeScreen = () => {
     if (!catalogEssentials.length) return []; // Only fail if catalog is completely empty
     if (shopTops.length === 0 || shopBottoms.length === 0) return [];
     
-    // Only use REAL outerwear (jackets, coats, blazers, etc.)
-    const isOuterwear = (name: string) => /\b(jacket|coat|blazer|cardigan|sweater|hoodie|puffer|bomber|vest|outerwear|trench|peacoat)\b/i.test(name);
+    // Only use REAL outerwear (jackets, coats, blazers, suits, etc.)
+    const isOuterwear = (name: string) => isOuterwearName(name);
     const realOuterwear = shopTops.filter(t => isOuterwear(t.name));
     const realTops = shopTops.filter(t => !isOuterwear(t.name));
     const topsPool = realTops.length > 0 ? realTops : shopTops;
@@ -407,7 +432,7 @@ const HomeScreen = () => {
     if (!catalogEssentials.length) return [];
     if (shopTops.length === 0 || shopBottoms.length === 0) return [];
 
-    const isOuterwear = (name: string) => /\b(jacket|coat|blazer|cardigan|sweater|hoodie|puffer|bomber|vest|outerwear|trench|peacoat)\b/i.test(name);
+    const isOuterwear = (name: string) => isOuterwearName(name);
     const realOuterwear = shopTops.filter(t => isOuterwear(t.name));
     const realTops = shopTops.filter(t => !isOuterwear(t.name));
     const topsPool = realTops.length > 0 ? realTops : shopTops;
@@ -517,8 +542,8 @@ const HomeScreen = () => {
             <View style={styles.weatherSuggestion}>
               <Ionicons name="shirt-outline" size={16} color={colors.text.secondary} />
               <Text style={styles.suggestionText}>
-                {weather.temp > 25 ? 'Wear light' :
-                  weather.temp > 15 ? 'Use layers' : 'Dress warm'}
+                {weather.temp > 25 ? t('home.wearLight') :
+                  weather.temp > 15 ? t('home.useLayers') : t('home.dressWarm')}
               </Text>
             </View>
           </View>
@@ -550,6 +575,7 @@ const HomeScreen = () => {
             allowsFullscreen={false}
             allowsPictureInPicture={false}
             contentFit="cover"
+            pointerEvents="none"
           />
           {/* Overlay with info */}
           <LinearGradient
@@ -568,10 +594,10 @@ const HomeScreen = () => {
                 logger.debug('Navigating to AI outfit maker with shop source');
                 navigation.navigate('AIOutfit', { source: 'shop' });
               }}
-              accessibilityLabel="Create outfit from shop items"
+              accessibilityLabel={t('home.createOutfitFromShopItems')}
               accessibilityRole="button"
             >
-              <Text style={styles.createOutfitText}>Create outfit</Text>
+              <Text style={styles.createOutfitText}>{t('home.createOutfit')}</Text>
         </TouchableOpacity>
 
         {/* Unified Nudge Section (Prompts & Home Cards) */}
@@ -639,7 +665,7 @@ const HomeScreen = () => {
   // (and drops outerwear in warm weather via the `needsOuterwear` prop).
   const mapLegacyOutfitItemsForCollage = (c: any) => {
     // Build shop catalog lookup by macro category for client-side fallback
-    const isOuterwear = (name: string) => /\b(jacket|coat|blazer|cardigan|sweater|hoodie|puffer|bomber|vest|outerwear|trench|peacoat)\b/i.test(name);
+    const isOuterwear = (name: string) => isOuterwearName(name);
     
     // Some Zara items might not have "shoes" as garmentType, but we know they are shoes
     const allOuterwear = catalogEssentials.filter(t => isOuterwear(t.name));
@@ -648,7 +674,9 @@ const HomeScreen = () => {
     // If Zara has exactly 0 shoes on this page, fall back to ANY shoe in the database
     // Note: The UI requires shoes. If Zara has none, we must show a placeholder
     // or a non-Zara shoe. We use placeholders instead of putting shirts on feet.
-    const allShoes = catalogEssentials.filter(t => t.garmentType === 'shoes' || t.name.toLowerCase().includes('shoe') || t.name.toLowerCase().includes('sneaker'));
+    const allShoes = shopShoes.length > 0
+      ? shopShoes
+      : catalogEssentials.filter(t => t.garmentType === 'shoes' || t.name.toLowerCase().includes('shoe') || t.name.toLowerCase().includes('sneaker'));
     
     const shopByMacro: Record<string, ShopCatalogItem[]> = {
       top: shopTops.filter(t => !isOuterwear(t.name)),
@@ -747,7 +775,7 @@ const HomeScreen = () => {
     }>;
   }) => {
     // Build shop catalog lookup by macro category for client-side fallback
-    const isOuterwear = (name: string) => /\b(jacket|coat|blazer|cardigan|sweater|hoodie|puffer|bomber|vest|outerwear|trench|peacoat)\b/i.test(name);
+    const isOuterwear = (name: string) => isOuterwearName(name);
     
     const shopByMacro: Record<string, ShopCatalogItem[]> = {
       top: shopTops.filter(t => !isOuterwear(t.name)),
@@ -843,8 +871,8 @@ const HomeScreen = () => {
       return (
         <View style={styles.premiumSection}>
           <View style={[styles.premiumHeader, { paddingHorizontal: spacing.screenPadding }]}>
-            <Text style={styles.premiumHeaderTitle}>Team Collaboration</Text>
-            <Text style={styles.premiumHeaderSubtitle}>Business casual ›</Text>
+            <Text style={styles.premiumHeaderTitle}>{t('home.teamCollaboration')}</Text>
+            <Text style={styles.premiumHeaderSubtitle}>{t('home.businessCasualArrow')}</Text>
           </View>
           <View style={{ paddingHorizontal: spacing.screenPadding }}>
             <LiquidGlassCard
@@ -915,8 +943,8 @@ const HomeScreen = () => {
     return (
       <View style={styles.premiumSection}>
         <View style={[styles.premiumHeader, { paddingHorizontal: spacing.screenPadding }]}>
-          <Text style={styles.premiumHeaderTitle}>Team Collaboration</Text>
-          <Text style={styles.premiumHeaderSubtitle}>Business casual ›</Text>
+          <Text style={styles.premiumHeaderTitle}>{t('home.teamCollaboration')}</Text>
+          <Text style={styles.premiumHeaderSubtitle}>{t('home.businessCasualArrow')}</Text>
         </View>
 
         {data.length === 0 ? (
@@ -936,10 +964,10 @@ const HomeScreen = () => {
                   logger.debug('Regenerate business-casual daily outfits (empty state)');
                   dailyBusinessCasual.regenerate();
                 }}
-                accessibilityLabel="Regenerate today's business casual outfits"
+                accessibilityLabel={t('home.regenerateBusinessCasual')}
                 accessibilityRole="button"
               >
-                <Text style={styles.createAvatarText}>Try again</Text>
+                <Text style={styles.createAvatarText}>{t('home.tryAgain')}</Text>
               </TouchableOpacity>
             </LiquidGlassCard>
           </View>
@@ -973,7 +1001,7 @@ const HomeScreen = () => {
                 logger.debug('Regenerate business-casual daily outfits');
                 dailyBusinessCasual.regenerate();
               }}
-              accessibilityLabel="Regenerate today's business casual outfits"
+              accessibilityLabel={t('home.regenerateBusinessCasual')}
               accessibilityRole="button"
             >
               <Ionicons name="refresh-outline" size={22} color={colors.text.primary} />
@@ -992,7 +1020,7 @@ const HomeScreen = () => {
               navigation.navigate('AITryOn');
             }}
           >
-            <Text style={styles.createAvatarText}>Try On</Text>
+            <Text style={styles.createAvatarText}>{t('home.tryOn')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -1007,8 +1035,8 @@ const HomeScreen = () => {
       return (
         <View style={styles.premiumSection}>
           <View style={[styles.premiumHeader, { paddingHorizontal: spacing.screenPadding }]}>
-            <Text style={styles.premiumHeaderTitle}>Night-Time Dinner</Text>
-            <Text style={styles.dinnerHeaderSubtitle}>Night-time dinner ›</Text>
+            <Text style={styles.premiumHeaderTitle}>{t('home.nightTimeDinner')}</Text>
+            <Text style={styles.dinnerHeaderSubtitle}>{t('home.nightTimeDinnerSubtitle')}</Text>
           </View>
           <View style={{ paddingHorizontal: spacing.screenPadding }}>
             <View style={[styles.dinnerCard, { minHeight: 340, alignItems: 'center', justifyContent: 'center' }]}>
@@ -1061,8 +1089,8 @@ const HomeScreen = () => {
     return (
       <View style={styles.premiumSection}>
         <View style={[styles.premiumHeader, { paddingHorizontal: spacing.screenPadding }]}>
-          <Text style={styles.premiumHeaderTitle}>Night-Time Dinner</Text>
-          <Text style={styles.dinnerHeaderSubtitle}>Night-time dinner ›</Text>
+          <Text style={styles.premiumHeaderTitle}>{t('home.nightTimeDinner')}</Text>
+          <Text style={styles.dinnerHeaderSubtitle}>{t('home.nightTimeDinnerSubtitle')}</Text>
         </View>
 
         {data.length === 0 ? (
@@ -1078,10 +1106,10 @@ const HomeScreen = () => {
                   logger.debug('Regenerate old-money daily outfits (empty state)');
                   dailyOldMoney.regenerate();
                 }}
-                accessibilityLabel="Regenerate tonight's dinner outfits"
+                accessibilityLabel={t('home.regenerateDinnerOutfits')}
                 accessibilityRole="button"
               >
-                <Text style={styles.createAvatarText}>Try again</Text>
+                <Text style={styles.createAvatarText}>{t('home.tryAgain')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1115,7 +1143,7 @@ const HomeScreen = () => {
                 logger.debug('Regenerate old-money daily outfits');
                 dailyOldMoney.regenerate();
               }}
-              accessibilityLabel="Regenerate tonight's dinner outfits"
+              accessibilityLabel={t('home.regenerateDinnerOutfits')}
               accessibilityRole="button"
             >
               <Ionicons name="refresh-outline" size={22} color={colors.text.primary} />
@@ -1133,7 +1161,7 @@ const HomeScreen = () => {
               navigation.navigate('AITryOn');
             }}
           >
-            <Text style={styles.createAvatarText}>Try On</Text>
+            <Text style={styles.createAvatarText}>{t('home.tryOn')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -1152,7 +1180,7 @@ const HomeScreen = () => {
         {showSkeleton ? (
           <View style={styles.essentialsLoadingBlock}>
             <ActivityIndicator size="small" color={colors.accent.primary} />
-            <Text style={styles.essentialsLoadingText}>Loading essentials…</Text>
+            <Text style={styles.essentialsLoadingText}>{t('home.loadingEssentials')}</Text>
           </View>
         ) : showEmpty ? (
           <View style={styles.essentialsEmptyBlock}>
@@ -1194,8 +1222,8 @@ const HomeScreen = () => {
                       }}
                       accessibilityLabel={
                         isAdded
-                          ? `${item.name} added to wardrobe`
-                          : `Add ${item.name} to wardrobe`
+                          ? t('home.itemAddedToWardrobe', { itemName: item.name })
+                          : t('home.addItemToWardrobe', { itemName: item.name })
                       }
                       accessibilityRole="button"
                     >
@@ -1205,7 +1233,7 @@ const HomeScreen = () => {
                         color={isAdded ? '#FFF' : colors.text.primary}
                       />
                       <Text style={[styles.addButtonText, isAdded && styles.addedButtonText]}>
-                        {isAdded ? 'Added' : 'Add'}
+                        {isAdded ? t('common.added') : t('common.add')}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -1305,7 +1333,7 @@ const HomeScreen = () => {
         >
           {/* Header */}
           <View style={styles.headerSection}>
-            <Text style={styles.appTitleText} accessibilityRole="header">AIWardrobe</Text>
+            <Text style={styles.appTitleText} accessibilityRole="header">{t('home.aiWardrobe')}</Text>
           </View>
 
           {/* Trial Countdown Banner — visible only during active 7-day trial */}
@@ -1330,7 +1358,7 @@ const HomeScreen = () => {
                   logger.debug('Calendar button pressed');
                   navigation.navigate('Calendar');
                 }}
-                accessibilityLabel="Open calendar"
+                accessibilityLabel={t('home.openCalendar')}
               >
                 <Ionicons name="calendar-outline" size={24} color={colors.text.primary} />
                 <View style={styles.buzzerDot} />

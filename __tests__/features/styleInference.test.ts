@@ -7,7 +7,7 @@ import {
 
 describe('styleInference', () => {
   describe('inferItemAttributes', () => {
-    it('tags a wool blazer as old_money / business_casual, not streetwear', () => {
+    it('tags a wool blazer as old_money / business_casual, not semi_classic', () => {
       const attrs = inferItemAttributes({
         name: 'Slim Wool Blazer',
         description: 'slim-fit structured wool blazer with notch lapels',
@@ -15,12 +15,12 @@ describe('styleInference', () => {
       });
       expect(attrs.styleTags).toContain('old_money');
       expect(attrs.styleTags).toContain('business_casual');
-      expect(attrs.styleTags).not.toContain('streetwear');
+      expect(attrs.styleTags).not.toContain('semi_classic');
       expect(attrs.materials).toContain('wool');
       expect(attrs.formality).toBeGreaterThanOrEqual(0.6);
     });
 
-    it('tags a graphic heavyweight tee as streetwear, NOT old_money', () => {
+    it('tags a graphic heavyweight tee as casual, NOT old_money', () => {
       const attrs = inferItemAttributes({
         name: 'Basic Heavyweight T-Shirt',
         description: 'oversized heavyweight tee with graphic print',
@@ -79,9 +79,9 @@ describe('styleInference', () => {
       expect(blazerIndex).toBeLessThan(hoodieIndex);
     });
 
-    it('for streetwear, puts the hoodie first', () => {
-      const ranked = rankItemsForStyle(mixedItems, 'streetwear');
-      expect(ranked[0].name).toBe('Oversized Graphic Hoodie');
+    it('for semi_classic, puts the blazer first', () => {
+      const ranked = rankItemsForStyle(mixedItems, 'semi_classic');
+      expect(ranked[0].name).toBe('Slim Wool Blazer');
     });
 
     it('ALWAYS preserves at least one shoe candidate for old_money, even if all shoes score poorly', () => {
@@ -121,7 +121,7 @@ describe('styleInference', () => {
       expect(normalizeStyleId('Old Money')).toBe('old_money');
       expect(normalizeStyleId('old-money')).toBe('old_money');
       expect(normalizeStyleId('OLD_MONEY')).toBe('old_money');
-      expect(normalizeStyleId('streetwear')).toBe('streetwear');
+      expect(normalizeStyleId('semi_classic')).toBe('semi_classic');
       expect(normalizeStyleId('unknown')).toBe('casual');
       expect(normalizeStyleId(null)).toBe('casual');
     });

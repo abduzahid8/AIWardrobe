@@ -20,7 +20,7 @@ export type {
 } from './domain';
 
 // Legacy aliases for files that used the old shape
-export type ClothingStyle = 'casual' | 'formal' | 'sport' | 'streetwear' | 'business' | 'evening';
+export type ClothingStyle = 'casual' | 'formal' | 'sport' | 'semi_classic' | 'business' | 'evening';
 
 export interface APIResponse<T> {
     success: boolean;

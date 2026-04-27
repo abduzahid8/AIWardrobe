@@ -8,6 +8,7 @@ import * as Haptics from 'expo-haptics';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Asset } from 'expo-asset';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../../../lib/supabase';
 import useWardrobeStore from '../../../store/wardrobeStore';
 import useAuthStore from '../../../store/auth';
@@ -450,7 +451,7 @@ export function useOutfitGeneration({
 
     // Minimum wardrobe requirement. For non-layered styles we still need
     // 3 tops / 3 pants / 3 shoes. For layered styles (old_money, business_casual,
-    // streetwear or cold weather) we track base-top vs outerwear separately —
+    // semi_classic or cold weather) we track base-top vs outerwear separately —
     // a missing layer is NOT a blocker; the generator will auto-suggest a
     // shop item to fill the gap.
     const layeredForGen = needsLayering(styleToUse, undefined, promptText);
@@ -587,9 +588,9 @@ export function useOutfitGeneration({
     switch (styleId) {
       case 'business_casual': return 'work';
       case 'old_money': return 'formal';
-      case 'streetwear':
+      case 'semi_classic':
       case 'minimalist':
-      case 'y2k':
+      case 'casual':
         return 'casual';
       default:
         return 'casual';
@@ -601,7 +602,8 @@ export function useOutfitGeneration({
       .map((item) => String(item.id || item.image))
       .filter(Boolean);
     if (itemIds.length === 0) {
-      Alert.alert('Cannot Save', 'This outfit has no valid items to save.');
+      const { t } = useTranslation();
+      Alert.alert(t('outfitGeneration.cannotSave'), t('outfitGeneration.noValidItems'));
       return;
     }
 
@@ -646,7 +648,8 @@ export function useOutfitGeneration({
     }
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert('Saved', 'Outfit saved to your closet.');
+    const { t } = useTranslation();
+    Alert.alert(t('outfitGeneration.saved'), t('outfitGeneration.savedToCloset'));
   };
 
   const addToCalendar = async (outfit: GeneratedOutfit) => {
@@ -675,14 +678,16 @@ export function useOutfitGeneration({
       };
       await AsyncStorage.setItem('outfitLogs', JSON.stringify(logs));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      const { t } = useTranslation();
       Alert.alert(
-        'Added to Calendar',
-        `Outfit logged for ${dateKey}.`,
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
+        t('outfitGeneration.addedToCalendar'),
+        t('outfitGeneration.outfitLoggedFor', { dateKey }),
+        [{ text: t('common.ok'), onPress: () => navigation.goBack() }]
       );
     } catch (err) {
       console.error('Failed to add outfit to calendar', err);
-      Alert.alert('Error', 'Could not save outfit to calendar.');
+      const { t } = useTranslation();
+      Alert.alert(t('common.error'), t('outfitGeneration.couldNotSaveToCalendar'));
     }
   };
 

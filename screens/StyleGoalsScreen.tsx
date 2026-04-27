@@ -44,99 +44,15 @@ const COLORS = {
     error: '#FF3B30',
 };
 
-// Available style goals
-const AVAILABLE_GOALS = [
-    {
-        id: 'capsule',
-        title: 'Build a Capsule Wardrobe',
-        icon: 'grid-outline',
-        target: 30,
-        unit: 'versatile items',
-        description: 'Curate 30 versatile pieces that mix and match',
-        color: '#6B7280'
-    },
-    {
-        id: 'sustainable',
-        title: 'Shop More Sustainably',
-        icon: 'leaf-outline',
-        target: 10,
-        unit: 'sustainable purchases',
-        description: 'Make 10 conscious fashion choices this month',
-        color: '#22C55E'
-    },
-    {
-        id: 'colorful',
-        title: 'Add More Color',
-        icon: 'color-palette-outline',
-        target: 5,
-        unit: 'colorful items',
-        description: 'Step out of your comfort zone with 5 colorful pieces',
-        color: '#F59E0B'
-    },
-    {
-        id: 'minimalist',
-        title: 'Embrace Minimalism',
-        icon: 'remove-circle-outline',
-        target: 20,
-        unit: 'items decluttered',
-        description: 'Declutter 20 items you no longer wear',
-        color: '#3B82F6'
-    },
-    {
-        id: 'professional',
-        title: 'Elevate Work Style',
-        icon: 'briefcase-outline',
-        target: 7,
-        unit: 'work outfits',
-        description: 'Create 7 polished work outfit combinations',
-        color: '#8B5CF6'
-    },
-    {
-        id: 'complete_outfits',
-        title: 'Plan Complete Outfits',
-        icon: 'layers-outline',
-        target: 14,
-        unit: 'outfits planned',
-        description: 'Plan 14 complete outfits for the next 2 weeks',
-        color: '#EC4899'
-    }
-];
-
-// Weekly challenges
-const WEEKLY_CHALLENGES = [
-    {
-        id: 'no_repeat',
-        title: 'No Repeat Week',
-        description: 'Wear different outfits every day this week',
-        days: 7,
-        reward: '🏆',
-        difficulty: 'medium',
-    },
-    {
-        id: 'monochrome',
-        title: 'Monochrome Monday',
-        description: 'Create a single-color outfit on Monday',
-        days: 1,
-        reward: '⭐',
-        difficulty: 'easy',
-    },
-    {
-        id: 'accessorize',
-        title: 'Accessory Focus',
-        description: 'Add a new accessory to each outfit this week',
-        days: 5,
-        reward: '💎',
-        difficulty: 'easy',
-    },
-    {
-        id: 'rediscover',
-        title: 'Wardrobe Rediscovery',
-        description: 'Wear 3 items you haven\'t worn in months',
-        days: 7,
-        reward: '🌟',
-        difficulty: 'medium',
-    },
-];
+interface StyleGoal {
+    id: string;
+    title: string;
+    icon: string;
+    target: number;
+    unit: string;
+    description: string;
+    color: string;
+}
 
 interface UserGoal {
     goalId: string;
@@ -152,6 +68,15 @@ interface ChallengeProgress {
     status: 'active' | 'completed' | 'failed';
 }
 
+interface Challenge {
+    id: string;
+    title: string;
+    description: string;
+    days: number;
+    reward: string;
+    difficulty: 'easy' | 'medium' | 'hard';
+}
+
 interface GoalCardProps {
     goal: any;
     userGoal?: UserGoal;
@@ -159,7 +84,8 @@ interface GoalCardProps {
     isCompleted: boolean;
     progress: number;
     onPress: () => void;
-    onUpdateProgress: (inc: number) => void;
+    onUpdateProgress: (amount: number) => void;
+    t: (key: string) => string;
 }
 
 // Progress Ring Component
@@ -217,7 +143,7 @@ const ProgressRing = ({
 };
 
 // Goal Card Component
-const GoalCard = ({ goal, isActive, isCompleted, progress, onPress, onUpdateProgress }: GoalCardProps) => {
+const GoalCard = ({ goal, userGoal, isActive, isCompleted, progress, onPress, onUpdateProgress, t }: GoalCardProps) => {
     return (
         <TouchableOpacity
             style={[
@@ -254,7 +180,7 @@ const GoalCard = ({ goal, isActive, isCompleted, progress, onPress, onUpdateProg
                         />
                     </View>
                     <Text style={styles.progressLabel}>
-                        {userGoal.progress} / {goal.target} {goal.unit}
+                        {userGoal?.progress ?? 0} / {goal.target} {goal.unit}
                     </Text>
 
                     {/* Quick increment buttons */}
@@ -276,7 +202,7 @@ const GoalCard = ({ goal, isActive, isCompleted, progress, onPress, onUpdateProg
             {isCompleted && (
                 <View style={styles.completedBadge}>
                     <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
-                    <Text style={styles.completedText}>Completed!</Text>
+                    <Text style={styles.completedText}>{t('styleGoals.completedText')}</Text>
                 </View>
             )}
 
@@ -285,7 +211,7 @@ const GoalCard = ({ goal, isActive, isCompleted, progress, onPress, onUpdateProg
                     style={[styles.startGoalBtn, { backgroundColor: goal.color }]}
                     onPress={onPress}
                 >
-                    <Text style={styles.startGoalBtnText}>Start Goal</Text>
+                    <Text style={styles.startGoalBtnText}>{t('styleGoals.startGoal')}</Text>
                     <Ionicons name="arrow-forward" size={16} color="#fff" />
                 </TouchableOpacity>
             )}
@@ -299,11 +225,13 @@ const ChallengeCard = ({
     progress,
     onAccept,
     onLogDay,
+    t,
 }: {
-    challenge: typeof WEEKLY_CHALLENGES[0];
+    challenge: Challenge;
     progress?: ChallengeProgress;
     onAccept: () => void;
     onLogDay: () => void;
+    t: (key: string) => string;
 }) => {
     const isActive = progress?.status === 'active';
     const isCompleted = progress?.status === 'completed';
@@ -347,7 +275,7 @@ const ChallengeCard = ({
                         }}
                     >
                         <Ionicons name="checkmark" size={18} color="#fff" />
-                        <Text style={styles.logDayBtnText}>Log Today</Text>
+                        <Text style={styles.logDayBtnText}>{t('styleGoals.logToday')}</Text>
                     </TouchableOpacity>
                 </View>
             )}
@@ -355,7 +283,7 @@ const ChallengeCard = ({
             {isCompleted && (
                 <View style={styles.completedBadge}>
                     <Ionicons name="trophy" size={18} color={COLORS.warning} />
-                    <Text style={styles.completedText}>Challenge Complete!</Text>
+                    <Text style={styles.completedText}>{t('styleGoals.challengeCompleteText')}</Text>
                 </View>
             )}
 
@@ -367,7 +295,7 @@ const ChallengeCard = ({
                         onAccept();
                     }}
                 >
-                    <Text style={styles.acceptChallengeBtnText}>Accept Challenge</Text>
+                    <Text style={styles.acceptChallengeBtnText}>{t('styleGoals.acceptChallenge')}</Text>
                 </TouchableOpacity>
             )}
         </View>
@@ -380,6 +308,98 @@ const StyleGoalsScreen = () => {
     const [userGoals, setUserGoals] = useState<UserGoal[]>([]);
     const [challenges, setChallenges] = useState<ChallengeProgress[]>([]);
     const [activeTab, setActiveTab] = useState<'goals' | 'challenges'>('goals');
+
+    const AVAILABLE_GOALS: StyleGoal[] = [
+        {
+            id: 'capsule',
+            title: t('styleGoals.available.0.title'),
+            icon: 'grid-outline',
+            target: 30,
+            unit: t('styleGoals.available.0.unit'),
+            description: t('styleGoals.available.0.description'),
+            color: '#6B7280'
+        },
+        {
+            id: 'sustainable',
+            title: t('styleGoals.available.1.title'),
+            icon: 'leaf-outline',
+            target: 10,
+            unit: t('styleGoals.available.1.unit'),
+            description: t('styleGoals.available.1.description'),
+            color: '#22C55E'
+        },
+        {
+            id: 'colorful',
+            title: t('styleGoals.available.2.title'),
+            icon: 'color-palette-outline',
+            target: 5,
+            unit: t('styleGoals.available.2.unit'),
+            description: t('styleGoals.available.2.description'),
+            color: '#F59E0B'
+        },
+        {
+            id: 'minimalist',
+            title: t('styleGoals.available.3.title'),
+            icon: 'remove-circle-outline',
+            target: 20,
+            unit: t('styleGoals.available.3.unit'),
+            description: t('styleGoals.available.3.description'),
+            color: '#3B82F6'
+        },
+        {
+            id: 'professional',
+            title: t('styleGoals.available.4.title'),
+            icon: 'briefcase-outline',
+            target: 7,
+            unit: t('styleGoals.available.4.unit'),
+            description: t('styleGoals.available.4.description'),
+            color: '#8B5CF6'
+        },
+        {
+            id: 'complete_outfits',
+            title: t('styleGoals.available.5.title'),
+            icon: 'layers-outline',
+            target: 14,
+            unit: t('styleGoals.available.5.unit'),
+            description: t('styleGoals.available.5.description'),
+            color: '#EC4899'
+        },
+    ];
+
+    const WEEKLY_CHALLENGES = [
+        {
+            id: 'no_repeat',
+            title: t('styleGoals.weeklyChallengesList.0.title'),
+            description: t('styleGoals.weeklyChallengesList.0.description'),
+            days: 7,
+            reward: '🏆',
+            difficulty: 'medium' as const,
+        },
+        {
+            id: 'monochrome',
+            title: t('styleGoals.weeklyChallengesList.1.title'),
+            description: t('styleGoals.weeklyChallengesList.1.description'),
+            days: 1,
+            reward: '⭐',
+            difficulty: 'easy' as const,
+        },
+        {
+            id: 'accessorize',
+            title: t('styleGoals.weeklyChallengesList.2.title'),
+            description: t('styleGoals.weeklyChallengesList.2.description'),
+            days: 5,
+            reward: '💎',
+            difficulty: 'easy' as const,
+        },
+        {
+            id: 'rediscover',
+            title: t('styleGoals.weeklyChallengesList.3.title'),
+            description: t('styleGoals.weeklyChallengesList.3.description'),
+            days: 7,
+            reward: '🌟',
+            difficulty: 'medium' as const,
+        },
+    ];
 
     // Load saved data
     const loadData = useCallback(async () => {
@@ -427,7 +447,7 @@ const StyleGoalsScreen = () => {
     const startGoal = (goalId: string) => {
         const existingGoal = userGoals.find(g => g.goalId === goalId);
         if (existingGoal && !existingGoal.completedAt) {
-            Alert.alert('Already Active', 'This goal is already in progress!');
+            Alert.alert(t('styleGoals.alreadyActive'), t('styleGoals.goalAlreadyProgress'));
             return;
         }
 
@@ -463,7 +483,7 @@ const StyleGoalsScreen = () => {
         const updatedGoal = updatedGoals.find(g => g.goalId === goalId);
         if (updatedGoal?.completedAt) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            Alert.alert('🎉 Goal Achieved!', `Congratulations! You've completed "${goal?.title}"`);
+            Alert.alert(t('styleGoals.goalAchieved'), `${t('styleGoals.congratulationsCompleted')} "${goal?.title}"`);
         }
     };
 
@@ -502,7 +522,7 @@ const StyleGoalsScreen = () => {
         const updated = updatedChallenges.find(c => c.challengeId === challengeId);
         if (updated?.status === 'completed') {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            Alert.alert('🏆 Challenge Complete!', `Amazing! You've completed "${challenge?.title}"`);
+            Alert.alert(t('styleGoals.challengeComplete'), `${t('styleGoals.amazingCompleted')} "${challenge?.title}"`);
         }
     };
 
@@ -600,6 +620,7 @@ const StyleGoalsScreen = () => {
                                         progress={progress}
                                         onPress={() => startGoal(goal.id)}
                                         onUpdateProgress={(inc) => updateGoalProgress(goal.id, inc)}
+                                        t={t}
                                     />
                                 );
                             })}
@@ -620,6 +641,7 @@ const StyleGoalsScreen = () => {
                                         progress={progress}
                                         onAccept={() => acceptChallenge(challenge.id)}
                                         onLogDay={() => logChallengeDay(challenge.id)}
+                                        t={t}
                                     />
                                 );
                             })}

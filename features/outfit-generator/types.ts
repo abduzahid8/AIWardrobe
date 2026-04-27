@@ -59,20 +59,20 @@ export interface AIStyle {
 
 export const AI_STYLES: AIStyle[] = [
   { id: 'old_money', label: 'Old Money', icon: 'diamond', desc: 'Classic, refined pieces with a subtle focus on pure luxury.' },
-  { id: 'streetwear', label: 'Streetwear', icon: 'flash', desc: 'Edgy, oversized aesthetics blending comfort with high fashion.' },
+  { id: 'semi_classic', label: 'Semi-Classic', icon: 'umbrella', desc: 'Refined everyday elegance — tailored touches with relaxed comfort.' },
   { id: 'minimalist', label: 'Minimalist', icon: 'remove', desc: 'Clean lines, neutral colors, and essential wardrobe staples.' },
-  { id: 'y2k', label: 'Y2K', icon: 'sparkles', desc: 'Bold colors, nostalgic 2000s vibes, and striking accessories.' },
+  { id: 'casual', label: 'Casual', icon: 'coffee', desc: 'Relaxed, effortless style with well-fitted basics and clean combos.' },
   { id: 'business_casual', label: 'Modern Professional', icon: 'briefcase', desc: 'Sharp, tailored looks perfect for the modern workplace.' },
 ];
 
 export const STYLE_PERSONALITY_MAP: Record<string, string> = {
   classic: 'old_money',
-  trendy: 'streetwear',
+  trendy: 'casual',
   minimalist: 'minimalist',
-  bohemian: 'y2k',
-  edgy: 'streetwear',
+  bohemian: 'casual',
+  edgy: 'semi_classic',
   romantic: 'old_money',
-  sporty: 'streetwear',
+  sporty: 'casual',
 };
 
 export const CATEGORY_SECTIONS = [

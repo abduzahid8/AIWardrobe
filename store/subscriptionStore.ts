@@ -80,6 +80,10 @@ export const TIER_FEATURES = {
         adFree: true,
         earlyAccess: true,
         prioritySupport: true,
+        /** VIP-exclusive: seasonal style collections curated by stylists */
+        exclusiveCollections: true,
+        /** VIP-exclusive: AI stylist chat with personalized recommendations */
+        aiStylistChat: true,
     },
 } as const;
 
@@ -106,7 +110,7 @@ export const SUBSCRIPTION_PRICING = {
         price: 99.99,
         currency: 'USD',
         period: 'year',
-        productId: 'com.aiwardrobe.vip.yearly',
+        productId: 'com.aiwardrobe.premium.yearly',
     },
 } as const;
 
@@ -154,7 +158,7 @@ interface SubscriptionState {
      * AsyncStorage + Supabase (gracefully — the column may not exist yet).
      */
     initializeTrial: (userId: string) => Promise<void>;
-    setSubscription: (tier: SubscriptionTier, expiryDate?: string) => Promise<void>;
+    setSubscription: (tier: SubscriptionTier, expiryDate?: string, productId?: string) => Promise<void>;
     clearSubscription: () => Promise<void>;
     /** Feature gate check (uses effectiveTier for trial-aware access). */
     checkFeatureAccess: (feature: FeatureKey) => boolean;
@@ -213,8 +217,9 @@ function deriveState(
     // During an active trial, feature checks use Pro (premium) limits
     const effectiveTier: SubscriptionTier = trial.isTrialActive ? 'premium' : tier;
 
-    // Free-tier user with no trial date and not pending → needs promo code
-    const needsPromoCode = tier === 'free' && !trial.isTrialActive && !trial.isTrialExpired && !trial.isTrialPending && !trialStartedAt;
+    // NOTE: Promo code gate is DISABLED for App Store submission.
+    // Re-enable after approval: tier === 'free' && !trial.isTrialActive && !trial.isTrialExpired && !trial.isTrialPending && !trialStartedAt;
+    const needsPromoCode = false;
 
     return {
         isPremium: tier === 'premium' || trial.isTrialActive,
@@ -272,9 +277,22 @@ const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
                     const profileExpiry = profile.subscription_expires_at;
 
                     if (profileTier !== 'free' && profileExpiry && new Date(profileExpiry) > new Date()) {
+                        // Profile shows a valid, non-expired paid tier — trust it.
                         resolvedTier = profileTier;
                         resolvedExpiry = profileExpiry;
-                    } else if (profileTier !== 'free') {
+                    } else if (profileTier !== 'free' && !profileExpiry) {
+                        // Profile shows paid tier but no expiry yet.
+                        // This happens in the window between a client-side purchase writing
+                        // the profiles row and the RevenueCat webhook arriving with the real
+                        // expiry date. Do NOT actively downgrade — keep whatever the client set.
+                        // The next verifySubscriptionFromServer call (after the webhook fires)
+                        // will find the subscriptions row and resolve correctly.
+                        const currentState = get();
+                        resolvedTier = currentState.tier !== 'free' ? currentState.tier : profileTier;
+                        resolvedExpiry = currentState.expiryDate;
+                        console.log('[subscriptionStore] Profile shows paid tier with no expiry — holding current state to avoid race condition', { profileTier, currentTier: currentState.tier });
+                    } else if (profileTier !== 'free' && profileExpiry && new Date(profileExpiry) <= new Date()) {
+                        // Paid tier but genuinely expired — safe to downgrade.
                         await supabase
                             .from('profiles')
                             .update({ subscription_tier: 'free', subscription_expires_at: null })
@@ -292,6 +310,36 @@ const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
                     }
                 }
             }
+
+            // ─── RACE-CONDITION GUARD ──────────────────────────────────────────────
+            // If the server returned 'free' but the local store already has a paid
+            // tier with a FUTURE expiry, do NOT downgrade. This covers the window
+            // immediately after a purchase where:
+            //   • setSubscription() wrote premium to AsyncStorage + Zustand + Supabase
+            //   • verifySubscriptionFromServer() fired (fire-and-forget) before the
+            //     Supabase row/profile was replicated to the read replica, so the
+            //     server query sees the old 'free' state and incorrectly overwrites it.
+            // We only skip when resolvedTier is 'free' — if the server found an
+            // active subscription we always respect that.
+            if (resolvedTier === 'free') {
+                const currentState = get();
+                if (
+                    currentState.tier !== 'free' &&
+                    currentState.expiryDate &&
+                    new Date(currentState.expiryDate) > new Date()
+                ) {
+                    console.warn(
+                        '[subscriptionStore] verifySubscriptionFromServer: server returned free but ' +
+                        'local state has a valid paid subscription — keeping local state to prevent ' +
+                        'race-condition downgrade.',
+                        { localTier: currentState.tier, localExpiry: currentState.expiryDate }
+                    );
+                    // Mark as verified so callers don't re-enter, but preserve tier.
+                    set({ lastVerifiedAt: new Date().toISOString() });
+                    return;
+                }
+            }
+            // ──────────────────────────────────────────────────────────────────────
 
             await AsyncStorage.setItem(SUBSCRIPTION_KEY, resolvedTier);
             if (resolvedExpiry) {
@@ -340,6 +388,13 @@ const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
                     await AsyncStorage.setItem(SUBSCRIPTION_KEY, tier);
                     await AsyncStorage.removeItem(SUBSCRIPTION_EXPIRY_KEY);
                 }
+            } else if (storedTier && storedTier !== 'free' && !storedExpiry) {
+                // Stored tier exists (paid) but no expiry cached yet — this happens
+                // in the brief window after setSubscription writes the tier before
+                // the server returns the real expiry. Preserve the paid tier and let
+                // verifySubscriptionFromServer fill in the expiry.
+                tier = storedTier as SubscriptionTier;
+                console.warn('[subscriptionStore] initializeSubscription: paid tier cached without expiry — trusting tier, will verify from server', { storedTier });
             }
 
             // If no trial date is cached locally yet, check the server before
@@ -439,9 +494,9 @@ const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     // ─────────────────────────────────────────────────────────
     // setSubscription
     // ─────────────────────────────────────────────────────────
-    setSubscription: async (tier: SubscriptionTier, expiryDate?: string) => {
+    setSubscription: async (tier: SubscriptionTier, expiryDate?: string, productId?: string) => {
         try {
-            const expiry = expiryDate || getDefaultExpiry(tier);
+            const expiry = expiryDate || getDefaultExpiry(tier, productId);
             await AsyncStorage.setItem(SUBSCRIPTION_KEY, tier);
             await AsyncStorage.setItem(SUBSCRIPTION_EXPIRY_KEY, expiry);
 
@@ -454,13 +509,74 @@ const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
 
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.user?.id) {
-                await supabase
+                const userId = session.user.id;
+
+                // Update profiles denormalized fields
+                const { error: profileError } = await supabase
                     .from('profiles')
                     .update({ subscription_tier: tier, subscription_expires_at: expiry })
-                    .eq('id', session.user.id);
+                    .eq('id', userId);
+                    
+                if (profileError) {
+                    // Non-fatal: log but continue to try writing the subscriptions row.
+                    console.error('[subscriptionStore] setSubscription: profile update failed (non-fatal):', profileError);
+                }
+
+                // Also upsert a row into subscriptions so verifySubscriptionFromServer
+                // finds the active subscription even if the webhook hasn't fired yet.
+                // The webhook will overwrite this with the real Apple expiry later.
+                if (tier !== 'free') {
+                    try {
+                        const { data: existing, error: queryError } = await supabase
+                            .from('subscriptions')
+                            .select('id')
+                            .eq('user_id', userId)
+                            .in('status', ['active', 'trial'])
+                            .limit(1);
+
+                        if (queryError) {
+                            console.error('[subscriptionStore] setSubscription: query subs failed:', queryError);
+                        } else if (existing && existing.length > 0) {
+                            const { error: updateError } = await supabase
+                                .from('subscriptions')
+                                .update({
+                                    tier,
+                                    status: 'active',
+                                    end_date: expiry,
+                                    auto_renew: true,
+                                })
+                                .eq('id', existing[0].id);
+                            if (updateError) {
+                                console.error('[subscriptionStore] setSubscription: update sub failed:', updateError);
+                            }
+                        } else {
+                            const { error: insertError } = await supabase
+                                .from('subscriptions')
+                                .insert({
+                                    user_id: userId,
+                                    tier,
+                                    status: 'active',
+                                    start_date: new Date().toISOString(),
+                                    end_date: expiry,
+                                    auto_renew: true,
+                                    platform: 'ios',
+                                    product_id: productId || (tier === 'vip' ? 'com.aiwardrobe.premium.yearly' : 'com.aiwardrobe.premium.monthly'),
+                                });
+                            if (insertError) {
+                                console.error('[subscriptionStore] setSubscription: insert sub failed:', insertError);
+                            }
+                        }
+                    } catch (subError) {
+                        console.error('[subscriptionStore] setSubscription: subscriptions write failed (non-fatal):', subError);
+                    }
+                }
             }
         } catch (error) {
-            console.error('Failed to set subscription:', error);
+            // Guarantee local state is set even if Supabase calls fail.
+            console.error('[subscriptionStore] setSubscription: unexpected error:', error);
+            const expiry2 = expiryDate || getDefaultExpiry(tier);
+            const trialStartedAt2 = get().trialStartedAt;
+            set({ tier, expiryDate: expiry2, ...deriveState(tier, expiry2, trialStartedAt2) });
         }
     },
 
@@ -495,12 +611,7 @@ const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     // checkFeatureAccess — uses effectiveTier (trial-aware)
     // ─────────────────────────────────────────────────────────
     checkFeatureAccess: (feature: FeatureKey) => {
-        const { effectiveTier, tier } = get();
-
-        // Virtual Try-On is NOT available during free trial (must be paid subscription)
-        if (feature === 'tryOns' && tier === 'free') {
-            return false;
-        }
+        const { effectiveTier } = get();
 
         const value = TIER_FEATURES[effectiveTier][feature];
         if (typeof value === 'boolean') return value;
@@ -508,12 +619,7 @@ const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     },
 
     getTriesRemaining: (feature: FeatureKey, usedCount: number) => {
-        const { effectiveTier, tier } = get();
-
-        // Virtual Try-On is NOT available during free trial (must be paid subscription)
-        if (feature === 'tryOns' && tier === 'free') {
-            return 0;
-        }
+        const { effectiveTier } = get();
 
         const limit = TIER_FEATURES[effectiveTier][feature];
         if (typeof limit === 'boolean') return limit ? -1 : 0;

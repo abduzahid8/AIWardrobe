@@ -60,27 +60,6 @@ const COLORS = {
     aiGlow: 'rgba(100, 100, 255, 0.1)',
 };
 
-// Quick Occasion Suggestions - Alta-style
-const OCCASION_SUGGESTIONS = [
-    { id: '1', text: 'Date Night', icon: 'heart-outline', emoji: '💕', color: '#E91E63' },
-    { id: '2', text: 'Job Interview', icon: 'briefcase-outline', emoji: '💼', color: '#3F51B5' },
-    { id: '3', text: 'Trip/Travel', icon: 'airplane-outline', emoji: '✈️', color: '#00BCD4' },
-    { id: '4', text: 'Brunch', icon: 'cafe-outline', emoji: '🥂', color: '#FF9800' },
-    { id: '5', text: 'Office Day', icon: 'business-outline', emoji: '👔', color: '#607D8B' },
-    { id: '6', text: 'Party', icon: 'sparkles-outline', emoji: '🎉', color: '#9C27B0' },
-    { id: '7', text: 'Casual Outing', icon: 'walk-outline', emoji: '👟', color: '#4CAF50' },
-    { id: '8', text: 'Wedding Guest', icon: 'flower-outline', emoji: '💐', color: '#F06292' },
-];
-
-// Outfit Adjustment Options - for refining suggestions
-const ADJUSTMENT_OPTIONS = [
-    { id: 'casual', label: 'More casual', icon: 'sunny-outline' },
-    { id: 'formal', label: 'More formal', icon: 'business-outline' },
-    { id: 'colors', label: 'Different colors', icon: 'color-palette-outline' },
-    { id: 'layers', label: 'Add layers', icon: 'layers-outline' },
-    { id: 'weather', label: 'Weather-appropriate', icon: 'partly-sunny-outline' },
-];
-
 interface WeatherContext {
     temp: number;
     condition: string;
@@ -311,8 +290,30 @@ const OutfitAIScreen = () => {
             id: '1',
             text: t('outfitAI.greeting'),
             isAI: true,
-        }
+        },
     ]);
+
+    // Quick Occasion Suggestions - Alta-style
+    const OCCASION_SUGGESTIONS = [
+        { id: '1', text: t('outfitAI.occasions.0.text'), icon: 'heart-outline', emoji: '💕', color: '#E91E63' },
+        { id: '2', text: t('outfitAI.occasions.1.text'), icon: 'briefcase-outline', emoji: '💼', color: '#3F51B5' },
+        { id: '3', text: t('outfitAI.occasions.2.text'), icon: 'airplane-outline', emoji: '✈️', color: '#00BCD4' },
+        { id: '4', text: t('outfitAI.occasions.3.text'), icon: 'cafe-outline', emoji: '🥂', color: '#FF9800' },
+        { id: '5', text: t('outfitAI.occasions.4.text'), icon: 'business-outline', emoji: '👔', color: '#607D8B' },
+        { id: '6', text: t('outfitAI.occasions.5.text'), icon: 'sparkles-outline', emoji: '🎉', color: '#9C27B0' },
+        { id: '7', text: t('outfitAI.occasions.6.text'), icon: 'walk-outline', emoji: '👟', color: '#4CAF50' },
+        { id: '8', text: t('outfitAI.occasions.7.text'), icon: 'flower-outline', emoji: '💐', color: '#F06292' },
+    ];
+
+    // Outfit Adjustment Options - for refining suggestions
+    const ADJUSTMENT_OPTIONS = [
+        { id: 'casual', label: t('outfitAI.adjustments.0.label'), icon: 'sunny-outline' },
+        { id: 'formal', label: t('outfitAI.adjustments.1.label'), icon: 'business-outline' },
+        { id: 'colors', label: t('outfitAI.adjustments.2.label'), icon: 'color-palette-outline' },
+        { id: 'layers', label: t('outfitAI.adjustments.3.label'), icon: 'layers-outline' },
+        { id: 'weather', label: t('outfitAI.adjustments.4.label'), icon: 'partly-sunny-outline' },
+    ];
+
     const [isLoading, setIsLoading] = useState(false);
     const [showSuggestions, setShowSuggestions] = useState(true);
     const [weather, setWeather] = useState<WeatherContext>({ temp: 20, condition: 'clear' });
@@ -412,7 +413,7 @@ const OutfitAIScreen = () => {
                     const data = await fallbackResponse.json();
                     const aiMessage: ChatMessage = {
                         id: (Date.now() + 1).toString(),
-                        text: data.text || "Let me suggest some outfit ideas for you!",
+                        text: data.text || t('outfitAI.suggestOutfitIdeas'),
                         isAI: true,
                     };
                     setMessages(prev => [...prev, aiMessage]);
@@ -420,7 +421,7 @@ const OutfitAIScreen = () => {
                     // Final fallback
                     const aiMessage: ChatMessage = {
                         id: (Date.now() + 1).toString(),
-                        text: "I'm having trouble connecting right now. Make sure the AI service is running and try again!",
+                        text: t('outfitAI.troubleConnecting'),
                         isAI: true,
                     };
                     setMessages(prev => [...prev, aiMessage]);
@@ -597,7 +598,7 @@ const OutfitAIScreen = () => {
                         <View style={styles.inputContainer}>
                             <TextInput
                                 style={styles.textInput}
-                                placeholder="Describe your occasion..."
+                                placeholder={t('outfitAI.describeOccasion')}
                                 placeholderTextColor={COLORS.textMuted}
                                 value={message}
                                 onChangeText={setMessage}

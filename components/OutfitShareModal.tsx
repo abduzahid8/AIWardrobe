@@ -14,6 +14,7 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
 import * as MediaLibrary from 'expo-media-library';
 import ViewShot from 'react-native-view-shot';
@@ -32,17 +33,6 @@ const COLORS = {
     border: AppColors.border,
 };
 
-// Social platforms for sharing
-const SHARE_OPTIONS = [
-    { id: 'instagram', name: 'Instagram', icon: 'logo-instagram', color: '#E4405F' },
-    { id: 'whatsapp', name: 'WhatsApp', icon: 'logo-whatsapp', color: '#25D366' },
-    { id: 'twitter', name: 'X / Twitter', icon: 'logo-twitter', color: '#0A1931' },
-    { id: 'facebook', name: 'Facebook', icon: 'logo-facebook', color: '#1877F2' },
-    { id: 'pinterest', name: 'Pinterest', icon: 'logo-pinterest', color: '#E60023' },
-    { id: 'copy', name: 'Copy Link', icon: 'link-outline', color: COLORS.textSecondary },
-    { id: 'more', name: 'More', icon: 'share-outline', color: COLORS.textSecondary },
-];
-
 // Emoji reactions for friend feedback
 const REACTIONS = ['😍', '🔥', '👍', '👎', '🤔', '💯'];
 
@@ -58,9 +48,21 @@ interface OutfitShareModalProps {
 }
 
 export const OutfitShareModal = ({ visible, onClose, outfit }: OutfitShareModalProps) => {
+    const { t } = useTranslation();
     const [caption, setCaption] = useState('');
     const [isSharing, setIsSharing] = useState(false);
     const viewShotRef = useRef<any>(null);
+
+    // Social platforms for sharing
+    const SHARE_OPTIONS = [
+        { id: 'instagram', name: t('outfitShare.instagram'), icon: 'logo-instagram', color: '#E4405F' },
+        { id: 'whatsapp', name: t('outfitShare.whatsapp'), icon: 'logo-whatsapp', color: '#25D366' },
+        { id: 'twitter', name: t('outfitShare.twitter'), icon: 'logo-twitter', color: '#0A1931' },
+        { id: 'facebook', name: t('outfitShare.facebook'), icon: 'logo-facebook', color: '#1877F2' },
+        { id: 'pinterest', name: t('outfitShare.pinterest'), icon: 'logo-pinterest', color: '#E60023' },
+        { id: 'copy', name: t('outfitShare.copyLink'), icon: 'link-outline', color: COLORS.textSecondary },
+        { id: 'more', name: t('outfitShare.more'), icon: 'share-outline', color: COLORS.textSecondary },
+    ];
 
     const handleShare = async (platform: string) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -75,13 +77,13 @@ export const OutfitShareModal = ({ visible, onClose, outfit }: OutfitShareModalP
                     // Copy link to clipboard (would be a real link in production)
                     const outfitLink = `https://aiwardrobe.app/outfit/${outfit.id}`;
                     // Clipboard.setString(outfitLink);
-                    Alert.alert('Link Copied!', 'Outfit link copied to clipboard');
+                    Alert.alert(t('outfitShare.linkCopied'), t('outfitShare.linkCopiedMessage'));
                 } else if (platform === 'more' || platform === 'native') {
                     // Use native share sheet
                     const result = await Share.share({
-                        message: caption || `Check out this outfit I created with AIWardrobe! 👗✨`,
+                        message: caption || t('outfitShare.shareMessage'),
                         url: uri,
-                        title: 'My Outfit',
+                        title: t('outfitShare.myOutfit'),
                     });
 
                     if (result.action === Share.sharedAction) {
@@ -91,14 +93,14 @@ export const OutfitShareModal = ({ visible, onClose, outfit }: OutfitShareModalP
                     // Platform-specific sharing would go here
                     // For now, use native share
                     await Share.share({
-                        message: caption || `Check out this outfit I created! 👗✨ #AIWardrobe #OOTD`,
+                        message: caption || t('outfitShare.shareMessageHashtags'),
                         url: uri,
                     });
                 }
             }
         } catch (error) {
             console.error('Share error:', error);
-            Alert.alert('Error', 'Failed to share outfit');
+            Alert.alert(t('outfitShare.error'), t('outfitShare.failedToShare'));
         }
 
         setIsSharing(false);
@@ -110,18 +112,18 @@ export const OutfitShareModal = ({ visible, onClose, outfit }: OutfitShareModalP
         try {
             const { status } = await MediaLibrary.requestPermissionsAsync();
             if (status !== 'granted') {
-                Alert.alert('Permission needed', 'Please allow access to save images');
+                Alert.alert(t('outfitShare.permissionNeeded'), t('outfitShare.allowAccess'));
                 return;
             }
 
             if (viewShotRef.current) {
                 const uri = await viewShotRef.current.capture();
                 await MediaLibrary.saveToLibraryAsync(uri);
-                Alert.alert('Saved!', 'Outfit saved to your gallery');
+                Alert.alert(t('outfitShare.saved'), t('outfitShare.savedToGallery'));
             }
         } catch (error) {
             console.error('Save error:', error);
-            Alert.alert('Error', 'Failed to save outfit');
+            Alert.alert(t('outfitShare.error'), t('outfitShare.failedToSave'));
         }
     };
 
@@ -136,9 +138,9 @@ export const OutfitShareModal = ({ visible, onClose, outfit }: OutfitShareModalP
                 {/* Header */}
                 <View style={styles.modalHeader}>
                     <TouchableOpacity onPress={onClose}>
-                        <Text style={styles.cancelText}>Cancel</Text>
+                        <Text style={styles.cancelText}>{t('outfitShare.cancel')}</Text>
                     </TouchableOpacity>
-                    <Text style={styles.modalTitle}>Share Outfit</Text>
+                    <Text style={styles.modalTitle}>{t('outfitShare.shareOutfit')}</Text>
                     <View style={{ width: 50 }} />
                 </View>
 
@@ -189,7 +191,7 @@ export const OutfitShareModal = ({ visible, onClose, outfit }: OutfitShareModalP
                     <View style={styles.captionContainer}>
                         <TextInput
                             style={styles.captionInput}
-                            placeholder="Add a caption..."
+                            placeholder={t('outfitShare.addCaption')}
                             placeholderTextColor={COLORS.textSecondary}
                             value={caption}
                             onChangeText={setCaption}
@@ -205,11 +207,11 @@ export const OutfitShareModal = ({ visible, onClose, outfit }: OutfitShareModalP
                         onPress={handleSaveToGallery}
                     >
                         <Ionicons name="download-outline" size={20} color={COLORS.primary} />
-                        <Text style={styles.saveButtonText}>Save to Gallery</Text>
+                        <Text style={styles.saveButtonText}>{t('outfitShare.saveToGallery')}</Text>
                     </TouchableOpacity>
 
                     {/* Share Options */}
-                    <Text style={styles.sectionTitle}>Share to</Text>
+                    <Text style={styles.sectionTitle}>{t('outfitShare.shareTo')}</Text>
                     <View style={styles.shareGrid}>
                         {SHARE_OPTIONS.map((option) => (
                             <TouchableOpacity
@@ -231,11 +233,11 @@ export const OutfitShareModal = ({ visible, onClose, outfit }: OutfitShareModalP
                     </View>
 
                     {/* Send to Friends */}
-                    <Text style={styles.sectionTitle}>Get Friend Feedback</Text>
+                    <Text style={styles.sectionTitle}>{t('outfitShare.getFriendFeedback')}</Text>
                     <View style={styles.friendFeedbackInfo}>
                         <Ionicons name="people" size={24} color={COLORS.primary} />
                         <Text style={styles.friendFeedbackText}>
-                            Share with friends and let them vote with reactions!
+                            {t('outfitShare.friendFeedbackDescription')}
                         </Text>
                     </View>
 
@@ -250,7 +252,7 @@ export const OutfitShareModal = ({ visible, onClose, outfit }: OutfitShareModalP
                 {isSharing && (
                     <View style={styles.loadingOverlay}>
                         <ActivityIndicator size="large" color={COLORS.primary} />
-                        <Text style={styles.loadingText}>Preparing to share...</Text>
+                        <Text style={styles.loadingText}>{t('outfitShare.preparingToShare')}</Text>
                     </View>
                 )}
             </View>
@@ -270,9 +272,10 @@ interface FriendFeedbackProps {
 }
 
 export const FriendFeedback = ({ outfitId, reactions, onReact, myReaction }: FriendFeedbackProps) => {
+    const { t } = useTranslation();
     return (
         <View style={styles.feedbackContainer}>
-            <Text style={styles.feedbackTitle}>Friend Reactions</Text>
+            <Text style={styles.feedbackTitle}>{t('outfitShare.friendReactions')}</Text>
 
             <View style={styles.reactionsRow}>
                 {REACTIONS.map((emoji) => {

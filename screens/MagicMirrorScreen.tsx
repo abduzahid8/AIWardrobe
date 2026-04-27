@@ -146,7 +146,7 @@ const MagicMirrorScreen: React.FC = () => {
 
         } catch (error) {
             console.error('Failed to load wardrobe:', error);
-            Alert.alert('Error', 'Failed to load your wardrobe. Please try again.');
+            Alert.alert(t('common.error'), t('magicMirror.failedLoadWardrobe'));
         } finally {
             setLoading(false);
         }
@@ -252,7 +252,7 @@ const MagicMirrorScreen: React.FC = () => {
         const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
         if (!permissionResult.granted) {
-            Alert.alert('Permission Required', 'Please allow access to your photos.');
+            Alert.alert(t('magicMirror.permissionRequired'), t('magicMirror.allowAccessPhotos'));
             return;
         }
 
@@ -275,17 +275,17 @@ const MagicMirrorScreen: React.FC = () => {
     // Perform virtual try-on
     const handleTryOn = useCallback(async () => {
         if (!userPhoto) {
-            Alert.alert('Photo Required', 'Please add your photo first.');
+            Alert.alert(t('magicMirror.photoRequired'), t('magicMirror.addPhotoFirst'));
             return;
         }
 
         if (!selectedTop) {
-            Alert.alert('Select Outfit', 'Please swipe to select a top.');
+            Alert.alert(t('magicMirror.selectOutfit'), t('magicMirror.swipeSelectTop'));
             return;
         }
 
         if (!user) {
-            Alert.alert("Login Required", "Please login to use Magic Mirror.");
+            Alert.alert(t('magicMirror.loginRequired'), t('magicMirror.loginUseMagicMirror'));
             return;
         }
 
@@ -297,7 +297,7 @@ const MagicMirrorScreen: React.FC = () => {
             const garmentImage = selectedTop.imageUrl || selectedTop.image;
 
             if (!garmentImage) {
-                throw new Error('No garment image available');
+                throw new Error(t('common.noGarmentImageAvailable'));
             }
 
             const { data, error } = await supabase.functions.invoke('try-on', {
@@ -314,14 +314,14 @@ const MagicMirrorScreen: React.FC = () => {
                 setResultImage(data.resultImage);
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 if (data.methodUsed === 'mock') {
-                    Alert.alert("Demo Mode", "AI service not configured. Showing demo result.");
+                    Alert.alert(t('magicMirror.demoMode'), t('magicMirror.aiServiceNotConfigured'));
                 }
             } else {
                 throw new Error(data.error || 'Try-on failed');
             }
         } catch (error: any) {
             console.error('Try-on error:', error);
-            Alert.alert('Try-On Failed', 'Please try again later. ' + (error.message || ''));
+            Alert.alert(t('magicMirror.tryOnFailed'), t('magicMirror.tryAgainLater') + ' ' + (error.message || ''));
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         } finally {
             setTryingOn(false);

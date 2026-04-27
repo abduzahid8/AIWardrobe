@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 import AppColors from '../constants/AppColors';
 import {
     shoppingService,
@@ -38,6 +39,7 @@ interface CompleteYourLookProps {
 }
 
 export const CompleteYourLook = ({ outfitItems, onProductPress }: CompleteYourLookProps) => {
+    const { t } = useTranslation();
     const [suggestions, setSuggestions] = useState<CompleteYourLookSuggestion[]>([]);
     const [loading, setLoading] = useState(true);
     const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
@@ -81,7 +83,7 @@ export const CompleteYourLook = ({ outfitItems, onProductPress }: CompleteYourLo
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="small" color={COLORS.primary} />
-                <Text style={styles.loadingText}>Finding matching items...</Text>
+                <Text style={styles.loadingText}>{t('completeYourLook.findingMatchingItems')}</Text>
             </View>
         );
     }
@@ -95,10 +97,10 @@ export const CompleteYourLook = ({ outfitItems, onProductPress }: CompleteYourLo
             <View style={styles.header}>
                 <View style={styles.headerLeft}>
                     <Ionicons name="sparkles" size={20} color={COLORS.accent} />
-                    <Text style={styles.title}>Complete Your Look</Text>
+                    <Text style={styles.title}>{t('completeYourLook.title')}</Text>
                 </View>
                 <TouchableOpacity>
-                    <Text style={styles.seeAllText}>See All</Text>
+                    <Text style={styles.seeAllText}>{t('completeYourLook.seeAll')}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -114,7 +116,7 @@ export const CompleteYourLook = ({ outfitItems, onProductPress }: CompleteYourLo
                     >
                         <View>
                             <Text style={styles.categoryTitle}>
-                                Add {suggestion.missingCategory.charAt(0).toUpperCase() + suggestion.missingCategory.slice(1)}
+                                {t('completeYourLook.addCategory', { category: suggestion.missingCategory.charAt(0).toUpperCase() + suggestion.missingCategory.slice(1) })}
                             </Text>
                             <Text style={styles.categoryReason}>{suggestion.reason}</Text>
                         </View>
@@ -156,6 +158,7 @@ interface ProductCardProps {
 }
 
 const ProductCard = ({ product, onPress, onWishlist }: ProductCardProps) => {
+    const { t } = useTranslation();
     const hasDiscount = product.originalPrice && product.originalPrice > product.price;
     const discountPercent = hasDiscount
         ? Math.round((1 - product.price / product.originalPrice!) * 100)
@@ -228,7 +231,7 @@ const ProductCard = ({ product, onPress, onWishlist }: ProductCardProps) => {
 
             {/* Shop button */}
             <TouchableOpacity style={styles.shopButton} onPress={onPress}>
-                <Text style={styles.shopButtonText}>Shop Now</Text>
+                <Text style={styles.shopButtonText}>{t('completeYourLook.shopNow')}</Text>
                 <Ionicons name="open-outline" size={14} color={COLORS.primary} />
             </TouchableOpacity>
         </TouchableOpacity>
@@ -244,7 +247,9 @@ interface SimilarProductsProps {
     title?: string;
 }
 
-export const SimilarProducts = ({ item, title = "Shop Similar" }: SimilarProductsProps) => {
+export const SimilarProducts = ({ item, title }: SimilarProductsProps) => {
+    const { t } = useTranslation();
+    const displayTitle = title || t('completeYourLook.shopSimilar');
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -272,7 +277,7 @@ export const SimilarProducts = ({ item, title = "Shop Similar" }: SimilarProduct
             <View style={styles.header}>
                 <View style={styles.headerLeft}>
                     <Ionicons name="cart-outline" size={20} color={COLORS.primary} />
-                    <Text style={styles.title}>{title}</Text>
+                    <Text style={styles.title}>{displayTitle}</Text>
                 </View>
             </View>
 

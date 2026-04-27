@@ -14,6 +14,7 @@ import Animated, {
     FadeOutDown,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
@@ -40,6 +41,7 @@ const OnboardingProgress: React.FC<OnboardingProgressProps> = ({
     currentItems,
     onComplete,
 }) => {
+    const { t } = useTranslation();
     const [dismissed, setDismissed] = useState(false);
     const [visible, setVisible] = useState(true);
     const progressWidth = useSharedValue(0);
@@ -98,8 +100,11 @@ const OnboardingProgress: React.FC<OnboardingProgressProps> = ({
                 <View style={styles.textContainer}>
                     <Text style={styles.title}>
                         {isComplete
-                            ? "✨ Personalized looks unlocked!"
-                            : `Add ${remaining} item${remaining !== 1 ? 's' : ''} to unlock personalized daily looks`
+                            ? t('onboarding.personalizedLooksUnlocked')
+                            : t('onboarding.addItemsToUnlock', { 
+                                count: remaining,
+                                suffix: remaining !== 1 ? 's' : ''
+                            })
                         }
                     </Text>
                 </View>
@@ -109,7 +114,7 @@ const OnboardingProgress: React.FC<OnboardingProgressProps> = ({
                 <Animated.View style={[styles.progressBarFill, progressAnimatedStyle]} />
             </View>
 
-            <Text style={styles.counter}>{currentItems}/{targetItems} items</Text>
+            <Text style={styles.counter}>{t('onboarding.itemsCounter', { current: currentItems, target: targetItems })}</Text>
         </Animated.View>
     );
 };

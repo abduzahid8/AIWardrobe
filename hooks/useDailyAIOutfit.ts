@@ -43,7 +43,7 @@ export interface DailyOutfitWeather {
 export interface UseDailyAIOutfitOptions {
     /**
      * Style id understood by the `generate-outfits` edge function.
-     * e.g. `"business_casual" | "old_money" | "streetwear" | "minimalist" | "y2k"`.
+     * e.g. `"business_casual" | "old_money" | "semi_classic" | "minimalist" | "casual"`.
      * This is the "category" driving the daily refresh — each distinct value
      * gets its own cache slot.
      */

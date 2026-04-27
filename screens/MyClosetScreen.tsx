@@ -132,16 +132,6 @@ const mapColorToId = (colorName: string): string => {
     return 'beige';
 };
 
-// Updated Category filters to match design
-const CATEGORIES = [
-    { id: 'favorite', label: 'Favorite', icon: 'heart' }, // Filled heart will be handled in render
-    { id: 'all', label: 'All', icon: 'grid' },
-    { id: 'tops', label: 'Tops', icon: 'shirt' },
-    { id: 'bottoms', label: 'Bottoms', icon: 'bookmark' }, // Placeholder icon
-    { id: 'shoes', label: 'Shoes', icon: 'footsteps' },
-    { id: 'accessories', label: 'Accessories', icon: 'glasses' },
-];
-
 interface ClothingItem {
     _id: string;
     id?: string;
@@ -198,10 +188,12 @@ const FilterChip = ({
 // Premium Clothing Grid Item
 const ClothingGridItem = ({
     item,
-    onPress
+    onPress,
+    t
 }: {
     item: ClothingItem;
     onPress: () => void;
+    t: (key: string) => string;
 }) => {
     let imageUrl = item.imageUrl || item.image;
     let finalImageSource: { uri: string } | null = imageUrl ? { uri: imageUrl } : null;
@@ -222,7 +214,7 @@ const ClothingGridItem = ({
                 onPress();
             }}
             activeOpacity={0.9}
-            accessibilityLabel={`${item.category || item.type || 'Clothing'} item${item.color ? `, ${item.color}` : ''}`}
+            accessibilityLabel={`${item.category || item.type || t('wardrobe.clothing')} item${item.color ? `, ${item.color}` : ''}`}
             accessibilityRole="button"
         >
             <Animated.View style={styles.gridItem}>
@@ -249,6 +241,16 @@ const MyClosetScreen = () => {
     const isFocused = useIsFocused();
     const { t } = useTranslation();
     const [items, setItems] = useState<ClothingItem[]>([]);
+
+    // Updated Category filters to match design
+    const CATEGORIES = [
+        { id: 'favorite', label: t('closet.favorite'), icon: 'heart' },
+        { id: 'all', label: t('closet.all'), icon: 'grid' },
+        { id: 'tops', label: t('closet.tops'), icon: 'shirt' },
+        { id: 'bottoms', label: t('closet.bottoms'), icon: 'bookmark' },
+        { id: 'shoes', label: t('closet.shoes'), icon: 'footsteps' },
+        { id: 'accessories', label: t('closet.accessories'), icon: 'glasses' },
+    ];
 
     const player = useVideoPlayer(require('../assets/videos/closet.mov'), (player) => {
         player.loop = true;
@@ -292,12 +294,12 @@ const MyClosetScreen = () => {
                 if (!current.granted) {
                     if (!current.canAskAgain) {
                         Alert.alert(
-                            'Camera Access Disabled',
-                            'Enable camera access in Settings to continue.',
+                            t('myCloset.cameraAccessDisabled'),
+                            t('myCloset.enableCameraAccess'),
                             [
-                                { text: 'Cancel', style: 'cancel' },
+                                { text: t('common.cancel'), style: 'cancel' },
                                 {
-                                    text: 'Open Settings',
+                                    text: t('myCloset.openSettings'),
                                     onPress: () => Platform.OS === 'ios' ? Linking.openURL('app-settings:') : Linking.openSettings(),
                                 },
                             ]
@@ -306,7 +308,7 @@ const MyClosetScreen = () => {
                     }
                     const { status } = await ImagePicker.requestCameraPermissionsAsync();
                     if (status !== 'granted') {
-                        Alert.alert('Permission needed', 'Camera permission is required.');
+                        Alert.alert(t('myCloset.permissionNeeded'), t('myCloset.cameraPermissionRequired'));
                         return;
                     }
                 }
@@ -322,22 +324,22 @@ const MyClosetScreen = () => {
         } catch (error: any) {
             const msg: string = error?.message ?? '';
             if (msg.toLowerCase().includes('simulator') || msg.toLowerCase().includes('not available')) {
-                Alert.alert('Simulator Detected', 'Camera is not available on the simulator. Please use a physical device or pick from your gallery instead.');
+                Alert.alert(t('myCloset.simulatorDetected'), t('myCloset.cameraNotAvailable'));
             } else {
                 console.error('Image picker error:', error);
-                Alert.alert('Error', 'Failed to open camera');
+                Alert.alert(t('common.error'), t('myCloset.failedOpenCamera'));
             }
         }
     };
 
     const runMagicPipeline = async (b64: string | null) => {
         if (!b64) {
-            Alert.alert("Error", "Could not read image data");
+            Alert.alert(t('common.error'), t('myCloset.couldNotReadImage'));
             return;
         }
 
         setIsUploadingOverlay(true);
-        setUploadStatusMsg("Analyzing item and removing background...");
+        setUploadStatusMsg(t('myCloset.analyzingItem'));
 
         try {
             // AI Studio should preserve the garment and only remove the background.
@@ -347,7 +349,7 @@ const MyClosetScreen = () => {
                 throw new Error("AI processing failed");
             }
 
-            setUploadStatusMsg('Background removed. Review details...');
+            setUploadStatusMsg(t('myCloset.backgroundRemoved'));
 
             const cat = (result.classification?.category || '').toLowerCase();
             const sec = (result.classification?.section || '').toLowerCase();
@@ -368,7 +370,7 @@ const MyClosetScreen = () => {
 
         } catch (error: any) {
             console.error(error);
-            Alert.alert("Upload Error", error.message);
+            Alert.alert(t('common.error'), error.message || t('myCloset.uploadError'));
         } finally {
             setIsUploadingOverlay(false);
         }
@@ -378,7 +380,7 @@ const MyClosetScreen = () => {
         try {
             const { status } = await ImagePicker.requestCameraPermissionsAsync();
             if (status !== 'granted') {
-                Alert.alert('Permission needed', 'Camera permission is required.');
+                Alert.alert(t('myCloset.permissionNeeded'), t('myCloset.cameraPermissionRequired'));
                 return;
             }
 
@@ -392,7 +394,7 @@ const MyClosetScreen = () => {
             if (!result.canceled && result.assets[0]) {
                 const asset = result.assets[0];
                 setIsUploadingOverlay(true);
-                setUploadStatusMsg('AI is analyzing your clothing...');
+                setUploadStatusMsg(t('myCloset.analyzingClothing'));
                 try {
                     const aiResult = await ExternalAIService.classifyOnly(asset.base64 || '');
                     const cat = (aiResult.classification?.category || '').toLowerCase();
@@ -414,35 +416,35 @@ const MyClosetScreen = () => {
         } catch (error: any) {
             const msg: string = error?.message ?? '';
             if (msg.toLowerCase().includes('simulator') || msg.toLowerCase().includes('not available')) {
-                Alert.alert("Simulator Detected", "Camera is not available on the simulator. Please use a physical device or pick from your gallery instead.");
+                Alert.alert(t('myCloset.simulatorDetected'), t('myCloset.cameraNotAvailable'));
             } else {
                 console.error('Legacy camera error:', error);
-                Alert.alert("Error", "Failed to open camera");
+                Alert.alert(t('common.error'), t('myCloset.failedOpenCamera'));
             }
         }
     };
 
     const handleUploadChoice = () => {
         Alert.alert(
-            "Add to Closet",
-            "Upload a photo to scan the item and remove the background, or use the standard camera mode.",
+            t('myCloset.addToCloset'),
+            t('myCloset.uploadPhotoDescription'),
             [
-                { text: "AI Studio Photo", onPress: () => pickImage(false) },
-                { text: "AI Studio Camera", onPress: () => pickImage(true) },
-                { text: "Legacy Camera", onPress: openLegacyCamera },
-                { text: "Cancel", style: "cancel" }
+                { text: t('myCloset.aiStudioPhoto'), onPress: () => pickImage(false) },
+                { text: t('myCloset.aiStudioCamera'), onPress: () => pickImage(true) },
+                { text: t('myCloset.legacyCamera'), onPress: openLegacyCamera },
+                { text: t('common.cancel'), style: "cancel" }
             ]
         );
     };
 
     const confirmDelete = (item: ClothingItem) => {
         Alert.alert(
-            "Delete Item",
-            "Are you sure you want to delete this clothing piece? This action cannot be undone.",
+            t('myCloset.deleteItem'),
+            t('myCloset.deleteItemConfirmation'),
             [
-                { text: "Cancel", style: "cancel" },
+                { text: t('common.cancel'), style: "cancel" },
                 {
-                    text: "Delete",
+                    text: t('common.delete'),
                     style: "destructive",
                     onPress: () => deleteItem(item)
                 }
@@ -467,7 +469,7 @@ const MyClosetScreen = () => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         } catch (error) {
             console.error('Failed to delete item:', error);
-            Alert.alert("Error", "Failed to delete item. It has been restored to your closet.");
+            Alert.alert(t('common.error'), t('myCloset.failedDeleteItem'));
             loadItems(); // Revert on failure
         }
     };
@@ -587,7 +589,7 @@ const MyClosetScreen = () => {
                             <Ionicons name="search" size={20} color={colors.text.secondary} />
                             <TextInput
                                 style={styles.searchBarInput}
-                                placeholder="Search closet..."
+                                placeholder={t('myCloset.searchCloset')}
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
                                 autoFocus
@@ -604,7 +606,7 @@ const MyClosetScreen = () => {
                                     <TouchableOpacity
                                         style={styles.headerIconButton}
                                         onPress={() => setIsSearching(true)}
-                                        accessibilityLabel="Search closet"
+                                        accessibilityLabel={t('myCloset.searchCloset')}
                                         accessibilityRole="button"
                                     >
                                         <Ionicons name="search" size={22} color={colors.text.secondary} />
@@ -621,7 +623,7 @@ const MyClosetScreen = () => {
                                     <TouchableOpacity
                                         style={styles.headerUploadButton}
                                         onPress={handleUploadChoice}
-                                        accessibilityLabel="Upload clothing"
+                                        accessibilityLabel={t('myCloset.uploadClothing')}
                                         accessibilityRole="button"
                                     >
                                         <Ionicons name="add" size={18} color="#0A1931" />
@@ -643,7 +645,7 @@ const MyClosetScreen = () => {
                                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                 setViewMode('clothes');
                             }}
-                            accessibilityLabel="Clothes"
+                            accessibilityLabel={t('wardrobe.clothes')}
                             accessibilityRole="tab"
                             accessibilityState={{ selected: viewMode === 'clothes' }}
                         >
@@ -655,7 +657,7 @@ const MyClosetScreen = () => {
                                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                 setViewMode('collections');
                             }}
-                            accessibilityLabel="Collections"
+                            accessibilityLabel={t('wardrobe.collections')}
                             accessibilityRole="tab"
                             accessibilityState={{ selected: viewMode === 'collections' }}
                         >
@@ -698,7 +700,7 @@ const MyClosetScreen = () => {
                         <TouchableOpacity
                             style={styles.emptyButton}
                             onPress={() => navigation.navigate('AIOutfit', { source: 'wardrobe' })}
-                            accessibilityLabel="Create first collection"
+                            accessibilityLabel={t('myCloset.createFirstCollection')}
                             accessibilityRole="button"
                         >
                             <Text style={styles.emptyButtonText}>{t('wardrobe.createFirstLook')}</Text>
@@ -725,7 +727,7 @@ const MyClosetScreen = () => {
                         <TouchableOpacity
                             style={styles.emptyButton}
                             onPress={handleUploadChoice}
-                            accessibilityLabel="Scan wardrobe"
+                            accessibilityLabel={t('myCloset.scanWardrobe')}
                             accessibilityRole="button"
                         >
                             <Text style={styles.emptyButtonText}>{t('wardrobe.scanWardrobe')}</Text>
@@ -748,6 +750,7 @@ const MyClosetScreen = () => {
                                         fullItem: item
                                     });
                                 }}
+                                t={t}
                             />
                         )}
                         ListFooterComponent={<View style={{ height: 100 }} />}
@@ -761,7 +764,7 @@ const MyClosetScreen = () => {
                 style={styles.stylistFAB}
                 onPress={() => navigation.navigate('AIOutfit', { source: 'wardrobe' })}
                 activeOpacity={0.88}
-                accessibilityLabel="Ask AI Stylist"
+                accessibilityLabel={t('myCloset.askAIStylist')}
                 accessibilityRole="button"
             >
                 <View style={styles.stylistFABGlass}>

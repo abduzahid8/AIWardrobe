@@ -144,7 +144,7 @@ export async function analyzeClothingImage(imageBase64) {
   "primaryColor": "the dominant color",
   "secondaryColors": ["other colors present"],
   "pattern": "solid, striped, checkered, floral, printed, or other",
-  "style": "casual, formal, sport, streetwear, elegant, or business",
+  "style": "casual, formal, sport, semi_classic, elegant, or business",
   "material": "best guess at fabric (cotton, polyester, wool, denim, leather, etc.)",
   "season": "spring, summer, fall, winter, or all-season",
   "description": "A brief 1-sentence description of the item"

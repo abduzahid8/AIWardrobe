@@ -8,28 +8,28 @@
 
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
+		2EE6BFB0F8E50B3635335B0D /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = C930058D1F7143EA353A8E9A /* PrivacyInfo.xcprivacy */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		977DF51693667B4F911EFD08 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3FF1738969451C212A88D87 /* ExpoModulesProvider.swift */; };
-		B0E82CFD627275AFE7EAD96E /* libPods-AIWardrobe.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 89D29A211C783B176FA1FBB7 /* libPods-AIWardrobe.a */; };
+		60D0F77115494D0B273DFDBF /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12A484AFA5D20EF33FF72DED /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		D5E3DBDB6CED6C7914BF7CC6 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 81BB860F95EEB3843C6C1524 /* PrivacyInfo.xcprivacy */; };
+		D2B21A3F5C2FE81094D3F6E4 /* libPods-AIWardrobe.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 91819936F20B9F45D82CE1CE /* libPods-AIWardrobe.a */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		04D76F81E8BB9A54912F55F3 /* Pods-AIWardrobe.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AIWardrobe.debug.xcconfig"; path = "Target Support Files/Pods-AIWardrobe/Pods-AIWardrobe.debug.xcconfig"; sourceTree = "<group>"; };
+		12A484AFA5D20EF33FF72DED /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-AIWardrobe/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* AIWardrobe.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AIWardrobe.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = AIWardrobe/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = AIWardrobe/Info.plist; sourceTree = "<group>"; };
-		2EF6ACF7F4203205392F68C6 /* Pods-AIWardrobe.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AIWardrobe.release.xcconfig"; path = "Target Support Files/Pods-AIWardrobe/Pods-AIWardrobe.release.xcconfig"; sourceTree = "<group>"; };
-		81BB860F95EEB3843C6C1524 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = AIWardrobe/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		89D29A211C783B176FA1FBB7 /* libPods-AIWardrobe.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-AIWardrobe.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		35A23A6CDE3FA91537AFDB05 /* Pods-AIWardrobe.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AIWardrobe.release.xcconfig"; path = "Target Support Files/Pods-AIWardrobe/Pods-AIWardrobe.release.xcconfig"; sourceTree = "<group>"; };
+		91819936F20B9F45D82CE1CE /* libPods-AIWardrobe.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-AIWardrobe.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A94C75B86AB1DEE78328E7B5 /* Pods-AIWardrobe.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AIWardrobe.debug.xcconfig"; path = "Target Support Files/Pods-AIWardrobe/Pods-AIWardrobe.debug.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = AIWardrobe/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
+		C930058D1F7143EA353A8E9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = AIWardrobe/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = AIWardrobe/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* AIWardrobe-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "AIWardrobe-Bridging-Header.h"; path = "AIWardrobe/AIWardrobe-Bridging-Header.h"; sourceTree = "<group>"; };
-		F3FF1738969451C212A88D87 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-AIWardrobe/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -37,13 +37,21 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B0E82CFD627275AFE7EAD96E /* libPods-AIWardrobe.a in Frameworks */,
+				D2B21A3F5C2FE81094D3F6E4 /* libPods-AIWardrobe.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		02DAC8A4DFB8FB3427484978 /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				F654C096611562734BC19566 /* AIWardrobe */,
+			);
+			name = ExpoModulesProviders;
+			sourceTree = "<group>";
+		};
 		13B07FAE1A68108700A75B9A /* AIWardrobe */ = {
 			isa = PBXGroup;
 			children = (
@@ -53,7 +61,7 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				81BB860F95EEB3843C6C1524 /* PrivacyInfo.xcprivacy */,
+				C930058D1F7143EA353A8E9A /* PrivacyInfo.xcprivacy */,
 			);
 			name = AIWardrobe;
 			sourceTree = "<group>";
@@ -62,34 +70,9 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				89D29A211C783B176FA1FBB7 /* libPods-AIWardrobe.a */,
+				91819936F20B9F45D82CE1CE /* libPods-AIWardrobe.a */,
 			);
 			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		3C91B41C4826B331B3AE2F58 /* AIWardrobe */ = {
-			isa = PBXGroup;
-			children = (
-				F3FF1738969451C212A88D87 /* ExpoModulesProvider.swift */,
-			);
-			name = AIWardrobe;
-			sourceTree = "<group>";
-		};
-		464DD3D7261ADEE2CF8079A0 /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				3C91B41C4826B331B3AE2F58 /* AIWardrobe */,
-			);
-			name = ExpoModulesProviders;
-			sourceTree = "<group>";
-		};
-		6148BFEF7DD75A1D1A3F1700 /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				04D76F81E8BB9A54912F55F3 /* Pods-AIWardrobe.debug.xcconfig */,
-				2EF6ACF7F4203205392F68C6 /* Pods-AIWardrobe.release.xcconfig */,
-			);
-			path = Pods;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -106,8 +89,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				6148BFEF7DD75A1D1A3F1700 /* Pods */,
-				464DD3D7261ADEE2CF8079A0 /* ExpoModulesProviders */,
+				BD011A3693C7E9F813F4A841 /* Pods */,
+				02DAC8A4DFB8FB3427484978 /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -131,6 +114,23 @@
 			path = AIWardrobe/Supporting;
 			sourceTree = "<group>";
 		};
+		BD011A3693C7E9F813F4A841 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				A94C75B86AB1DEE78328E7B5 /* Pods-AIWardrobe.debug.xcconfig */,
+				35A23A6CDE3FA91537AFDB05 /* Pods-AIWardrobe.release.xcconfig */,
+			);
+			path = Pods;
+			sourceTree = "<group>";
+		};
+		F654C096611562734BC19566 /* AIWardrobe */ = {
+			isa = PBXGroup;
+			children = (
+				12A484AFA5D20EF33FF72DED /* ExpoModulesProvider.swift */,
+			);
+			name = AIWardrobe;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -139,13 +139,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "AIWardrobe" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				848BA9BE80FB3F729805FDFC /* [Expo] Configure project */,
+				8A045F738FD59CA9629DE644 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				1F2F3C2ABF3F8D43A74EC558 /* [CP] Embed Pods Frameworks */,
+				FD000F1AA498C9F300D8565B /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -195,7 +195,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				D5E3DBDB6CED6C7914BF7CC6 /* PrivacyInfo.xcprivacy in Resources */,
+				2EE6BFB0F8E50B3635335B0D /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -241,28 +241,6 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		1F2F3C2ABF3F8D43A74EC558 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-AIWardrobe/Pods-AIWardrobe-frameworks.sh",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/React-Core-prebuilt/React.framework/React",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/ReactNativeDependencies/ReactNativeDependencies.framework/ReactNativeDependencies",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/React.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ReactNativeDependencies.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-AIWardrobe/Pods-AIWardrobe-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
 		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -283,6 +261,7 @@
 				"${PODS_CONFIGURATION_BUILD_DIR}/React-Core/React-Core_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/React-cxxreact/React-cxxreact_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/RevenueCat/RevenueCat.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/Sentry/Sentry.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/expo-dev-launcher/EXDevLauncher.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/expo-dev-menu/EXDevMenu.bundle",
 			);
@@ -301,6 +280,7 @@
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-Core_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-cxxreact_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RevenueCat.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/Sentry.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/EXDevLauncher.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/EXDevMenu.bundle",
 			);
@@ -309,7 +289,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-AIWardrobe/Pods-AIWardrobe-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		848BA9BE80FB3F729805FDFC /* [Expo] Configure project */ = {
+		8A045F738FD59CA9629DE644 /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -333,6 +313,28 @@
 			shellPath = /bin/sh;
 			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-AIWardrobe/expo-configure-project.sh\"\n";
 		};
+		FD000F1AA498C9F300D8565B /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-AIWardrobe/Pods-AIWardrobe-frameworks.sh",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/React-Core-prebuilt/React.framework/React",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/ReactNativeDependencies/ReactNativeDependencies.framework/ReactNativeDependencies",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/React.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ReactNativeDependencies.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-AIWardrobe/Pods-AIWardrobe-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -341,7 +343,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				977DF51693667B4F911EFD08 /* ExpoModulesProvider.swift in Sources */,
+				60D0F77115494D0B273DFDBF /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -350,12 +352,12 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 04D76F81E8BB9A54912F55F3 /* Pods-AIWardrobe.debug.xcconfig */;
+			baseConfigurationReference = A94C75B86AB1DEE78328E7B5 /* Pods-AIWardrobe.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = AIWardrobe/AIWardrobe.entitlements;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 4CBV6A6D4G;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -387,12 +389,12 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 2EF6ACF7F4203205392F68C6 /* Pods-AIWardrobe.release.xcconfig */;
+			baseConfigurationReference = 35A23A6CDE3FA91537AFDB05 /* Pods-AIWardrobe.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = AIWardrobe/AIWardrobe.entitlements;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 4CBV6A6D4G;
 				INFOPLIST_FILE = AIWardrobe/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;

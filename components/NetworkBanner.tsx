@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Text, Animated, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useNetInfo } from '@react-native-community/netinfo';
 
 /**
@@ -10,6 +11,7 @@ import { useNetInfo } from '@react-native-community/netinfo';
  * to determine true network connection status reliably.
  */
 const NetworkBanner: React.FC = () => {
+    const { t } = useTranslation();
     const netInfo = useNetInfo();
     const slideAnim = useRef(new Animated.Value(-50)).current;
 
@@ -32,12 +34,12 @@ const NetworkBanner: React.FC = () => {
                 styles.banner,
                 { transform: [{ translateY: slideAnim }] },
             ]}
-            accessibilityLabel={isOnline ? undefined : 'No internet connection'}
+            accessibilityLabel={isOnline ? undefined : t('network.noInternetConnection')}
             accessibilityRole="alert"
             pointerEvents={isOnline ? 'none' : 'auto'}
         >
             <Ionicons name="cloud-offline-outline" size={16} color="#FFF" />
-            <Text style={styles.text}>No Internet Connection</Text>
+            <Text style={styles.text}>{t('network.noInternetConnection')}</Text>
         </Animated.View>
     );
 };

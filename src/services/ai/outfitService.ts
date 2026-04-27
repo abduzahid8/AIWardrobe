@@ -130,14 +130,30 @@ export function generateLocalOutfitSuggestions(
             occasion: 'Casual',
             confidence: 0.92,
             items: [
-                { type: 'Top', color: 'White', recommendation: 'Quality t-shirt or casual shirt' },
-                { type: 'Bottom', color: 'Blue', recommendation: 'Your favorite jeans' },
-                { type: 'Shoes', color: 'White', recommendation: 'Clean sneakers' },
+                { type: 'Top', color: 'White', recommendation: 'Quality t-shirt or crisp shirt' },
+                { type: 'Bottom', color: 'Gray', recommendation: 'Gray tailored trousers or chinos' },
+                { type: 'Shoes', color: 'White', recommendation: 'Clean minimalist sneakers' },
             ],
             stylingTips: [
-                'Layer with a light jacket',
-                'Accessorize with a watch',
+                'Sandwich Rule: Match your white top with white shoes.',
+                'Gray trousers match everything. Avoid shorts in the city.',
                 'Keep it simple but polished',
+            ],
+        },
+        tuxedo: {
+            id: 'tux-1',
+            description: 'Black Tie formal evening attire',
+            occasion: 'Formal',
+            confidence: 0.95,
+            items: [
+                { type: 'Top', color: 'White', recommendation: 'Tuxedo shirt' },
+                { type: 'Bottom', color: 'Black', recommendation: 'Tuxedo trousers with satin stripe' },
+                { type: 'Jacket', color: 'Black', recommendation: 'Tuxedo with satin lapels' },
+            ],
+            stylingTips: [
+                'No wristwatch with a tuxedo.',
+                'Use white suspenders, no belt.',
+                'Formal events only (after 18:00)',
             ],
         },
     };

@@ -202,7 +202,7 @@ const DesignRoomScreen = () => {
     if (Platform.OS !== 'web') {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Please grant photo library access to upload photos.');
+        Alert.alert(t('designRoom.permissionRequired'), t('designRoom.photoLibraryAccess'));
         return;
       }
     }
@@ -219,26 +219,26 @@ const DesignRoomScreen = () => {
       }
     } catch (error) {
       console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image. Please try again.');
+      Alert.alert(t('common.error'), t('designRoom.failedPickImage'));
     }
   };
 
   // Analyze outfit with AI
   const analyzeOutfit = async (imageUri: string) => {
     setIsAnalyzing(true);
-    setAnalysisProgress('📸 Processing image...');
+    setAnalysisProgress(t('designRoom.processingImage'));
     setDetectedItems([]);
     setSavedItems(new Set());
 
     try {
       // Read image as base64
-      setAnalysisProgress('🔄 Preparing image...');
+      setAnalysisProgress(t('designRoom.preparingImage'));
       const base64 = await FileSystem.readAsStringAsync(imageUri, {
         encoding: 'base64',
       });
 
       // Call AliceVision segment-all API
-      setAnalysisProgress('🔍 AI detecting clothing items...');
+      setAnalysisProgress(t('designRoom.detectingClothingItems'));
 
       const response = await axios.post(
         `${ALICEVISION_URL}/segment-all`,
@@ -250,7 +250,7 @@ const DesignRoomScreen = () => {
       );
 
       if (response.data.success && response.data.items?.length > 0) {
-        setAnalysisProgress(`✅ Found ${response.data.items.length} clothing items!`);
+        setAnalysisProgress(t('designRoom.foundItems', { count: response.data.items.length }));
 
         // Map items to our format
         const items: DetectedClothingItem[] = response.data.items.map((item: DetectedClothingItem) => ({
@@ -269,7 +269,7 @@ const DesignRoomScreen = () => {
 
         setTimeout(() => setAnalysisProgress(''), 2000);
       } else {
-        throw new Error('No clothing items detected');
+        throw new Error(t('common.noClothingItemsDetected'));
       }
     } catch (error: unknown) {
       console.error('Analysis failed:', error);
@@ -277,11 +277,11 @@ const DesignRoomScreen = () => {
 
       const err = error as Error & { code?: string };
       if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
-        Alert.alert('Timeout', 'AI analysis took too long. Please try a smaller image.');
+        Alert.alert(t('designRoom.timeout'), t('designRoom.analysisTooLong'));
       } else if (err.code === 'ERR_NETWORK') {
-        Alert.alert('Connection Error', 'Cannot connect to AI service. Make sure the server is running.');
+        Alert.alert(t('designRoom.connectionError'), t('designRoom.cannotConnectAI'));
       } else {
-        Alert.alert('Analysis Failed', err.message || 'Could not detect clothing items. Try a clearer photo.');
+        Alert.alert(t('designRoom.analysisFailed'), err.message || t('designRoom.couldNotDetect'));
       }
     } finally {
       setIsAnalyzing(false);
@@ -325,7 +325,7 @@ const DesignRoomScreen = () => {
 
     } catch (error) {
       console.error('Failed to save item:', error);
-      Alert.alert('Error', 'Failed to save item to wardrobe');
+      Alert.alert(t('common.error'), t('designRoom.failedSaveWardrobe'));
     }
   };
 
@@ -336,7 +336,7 @@ const DesignRoomScreen = () => {
         await handleSaveItem(detectedItems[i], i);
       }
     }
-    Alert.alert('Saved! 🎉', `${detectedItems.length} items saved to your wardrobe!`);
+    Alert.alert(t('designRoom.saved'), `${detectedItems.length} ${t('designRoom.itemsSaved')}`);
   };
 
   // Clear results
@@ -506,18 +506,18 @@ const DesignRoomScreen = () => {
           <View style={styles.toolbarContainer}>
             <ToolbarButton
               icon="add"
-              label="Add"
+              label={t('designRoom.add')}
               onPress={handleAdd}
             />
             <ToolbarButton
               icon="star"
-              label="Celebrity"
+              label={t('designRoom.celebrity')}
               onPress={handleUploadCelebrity}
               isActive={detectedItems.length > 0}
             />
             <ToolbarButton
               icon="sparkles"
-              label="AI"
+              label={t('designRoom.ai')}
               onPress={handleAI}
             />
           </View>

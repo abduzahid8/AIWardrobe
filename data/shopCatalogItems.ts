@@ -213,7 +213,7 @@ export const SHOP_OUTFITS: ShopCatalogItem[] = [
     {
         id: 'outfit-002',
         brand: 'Curated Look',
-        name: 'Casual Streetwear',
+        name: 'Casual Semi-Classic',
         price: 149.80,
         currency: 'USD',
         garmentType: 'outfit',

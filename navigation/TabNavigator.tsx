@@ -8,16 +8,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
   withTiming,
-  withSequence,
-  interpolate,
-  useDerivedValue,
   Easing,
-  Extrapolation,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { CrossfadeTabView, TabTransitionContext } from "../components/CrossfadeTabView";
+import { useIsFocused } from "@react-navigation/native";
 
 // Original Screens
 import HomeScreen from "../screens/HomeScreen";
@@ -29,6 +25,7 @@ import ProfileScreen from "../screens/ProfileScreen";
 // Screen-level ErrorBoundary — isolates crashes to individual tabs
 import { ErrorBoundary } from "../src/components/ErrorBoundary";
 import { createLogger } from "../src/utils/logger";
+import { useAdminGuard } from "../hooks/useAdminGuard";
 
 const logger = createLogger('TabNavigator');
 
@@ -51,8 +48,8 @@ const getIconName = (routeName: string, focused: boolean) => {
   return "help-outline";
 };
 
-// ── Animated Tab Icon — elastic bounce + glow + scale ────────────────
-interface AnimatedTabIconProps {
+// ── Tab Icon — static, no 3D animation ────────────────────────────────
+interface TabIconProps {
   focused: boolean;
   iconName: string;
   color: string;
@@ -60,64 +57,15 @@ interface AnimatedTabIconProps {
   label: string;
 }
 
-const AnimatedTabItem = ({ focused, iconName, color, size, label }: AnimatedTabIconProps) => {
-  const progress = useDerivedValue(() => withTiming(focused ? 1 : 0, { duration: 300 }));
-  const scale = useSharedValue(1);
-  const rotation = useSharedValue(0);
-  const glow = useSharedValue(0);
-
-  React.useEffect(() => {
-    if (focused) {
-      // Elastic bounce: overshoot then settle
-      scale.value = withSequence(
-        withTiming(0.7, { duration: 80 }),
-        withSpring(1.15, { damping: 8, stiffness: 200, mass: 0.4 }),
-        withSpring(1, { damping: 15, stiffness: 300, mass: 0.5 })
-      );
-      // Playful wiggle
-      rotation.value = withSequence(
-        withTiming(-12, { duration: 60 }),
-        withTiming(12, { duration: 60 }),
-        withTiming(-8, { duration: 60 }),
-        withTiming(8, { duration: 60 }),
-        withSpring(0, { damping: 12, stiffness: 200 })
-      );
-      // Glow pulse
-      glow.value = withSequence(
-        withTiming(1, { duration: 200, easing: Easing.out(Easing.quad) }),
-        withTiming(0, { duration: 400, easing: Easing.out(Easing.quad) })
-      );
-    } else {
-      scale.value = withTiming(1, { duration: 200 });
-      rotation.value = withTiming(0, { duration: 200 });
-      glow.value = 0;
-    }
-  }, [focused]);
-
-  const iconStyle = useAnimatedStyle(() => ({
-    transform: [
-      { scale: scale.value },
-      { rotate: `${rotation.value}deg` },
-    ],
-  }));
-
-  const glowStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(glow.value, [0, 1], [0, 0.6], Extrapolation.CLAMP),
-    transform: [{ scale: interpolate(glow.value, [0, 1], [0.8, 1.4], Extrapolation.CLAMP) }],
-  }));
-
+const TabIcon = ({ focused, iconName, color, size, label }: TabIconProps) => {
   return (
     <View style={styles.tabItemContainer}>
-      {/* Glow ring behind icon */}
-      <Animated.View style={[styles.glowRing, glowStyle]} pointerEvents="none" />
-      <Animated.View style={iconStyle}>
-        <Ionicons name={iconName as any} size={26} color={color} />
-      </Animated.View>
+      <Ionicons name={iconName as any} size={26} color={color} />
     </View>
   );
 };
 
-// ── Liquid Parallax Tab Bar — morphing blob + magnetic press ──────────
+// ── Liquid Glass Tab Bar — smooth sliding indicator ───────────────────
 const LiquidParallaxTabBar = ({ state, descriptors, navigation }: any) => {
   logger.debug('LiquidParallaxTabBar rendering', { tabIndex: state.index });
   const { width } = useWindowDimensions();
@@ -126,10 +74,10 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation }: any) => {
   const tabWidth =
     Math.max(tabBarWidth - (TAB_BAR_HORIZONTAL_PADDING * 2), 0) / Math.max(state.routes.length, 1);
 
-  // Blob indicator — slides + morphs width
-  const blobTranslateX = useSharedValue(state.index * tabWidth);
-  const blobWidth = useSharedValue(56);
-  const blobScaleY = useSharedValue(1);
+  // Blob indicator — smooth slide to center of active icon
+  const BLOB_SIZE = 56;
+  const blobCenterOffset = (tabWidth - BLOB_SIZE) / 2;
+  const blobTranslateX = useSharedValue(state.index * tabWidth + blobCenterOffset);
 
   React.useEffect(() => {
     setTabBarWidth(fallbackTabBarWidth);
@@ -142,30 +90,19 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation }: any) => {
     }
   }, []);
 
-  // Animate blob position with elastic spring + squash-and-stretch
+  // Smooth slide to center of active tab
   React.useEffect(() => {
-    blobTranslateX.value = withSpring(state.index * tabWidth, {
-      damping: 10,
-      stiffness: 140,
-      mass: 0.9,
+    const offset = (tabWidth - BLOB_SIZE) / 2;
+    blobTranslateX.value = withTiming(state.index * tabWidth + offset, {
+      duration: 250,
+      easing: Easing.bezier(0.25, 0.1, 0.25, 1),
     });
-    // Squash-and-stretch: blob briefly widens and flattens on landing
-    blobWidth.value = withSequence(
-      withTiming(68, { duration: 120, easing: Easing.out(Easing.quad) }),
-      withSpring(56, { damping: 14, stiffness: 250 })
-    );
-    blobScaleY.value = withSequence(
-      withTiming(0.85, { duration: 80, easing: Easing.out(Easing.quad) }),
-      withSpring(1, { damping: 12, stiffness: 280 })
-    );
-  }, [state.index, tabWidth, blobTranslateX, blobWidth, blobScaleY]);
+  }, [state.index, tabWidth, blobTranslateX]);
 
   const animatedBlobStyle = useAnimatedStyle(() => ({
     transform: [
       { translateX: blobTranslateX.value },
-      { scaleY: blobScaleY.value },
     ],
-    width: blobWidth.value,
   }));
 
   return (
@@ -222,7 +159,7 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation }: any) => {
               style={styles.tabButton}
               activeOpacity={1}
             >
-              <AnimatedTabItem
+              <TabIcon
                 focused={isFocused}
                 iconName={getIconName(route.name, isFocused)}
                 color={iconColor}
@@ -240,7 +177,13 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation }: any) => {
 // ── Stable wrapper factory — creates components ONCE ─────────────────
 const createAnimatedTabScreen = (Screen: React.ComponentType<any>, tabIndex: number) => {
   const Wrapped = (props: any) => {
-    const isActive = props.navigation?.isFocused?.() ?? false;
+    // `useIsFocused()` is reactive — the wrapper re-renders on every
+    // focus/blur so CrossfadeTabView's `isActive` prop always reflects
+    // the current focus state. Using `navigation.isFocused()` directly
+    // is NOT reactive and, with `lazy: true`, returns false on the
+    // initial mount of a newly-focused tab → opacity stuck at 0 →
+    // white screen.
+    const isActive = useIsFocused();
     return (
       <ErrorBoundary>
         <CrossfadeTabView isActive={isActive} index={tabIndex}>
@@ -263,6 +206,7 @@ const AnimatedProfileScreen = createAnimatedTabScreen(ProfileScreen, 4);
 const TabNavigator = () => {
   logger.debug('TabNavigator component rendering');
   const { t } = useTranslation();
+  const { isAdmin } = useAdminGuard();
 
   // Shared values for tab transition direction — updated via ref + deferred setState
   const currentTab = useSharedValue(0);
@@ -303,28 +247,30 @@ const TabNavigator = () => {
       <Tab.Screen
         name="Home"
         component={AnimatedHomeScreen}
-        options={{ tabBarAccessibilityLabel: t('tabs.home', 'Home') }}
+        options={{ tabBarAccessibilityLabel: t('tabs.home') }}
       />
       <Tab.Screen
         name="Closet"
         component={AnimatedClosetScreen}
-        options={{ tabBarAccessibilityLabel: t('tabs.closet', 'My Closet') }}
+        options={{ tabBarAccessibilityLabel: t('tabs.closet') }}
       />
       <Tab.Screen
         name="AI"
         component={AnimatedAIScreen}
         initialParams={{ asTab: true }}
-        options={{ tabBarAccessibilityLabel: t('tabs.ai', 'AI Try On') }}
+        options={{ tabBarAccessibilityLabel: t('tabs.ai') }}
       />
-      <Tab.Screen
-        name="Inspo"
-        component={AnimatedInspoScreen}
-        options={{ tabBarAccessibilityLabel: t('tabs.inspo', 'Inspiration') }}
-      />
+      {isAdmin && (
+        <Tab.Screen
+          name="Inspo"
+          component={AnimatedInspoScreen}
+          options={{ tabBarAccessibilityLabel: t('tabs.inspo') }}
+        />
+      )}
       <Tab.Screen
         name="Profile"
         component={AnimatedProfileScreen}
-        options={{ tabBarAccessibilityLabel: t('tabs.profile', 'Profile') }}
+        options={{ tabBarAccessibilityLabel: t('tabs.profile') }}
       />
     </Tab.Navigator>
     </TabTransitionContext.Provider>
@@ -374,21 +320,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  glowRing: {
-    position: 'absolute',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(100,140,255,0.25)',
-  },
   indicatorContainer: {
     position: 'absolute',
     left: TAB_BAR_HORIZONTAL_PADDING,
     height: '100%',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1,
-    paddingBottom: 7,
   },
   liquidBlob: {
     width: 56,

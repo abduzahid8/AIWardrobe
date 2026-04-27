@@ -75,7 +75,6 @@ function isShortsBottom(item: { type?: string; name?: string; macroCategory?: st
   return /\b(shorts?|bermudas?)\b/.test(blob);
 }
 
-// Placeholder shoes item injected when no real shoes exist in the wardrobe.
 const PLACEHOLDER_SHOES: OutfitItem = {
   id: 'placeholder_shoes',
   type: 'shoes',
@@ -87,6 +86,17 @@ const PLACEHOLDER_SHOES: OutfitItem = {
   brand: '',
 };
 
+const PLACEHOLDER_PANTS: OutfitItem = {
+  id: 'placeholder_pants',
+  type: 'pants',
+  macroCategory: 'bottom',
+  name: 'Pants',
+  image: 'placeholder_pants',
+  imageUrl: 'placeholder_pants',
+  color: 'neutral',
+  brand: '',
+};
+
 const PLACEHOLDER_SHOES_IMAGE = require('../assets/images/basic_brown_loafers.png');
 const PLACEHOLDER_PANTS_IMAGE = require('../assets/images/basic_brown_pants.png');
 const PLACEHOLDER_TOP_IMAGE = require('../assets/images/basic_white_tshirt.png');
@@ -94,6 +104,7 @@ const PLACEHOLDER_LAYER_IMAGE = require('../assets/images/basic_zip_hoodie.png')
 
 const getSlotImageSource = (item?: OutfitItem) => {
   if (item?.id === PLACEHOLDER_SHOES.id) return PLACEHOLDER_SHOES_IMAGE;
+  if (item?.id === PLACEHOLDER_PANTS.id) return PLACEHOLDER_PANTS_IMAGE;
   const rawImage = typeof item?.image === 'string' && item.image ? item.image : item?.imageUrl;
 
   // Only http(s) / file / data URIs are renderable in a React Native <Image
@@ -136,9 +147,9 @@ const getOfflineMacroCategory = (type: string, category?: string, name?: string)
 
 const aiStyles = [
   { id: 'old_money', label: 'Old Money', icon: 'diamond', desc: 'Classic, refined pieces with a subtle focus on pure luxury.' },
-  { id: 'streetwear', label: 'Streetwear', icon: 'flash', desc: 'Edgy, oversized aesthetics blending comfort with high fashion.' },
+  { id: 'semi_classic', label: 'Semi-Classic', icon: 'umbrella', desc: 'Refined everyday elegance — tailored touches with relaxed comfort.' },
   { id: 'minimalist', label: 'Minimalist', icon: 'remove', desc: 'Clean lines, neutral colors, and essential wardrobe staples.' },
-  { id: 'y2k', label: 'Y2K', icon: 'sparkles', desc: 'Bold colors, nostalgic 2000s vibes, and striking accessories.' },
+  { id: 'casual', label: 'Casual', icon: 'coffee', desc: 'Relaxed, effortless style with well-fitted basics and clean combos.' },
   { id: 'business_casual', label: 'Modern Professional', icon: 'briefcase', desc: 'Sharp, tailored looks perfect for the modern workplace.' },
 ];
 
@@ -158,6 +169,16 @@ function useDesignTokens() {
     borderGlass: 'rgba(255, 255, 255, 0.5)',
   };
 }
+
+const getAiStyleLabel = (id: string, t: (key: string) => string) => {
+  const style = aiStyles.find(s => s.id === id);
+  return style?.label || id;
+};
+
+const getAiStyleDesc = (id: string, t: (key: string) => string) => {
+  const style = aiStyles.find(s => s.id === id);
+  return style?.desc || '';
+};
 
 interface OutfitSlotGridProps {
   items: OutfitItem[];
@@ -270,12 +291,14 @@ function OutfitSlotGrid({ items, weather }: OutfitSlotGridProps) {
       : (mainTopItem ? { ...mainTopItem, id: `${mainTopItem.id || mainTopItem.name}_second_top` } : undefined);
     slots.push({ key: 'second-top', label: 'Second Top', item: resolvedSecondTop });
 
-    // Slot 3: Pants — always show. If no bottom was classified, try
-    // to find any unclassified item that could be pants, else use placeholder.
-    const resolvedPants = pantsItem
-      || classified.find(c => c.type === null && /\b(pant|trouser|jeans|short|skirt|bottom)\b/i.test(`${c.item.name} ${c.item.type} ${c.item.category}`))?.item;
-    const pantsLabel = (resolvedPants ? isShortsBottom(resolvedPants) : false) ? 'Shorts' : 'Pants';
-    slots.push({ key: 'pants', label: pantsLabel, item: resolvedPants });
+    // Slot 3: Pants — always show pants, never shorts. Prefer a real
+    // non-shorts bottom; if only shorts exist or nothing matches, fall
+    // back to the PLACEHOLDER_PANTS tile so the user always sees pants.
+    const nonShortsPantsItem = pantsItems.find(p => !isShortsBottom(p));
+    const resolvedPants = nonShortsPantsItem
+      || classified.find(c => c.type === null && /\b(pant|trouser|jeans|skirt|bottom)\b/i.test(`${c.item.name} ${c.item.type} ${c.item.category}`) && !/\bshorts?\b/i.test(`${c.item.name} ${c.item.type} ${c.item.category}`))?.item
+      || PLACEHOLDER_PANTS;
+    slots.push({ key: 'pants', label: 'Pants', item: resolvedPants });
 
     // Shoes: always show a shoes slot with a renderable image. If the
     // classified shoes item has no real image, use the placeholder.
@@ -311,7 +334,8 @@ async function generateOfflineOutfits(
   extraItems: any[],
   style: string,
   weather: any,
-  limit: number
+  limit: number,
+  t: any
 ): Promise<GeneratedOutfit[]> {
   // ── Fill missing macro-category slots from shop_catalog ──────────────
   // If the wardrobe has no shoes (or no outerwear/top/bottom), pull
@@ -390,14 +414,14 @@ async function generateOfflineOutfits(
 
   const styleName = style.replace(/_/g, ' ');
   const descriptions = [
-    `A curated ${styleName} look styled from your wardrobe.`,
-    `An elegant ${styleName} ensemble with balanced proportions.`,
-    `A refined ${styleName} outfit perfect for the occasion.`,
+    t('outfitMaker.description1', { style: styleName }),
+    t('outfitMaker.description2', { style: styleName }),
+    t('outfitMaker.description3', { style: styleName }),
   ];
   const tips = [
-    ['Pair with subtle accessories', 'Keep colors tonal for cohesion'],
-    ['Add a leather belt and watch', 'Layer outerwear for depth'],
-    ['Choose minimal jewelry', 'Match shoes to belt color'],
+    [t('outfitMaker.tip1_1'), t('outfitMaker.tip1_2')],
+    [t('outfitMaker.tip2_1'), t('outfitMaker.tip2_2')],
+    [t('outfitMaker.tip3_1'), t('outfitMaker.tip3_2')],
   ];
 
   const outfits: GeneratedOutfit[] = [];
@@ -588,6 +612,7 @@ const AIOutfitGenerator = () => {
   const [userPrompt, setUserPrompt] = useState('');
   const insets = useSafeAreaInsets();
 
+
   // ── Weather State ─────────────────────────────────────────────────
   const [weather, setWeather] = useState<{ temp: number; condition: string; icon?: string; city?: string } | undefined>(undefined);
 
@@ -673,7 +698,7 @@ const AIOutfitGenerator = () => {
             // Preserve the real UUID from shop_catalog — never overwrite with a fake id
             type: item.type || item.category || 'Clothing Piece',
             imageUrl: item.imageUrl || (typeof item.image === 'string' ? item.image : '') || '',
-            name: item.name || item.type || 'Clothing item',
+            name: item.name || item.type || t('common.clothingItem'),
             description: item.description || item.name || '',
           }))
         );
@@ -703,7 +728,7 @@ const AIOutfitGenerator = () => {
             subCategory: item.sub_category || undefined,
             color: Array.isArray(item.color) ? item.color[0] : (item.primary_color || 'neutral'),
             brand: item.brand || '',
-            name: item.name || item.type || 'Clothing item',
+            name: item.name || item.type || t('common.clothingItem'),
             description: item.description || item.name || '',
             image: item.image_url || '',
             imageUrl: item.image_url || '',
@@ -745,7 +770,7 @@ const AIOutfitGenerator = () => {
         id: item.id || `local_item_${index}_${item.type || item.category || 'unknown'}`,
         type: item.type || item.category || 'Clothing Piece',
         imageUrl: item.imageUrl || (typeof item.image === 'string' ? item.image : undefined) || '',
-        name: item.name || item.type || 'Clothing item',
+        name: item.name || item.type || t('common.clothingItem'),
         description: item.description || item.name || '',
       })));
     } catch (e) {
@@ -868,13 +893,16 @@ const AIOutfitGenerator = () => {
       return typeof raw === 'string' && /^(https?:|file:|data:|asset:|content:)/i.test(raw);
     };
 
+    // Prefer NON-shorts bottoms. Never promote a random non-shoe/top item
+    // to the pants slot — that was producing the "flowy shirt labeled
+    // SHORTS" bug. Fall back to PLACEHOLDER_PANTS when no real pants exist.
     const slotPantsRaw =
-      pickCandidate((candidate: any) => candidate.macroCategory === 'bottom' && hasRealImage(candidate))
-      || pickCandidate((candidate: any) => candidate.macroCategory === 'bottom')
-      || pickCandidate((candidate: any) => candidate.macroCategory !== 'shoes' && candidate.macroCategory !== 'top' && candidate.macroCategory !== 'outerwear' && candidate.macroCategory !== 'other');
+      pickCandidate((candidate: any) => candidate.macroCategory === 'bottom' && hasRealImage(candidate) && !isShortsBottom(candidate))
+      || pickCandidate((candidate: any) => candidate.macroCategory === 'bottom' && !isShortsBottom(candidate))
+      || { ...PLACEHOLDER_PANTS };
     // Force macroCategory to 'bottom' so OutfitSlotGrid.classifyItem never drops it
-    const slotPants = slotPantsRaw ? { ...slotPantsRaw, macroCategory: 'bottom' as const } : undefined;
-    const pantsIsShorts = slotPants ? isShortsBottom(slotPants) : false;
+    const slotPants = { ...slotPantsRaw, macroCategory: 'bottom' as const };
+    const pantsIsShorts = false;
 
     const slotOuterwearRaw = needsLayer
       ? (pickCandidate((candidate: any) => candidate.macroCategory === 'outerwear' && hasRealImage(candidate) && !(pantsIsShorts && isFormalLayer(candidate)))
@@ -948,9 +976,9 @@ const AIOutfitGenerator = () => {
         return 'work';
       case 'old_money':
         return 'formal';
-      case 'streetwear':
+      case 'semi_classic':
       case 'minimalist':
-      case 'y2k':
+      case 'casual':
         return 'casual';
       default:
         return 'casual';
@@ -963,7 +991,7 @@ const AIOutfitGenerator = () => {
       .map((item) => String(item.id || item.image))
       .filter(Boolean);
     if (itemIds.length === 0) {
-      Alert.alert('Cannot Save', 'This outfit has no valid items to save.');
+      Alert.alert(t('aiOutfitmaker.cannotSave'), t('aiOutfitmaker.noValidItems'));
       return;
     }
 
@@ -1013,7 +1041,7 @@ const AIOutfitGenerator = () => {
     }
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert('Saved', 'Outfit saved to your closet.');
+    Alert.alert(t('aiOutfitmaker.saved'), t('aiOutfitmaker.outfitSavedCloset'));
   };
 
   // ── Add to Calendar ─────────────────────────────────────────────
@@ -1034,12 +1062,12 @@ const AIOutfitGenerator = () => {
       // Warn before overwriting an existing outfit for this date
       if (logs[dateStr]) {
         Alert.alert(
-          'Outfit Already Exists',
-          'You already have an outfit for this date. Replace it?',
+          t('aiOutfitmaker.outfitExists'),
+          t('aiOutfitmaker.replaceOutfit'),
           [
-            { text: 'Cancel', style: 'cancel' },
+            { text: t('common.cancel'), style: 'cancel' },
             {
-              text: 'Replace',
+              text: t('aiOutfitmaker.replace'),
               style: 'destructive',
               onPress: async () => {
                 logs[dateStr] = log;
@@ -1078,7 +1106,7 @@ const AIOutfitGenerator = () => {
     // (require() numbers) and ensure every item has macroCategory + imageUrl.
     const payloadItems = wardrobeItems.map((item: any) => ({
       id: item.id,
-      name: item.name || item.type || 'Clothing item',
+      name: item.name || item.type || t('common.clothingItem'),
       type: item.type || 'top',
       category: item.category || item.type || 'tops',
       color: item.color || 'neutral',
@@ -1135,8 +1163,35 @@ const AIOutfitGenerator = () => {
           throw new Error('No complete outfits returned from AI');
         }
 
+        // Pad to 3 outfits when the backend returned fewer complete ones.
+        // Use the offline builder to fill the remaining slots so the user
+        // always sees three outfit variations.
+        let finalOutfits = cleanedOutfits;
+        if (finalOutfits.length < 3) {
+          try {
+            const offlinePad = await generateOfflineOutfits(
+              wardrobeItems,
+              liveShopMapped,
+              styleToUse,
+              resolvedWeather,
+              3,
+              t
+            );
+            const existingIds = new Set(finalOutfits.map((o: GeneratedOutfit) => o.id));
+            for (const o of offlinePad) {
+              if (finalOutfits.length >= 3) break;
+              if (!existingIds.has(o.id)) {
+                finalOutfits = [...finalOutfits, { ...o, items: normalizeTo4Slots(o.items || [], styleToUse) }]
+                  .filter((out: GeneratedOutfit) => isCompleteNormalizedOutfit(out.items));
+              }
+            }
+          } catch (padErr) {
+            console.warn('[generateOutfits] offline pad failed', padErr);
+          }
+        }
+
         if (isMounted.current) {
-          setOutfits(cleanedOutfits);
+          setOutfits(finalOutfits.slice(0, 3));
           setLoading(false);
         }
         return;
@@ -1152,7 +1207,7 @@ const AIOutfitGenerator = () => {
       fallbackTimer.current = setTimeout(async () => {
         if (!isMounted.current) return;
 
-        const offlineOutfits = await generateOfflineOutfits(wardrobeItems, liveShopMapped, styleToUse, weather, 3);
+        const offlineOutfits = await generateOfflineOutfits(wardrobeItems, liveShopMapped, styleToUse, weather, 3, t);
         setOutfits(offlineOutfits);
         setLoading(false);
         setError('');
@@ -1321,10 +1376,10 @@ const AIOutfitGenerator = () => {
         {/* Title Area */}
         <View style={{ paddingHorizontal: 20, paddingTop: 36, paddingBottom: 24 }}>
           <Text style={styles.sectionTitle}>
-            Discover Your Vibe
+            {t('outfitMaker.discoverVibe')}
           </Text>
           <Text style={styles.sectionSubtitle}>
-            Tap a style card below and AI will instantly build a complete look from your wardrobe.
+            {t('outfitMaker.tapStyleCard')}
           </Text>
         </View>
 
@@ -1337,7 +1392,7 @@ const AIOutfitGenerator = () => {
             </View>
             <TextInput
               style={styles.promptInput}
-              placeholder="e.g., Date night, job interview, casual brunch, beach vacation..."
+              placeholder={t('outfitMaker.promptPlaceholder')}
               placeholderTextColor={D.textSecondary}
               value={userPrompt}
               onChangeText={setUserPrompt}
@@ -1345,6 +1400,15 @@ const AIOutfitGenerator = () => {
               numberOfLines={2}
               textAlignVertical="top"
             />
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => generateOutfits(selectedStyle)}
+              style={styles.promptSubmitButton}
+            >
+              <LinearGradient colors={[D.accent, '#5B7CF9']} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
+              <Ionicons name="send" size={18} color="#fff" />
+              <Text style={styles.promptSubmitButtonText}>{t('outfitMaker.generate')}</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -1488,6 +1552,23 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     minHeight: 56,
     padding: 0,
+  },
+  promptSubmitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    overflow: 'hidden',
+    ...SpatialElevation.getShadow(SpatialElevation.levels.raised),
+  },
+  promptSubmitButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
   },
 
   // Auto-Mode Vibe Cards

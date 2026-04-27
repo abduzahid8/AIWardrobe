@@ -85,7 +85,7 @@ router.post("/analyze-image", authenticateToken, aiLimiter, async (req, res) => 
         const categoryLabels = ["top", "bottom", "dress", "outerwear", "shoes", "accessories", "other"];
         const categories = await hfService.zeroShotImageClassify(cleanBase64, categoryLabels);
 
-        const styleLabels = ["casual", "formal", "sport", "streetwear", "beach", "elegant", "business"];
+        const styleLabels = ["casual", "formal", "sport", "semi_classic", "beach", "elegant", "business"];
         const styles = await hfService.zeroShotImageClassify(cleanBase64, styleLabels);
 
         const patternLabels = ["solid", "striped", "checkered", "floral", "printed", "other"];

@@ -157,7 +157,7 @@ export async function analyzeClothingImage(imageBase64) {
     const categories = await zeroShotImageClassify(imageBase64, fashionLabels);
 
     // Step 3: Zero-shot classify style
-    const styleLabels = ["casual", "formal", "sport", "streetwear", "elegant", "business"];
+    const styleLabels = ["casual", "formal", "sport", "semi_classic", "elegant", "business"];
     const styles = await zeroShotImageClassify(imageBase64, styleLabels);
 
     // Step 4: Zero-shot classify position

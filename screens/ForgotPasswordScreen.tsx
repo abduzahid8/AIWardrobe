@@ -31,7 +31,7 @@ const ForgotPasswordScreen = () => {
 
     const handleResetPassword = async () => {
         if (!isEmailValid) {
-            Alert.alert('Invalid Email', 'Please enter a valid email address.');
+            Alert.alert(t('forgotPassword.invalidEmail'), t('forgotPassword.enterValidEmail'));
             return;
         }
 
@@ -47,11 +47,11 @@ const ForgotPasswordScreen = () => {
             setIsSent(true);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         } catch (error: any) {
-            const message = error.message || 'Failed to send reset email';
+            const message = error.message || t('forgotPassword.failedSendResetEmail');
             if (message.includes('rate limit') || message.includes('too many')) {
-                Alert.alert('Too Many Requests', 'Please wait a few minutes before trying again.');
+                Alert.alert(t('forgotPassword.tooManyRequests'), t('forgotPassword.waitFewMinutes'));
             } else {
-                Alert.alert('Error', message);
+                Alert.alert(t('forgotPassword.error'), message);
             }
         } finally {
             setIsLoading(false);
@@ -65,21 +65,21 @@ const ForgotPasswordScreen = () => {
                     <View style={styles.successIcon}>
                         <Ionicons name="mail-outline" size={48} color="#FFD700" />
                     </View>
-                    <Text style={styles.successTitle}>Check Your Email</Text>
+                    <Text style={styles.successTitle}>{t('forgotPasswordScreen.checkYourEmail')}</Text>
                     <Text style={styles.successMessage}>
-                        We've sent a password reset link to{'\n'}
+                        {t('forgotPassword.resetLinkSent')}{'\n'}
                         <Text style={styles.emailHighlight}>{email}</Text>
                     </Text>
                     <Text style={styles.successHint}>
-                        If you don't see the email, check your spam folder.
+                        {t('forgotPassword.checkSpamFolder')}
                     </Text>
                     <TouchableOpacity
                         onPress={() => navigation.goBack()}
                         style={styles.backButton}
-                        accessibilityLabel="Back to Sign In"
+                        accessibilityLabel={t('forgotPasswordScreen.backToSignIn')}
                         accessibilityRole="button"
                     >
-                        <Text style={styles.backButtonText}>Back to Sign In</Text>
+                        <Text style={styles.backButtonText}>{t('forgotPasswordScreen.backToSignIn')}</Text>
                     </TouchableOpacity>
                 </View>
             </LinearGradient>
@@ -98,15 +98,15 @@ const ForgotPasswordScreen = () => {
                         <TouchableOpacity
                             onPress={() => navigation.goBack()}
                             style={styles.backArrow}
-                            accessibilityLabel="Go back"
+                            accessibilityLabel={t('resetPassword.goBack')}
                             accessibilityRole="button"
                         >
                             <Ionicons name="arrow-back" size={24} color="#FFF" />
                         </TouchableOpacity>
 
-                        <Text style={styles.title}>Reset Password</Text>
+                        <Text style={styles.title}>{t('forgotPasswordScreen.resetPassword')}</Text>
                         <Text style={styles.subtitle}>
-                            Enter your email address and we'll send you a link to reset your password.
+                            {t('forgotPasswordScreen.enterEmail')}
                         </Text>
 
                         <View style={styles.inputContainer}>
@@ -114,16 +114,16 @@ const ForgotPasswordScreen = () => {
                                 style={[styles.input, email && !isEmailValid && styles.inputError]}
                                 value={email}
                                 onChangeText={setEmail}
-                                placeholder="Email address"
+                                placeholder={t('auth.email')}
                                 placeholderTextColor="rgba(255,255,255,0.4)"
                                 keyboardType="email-address"
                                 autoCapitalize="none"
                                 autoFocus
                                 maxLength={255}
-                                accessibilityLabel="Email address"
+                                accessibilityLabel={t('auth.email')}
                             />
                             {email && !isEmailValid && (
-                                <Text style={styles.errorHint}>Please enter a valid email</Text>
+                                <Text style={styles.errorHint}>{t('forgotPasswordScreen.pleaseEnterValidEmail')}</Text>
                             )}
                         </View>
 
@@ -135,13 +135,13 @@ const ForgotPasswordScreen = () => {
                             style={[styles.submitButton, (!isEmailValid || isLoading) && styles.submitButtonDisabled]}
                             disabled={!isEmailValid || isLoading}
                             activeOpacity={0.8}
-                            accessibilityLabel="Send reset link"
+                            accessibilityLabel={t('forgotPasswordScreen.sendResetLink')}
                             accessibilityRole="button"
                         >
                             {isLoading ? (
                                 <ActivityIndicator color="#000" />
                             ) : (
-                                <Text style={styles.submitButtonText}>Send Reset Link</Text>
+                                <Text style={styles.submitButtonText}>{t('forgotPasswordScreen.sendResetLink')}</Text>
                             )}
                         </TouchableOpacity>
                     </View>

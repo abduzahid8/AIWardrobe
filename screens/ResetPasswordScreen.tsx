@@ -42,15 +42,15 @@ const ResetPasswordScreen = () => {
                     <View style={styles.iconContainer}>
                         <Ionicons name="alert-circle-outline" size={40} color="#EF4444" />
                     </View>
-                    <Text style={styles.title}>Invalid Session</Text>
+                    <Text style={styles.title}>{t('resetPassword.invalidSession')}</Text>
                     <Text style={styles.subtitle}>
-                        Your reset link may have expired or is invalid. Please request a new one.
+                        {t('resetPassword.resetLinkExpired')}
                     </Text>
                     <TouchableOpacity
                         onPress={() => navigation.navigate('SignIn')}
                         style={styles.submitButton}
                     >
-                        <Text style={styles.submitButtonText}>Back to Sign In</Text>
+                        <Text style={styles.submitButtonText}>{t('resetPassword.backToSignIn')}</Text>
                     </TouchableOpacity>
                 </View>
             </LinearGradient>
@@ -79,11 +79,11 @@ const ResetPasswordScreen = () => {
 
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             Alert.alert(
-                'Password Updated',
-                'Your password has been successfully reset. You can now sign in with your new password.',
+                t('resetPassword.passwordUpdated'),
+                t('resetPassword.passwordResetSuccess'),
                 [
                     {
-                        text: 'Sign In',
+                        text: t('auth.signIn'),
                         onPress: () => {
                             navigation.reset({
                                 index: 0,
@@ -95,14 +95,14 @@ const ResetPasswordScreen = () => {
             );
         } catch (error: any) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-            const msg = error.message || 'Failed to reset password';
+            const msg = error.message || t('resetPassword.failedResetPassword');
 
             if (msg.includes('same_password') || msg.includes('different from your old')) {
                 Alert.alert(t('resetPassword.samePassword'), t('resetPassword.newPasswordDifferent'));
             } else if (msg.includes('weak_password') || msg.includes('too weak')) {
                 Alert.alert(t('resetPassword.weakPassword'), t('resetPassword.chooseStronger'));
             } else {
-                Alert.alert('Error', msg);
+                Alert.alert(t('resetPassword.error'), msg);
             }
         } finally {
             setIsLoading(false);
@@ -135,7 +135,7 @@ const ResetPasswordScreen = () => {
                         <TouchableOpacity
                             onPress={() => navigation.goBack()}
                             style={styles.backButton}
-                            accessibilityLabel="Go back"
+                            accessibilityLabel={t('resetPassword.goBack')}
                             accessibilityRole="button"
                         >
                             <Ionicons name="arrow-back" size={24} color="#FFF" />
@@ -158,10 +158,10 @@ const ResetPasswordScreen = () => {
                                 style={styles.input}
                                 value={password}
                                 onChangeText={setPassword}
-                                placeholder="New Password"
+                                placeholder={t('resetPassword.newPassword')}
                                 placeholderTextColor="rgba(255,255,255,0.4)"
                                 secureTextEntry
-                                accessibilityLabel="New password"
+                                accessibilityLabel={t('resetPassword.newPassword')}
                                 maxLength={128}
                             />
                         </View>
@@ -169,10 +169,10 @@ const ResetPasswordScreen = () => {
                         {/* Password Requirements */}
                         {password.length > 0 && (
                             <View style={styles.checksContainer}>
-                                <CheckItem valid={passwordChecks.minLength} text="At least 8 characters" />
-                                <CheckItem valid={passwordChecks.hasLowercase} text="One lowercase letter (a-z)" />
-                                <CheckItem valid={passwordChecks.hasUppercase} text="One uppercase letter (A-Z)" />
-                                <CheckItem valid={passwordChecks.hasNumber} text="One number (0-9)" />
+                                <CheckItem valid={passwordChecks.minLength} text={t('resetPassword.minLength')} />
+                                <CheckItem valid={passwordChecks.hasLowercase} text={t('resetPassword.lowercase')} />
+                                <CheckItem valid={passwordChecks.hasUppercase} text={t('resetPassword.uppercase')} />
+                                <CheckItem valid={passwordChecks.hasNumber} text={t('resetPassword.number')} />
                             </View>
                         )}
 
@@ -185,10 +185,10 @@ const ResetPasswordScreen = () => {
                                 ]}
                                 value={confirmPassword}
                                 onChangeText={setConfirmPassword}
-                                placeholder="Confirm New Password"
+                                placeholder={t('resetPassword.confirmPassword')}
                                 placeholderTextColor="rgba(255,255,255,0.4)"
                                 secureTextEntry
-                                accessibilityLabel="Confirm new password"
+                                accessibilityLabel={t('resetPassword.confirmPassword')}
                                 maxLength={128}
                             />
                             {confirmPassword.length > 0 && !passwordsMatch && (
@@ -205,11 +205,11 @@ const ResetPasswordScreen = () => {
                             style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
                             disabled={isLoading || !canSubmit}
                             activeOpacity={0.8}
-                            accessibilityLabel={isLoading ? 'Resetting password' : 'Reset password'}
+                            accessibilityLabel={isLoading ? t('resetPassword.resettingPassword') : t('resetPassword.resetPassword')}
                             accessibilityRole="button"
                         >
                             <Text style={styles.submitButtonText}>
-                                {isLoading ? 'Resetting...' : 'Reset Password'}
+                                {isLoading ? t('resetPassword.resetting') : t('resetPassword.resetPassword')}
                             </Text>
                         </TouchableOpacity>
                     </View>

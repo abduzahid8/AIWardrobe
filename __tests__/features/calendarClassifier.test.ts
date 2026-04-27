@@ -20,9 +20,9 @@ function getCalendarOccasion(styleId?: string): string {
   switch (styleId) {
     case 'business_casual': return 'work';
     case 'old_money': return 'formal';
-    case 'streetwear':
+    case 'semi_classic':
     case 'minimalist':
-    case 'y2k': return 'casual';
+    case 'casual': return 'casual';
     default: return 'casual';
   }
 }
@@ -36,16 +36,16 @@ describe('getCalendarOccasion — style → occasion classifier', () => {
     expect(getCalendarOccasion('old_money')).toBe('formal');
   });
 
-  it('maps streetwear to casual', () => {
-    expect(getCalendarOccasion('streetwear')).toBe('casual');
+  it('maps semi_classic to casual', () => {
+    expect(getCalendarOccasion('semi_classic')).toBe('casual');
   });
 
   it('maps minimalist to casual', () => {
     expect(getCalendarOccasion('minimalist')).toBe('casual');
   });
 
-  it('maps y2k to casual', () => {
-    expect(getCalendarOccasion('y2k')).toBe('casual');
+  it('maps casual to casual', () => {
+    expect(getCalendarOccasion('casual')).toBe('casual');
   });
 
   it('maps unknown styles to casual', () => {
@@ -54,7 +54,7 @@ describe('getCalendarOccasion — style → occasion classifier', () => {
   });
 
   it('all classified occasions are valid OCCASION_IDS', () => {
-    const styles = ['business_casual', 'old_money', 'streetwear', 'minimalist', 'y2k', undefined as string | undefined];
+    const styles = ['business_casual', 'old_money', 'semi_classic', 'minimalist', 'casual', undefined as string | undefined];
     for (const s of styles) {
       const occasion = getCalendarOccasion(s);
       expect(isValidOccasion(occasion)).toBe(true);

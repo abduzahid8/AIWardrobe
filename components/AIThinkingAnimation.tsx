@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { useTranslation } from 'react-i18next';
 import Svg, { Line, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
 
 const { width, height } = Dimensions.get('window');
@@ -28,14 +29,6 @@ interface ThinkingStep {
   text: string;
   icon: any;
 }
-
-const THINKING_STEPS: ThinkingStep[] = [
-  { id: 1, text: 'Scanning your wardrobe...', icon: 'scan-outline' },
-  { id: 2, text: 'Analyzing style DNA...', icon: 'color-palette-outline' },
-  { id: 3, text: 'Matching combinations...', icon: 'git-merge-outline' },
-  { id: 4, text: 'Optimizing outfits...', icon: 'options-outline' },
-  { id: 5, text: 'Finalizing your looks...', icon: 'sparkles' },
-];
 
 interface AIThinkingAnimationProps {
   styleName?: string;
@@ -86,11 +79,20 @@ export const AIThinkingAnimation: React.FC<AIThinkingAnimationProps> = ({
   styleName,
   clothingItems = [],
 }) => {
+  const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(0);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
   const stepFadeAnim = useRef(new Animated.Value(1)).current;
+
+  const THINKING_STEPS: ThinkingStep[] = [
+    { id: 1, text: t('aiThinking.scanningWardrobe'), icon: 'scan-outline' },
+    { id: 2, text: t('aiThinking.analyzingStyle'), icon: 'color-palette-outline' },
+    { id: 3, text: t('aiThinking.matchingCombinations'), icon: 'git-merge-outline' },
+    { id: 4, text: t('aiThinking.optimizingOutfits'), icon: 'options-outline' },
+    { id: 5, text: t('aiThinking.finalizingLooks'), icon: 'sparkles' },
+  ];
 
   // Default fallback images
   const clothingImages = useMemo(() => {
@@ -255,7 +257,7 @@ export const AIThinkingAnimation: React.FC<AIThinkingAnimationProps> = ({
           <View style={styles.aiIconContainer}>
             <Ionicons name="flask" size={32} color="#2B5CE9" />
           </View>
-          <Text style={styles.brainText}>STYLE DNA</Text>
+          <Text style={styles.brainText}>{t('aiThinking.styleDna')}</Text>
         </View>
         <View style={styles.glowRing} />
         <View style={styles.glowRingOuter} />
@@ -276,7 +278,7 @@ export const AIThinkingAnimation: React.FC<AIThinkingAnimationProps> = ({
             <Text style={styles.stepText}>{currentStepData.text}</Text>
           </View>
         </Animated.View>
-        {styleName && <Text style={styles.styleTag}>Synthesizing <Text style={styles.styleTagHighlight}>{styleName}</Text> DNA</Text>}
+        {styleName && <Text style={styles.styleTag}>{t('aiThinking.synthesizingDna', { style: styleName })}</Text>}
       </View>
 
       {/* Progress bar */}

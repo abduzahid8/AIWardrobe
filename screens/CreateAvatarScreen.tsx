@@ -156,7 +156,7 @@ export default function CreateAvatarScreen() {
                                                     returnKeyType="done"
                                                     onSubmitEditing={Keyboard.dismiss}
                                                 />
-                                                <Text style={styles.inputUnit}>cm</Text>
+                                                <Text style={styles.inputUnit}>{t('createAvatar.cm')}</Text>
                                             </View>
                                         </View>
                                         <Text style={styles.inputHint}>{t('createAvatar.heightRange')}</Text>
@@ -181,7 +181,7 @@ export default function CreateAvatarScreen() {
                                                     returnKeyType="done"
                                                     onSubmitEditing={Keyboard.dismiss}
                                                 />
-                                                <Text style={styles.inputUnit}>kg</Text>
+                                                <Text style={styles.inputUnit}>{t('createAvatar.kg')}</Text>
                                             </View>
                                         </View>
                                         <Text style={styles.inputHint}>{t('createAvatar.weightRange')}</Text>
@@ -232,7 +232,7 @@ export default function CreateAvatarScreen() {
                                 {heightCm && weightKg && parseInt(heightCm) > 0 && parseInt(weightKg) > 0 && (
                                     <View style={styles.bmiCard}>
                                         <View style={styles.bmiRow}>
-                                            <Text style={styles.bmiLabel}>BMI</Text>
+                                            <Text style={styles.bmiLabel}>{t('createAvatar.bmi')}</Text>
                                             <Text style={styles.bmiValue}>
                                                 {(parseInt(weightKg) / Math.pow(parseInt(heightCm) / 100, 2)).toFixed(1)}
                                             </Text>
@@ -240,10 +240,10 @@ export default function CreateAvatarScreen() {
                                         <Text style={styles.bmiDesc}>
                                             {(() => {
                                                 const bmi = parseInt(weightKg) / Math.pow(parseInt(heightCm) / 100, 2);
-                                                if (bmi < 18.5) return "Underweight";
-                                                if (bmi < 25) return "Normal weight";
-                                                if (bmi < 30) return "Overweight";
-                                                return "Obese";
+                                                if (bmi < 18.5) return t('createAvatar.underweight');
+                                                if (bmi < 25) return t('createAvatar.normalWeight');
+                                                if (bmi < 30) return t('createAvatar.overweight');
+                                                return t('createAvatar.obese');
                                             })()}
                                         </Text>
                                     </View>

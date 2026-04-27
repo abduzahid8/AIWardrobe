@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import StreakBadge from '../StreakBadge';
 import { LiquidGlass2026Theme } from '../../constants/LiquidGlass2026Theme';
 
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export default function HomeHeader({ greeting, userName, onCalendarPress }: Props) {
+    const { t } = useTranslation();
     return (
         <>
             <View style={styles.titleSection}>
@@ -28,7 +30,7 @@ export default function HomeHeader({ greeting, userName, onCalendarPress }: Prop
                     <TouchableOpacity
                         style={styles.calendarButton}
                         onPress={onCalendarPress}
-                        accessibilityLabel="Open calendar"
+                        accessibilityLabel={t('homeHeader.openCalendar')}
                     >
                         <Ionicons name="calendar-outline" size={24} color={colors.text.primary} />
                         <View style={styles.calendarDot} />

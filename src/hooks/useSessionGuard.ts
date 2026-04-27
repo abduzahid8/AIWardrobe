@@ -11,6 +11,7 @@ import { useEffect, useRef } from 'react';
 import { AppState, AppStateStatus, Alert } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import useAuthStore from '../../store/auth';
+import { useTranslation } from 'react-i18next';
 
 export function useSessionGuard(): void {
     const appState = useRef(AppState.currentState);
@@ -31,10 +32,11 @@ export function useSessionGuard(): void {
                     if (error || !session) {
                         // Session expired
                         const { logout } = useAuthStore.getState();
+                        const { t } = useTranslation();
                         await logout();
                         Alert.alert(
-                            'Session Expired',
-                            'Your session has expired. Please sign in again.',
+                            t('sessionGuard.sessionExpired'),
+                            t('sessionGuard.sessionExpiredMessage'),
                         );
                     } else {
                         // Refresh session if it's about to expire (within 5 minutes)

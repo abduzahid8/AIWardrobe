@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { SpatialElevation } from '../../../constants/LiquidGlass2026Theme';
 
 interface PromptInputProps {
@@ -9,12 +10,15 @@ interface PromptInputProps {
   onSubmit?: () => void;
 }
 
-const PromptInput: React.FC<PromptInputProps> = ({ value, onChangeText, onSubmit }) => (
+const PromptInput: React.FC<PromptInputProps> = ({ value, onChangeText, onSubmit }) => {
+  const { t } = useTranslation();
+  
+  return (
   <View style={styles.promptContainer}>
     <Ionicons name="sparkles-outline" size={18} color="#6B7280" style={{ marginRight: 10 }} />
     <TextInput
       style={styles.promptInput}
-      placeholder="Describe the vibe... (e.g. beach trip, business meeting)"
+      placeholder={t('outfitMaker.promptPlaceholder')}
       placeholderTextColor="#9CA3AF"
       value={value}
       onChangeText={onChangeText}
@@ -34,7 +38,8 @@ const PromptInput: React.FC<PromptInputProps> = ({ value, onChangeText, onSubmit
       </TouchableOpacity>
     )}
   </View>
-);
+  );
+};
 
 const styles = StyleSheet.create({
   promptContainer: {

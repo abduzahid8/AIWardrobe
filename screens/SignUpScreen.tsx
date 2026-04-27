@@ -9,10 +9,11 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
+import * as AppleAuthentication from "expo-apple-authentication";
 import useAuthStore from "../store/auth";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
@@ -29,7 +30,28 @@ const SignUpScreen = () => {
   const [profileImage, setProfileImage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigation = useNavigation();
-  const { register } = useAuthStore();
+  const { register, signInWithApple } = useAuthStore();
+  const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS === 'ios') {
+      AppleAuthentication.isAvailableAsync().then(setAppleAuthAvailable).catch(() => {});
+    }
+  }, []);
+
+  const handleAppleSignUp = async () => {
+    if (isLoading) return;
+    setIsLoading(true);
+    try {
+      await signInWithApple();
+    } catch (error: any) {
+      if (error?.code !== 'ERR_REQUEST_CANCELED') {
+        Alert.alert(t('signUp.registrationFailed'), error.message || t('signIn.appleSignInFailed'));
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Password validation checks
   const passwordChecks = useMemo(() => ({
@@ -56,35 +78,35 @@ const SignUpScreen = () => {
 
   const handleSignUp = async () => {
     if (!email || !password || !username || !gender) {
-      Alert.alert("Missing Fields", "Please fill in all required fields");
+      Alert.alert(t('signUp.missingFields'), t('signUp.fillRequiredFields'));
       return;
     }
 
     if (!isEmailValid) {
-      Alert.alert("Invalid Email", "Please enter a valid email address");
+      Alert.alert(t('signUp.invalidEmail'), t('signUp.enterValidEmail'));
       return;
     }
 
     if (!isPasswordValid) {
       Alert.alert(
-        "Password Requirements",
-        "Your password must:\n• Be at least 8 characters\n• Include a lowercase letter (a-z)\n• Include an uppercase letter (A-Z)\n• Include a number (0-9)"
+        t('signUp.passwordRequirements'),
+        t('signUp.passwordRequirementsText')
       );
       return;
     }
 
     if (!isUsernameValid) {
       Alert.alert(
-        "Invalid Username",
-        "Username must be 3-30 characters and can only contain letters, numbers, and underscores"
+        t('signUp.invalidUsername'),
+        t('signUp.usernameRequirements')
       );
       return;
     }
 
     if (!isGenderValid) {
       Alert.alert(
-        "Invalid Gender",
-        "Please enter: Male, Female, Other, or Prefer not to say"
+        t('signUp.invalidGender'),
+        t('signUp.genderOptions')
       );
       return;
     }
@@ -93,22 +115,22 @@ const SignUpScreen = () => {
     try {
       await register(email, password, username, gender.toLowerCase(), profileImage);
     } catch (error: any) {
-      const errorMessage = error.message || "Registration failed";
+      const errorMessage = error.message || t('signUp.registrationFailed');
       logger.error('Signup error', errorMessage);
 
       // Parse specific error messages
       if (errorMessage.includes("User already registered") || errorMessage.includes("already registered")) {
-        Alert.alert("Email Taken", "This email is already registered. Try signing in instead.");
+        Alert.alert(t('signUp.emailTaken'), t('signUp.emailAlreadyRegistered'));
       } else if (errorMessage.includes("Username already exists")) {
         // This comes from our custom trigger or RLS if we implemented checks there, 
         // otherwise Supabase might return a generic database error 23505 for unique violation.
-        Alert.alert("Username Taken", "This username is already in use. Please choose another.");
+        Alert.alert(t('signUp.usernameTaken'), t('signUp.usernameAlreadyUse'));
       } else if (errorMessage.includes("Database error") && errorMessage.includes("username")) {
-        Alert.alert("Username Taken", "This username is already in use. Please choose another.");
+        Alert.alert(t('signUp.usernameTaken'), t('signUp.usernameAlreadyUse'));
       } else if (errorMessage.includes("Network request failed")) {
-        Alert.alert("Connection Failed", "Cannot connect to server. Please check your internet connection.");
+        Alert.alert(t('signUp.connectionFailed'), t('signUp.cannotConnectServer'));
       } else {
-        Alert.alert("Registration Failed", errorMessage);
+        Alert.alert(t('signUp.registrationFailed'), errorMessage);
       }
     } finally {
       setIsLoading(false);
@@ -140,7 +162,25 @@ const SignUpScreen = () => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.title}>{t('auth.signUp')}</Text>
+          <Text style={styles.title}>{t('auth.signUp.signUp')}</Text>
+
+          {/* Sign in with Apple — shown first per Apple HIG prominence requirement */}
+          {appleAuthAvailable && (
+            <>
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
+                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE_OUTLINE}
+                cornerRadius={16}
+                style={styles.appleButton}
+                onPress={handleAppleSignUp}
+              />
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>{t('signIn.or')}</Text>
+                <View style={styles.dividerLine} />
+              </View>
+            </>
+          )}
 
           {/* Email */}
           <View style={styles.inputContainer}>
@@ -152,11 +192,11 @@ const SignUpScreen = () => {
               placeholderTextColor="rgba(255,255,255,0.4)"
               keyboardType="email-address"
               autoCapitalize="none"
-              accessibilityLabel="Email address"
+              accessibilityLabel={t('auth.email')}
               maxLength={255}
             />
             {email && !isEmailValid && (
-              <Text style={styles.errorHint}>Please enter a valid email</Text>
+              <Text style={styles.errorHint}>{t('auth.signUp.pleaseEnterValidEmail')}</Text>
             )}
           </View>
 
@@ -169,18 +209,18 @@ const SignUpScreen = () => {
               placeholder={t('auth.password')}
               placeholderTextColor="rgba(255,255,255,0.4)"
               secureTextEntry
-              accessibilityLabel="Password"
+              accessibilityLabel={t('auth.password')}
               maxLength={128}
             />
 
             {/* Password Requirements Checklist */}
             {password.length > 0 && (
               <View style={styles.passwordChecks}>
-                <Text style={styles.checklistTitle}>Password requirements:</Text>
-                <PasswordCheckItem isValid={passwordChecks.minLength} text="At least 8 characters" />
-                <PasswordCheckItem isValid={passwordChecks.hasLowercase} text="One lowercase letter (a-z)" />
-                <PasswordCheckItem isValid={passwordChecks.hasUppercase} text="One uppercase letter (A-Z)" />
-                <PasswordCheckItem isValid={passwordChecks.hasNumber} text="One number (0-9)" />
+                <Text style={styles.checklistTitle}>{t('auth.signUp.passwordRequirements')}</Text>
+                <PasswordCheckItem isValid={passwordChecks.minLength} text={t('resetPassword.minLength')} />
+                <PasswordCheckItem isValid={passwordChecks.hasLowercase} text={t('resetPassword.lowercase')} />
+                <PasswordCheckItem isValid={passwordChecks.hasUppercase} text={t('resetPassword.uppercase')} />
+                <PasswordCheckItem isValid={passwordChecks.hasNumber} text={t('resetPassword.number')} />
               </View>
             )}
           </View>
@@ -194,17 +234,17 @@ const SignUpScreen = () => {
               placeholder={t('auth.username')}
               placeholderTextColor="rgba(255,255,255,0.4)"
               autoCapitalize="none"
-              accessibilityLabel="Username"
+              accessibilityLabel={t('auth.username')}
               maxLength={30}
             />
             {username && !isUsernameValid && (
-              <Text style={styles.errorHint}>3-30 chars, letters/numbers/underscores only</Text>
+              <Text style={styles.errorHint}>{t('signUp.usernameRequirements')}</Text>
             )}
           </View>
 
           {/* Gender Picker */}
           <View style={styles.inputContainer}>
-            <Text style={styles.genderLabel}>Gender</Text>
+            <Text style={styles.genderLabel}>{t('auth.signUp.gender')}</Text>
             <View style={styles.genderRow}>
               {['male', 'female', 'other', 'prefer_not_to_say'].map((g) => (
                 <TouchableOpacity
@@ -217,7 +257,7 @@ const SignUpScreen = () => {
                     styles.genderChip,
                     gender === g && styles.genderChipActive,
                   ]}
-                  accessibilityLabel={g === 'prefer_not_to_say' ? 'Prefer not to say' : g}
+                  accessibilityLabel={g === 'prefer_not_to_say' ? t('signUp.preferNotToSay') : g}
                   accessibilityRole="radio"
                   accessibilityState={{ selected: gender === g }}
                 >
@@ -227,7 +267,7 @@ const SignUpScreen = () => {
                       gender === g && styles.genderChipTextActive,
                     ]}
                   >
-                    {g === 'prefer_not_to_say' ? 'Skip' : g.charAt(0).toUpperCase() + g.slice(1)}
+                    {g === 'prefer_not_to_say' ? t('signUp.skip') : g.charAt(0).toUpperCase() + g.slice(1)}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -240,10 +280,10 @@ const SignUpScreen = () => {
               style={styles.input}
               value={profileImage}
               onChangeText={setProfileImage}
-              placeholder="Profile Image URL (optional)"
+              placeholder={t('signUp.profileImageUrlOptional')}
               placeholderTextColor="rgba(255,255,255,0.4)"
               autoCapitalize="none"
-              accessibilityLabel="Profile image URL, optional"
+              accessibilityLabel={t('signUp.profileImageUrlOptional')}
               maxLength={500}
             />
           </View>
@@ -257,11 +297,11 @@ const SignUpScreen = () => {
             style={[styles.signUpButton, !canSubmit && styles.signUpButtonDisabled]}
             disabled={isLoading || !canSubmit}
             activeOpacity={0.8}
-            accessibilityLabel={isLoading ? 'Creating account' : 'Sign up'}
+            accessibilityLabel={isLoading ? t('signUp.creatingAccount') : t('auth.signUp.signUp')}
             accessibilityRole="button"
           >
             <Text style={styles.signUpButtonText}>
-              {isLoading ? "Creating Account..." : t("auth.signUp")}
+              {isLoading ? t('signUp.creatingAccount') : t("auth.signUp.signUp")}
             </Text>
           </TouchableOpacity>
 
@@ -415,5 +455,25 @@ const styles = StyleSheet.create({
   genderChipTextActive: {
     color: "#FFD700",
     fontWeight: "600",
+  },
+  appleButton: {
+    width: "100%",
+    height: 50,
+    marginBottom: 8,
+  },
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.15)",
+  },
+  dividerText: {
+    color: "rgba(255,255,255,0.4)",
+    fontSize: 13,
+    marginHorizontal: 12,
   },
 });

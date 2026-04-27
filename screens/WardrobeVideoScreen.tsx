@@ -193,11 +193,11 @@ const WardrobeVideoScreen = () => {
             // Handle Expo Go limitations
             if (status === 'denied') {
                 Alert.alert(
-                    'Permission Required', 
-                    'Please grant photo library permissions. Note: Expo Go has limited media access. For full functionality, use a development build.',
+                    t('wardrobeVideo.permissionRequired'),
+                    t('wardrobeVideo.photoLibraryPermission'),
                     [
-                        { text: 'Cancel', style: 'cancel' },
-                        { text: 'Try Anyway', onPress: () => logger.debug('User wants to try anyway') }
+                        { text: t('common.cancel'), style: 'cancel' },
+                        { text: t('wardrobeVideo.tryAnyway'), onPress: () => logger.debug('User wants to try anyway') }
                     ]
                 );
                 return false;
@@ -328,9 +328,9 @@ const WardrobeVideoScreen = () => {
                 // Provide helpful message for Expo Go users
                 if (__DEV__) {
                     Alert.alert(
-                        'No Media Selected', 
-                        'If you\'re using Expo Go, media access may be limited. Try:\n\n1. Selecting images\n2. Using a development build for full access\n3. Using a physical device',
-                        [{ text: 'OK' }]
+                        t('wardrobeVideo.noMediaSelected'),
+                        t('wardrobeVideo.expoGoLimitation'),
+                        [{ text: t('common.ok') }]
                     );
                 } else {
                     Alert.alert(t('wardrobeVideo.info'), t('wardrobeVideo.noMediaSelected'));
@@ -342,9 +342,9 @@ const WardrobeVideoScreen = () => {
             // Provide specific error message for Expo Go limitations
             if (error.message?.includes('media library') || error.message?.includes('permission')) {
                 Alert.alert(
-                    'Expo Go Limitation', 
-                    'Media library access is limited in Expo Go. For full functionality, create a development build.\n\nYou can still try uploading images.',
-                    [{ text: 'OK' }]
+                    t('wardrobeVideo.expoGoLimitationTitle'),
+                    t('wardrobeVideo.expoGoLimitation'),
+                    [{ text: t('common.ok') }]
                 );
             } else {
                 Alert.alert(t('common.error'), t('wardrobeVideo.pickFailed', { error: error?.message || 'Unknown error' }));
@@ -408,16 +408,16 @@ const WardrobeVideoScreen = () => {
             }
 
             Alert.alert(
-                'Saved Locally!',
-                `${results.detectedItems.length} item(s) saved to your wardrobe. They will sync automatically.`,
+                t('wardrobeVideo.savedLocally'),
+                t('wardrobeVideo.itemsSaved', { count: results.detectedItems.length }),
                 [
                     {
-                        text: 'View Wardrobe', onPress: () => {
+                        text: t('wardrobeVideo.viewWardrobe'), onPress: () => {
                             reset();
                             navigation.navigate('Main', { screen: 'Closet' });
                         }
                     },
-                    { text: 'OK', onPress: () => reset() },
+                    { text: t('common.ok'), onPress: () => reset() },
                 ]
             );
         } catch (error: any) {
@@ -468,23 +468,23 @@ const WardrobeVideoScreen = () => {
                     {!results && !analyzing && (
                         <Animated.View entering={FadeInDown.springify().damping(20)} style={styles.heroSection}>
                             <Animated.Text entering={FadeIn.delay(100)} style={styles.heroTitle}>
-                                Digitize Your Closet
+                                {t('wardrobeVideo.digitizeCloset')}
                             </Animated.Text>
                             <Animated.Text entering={FadeIn.delay(200)} style={styles.heroSubtitle}>
-                                Upload a quick video of your clothes, and our AI will automatically detect and catalog them.
+                                {t('wardrobeVideo.uploadVideo')}
                             </Animated.Text>
 
                             {/* Glass steps */}
                             <View style={styles.stepsRow}>
-                                <GlassStep icon="videocam-outline" label="Record" index={0} />
+                                <GlassStep icon="videocam-outline" label={t('wardrobeVideo.record')} index={0} />
                                 <View style={styles.stepConnector}>
                                     <View style={styles.stepConnectorLine} />
                                 </View>
-                                <GlassStep icon="sparkles-outline" label="Analyze" index={1} />
+                                <GlassStep icon="sparkles-outline" label={t('wardrobeVideo.analyze')} index={1} />
                                 <View style={styles.stepConnector}>
                                     <View style={styles.stepConnectorLine} />
                                 </View>
-                                <GlassStep icon="shirt-outline" label="Get Items" index={2} />
+                                <GlassStep icon="shirt-outline" label={t('wardrobeVideo.getItems')} index={2} />
                             </View>
                         </Animated.View>
                     )}
@@ -515,8 +515,8 @@ const WardrobeVideoScreen = () => {
                                     <Text style={styles.uploadTitle}>{t('wardrobeVideo.selectGallery')}</Text>
                                     <Text style={styles.uploadSubtitle}>
                                         {Platform.OS === 'web' 
-                                            ? 'Choose a photo from your device' 
-                                            : 'Choose a video or photo from your device'
+                                            ? t('wardrobeVideo.choosePhoto') 
+                                            : t('wardrobeVideo.chooseVideoOrPhoto')
                                         }
                                     </Text>
                                 </BlurView>
@@ -532,7 +532,7 @@ const WardrobeVideoScreen = () => {
                                 {progress}
                             </Animated.Text>
                             <Animated.Text entering={FadeIn.delay(500)} style={styles.analyzingSubtext}>
-                                Our AI is analyzing every frame of your video...
+                                {t('wardrobeVideo.analyzingVideo')}
                             </Animated.Text>
                         </Animated.View>
                     )}
@@ -545,7 +545,7 @@ const WardrobeVideoScreen = () => {
                                 <View>
                                     <Text style={styles.resultsTitle}>{t('wardrobeVideo.analysisComplete')}</Text>
                                     <Text style={styles.resultsSubtitle}>
-                                        Found {results.detectedItems.length} items
+                                        {t('wardrobeVideo.foundItems', { count: results.detectedItems.length })}
                                     </Text>
                                 </View>
                                 <TouchableOpacity
@@ -578,7 +578,7 @@ const WardrobeVideoScreen = () => {
                                         </View>
                                         <Text style={styles.outfitTitle}>{t('wardrobeVideo.outfit', { index: outfitIndex + 1 })}</Text>
                                         <Text style={styles.outfitCount}>
-                                            ({outfitGroups[outfitId].length} items)
+                                            ({t('wardrobeVideo.itemsCount', { count: outfitGroups[outfitId].length })})
                                         </Text>
                                     </View>
 

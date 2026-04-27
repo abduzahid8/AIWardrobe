@@ -20,40 +20,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 import useWardrobeStore from '../store/wardrobeStore';
 import type { ClothingCategory, Season, Occasion } from '../src/types/domain';
 
 const { colors, spacing, radius, typography } = LiquidGlass2026Theme;
-
-// ============================================
-// CONSTANTS
-// ============================================
-
-const CATEGORIES: { value: ClothingCategory; label: string; icon: string }[] = [
-    { value: 'top', label: 'Top', icon: 'shirt-outline' },
-    { value: 'bottom', label: 'Bottom', icon: 'resize-outline' },
-    { value: 'dress', label: 'Dress', icon: 'body-outline' },
-    { value: 'shoes', label: 'Shoes', icon: 'footsteps-outline' },
-    { value: 'outerwear', label: 'Outerwear', icon: 'cloudy-outline' },
-    { value: 'accessory', label: 'Accessory', icon: 'watch-outline' },
-    { value: 'other', label: 'Other', icon: 'ellipsis-horizontal-outline' },
-];
-
-const BASIC_COLORS: { name: string; hex: string }[] = [
-    { name: 'Black', hex: '#000000' },
-    { name: 'White', hex: '#FFFFFF' },
-    { name: 'Navy', hex: '#1B2A4A' },
-    { name: 'Gray', hex: '#808080' },
-    { name: 'Beige', hex: '#D4C5A9' },
-    { name: 'Brown', hex: '#8B4513' },
-    { name: 'Red', hex: '#DC2626' },
-    { name: 'Blue', hex: '#2563EB' },
-    { name: 'Green', hex: '#16A34A' },
-    { name: 'Pink', hex: '#EC4899' },
-    { name: 'Yellow', hex: '#EAB308' },
-    { name: 'Purple', hex: '#7C3AED' },
-];
 
 // ============================================
 // COMPONENT
@@ -65,6 +37,33 @@ interface QuickAddItemProps {
 }
 
 const QuickAddItem: React.FC<QuickAddItemProps> = ({ onItemAdded, onCancel }) => {
+    const { t } = useTranslation();
+
+    const CATEGORIES: { value: ClothingCategory; label: string; icon: string }[] = [
+        { value: 'top', label: t('quickAdd.categories.top'), icon: 'shirt-outline' },
+        { value: 'bottom', label: t('quickAdd.categories.bottom'), icon: 'resize-outline' },
+        { value: 'dress', label: t('quickAdd.categories.dress'), icon: 'body-outline' },
+        { value: 'shoes', label: t('quickAdd.categories.shoes'), icon: 'footsteps-outline' },
+        { value: 'outerwear', label: t('quickAdd.categories.outerwear'), icon: 'cloudy-outline' },
+        { value: 'accessory', label: t('quickAdd.categories.accessory'), icon: 'watch-outline' },
+        { value: 'other', label: t('quickAdd.categories.other'), icon: 'ellipsis-horizontal-outline' },
+    ];
+
+    const BASIC_COLORS: { name: string; hex: string }[] = [
+        { name: t('quickAdd.colors.black'), hex: '#000000' },
+        { name: t('quickAdd.colors.white'), hex: '#FFFFFF' },
+        { name: t('quickAdd.colors.navy'), hex: '#1B2A4A' },
+        { name: t('quickAdd.colors.gray'), hex: '#808080' },
+        { name: t('quickAdd.colors.beige'), hex: '#D4C5A9' },
+        { name: t('quickAdd.colors.brown'), hex: '#8B4513' },
+        { name: t('quickAdd.colors.red'), hex: '#DC2626' },
+        { name: t('quickAdd.colors.blue'), hex: '#2563EB' },
+        { name: t('quickAdd.colors.green'), hex: '#16A34A' },
+        { name: t('quickAdd.colors.pink'), hex: '#EC4899' },
+        { name: t('quickAdd.colors.yellow'), hex: '#EAB308' },
+        { name: t('quickAdd.colors.purple'), hex: '#7C3AED' },
+    ];
+
     const [imageUri, setImageUri] = useState<string | null>(null);
     const [category, setCategory] = useState<ClothingCategory>('top');
     const [selectedColor, setSelectedColor] = useState(BASIC_COLORS[0]);
@@ -94,7 +93,7 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({ onItemAdded, onCancel }) =>
         try {
             const { status } = await ImagePicker.requestCameraPermissionsAsync();
             if (status !== 'granted') {
-                Alert.alert('Permission needed', 'Camera permission is required to take a photo.');
+                Alert.alert(t('quickAdd.permissionNeeded'), t('quickAdd.cameraPermissionRequired'));
                 return;
             }
 
@@ -114,7 +113,7 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({ onItemAdded, onCancel }) =>
 
     const handleSubmit = useCallback(async () => {
         if (!imageUri) {
-            Alert.alert('Photo required', 'Please add a photo of the item.');
+            Alert.alert(t('quickAdd.photoRequired'), t('quickAdd.photoRequiredMessage'));
             return;
         }
 
@@ -139,16 +138,16 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({ onItemAdded, onCancel }) =>
             onItemAdded?.();
         } catch (error) {
             console.error('Failed to add item:', error);
-            Alert.alert('Error', 'Failed to add item. Please try again.');
+            Alert.alert(t('quickAdd.error'), t('quickAdd.addItemFailed'));
         } finally {
             setIsSubmitting(false);
         }
-    }, [imageUri, category, itemName, selectedColor, addItem, onItemAdded]);
+    }, [imageUri, category, itemName, selectedColor, addItem, onItemAdded, t]);
 
     return (
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-            <Text style={styles.title}>Quick Add Item</Text>
-            <Text style={styles.subtitle}>Add an item to your closet in seconds</Text>
+            <Text style={styles.title}>{t('quickAdd.title')}</Text>
+            <Text style={styles.subtitle}>{t('quickAdd.subtitle')}</Text>
 
             {/* Photo Section */}
             <View style={styles.photoSection}>
@@ -157,18 +156,18 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({ onItemAdded, onCancel }) =>
                         <Image source={{ uri: imageUri }} style={styles.photoPreview} />
                         <View style={styles.changePhotoOverlay}>
                             <Ionicons name="camera-outline" size={20} color="#FFF" />
-                            <Text style={styles.changePhotoText}>Change</Text>
+                            <Text style={styles.changePhotoText}>{t('quickAdd.change')}</Text>
                         </View>
                     </TouchableOpacity>
                 ) : (
                     <View style={styles.photoButtons}>
                         <TouchableOpacity style={styles.photoButton} onPress={takePhoto}>
                             <Ionicons name="camera-outline" size={28} color={colors.text.primary} />
-                            <Text style={styles.photoButtonText}>Camera</Text>
+                            <Text style={styles.photoButtonText}>{t('quickAdd.camera')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.photoButton} onPress={pickImage}>
                             <Ionicons name="images-outline" size={28} color={colors.text.primary} />
-                            <Text style={styles.photoButtonText}>Gallery</Text>
+                            <Text style={styles.photoButtonText}>{t('quickAdd.gallery')}</Text>
                         </TouchableOpacity>
                     </View>
                 )}
@@ -176,19 +175,19 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({ onItemAdded, onCancel }) =>
 
             {/* Name (optional) */}
             <View style={styles.section}>
-                <Text style={styles.sectionLabel}>Name (optional)</Text>
+                <Text style={styles.sectionLabel}>{t('quickAdd.nameOptional')}</Text>
                 <TextInput
                     style={styles.textInput}
                     value={itemName}
                     onChangeText={setItemName}
-                    placeholder="e.g. Blue denim jacket"
+                    placeholder={t('quickAdd.namePlaceholder')}
                     placeholderTextColor={colors.text.tertiary}
                 />
             </View>
 
             {/* Category */}
             <View style={styles.section}>
-                <Text style={styles.sectionLabel}>Category</Text>
+                <Text style={styles.sectionLabel}>{t('quickAdd.category')}</Text>
                 <View style={styles.categoryRow}>
                     {CATEGORIES.map((cat) => (
                         <TouchableOpacity
@@ -222,7 +221,7 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({ onItemAdded, onCancel }) =>
 
             {/* Color */}
             <View style={styles.section}>
-                <Text style={styles.sectionLabel}>Primary Color</Text>
+                <Text style={styles.sectionLabel}>{t('quickAdd.primaryColor')}</Text>
                 <View style={styles.colorRow}>
                     {BASIC_COLORS.map((c) => (
                         <TouchableOpacity
@@ -259,13 +258,13 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({ onItemAdded, onCancel }) =>
             >
                 <Ionicons name="add-circle-outline" size={20} color="#FFF" />
                 <Text style={styles.submitText}>
-                    {isSubmitting ? 'Adding...' : 'Add to Closet'}
+                    {isSubmitting ? t('quickAdd.adding') : t('quickAdd.addToCloset')}
                 </Text>
             </TouchableOpacity>
 
             {onCancel && (
                 <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
-                    <Text style={styles.cancelText}>Cancel</Text>
+                    <Text style={styles.cancelText}>{t('quickAdd.cancel')}</Text>
                 </TouchableOpacity>
             )}
         </ScrollView>

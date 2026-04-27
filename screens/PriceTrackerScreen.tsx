@@ -68,11 +68,13 @@ const PriceTrend = ({ history }: { history: { price: number }[] }) => {
 const TrackedItemCard = ({
     item,
     onPress,
-    onRemove
+    onRemove,
+    t
 }: {
     item: TrackedItem;
     onPress: () => void;
     onRemove: () => void;
+    t: (key: string) => string;
 }) => {
     const scale = useSharedValue(1);
 
@@ -88,11 +90,11 @@ const TrackedItemCard = ({
                 onLongPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                     Alert.alert(
-                        "Remove Item",
-                        `Stop tracking ${item.name}?`,
+                        t('priceTracker.removeItem'),
+                        `${t('priceTracker.stopTracking')} ${item.name}?`,
                         [
-                            { text: "Cancel", style: "cancel" },
-                            { text: "Remove", style: "destructive", onPress: onRemove }
+                            { text: t('common.cancel'), style: "cancel" },
+                            { text: t('common.remove'), style: "destructive", onPress: onRemove }
                         ]
                     );
                 }}
@@ -107,7 +109,7 @@ const TrackedItemCard = ({
                     />
                     {item.isOnSale && (
                         <View style={styles.saleBadge}>
-                            <Text style={styles.saleBadgeText}>SALE</Text>
+                            <Text style={styles.saleBadgeText}>{t('priceTracker.sale')}</Text>
                         </View>
                     )}
                 </View>
@@ -144,7 +146,7 @@ const TrackedItemCard = ({
 };
 
 // Alert card
-const AlertCard = ({ alert, onPress }: { alert: PriceAlert; onPress: () => void }) => (
+const AlertCard = ({ alert, onPress, t }: { alert: PriceAlert; onPress: () => void; t: any }) => (
     <TouchableOpacity
         style={[styles.alertCard, !alert.seen && styles.alertCardUnseen]}
         onPress={onPress}
@@ -155,7 +157,7 @@ const AlertCard = ({ alert, onPress }: { alert: PriceAlert; onPress: () => void 
         <View style={styles.alertContent}>
             <Text style={styles.alertTitle}>{alert.itemName}</Text>
             <Text style={styles.alertText}>
-                Price dropped {alert.dropPercent}% from ${alert.previousPrice.toFixed(2)} to ${alert.newPrice.toFixed(2)}
+                {t('priceTracker.priceDropped')} {alert.dropPercent}% ${t('priceTracker.from')} ${alert.previousPrice.toFixed(2)} ${t('priceTracker.to')} ${alert.newPrice.toFixed(2)}
             </Text>
         </View>
         {!alert.seen && <View style={styles.alertDot} />}
@@ -182,7 +184,7 @@ const AddItemModal = ({
 
     const handleAdd = () => {
         if (!name.trim() || !price.trim()) {
-            Alert.alert("Error", "Please enter item name and price");
+            Alert.alert(t('common.error'), t('priceTracker.enterItemNamePrice'));
             return;
         }
 
@@ -226,7 +228,7 @@ const AddItemModal = ({
                             <Text style={styles.inputLabel}>{t('priceTracker.itemName')}</Text>
                             <TextInput
                                 style={styles.input}
-                                placeholder="e.g., Nike Air Max 90"
+                                placeholder={t('priceTracker.itemNamePlaceholder')}
                                 placeholderTextColor={AppColors.textMuted}
                                 value={name}
                                 onChangeText={setName}
@@ -238,7 +240,7 @@ const AddItemModal = ({
                             <Text style={styles.inputLabel}>{t('priceTracker.brand')}</Text>
                             <TextInput
                                 style={styles.input}
-                                placeholder="e.g., Nike"
+                                placeholder={t('priceTracker.brandPlaceholder')}
                                 placeholderTextColor={AppColors.textMuted}
                                 value={brand}
                                 onChangeText={setBrand}
@@ -251,7 +253,7 @@ const AddItemModal = ({
                                 <Text style={styles.inputLabel}>{t('priceTracker.currentPrice')}</Text>
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="99.99"
+                                    placeholder={t('priceTracker.currentPricePlaceholder')}
                                     placeholderTextColor={AppColors.textMuted}
                                     keyboardType="decimal-pad"
                                     value={price}
@@ -263,7 +265,7 @@ const AddItemModal = ({
                                 <Text style={styles.inputLabel}>{t('priceTracker.targetPrice')}</Text>
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="79.99"
+                                    placeholder={t('priceTracker.targetPricePlaceholder')}
                                     placeholderTextColor={AppColors.textMuted}
                                     keyboardType="decimal-pad"
                                     value={targetPrice}
@@ -277,7 +279,7 @@ const AddItemModal = ({
                             <Text style={styles.inputLabel}>{t('priceTracker.imageUrl')}</Text>
                             <TextInput
                                 style={styles.input}
-                                placeholder="https://..."
+                                placeholder={t('priceTracker.imageUrlPlaceholder')}
                                 placeholderTextColor={AppColors.textMuted}
                                 value={imageUrl}
                                 onChangeText={setImageUrl}
@@ -369,7 +371,7 @@ const PriceTrackerScreen = () => {
                         onPress={() => setActiveTab('items')}
                     >
                         <Text style={[styles.tabText, activeTab === 'items' && styles.tabTextActive]}>
-                            Items
+                            {t('common.items')}
                         </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -421,6 +423,7 @@ const PriceTrackerScreen = () => {
                                         Haptics.selectionAsync();
                                     }}
                                     onRemove={() => removeItem(item.id)}
+                                    t={t}
                                 />
                             ))
                         )
@@ -432,7 +435,7 @@ const PriceTrackerScreen = () => {
                                 </View>
                                 <Text style={styles.emptyTitle}>{t('priceTracker.noAlerts')}</Text>
                                 <Text style={styles.emptyText}>
-                                    We'll notify you when prices drop on your tracked items
+                                    {t('priceTracker.emptyAlertsText')}
                                 </Text>
                             </Animated.View>
                         ) : (
@@ -444,6 +447,7 @@ const PriceTrackerScreen = () => {
                                         markAlertSeen(alert.id);
                                         Haptics.selectionAsync();
                                     }}
+                                    t={t}
                                 />
                             ))
                         )

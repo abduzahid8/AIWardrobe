@@ -2,9 +2,24 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import type { ShopCatalogItem } from '../features/try-on/types';
 import { spreadSimilarCatalogItems } from '../src/utils/shopCatalogOrder';
+import { createLogger } from '../src/utils/logger';
+
+const logger = createLogger('useShopCatalog');
 
 const PAGE_SIZE = 100;
 const DEFAULT_SHOP_SOURCE = 'apify-zara-men';
+const FETCH_TIMEOUT_MS = 15_000;
+
+/** Reject if the promise does not settle within `ms`. */
+function withTimeout<T>(p: PromiseLike<T>, ms: number): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+        const t = setTimeout(() => reject(new Error(`shop_catalog query timed out after ${ms}ms`)), ms);
+        Promise.resolve(p).then(
+            (v) => { clearTimeout(t); resolve(v); },
+            (e) => { clearTimeout(t); reject(e); },
+        );
+    });
+}
 
 export interface UseShopCatalogOptions {
     /** Matches UI chips: upper_body | lower_body | shoes | dresses | outfits (or legacy tops/bottoms maps to category). */
@@ -87,25 +102,39 @@ export function useShopCatalog({
         else setLoadingMore(true);
         setError(null);
 
-        const { data, error: fetchError } = await buildQuery(page, cat, activeSource);
+        try {
+            const result = await withTimeout(
+                buildQuery(page, cat, activeSource),
+                FETCH_TIMEOUT_MS,
+            );
+            const { data, error: fetchError } = result as { data: any; error: any };
 
-        if (fetchError) {
-            setError(fetchError.message);
-        } else {
-            const mapped = (data ?? []).map(dbRowToItem);
-            setItems(prev => {
-                const diversified = spreadSimilarCatalogItems(
-                    mapped,
-                    append ? prev.slice(-2) : [],
-                );
-
-                return append ? [...prev, ...diversified] : diversified;
-            });
-            setHasMore(mapped.length === PAGE_SIZE);
+            if (fetchError) {
+                logger.warn('Supabase returned error', { message: fetchError.message, page, cat, activeSource });
+                setError(fetchError.message);
+            } else {
+                const mapped = (data ?? []).map(dbRowToItem);
+                logger.debug('fetched page', { page, count: mapped.length, cat, activeSource });
+                setItems(prev => {
+                    const diversified = spreadSimilarCatalogItems(
+                        mapped,
+                        append ? prev.slice(-2) : [],
+                    ) as ShopCatalogItem[];
+                    return append ? [...prev, ...diversified] : diversified;
+                });
+                setHasMore(mapped.length === PAGE_SIZE);
+            }
+        } catch (err: any) {
+            // Timeout, network, or unexpected throw. Surface it so the UI can
+            // show an empty-state with a retry instead of spinning forever.
+            logger.error('fetch failed', { message: err?.message, page, cat, activeSource });
+            setError(err?.message ?? 'Unknown shop catalog error');
+            if (!append) setItems([]);
+            setHasMore(false);
+        } finally {
+            setLoading(false);
+            setLoadingMore(false);
         }
-
-        setLoading(false);
-        setLoadingMore(false);
     }, [buildQuery]);
 
     // Reset and reload when category or source changes

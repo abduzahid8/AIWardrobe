@@ -103,13 +103,19 @@ const STYLE_SIGNALS_EDGE: Record<string, Array<[RegExp, number]>> = {
         [/\bsneaker(s)?\b/i, -1], [/\bchunky\b/i, -3],
         [/\bheavyweight\s+tee\b/i, -2], [/\b3[-\s]?pack\b/i, -2],
     ],
-    streetwear: [
-        [/\bhoodie\b/i, 5], [/\boversized\b/i, 4], [/\bbaggy\b/i, 4], [/\bcargo\b/i, 5],
-        [/\bgraphic\b/i, 4], [/\blogo\b/i, 3], [/\bprint(ed)?\b/i, 3], [/\bsneaker\b/i, 3],
-        [/\bpuffer\b/i, 4], [/\bbomber\b/i, 3], [/\btrack\b/i, 3], [/\bsweatpants\b/i, 3],
-        [/\bjoggers\b/i, 4], [/\butility\b/i, 3], [/\bparka\b/i, 3],
-        [/\bnylon\b/i, 2], [/\bfleece\b/i, 2], [/\bterry\b/i, 2], [/\bjersey\b/i, 2],
-        [/\bblazer\b/i, -3], [/\bloafer\b/i, -3], [/\btailored\b/i, -3],
+    semi_classic: [
+        [/\bblazer\b/i, 3], [/\bcardigan\b/i, 3], [/\bknit polo\b/i, 3], [/\bturtleneck\b/i, 2],
+        [/\bchino(s)?\b/i, 3], [/\bslacks?\b/i, 2], [/\bloafer(s)?\b/i, 3], [/\bsuede\b/i, 3],
+        [/\bdesert boot\b/i, 3], [/\bmerino\b/i, 2], [/\blinen\b/i, 2], [/\bpoplin\b/i, 2],
+        [/\btailored\b/i, 2], [/\bstructured\b/i, 2], [/\bregular[-\s]?fit\b/i, 2], [/\brelaxed[-\s]?fit\b/i, 1],
+        [/\bnavy\b/i, 2], [/\bcream\b/i, 2], [/\bbeige\b/i, 2], [/\bcamel\b/i, 2],
+        [/\bolive\b/i, 2], [/\btan\b/i, 2], [/\bburgundy\b/i, 2], [/\bwhite\b/i, 1],
+        [/\bsneaker(s)?\b/i, 1], [/\bjeans\b/i, 1], [/\bdenim\b/i, 1],
+        [/\bsweater\b/i, 2], [/\bpullover\b/i, 1], [/\bvest\b/i, 1],
+        [/\bhoodie\b/i, -2], [/\bgraphic\b/i, -2], [/\bcargo\b/i, -3],
+        [/\bsweatpants\b/i, -3], [/\bjoggers\b/i, -3], [/\btrack\b/i, -2],
+        [/\bneon\b/i, -4], [/\bsequin\b/i, -4], [/\brhinestone\b/i, -4],
+        [/\boversized\b/i, -2], [/\bbaggy\b/i, -3], [/\bripped\b/i, -2],
     ],
     minimalist: [
         [/\bminimal\b/i, 4], [/\bessential\b/i, 3], [/\bbasic\b/i, 2], [/\bplain\b/i, 3],
@@ -120,13 +126,6 @@ const STYLE_SIGNALS_EDGE: Record<string, Array<[RegExp, number]>> = {
         [/\bsuede\b/i, 2], [/\bpoplin\b/i, 2], [/\blinen\b/i, 2],
         [/\bgraphic\b/i, -4], [/\blogo\b/i, -3], [/\bneon\b/i, -5], [/\bsequin\b/i, -5],
         [/\bcolor[-\s]?block\b/i, -3],
-    ],
-    y2k: [
-        [/\by2k\b/i, 5], [/\blow[-\s]?rise\b/i, 4], [/\bcrop(ped)?\b/i, 3], [/\brhinestone\b/i, 5],
-        [/\bsequin\b/i, 4], [/\bmetallic\b/i, 4], [/\bvelour\b/i, 4], [/\bbaby tee\b/i, 4],
-        [/\bplatform\b/i, 4], [/\biridescent\b/i, 4], [/\bholographic\b/i, 4],
-        [/\bpink\b/i, 2], [/\bfuchsia\b/i, 3], [/\bneon\b/i, 3],
-        [/\bblazer\b/i, -3], [/\btailored\b/i, -3], [/\bwool\b/i, -2],
     ],
     business_casual: [
         [/\bblazer\b/i, 4], [/\bchino(s)?\b/i, 4], [/\btrouser(s)?\b/i, 4], [/\boxford\b/i, 4],
@@ -275,7 +274,12 @@ UNIVERSAL STYLE PRINCIPLES (apply to every outfit regardless of style):
 12. ACCESSORIES COMPLETE: Pocket squares, ties, seasonal scarves, watches elevate any outfit from ordinary to polished.
 13. FORMALITY COHERENCE: Every item in one outfit should sit within 1-2 formality tiers of each other. A formal blazer + gym shorts = hard clash.
 14. QUALITY OVER QUANTITY: One well-made piece in a good fabric outperforms three cheap ones. Natural fibers (wool, linen, cotton, silk) always look more expensive than synthetics.
-15. AVOID: puffer jackets with suits, square-toe shoes, backpacks with tailored clothing, sports watches with formal outfits, graphic tees in any non-streetwear look.`
+15. AVOID: puffer jackets with suits, square-toe shoes, backpacks with tailored clothing, sports watches with formal outfits, graphic tees in any non-casual look.
+16. SOCKS MATCH TROUSERS, NOT SHOES: Grey, navy, and burgundy socks are the foundation. Black socks are disallowed — they show wear faster and pair with nothing.
+17. CONTRAST & COLOR BALANCE: Dark top + light bottom (or vice versa) creates more masculine, harmonious outfits. Limit to 3 colors per outfit; white doesn't count and can be a 4th. Monochromatic looks need different textures/shades to avoid looking flat.
+18. JACKET FIT DETAILS: Jacket must cover the buttocks. 1-2cm of shirt cuff must show beyond the jacket sleeve. Never button the bottom vest button. Tie width should be 7.5-9.5cm.
+19. CITY BANS: No shorts, sandals/mules, mesh/see-through tees, or mandarin/stand collars in urban settings. No popped polo collars. Always button polo buttons (all or leave top one open). No exotic leather shoes (crocodile, python) — quality calf or suede only.
+20. PATTERNED SPORT JACKETS: Glen check, Prince of Wales, Gun Club are the most versatile patterns — they contain multiple colors for easy coordination. Avoid smooth solid-color sport jackets (look cheap); choose textured or patterned fabrics. Mixed fabric compositions (wool-linen-silk blends) are more textured and practical than pure fibers.`
 
 // ── Style-specific fashion context ───────────────────────────────────────
 // Each block has: vibe paragraph + MUST / REJECT rules that the model must
@@ -294,6 +298,7 @@ const STYLE_CONTEXT: Record<string, { vibe: string; must: string[]; reject: stri
             'Blazer lapels must be ≥8.5cm wide. Narrow lapels cheapen the look.',
             'Favor textured fabrics: flannel, tweed, herringbone, cashmere, merino, linen blends. Smooth flat fabrics look cheaper.',
             'Every piece should look like it could be from Ralph Lauren, Brunello Cucinelli, Loro Piana, Massimo Dutti, or Brooks Brothers.',
+            'Pocket square is mandatory with any blazer or suit outfit — its absence is a major style error.',
         ],
         reject: [
             'NEVER include: graphic tees, logo tees, 3-pack basic tees, printed tees, baby tees, tank tops, crop tops.',
@@ -302,26 +307,33 @@ const STYLE_CONTEXT: Record<string, { vibe: string; must: string[]; reject: stri
             'NEVER include: chunky sneakers, high-tops, platform shoes, athletic trainers, square-toe shoes.',
             'NEVER include: neon, rhinestone, sequin, metallic, or tie-dye pieces.',
             'NEVER include: black as a primary color — replace with navy, charcoal, or dark brown. Black only for formal eveningwear.',
+            'NEVER include: exotic leather shoes (crocodile, python, stingray) — they look vulgar. Quality calf leather or suede only.',
             'NEVER pair: formal outerwear with shorts, backpacks with tailored clothing, sports watches with formal outfits.',
         ],
         palette: ['navy', 'cream', 'ivory', 'beige', 'camel', 'chocolate', 'forest green', 'burgundy', 'white', 'charcoal', 'midnight blue', 'tan', 'olive'],
-        fabrics: ['cashmere', 'wool', 'merino', 'linen', 'silk', 'cotton', 'poplin', 'tweed', 'flannel', 'herringbone', 'suede'],
+        fabrics: ['cashmere', 'wool', 'merino', 'linen', 'silk', 'cotton', 'poplin', 'tweed', 'flannel', 'herringbone', 'suede', 'tropical wool'],
     },
-    streetwear: {
-        vibe: `Streetwear — oversized silhouettes, bold graphics, sneaker culture. Think Stüssy, Off-White, Supreme, early Virgil, Travis Scott energy. Layering is key; contrast is king.`,
+    semi_classic: {
+        vibe: `Semi-Classic — refined everyday elegance that bridges the gap between casual and formal. Think Massimo Dutti, Arket, COS. Tailored touches with relaxed comfort — structured but not stiff, polished but not overdressed. Cardigans over tees, chinos with loafers, knit polos with slacks.`,
         must: [
-            'Favor oversized fits, baggy cuts, and contrast layering.',
-            'Graphic tees, hoodies, bombers, and cargo pants are the backbone.',
-            'Footwear must be sneakers (chunky, runners, skate), chunky boots, or Y2K-adjacent trainers.',
-            'Color-blocking and statement pieces are welcome.',
-            'Mix textures: nylon with fleece, denim with technical fabrics for visual depth.',
+            'Blazers and structured cardigans are key layering pieces — more relaxed than formal but more polished than hoodies.',
+            'Knit polos, fine-gauge tees, and turtlenecks as base layers. Piqué polos and basic cotton tees are too sporty.',
+            'Chinos, slacks, and well-cut jeans. Mid-rise, medium taper. No skinny, no baggy.',
+            'Loafers (suede or leather), desert boots, clean minimal sneakers, or Chelsea boots.',
+            'Stick to the golden 8 colors: white, blue, light blue, brown, green, cream, burgundy, grey — they all intermix.',
+            'Favor textured fabrics: merino, cotton blends, linen, poplin, suede. Texture elevates simple outfits.',
+            'Lightweight cardigans (cotton/merino) are the signature semi-classic layer — more relaxed than a blazer but more polished than a hoodie. Can be tied around the neck as a style accent when not worn.',
+            'Socks must match trousers, not shoes. Grey, navy, and burgundy socks are the foundation.',
         ],
         reject: [
-            'Avoid: tailored blazers, oxford shirts, wool trousers, loafers, boat shoes.',
-            'Avoid: cashmere sweaters, pinstripe suits, herringbone tweed.',
+            'Avoid: hoodies, graphic tees, cargo pants, sweatpants, joggers.',
+            'Avoid: chunky sneakers, athletic trainers, basketball shoes.',
+            'Avoid: neon, rhinestone, sequin, metallic, or tie-dye pieces.',
+            'Avoid: oversized/baggy fits, ripped/distressed denim.',
+            'Avoid: low-rise trousers — they break the refined proportions.',
         ],
-        palette: ['black', 'white', 'neon', 'bright red', 'bright blue', 'earth tones as contrast'],
-        fabrics: ['cotton', 'fleece', 'denim', 'nylon', 'technical', 'terry', 'jersey'],
+        palette: ['navy', 'cream', 'beige', 'camel', 'olive', 'tan', 'burgundy', 'white', 'charcoal', 'brown', 'light blue'],
+        fabrics: ['merino', 'cotton', 'linen', 'poplin', 'suede', 'knit', 'denim', 'wool', 'tropical wool'],
     },
     minimalist: {
         vibe: `Minimalist — quiet, clean, intentional. Think COS, Uniqlo U, Acne Studios, The Row, Jil Sander. Every piece should feel essential. Texture and cut do the talking; color stays restrained.`,
@@ -339,29 +351,19 @@ const STYLE_CONTEXT: Record<string, { vibe: string; must: string[]; reject: stri
         palette: ['black', 'white', 'grey', 'charcoal', 'beige', 'navy', 'stone', 'cream', 'sand'],
         fabrics: ['merino', 'wool', 'cotton', 'linen', 'cashmere', 'poplin', 'suede'],
     },
-    y2k: {
-        vibe: `Y2K — nostalgic 2000s maximalism. Think Paris Hilton, early Britney, Juicy Couture. Low-rise, cropped, shiny, playful.`,
-        must: [
-            'Low-rise bottoms, cropped tops, baby tees, tube tops, mini skirts, velour tracksuits.',
-            'Metallics, rhinestones, sequins, butterflies, iridescent finishes are all welcome.',
-            'Platform shoes, chunky sneakers, or pointy-toe heels.',
-        ],
-        reject: [
-            'Avoid: tailored blazers, oxford shirts, wool trousers, loafers, anything understated.',
-        ],
-        palette: ['hot pink', 'baby blue', 'metallic silver', 'lime green', 'fuchsia', 'white'],
-        fabrics: ['satin', 'velour', 'denim', 'nylon', 'metallic'],
-    },
     business_casual: {
         vibe: `Modern Professional — sharp tailoring that still feels comfortable. Hugo Boss meets Everlane meets Theory. Smart Casual with a corporate edge. Blazers with texture, knit polos, well-cut trousers.`,
         must: [
             'Blazers (textured: flannel, tweed, herringbone) paired with chinos or tailored trousers. Oxford or poplin button-downs with large collars.',
             'Knit polos and fine-gauge tees are excellent under blazers — more elegant than piqué or basic cotton.',
-            'Polished shoes: leather loafers, oxfords, derbies, or minimal clean white leather sneakers.',
+            'Polished shoes: leather loafers, oxfords, derbies, or minimal clean white leather sneakers. Dark brown shoes are as formal as black but more versatile.',
             'Trousers must be mid-to-high rise. Low-rise is disallowed.',
             'Blazer lapels ≥8.5cm. Narrow lapels cheapen the professional look.',
             'Palette: navy, charcoal, tan, white, light blue, cream, brown, burgundy.',
             'Favor tonal/analogous combinations: navy + cream + brown; charcoal + light blue + tan.',
+            'Navy blazer with metal buttons is the most versatile starter jacket — pairs with nearly any trouser color.',
+            'Pocket square (white or tonal) is expected with any blazer — its absence is a noticeable gap.',
+            'Socks must match trousers, not shoes. Grey, navy, and burgundy are the only acceptable sock colors.',
         ],
         reject: [
             'Avoid: hoodies, graphic tees, cargo pants, ripped jeans, sweatpants, shorts.',
@@ -370,7 +372,7 @@ const STYLE_CONTEXT: Record<string, { vibe: string; must: string[]; reject: stri
             'Avoid: skinny/super-slim fit, low-rise trousers, small shirt collars, narrow lapels.',
         ],
         palette: ['navy', 'charcoal', 'tan', 'white', 'light blue', 'grey', 'cream', 'brown', 'burgundy', 'beige'],
-        fabrics: ['wool', 'cotton', 'poplin', 'oxford cloth', 'linen', 'flannel', 'tweed', 'merino', 'cashmere'],
+        fabrics: ['wool', 'cotton', 'poplin', 'oxford cloth', 'linen', 'flannel', 'tweed', 'merino', 'cashmere', 'tropical wool', 'glen check', 'prince of wales'],
     },
     casual: {
         vibe: `Smart Casual — relaxed but intentional. Well-fitted basics, clean color combinations. The bridge between sport and classic. Knit tees, slacks, loafers or clean sneakers.`,
@@ -380,14 +382,16 @@ const STYLE_CONTEXT: Record<string, { vibe: string; must: string[]; reject: stri
             'Trousers at mid-rise. Low-rise breaks proportions.',
             'Stick to the golden 8 colors: white, blue, light blue, brown, green, cream, burgundy, grey — they all intermix.',
             'Add texture: ribbed knits, brushed cotton, linen blends elevate simple outfits.',
-            'Lightweight cardigans (cotton/silk) are excellent smart-casual layers — more relaxed than a blazer but more polished than a hoodie.',
+            'Lightweight cardigans (cotton/silk) are excellent smart-casual layers — more relaxed than a blazer but more polished than a hoodie. Can be tied around the neck as a style accent.',
+            'Socks should match trousers or another outfit item, not shoes.',
         ],
         reject: [
             'Avoid: sweatpants, basketball shorts, graphic hoodies.',
             'Avoid: athletic sneakers with trousers, piqué polos with dressy bottoms.',
+            'Avoid: mesh/see-through tees, popped polo collars, unbuttoned polo collars.',
         ],
         palette: ['navy', 'white', 'grey', 'beige', 'olive', 'cream', 'brown', 'light blue', 'burgundy', 'tan'],
-        fabrics: ['cotton', 'linen', 'denim', 'wool', 'merino', 'knit', 'suede', 'canvas'],
+        fabrics: ['cotton', 'linen', 'denim', 'wool', 'merino', 'knit', 'suede', 'canvas', 'tropical wool'],
     },
     classic: {
         vibe: `Classic Menswear — timeless elegance rooted in traditional tailoring. Think Savile Row, Italian sartoria, Alexander from Strokanor. Suits, sport jackets, high-rise trousers, knitwear, and proper shoes. Formality levels from business suit to smart-casual separates. Never trendy, always refined.`,
@@ -397,11 +401,13 @@ const STYLE_CONTEXT: Record<string, { vibe: string; must: string[]; reject: stri
             'Shirts must have large collars that tuck under lapels. Small collars, mandarin/stand collars are disallowed.',
             'Blazer/suit lapels must be ≥8.5cm wide. Narrow lapels are a style error.',
             'Knit polos, turtlenecks, and fine-gauge tees are the correct base layers under jackets. Piqué polos and basic cotton tees are too sporty for classic looks.',
-            'Footwear: oxfords and derbies with suits; loafers (leather for dressy, suede for smart-casual); clean minimal leather sneakers only with casual trousers.',
+            'Footwear: oxfords and derbies with suits; loafers (leather for dressy, suede for smart-casual); clean minimal leather sneakers only with casual trousers. Dark brown shoes are as formal as black but more versatile.',
             'Suits with smooth/office fabric require a shirt + tie. To go tieless, the suit must be in a seasonal/textured fabric (flannel, tweed, linen).',
             'Favor the golden 8 colors: white, blue, light blue, brown, green, cream, burgundy, grey. Blue+brown, blue+green, green+brown are foolproof formulas.',
-            'Favor textured fabrics: flannel, tweed, herringbone, cashmere, merino, linen blends. Texture = luxury.',
-            'Accessories complete the look: pocket squares, ties, seasonal scarves, watches. Tie and pocket square must coordinate but NOT be identical fabric.',
+            'Favor textured fabrics: flannel, tweed, herringbone, cashmere, merino, linen blends. Texture = luxury. Mixed fabric compositions (wool-linen-silk blends) are more textured and practical than pure fibers.',
+            'Accessories complete the look: pocket squares, ties, seasonal scarves, watches. Tie and pocket square must coordinate but NOT be identical fabric. Pocket square is mandatory with any jacket — its absence is one of the biggest classic style errors.',
+            'Socks must match trousers, not shoes. Grey, navy, and burgundy socks are the foundation. Black socks are disallowed.',
+            'Navy blazer with metal buttons is the most versatile sport jacket — pairs with almost any trousers except very dark navy or graphite. Next additions: Glen check, Prince of Wales, Gun Club patterns for multi-color coordination.',
         ],
         reject: [
             'NEVER include: graphic tees, logo tees, printed tees, tank tops, crop tops, shorts/bermudas in city settings.',
@@ -409,13 +415,15 @@ const STYLE_CONTEXT: Record<string, { vibe: string; must: string[]; reject: stri
             'NEVER include: hoodies, puffer jackets, bomber jackets, denim jackets worn with suits.',
             'NEVER include: chunky sneakers, athletic trainers, square-toe shoes, high-tops with tailored clothing.',
             'NEVER include: black as a primary everyday color — navy, charcoal, dark brown are more versatile and elegant.',
+            'NEVER include: exotic leather shoes (crocodile, python, stingray) — they look vulgar. Quality calf leather or suede only.',
             'NEVER pair: formal outerwear with shorts, sportswear with tailored pieces, backpacks with suits.',
             'NEVER: mix a striped suit jacket with non-matching trousers. Striped jackets only go with their matching pants.',
             'NEVER: wear a bow tie with a business suit — bow ties are for tuxedos/evening jackets only.',
             'NEVER: identical tie + pocket square fabric. They must coordinate, not match exactly.',
+            'NEVER: smooth solid-color sport jackets without texture or pattern — they look cheap. Choose textured or patterned fabrics.',
         ],
         palette: ['navy', 'charcoal', 'cream', 'white', 'beige', 'camel', 'brown', 'burgundy', 'forest green', 'light blue', 'grey', 'olive', 'tan'],
-        fabrics: ['wool', 'flannel', 'tweed', 'herringbone', 'cashmere', 'merino', 'linen', 'silk', 'cotton', 'poplin', 'oxford cloth', 'suede'],
+        fabrics: ['wool', 'flannel', 'tweed', 'herringbone', 'cashmere', 'merino', 'linen', 'silk', 'cotton', 'poplin', 'oxford cloth', 'suede', 'tropical wool', 'glen check', 'prince of wales', 'gun club'],
     },
 }
 
@@ -1138,7 +1146,7 @@ serve(async (req) => {
                 const layeredReqs = layered
                     ? `  1. EVERY outfit MUST be a FOUR-slot layered look with ALL of these macroCategories present: "top" (base layer — t-shirt, shirt, polo, blouse), "outerwear" (main top — sweater, blazer, cardigan, hoodie, jacket), "bottom" (pants/trousers/jeans/shorts/skirt), "shoes". A 3-item outfit is INVALID.\n  2. The base top must sit UNDER the outerwear and color-coordinate with it. Think: white oxford shirt under a navy blazer, or cream tee under a camel cardigan.\n  3. Do NOT return two base tops or two outerwear pieces — exactly one of each.`
                     : `  1. EVERY outfit MUST include an item with macroCategory=shoes. No outfit without shoes is acceptable.\n  2. EVERY outfit MUST include a top (or outerwear) AND a bottom.`
-                const correctionUsr = `${usr}\n\nIMPORTANT CORRECTION: Your previous attempt failed because (a) some items violated the ${styleKey} aesthetic, OR (b) outfits were missing required slots. REQUIREMENTS:\n${layeredReqs}\n  ${layered ? '4' : '3'}. Reject any item whose name/description contains: hoodie (unless streetwear), graphic tee, logo tee, cargo, ripped, sweatpants, neon, sequin, rhinestone, chunky sneaker, basketball, skate sneaker (for old_money / business_casual / minimalist).\n  ${layered ? '5' : '4'}. For ${styleKey} shoes, prefer: loafers, penny loafers, bit loafers, dress shoes, boat shoes, derbies, leather shoes, minimal leather sneakers. Avoid chunky, basketball, or skate sneakers.\nTry again and return ${limit} outfits that each have ${layered ? 'outerwear+base-top+bottom+shoes' : 'top+bottom+shoes'}.`
+                const correctionUsr = `${usr}\n\nIMPORTANT CORRECTION: Your previous attempt failed because (a) some items violated the ${styleKey} aesthetic, OR (b) outfits were missing required slots. REQUIREMENTS:\n${layeredReqs}\n  ${layered ? '4' : '3'}. Reject any item whose name/description contains: hoodie (unless casual), graphic tee, logo tee, cargo, ripped, sweatpants, neon, sequin, rhinestone, chunky sneaker, basketball, skate sneaker (for old_money / business_casual / minimalist / semi_classic).\n  ${layered ? '5' : '4'}. For ${styleKey} shoes, prefer: loafers, penny loafers, bit loafers, dress shoes, boat shoes, derbies, leather shoes, minimal leather sneakers. Avoid chunky, basketball, or skate sneakers.\nTry again and return ${limit} outfits that each have ${layered ? 'outerwear+base-top+bottom+shoes' : 'top+bottom+shoes'}.`
                 let retry: any[] | null = null
                 if (nvidiaKey) retry = await callNvidia(nvidiaKey, nvidiaModel, sys, correctionUsr)
                 if (!retry && geminiKey) retry = await callGemini(geminiKey, sys, correctionUsr)

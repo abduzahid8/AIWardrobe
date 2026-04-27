@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -43,89 +44,6 @@ interface EventOption {
   gradient: [string, string];
 }
 
-const EVENT_OPTIONS: EventOption[] = [
-  {
-    id: 'business-meeting',
-    occasion: 'work',
-    label: 'Business Meeting',
-    icon: 'briefcase-outline',
-    iconFamily: 'ionicons',
-    gradient: ['#1a1a2e', '#16213e'],
-  },
-  {
-    id: 'alpine-skiing',
-    occasion: 'sport',
-    label: 'Alpine Skiing',
-    icon: 'snow-outline',
-    iconFamily: 'ionicons',
-    gradient: ['#0f4c75', '#3282b8'],
-  },
-  {
-    id: 'casual',
-    occasion: 'casual',
-    label: 'Casual Day',
-    icon: 'sunny-outline',
-    iconFamily: 'ionicons',
-    gradient: ['#f39c12', '#e67e22'],
-  },
-  {
-    id: 'date',
-    occasion: 'date',
-    label: 'Date Night',
-    icon: 'heart-outline',
-    iconFamily: 'ionicons',
-    gradient: ['#c0392b', '#e74c3c'],
-  },
-  {
-    id: 'workout',
-    occasion: 'sport',
-    label: 'Workout',
-    icon: 'fitness-outline',
-    iconFamily: 'ionicons',
-    gradient: ['#27ae60', '#2ecc71'],
-  },
-  {
-    id: 'beach',
-    occasion: 'travel',
-    label: 'Beach Day',
-    icon: 'water-outline',
-    iconFamily: 'ionicons',
-    gradient: ['#00b4d8', '#48cae4'],
-  },
-  {
-    id: 'wedding',
-    occasion: 'formal',
-    label: 'Wedding',
-    icon: 'sparkles-outline',
-    iconFamily: 'ionicons',
-    gradient: ['#8e44ad', '#9b59b6'],
-  },
-  {
-    id: 'interview',
-    occasion: 'work',
-    label: 'Job Interview',
-    icon: 'person-outline',
-    iconFamily: 'ionicons',
-    gradient: ['#2c3e50', '#34495e'],
-  },
-  {
-    id: 'night-out',
-    occasion: 'date',
-    label: 'Night Out',
-    icon: 'moon-outline',
-    iconFamily: 'ionicons',
-    gradient: ['#6c5ce7', '#a29bfe'],
-  },
-  {
-    id: 'travel',
-    occasion: 'travel',
-    label: 'Travel',
-    icon: 'airplane-outline',
-    iconFamily: 'ionicons',
-    gradient: ['#00cec9', '#55efc4'],
-  },
-];
-
 // ─── Component ───────────────────────────────────────────────
 
 interface AIOutfitCreatorModalProps {
@@ -137,8 +55,92 @@ const AIOutfitCreatorModal: React.FC<AIOutfitCreatorModalProps> = ({
   visible,
   onClose,
 }) => {
+  const { t } = useTranslation();
   const items = useWardrobeStore((s) => s.items);
   const wearLogs = useWardrobeStore((s) => s.wearLogs);
+
+  const EVENT_OPTIONS: EventOption[] = [
+    {
+      id: 'business-meeting',
+      occasion: 'work',
+      label: t('aiOutfitCreator.events.businessMeeting'),
+      icon: 'briefcase-outline',
+      iconFamily: 'ionicons',
+      gradient: ['#1a1a2e', '#16213e'],
+    },
+    {
+      id: 'alpine-skiing',
+      occasion: 'sport',
+      label: t('aiOutfitCreator.events.alpineSkiing'),
+      icon: 'snow-outline',
+      iconFamily: 'ionicons',
+      gradient: ['#0f4c75', '#3282b8'],
+    },
+    {
+      id: 'casual',
+      occasion: 'casual',
+      label: t('aiOutfitCreator.events.casualDay'),
+      icon: 'sunny-outline',
+      iconFamily: 'ionicons',
+      gradient: ['#f39c12', '#e67e22'],
+    },
+    {
+      id: 'date',
+      occasion: 'date',
+      label: t('aiOutfitCreator.events.dateNight'),
+      icon: 'heart-outline',
+      iconFamily: 'ionicons',
+      gradient: ['#c0392b', '#e74c3c'],
+    },
+    {
+      id: 'workout',
+      occasion: 'sport',
+      label: t('aiOutfitCreator.events.workout'),
+      icon: 'fitness-outline',
+      iconFamily: 'ionicons',
+      gradient: ['#27ae60', '#2ecc71'],
+    },
+    {
+      id: 'beach',
+      occasion: 'travel',
+      label: t('aiOutfitCreator.events.beachDay'),
+      icon: 'water-outline',
+      iconFamily: 'ionicons',
+      gradient: ['#00b4d8', '#48cae4'],
+    },
+    {
+      id: 'wedding',
+      occasion: 'formal',
+      label: t('aiOutfitCreator.events.wedding'),
+      icon: 'sparkles-outline',
+      iconFamily: 'ionicons',
+      gradient: ['#8e44ad', '#9b59b6'],
+    },
+    {
+      id: 'interview',
+      occasion: 'work',
+      label: t('aiOutfitCreator.events.jobInterview'),
+      icon: 'person-outline',
+      iconFamily: 'ionicons',
+      gradient: ['#2c3e50', '#34495e'],
+    },
+    {
+      id: 'night-out',
+      occasion: 'date',
+      label: t('aiOutfitCreator.events.nightOut'),
+      icon: 'moon-outline',
+      iconFamily: 'ionicons',
+      gradient: ['#6c5ce7', '#a29bfe'],
+    },
+    {
+      id: 'travel',
+      occasion: 'travel',
+      label: t('aiOutfitCreator.events.travel'),
+      icon: 'airplane-outline',
+      iconFamily: 'ionicons',
+      gradient: ['#00cec9', '#55efc4'],
+    },
+  ];
 
   const [selectedEvent, setSelectedEvent] = useState<Occasion | null>(null);
   const [generating, setGenerating] = useState(false);
@@ -196,7 +198,7 @@ const AIOutfitCreatorModal: React.FC<AIOutfitCreatorModalProps> = ({
 
   const renderEventChips = () => (
     <View style={styles.chipsSection}>
-      <Text style={styles.sectionLabel}>Choose an Event</Text>
+      <Text style={styles.sectionLabel}>{t('aiOutfitCreator.chooseEvent')}</Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -217,7 +219,7 @@ const AIOutfitCreatorModal: React.FC<AIOutfitCreatorModalProps> = ({
                 ]}
                 onPress={() => handleSelectEvent(event.occasion)}
                 activeOpacity={0.7}
-                accessibilityLabel={`Select ${event.label} event`}
+                accessibilityLabel={t('aiOutfitCreator.selectEvent', { event: event.label })}
                 accessibilityRole="button"
                 accessibilityState={{ selected: isSelected }}
               >
@@ -258,7 +260,7 @@ const AIOutfitCreatorModal: React.FC<AIOutfitCreatorModalProps> = ({
         onPress={handleGenerate}
         disabled={!selectedEvent || !hasItems || generating}
         activeOpacity={0.8}
-        accessibilityLabel="Generate outfit with AI"
+        accessibilityLabel={t('aiOutfitCreator.generateOutfitWithAI')}
         accessibilityRole="button"
       >
         {generating ? (
@@ -267,7 +269,7 @@ const AIOutfitCreatorModal: React.FC<AIOutfitCreatorModalProps> = ({
           <>
             <Ionicons name="sparkles" size={18} color="#FFF" />
             <Text style={styles.generateButtonText}>
-              Generate with AI
+              {t('aiOutfitCreator.generateWithAI')}
             </Text>
           </>
         )}
@@ -321,7 +323,7 @@ const AIOutfitCreatorModal: React.FC<AIOutfitCreatorModalProps> = ({
               activeOpacity={0.7}
             >
               <Ionicons name="refresh" size={18} color={colors.text.primary} />
-              <Text style={styles.tryAnotherText}>Try Another</Text>
+              <Text style={styles.tryAnotherText}>{t('aiOutfitCreator.tryAnother')}</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity
@@ -330,7 +332,7 @@ const AIOutfitCreatorModal: React.FC<AIOutfitCreatorModalProps> = ({
             activeOpacity={0.8}
           >
             <Ionicons name="checkmark" size={18} color="#FFF" />
-            <Text style={styles.saveButtonText}>Looks Good</Text>
+            <Text style={styles.saveButtonText}>{t('aiOutfitCreator.looksGood')}</Text>
           </TouchableOpacity>
         </View>
       </Animated.View>
@@ -340,9 +342,9 @@ const AIOutfitCreatorModal: React.FC<AIOutfitCreatorModalProps> = ({
   const renderEmptyState = () => (
     <Animated.View entering={FadeIn.duration(300)} style={styles.emptyState}>
       <Ionicons name="shirt-outline" size={40} color={colors.text.tertiary} />
-      <Text style={styles.emptyTitle}>Add more items first</Text>
+      <Text style={styles.emptyTitle}>{t('aiOutfitCreator.addMoreItemsFirst')}</Text>
       <Text style={styles.emptySubtitle}>
-        You need at least 3 items in your closet for AI outfit creation.
+        {t('aiOutfitCreator.needAtLeastThreeItems')}
       </Text>
     </Animated.View>
   );
@@ -358,9 +360,9 @@ const AIOutfitCreatorModal: React.FC<AIOutfitCreatorModalProps> = ({
       {/* Title */}
       <View style={styles.titleRow}>
         <View>
-          <Text style={styles.title}>AI Outfit Creator</Text>
+          <Text style={styles.title}>{t('aiOutfitCreator.title')}</Text>
           <Text style={styles.subtitle}>
-            Pick an event and let AI style you
+            {t('aiOutfitCreator.subtitle')}
           </Text>
         </View>
         <View style={styles.aiBadge}>

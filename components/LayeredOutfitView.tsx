@@ -18,6 +18,7 @@ import {
     TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 import type { ClothingItem } from '../src/types/domain';
 
@@ -32,13 +33,6 @@ interface LayeredOutfitViewProps {
     editable?: boolean;
     compact?: boolean;
 }
-
-const LAYER_CONFIG: { key: ClothingLayer; label: string; icon: string; color: string }[] = [
-    { key: 'outer', label: 'Outer', icon: 'snow-outline', color: '#60A5FA' },
-    { key: 'mid', label: 'Mid', icon: 'shirt-outline', color: '#A78BFA' },
-    { key: 'base', label: 'Base', icon: 'body-outline', color: '#34D399' },
-    { key: 'accessory', label: 'Accessories', icon: 'diamond-outline', color: '#FBBF24' },
-];
 
 /** Get default layer from category if item doesn't have one set */
 function getEffectiveLayer(item: ClothingItem): ClothingLayer {
@@ -59,6 +53,14 @@ export default function LayeredOutfitView({
     editable = false,
     compact = false,
 }: LayeredOutfitViewProps) {
+    const { t } = useTranslation();
+
+    const LAYER_CONFIG: { key: ClothingLayer; label: string; icon: string; color: string }[] = [
+        { key: 'outer', label: t('layeredOutfit.outer'), icon: 'snow-outline', color: '#60A5FA' },
+        { key: 'mid', label: t('layeredOutfit.mid'), icon: 'shirt-outline', color: '#A78BFA' },
+        { key: 'base', label: t('layeredOutfit.base'), icon: 'body-outline', color: '#34D399' },
+        { key: 'accessory', label: t('layeredOutfit.accessories'), icon: 'diamond-outline', color: '#FBBF24' },
+    ];
     // Group items by layer
     const grouped: Record<ClothingLayer, ClothingItem[]> = {
         outer: [],
@@ -76,7 +78,7 @@ export default function LayeredOutfitView({
         return (
             <View style={styles.emptyContainer}>
                 <Ionicons name="layers-outline" size={40} color={colors.text.tertiary} />
-                <Text style={styles.emptyText}>No items in this outfit</Text>
+                <Text style={styles.emptyText}>{t('layeredOutfit.noItems')}</Text>
             </View>
         );
     }
@@ -131,7 +133,7 @@ export default function LayeredOutfitView({
                         ) : (
                             <View style={styles.emptyLayer}>
                                 <Text style={styles.emptyLayerText}>
-                                    No {label.toLowerCase()} items
+                                    {t('layeredOutfit.noLayerItems', { layer: label.toLowerCase() })}
                                 </Text>
                             </View>
                         )}

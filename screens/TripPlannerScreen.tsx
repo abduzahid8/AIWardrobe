@@ -227,12 +227,12 @@ const TripPlannerScreen = () => {
 
     const handleCreatePlan = async () => {
         if (!destination.trim()) {
-            Alert.alert('Error', 'Please enter a destination');
+            Alert.alert(t('common.error'), t('tripPlanner.enterDestination'));
             return;
         }
 
         if (!user) {
-            Alert.alert('Error', 'You must be logged in to create a trip plan');
+            Alert.alert(t('common.error'), t('tripPlanner.mustBeLoggedIn'));
             return;
         }
 
@@ -252,7 +252,7 @@ const TripPlannerScreen = () => {
             if (error) {
                 console.error("Supabase function error:", error);
                 // Fallback demo data (simplified for resilience)
-                throw new Error(error.message || "Function error");
+                throw new Error(error.message || t('common.functionError'));
             }
 
             setTripPlan(data);
@@ -277,7 +277,7 @@ const TripPlannerScreen = () => {
                 }
             });
             // Show alert but still show demo result
-            Alert.alert("Note", "Could not connect to planner service. Showing demo plan.");
+            Alert.alert(t('tripPlanner.note'), t('tripPlanner.couldNotConnectPlanner'));
             setStep('result');
         }
     };
@@ -306,7 +306,7 @@ const TripPlannerScreen = () => {
                 <FloatingIcon />
                 <Text style={styles.heroTitle}>{t('tripPlanner.planYourTrip')}</Text>
                 <Text style={styles.heroSubtitle}>
-                    Get a personalized packing list based on your destination and activities
+                    {t('tripPlanner.personalizedPackingList')}
                 </Text>
             </Animated.View>
 
@@ -315,7 +315,7 @@ const TripPlannerScreen = () => {
                 <Text style={styles.sectionLabel}>{t('tripPlanner.destination')}</Text>
                 <TextInput
                     style={styles.textInput}
-                    placeholder="e.g. Paris, Tokyo, New York"
+                    placeholder={t('tripPlanner.destinationPlaceholder')}
                     placeholderTextColor={AppColors.textMuted}
                     value={destination}
                     onChangeText={setDestination}

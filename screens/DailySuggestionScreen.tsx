@@ -167,8 +167,8 @@ const DailySuggestionScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                     <Text style={styles.emptyTitle}>{t('dailySuggestion.noSuggestions')}</Text>
                     <Text style={styles.emptySubtext}>
                         {items.length === 0
-                            ? 'Scan your wardrobe to get personalized outfit suggestions'
-                            : 'Add more items to your closet for better suggestions'}
+                            ? t('dailySuggestion.scanWardrobeForSuggestions')
+                            : t('dailySuggestion.addMoreItemsForSuggestions')}
                     </Text>
                     <TouchableOpacity
                         style={styles.emptyButton}
@@ -276,10 +276,10 @@ const DailySuggestionScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
 
                     {/* Score breakdown */}
                     <View style={styles.breakdownRow}>
-                        <ScoreBar label="Style" value={currentSuggestion.breakdown.preferenceScore} />
-                        <ScoreBar label="Weather" value={currentSuggestion.breakdown.weatherScore} />
-                        <ScoreBar label="Fresh" value={currentSuggestion.breakdown.noveltyScore} />
-                        <ScoreBar label="Colors" value={currentSuggestion.breakdown.harmonyScore} />
+                        <ScoreBar label={t('dailySuggestion.style')} value={currentSuggestion.breakdown.preferenceScore} />
+                        <ScoreBar label={t('dailySuggestion.weather')} value={currentSuggestion.breakdown.weatherScore} />
+                        <ScoreBar label={t('dailySuggestion.fresh')} value={currentSuggestion.breakdown.noveltyScore} />
+                        <ScoreBar label={t('dailySuggestion.colors')} value={currentSuggestion.breakdown.harmonyScore} />
                     </View>
                 </Animated.View>
             </ScrollView>

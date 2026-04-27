@@ -7,11 +7,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import Animated, { FadeIn } from 'react-native-reanimated';
+import { supabase } from '../lib/supabase';
 import { createLogger } from '../src/utils/logger';
 
 const logger = createLogger('WeatherWidget');
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://aiwardrobe-ivh4.onrender.com';
 
 interface WeatherData {
     temp: number;
@@ -52,23 +51,21 @@ const WeatherWidget: React.FC = () => {
                 accuracy: Location.Accuracy.Lowest,
             });
 
-            const response = await fetch(`${API_URL}/weather/coords`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+            const { data, error } = await supabase.functions.invoke('weather', {
+                body: {
                     lat: location.coords.latitude,
                     lon: location.coords.longitude,
-                }),
+                    units: 'metric',
+                },
             });
 
-            if (response.ok) {
-                const data = await response.json();
+            if (!error && data) {
                 setWeather({
-                    temp: Math.round(data.temp || data.temperature || 20),
+                    temp: Math.round(data.temp ?? 20),
                     tempHigh: data.temp_max ? Math.round(data.temp_max) : undefined,
                     tempLow: data.temp_min ? Math.round(data.temp_min) : undefined,
                     condition: data.condition || data.description || 'clear',
-                    location: data.city || data.location,
+                    location: data.city,
                 });
             }
         } catch (error) {

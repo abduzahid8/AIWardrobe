@@ -30,14 +30,6 @@ const PAGE_PADDING = 20;
 const DAY_GAP = 12;
 const DAY_CARD_WIDTH = (SCREEN_WIDTH - PAGE_PADDING * 2 - DAY_GAP * 4) / 5;
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const SLOT_META = [
-    { key: 'top', label: 'Top', shortLabel: 'T' },
-    { key: 'pants', label: 'Bottom', shortLabel: 'B' },
-    { key: 'shoes', label: 'Shoes', shortLabel: 'S' },
-] as const;
-
 // Layer (outerwear) keywords — checked BEFORE the generic top matcher in
 // `matchesCategory` so a blazer/jacket lands in the dedicated Layer slot
 // instead of hijacking the Top slot and pushing the real t-shirt into Extras.
@@ -61,12 +53,27 @@ const formatReadableDate = (date: Date) =>
         day: 'numeric',
     });
 
-const formatItemName = (item: OutfitItem | null) => item?.name || item?.type || 'Not added yet';
+const formatItemName = (item: OutfitItem | null, t: any) => item?.name || item?.type || t('calendar.notAddedYet');
 
 const OutfitCalendarScreen = () => {
     const navigation = useAppNavigation();
     const { t } = useTranslation();
     const cal = useOutfitCalendar();
+
+    const MONTHS = [
+        t('calendar.jan'), t('calendar.feb'), t('calendar.mar'), t('calendar.apr'),
+        t('calendar.may'), t('calendar.jun'), t('calendar.jul'), t('calendar.aug'),
+        t('calendar.sep'), t('calendar.oct'), t('calendar.nov'), t('calendar.dec')
+    ];
+    const WEEKDAYS = [
+        t('calendar.sun'), t('calendar.mon'), t('calendar.tue'),
+        t('calendar.wed'), t('calendar.thu'), t('calendar.fri'), t('calendar.sat')
+    ];
+    const SLOT_META = [
+        { key: 'top', label: t('calendar.top'), shortLabel: 'T' },
+        { key: 'pants', label: t('calendar.bottom'), shortLabel: 'B' },
+        { key: 'shoes', label: t('calendar.shoes'), shortLabel: 'S' },
+    ] as const;
 
     const storeItems = useWardrobeStore((state) => state.items);
     const fetchItems = useWardrobeStore((state) => state.fetchItems);
@@ -247,7 +254,7 @@ const OutfitCalendarScreen = () => {
                 )}
             </View>
             <Text style={[styles.dockName, !item && styles.dockNameMuted]} numberOfLines={2}>
-                {item ? formatItemName(item) : label}
+                {item ? formatItemName(item, t) : label}
             </Text>
         </View>
     );
@@ -259,7 +266,7 @@ const OutfitCalendarScreen = () => {
                     <TouchableOpacity
                         style={styles.iconButton}
                         onPress={() => navigation.goBack()}
-                        accessibilityLabel="Close calendar"
+                        accessibilityLabel={t('calendar.closeCalendar')}
                     >
                         <Ionicons name="close" size={20} color="#0F172A" />
                     </TouchableOpacity>
@@ -407,8 +414,8 @@ const OutfitCalendarScreen = () => {
                                         {selectedLog
                                             ? `${selectedOccasion?.icon ?? '✓'} ${selectedOccasion?.label ?? 'Logged'}`
                                             : isPastDay
-                                            ? 'Empty day'
-                                            : 'Open day'}
+                                            ? t('calendar.emptyDay')
+                                            : t('calendar.openDay')}
                                     </Text>
                                 </View>
                             </View>
@@ -448,7 +455,7 @@ const OutfitCalendarScreen = () => {
                                                     resizeMode="cover"
                                                 />
                                                 <Text style={styles.extraName} numberOfLines={2}>
-                                                    {formatItemName(item)}
+                                                    {formatItemName(item, t)}
                                                 </Text>
                                             </View>
                                         ))}
@@ -465,10 +472,10 @@ const OutfitCalendarScreen = () => {
                                     />
                                     <Text style={styles.primaryActionText}>
                                         {selectedLog
-                                            ? 'Replace outfit'
+                                            ? t('calendar.replaceOutfit')
                                             : isPastDay
-                                            ? 'Log outfit'
-                                            : 'Plan outfit'}
+                                            ? t('calendar.logOutfit')
+                                            : t('calendar.planOutfit')}
                                     </Text>
                                 </TouchableOpacity>
 

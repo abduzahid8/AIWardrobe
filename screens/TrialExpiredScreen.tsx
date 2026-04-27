@@ -22,10 +22,11 @@ const TrialExpiredScreen: React.FC = () => {
         <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.navigate('Paywall')}>
           <Text style={styles.primaryButtonText}>{t('trialExpired.upgradeToPro')}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('Paywall')}>
+        {/* Promo code button hidden for App Store submission — re-enable after approval */}
+        {/* <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('PromoCode')}>
           <Ionicons name="gift" size={18} color="#7C3AED" />
-          <Text style={styles.secondaryButtonText}>I have a promo code</Text>
-        </TouchableOpacity>
+          <Text style={styles.secondaryButtonText}>{t('promo.iHavePromoCode')}</Text>
+        </TouchableOpacity> */}
       </View>
     </SafeAreaView>
   );

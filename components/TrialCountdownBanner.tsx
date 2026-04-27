@@ -28,11 +28,13 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 import { useTrialStatus } from '../hooks/useTrialStatus';
 
 export const TrialCountdownBanner: React.FC = () => {
     const navigation = useNavigation<any>();
     const { isTrialActive, daysRemaining, hoursRemaining } = useTrialStatus();
+    const { t } = useTranslation();
 
     // Pulse animation — draws the eye without being obnoxious
     const opacity = useSharedValue(1);
@@ -59,9 +61,9 @@ export const TrialCountdownBanner: React.FC = () => {
     const isLastDay = daysRemaining <= 1;
     const label = isLastDay
         ? hoursRemaining <= 1
-            ? 'Less than 1 hour left in your free trial'
-            : `${hoursRemaining}h left in your free trial — Upgrade now`
-        : `${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} left in your free trial`;
+            ? t('trialCountdown.lessThanOneHour')
+            : t('trialCountdown.hoursLeft', { hours: hoursRemaining })
+        : t('trialCountdown.daysLeft', { days: daysRemaining, suffix: daysRemaining !== 1 ? 's' : '' });
 
     const gradientColors: [string, string] = isLastDay
         ? ['#C0392B', '#E74C3C']   // urgent red on last day
@@ -75,7 +77,7 @@ export const TrialCountdownBanner: React.FC = () => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     navigation.navigate('Paywall');
                 }}
-                accessibilityLabel="Open upgrade plans"
+                accessibilityLabel={t('trialCountdown.openUpgradePlans')}
                 accessibilityRole="button"
             >
                 <LinearGradient
@@ -96,7 +98,7 @@ export const TrialCountdownBanner: React.FC = () => {
                         </Text>
                     </View>
                     <View style={styles.cta}>
-                        <Text style={styles.ctaText}>Upgrade</Text>
+                        <Text style={styles.ctaText}>{t('trialCountdown.upgrade')}</Text>
                         <Ionicons name="chevron-forward" size={13} color="#FFF" />
                     </View>
                 </LinearGradient>

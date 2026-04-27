@@ -11,6 +11,7 @@ import { Alert } from 'react-native';
 import { ExternalAIService } from '../../services/externalAIService';
 import useUploadQueueStore from '../../store/uploadQueueStore';
 import { createLogger } from '../../utils/logger';
+import { useTranslation } from 'react-i18next';
 
 const logger = createLogger('useVideoAnalysis');
 
@@ -148,10 +149,11 @@ export const useVideoAnalysis = (): UseVideoAnalysisReturn => {
       const frames = await extractFrames(videoUri);
       
       if (frames.length === 0) {
+        const { t } = useTranslation();
         Alert.alert(
-          'Video Processing Limited',
-          'Could not extract frames from this video. You can still add items manually — tap "Review & Save" to continue.',
-          [{ text: 'OK' }]
+          t('videoAnalysis.videoProcessingLimited'),
+          t('videoAnalysis.videoProcessingLimitedMessage'),
+          [{ text: t('common.ok') }]
         );
         setResults({
           detectedItems: [{
@@ -174,7 +176,8 @@ export const useVideoAnalysis = (): UseVideoAnalysisReturn => {
       const detectedItems = await analyzeFrame(frames[0]);
       
       if (detectedItems.length === 0) {
-        Alert.alert('No Clothing Found', 'AI could not detect clothing items in this video.');
+        const { t } = useTranslation();
+        Alert.alert(t('videoAnalysis.noClothingFound'), t('videoAnalysis.noClothingFoundVideo'));
         return;
       }
 
@@ -186,9 +189,11 @@ export const useVideoAnalysis = (): UseVideoAnalysisReturn => {
 
       if (isNetworkError) {
         useUploadQueueStore.getState().addUpload(videoUri, 'video');
-        Alert.alert('Saved Offline', 'Video saved to offline queue. It will be analyzed when you are online.');
+        const { t } = useTranslation();
+        Alert.alert(t('videoAnalysis.savedOffline'), t('videoAnalysis.savedOfflineVideo'));
       } else {
-        Alert.alert('Analysis Failed', error.message || 'Something went wrong. Please try again.');
+        const { t } = useTranslation();
+        Alert.alert(t('videoAnalysis.analysisFailed'), error.message || t('videoAnalysis.somethingWrong'));
       }
     } finally {
       setAnalyzing(false);
@@ -214,7 +219,8 @@ export const useVideoAnalysis = (): UseVideoAnalysisReturn => {
       const detectedItems = await analyzeFrame(base64);
       
       if (detectedItems.length === 0) {
-        Alert.alert('No Clothing Found', 'AI could not detect clothing items in this image.');
+        const { t } = useTranslation();
+        Alert.alert(t('videoAnalysis.noClothingFound'), t('videoAnalysis.noClothingFoundImage'));
         return;
       }
 
@@ -225,9 +231,11 @@ export const useVideoAnalysis = (): UseVideoAnalysisReturn => {
 
       if (isNetworkError) {
         useUploadQueueStore.getState().addUpload(imageUri, 'image');
-        Alert.alert('Saved Offline', 'Photo saved to offline queue. It will be analyzed when you are online.');
+        const { t } = useTranslation();
+        Alert.alert(t('videoAnalysis.savedOffline'), t('videoAnalysis.savedOfflinePhoto'));
       } else {
-        Alert.alert('Analysis Failed', error.message || 'Something went wrong. Please try again.');
+        const { t } = useTranslation();
+        Alert.alert(t('videoAnalysis.analysisFailed'), error.message || t('videoAnalysis.somethingWrong'));
       }
     } finally {
       setAnalyzing(false);

@@ -8,6 +8,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 import type { StyleInsight } from '../src/types/domain';
 
@@ -66,13 +67,14 @@ export const StyleInsightsList: React.FC<{
     insights: StyleInsight[];
     maxVisible?: number;
 }> = ({ insights, maxVisible = 3 }) => {
+    const { t } = useTranslation();
     const visible = insights.slice(0, maxVisible);
 
     if (visible.length === 0) return null;
 
     return (
         <View style={styles.list}>
-            <Text style={styles.listTitle}>Style Insights</Text>
+            <Text style={styles.listTitle}>{t('styleInsights.title')}</Text>
             {visible.map((insight, index) => (
                 <StyleInsightCard key={`${insight.type}_${index}`} insight={insight} />
             ))}

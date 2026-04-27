@@ -48,10 +48,12 @@ import useTryOnLooksStore from '../store/tryOnLooksStore';
 import { useShopCatalog } from '../hooks/useShopCatalog';
 import { useTheme } from '../src/theme/ThemeContext';
 import { useSubscriptionGate } from '../src/hooks/useSubscriptionGate';
+import { useAdminGuard } from '../hooks/useAdminGuard';
 import useSubscriptionStore from '../store/subscriptionStore';
 import useLanguageStore, { LANGUAGE_NAMES } from '../store/languageStore';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useTranslation } from 'react-i18next';
+import { iapService } from '../src/services/iapService';
 
 const { width, height } = Dimensions.get('window');
 const HERO_HEIGHT = Math.min(height * 0.43, 390);
@@ -136,6 +138,7 @@ const ProfileScreen = () => {
   const navigation = useAppNavigation();
   const insets = useSafeAreaInsets();
   const { requireFeature: requireSubFeature } = useSubscriptionGate();
+  const { isAdmin: isAdminUser } = useAdminGuard();
   const { t } = useTranslation();
 
   const { user, logout, deleteAccount, fetchUser } = useAuthStore();
@@ -362,7 +365,7 @@ const ProfileScreen = () => {
   const pickAvatar = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Allow photo library access to change your avatar.');
+      Alert.alert(t('profile.permissionNeeded'), t('profile.allowPhotoLibrary'));
       return;
     }
 
@@ -413,7 +416,7 @@ const ProfileScreen = () => {
 
       setShowEditProfile(false);
     } catch (error: unknown) {
-      Alert.alert('Error', getErrorMessage(error, 'Failed to update profile.'));
+      Alert.alert(t('common.error'), getErrorMessage(error, t('profile.failedUpdateProfile')));
     } finally {
       setSaving(false);
     }
@@ -450,7 +453,7 @@ const ProfileScreen = () => {
                   await deleteAccount();
                   await AsyncStorage.removeItem('userToken');
                 } catch (error: unknown) {
-                  Alert.alert(t('common.error'), getErrorMessage(error, 'Failed to delete account.'));
+                  Alert.alert(t('common.error'), getErrorMessage(error, t('profile.failedDeleteAccount')));
                 }
               },
             },
@@ -680,7 +683,7 @@ const ProfileScreen = () => {
           {outfit.isTryOn ? (
             <View style={styles.lookBadge}>
               <Ionicons name="sparkles" size={10} color={D.white} />
-              <Text style={styles.lookBadgeText}>AI</Text>
+              <Text style={styles.lookBadgeText}>{t('profile.ai')}</Text>
             </View>
           ) : null}
         </View>
@@ -751,12 +754,12 @@ const ProfileScreen = () => {
             <Ionicons name="airplane-outline" size={28} color={D.accent} />
           </LinearGradient>
         </View>
-        <Text style={styles.emptyTitle}>Plan trip outfits</Text>
+        <Text style={styles.emptyTitle}>{t('profile.planTripOutfits')}</Text>
         <Text style={styles.emptySubtitle}>
-          Use the calendar to pick a travel date, generate an outfit with AI, and save it back to that day.
+          {t('profile.planTripDescription')}
         </Text>
         <PrimaryGradientButton
-          label="Open Calendar"
+          label={t('profile.openCalendar')}
           icon="calendar-outline"
           onPress={openTripPlanner}
           style={styles.emptyAction}
@@ -769,9 +772,9 @@ const ProfileScreen = () => {
             <Ionicons name="calendar-outline" size={16} color={D.accent} />
           </View>
           <View style={styles.tripFlowCopy}>
-            <Text style={styles.tripFlowTitle}>1. Pick your travel day</Text>
+            <Text style={styles.tripFlowTitle}>{t('profile.tripFlowStep1')}</Text>
             <Text style={styles.tripFlowSubtitle}>
-              Select the trip date you want to plan for inside the outfit calendar.
+              {t('profile.tripFlowStep1Desc')}
             </Text>
           </View>
         </View>
@@ -781,9 +784,9 @@ const ProfileScreen = () => {
             <Ionicons name="sparkles-outline" size={16} color={D.accent} />
           </View>
           <View style={styles.tripFlowCopy}>
-            <Text style={styles.tripFlowTitle}>2. Create outfit with AI</Text>
+            <Text style={styles.tripFlowTitle}>{t('profile.tripFlowStep2')}</Text>
             <Text style={styles.tripFlowSubtitle}>
-              Tap `Create Outfit with AI` on that day to open the generator with the date attached.
+              {t('profile.tripFlowStep2Desc')}
             </Text>
           </View>
         </View>
@@ -793,9 +796,9 @@ const ProfileScreen = () => {
             <Ionicons name="checkmark-done-outline" size={16} color={D.accent} />
           </View>
           <View style={styles.tripFlowCopy}>
-            <Text style={styles.tripFlowTitle}>3. Save it to your plan</Text>
+            <Text style={styles.tripFlowTitle}>{t('profile.tripFlowStep3')}</Text>
             <Text style={styles.tripFlowSubtitle}>
-              In the results view, add the outfit to calendar and it will be saved on that selected date.
+              {t('profile.tripFlowStep3Desc')}
             </Text>
           </View>
         </View>
@@ -1038,7 +1041,7 @@ const ProfileScreen = () => {
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(130).duration(350)} style={styles.sectionBlock}>
-          <Text style={styles.groupHeading}>ACCOUNT</Text>
+          <Text style={styles.groupHeading}>{t('profile.accountHeading')}</Text>
           <GlassPanel radius={28}>
             <MenuRow
               icon="create-outline"
@@ -1051,11 +1054,21 @@ const ProfileScreen = () => {
               label={t('profile.wardrobeAnalytics')}
               onPress={() => navigation.navigate('WardrobeAnalytics')}
             />
+            {isAdminUser && (
+              <>
+                <View style={styles.menuSeparator} />
+                <MenuRow
+                  icon="shield-checkmark"
+                  label={t('admin.title', 'Admin Panel')}
+                  onPress={() => navigation.navigate('AdminPanel')}
+                />
+              </>
+            )}
           </GlassPanel>
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(155).duration(350)} style={styles.sectionBlock}>
-          <Text style={styles.groupHeading}>MEMBERSHIP</Text>
+          <Text style={styles.groupHeading}>{t('profile.membershipHeading')}</Text>
           <GlassPanel radius={28}>
             <MenuRow
               icon="diamond-outline"
@@ -1063,11 +1076,18 @@ const ProfileScreen = () => {
               trailing={planLabel}
               onPress={() => navigation.navigate('Paywall')}
             />
+            {effectiveTier !== 'free' && (
+              <MenuRow
+                icon="settings-outline"
+                label={t('paywall.manageSubscription')}
+                onPress={() => iapService.manageSubscriptions()}
+              />
+            )}
           </GlassPanel>
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(180).duration(350)} style={styles.sectionBlock}>
-          <Text style={styles.groupHeading}>PREFERENCES</Text>
+          <Text style={styles.groupHeading}>{t('profile.preferencesHeading')}</Text>
           <GlassPanel radius={28}>
             <MenuRow
               icon="language-outline"
@@ -1082,7 +1102,7 @@ const ProfileScreen = () => {
             <MenuRow
               icon="notifications-outline"
               label={t('profile.notifications')}
-              onPress={() => Alert.alert('Coming soon', 'Notification settings are not available yet.')}
+              onPress={() => Alert.alert(t('profile.comingSoon'), t('profile.notificationSettingsUnavailable'))}
             />
             <View style={styles.menuSeparator} />
             <MenuRow
@@ -1290,7 +1310,7 @@ const ProfileScreen = () => {
                   {previewLook.isTryOn ? (
                     <View style={styles.previewBadgeRow}>
                       <Ionicons name="sparkles" size={13} color={D.white} />
-                      <Text style={styles.previewBadgeText}>AI Try-On</Text>
+                      <Text style={styles.previewBadgeText}>{t('profile.aiTryOn')}</Text>
                     </View>
                   ) : null}
                   <Text style={styles.previewTitle} numberOfLines={2}>
@@ -1306,7 +1326,7 @@ const ProfileScreen = () => {
                 <View style={styles.previewActions}>
                   {previewLook.isTryOn ? (
                     <SecondaryGlassButton
-                      label="Try Again"
+                      label={t('profile.tryAgain')}
                       icon="sparkles-outline"
                       onPress={() => {
                         navigation.navigate('AITryOn');
@@ -1317,14 +1337,14 @@ const ProfileScreen = () => {
                   ) : null}
 
                   <SecondaryGlassButton
-                    label={previewLook.isTryOn ? 'Remove' : t('common.cancel')}
+                    label={previewLook.isTryOn ? t('common.remove') : t('common.cancel')}
                     icon={previewLook.isTryOn ? 'trash-outline' : 'close-outline'}
                     onPress={() => {
                       if (previewLook.isTryOn) {
-                        Alert.alert('Remove Look', 'Remove this AI try-on look?', [
+                        Alert.alert(t('profile.removeLook'), t('profile.removeTryOnLook'), [
                           { text: t('common.cancel'), style: 'cancel' },
                           {
-                            text: 'Remove',
+                            text: t('common.remove'),
                             style: 'destructive',
                             onPress: () => {
                               removeTryOnLook(previewLook._id);

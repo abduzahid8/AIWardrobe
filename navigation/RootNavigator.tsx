@@ -22,6 +22,7 @@ import PaywallScreen from "../screens/PaywallScreen";
 import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
 import ResetPasswordScreen from "../screens/ResetPasswordScreen";
 import OutfitAIScreen from "../screens/OutfitAIScreen";
+import OutfitInspoScreen from "../screens/OutfitInspoScreen";
 import CreateAvatarScreen from "../screens/CreateAvatarScreen";
 import MyClosetScreen from "../screens/MyClosetScreen";
 import WardrobeAnalyticsScreen from "../screens/WardrobeAnalyticsScreen";
@@ -31,6 +32,8 @@ import ClothingDetailEditor from "../components/ClothingDetailEditor";
 import ClothingDetailScreen from "../screens/ClothingDetailScreen";
 import TrialExpiredScreen from "../screens/TrialExpiredScreen";
 import PromoCodeScreen from "../screens/PromoCodeScreen";
+import AdminPanelScreen from "../screens/AdminPanelScreen";
+import GuideScreen from "../screens/GuideScreen";
 import usePromoCodeStore from "../store/promoCodeStore";
 import { addNotificationListeners } from "../src/services/notificationService";
 import { notificationService } from "../src/services/notificationService";
@@ -212,6 +215,11 @@ const RootNavigator = () => {
               options={{ ...LiquidPresets.rise }}
             />
             <Stack.Screen
+              name="OutfitInspo"
+              component={OutfitInspoScreen}
+              options={{ ...LiquidPresets.rise }}
+            />
+            <Stack.Screen
               name="CreateAvatar"
               component={CreateAvatarScreen}
               options={{ ...LiquidPresets.rise }}
@@ -314,7 +322,9 @@ const RootNavigator = () => {
               name="Paywall"
               component={PaywallScreen}
               options={{
-                ...LiquidPresets.rise,
+                ...LiquidPresets.fade,
+                presentation: 'card',
+                gestureEnabled: false,
               }}
             />
 
@@ -323,6 +333,20 @@ const RootNavigator = () => {
               name="TrialExpired"
               component={TrialExpiredScreen}
               options={{ ...LiquidPresets.fade }}
+            />
+
+            {/* Admin Panel — shop catalog management for admin users */}
+            <Stack.Screen
+              name="AdminPanel"
+              component={AdminPanelScreen}
+              options={{ ...LiquidPresets.rise }}
+            />
+
+            {/* Guide — editable onboarding/guide page */}
+            <Stack.Screen
+              name="Guide"
+              component={GuideScreen}
+              options={{ ...LiquidPresets.slide }}
             />
           </>
           )

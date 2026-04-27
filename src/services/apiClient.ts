@@ -9,10 +9,10 @@
  */
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { Alert } from 'react-native';
-import { supabase } from '../../lib/supabase';
 import useAuthStore from '../../store/auth';
 import Config from '../config/env';
 import crashReporting from './crashReporting';
+import { useTranslation } from 'react-i18next';
 
 // ── Standardized error shape ──
 export interface ApiError {
@@ -72,15 +72,17 @@ const createClient = (baseURL: string, timeout: number) => {
                 const { logout } = useAuthStore.getState();
                 await logout();
             } else if (status === 403) {
+                const { t } = useTranslation();
                 Alert.alert(
-                    'Access Denied',
-                    'You don\'t have permission to perform this action.',
+                    t('api.accessDenied'),
+                    t('api.accessDeniedMessage'),
                 );
             } else if (status && status >= 500) {
                 crashReporting.logBreadcrumb(`Server error ${status}: ${error.config?.url}`);
+                const { t } = useTranslation();
                 Alert.alert(
-                    'Server Error',
-                    'Something went wrong on our end. Please try again later.',
+                    t('api.serverError'),
+                    t('api.serverErrorMessage'),
                 );
             } else if (!error.response) {
                 crashReporting.logBreadcrumb('Network error: no response');

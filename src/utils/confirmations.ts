@@ -8,20 +8,22 @@
  * <TouchableOpacity onPress={() => confirmRemoveItem(item.id, item.name)}>
  */
 import { Alert } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import useWardrobeStore from '../../store/wardrobeStore';
 
 /**
  * Show confirmation dialog before removing a clothing item.
  */
 export const confirmRemoveItem = (itemId: string, itemName?: string): void => {
-    const label = itemName || 'this item';
+    const { t } = useTranslation();
+    const label = itemName || t('confirmations.thisItem');
     Alert.alert(
-        'Remove Item',
-        `Are you sure you want to remove ${label} from your wardrobe? This action cannot be undone.`,
+        t('confirmations.removeItem'),
+        t('confirmations.removeItemConfirm', { label }),
         [
-            { text: 'Cancel', style: 'cancel' },
+            { text: t('common.cancel'), style: 'cancel' },
             {
-                text: 'Remove',
+                text: t('common.remove'),
                 style: 'destructive',
                 onPress: () => useWardrobeStore.getState().removeItem(itemId),
             },
@@ -33,14 +35,15 @@ export const confirmRemoveItem = (itemId: string, itemName?: string): void => {
  * Show confirmation dialog before deleting an outfit.
  */
 export const confirmDeleteOutfit = (outfitId: string, outfitName?: string): void => {
-    const label = outfitName || 'this outfit';
+    const { t } = useTranslation();
+    const label = outfitName || t('confirmations.thisOutfit');
     Alert.alert(
-        'Delete Outfit',
-        `Are you sure you want to delete ${label}?`,
+        t('confirmations.deleteOutfit'),
+        t('confirmations.deleteOutfitConfirm', { label }),
         [
-            { text: 'Cancel', style: 'cancel' },
+            { text: t('common.cancel'), style: 'cancel' },
             {
-                text: 'Delete',
+                text: t('common.delete'),
                 style: 'destructive',
                 onPress: () => {
                     // Remove from store
@@ -61,11 +64,13 @@ export const confirmDestructive = (
     title: string,
     message: string,
     onConfirm: () => void,
-    confirmLabel = 'Delete',
+    confirmLabel?: string,
 ): void => {
+    const { t } = useTranslation();
+    const label = confirmLabel || t('common.delete');
     Alert.alert(title, message, [
-        { text: 'Cancel', style: 'cancel' },
-        { text: confirmLabel, style: 'destructive', onPress: onConfirm },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: label, style: 'destructive', onPress: onConfirm },
     ]);
 };
 

@@ -139,18 +139,18 @@ const WearLogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                     </Animated.Text>
                     <Text style={styles.celebrationTitle}>{t('wearLog.outfitLogged')}</Text>
                     <Text style={styles.celebrationStreak}>
-                        {newStreak} day streak
+                        {t('wearLog.dayStreak', { count: newStreak })}
                     </Text>
                     <Text style={styles.celebrationSubtext}>
                         {newStreak >= 30
-                            ? 'Incredible! A full month of daily style logging.'
+                            ? t('wearLog.streak30')
                             : newStreak >= 14
-                                ? 'Two weeks strong! Your suggestions are getting smarter.'
+                                ? t('wearLog.streak14')
                                 : newStreak >= 7
-                                    ? 'A whole week! Your style data is really growing.'
+                                    ? t('wearLog.streak7')
                                     : newStreak >= 3
-                                        ? 'Keep the momentum going!'
-                                        : 'Great start! Log daily to unlock style insights.'}
+                                        ? t('wearLog.streak3')
+                                        : t('wearLog.streak1')}
                     </Text>
 
                     <TouchableOpacity
@@ -186,7 +186,7 @@ const WearLogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                             onPress={() => setMode('suggestion')}
                         >
                             <Text style={[styles.modeText, mode === 'suggestion' && styles.modeTextActive]}>
-                                Suggested Outfit
+                                {t('wearLog.suggestedOutfit')}
                             </Text>
                         </TouchableOpacity>
                         <TouchableOpacity
@@ -194,7 +194,7 @@ const WearLogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                             onPress={() => setMode('manual')}
                         >
                             <Text style={[styles.modeText, mode === 'manual' && styles.modeTextActive]}>
-                                Pick Items
+                                {t('wearLog.pickItems')}
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -341,10 +341,13 @@ const WearLogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                     <Ionicons name="checkmark-circle" size={22} color="#FFF" />
                     <Text style={styles.logButtonText}>
                         {mode === 'suggestion'
-                            ? 'I wore this today'
+                            ? t('wearLog.iWoreThisToday')
                             : selectedIds.length > 0
-                                ? `Log ${selectedIds.length} item${selectedIds.length > 1 ? 's' : ''}`
-                                : 'Select items to log'}
+                                ? t('wearLog.logItems', { 
+                                    count: selectedIds.length, 
+                                    plural: selectedIds.length > 1 ? 's' : '' 
+                                })
+                                : t('wearLog.selectItemsToLog')}
                     </Text>
                 </TouchableOpacity>
             </View>

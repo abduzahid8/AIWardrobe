@@ -22,6 +22,7 @@ import {
     ActivityIndicator,
     Alert,
     KeyboardAvoidingView,
+    Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,23 +39,22 @@ import Animated, {
 import useSubscriptionStore, { SUBSCRIPTION_PRICING } from '../store/subscriptionStore';
 import useDailyUsageStore from '../store/dailyUsageStore';
 import { useStylePreferenceStore } from '../store/stylePreferenceStore';
-import usePromoCodeStore from '../store/promoCodeStore';
 import AppColors from '../constants/AppColors';
 import { iapService } from '../src/services/iapService';
 import { useTranslation } from 'react-i18next';
 
 const COLORS = {
-    background: '#0A0A0A',
-    surface: '#1A1A1A',
-    surfaceLight: '#2A2A2A',
+    background: '#050816',
+    surface: '#11182B',
+    surfaceLight: '#1A2440',
     text: '#FFFFFF',
-    textSecondary: AppColors.textMuted,
+    textSecondary: '#A9B4D0',
     premium: AppColors.premium,       // Pro accent
     premiumDark: AppColors.premiumDark,
-    accent: AppColors.accent,
+    accent: '#8FA8FF',
     success: AppColors.success,
-    border: '#333333',
-    free: '#6B7280',
+    border: '#2A3658',
+    free: '#5E6A8A',
     error: '#EF4444',
 };
 
@@ -62,42 +62,6 @@ const COLORS = {
 // Feature comparison matrix — exact copy shown on the paywall.
 // Keep this in sync with store/subscriptionStore.ts TIER_FEATURES.
 // ──────────────────────────────────────────────────────────
-const TIER_CARDS = {
-    free: {
-        label: 'Free',
-        sublabel: '7-day free trial · no credit card',
-        price: null as string | null,
-        features: [
-            '10 AI outfits / day',
-            'Up to 20 items in your closet',
-            'Basic today-view calendar',
-            'Browse inspiration',
-        ],
-        missing: [
-            'No Virtual Try-On',
-            'No wardrobe insights',
-            'No trip planner',
-        ],
-    },
-    pro: {
-        label: 'Pro',
-        sublabel: 'The complete AI wardrobe',
-        productId: 'com.aiwardrobe.premium.monthly' as const,
-        price: null as string | null,
-        period: '/month',
-        features: [
-            'Unlimited AI outfits',
-            'Unlimited Virtual Try-On',
-            'Unlimited closet size',
-            'Wardrobe insights & stats',
-            'AI trip / travel planner',
-            'Full outfit calendar',
-            'Priority AI model · no ads',
-            'Priority support',
-            'Early access to new features',
-        ],
-    },
-};
 
 // ──────────────────────────────────────────────────────────
 // Pressable card with subtle scale-down on press
@@ -133,11 +97,67 @@ const PaywallScreen = () => {
     const [isLoading, setIsLoading] = useState<string | null>(null);
     const [livePrice, setLivePrice] = useState<string | null>(null);
     const [liveProductId, setLiveProductId] = useState<string | null>(null);
-    const [promoCode, setPromoCode] = useState('');
-    const [promoError, setPromoError] = useState<string | null>(null);
-    const [isPromoLoading, setIsPromoLoading] = useState(false);
-    const [showPromoInput, setShowPromoInput] = useState(false);
-    const { hasRedeemedPromo } = usePromoCodeStore();
+    const [liveYearlyPrice, setLiveYearlyPrice] = useState<string | null>(null);
+    const [liveYearlyProductId, setLiveYearlyProductId] = useState<string | null>(null);
+    const subscriptionTier = useSubscriptionStore((s) => s.tier);
+
+    const TIER_CARDS = {
+        free: {
+            label: t('subscription.tiers.free'),
+            sublabel: t('subscription.tiers.freeSublabel'),
+            price: null as string | null,
+            features: [
+                t('subscription.tiers.freeFeatures.0'),
+                t('subscription.tiers.freeFeatures.1'),
+                t('subscription.tiers.freeFeatures.2'),
+                t('subscription.tiers.freeFeatures.3'),
+            ],
+            missing: [
+                t('subscription.tiers.freeMissing.0'),
+                t('subscription.tiers.freeMissing.1'),
+                t('subscription.tiers.freeMissing.2'),
+            ],
+        },
+        pro: {
+            label: t('subscription.tiers.pro'),
+            sublabel: t('subscription.tiers.proSublabel'),
+            productId: 'com.aiwardrobe.premium.monthly' as const,
+            price: null as string | null,
+            period: t('subscription.tiers.period'),
+            features: [
+                t('subscription.tiers.proFeatures.0'),
+                t('subscription.tiers.proFeatures.1'),
+                t('subscription.tiers.proFeatures.2'),
+                t('subscription.tiers.proFeatures.3'),
+                t('subscription.tiers.proFeatures.4'),
+                t('subscription.tiers.proFeatures.5'),
+                t('subscription.tiers.proFeatures.6'),
+                t('subscription.tiers.proFeatures.7'),
+                t('subscription.tiers.proFeatures.8'),
+            ],
+        },
+        max: {
+            label: t('subscription.tiers.max'),
+            sublabel: t('subscription.tiers.maxSublabel'),
+            productId: 'com.aiwardrobe.premium.yearly' as const,
+            price: null as string | null,
+            period: t('subscription.tiers.maxPeriod'),
+            features: [
+                t('subscription.tiers.proFeatures.0'),
+                t('subscription.tiers.proFeatures.1'),
+                t('subscription.tiers.proFeatures.2'),
+                t('subscription.tiers.proFeatures.3'),
+                t('subscription.tiers.proFeatures.4'),
+                t('subscription.tiers.proFeatures.5'),
+                t('subscription.tiers.proFeatures.6'),
+                t('subscription.tiers.proFeatures.7'),
+                t('subscription.tiers.proFeatures.8'),
+                t('subscription.tiers.maxFeatures.0'),
+                t('subscription.tiers.maxFeatures.1'),
+            ],
+            savingsLabel: t('subscription.tiers.maxSavings'),
+        },
+    };
     const canGoBack = navigation.canGoBack();
 
     useEffect(() => {
@@ -157,6 +177,18 @@ const PaywallScreen = () => {
             if (proProduct?.id) {
                 setLiveProductId(proProduct.id);
             }
+            const yearlyProduct = products.find(
+                (p) => p.id === TIER_CARDS.max.productId
+            ) || products.find((p) => {
+                const id = String(p.id || '').toLowerCase();
+                return id.includes('yearly') || id.includes('annual');
+            });
+            if (yearlyProduct?.price) {
+                setLiveYearlyPrice(yearlyProduct.price);
+            }
+            if (yearlyProduct?.id) {
+                setLiveYearlyProductId(yearlyProduct.id);
+            }
         }).catch(() => {
             // Keep fallback empty; UI will show nothing or a placeholder
         });
@@ -166,14 +198,17 @@ const PaywallScreen = () => {
     const purchase = async (
         productId: string,
     ) => {
+        console.log('[Paywall] purchase() called with productId:', productId);
         setIsLoading(productId);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         try {
+            console.log('[Paywall] calling iapService.purchase...');
             const result = await iapService.purchase(productId);
+            console.log('[Paywall] iapService.purchase returned:', result);
             if (result.success) {
-                // Re-verify subscription from server to ensure backend is in sync
-                const { verifySubscriptionFromServer } = useSubscriptionStore.getState();
-                await verifySubscriptionFromServer().catch(() => {});
+                // We rely on RevenueCat and the local optimism applied inside iapService.
+                // The webhook will eventually sync the backend. Overwriting here
+                // immediately can strip the user's access if the webhook is delayed.
                 completeOnboarding();
                 // Give the user a fresh daily bucket after upgrading.
                 await useDailyUsageStore.getState().resetToday();
@@ -183,13 +218,13 @@ const PaywallScreen = () => {
                 });
             } else if (result.error) {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-                Alert.alert('Purchase failed', result.error);
+                Alert.alert(t('paywall.purchaseFailed'), result.error);
             }
         } catch (error) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             Alert.alert(
-                'Purchase failed',
-                error instanceof Error ? error.message : 'Something went wrong while starting the purchase.'
+                t('paywall.purchaseFailed'),
+                error instanceof Error ? error.message : t('paywall.somethingWrongPurchase')
             );
         } finally {
             setIsLoading(null);
@@ -203,9 +238,7 @@ const PaywallScreen = () => {
             const result = await iapService.restorePurchases();
             if (result.success) {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                // Re-verify subscription from server to ensure backend is in sync
-                const { verifySubscriptionFromServer } = useSubscriptionStore.getState();
-                await verifySubscriptionFromServer().catch(() => {});
+                // Trust the restoration optimism given by RevenueCat.
                 completeOnboarding();
                 await useDailyUsageStore.getState().resetToday();
                 navigation.reset({
@@ -214,13 +247,13 @@ const PaywallScreen = () => {
                 });
             } else {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-                Alert.alert('Restore failed', result.error || 'No previous purchases found.');
+                Alert.alert(t('paywall.restoreFailed'), result.error || t('paywall.noPreviousPurchases'));
             }
         } catch (error) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             Alert.alert(
-                'Restore failed',
-                error instanceof Error ? error.message : 'Something went wrong while restoring purchases.'
+                t('paywall.restoreFailed'),
+                error instanceof Error ? error.message : t('paywall.somethingWrongRestore')
             );
         } finally {
             setIsLoading(null);
@@ -240,45 +273,13 @@ const PaywallScreen = () => {
         }
     };
 
-    const handleRedeemPromo = async () => {
-        const trimmed = promoCode.trim();
-        if (!trimmed) {
-            setPromoError(t('promo.enterCode'));
-            return;
-        }
-        setIsPromoLoading(true);
-        setPromoError(null);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        try {
-            const result = await usePromoCodeStore.getState().redeemPromoCode(trimmed);
-            if (result.success) {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                Alert.alert(
-                    t('promo.trialActivated'),
-                    t('promo.trialActivatedMessage', { days: result.trialDays || 7 }),
-                    [{ text: t('common.next') || 'Continue', onPress: () => {
-                        completeOnboarding();
-                        navigation.reset({ index: 0, routes: [{ name: 'Main' as never }] });
-                    }}],
-                );
-            } else {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-                setPromoError(result.error || t('promo.invalidCode'));
-            }
-        } catch {
-            setPromoError(t('promo.invalidCode'));
-        } finally {
-            setIsPromoLoading(false);
-        }
-    };
-
     return (
         <View style={styles.container}>
             <LinearGradient
-                colors={['#0A0A0A', '#1A1A2E', '#16213E']}
+                colors={['#050816', '#0D1530', '#1B1F4A']}
                 style={styles.gradient}
             >
-                <SafeAreaView style={styles.safeArea}>
+                <SafeAreaView style={styles.safeArea} edges={['top']}>
                     {/* Header */}
                     <View style={styles.header}>
                         <TouchableOpacity style={styles.closeButton} onPress={closePaywall}>
@@ -289,6 +290,7 @@ const PaywallScreen = () => {
                     <ScrollView
                         contentContainerStyle={styles.scrollContent}
                         showsVerticalScrollIndicator={false}
+                        contentInsetAdjustmentBehavior="never"
                     >
                         {/* Hero */}
                         <Animated.View entering={FadeIn.duration(500)} style={styles.hero}>
@@ -297,70 +299,10 @@ const PaywallScreen = () => {
                             </View>
                             <Text style={styles.heroTitle}>{t('paywall.heroTitle')}</Text>
                             <Text style={styles.heroSubtitle}>
-                                Keep Free forever — or upgrade when you're ready for more.
+                                {t('paywall.heroSubtitle')}
                             </Text>
                         </Animated.View>
 
-                        {/* Promo Code Section — show if user hasn't redeemed yet */}
-                        {!hasRedeemedPromo && (
-                            <Animated.View entering={FadeInUp.delay(80).springify()} style={styles.promoSection}>
-                                {!showPromoInput ? (
-                                    <TouchableOpacity
-                                        style={styles.promoToggle}
-                                        onPress={() => setShowPromoInput(true)}
-                                        activeOpacity={0.7}
-                                    >
-                                        <Ionicons name="gift" size={18} color={COLORS.premium} />
-                                        <Text style={styles.promoToggleText}>{t('promo.heroTitle')}</Text>
-                                        <Ionicons name="chevron-down" size={18} color={COLORS.textSecondary} />
-                                    </TouchableOpacity>
-                                ) : (
-                                    <View style={styles.promoCard}>
-                                        <View style={styles.promoHeader}>
-                                            <Ionicons name="gift" size={20} color={COLORS.premium} />
-                                            <Text style={styles.promoCardTitle}>{t('promo.enterCodeLabel')}</Text>
-                                        </View>
-                                        <View style={styles.promoInputRow}>
-                                            <Ionicons name="ticket" size={18} color={COLORS.textSecondary} />
-                                            <TextInput
-                                                style={styles.promoInput}
-                                                value={promoCode}
-                                                onChangeText={(text) => {
-                                                    setPromoCode(text.toUpperCase());
-                                                    setPromoError(null);
-                                                }}
-                                                placeholder={t('promo.placeholder')}
-                                                placeholderTextColor="rgba(255,255,255,0.3)"
-                                                autoCapitalize="characters"
-                                                autoCorrect={false}
-                                                maxLength={30}
-                                                editable={!isPromoLoading}
-                                                returnKeyType="go"
-                                                onSubmitEditing={handleRedeemPromo}
-                                            />
-                                        </View>
-                                        {promoError && (
-                                            <View style={styles.promoErrorRow}>
-                                                <Ionicons name="alert-circle" size={14} color={COLORS.error} />
-                                                <Text style={styles.promoErrorText}>{promoError}</Text>
-                                            </View>
-                                        )}
-                                        <TouchableOpacity
-                                            style={[styles.promoRedeemButton, (!promoCode.trim() || isPromoLoading) && styles.promoRedeemButtonDisabled]}
-                                            onPress={handleRedeemPromo}
-                                            disabled={!promoCode.trim() || isPromoLoading}
-                                            activeOpacity={0.8}
-                                        >
-                                            {isPromoLoading ? (
-                                                <ActivityIndicator color="#0A0A0A" size="small" />
-                                            ) : (
-                                                <Text style={styles.promoRedeemButtonText}>{t('promo.redeem')}</Text>
-                                            )}
-                                        </TouchableOpacity>
-                                    </View>
-                                )}
-                            </Animated.View>
-                        )}
 
                         {/* FREE tier (informational — already active) */}
                         <Animated.View entering={FadeInUp.delay(100).springify()}>
@@ -368,7 +310,7 @@ const PaywallScreen = () => {
                                 <View style={styles.cardHeaderRow}>
                                     <Text style={styles.tierName}>{TIER_CARDS.free.label}</Text>
                                     <View style={styles.currentBadge}>
-                                        <Text style={styles.currentBadgeText}>CURRENT</Text>
+                                        <Text style={styles.currentBadgeText}>{t('paywall.current')}</Text>
                                     </View>
                                 </View>
                                 <Text style={styles.tierSub}>{TIER_CARDS.free.sublabel}</Text>
@@ -402,7 +344,7 @@ const PaywallScreen = () => {
                                     style={styles.cardGradient}
                                 >
                                     <View style={styles.popularBadge}>
-                                        <Text style={styles.popularBadgeText}>MOST POPULAR</Text>
+                                        <Text style={styles.popularBadgeText}>{t('paywall.mostPopular')}</Text>
                                     </View>
                                     <Text style={styles.tierNameLight}>{TIER_CARDS.pro.label}</Text>
                                     <Text style={styles.tierSubLight}>{TIER_CARDS.pro.sublabel}</Text>
@@ -423,7 +365,7 @@ const PaywallScreen = () => {
                                             <ActivityIndicator color={COLORS.premium} />
                                         ) : (
                                             <Text style={[styles.ctaText, { color: COLORS.premium }]}>
-                                                Get Pro
+                                                {t('paywall.getPro')}
                                             </Text>
                                         )}
                                     </View>
@@ -431,21 +373,88 @@ const PaywallScreen = () => {
                             </PressableCard>
                         </Animated.View>
 
-                        {/* Restore + Terms */}
-                        <TouchableOpacity style={styles.restoreButton} onPress={handleRestore}>
-                            {isLoading === 'restore' ? (
-                                <ActivityIndicator color={COLORS.accent} />
-                            ) : (
-                                <Text style={styles.restoreText}>{t('paywall.restorePurchases')}</Text>
+                        {/* MAX (Yearly) tier */}
+                        <Animated.View entering={FadeInUp.delay(300).springify()}>
+                            <PressableCard
+                                style={styles.card}
+                                onPress={() => purchase(liveYearlyProductId ?? TIER_CARDS.max.productId)}
+                            >
+                                <View style={styles.cardMax}>
+                                    <View style={styles.savingsBadge}>
+                                        <Text style={styles.savingsBadgeText}>{TIER_CARDS.max.savingsLabel}</Text>
+                                    </View>
+                                    <Text style={styles.tierName}>{TIER_CARDS.max.label}</Text>
+                                    <Text style={styles.tierSub}>{TIER_CARDS.max.sublabel}</Text>
+                                    <View style={styles.priceRow}>
+                                        <Text style={[styles.priceBig, styles.priceDark]}>{liveYearlyPrice ?? `$${SUBSCRIPTION_PRICING.vip.price.toFixed(2)}`}</Text>
+                                        <Text style={[styles.pricePeriod, styles.priceEquiv]}>{TIER_CARDS.max.period}</Text>
+                                    </View>
+                                    <View style={styles.featuresBlock}>
+                                        {TIER_CARDS.max.features.map((f, i) => (
+                                            <View key={i} style={styles.featureRow}>
+                                                <Ionicons name="checkmark-circle" size={16} color={COLORS.premium} />
+                                                <Text style={[styles.featureText, styles.featureTextDark]}>{f}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                    <View style={styles.ctaButtonDark}>
+                                        {isLoading === (liveYearlyProductId ?? TIER_CARDS.max.productId) ? (
+                                            <ActivityIndicator color={COLORS.text} />
+                                        ) : (
+                                            <Text style={styles.ctaText}>{t('paywall.getMax')}</Text>
+                                        )}
+                                    </View>
+                                </View>
+                            </PressableCard>
+                        </Animated.View>
+
+                        {/* Redeem Offer Code — Apple Offer Codes for influencer tracking */}
+                        {Platform.OS === 'ios' && (
+                            <Animated.View entering={FadeInUp.delay(350).springify()}>
+                                <TouchableOpacity
+                                    style={styles.offerCodeButton}
+                                    onPress={() => iapService.presentCodeRedemptionSheet()}
+                                >
+                                    <Ionicons name="ticket-outline" size={18} color={COLORS.premium} />
+                                    <Text style={styles.offerCodeText}>{t('paywall.redeemOfferCode')}</Text>
+                                </TouchableOpacity>
+                            </Animated.View>
+                        )}
+
+                        {/* Restore + Manage Subscription + Terms */}
+                        <View style={styles.actionsRow}>
+                            <TouchableOpacity style={styles.restoreButton} onPress={handleRestore}>
+                                {isLoading === 'restore' ? (
+                                    <ActivityIndicator color={COLORS.accent} size="small" />
+                                ) : (
+                                    <Text style={styles.restoreText}>{t('paywall.restorePurchases')}</Text>
+                                )}
+                            </TouchableOpacity>
+                            {subscriptionTier !== 'free' && (
+                                <TouchableOpacity style={styles.manageButton} onPress={() => iapService.manageSubscriptions()}>
+                                    <Ionicons name="settings-outline" size={16} color={COLORS.accent} />
+                                    <Text style={styles.manageText}>{t('paywall.manageSubscription')}</Text>
+                                </TouchableOpacity>
                             )}
-                        </TouchableOpacity>
+                        </View>
 
                         <Text style={styles.termsText}>
-                            7-day free trial, then $0 forever on the Free plan. Paid plans
-                            are charged to your Apple ID at confirmation. Subscriptions
-                            renew automatically unless canceled at least 24 hours before
-                            the end of the current period.
+                            {t('paywall.termsText', {
+                                price: livePrice ?? `$${SUBSCRIPTION_PRICING.premium.price.toFixed(2)}`,
+                                yearlyPrice: liveYearlyPrice ?? `$${SUBSCRIPTION_PRICING.vip.price.toFixed(2)}`,
+                            })}
                         </Text>
+
+                        {/* Privacy Policy & Terms of Use — Required by Apple Guideline 3.1.2(c) */}
+                        <View style={styles.legalLinks}>
+                            <TouchableOpacity onPress={() => Linking.openURL('https://aiwardrobe.club/privacy')}>
+                                <Text style={styles.legalLink}>{t('paywall.privacyPolicy')}</Text>
+                            </TouchableOpacity>
+                            <Text style={styles.legalSeparator}>|</Text>
+                            <TouchableOpacity onPress={() => Linking.openURL('https://aiwardrobe.club/terms')}>
+                                <Text style={styles.legalLink}>{t('paywall.termsOfUse')}</Text>
+                            </TouchableOpacity>
+                        </View>
 
                         <View style={{ height: 40 }} />
                     </ScrollView>
@@ -470,19 +479,19 @@ const styles = StyleSheet.create({
         width: 38,
         height: 38,
         borderRadius: 19,
-        backgroundColor: COLORS.surfaceLight,
+        backgroundColor: 'rgba(255,255,255,0.12)',
         alignItems: 'center',
         justifyContent: 'center',
     },
 
-    scrollContent: { paddingHorizontal: 20 },
+    scrollContent: { paddingHorizontal: 20, paddingBottom: 28 },
 
     hero: { alignItems: 'center', marginBottom: 22 },
     iconContainer: {
         width: 76,
         height: 76,
         borderRadius: 38,
-        backgroundColor: 'rgba(255, 215, 0, 0.15)',
+        backgroundColor: 'rgba(143, 168, 255, 0.2)',
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 14,
@@ -546,7 +555,7 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: 12,
         right: 12,
-        backgroundColor: 'rgba(0,0,0,0.35)',
+        backgroundColor: 'rgba(255,255,255,0.22)',
         paddingHorizontal: 10,
         paddingVertical: 4,
         borderRadius: 10,
@@ -556,6 +565,24 @@ const styles = StyleSheet.create({
         fontSize: 10,
         fontWeight: '700',
         letterSpacing: 0.5,
+    },
+    offerCodeButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 12,
+        marginHorizontal: 20,
+        marginBottom: 14,
+        borderRadius: 12,
+        backgroundColor: 'rgba(143, 168, 255, 0.12)',
+        borderWidth: 1,
+        borderColor: 'rgba(143, 168, 255, 0.35)',
+    },
+    offerCodeText: {
+        color: COLORS.premium,
+        fontSize: 14,
+        fontWeight: '600',
     },
     tierName: {
         fontSize: 22,
@@ -595,7 +622,7 @@ const styles = StyleSheet.create({
     priceDark: { color: '#0A0A0A' },
     pricePeriod: {
         fontSize: 14,
-        color: 'rgba(255,255,255,0.8)',
+        color: 'rgba(255,255,255,0.88)',
         marginBottom: 6,
         marginLeft: 4,
     },
@@ -637,7 +664,7 @@ const styles = StyleSheet.create({
         marginTop: 6,
     },
     ctaButtonDark: {
-        backgroundColor: '#0A0A0A',
+        backgroundColor: '#11182B',
         paddingVertical: 14,
         borderRadius: 12,
         alignItems: 'center',
@@ -660,86 +687,66 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
 
-    // Promo code section
-    promoSection: { marginBottom: 14 },
-    promoToggle: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
+
+    // Yearly / Max card
+    cardMax: {
         backgroundColor: COLORS.surface,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        borderRadius: 14,
-        paddingHorizontal: 16,
-        paddingVertical: 14,
+        borderWidth: 1.5,
+        borderColor: COLORS.premium,
+        padding: 20,
+        position: 'relative',
     },
-    promoToggleText: {
-        flex: 1,
-        fontSize: 14,
-        fontWeight: '600',
-        color: COLORS.text,
+    savingsBadge: {
+        position: 'absolute',
+        top: 12,
+        right: 12,
+        backgroundColor: COLORS.premium,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 10,
     },
-    promoCard: {
-        backgroundColor: COLORS.surface,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        borderRadius: 16,
-        padding: 16,
-    },
-    promoHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginBottom: 12,
-    },
-    promoCardTitle: {
-        fontSize: 13,
+    savingsBadgeText: {
+        color: '#0A0A0A',
+        fontSize: 10,
         fontWeight: '700',
-        color: COLORS.textSecondary,
         letterSpacing: 0.5,
     },
-    promoInputRow: {
+
+    // Actions row (Restore + Manage)
+    actionsRow: {
         flexDirection: 'row',
+        justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.05)',
-        borderRadius: 12,
-        paddingHorizontal: 14,
-        paddingVertical: 2,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
-        marginBottom: 10,
+        gap: 16,
+        paddingVertical: 14,
     },
-    promoInput: {
-        flex: 1,
-        fontSize: 16,
-        fontWeight: '700',
-        color: COLORS.text,
-        paddingVertical: 12,
-        paddingHorizontal: 8,
-        letterSpacing: 2,
-    },
-    promoErrorRow: {
+    manageButton: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        marginBottom: 8,
     },
-    promoErrorText: {
+    manageText: {
         fontSize: 13,
-        color: COLORS.error,
+        color: COLORS.accent,
+        fontWeight: '600',
+    },
+
+    // Legal links
+    legalLinks: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 12,
+        marginBottom: 20,
+    },
+    legalLink: {
+        fontSize: 12,
+        color: COLORS.accent,
         fontWeight: '500',
     },
-    promoRedeemButton: {
-        backgroundColor: COLORS.premium,
-        paddingVertical: 12,
-        borderRadius: 12,
-        alignItems: 'center',
-    },
-    promoRedeemButtonDisabled: { opacity: 0.5 },
-    promoRedeemButtonText: {
-        fontSize: 14,
-        fontWeight: '800',
-        color: '#0A0A0A',
+    legalSeparator: {
+        fontSize: 12,
+        color: COLORS.textSecondary,
     },
 });
 

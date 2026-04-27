@@ -12,6 +12,8 @@ import openaiService from "../../services/openai.js";
 import geminiService from "../../services/gemini.js";
 import hfService from "../../services/huggingface.js";
 
+import { getAllStyleRules } from "../../data/styleRules.js";
+
 const router = express.Router();
 
 // ── POST /generate-outfits ──
@@ -32,7 +34,10 @@ router.post("/generate-outfits", authenticateToken, aiLimiter, async (req, res) 
 
         let scoredOutfits;
 
-        const scoringPrompt = `You are a fashion AI stylist. Score each outfit from 0-100 based on how well it matches the request.
+        const scoringPrompt = `You are a fashion AI stylist. Score each outfit from 0-100 based on how well it matches the request and adheres to core style principles.
+
+FOLLOW THESE STRICT STYLE RULES:
+${getAllStyleRules()}
 
 USER REQUEST:
 Occasion: ${occasion || 'any'}

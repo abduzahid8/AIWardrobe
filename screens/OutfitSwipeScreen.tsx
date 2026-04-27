@@ -139,13 +139,14 @@ const generateMockOutfits = (wardrobeItems: OutfitItemType[]): OutfitType[] => {
 // ============================================
 
 interface OutfitCardProps {
-    outfit: OutfitType;
+    outfit: any;
     index: number;
     onSwipe: (direction: 'left' | 'right' | 'up') => void;
     isTop: boolean;
+    t: (key: string) => string;
 }
 
-const OutfitCard = ({ outfit, index, onSwipe, isTop }: OutfitCardProps) => {
+const OutfitCard = ({ outfit, index, onSwipe, isTop, t }: OutfitCardProps) => {
     const translateX = useSharedValue(0);
     const translateY = useSharedValue(0);
     const scale = useSharedValue(isTop ? 1 : 0.95);
@@ -264,7 +265,7 @@ const OutfitCard = ({ outfit, index, onSwipe, isTop }: OutfitCardProps) => {
                             </View>
                             <View style={styles.matchBadge}>
                                 <Ionicons name="sparkles" size={14} color={COLORS.accent} />
-                                <Text style={styles.matchText}>{outfit.matchScore}% Match</Text>
+                                <Text style={styles.matchText}>{t('outfitSwipe.matchScore')}</Text>
                             </View>
                         </View>
 
@@ -278,21 +279,21 @@ const OutfitCard = ({ outfit, index, onSwipe, isTop }: OutfitCardProps) => {
                 <Animated.View style={[styles.overlay, styles.likeOverlay, likeOverlayStyle]}>
                     <View style={styles.overlayBadge}>
                         <Ionicons name="heart" size={48} color="#FFF" />
-                        <Text style={styles.overlayText}>LIKE</Text>
+                        <Text style={styles.overlayText}>{t('outfitSwipe.like')}</Text>
                     </View>
                 </Animated.View>
 
                 <Animated.View style={[styles.overlay, styles.dislikeOverlay, dislikeOverlayStyle]}>
                     <View style={styles.overlayBadge}>
                         <Ionicons name="close" size={48} color="#FFF" />
-                        <Text style={styles.overlayText}>NOPE</Text>
+                        <Text style={styles.overlayText}>{t('outfitSwipe.nope')}</Text>
                     </View>
                 </Animated.View>
 
                 <Animated.View style={[styles.overlay, styles.superLikeOverlay, superLikeOverlayStyle]}>
                     <View style={[styles.overlayBadge, { backgroundColor: COLORS.superLike }]}>
                         <Ionicons name="star" size={48} color="#FFF" />
-                        <Text style={styles.overlayText}>LOVE IT!</Text>
+                        <Text style={styles.overlayText}>{t('outfitSwipe.loveIt')}</Text>
                     </View>
                 </Animated.View>
             </Animated.View>
@@ -373,7 +374,7 @@ const OutfitSwipeScreen = () => {
                         <View style={styles.headerCenter}>
                             <Text style={styles.headerTitle}>{t('outfitSwipe.styleDiscovery')}</Text>
                             <Text style={styles.headerSubtitle}>
-                                Swipe to teach AI your style
+                                {t('outfitSwipe.swipeToTeach')}
                             </Text>
                         </View>
 
@@ -395,6 +396,7 @@ const OutfitSwipeScreen = () => {
                                     index={idx}
                                     onSwipe={handleSwipe}
                                     isTop={idx === 0}
+                                    t={t}
                                 />
                             )).reverse()
                         ) : (
@@ -405,7 +407,7 @@ const OutfitSwipeScreen = () => {
                                 <Text style={styles.emptyEmoji}>🎉</Text>
                                 <Text style={styles.emptyTitle}>{t('outfitSwipe.allDone')}</Text>
                                 <Text style={styles.emptySubtitle}>
-                                    You've rated all outfits. Your AI stylist is now smarter!
+                                    {t('outfitSwipe.aiStylistSmarter')}
                                 </Text>
                                 <TouchableOpacity
                                     style={styles.refreshButton}
@@ -455,10 +457,10 @@ const OutfitSwipeScreen = () => {
                             entering={FadeIn.delay(500)}
                         >
                             <Text style={styles.hintText}>
-                                👈 Swipe left to skip • Swipe right to like 👉
+                                {t('outfitSwipe.swipeHintLeft')} • {t('outfitSwipe.swipeHintRight')}
                             </Text>
                             <Text style={styles.hintText}>
-                                ⬆️ Swipe up to super like
+                                {t('outfitSwipe.swipeHintUp')}
                             </Text>
                         </Animated.View>
                     )}

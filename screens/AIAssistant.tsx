@@ -48,15 +48,15 @@ const AIAssistant = () => {
   // Greeting message
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return "Good morning! ☀️";
-    if (hour < 18) return "Good afternoon! 🌤️";
-    return "Good evening! 🌙";
+    if (hour < 12) return t('aiAssistant.goodMorning');
+    if (hour < 18) return t('aiAssistant.goodAfternoon');
+    return t('aiAssistant.goodEvening');
   };
 
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
-      text: `${getGreeting()} I'm your AI Stylist. Ask me anything about fashion, outfits, or style recommendations!`,
+      text: `${getGreeting()} ${t('aiAssistant.introMessage')}`,
       sender: "ai",
       timestamp: Date.now(),
     },
@@ -119,18 +119,18 @@ const AIAssistant = () => {
 
   const clearChatHistory = () => {
     Alert.alert(
-      "Clear Chat History",
-      "Are you sure you want to clear all messages?",
+      t('aiAssistant.clearChatHistory'),
+      t('aiAssistant.clearChatHistoryConfirm'),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t('common.cancel'), style: "cancel" },
         {
-          text: "Clear",
+          text: t('aiAssistant.clear'),
           style: "destructive",
           onPress: async () => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             const greeting = {
               id: Date.now(),
-              text: `${getGreeting()} I'm your AI Stylist. Ask me anything about fashion, outfits, or style recommendations!`,
+              text: `${getGreeting()} ${t('aiAssistant.introMessage')}`,
               sender: "ai" as const,
               timestamp: Date.now(),
             };
@@ -149,17 +149,17 @@ const AIAssistant = () => {
 
   // Quick action buttons
   const quickActions = [
-    { icon: "sunny-outline", label: "Weather outfit", query: "What should I wear based on today's weather?" },
-    { icon: "calendar-outline", label: "Date night", query: "Suggest a romantic outfit for a date tonight" },
-    { icon: "briefcase-outline", label: "Work attire", query: "Professional outfit for an important meeting" },
-    { icon: "fitness-outline", label: "Casual look", query: "Comfortable casual outfit for the weekend" },
+    { icon: "sunny-outline", label: t('aiAssistant.weatherOutfit'), query: t('aiAssistant.weatherOutfitQuery') },
+    { icon: "calendar-outline", label: t('aiAssistant.dateNight'), query: t('aiAssistant.dateNightQuery') },
+    { icon: "briefcase-outline", label: t('aiAssistant.workAttire'), query: t('aiAssistant.workAttireQuery') },
+    { icon: "fitness-outline", label: t('aiAssistant.casualLook'), query: t('aiAssistant.casualLookQuery') },
   ];
 
   const suggestions = [
-    "Suggest a casual outfit for a coffee date ☕",
-    "Recommend a formal look for an interview 👔",
-    "Best party outfit for tonight 🎉",
-    "Summer dress ideas for a beach trip 🌴",
+    t('aiAssistant.suggestion1'),
+    t('aiAssistant.suggestion2'),
+    t('aiAssistant.suggestion3'),
+    t('aiAssistant.suggestion4'),
   ];
 
   const handleSend = async (textOverride?: string) => {
@@ -221,14 +221,14 @@ const AIAssistant = () => {
         };
         setMessages((prev) => [...prev, botMessage]);
       } else {
-        throw new Error("No response text from server");
+        throw new Error(t('aiAssistant.noResponseText'));
       }
 
     } catch (error: unknown) {
       // AI error handled silently - user sees fallback message
       const errorMessage: Message = {
         id: Date.now() + 1,
-        text: `Sorry, I couldn't connect to the style server. Please try again! 😔`,
+        text: t('aiAssistant.couldntConnect'),
         sender: "ai",
         timestamp: Date.now(),
       };

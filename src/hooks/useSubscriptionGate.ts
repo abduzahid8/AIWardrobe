@@ -67,8 +67,12 @@ interface SubscriptionGate {
      */
     consumeOrPaywall: (feature: FeatureKey) => Promise<boolean>;
 
-    /** Record a successful use (for non-gated accounting). */
-    consume: (feature: FeatureKey, amount?: number) => Promise<number>;
+    /**
+     * Record a successful use (server-authoritative).
+     * Returns { allowed, used, remaining } — `allowed=false` means the user
+     * hit the quota on this call and the work should NOT proceed.
+     */
+    consume: (feature: FeatureKey, amount?: number) => Promise<{ allowed: boolean; used: number; remaining: number }>;
 
     /** Remaining uses today (-1 = unlimited, 0 = blocked). */
     getRemaining: (feature: FeatureKey) => number;
@@ -146,11 +150,13 @@ export function useSubscriptionGate(): SubscriptionGate {
                 return false;
             }
             if (DAILY_QUOTA_FEATURES.includes(feature)) {
-                if (!dailyCanUse(feature)) {
+                // Server-authoritative check — the RPC either allows and
+                // increments atomically, or denies (quota already hit).
+                const result = await dailyConsume(feature);
+                if (!result.allowed) {
                     openPaywall();
                     return false;
                 }
-                await dailyConsume(feature);
             }
             return true;
         },

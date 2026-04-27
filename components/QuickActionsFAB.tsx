@@ -16,6 +16,7 @@ import Animated, {
     type SharedValue,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
 import { useAppNavigation } from '../hooks/useAppNavigation';
@@ -31,41 +32,6 @@ interface QuickAction {
     color: string;
     bgColor: string;
 }
-
-const ACTIONS: QuickAction[] = [
-    {
-        id: 'hub',
-        icon: 'grid',
-        label: 'AI Hub',
-        route: 'AIHub',
-        color: '#FFFFFF',
-        bgColor: '#6366F1',
-    },
-    {
-        id: 'scan',
-        icon: 'videocam',
-        label: 'Scan Wardrobe',
-        route: 'Camera',
-        color: '#FFFFFF',
-        bgColor: '#1A1A1A',
-    },
-    {
-        id: 'outfit',
-        icon: 'sparkles',
-        label: 'AI Stylist',
-        route: 'AIChat',
-        color: '#FFFFFF',
-        bgColor: '#8B5CF6',
-    },
-    {
-        id: 'add',
-        icon: 'add-circle',
-        label: 'Add Item',
-        route: 'AddOutfit',
-        color: '#FFFFFF',
-        bgColor: '#22C55E',
-    },
-];
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
@@ -124,8 +90,44 @@ const ActionItem: React.FC<ActionItemProps> = ({ action, index, progress, onPres
 };
 
 export const QuickActionsFAB: React.FC = () => {
+    const { t } = useTranslation();
     const navigation = useAppNavigation();
     const [isOpen, setIsOpen] = useState(false);
+
+    const ACTIONS: QuickAction[] = [
+        {
+            id: 'hub',
+            icon: 'grid',
+            label: t('quickActions.aiHub'),
+            route: 'AIHub',
+            color: '#FFFFFF',
+            bgColor: '#6366F1',
+        },
+        {
+            id: 'scan',
+            icon: 'videocam',
+            label: t('quickActions.scanWardrobe'),
+            route: 'Camera',
+            color: '#FFFFFF',
+            bgColor: '#1A1A1A',
+        },
+        {
+            id: 'outfit',
+            icon: 'sparkles',
+            label: t('quickActions.aiStylist'),
+            route: 'AIChat',
+            color: '#FFFFFF',
+            bgColor: '#8B5CF6',
+        },
+        {
+            id: 'add',
+            icon: 'add-circle',
+            label: t('quickActions.addItem'),
+            route: 'AddOutfit',
+            color: '#FFFFFF',
+            bgColor: '#22C55E',
+        },
+    ];
 
     const progress = useSharedValue(0);
     const rotation = useSharedValue(0);

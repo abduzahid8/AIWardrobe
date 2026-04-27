@@ -41,19 +41,19 @@ const NewOutfitScreen = () => {
 
   const [caption, setCaption] = useState("");
   const [isOotd, setIsOotd] = useState(false);
-  const [occasion] = useState("Work");
-  const [visiblilty] = useState("Everyone");
+  const [occasion] = useState(t('newOutfit.defaultOccasion'));
+  const [visiblilty] = useState(t('newOutfit.defaultVisibility'));
   const [loading, setLoading] = useState(false);
 
 
   const handleSave = async () => {
     if (!user?.id) {
-      Alert.alert("Error", "User not authenticated");
+      Alert.alert(t('common.error'), t('newOutfit.userNotAuthenticated'));
       return;
     }
 
     if (selectedItems.length === 0) {
-      Alert.alert("Error", "Please add at least one item to the outfit");
+      Alert.alert(t('common.error'), t('newOutfit.addAtLeastOneItem'));
       return;
     }
 
@@ -90,7 +90,7 @@ const NewOutfitScreen = () => {
 
       if (error) throw error;
 
-      Alert.alert("Success", "Outfit saved successfully!");
+      Alert.alert(t('common.success'), t('newOutfit.outfitSavedSuccessfully'));
 
       if (navigation.canGoBack()) {
         navigation.goBack();
@@ -100,7 +100,7 @@ const NewOutfitScreen = () => {
 
     } catch (error: any) {
       console.error("Error saving outfit:", error);
-      Alert.alert("Error", `Failed to save outfit: ${error.message}`);
+      Alert.alert(t('common.error'), t('newOutfit.failedToSaveOutfit') + ` ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -135,7 +135,7 @@ const NewOutfitScreen = () => {
       <View className="p-4">
         <TextInput
           className="border-b border-gray-300 pb-2 text-gray-500"
-          placeholder="Add a caption..."
+          placeholder={t('newOutfit.addCaption')}
           value={caption}
           onChangeText={setCaption}
           maxLength={500}
@@ -143,7 +143,7 @@ const NewOutfitScreen = () => {
         <View className="mt-4">
           <View className="flex-row items-center justify-between">
             <Text className="text-gray-500">{t('newOutfit.date')}</Text>
-            <Text className="text-[#0A1931]">{date || "Today"}</Text>
+            <Text className="text-[#0A1931]">{date || t('newOutfit.today')}</Text>
           </View>
           <View className="flex-row items-center justify-between mt-2">
             <Text className="text-gray-500">{t('newOutfit.addToOotd')}</Text>

@@ -96,18 +96,73 @@ serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // Map RevenueCat user ID to our user ID (should be the same if properly configured)
-    const userId = event.app_user_id
+    // Map RevenueCat user ID to our Supabase user ID.
+    // When iapService.identify() is called before purchase, app_user_id is the
+    // Supabase user ID. If identify() was never called, RevenueCat uses an
+    // anonymous ID like "$RCAnonymousUserId:xxx" which won't match any profile.
+    let userId = event.app_user_id
 
     // Verify the user exists
-    const { data: profile, error: profileError } = await supabaseAdmin
+    let { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('id')
       .eq('id', userId)
       .single()
 
+    // Fallback: if app_user_id is an anonymous RC ID, try to resolve the real
+    // user from the original_app_user_id in customer_info, or from an existing
+    // subscription row that the client-side fallback may have created.
+    if ((profileError || !profile) && userId.startsWith('$RC')) {
+      console.warn('[RevenueCat] Anonymous RC user ID detected, attempting resolution:', userId)
+
+      // Try original_app_user_id from customer_info
+      const originalId = event.customer_info?.original_app_user_id
+      if (originalId && !originalId.startsWith('$RC')) {
+        const { data: origProfile } = await supabaseAdmin
+          .from('profiles')
+          .select('id')
+          .eq('id', originalId)
+          .single()
+        if (origProfile) {
+          console.log('[RevenueCat] Resolved user via original_app_user_id:', originalId)
+          userId = originalId
+          profile = origProfile
+          profileError = null
+        }
+      }
+
+      // Fallback: find the most recent subscription row for this product_id
+      // that was created recently (client-side fallback inserts with the real user_id)
+      if (!profile && event.product_id) {
+        const cutoff = new Date(Date.now() - 10 * 60 * 1000).toISOString() // last 10 min
+        const { data: recentSub } = await supabaseAdmin
+          .from('subscriptions')
+          .select('user_id')
+          .eq('product_id', event.product_id)
+          .eq('status', 'active')
+          .gte('created_at', cutoff)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        if (recentSub) {
+          console.log('[RevenueCat] Resolved user via recent subscription row:', recentSub.user_id)
+          userId = recentSub.user_id
+          const { data: resolvedProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('id')
+            .eq('id', userId)
+            .single()
+          if (resolvedProfile) {
+            profile = resolvedProfile
+            profileError = null
+          }
+        }
+      }
+    }
+
     if (profileError || !profile) {
-      console.error('[RevenueCat] User not found:', userId)
+      console.error('[RevenueCat] User not found:', userId, { originalAppUserId: event.app_user_id })
       return new Response(
         JSON.stringify({ error: 'User not found' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
@@ -164,8 +219,9 @@ serve(async (req: Request) => {
 })
 
 function mapProductToTier(productId: string): 'premium' | 'vip' | 'free' {
-  if (productId.includes('premium')) return 'premium'
-  if (productId.includes('vip')) return 'vip'
+  const id = productId.toLowerCase();
+  if (id.includes('vip') || id.includes('yearly')) return 'vip'
+  if (id.includes('premium') || id.includes('pro')) return 'premium'
   return 'free'
 }
 

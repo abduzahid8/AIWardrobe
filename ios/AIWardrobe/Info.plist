@@ -71,8 +71,6 @@
     <string>AIWardrobe saves outfit photos you create to your photo library when you choose to share or export them.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>AIWardrobe accesses the photo library only to import clothing images you select and to save or share outfit photos you create.</string>
-    <key>NSUserTrackingUsageDescription</key>
-    <string>AIWardrobe does not track you across other apps. This permission is required only if a future update introduces ad personalization.</string>
     <key>RCTNewArchEnabled</key>
     <true/>
     <key>UILaunchStoryboardName</key>

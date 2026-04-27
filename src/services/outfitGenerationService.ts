@@ -25,7 +25,7 @@ import { rankItemsForStyle, scoreItemForStyle, normalizeStyleId, type StyleId } 
 export interface GenerateOutfitsParams {
     /** Free-text user prompt, e.g. "beach trip" or "important meeting tomorrow" */
     prompt?: string;
-    /** Style preset, e.g. 'old_money' | 'streetwear' | 'minimalist' */
+    /** Style preset, e.g. 'old_money' | 'semi_classic' | 'minimalist' | 'casual' */
     stylePreferences?: string;
     /** Occasion label, e.g. 'Casual' | 'Formal' | 'Sport' */
     occasion?: string;

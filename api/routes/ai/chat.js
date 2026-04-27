@@ -13,9 +13,9 @@ import hfService from "../../services/huggingface.js";
 import geminiService from "../../services/gemini.js";
 import openaiService from "../../services/openai.js";
 
-const router = express.Router();
+import { getAllStyleRules } from "../../data/styleRules.js";
 
-// ── Helpers ──
+const router = express.Router();
 
 /** Normalize search query */
 const normalizeQuery = (query) => {
@@ -35,7 +35,7 @@ const normalizeQuery = (query) => {
 
     let normalized = query.toLowerCase();
     Object.keys(synonyms).forEach((key) => {
-        normalized = normalized.replace(new RegExp(`\\b${key}\\b`, "gi"), synonyms[key]);
+        normalized = normalized.replace(new RegExp(`\\b\${key}\\b`, "gi"), synonyms[key]);
     });
     return [...new Set(normalized.trim().split(/\s+/).filter(Boolean))].join(" ");
 };
@@ -92,7 +92,11 @@ router.post("/ai-chat", authenticateToken, validateAIChat, async (req, res) => {
     const { query } = req.body;
     logger.info("💬 Chat request:", query);
 
-    const systemPrompt = "You are a helpful, friendly fashion stylist AI assistant. Keep answers concise, actionable, and fun. Use emojis. Provide specific brand and style recommendations when relevant.";
+    const systemPrompt = \`You are a helpful, friendly fashion stylist AI assistant. Keep answers concise, actionable, and fun. Use emojis. Provide specific brand and style recommendations when relevant.
+
+FOLLOW THESE STRICT STYLE RULES:
+\${getAllStyleRules()}
+\`;
 
     // Strategy 1: OpenAI GPT-4o-mini
     if (openaiService.isAvailable()) {

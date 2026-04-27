@@ -72,13 +72,13 @@ const CameraScreen = () => {
 
             if (photo?.uri && mediaPermission?.granted) {
                 await MediaLibrary.saveToLibraryAsync(photo.uri);
-                Alert.alert('Photo Saved', 'Photo saved to your gallery!');
+                Alert.alert(t('cameraScreen.photoSaved'), t('cameraScreen.photoSavedGallery'));
                 // Navigate to WardrobeVideo to analyze
                 navigation.navigate('WardrobeVideo', { imageUri: photo.uri });
             }
         } catch (error) {
             console.error('Error taking photo:', error);
-            Alert.alert('Error', 'Failed to take photo');
+            Alert.alert(t('common.error'), t('cameraScreen.failedTakePhoto'));
         }
     };
 
@@ -96,7 +96,7 @@ const CameraScreen = () => {
 
             if (video?.uri && mediaPermission?.granted) {
                 await MediaLibrary.saveToLibraryAsync(video.uri);
-                Alert.alert('Video Saved', 'Video saved to your gallery!');
+                Alert.alert(t('cameraScreen.videoSaved'), t('cameraScreen.videoSavedGallery'));
                 // Navigate to WardrobeVideo to analyze
                 navigation.navigate('WardrobeVideo', { videoUri: video.uri });
             }
@@ -147,7 +147,7 @@ const CameraScreen = () => {
             }
         } catch (error) {
             console.error('Error picking from gallery:', error);
-            Alert.alert('Error', 'Failed to pick from gallery');
+            Alert.alert(t('common.error'), t('cameraScreen.failedPickGallery'));
         }
     };
 

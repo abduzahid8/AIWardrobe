@@ -65,10 +65,10 @@ const EmailOnboardingScreen = () => {
             // Mock OAuth flow
             await new Promise(resolve => setTimeout(resolve, 1500));
             setConnected(true);
-            Alert.alert("Success", "Gmail connected successfully (Simulated)");
+            Alert.alert(t('common.success'), t('emailOnboarding.gmailConnected'));
         } catch (error) {
             console.error('Error connecting email:', error);
-            Alert.alert('Error', 'Failed to connect email. Please try again.');
+            Alert.alert(t('common.error'), t('emailOnboarding.failedConnectEmail'));
         } finally {
             setLoading(false);
         }
@@ -76,7 +76,7 @@ const EmailOnboardingScreen = () => {
 
     const handleScanReceipts = async () => {
         if (!connected) {
-            Alert.alert('Not Connected', 'Please connect your email first.');
+            Alert.alert(t('emailOnboarding.notConnected'), t('emailOnboarding.connectEmailFirst'));
             return;
         }
 
@@ -100,22 +100,22 @@ const EmailOnboardingScreen = () => {
             setScanResults(results as any);
 
             Alert.alert(
-                'Scan Complete!',
-                `Found ${results.itemsDetected} clothing items from ${results.receiptsFound} receipts.`,
+                t('emailOnboarding.scanComplete'),
+                t('emailOnboarding.scanCompleteMessage', { itemsDetected: results.itemsDetected, receiptsFound: results.receiptsFound }),
                 [
                     {
-                        text: 'Import to Wardrobe',
+                        text: t('emailOnboarding.importToWardrobe'),
                         onPress: () => handleImportItems(results.items as any[])
                     },
                     {
-                        text: 'Cancel',
+                        text: t('common.cancel'),
                         style: 'cancel'
                     }
                 ]
             );
         } catch (error) {
             console.error('Error scanning receipts:', error);
-            Alert.alert('Error', 'Failed to scan receipts. Please try again.');
+            Alert.alert(t('common.error'), t('emailOnboarding.failedScanReceipts'));
         } finally {
             setScanning(false);
         }
@@ -131,14 +131,14 @@ const EmailOnboardingScreen = () => {
                 `Imported ${items.length} items to your wardrobe.`,
                 [
                     {
-                        text: 'View Wardrobe',
+                        text: t('emailOnboarding.viewWardrobe'),
                         onPress: () => (navigation as any).navigate('Home', { screen: 'Closet' })
                     }
                 ]
             );
         } catch (error) {
             console.error('Error importing items:', error);
-            Alert.alert('Error', 'Failed to import items. Please try again.');
+            Alert.alert(t('common.error'), t('emailOnboarding.failedImportItems'));
         }
     };
 

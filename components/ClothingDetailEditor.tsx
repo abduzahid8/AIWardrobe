@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import useWardrobeStore from '../store/wardrobeStore';
@@ -43,41 +44,6 @@ export interface ClothingData {
     weather: string[];
 }
 
-const TYPES = [
-    { id: 'tops', label: 'Tops' },
-    { id: 'bottoms', label: 'Bottoms' },
-    { id: 'shoes', label: 'Shoes' },
-    { id: 'accessories', label: 'Accessories' },
-    { id: 'outerwear', label: 'Outerwear' },
-    { id: 'sportswear', label: 'Sportswear' },
-    { id: 'homewear', label: 'Homewear' },
-];
-
-const COLORS = [
-    { id: 'black', label: 'Black', hex: '#1C1C1E' },
-    { id: 'grey', label: 'Grey', hex: '#8E8E93' },
-    { id: 'beige', label: 'Beige', hex: '#C7B299' },
-    { id: 'white', label: 'White', hex: '#FFFFFF' },
-    { id: 'brown', label: 'Brown', hex: '#8B4513' },
-    { id: 'green', label: 'Green', hex: '#34C759' },
-    { id: 'red', label: 'Red', hex: '#FF3B30' },
-    { id: 'blue', label: 'Blue', hex: '#007AFF' },
-];
-
-const SEASONS = [
-    { id: 'summer', label: 'Summer' },
-    { id: 'winter', label: 'Winter' },
-    { id: 'autumn', label: 'Autumn' },
-    { id: 'spring', label: 'Spring' },
-];
-
-const WEATHER = [
-    { id: 'rain', icon: 'rainy-outline', label: 'Rain' },
-    { id: 'sun', icon: 'sunny-outline', label: 'Sunny' },
-    { id: 'snow', icon: 'snow-outline', label: 'Snow' },
-    { id: 'wind', icon: 'flag-outline', label: 'Wind' },
-];
-
 // ── AI inference helpers ───────────────────────────────────────────────
 const inferSeasonFromType = (type: string, material?: string | null): string => {
     const t = type.toLowerCase();
@@ -102,7 +68,7 @@ const styleToOccasions = (style?: string): Occasion[] => {
     const s = (style || '').toLowerCase();
     if (s.includes('formal') || s.includes('elegant') || s.includes('business')) return ['formal', 'work'] as Occasion[];
     if (s.includes('sport')) return ['sport', 'casual'] as Occasion[];
-    if (s.includes('streetwear') || s.includes('urban')) return ['casual', 'outdoor'] as Occasion[];
+    if (s.includes('semi_classic') || s.includes('semi-classic') || s.includes('urban')) return ['casual', 'outdoor'] as Occasion[];
     return ['casual'] as Occasion[];
 };
 
@@ -112,8 +78,44 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
     onSave,
     onCancel,
 }) => {
+    const { t } = useTranslation();
     const navigation = useNavigation();
     const route = useRoute<any>();
+
+    const TYPES = [
+        { id: 'tops', label: t('clothingEditor.types.tops') },
+        { id: 'bottoms', label: t('clothingEditor.types.bottoms') },
+        { id: 'shoes', label: t('clothingEditor.types.shoes') },
+        { id: 'accessories', label: t('clothingEditor.types.accessories') },
+        { id: 'outerwear', label: t('clothingEditor.types.outerwear') },
+        { id: 'sportswear', label: t('clothingEditor.types.sportswear') },
+        { id: 'homewear', label: t('clothingEditor.types.homewear') },
+    ];
+
+    const COLORS = [
+        { id: 'black', label: t('clothingEditor.colors.black'), hex: '#1C1C1E' },
+        { id: 'grey', label: t('clothingEditor.colors.grey'), hex: '#8E8E93' },
+        { id: 'beige', label: t('clothingEditor.colors.beige'), hex: '#C7B299' },
+        { id: 'white', label: t('clothingEditor.colors.white'), hex: '#FFFFFF' },
+        { id: 'brown', label: t('clothingEditor.colors.brown'), hex: '#8B4513' },
+        { id: 'green', label: t('clothingEditor.colors.green'), hex: '#34C759' },
+        { id: 'red', label: t('clothingEditor.colors.red'), hex: '#FF3B30' },
+        { id: 'blue', label: t('clothingEditor.colors.blue'), hex: '#007AFF' },
+    ];
+
+    const SEASONS = [
+        { id: 'summer', label: t('clothingEditor.seasons.summer') },
+        { id: 'winter', label: t('clothingEditor.seasons.winter') },
+        { id: 'autumn', label: t('clothingEditor.seasons.autumn') },
+        { id: 'spring', label: t('clothingEditor.seasons.spring') },
+    ];
+
+    const WEATHER = [
+        { id: 'rain', icon: 'rainy-outline', label: t('clothingEditor.weather.rain') },
+        { id: 'sun', icon: 'sunny-outline', label: t('clothingEditor.weather.sunny') },
+        { id: 'snow', icon: 'snow-outline', label: t('clothingEditor.weather.snow') },
+        { id: 'wind', icon: 'flag-outline', label: t('clothingEditor.weather.wind') },
+    ];
 
     // Get data from route params or props
     const itemImageUri = route.params?.imageUri || imageUri;
@@ -236,7 +238,7 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
         // Otherwise save directly to wardrobe
         const { user } = useAuthStore.getState();
         if (!user) {
-            Alert.alert('Login Required', 'Please login to save items.');
+            Alert.alert(t('clothingEditor.loginRequired'), t('clothingEditor.pleaseLoginToSave'));
             return;
         }
 
@@ -262,19 +264,19 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
             });
 
             Alert.alert(
-                'Saved!',
-                'Item added to your wardrobe.',
-                [{ text: 'OK', onPress: () => navigation.goBack() }]
+                t('clothingEditor.saved'),
+                t('clothingEditor.itemAddedToWardrobe'),
+                [{ text: t('clothingEditor.ok'), onPress: () => navigation.goBack() }]
             );
         } catch (error: any) {
             if (error?.code === 'WARDROBE_LIMIT_REACHED') {
                 Alert.alert(
-                    'Wardrobe is full',
-                    `Free plan keeps closets at ${error.limit ?? 20} items. Upgrade to Pro for an unlimited wardrobe.`,
+                    t('clothingEditor.wardrobeFull'),
+                    t('clothingEditor.freePlanLimit', { limit: error.limit ?? 20 }),
                     [
-                        { text: 'Maybe later', style: 'cancel' },
+                        { text: t('clothingEditor.maybeLater'), style: 'cancel' },
                         {
-                            text: 'Upgrade',
+                            text: t('clothingEditor.upgrade'),
                             style: 'default',
                             onPress: () => (navigation as any).navigate('Paywall'),
                         },
@@ -283,7 +285,7 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
                 return;
             }
             console.error('Failed to save item:', error);
-            Alert.alert('Error', 'Failed to save item. Please try again.');
+            Alert.alert(t('clothingEditor.error'), t('clothingEditor.failedToSaveItem'));
         }
     };
 
@@ -317,18 +319,18 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
                     {isAnalyzing && (
                         <View style={styles.aiBanner}>
                             <ActivityIndicator size="small" color="#007AFF" style={{ marginRight: 8 }} />
-                            <Text style={styles.aiBannerText}>AI is analyzing your clothing...</Text>
+                            <Text style={styles.aiBannerText}>{t('clothingEditor.aiAnalyzing')}</Text>
                         </View>
                     )}
                     {!isAnalyzing && aiConfidence !== undefined && (
                         <View style={styles.aiBanner}>
                             <Ionicons name="sparkles" size={14} color="#007AFF" style={{ marginRight: 6 }} />
                             <Text style={styles.aiBannerText}>
-                                AI Detected
+                                {t('clothingEditor.aiDetected')}
                             </Text>
                             <View style={styles.aiBannerBadge}>
                                 <Text style={styles.aiBannerBadgeText}>
-                                    {Math.round(aiConfidence * 100)}% confidence
+                                    {Math.round(aiConfidence * 100)}% {t('clothingEditor.confidence')}
                                 </Text>
                             </View>
                             {detectedMaterial ? (
@@ -353,7 +355,7 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
 
                     {/* Type Section */}
                     <View style={styles.section}>
-                        <Text style={styles.sectionLabel}>Type</Text>
+                        <Text style={styles.sectionLabel}>{t('clothingEditor.type')}</Text>
                         <View style={styles.typeGrid}>
                             {TYPES.map(type => (
                                 <TouchableOpacity
@@ -381,9 +383,9 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
                     {/* Colour Section */}
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionLabel}>Colour</Text>
+                            <Text style={styles.sectionLabel}>{t('clothingEditor.colour')}</Text>
                             <TouchableOpacity>
-                                <Text style={styles.allLink}>All {'>'}</Text>
+                                <Text style={styles.allLink}>{t('clothingEditor.all')}</Text>
                             </TouchableOpacity>
                         </View>
                         <View style={styles.colorRow}>
@@ -413,7 +415,7 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
 
                     {/* Season Section */}
                     <View style={styles.section}>
-                        <Text style={styles.sectionLabel}>Season</Text>
+                        <Text style={styles.sectionLabel}>{t('clothingEditor.seasonLabel')}</Text>
                         <View style={styles.seasonRow}>
                             {SEASONS.map(season => (
                                 <TouchableOpacity
@@ -440,7 +442,7 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
 
                     {/* Weather Section */}
                     <View style={styles.section}>
-                        <Text style={styles.sectionLabel}>Weather</Text>
+                        <Text style={styles.sectionLabel}>{t('clothingEditor.weatherLabel')}</Text>
                         <View style={styles.weatherRow}>
                             {WEATHER.map(weather => {
                                 const isSelected = selectedWeather.includes(weather.id);
@@ -476,7 +478,7 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
                         onPress={handleSave}
                         activeOpacity={0.8}
                     >
-                        <Text style={styles.saveButtonText}>Save</Text>
+                        <Text style={styles.saveButtonText}>{t('clothingEditor.save')}</Text>
                     </TouchableOpacity>
                 </View>
             </SafeAreaView>

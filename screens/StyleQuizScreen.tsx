@@ -63,7 +63,7 @@ const WelcomeStep = ({ onNext, t }: { onNext: () => void; t: any }) => (
             <Text style={styles.welcomeEmoji}>👋</Text>
             <Text style={styles.welcomeTitle}>{t('styleQuiz.welcomeTitle')}</Text>
             <Text style={styles.welcomeSubtitle}>
-                Let's personalize your experience in just 5 quick steps
+                {t('styleQuiz.welcomeSubtitle')}
             </Text>
 
             <View style={styles.benefitsList}>
@@ -247,8 +247,8 @@ const OccasionsStep = ({
         entering={SlideInRight.duration(300)}
         exiting={SlideOutLeft.duration(300)}
     >
-        <Text style={styles.stepTitle}>What do you dress for most?</Text>
-        <Text style={styles.stepSubtitle}>Select all that apply</Text>
+        <Text style={styles.stepTitle}>{t('styleQuiz.whatDressFor')}</Text>
+        <Text style={styles.stepSubtitle}>{t('styleQuiz.selectAllThatApply')}</Text>
 
         <View style={styles.occasionGrid}>
             {OCCASIONS.map((occasion) => (
@@ -317,8 +317,8 @@ const FitPreferenceStep = ({
         entering={SlideInRight.duration(300)}
         exiting={SlideOutLeft.duration(300)}
     >
-        <Text style={styles.stepTitle}>How do you like your clothes to fit?</Text>
-        <Text style={styles.stepSubtitle}>This helps us suggest the right styles</Text>
+        <Text style={styles.stepTitle}>{t('styleQuiz.howClothesFit')}</Text>
+        <Text style={styles.stepSubtitle}>{t('styleQuiz.helpsSuggestStyles')}</Text>
 
         <View style={styles.fitOptions}>
             {FIT_OPTIONS.map((option) => (
@@ -375,8 +375,8 @@ const GoalsStep = ({
         style={styles.stepContainer}
         entering={SlideInRight.duration(300)}
     >
-        <Text style={styles.stepTitle}>What are your style goals?</Text>
-        <Text style={styles.stepSubtitle}>Select all that apply - we'll tailor your experience</Text>
+        <Text style={styles.stepTitle}>{t('styleQuiz.styleGoalsQuestion')}</Text>
+        <Text style={styles.stepSubtitle}>{t('styleQuiz.tailorExperience')}</Text>
 
         <View style={styles.goalsGrid}>
             {STYLE_GOALS.map((goal) => (
@@ -413,7 +413,7 @@ const GoalsStep = ({
                 end={{ x: 1, y: 0 }}
                 style={styles.gradientButton}
             >
-                <Text style={styles.primaryButtonText}>Complete Setup</Text>
+                <Text style={styles.primaryButtonText}>{t('styleQuiz.completeSetup')}</Text>
                 <Ionicons name="checkmark-circle" size={20} color="#FFF" />
             </LinearGradient>
         </TouchableOpacity>
@@ -569,7 +569,7 @@ const StyleQuizScreen = () => {
                         });
                     }}
                 >
-                    <Text style={styles.skipText}>Skip</Text>
+                    <Text style={styles.skipText}>{t('styleQuiz.skip')}</Text>
                 </TouchableOpacity>
 
                 {renderStep()}

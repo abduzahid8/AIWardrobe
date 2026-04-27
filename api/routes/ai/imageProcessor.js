@@ -205,7 +205,7 @@ router.post(
                     ];
                     const categories = await hfService.zeroShotImageClassify(cleanBase64, fashionLabels);
 
-                    const styleLabels = ["casual", "formal", "sport", "streetwear"];
+                    const styleLabels = ["casual", "formal", "sport", "semi_classic"];
                     const styles = await hfService.zeroShotImageClassify(cleanBase64, styleLabels);
 
                     const topCat = categories[0] || { label: "unknown", score: 0.5 };

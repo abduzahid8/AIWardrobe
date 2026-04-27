@@ -68,6 +68,7 @@ export type RootStackParamList = {
         baseItem?: { id: string; imageUrl?: string; name?: string; type?: string; macroCategory?: string; color?: string };
     } | undefined;
     AITryOn: undefined;
+    OutfitInspo: undefined;
     OutfitAI: { initialTab?: 'chat' | 'outfit' } | undefined;
     CreateAvatar: undefined;
     /** Gemini AI Stylist chat — accessible from any outfit/clothing context */
@@ -83,6 +84,8 @@ export type RootStackParamList = {
     FlashSaleEvent: { eventId: string };
     PrivacyPolicy: undefined;
     TermsOfService: undefined;
+    AdminPanel: undefined;
+    Guide: undefined;
 };
 
 export type TabParamList = {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LiquidGlass2026Theme } from '../../constants/LiquidGlass2026Theme';
 
@@ -11,10 +12,20 @@ interface Props {
     isReducedMotionEnabled: boolean;
 }
 
-const DAY_NAMES = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-
 export default function WeeklyPlanner({ itemCount, isReducedMotionEnabled }: Props) {
+    const { t } = useTranslation();
+
     if (itemCount < 8) return null;
+
+    const DAY_NAMES = [
+        t('weeklyPlanner.days.0'),
+        t('weeklyPlanner.days.1'),
+        t('weeklyPlanner.days.2'),
+        t('weeklyPlanner.days.3'),
+        t('weeklyPlanner.days.4'),
+        t('weeklyPlanner.days.5'),
+        t('weeklyPlanner.days.6'),
+    ];
 
     const now = new Date();
     const startOfWeek = new Date(now);

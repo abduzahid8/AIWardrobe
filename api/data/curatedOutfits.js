@@ -288,6 +288,204 @@ export const curatedOutfits = [
         mainImage: 'https://images.unsplash.com/photo-1566174053879-31528523f8ae?w=800&h=1200&fit=crop',
         stylingTips: 'Updo hairstyle. Statement jewelry. Evening makeup.',
         description: 'Red carpet-worthy elegance for special occasions'
+    },
+
+    // CLASSIC NAVY BLAZER (MASCULINE)
+    {
+        id: 'classic_navy_blazer_1',
+        occasion: ['work', 'date', 'dinner', 'professional'],
+        style: ['classic', 'refined', 'elegant'],
+        season: ['all'],
+        items: [
+            {
+                type: 'blazer',
+                name: 'Navy Blazer with Metal Buttons',
+                image: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=400&h=500&fit=crop',
+                color: 'navy'
+            },
+            {
+                type: 'shirt',
+                name: 'Light Blue Dress Shirt',
+                image: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=400&h=500&fit=crop',
+                color: 'light blue'
+            },
+            {
+                type: 'pants',
+                name: 'Gray Tailored Trousers',
+                image: 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=400&h=500&fit=crop',
+                color: 'gray'
+            },
+            {
+                type: 'shoes',
+                name: 'Brown Loafers',
+                image: 'https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=400&h=500&fit=crop',
+                color: 'brown'
+            }
+        ],
+        mainImage: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800&h=1200&fit=crop',
+        stylingTips: 'Gray trousers are the ultimate universal match for a navy blazer. Add a dark burgundy tie for extra refinement.',
+        description: 'The foundation of a classic masculine wardrobe: the Navy Blazer and Gray Trousers'
+    },
+
+    // SUMMER CITY LOOK (MASCULINE)
+    {
+        id: 'summer_city_look_1',
+        occasion: ['casual', 'brunch', 'shopping'],
+        style: ['summer', 'city', 'chic'],
+        season: ['summer'],
+        items: [
+            {
+                type: 'shirt',
+                name: 'White Polo Shirt',
+                image: 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=400&h=500&fit=crop',
+                color: 'white'
+            },
+            {
+                type: 'pants',
+                name: 'Beige Chinos',
+                image: 'https://images.unsplash.com/photo-1473966968600-fa804b86829b?w=400&h=500&fit=crop',
+                color: 'beige'
+            },
+            {
+                type: 'shoes',
+                name: 'White Leather Sneakers',
+                image: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=400&h=500&fit=crop',
+                color: 'white'
+            }
+        ],
+        mainImage: 'https://images.unsplash.com/photo-1488161628813-04466f872be2?w=800&h=1200&fit=crop',
+        stylingTips: 'Remember the 10/10 rule: no shorts in the city. Light trousers keep you cool and stylish. Apply the sandwich rule: white top matches white shoes.',
+        description: 'Effortless summer city style with white polo and beige chinos'
+    },
+
+    // BLACK TIE FORMAL (MASCULINE)
+    {
+        id: 'black_tie_formal_1',
+        occasion: ['formal', 'wedding', 'gala', 'corporate'],
+        style: ['black tie', 'formal', 'prestigious'],
+        season: ['all'],
+        items: [
+            {
+                type: 'tuxedo',
+                name: 'Black Tuxedo with Satin Lapels',
+                image: 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=400&h=500&fit=crop',
+                color: 'black'
+            },
+            {
+                type: 'shirt',
+                name: 'White Tuxedo Shirt with French Cuffs',
+                image: 'https://images.unsplash.com/photo-1598411037848-9cda9ee8c83f?w=400&h=500&fit=crop',
+                color: 'white'
+            },
+            {
+                type: 'shoes',
+                name: 'Black Patent Leather Opera Pumps',
+                image: 'https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=400&h=500&fit=crop',
+                color: 'black'
+            }
+        ],
+        mainImage: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&h=1200&fit=crop',
+        stylingTips: 'No wristwatch with a tuxedo. Use a large black bow tie and white suspenders. Formal events only (after 18:00).',
+        description: 'Timeless Black Tie elegance following elite fashion standards'
+    },
+
+    // OLD MONEY CASUAL
+    {
+        id: 'old_money_casual_1',
+        occasion: ['casual', 'brunch', 'travel'],
+        style: ['classic', 'old money', 'refined'],
+        season: ['spring', 'autumn', 'summer'],
+        items: [
+            {
+                type: 'polo',
+                name: 'Navy Knit Polo (Woven)',
+                image: 'https://images.unsplash.com/photo-1586363082483-035b8ddc098e?w=400&h=500&fit=crop',
+                color: 'navy'
+            },
+            {
+                type: 'pants',
+                name: 'Beige Chinos (High Waist)',
+                image: 'https://images.unsplash.com/photo-1473966968600-fa804b86829b?w=400&h=500&fit=crop',
+                color: 'beige'
+            },
+            {
+                type: 'shoes',
+                name: 'Dark Brown Leather Loafers',
+                image: 'https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=400&h=500&fit=crop',
+                color: 'dark brown'
+            }
+        ],
+        mainImage: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=800&h=1200&fit=crop',
+        stylingTips: 'The ultimate "Old Money" casual look. High-waisted chinos create perfect proportions. Match navy top with dark shoes for the sandwich rule.',
+        description: 'Refined Old Money casual aesthetic with navy knitwear and beige chinos'
+    },
+
+    // SMART CASUAL TRANSITIONAL
+    {
+        id: 'smart_casual_transitional_1',
+        occasion: ['work', 'lunch', 'city stroll'],
+        style: ['smart casual', 'transitional', 'layered'],
+        season: ['spring', 'autumn'],
+        items: [
+            {
+                type: 'shirt',
+                name: 'Blue Vertical Striped Shirt',
+                image: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=400&h=500&fit=crop',
+                color: 'blue/white'
+            },
+            {
+                type: 'cardigan',
+                name: 'White Premium Cardigan',
+                image: 'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=400&h=500&fit=crop',
+                color: 'white'
+            },
+            {
+                type: 'pants',
+                name: 'Medium Gray Tailored Trousers',
+                image: 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=400&h=500&fit=crop',
+                color: 'gray'
+            },
+            {
+                type: 'shoes',
+                name: 'White Minimalist Leather Sneakers',
+                image: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=400&h=500&fit=crop',
+                color: 'white'
+            }
+        ],
+        mainImage: 'https://images.unsplash.com/photo-1488161628813-04466f872be2?w=800&h=1200&fit=crop',
+        stylingTips: 'Perfect for 18-20°C weather. Use the white cardigan to match white sneakers (Sandwich Rule). Gray trousers anchor the look.',
+        description: 'Sophisticated layered smart casual look for transitional seasons'
+    },
+
+    // SUMMER LINEN ELEGANCE
+    {
+        id: 'summer_linen_elegance_1',
+        occasion: ['summer event', 'beach club', 'dinner'],
+        style: ['summer', 'elegant', 'breathable'],
+        season: ['summer'],
+        items: [
+            {
+                type: 'polo',
+                name: 'Forest Green Knit Polo',
+                image: 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=400&h=500&fit=crop',
+                color: 'green'
+            },
+            {
+                type: 'pants',
+                name: 'Off-White Linen Trousers',
+                image: 'https://images.unsplash.com/photo-1594932224010-74f4rawb5210?w=400&h=500&fit=crop',
+                color: 'off-white'
+            },
+            {
+                type: 'shoes',
+                name: 'Tobacco Suede Loafers',
+                image: 'https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=400&h=500&fit=crop',
+                color: 'tobacco'
+            }
+        ],
+        mainImage: 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?w=800&h=1200&fit=crop',
+        stylingTips: 'Linen trousers are the 10/10 alternative to shorts in the city. Forest green and off-white create a high-end natural palette.',
+        description: 'Elite summer elegance featuring forest green and linen'
     }
 ];
 

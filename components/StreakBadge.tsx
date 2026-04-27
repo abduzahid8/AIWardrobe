@@ -7,6 +7,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Animated, {
     useAnimatedStyle,
     withRepeat,
@@ -24,6 +25,7 @@ interface StreakBadgeProps {
 }
 
 const StreakBadge: React.FC<StreakBadgeProps> = ({ variant = 'inline' }) => {
+    const { t } = useTranslation();
     const streak = useWardrobeStore((state) => state.streak);
     const flame = useSharedValue(1);
 
@@ -51,13 +53,13 @@ const StreakBadge: React.FC<StreakBadgeProps> = ({ variant = 'inline' }) => {
             <View style={styles.card}>
                 <Animated.Text style={[styles.flameIcon, flameStyle]}>🔥</Animated.Text>
                 <View style={styles.cardContent}>
-                    <Text style={styles.cardStreak}>{streak} Day Streak</Text>
+                    <Text style={styles.cardStreak}>{streak} {t('streak.dayStreak')}</Text>
                     <Text style={styles.cardSubtext}>
                         {streak >= 7
-                            ? 'Amazing consistency!'
+                            ? t('streak.amazingConsistency')
                             : streak >= 3
-                                ? 'Keep it going!'
-                                : 'Great start!'}
+                                ? t('streak.keepItGoing')
+                                : t('streak.greatStart')}
                     </Text>
                 </View>
             </View>

@@ -275,6 +275,7 @@ export const CLASSIC_MENS_ITEMS: ShopCatalogItem[] = [
         description: 'White leather with beige suede panels on gum rubber sole',
         imageUrl: 'https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/484330/item/goods_32_484330_3x4.jpg',
     },
+
 ];
 
 export const INSPO_MENS_SHOP_ITEMS: ShopCatalogItem[] = [

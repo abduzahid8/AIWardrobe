@@ -102,7 +102,7 @@ export const validateClothingItem = [
 
     body('style')
         .optional()
-        .isIn(['Casual', 'Formal', 'Sport', 'Streetwear', 'Beach', 'Elegant', 'Business'])
+        .isIn(['Casual', 'Formal', 'Sport', 'SemiClassic', 'Beach', 'Elegant', 'Business'])
         .withMessage('Invalid style option'),
 
     body('season')

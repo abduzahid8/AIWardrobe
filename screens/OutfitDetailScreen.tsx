@@ -407,7 +407,7 @@ const OutfitDetailScreen = () => {
                         (navigation as any).navigate('AITryOn');
                     }}
                 >
-                    <Text style={styles.avatarText}>Avatar</Text>
+                    <Text style={styles.avatarText}>{t('common.avatar')}</Text>
                     <View style={styles.avatarIcon}>
                         <Ionicons name="person" size={14} color={COLORS.white} />
                     </View>

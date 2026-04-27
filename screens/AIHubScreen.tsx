@@ -52,18 +52,10 @@ import { useAccessibility } from '../hooks/useAccessibility';
 import { useTranslation } from 'react-i18next';
 import { TahoeIconButton } from '../components/TahoeButton';
 import WeatherWidget from '../components/WeatherWidget';
+import { useAdminGuard } from '../hooks/useAdminGuard';
 
 const { width, height } = Dimensions.get('window');
 const { colors, spacing, typography, radius, animation } = LiquidGlass2026Theme;
-
-// Quick Action Suggestions (Agentic Style Goals)
-const STYLE_GOALS = [
-    { id: '1', text: 'Plan my outfits better', icon: 'calendar-outline', gradient: colors.gradients.coolWave },
-    { id: '2', text: 'Look professional at work', icon: 'briefcase-outline', gradient: colors.gradients.primaryAccent },
-    { id: '3', text: 'Expand my wardrobe', icon: 'add-circle-outline', gradient: colors.gradients.warmGlow },
-    { id: '4', text: 'Evolve my style', icon: 'trending-up-outline', gradient: colors.gradients.primaryAccent },
-    { id: '5', text: 'Wear my clothes more', icon: 'shirt-outline', gradient: colors.gradients.coolWave },
-];
 
 interface StyleGoalType {
     id: string;
@@ -74,6 +66,7 @@ interface StyleGoalType {
 
 // Agentic AI Status Indicator
 const AgentStatusIndicator = ({ isActive }: { isActive: boolean }) => {
+    const { t } = useTranslation();
     const pulse = useSharedValue(1);
 
     useEffect(() => {
@@ -97,7 +90,7 @@ const AgentStatusIndicator = ({ isActive }: { isActive: boolean }) => {
         <View style={styles.agentStatus}>
             <Animated.View style={[styles.agentStatusDot, pulseStyle, isActive && styles.agentStatusActive]} />
             <Text style={styles.agentStatusText}>
-                {isActive ? 'AI is thinking...' : 'Ready to help'}
+                {isActive ? t('aiHub.aiThinking') : t('aiHub.readyToHelp')}
             </Text>
         </View>
     );
@@ -249,14 +242,23 @@ const AIHubScreen = () => {
     const navigation = useNavigation();
     const { isReducedMotionEnabled, scaleFontSize } = useAccessibility();
     const { t } = useTranslation();
+    const { isAdmin } = useAdminGuard();
     const [message, setMessage] = useState('');
     const [isAgentActive, setIsAgentActive] = useState(false);
 
+    const STYLE_GOALS: StyleGoalType[] = [
+        { id: '1', text: t('aiHub.styleGoals.0'), icon: 'calendar-outline', gradient: colors.gradients.coolWave },
+        { id: '2', text: t('aiHub.styleGoals.1'), icon: 'briefcase-outline', gradient: colors.gradients.primaryAccent },
+        { id: '3', text: t('aiHub.styleGoals.2'), icon: 'add-circle-outline', gradient: colors.gradients.warmGlow },
+        { id: '4', text: t('aiHub.styleGoals.3'), icon: 'trending-up-outline', gradient: colors.gradients.primaryAccent },
+        { id: '5', text: t('aiHub.styleGoals.4'), icon: 'shirt-outline', gradient: colors.gradients.coolWave },
+    ];
+
     const getGreeting = () => {
         const hour = new Date().getHours();
-        if (hour < 12) return 'Good morning';
-        if (hour < 18) return 'Good afternoon';
-        return 'Good evening';
+        if (hour < 12) return t('aiHub.goodMorning');
+        if (hour < 18) return t('aiHub.goodAfternoon');
+        return t('aiHub.goodEvening');
     };
 
     const agentTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -285,12 +287,12 @@ const AIHubScreen = () => {
 
     // Quick actions data
     const quickActions = [
-        { icon: 'shirt-outline', title: 'Scan wardrobe', subtitle: 'Add clothes', gradient: colors.gradients.warmGlow, screen: 'Camera' },
-        { icon: 'grid-outline', title: 'My Closet', subtitle: 'Browse items', gradient: colors.gradients.coolWave, screen: 'MyCloset' },
-        { icon: 'sparkles-outline', title: 'AI Stylist', subtitle: 'Get ideas', gradient: colors.gradients.primaryAccent, screen: 'OutfitAI' },
-        { icon: 'person-outline', title: 'Try On', subtitle: 'Virtual fit', gradient: colors.gradients.warmGlow, screen: 'AITryOn' },
-        { icon: 'calendar-outline', title: 'Plan outfits', subtitle: 'Weekly', gradient: colors.gradients.coolWave, screen: 'Calendar' },
-        { icon: 'people-outline', title: 'Meeting', subtitle: 'Event outfit', gradient: colors.gradients.primaryAccent, screen: 'MeetingOutfit' },
+        { icon: 'shirt-outline', title: t('aiHub.scanWardrobe'), subtitle: t('aiHub.addClothes'), gradient: colors.gradients.warmGlow, screen: 'Camera' },
+        { icon: 'grid-outline', title: t('wardrobe.title'), subtitle: t('aiHub.browseItems'), gradient: colors.gradients.coolWave, screen: 'MyCloset' },
+        { icon: 'sparkles-outline', title: t('aiStylist.title'), subtitle: t('aiHub.getIdeas'), gradient: colors.gradients.primaryAccent, screen: 'OutfitAI' },
+        ...(isAdmin ? [{ icon: 'eye-outline', title: t('outfitInspo.title'), subtitle: t('aiHub.photoToOutfit'), gradient: colors.gradients.warmGlow, screen: 'OutfitInspo' }] : []),
+        { icon: 'person-outline', title: t('magicMirror.tryOn'), subtitle: t('aiHub.virtualFit'), gradient: colors.gradients.warmGlow, screen: 'AITryOn' },
+        { icon: 'calendar-outline', title: t('aiHub.planOutfits'), subtitle: t('aiHub.weekly'), gradient: colors.gradients.coolWave, screen: 'Calendar' },
     ];
 
     return (
@@ -301,7 +303,7 @@ const AIHubScreen = () => {
                     <TouchableOpacity
                         onPress={() => (navigation as any).navigate('Profile')}
                         style={styles.headerButton}
-                        accessibilityLabel="Menu"
+                        accessibilityLabel={t('aiHub.menu')}
                     >
                         <Ionicons name="menu-outline" size={26} color={colors.text.primary} />
                     </TouchableOpacity>
@@ -311,7 +313,7 @@ const AIHubScreen = () => {
                     <TouchableOpacity
                         onPress={() => (navigation as any).navigate('Profile')}
                         style={styles.headerButton}
-                        accessibilityLabel="Profile"
+                        accessibilityLabel={t('aiHub.profile')}
                     >
                         <View style={styles.headerAvatar}>
                             <Ionicons name="person" size={18} color={colors.text.secondary} />
@@ -349,7 +351,7 @@ const AIHubScreen = () => {
                                 (navigation as any).navigate('AIChat');
                             }}
                             accessibilityRole="button"
-                            accessibilityLabel="Talk to AI Stylist"
+                            accessibilityLabel={t('aiHub.talkToStylist')}
                         >
                             <LinearGradient
                                 colors={colors.gradients.primaryAccent as [string, string]}
@@ -415,13 +417,13 @@ const AIHubScreen = () => {
                         <View style={styles.floatingInputContainer}>
                             <TextInput
                                 style={styles.textInput}
-                                placeholder="Ask anything about style..."
+                                placeholder={t('aiHub.askAnythingAboutStyle')}
                                 placeholderTextColor={colors.text.tertiary}
                                 value={message}
                                 onChangeText={setMessage}
                                 returnKeyType="send"
                                 onSubmitEditing={handleSend}
-                                accessibilityLabel="Type your style question"
+                                accessibilityLabel={t('aiHub.typeYourStyleQuestion')}
                                 maxLength={500}
                             />
 
@@ -432,12 +434,12 @@ const AIHubScreen = () => {
                                         handleSend();
                                     } else {
                                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                                        (navigation as any).navigate('MagicMirror');
+                                        (navigation as any).navigate('AITryOn');
                                     }
                                 }}
                                 activeOpacity={0.8}
                                 accessibilityRole="button"
-                                accessibilityLabel={message.trim() ? 'Send message' : 'Open Magic Mirror'}
+                                accessibilityLabel={message.trim() ? t('aiHub.sendMessage') : t('aiHub.openMagicMirror')}
                             >
                                 <Animated.View
                                     style={[

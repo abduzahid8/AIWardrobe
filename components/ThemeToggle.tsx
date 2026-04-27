@@ -7,6 +7,7 @@ import {
     Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../src/theme/ThemeContext';
 import { spacing, borderRadius, shadows } from '../src/theme';
@@ -20,6 +21,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
     showLabel = true,
     compact = false
 }) => {
+    const { t } = useTranslation();
     const { isDark, themeMode, setThemeMode, toggleTheme, colors } = useTheme();
 
     const handleToggle = () => {
@@ -52,7 +54,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
                 />
                 {showLabel && (
                     <Text style={[styles.label, { color: colors.text.primary }]}>
-                        Dark Mode
+                        {t('theme.darkMode')}
                     </Text>
                 )}
             </View>
@@ -72,12 +74,13 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
 
 // Full theme selector with system option
 export const ThemeSelector: React.FC = () => {
+    const { t } = useTranslation();
     const { themeMode, setThemeMode, colors } = useTheme();
 
     const options: { mode: 'light' | 'dark' | 'system'; icon: any; label: string }[] = [
-        { mode: 'light', icon: 'sunny', label: 'Light' },
-        { mode: 'dark', icon: 'moon', label: 'Dark' },
-        { mode: 'system', icon: 'phone-portrait-outline', label: 'System' },
+        { mode: 'light', icon: 'sunny', label: t('theme.light') },
+        { mode: 'dark', icon: 'moon', label: t('theme.dark') },
+        { mode: 'system', icon: 'phone-portrait-outline', label: t('theme.system') },
     ];
 
     const handleSelect = (mode: 'light' | 'dark' | 'system') => {
@@ -88,7 +91,7 @@ export const ThemeSelector: React.FC = () => {
     return (
         <View style={[styles.selectorContainer, { backgroundColor: colors.surface }]}>
             <Text style={[styles.selectorTitle, { color: colors.text.primary }]}>
-                Appearance
+                {t('theme.appearance')}
             </Text>
             <View style={styles.optionsRow}>
                 {options.map((option) => {

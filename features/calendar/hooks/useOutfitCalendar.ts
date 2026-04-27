@@ -10,6 +10,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Asset } from 'expo-asset';
+import { useTranslation } from 'react-i18next';
 
 import {
     type OutfitLog,
@@ -253,9 +254,10 @@ export function useOutfitCalendar() {
     };
 
     const confirmDelete = (dateStr: string) => {
-        Alert.alert('Delete Outfit', 'Are you sure?', [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Delete', style: 'destructive', onPress: () => deleteOutfitLog(dateStr) },
+        const { t } = useTranslation();
+        Alert.alert(t('calendar.deleteOutfit'), t('calendar.deleteOutfitConfirm'), [
+            { text: t('common.cancel'), style: 'cancel' },
+            { text: t('common.delete'), style: 'destructive', onPress: () => deleteOutfitLog(dateStr) },
         ]);
     };
 

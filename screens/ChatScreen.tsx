@@ -59,19 +59,6 @@ interface ChatMessage {
 }
 
 // ============================================
-// QUICK SUGGESTIONS
-// ============================================
-
-const QUICK_SUGGESTIONS = [
-    "What should I wear today?",
-    "Give me a work outfit",
-    "What's missing from my wardrobe?",
-    "Smart casual for the weekend",
-    "Build an outfit around my navy chinos",
-    "Best outfit for a first date",
-];
-
-// ============================================
 // MESSAGE BUBBLE
 // ============================================
 
@@ -80,6 +67,7 @@ interface BubbleProps {
 }
 
 const MessageBubble = ({ message }: BubbleProps) => {
+    const { t } = useTranslation();
     const isUser = message.role === 'user';
     return (
         <Animated.View
@@ -102,7 +90,7 @@ const MessageBubble = ({ message }: BubbleProps) => {
                     {message.text}
                 </Text>
                 {message.fromCache && (
-                    <Text style={styles.cachedLabel}>· cached</Text>
+                    <Text style={styles.cachedLabel}>· {t('common.cached')}</Text>
                 )}
             </View>
         </Animated.View>
@@ -117,6 +105,15 @@ const ChatScreen = () => {
     const { t } = useTranslation();
     const items    = useWardrobeStore((s) => s.items);
     const wearLogs = useWardrobeStore((s) => s.wearLogs);
+
+    const QUICK_SUGGESTIONS = [
+        t('chat.quickSuggestions.0'),
+        t('chat.quickSuggestions.1'),
+        t('chat.quickSuggestions.2'),
+        t('chat.quickSuggestions.3'),
+        t('chat.quickSuggestions.4'),
+        t('chat.quickSuggestions.5'),
+    ];
 
     const [messages,      setMessages]      = useState<ChatMessage[]>([]);
     const [inputText,     setInputText]      = useState('');
@@ -133,12 +130,15 @@ const ChatScreen = () => {
             const greeting: ChatMessage = {
                 id: 'greeting',
                 role: 'assistant',
-                text: `You have ${items.length} item${items.length > 1 ? 's' : ''} in your wardrobe. What are you getting dressed for today?`,
+                text: t('chat.greeting', { 
+                    count: items.length, 
+                    plural: items.length > 1 ? 's' : '' 
+                }),
                 timestamp: new Date(),
             };
             setMessages([greeting]);
         }
-    }, [items.length]);
+    }, [items.length, t]);
 
     const scrollToBottom = useCallback(() => {
         setTimeout(() => {
@@ -211,7 +211,7 @@ const ChatScreen = () => {
                 <View>
                     <Text style={styles.headerTitle}>{t('chat.title')}</Text>
                     <Text style={styles.headerSubtitle}>
-                        {items.length > 0 ? `${items.length} items in wardrobe` : 'Add items to get started'}
+                        {items.length > 0 ? `${items.length} ${t('chat.itemsInWardrobe')}` : t('chat.addItemsToGetStarted')}
                     </Text>
                 </View>
                 {messages.length > 0 && (
@@ -316,7 +316,7 @@ const ChatScreen = () => {
                         style={styles.input}
                         value={inputText}
                         onChangeText={setInputText}
-                        placeholder="Ask your stylist..."
+                        placeholder={t('chat.askYourStylist')}
                         placeholderTextColor={colors.text.tertiary}
                         returnKeyType="send"
                         onSubmitEditing={handleSend}

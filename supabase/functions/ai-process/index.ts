@@ -127,7 +127,7 @@ function buildClothingClassificationPrompt(): string {
 Ignore price tags, sale badges, screenshot UI, text overlays, icons, mannequins, hangers, hands, and background props.
 If multiple objects are visible, describe only the main garment.
 Return ONLY a valid JSON object:
-{"category":"t-shirt|shirt|blouse|sweater|hoodie|jacket|coat|cardigan|dress|skirt|pants|jeans|shorts|sneakers|boots|sandals|bag|hat|scarf|belt|clothing","section":"tops|bottoms|dresses|outerwear|shoes|accessories|other","style":"casual|formal|sport|streetwear|elegant|minimalist|other","color":"main color","material":"fabric or null","description":"1-2 sentence description of the garment only"}
+{"category":"t-shirt|shirt|blouse|sweater|hoodie|jacket|coat|cardigan|dress|skirt|pants|jeans|shorts|sneakers|boots|sandals|bag|hat|scarf|belt|clothing","section":"tops|bottoms|dresses|outerwear|shoes|accessories|other","style":"casual|formal|sport|semi_classic|elegant|minimalist|other","color":"main color","material":"fabric or null","description":"1-2 sentence description of the garment only"}
 Return valid JSON only.`
 }
 

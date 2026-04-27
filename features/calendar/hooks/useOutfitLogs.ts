@@ -5,6 +5,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslation } from 'react-i18next';
 import type { OutfitLog } from './useCalendarState';
 
 const STORAGE_KEY = '@outfit_logs';
@@ -42,7 +43,8 @@ export function useOutfitLogs() {
             rating?: number
         ) => {
             if (selectedItems.length === 0) {
-                Alert.alert('No items', 'Please select at least one item');
+                const { t } = useTranslation();
+                Alert.alert(t('outfitLogs.noItems'), t('outfitLogs.selectAtLeastOne'));
                 return false;
             }
             const newLog: OutfitLog = {

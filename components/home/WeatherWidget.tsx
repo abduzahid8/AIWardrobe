@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Image, ActivityIndicator, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { FrostedGlassCard } from '../ui';
 import { LiquidGlass2026Theme } from '../../constants/LiquidGlass2026Theme';
@@ -21,6 +22,8 @@ interface Props {
 }
 
 export default function WeatherWidget({ weather, loading, isReducedMotionEnabled }: Props) {
+    const { t } = useTranslation();
+
     if (loading) {
         return (
             <FrostedGlassCard style={styles.container}>
@@ -31,7 +34,7 @@ export default function WeatherWidget({ weather, loading, isReducedMotionEnabled
 
     if (!weather) return null;
 
-    const suggestion = weather.temp > 25 ? 'Wear light' : weather.temp > 15 ? 'Use layers' : 'Dress warm';
+    const suggestion = weather.temp > 25 ? t('weatherWidget.suggestions.wearLight') : weather.temp > 15 ? t('weatherWidget.suggestions.useLayers') : t('weatherWidget.suggestions.dressWarm');
 
     return (
         <Animated.View entering={isReducedMotionEnabled ? undefined : FadeInDown.delay(100).duration(400)}>

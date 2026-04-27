@@ -170,14 +170,14 @@ export default function WardrobeAnalyticsScreen({ navigation }: any) {
         return (
             <FeatureLockOverlay
                 requiredTier="Pro"
-                featureName="Wardrobe Insights"
-                tagline="See which pieces you actually wear and what's just sitting in your closet."
+                featureName={t('wardrobeAnalytics.featureName')}
+                tagline={t('wardrobeAnalytics.tagline')}
                 icon="bar-chart"
                 bullets={[
-                    'Your real closet utilization score',
-                    'Most-worn items and hidden gems',
-                    'Color palette and category breakdown',
-                    'Unworn items nudge so nothing goes to waste',
+                    t('wardrobeAnalytics.bullet1'),
+                    t('wardrobeAnalytics.bullet2'),
+                    t('wardrobeAnalytics.bullet3'),
+                    t('wardrobeAnalytics.bullet4'),
                 ]}
             />
         );

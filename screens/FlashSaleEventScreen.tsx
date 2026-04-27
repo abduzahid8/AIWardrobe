@@ -41,7 +41,7 @@ const { width } = Dimensions.get('window');
 // ============================================
 // COUNTDOWN TIMER
 // ============================================
-const CountdownTimer = ({ event }: { event: FlashSaleEvent }) => {
+const CountdownTimer = ({ event, t }: { event: FlashSaleEvent; t: any }) => {
     const [timeRemaining, setTimeRemaining] = useState(
         flashSalesService.getTimeRemaining(event)
     );
@@ -55,7 +55,7 @@ const CountdownTimer = ({ event }: { event: FlashSaleEvent }) => {
     }, [event]);
 
     const { hours, minutes, seconds, isEnding } = timeRemaining;
-    const label = event.status === 'upcoming' ? 'Starts in' : 'Ends in';
+    const label = event.status === 'upcoming' ? t('flashSaleEvent.startsIn') : t('flashSaleEvent.endsIn');
 
     return (
         <View style={styles.countdownRow}>
@@ -93,7 +93,7 @@ const StockBadge = ({ status, count, t }: { status: string; count?: number; t: a
         return (
             <View style={[styles.stockBadge, styles.stockLow]}>
                 <Text style={styles.stockBadgeText}>
-                    {count ? `Only ${count} left` : 'Low Stock'}
+                    {count ? t('flashSaleEvent.onlyLeft', { count }) : t('flashSaleEvent.lowStock')}
                 </Text>
             </View>
         );
@@ -282,7 +282,7 @@ const FlashSaleEventScreen = () => {
             if (supported) {
                 await Linking.openURL(affiliateUrl);
             } else {
-                Alert.alert('Unable to open link', 'This product link could not be opened.');
+                Alert.alert(t('flashSaleEvent.unableOpenLink'), t('flashSaleEvent.productLinkNotOpened'));
             }
         } catch (error) {
             console.error('Error opening product link:', error);
@@ -415,7 +415,7 @@ const FlashSaleEventScreen = () => {
 
                 {/* Countdown & Actions */}
                 <View style={styles.actionsContainer}>
-                    <CountdownTimer event={event} />
+                    <CountdownTimer event={event} t={t} />
 
                     {event.status === 'upcoming' && (
                         <TouchableOpacity

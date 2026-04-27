@@ -30,7 +30,7 @@ export interface DetectedItem {
 /**
  * Clothing style categories
  */
-export type ClothingStyle = 'Casual' | 'Formal' | 'Sport' | 'Streetwear' | 'Beach' | 'Elegant';
+export type ClothingStyle = 'Casual' | 'Formal' | 'Sport' | 'SemiClassic' | 'Beach' | 'Elegant';
 
 /**
  * AI analysis result from video/image scan
