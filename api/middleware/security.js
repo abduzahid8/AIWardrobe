@@ -32,9 +32,11 @@ const ipFailureMap = new Map();
  * Extract client IP from request
  */
 export const getClientIP = (req) => {
-    return req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+    // Express resolves req.ip correctly when `app.set('trust proxy', 1)` is on.
+    // Keep header fallbacks for non-Express callers / tests.
+    return req.ip ||
+        req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
         req.headers['x-real-ip'] ||
-        req.connection?.remoteAddress ||
         req.socket?.remoteAddress ||
         'unknown';
 };

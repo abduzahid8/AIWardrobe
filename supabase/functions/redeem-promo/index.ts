@@ -10,6 +10,20 @@ Deno.serve(async (req: Request) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  // App Store Guideline 3.1.1 compliance: custom promo codes that unlock
+  // premium features outside of In-App Purchase are prohibited.
+  // Users should redeem Apple Offer Codes via presentCodeRedemptionSheet()
+  // or subscribe through the App Store.
+  const promoCodesEnabled = Deno.env.get('PROMO_CODES_ENABLED') === 'true';
+  if (!promoCodesEnabled) {
+    return new Response(JSON.stringify({
+      error: 'Promo codes are no longer available. Please use Apple Offer Codes or subscribe via the App Store.',
+    }), {
+      status: 410,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {

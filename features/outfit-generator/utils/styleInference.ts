@@ -105,6 +105,7 @@ const STYLE_SIGNALS: Record<StyleId, Signal[]> = {
     kw('suit', 3), kw('suiting', 3), kw('knit sweater', 3), kw('pullover', 2),
     kw('turtleneck', 3),
     kw('relaxed-fit', 1), kw('classic', 2), kw('regular-fit', 1),
+    kw('suit trousers', 3), kw('linen suit', 2),
     kw('cream', 2), kw('camel', 3), kw('navy', 2), kw('beige', 2),
     kw('burgundy', 2), kw('forest', 2), kw('tan', 2),
     kw('ralph lauren', 5), kw('brunello', 5),
@@ -324,6 +325,13 @@ export function inferItemAttributes(item: ItemForInference): InferredItemAttribu
   const styleTags = styleScores
     .filter((s) => s.score > 0)
     .map((s) => s.style);
+
+  const oldMoneyScore = styleScores.find((s) => s.style === 'old_money')?.score ?? 0;
+  const semiClassicScore = styleScores.find((s) => s.style === 'semi_classic')?.score ?? 0;
+  const semiClassicIndex = styleTags.indexOf('semi_classic');
+  if (semiClassicIndex >= 0 && oldMoneyScore >= semiClassicScore + 2) {
+    styleTags.splice(semiClassicIndex, 1);
+  }
 
   // Every item is at least "casual" if nothing else matched.
   if (styleTags.length === 0) styleTags.push('casual');

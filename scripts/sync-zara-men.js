@@ -37,21 +37,33 @@ const APIFY_TOKEN  = process.env.APIFY_API_TOKEN;
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const ACTOR_ID     = 'shahidirfan~zara-product-scraper';
-const SOURCE       = 'apify-zara-men';
+const SOURCE       = 'apify-zara-men-uz';
 
 const START_CATEGORIES = [
-    { label: 'Basic T-Shirts',     url: 'https://www.zara.com/us/en/man-tshirts-basics-l856.html' },
-    { label: 'Shirts',             url: 'https://www.zara.com/us/en/man-shirts-l737.html' },
-    { label: 'Casual Shirts',      url: 'https://www.zara.com/us/en/man-shirts-casual-l743.html' },
-    { label: 'Formal Shirts',      url: 'https://www.zara.com/us/en/man-shirts-formal-l751.html' },
-    { label: 'Linen Shirts',       url: 'https://www.zara.com/us/en/man-shirts-linen-l754.html' },
-    { label: 'Plain Polos',        url: 'https://www.zara.com/us/en/man-polos-plain-l1660.html' },
-    { label: 'Trousers',           url: 'https://www.zara.com/us/en/man-trousers-l838.html' },
-    { label: 'Jeans',              url: 'https://www.zara.com/us/en/man-jeans-l659.html' },
-    { label: 'Knitwear',           url: 'https://www.zara.com/us/en/man-knitwear-l681.html' },
-    { label: 'Bomber Jackets',     url: 'https://www.zara.com/us/en/man-jackets-bombers-l645.html' },
-    { label: 'Shoes',              url: 'https://www.zara.com/us/en/man-shoes-l769.html' },
-    { label: 'Blazers',            url: 'https://www.zara.com/us/en/man-blazers-double-breasted-l2506.html' },
+    { label: 'Basic T-Shirts',     url: 'https://www.zara.com/uz/en/man-tshirts-basics-l856.html' },
+    { label: 'Shirts',             url: 'https://www.zara.com/uz/en/man-shirts-l737.html' },
+    { label: 'Casual Shirts',      url: 'https://www.zara.com/uz/en/man-shirts-casual-l743.html' },
+    { label: 'Formal Shirts',      url: 'https://www.zara.com/uz/en/man-shirts-formal-l751.html' },
+    { label: 'Linen Shirts',       url: 'https://www.zara.com/uz/en/man-shirts-linen-l754.html' },
+    { label: 'Plain Polos',        url: 'https://www.zara.com/uz/en/man-polos-plain-l1660.html' },
+    { label: 'Trousers',           url: 'https://www.zara.com/uz/en/man-trousers-l838.html' },
+    { label: 'Jeans',              url: 'https://www.zara.com/uz/en/man-jeans-l659.html' },
+    { label: 'Knitwear',           url: 'https://www.zara.com/uz/en/man-knitwear-l681.html' },
+    { label: 'Cardigans',          url: 'https://www.zara.com/uz/en/man-knitwear-cardigans-l691.html' },
+    { label: 'Sweatshirts',        url: 'https://www.zara.com/uz/en/man-sweatshirts-l733.html' },
+    { label: 'Hoodies',            url: 'https://www.zara.com/uz/en/man-sweatshirts-hoodies-l735.html' },
+    { label: 'Bomber Jackets',     url: 'https://www.zara.com/uz/en/man-jackets-bombers-l645.html' },
+    { label: 'Denim Jackets',      url: 'https://www.zara.com/uz/en/man-jackets-denim-l640.html' },
+    { label: 'Leather Jackets',    url: 'https://www.zara.com/uz/en/man-jackets-leather-l647.html' },
+    { label: 'Coats',              url: 'https://www.zara.com/uz/en/man-coats-l623.html' },
+    { label: 'Trench Coats',       url: 'https://www.zara.com/uz/en/man-coats-trench-l626.html' },
+    { label: 'Blazers',            url: 'https://www.zara.com/uz/en/man-blazers-double-breasted-l2506.html' },
+    { label: 'Suits',              url: 'https://www.zara.com/uz/en/man-suits-l773.html' },
+    { label: 'Shorts',             url: 'https://www.zara.com/uz/en/man-shorts-l838.html' },
+    { label: 'Shoes',              url: 'https://www.zara.com/uz/en/man-shoes-l769.html' },
+    { label: 'Boots',              url: 'https://www.zara.com/uz/en/man-shoes-boots-l771.html' },
+    { label: 'Sneakers',           url: 'https://www.zara.com/uz/en/man-shoes-sneakers-l769.html' },
+    { label: 'Overshirts',         url: 'https://www.zara.com/uz/en/man-shirts-overshirts-l2558.html' },
 ];
 
 const LEGACY_SOURCES_TO_DISABLE = ['apify-massimodutti'];
@@ -767,7 +779,7 @@ async function main() {
         process.exit(1);
     }
 
-    console.log(`\n🛍  Zara Men → shop_catalog sync`);
+    console.log(`\n🛍  Zara Men (Uzbekistan) → shop_catalog sync`);
     console.log(`   max results per cat. : ${MAX_RESULTS_PER_CATEGORY}`);
     console.log(`   category URLs        : ${START_CATEGORIES.length}`);
     console.log(`   dry run              : ${DRY_RUN}\n`);

@@ -9,7 +9,6 @@ import {
     View,
     Text,
     ScrollView,
-    Image,
     TouchableOpacity,
     StyleSheet,
     Dimensions,
@@ -23,6 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
+import { CachedImage } from '../components/ui/CachedImage';
 import Animated, { FadeIn, FadeInUp, FadeInDown, ZoomIn } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
 import { useTranslation } from 'react-i18next';
@@ -229,7 +229,7 @@ const OutfitInspoScreen = () => {
 
             {imageUri ? (
                 <Animated.View entering={ZoomIn.duration(300)} style={styles.imagePreviewContainer}>
-                    <Image source={{ uri: imageUri }} style={styles.imagePreview} resizeMode="cover" />
+                    <CachedImage uri={imageUri} style={styles.imagePreview} contentFit="cover" fadeIn={false} />
                     <View style={styles.imageOverlay}>
                         <TouchableOpacity
                             style={styles.changeImageBtn}
@@ -392,10 +392,11 @@ const OutfitInspoScreen = () => {
                                             activeOpacity={0.7}
                                         >
                                             {match.imageUrl || match.image_url ? (
-                                                <Image
-                                                    source={{ uri: match.imageUrl || match.image_url }}
+                                                <CachedImage
+                                                    uri={match.imageUrl || match.image_url || ''}
                                                     style={styles.matchImage}
-                                                    resizeMode="cover"
+                                                    contentFit="cover"
+                                                    fadeIn={false}
                                                 />
                                             ) : (
                                                 <View style={styles.matchImagePlaceholder}>
@@ -436,10 +437,11 @@ const OutfitInspoScreen = () => {
                                             activeOpacity={0.7}
                                         >
                                             {match.imageUrl || match.image_url ? (
-                                                <Image
-                                                    source={{ uri: match.imageUrl || match.image_url }}
+                                                <CachedImage
+                                                    uri={match.imageUrl || match.image_url || ''}
                                                     style={styles.matchImage}
-                                                    resizeMode="cover"
+                                                    contentFit="cover"
+                                                    fadeIn={false}
                                                 />
                                             ) : (
                                                 <View style={styles.matchImagePlaceholder}>

@@ -261,6 +261,7 @@ export const LiquidGlassCard: React.FC<LiquidGlassCardProps> = ({
                         overflow: 'hidden',
                     },
                 ]}
+                pointerEvents="none"
             />
 
             {/* Colored glass layer */}

@@ -32,6 +32,7 @@ jest.mock('./lib/supabase', () => ({
     from: jest.fn().mockReturnValue({
       select: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
+      in: jest.fn().mockReturnThis(),
       single: jest.fn().mockResolvedValue({ data: null, error: null }),
     }),
   },
@@ -39,9 +40,20 @@ jest.mock('./lib/supabase', () => ({
 
 // Mock src/config/env
 jest.mock('./src/config/env', () => ({
+  Config: {
+    supabase: { url: 'https://test.supabase.co', anonKey: 'test-key' },
+    api: { url: 'http://localhost:3000', alicevisionUrl: 'http://localhost:5050' },
+    revenueCat: { apiKey: 'test-revenuecat-key' },
+    weather: { apiKey: 'test-weather-key', baseUrl: 'https://api.openweathermap.org/data/2.5' },
+    sentry: { dsn: '' },
+    admin: { email: 'info@aiwardrobe.club' },
+  },
   default: {
     supabase: { url: 'https://test.supabase.co', anonKey: 'test-key' },
     api: { url: 'http://localhost:3000', alicevisionUrl: 'http://localhost:5050' },
+    revenueCat: { apiKey: 'test-revenuecat-key' },
     weather: { apiKey: 'test-weather-key', baseUrl: 'https://api.openweathermap.org/data/2.5' },
+    sentry: { dsn: '' },
+    admin: { email: 'info@aiwardrobe.club' },
   },
 }));

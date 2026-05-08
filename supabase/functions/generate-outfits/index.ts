@@ -680,13 +680,14 @@ async function fillMissingSlotsEdge(
 }
 
 async function localFallback(items: any[], style: string, occasion: string, limit: number, layered: boolean, supabaseClient?: any): Promise<any[]> {
-    const baseTops = items.filter(i => i.macroCategory === 'top')
-    const outerwear = items.filter(i => i.macroCategory === 'outerwear')
-    const legacyTops = items.filter(i => ['top','outerwear'].includes(i.macroCategory))
-    const bottoms = items.filter(i => i.macroCategory === 'bottom')
-    const nonShortsBottoms = bottoms.filter(b => !isShortsItem(b))
-    const casualOuterwear = outerwear.filter(o => !isFormalLayerItem(o))
-    const shoes = items.filter(i => i.macroCategory === 'shoes')
+    // Shuffle each category to ensure variety when we have limited items
+    const baseTops = shuffleArray(items.filter(i => i.macroCategory === 'top'))
+    const outerwear = shuffleArray(items.filter(i => i.macroCategory === 'outerwear'))
+    const legacyTops = shuffleArray(items.filter(i => ['top','outerwear'].includes(i.macroCategory)))
+    const bottoms = shuffleArray(items.filter(i => i.macroCategory === 'bottom'))
+    const nonShortsBottoms = shuffleArray(bottoms.filter(b => !isShortsItem(b)))
+    const casualOuterwear = shuffleArray(outerwear.filter(o => !isFormalLayerItem(o)))
+    const shoes = shuffleArray(items.filter(i => i.macroCategory === 'shoes'))
 
     // ── Fill missing slots from shop_catalog ────────────────────────────
     // If the wardrobe has no shoes (or no outerwear when layered), query
@@ -723,64 +724,78 @@ async function localFallback(items: any[], style: string, occasion: string, limi
     }
 
     const outfits: any[] = []
-    const seed = layered ? Math.max(allBaseTops.length, allOuterwear.length, 1) : Math.max(allLegacyTops.length, 1)
-
-    for (let i = 0; i < Math.min(limit, seed); i++) {
+    
+    // Generate outfits with enforced variety
+    for (let i = 0; i < limit; i++) {
         const parts: any[] = []
+        
+        // Use random offsets to ensure variety even with small wardrobes
+        // Each outfit gets a different random starting point
+        const randOffset1 = Math.floor(Math.random() * 100)
+        const randOffset2 = Math.floor(Math.random() * 100)
+        
         // Pre-pick the bottom so we can decide whether a formal layer is safe.
-        const bottom = allBottoms[i % Math.max(allBottoms.length, 1)] || allBottoms[0]
+        const bottom = allBottoms[(i + randOffset1) % Math.max(allBottoms.length, 1)] || allBottoms[0]
         const bottomIsShorts = !!bottom && isShortsItem(bottom)
+        
         if (layered) {
             // If the bottom is shorts, never pair with a formal outerwear piece;
             // prefer casual outerwear, else fall back to a safe non-shorts bottom.
-            let outer = allOuterwear[i % Math.max(allOuterwear.length, 1)]
+            let outer = allOuterwear[(i + randOffset1) % Math.max(allOuterwear.length, 1)]
             if (bottomIsShorts && outer && isFormalLayerItem(outer)) {
-                outer = allCasualOuterwear[i % Math.max(allCasualOuterwear.length, 1)] || undefined
+                outer = allCasualOuterwear[(i + randOffset1) % Math.max(allCasualOuterwear.length, 1)] || undefined
             }
-            const base = allBaseTops[i % Math.max(allBaseTops.length, 1)]
             // Use outerwear if available, otherwise fallback to any top item
-            const mainTop = outer || allLegacyTops[i % Math.max(allLegacyTops.length, 1)]
+            const mainTop = outer || allLegacyTops[(i + randOffset1) % Math.max(allLegacyTops.length, 1)]
             if (mainTop) parts.push({ ...mainTop, recommendation: 'Main top / outerwear layer' })
-            // Always include base top (use baseTop if available, otherwise reuse mainTop or any top)
-            const baseTopItem = base || outer || allLegacyTops[(i + 1) % Math.max(allLegacyTops.length, 1)]
+            
+            // For second top, use a different offset to ensure variety
+            const base = allBaseTops[(i + randOffset2) % Math.max(allBaseTops.length, 1)]
+            const baseTopItem = base || outer || allLegacyTops[(i + randOffset2 + 1) % Math.max(allLegacyTops.length, 1)]
             if (baseTopItem) parts.push({ ...baseTopItem, recommendation: 'Base top worn underneath' })
         } else {
-            const top = allLegacyTops[i % Math.max(allLegacyTops.length, 1)]
+            const top = allLegacyTops[(i + randOffset1) % Math.max(allLegacyTops.length, 1)]
             if (top) parts.push({ ...top, recommendation: 'Key piece' })
         }
-        // Always include bottom and shoes - reuse items if necessary.
-        // For layered looks we keep the pre-picked bottom; if there's a formal
-        // layer + shorts conflict we still couldn't resolve, swap to a
-        // non-shorts bottom when one exists.
+        
+        // Always include bottom and shoes
         let finalBottom = bottom
         if (layered && bottomIsShorts) {
             const mainTopItem = parts[0]
             if (mainTopItem && isFormalLayerItem(mainTopItem) && allNonShortsBottoms.length > 0) {
-                finalBottom = allNonShortsBottoms[i % allNonShortsBottoms.length]
+                finalBottom = allNonShortsBottoms[(i + randOffset1) % allNonShortsBottoms.length]
             }
         }
-        const shoe = allShoes[i % Math.max(allShoes.length, 1)] || allShoes[0]
+        const shoe = allShoes[(i + randOffset2) % Math.max(allShoes.length, 1)] || allShoes[0]
         if (finalBottom) parts.push({ ...finalBottom, recommendation: 'Pairs well' })
         if (shoe) parts.push({ ...shoe, recommendation: 'Completes the look' })
         else parts.push({ ...PLACEHOLDER_SHOES })
+        
         // Exact item contract: 3 for non-layered, 4 for layered.
         const targetItems = layered ? 4 : 3
-        if (layered && parts.length < targetItems && items.length > 0) {
+        if (layered && parts.length < targetItems && allItems.length > 0) {
             // Only pad layered outfits — non-layered must stay at exactly 3.
-            while (parts.length < targetItems && parts.length < allItems.length) {
-                const fillItem = allItems[parts.length % allItems.length]
-                parts.push({ ...fillItem, recommendation: 'Complementary piece' })
+            let fillIndex = 0
+            while (parts.length < targetItems && fillIndex < allItems.length) {
+                const fillItem = allItems[(fillIndex + i) % allItems.length]
+                const alreadyAdded = parts.some(p => p.id === fillItem.id)
+                if (!alreadyAdded) {
+                    parts.push({ ...fillItem, recommendation: 'Complementary piece' })
+                }
+                fillIndex++
             }
         }
         // For non-layered, trim any accidental extras down to 3.
         if (!layered && parts.length > targetItems) parts.length = targetItems
         if (!parts.length) continue
+        
+        // Ensure each outfit has a unique ID
         outfits.push({
-            id: `local_${i}_${Date.now()}`,
+            id: `local_${i}_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
             style: style || 'Casual',
             occasion: occasion || 'Everyday',
             description: `A ${style || 'casual'} look from your wardrobe.`,
-            confidence: 0.75,
+            confidence: 0.75 + (Math.random() * 0.1), // Slight confidence variation
             items: parts,
             stylingTips: layered
                 ? ['Layer the base top under the outerwear for depth', 'Keep palette tonal for a refined finish']
@@ -875,6 +890,16 @@ function safeParseOutfits(raw: string): any[] | null {
 // Default to a faster free model. You can override from env/app_config:
 // `NVIDIA_TEXT_MODEL` / `NVIDIA_MODEL` / app_config key `nvidia_model`.
 const DEFAULT_NVIDIA_MODEL = 'meta/llama-3.1-8b-instruct'
+
+// ── Shuffle array for outfit variety ─────────────────────────────────────
+function shuffleArray<T>(array: T[]): T[] {
+    const arr = [...array]
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        ;[arr[i], arr[j]] = [arr[j], arr[i]]
+    }
+    return arr
+}
 function resolveNvidiaModel(input: string | null | undefined): string {
     const model = (input || '').trim()
     return model.length > 0 ? model : DEFAULT_NVIDIA_MODEL
@@ -887,7 +912,7 @@ async function callNvidia(key: string, model: string, sys: string, usr: string, 
             console.log(`[NVIDIA] attempt ${attempt + 1}, model: ${model}`)
             const r = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
                 method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
-                body: JSON.stringify({ model, messages:[{role:'system',content:sys},{role:'user',content:usr}], temperature:0.4, max_tokens:1400, response_format:{type:'json_object'} }),
+                body: JSON.stringify({ model, messages:[{role:'system',content:sys},{role:'user',content:usr}], temperature:0.85, max_tokens:1400, response_format:{type:'json_object'} }),
                 signal: controller.signal,
             })
             clearTimeout(timer)

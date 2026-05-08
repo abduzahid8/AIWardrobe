@@ -88,7 +88,7 @@ export const Card: React.FC<CardProps> = ({
     // Glass variant uses BlurView
     if (variant === 'glass') {
         const content = (
-            <BlurView intensity={80} tint="light" style={[styles.glassContainer, style]}>
+            <BlurView intensity={80} tint="light" style={[styles.glassContainer, style]} pointerEvents="none">
                 <View style={styles.glassInner}>{children}</View>
             </BlurView>
         );

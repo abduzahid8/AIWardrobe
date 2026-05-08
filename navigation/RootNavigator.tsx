@@ -34,7 +34,6 @@ import TrialExpiredScreen from "../screens/TrialExpiredScreen";
 import PromoCodeScreen from "../screens/PromoCodeScreen";
 import AdminPanelScreen from "../screens/AdminPanelScreen";
 import GuideScreen from "../screens/GuideScreen";
-import usePromoCodeStore from "../store/promoCodeStore";
 import { addNotificationListeners } from "../src/services/notificationService";
 import { notificationService } from "../src/services/notificationService";
 import { RootStackParamList } from "./types";
@@ -44,6 +43,7 @@ import analyticsService from "../src/services/analyticsService";
 import { iapService } from "../src/services/iapService";
 import { colors } from "../src/theme";
 import { LiquidPresets } from "./liquidTransitions";
+import usePromoCodeStore from "../store/promoCodeStore";
 
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -57,12 +57,10 @@ const RootNavigator = () => {
     hasActiveSubscription,
     isTrialExpired,
     isTrialPending,
-    needsPromoCode,
     initializeSubscription,
     verifySubscriptionFromServer,
   } = useSubscriptionStore();
-
-  const { hasRedeemedPromo, hasSkippedPromo, isHydrated: isPromoHydrated } = usePromoCodeStore();
+  const { hydrate: hydratePromoCodeStore } = usePromoCodeStore();
 
   // Show the non-dismissable TrialExpiredScreen when the 7-day trial ends
   // and the user has no paid subscription.
@@ -75,15 +73,11 @@ const RootNavigator = () => {
     !isTrialPending &&
     !useSubscriptionStore.getState().isLoading;
 
-  // Show PromoCode screen for authenticated free-tier users who haven't
-  // redeemed a promo code yet and don't have a trial date.
-  const showPromoGate =
-    isAuthenticated &&
-    needsPromoCode &&
-    !hasRedeemedPromo &&
-    isPromoHydrated &&
-    !isTrialPending &&
-    !useSubscriptionStore.getState().isLoading;
+  // NOTE: showPromoGate is intentionally disabled (always false).
+  // Apple Guideline 2.1(a) requires that users can access the free tier
+  // without being forced through a promo code or paywall. The PromoCode
+  // screen remains accessible voluntarily (e.g. from Profile screen).
+  const showPromoGate = false;
 
   useEffect(() => {
     const initialize = async () => {
@@ -104,11 +98,11 @@ const RootNavigator = () => {
         initializeSubscription().catch((err) =>
           console.warn('[RootNavigator] initializeSubscription failed', err),
         ),
-        usePromoCodeStore.getState().hydrate().catch((err) =>
-          console.warn('[RootNavigator] promoCode hydrate failed', err),
-        ),
         useDailyUsageStore.getState().hydrate().catch((err) =>
           console.warn('[RootNavigator] dailyUsage hydrate failed', err),
+        ),
+        hydratePromoCodeStore().catch((err) =>
+          console.warn('[RootNavigator] promoCode hydrate failed', err),
         ),
         notificationService.initialize().catch((err) =>
           console.warn('[RootNavigator] notificationService failed', err),
@@ -168,14 +162,7 @@ const RootNavigator = () => {
         }}
       >
         {isAuthenticated ? (
-          showPromoGate ? (
-            // After auth: show Paywall with promo code option for free-tier users
-            <Stack.Screen
-              name="Paywall"
-              component={PaywallScreen}
-              options={{ ...LiquidPresets.fade }}
-            />
-          ) : showTrialGate ? (
+          showTrialGate ? (
             <Stack.Screen
               name="TrialExpired"
               component={TrialExpiredScreen}
@@ -308,15 +295,6 @@ const RootNavigator = () => {
               }}
             />
 
-            {/* Promo Code — shown after auth for free-tier users */}
-            <Stack.Screen
-              name="PromoCode"
-              component={PromoCodeScreen}
-              options={{
-                ...LiquidPresets.rise,
-              }}
-            />
-
             {/* Global Paywall */}
             <Stack.Screen
               name="Paywall"
@@ -333,6 +311,11 @@ const RootNavigator = () => {
               name="TrialExpired"
               component={TrialExpiredScreen}
               options={{ ...LiquidPresets.fade }}
+            />
+            <Stack.Screen
+              name="PromoCode"
+              component={PromoCodeScreen}
+              options={{ ...LiquidPresets.fade, gestureEnabled: false }}
             />
 
             {/* Admin Panel — shop catalog management for admin users */}

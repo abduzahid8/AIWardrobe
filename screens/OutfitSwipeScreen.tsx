@@ -5,13 +5,13 @@ import {
     StyleSheet,
     Dimensions,
     TouchableOpacity,
-    Image,
     ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
+import { CachedImage } from '../components/ui/CachedImage';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -239,10 +239,11 @@ const OutfitCard = ({ outfit, index, onSwipe, isTop, t }: OutfitCardProps) => {
                         {outfit.items.map((item: OutfitItemType, idx: number) => (
                             <View key={idx} style={styles.itemPreview}>
                                 {item.image || item.imageUrl ? (
-                                    <Image
-                                        source={{ uri: item.image || item.imageUrl }}
+                                    <CachedImage
+                                        uri={item.image || item.imageUrl || ''}
                                         style={styles.itemImage}
-                                        resizeMode="cover"
+                                        contentFit="cover"
+                                        fadeIn={false}
                                     />
                                 ) : (
                                     <View style={styles.itemPlaceholder}>

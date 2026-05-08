@@ -13,6 +13,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabase';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CachedImage } from '../components/ui/CachedImage';
 
 interface GuideContent {
   title: string;
@@ -84,10 +85,11 @@ export default function GuideScreen() {
       {/* Hero Section with Phone Mockup */}
       <View style={styles.heroSection}>
         {content?.hero_image_url ? (
-          <Image
-            source={{ uri: content.hero_image_url }}
+          <CachedImage
+            uri={content.hero_image_url}
             style={styles.heroImage}
-            resizeMode="contain"
+            contentFit="contain"
+            fadeIn={false}
           />
         ) : (
           <View style={styles.phoneMockup}>

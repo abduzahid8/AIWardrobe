@@ -1,9 +1,7 @@
+// @ts-ignore - jsonwebtoken types not installed for this script
 import jwt from 'jsonwebtoken';
 import fs from 'fs';
 import path from 'path';
-
-// @ts-ignore - jsonwebtoken types not installed for this script
-
 // CONFIGURATION - UPDATE THESE VALUES
 const KEY_ID = 'FR4VBVZ9PT'; // Your Key ID from Apple Developer Portal
 const TEAM_ID = '4CBV6A6D4G'; // Your Team ID from Apple Developer Portal

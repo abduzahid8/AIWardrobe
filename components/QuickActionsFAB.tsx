@@ -184,7 +184,7 @@ export const QuickActionsFAB: React.FC = () => {
                     onPress={toggleMenu}
                     activeOpacity={1}
                 >
-                    <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
+                    <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} pointerEvents="none" />
                 </TouchableOpacity>
             </Animated.View>
 

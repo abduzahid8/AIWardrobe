@@ -44,6 +44,9 @@ export const Config = {
     apiKey: str(process.env.EXPO_PUBLIC_WEATHER_API_KEY),
     baseUrl: 'https://api.openweathermap.org/data/2.5',
   },
+  admin: {
+    email: str(process.env.EXPO_PUBLIC_ADMIN_EMAIL, 'info@aiwardrobe.club'),
+  },
 } as const;
 
 /**

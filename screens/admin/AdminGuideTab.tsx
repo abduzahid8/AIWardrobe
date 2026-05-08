@@ -25,6 +25,12 @@ import * as FileSystem from 'expo-file-system/legacy';
 
 const logger = createLogger('AdminGuideTab');
 
+const addCacheBust = (url?: string | null) => {
+  if (!url) return url;
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}v=${Date.now()}`;
+};
+
 interface GuideContent {
   id: string;
   title: string;
@@ -124,7 +130,7 @@ export const AdminGuideTab = () => {
       }
 
       const { data } = supabase.storage.from('guide-images').getPublicUrl(filePath);
-      return data.publicUrl;
+      return addCacheBust(data.publicUrl);
     } catch (err: any) {
       logger.error('Upload exception', err);
       Alert.alert(t('admin.guide.uploadError'), err.message || 'Exception occurred');

@@ -36,6 +36,9 @@ async function invokeProcessingOperation(
   fallbackSteps: string[] = ['error_fallback']
 ): Promise<ProcessingResult> {
   const startTime = Date.now();
+  const operationName = operation === 'studio_photo' ? 'AI Studio Photo' : operation;
+
+  console.log(`[ExternalAI] Starting ${operationName}...`);
 
   try {
     const { data, error } = await supabase.functions.invoke('ai-process', {
@@ -46,16 +49,32 @@ async function invokeProcessingOperation(
     });
 
     if (error) {
-      console.error('[ExternalAI] Edge Function error:', error);
+      console.error(`[ExternalAI] Edge Function error for ${operationName}:`, error);
       throw error;
     }
+
+    console.log(`[ExternalAI] ${operationName} response:`, {
+      success: data?.success,
+      hasCutoutUrl: !!data?.cutoutUrl,
+      hasClassification: !!data?.classification,
+      hasEnhancedUrl: !!data?.enhancedUrl,
+      error: data?.error,
+      localCutoutError: data?.localCutoutError,
+      nvidiaError: data?._nvidiaError,
+    });
 
     if (!data?.success) {
       throw new Error(data?.error || 'AI processing failed');
     }
 
     const processingTimeMs = Date.now() - startTime;
+    
+    // Ensure we always have a valid imageUrl - fallback to original if needed
     const finalImage = data.cutoutUrl || buildImageDataUrl(imageBase64);
+    
+    if (!data.cutoutUrl) {
+      console.warn(`[ExternalAI] ${operationName} returned no cutoutUrl, using original image`);
+    }
 
     return {
       success: true,
@@ -68,8 +87,8 @@ async function invokeProcessingOperation(
       steps,
       processingTimeMs,
     };
-  } catch (error) {
-    console.error('[ExternalAI] Processing failed:', error);
+  } catch (error: any) {
+    console.error(`[ExternalAI] ${operationName} processing failed:`, error?.message || error);
 
     return {
       success: false,

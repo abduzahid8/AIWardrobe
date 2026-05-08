@@ -186,9 +186,10 @@ function computeTrialState(
         if (isPending) {
             return { isTrialActive: false, isTrialExpired: false, isTrialPending: true, trialDaysRemaining: 0 };
         }
-        // No trial date after full resolution → NOT expired, but needs initialization.
-        // We set isTrialPending: true here as well until initializeTrial is called.
-        return { isTrialActive: false, isTrialExpired: false, isTrialPending: true, trialDaysRemaining: 0 };
+        // No trial date after full resolution → user hasn't redeemed a promo code yet.
+        // Surface this as "needs promo code" (not pending, not expired) so the
+        // PromoCodeScreen gate can fire in RootNavigator.
+        return { isTrialActive: false, isTrialExpired: false, isTrialPending: false, trialDaysRemaining: 0 };
     }
 
     const trialEnd = new Date(trialStartedAt);
@@ -217,9 +218,13 @@ function deriveState(
     // During an active trial, feature checks use Pro (premium) limits
     const effectiveTier: SubscriptionTier = trial.isTrialActive ? 'premium' : tier;
 
-    // NOTE: Promo code gate is DISABLED for App Store submission.
-    // Re-enable after approval: tier === 'free' && !trial.isTrialActive && !trial.isTrialExpired && !trial.isTrialPending && !trialStartedAt;
-    const needsPromoCode = false;
+    // Free-tier user with no trial date yet → must redeem a promo code.
+    const needsPromoCode =
+        tier === 'free' &&
+        !trial.isTrialActive &&
+        !trial.isTrialExpired &&
+        !trial.isTrialPending &&
+        !trialStartedAt;
 
     return {
         isPremium: tier === 'premium' || trial.isTrialActive,

@@ -52,11 +52,11 @@ describe('dailyUsageStore', () => {
     expect(useDailyUsageStore.getState().canUse('aiOutfits')).toBe(false);
   });
 
-  it('Pro tier: gets 100 per day', async () => {
+  it('Pro tier: unlimited (-1)', async () => {
     const { useSubscriptionStore, useDailyUsageStore } = loadStores();
     await useSubscriptionStore.getState().setSubscription('premium');
     await useDailyUsageStore.getState().hydrate();
-    expect(useDailyUsageStore.getState().getRemaining('aiOutfits')).toBe(100);
+    expect(useDailyUsageStore.getState().getRemaining('aiOutfits')).toBe(-1);
   });
 
   it('Max tier: unlimited (-1)', async () => {

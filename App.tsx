@@ -17,6 +17,7 @@ import crashReporting from "./src/services/crashReporting";
 import { bootstrapStores } from "./store/bootstrap";
 import { validateConfig } from "./src/config/env";
 import useAuthStore from "./store/auth";
+import useTrackingPermission from "./src/hooks/useTrackingPermission";
 
 // Deep linking configuration
 const linking = {
@@ -71,6 +72,9 @@ const MissingConfigScreen = ({ missing }: { missing: string[] }) => (
 const AppContent = () => {
   const { colors } = useTheme();
   const missingVars = validateConfig();
+
+  // Initialize App Tracking Transparency
+  useTrackingPermission();
 
   // Hide the splash once the first frame renders. We hide it even on the
   // MissingConfigScreen path so the user can see the actionable error

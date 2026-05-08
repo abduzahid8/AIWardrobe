@@ -46,6 +46,7 @@ import useAuthStore from '../store/auth';
 import useWardrobeStore from '../store/wardrobeStore';
 import useTryOnLooksStore from '../store/tryOnLooksStore';
 import { useShopCatalog } from '../hooks/useShopCatalog';
+import { CachedImage } from '../components/ui/CachedImage';
 import { useTheme } from '../src/theme/ThemeContext';
 import { useSubscriptionGate } from '../src/hooks/useSubscriptionGate';
 import { useAdminGuard } from '../hooks/useAdminGuard';
@@ -54,6 +55,7 @@ import useLanguageStore, { LANGUAGE_NAMES } from '../store/languageStore';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useTranslation } from 'react-i18next';
 import { iapService } from '../src/services/iapService';
+import { analyticsService } from '../src/services/analyticsService';
 
 const { width, height } = Dimensions.get('window');
 const HERO_HEIGHT = Math.min(height * 0.43, 390);
@@ -155,6 +157,7 @@ const ProfileScreen = () => {
   const [activeTab, setActiveTab] = useState<'looks' | 'trips'>('looks');
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [analyticsEnabled, setAnalyticsEnabled] = useState(true);
   const [editName, setEditName] = useState('');
   const [editAvatar, setEditAvatar] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -170,6 +173,12 @@ const ProfileScreen = () => {
   const triggerLightHaptic = () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      setAnalyticsEnabled(analyticsService.getEnabled());
+    }, []),
+  );
 
   const userName = user?.username || 'Your Name';
   const userAvatar: string | undefined =
@@ -881,7 +890,7 @@ const ProfileScreen = () => {
                   style={styles.avatarRing}
                 >
                   {userAvatar ? (
-                    <Image source={{ uri: userAvatar }} style={styles.avatarImage} />
+                    <CachedImage uri={userAvatar} style={styles.avatarImage} contentFit="cover" fadeIn={false} />
                   ) : (
                     <View style={[styles.avatarImage, styles.avatarPlaceholder]}>
                       <Ionicons name="person" size={46} color={D.white} />
@@ -978,6 +987,49 @@ const ProfileScreen = () => {
             </View>
           </GlassPanel>
         </Animated.View>
+
+        {/* ── Subscription upgrade card (free users only) ── */}
+        {!isPro && (
+          <Animated.View entering={FadeInDown.delay(58).duration(350)} style={styles.upgradeCardWrap}>
+            <TouchableOpacity
+              activeOpacity={0.88}
+              onPress={() => {
+                triggerLightHaptic();
+                navigation.navigate('Paywall');
+              }}
+            >
+              <LinearGradient
+                colors={[D.accentStart, D.accentEnd]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.upgradeCard}
+              >
+                {/* Decorative orb */}
+                <View style={styles.upgradeOrb} />
+
+                <View style={styles.upgradeLeft}>
+                  <View style={styles.upgradeBadge}>
+                    <Ionicons name="diamond" size={11} color={D.accentEnd} />
+                    <Text style={styles.upgradeBadgeText}>PRO</Text>
+                  </View>
+                  <Text style={styles.upgradeTitle}>{t('profile.goPro')}</Text>
+                  <Text style={styles.upgradeSubtitle}>{t('profile.goProSubtitle')}</Text>
+                </View>
+
+                <View style={styles.upgradeRight}>
+                  <View style={styles.upgradePriceWrap}>
+                    <Text style={styles.upgradePriceFrom}>from</Text>
+                    <Text style={styles.upgradePrice}>$9.99</Text>
+                    <Text style={styles.upgradePricePer}>/mo</Text>
+                  </View>
+                  <View style={styles.upgradeArrow}>
+                    <Ionicons name="arrow-forward" size={16} color={D.white} />
+                  </View>
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
 
         <Animated.View entering={FadeInDown.delay(75).duration(350)}>
           <GlassPanel style={styles.segmentedCard} radius={28}>
@@ -1076,13 +1128,30 @@ const ProfileScreen = () => {
               trailing={planLabel}
               onPress={() => navigation.navigate('Paywall')}
             />
+            <View style={styles.menuSeparator} />
+            {/* Apple Offer Code redemption — compliant with Guideline 3.1.1 */}
+            <MenuRow
+              icon="ticket-outline"
+              label={t('profile.redeemOfferCode', 'Redeem Offer Code')}
+              onPress={() => iapService.presentCodeRedemptionSheet()}
+            />
             {effectiveTier !== 'free' && (
-              <MenuRow
-                icon="settings-outline"
-                label={t('paywall.manageSubscription')}
-                onPress={() => iapService.manageSubscriptions()}
-              />
+              <>
+                <View style={styles.menuSeparator} />
+                <MenuRow
+                  icon="settings-outline"
+                  label={t('paywall.manageSubscription')}
+                  onPress={() => iapService.manageSubscriptions()}
+                />
+              </>
             )}
+            <View style={styles.menuSeparator} />
+            {/* Terms of Use link — required by Guideline 3.1.2(c) */}
+            <MenuRow
+              icon="document-text-outline"
+              label={t('paywall.termsOfUse', 'Terms of Use')}
+              onPress={() => navigation.navigate('TermsOfService')}
+            />
           </GlassPanel>
         </Animated.View>
 
@@ -1103,6 +1172,17 @@ const ProfileScreen = () => {
               icon="notifications-outline"
               label={t('profile.notifications')}
               onPress={() => Alert.alert(t('profile.comingSoon'), t('profile.notificationSettingsUnavailable'))}
+            />
+            <View style={styles.menuSeparator} />
+            <MenuRow
+              icon="analytics-outline"
+              label={t('profile.analyticsSharing', 'Analytics sharing')}
+              trailing={analyticsEnabled ? t('profile.analyticsOn', 'On') : t('profile.analyticsOff', 'Off')}
+              onPress={async () => {
+                const next = !analyticsEnabled;
+                setAnalyticsEnabled(next);
+                await analyticsService.setEnabled(next);
+              }}
             />
             <View style={styles.menuSeparator} />
             <MenuRow
@@ -1181,9 +1261,11 @@ const ProfileScreen = () => {
                   style={styles.sheetAvatarHalo}
                 >
                   {editAvatar || userAvatar ? (
-                    <Image
-                      source={{ uri: (editAvatar || userAvatar) as string }}
+                    <CachedImage
+                      uri={(editAvatar || userAvatar) as string}
                       style={styles.sheetAvatar}
+                      contentFit="cover"
+                      fadeIn={false}
                     />
                   ) : (
                     <View style={[styles.sheetAvatar, styles.sheetAvatarPlaceholder]}>
@@ -1329,8 +1411,12 @@ const ProfileScreen = () => {
                       label={t('profile.tryAgain')}
                       icon="sparkles-outline"
                       onPress={() => {
-                        navigation.navigate('AITryOn');
-                        setPreviewLook(null);
+                        if (isAdminUser) {
+                          navigation.navigate('AITryOn');
+                          setPreviewLook(null);
+                        } else {
+                          Alert.alert(t('common.comingSoon'));
+                        }
                       }}
                       style={styles.previewActionButton}
                     />
@@ -1669,6 +1755,99 @@ const createStyles = (D: DTokens) =>
       marginTop: 18,
       marginHorizontal: 20,
     },
+    // ── Upgrade card (free users) ──
+    upgradeCardWrap: {
+      marginTop: 14,
+      marginHorizontal: 20,
+      borderRadius: 24,
+      shadowColor: D.accentEnd,
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.38,
+      shadowRadius: 20,
+      elevation: 12,
+    },
+    upgradeCard: {
+      borderRadius: 24,
+      paddingVertical: 20,
+      paddingHorizontal: 22,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      overflow: 'hidden',
+    },
+    upgradeOrb: {
+      position: 'absolute',
+      width: 160,
+      height: 160,
+      borderRadius: 80,
+      backgroundColor: 'rgba(255,255,255,0.08)',
+      top: -50,
+      right: -30,
+    },
+    upgradeLeft: {
+      flex: 1,
+      gap: 4,
+    },
+    upgradeBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      backgroundColor: 'rgba(255,255,255,0.92)',
+      alignSelf: 'flex-start',
+      paddingHorizontal: 9,
+      paddingVertical: 3,
+      borderRadius: 8,
+      marginBottom: 4,
+    },
+    upgradeBadgeText: {
+      fontSize: 10,
+      fontWeight: '800',
+      color: D.accentEnd,
+      letterSpacing: 0.8,
+    },
+    upgradeTitle: {
+      fontSize: 18,
+      fontWeight: '800',
+      color: '#FFFFFF',
+      letterSpacing: -0.4,
+    },
+    upgradeSubtitle: {
+      fontSize: 12,
+      color: 'rgba(255,255,255,0.78)',
+      fontWeight: '500',
+    },
+    upgradeRight: {
+      alignItems: 'flex-end',
+      gap: 10,
+    },
+    upgradePriceWrap: {
+      alignItems: 'flex-end',
+    },
+    upgradePriceFrom: {
+      fontSize: 10,
+      color: 'rgba(255,255,255,0.72)',
+      fontWeight: '500',
+    },
+    upgradePrice: {
+      fontSize: 26,
+      fontWeight: '800',
+      color: '#FFFFFF',
+      letterSpacing: -0.5,
+    },
+    upgradePricePer: {
+      fontSize: 11,
+      color: 'rgba(255,255,255,0.72)',
+      fontWeight: '500',
+    },
+    upgradeArrow: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      backgroundColor: 'rgba(255,255,255,0.18)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
     statsRow: {
       flexDirection: 'row',
       alignItems: 'stretch',

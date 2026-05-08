@@ -1,7 +1,6 @@
 import React from 'react';
 import {
     View,
-    Image,
     Text,
     StyleSheet,
     Dimensions,
@@ -13,6 +12,7 @@ import Animated, {
     SharedValue,
 } from 'react-native-reanimated';
 import { ClosetlyTheme } from '../../constants/ClosetlyTheme';
+import { CachedImage } from './CachedImage';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -115,10 +115,11 @@ const ClothingCard: React.FC<ClothingCardProps> = ({
                 <View style={styles.imageContainer}>
                     <Animated.View style={[styles.imageWrapper, parallaxStyle]}>
                         {imageUrl ? (
-                            <Image
-                                source={{ uri: imageUrl }}
+                            <CachedImage
+                                uri={imageUrl}
                                 style={styles.image}
-                                resizeMode="cover"
+                                contentFit="cover"
+                                fadeIn={false}
                             />
                         ) : (
                             <View style={styles.placeholderImage}>

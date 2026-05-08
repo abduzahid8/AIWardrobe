@@ -6,7 +6,6 @@ import {
     TouchableOpacity,
     ScrollView,
     ActivityIndicator,
-    Image,
     Dimensions,
     Platform,
     KeyboardAvoidingView,
@@ -15,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
+import { CachedImage } from '../components/ui/CachedImage';
 import Animated, {
     FadeIn,
     FadeInUp,
@@ -166,14 +166,15 @@ const OutfitItemCard = ({ item, index }: { item: OutfitItem; index: number }) =>
                     borderColor: AppColors.border,
                 }, animatedStyle]}>
                     {/* Item Image */}
-                    <Image
-                        source={{ uri: item.imageUrl }}
+                    <CachedImage
+                        uri={item.imageUrl}
                         style={{
                             width: '100%',
                             height: ITEM_SIZE,
                             backgroundColor: '#F8F8F8',
                         }}
-                        resizeMode="cover"
+                        contentFit="cover"
+                        fadeIn={false}
                     />
 
                     {/* Item Info */}

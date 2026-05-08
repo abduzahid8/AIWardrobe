@@ -5,7 +5,6 @@ import {
     TextInput,
     TouchableOpacity,
     ScrollView,
-    Image,
     StyleSheet,
     Dimensions,
     Alert,
@@ -16,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
+import { CachedImage } from '../components/ui/CachedImage';
 import Animated, {
     FadeIn,
     FadeInUp,
@@ -102,10 +102,11 @@ const TrackedItemCard = ({
             >
                 {/* Image */}
                 <View style={styles.itemImageContainer}>
-                    <Image
-                        source={{ uri: item.imageUrl }}
+                    <CachedImage
+                        uri={item.imageUrl}
                         style={styles.itemImage}
-                        resizeMode="cover"
+                        contentFit="cover"
+                        fadeIn={false}
                     />
                     {item.isOnSale && (
                         <View style={styles.saleBadge}>

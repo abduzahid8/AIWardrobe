@@ -110,7 +110,8 @@ async function onAuthSuccess(
     await useSubscriptionStore.getState().verifySubscriptionFromServer().catch(() => {});
 
     // Note: trial is NO longer auto-started on auth.
-    // Users must enter a promo code (via PromoCodeScreen) to activate their trial.
+    // The promo-code trial gate is currently disabled for App Store review
+    // (see subscriptionStore.needsPromoCode). Users subscribe via StoreKit/RevenueCat.
 
     log.info('Authentication succeeded', { method, userId: session.user.id });
 }

@@ -652,4 +652,166 @@ export const LiquidGlass2026Theme = {
     isAndroid: Platform.OS === 'android',
 };
 
+// ============================================
+// RESPONSIVE BREAKPOINTS & iPAD SUPPORT
+// ============================================
+
+/**
+ * Responsive breakpoints for different device sizes
+ * Based on Apple device dimensions and common design systems
+ */
+export const responsiveBreakpoints = {
+    // iPhone sizes
+    iphoneSE: 320,
+    iphone14: 390,
+    iphone14ProMax: 430,
+
+    // iPad sizes
+    ipadMini: 744,
+    ipadAir: 820,
+    ipadPro11: 834,
+    ipadPro12: 1024,
+
+    // Standard breakpoints
+    xs: 320,
+    sm: 640,
+    md: 768,
+    lg: 1024,
+    xl: 1280,
+} as const;
+
+/**
+ * iPad layout configuration
+ * Provides recommended layouts for different iPad sizes and orientations
+ */
+export const iPadLayout = {
+    // Split view configurations
+    splitView: {
+        // Master-detail split ratio (similar to Mail app)
+        masterRatio: 0.33,
+        detailRatio: 0.67,
+        minMasterWidth: 320,
+        maxMasterWidth: 400,
+    },
+
+    // Modal presentations
+    modal: {
+        // Sheet styles for iPad
+        sheetWidth: 580,
+        sheetCornerRadius: 20,
+        maxSheetHeight: 0.8, // 80% of screen height
+    },
+
+    // Grid layouts for different iPad sizes
+    gridColumns: {
+        mini: { portrait: 2, landscape: 3 },
+        air: { portrait: 3, landscape: 4 },
+        pro11: { portrait: 3, landscape: 4 },
+        pro12: { portrait: 4, landscape: 5 },
+    },
+
+    // Content insets (padding for readable content)
+    contentInsets: {
+        narrow: 20,
+        regular: 40,
+        wide: 80,
+    },
+
+    // Get appropriate insets based on screen width
+    getInsets: (width: number): number => {
+        if (width < responsiveBreakpoints.ipadMini) return 20;
+        if (width < responsiveBreakpoints.ipadPro11) return 40;
+        return 80;
+    },
+
+    // Get grid columns based on device and orientation
+    getGridColumns: (width: number, height: number): number => {
+        const isLandscape = width > height;
+        const minDimension = Math.min(width, height);
+
+        if (minDimension < responsiveBreakpoints.ipadMini) {
+            return isLandscape ? 3 : 2; // iPhone landscape/portrait
+        }
+        if (minDimension < responsiveBreakpoints.ipadAir) {
+            return isLandscape ? 3 : 2; // iPad mini
+        }
+        if (minDimension < responsiveBreakpoints.ipadPro11) {
+            return isLandscape ? 4 : 3; // iPad Air
+        }
+        if (minDimension < responsiveBreakpoints.ipadPro12) {
+            return isLandscape ? 4 : 3; // iPad Pro 11"
+        }
+        return isLandscape ? 5 : 4; // iPad Pro 12.9"
+    },
+};
+
+/**
+ * Device type detection helper
+ * Returns true if the screen dimensions indicate a tablet
+ */
+export const isTabletDimensions = (width: number, height: number): boolean => {
+    const minDimension = Math.min(width, height);
+    return minDimension >= responsiveBreakpoints.ipadMini;
+};
+
+/**
+ * iPad multitasking detection
+ * Returns true if iPad is in split view or slide over
+ */
+export const isIpadMultitasking = (width: number, height: number): boolean => {
+    const isPad = Platform.OS === 'ios' && Math.min(width, height) >= responsiveBreakpoints.ipadMini;
+    return isPad && width < responsiveBreakpoints.ipadMini;
+};
+
+/**
+ * Size class approximation (similar to iOS size classes)
+ */
+export type SizeClass = 'compact' | 'regular';
+
+export const getSizeClass = (dimension: number): SizeClass => {
+    return dimension >= responsiveBreakpoints.md ? 'regular' : 'compact';
+};
+
+/**
+ * Responsive value selector
+ * Usage: const columns = selectResponsiveValue(width, { phone: 2, tablet: 3, desktop: 4 })
+ */
+export const selectResponsiveValue = <T,>(
+    width: number,
+    values: { phone?: T; tablet?: T; desktop?: T; default: T }
+): T => {
+    if (width >= responsiveBreakpoints.lg && values.desktop !== undefined) {
+        return values.desktop;
+    }
+    if (width >= responsiveBreakpoints.ipadMini && values.tablet !== undefined) {
+        return values.tablet;
+    }
+    if (values.phone !== undefined) {
+        return values.phone;
+    }
+    return values.default;
+};
+
+/**
+ * Calculate optimal font scale for larger screens
+ * Prevents text from becoming too large on iPad
+ */
+export const calculateFontScale = (width: number): number => {
+    if (width < responsiveBreakpoints.ipadMini) return 1;
+    if (width < responsiveBreakpoints.ipadPro11) return 1.1;
+    if (width < responsiveBreakpoints.ipadPro12) return 1.15;
+    return 1.2;
+};
+
+/**
+ * iPad-optimized touch targets
+ * Apple recommends 44pt minimum, but iPad can have larger comfortable areas
+ */
+export const touchTargets = {
+    minimum: 44,
+    comfortable: 50,
+    ipadComfortable: 56,
+    getOptimal: (isTablet: boolean): number => isTablet ? 56 : 50,
+};
+
 export default LiquidGlass2026Theme;

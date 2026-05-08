@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIWardrobe Support</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+        .logo p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+        h2 {
+            color: #444;
+            margin: 30px 0 15px 0;
+            font-size: 1.5rem;
+        }
+        .support-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+        }
+        .support-card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+        .contact-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 30px 0;
+            text-align: center;
+        }
+        .contact-box h3 {
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+        .email-link {
+            display: inline-block;
+            color: white;
+            font-size: 1.2rem;
+            text-decoration: none;
+            padding: 12px 30px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 8px;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+        .email-link:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .faq-item {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .faq-item h4 {
+            color: #444;
+            margin-bottom: 10px;
+        }
+        .faq-item p {
+            color: #666;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid #eee;
+            color: #888;
+        }
+        .links {
+            margin-top: 20px;
+        }
+        .links a {
+            color: #667eea;
+            text-decoration: none;
+            margin: 0 15px;
+        }
+        .links a:hover {
+            text-decoration: underline;
+        }
+        @media (max-width: 600px) {
+            .container {
+                padding: 25px;
+            }
+            .logo h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1>AIWardrobe</h1>
+            <p>Your AI-Powered Style Assistant</p>
+        </div>
+
+        <div class="contact-box">
+            <h3>Need Help?</h3>
+            <p>Our support team is here to assist you with any questions or issues.</p>
+            <a href="mailto:support@aiwardrobe.club" class="email-link">support@aiwardrobe.club</a>
+        </div>
+
+        <h2>Support Resources</h2>
+
+        <div class="support-card">
+            <h3>Subscription & Billing</h3>
+            <p>For questions about your subscription, billing, or to manage/cancel your subscription, you can:</p>
+            <ul style="margin-top: 10px; padding-left: 20px;">
+                <li>Use the "Manage Subscription" button in the app's Profile screen</li>
+                <li>Go to iOS Settings → Apple ID → Subscriptions</li>
+                <li>Contact us at support@aiwardrobe.club</li>
+            </ul>
+        </div>
+
+        <div class="support-card">
+            <h3>Technical Issues</h3>
+            <p>Experiencing app crashes, slow performance, or other technical problems? Please include:</p>
+            <ul style="margin-top: 10px; padding-left: 20px;">
+                <li>Your device model and iOS version</li>
+                <li>Description of the issue</li>
+                <li>Steps to reproduce (if applicable)</li>
+            </ul>
+        </div>
+
+        <div class="support-card">
+            <h3>Feature Requests & Feedback</h3>
+            <p>We love hearing from our users! Send your suggestions and feedback to support@aiwardrobe.club</p>
+        </div>
+
+        <h2>Frequently Asked Questions</h2>
+
+        <div class="faq-item">
+            <h4>How do I cancel my subscription?</h4>
+            <p>You can cancel anytime through your Apple ID settings: Go to iOS Settings → [Your Name] → Subscriptions → AIWardrobe → Cancel Subscription.</p>
+        </div>
+
+        <div class="faq-item">
+            <h4>How do I restore my purchase?</h4>
+            <p>Open the AIWardrobe app, go to the upgrade screen, and tap "Restore Purchases." Make sure you're signed in with the same Apple ID used for the original purchase.</p>
+        </div>
+
+        <div class="faq-item">
+            <h4>Is my data secure?</h4>
+            <p>Yes! We use industry-standard encryption and your photos are processed securely. See our <a href="/privacy.html">Privacy Policy</a> for more details.</p>
+        </div>
+
+        <div class="faq-item">
+            <h4>What features are included in Pro/Max?</h4>
+            <p>Pro and Max subscriptions unlock unlimited AI outfit suggestions, virtual try-on, AI stylist chat, wardrobe analytics, trip planner, and more. See the app for full details.</p>
+        </div>
+
+        <div class="footer">
+            <p>© 2026 AIWardrobe. All rights reserved.</p>
+            <div class="links">
+                <a href="/privacy.html">Privacy Policy</a>
+                <a href="/terms.html">Terms of Service</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

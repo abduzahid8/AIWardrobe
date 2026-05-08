@@ -2,15 +2,22 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import useAuthStore from '../store/auth';
 import { createLogger } from '../src/utils/logger';
+import Config from '../src/config/env';
 
 const logger = createLogger('useAdminGuard');
 
-const ADMIN_EMAIL = 'info@aiwardrobe.club';
+const ADMIN_EMAIL = Config.admin?.email || 'info@aiwardrobe.club';
 
 export interface AdminGuardResult {
     isAdmin: boolean;
     loading: boolean;
     checkAdmin: () => Promise<boolean>;
+}
+
+// Admin configuration type
+interface AdminConfig {
+    email: string;
+    allowedEmails?: string[];
 }
 
 export function useAdminGuard(): AdminGuardResult {

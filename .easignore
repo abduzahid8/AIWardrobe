@@ -48,6 +48,41 @@ tests/
 uniqlo_test.html
 appleconnect_settings.png
 
+# Research & ML training repos — never shipped to the app bundle
+CatVTON/
+detectron2/
+weights/
+hf_venv/
+.venv-hf-test/
+catvton-service/
+alicevision-service/
+scratch/
+
+# One-off probes left at repo root
+appleuploadissueneedfix/
+test_*.js
+test_*.ts
+test-check.js
+test-check.ts
+test_app_flow.js
+test_edge_function.js
+test_fallback.js
+test_final_step.js
+test_flux_*.js
+test_full_tryon.js
+test_nvidia*.js
+test_replicate_*.js
+test_resume.js
+flux_step*.jpg
+tryon_step*.jpg
+tryon_step_*.png
+catvton_result.png
+tryon_result.png
+groq_prompt_enhancements.json
+check_components_without_i18n.js
+check_translation_keys.js
+find_hardcoded_text.js
+
 # Test coverage
 coverage/
 

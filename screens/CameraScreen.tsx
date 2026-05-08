@@ -32,7 +32,7 @@ const CameraScreen = () => {
     const cameraRef = useRef<CameraView>(null);
 
     const [cameraPermission, requestCameraPermission] = useCameraPermissions();
-    const [, requestMicPermission] = useMicrophonePermissions();
+    const [micPermission, requestMicPermission] = useMicrophonePermissions();
     const [mediaPermission, requestMediaPermission] = MediaLibrary.usePermissions();
 
     const [facing, setFacing] = useState<CameraType>('back');
@@ -45,7 +45,6 @@ const CameraScreen = () => {
     // Request permissions on mount
     useEffect(() => {
         requestCameraPermission();
-        requestMicPermission();
         requestMediaPermission();
     }, []);
 
@@ -90,6 +89,16 @@ const CameraScreen = () => {
         recordScale.value = withSpring(1.2);
 
         try {
+            // Only request microphone permission when recording video.
+            // This avoids prompting users unnecessarily when they only take photos.
+            if (!micPermission?.granted) {
+                const perm = await requestMicPermission();
+                if (!perm?.granted) {
+                    Alert.alert(t('common.error'), t('camera.permissionNeeded'));
+                    return;
+                }
+            }
+
             const video = await cameraRef.current.recordAsync({
                 maxDuration: 60,
             });

@@ -4,7 +4,6 @@
 import React from 'react';
 import {
     View,
-    Image,
     Text,
     StyleSheet,
     Pressable,
@@ -24,6 +23,7 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../src/hooks/useTheme';
 import { springFastConfig } from '../../src/theme/animations';
+import { CachedImage } from './CachedImage';
 
 const { width } = Dimensions.get('window');
 
@@ -147,10 +147,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                         { borderRadius: borderRadius.m, backgroundColor: colors.surfaceHighlight },
                     ]}
                 >
-                    <Image
-                        source={{ uri: imageUri }}
+                    <CachedImage
+                        uri={imageUri}
                         style={styles.image}
-                        resizeMode="cover"
+                        contentFit="cover"
+                        fadeIn={false}
                     />
 
                     {/* Favorite Button */}

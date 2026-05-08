@@ -432,6 +432,9 @@
     "accountHeading": "ACCOUNT",
     "membershipHeading": "MEMBERSHIP",
     "preferencesHeading": "PREFERENCES",
+    "analyticsSharing": "Analytics sharing",
+    "analyticsOn": "On",
+    "analyticsOff": "Off",
     "tripFlowStep1": "1. Pick your travel day",
     "tripFlowStep1Desc": "Select the trip date you want to plan for inside the outfit calendar.",
     "tripFlowStep2": "2. Create outfit with AI",
@@ -460,6 +463,9 @@
   },
   "aiTryOn": {
     "title": "Try On",
+    "premiumFeature": "Premium Feature",
+    "premiumFeatureBody": "Virtual Try-On is available exclusively for Pro and Max subscribers. Upgrade to start trying on clothes!",
+    "upgradeToAccess": "Upgrade to Access",
     "featureName": "AI Virtual Try-On",
     "tagline": "See any outfit on a realistic model of yourself — before you wear it.",
     "bullet1": "Unlimited photorealistic try-ons",
@@ -574,8 +580,10 @@
     "getPro": "Get Pro",
     "getMax": "Get Max",
     "redeemOfferCode": "Redeem Offer Code",
+    "freeTrial": "Free {{period}} trial",
     "privacyPolicy": "Privacy Policy",
     "termsOfUse": "Terms of Use",
+    "termsText": "Payment will be charged to your Apple ID account at the confirmation of purchase. Subscription automatically renews unless it is cancelled at least 24 hours before the end of the current period. Your account will be charged for renewal within 24 hours prior to the end of the current period. You can manage and cancel your subscriptions by going to your App Store account settings after purchase.",
     "purchaseFailed": "Purchase Failed",
     "somethingWrongPurchase": "Something went wrong with the purchase. Please try again.",
     "restoreFailed": "Restore Failed",
@@ -937,7 +945,9 @@
     "catalogRefreshFailed": "Live catalog refresh failed. Showing the latest synced results.",
     "removeFromSaved": "Remove from saved",
     "saveItem": "Save item",
-    "capsule": "capsule"
+    "capsule": "capsule",
+    "buy": "Buy",
+    "buyNow": "Buy Now"
   },
   "camera": {
     "permissionNeeded": "Camera permission needed",
@@ -1128,7 +1138,39 @@
   "privacyPolicy": {
     "title": "Privacy Policy",
     "lastUpdated": "Last updated: March 2026",
-    "intro": "AIWardrobe (\"we\", \"our\", \"us\") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our mobile application."
+    "intro": "AIWardrobe (\"we\", \"our\", \"us\") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our mobile application.",
+    "informationWeCollect": {
+      "title": "1. Information we collect",
+      "body": "We collect only the information needed to provide core features.\n\n• Account information: email, username, and authentication identifiers when you sign up or sign in.\n• Wardrobe content you provide: photos/videos you choose to upload or capture, and item metadata you add or edit (e.g., category, color, brand, notes).\n• AI feature inputs: images and text you submit for wardrobe scan, outfit generation, or virtual try-on.\n• Approximate location (optional): when you grant location permission, we use your current location to fetch local weather for outfit suggestions.\n• Purchase/subscription data: subscription status and purchase events (processed by Apple and our subscription provider).\n• Diagnostics (optional): crash logs and performance data to improve reliability."
+    },
+    "howWeUse": {
+      "title": "2. How we use information",
+      "body": "We use your information to:\n\n• Provide wardrobe scanning, outfit recommendations, and virtual try-on.\n• Sync your wardrobe across devices when you are signed in.\n• Personalize suggestions based on the items you add and the context you provide (like weather).\n• Provide customer support and respond to requests.\n• Prevent abuse and secure our service.\n• Improve app performance, stability, and feature quality.\n\nIf you enable analytics sharing, we also use anonymized usage events to understand which features work well and to fix issues."
+    },
+    "dataStorage": {
+      "title": "3. Data storage and retention",
+      "body": "Your account and wardrobe data may be stored in our cloud database and storage.\n\nWe keep data only as long as needed to provide the service or as required by law. You can request deletion by deleting your account in the app. After account deletion, we delete associated wardrobe items and uploaded media, subject to limited legal/operational retention (e.g., fraud prevention, backups for a short period)."
+    },
+    "thirdParty": {
+      "title": "4. Third-party services and AI processing",
+      "body": "To deliver AI features, we may process your inputs (such as selected photos) through our servers and trusted third-party providers.\n\nDepending on the feature, this can include:\n• Cloud infrastructure and database (for authentication, storage, and syncing).\n• AI providers (for image understanding, background removal, generation, and try-on rendering).\n• Weather providers (when you enable location-based weather).\n• Crash/diagnostic providers (if enabled).\n• Affiliate / shopping links: when you tap a product link, we may record an event such as \"product clicked\" for analytics and attribution.\n\nWe do not sell your personal information. We only share data with service providers to operate and improve the app, and we require them to protect your data."
+    },
+    "yourRights": {
+      "title": "5. Your choices and rights",
+      "body": "You can:\n\n• Use many features without sharing optional permissions.\n• Control permissions in iOS Settings (Camera, Photos, Location, Microphone).\n• Turn analytics sharing on/off in the app settings.\n• Access and update your profile details in the app.\n• Delete your account in the app to request deletion of your data.\n\nIf you need help with access or deletion requests, contact us using the details below."
+    },
+    "childrensPrivacy": {
+      "title": "6. Children’s privacy",
+      "body": "AIWardrobe is not intended for children under 13. If you believe a child has provided personal information, contact us so we can take appropriate action."
+    },
+    "changes": {
+      "title": "7. Changes to this Privacy Policy",
+      "body": "We may update this policy from time to time. We will update the “Last updated” date and may provide additional notice in the app when changes are significant."
+    },
+    "contact": {
+      "title": "8. Contact",
+      "body": "If you have questions about privacy or data deletion, contact us at: support@aiwardrobe.club"
+    }
   },
   "review": {
     "error": "Error",
@@ -1142,7 +1184,51 @@
   "termsOfService": {
     "title": "Terms of Service",
     "lastUpdated": "Last updated: March 2026",
-    "intro": "Please read these Terms of Service carefully before using AIWardrobe."
+    "intro": "Please read these Terms of Service carefully before using AIWardrobe.",
+    "acceptance": {
+      "title": "1. Acceptance of terms",
+      "body": "By using AIWardrobe, you agree to these Terms. If you do not agree, do not use the app."
+    },
+    "description": {
+      "title": "2. Service description",
+      "body": "AIWardrobe helps you organize a digital wardrobe, generate outfit ideas, and create virtual try-on previews. Some features require an internet connection and may rely on third-party services."
+    },
+    "userAccounts": {
+      "title": "3. User accounts",
+      "body": "You are responsible for maintaining the confidentiality of your account. You must provide accurate information and keep it up to date. You can delete your account in the app."
+    },
+    "userContent": {
+      "title": "4. Your content",
+      "body": "You retain rights to the photos, videos, and content you upload. You grant us permission to process your content to provide app features (including AI processing) and to store it as needed for syncing and retrieval."
+    },
+    "subscriptions": {
+      "title": "5. Subscriptions and payments",
+      "body": "If you purchase a subscription, payment is processed through Apple’s in-app purchase system. Subscriptions renew and can be managed or canceled in your Apple ID settings. If you experience billing issues, contact Apple support and/or us for help."
+    },
+    "aiContent": {
+      "title": "6. AI features and outputs",
+      "body": "AI outputs (such as recommendations or try-on previews) are generated automatically and may be inaccurate. Use your judgment before relying on AI results. Do not upload content you do not have the right to use."
+    },
+    "prohibited": {
+      "title": "7. Prohibited use",
+      "body": "You agree not to misuse the app, interfere with the service, attempt unauthorized access, or upload illegal, harmful, or infringing content."
+    },
+    "intellectual": {
+      "title": "8. Intellectual property",
+      "body": "The AIWardrobe app, branding, and software are owned by us and protected by intellectual property laws. You may not copy, modify, distribute, or reverse engineer the app except as permitted by law."
+    },
+    "liability": {
+      "title": "9. Disclaimer and limitation of liability",
+      "body": "The app is provided “as is” without warranties. To the maximum extent permitted by law, we are not liable for indirect or consequential damages arising from your use of the app."
+    },
+    "changes": {
+      "title": "10. Changes to these Terms",
+      "body": "We may update these Terms from time to time. Continued use of the app after changes means you accept the updated Terms."
+    },
+    "contact": {
+      "title": "11. Contact",
+      "body": "Questions about these Terms? Contact us at: support@aiwardrobe.club"
+    }
   },
   "wardrobeVideo": {
     "title": "AI Wardrobe Scan",
@@ -1326,7 +1412,14 @@
       "promoted": "Added to shop catalog",
       "promoteFailed": "Failed to promote item",
       "uploadError": "Upload Error",
-      "photoChanged": "Photo updated"
+      "photoChanged": "Photo updated",
+      "changePhoto": "Photo",
+      "addCapsule": "Add Capsule",
+      "editCapsule": "Edit Capsule",
+      "linkUrl": "Link URL",
+      "empty": "No inspiration items",
+      "alreadyInShop": "Item already in shop catalog",
+      "photoUpdateNoAccess": "Update blocked: no permission to modify this capsule"
     },
     "garmentTypes": {
       "upperBody": "Tops",
@@ -1387,7 +1480,6 @@
         "Browse inspiration"
       ],
       "freeMissing": [
-        "No Virtual Try-On",
         "No wardrobe insights",
         "No trip planner"
       ],
@@ -1396,7 +1488,6 @@
       "period": "/month",
       "proFeatures": [
         "Unlimited AI outfits",
-        "Unlimited Virtual Try-On",
         "Unlimited closet size",
         "Wardrobe insights & stats",
         "AI trip / travel planner",

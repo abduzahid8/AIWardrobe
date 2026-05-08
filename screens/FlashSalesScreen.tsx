@@ -4,7 +4,6 @@ import {
     Text,
     ScrollView,
     TouchableOpacity,
-    Image,
     StyleSheet,
     Dimensions,
     RefreshControl,
@@ -28,6 +27,7 @@ import Animated, {
 import { BlurView } from 'expo-blur';
 
 import AppColors from '../constants/AppColors';
+import { CachedImage } from '../components/ui/CachedImage';
 import flashSalesService from '../src/services/flashSalesService';
 import { FlashSaleEvent } from '../src/types/flashSales';
 import { RootStackParamList } from '../navigation/types';
@@ -138,9 +138,11 @@ const HeroEventCard = ({
                 onPress={onPress}
                 activeOpacity={0.9}
             >
-                <Image
-                    source={{ uri: event.heroImage }}
+                <CachedImage
+                    uri={event.heroImage}
                     style={styles.heroImage}
+                    contentFit="cover"
+                    fadeIn={false}
                 />
                 <LinearGradient
                     colors={['transparent', 'rgba(0,0,0,0.8)']}
@@ -166,10 +168,11 @@ const HeroEventCard = ({
                 <View style={styles.heroContent}>
                     <View style={styles.heroBrandRow}>
                         {event.brandLogo && (
-                            <Image
-                                source={{ uri: event.brandLogo }}
+                            <CachedImage
+                                uri={event.brandLogo}
                                 style={styles.heroBrandLogo}
-                                resizeMode="contain"
+                                contentFit="contain"
+                                fadeIn={false}
                             />
                         )}
                         <Text style={styles.heroDiscount}>{t('flashSales.upToOff', { discount: event.discountPercentage })}</Text>
@@ -231,9 +234,11 @@ const EventCard = ({
                 onPress={onPress}
                 activeOpacity={0.9}
             >
-                <Image
-                    source={{ uri: event.heroImage }}
+                <CachedImage
+                    uri={event.heroImage}
                     style={styles.eventCardImage}
+                    contentFit="cover"
+                    fadeIn={false}
                 />
                 <LinearGradient
                     colors={['transparent', 'rgba(0,0,0,0.7)']}

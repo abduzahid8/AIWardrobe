@@ -9,6 +9,7 @@ import { supabase } from '../../lib/supabase';
 import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
 import { Asset } from 'expo-asset';
 import * as FileSystem from 'expo-file-system/legacy';
+import apiClient from '../../src/services/apiClient';
 
 import type { ShopCatalogItem } from './types';
 import { INSPO_MENS_SHOP_ITEMS } from '../../data/inspoMensShopItems';
@@ -24,6 +25,7 @@ const GARMENT_LABELS: Record<ShopCatalogItem['garmentType'], string> = {
     dresses: 'Dress',
     shoes: 'Shoes',
     outfit: 'Outfit',
+    accessory: 'Accessory',
 };
 
 type SlotKey = 'layer' | 'top' | 'pants' | 'shoes';
@@ -73,6 +75,7 @@ const AITryOnScreen = () => {
     const [aiError, setAiError] = useState<string | null>(null);
     const [lookSaved, setLookSaved] = useState(false);
     const [isModelReady, setIsModelReady] = useState(false);
+    const [useGemini, setUseGemini] = useState(true); // Gemini is 6-12x cheaper than FLUX
     const activeSlotDef = useMemo(() => SLOTS.find((s) => s.key === activeSlot)!, [activeSlot]);
     const mannequinShopFilter = activeSlotDef.category;
     const {
@@ -144,8 +147,9 @@ const AITryOnScreen = () => {
             { label: t('tryOn.pieces'), value: selectedCategoryLabel },
             { label: t('tryOn.status'), value: statusLabel },
             { label: t('tryOn.plan'), value: hasActiveSubscription ? t('tryOn.pro') : t('tryOn.free') },
+            { label: 'AI', value: useGemini ? 'Gemini ⚡' : 'FLUX ✨', accent: useGemini },
         ],
-        [hasActiveSubscription, remainingCountLabel, selectedCategoryLabel, statusLabel, tryOnsRemaining]
+        [hasActiveSubscription, remainingCountLabel, selectedCategoryLabel, statusLabel, tryOnsRemaining, useGemini]
     );
 
     const statusCard = useMemo(() => {
@@ -256,6 +260,12 @@ const AITryOnScreen = () => {
         });
     }, [activeSlot]);
 
+    const buildWearDescription = useCallback((slotKey: SlotKey, item: ShopCatalogItem) => {
+        const parts = [item.name?.trim(), item.description?.trim()].filter(Boolean);
+        const summary = parts.join(' — ');
+        return `${slotKey}: ${summary || item.brand || 'selected garment'}`;
+    }, []);
+
     // Pipeline is synchronous via NVIDIA NIM — no polling required.
     // (Helper kept here as a no-op for any legacy call sites.)
     const pollTask = async (_taskId: string, _slotLabel: string, _step: number, _total: number, _wasComposite: boolean) => {
@@ -280,98 +290,62 @@ const AITryOnScreen = () => {
         setAiProgress(null);
 
         try {
-            let currentMannequin = mannequinB64Ref.current;
-            if (!currentMannequin) {
+            const mannequinImage = mannequinB64Ref.current;
+            if (!mannequinImage) {
                 setAiError('Model preview is still loading. Please wait a moment and try again.');
                 return;
             }
 
-            // Base dressing order for FLUX.1-Kontext.
             const orderedSlots = APPLY_ORDER.filter((k) => slots[k] !== null) as SlotKey[];
-            const hasLayer = slots.layer !== null;
             const visibleTotal = orderedSlots.length;
-            const total = visibleTotal + (hasLayer && visibleTotal > 1 ? 1 : 0);
-            const alreadyWearing: string[] = [];
+            setAiProgress(`Dressing mannequin (${visibleTotal} piece${visibleTotal === 1 ? '' : 's'})…`);
 
-            for (let i = 0; i < orderedSlots.length; i++) {
-                const slotKey = orderedSlots[i];
-                const item = slots[slotKey]!;
-                const slotDef = SLOTS.find((s) => s.key === slotKey)!;
+            const garments = await Promise.all(
+                orderedSlots.map(async (slotKey) => {
+                    const item = slots[slotKey]!;
+                    const slotDef = SLOTS.find((s) => s.key === slotKey)!;
+                    return {
+                        label: slotKey,
+                        type: slotDef.category,
+                        garment_image: await getGarmentImageUrl(item),
+                        name: item.name,
+                        description: item.description ?? '',
+                        wearDescription: buildWearDescription(slotKey, item),
+                    };
+                }),
+            );
 
-                setAiProgress(`Submitting ${slotDef.label} (${i + 1}/${visibleTotal})…`);
-
-                const garmentImage = await getGarmentImageUrl(item);
-
-                console.log('[AITryOn] submit step', i + 1, '/', total, slotKey);
-                const { data, error } = await supabase.functions.invoke('mannequin-tryon', {
-                    body: {
-                        action: 'submit',
-                        mannequin_image: currentMannequin,
-                        garment_image: garmentImage,
-                        garment: {
-                            type: slotDef.category,
-                            label: slotKey,
-                            name: item.name,
-                            description: item.description ?? '',
-                        },
-                        already_wearing: [...alreadyWearing],
-                        step: i + 1,
-                        total,
+            let data: any;
+            const runTryOnRequest = async () => {
+                const endpoint = useGemini ? '/api/tryon/gemini' : '/api/tryon/render';
+                console.log(`[AITryOn] Using ${useGemini ? 'GEMINI' : 'FLUX'} endpoint: ${endpoint}`);
+                const response = await apiClient.post(
+                    endpoint,
+                    {
+                        mannequin_image: mannequinImage,
+                        garments,
+                        total: visibleTotal,
                     },
-                });
+                    { timeout: 120_000 },
+                );
+                return response.data;
+            };
 
-                if (error || !data?.success) {
-                    throw new Error(error?.message || data?.error || `Submission failed at step ${i + 1} (${slotDef.label}).`);
-                }
-
-                // NVIDIA NIM returns the dressed mannequin synchronously.
-                if (!data.resultUrl) throw new Error('No result image returned from Flux Kontext.');
-                currentMannequin = data.resultUrl as string;
-                console.log(`[AITryOn] step ${i + 1} sync OK composite=${data.wasComposite}`);
-
-                alreadyWearing.push(item.description?.trim() || item.name);
-                setAiProgress(`${slotDef.label} done ✓  (${i + 1}/${visibleTotal})`);
-
-                // Light pacing between garment steps to be polite to NVIDIA NIM.
-                if (i < orderedSlots.length - 1) {
-                    await new Promise((r) => setTimeout(r, 1500));
-                }
+            try {
+                data = await runTryOnRequest();
+            } catch (err: any) {
+                const apiError = err?.response?.data?.error || err?.message;
+                throw new Error(apiError || 'Outfit render failed.');
             }
 
-            if (hasLayer && orderedSlots.length > 1) {
-                const item = slots.layer!;
-                const slotDef = SLOTS.find((s) => s.key === 'layer')!;
-                console.log('[AITryOn] silent layer reinforcement start');
-
-                const garmentImage = await getGarmentImageUrl(item);
-
-                const { data, error } = await supabase.functions.invoke('mannequin-tryon', {
-                    body: {
-                        action: 'submit',
-                        mannequin_image: currentMannequin,
-                        garment_image: garmentImage,
-                        garment: {
-                            type: slotDef.category,
-                            label: 'layer',
-                            name: item.name,
-                            description: item.description ?? '',
-                        },
-                        already_wearing: [...alreadyWearing],
-                        step: total,
-                        total,
-                    },
-                });
-
-                if (error || !data?.success) {
-                    throw new Error(error?.message || data?.error || 'Layer reinforcement failed.');
-                }
-
-                if (!data.resultUrl) throw new Error('No result image returned from Flux Kontext.');
-                currentMannequin = data.resultUrl as string;
-                console.log('[AITryOn] silent layer reinforcement OK');
+            if (!data?.success) {
+                throw new Error(data?.error || 'Outfit render failed.');
             }
+            if (!data.resultUrl) throw new Error('No result image returned from renderer.');
 
-            setAiResultImage(currentMannequin);
+            console.log(`[AITryOn] outfit render OK in ${data.elapsedMs}ms (${data.methodUsed || 'gemini-flash'})`);
+            setAiProgress(`Preview ready ✓  (${visibleTotal}/${visibleTotal})`);
+            setAiResultImage(data.resultUrl as string);
             setLookSaved(false);
             const usage = await consume('tryOns');
             if (!usage.allowed) console.warn('[TryOn] quota consume denied after success');
@@ -383,7 +357,7 @@ const AITryOnScreen = () => {
             setAiLoading(false);
             setAiProgress(null);
         }
-    }, [filledCount, getGarmentImageUrl, requireFeature, slots, tryOnsRemaining]);
+    }, [buildWearDescription, consume, filledCount, getGarmentImageUrl, requireFeature, slots, tryOnsRemaining, useGemini]);
 
     const handleSaveLook = useCallback(() => {
         if (!aiResultImage || !hasAnySelection || lookSaved) {
@@ -441,6 +415,18 @@ const AITryOnScreen = () => {
                             >
                                 <Ionicons name="eye-outline" size={16} color="#183A67" />
                                 <Text style={styles.headerPillText}>Inspo</Text>
+                            </TouchableOpacity>
+
+                            {/* AI Provider Toggle — Gemini is 6-12x cheaper than FLUX */}
+                            <TouchableOpacity
+                                style={[styles.headerPill, useGemini && { backgroundColor: '#E8F5E9' }]}
+                                onPress={() => setUseGemini((v) => !v)}
+                                activeOpacity={0.85}
+                            >
+                                <Ionicons name={useGemini ? 'flash-outline' : 'sparkles'} size={16} color={useGemini ? '#2E7D32' : '#183A67'} />
+                                <Text style={[styles.headerPillText, useGemini && { color: '#2E7D32' }]}>
+                                    {useGemini ? 'Gemini' : 'FLUX'}
+                                </Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
@@ -588,7 +574,7 @@ const AITryOnScreen = () => {
                         {summaryStats.map((stat, index) => (
                             <React.Fragment key={stat.label}>
                                 <View style={styles.statItem}>
-                                    <Text style={[styles.statValue, stat.warning && styles.statValueWarning]}>{stat.value}</Text>
+                                    <Text style={[styles.statValue, stat.warning && styles.statValueWarning, stat.accent && { color: '#2E7D32' }]}>{stat.value}</Text>
                                     <Text style={styles.statLabel}>{stat.label}</Text>
                                 </View>
                                 {index < summaryStats.length - 1 && <View style={styles.statDivider} />}

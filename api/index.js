@@ -17,7 +17,7 @@ import outfitRoutes from "./routes/outfits.js";
 import weatherRoutes from "./routes/weather.js";
 import {
   analyzeRouter, clothingRouter, productPhotoRouter,
-  tryonRouter, wardrobeRouter, chatRouter, outfitsRouter,
+  wardrobeRouter, chatRouter, outfitsRouter,
   imageProcessorRouter, studioRouter
 } from "./routes/ai/index.js";
 import statsRoutes from "./routes/stats.js";
@@ -29,16 +29,25 @@ import subscriptionRoutes from "./routes/subscription.js";
 import geminiRoutes from "./routes/gemini.js";
 import analyticsRoutes from "./routes/analytics.js";
 import accountRoutes from "./routes/account.js";
+import tryonRenderRoutes from "./routes/tryon.js";
+import tryonGeminiRoutes from "./routes/tryon-gemini.js";
+// Legacy try-on routes (tryon-v1/v2/v3) are intentionally NOT mounted.
+// Try-on is admin-only; only the canonical /api/tryon/render is exposed.
 
 // Import middleware
 import { apiLimiter, aiLimiter } from "./middleware/rateLimit.js";
 import { auditLogger } from "./middleware/security.js";
+import { authenticateToken, requireAdmin } from "./middleware/auth.js";
 
 import logger from "./utils/logger.js";
 import "./lib/supabase.js"; // Initialize Supabase client globally
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+// Trust the first proxy hop (Render / Cloudflare) so req.ip and X-Forwarded-For
+// resolve to the real client IP. Required for rate limiting and audit logging.
+app.set('trust proxy', 1);
 
 // ============================================
 // SECURITY MIDDLEWARE
@@ -95,10 +104,7 @@ app.use(auditLogger);
 // ============================================
 
 // Graceful shutdown handling
-process.on('SIGINT', async () => {
-  logger.info('🔄 Gracefully shutting down...');
-  process.exit(0);
-});
+// Graceful shutdown is wired up below, after server.listen().
 
 // ============================================
 // MOUNT ROUTES
@@ -124,7 +130,7 @@ app.use("/stats", statsRoutes);
 app.use("/api", aiLimiter, analyzeRouter);      // /api/analyze-frames
 app.use("/api", aiLimiter, clothingRouter);      // /api/openai/analyze-clothing, /api/openai/generate-image, etc.
 app.use("/api", aiLimiter, productPhotoRouter);  // /api/product-photo/process, /api/v2/product-photo/process-multi
-app.use("/api", aiLimiter, tryonRouter);          // /api/try-on
+// (legacy /api/try-on route removed — all try-on now uses mannequin-locked FLUX.1-Kontext-dev at /api/tryon/render)
 app.use("/api", aiLimiter, wardrobeRouter);       // /api/scan-wardrobe
 app.use("/api", aiLimiter, chatRouter);           // /api/smart-search, /api/ai-chat
 app.use("/api", aiLimiter, outfitsRouter);        // /api/generate-outfits
@@ -155,6 +161,14 @@ app.use("/api/analytics", analyticsRoutes);
 // Account management (deletion, GDPR)
 app.use("/api/account", accountRoutes);
 
+// Gemini 2.0 Flash try-on — cheaper alternative to FLUX (~6-12x cheaper)
+// Must be mounted BEFORE generic /api/tryon to avoid being shadowed
+app.use("/api/tryon/gemini", authenticateToken, requireAdmin, aiLimiter, tryonGeminiRoutes);
+
+// Deterministic mannequin try-on renderer — ADMIN ONLY.
+// Regular users do not have access to the AIVirtualTryOn feature.
+app.use("/api/tryon", authenticateToken, requireAdmin, aiLimiter, tryonRenderRoutes);
+
 // No local DB seeding. Handled via Supabase directly.
 
 // ============================================
@@ -163,6 +177,14 @@ app.use("/api/account", accountRoutes);
 
 app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+// Readiness probe — distinct from liveness. Currently mirrors /health, but
+// keeps a stable contract for load balancers / k8s-style probes.
+let isShuttingDown = false;
+app.get("/ready", (req, res) => {
+  if (isShuttingDown) return res.status(503).json({ status: "shutting_down" });
+  res.json({ status: "ready" });
 });
 
 // ============================================
@@ -185,7 +207,43 @@ app.use((err, req, res, _next) => {
 // START SERVER
 // ============================================
 
-app.listen(port, "0.0.0.0", () => {
+const server = app.listen(port, "0.0.0.0", () => {
   logger.info(`🚀 Server running on port ${port}`);
   logger.info(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+});
+
+// Defensive HTTP timeouts. Without these, hung upstream calls leak sockets.
+// requestTimeout: total time a single request may take.
+// headersTimeout:  must be > requestTimeout per Node docs.
+// keepAliveTimeout: > LB idle timeout to avoid 502s from Render's proxy.
+server.requestTimeout = 30_000;
+server.headersTimeout = 35_000;
+server.keepAliveTimeout = 65_000;
+
+async function gracefulShutdown(signal) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  logger.info(`🔄 ${signal} received — draining connections...`);
+  const forceExit = setTimeout(() => {
+    logger.error('Forced shutdown after 25s timeout');
+    process.exit(1);
+  }, 25_000).unref();
+  server.close(err => {
+    clearTimeout(forceExit);
+    if (err) {
+      logger.error('Error during shutdown:', err);
+      process.exit(1);
+    }
+    logger.info('✅ Clean shutdown complete');
+    process.exit(0);
+  });
+}
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('unhandledRejection', (reason) => {
+  logger.error('unhandledRejection:', reason);
+});
+process.on('uncaughtException', (err) => {
+  logger.error('uncaughtException:', err);
+  gracefulShutdown('uncaughtException');
 });

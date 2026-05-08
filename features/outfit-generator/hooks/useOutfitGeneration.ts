@@ -15,6 +15,7 @@ import useAuthStore from '../../../store/auth';
 import { useStylePreferenceStore } from '../../../store/stylePreferenceStore';
 import { BASIC_CLOTHING_ITEMS } from '../../../data/basicClothingItems';
 import { generateOutfitsFromDB } from '../../../src/services/outfitGenerationService';
+import apiClient from '../../../src/services/apiClient';
 import { fillMissingSlots, type OutfitSlotId } from '../../../src/services/shoppingService';
 import { getMacroCategory } from './useItemSelection';
 import { STYLE_PERSONALITY_MAP } from '../types';
@@ -137,22 +138,30 @@ export function useOutfitGeneration({
       const garmentB64 = await fetchImageAsBase64(garmentUri);
       if (!garmentB64) throw new Error('garment base64 failed');
 
-      const { data, error: fnErr } = await supabase.functions.invoke('mannequin-tryon', {
-        body: {
+      const response = await apiClient.post(
+        '/api/tryon/render',
+        {
           mannequin_image: mannequinB64Ref.current,
-          garment_image: garmentB64,
-          garment_type: 'upper_body',
+          garments: [
+            {
+              label: 'top',
+              garment_image: garmentB64,
+            },
+          ],
+          total: 1,
         },
-      });
+        { timeout: 120_000 },
+      );
+      const data = response.data;
 
-      if (!fnErr && data?.success && data?.resultUrl) {
+      if (data?.success && data?.resultUrl) {
         setOutfitVisuals(prev => ({ ...prev, [outfit.id]: { loading: false, image: data.resultUrl } }));
       } else {
-        console.warn('[useOutfitGeneration] mannequin-tryon failed:', fnErr || data?.error);
+        console.warn('[useOutfitGeneration] /api/tryon/render failed:', data?.error);
         setOutfitVisuals(prev => ({ ...prev, [outfit.id]: { loading: false, image: null } }));
       }
-    } catch (e) {
-      console.warn('[useOutfitGeneration] generateAIVisual error:', e);
+    } catch (e: any) {
+      console.warn('[useOutfitGeneration] generateAIVisual error:', e?.response?.data?.error || e?.message || e);
       setOutfitVisuals(prev => ({ ...prev, [outfit.id]: { loading: false, image: null } }));
     }
   }, []);

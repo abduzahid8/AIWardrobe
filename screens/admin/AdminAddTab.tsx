@@ -136,6 +136,11 @@ export const AdminAddTab = () => {
                 sort_order: parseInt(sortOrder) || 0, source: 'admin',
             });
             if (error) { Alert.alert(t('common.error'), error.message); return; }
+            
+            // Emit event to auto-refresh useShopCatalog hook in other tabs (Inspo, Manage, etc.)
+            const { DeviceEventEmitter } = require('react-native');
+            DeviceEventEmitter.emit('catalog_updated');
+
             Alert.alert(t('common.success'), t('admin.add.success'));
             setBrand(''); setName(''); setPrice(''); setDescription('');
             setImageUrl(''); setLocalImage(null); setIsActive(true); setSortOrder('0');

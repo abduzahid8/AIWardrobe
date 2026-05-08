@@ -12,10 +12,11 @@ import {
     Dimensions,
     ScrollView,
     FlatList,
-    Image,
     StatusBar,
     TextInput,
     ActivityIndicator,
+    Linking,
+    Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,7 +30,8 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 import useWardrobeStore from '../store/wardrobeStore';
-import { generateVarietyOutfits } from '../src/services/suggestionEngine';
+import { CachedImage } from '../components/ui/CachedImage';
+import { generateVarietyOutfits, OCCASION_LABEL } from '../src/services/suggestionEngine';
 import type { ScoredOutfit } from '../src/services/suggestionEngine';
 import type { ShopCatalogItem } from '../features/try-on/types';
 import { INSPO_MENS_SHOP_ITEMS, CLASSIC_MENS_ITEMS } from '../data/inspoMensShopItems';
@@ -65,10 +67,11 @@ const FeaturedCapsuleCard = ({ item, index, t }: { item: FeaturedCapsule; index:
             accessibilityLabel={`${item.title} ${t('inspo.capsule')}`}
             accessibilityRole="button"
         >
-            <Image
-                source={{ uri: item.imageUrl }}
+            <CachedImage
+                uri={item.imageUrl}
                 style={styles.capsuleImage}
-                resizeMode="cover"
+                contentFit="cover"
+                fadeIn={false}
             />
             <LinearGradient
                 colors={['transparent', 'rgba(0,0,0,0.65)']}
@@ -79,6 +82,43 @@ const FeaturedCapsuleCard = ({ item, index, t }: { item: FeaturedCapsule; index:
         </TouchableOpacity>
     </Animated.View>
 );
+
+const trackBrandClick = async (item: ShopCatalogItem) => {
+    try {
+        await supabase.rpc('record_brand_click', {
+            p_item_id: item.id,
+            p_brand: item.brand,
+            p_product_name: item.name,
+            p_price: item.price,
+            p_currency: item.currency || 'USD',
+            p_source: 'app',
+            p_device_type: Platform.OS,
+        });
+    } catch (err) {
+        // Silent fail - don't block user experience
+        console.log('Brand click tracking error:', err);
+    }
+};
+
+const handleBuyPress = async (item: ShopCatalogItem) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    // Track the brand click
+    await trackBrandClick(item);
+    
+    // Open brand website (search for product)
+    const searchQuery = encodeURIComponent(`${item.brand} ${item.name}`);
+    const url = `https://www.google.com/search?q=${searchQuery}`;
+    
+    try {
+        const canOpen = await Linking.canOpenURL(url);
+        if (canOpen) {
+            await Linking.openURL(url);
+        }
+    } catch (err) {
+        console.log('Failed to open URL:', err);
+    }
+};
 
 const ProductCard = ({
     item,
@@ -99,10 +139,11 @@ const ProductCard = ({
     <Animated.View entering={FadeInDown.delay(Math.min(150 + (index % 12) * 40, 600)).duration(320)}>
         <View style={styles.productCard}>
             <View style={styles.productImageBox}>
-                <Image
-                    source={typeof item.imageUrl === 'string' ? { uri: item.imageUrl } : item.imageUrl}
+                <CachedImage
+                    uri={typeof item.imageUrl === 'string' ? item.imageUrl : ''}
                     style={styles.productImage}
-                    resizeMode="contain"
+                    contentFit="contain"
+                    fadeIn={false}
                 />
                 <TouchableOpacity
                     style={styles.saveButton}
@@ -126,6 +167,23 @@ const ProductCard = ({
                 {item.brand}
             </Text>
             <Text style={styles.productPrice}>${item.price.toFixed(2)}</Text>
+            <TouchableOpacity
+                style={styles.buyButton}
+                onPress={() => handleBuyPress(item)}
+                activeOpacity={0.8}
+                accessibilityLabel={t('inspo.buyNow')}
+                accessibilityRole="button"
+            >
+                <LinearGradient
+                    colors={['#0A1931', '#1a3a5c']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.buyButtonGradient}
+                >
+                    <Ionicons name="cart-outline" size={14} color="#FFF" style={styles.buyIcon} />
+                    <Text style={styles.buyButtonText}>{t('inspo.buy')}</Text>
+                </LinearGradient>
+            </TouchableOpacity>
         </View>
     </Animated.View>
 );
@@ -150,10 +208,11 @@ const VariationCard = ({ outfit, items, onPress }: VariationCardProps) => {
                 {cardItems.map((item, idx) => (
                     <View key={item.id} style={styles.variationCell}>
                         {item.imageUrl ? (
-                            <Image
-                                source={{ uri: item.imageUrl }}
+                            <CachedImage
+                                uri={item.imageUrl}
                                 style={styles.variationImage}
-                                resizeMode="contain"
+                                contentFit="contain"
+                                fadeIn={false}
                             />
                         ) : (
                             <Ionicons name="shirt-outline" size={22} color={colors.text.tertiary} />
@@ -163,7 +222,7 @@ const VariationCard = ({ outfit, items, onPress }: VariationCardProps) => {
             </View>
             <View style={styles.variationFooter}>
                 <Text style={styles.variationOccasion} numberOfLines={1}>
-                    {outfit.outfit.occasion}
+                    {OCCASION_LABEL[outfit.outfit.occasion] ?? outfit.outfit.occasion}
                 </Text>
                 <Text style={styles.variationScore}>{Math.round(outfit.score * 100)}%</Text>
             </View>
@@ -262,7 +321,16 @@ const InspoScreen = () => {
 
     const varietyOutfits = useMemo<ScoredOutfit[]>(() => {
         if (items.length < 3) return [];
-        return generateVarietyOutfits(items, wearLogs).slice(0, 6);
+        const outfits = generateVarietyOutfits(items, wearLogs);
+        // Deduplicate by itemIds combination
+        const seen = new Set<string>();
+        const unique = outfits.filter((o) => {
+            const key = [...o.outfit.itemIds].sort().join(',');
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+        return unique.slice(0, 6);
     }, [items.length, wearLogs.length]);
 
     useFocusEffect(
@@ -364,10 +432,11 @@ const InspoScreen = () => {
                                     <Animated.View key={item.id} entering={FadeInDown.delay(100 + index * 120).duration(500)}>
                                         <View style={styles.guideCardContainer}>
                                             <View style={styles.guideCard}>
-                                                <Image
-                                                    source={typeof item.image === 'string' ? { uri: item.image } : item.image}
+                                                <CachedImage
+                                                    uri={typeof item.image === 'string' ? item.image : ''}
                                                     style={styles.guideImage}
-                                                    resizeMode="cover"
+                                                    contentFit="cover"
+                                                    fadeIn={false}
                                                 />
                                                 <LinearGradient
                                                     colors={['transparent', 'rgba(0,0,0,0.75)']}
@@ -866,6 +935,32 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
         color: colors.text.primary,
+        marginBottom: 8,
+    },
+    buyButton: {
+        borderRadius: 20,
+        overflow: 'hidden',
+        marginTop: 4,
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    buyButtonGradient: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+    },
+    buyIcon: {
+        marginRight: 6,
+    },
+    buyButtonText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#FFF',
     },
     emptyState: {
         paddingHorizontal: spacing.screenPadding,

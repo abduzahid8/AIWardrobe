@@ -92,11 +92,10 @@ router.post("/ai-chat", authenticateToken, validateAIChat, async (req, res) => {
     const { query } = req.body;
     logger.info("💬 Chat request:", query);
 
-    const systemPrompt = \`You are a helpful, friendly fashion stylist AI assistant. Keep answers concise, actionable, and fun. Use emojis. Provide specific brand and style recommendations when relevant.
+    const systemPrompt = `You are a helpful, friendly fashion stylist AI assistant. Keep answers concise, actionable, and fun. Use emojis. Provide specific brand and style recommendations when relevant.
 
 FOLLOW THESE STRICT STYLE RULES:
-\${getAllStyleRules()}
-\`;
+${getAllStyleRules()}`;
 
     // Strategy 1: OpenAI GPT-4o-mini
     if (openaiService.isAvailable()) {

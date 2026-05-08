@@ -2,11 +2,11 @@
   "expo": {
     "name": "AIWardrobe",
     "slug": "aiwardrobe",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "assetBundlePatterns": [
       "assets/**"
     ],
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/AIWardrobe-mainlogo-square-1024.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -17,6 +17,7 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
+      "buildNumber": "37",
       "supportsTablet": true,
       "bundleIdentifier": "com.aiwardrobe",
       "minimumOsVersion": "16.0",

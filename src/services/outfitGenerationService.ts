@@ -526,6 +526,16 @@ function normalizeGeneratedOutfitItems(
     return [outerwear, baseTop, secondTop, bottom, shoes].filter(Boolean) as GeneratedOutfitItem[];
 }
 
+// Shuffle array for outfit variety
+function shuffleArray<T>(array: T[]): T[] {
+    const arr = [...array];
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
 function buildLocalOutfits(items: ClothingItem[], params: GenerateOutfitsParams): GeneratedOutfit[] {
     const style = params.stylePreferences || 'Casual';
     const occ = params.occasion || 'Everyday';
@@ -533,10 +543,11 @@ function buildLocalOutfits(items: ClothingItem[], params: GenerateOutfitsParams)
     const layered = isLayeredWeather(params.weather, params.prompt);
     const styleKey: StyleId = normalizeStyleId(style);
 
-    const rawBaseTops = items.filter(i => getMacroCategory(i.category, i.subCategory) === 'top');
-    const rawOuterwear = items.filter(i => getMacroCategory(i.category, i.subCategory) === 'outerwear');
-    const rawBottoms = items.filter(i => getMacroCategory(i.category, i.subCategory) === 'bottom');
-    const rawShoes = items.filter(i => getMacroCategory(i.category, i.subCategory) === 'shoes');
+    // Shuffle items to ensure variety even with limited wardrobes
+    const rawBaseTops = shuffleArray(items.filter(i => getMacroCategory(i.category, i.subCategory) === 'top'));
+    const rawOuterwear = shuffleArray(items.filter(i => getMacroCategory(i.category, i.subCategory) === 'outerwear'));
+    const rawBottoms = shuffleArray(items.filter(i => getMacroCategory(i.category, i.subCategory) === 'bottom'));
+    const rawShoes = shuffleArray(items.filter(i => getMacroCategory(i.category, i.subCategory) === 'shoes'));
 
     const baseTops = filterSlotByStyle(rawBaseTops, styleKey, 'top', styleKey === 'casual' ? 0.1 : 0.18);
     const outerwear = filterSlotByStyle(rawOuterwear, styleKey, 'outerwear', styleKey === 'casual' ? 0.1 : 0.18);
@@ -566,9 +577,13 @@ function buildLocalOutfits(items: ClothingItem[], params: GenerateOutfitsParams)
 
     for (let i = 0; i < limit; i++) {
         const outfitItems: GeneratedOutfitItem[] = [];
+        
+        // Use random offsets to ensure variety even with small wardrobes
+        const randOffset1 = Math.floor(Math.random() * 100);
+        const randOffset2 = Math.floor(Math.random() * 100);
 
         // Pre-pick bottom to check for shorts / formal-layer conflict.
-        const candidateBottom = bottoms[i % Math.max(bottoms.length, 1)] || bottoms[0] || items[0];
+        const candidateBottom = bottoms[(i + randOffset1) % Math.max(bottoms.length, 1)] || bottoms[0] || items[0];
         const candidateBottomIsShorts = !!candidateBottom && isShortsItem({
             name: candidateBottom.name, type: candidateBottom.subCategory,
             macroCategory: getMacroCategory(candidateBottom.category, candidateBottom.subCategory),
@@ -577,20 +592,20 @@ function buildLocalOutfits(items: ClothingItem[], params: GenerateOutfitsParams)
 
         if (layered) {
             // Prefer casual outerwear if the bottom is shorts; else default outerwear rotation.
-            let outer = outerwear[i % Math.max(outerwear.length, 1)];
+            let outer = outerwear[(i + randOffset1) % Math.max(outerwear.length, 1)];
             const outerIsFormal = !!outer && isFormalLayerItem({
                 name: outer.name, type: outer.subCategory, macroCategory: getMacroCategory(outer.category, outer.subCategory),
             });
             if (candidateBottomIsShorts && outerIsFormal) {
-                outer = casualOuterwear[i % Math.max(casualOuterwear.length, 1)] || outer;
+                outer = casualOuterwear[(i + randOffset1) % Math.max(casualOuterwear.length, 1)] || outer;
             }
-            const mainTop = outer || legacyTops[i % Math.max(legacyTops.length, 1)];
-            const base = baseTops[i % Math.max(baseTops.length, 1)] || legacyTops[(i + 1) % Math.max(legacyTops.length, 1)];
+            const mainTop = outer || legacyTops[(i + randOffset1) % Math.max(legacyTops.length, 1)];
+            const base = baseTops[(i + randOffset2) % Math.max(baseTops.length, 1)] || legacyTops[(i + randOffset2 + 1) % Math.max(legacyTops.length, 1)];
             if (mainTop) outfitItems.push(toDisplayItem(mainTop, 'Main top / outerwear layer'));
             if (base && base.id !== mainTop?.id) outfitItems.push(toDisplayItem(base, 'Base top worn underneath'));
         } else {
             // Non-layered: single top only.
-            const top = legacyTops[i % Math.max(legacyTops.length, 1)] || items[0];
+            const top = legacyTops[(i + randOffset1) % Math.max(legacyTops.length, 1)] || items[0];
             if (top) outfitItems.push(toDisplayItem(top, 'Key piece for this look'));
         }
 
@@ -599,11 +614,11 @@ function buildLocalOutfits(items: ClothingItem[], params: GenerateOutfitsParams)
         if (layered && candidateBottomIsShorts) {
             const firstPick = outfitItems[0];
             if (firstPick && isFormalLayerItem(firstPick) && nonShortsBottoms.length > 0) {
-                finalBottom = nonShortsBottoms[i % nonShortsBottoms.length];
+                finalBottom = nonShortsBottoms[(i + randOffset1) % nonShortsBottoms.length];
             }
         }
 
-        const shoe = shoes[i % Math.max(shoes.length, 1)] || shoes[0];
+        const shoe = shoes[(i + randOffset2) % Math.max(shoes.length, 1)] || shoes[0];
 
         if (finalBottom) outfitItems.push(toDisplayItem(finalBottom, 'Pairs well with the top'));
         if (shoe) outfitItems.push(toDisplayItem(shoe, 'Completes the look'));
@@ -613,7 +628,7 @@ function buildLocalOutfits(items: ClothingItem[], params: GenerateOutfitsParams)
         if (layered && outfitItems.length < targetItems && items.length > 0) {
             let fillIndex = 0;
             while (outfitItems.length < targetItems && fillIndex < items.length) {
-                const fillItem = items[fillIndex];
+                const fillItem = items[(fillIndex + i) % items.length];
                 const alreadyAdded = outfitItems.some(oi => oi.id === fillItem.id);
                 if (!alreadyAdded) {
                     outfitItems.push(toDisplayItem(fillItem, 'Complementary piece'));
@@ -629,12 +644,12 @@ function buildLocalOutfits(items: ClothingItem[], params: GenerateOutfitsParams)
         const normalizedOutfitItems = normalizeGeneratedOutfitItems(outfitItems, params);
 
         outfits.push({
-            id: `local_${i}_${Date.now()}`,
+            id: `local_${i}_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
             description: `A ${style} look built from your wardrobe.`,
             style,
             occasion: occ,
-            confidence: 0.75,
-            matchScore: 0.75,
+            confidence: 0.75 + (Math.random() * 0.1),
+            matchScore: 0.75 + (Math.random() * 0.1),
             items: normalizedOutfitItems,
             stylingTips: layered
                 ? ['Layer the base top under the outerwear for depth', 'Keep the palette tonal for a refined finish']

@@ -31,6 +31,7 @@ interface RevenueCatEvent {
       subscriptions: Record<string, any>;
       entitlements: Record<string, any>;
     };
+    id?: string;
     transaction_id?: string;
     product_id?: string;
     price?: number;
@@ -64,17 +65,18 @@ serve(async (req: Request) => {
       )
     }
 
-    // Verify request authenticity via RevenueCat signature header
+    // Verify request authenticity via RevenueCat shared-secret Authorization header.
+    // Configure RevenueCat dashboard → Integrations → Webhook → Authorization header
+    // to send "Bearer <REVENUECAT_WEBHOOK_SECRET>". The secret value below must match.
+    const WEBHOOK_SECRET = Deno.env.get('REVENUECAT_WEBHOOK_SECRET') || REVENUECAT_API_KEY
     const authHeader = req.headers.get('Authorization') || ''
-    if (!authHeader && req.method !== 'OPTIONS') {
-      // RevenueCat v2 webhooks send an Authorization header with Bearer <api_key>
-      // At minimum, reject requests with no auth at all to prevent unauthenticated abuse
-      const apiKeyHeader = req.headers.get('x-platform-key') || ''
-      if (!apiKeyHeader && !authHeader) {
-        console.warn('[RevenueCat] Webhook request missing authentication headers')
-        // Don't reject outright — RevenueCat v1 webhooks may not send auth headers.
-        // In production, configure the shared secret and validate it here.
-      }
+    const expected = `Bearer ${WEBHOOK_SECRET}`
+    if (!authHeader || authHeader !== expected) {
+      console.error('[RevenueCat] Rejected webhook with invalid/missing Authorization header')
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+      )
     }
 
     const payload: RevenueCatEvent = await req.json()
@@ -95,6 +97,32 @@ serve(async (req: Request) => {
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
+
+    // ── Idempotency ────────────────────────────────────────────────
+    // RevenueCat retries failed webhook deliveries. Without a guard, a refund
+    // or renewal could be applied multiple times (double-counted payments,
+    // duplicated subscription rows). We dedupe on (source, event_id).
+    const eventId = event.id
+      || (event.transaction_id && event.type
+            ? `${event.type}:${event.transaction_id}:${event.event_timestamp_ms ?? ''}`
+            : null)
+    if (eventId) {
+      const { error: insErr } = await supabaseAdmin
+        .from('processed_webhooks')
+        .insert({ source: 'revenuecat', event_id: eventId })
+      if (insErr) {
+        // Unique violation = already processed. Acknowledge with 200 so RC stops retrying.
+        if ((insErr as any).code === '23505') {
+          console.log(`[RevenueCat] Duplicate event ignored: ${eventId}`)
+          return new Response(
+            JSON.stringify({ success: true, duplicate: true }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+          )
+        }
+        // Any other error: log and continue (better than dropping the event).
+        console.error('[RevenueCat] Idempotency insert error:', insErr)
+      }
+    }
 
     // Map RevenueCat user ID to our Supabase user ID.
     // When iapService.identify() is called before purchase, app_user_id is the

@@ -18,23 +18,36 @@ import { deleteSecureItem } from '../utils/secureStorage';
  * Keep this list in sync with every `persist({ name: '...' })` block.
  */
 export const PERSISTED_ASYNC_STORAGE_KEYS: readonly string[] = [
+    // Zustand persist stores
     'wardrobe-storage',
     'try-on-looks-storage',
     'avatar-storage',
     'subscription-storage',
-    'daily-usage-storage',
-    'style-preference-storage',
     'price-tracking-storage',
-    'app-context-storage',
+    'style-preferences', // stylePreferenceStore (was incorrectly 'style-preference-storage')
+
+    // Direct AsyncStorage keys (non-persist stores)
+    'daily_usage_v1', // dailyUsageStore (was incorrectly 'daily-usage-storage')
+    '@app_language', // languageStore
+    'offline_queue', // offlineQueue.ts (was incorrectly 'offline_request_queue')
+    'upload_queue_v1', // uploadQueue.ts (was incorrectly 'upload_queue')
+    '@image_cache_index', // imageCache.ts
+    'aiwardrobe_hints_seen', // useFeatureHints.ts
+
+    // Legacy / direct storage keys
     'userToken',
     'analytics_event_queue',
+    'analytics_enabled', // Added - separate from queue
     'crash_reports',
-    'offline_request_queue',
-    'upload_queue',
+
     // Subscription / trial keys written directly (not via Zustand persist)
     'subscription_tier',
     'subscription_expiry',
     'trial_started_at_v1',
+
+    // Promo code keys (promoCodeStore) — must be cleared to prevent cross-user leakage
+    'promo_redeemed_v1',
+    'promo_skipped_v1',
 ] as const;
 
 /**

@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import type { ShopCatalogItem } from '../features/try-on/types';
 import { spreadSimilarCatalogItems } from '../src/utils/shopCatalogOrder';
 import { createLogger } from '../src/utils/logger';
+import { getThumbnailUrl } from '../src/utils/imageUrl';
 
 const logger = createLogger('useShopCatalog');
 
@@ -47,7 +48,7 @@ function dbRowToItem(row: Record<string, any>): ShopCatalogItem {
         name:        row.name,
         price:       Number(row.price),
         currency:    row.currency ?? 'USD',
-        imageUrl:    row.image_url,
+        imageUrl:    getThumbnailUrl(row.image_url),
         garmentType: row.garment_type as ShopCatalogItem['garmentType'],
         description: row.description ?? '',
     };
@@ -157,6 +158,20 @@ export function useShopCatalog({
         fetchPage(0, category, source, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [category, source, enabled]);
+
+    // Listen for cross-tab cache busting events
+    useEffect(() => {
+        const { DeviceEventEmitter } = require('react-native');
+        const subscription = DeviceEventEmitter.addListener('catalog_updated', () => {
+            if (enabledRef.current) {
+                // Manually trigger a refresh when admin adds/edits an item
+                pageRef.current = 0;
+                setHasMore(true);
+                fetchPage(0, categoryRef.current, sourceRef.current, false);
+            }
+        });
+        return () => subscription.remove();
+    }, [fetchPage]);
 
     const loadMore = useCallback(() => {
         if (!enabledRef.current) return;

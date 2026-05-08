@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   FlatList,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -43,6 +44,7 @@ import Config from '../src/config/env';
 import StreakBadge from '../components/StreakBadge';
 import useWardrobeStore from '../store/wardrobeStore';
 import useAppContextStore from '../src/store/contextStore';
+import { CachedImage } from '../components/ui/CachedImage';
 import type { ContextualPrompt } from '../src/services/contextualPromptService';
 import {
   getContextualPrompt,
@@ -63,14 +65,17 @@ import type { ShopCatalogItem } from '../features/try-on/types';
 import type { ClothingCategory } from '../src/types/domain';
 import { createLogger } from '../src/utils/logger';
 import { useTranslation } from 'react-i18next';
+import { useAdminGuard } from '../hooks/useAdminGuard';
 
-type EssentialSlot = 'main_top' | 'second_top' | 'lower_body' | 'shoes';
+type EssentialSlot = 'outerwear' | 'shirts' | 'knitwear' | 'tees' | 'bottoms' | 'shoes';
 
 const ESSENTIALS_REQUIREMENTS: Record<EssentialSlot, number> = {
-  main_top: 2,
-  second_top: 2,
-  lower_body: 2,
-  shoes: 2,
+  outerwear: 2,  // blazers, jackets, coats
+  shirts: 2,     // dress shirts, casual shirts
+  knitwear: 2,   // sweaters, cardigans
+  tees: 2,       // t-shirts, polos
+  bottoms: 3,    // pants, chinos, jeans, shorts
+  shoes: 3,      // sneakers, loafers, boots
 };
 
 const ESSENTIALS_LIMIT = Object.values(ESSENTIALS_REQUIREMENTS).reduce(
@@ -78,49 +83,101 @@ const ESSENTIALS_LIMIT = Object.values(ESSENTIALS_REQUIREMENTS).reduce(
   0
 );
 
-const MAIN_TOP_KEYWORDS = [
-  'jacket', 'blazer', 'coat', 'overcoat', 'sweater', 'knit', 'hoodie',
-  'cardigan', 'pullover', 'fleece', 'bomber', 'parka', 'trench',
-  'crew neck', 'crewneck', 'turtleneck',
+// Keywords for better classification
+const OUTERWEAR_KEYWORDS = [
+  'blazer', 'jacket', 'coat', 'overcoat', 'suit', 'trench', 'parka',
+  'bomber', 'puffer', 'vest', 'waistcoat', 'cardigan', 'hoodie'
 ];
 
-const SECOND_TOP_KEYWORDS = [
-  't-shirt', 'tshirt', 'tee', 'shirt', 'polo', 'blouse', 'tank', 'top',
-  'henley', 'camisole',
+const SHIRT_KEYWORDS = [
+  'shirt', 'oxford', 'dress shirt', 'broadcloth', 'poplin', 'linen shirt',
+  'flannel', 'chambray', 'button-down', 'button down'
 ];
 
-const classifyUpperBodyItem = (item: ShopCatalogItem): 'main_top' | 'second_top' => {
+const KNITWEAR_KEYWORDS = [
+  'sweater', 'knit', 'pullover', 'turtleneck', 'crewneck', 'v-neck',
+  'cashmere', 'merino', 'wool', 'chunky', 'cable', 'cardigan'
+];
+
+const TEE_KEYWORDS = [
+  't-shirt', 'tshirt', 'tee', 'polo', 'henley', 'tank', 'top'
+];
+
+const BOTTOM_KEYWORDS = [
+  'pants', 'trousers', 'chinos', 'jeans', 'shorts', 'joggers',
+  'slacks', 'cargos', 'corduroy'
+];
+
+const SHOE_KEYWORDS = [
+  'shoes', 'sneakers', 'loafers', 'boots', 'oxfords', 'derby',
+  'trainers', 'slip-on', 'mules'
+];
+
+const classifyUpperBodyItem = (item: ShopCatalogItem): 'outerwear' | 'shirts' | 'knitwear' | 'tees' | null => {
   const text = `${item.name} ${item.description || ''}`.toLowerCase();
-  if (MAIN_TOP_KEYWORDS.some((k) => text.includes(k))) return 'main_top';
-  if (SECOND_TOP_KEYWORDS.some((k) => text.includes(k))) return 'second_top';
-  return 'second_top'; // default to second top if unclear
+  
+  // Check in priority order
+  if (OUTERWEAR_KEYWORDS.some((k) => text.includes(k))) return 'outerwear';
+  if (SHIRT_KEYWORDS.some((k) => text.includes(k))) return 'shirts';
+  if (KNITWEAR_KEYWORDS.some((k) => text.includes(k))) return 'knitwear';
+  if (TEE_KEYWORDS.some((k) => text.includes(k))) return 'tees';
+  
+  // Default classification based on common patterns
+  if (text.includes('blazer') || text.includes('jacket') || text.includes('coat')) return 'outerwear';
+  if (text.includes('shirt')) return 'shirts';
+  if (text.includes('sweater') || text.includes('knit')) return 'knitwear';
+  
+  return 'tees'; // default
+};
+
+const classifyBottomItem = (item: ShopCatalogItem): 'bottoms' | null => {
+  const text = `${item.name} ${item.description || ''}`.toLowerCase();
+  if (BOTTOM_KEYWORDS.some((k) => text.includes(k))) return 'bottoms';
+  if (item.garmentType === 'lower_body') return 'bottoms';
+  return null;
+};
+
+const classifyShoeItem = (item: ShopCatalogItem): 'shoes' | null => {
+  const text = `${item.name} ${item.description || ''}`.toLowerCase();
+  if (SHOE_KEYWORDS.some((k) => text.includes(k))) return 'shoes';
+  if (item.garmentType === 'shoes') return 'shoes';
+  return null;
 };
 
 const selectEssentialShoppingMix = (items: ShopCatalogItem[]): ShopCatalogItem[] => {
   const pickedCounts: Record<EssentialSlot, number> = {
-    main_top: 0,
-    second_top: 0,
-    lower_body: 0,
+    outerwear: 0,
+    shirts: 0,
+    knitwear: 0,
+    tees: 0,
+    bottoms: 0,
     shoes: 0,
   };
 
   const selected: ShopCatalogItem[] = [];
+  const selectedIds = new Set<string>();
+  
+  // Shuffle items for variety on each load
+  const shuffled = [...items].sort(() => Math.random() - 0.5);
 
-  for (const item of items) {
+  for (const item of shuffled) {
+    if (selectedIds.has(item.id)) continue;
+    
     let slot: EssentialSlot | null = null;
 
     if (item.garmentType === 'upper_body') {
       slot = classifyUpperBodyItem(item);
     } else if (item.garmentType === 'lower_body') {
-      slot = 'lower_body';
+      slot = classifyBottomItem(item);
     } else if (item.garmentType === 'shoes') {
-      slot = 'shoes';
+      slot = classifyShoeItem(item);
     }
 
     if (!slot) continue;
     if (pickedCounts[slot] >= ESSENTIALS_REQUIREMENTS[slot]) continue;
 
     selected.push(item);
+    selectedIds.add(item.id);
     pickedCounts[slot] += 1;
 
     if (selected.length >= ESSENTIALS_LIMIT) break;
@@ -170,6 +227,7 @@ const HomeScreen = () => {
   const isFocused = useIsFocused();
   const { isReducedMotionEnabled } = useAccessibility();
   const { t } = useTranslation();
+  const { isAdmin } = useAdminGuard();
 
   const player = useVideoPlayer(require("../assets/videos/nux_men_o.mp4"), (player) => {
     player.loop = true;
@@ -315,7 +373,7 @@ const HomeScreen = () => {
     }
   };
 
-  // Wardrobe Essentials — sourced from Supabase `shop_catalog`
+  // Wardrobe Essentials — sourced from all shop_catalog sources for maximum variety
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
   const addItem = useWardrobeStore((state) => state.addItem);
 
@@ -323,16 +381,12 @@ const HomeScreen = () => {
     items: catalogEssentials,
     loading: essentialsLoading,
     error: essentialsError,
-  } = useShopCatalog({ enabled: true, source: 'apify-zara-men' });
+  } = useShopCatalog({ enabled: true, source: 'all' });
 
-  // Dedicated shoes fetch — the mixed catalog above is capped at 100 rows
-  // ordered by `sort_order`, and Zara's shoes category typically lands
-  // outside that window, so we pull shoes explicitly to guarantee the
-  // outfit shoe slot always has real product images instead of a
-  // "Not in stock" placeholder.
+  // Dedicated shoes fetch from all sources for more variety
   const { items: catalogShoes } = useShopCatalog({
     enabled: true,
-    source: 'apify-zara-men',
+    source: 'all',
     category: 'shoes',
   });
 
@@ -479,7 +533,7 @@ const HomeScreen = () => {
 
     const subCategory =
       item.garmentType === 'upper_body'
-        ? classifyUpperBodyItem(item)
+        ? (classifyUpperBodyItem(item) ?? 'tees')
         : item.garmentType === 'lower_body'
           ? 'pants'
           : item.garmentType;
@@ -892,14 +946,12 @@ const HomeScreen = () => {
 
     const aiOutfits = dailyBusinessCasual.outfits;
   
-    // If AI returned no outfits, fall back to the curated strip so the UI still
-    // looks good on cold starts or network failures.
-    const useAI = false;
+    // Use AI outfits when available (they generate fresh combinations on regenerate)
+    // Fall back to static shop catalog combinations on cold starts or network failures
+    const useAI = aiOutfits.length > 0;
     
-    // Debug: log whether we're using AI or fallback
-    if (__DEV__ && !useAI) {
-      console.warn('[renderPremiumOutfitSuggestion] AI outfits empty, using shop catalog fallback');
-      console.warn('[renderPremiumOutfitSuggestion] shopTops:', shopTops.length, 'shopBottoms:', shopBottoms.length, 'shopShoes:', shopShoes.length);
+    if (__DEV__) {
+      console.log('[renderPremiumOutfitSuggestion] useAI:', useAI, 'aiOutfits:', aiOutfits.length);
     }
     
     const data = useAI
@@ -907,7 +959,9 @@ const HomeScreen = () => {
       : outfitCombinations.map((c) => ({ id: String(c.id), legacy: c }));
 
     const renderOutfitItem = ({ item }: { item: { id: string; outfit?: any; legacy?: any } }) => {
-      const collageItems = mapLegacyOutfitItemsForCollage(item.legacy) as any;
+      const collageItems = item.outfit 
+        ? mapAiOutfitItemsForCollage(item.outfit) 
+        : mapLegacyOutfitItemsForCollage(item.legacy) as any;
       const hasOuter = collageItems.some((ci: any) => ci.macroCategory === 'outerwear');
 
       return (
@@ -931,7 +985,7 @@ const HomeScreen = () => {
             </View>
 
             <View style={styles.premiumPager}>
-              {outfitCombinations.map((_, index) => (
+              {data.map((_, index) => (
                 <View key={index} style={[styles.pagerBar, index === currentOutfitIndex && styles.pagerBarActive]} />
               ))}
             </View>
@@ -1016,8 +1070,12 @@ const HomeScreen = () => {
           <TouchableOpacity
             style={styles.createAvatarButton}
             onPress={() => {
-              logger.debug('Try On button pressed');
-              navigation.navigate('AITryOn');
+              if (isAdmin) {
+                logger.debug('Try On button pressed');
+                navigation.navigate('AITryOn');
+              } else {
+                Alert.alert(t('common.comingSoon'));
+              }
             }}
           >
             <Text style={styles.createAvatarText}>{t('home.tryOn')}</Text>
@@ -1051,13 +1109,15 @@ const HomeScreen = () => {
     }
 
     const aiOutfits = dailyOldMoney.outfits;
-    const useAI = false;
+    const useAI = aiOutfits.length > 0;
     const data = useAI
       ? aiOutfits.map((o, i) => ({ id: o.id || `ai-om-${i}`, outfit: o }))
       : dinnerOutfitCombinations.map((c) => ({ id: String(c.id), legacy: c }));
 
     const renderDinnerItem = ({ item }: { item: { id: string; outfit?: any; legacy?: any } }) => {
-      const collageItems = mapLegacyOutfitItemsForCollage(item.legacy) as any;
+      const collageItems = item.outfit 
+        ? mapAiOutfitItemsForCollage(item.outfit)
+        : mapLegacyOutfitItemsForCollage(item.legacy) as any;
       const hasOuter = collageItems.some((ci: any) => ci.macroCategory === 'outerwear');
 
       return (
@@ -1077,7 +1137,7 @@ const HomeScreen = () => {
             </View>
 
             <View style={styles.premiumPager}>
-              {dinnerOutfitCombinations.map((_, index) => (
+              {data.map((_, index) => (
                 <View key={index} style={[styles.pagerBar, index === currentDinnerOutfitIndex && styles.dinnerPagerBarActive]} />
               ))}
             </View>
@@ -1158,7 +1218,11 @@ const HomeScreen = () => {
           <TouchableOpacity
             style={styles.dinnerAvatarButton}
             onPress={() => {
-              navigation.navigate('AITryOn');
+              if (isAdmin) {
+                navigation.navigate('AITryOn');
+              } else {
+                Alert.alert(t('common.comingSoon'));
+              }
             }}
           >
             <Text style={styles.createAvatarText}>{t('home.tryOn')}</Text>
@@ -1209,7 +1273,7 @@ const HomeScreen = () => {
                   contentStyle={styles.gridItemContent}
                   variant="light"
                 >
-                  <Image source={imageSrc} style={styles.gridImage as any} resizeMode="cover" />
+                  <CachedImage uri={typeof item.imageUrl === 'string' ? item.imageUrl : ''} style={styles.gridImage} contentFit="cover" fadeIn={false} />
                   <Text style={styles.essentialItemName} numberOfLines={1}>{item.name}</Text>
                   <View style={styles.gridActions}>
                     <TouchableOpacity
@@ -1355,9 +1419,11 @@ const HomeScreen = () => {
               <TouchableOpacity
                 style={styles.buzzerButton}
                 onPress={() => {
-                  logger.debug('Calendar button pressed');
+                  console.log('[IPAD-DEBUG] Calendar button pressed');
                   navigation.navigate('Calendar');
                 }}
+                onPressIn={() => console.log('[IPAD-DEBUG] Calendar button touch start')}
+                onPressOut={() => console.log('[IPAD-DEBUG] Calendar button touch end')}
                 accessibilityLabel={t('home.openCalendar')}
               >
                 <Ionicons name="calendar-outline" size={24} color={colors.text.primary} />

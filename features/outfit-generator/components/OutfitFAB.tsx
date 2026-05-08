@@ -15,7 +15,7 @@ const OutfitFAB: React.FC<OutfitFABProps> = ({ selectedCount, loading, onGenerat
 
   return (
     <View style={styles.fabContainer}>
-      <BlurView intensity={40} tint="light" style={styles.fabGlass}>
+      <BlurView intensity={40} tint="light" style={styles.fabGlass} pointerEvents="none">
         <TouchableOpacity
           style={styles.generateBtn}
           onPress={onGenerate}

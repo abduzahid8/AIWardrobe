@@ -19,10 +19,10 @@ import {
     StyleSheet,
     ScrollView,
     Dimensions,
-    Image,
     TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { CachedImage } from '../components/ui/CachedImage';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import Animated, {
@@ -279,9 +279,11 @@ export default function WardrobeAnalyticsScreen({ navigation }: any) {
                                     <View style={styles.mostWornRank}>
                                         <Text style={styles.mostWornRankText}>#{idx + 1}</Text>
                                     </View>
-                                    <Image
-                                        source={{ uri: item.imageUrl || item.thumbnailUrl }}
+                                    <CachedImage
+                                        uri={item.imageUrl || item.thumbnailUrl || ''}
                                         style={styles.mostWornImage}
+                                        contentFit="cover"
+                                        fadeIn={false}
                                     />
                                     <Text style={styles.mostWornCount}>{item.wearCount}×</Text>
                                     <Text style={styles.mostWornName} numberOfLines={1}>
@@ -339,10 +341,12 @@ export default function WardrobeAnalyticsScreen({ navigation }: any) {
                         </Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.unwornScroll}>
                             {unwornItems.slice(0, 10).map((item) => (
-                                <Image
+                                <CachedImage
                                     key={item.id}
-                                    source={{ uri: item.imageUrl || item.thumbnailUrl }}
+                                    uri={item.imageUrl || item.thumbnailUrl || ''}
                                     style={styles.unwornImage}
+                                    contentFit="cover"
+                                    fadeIn={false}
                                 />
                             ))}
                         </ScrollView>

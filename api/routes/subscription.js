@@ -70,6 +70,13 @@ router.get("/status", authenticateToken, async (req, res) => {
  * Verify Apple App Store receipt and create/update subscription
  */
 router.post("/verify-apple-receipt", authenticateToken, aiLimiter, async (req, res) => {
+    // DISABLED: Apple receipt validation is handled exclusively by RevenueCat
+    // (supabase/functions/revenuecat-webhook). This legacy stub previously
+    // returned a fabricated successful validation, which is unsafe in production.
+    return res.status(410).json({
+        error: 'Endpoint retired. Receipt validation is handled by RevenueCat webhook.'
+    });
+    /* eslint-disable no-unreachable */
     try {
         const { receiptData, productId } = req.body;
 
@@ -217,6 +224,13 @@ router.post("/verify-apple-receipt", authenticateToken, aiLimiter, async (req, r
  * Verify Google Play receipt and create/update subscription
  */
 router.post("/verify-google-receipt", authenticateToken, aiLimiter, async (req, res) => {
+    // DISABLED: See note on /verify-apple-receipt. Receipt validation is
+    // delegated to RevenueCat. The original simulated implementation below
+    // is retained only for reference and is unreachable.
+    return res.status(410).json({
+        error: 'Endpoint retired. Receipt validation is handled by RevenueCat webhook.'
+    });
+    /* eslint-disable no-unreachable */
     try {
         const { purchaseToken, productId, packageName } = req.body;
 
@@ -455,6 +469,11 @@ router.get("/history", authenticateToken, async (req, res) => {
  * Apple App Store Server Notifications (webhook)
  */
 router.post("/webhook/apple", async (req, res) => {
+    // DISABLED: Apple App Store Server Notifications are routed through
+    // RevenueCat → supabase/functions/revenuecat-webhook. This legacy
+    // unauthenticated stub is closed to prevent spoofed subscription writes.
+    return res.status(410).json({ error: 'Endpoint retired.' });
+    /* eslint-disable no-unreachable */
     try {
         logger.info("📱 Apple webhook received");
 

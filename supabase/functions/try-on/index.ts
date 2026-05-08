@@ -22,7 +22,8 @@ function buildPersonTryOnPrompt(garmentType: string): string {
         'The left half of this image shows a person and the right half shows a garment. ' +
         'Dress the person in the exact garment from the right half. ' +
         'Keep the person\'s face, hair, pose, and background identical. ' +
-        'Output ONLY the person wearing the garment, photorealistic, high resolution.'
+        'CRITICAL: Preserve and keep all existing clothing the person is already wearing (e.g., pants, shoes) UNLESS it is being explicitly replaced by the new garment. Do not generate a black screen. ' +
+        'Output ONLY the person wearing the new garment combined with their existing outfit, photorealistic, high resolution.'
 
     if (garmentType === 'lower_body') {
         return base + ' The garment is pants / trousers — apply it to the lower body.'

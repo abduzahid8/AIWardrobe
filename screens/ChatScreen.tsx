@@ -121,8 +121,16 @@ const ChatScreen = () => {
     const [isThinking,    setIsThinking]     = useState(false);
     const listRef                            = useRef<FlatList<ChatMessage>>(null);
     const inputRef                           = useRef<TextInput>(null);
+    const thinkingTimerRef                   = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const wardrobeSize = useMemo(() => items.length, [items.length]);
+
+    // Cleanup timer on unmount
+    useEffect(() => {
+        return () => {
+            if (thinkingTimerRef.current) clearTimeout(thinkingTimerRef.current);
+        };
+    }, []);
 
     /** Add a greeting when user first opens the screen with items. */
     useEffect(() => {
@@ -163,24 +171,27 @@ const ChatScreen = () => {
         scrollToBottom();
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-        const thinkingTimer = setTimeout(() => setIsThinking(true), 5000);
-        const result = await aiProvider.chat(trimmed, {
-            wardrobeSize,
-        });
-        clearTimeout(thinkingTimer);
-
-        setIsThinking(false);
-        setIsLoading(false);
-
-        const aiMessage: ChatMessage = {
-            id: `msg_${Date.now()}_ai`,
-            role: 'assistant',
-            text: result.response,
-            timestamp: new Date(),
-        };
-
-        setMessages((prev) => [...prev, aiMessage]);
-        scrollToBottom();
+        if (thinkingTimerRef.current) clearTimeout(thinkingTimerRef.current);
+        thinkingTimerRef.current = setTimeout(() => setIsThinking(true), 5000);
+        
+        try {
+            const result = await aiProvider.chat(trimmed, {
+                wardrobeSize,
+            });
+            
+            const aiMessage: ChatMessage = {
+                id: `msg_${Date.now()}_ai`,
+                role: 'assistant',
+                text: result.response,
+                timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, aiMessage]);
+        } finally {
+            if (thinkingTimerRef.current) clearTimeout(thinkingTimerRef.current);
+            setIsThinking(false);
+            setIsLoading(false);
+            scrollToBottom();
+        }
     }, [isLoading, wardrobeSize, scrollToBottom]);
 
     const handleSend = useCallback(() => {

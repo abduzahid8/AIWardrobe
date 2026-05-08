@@ -17,7 +17,6 @@ import {
     Text,
     StyleSheet,
     TouchableOpacity,
-    Image,
     ScrollView,
     FlatList,
     SafeAreaView,
@@ -34,6 +33,7 @@ import Animated, {
     SlideInUp,
 } from 'react-native-reanimated';
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
+import { CachedImage } from '../components/ui/CachedImage';
 import useWardrobeStore from '../store/wardrobeStore';
 import type { ClothingItem, Occasion } from '../src/types/domain';
 import { useTranslation } from 'react-i18next';
@@ -208,10 +208,11 @@ const WearLogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                             {suggestionItems.map((item) => (
                                 <View key={item.id} style={styles.suggestionItem}>
                                     {item.imageUrl ? (
-                                        <Image
-                                            source={{ uri: item.imageUrl }}
+                                        <CachedImage
+                                            uri={item.imageUrl}
                                             style={styles.suggestionImage}
-                                            resizeMode="cover"
+                                            contentFit="cover"
+                                            fadeIn={false}
                                         />
                                     ) : (
                                         <View style={[styles.suggestionImage, styles.placeholderImage]}>
@@ -253,10 +254,11 @@ const WearLogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                                                 activeOpacity={0.7}
                                             >
                                                 {item.imageUrl ? (
-                                                    <Image
-                                                        source={{ uri: item.imageUrl }}
+                                                    <CachedImage
+                                                        uri={item.imageUrl}
                                                         style={styles.itemImage}
-                                                        resizeMode="cover"
+                                                        contentFit="cover"
+                                                        fadeIn={false}
                                                     />
                                                 ) : (
                                                     <View style={[styles.itemImage, styles.placeholderImage]}>

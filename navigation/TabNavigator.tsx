@@ -1,6 +1,6 @@
-import { LayoutChangeEvent, Platform, StyleSheet, TouchableOpacity, View, useWindowDimensions } from "react-native";
+import { LayoutChangeEvent, Platform, Pressable, StyleSheet, View, useWindowDimensions, Alert } from "react-native";
 import React from "react";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { BottomTabNavigationOptions, createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { BlurView } from 'expo-blur';
@@ -12,8 +12,7 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
-import { CrossfadeTabView, TabTransitionContext } from "../components/CrossfadeTabView";
-import { useIsFocused } from "@react-navigation/native";
+import { TabTransitionContext } from "../components/CrossfadeTabView";
 
 // Original Screens
 import HomeScreen from "../screens/HomeScreen";
@@ -33,8 +32,8 @@ const logger = createLogger('TabNavigator');
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 
 const { colors, spacing } = LiquidGlass2026Theme;
-const TAB_BAR_HORIZONTAL_MARGIN = 20;
-const TAB_BAR_HORIZONTAL_PADDING = spacing.xs;
+const TAB_BAR_HORIZONTAL_MARGIN = 16;
+const TAB_BAR_HORIZONTAL_PADDING = spacing.sm;
 
 const Tab = createBottomTabNavigator();
 
@@ -66,7 +65,7 @@ const TabIcon = ({ focused, iconName, color, size, label }: TabIconProps) => {
 };
 
 // ── Liquid Glass Tab Bar — smooth sliding indicator ───────────────────
-const LiquidParallaxTabBar = ({ state, descriptors, navigation }: any) => {
+const LiquidParallaxTabBar = ({ state, descriptors, navigation, isAdmin }: any) => {
   logger.debug('LiquidParallaxTabBar rendering', { tabIndex: state.index });
   const { width } = useWindowDimensions();
   const fallbackTabBarWidth = Math.max(width - (TAB_BAR_HORIZONTAL_MARGIN * 2), 0);
@@ -75,7 +74,7 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation }: any) => {
     Math.max(tabBarWidth - (TAB_BAR_HORIZONTAL_PADDING * 2), 0) / Math.max(state.routes.length, 1);
 
   // Blob indicator — smooth slide to center of active icon
-  const BLOB_SIZE = 56;
+  const BLOB_SIZE = 48;
   const blobCenterOffset = (tabWidth - BLOB_SIZE) / 2;
   const blobTranslateX = useSharedValue(state.index * tabWidth + blobCenterOffset);
 
@@ -106,22 +105,27 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation }: any) => {
   }));
 
   return (
-    <BlurView
-      intensity={Platform.OS === 'ios' ? 80 : 100}
-      tint="light"
+    <View
       style={styles.tabBarContainer}
       onLayout={handleTabBarLayout}
     >
+      <BlurView
+        intensity={Platform.OS === 'ios' ? 80 : 100}
+        tint="light"
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
       <LinearGradient
         colors={['rgba(255,255,255,0.94)', 'rgba(240,246,255,0.88)']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.tabBarGradient}
+        pointerEvents="none"
       />
-      <View style={styles.glassOverlay} />
+      <View style={styles.glassOverlay} pointerEvents="none" />
 
       {/* Morphing Blob Indicator */}
-      <Animated.View style={[styles.indicatorContainer, animatedBlobStyle]}>
+      <Animated.View style={[styles.indicatorContainer, animatedBlobStyle]} pointerEvents="none">
         <View style={styles.liquidBlob} />
       </Animated.View>
 
@@ -135,29 +139,35 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation }: any) => {
           const iconColor = isFocused ? activeColor : inactiveColor;
 
           const onPress = () => {
-            logger.debug('Tab pressed', { name: route.name, isFocused });
+            console.log('[IPAD-DEBUG] Tab pressed:', route.name);
+            if (route.name === 'AI' && !isAdmin) {
+              Alert.alert('Coming soon');
+              return;
+            }
             const event = navigation.emit({
               type: 'tabPress',
               target: route.key,
               canPreventDefault: true,
             });
             if (!isFocused && !event.defaultPrevented) {
-              logger.debug('Navigating to tab', route.name);
+              console.log('[IPAD-DEBUG] Navigating to tab:', route.name);
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               navigation.navigate(route.name);
             }
           };
 
           return (
-            <TouchableOpacity
+            <Pressable
               key={route.key}
               accessibilityRole="button"
               accessibilityState={isFocused ? { selected: true } : {}}
               accessibilityLabel={options.tabBarAccessibilityLabel}
               testID={options.tabBarTestID}
               onPress={onPress}
-              style={styles.tabButton}
-              activeOpacity={1}
+              style={({ pressed }) => [
+                styles.tabButton,
+                pressed && { opacity: 0.7 }
+              ]}
             >
               <TabIcon
                 focused={isFocused}
@@ -166,29 +176,22 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation }: any) => {
                 size={24}
                 label={route.name}
               />
-            </TouchableOpacity>
+            </Pressable>
           );
         })}
       </View>
-    </BlurView>
+    </View>
   );
 };
 
 // ── Stable wrapper factory — creates components ONCE ─────────────────
 const createAnimatedTabScreen = (Screen: React.ComponentType<any>, tabIndex: number) => {
   const Wrapped = (props: any) => {
-    // `useIsFocused()` is reactive — the wrapper re-renders on every
-    // focus/blur so CrossfadeTabView's `isActive` prop always reflects
-    // the current focus state. Using `navigation.isFocused()` directly
-    // is NOT reactive and, with `lazy: true`, returns false on the
-    // initial mount of a newly-focused tab → opacity stuck at 0 →
-    // white screen.
-    const isActive = useIsFocused();
+    // DISABLED: CrossfadeTabView causes touch issues on iPad
+    // Using direct screen rendering instead
     return (
       <ErrorBoundary>
-        <CrossfadeTabView isActive={isActive} index={tabIndex}>
-          <Screen {...props} />
-        </CrossfadeTabView>
+        <Screen {...props} />
       </ErrorBoundary>
     );
   };
@@ -207,7 +210,6 @@ const TabNavigator = () => {
   logger.debug('TabNavigator component rendering');
   const { t } = useTranslation();
   const { isAdmin } = useAdminGuard();
-
   // Shared values for tab transition direction — updated via ref + deferred setState
   const currentTab = useSharedValue(0);
   const previousTab = useSharedValue(0);
@@ -226,23 +228,27 @@ const TabNavigator = () => {
     }
   }, [pendingIndex, currentTab, previousTab]);
 
+  // Memoize tabBar to prevent excessive re-renders
+  const renderTabBar = React.useCallback((props: any) => {
+    const idx = props.state.index;
+    if (idx !== trackedIndex.current) {
+      queueMicrotask(() => setPendingIndex(idx));
+    }
+    return <LiquidParallaxTabBar {...props} isAdmin={isAdmin} />;
+  }, [isAdmin]);
+
+  const screenOptions = React.useCallback(({ route }: any): BottomTabNavigationOptions => ({
+    headerShown: false,
+    tabBarShowLabel: false,
+    animation: 'fade',
+    lazy: false,
+  }), []);
+
   return (
     <TabTransitionContext.Provider value={{ currentTab, previousTab }}>
-    <Tab.Navigator
-      tabBar={(props) => {
-        const idx = props.state.index;
-        if (idx !== trackedIndex.current) {
-          // Defer setState via queueMicrotask — runs after render completes
-          queueMicrotask(() => setPendingIndex(idx));
-        }
-        return <LiquidParallaxTabBar {...props} />;
-      }}
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarShowLabel: false,
-        animation: 'fade',
-        lazy: true,
-      })}
+      <Tab.Navigator
+        tabBar={renderTabBar}
+        screenOptions={screenOptions}
     >
       <Tab.Screen
         name="Home"
@@ -260,13 +266,11 @@ const TabNavigator = () => {
         initialParams={{ asTab: true }}
         options={{ tabBarAccessibilityLabel: t('tabs.ai') }}
       />
-      {isAdmin && (
-        <Tab.Screen
-          name="Inspo"
-          component={AnimatedInspoScreen}
-          options={{ tabBarAccessibilityLabel: t('tabs.inspo') }}
-        />
-      )}
+      <Tab.Screen
+        name="Inspo"
+        component={AnimatedInspoScreen}
+        options={{ tabBarAccessibilityLabel: t('tabs.inspo') }}
+      />
       <Tab.Screen
         name="Profile"
         component={AnimatedProfileScreen}
@@ -280,17 +284,19 @@ const TabNavigator = () => {
 const styles = StyleSheet.create({
   tabBarContainer: {
     position: 'absolute',
-    bottom: 30,
+    bottom: Platform.OS === 'ios' ? 34 : 20,
     left: TAB_BAR_HORIZONTAL_MARGIN,
     right: TAB_BAR_HORIZONTAL_MARGIN,
-    height: 72,
-    borderRadius: 36,
+    height: 68,
+    borderRadius: 34,
     overflow: 'hidden',
     shadowColor: "#173A65",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.12,
-    shadowRadius: 22,
-    elevation: 12,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
+    backgroundColor: 'transparent',
+    alignSelf: 'center',
   },
   tabBarGradient: {
     ...StyleSheet.absoluteFillObject,
@@ -300,21 +306,24 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.42)',
     borderWidth: 1,
     borderColor: 'rgba(24,58,103,0.08)',
-    borderRadius: 36,
+    borderRadius: 34,
   },
   tabBarContent: {
     flexDirection: 'row',
     height: '100%',
     zIndex: 2,
     alignItems: 'center',
+    justifyContent: 'space-around',
     paddingHorizontal: TAB_BAR_HORIZONTAL_PADDING,
+    pointerEvents: 'auto' as const,
   },
   tabButton: {
     flex: 1,
-    height: 54,
+    height: 56,
     justifyContent: 'center',
     alignItems: 'center',
-    minWidth: spacing.touchTarget.minimum,
+    minWidth: 44,
+    pointerEvents: 'auto' as const,
   },
   tabItemContainer: {
     alignItems: 'center',
@@ -329,16 +338,16 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   liquidBlob: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: 'rgba(24,58,103,0.08)',
     shadowColor: '#173A65',
     shadowOpacity: 0.14,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
     elevation: 4,
   },
 });

@@ -5,7 +5,6 @@ import {
     StyleSheet,
     TouchableOpacity,
     ScrollView,
-    Image,
     Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 import { useAppNavigation } from '../hooks/useAppNavigation';
+import { CachedImage } from '../components/ui/CachedImage';
 import useWardrobeStore from '../store/wardrobeStore';
 import {
     useOutfitCalendar,
@@ -214,7 +214,7 @@ const OutfitCalendarScreen = () => {
     const renderMiniSlot = (item: OutfitItem | null | undefined, shortLabel: string, isSelected: boolean) => (
         <View style={[styles.miniSlot, isSelected && styles.miniSlotSelected]}>
             {item?.image ? (
-                <Image source={{ uri: item.image }} style={styles.miniSlotImage} resizeMode="cover" />
+                <CachedImage uri={item.image} style={styles.miniSlotImage} contentFit="cover" fadeIn={false} />
             ) : (
                 <Text style={[styles.miniSlotPlaceholder, isSelected && styles.miniSlotPlaceholderSelected]}>
                     {shortLabel}
@@ -227,7 +227,7 @@ const OutfitCalendarScreen = () => {
         <View style={[styles.previewTile, styles.previewTileGrid]}>
             {item?.image ? (
                 <View style={styles.previewMedia}>
-                    <Image source={{ uri: item.image }} style={styles.previewImage} resizeMode="contain" />
+                    <CachedImage uri={item.image} style={styles.previewImage} contentFit="contain" fadeIn={false} />
                 </View>
             ) : (
                 <View style={styles.previewEmpty}>
@@ -246,7 +246,7 @@ const OutfitCalendarScreen = () => {
         <View style={styles.dockItem}>
             <View style={styles.dockThumbWrap}>
                 {item?.image ? (
-                    <Image source={{ uri: item.image }} style={styles.dockThumb} resizeMode="contain" />
+                    <CachedImage uri={item.image} style={styles.dockThumb} contentFit="contain" fadeIn={false} />
                 ) : (
                     <View style={[styles.dockThumb, styles.dockThumbEmpty]}>
                         <Ionicons name="add" size={18} color="#94A3B8" />
@@ -449,10 +449,11 @@ const OutfitCalendarScreen = () => {
                                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                                         {selectedSlots.extras.map((item) => (
                                             <View key={item.id} style={styles.extraCard}>
-                                                <Image
-                                                    source={{ uri: item.image }}
+                                                <CachedImage
+                                                    uri={item.image}
                                                     style={styles.extraImage}
-                                                    resizeMode="cover"
+                                                    contentFit="cover"
+                                                    fadeIn={false}
                                                 />
                                                 <Text style={styles.extraName} numberOfLines={2}>
                                                     {formatItemName(item, t)}

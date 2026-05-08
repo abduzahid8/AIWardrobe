@@ -1086,7 +1086,9 @@ serve(async (req) => {
     }
 
     // FIX 6: Validate image size (max 10MB base64 = ~7.5MB raw)
-    const imageSizeBytes = (image.length * 3) / 4
+    // Strip data URI prefix before calculating size
+    const base64Data = stripDataUri(image)
+    const imageSizeBytes = (base64Data.length * 3) / 4
     if (imageSizeBytes > 10 * 1024 * 1024) {
       return new Response(
         JSON.stringify({ error: 'Image too large. Max 10MB.' }),
@@ -1244,8 +1246,12 @@ serve(async (req) => {
         if (localCutout.dataUrl) {
           result.cutoutUrl = localCutout.dataUrl
           processedImageUrl = localCutout.dataUrl
-        } else if (!REPLICATE_TOKEN) {
-          console.warn('Local studio cutout failed and Replicate token not set')
+          console.log('✅ Local studio cutout succeeded')
+        } else {
+          console.warn('❌ Local studio cutout failed:', localCutoutError)
+          // Fallback to original image as data URL so client has something to show
+          result.cutoutUrl = imageDataUrl
+          processedImageUrl = null // Signal that we need Replicate fallback
         }
 
         if (localCutoutError) {
@@ -1253,9 +1259,9 @@ serve(async (req) => {
         }
       }
 
-      if (!processedImageUrl && !REPLICATE_TOKEN) {
-        console.warn('Replicate token not set, skipping background removal')
-      } else if (!processedImageUrl) {
+      // If local cutout failed and we have Replicate token, try Replicate fallback
+      if (!processedImageUrl && REPLICATE_TOKEN) {
+        console.log('🔄 Falling back to Replicate for background removal...')
         // Use normalized image if available, otherwise use original
         const imageToProcess = normalizedImageUrl || (image.startsWith('data:') ? image : `data:image/jpeg;base64,${image}`)
         
@@ -1356,6 +1362,19 @@ serve(async (req) => {
         // Continue with original cutout if enhancement fails
       }
     }
+
+    // Final safety check: ensure cutoutUrl is always set
+    if (!result.cutoutUrl) {
+      console.warn('⚠️ cutoutUrl not set, falling back to original image')
+      result.cutoutUrl = imageDataUrl
+    }
+
+    console.log('✅ AI processing complete:', {
+      operation,
+      hasCutoutUrl: !!result.cutoutUrl,
+      hasClassification: !!result.classification,
+      hasEnhancedUrl: !!result.enhancedUrl,
+    })
 
     return new Response(
       JSON.stringify({ success: true, ...result }),

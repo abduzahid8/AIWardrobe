@@ -17,7 +17,6 @@ import {
     Text,
     StyleSheet,
     TouchableOpacity,
-    Image,
     ScrollView,
     SafeAreaView,
     ActivityIndicator,
@@ -36,6 +35,7 @@ import {
 } from '../src/services/suggestionEngine';
 import type { Occasion, DailySuggestion } from '../src/types/domain';
 import { useTranslation } from 'react-i18next';
+import { CachedImage } from '../components/ui/CachedImage';
 
 const { colors, spacing, radius, typography } = LiquidGlass2026Theme;
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -248,10 +248,11 @@ const DailySuggestionScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                                 style={styles.outfitItem}
                             >
                                 {item!.imageUrl ? (
-                                    <Image
-                                        source={{ uri: item!.imageUrl }}
+                                    <CachedImage
+                                        uri={item!.imageUrl}
                                         style={styles.outfitImage}
-                                        resizeMode="cover"
+                                        contentFit="cover"
+                                        fadeIn={false}
                                     />
                                 ) : (
                                     <View style={[styles.outfitImage, styles.placeholderImage]}>

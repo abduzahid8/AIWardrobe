@@ -117,26 +117,22 @@ const usePromoCodeStore = create<PromoCodeState>((set, get) => ({
     },
 
     shouldShowPromoScreen: () => {
-        const { hasRedeemedPromo, hasSkippedPromo, isHydrated } = get();
+        // PRODUCTION: Always return false — Apple Guideline 3.1.1 prohibits
+        // custom promo code mechanisms from gating access to the app.
+        // The PromoCode screen remains accessible voluntarily (e.g. from Profile
+        // via the "Redeem Offer Code" button) but is NEVER a navigation gate.
+        if (!__DEV__) return false;
 
-        // Don't show until we've hydrated
+        // DEV ONLY: allow testing the promo gate flow locally.
+        const { hasRedeemedPromo, isHydrated } = get();
         if (!isHydrated) return false;
-
-        // Already redeemed — no need to show
         if (hasRedeemedPromo) return false;
 
-        // If user has an active subscription (paid), skip
         const subStore = useSubscriptionStore.getState();
         if (subStore.tier !== 'free') return false;
-
-        // If trial is already active, they already redeemed somehow
         if (subStore.isTrialActive) return false;
-
-        // If trial is expired, they should see the paywall, not the promo screen
         if (subStore.isTrialExpired) return false;
 
-        // Show the promo screen for free users who haven't redeemed or skipped
-        // (skipped users can still access it from TrialExpiredScreen)
         return true;
     },
 }));

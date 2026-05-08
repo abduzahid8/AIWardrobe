@@ -180,7 +180,7 @@ const TypingIndicator = () => {
 };
 
 // Chat Message Bubble with Adjustment Buttons
-const ChatBubble = ({ message, isAI, outfit, onAdjust, t }: { message: string; isAI: boolean; outfit?: OutfitSuggestion; onAdjust?: (adjustment: string) => void; t: any }) => {
+const ChatBubble = ({ message, isAI, outfit, onAdjust, adjustmentOptions, t }: { message: string; isAI: boolean; outfit?: OutfitSuggestion; onAdjust?: (adjustment: string) => void; adjustmentOptions: { id: string; label: string; icon: string }[]; t: any }) => {
     return (
         <Animated.View
             entering={FadeInUp.springify()}
@@ -229,7 +229,7 @@ const ChatBubble = ({ message, isAI, outfit, onAdjust, t }: { message: string; i
                             <View style={styles.adjustmentSection}>
                                 <Text style={styles.adjustmentLabel}>{t('outfitAI.notQuiteRight')}</Text>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.adjustmentScroll}>
-                                    {ADJUSTMENT_OPTIONS.map((option) => (
+                                    {adjustmentOptions.map((option) => (
                                         <TouchableOpacity
                                             key={option.id}
                                             style={styles.adjustmentChip}
@@ -559,6 +559,7 @@ const OutfitAIScreen = () => {
                             isAI={msg.isAI}
                             outfit={msg.outfit}
                             onAdjust={msg.outfit ? handleAdjustOutfit : undefined}
+                            adjustmentOptions={ADJUSTMENT_OPTIONS}
                             t={t}
                         />
                     ))}

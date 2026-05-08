@@ -25,6 +25,13 @@ jest.mock('../../lib/supabase', () => ({
     },
 }));
 
+jest.mock('../../src/services/iapService', () => ({
+    iapService: {
+        identify: jest.fn().mockResolvedValue(undefined),
+        logout: jest.fn().mockResolvedValue(undefined),
+    },
+}));
+
 // Import after mocks
 import useAuthStore from '../../store/auth';
 

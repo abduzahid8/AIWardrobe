@@ -338,15 +338,33 @@ const MyClosetScreen = () => {
             return;
         }
 
+        // Ensure base64 has proper data URI prefix for the API
+        const imageData = b64.startsWith('data:') ? b64 : `data:image/jpeg;base64,${b64}`;
+
         setIsUploadingOverlay(true);
         setUploadStatusMsg(t('myCloset.analyzingItem'));
 
         try {
+            console.log('[MyCloset] Starting AI Studio photo processing...');
+            
             // AI Studio should preserve the garment and only remove the background.
-            const result = await ExternalAIService.processStudioPhoto(b64);
+            const result = await ExternalAIService.processStudioPhoto(imageData);
+
+            console.log('[MyCloset] AI Studio result:', {
+                success: result.success,
+                hasImageUrl: !!result.imageUrl,
+                hasCutoutUrl: !!result.cutoutUrl,
+                hasClassification: !!result.classification,
+                processingTimeMs: result.processingTimeMs,
+            });
 
             if (!result.success) {
                 throw new Error("AI processing failed");
+            }
+
+            // Validate that we have a valid image URL
+            if (!result.imageUrl) {
+                throw new Error("No processed image returned from AI");
             }
 
             setUploadStatusMsg(t('myCloset.backgroundRemoved'));
@@ -369,8 +387,12 @@ const MyClosetScreen = () => {
             });
 
         } catch (error: any) {
-            console.error(error);
-            Alert.alert(t('common.error'), error.message || t('myCloset.uploadError'));
+            console.error('[MyCloset] AI Studio error:', error);
+            Alert.alert(
+                t('common.error'), 
+                error.message || t('myCloset.uploadError'),
+                [{ text: t('common.ok'), style: 'default' }]
+            );
         } finally {
             setIsUploadingOverlay(false);
         }
@@ -536,21 +558,34 @@ const MyClosetScreen = () => {
                     result = result.filter(item => {
                         const cat = (item.category || '').toLowerCase();
                         const type = (item.type || item.itemType || '').toLowerCase();
+                        
+                        // Use exact word matching with word boundaries to prevent substring matches
+                        const matchesExact = (value: string, keywords: string[]): boolean => {
+                            return keywords.some(keyword => {
+                                const regex = new RegExp(`\\b${keyword}\\b`, 'i');
+                                return regex.test(value);
+                            });
+                        };
+
                         switch (selectedCategory) {
                             case 'tops':
                                 if (cat === 'tops' || cat === 'top') return true;
-                                return ['top', 'shirt', 'blouse', 'coat', 'dress', 'pullover', 'jacket', 'hoodie', 'sweater', 't-shirt', 'polo', 'cardigan'].some(k => cat.includes(k) || type.includes(k));
+                                return matchesExact(cat, ['shirt', 'blouse', 'pullover', 'hoodie', 'sweater', 't-shirt', 'tshirt', 'polo', 'cardigan']) ||
+                                       matchesExact(type, ['shirt', 'blouse', 'pullover', 'hoodie', 'sweater', 't-shirt', 'tshirt', 'polo', 'cardigan']);
                             case 'bottoms':
                                 if (cat === 'bottoms' || cat === 'bottom') return true;
-                                return ['bottom', 'pant', 'skirt', 'jean', 'trouser', 'short', 'legging'].some(k => cat.includes(k) || type.includes(k));
+                                return matchesExact(cat, ['pant', 'skirt', 'jean', 'trouser', 'short', 'legging']) ||
+                                       matchesExact(type, ['pant', 'skirt', 'jean', 'trouser', 'short', 'legging']);
                             case 'shoes':
                                 if (cat === 'shoes' || cat === 'shoe') return true;
-                                return ['shoe', 'sneaker', 'boot', 'sandal', 'heel', 'loafer', 'slipper', 'feet'].some(k => cat.includes(k) || type.includes(k));
+                                return matchesExact(cat, ['sneaker', 'boot', 'sandal', 'heel', 'loafer', 'slipper']) ||
+                                       matchesExact(type, ['sneaker', 'boot', 'sandal', 'heel', 'loafer', 'slipper']);
                             case 'accessories':
                                 if (cat === 'accessories' || cat === 'accessory') return true;
-                                return ['accessor', 'bag', 'hat', 'scarf', 'belt', 'sunglasses', 'watch', 'jewelry'].some(k => cat.includes(k) || type.includes(k));
+                                return matchesExact(cat, ['bag', 'hat', 'scarf', 'belt', 'sunglasses', 'watch', 'jewelry']) ||
+                                       matchesExact(type, ['bag', 'hat', 'scarf', 'belt', 'sunglasses', 'watch', 'jewelry']);
                             default:
-                                return cat.includes(selectedCategory.replace('s', '')) || type.includes(selectedCategory.replace('s', ''));
+                                return cat === selectedCategory || type === selectedCategory;
                         }
                     });
                 }

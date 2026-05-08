@@ -328,6 +328,16 @@ function OutfitSlotGrid({ items, weather }: OutfitSlotGridProps) {
   );
 }
 
+// ── Shuffle helper for outfit variety ─────────────────────────────────────
+function shuffleArray<T>(array: T[]): T[] {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 // ── 100% OFFLINE OUTFIT GENERATOR (No Edge Function Required) ─────────────
 async function generateOfflineOutfits(
   items: any[],
@@ -392,10 +402,11 @@ async function generateOfflineOutfits(
     return { item, category };
   });
 
-  const layers = classified.filter(c => c.category === 'layer').map(c => c.item);
-  const tops = classified.filter(c => c.category === 'top').map(c => c.item);
-  const pants = classified.filter(c => c.category === 'pants').map(c => c.item);
-  const shoes = classified.filter(c => c.category === 'shoes').map(c => c.item);
+  // Shuffle each category to ensure variety even with limited items
+  const layers = shuffleArray(classified.filter(c => c.category === 'layer').map(c => c.item));
+  const tops = shuffleArray(classified.filter(c => c.category === 'top').map(c => c.item));
+  const pants = shuffleArray(classified.filter(c => c.category === 'pants').map(c => c.item));
+  const shoes = shuffleArray(classified.filter(c => c.category === 'shoes').map(c => c.item));
 
   // Determine if layering needed based on weather ONLY
   const needsLayer = !weather || weather.temp < 18 || /\b(cold|rain|wind)\b/.test((weather?.condition || '').toLowerCase());
@@ -429,30 +440,34 @@ async function generateOfflineOutfits(
 
   for (let i = 0; i < limit; i++) {
     const outfitItems: any[] = [];
+    
+    // Use random offsets to ensure variety even with small wardrobes
+    const randOffset1 = Math.floor(Math.random() * 100);
+    const randOffset2 = Math.floor(Math.random() * 100);
 
-    const candidatePant = pants[i % Math.max(pants.length, 1)] || pants[0];
+    const candidatePant = pants[(i + randOffset1) % Math.max(pants.length, 1)] || pants[0];
     const pantIsShorts = !!candidatePant && isShortsBottom(candidatePant);
 
     // 4-slot model: [outerwear/layer, baseTop, pants, shoes]
     // Slot 1: outerwear (main-top / layer)
     if (needsLayer && layers.length > 0) {
-      let layer = layers[i % layers.length];
+      let layer = layers[(i + randOffset1) % layers.length];
       if (pantIsShorts && isFormalLayer(layer)) {
-        layer = casualLayers[i % Math.max(casualLayers.length, 1)] || layer;
+        layer = casualLayers[(i + randOffset1) % Math.max(casualLayers.length, 1)] || layer;
       }
       outfitItems.push({ ...layer, macroCategory: 'outerwear' });
     }
 
     // Slot 2: base top (second-top / shirt / tee)
     if (tops.length > 0) {
-      const top = tops[i % tops.length];
+      const top = tops[(i + randOffset2) % tops.length];
       outfitItems.push({ ...top, macroCategory: 'top' });
     }
     // When layering, ensure we have a second base top (clone if only 1 top)
     if (needsLayer && outfitItems.some(item => item.macroCategory === 'outerwear')) {
       const existingTop = outfitItems.find(item => item.macroCategory === 'top');
       const secondTop = tops.find((top) => top && top.id !== existingTop?.id)
-        || tops[(i + 1) % Math.max(tops.length, 1)];
+        || tops[(i + randOffset2 + 1) % Math.max(tops.length, 1)];
       if (secondTop && secondTop.id !== existingTop?.id) {
         // Replace the single top with a different second top
         const topIdx = outfitItems.findIndex(item => item.macroCategory === 'top');
@@ -461,20 +476,20 @@ async function generateOfflineOutfits(
       }
       // If only 1 top available, clone it for the second slot
       if (outfitItems.filter(item => item.macroCategory === 'top').length < 2 && existingTop) {
-        outfitItems.push({ ...existingTop, id: `${existingTop.id || existingTop.name}_layered_copy`, macroCategory: 'top' });
+        outfitItems.push({ ...existingTop, id: `${existingTop.id || existingTop.name}_layered_copy_${i}_${Date.now()}`, macroCategory: 'top' });
       }
     }
 
     let finalPant = candidatePant;
     if (needsLayer && pantIsShorts && outfitItems[0] && isFormalLayer(outfitItems[0]) && nonShortsPants.length > 0) {
-      finalPant = nonShortsPants[i % nonShortsPants.length];
+      finalPant = nonShortsPants[(i + randOffset1) % nonShortsPants.length];
     }
     if (finalPant) {
       outfitItems.push({ ...finalPant, macroCategory: 'bottom' });
     }
 
     if (shoes.length > 0) {
-      const shoe = shoes[i % shoes.length];
+      const shoe = shoes[(i + randOffset2) % shoes.length];
       outfitItems.push({ ...shoe, macroCategory: 'shoes' });
     } else {
       outfitItems.push({ ...PLACEHOLDER_SHOES });
@@ -504,9 +519,9 @@ async function generateOfflineOutfits(
     if (!hasRequiredTopCount || !hasBottom || !hasShoes || !hasLayer) continue;
 
     outfits.push({
-      id: `offline_${Date.now()}_${i}`,
+      id: `offline_${Date.now()}_${i}_${Math.floor(Math.random() * 1000)}`,
       mainImage: outfitItems[0]?.image || outfitItems[0]?.imageUrl || '',
-      matchScore: 0.85 + (i * 0.03),
+      matchScore: 0.85 + (Math.random() * 0.1), // Random variation in match score
       description: descriptions[i % 3],
       items: outfitItems,
       stylingTips: tips[i % 3].join(' · '),

@@ -1,21 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
-    Image,
-    ImageProps,
     View,
     StyleSheet,
-    ActivityIndicator,
     ImageStyle,
     StyleProp,
 } from 'react-native';
+import { Image, ImageProps } from 'expo-image';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
     withTiming,
-    interpolate,
 } from 'react-native-reanimated';
-import { useCachedImage } from '../../src/utils/imageCache';
-import { colors, borderRadius } from '../../src/theme';
+import { colors } from '../../src/theme';
 
 interface CachedImageProps extends Omit<ImageProps, 'source'> {
     uri: string;
@@ -25,7 +21,7 @@ interface CachedImageProps extends Omit<ImageProps, 'source'> {
     style?: StyleProp<ImageStyle>;
 }
 
-const AnimatedImage = Animated.createAnimatedComponent(Image);
+const AnimatedImage = Animated.createAnimatedComponent(Image) as React.ComponentType<any>;
 
 export const CachedImage: React.FC<CachedImageProps> = ({
     uri,
@@ -33,12 +29,10 @@ export const CachedImage: React.FC<CachedImageProps> = ({
     showLoader = true,
     fadeIn = true,
     style,
+    contentFit = 'cover',
     ...props
 }) => {
-    const { cachedUri, loading: cacheLoading } = useCachedImage(uri);
-    const [imageLoading, setImageLoading] = useState(true);
     const [error, setError] = useState(false);
-
     const opacity = useSharedValue(0);
 
     const animatedStyle = useAnimatedStyle(() => ({
@@ -46,7 +40,6 @@ export const CachedImage: React.FC<CachedImageProps> = ({
     }));
 
     const handleLoad = () => {
-        setImageLoading(false);
         if (fadeIn) {
             opacity.value = withTiming(1, { duration: 300 });
         } else {
@@ -56,33 +49,19 @@ export const CachedImage: React.FC<CachedImageProps> = ({
 
     const handleError = () => {
         setError(true);
-        setImageLoading(false);
     };
 
-    useEffect(() => {
-        // Reset state when uri changes
-        setError(false);
-        setImageLoading(true);
-        opacity.value = 0;
-    }, [uri]);
-
-    const isLoading = cacheLoading || imageLoading;
-    const sourceUri = error ? fallbackUri : cachedUri;
+    const sourceUri = error ? fallbackUri : uri;
 
     return (
         <View style={[styles.container, style as any]}>
-            {/* Loading indicator */}
-            {showLoader && isLoading && (
-                <View style={styles.loaderContainer}>
-                    <ActivityIndicator size="small" color={colors.text.muted} />
-                </View>
-            )}
-
-            {/* Image */}
             <AnimatedImage
                 {...props}
-                source={{ uri: sourceUri }}
+                source={sourceUri}
                 style={[styles.image, style, animatedStyle]}
+                contentFit={contentFit}
+                cachePolicy="memory-disk"
+                transition={fadeIn ? { duration: 300 } : undefined}
                 onLoad={handleLoad}
                 onError={handleError}
             />
@@ -90,7 +69,7 @@ export const CachedImage: React.FC<CachedImageProps> = ({
     );
 };
 
-// Optimized image for lists with blurhash placeholder
+// Optimized image for lists with placeholder
 interface OptimizedImageProps extends CachedImageProps {
     aspectRatio?: number;
     placeholderColor?: string;
@@ -103,9 +82,6 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
     style,
     ...props
 }) => {
-    const { cachedUri, loading: cacheLoading } = useCachedImage(uri);
-    const [loaded, setLoaded] = useState(false);
-
     const opacity = useSharedValue(0);
 
     const animatedStyle = useAnimatedStyle(() => ({
@@ -113,7 +89,6 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
     }));
 
     const handleLoad = () => {
-        setLoaded(true);
         opacity.value = withTiming(1, { duration: 200 });
     };
 
@@ -123,14 +98,15 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
             <View style={[styles.placeholder, { backgroundColor: placeholderColor }]} />
 
             {/* Actual image */}
-            {!cacheLoading && (
-                <AnimatedImage
-                    {...props}
-                    source={{ uri: cachedUri }}
-                    style={[styles.optimizedImage, animatedStyle]}
-                    onLoad={handleLoad}
-                />
-            )}
+            <AnimatedImage
+                {...props}
+                source={uri}
+                style={[styles.optimizedImage, animatedStyle]}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                transition={{ duration: 200 }}
+                onLoad={handleLoad}
+            />
         </View>
     );
 };
@@ -149,9 +125,7 @@ export const CachedAvatar: React.FC<CachedAvatarProps> = ({
     fallbackInitials = '?',
     style,
 }) => {
-    const { cachedUri, loading } = useCachedImage(uri || '');
     const [error, setError] = useState(false);
-
     const showFallback = !uri || error;
 
     return (
@@ -164,8 +138,10 @@ export const CachedAvatar: React.FC<CachedAvatarProps> = ({
                 </View>
             ) : (
                 <Image
-                    source={{ uri: cachedUri }}
+                    source={uri}
                     style={[styles.avatarImage, { width: size, height: size, borderRadius: size / 2 }]}
+                    contentFit="cover"
+                    cachePolicy="memory-disk"
                     onError={() => setError(true)}
                 />
             )}

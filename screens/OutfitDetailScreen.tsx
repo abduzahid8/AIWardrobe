@@ -2,15 +2,16 @@ import React, { useState, useEffect } from "react";
 import {
     View,
     Text,
-    Image,
     TouchableOpacity,
     StyleSheet,
     Dimensions,
     ScrollView,
     Modal,
     ActivityIndicator,
+    Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { CachedImage } from '../components/ui/CachedImage';
 import { Ionicons } from "@expo/vector-icons";
 import Animated, {
     FadeIn,
@@ -27,6 +28,7 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
 import { BlurView } from "expo-blur";
 import { useTranslation } from 'react-i18next';
+import { useAdminGuard } from '../hooks/useAdminGuard';
 
 const { width, height } = Dimensions.get("window");
 
@@ -172,10 +174,11 @@ const ClothingItemThumbnail = ({
                 activeOpacity={1}
             >
                 <Animated.View style={[styles.itemThumbnail, isSelected && styles.itemThumbnailSelected, animatedStyle]}>
-                    <Image
-                        source={{ uri: item.image }}
+                    <CachedImage
+                        uri={item.image}
                         style={styles.itemThumbnailImage}
-                        resizeMode="cover"
+                        contentFit="cover"
+                        fadeIn={false}
                     />
                 </Animated.View>
             </TouchableOpacity>
@@ -227,10 +230,11 @@ const ProductDetailModal = ({
                         </TouchableOpacity>
 
                         {/* Product Image */}
-                        <Image
-                            source={{ uri: item.image }}
+                        <CachedImage
+                            uri={item.image}
                             style={styles.modalProductImage}
-                            resizeMode="cover"
+                            contentFit="cover"
+                            fadeIn={false}
                         />
 
                         {/* Product Info */}
@@ -270,6 +274,7 @@ const OutfitDetailScreen = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { t } = useTranslation();
+    const { isAdmin } = useAdminGuard();
     const [selectedItem, setSelectedItem] = useState<DetectedItemType | null>(null);
     const [showModal, setShowModal] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -299,10 +304,11 @@ const OutfitDetailScreen = () => {
     return (
         <View style={styles.container}>
             {/* Background Image */}
-            <Image
-                source={{ uri: outfitImage }}
+            <CachedImage
+                uri={outfitImage}
                 style={styles.backgroundImage}
-                resizeMode="cover"
+                contentFit="cover"
+                fadeIn={false}
             />
 
             {/* Close Button */}
@@ -403,8 +409,12 @@ const OutfitDetailScreen = () => {
                 <TouchableOpacity
                     style={styles.avatarButton}
                     onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                        (navigation as any).navigate('AITryOn');
+                        if (isAdmin) {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                            (navigation as any).navigate('AITryOn');
+                        } else {
+                            Alert.alert(t('common.comingSoon'));
+                        }
                     }}
                 >
                     <Text style={styles.avatarText}>{t('common.avatar')}</Text>

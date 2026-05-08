@@ -16,6 +16,7 @@ import {
     Platform,
     ScrollView,
     Image,
+    Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -397,7 +398,13 @@ const AIHubScreen = () => {
                                     subtitle={action.subtitle}
                                     gradient={action.gradient}
                                     index={index}
-                                    onPress={() => (navigation as any).navigate(action.screen)}
+                                    onPress={() => {
+                                        if (action.screen === 'AITryOn' && !isAdmin) {
+                                            Alert.alert(t('common.comingSoon'));
+                                            return;
+                                        }
+                                        (navigation as any).navigate(action.screen);
+                                    }}
                                 />
                             ))}
                         </BentoGrid>
@@ -432,9 +439,11 @@ const AIHubScreen = () => {
                                 onPress={() => {
                                     if (message.trim()) {
                                         handleSend();
-                                    } else {
+                                    } else if (isAdmin) {
                                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                                         (navigation as any).navigate('AITryOn');
+                                    } else {
+                                        Alert.alert(t('common.comingSoon'));
                                     }
                                 }}
                                 activeOpacity={0.8}

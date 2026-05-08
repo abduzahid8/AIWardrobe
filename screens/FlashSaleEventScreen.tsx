@@ -4,7 +4,6 @@ import {
     Text,
     ScrollView,
     TouchableOpacity,
-    Image,
     StyleSheet,
     Dimensions,
     RefreshControl,
@@ -16,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
+import { CachedImage } from '../components/ui/CachedImage';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
     useSharedValue,
@@ -150,9 +150,11 @@ const ProductCard = ({
             >
                 {/* Image */}
                 <View style={styles.productImageContainer}>
-                    <Image
-                        source={{ uri: product.imageUrl }}
+                    <CachedImage
+                        uri={product.imageUrl}
                         style={styles.productImage}
+                        contentFit="cover"
+                        fadeIn={false}
                     />
 
                     {/* Discount badge */}
@@ -347,9 +349,11 @@ const FlashSaleEventScreen = () => {
             >
                 {/* Hero Header */}
                 <View style={styles.heroContainer}>
-                    <Image
-                        source={{ uri: event.heroImage }}
+                    <CachedImage
+                        uri={event.heroImage}
                         style={styles.heroImage}
+                        contentFit="cover"
+                        fadeIn={false}
                     />
                     <LinearGradient
                         colors={['transparent', 'rgba(0,0,0,0.7)', 'rgba(0,0,0,0.9)']}

@@ -13,6 +13,7 @@ import useAuthStore from '../../store/auth';
 import Config from '../config/env';
 import crashReporting from './crashReporting';
 import { useTranslation } from 'react-i18next';
+import { supabase } from '../../lib/supabase';
 
 // ── Standardized error shape ──
 export interface ApiError {

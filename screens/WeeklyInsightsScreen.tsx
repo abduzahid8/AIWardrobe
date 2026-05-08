@@ -19,11 +19,11 @@ import {
     ScrollView,
     SafeAreaView,
     TouchableOpacity,
-    Image,
     Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { CachedImage } from '../components/ui/CachedImage';
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 import useWardrobeStore from '../store/wardrobeStore';
 import {
@@ -161,10 +161,11 @@ const WeeklyInsightsScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
                             <View key={item.id} style={styles.rankRow}>
                                 <Text style={styles.rankNumber}>#{index + 1}</Text>
                                 {item.imageUrl ? (
-                                    <Image
-                                        source={{ uri: item.imageUrl }}
+                                    <CachedImage
+                                        uri={item.imageUrl}
                                         style={styles.rankImage}
-                                        resizeMode="cover"
+                                        contentFit="cover"
+                                        fadeIn={false}
                                     />
                                 ) : (
                                     <View style={[styles.rankImage, styles.rankPlaceholder]}>
@@ -257,10 +258,11 @@ const WeeklyInsightsScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
 const UnwornItemCard: React.FC<{ item: ClothingItem }> = ({ item }) => (
     <View style={styles.unwornCard}>
         {item.imageUrl ? (
-            <Image
-                source={{ uri: item.imageUrl }}
+            <CachedImage
+                uri={item.imageUrl}
                 style={styles.unwornImage}
-                resizeMode="cover"
+                contentFit="cover"
+                fadeIn={false}
             />
         ) : (
             <View style={[styles.unwornImage, styles.unwornPlaceholder]}>

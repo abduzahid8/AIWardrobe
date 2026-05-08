@@ -15,6 +15,7 @@ import { createLogger } from '../utils/logger';
 const logger = createLogger('Analytics');
 
 const ANALYTICS_QUEUE_KEY = 'analytics_event_queue';
+const ANALYTICS_ENABLED_KEY = 'analytics_enabled';
 const MAX_QUEUE_SIZE = 200;
 const FLUSH_THRESHOLD = 50; // Auto-flush when queue reaches this size
 const FLUSH_INTERVAL_MS = 5 * 60 * 1000; // Auto-flush every 5 minutes
@@ -33,6 +34,7 @@ class AnalyticsService {
     private flushTimer: ReturnType<typeof setInterval> | null = null;
     private isFlushing = false;
     private pendingCount = 0;
+    private enabled = true;
 
     constructor() {
         this.sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
@@ -43,6 +45,9 @@ class AnalyticsService {
      * Call once in App.tsx.
      */
     initialize(): void {
+        // Best-effort: load persisted preference. Defaults to enabled.
+        void this.loadEnabledPreference();
+
         // Auto-flush on interval
         this.flushTimer = setInterval(() => {
             this.flush();
@@ -54,6 +59,49 @@ class AnalyticsService {
                 this.flush();
             }
         });
+    }
+
+    /**
+     * Enable/disable analytics collection and flush.
+     * When disabled, no events are queued and flush() becomes a no-op.
+     */
+    async setEnabled(value: boolean): Promise<void> {
+        this.enabled = Boolean(value);
+        try {
+            await AsyncStorage.setItem(ANALYTICS_ENABLED_KEY, JSON.stringify(this.enabled));
+        } catch {
+            // ignore persistence errors
+        }
+        if (!this.enabled) {
+            // Optional: clear queued events when user opts out.
+            try {
+                await AsyncStorage.removeItem(ANALYTICS_QUEUE_KEY);
+                this.pendingCount = 0;
+            } catch {
+                // ignore
+            }
+        }
+    }
+
+    /**
+     * Returns current analytics enabled state (default: true).
+     * Note: initialize() also loads persisted preference in the background.
+     */
+    getEnabled(): boolean {
+        return this.enabled;
+    }
+
+    private async loadEnabledPreference(): Promise<void> {
+        try {
+            const raw = await AsyncStorage.getItem(ANALYTICS_ENABLED_KEY);
+            if (raw === null) return;
+            const parsed = JSON.parse(raw);
+            if (typeof parsed === 'boolean') {
+                this.enabled = parsed;
+            }
+        } catch {
+            // ignore
+        }
     }
 
     /**
@@ -74,6 +122,8 @@ class AnalyticsService {
      * Track an event.
      */
     async trackEvent(name: string, properties?: Record<string, unknown>): Promise<void> {
+        if (!this.enabled) return;
+
         const event: AnalyticsEvent = {
             name,
             properties,
@@ -124,6 +174,7 @@ class AnalyticsService {
      * Falls back to clearing local queue if backend is unavailable.
      */
     async flush(): Promise<void> {
+        if (!this.enabled) return;
         if (this.isFlushing) return;
         this.isFlushing = true;
 

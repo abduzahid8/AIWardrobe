@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useRef } from 'react';
-import { Dimensions, StyleSheet } from 'react-native';
+import { Dimensions, StyleSheet, View } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -172,8 +172,10 @@ export const CrossfadeTabView: React.FC<CrossfadeTabViewProps> = ({
   }));
 
   return (
-    <Animated.View style={[styles.container, animatedStyle]}>
-      {children}
+    <Animated.View style={[styles.container, animatedStyle]} pointerEvents="box-none">
+      <View style={StyleSheet.absoluteFill} pointerEvents="auto">
+        {children}
+      </View>
       {/* Light ray sweep overlay */}
       <Animated.View style={[styles.lightRay, lightSweepStyle]} pointerEvents="none" />
     </Animated.View>

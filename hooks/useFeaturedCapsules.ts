@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { getMediumImageUrl } from '../src/utils/imageUrl';
 
 export interface FeaturedCapsule {
     id: string;
@@ -16,18 +17,12 @@ export interface UseFeaturedCapsulesResult {
     refresh: () => void;
 }
 
-function addCacheBust(url?: string | null): string {
-    if (!url) return '';
-    const separator = url.includes('?') ? '&' : '?';
-    return `${url}${separator}v=${Date.now()}`;
-}
-
 function rowToCapsule(row: Record<string, any>): FeaturedCapsule {
     return {
         id:       row.id,
         title:    row.title,
         subtitle: row.subtitle ?? undefined,
-        imageUrl: addCacheBust(row.image_url),
+        imageUrl: getMediumImageUrl(row.image_url),
         linkUrl:  row.link_url ?? undefined,
     };
 }

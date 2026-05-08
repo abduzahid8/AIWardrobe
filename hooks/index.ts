@@ -23,3 +23,17 @@ export type { UseAccessibilityReturn } from './useAccessibility';
 // Language
 export { default as useLanguageStore } from '../store/languageStore';
 export type { Language } from '../store/languageStore';
+
+// Device & iPad support
+export {
+    useDevice,
+    useResponsive,
+    useResponsiveColumns,
+    getDeviceInfo,
+    Breakpoints,
+} from './useDevice';
+export type {
+    DeviceInfo,
+    DeviceType,
+    Orientation,
+} from './useDevice';

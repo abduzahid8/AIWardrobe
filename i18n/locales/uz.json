@@ -520,6 +520,9 @@
   },
   "aiTryOn": {
     "title": "Kiyib Ko'rish",
+    "premiumFeature": "Premium funksiya",
+    "premiumFeatureBody": "Virtual kiyib ko'rish faqat Pro va Max obunachilar uchun mavjud. Sinab ko'rishni boshlash uchun yangilang!",
+    "upgradeToAccess": "Kirish uchun yangilang",
     "featureName": "AI Virtual Kiyib Ko'rish",
     "tagline": "Har qanday libosni o'zingizning realistik modelingizda ko'ring — kiyishdan oldin.",
     "bullet1": "Cheksiz fotorrealistik sinab ko'rishlar",
@@ -1072,7 +1075,9 @@
     "catalogRefreshFailed": "Jonli katalog yangilash amalga oshmadi. Oxirgi sinxronlangan natijalarni ko'rsatmoqda.",
     "removeFromSaved": "Saqlanganlardan o'chirish",
     "saveItem": "Mahsulotni saqlash",
-    "capsule": "kapsula"
+    "capsule": "kapsula",
+    "buy": "Sotib olish",
+    "buyNow": "Hozir sotib olish"
   },
   "camera": {
     "permissionNeeded": "Kamera ruxsat kerak",
@@ -1637,7 +1642,6 @@
         "Ilhomni ko'rish"
       ],
       "freeMissing": [
-        "Virtual sinov yo'q",
         "Garderob tahlili yo'q",
         "Safar rejalashtiruvchi yo'q"
       ],
@@ -1646,7 +1650,6 @@
       "period": "/oy",
       "proFeatures": [
         "Cheksiz AI-liboslar",
-        "Cheksiz virtual sinov",
         "Cheksiz garderob o'lchami",
         "Garderob tahlili va statistikasi",
         "AI-safar rejalashtiruvchisi",

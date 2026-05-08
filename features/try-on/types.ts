@@ -17,7 +17,7 @@ export interface ShopCatalogItem {
     price: number;
     currency?: string;
     imageUrl: string | any;
-    garmentType: 'upper_body' | 'lower_body' | 'dresses' | 'shoes' | 'outfit';
+    garmentType: 'upper_body' | 'lower_body' | 'dresses' | 'shoes' | 'outfit' | 'accessory';
     description?: string;
     outfitItems?: ShopCatalogItem[];
 }

@@ -1,8 +1,12 @@
 /**
- * PromoCodeScreen — shown after auth for free-tier users.
- * Users can enter a promo code for a free 7-day trial,
- * or go straight to the paywall to subscribe.
- * Promo codes are used for influencer tracking and referral payments.
+ * PromoCodeScreen — Offer Code redemption surface.
+ *
+ * PRODUCTION: Shows Apple's native Offer Code redemption sheet
+ * (presentCodeRedemptionSheet) — the only Apple-compliant way to
+ * redeem codes per Guideline 3.1.1. A "Continue with Free Plan"
+ * button is always visible so users are never trapped (Guideline 2.1a).
+ *
+ * DEV ONLY: Also shows a custom promo code text field for internal testing.
  */
 
 import React, { useState } from 'react';
@@ -21,10 +25,12 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
-import useSubscriptionStore from '../store/subscriptionStore';
 import usePromoCodeStore from '../store/promoCodeStore';
 import AppColors from '../constants/AppColors';
 import { useTranslation } from 'react-i18next';
+import { iapService } from '../src/services/iapService';
+import { useStylePreferenceStore } from '../store/stylePreferenceStore';
+import { navigationRef } from '../navigation/navigationRef';
 
 const COLORS = {
     background: '#0A0A0A',
@@ -38,16 +44,60 @@ const COLORS = {
     success: AppColors.success,
     error: '#EF4444',
     border: '#333333',
+    freeGreen: '#22C55E',
 };
 
 const PromoCodeScreen = () => {
     const navigation = useNavigation<any>();
     const { t } = useTranslation();
+    const { completeOnboarding } = useStylePreferenceStore();
+
     const [promoCode, setPromoCode] = useState('');
     const [isRedeeming, setIsRedeeming] = useState(false);
+    const [isRedeemingOffer, setIsRedeemingOffer] = useState(false);
     const [promoError, setPromoError] = useState<string | null>(null);
     const redeemPromoCode = usePromoCodeStore((s) => s.redeemPromoCode);
+    const skipPromo = usePromoCodeStore((s) => s.skipPromo);
 
+    /** Navigate to Main (free tier) — always available. */
+    const handleContinueFree = async () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        await skipPromo();
+        completeOnboarding();
+        setTimeout(() => {
+            if (navigationRef.isReady()) {
+                navigationRef.reset({ index: 0, routes: [{ name: 'Main' }] });
+            }
+        }, 100);
+    };
+
+    /**
+     * Present Apple's native Offer Code redemption sheet.
+     * This is the only Apple-compliant way to give users free/discounted
+     * access in production (Guideline 3.1.1).
+     */
+    const handleOfferCode = async () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        setIsRedeemingOffer(true);
+        try {
+            await iapService.presentCodeRedemptionSheet();
+            // After the sheet dismisses, check if subscription status changed
+            // (RevenueCat syncs automatically via the customer info listener).
+            // If the user successfully redeemed, iapService will have updated
+            // the subscription store — navigate to Main.
+            setTimeout(() => {
+                if (navigationRef.isReady()) {
+                    navigationRef.reset({ index: 0, routes: [{ name: 'Main' }] });
+                }
+            }, 500);
+        } catch {
+            // Sheet dismissed without redemption — stay on screen
+        } finally {
+            setIsRedeemingOffer(false);
+        }
+    };
+
+    /** DEV ONLY: Custom promo code input for internal testing. */
     const handleRedeemCode = async () => {
         const code = promoCode.trim();
         if (!code) {
@@ -63,7 +113,6 @@ const PromoCodeScreen = () => {
             const result = await redeemPromoCode(code);
             if (result.success) {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                // Navigate to main — subscription store already updated
                 navigation.reset({
                     index: 0,
                     routes: [{ name: 'Main' as never }],
@@ -82,14 +131,6 @@ const PromoCodeScreen = () => {
     const handlePaywall = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         navigation.navigate('Paywall' as never);
-    };
-
-    const handleSkip = () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        navigation.reset({
-            index: 0,
-            routes: [{ name: 'Main' as never }],
-        });
     };
 
     return (
@@ -114,46 +155,75 @@ const PromoCodeScreen = () => {
                             </Text>
                         </Animated.View>
 
-                        {/* Promo Code Input */}
+                        {/* Apple Offer Code button (production) */}
                         <Animated.View entering={FadeInUp.delay(100).springify()}>
-                            <View style={styles.inputContainer}>
-                                <TextInput
-                                    style={styles.codeInput}
-                                    placeholder={t('promo.codePlaceholder')}
-                                    placeholderTextColor={COLORS.textSecondary}
-                                    value={promoCode}
-                                    onChangeText={(text) => {
-                                        setPromoCode(text.toUpperCase());
-                                        setPromoError(null);
-                                    }}
-                                    autoCapitalize="characters"
-                                    autoCorrect={false}
-                                    maxLength={20}
-                                    editable={!isRedeeming}
-                                />
-                                {promoError && (
-                                    <Text style={styles.errorText}>{promoError}</Text>
-                                )}
-                            </View>
                             <TouchableOpacity
-                                style={styles.redeemButton}
-                                onPress={handleRedeemCode}
+                                style={styles.offerCodeButton}
+                                onPress={handleOfferCode}
                                 activeOpacity={0.8}
-                                disabled={isRedeeming}
+                                disabled={isRedeemingOffer}
+                                accessibilityLabel="Redeem offer code"
+                                accessibilityHint="Opens Apple's offer code redemption sheet"
                             >
-                                {isRedeeming ? (
+                                {isRedeemingOffer ? (
                                     <ActivityIndicator color="#0A0A0A" />
                                 ) : (
                                     <>
-                                        <Ionicons name="checkmark-circle" size={20} color="#0A0A0A" />
-                                        <Text style={styles.redeemButtonText}>{t('promo.activateTrial')}</Text>
+                                        <Ionicons name="ticket-outline" size={20} color="#0A0A0A" />
+                                        <Text style={styles.offerCodeButtonText}>
+                                            {t('promo.redeemOfferCode', 'Redeem Offer Code')}
+                                        </Text>
                                     </>
                                 )}
                             </TouchableOpacity>
                         </Animated.View>
 
+                        {/* DEV ONLY: custom promo code text input */}
+                        {__DEV__ && (
+                            <Animated.View entering={FadeInUp.delay(150).springify()}>
+                                <View style={styles.devBadge}>
+                                    <Ionicons name="code-slash" size={12} color={COLORS.textSecondary} />
+                                    <Text style={styles.devBadgeText}>DEV ONLY — not visible in production</Text>
+                                </View>
+                                <View style={styles.inputContainer}>
+                                    <TextInput
+                                        style={styles.codeInput}
+                                        placeholder={t('promo.codePlaceholder')}
+                                        placeholderTextColor={COLORS.textSecondary}
+                                        value={promoCode}
+                                        onChangeText={(text) => {
+                                            setPromoCode(text.toUpperCase());
+                                            setPromoError(null);
+                                        }}
+                                        autoCapitalize="characters"
+                                        autoCorrect={false}
+                                        maxLength={20}
+                                        editable={!isRedeeming}
+                                    />
+                                    {promoError && (
+                                        <Text style={styles.errorText}>{promoError}</Text>
+                                    )}
+                                </View>
+                                <TouchableOpacity
+                                    style={styles.redeemButton}
+                                    onPress={handleRedeemCode}
+                                    activeOpacity={0.8}
+                                    disabled={isRedeeming}
+                                >
+                                    {isRedeeming ? (
+                                        <ActivityIndicator color="#0A0A0A" />
+                                    ) : (
+                                        <>
+                                            <Ionicons name="checkmark-circle" size={20} color="#0A0A0A" />
+                                            <Text style={styles.redeemButtonText}>{t('promo.activateTrial')}</Text>
+                                        </>
+                                    )}
+                                </TouchableOpacity>
+                            </Animated.View>
+                        )}
+
                         {/* Divider */}
-                        <Animated.View entering={FadeInUp.delay(150).springify()}>
+                        <Animated.View entering={FadeInUp.delay(200).springify()}>
                             <View style={styles.dividerRow}>
                                 <View style={styles.dividerLine} />
                                 <Text style={styles.dividerText}>{t('promo.or')}</Text>
@@ -162,11 +232,12 @@ const PromoCodeScreen = () => {
                         </Animated.View>
 
                         {/* Upgrade to Pro */}
-                        <Animated.View entering={FadeInUp.delay(200).springify()}>
+                        <Animated.View entering={FadeInUp.delay(250).springify()}>
                             <TouchableOpacity
                                 style={styles.upgradeCard}
                                 onPress={handlePaywall}
                                 activeOpacity={0.8}
+                                accessibilityLabel="Subscribe to Pro"
                             >
                                 <View style={styles.upgradeLeft}>
                                     <Ionicons name="sparkles" size={24} color={COLORS.premium} />
@@ -179,11 +250,23 @@ const PromoCodeScreen = () => {
                             </TouchableOpacity>
                         </Animated.View>
 
-                        {/* Skip link */}
-                        <Animated.View entering={FadeInUp.delay(250).springify()}>
-                            <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
-                                <Text style={styles.skipText}>{t('promo.skip')}</Text>
+                        {/* Continue with Free Plan — REQUIRED by Apple Guideline 2.1(a) */}
+                        <Animated.View entering={FadeInUp.delay(300).springify()}>
+                            <TouchableOpacity
+                                style={styles.freeButton}
+                                onPress={handleContinueFree}
+                                activeOpacity={0.8}
+                                accessibilityLabel="Continue with free plan"
+                                accessibilityHint="Skips subscription and opens the app with the free tier"
+                            >
+                                <Ionicons name="checkmark-circle-outline" size={18} color={COLORS.freeGreen} />
+                                <Text style={styles.freeButtonText}>
+                                    {t('promo.continueFree', 'Continue with Free Plan')}
+                                </Text>
                             </TouchableOpacity>
+                            <Text style={styles.freeNote}>
+                                {t('promo.freeNote', 'Free plan includes 10 AI outfits/day and wardrobe scanning.')}
+                            </Text>
                         </Animated.View>
 
                         <View style={{ height: 40 }} />
@@ -231,9 +314,37 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
     },
 
-    inputContainer: {
-        marginBottom: 12,
+    // Apple Offer Code button (production primary action)
+    offerCodeButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        backgroundColor: COLORS.premium,
+        paddingVertical: 16,
+        borderRadius: 14,
+        marginBottom: 20,
     },
+    offerCodeButtonText: {
+        fontSize: 16,
+        fontWeight: '800',
+        color: '#0A0A0A',
+    },
+
+    // DEV-only section
+    devBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        justifyContent: 'center',
+        marginBottom: 10,
+    },
+    devBadgeText: {
+        fontSize: 11,
+        color: COLORS.textSecondary,
+        fontStyle: 'italic',
+    },
+    inputContainer: { marginBottom: 12 },
     codeInput: {
         backgroundColor: COLORS.surface,
         borderWidth: 1.5,
@@ -254,21 +365,22 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontWeight: '500',
     },
-
     redeemButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 10,
-        backgroundColor: COLORS.premium,
+        backgroundColor: COLORS.surface,
+        borderWidth: 1.5,
+        borderColor: COLORS.border,
         paddingVertical: 16,
         borderRadius: 14,
         marginBottom: 20,
     },
     redeemButtonText: {
         fontSize: 16,
-        fontWeight: '800',
-        color: '#0A0A0A',
+        fontWeight: '700',
+        color: COLORS.text,
     },
 
     dividerRow: {
@@ -276,11 +388,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 20,
     },
-    dividerLine: {
-        flex: 1,
-        height: 1,
-        backgroundColor: COLORS.border,
-    },
+    dividerLine: { flex: 1, height: 1, backgroundColor: COLORS.border },
     dividerText: {
         fontSize: 13,
         color: COLORS.textSecondary,
@@ -305,28 +413,38 @@ const styles = StyleSheet.create({
         gap: 14,
         flex: 1,
     },
-    upgradeTextBlock: {
-        flex: 1,
-    },
+    upgradeTextBlock: { flex: 1 },
     upgradeTitle: {
         fontSize: 16,
         fontWeight: '700',
         color: COLORS.text,
         marginBottom: 2,
     },
-    upgradeSubtitle: {
-        fontSize: 13,
-        color: COLORS.textSecondary,
-    },
+    upgradeSubtitle: { fontSize: 13, color: COLORS.textSecondary },
 
-    skipButton: {
+    // Free plan button — required by Apple Guideline 2.1(a)
+    freeButton: {
+        flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
         paddingVertical: 14,
+        borderRadius: 14,
+        borderWidth: 1.5,
+        borderColor: COLORS.freeGreen,
+        marginBottom: 10,
     },
-    skipText: {
-        fontSize: 14,
+    freeButtonText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: COLORS.freeGreen,
+    },
+    freeNote: {
+        fontSize: 11,
         color: COLORS.textSecondary,
-        fontWeight: '500',
+        textAlign: 'center',
+        lineHeight: 16,
+        paddingHorizontal: 10,
     },
 });
 

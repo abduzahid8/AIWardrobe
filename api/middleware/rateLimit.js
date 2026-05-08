@@ -2,22 +2,32 @@ import rateLimit from 'express-rate-limit';
 
 /**
  * Rate Limiting Middleware
- * Protects against brute force and DoS attacks
+ *
+ * NOTE on scaling: the default in-memory store is per-process. When the API
+ * runs on more than one instance, swap `store` for `rate-limit-redis` backed
+ * by a shared Redis (Upstash). The key generator below already prefers
+ * authenticated user id, so per-user fairness survives behind a NAT.
  */
 
 /**
+ * Prefer authenticated user id, fall back to client IP. Requires
+ * `app.set('trust proxy', 1)` so req.ip is the real client IP behind Render.
+ */
+const userOrIp = (req) => req.user?.id ? `u:${req.user.id}` : `ip:${req.ip}`;
+
+/**
  * General API rate limiter
- * 100 requests per 15 minutes per IP
  */
 export const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 500,
+    keyGenerator: userOrIp,
     message: {
-        error: 'Too many requests from this IP, please try again after 15 minutes.',
-        retryAfter: 900 // seconds
+        error: 'Too many requests, please try again after 15 minutes.',
+        retryAfter: 900
     },
-    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+    standardHeaders: true,
+    legacyHeaders: false,
 });
 
 /**
@@ -57,7 +67,8 @@ export const registrationLimiter = rateLimit({
  */
 export const aiLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
-    max: 50,
+    max: 20,
+    keyGenerator: userOrIp,
     message: {
         error: 'AI rate limit exceeded. Please wait a moment before trying again.',
         retryAfter: 60
