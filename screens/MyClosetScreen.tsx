@@ -165,7 +165,7 @@ const FilterChip = ({
 };
 
 // Premium Clothing Grid Item
-const ClothingGridItem = ({
+const ClothingGridItem = React.memo(({
     item,
     onPress,
     t
@@ -213,7 +213,9 @@ const ClothingGridItem = ({
             </Animated.View>
         </TouchableOpacity>
     );
-};
+}, (prevProps, nextProps) => {
+    return (prevProps.item.id || prevProps.item._id) === (nextProps.item.id || nextProps.item._id);
+});
 
 const MyClosetScreen = () => {
     const navigation = useAppNavigation();
@@ -759,6 +761,11 @@ const MyClosetScreen = () => {
                         numColumns={2}
                         contentContainerStyle={styles.scrollContent}
                         showsVerticalScrollIndicator={false}
+                        removeClippedSubviews={true}
+                        maxToRenderPerBatch={10}
+                        updateCellsBatchingPeriod={50}
+                        initialNumToRender={8}
+                        windowSize={11}
                         renderItem={({ item }) => (
                             <ClothingGridItem
                                 item={item}
