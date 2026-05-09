@@ -126,8 +126,9 @@ function buildClothingClassificationPrompt(): string {
   return `Analyze only the primary clothing item in this image.
 Ignore price tags, sale badges, screenshot UI, text overlays, icons, mannequins, hangers, hands, and background props.
 If multiple objects are visible, describe only the main garment.
-Return ONLY a valid JSON object:
-{"category":"t-shirt|shirt|blouse|sweater|hoodie|jacket|coat|cardigan|dress|skirt|pants|jeans|shorts|sneakers|boots|sandals|bag|hat|scarf|belt|clothing","section":"tops|bottoms|dresses|outerwear|shoes|accessories|other","style":"casual|formal|sport|semi_classic|elegant|minimalist|other","color":"main color","material":"fabric or null","description":"1-2 sentence description of the garment only"}
+Return ONLY a valid JSON object with these exact fields:
+{"category":"t-shirt|shirt|blouse|sweater|hoodie|jacket|coat|cardigan|dress|skirt|pants|jeans|shorts|sneakers|boots|sandals|bag|hat|scarf|belt|clothing","section":"tops|bottoms|dresses|outerwear|shoes|accessories|other","style":"casual|formal|sport|semi_classic|elegant|minimalist|other","color":"MUST be exactly one of: black|white|grey|beige|cream|brown|red|pink|orange|yellow|green|teal|blue|navy|purple|multicolor","material":"fabric or null","description":"1-2 sentence description of the garment only"}
+For the color field: choose the single best match from the allowed list. Use 'navy' for dark blue, 'teal' for blue-green, 'pink' for light red/coral/rose, 'multicolor' for patterns/prints.
 Return valid JSON only.`
 }
 

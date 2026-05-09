@@ -291,7 +291,7 @@ const AIHubScreen = () => {
         { icon: 'shirt-outline', title: t('aiHub.scanWardrobe'), subtitle: t('aiHub.addClothes'), gradient: colors.gradients.warmGlow, screen: 'Camera' },
         { icon: 'grid-outline', title: t('wardrobe.title'), subtitle: t('aiHub.browseItems'), gradient: colors.gradients.coolWave, screen: 'MyCloset' },
         { icon: 'sparkles-outline', title: t('aiStylist.title'), subtitle: t('aiHub.getIdeas'), gradient: colors.gradients.primaryAccent, screen: 'OutfitAI' },
-        ...(isAdmin ? [{ icon: 'eye-outline', title: t('outfitInspo.title'), subtitle: t('aiHub.photoToOutfit'), gradient: colors.gradients.warmGlow, screen: 'OutfitInspo' }] : []),
+        { icon: 'eye-outline', title: t('outfitInspo.title'), subtitle: t('aiHub.photoToOutfit'), gradient: colors.gradients.warmGlow, screen: 'OutfitInspo' },
         { icon: 'person-outline', title: t('magicMirror.tryOn'), subtitle: t('aiHub.virtualFit'), gradient: colors.gradients.warmGlow, screen: 'AITryOn' },
         { icon: 'calendar-outline', title: t('aiHub.planOutfits'), subtitle: t('aiHub.weekly'), gradient: colors.gradients.coolWave, screen: 'Calendar' },
     ];
@@ -399,10 +399,6 @@ const AIHubScreen = () => {
                                     gradient={action.gradient}
                                     index={index}
                                     onPress={() => {
-                                        if (action.screen === 'AITryOn' && !isAdmin) {
-                                            Alert.alert(t('common.comingSoon'));
-                                            return;
-                                        }
                                         (navigation as any).navigate(action.screen);
                                     }}
                                 />
@@ -439,11 +435,9 @@ const AIHubScreen = () => {
                                 onPress={() => {
                                     if (message.trim()) {
                                         handleSend();
-                                    } else if (isAdmin) {
+                                    } else {
                                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                                         (navigation as any).navigate('AITryOn');
-                                    } else {
-                                        Alert.alert(t('common.comingSoon'));
                                     }
                                 }}
                                 activeOpacity={0.8}

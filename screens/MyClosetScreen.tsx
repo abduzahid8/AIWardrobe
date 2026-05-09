@@ -106,31 +106,10 @@ const LiquidGlassSpinner = () => {
 const { width, height } = Dimensions.get('window');
 const { colors, spacing, radius, typography } = LiquidGlass2026Theme;
 
-// ── AI clothing analysis helpers ────────────────────────────────────────────
-const mapCategoryToType = (category: string, section: string): string => {
-    const cat = category.toLowerCase();
-    const sec = section.toLowerCase();
-    if (sec === 'tops' || cat.includes('shirt') || cat.includes('blouse') || cat.includes('sweater') || cat.includes('hoodie') || cat === 't-shirt') return 'tops';
-    if (sec === 'bottoms' || cat.includes('pant') || cat.includes('jean') || cat.includes('skirt') || cat.includes('short')) return 'bottoms';
-    if (sec === 'shoes' || cat.includes('shoe') || cat.includes('sneaker') || cat.includes('boot') || cat.includes('sandal')) return 'shoes';
-    if (sec === 'accessories' || cat.includes('bag') || cat.includes('hat') || cat.includes('scarf') || cat.includes('belt') || cat.includes('watch')) return 'accessories';
-    if (sec === 'outerwear' || cat.includes('jacket') || cat.includes('coat')) return 'outerwear';
-    if (cat.includes('sport') || cat.includes('gym') || cat.includes('legging')) return 'sportswear';
-    return 'tops';
-};
+import { mapCategoryToType, mapColorToId, normalizeCategory } from '../src/utils/mappingUtils';
 
-const mapColorToId = (colorName: string): string => {
-    const name = (colorName || '').toLowerCase();
-    if (name.includes('black') || name.includes('charcoal') || name.includes('ebony')) return 'black';
-    if (name.includes('grey') || name.includes('gray') || name.includes('silver')) return 'grey';
-    if (name.includes('beige') || name.includes('cream') || name.includes('tan') || name.includes('khaki') || name.includes('sand')) return 'beige';
-    if (name.includes('white') || name.includes('off-white') || name.includes('ivory')) return 'white';
-    if (name.includes('brown') || name.includes('camel') || name.includes('chocolate') || name.includes('rust')) return 'brown';
-    if (name.includes('green') || name.includes('olive') || name.includes('forest') || name.includes('mint')) return 'green';
-    if (name.includes('red') || name.includes('burgundy') || name.includes('wine') || name.includes('pink') || name.includes('coral') || name.includes('maroon')) return 'red';
-    if (name.includes('blue') || name.includes('navy') || name.includes('indigo') || name.includes('denim') || name.includes('cobalt') || name.includes('teal')) return 'blue';
-    return 'beige';
-};
+// ── AI clothing analysis helpers ────────────────────────────────────────────
+// (Moved to mappingUtils.ts)
 
 interface ClothingItem {
     _id: string;
@@ -264,7 +243,12 @@ const MyClosetScreen = () => {
         } else {
             player.pause();
         }
+        return () => { player.pause(); };
     }, [isFocused, player]);
+
+    useEffect(() => {
+        return () => { try { player.release?.(); } catch {} };
+    }, []);
     const [filteredItems, setFilteredItems] = useState<ClothingItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState('tops'); // Default from screenshot
@@ -346,7 +330,7 @@ const MyClosetScreen = () => {
 
         try {
             console.log('[MyCloset] Starting AI Studio photo processing...');
-            
+
             // AI Studio should preserve the garment and only remove the background.
             const result = await ExternalAIService.processStudioPhoto(imageData);
 
@@ -389,7 +373,7 @@ const MyClosetScreen = () => {
         } catch (error: any) {
             console.error('[MyCloset] AI Studio error:', error);
             Alert.alert(
-                t('common.error'), 
+                t('common.error'),
                 error.message || t('myCloset.uploadError'),
                 [{ text: t('common.ok'), style: 'default' }]
             );
@@ -512,15 +496,15 @@ const MyClosetScreen = () => {
                 const mappedItems: ClothingItem[] = data.map(item => ({
                     _id: item.id,
                     id: item.id,
-                    type: item.type,
-                    itemType: item.type,
+                    type: normalizeCategory(item.type || item.category || ''),
+                    itemType: normalizeCategory(item.type || item.category || ''),
                     color: item.color && item.color.length > 0 ? item.color[0] : 'various',
                     imageUrl: item.image_url,
                     image: item.image_url,
-                    category: item.category,
+                    category: normalizeCategory(item.category || item.type || ''),
                     wearCount: item.wear_count,
                     createdAt: item.created_at,
-                    isFavorite: false, // Default for now
+                    isFavorite: item.is_favorite ?? false,
                 }));
 
                 setItems(mappedItems);
@@ -558,7 +542,7 @@ const MyClosetScreen = () => {
                     result = result.filter(item => {
                         const cat = (item.category || '').toLowerCase();
                         const type = (item.type || item.itemType || '').toLowerCase();
-                        
+
                         // Use exact word matching with word boundaries to prevent substring matches
                         const matchesExact = (value: string, keywords: string[]): boolean => {
                             return keywords.some(keyword => {
@@ -571,19 +555,19 @@ const MyClosetScreen = () => {
                             case 'tops':
                                 if (cat === 'tops' || cat === 'top') return true;
                                 return matchesExact(cat, ['shirt', 'blouse', 'pullover', 'hoodie', 'sweater', 't-shirt', 'tshirt', 'polo', 'cardigan']) ||
-                                       matchesExact(type, ['shirt', 'blouse', 'pullover', 'hoodie', 'sweater', 't-shirt', 'tshirt', 'polo', 'cardigan']);
+                                    matchesExact(type, ['shirt', 'blouse', 'pullover', 'hoodie', 'sweater', 't-shirt', 'tshirt', 'polo', 'cardigan']);
                             case 'bottoms':
                                 if (cat === 'bottoms' || cat === 'bottom') return true;
                                 return matchesExact(cat, ['pant', 'skirt', 'jean', 'trouser', 'short', 'legging']) ||
-                                       matchesExact(type, ['pant', 'skirt', 'jean', 'trouser', 'short', 'legging']);
+                                    matchesExact(type, ['pant', 'skirt', 'jean', 'trouser', 'short', 'legging']);
                             case 'shoes':
                                 if (cat === 'shoes' || cat === 'shoe') return true;
                                 return matchesExact(cat, ['sneaker', 'boot', 'sandal', 'heel', 'loafer', 'slipper']) ||
-                                       matchesExact(type, ['sneaker', 'boot', 'sandal', 'heel', 'loafer', 'slipper']);
+                                    matchesExact(type, ['sneaker', 'boot', 'sandal', 'heel', 'loafer', 'slipper']);
                             case 'accessories':
                                 if (cat === 'accessories' || cat === 'accessory') return true;
                                 return matchesExact(cat, ['bag', 'hat', 'scarf', 'belt', 'sunglasses', 'watch', 'jewelry']) ||
-                                       matchesExact(type, ['bag', 'hat', 'scarf', 'belt', 'sunglasses', 'watch', 'jewelry']);
+                                    matchesExact(type, ['bag', 'hat', 'scarf', 'belt', 'sunglasses', 'watch', 'jewelry']);
                             default:
                                 return cat === selectedCategory || type === selectedCategory;
                         }

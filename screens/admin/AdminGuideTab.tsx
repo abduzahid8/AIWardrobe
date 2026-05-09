@@ -125,7 +125,7 @@ export const AdminGuideTab = () => {
         try {
           const parsed = JSON.parse(uploadResult.body);
           errorMsg = parsed.message || parsed.error || errorMsg;
-        } catch (e) {}
+        } catch (e) { }
         throw new Error(errorMsg);
       }
 

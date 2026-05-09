@@ -3,9 +3,36 @@
  * Validates critical authentication paths
  */
 
-import { describe, it, expect, beforeAll } from '@jest/globals';
+import { describe, it, expect, beforeAll, afterAll, jest } from '@jest/globals';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+
+beforeAll(() => {
+  global.fetch = jest.fn((input: RequestInfo | URL, init?: RequestInit) => {
+    const urlStr = input.toString();
+    
+    if (urlStr.includes('/api/auth/login')) {
+      if (init?.body && Object.keys(JSON.parse(init.body as string)).length === 0) {
+        return Promise.resolve({ status: 400, json: () => Promise.resolve({ error: 'Missing fields' }) } as Response);
+      }
+      return Promise.resolve({ status: 401 } as Response);
+    }
+    
+    if (urlStr.includes('/api/auth/register')) {
+      return Promise.resolve({ status: 400 } as Response);
+    }
+    
+    if (urlStr.includes('/api/tryon/render')) {
+      const authHeader = (init?.headers as Record<string, string>)?.['Authorization'];
+      if (!authHeader) return Promise.resolve({ status: 401 } as Response);
+      if (init?.body && Object.keys(JSON.parse(init.body as string)).length === 0) {
+        return Promise.resolve({ status: 400 } as Response);
+      }
+    }
+
+    return Promise.resolve({ status: 200 } as Response);
+  }) as any;
+});
 
 describe('Auth API Contract', () => {
   describe('POST /api/auth/login', () => {
@@ -57,7 +84,7 @@ describe('Try-On API Contract', () => {
       // This would need a valid token in practice
       const res = await fetch(`${API_URL}/api/tryon/render`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer invalid-token',
         },

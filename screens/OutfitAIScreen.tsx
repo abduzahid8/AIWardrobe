@@ -284,6 +284,7 @@ const OutfitAIScreen = () => {
     const { t } = useTranslation();
     const navigation = useNavigation();
     const scrollViewRef = useRef<ScrollView>(null);
+    const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const [message, setMessage] = useState('');
     const [messages, setMessages] = useState<ChatMessage[]>([
         {
@@ -324,10 +325,18 @@ const OutfitAIScreen = () => {
     // Fetch weather on mount
     useEffect(() => {
         fetchWeather().then(setWeather);
+
+        // Cleanup scroll timeout on unmount
+        return () => {
+            if (scrollTimeoutRef.current) {
+                clearTimeout(scrollTimeoutRef.current);
+            }
+        };
     }, []);
 
     const scrollToBottom = () => {
-        setTimeout(() => {
+        if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+        scrollTimeoutRef.current = setTimeout(() => {
             scrollViewRef.current?.scrollToEnd({ animated: true });
         }, 100);
     };

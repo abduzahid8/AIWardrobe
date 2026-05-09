@@ -25,7 +25,7 @@ import useAuthStore from '../store/auth';
 import type { Season, Occasion } from '../src/types/domain';
 import { ExternalAIService } from '../src/services/externalAIService';
 import * as FileSystem from 'expo-file-system';
-
+import { mapCategoryToType, mapColorToId } from '../src/utils/mappingUtils';
 interface ClothingDetailEditorProps {
     imageUri?: string;
     initialData?: {
@@ -94,13 +94,21 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
 
     const COLORS = [
         { id: 'black', label: t('clothingEditor.colors.black'), hex: '#1C1C1E' },
+        { id: 'white', label: t('clothingEditor.colors.white'), hex: '#FFFFFF' },
         { id: 'grey', label: t('clothingEditor.colors.grey'), hex: '#8E8E93' },
         { id: 'beige', label: t('clothingEditor.colors.beige'), hex: '#C7B299' },
-        { id: 'white', label: t('clothingEditor.colors.white'), hex: '#FFFFFF' },
+        { id: 'cream', label: t('clothingEditor.colors.cream') || 'Cream', hex: '#FFFDD0' },
         { id: 'brown', label: t('clothingEditor.colors.brown'), hex: '#8B4513' },
-        { id: 'green', label: t('clothingEditor.colors.green'), hex: '#34C759' },
         { id: 'red', label: t('clothingEditor.colors.red'), hex: '#FF3B30' },
+        { id: 'pink', label: t('clothingEditor.colors.pink') || 'Pink', hex: '#FF6B9D' },
+        { id: 'orange', label: t('clothingEditor.colors.orange') || 'Orange', hex: '#FF9500' },
+        { id: 'yellow', label: t('clothingEditor.colors.yellow') || 'Yellow', hex: '#FFCC00' },
+        { id: 'green', label: t('clothingEditor.colors.green'), hex: '#34C759' },
+        { id: 'teal', label: t('clothingEditor.colors.teal') || 'Teal', hex: '#5AC8FA' },
         { id: 'blue', label: t('clothingEditor.colors.blue'), hex: '#007AFF' },
+        { id: 'navy', label: t('clothingEditor.colors.navy') || 'Navy', hex: '#1B2A4A' },
+        { id: 'purple', label: t('clothingEditor.colors.purple') || 'Purple', hex: '#AF52DE' },
+        { id: 'multicolor', label: t('clothingEditor.colors.multicolor') || 'Multi', hex: '#FF6B6B' },
     ];
 
     const SEASONS = [
@@ -158,30 +166,8 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
                     const cat = aiResult.classification.category.toLowerCase();
                     const sec = aiResult.classification.section.toLowerCase();
 
-                    const mapType = (c: string, s: string) => {
-                        if (s === 'tops' || c.includes('shirt') || c.includes('blouse') || c.includes('sweater') || c.includes('hoodie') || c === 't-shirt') return 'tops';
-                        if (s === 'bottoms' || c.includes('pant') || c.includes('jean') || c.includes('skirt') || c.includes('short')) return 'bottoms';
-                        if (s === 'shoes' || c.includes('shoe') || c.includes('sneaker') || c.includes('boot') || c.includes('sandal')) return 'shoes';
-                        if (s === 'accessories' || c.includes('bag') || c.includes('hat') || c.includes('scarf') || c.includes('belt')) return 'accessories';
-                        if (s === 'outerwear' || c.includes('jacket') || c.includes('coat')) return 'outerwear';
-                        return 'tops';
-                    };
-
-                    const mapColor = (colorName: string) => {
-                        const n = (colorName || '').toLowerCase();
-                        if (n.includes('black') || n.includes('charcoal')) return 'black';
-                        if (n.includes('grey') || n.includes('gray') || n.includes('silver')) return 'grey';
-                        if (n.includes('beige') || n.includes('cream') || n.includes('tan') || n.includes('khaki')) return 'beige';
-                        if (n.includes('white') || n.includes('ivory')) return 'white';
-                        if (n.includes('brown') || n.includes('camel')) return 'brown';
-                        if (n.includes('green') || n.includes('olive')) return 'green';
-                        if (n.includes('red') || n.includes('burgundy') || n.includes('pink')) return 'red';
-                        if (n.includes('blue') || n.includes('navy') || n.includes('denim')) return 'blue';
-                        return 'beige';
-                    };
-
-                    const newType = mapType(cat, sec);
-                    const newColor = mapColor(aiResult.classification.attributes?.color || '');
+                    const newType = mapCategoryToType(cat, sec);
+                    const newColor = mapColorToId(aiResult.classification.attributes?.color || '');
                     setSelectedType(newType);
                     setSelectedColor(newColor);
                     setSelectedSeason(inferSeasonFromType(newType, aiResult.classification.attributes?.material));
@@ -384,33 +370,39 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
                             <Text style={styles.sectionLabel}>{t('clothingEditor.colour')}</Text>
-                            <TouchableOpacity>
-                                <Text style={styles.allLink}>{t('clothingEditor.all')}</Text>
-                            </TouchableOpacity>
+                            <Text style={styles.allLink}>{COLORS.find(c => c.id === selectedColor)?.label || ''}</Text>
                         </View>
-                        <View style={styles.colorRow}>
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.colorRow}
+                            style={styles.colorScrollView}
+                        >
                             {COLORS.map(color => (
                                 <TouchableOpacity
                                     key={color.id}
                                     style={[
                                         styles.colorCircle,
                                         { backgroundColor: color.hex },
-                                        color.id === 'white' && styles.colorCircleWhite,
+                                        (color.id === 'white' || color.id === 'cream' || color.id === 'beige') && styles.colorCircleLight,
                                         selectedColor === color.id && styles.colorCircleSelected,
                                     ]}
                                     onPress={() => handleColorSelect(color.id)}
                                     activeOpacity={0.7}
+                                    accessibilityLabel={color.label}
+                                    accessibilityRole="button"
+                                    accessibilityState={{ selected: selectedColor === color.id }}
                                 >
                                     {selectedColor === color.id && (
                                         <Ionicons
                                             name="checkmark"
                                             size={16}
-                                            color={color.id === 'white' || color.id === 'beige' ? '#1C1C1E' : '#FFFFFF'}
+                                            color={(color.id === 'white' || color.id === 'cream' || color.id === 'beige' || color.id === 'yellow') ? '#1C1C1E' : '#FFFFFF'}
                                         />
                                     )}
                                 </TouchableOpacity>
                             ))}
-                        </View>
+                        </ScrollView>
                     </View>
 
                     {/* Season Section */}
@@ -584,24 +576,37 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     // Color
+    colorScrollView: {
+        marginHorizontal: -4,
+    },
     colorRow: {
         flexDirection: 'row',
-        gap: 12,
+        gap: 10,
+        paddingVertical: 4,
+        paddingHorizontal: 4,
     },
     colorCircle: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         alignItems: 'center',
         justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.15,
+        shadowRadius: 2,
     },
-    colorCircleWhite: {
-        borderWidth: 1,
-        borderColor: '#E5E5EA',
+    colorCircleLight: {
+        borderWidth: 1.5,
+        borderColor: '#D1D1D6',
     },
     colorCircleSelected: {
         borderWidth: 3,
         borderColor: '#007AFF',
+        shadowColor: '#007AFF',
+        shadowOpacity: 0.4,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 0 },
     },
     // Season
     seasonRow: {

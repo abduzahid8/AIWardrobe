@@ -103,7 +103,7 @@ const MessageBubble = ({ message }: BubbleProps) => {
 
 const ChatScreen = () => {
     const { t } = useTranslation();
-    const items    = useWardrobeStore((s) => s.items);
+    const items = useWardrobeStore((s) => s.items);
     const wearLogs = useWardrobeStore((s) => s.wearLogs);
 
     const QUICK_SUGGESTIONS = [
@@ -115,13 +115,13 @@ const ChatScreen = () => {
         t('chat.quickSuggestions.5'),
     ];
 
-    const [messages,      setMessages]      = useState<ChatMessage[]>([]);
-    const [inputText,     setInputText]      = useState('');
-    const [isLoading,     setIsLoading]      = useState(false);
-    const [isThinking,    setIsThinking]     = useState(false);
-    const listRef                            = useRef<FlatList<ChatMessage>>(null);
-    const inputRef                           = useRef<TextInput>(null);
-    const thinkingTimerRef                   = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [inputText, setInputText] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [isThinking, setIsThinking] = useState(false);
+    const listRef = useRef<FlatList<ChatMessage>>(null);
+    const inputRef = useRef<TextInput>(null);
+    const thinkingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const wardrobeSize = useMemo(() => items.length, [items.length]);
 
@@ -138,9 +138,9 @@ const ChatScreen = () => {
             const greeting: ChatMessage = {
                 id: 'greeting',
                 role: 'assistant',
-                text: t('chat.greeting', { 
-                    count: items.length, 
-                    plural: items.length > 1 ? 's' : '' 
+                text: t('chat.greeting', {
+                    count: items.length,
+                    plural: items.length > 1 ? 's' : ''
                 }),
                 timestamp: new Date(),
             };
@@ -173,12 +173,12 @@ const ChatScreen = () => {
 
         if (thinkingTimerRef.current) clearTimeout(thinkingTimerRef.current);
         thinkingTimerRef.current = setTimeout(() => setIsThinking(true), 5000);
-        
+
         try {
             const result = await aiProvider.chat(trimmed, {
                 wardrobeSize,
             });
-            
+
             const aiMessage: ChatMessage = {
                 id: `msg_${Date.now()}_ai`,
                 role: 'assistant',

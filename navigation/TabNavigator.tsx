@@ -17,7 +17,7 @@ import { TabTransitionContext } from "../components/CrossfadeTabView";
 // Original Screens
 import HomeScreen from "../screens/HomeScreen";
 import MyClosetScreen from "../screens/MyClosetScreen";
-import AITryOnScreen from "../screens/AITryOnScreen";
+import AIHubScreen from "../screens/AIHubScreen";
 import InspoScreen from "../screens/InspoScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 
@@ -140,10 +140,6 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation, isAdmin }: any) 
 
           const onPress = () => {
             console.log('[IPAD-DEBUG] Tab pressed:', route.name);
-            if (route.name === 'AI' && !isAdmin) {
-              Alert.alert('Coming soon');
-              return;
-            }
             const event = navigation.emit({
               type: 'tabPress',
               target: route.key,
@@ -201,7 +197,7 @@ const createAnimatedTabScreen = (Screen: React.ComponentType<any>, tabIndex: num
 
 const AnimatedHomeScreen = createAnimatedTabScreen(HomeScreen, 0);
 const AnimatedClosetScreen = createAnimatedTabScreen(MyClosetScreen, 1);
-const AnimatedAIScreen = createAnimatedTabScreen(AITryOnScreen, 2);
+const AnimatedAIScreen = createAnimatedTabScreen(AIHubScreen, 2);
 const AnimatedInspoScreen = createAnimatedTabScreen(InspoScreen, 3);
 const AnimatedProfileScreen = createAnimatedTabScreen(ProfileScreen, 4);
 

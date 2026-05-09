@@ -90,6 +90,13 @@ const MagicMirrorScreen: React.FC = () => {
     // Animations
     const matchScoreScale = useSharedValue(1);
     const tryOnButtonScale = useSharedValue(1);
+    const animationTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+    useEffect(() => {
+        return () => {
+            if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
+        };
+    }, []);
 
     // Load wardrobe items
     const loadWardrobeItems = useCallback(async () => {
@@ -216,7 +223,8 @@ const MagicMirrorScreen: React.FC = () => {
 
             // Animate match score badge
             matchScoreScale.value = withSpring(1.2, { damping: 10 });
-            setTimeout(() => {
+            if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
+            animationTimeoutRef.current = setTimeout(() => {
                 matchScoreScale.value = withSpring(1, { damping: 15 });
             }, 200);
 

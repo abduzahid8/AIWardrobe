@@ -43,6 +43,7 @@ import Config from '../src/config/env';
 
 import StreakBadge from '../components/StreakBadge';
 import useWardrobeStore from '../store/wardrobeStore';
+import useSubscriptionStore from '../store/subscriptionStore';
 import useAppContextStore from '../src/store/contextStore';
 import { CachedImage } from '../components/ui/CachedImage';
 import type { ContextualPrompt } from '../src/services/contextualPromptService';
@@ -241,7 +242,12 @@ const HomeScreen = () => {
     } else {
       player.pause();
     }
+    return () => { player.pause(); };
   }, [isFocused, player]);
+
+  useEffect(() => {
+    return () => { try { player.release?.(); } catch {} };
+  }, []);
 
   // State
   const [userName, setUserName] = useState("User");
@@ -606,7 +612,8 @@ const HomeScreen = () => {
     );
   };
 
-  const isUnlocked = true; // Force unlocked for demo
+  const { isPremium } = useSubscriptionStore(s => ({ isPremium: s.isPremium }));
+  const isUnlocked = isPremium;
 
   // Today's Look - Hero card
   const renderTodaysLook = () => {
