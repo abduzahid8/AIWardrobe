@@ -211,8 +211,8 @@ const OutfitCalendarScreen = () => {
         cal.openLogModalForDate(selectedDateKey);
     };
 
-    const renderMiniSlot = (item: OutfitItem | null | undefined, shortLabel: string, isSelected: boolean) => (
-        <View style={[styles.miniSlot, isSelected && styles.miniSlotSelected]}>
+    const renderMiniSlot = (item: OutfitItem | null | undefined, shortLabel: string, isSelected: boolean, key?: string) => (
+        <View key={key} style={[styles.miniSlot, isSelected && styles.miniSlotSelected]}>
             {item?.image ? (
                 <CachedImage uri={item.image} style={styles.miniSlotImage} contentFit="cover" fadeIn={false} />
             ) : (
@@ -345,7 +345,8 @@ const OutfitCalendarScreen = () => {
                                             renderMiniSlot(
                                                 day.log?.items.find((item) => matchesCategory(item.type, slot.key)) ?? null,
                                                 slot.shortLabel,
-                                                day.isSelected
+                                                day.isSelected,
+                                                slot.key
                                             )
                                         )}
                                     </View>

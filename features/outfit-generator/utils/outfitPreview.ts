@@ -66,15 +66,16 @@ export function getOutfitItemMacroCategory(item: OutfitItem): PreviewMacroCatego
   // or types like "jacket" are more reliable than the `macroCategory` field
   // which the edge function sometimes collapses to `top` even for outerwear.
   const blob = `${item.type || ''} ${item.name || ''}`.toLowerCase();
-  if (/\b(blazer|overcoat|topcoat|peacoat|trench|parka|puffer|windbreaker|bomber)\b/.test(blob)) return 'outerwear';
-  if (/\b(coat|jacket|cardigan|sweater|hoodie|vest|pullover|fleece)\b/.test(blob)) return 'outerwear';
-  if (/\b(pant|trouser|jeans|short|skirt|chino|slack|jogger|sweatpant)\b/.test(blob)) return 'bottom';
+  if (/\b(blazer|overcoat|topcoat|peacoat|trench(?:es)?|parka|puffer|windbreaker|bomber)s?\b/.test(blob)) return 'outerwear';
+  if (/\b(coat|jacket|cardigan|sweater|hoodie|vest|pullover|fleece)s?\b/.test(blob)) return 'outerwear';
+  if (/\b(pants?|trousers?|jeans|shorts?|skirts?|chinos?|slacks?|joggers?|sweatpants?)\b/.test(blob)) return 'bottom';
   // Check tops BEFORE shoes — "Oxford Shirt" must not match the shoe regex
-  if (/\b(t-shirt|tshirt|tee|polo|blouse|shirt|dress)\b/.test(blob)) return 'top';
-  if (/\b(shoe|sneaker|boot|loafer|sandal|heel|trainer|derby|mule)\b/.test(blob)) return 'shoes';
+  if (/\b(t-shirt|tshirt|tee|polo|blouse|shirt|dress(?:es)?)s?\b/.test(blob)) return 'top';
+  if (/\b(shoes?|sneakers?|boots?|loafers?|sandals?|heels?|trainers?|derbys?|derbies|mules?)\b/.test(blob)) return 'shoes';
   // "oxford" alone is ambiguous (Oxford shirt vs Oxford shoes) — only match
-  // as shoes when paired with a shoe qualifier like "shoe" or "flat"
-  if (/\boxford\s*(shoe|flat|lace|brogue|derby)\b/i.test(blob)) return 'shoes';
+  // as shoes when paired with a shoe qualifier like "shoe" or "flat", or in plural form "oxfords"
+  if (/\boxfords?\b/i.test(blob) && !/\bshirts?\b/i.test(blob)) return 'shoes';
+  if (/\boxfords?\s*(shoes?|flats?|lace|brogues?|derbys?|derbies)\b/i.test(blob)) return 'shoes';
   if (/upper[_\s-]?body/.test(blob)) return 'top';
   if (/lower[_\s-]?body/.test(blob)) return 'bottom';
 

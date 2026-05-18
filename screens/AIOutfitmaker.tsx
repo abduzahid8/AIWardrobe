@@ -44,6 +44,7 @@ interface OutfitItem {
   macroCategory?: string;
   color?: string;
   brand?: string;
+  isWardrobe?: boolean;
 }
 
 interface GeneratedOutfit {
@@ -345,13 +346,16 @@ async function generateOfflineOutfits(
   style: string,
   weather: any,
   limit: number,
-  t: any
+  t: any,
+  forceWardrobeOnly: boolean = false
 ): Promise<GeneratedOutfit[]> {
   // ── Fill missing macro-category slots from shop_catalog ──────────────
   // If the wardrobe has no shoes (or no outerwear/top/bottom), pull
   // matching items from the shop catalog so the outfit builder can
   // produce a complete outfit.
-  const availableItems = [...items, ...(extraItems || [])];
+  const availableItems = forceWardrobeOnly 
+    ? items.filter((it: any) => it.isWardrobe)
+    : [...items, ...(extraItems || [])];
   const itemMacros = new Set(availableItems.map((it: any) => (
     (it.macroCategory || getOfflineMacroCategory(it.type || '', it.category || '', it.name || '')).toLowerCase()
   )));
@@ -619,6 +623,10 @@ const AIOutfitGenerator = () => {
   const navigation = useNavigation();
   const route = useRoute<any>();
   const source = route.params?.source;
+  // Anchor item passed from MyClosetScreen — when set, every generated outfit
+  // must include this item locked into its slot.
+  const baseItemId: string | undefined = route.params?.baseItemId;
+  const baseItem: { id: string; imageUrl?: string; name?: string; type?: string; macroCategory?: string; color?: string } | undefined = route.params?.baseItem;
   const { t } = useTranslation();
   const [selectedStyle, setSelectedStyle] = useState('old_money');
   const [loading, setLoading] = useState(false);
@@ -736,18 +744,28 @@ const AIOutfitGenerator = () => {
 
           if (error) throw error;
 
-          items = (remoteItems || []).map((item: any) => ({
-            id: item.id,
-            type: item.type || item.sub_category || item.category || 'Clothing Piece',
-            category: item.category || item.type || 'tops',
-            subCategory: item.sub_category || undefined,
-            color: Array.isArray(item.color) ? item.color[0] : (item.primary_color || 'neutral'),
-            brand: item.brand || '',
-            name: item.name || item.type || t('common.clothingItem'),
-            description: item.description || item.name || '',
-            image: item.image_url || '',
-            imageUrl: item.image_url || '',
-          }));
+          items = (remoteItems || []).map((item: any) => {
+            const rawType = item.type || item.sub_category || item.category || '';
+            const rawName = item.name || item.type || '';
+            // Compute macroCategory here so offline generator never drops the
+            // item as "other". getBackendMacroCategory falls back to keyword
+            // matching on name/type/category if no canonical alias is found.
+            const computedMacro = getBackendMacroCategory(rawType, item.category || '', rawName);
+            return {
+              id: item.id,
+              isWardrobe: true,
+              type: rawType || 'Clothing Piece',
+              category: item.category || rawType || 'tops',
+              macroCategory: computedMacro,
+              subCategory: item.sub_category || undefined,
+              color: Array.isArray(item.color) ? item.color[0] : (item.primary_color || 'neutral'),
+              brand: item.brand || '',
+              name: rawName || t('common.clothingItem'),
+              description: item.description || rawName || '',
+              image: item.image_url || '',
+              imageUrl: item.image_url || '',
+            };
+          });
         }
       } catch (remoteError) {
         console.warn('[AIOutfitmaker] Failed to load Supabase wardrobe, falling back to local storage:', remoteError);
@@ -755,7 +773,7 @@ const AIOutfitGenerator = () => {
 
       if (items.length === 0) {
         const data = await AsyncStorage.getItem('myWardrobeItems');
-        items = data ? JSON.parse(data) : [];
+        items = data ? JSON.parse(data).map((it: any) => ({ ...it, isWardrobe: true })) : [];
       }
 
       // Normalise image/imageUrl so both fields are always populated
@@ -768,14 +786,11 @@ const AIOutfitGenerator = () => {
       // Drop items with no usable image
       items = items.filter((i: any) => i && (i.imageUrl || typeof i.image === 'string'));
 
-      // Only inject shop items when NOT in wardrobe-only mode.
-      // When source is 'wardrobe', outfits must be created from the user's
-      // own clothing only — no shop catalog items.
-      if (source !== 'wardrobe') {
-        const existingIds = new Set(items.map((i: any) => i.id));
-        const newShopItems = liveShopMapped.filter(s => !existingIds.has(s.id));
-        items = [...items, ...newShopItems];
-      }
+      // Always inject shop items but mark them.
+      // When source is 'wardrobe', outfits will be a mix of owned and shop items.
+      const existingIds = new Set(items.map((i: any) => i.id));
+      const newShopItems = liveShopMapped.filter(s => !existingIds.has(s.id));
+      items = [...items, ...newShopItems.map(it => ({ ...it, isWardrobe: false }))];
 
       if (!isMounted.current) return;
       setWardrobeItems(items.map((item: any, index: number) => ({
@@ -783,6 +798,7 @@ const AIOutfitGenerator = () => {
         // For personal wardrobe items that have no real id, generate a stable key.
         // For shop items merged here, preserve their real UUID.
         id: item.id || `local_item_${index}_${item.type || item.category || 'unknown'}`,
+        isWardrobe: item.isWardrobe ?? false,
         type: item.type || item.category || 'Clothing Piece',
         imageUrl: item.imageUrl || (typeof item.image === 'string' ? item.image : undefined) || '',
         name: item.name || item.type || t('common.clothingItem'),
@@ -846,6 +862,38 @@ const AIOutfitGenerator = () => {
       : source === 'wardrobe'
         ? wardrobeItems
         : [...wardrobeItems, ...liveShopMapped];
+
+    // If an anchor item was passed from MyClosetScreen, inject it into the
+    // incoming items list so it is always picked for its slot.
+    let incomingItems = items;
+    if (baseItem && baseItemId) {
+      const anchorMacro = baseItem.macroCategory
+        || getBackendMacroCategory(baseItem.type || '', '', baseItem.name || '');
+      const anchorOutfitItem: OutfitItem = {
+        id: baseItemId,
+        name: baseItem.name || baseItem.type || 'Item',
+        image: baseItem.imageUrl || '',
+        imageUrl: baseItem.imageUrl || '',
+        type: baseItem.type || anchorMacro,
+        macroCategory: anchorMacro,
+        color: baseItem.color || 'neutral',
+        isWardrobe: true,
+      };
+      // Replace any existing item in the same slot, or prepend
+      const alreadyPresent = incomingItems.some(i => String(i.id) === String(baseItemId));
+      if (!alreadyPresent) {
+        const slotIdx = incomingItems.findIndex(
+          i => (canonicalizeMacroCategory(i.macroCategory || '') === anchorMacro
+            || getBackendMacroCategory(i.type || '', i.category || '', i.name || '') === anchorMacro)
+        );
+        if (slotIdx >= 0) {
+          incomingItems = [...incomingItems];
+          incomingItems[slotIdx] = anchorOutfitItem;
+        } else {
+          incomingItems = [anchorOutfitItem, ...incomingItems];
+        }
+      }
+    }
     // Helper: prefer an item's own macroCategory (canonicalized) over the
     // keyword-based fallback. Keeps items whose type/category are raw
     // garmentType strings (`upper_body`, `lower_body`) from being dropped.
@@ -864,11 +912,12 @@ const AIOutfitGenerator = () => {
       macroCategory: resolveMacroCategory(it),
       color: it.color || 'neutral',
       brand: it.brand || '',
-    }));
+      isWardrobe: it.isWardrobe ?? false,
+    })).sort((a, b) => (b.isWardrobe ? 1 : 0) - (a.isWardrobe ? 1 : 0));
 
     const resolveImage = (it: any) => (typeof it.image === 'string' ? it.image : undefined) || it.imageUrl || '';
 
-    const incoming = (items || []).map((it) => ({
+    const incoming = (incomingItems || []).map((it) => ({
       ...it,
       image: it.image || it.imageUrl || '',
       macroCategory: resolveMacroCategory(it),
@@ -990,6 +1039,7 @@ const AIOutfitGenerator = () => {
       case 'business_casual':
         return 'work';
       case 'old_money':
+      case 'classic':
         return 'formal';
       case 'semi_classic':
       case 'minimalist':
@@ -1131,6 +1181,8 @@ const AIOutfitGenerator = () => {
       macroCategory: getBackendMacroCategory(item.type || '', item.category || '', item.name || ''),
     }));
 
+    let pureWardrobeOutfit: GeneratedOutfit | null = null;
+
     try {
       // Generate outfits with selected items and style preferences.
       // NOTE: do NOT set useProvidedWardrobeOnly:true — the edge function's
@@ -1145,6 +1197,31 @@ const AIOutfitGenerator = () => {
       // the server in layered mode so every outfit has base top + layer
       // + bottom + shoes.
       const resolvedWeather = weather ?? { temp: 15, condition: 'cool' };
+
+      // ── Special Logic for My Wardrobe page ──
+      // Requirement: first outfit must be pure wardrobe, others mixed.
+      if (source === 'wardrobe') {
+        try {
+          const offlinePure = await generateOfflineOutfits(
+            wardrobeItems,
+            liveShopMapped,
+            styleToUse,
+            resolvedWeather,
+            1,
+            t,
+            true
+          );
+          if (offlinePure.length > 0) {
+            pureWardrobeOutfit = {
+              ...offlinePure[0],
+              items: normalizeTo4Slots(offlinePure[0].items || [], styleToUse)
+            };
+          }
+        } catch (pureErr) {
+          console.warn('[AIOutfitmaker] Pure wardrobe generation failed', pureErr);
+        }
+      }
+
       const { data, error: invokeError } = await supabase.functions.invoke('generate-outfits', {
         body: {
           stylePreferences: styleToUse,
@@ -1152,8 +1229,10 @@ const AIOutfitGenerator = () => {
           selectedItemIds: [],
           wardrobeItems: payloadItems,
           weather: resolvedWeather,
-          limit: 3,
+          limit: source === 'wardrobe' ? 2 : 3, // request fewer if we already have a pure one
           prompt: userPrompt,
+          // Lock the anchor item into every outfit when navigated from MyClosetScreen
+          anchorItemId: baseItemId,
         },
       });
 
@@ -1206,7 +1285,8 @@ const AIOutfitGenerator = () => {
         }
 
         if (isMounted.current) {
-          setOutfits(finalOutfits.slice(0, 3));
+          let mergedOutfits = pureWardrobeOutfit ? [pureWardrobeOutfit, ...cleanedOutfits] : cleanedOutfits;
+          setOutfits(mergedOutfits.slice(0, 3));
           setLoading(false);
         }
         return;
@@ -1221,11 +1301,27 @@ const AIOutfitGenerator = () => {
       if (fallbackTimer.current) clearTimeout(fallbackTimer.current);
       fallbackTimer.current = setTimeout(async () => {
         if (!isMounted.current) return;
+        try {
+          const offlineOutfits = await generateOfflineOutfits(wardrobeItems, liveShopMapped, styleToUse, weather, 3, t);
 
-        const offlineOutfits = await generateOfflineOutfits(wardrobeItems, liveShopMapped, styleToUse, weather, 3, t);
-        setOutfits(offlineOutfits);
-        setLoading(false);
-        setError('');
+          // Ensure first outfit is pure if source is wardrobe
+          let finalOffline = offlineOutfits;
+          if (source === 'wardrobe' && pureWardrobeOutfit) {
+            finalOffline = [pureWardrobeOutfit, ...offlineOutfits.slice(0, 2)];
+          }
+
+          if (isMounted.current) {
+            setOutfits(finalOffline.length > 0 ? finalOffline : (pureWardrobeOutfit ? [pureWardrobeOutfit] : []));
+            setLoading(false);
+            setError(finalOffline.length === 0 && !pureWardrobeOutfit ? t('outfitMaker.noOutfitsError', { defaultValue: 'Could not generate outfits. Please add more items to your wardrobe.' }) : '');
+          }
+        } catch (offlineErr: any) {
+          console.error('[AIOutfitmaker] Offline generator also failed:', offlineErr);
+          if (isMounted.current) {
+            setLoading(false);
+            setError(t('outfitMaker.noOutfitsError', { defaultValue: 'Could not generate outfits. Please try again.' }));
+          }
+        }
       }, 600);
     }
   };
@@ -1391,12 +1487,41 @@ const AIOutfitGenerator = () => {
         {/* Title Area */}
         <View style={{ paddingHorizontal: 20, paddingTop: 36, paddingBottom: 24 }}>
           <Text style={styles.sectionTitle}>
-            {t('outfitMaker.discoverVibe')}
+            {baseItem ? t('outfitMaker.buildAroundItem', { defaultValue: 'Build an outfit around' }) : t('outfitMaker.discoverVibe')}
           </Text>
           <Text style={styles.sectionSubtitle}>
-            {t('outfitMaker.tapStyleCard')}
+            {baseItem ? t('outfitMaker.tapStyleCardAnchor', { defaultValue: 'Choose a style and we\'ll complete the look' }) : t('outfitMaker.tapStyleCard')}
           </Text>
         </View>
+
+        {/* Anchor item preview — shown when navigated from MyClosetScreen */}
+        {baseItem && (
+          <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+            <View style={styles.anchorBanner}>
+              {baseItem.imageUrl ? (
+                <Image
+                  source={{ uri: baseItem.imageUrl }}
+                  style={styles.anchorImage}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={[styles.anchorImage, { backgroundColor: '#F3F6FA', alignItems: 'center', justifyContent: 'center' }]}>
+                  <Ionicons name="shirt-outline" size={24} color="#C8D0DA" />
+                </View>
+              )}
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.anchorLabel}>{t('outfitMaker.anchorItem', { defaultValue: 'Anchor item' })}</Text>
+                <Text style={styles.anchorName} numberOfLines={1}>
+                  {baseItem.name || baseItem.type || t('common.clothingItem')}
+                </Text>
+              </View>
+              <View style={styles.anchorBadge}>
+                <Ionicons name="lock-closed" size={12} color="#007AFF" />
+                <Text style={styles.anchorBadgeText}>{t('outfitMaker.locked', { defaultValue: 'Locked' })}</Text>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* User Situation/Occasion Prompt */}
         <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
@@ -1505,6 +1630,50 @@ const styles = StyleSheet.create({
     color: LiquidGlass2026Theme.colors.text.secondary,
     marginTop: 6,
     lineHeight: 22,
+  },
+
+  // Anchor item banner (shown when navigated from MyClosetScreen)
+  anchorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 122, 255, 0.07)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 122, 255, 0.2)',
+    borderRadius: 16,
+    padding: 12,
+  },
+  anchorImage: {
+    width: 52,
+    height: 52,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  anchorLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#007AFF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  anchorName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#0A1931',
+  },
+  anchorBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0, 122, 255, 0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  anchorBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#007AFF',
   },
 
   // Toggle Styles (Matching CreateAvatarScreen)

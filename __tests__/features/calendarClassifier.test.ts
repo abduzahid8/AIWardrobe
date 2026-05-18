@@ -19,7 +19,8 @@ import {
 function getCalendarOccasion(styleId?: string): string {
   switch (styleId) {
     case 'business_casual': return 'work';
-    case 'old_money': return 'formal';
+    case 'old_money':
+    case 'classic': return 'formal';
     case 'semi_classic':
     case 'minimalist':
     case 'casual': return 'casual';
@@ -54,7 +55,7 @@ describe('getCalendarOccasion — style → occasion classifier', () => {
   });
 
   it('all classified occasions are valid OCCASION_IDS', () => {
-    const styles = ['business_casual', 'old_money', 'semi_classic', 'minimalist', 'casual', undefined as string | undefined];
+    const styles = ['business_casual', 'old_money', 'semi_classic', 'minimalist', 'casual', 'classic', undefined as string | undefined];
     for (const s of styles) {
       const occasion = getCalendarOccasion(s);
       expect(isValidOccasion(occasion)).toBe(true);

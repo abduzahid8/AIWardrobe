@@ -232,7 +232,7 @@ export default function WardrobeAnalyticsScreen({ navigation }: any) {
                             <Text style={styles.heroStatLabel}>{t('analytics.avgItem')}</Text>
                         </View>
                         <View style={styles.heroStat}>
-                            <Text style={styles.heroStatValue}>🔥 {streak}</Text>
+                            <Text style={styles.heroStatValue}>{t('analytics.emojiStreak', { streak })}</Text>
                             <Text style={styles.heroStatLabel}>{t('analytics.dayStreak')}</Text>
                         </View>
                     </View>
@@ -277,7 +277,7 @@ export default function WardrobeAnalyticsScreen({ navigation }: any) {
                             {analytics.mostWorn.map((item, idx) => (
                                 <View key={item.id} style={styles.mostWornItem}>
                                     <View style={styles.mostWornRank}>
-                                        <Text style={styles.mostWornRankText}>#{idx + 1}</Text>
+                                        <Text style={styles.mostWornRankText}>{t('analytics.rankNumber', { rank: idx + 1 })}</Text>
                                     </View>
                                     <CachedImage
                                         uri={item.imageUrl || item.thumbnailUrl || ''}

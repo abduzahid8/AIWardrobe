@@ -224,7 +224,7 @@ const ChatBubble = ({ message, isAI, outfit, onAdjust, adjustmentOptions, t }: {
                             </Text>
                         </View>
 
-                        {/* Adjustment buttons - "Adjust until right" */}
+                        {/* Adjustment buttons — adjust until right */}
                         {onAdjust && (
                             <View style={styles.adjustmentSection}>
                                 <Text style={styles.adjustmentLabel}>{t('outfitAI.notQuiteRight')}</Text>

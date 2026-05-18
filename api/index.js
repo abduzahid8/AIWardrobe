@@ -163,11 +163,11 @@ app.use("/api/account", accountRoutes);
 
 // Gemini 2.0 Flash try-on — cheaper alternative to FLUX (~6-12x cheaper)
 // Must be mounted BEFORE generic /api/tryon to avoid being shadowed
-app.use("/api/tryon/gemini", authenticateToken, requireAdmin, aiLimiter, tryonGeminiRoutes);
+// Quota is enforced client-side via useSubscriptionGate; any authenticated user may call this.
+app.use("/api/tryon/gemini", authenticateToken, aiLimiter, tryonGeminiRoutes);
 
-// Deterministic mannequin try-on renderer — ADMIN ONLY.
-// Regular users do not have access to the AIVirtualTryOn feature.
-app.use("/api/tryon", authenticateToken, requireAdmin, aiLimiter, tryonRenderRoutes);
+// Deterministic mannequin try-on renderer (FLUX). Any authenticated user may call this.
+app.use("/api/tryon", authenticateToken, aiLimiter, tryonRenderRoutes);
 
 // No local DB seeding. Handled via Supabase directly.
 

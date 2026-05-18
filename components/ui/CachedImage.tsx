@@ -23,7 +23,7 @@ interface CachedImageProps extends Omit<ImageProps, 'source'> {
 
 const AnimatedImage = Animated.createAnimatedComponent(Image) as React.ComponentType<any>;
 
-export const CachedImage: React.FC<CachedImageProps> = ({
+export const CachedImage: React.FC<CachedImageProps> = React.memo(({
     uri,
     fallbackUri = 'https://via.placeholder.com/150',
     showLoader = true,
@@ -67,7 +67,7 @@ export const CachedImage: React.FC<CachedImageProps> = ({
             />
         </View>
     );
-};
+}, (prev, next) => prev.uri === next.uri && prev.style === next.style && prev.contentFit === next.contentFit);
 
 // Optimized image for lists with placeholder
 interface OptimizedImageProps extends CachedImageProps {
@@ -75,7 +75,7 @@ interface OptimizedImageProps extends CachedImageProps {
     placeholderColor?: string;
 }
 
-export const OptimizedImage: React.FC<OptimizedImageProps> = ({
+export const OptimizedImage: React.FC<OptimizedImageProps> = React.memo(({
     uri,
     aspectRatio = 1,
     placeholderColor = colors.surfaceHighlight,
@@ -109,7 +109,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
             />
         </View>
     );
-};
+});
 
 // Avatar component with caching
 interface CachedAvatarProps {
@@ -119,7 +119,7 @@ interface CachedAvatarProps {
     style?: StyleProp<ImageStyle>;
 }
 
-export const CachedAvatar: React.FC<CachedAvatarProps> = ({
+export const CachedAvatar: React.FC<CachedAvatarProps> = React.memo(({
     uri,
     size = 40,
     fallbackInitials = '?',
@@ -147,7 +147,7 @@ export const CachedAvatar: React.FC<CachedAvatarProps> = ({
             )}
         </View>
     );
-};
+});
 
 const styles = StyleSheet.create({
     container: {

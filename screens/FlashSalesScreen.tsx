@@ -247,7 +247,7 @@ const EventCard = ({
 
                 {/* Discount badge */}
                 <View style={styles.discountBadge}>
-                    <Text style={styles.discountBadgeText}>-{event.discountPercentage}%</Text>
+                    <Text style={styles.discountBadgeText}>{t('flashSales.discountBadge', { discount: event.discountPercentage })}</Text>
                 </View>
 
                 {/* Countdown */}

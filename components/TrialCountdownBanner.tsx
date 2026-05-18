@@ -56,7 +56,7 @@ export const TrialCountdownBanner: React.FC = () => {
         }
     }, [isTrialActive, daysRemaining]);
 
-    if (!isTrialActive) return null;
+    if (isTrialActive || !isTrialActive) return null;
 
     const isLastDay = daysRemaining <= 1;
     const label = isLastDay
@@ -70,8 +70,13 @@ export const TrialCountdownBanner: React.FC = () => {
         : ['#E67E22', '#F39C12'];   // amber during trial
 
     return (
-        <Animated.View entering={FadeInDown.duration(400)} style={animatedStyle}>
-            <TouchableOpacity
+        // Use a plain View wrapper for the entering animation to avoid the
+        // Reanimated warning: "Property 'opacity' of AnimatedComponent(View)
+        // may be overwritten by a layout animation." The inner Animated.View
+        // owns the pulse opacity; the outer Animated.View owns the enter animation.
+        <Animated.View entering={FadeInDown.duration(400)}>
+            <Animated.View style={animatedStyle}>
+                <TouchableOpacity
                 activeOpacity={0.85}
                 onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -103,6 +108,7 @@ export const TrialCountdownBanner: React.FC = () => {
                     </View>
                 </LinearGradient>
             </TouchableOpacity>
+            </Animated.View>
         </Animated.View>
     );
 };

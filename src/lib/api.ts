@@ -28,9 +28,27 @@ export class ApiError extends Error {
 
 // ── Token helper ───────────────────────────────────────────────────────────
 
+/**
+ * In-memory token cache — updated synchronously by onAuthStateChange so
+ * every API request reads the token without a network round-trip to
+ * supabase.auth.getSession() (fixes Defect 1.1).
+ *
+ * Falls back to getSession() only when the cache is cold (first call before
+ * the auth listener fires, or after a token refresh).
+ */
+let _cachedToken: string | null = null;
+
+// Keep the cache in sync with Supabase auth state changes.
+supabase.auth.onAuthStateChange((_event, session) => {
+  _cachedToken = session?.access_token ?? null;
+});
+
 async function getToken(): Promise<string | null> {
+  if (_cachedToken !== null) return _cachedToken;
+  // Cold cache — fall back to getSession() once, then cache the result.
   const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? null;
+  _cachedToken = data.session?.access_token ?? null;
+  return _cachedToken;
 }
 
 // ── Core request ───────────────────────────────────────────────────────────
@@ -55,7 +73,9 @@ async function request<T>(
   });
 
   if (res.status === 401 && !retried) {
-    // Attempt token refresh once
+    // Attempt token refresh once — clear the cached token so the next
+    // getToken() call picks up the refreshed access token.
+    _cachedToken = null;
     await supabase.auth.refreshSession();
     return request<T>(method, path, body, true);
   }

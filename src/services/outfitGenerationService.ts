@@ -17,6 +17,7 @@ import { fillMissingSlots, fetchShopPoolForStyle, type OutfitSlotId, type ShopFi
 import type { ClothingItem, ClothingCategory, Season, Occasion } from '../types/domain';
 import { mapDbCategory as canonicalMapDbCategory, getMacroCategory as canonicalGetMacroCategory, canonicalizeMacroCategory } from '../utils/categoryMapper';
 import { rankItemsForStyle, scoreItemForStyle, normalizeStyleId, type StyleId } from '../../features/outfit-generator/utils/styleInference';
+import useWardrobeStore from '../../store/wardrobeStore';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public types
@@ -35,6 +36,19 @@ export interface GenerateOutfitsParams {
     limit?: number;
     /** IDs of specific items the user has pre-selected (manual mode) */
     selectedItemIds?: string[];
+    /** When set, the edge function locks this item into its slot in every outfit. */
+    anchorItemId?: string;
+    /** User's style quiz preferences to customize recommendations */
+    preferences?: {
+        favoriteColors?: string[];
+        avoidColors?: string[];
+        fitPreference?: 'loose' | 'fitted' | 'balanced';
+        likedPatterns?: string[];
+        dislikedPatterns?: string[];
+        primaryOccasions?: string[];
+        prefersSustainable?: boolean;
+        styleGoals?: string[];
+    };
 }
 
 export interface GeneratedOutfitItem {
@@ -96,6 +110,8 @@ export async function generateOutfitsFromDB(
                 weather: params.weather,
                 limit: params.limit ?? 3,
                 selectedItemIds: params.selectedItemIds ?? [],
+                anchorItemId: params.anchorItemId,
+                preferences: params.preferences,
             },
         });
 
@@ -139,7 +155,7 @@ export async function generateOutfitsFromDB(
 // Local fallback — fetches from DB and applies rule-based matching
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function generateOutfitsLocally(
+export async function generateOutfitsLocally(
     params: GenerateOutfitsParams
 ): Promise<GenerateOutfitsResult> {
     try {
@@ -199,12 +215,35 @@ async function generateOutfitsLocally(
             updatedAt: new Date().toISOString(),
         }));
 
+        let filteredItems = [...items];
+        let filteredShopAsClothing = [...shopAsClothing];
+
+        if (params.preferences) {
+            const avoidColors = params.preferences.avoidColors || [];
+            if (avoidColors.length > 0) {
+                const avoid = avoidColors.map((c: string) => c.toLowerCase().trim()).filter(Boolean);
+                
+                filteredItems = filteredItems.filter(item => {
+                    const color = (item.primaryColor || '').toLowerCase();
+                    const name = (item.name || '').toLowerCase();
+                    const desc = (item.subCategory || '').toLowerCase();
+                    return !avoid.some(c => color.includes(c) || name.includes(` ${c} `) || desc.includes(` ${c} `));
+                });
+                
+                filteredShopAsClothing = filteredShopAsClothing.filter(item => {
+                    const color = (item.primaryColor || '').toLowerCase();
+                    const name = (item.name || '').toLowerCase();
+                    return !avoid.some(c => color.includes(c) || name.includes(` ${c} `));
+                });
+            }
+        }
+
         // Style-rank the combined pool so the best-matching items are
         // picked first by buildLocalOutfits. Shop items that match the
         // style (e.g. loafers for business_casual) should appear before
         // wardrobe items that clash (e.g. graphic tees).
         const styleKey: StyleId = normalizeStyleId(params.stylePreferences || 'casual');
-        const mergedItems = rankItemsForStyle([...shopAsClothing, ...items], styleKey);
+        const mergedItems = rankItemsForStyle([...filteredShopAsClothing, ...filteredItems], styleKey);
 
         // If wardrobe is completely empty but we have shop items, still proceed.
         if (items.length === 0 && shopAsClothing.length === 0) {
@@ -302,6 +341,19 @@ export async function fetchWardrobeDisplayItems(
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function fetchClothingItemsFromDB(selectedIds?: string[]): Promise<ClothingItem[]> {
+    // Primary path: read from the Zustand wardrobeStore (already fetched on app start).
+    // This avoids a redundant Supabase round-trip when the store is already populated.
+    const storeItems = useWardrobeStore.getState().items;
+    if (storeItems.length > 0) {
+        if (selectedIds && selectedIds.length > 0) {
+            const idSet = new Set(selectedIds);
+            return storeItems.filter(item => idSet.has(item.id));
+        }
+        return storeItems;
+    }
+
+    // Fallback: store is empty (e.g. first launch before rehydration completes),
+    // so fetch directly from Supabase.
     const { data: sessionData } = await supabase.auth.getSession();
     const userId = sessionData?.session?.user?.id;
     if (!userId) return [];
@@ -403,19 +455,35 @@ function getItemStyleScore(item: ClothingItem, style: StyleId): number {
 }
 
 function strictRejectsForStyleSlot(item: ClothingItem, style: StyleId, slot: 'top' | 'outerwear' | 'bottom' | 'shoes'): boolean {
-    const blob = `${item.name || ''} ${item.subCategory || ''} ${item.category || ''} ${item.brand || ''}`.toLowerCase();
+    const blob = `${item.name || ''} ${item.subCategory || ''} ${item.category || ''} ${item.brand || ''} ${item.pattern || ''}`.toLowerCase();
 
     if (slot === 'bottom' && /\b(shorts?|bermudas?|cargo|sweatpants?|joggers?)\b/.test(blob)) return true;
 
-    if (style === 'business_casual' || style === 'old_money') {
+    if (style === 'business_casual' || style === 'old_money' || style === 'classic') {
+        // Reject loud/sporty/graphic/floral pattern types in formal/classic styles
+        if (/\b(print|printed|floral|paisley|camo|tie-dye|graphic|logo|patterns?)\b/.test(blob)) return true;
+
+        // Reject sporty outerwear layers
+        if (slot === 'outerwear' && /\b(hoodie|hooded|puffer|windbreaker|track|bomber|zip-?up|casual-?jacket)\b/.test(blob)) return true;
+
+        // Reject sporty bottoms
+        if (slot === 'bottom' && /\b(shorts?|bermudas?|cargo|sweatpants?|joggers?)\b/.test(blob)) return true;
+
+        // Reject casual base layers
         if (slot === 'top' && /\b(t-?shirt|tee|graphic|tank|sleeveless|mesh)\b/.test(blob)) return true;
-        if (slot === 'outerwear' && /\b(hoodie|puffer|windbreaker|track)\b/.test(blob)) return true;
-        if (slot === 'shoes' && /\b(chunky|basketball|skate|running|trainer|retro sneaker|retro sneakers)\b/.test(blob)) return true;
-        if (slot === 'shoes' && /\b(sneaker|sneakers)\b/.test(blob) && !/\b(leather sneaker|leather sneakers|minimal sneaker|minimal sneakers)\b/.test(blob)) return true;
+
+        // Reject non-dress shoes
+        if (slot === 'shoes' && /\b(chunky|basketball|skate|running|trainer|retro sneaker|retro sneakers|athletic)\b/.test(blob)) return true;
+        if (style === 'old_money') {
+            if (slot === 'shoes' && /\b(sneaker|sneakers)\b/.test(blob)) return true;
+        } else {
+            if (slot === 'shoes' && /\b(sneaker|sneakers)\b/.test(blob) && !/\b(leather sneaker|leather sneakers|minimal sneaker|minimal sneakers)\b/.test(blob)) return true;
+        }
     }
 
-    if (style === 'old_money') {
-        if (slot === 'top' && /\b(logo|oversized)\b/.test(blob)) return true;
+    if (style === 'old_money' || style === 'classic') {
+        if (slot === 'top' && /\b(logo|oversized|t-shirt|tee|graphic)\b/.test(blob)) return true;
+        if (slot === 'outerwear' && /\b(zip-up|windbreaker|casual jacket)\b/.test(blob)) return true;
     }
 
     return false;
@@ -543,11 +611,32 @@ function buildLocalOutfits(items: ClothingItem[], params: GenerateOutfitsParams)
     const layered = isLayeredWeather(params.weather, params.prompt);
     const styleKey: StyleId = normalizeStyleId(style);
 
+    const sortByFavorite = (pool: ClothingItem[]) => {
+        if (!params.preferences || !Array.isArray(params.preferences.favoriteColors) || params.preferences.favoriteColors.length === 0) {
+            return pool;
+        }
+        const favorites = params.preferences.favoriteColors.map((c: string) => c.toLowerCase().trim()).filter(Boolean);
+        return [...pool].sort((a, b) => {
+            const colorA = (a.primaryColor || '').toLowerCase();
+            const colorB = (b.primaryColor || '').toLowerCase();
+            const matchA = favorites.some(c => colorA.includes(c)) ? 1 : 0;
+            const matchB = favorites.some(c => colorB.includes(c)) ? 1 : 0;
+            return matchB - matchA;
+        });
+    };
+
     // Shuffle items to ensure variety even with limited wardrobes
-    const rawBaseTops = shuffleArray(items.filter(i => getMacroCategory(i.category, i.subCategory) === 'top'));
-    const rawOuterwear = shuffleArray(items.filter(i => getMacroCategory(i.category, i.subCategory) === 'outerwear'));
-    const rawBottoms = shuffleArray(items.filter(i => getMacroCategory(i.category, i.subCategory) === 'bottom'));
-    const rawShoes = shuffleArray(items.filter(i => getMacroCategory(i.category, i.subCategory) === 'shoes'));
+    let rawBaseTops = shuffleArray(items.filter(i => getMacroCategory(i.category, i.subCategory) === 'top'));
+    let rawOuterwear = shuffleArray(items.filter(i => getMacroCategory(i.category, i.subCategory) === 'outerwear'));
+    let rawBottoms = shuffleArray(items.filter(i => getMacroCategory(i.category, i.subCategory) === 'bottom'));
+    let rawShoes = shuffleArray(items.filter(i => getMacroCategory(i.category, i.subCategory) === 'shoes'));
+
+    if (params.preferences) {
+        rawBaseTops = sortByFavorite(rawBaseTops);
+        rawOuterwear = sortByFavorite(rawOuterwear);
+        rawBottoms = sortByFavorite(rawBottoms);
+        rawShoes = sortByFavorite(rawShoes);
+    }
 
     const baseTops = filterSlotByStyle(rawBaseTops, styleKey, 'top', styleKey === 'casual' ? 0.1 : 0.18);
     const outerwear = filterSlotByStyle(rawOuterwear, styleKey, 'outerwear', styleKey === 'casual' ? 0.1 : 0.18);

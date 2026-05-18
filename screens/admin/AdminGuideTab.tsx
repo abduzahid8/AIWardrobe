@@ -26,7 +26,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 const logger = createLogger('AdminGuideTab');
 
 const addCacheBust = (url?: string | null) => {
-  if (!url) return url;
+  if (!url) return null;
   const separator = url.includes('?') ? '&' : '?';
   return `${url}${separator}v=${Date.now()}`;
 };
@@ -121,7 +121,7 @@ export const AdminGuideTab = () => {
       );
 
       if (uploadResult.status !== 200) {
-        let errorMsg = 'Upload failed';
+        let errorMsg = t('admin.guide.uploadFailed');
         try {
           const parsed = JSON.parse(uploadResult.body);
           errorMsg = parsed.message || parsed.error || errorMsg;

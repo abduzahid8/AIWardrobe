@@ -47,7 +47,8 @@ export function useOutfitGeneration({
   baseItemId,
 }: UseOutfitGenerationParams) {
   const { user } = useAuthStore();
-  const stylePersonality = useStylePreferenceStore((state) => state.preferences.stylePersonality);
+  const preferences = useStylePreferenceStore((state) => state.preferences);
+  const stylePersonality = preferences.stylePersonality;
   const likeOutfit = useStylePreferenceStore((state) => state.likeOutfit);
 
   const [selectedStyle, setSelectedStyle] = useState(initialStyle || 'old_money');
@@ -365,6 +366,7 @@ export function useOutfitGeneration({
             occasion: 'Everyday',
             limit: promptText.trim() ? 5 : 3,
             wardrobeItems: shopPayload,
+            preferences,
           },
         });
 
@@ -527,6 +529,7 @@ export function useOutfitGeneration({
         occasion: 'Everyday',
         limit: promptText.trim() ? 5 : 3,
         selectedItemIds: selectedIds,
+        preferences,
       });
 
       if (result.success && result.outfits.length > 0) {

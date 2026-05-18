@@ -2,6 +2,46 @@
  * Shared types and constants for the outfit generator feature.
  */
 
+/**
+ * Represents the lifecycle states of the outfit generation pipeline.
+ * - idle: no generation in progress
+ * - selecting_items: edge function is selecting outfit items
+ * - composing_image: AI image composition is in progress
+ * - fallback_active: local rule-based fallback is running (edge fn timed out)
+ * - complete: generation finished successfully
+ * - error: generation failed with an error
+ */
+export type GenerationStatus =
+  | 'idle'
+  | 'selecting_items'
+  | 'composing_image'
+  | 'fallback_active'
+  | 'complete'
+  | 'error';
+
+/**
+ * Represents a clothing item from the user's closet (MyClosetScreen).
+ * Renamed from the local `ClothingItem` interface in MyClosetScreen.tsx
+ * to avoid collision with the domain ClothingItem type.
+ */
+export interface ClosetClothingItem {
+  _id: string;
+  id?: string;
+  type?: string;
+  itemType?: string;
+  color?: string;
+  colorHex?: string;
+  style?: string;
+  description?: string;
+  imageUrl?: string;
+  image?: string;
+  category?: string;
+  wearCount?: number;
+  lastWorn?: string;
+  createdAt?: string;
+  isFavorite?: boolean;
+}
+
 export interface OutfitItem {
   name?: string;
   image?: string | number;
@@ -67,12 +107,11 @@ export const AI_STYLES: AIStyle[] = [
 
 export const STYLE_PERSONALITY_MAP: Record<string, string> = {
   classic: 'old_money',
-  trendy: 'casual',
+  semi_classic: 'semi_classic',
+  'semi-classic': 'semi_classic',
   minimalist: 'minimalist',
-  bohemian: 'casual',
-  edgy: 'semi_classic',
-  romantic: 'old_money',
-  sporty: 'casual',
+  casual: 'casual',
+  old_money: 'old_money',
 };
 
 export const CATEGORY_SECTIONS = [

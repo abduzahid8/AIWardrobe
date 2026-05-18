@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { DeviceEventEmitter } from 'react-native';
 import { supabase } from '../lib/supabase';
 import type { ShopCatalogItem } from '../features/try-on/types';
 import { spreadSimilarCatalogItems } from '../src/utils/shopCatalogOrder';
@@ -6,6 +7,23 @@ import { createLogger } from '../src/utils/logger';
 import { getThumbnailUrl } from '../src/utils/imageUrl';
 
 const logger = createLogger('useShopCatalog');
+
+// ── Module-level cache ────────────────────────────────────────────────────────
+// Survives tab switches so the screen never goes blank when revisiting.
+interface CacheEntry {
+    items: ShopCatalogItem[];
+    fetchedAt: number;
+    hasMore: boolean;
+}
+const catalogCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+function cacheKey(source: string, cat: string) { return `${source}|${cat}`; }
+
+// ── In-flight request deduplication ──────────────────────────────────────────
+// When HomeScreen and InspoScreen both call useShopCatalog({ source: 'all' })
+// simultaneously, the second caller reuses the first caller's pending fetch
+// instead of firing a duplicate Supabase query.
+const inflight = new Map<string, Promise<void>>();
 
 const PAGE_SIZE = 100;
 const DEFAULT_SHOP_SOURCE = 'apify-zara-men';
@@ -70,12 +88,13 @@ export function useShopCatalog({
     const enabledRef                  = useRef(enabled);
 
     const buildQuery = useCallback((page: number, cat: string, activeSource: string) => {
+        const size = (cat === 'shoes' || cat === 'all') ? 300 : 100;
         let q = supabase
             .from('shop_catalog')
             .select('id, brand, name, price, currency, image_url, garment_type, description')
             .eq('is_active', true)
             .order('sort_order', { ascending: true })
-            .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
+            .range(page * size, page * size + size - 1);
 
         if (activeSource && activeSource !== 'all') {
             q = q.eq('source', activeSource);
@@ -98,11 +117,37 @@ export function useShopCatalog({
         return q;
     }, []);
 
-    const fetchPage = useCallback(async (page: number, cat: string, activeSource: string, append: boolean) => {
-        if (page === 0) setLoading(true);
-        else setLoadingMore(true);
+    const fetchPage = useCallback(async (page: number, cat: string, activeSource: string, append: boolean, silent = false) => {
+        // silent=true: background refresh — don't show loading spinner (items still visible)
+        if (!silent) {
+            if (page === 0) setLoading(true);
+            else setLoadingMore(true);
+        }
         setError(null);
 
+        // Deduplicate concurrent page-0 fetches for the same cache key.
+        // When HomeScreen and InspoScreen both mount and call useShopCatalog
+        // with the same options, the second caller waits for the first one's
+        // promise instead of firing a duplicate Supabase query.
+        const key = cacheKey(activeSource, cat);
+        if (page === 0 && !append) {
+            const existing = inflight.get(key);
+            if (existing) {
+                // Another instance is already fetching — wait for it, then
+                // seed from the cache it will have populated.
+                await existing;
+                const cached = catalogCache.get(key);
+                if (cached) {
+                    setItems(cached.items);
+                    setHasMore(cached.hasMore);
+                }
+                setLoading(false);
+                setLoadingMore(false);
+                return;
+            }
+        }
+
+        const doFetch = async () => {
         try {
             const result = await withTimeout(
                 buildQuery(page, cat, activeSource),
@@ -116,25 +161,46 @@ export function useShopCatalog({
             } else {
                 const mapped = (data ?? []).map(dbRowToItem);
                 logger.debug('fetched page', { page, count: mapped.length, cat, activeSource });
-                setItems(prev => {
-                    const diversified = spreadSimilarCatalogItems(
-                        mapped,
-                        append ? prev.slice(-2) : [],
-                    ) as ShopCatalogItem[];
-                    return append ? [...prev, ...diversified] : diversified;
-                });
-                setHasMore(mapped.length === PAGE_SIZE);
+                // Compute outside setState to avoid blocking React's reconciler
+                const diversified = spreadSimilarCatalogItems(mapped, []) as ShopCatalogItem[];
+                const next = append
+                    ? (prev: ShopCatalogItem[]) => [...prev, ...diversified]
+                    : () => diversified;
+                setItems(next);
+                const size = (cat === 'shoes' || cat === 'all') ? 300 : 100;
+                const newHasMore = mapped.length === size;
+                setHasMore(newHasMore);
+                // Update module-level cache
+                if (!append) {
+                    catalogCache.set(key, { items: diversified, hasMore: newHasMore, fetchedAt: Date.now() });
+                } else {
+                    const existing = catalogCache.get(key);
+                    if (existing) {
+                        catalogCache.set(key, { items: [...existing.items, ...diversified], hasMore: newHasMore, fetchedAt: Date.now() });
+                    }
+                }
             }
         } catch (err: any) {
             // Timeout, network, or unexpected throw. Surface it so the UI can
             // show an empty-state with a retry instead of spinning forever.
             logger.error('fetch failed', { message: err?.message, page, cat, activeSource });
             setError(err?.message ?? 'Unknown shop catalog error');
-            if (!append) setItems([]);
+            // Only clear items if we have nothing to show (no cache).
+            if (!append && !catalogCache.has(key)) setItems([]);
             setHasMore(false);
         } finally {
             setLoading(false);
             setLoadingMore(false);
+            if (page === 0 && !append) inflight.delete(key);
+        }
+        };
+
+        if (page === 0 && !append) {
+            const p = doFetch();
+            inflight.set(key, p);
+            await p;
+        } else {
+            await doFetch();
         }
     }, [buildQuery]);
 
@@ -144,24 +210,38 @@ export function useShopCatalog({
         categoryRef.current = category;
         sourceRef.current = source;
         enabledRef.current = enabled;
-        setItems([]);
         setError(null);
 
         if (!enabled) {
+            setItems([]);
             setLoading(false);
             setLoadingMore(false);
             setHasMore(false);
             return;
         }
 
-        setHasMore(true);
-        fetchPage(0, category, source, false);
+        // Seed from cache immediately — avoids blank screen on revisit
+        const key = cacheKey(source, category);
+        const cached = catalogCache.get(key);
+        if (cached) {
+            setItems(cached.items);
+            setHasMore(cached.hasMore);
+            setLoading(false);
+            // If cache is stale, do a silent background refresh
+            if (Date.now() - cached.fetchedAt > CACHE_TTL_MS) {
+                fetchPage(0, category, source, false, true);
+            }
+        } else {
+            // No cache — show loading state and fetch
+            setItems([]);
+            setHasMore(true);
+            fetchPage(0, category, source, false, false);
+        }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [category, source, enabled]);
 
     // Listen for cross-tab cache busting events
     useEffect(() => {
-        const { DeviceEventEmitter } = require('react-native');
         const subscription = DeviceEventEmitter.addListener('catalog_updated', () => {
             if (enabledRef.current) {
                 // Manually trigger a refresh when admin adds/edits an item
@@ -184,9 +264,9 @@ export function useShopCatalog({
     const refresh = useCallback(() => {
         if (!enabledRef.current) return;
         pageRef.current = 0;
-        setItems([]);
         setHasMore(true);
-        fetchPage(0, categoryRef.current, sourceRef.current, false);
+        // Silent=true: keep existing items visible while fetching fresh data
+        fetchPage(0, categoryRef.current, sourceRef.current, false, true);
     }, [fetchPage]);
 
     return { items, loading, loadingMore, error, hasMore, loadMore, refresh };

@@ -15,6 +15,22 @@ import { useTranslation } from 'react-i18next';
 
 export function useSessionGuard(): void {
     const appState = useRef(AppState.currentState);
+    const { t } = useTranslation();
+    // Capture translated strings in a ref so the async AppState handler can
+    // read them without calling useTranslation() inside the callback (which
+    // would violate the Rules of Hooks).
+    const translationsRef = useRef({
+        sessionExpired: t('sessionGuard.sessionExpired'),
+        sessionExpiredMessage: t('sessionGuard.sessionExpiredMessage'),
+    });
+
+    // Keep the ref up-to-date whenever the language changes.
+    useEffect(() => {
+        translationsRef.current = {
+            sessionExpired: t('sessionGuard.sessionExpired'),
+            sessionExpiredMessage: t('sessionGuard.sessionExpiredMessage'),
+        };
+    }, [t]);
 
     useEffect(() => {
         const handleAppStateChange = async (nextAppState: AppStateStatus) => {
@@ -30,13 +46,14 @@ export function useSessionGuard(): void {
                     const { data: { session }, error } = await supabase.auth.getSession();
 
                     if (error || !session) {
-                        // Session expired
+                        // Session expired — read pre-resolved strings from the ref
+                        // instead of calling useTranslation() here (hooks cannot be
+                        // called inside async callbacks).
                         const { logout } = useAuthStore.getState();
-                        const { t } = useTranslation();
                         await logout();
                         Alert.alert(
-                            t('sessionGuard.sessionExpired'),
-                            t('sessionGuard.sessionExpiredMessage'),
+                            translationsRef.current.sessionExpired,
+                            translationsRef.current.sessionExpiredMessage,
                         );
                     } else {
                         // Refresh session if it's about to expire (within 5 minutes)
@@ -44,7 +61,22 @@ export function useSessionGuard(): void {
                         if (expiresAt) {
                             const expiresInMs = expiresAt * 1000 - Date.now();
                             if (expiresInMs < 5 * 60 * 1000) {
-                                await supabase.auth.refreshSession();
+                                const { error: refreshError } = await supabase.auth.refreshSession();
+                                if (refreshError) {
+                                    const refreshMsg = (refreshError as any)?.message ?? '';
+                                    if (
+                                        refreshMsg.includes('Invalid Refresh Token') ||
+                                        refreshMsg.includes('Refresh Token Not Found')
+                                    ) {
+                                        // Stale token — log out silently
+                                        const { logout } = useAuthStore.getState();
+                                        await logout();
+                                        Alert.alert(
+                                            translationsRef.current.sessionExpired,
+                                            translationsRef.current.sessionExpiredMessage,
+                                        );
+                                    }
+                                }
                             }
                         }
                     }

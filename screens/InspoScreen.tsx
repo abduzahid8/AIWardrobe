@@ -102,14 +102,14 @@ const trackBrandClick = async (item: ShopCatalogItem) => {
 
 const handleBuyPress = async (item: ShopCatalogItem) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    
+
     // Track the brand click
     await trackBrandClick(item);
-    
+
     // Open brand website (search for product)
     const searchQuery = encodeURIComponent(`${item.brand} ${item.name}`);
     const url = `https://www.google.com/search?q=${searchQuery}`;
-    
+
     try {
         const canOpen = await Linking.canOpenURL(url);
         if (canOpen) {
@@ -134,7 +134,7 @@ const ProductCard = ({
     t: (key: string) => string;
 }) => (
     // Cap the stagger so later pages (index 100+) don't wait many seconds
-    // before their entering animation starts — otherwise pressing "Load more"
+    // before their entering animation starts — otherwise pressing Load more
     // appears to do nothing because new cards are invisible until the delay elapses.
     <Animated.View entering={FadeInDown.delay(Math.min(150 + (index % 12) * 40, 600)).duration(320)}>
         <View style={styles.productCard}>
@@ -237,7 +237,7 @@ type SegmentType = 'guide' | 'shop';
 const InspoScreen = () => {
     const { t } = useTranslation();
     const navigation = useAppNavigation();
-    const items    = useWardrobeStore((s) => s.items);
+    const items = useWardrobeStore((s) => s.items);
     const wearLogs = useWardrobeStore((s) => s.wearLogs);
     const {
         items: syncedShopItems,
@@ -379,6 +379,165 @@ const InspoScreen = () => {
         });
     }, [searchQuery, showingFallbackCatalog, syncedShopItems]);
 
+    // ── FlatList helpers for the shop grid ────────────────────────────────────
+    const savedInspoSet = useMemo(
+        () => new Set(savedInspo.map((s) => s.id)),
+        [savedInspo],
+    );
+
+    const shopItemPairs = useMemo(() => {
+        const pairs: [ShopCatalogItem, ShopCatalogItem | null][] = [];
+        for (let i = 0; i < shopItems.length; i += 2) {
+            pairs.push([shopItems[i], shopItems[i + 1] ?? null]);
+        }
+        return pairs;
+    }, [shopItems]);
+
+    const renderShopRow = useCallback(
+        ({ item: pair }: { item: [ShopCatalogItem, ShopCatalogItem | null] }) => {
+            const [left, right] = pair;
+            return (
+                <View style={styles.shopRow}>
+                    <View style={styles.productCardWrap}>
+                        <ProductCard
+                            item={left}
+                            isSaved={savedInspoSet.has(left.id)}
+                            onSave={() => saveInspo(left)}
+                            index={0}
+                            t={t}
+                        />
+                    </View>
+                    {right ? (
+                        <View style={styles.productCardWrap}>
+                            <ProductCard
+                                item={right}
+                                isSaved={savedInspoSet.has(right.id)}
+                                onSave={() => saveInspo(right)}
+                                index={1}
+                                t={t}
+                            />
+                        </View>
+                    ) : (
+                        <View style={styles.productCardWrap} />
+                    )}
+                </View>
+            );
+        },
+        [savedInspoSet, saveInspo, t],
+    );
+
+    const shopListFooter = useCallback(() => {
+        if (showingFallbackCatalog || !shopCatalogHasMore) return null;
+        return (
+            <TouchableOpacity
+                style={styles.loadMoreButton}
+                onPress={loadMoreShopCatalog}
+                disabled={shopCatalogLoadingMore}
+                accessibilityRole="button"
+                accessibilityLabel={t('inspo.loadMoreShopProducts')}
+            >
+                {shopCatalogLoadingMore ? (
+                    <ActivityIndicator size="small" color={colors.text.primary} />
+                ) : (
+                    <Text style={styles.loadMoreButtonText}>{t('inspo.loadMoreProducts')}</Text>
+                )}
+            </TouchableOpacity>
+        );
+    }, [showingFallbackCatalog, shopCatalogHasMore, shopCatalogLoadingMore, loadMoreShopCatalog, t, colors.text.primary]);
+
+    const shopListKeyExtractor = useCallback(
+        (pair: [ShopCatalogItem, ShopCatalogItem | null]) => pair[0].id,
+        [],
+    );
+
+    const renderShopHeader = useCallback(() => (
+        <>
+            {/* Search */}
+            <Animated.View entering={FadeInDown.delay(80).duration(400)}>
+                <View style={styles.searchContainer}>
+                    <Ionicons name="search" size={20} color={colors.text.tertiary} style={styles.searchIcon} />
+                    <TextInput
+                        placeholder={t('inspo.searchPlaceholder')}
+                        placeholderTextColor={colors.text.tertiary}
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                        style={styles.searchInput}
+                        returnKeyType="search"
+                        accessibilityLabel={t('inspo.searchForClothingItems')}
+                        maxLength={200}
+                    />
+                </View>
+            </Animated.View>
+
+            {(shopCatalogError || showingFallbackCatalog) && (
+                <Animated.View entering={FadeInDown.delay(90).duration(300)}>
+                    <View style={styles.catalogStatusBanner}>
+                        <Text style={styles.catalogStatusText}>
+                            {showingFallbackCatalog
+                                ? t('inspo.catalogEmpty')
+                                : t('inspo.catalogRefreshFailed')}
+                        </Text>
+                        <TouchableOpacity onPress={refreshShopCatalog} accessibilityRole="button">
+                            <Text style={styles.catalogStatusAction}>{t('common.retry')}</Text>
+                        </TouchableOpacity>
+                    </View>
+                </Animated.View>
+            )}
+
+            {/* Personal Stylist Button */}
+            <Animated.View entering={FadeInDown.delay(120).duration(400)}>
+                <TouchableOpacity
+                    style={styles.personalStylistButton}
+                    onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        navigation.navigate('AIOutfit', { source: 'shop' });
+                    }}
+                    accessibilityLabel={t('inspo.personalStylist')}
+                    accessibilityRole="button"
+                >
+                    <LinearGradient
+                        colors={['#0A1931', '#1a3a5c']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.personalStylistGradient}
+                    >
+                        <Ionicons name="sparkles" size={20} color="#FFF" />
+                        <Text style={styles.personalStylistText}>{t('inspo.personalStylist')}</Text>
+                        <Ionicons name="arrow-forward" size={18} color="rgba(255,255,255,0.8)" />
+                    </LinearGradient>
+                </TouchableOpacity>
+            </Animated.View>
+
+            {/* Featured Capsules */}
+            {(featuredCapsulesLoading || featuredCapsules.length > 0) && (
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle} accessibilityRole="header">{t('inspo.featuredCapsules')}</Text>
+                    {featuredCapsulesLoading && featuredCapsules.length === 0 ? (
+                        <View style={styles.capsulesLoadingRow}>
+                            <ActivityIndicator size="small" color={colors.text.primary} />
+                        </View>
+                    ) : (
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.capsulesScroll}
+                        >
+                            {featuredCapsules.map((item, index) => (
+                                <FeaturedCapsuleCard key={item.id} item={item} index={index} t={t} />
+                            ))}
+                        </ScrollView>
+                    )}
+                </View>
+            )}
+
+            <View style={styles.section}>
+                <Text style={styles.sectionTitle} accessibilityRole="header">
+                    {t('inspo.shop')}
+                </Text>
+            </View>
+        </>
+    ), [searchQuery, setSearchQuery, shopCatalogError, showingFallbackCatalog, refreshShopCatalog, navigation, featuredCapsulesLoading, featuredCapsules, t, colors.text.primary, colors.text.tertiary]);
+
     return (
         <View style={styles.container}>
             <LinearGradient
@@ -420,211 +579,102 @@ const InspoScreen = () => {
                     </View>
                 </View>
 
-                <ScrollView
-                    contentContainerStyle={styles.scrollContent}
-                    showsVerticalScrollIndicator={false}
-                >
-                    {/* ── Guide Tab ── */}
-                    {segment === 'guide' && (
-                        <>
-                            <View style={styles.section}>
-                                {displayGuides.map((item, index) => (
-                                    <Animated.View key={item.id} entering={FadeInDown.delay(100 + index * 120).duration(500)}>
-                                        <View style={styles.guideCardContainer}>
-                                            <View style={styles.guideCard}>
-                                                <CachedImage
-                                                    uri={typeof item.image === 'string' ? item.image : ''}
-                                                    style={styles.guideImage}
-                                                    contentFit="cover"
-                                                    fadeIn={false}
-                                                />
-                                                <LinearGradient
-                                                    colors={['transparent', 'rgba(0,0,0,0.75)']}
-                                                    style={styles.guideGradient}
-                                                >
-                                                    <Text style={styles.guideTitle}>{item.title}</Text>
-                                                    <Text style={styles.guideSubtitle}>{item.subtitle}</Text>
-                                                </LinearGradient>
-                                            </View>
-                                        </View>
-                                    </Animated.View>
-                                ))}
-                            </View>
-
-                            {/* From Your Closet — variety outfits */}
-                            {varietyOutfits.length > 0 && (
-                                <Animated.View entering={FadeInDown.delay(350).duration(400)} style={styles.section}>
-                                    <Text style={styles.sectionTitle} accessibilityRole="header">{t('inspo.fromYourCloset')}</Text>
-                                    <FlatList
-                                        data={varietyOutfits}
-                                        horizontal
-                                        showsHorizontalScrollIndicator={false}
-                                        keyExtractor={(o, idx) => `${o.outfit.itemIds.join(',')}_${idx}`}
-                                        contentContainerStyle={styles.variationsScroll}
-                                        renderItem={({ item: outfit }) => (
-                                            <VariationCard
-                                                outfit={outfit}
-                                                items={items}
-                                                onPress={() => {
-                                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                                    navigation.navigate('Main', { screen: 'Home' });
-                                                }}
+                {segment === 'guide' ? (
+                    <ScrollView
+                        contentContainerStyle={styles.scrollContent}
+                        showsVerticalScrollIndicator={false}
+                    >
+                        {/* ── Guide Tab ── */}
+                        <View style={styles.section}>
+                            {displayGuides.map((item, index) => (
+                                <Animated.View key={item.id} entering={FadeInDown.delay(100 + index * 120).duration(500)}>
+                                    <View style={styles.guideCardContainer}>
+                                        <View style={styles.guideCard}>
+                                            <CachedImage
+                                                uri={typeof item.image === 'string' ? item.image : ''}
+                                                style={styles.guideImage}
+                                                contentFit="cover"
+                                                fadeIn={false}
                                             />
-                                        )}
-                                    />
-                                </Animated.View>
-                            )}
-                        </>
-                    )}
-
-                    {/* ── Shop Tab ── */}
-                    {segment === 'shop' && (
-                        <>
-                            {/* Search */}
-                            <Animated.View entering={FadeInDown.delay(80).duration(400)}>
-                                <View style={styles.searchContainer}>
-                                    <Ionicons name="search" size={20} color={colors.text.tertiary} style={styles.searchIcon} />
-                                    <TextInput
-                                        placeholder={t('inspo.searchPlaceholder')}
-                                        placeholderTextColor={colors.text.tertiary}
-                                        value={searchQuery}
-                                        onChangeText={setSearchQuery}
-                                        style={styles.searchInput}
-                                        returnKeyType="search"
-                                        accessibilityLabel={t('inspo.searchForClothingItems')}
-                                        maxLength={200}
-                                    />
-                                </View>
-                            </Animated.View>
-
-                            {(shopCatalogError || showingFallbackCatalog) && (
-                                <Animated.View entering={FadeInDown.delay(90).duration(300)}>
-                                    <View style={styles.catalogStatusBanner}>
-                                        <Text style={styles.catalogStatusText}>
-                                            {showingFallbackCatalog
-                                                ? t('inspo.catalogEmpty')
-                                                : t('inspo.catalogRefreshFailed')}
-                                        </Text>
-                                        <TouchableOpacity onPress={refreshShopCatalog} accessibilityRole="button">
-                                            <Text style={styles.catalogStatusAction}>{t('common.retry')}</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </Animated.View>
-                            )}
-
-                            {/* Personal Stylist Button */}
-                            <Animated.View entering={FadeInDown.delay(120).duration(400)}>
-                                <TouchableOpacity
-                                    style={styles.personalStylistButton}
-                                    onPress={() => {
-                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                        navigation.navigate('AIOutfit', { source: 'shop' });
-                                    }}
-                                    accessibilityLabel={t('inspo.personalStylist')}
-                                    accessibilityRole="button"
-                                >
-                                    <LinearGradient
-                                        colors={['#0A1931', '#1a3a5c']}
-                                        start={{ x: 0, y: 0 }}
-                                        end={{ x: 1, y: 1 }}
-                                        style={styles.personalStylistGradient}
-                                    >
-                                        <Ionicons name="sparkles" size={20} color="#FFF" />
-                                        <Text style={styles.personalStylistText}>{t('inspo.personalStylist')}</Text>
-                                        <Ionicons name="arrow-forward" size={18} color="rgba(255,255,255,0.8)" />
-                                    </LinearGradient>
-                                </TouchableOpacity>
-                            </Animated.View>
-
-                            {/* Featured Capsules — sourced from Supabase (`featured_capsules`) */}
-                            {(featuredCapsulesLoading || featuredCapsules.length > 0) && (
-                                <View style={styles.section}>
-                                    <Text style={styles.sectionTitle} accessibilityRole="header">{t('inspo.featuredCapsules')}</Text>
-                                    {featuredCapsulesLoading && featuredCapsules.length === 0 ? (
-                                        <View style={styles.capsulesLoadingRow}>
-                                            <ActivityIndicator size="small" color={colors.text.primary} />
-                                        </View>
-                                    ) : (
-                                        <ScrollView
-                                            horizontal
-                                            showsHorizontalScrollIndicator={false}
-                                            contentContainerStyle={styles.capsulesScroll}
-                                        >
-                                            {featuredCapsules.map((item, index) => (
-                                                <FeaturedCapsuleCard key={item.id} item={item} index={index} t={t} />
-                                            ))}
-                                        </ScrollView>
-                                    )}
-                                </View>
-                            )}
-
-                            {/* Product Grid */}
-                            <View style={styles.section}>
-                                <Text style={styles.sectionTitle} accessibilityRole="header">
-                                    {t('inspo.shop')}
-                                </Text>
-                                {isInitialShopLoad ? (
-                                    <View style={styles.loadingRow}>
-                                        {[0, 1, 2, 3].map((idx) => (
-                                            <View
-                                                key={`shop-skeleton-${idx}`}
-                                                style={[
-                                                    styles.productCardWrap,
-                                                    idx % 2 === 0 && styles.productCardWrapLeft,
-                                                    styles.skeletonCard,
-                                                ]}
-                                            />
-                                        ))}
-                                    </View>
-                                ) : shopItems.length === 0 ? (
-                                    <View style={styles.emptyState}>
-                                        <Text style={styles.emptyStateText}>{t('inspo.noMenswearMatches')}</Text>
-                                    </View>
-                                ) : (
-                                    <>
-                                        <View style={styles.productsGrid}>
-                                            {shopItems.map((item, index) => (
-                                                <View
-                                                    key={item.id}
-                                                    style={[
-                                                        styles.productCardWrap,
-                                                        index % 2 === 0 && styles.productCardWrapLeft,
-                                                    ]}
-                                                >
-                                                    <ProductCard
-                                                        item={item}
-                                                        isSaved={savedInspo.some((s) => s.id === item.id)}
-                                                        onSave={() => saveInspo(item)}
-                                                        index={index}
-                                                        t={t}
-                                                    />
-                                                </View>
-                                            ))}
-                                        </View>
-
-                                        {!showingFallbackCatalog && shopCatalogHasMore && (
-                                            <TouchableOpacity
-                                                style={styles.loadMoreButton}
-                                                onPress={loadMoreShopCatalog}
-                                                disabled={shopCatalogLoadingMore}
-                                                accessibilityRole="button"
-                                                accessibilityLabel={t('inspo.loadMoreShopProducts')}
+                                            <LinearGradient
+                                                colors={['transparent', 'rgba(0,0,0,0.75)']}
+                                                style={styles.guideGradient}
                                             >
-                                                {shopCatalogLoadingMore ? (
-                                                    <ActivityIndicator size="small" color={colors.text.primary} />
-                                                ) : (
-                                                    <Text style={styles.loadMoreButtonText}>{t('inspo.loadMoreProducts')}</Text>
-                                                )}
-                                            </TouchableOpacity>
-                                        )}
-                                    </>
-                                )}
-                            </View>
-                        </>
-                    )}
+                                                <Text style={styles.guideTitle}>{item.title}</Text>
+                                                <Text style={styles.guideSubtitle}>{item.subtitle}</Text>
+                                            </LinearGradient>
+                                        </View>
+                                    </View>
+                                </Animated.View>
+                            ))}
+                        </View>
 
-                    <View style={{ height: 120 }} />
-                </ScrollView>
+                        {/* From Your Closet — variety outfits */}
+                        {varietyOutfits.length > 0 && (
+                            <Animated.View entering={FadeInDown.delay(350).duration(400)} style={styles.section}>
+                                <Text style={styles.sectionTitle} accessibilityRole="header">{t('inspo.fromYourCloset')}</Text>
+                                <FlatList
+                                    data={varietyOutfits}
+                                    horizontal
+                                    showsHorizontalScrollIndicator={false}
+                                    keyExtractor={(o, idx) => `${o.outfit.itemIds.join(',')}_${idx}`}
+                                    contentContainerStyle={styles.variationsScroll}
+                                    renderItem={({ item: outfit }) => (
+                                        <VariationCard
+                                            outfit={outfit}
+                                            items={items}
+                                            onPress={() => {
+                                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                navigation.navigate('Main', { screen: 'Home' });
+                                            }}
+                                        />
+                                    )}
+                                />
+                            </Animated.View>
+                        )}
+                        <View style={{ height: 120 }} />
+                    </ScrollView>
+                ) : (
+                    <>
+                        {isInitialShopLoad ? (
+                            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                                {renderShopHeader()}
+                                <View style={styles.loadingRow}>
+                                    {[0, 1, 2, 3].map((idx) => (
+                                        <View
+                                            key={`shop-skeleton-${idx}`}
+                                            style={[
+                                                styles.productCardWrap,
+                                                styles.skeletonCard,
+                                            ]}
+                                        />
+                                    ))}
+                                </View>
+                            </ScrollView>
+                        ) : shopItems.length === 0 ? (
+                            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                                {renderShopHeader()}
+                                <View style={styles.emptyState}>
+                                    <Text style={styles.emptyStateText}>{t('inspo.noMenswearMatches')}</Text>
+                                </View>
+                            </ScrollView>
+                        ) : (
+                            <FlatList
+                                data={shopItemPairs}
+                                keyExtractor={shopListKeyExtractor}
+                                renderItem={renderShopRow}
+                                ListHeaderComponent={renderShopHeader()}
+                                ListFooterComponent={shopListFooter()}
+                                contentContainerStyle={[styles.scrollContent, styles.productsGrid]}
+                                showsVerticalScrollIndicator={false}
+                                initialNumToRender={6}
+                                maxToRenderPerBatch={6}
+                                windowSize={5}
+                                removeClippedSubviews={true}
+                            />
+                        )}
+                    </>
+                )}
             </SafeAreaView>
         </View>
     );
@@ -838,6 +888,10 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
     },
+    shopRow: {
+        flexDirection: 'row',
+        marginBottom: spacing.md,
+    },
     capsuleGradient: {
         position: 'absolute',
         bottom: 0,
@@ -857,10 +911,8 @@ const styles = StyleSheet.create({
         textShadowRadius: 2,
     },
 
-    // Product Grid (2-col)
+    // Product Grid (2-col via FlatList rows)
     productsGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
         paddingHorizontal: spacing.screenPadding,
     },
     loadingRow: {
@@ -873,16 +925,30 @@ const styles = StyleSheet.create({
         backgroundColor: colors.background.secondary,
         borderRadius: radius.lg,
         marginBottom: spacing.md,
+        flex: 1,
+        marginHorizontal: spacing.xs,
     },
     productCardWrap: {
-        width: PRODUCT_CARD_WIDTH,
-        marginBottom: spacing.md,
+        flex: 1,
+        marginHorizontal: spacing.xs,
     },
     productCardWrapLeft: {
+        // No longer needed with marginHorizontal, but keep for skeleton backwards compat
         marginRight: spacing.sm,
     },
     productCard: {
         width: '100%',
+        backgroundColor: 'rgba(255,255,255,0.9)',
+        borderRadius: radius.lg,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(24,58,103,0.06)',
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.05,
+        shadowRadius: 12,
+        elevation: 3,
+        marginBottom: 2, // Space for shadow
     },
     productImageBox: {
         width: '100%',

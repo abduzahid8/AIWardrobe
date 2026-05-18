@@ -19,12 +19,62 @@ import { createItemsSlice, type ItemsSlice } from './slices/wardrobeItemsSlice';
 import { createOutfitsSlice, type OutfitsSlice } from './slices/wardrobeOutfitsSlice';
 import { createWearLogSlice, type WearLogSlice } from './slices/wardrobeWearLogSlice';
 import { createSyncSlice, type SyncSlice } from './slices/wardrobeSyncSlice';
+import { createOutfitGeneratorSlice, type OutfitGeneratorSlice } from './slices/outfitGeneratorSlice';
+
+// ============================================
+// DEBOUNCED STORAGE ADAPTER
+// ============================================
+
+/**
+ * Wraps AsyncStorage with a debounced `setItem` so that high-frequency
+ * mutations (e.g. toggleFavorite) do not trigger synchronous JSON
+ * serialization on every tap.  Writes are coalesced and flushed at most
+ * once per `delay` ms.  `getItem` and `removeItem` pass through immediately
+ * so state is always restored correctly on app restart.
+ */
+const createDebouncedStorage = (delay = 500) => {
+    // One timer per storage key so concurrent keys don't interfere.
+    const timers: Record<string, ReturnType<typeof setTimeout>> = {};
+
+    return {
+        getItem: (name: string): Promise<string | null> =>
+            AsyncStorage.getItem(name),
+
+        setItem: (name: string, value: string): Promise<void> => {
+            if (timers[name]) {
+                clearTimeout(timers[name]);
+            }
+            return new Promise<void>((resolve) => {
+                timers[name] = setTimeout(() => {
+                    delete timers[name];
+                    AsyncStorage.setItem(name, value).then(() => resolve());
+                }, delay);
+            });
+        },
+
+        removeItem: (name: string): Promise<void> => {
+            if (timers[name]) {
+                clearTimeout(timers[name]);
+                delete timers[name];
+            }
+            return AsyncStorage.removeItem(name);
+        },
+    };
+};
+
+const debouncedStorage = createDebouncedStorage(500);
+
+// Wrap the debounced storage with createJSONStorage so Zustand's persist
+// middleware serializes state to JSON before calling setItem (and deserializes
+// on getItem). Without this wrapper, persist passes the raw state object to
+// setItem, which causes the AsyncStorage "value is not a string" warning.
+const debouncedJSONStorage = createJSONStorage(() => debouncedStorage as any);
 
 // ============================================
 // COMPOSED STATE TYPE
 // ============================================
 
-export type WardrobeState = ItemsSlice & OutfitsSlice & WearLogSlice & SyncSlice;
+export type WardrobeState = ItemsSlice & OutfitsSlice & WearLogSlice & SyncSlice & OutfitGeneratorSlice;
 
 // ============================================
 // STORE
@@ -37,11 +87,12 @@ const useWardrobeStore = create<WardrobeState>()(
             ...createOutfitsSlice(...a),
             ...createWearLogSlice(...a),
             ...createSyncSlice(...a),
+            ...createOutfitGeneratorSlice(...a),
         }),
         {
             name: 'wardrobe-storage',
             version: 1,
-            storage: createJSONStorage(() => AsyncStorage),
+            storage: debouncedJSONStorage,
             migrate: (persistedState: unknown, version: number) => {
                 const state = persistedState as Record<string, unknown>;
                 if (version < 1) {

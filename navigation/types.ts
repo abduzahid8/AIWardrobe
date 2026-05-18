@@ -45,6 +45,7 @@ export type RootStackParamList = {
 
     // Main (tab container)
     Main: NavigatorScreenParams<TabParamList>;
+    StyleQuiz: undefined;
     Paywall: undefined;
     TrialExpired: undefined;
     PromoCode: undefined;

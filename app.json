@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "AIWardrobe",
-    "slug": "aiwardrobe",
-    "version": "1.0.1",
+    "slug": "wardrobe-app",
+    "version": "1.0.3",
     "assetBundlePatterns": [
       "assets/**"
     ],
@@ -17,7 +17,7 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "buildNumber": "37",
+      "buildNumber": "39",
       "supportsTablet": true,
       "bundleIdentifier": "com.aiwardrobe",
       "minimumOsVersion": "16.0",

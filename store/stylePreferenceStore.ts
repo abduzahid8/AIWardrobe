@@ -10,7 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export interface StylePreference {
     // Basic info
     bodyType?: 'petite' | 'tall' | 'curvy' | 'athletic' | 'average';
-    stylePersonality?: 'classic' | 'trendy' | 'minimalist' | 'bohemian' | 'edgy' | 'romantic' | 'sporty';
+    stylePersonality?: 'classic' | 'semi-classic' | 'semi_classic' | 'minimalist' | 'casual' | 'old_money';
 
     // Colors
     favoriteColors: string[];

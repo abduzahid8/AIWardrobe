@@ -7,7 +7,6 @@ import {
     Dimensions,
     ScrollView,
     FlatList,
-    Image,
     ActivityIndicator,
     Alert,
     TextInput,
@@ -15,6 +14,10 @@ import {
     Platform,
     Linking,
 } from 'react-native';
+import { Image } from 'expo-image';
+import { TrialCountdownBanner } from '../components/TrialCountdownBanner';
+import GenerateOutfitButton from '../features/outfit-generator/components/GenerateOutfitButton';
+import useSubscriptionStore from '../store/subscriptionStore';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,7 +37,8 @@ import Animated, {
     withRepeat,
     withSequence,
     withTiming,
-    Easing
+    Easing,
+    cancelAnimation
 } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
 import * as ImagePicker from 'expo-image-picker';
@@ -44,10 +48,13 @@ import { supabase } from '../lib/supabase';
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 import Config from '../src/config/env';
 import useAuthStore from '../store/auth';
+import useWardrobeStore from '../store/wardrobeStore';
 import { ExternalAIService } from '../src/services/externalAIService';
 import { BASIC_CLOTHING_ITEMS } from '../data/basicClothingItems';
+import { ClosetClothingItem } from '../features/outfit-generator/types';
 import { createLogger } from '../src/utils/logger';
 import { useTranslation } from 'react-i18next';
+import { perfMark, perfMeasure, perfAction, perfScreenReady } from '../src/utils/perf';
 
 const logger = createLogger('MyCloset');
 
@@ -80,6 +87,12 @@ const LiquidGlassSpinner = () => {
                 withTiming(0.6, { duration: 1800, easing: Easing.inOut(Easing.sin) })
             ), -1, true
         );
+
+        return () => {
+            cancelAnimation(rotation);
+            cancelAnimation(pulse);
+            cancelAnimation(innerPulse);
+        };
     }, []);
 
     const outerStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
@@ -108,26 +121,21 @@ const { colors, spacing, radius, typography } = LiquidGlass2026Theme;
 
 import { mapCategoryToType, mapColorToId, normalizeCategory } from '../src/utils/mappingUtils';
 
+// Pre-compiled category RegExp objects — avoids creating new RegExp instances
+// on every filter pass (100 items × 8 keywords = 800 allocations per keystroke).
+const CATEGORY_REGEXES = {
+    tops: /\b(shirt|blouse|pullover|hoodie|sweater|t-shirt|tshirt|polo|cardigan)\b/i,
+    bottoms: /\b(pant|skirt|jean|trouser|short|legging)\b/i,
+    shoes: /\b(sneaker|boot|sandal|heel|loafer|slipper)\b/i,
+    accessories: /\b(bag|hat|scarf|belt|sunglasses|watch|jewelry)\b/i,
+};
+
 // ── AI clothing analysis helpers ────────────────────────────────────────────
 // (Moved to mappingUtils.ts)
 
-interface ClothingItem {
-    _id: string;
-    id?: string;
-    type?: string;
-    itemType?: string;
-    color?: string;
-    colorHex?: string;
-    style?: string;
-    description?: string;
-    imageUrl?: string;
-    image?: string;
-    category?: string;
-    wearCount?: number;
-    lastWorn?: string;
-    createdAt?: string;
-    isFavorite?: boolean; // Added for favorite filter
-}
+// ClothingItem is now exported as ClosetClothingItem from features/outfit-generator/types.ts
+// This alias preserves backward compatibility within this file.
+type ClothingItem = ClosetClothingItem;
 
 // Category Chip from Design
 const FilterChip = ({
@@ -168,20 +176,24 @@ const FilterChip = ({
 const ClothingGridItem = React.memo(({
     item,
     onPress,
+    onGenerateOutfit,
+    isAnchorSelected,
     t
 }: {
     item: ClothingItem;
     onPress: () => void;
+    onGenerateOutfit?: (item: ClothingItem) => void;
+    isAnchorSelected?: boolean;
     t: (key: string) => string;
 }) => {
     let imageUrl = item.imageUrl || item.image;
-    let finalImageSource: { uri: string } | null = imageUrl ? { uri: imageUrl } : null;
+    let finalImageSource: string | null = imageUrl || null;
 
     if (imageUrl && imageUrl.startsWith('basic_clothing_')) {
         const basicId = imageUrl.replace('basic_clothing_', '');
         const basicItem = BASIC_CLOTHING_ITEMS.find(b => b.id === basicId);
         if (basicItem && basicItem.image) {
-            finalImageSource = { uri: basicItem.image };
+            finalImageSource = basicItem.image;
         }
     }
 
@@ -196,13 +208,17 @@ const ClothingGridItem = React.memo(({
             accessibilityLabel={`${item.category || item.type || t('wardrobe.clothing')} item${item.color ? `, ${item.color}` : ''}`}
             accessibilityRole="button"
         >
-            <Animated.View style={styles.gridItem}>
+            <Animated.View style={[
+                styles.gridItem,
+                isAnchorSelected && styles.gridItemAnchorSelected,
+            ]}>
                 <View style={styles.imageContainer}>
                     {finalImageSource ? (
                         <Image
                             source={finalImageSource}
                             style={styles.itemImage}
-                            resizeMode="cover"
+                            contentFit="cover"
+                            cachePolicy="memory-disk"
                         />
                     ) : (
                         <View style={styles.itemPlaceholder}>
@@ -210,18 +226,76 @@ const ClothingGridItem = React.memo(({
                         </View>
                     )}
                 </View>
+                {onGenerateOutfit && (
+                    <GenerateOutfitButton
+                        item={item}
+                        onPress={onGenerateOutfit}
+                        accessibilityLabel={`Generate outfit with ${item.category || item.type || 'this item'}`}
+                    />
+                )}
             </Animated.View>
         </TouchableOpacity>
     );
 }, (prevProps, nextProps) => {
-    return (prevProps.item.id || prevProps.item._id) === (nextProps.item.id || nextProps.item._id);
+    return (
+        (prevProps.item.id || prevProps.item._id) === (nextProps.item.id || nextProps.item._id) &&
+        prevProps.isAnchorSelected === nextProps.isAnchorSelected &&
+        prevProps.onGenerateOutfit === nextProps.onGenerateOutfit
+    );
+});
+
+// Component to handle video play state and memory cleanup
+const ClosetVideoPlayer = React.memo(() => {
+    const isFocused = useIsFocused();
+    const player = useVideoPlayer(require('../assets/videos/closet.mov'), (player) => {
+        player.loop = true;
+        player.muted = true;
+    });
+
+    useEffect(() => {
+        if (isFocused) {
+            try { player.play(); } catch (e) { }
+        } else {
+            try { player.pause(); } catch (e) { }
+        }
+    }, [isFocused, player]);
+
+    if (!isFocused) {
+        return null; // Unmount native view to free video decoder memory on hidden tabs
+    }
+
+    return (
+        <VideoView
+            style={styles.video}
+            player={player}
+            allowsFullscreen={false}
+            allowsPictureInPicture={false}
+            contentFit="contain"
+        />
+    );
 });
 
 const MyClosetScreen = () => {
     const navigation = useAppNavigation();
-    const isFocused = useIsFocused();
     const { t } = useTranslation();
+
+    // ── Performance timing ────────────────────────────────────────────────────
+    React.useEffect(() => {
+        perfMark('MyClosetScreen:mount');
+        return () => {
+            console.log('[PERF] 👗 MyClosetScreen unmounted');
+        };
+    }, []);
     const [items, setItems] = useState<ClothingItem[]>([]);
+
+    // Skip re-fetching if the user just switched tabs momentarily.
+    // Upload/delete operations call loadItems() directly, bypassing this TTL.
+    const CLOSET_REFRESH_TTL_MS = 60_000; // 60 seconds
+    const lastClosetFetchRef = React.useRef<number>(0);
+    // Track whether we have items already visible so silent=true can be passed
+    // without reading items.length inside useFocusEffect (which would recreate
+    // the callback on every load and defeat the TTL guard).
+    const hasItemsRef = React.useRef<boolean>(false);
 
     // Updated Category filters to match design
     const CATEGORIES = [
@@ -233,29 +307,12 @@ const MyClosetScreen = () => {
         { id: 'accessories', label: t('closet.accessories'), icon: 'glasses' },
     ];
 
-    const player = useVideoPlayer(require('../assets/videos/closet.mov'), (player) => {
-        player.loop = true;
-        player.muted = true;
-        player.play();
-    });
-
-    useEffect(() => {
-        if (isFocused) {
-            player.play();
-        } else {
-            player.pause();
-        }
-        return () => { player.pause(); };
-    }, [isFocused, player]);
-
-    useEffect(() => {
-        return () => { try { player.release?.(); } catch {} };
-    }, []);
     const [filteredItems, setFilteredItems] = useState<ClothingItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState('tops'); // Default from screenshot
     const [viewMode, setViewMode] = useState<'clothes' | 'collections'>('clothes');
     const [searchQuery, setSearchQuery] = useState('');
+    const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
     const [isSearching, setIsSearching] = useState(false);
     const [filterCategory, setFilterCategory] = useState('All');
 
@@ -263,6 +320,24 @@ const MyClosetScreen = () => {
     const { user } = useAuthStore();
     const [isUploadingOverlay, setIsUploadingOverlay] = useState(false);
     const [uploadStatusMsg, setUploadStatusMsg] = useState('');
+
+    // ── Subscription store (for trial banner) ─────────────────────────────────
+    const isTrialActive = useSubscriptionStore((state) => state.isTrialActive);
+
+    // Handler: tap "Generate Outfit" on a card — navigate to AIOutfit with the item as anchor
+    const handleGenerateOutfit = useCallback((item: ClothingItem) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        navigation.navigate('AIOutfit', {
+            source: 'wardrobe',
+            baseItemId: item.id || item._id,
+            baseItem: {
+                id: item.id || item._id || '',
+                imageUrl: item.imageUrl || item.image,
+                name: item.type || item.category,
+                type: item.type || item.category,
+            },
+        });
+    }, [navigation]);
 
     // AI Studio Upload & Auto-Generate Logic (Serverless - External AI)
     const pickImage = async (useCamera = false) => {
@@ -328,7 +403,7 @@ const MyClosetScreen = () => {
         const imageData = b64.startsWith('data:') ? b64 : `data:image/jpeg;base64,${b64}`;
 
         setIsUploadingOverlay(true);
-        setUploadStatusMsg(t('myCloset.analyzingItem'));
+        setUploadStatusMsg(t('myCloset.identifyingType'));
 
         try {
             console.log('[MyCloset] Starting AI Studio photo processing...');
@@ -353,7 +428,7 @@ const MyClosetScreen = () => {
                 throw new Error("No processed image returned from AI");
             }
 
-            setUploadStatusMsg(t('myCloset.backgroundRemoved'));
+            setUploadStatusMsg(t('myCloset.identifyingType'));
 
             const cat = (result.classification?.category || '').toLowerCase();
             const sec = (result.classification?.section || '').toLowerCase();
@@ -464,6 +539,7 @@ const MyClosetScreen = () => {
         const idToDelete = item._id || item.id;
         if (!idToDelete) return;
 
+        const donePerf = perfAction('MyCloset:deleteItem');
         try {
             // Optimistic UI update
             setItems(prev => prev.filter(i => (i._id || i.id) !== idToDelete));
@@ -474,8 +550,10 @@ const MyClosetScreen = () => {
                 .eq('id', idToDelete);
 
             if (error) throw error;
+            donePerf();
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         } catch (error) {
+            donePerf();
             console.error('Failed to delete item:', error);
             Alert.alert(t('common.error'), t('myCloset.failedDeleteItem'));
             loadItems(); // Revert on failure
@@ -483,14 +561,55 @@ const MyClosetScreen = () => {
     };
 
     // Load wardrobe items
-    const loadItems = useCallback(async () => {
-        try {
-            setLoading(true);
+    const loadItems = useCallback(async (silent = false) => {
+        if (!user) {
+            setLoading(false);
+            return;
+        }
 
-            // Fetch from Supabase
+        const donePerf = perfAction('MyCloset:loadItems');
+        perfMark('MyClosetScreen:load'); // Reset per-load mark for accurate tab-switch timing
+        try {
+            // Only show spinner on the very first load — background refreshes
+            // keep existing items visible to avoid the flash-of-empty-screen.
+            if (!silent) setLoading(true);
+
+            // Fast path: read from the Zustand wardrobeStore if it has already
+            // been populated by rehydrateFromCloud() (called once on app start).
+            // This avoids a redundant Supabase round-trip (~800ms) on every
+            // TTL-gated refresh when the data is already in memory.
+            const storeItems = useWardrobeStore.getState().items;
+            if (storeItems.length > 0) {
+                const mappedFromStore: ClothingItem[] = storeItems.map(item => ({
+                    _id: item.id,
+                    id: item.id,
+                    type: normalizeCategory(item.subCategory || item.category || ''),
+                    itemType: normalizeCategory(item.subCategory || item.category || ''),
+                    color: item.primaryColor || 'various',
+                    imageUrl: item.imageUrl,
+                    image: item.imageUrl,
+                    category: normalizeCategory(item.category || ''),
+                    wearCount: item.wearCount,
+                    createdAt: item.createdAt,
+                    isFavorite: item.isFavorite ?? false,
+                }));
+                setItems(mappedFromStore);
+                hasItemsRef.current = mappedFromStore.length > 0;
+                donePerf();
+                logger.debug(`Loaded ${mappedFromStore.length} items from store (no network)`, {
+                    images: mappedFromStore.map(i => ({ type: i.type, hasImage: !!i.imageUrl, imgLen: i.imageUrl?.length || 0 })),
+                });
+                perfMeasure('MyClosetScreen:load');
+                perfScreenReady('Closet');
+                return;
+            }
+
+            // Slow path: store is empty (first launch before rehydration completes),
+            // fall back to a direct Supabase query scoped to the authenticated user.
             const { data, error } = await supabase
                 .from('clothing_items')
                 .select('*')
+                .eq('user_id', user.id)
                 .order('created_at', { ascending: false });
 
             if (data) {
@@ -510,11 +629,17 @@ const MyClosetScreen = () => {
                 }));
 
                 setItems(mappedItems);
+                hasItemsRef.current = mappedItems.length > 0;
+                donePerf();
                 logger.debug(`Loaded ${mappedItems.length} items`, {
                     images: mappedItems.map(i => ({ type: i.type, hasImage: !!i.imageUrl, imgLen: i.imageUrl?.length || 0 })),
                 });
+                // Screen is ready once items are loaded — measure from the per-load mark
+                perfMeasure('MyClosetScreen:load');
+                perfScreenReady('Closet');
             }
         } catch (error) {
+            donePerf();
             console.error('Failed to load wardrobe:', error);
             // local storage
             const localItems = await AsyncStorage.getItem('myWardrobeItems');
@@ -524,13 +649,59 @@ const MyClosetScreen = () => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [user]);
+
+    // Seed the local items state from the Zustand wardrobeStore on mount.
+    // If rehydrateFromCloud() has already populated the store (called once on
+    // app start in RootNavigator), this gives the screen instant data without
+    // waiting for the TTL-gated Supabase fetch below.
+    useEffect(() => {
+        const storeItems = useWardrobeStore.getState().items;
+        if (storeItems.length > 0) {
+            const mapped: ClothingItem[] = storeItems.map(item => ({
+                _id: item.id,
+                id: item.id,
+                type: normalizeCategory(item.subCategory || item.category || ''),
+                itemType: normalizeCategory(item.subCategory || item.category || ''),
+                color: item.primaryColor || 'various',
+                imageUrl: item.imageUrl,
+                image: item.imageUrl,
+                category: normalizeCategory(item.category || ''),
+                wearCount: item.wearCount,
+                createdAt: item.createdAt,
+                isFavorite: item.isFavorite ?? false,
+            }));
+            setItems(mapped);
+            hasItemsRef.current = mapped.length > 0;
+            setLoading(false);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Run once on mount only
 
     useFocusEffect(
         useCallback(() => {
-            loadItems();
+            const now = Date.now();
+            if (now - lastClosetFetchRef.current > CLOSET_REFRESH_TTL_MS) {
+                lastClosetFetchRef.current = now;
+                // Pass silent=true when items are already visible — no spinner flash.
+                // Read items.length from the ref to avoid recreating this callback
+                // every time items change (which would reset the TTL guard on each load).
+                loadItems(hasItemsRef.current);
+            }
+        // Intentionally omit items.length — reading it here would cause the
+        // callback to recreate on every load, defeating the 60s TTL guard.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [loadItems])
     );
+
+    // Debounce searchQuery by 200ms so regex-based keyword matching does not
+    // execute on every keystroke — the TextInput still updates immediately.
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearchQuery(searchQuery);
+        }, 200);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
 
     // Filter items
     useEffect(() => {
@@ -545,31 +716,19 @@ const MyClosetScreen = () => {
                         const cat = (item.category || '').toLowerCase();
                         const type = (item.type || item.itemType || '').toLowerCase();
 
-                        // Use exact word matching with word boundaries to prevent substring matches
-                        const matchesExact = (value: string, keywords: string[]): boolean => {
-                            return keywords.some(keyword => {
-                                const regex = new RegExp(`\\b${keyword}\\b`, 'i');
-                                return regex.test(value);
-                            });
-                        };
-
                         switch (selectedCategory) {
                             case 'tops':
                                 if (cat === 'tops' || cat === 'top') return true;
-                                return matchesExact(cat, ['shirt', 'blouse', 'pullover', 'hoodie', 'sweater', 't-shirt', 'tshirt', 'polo', 'cardigan']) ||
-                                    matchesExact(type, ['shirt', 'blouse', 'pullover', 'hoodie', 'sweater', 't-shirt', 'tshirt', 'polo', 'cardigan']);
+                                return CATEGORY_REGEXES.tops.test(cat) || CATEGORY_REGEXES.tops.test(type);
                             case 'bottoms':
                                 if (cat === 'bottoms' || cat === 'bottom') return true;
-                                return matchesExact(cat, ['pant', 'skirt', 'jean', 'trouser', 'short', 'legging']) ||
-                                    matchesExact(type, ['pant', 'skirt', 'jean', 'trouser', 'short', 'legging']);
+                                return CATEGORY_REGEXES.bottoms.test(cat) || CATEGORY_REGEXES.bottoms.test(type);
                             case 'shoes':
                                 if (cat === 'shoes' || cat === 'shoe') return true;
-                                return matchesExact(cat, ['sneaker', 'boot', 'sandal', 'heel', 'loafer', 'slipper']) ||
-                                    matchesExact(type, ['sneaker', 'boot', 'sandal', 'heel', 'loafer', 'slipper']);
+                                return CATEGORY_REGEXES.shoes.test(cat) || CATEGORY_REGEXES.shoes.test(type);
                             case 'accessories':
                                 if (cat === 'accessories' || cat === 'accessory') return true;
-                                return matchesExact(cat, ['bag', 'hat', 'scarf', 'belt', 'sunglasses', 'watch', 'jewelry']) ||
-                                    matchesExact(type, ['bag', 'hat', 'scarf', 'belt', 'sunglasses', 'watch', 'jewelry']);
+                                return CATEGORY_REGEXES.accessories.test(cat) || CATEGORY_REGEXES.accessories.test(type);
                             default:
                                 return cat === selectedCategory || type === selectedCategory;
                         }
@@ -579,8 +738,8 @@ const MyClosetScreen = () => {
         }
 
         // Text Search
-        if (searchQuery.trim().length > 0) {
-            const query = searchQuery.toLowerCase();
+        if (debouncedSearchQuery.trim().length > 0) {
+            const query = debouncedSearchQuery.toLowerCase();
             result = result.filter(item => {
                 const nameMatch = (item.type || item.itemType || item.category || '').toLowerCase().includes(query);
                 const colorMatch = (item.color || '').toLowerCase().includes(query);
@@ -590,7 +749,7 @@ const MyClosetScreen = () => {
         }
 
         setFilteredItems(result);
-    }, [items, selectedCategory, viewMode, searchQuery]);
+    }, [items, selectedCategory, viewMode, debouncedSearchQuery]);
 
 
     return (
@@ -656,6 +815,18 @@ const MyClosetScreen = () => {
                     )}
                 </View>
 
+                {/* Trial Countdown Banner — shown below header when trial is active */}
+                {isTrialActive && <TrialCountdownBanner />}
+
+                {/* Small wardrobe informational banner */}
+                {items.length > 0 && items.length < 2 && (
+                    <View style={styles.smallWardrobeBanner}>
+                        <Ionicons name="information-circle-outline" size={16} color="#007AFF" />
+                        <Text style={styles.smallWardrobeBannerText}>
+                            Add more items to improve outfit quality. Missing slots will be filled with shop suggestions.
+                        </Text>
+                    </View>
+                )}
 
                 {/* Segmented Control */}
                 <View style={styles.segmentContainer}>
@@ -734,13 +905,7 @@ const MyClosetScreen = () => {
                 ) : items.length === 0 ? (
                     <View style={styles.emptyStateContainer}>
                         <View style={styles.videoContainer}>
-                            <VideoView
-                                style={styles.video}
-                                player={player}
-                                allowsFullscreen={false}
-                                allowsPictureInPicture={false}
-                                contentFit="contain"
-                            />
+                            <ClosetVideoPlayer />
                         </View>
                         <Text style={styles.emptyTitle}>{t('wardrobe.emptyCloset')}</Text>
                         <Text style={styles.emptySubtitle}>{t('wardrobe.emptyClosetSubtitle')}</Text>
@@ -776,6 +941,8 @@ const MyClosetScreen = () => {
                                         fullItem: item
                                     });
                                 }}
+                                onGenerateOutfit={handleGenerateOutfit}
+                                isAnchorSelected={false}
                                 t={t}
                             />
                         )}
@@ -812,6 +979,12 @@ const MyClosetScreen = () => {
                     </BlurView>
                 </Animated.View>
             )}
+
+            {/* Generation Progress Overlay — removed: now handled by AIOutfit screen */}
+
+            {/* Outfit Result Sheet — removed: now handled by AIOutfit screen */}
+
+            {/* Error state — removed: now handled by AIOutfit screen */}
         </View >
     );
 };
@@ -1048,6 +1221,10 @@ const styles = StyleSheet.create({
         shadowRadius: 12,
         elevation: 3,
     },
+    gridItemAnchorSelected: {
+        borderWidth: 2,
+        borderColor: '#007AFF',
+    },
     imageContainer: {
         aspectRatio: 3 / 4, // Portrait ratio for clothes
         backgroundColor: '#F9FBFF',
@@ -1213,6 +1390,97 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '700',
         letterSpacing: 0.2,
+    },
+
+    // Small wardrobe informational banner
+    smallWardrobeBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginHorizontal: 16,
+        marginBottom: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: 14,
+        backgroundColor: 'rgba(0, 122, 255, 0.08)',
+        borderWidth: 1,
+        borderColor: 'rgba(0, 122, 255, 0.2)',
+    },
+    smallWardrobeBannerText: {
+        flex: 1,
+        fontSize: 13,
+        color: '#007AFF',
+        lineHeight: 18,
+    },
+
+    // Error overlay
+    errorOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0, 0, 0, 0.55)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 998,
+        paddingHorizontal: 24,
+    },
+    errorCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        padding: 24,
+        alignItems: 'center',
+        width: '100%',
+        maxWidth: 340,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.15,
+        shadowRadius: 20,
+        elevation: 10,
+    },
+    errorTitle: {
+        fontSize: 17,
+        fontWeight: '700',
+        color: '#1C1C1E',
+        marginTop: 12,
+        marginBottom: 6,
+    },
+    errorMessage: {
+        fontSize: 14,
+        color: '#6B7280',
+        textAlign: 'center',
+        lineHeight: 20,
+        marginBottom: 20,
+    },
+    errorButtonRow: {
+        flexDirection: 'row',
+        gap: 12,
+        width: '100%',
+    },
+    errorTryAgainButton: {
+        flex: 1,
+        backgroundColor: '#007AFF',
+        paddingVertical: 13,
+        borderRadius: 14,
+        alignItems: 'center',
+        minHeight: 44,
+        justifyContent: 'center',
+    },
+    errorTryAgainText: {
+        color: '#FFFFFF',
+        fontSize: 15,
+        fontWeight: '600',
+    },
+    errorDismissButton: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.06)',
+        paddingVertical: 13,
+        borderRadius: 14,
+        alignItems: 'center',
+        minHeight: 44,
+        justifyContent: 'center',
+    },
+    errorDismissText: {
+        color: '#1C1C1E',
+        fontSize: 15,
+        fontWeight: '500',
     },
 });
 

@@ -60,10 +60,17 @@ export default function GuideScreen() {
     }
   };
 
-  const handleCTAPress = () => {
+  const handleCTAPress = async () => {
     const url = content?.cta_url || t('guide.ctaUrl');
     if (url) {
-      Linking.openURL(url);
+      try {
+        const supported = await Linking.canOpenURL(url);
+        if (supported) {
+          await Linking.openURL(url);
+        }
+      } catch {
+        console.warn('Failed to open URL:', url);
+      }
     }
   };
 

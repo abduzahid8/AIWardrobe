@@ -1,438 +1,374 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    Dimensions,
-    TouchableOpacity,
-    ScrollView,
-    Image,
+    View, Text, StyleSheet, Dimensions, TouchableOpacity,
+    ScrollView, StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import Animated, {
-    FadeIn,
-    FadeInDown,
-    FadeInUp,
-    FadeOut,
-    SlideInRight,
-    SlideOutLeft,
-    useAnimatedStyle,
-    useSharedValue,
-    withSpring,
-    withTiming,
+    FadeIn, FadeInDown, FadeInUp, SlideInRight,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import AppColors from '../constants/AppColors';
 import { useStylePreferenceStore } from '../store/stylePreferenceStore';
 import {
-    STYLE_PERSONALITIES,
-    COLOR_OPTIONS,
-    OCCASIONS,
-    FIT_OPTIONS,
-    STYLE_GOALS,
+    STYLE_PERSONALITIES, COLOR_OPTIONS, OCCASIONS, FIT_OPTIONS, STYLE_GOALS,
 } from '../features/style-quiz/data';
-import { ProgressBar } from '../features/style-quiz/components/ProgressBar';
-import { SelectableChip } from '../features/style-quiz/components/SelectableChip';
 import { useTranslation } from 'react-i18next';
 
-const { width, height } = Dimensions.get('window');
+const { width: W } = Dimensions.get('window');
 
-const COLORS = {
-    background: AppColors.background,
-    surface: AppColors.surface,
-    primary: AppColors.primary,
-    accent: AppColors.accent,
-    text: AppColors.text,
-    textSecondary: AppColors.textSecondary,
-    border: AppColors.border,
+// ── Design tokens ────────────────────────────────────────────────────────────
+const T = {
+    bg:           '#EEF4FF',
+    surface:      'rgba(255, 255, 255, 0.85)',
+    card:         '#FFFFFF',
+    border:       'rgba(24, 58, 103, 0.08)',
+    borderActive: '#0A1931',
+    primary:      '#0A1931',   // Innovation Blue
+    accent:       '#0A1931',
+    accentLight:  'rgba(10, 25, 49, 0.08)',
+    accent2:      '#254F86',
+    text:         '#0A1931',
+    sub:          '#4D4D4D',
+    muted:        '#808080',
 };
 
-// ============================================
-// STEP SCREENS
-// ============================================
+// ── Dot step indicator ───────────────────────────────────────────────────────
+const StepDots = ({ total, current }: { total: number; current: number }) => (
+    <View style={dot.row}>
+        {Array.from({ length: total }).map((_, i) => (
+            <Animated.View
+                key={i}
+                entering={FadeIn}
+                style={[dot.d, i === current && dot.active, i < current && dot.done]}
+            />
+        ))}
+    </View>
+);
+const dot = StyleSheet.create({
+    row:    { flexDirection: 'row', gap: 6, alignItems: 'center' },
+    d:      { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(10, 25, 49, 0.2)' },
+    active: { width: 20, backgroundColor: T.primary },
+    done:   { backgroundColor: T.accent2 },
+});
 
-const WelcomeStep = ({ onNext, t }: { onNext: () => void; t: any }) => (
-    <Animated.View
-        style={styles.stepContainer}
-        entering={FadeIn.duration(500)}
-    >
-        <View style={styles.welcomeContent}>
-            <Text style={styles.welcomeEmoji}>👋</Text>
-            <Text style={styles.welcomeTitle}>{t('styleQuiz.welcomeTitle')}</Text>
-            <Text style={styles.welcomeSubtitle}>
-                {t('styleQuiz.welcomeSubtitle')}
-            </Text>
-
-            <View style={styles.benefitsList}>
-                <View style={styles.benefitItem}>
-                    <Ionicons name="sparkles" size={24} color={COLORS.primary} />
-                    <Text style={styles.benefitText}>{t('styleQuiz.benefit1')}</Text>
-                </View>
-                <View style={styles.benefitItem}>
-                    <Ionicons name="thumbs-up" size={24} color={COLORS.primary} />
-                    <Text style={styles.benefitText}>{t('styleQuiz.benefit2')}</Text>
-                </View>
-                <View style={styles.benefitItem}>
-                    <Ionicons name="time" size={24} color={COLORS.primary} />
-                    <Text style={styles.benefitText}>{t('styleQuiz.benefit3')}</Text>
-                </View>
-            </View>
-        </View>
-
-        <TouchableOpacity style={styles.primaryButton} onPress={onNext}>
+// ── Shared button row ────────────────────────────────────────────────────────
+const NavRow = ({
+    onBack, onNext, disabled, label, isLast,
+}: { onBack: () => void; onNext: () => void; disabled?: boolean; label?: string; isLast?: boolean }) => (
+    <View style={nav.row}>
+        <TouchableOpacity onPress={onBack} style={nav.back} activeOpacity={0.7}>
+            <Ionicons name="chevron-back" size={22} color={T.primary} />
+        </TouchableOpacity>
+        <TouchableOpacity
+            onPress={onNext}
+            disabled={disabled}
+            activeOpacity={0.85}
+            style={[nav.next, disabled && nav.disabled]}
+        >
             <LinearGradient
-                colors={[COLORS.primary, COLORS.accent]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.gradientButton}
+                colors={disabled ? ['#E2E8F0', '#CBD5E1'] : ['#0A1931', '#1a3a5c']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={nav.gradient}
             >
-                <Text style={styles.primaryButtonText}>{t('styleQuiz.letsGetStarted')}</Text>
-                <Ionicons name="arrow-forward" size={20} color="#FFF" />
+                <Text style={[nav.label, disabled && { color: '#94A3B8' }]}>{label ?? 'Continue'}</Text>
+                <Ionicons name={isLast ? 'checkmark' : 'arrow-forward'} size={18} color={disabled ? '#94A3B8' : '#FFF'} />
             </LinearGradient>
         </TouchableOpacity>
+    </View>
+);
+const nav = StyleSheet.create({
+    row:      { flexDirection: 'row', gap: 12, paddingTop: 16 },
+    back:     { width: 52, height: 52, borderRadius: 26, borderWidth: 1, borderColor: T.border, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF' },
+    next:     { flex: 1, borderRadius: 26, overflow: 'hidden' },
+    gradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 15, gap: 8 },
+    label:    { fontSize: 16, fontWeight: '600', color: '#FFF', letterSpacing: 0.2 },
+    disabled: { opacity: 0.5 },
+});
+
+// ── WELCOME ──────────────────────────────────────────────────────────────────
+const WelcomeStep = ({ onNext, t }: { onNext: () => void; t: any }) => (
+    <Animated.View style={s.step} entering={FadeIn.duration(600)}>
+        <View style={{ flex: 1, justifyContent: 'center' }}>
+            <Animated.View entering={FadeInDown.delay(100).duration(700)}>
+                <LinearGradient
+                    colors={['#0A1931','#254F86','#EEF4FF']}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                    style={wlc.orb}
+                />
+            </Animated.View>
+
+            <Animated.Text entering={FadeInDown.delay(200).duration(700)} style={wlc.headline}>
+                {t('styleQuiz.welcome.title')}
+            </Animated.Text>
+            <Animated.Text entering={FadeInDown.delay(350).duration(700)} style={wlc.sub}>
+                {t('styleQuiz.welcome.subtitle')}
+            </Animated.Text>
+
+            <Animated.View entering={FadeInDown.delay(500).duration(700)} style={wlc.pills}>
+                {[
+                    'styleQuiz.welcome.aiPlans',
+                    'styleQuiz.welcome.colorProfiling',
+                    'styleQuiz.welcome.gapAnalysis',
+                ].map(key => (
+                    <View key={key} style={wlc.pill}>
+                        <Ionicons name="sparkles" size={13} color={T.accent} />
+                        <Text style={wlc.pillTxt}>{t(key)}</Text>
+                    </View>
+                ))}
+            </Animated.View>
+        </View>
+
+        <Animated.View entering={FadeInUp.delay(600).duration(700)}>
+            <TouchableOpacity onPress={onNext} activeOpacity={0.85}>
+                <LinearGradient
+                    colors={['#0A1931','#1a3a5c']}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                    style={wlc.cta}
+                >
+                    <Text style={wlc.ctaTxt}>{t('styleQuiz.continue')}</Text>
+                    <Ionicons name="arrow-forward" size={20} color="#FFF" />
+                </LinearGradient>
+            </TouchableOpacity>
+        </Animated.View>
     </Animated.View>
 );
+const wlc = StyleSheet.create({
+    orb:      { width: 120, height: 120, borderRadius: 60, marginBottom: 40, opacity: 0.85 },
+    headline: { fontSize: 44, fontWeight: '800', color: T.text, letterSpacing: -1.5, lineHeight: 52, marginBottom: 16 },
+    sub:      { fontSize: 17, color: T.sub, lineHeight: 26, marginBottom: 36 },
+    pills:    { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    pill:     { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(10,25,49,0.05)', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(10,25,49,0.12)' },
+    pillTxt:  { fontSize: 13, color: T.primary, fontWeight: '600' },
+    cta:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 18, borderRadius: 28, gap: 10 },
+    ctaTxt:   { fontSize: 18, fontWeight: '700', color: '#FFF' },
+});
 
-const StylePersonalityStep = ({
-    selected,
-    onSelect,
-    onNext,
-    onBack,
-    t,
-}: {
-    selected: string | undefined;
-    onSelect: (id: string) => void;
-    onNext: () => void;
-    onBack: () => void;
-    t: any;
-}) => (
-    <Animated.View
-        style={styles.stepContainer}
-        entering={SlideInRight.duration(300)}
-        exiting={SlideOutLeft.duration(300)}
-    >
-        <Text style={styles.stepTitle}>{t('styleQuiz.stylePersonality')}</Text>
-        <Text style={styles.stepSubtitle}>{t('styleQuiz.selectOne')}</Text>
-
-        <ScrollView
-            style={styles.optionsScroll}
-            showsVerticalScrollIndicator={false}
-        >
-            <View style={styles.optionsGrid}>
-                {STYLE_PERSONALITIES.map((item) => (
-                    <TouchableOpacity
-                        key={item.id}
-                        style={[
-                            styles.personalityCard,
-                            selected === item.id && styles.personalityCardSelected
-                        ]}
-                        onPress={() => {
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                            onSelect(item.id);
-                        }}
-                    >
-                        <Text style={styles.personalityEmoji}>{item.emoji}</Text>
-                        <Text style={styles.personalityName}>{item.name}</Text>
-                        <Text style={styles.personalityDesc}>{item.description}</Text>
-                        {selected === item.id && (
-                            <View style={styles.selectedBadge}>
-                                <Ionicons name="checkmark" size={16} color="#FFF" />
-                            </View>
-                        )}
-                    </TouchableOpacity>
-                ))}
+// ── PERSONALITY ──────────────────────────────────────────────────────────────
+const PersonalityStep = ({ selected, onSelect, onNext, onBack, t }: any) => (
+    <Animated.View style={s.step} entering={SlideInRight.duration(350).springify()}>
+        <Text style={s.title}>{t('styleQuiz.personality.title')}</Text>
+        <Text style={s.sub}>{t('styleQuiz.personality.subtitle')}</Text>
+        <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, paddingBottom: 16 }}>
+                {STYLE_PERSONALITIES.map(item => {
+                    const on = selected === item.id;
+                    return (
+                        <TouchableOpacity
+                            key={item.id}
+                            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onSelect(item.id); }}
+                            activeOpacity={0.8}
+                            style={[pc.card, { width: (W - 60) / 2 }, on && pc.sel]}
+                        >
+                            <Text style={pc.emoji}>{item.emoji}</Text>
+                            <Text style={[pc.name, on && { color: T.accent }]}>{item.name}</Text>
+                            <Text style={pc.desc}>{item.description}</Text>
+                            {on && <View style={pc.check}><Ionicons name="checkmark" size={12} color="#FFF" /></View>}
+                        </TouchableOpacity>
+                    );
+                })}
             </View>
         </ScrollView>
-
-        <View style={styles.buttonRow}>
-            <TouchableOpacity style={styles.backButton} onPress={onBack}>
-                <Ionicons name="arrow-back" size={24} color={COLORS.textSecondary} />
-            </TouchableOpacity>
-            <TouchableOpacity
-                style={[styles.nextButton, !selected && styles.buttonDisabled]}
-                onPress={onNext}
-                disabled={!selected}
-            >
-                <Text style={styles.nextButtonText}>{t('common.continue')}</Text>
-                <Ionicons name="arrow-forward" size={20} color="#FFF" />
-            </TouchableOpacity>
-        </View>
+        <NavRow onBack={onBack} onNext={onNext} disabled={!selected} />
     </Animated.View>
 );
+const pc = StyleSheet.create({
+    card:  { backgroundColor: 'rgba(255, 255, 255, 0.85)', borderRadius: 20, padding: 18, borderWidth: 1, borderColor: T.border, shadowColor: '#173A65', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 2 },
+    sel:   { borderColor: '#0A1931', borderWidth: 1.5, backgroundColor: 'rgba(10, 25, 49, 0.06)' },
+    emoji: { fontSize: 34, marginBottom: 10 },
+    name:  { fontSize: 15, fontWeight: '700', color: T.text, marginBottom: 4 },
+    desc:  { fontSize: 12, color: T.sub, lineHeight: 17 },
+    check: { position: 'absolute', top: 10, right: 10, width: 22, height: 22, borderRadius: 11, backgroundColor: '#0A1931', alignItems: 'center', justifyContent: 'center' },
+});
 
-const ColorPreferencesStep = ({
-    favoriteColors,
-    onToggleColor,
-    onNext,
-    onBack,
-    t,
-}: {
-    favoriteColors: string[];
-    onToggleColor: (id: string) => void;
-    onNext: () => void;
-    onBack: () => void;
-    t: any;
-}) => (
-    <Animated.View
-        style={styles.stepContainer}
-        entering={SlideInRight.duration(300)}
-        exiting={SlideOutLeft.duration(300)}
-    >
-        <Text style={styles.stepTitle}>{t('styleQuiz.favoriteColors')}</Text>
-        <Text style={styles.stepSubtitle}>{t('styleQuiz.selectColors')}</Text>
-
-        <View style={styles.colorGrid}>
-            {COLOR_OPTIONS.map((color) => (
-                <TouchableOpacity
-                    key={color.id}
-                    style={[
-                        styles.colorOption,
-                        { backgroundColor: color.color },
-                        favoriteColors.includes(color.id) && styles.colorOptionSelected
-                    ]}
-                    onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        onToggleColor(color.id);
-                    }}
-                >
-                    {favoriteColors.includes(color.id) && (
-                        <Ionicons
-                            name="checkmark"
-                            size={24}
-                            color={color.id === 'white' || color.id === 'beige' ? '#0A1931' : '#FFF'}
-                        />
-                    )}
-                </TouchableOpacity>
-            ))}
+// ── COLORS ────────────────────────────────────────────────────────────────────
+const ColorsStep = ({ favoriteColors, onToggleColor, onNext, onBack, t }: any) => (
+    <Animated.View style={s.step} entering={SlideInRight.duration(350).springify()}>
+        <Text style={s.title}>{t('styleQuiz.colors.title')}</Text>
+        <Text style={s.sub}>{t('styleQuiz.colors.subtitle', { count: favoriteColors.length })}</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16, justifyContent: 'center', flex: 1, alignContent: 'center' }}>
+            {COLOR_OPTIONS.map(c => {
+                const on = favoriteColors.includes(c.id);
+                return (
+                    <TouchableOpacity
+                        key={c.id}
+                        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onToggleColor(c.id); }}
+                        activeOpacity={0.8}
+                        style={[col.swatch, { backgroundColor: c.color }, on && col.ring]}
+                    >
+                        {on && <Ionicons name="checkmark" size={20} color={c.id === 'white' || c.id === 'beige' ? '#000' : '#FFF'} />}
+                    </TouchableOpacity>
+                );
+            })}
         </View>
-
-        <Text style={styles.helperText}>
-            Selected: {favoriteColors.length} colors
-        </Text>
-
-        <View style={styles.buttonRow}>
-            <TouchableOpacity style={styles.backButton} onPress={onBack}>
-                <Ionicons name="arrow-back" size={24} color={COLORS.textSecondary} />
-            </TouchableOpacity>
-            <TouchableOpacity
-                style={[styles.nextButton, favoriteColors.length < 1 && styles.buttonDisabled]}
-                onPress={onNext}
-                disabled={favoriteColors.length < 1}
-            >
-                <Text style={styles.nextButtonText}>{t('common.continue')}</Text>
-                <Ionicons name="arrow-forward" size={20} color="#FFF" />
-            </TouchableOpacity>
-        </View>
+        <NavRow onBack={onBack} onNext={onNext} disabled={favoriteColors.length < 1} />
     </Animated.View>
 );
+const col = StyleSheet.create({
+    swatch: { width: 62, height: 62, borderRadius: 31, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'transparent' },
+    ring:   { borderColor: '#0A1931', borderWidth: 3 },
+});
 
-const OccasionsStep = ({
-    selectedOccasions,
-    onToggleOccasion,
-    onNext,
-    onBack,
-    t,
-}: {
-    selectedOccasions: string[];
-    onToggleOccasion: (id: string) => void;
-    onNext: () => void;
-    onBack: () => void;
-    t: any;
-}) => (
-    <Animated.View
-        style={styles.stepContainer}
-        entering={SlideInRight.duration(300)}
-        exiting={SlideOutLeft.duration(300)}
-    >
-        <Text style={styles.stepTitle}>{t('styleQuiz.whatDressFor')}</Text>
-        <Text style={styles.stepSubtitle}>{t('styleQuiz.selectAllThatApply')}</Text>
-
-        <View style={styles.occasionGrid}>
-            {OCCASIONS.map((occasion) => (
-                <TouchableOpacity
-                    key={occasion.id}
-                    style={[
-                        styles.occasionCard,
-                        selectedOccasions.includes(occasion.id) && styles.occasionCardSelected
-                    ]}
-                    onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        onToggleOccasion(occasion.id);
-                    }}
-                >
-                    <View style={[
-                        styles.occasionIconContainer,
-                        selectedOccasions.includes(occasion.id) && styles.occasionIconSelected
-                    ]}>
-                        <Ionicons
-                            name={occasion.icon as any}
-                            size={28}
-                            color={selectedOccasions.includes(occasion.id) ? '#FFF' : COLORS.textSecondary}
-                        />
-                    </View>
-                    <Text style={[
-                        styles.occasionName,
-                        selectedOccasions.includes(occasion.id) && styles.occasionNameSelected
-                    ]}>
-                        {occasion.name}
-                    </Text>
-                </TouchableOpacity>
-            ))}
-        </View>
-
-        <View style={styles.buttonRow}>
-            <TouchableOpacity style={styles.backButton} onPress={onBack}>
-                <Ionicons name="arrow-back" size={24} color={COLORS.textSecondary} />
-            </TouchableOpacity>
-            <TouchableOpacity
-                style={[styles.nextButton, selectedOccasions.length < 1 && styles.buttonDisabled]}
-                onPress={onNext}
-                disabled={selectedOccasions.length < 1}
-            >
-                <Text style={styles.nextButtonText}>{t('common.continue')}</Text>
-                <Ionicons name="arrow-forward" size={20} color="#FFF" />
-            </TouchableOpacity>
-        </View>
-    </Animated.View>
-);
-
-const FitPreferenceStep = ({
-    selected,
-    onSelect,
-    onNext,
-    onBack,
-    t,
-}: {
-    selected: string;
-    onSelect: (id: string) => void;
-    onNext: () => void;
-    onBack: () => void;
-    t: any;
-}) => (
-    <Animated.View
-        style={styles.stepContainer}
-        entering={SlideInRight.duration(300)}
-        exiting={SlideOutLeft.duration(300)}
-    >
-        <Text style={styles.stepTitle}>{t('styleQuiz.howClothesFit')}</Text>
-        <Text style={styles.stepSubtitle}>{t('styleQuiz.helpsSuggestStyles')}</Text>
-
-        <View style={styles.fitOptions}>
-            {FIT_OPTIONS.map((option) => (
-                <TouchableOpacity
-                    key={option.id}
-                    style={[
-                        styles.fitCard,
-                        selected === option.id && styles.fitCardSelected
-                    ]}
-                    onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        onSelect(option.id);
-                    }}
-                >
-                    <Text style={styles.fitEmoji}>{option.icon}</Text>
-                    <Text style={styles.fitName}>{option.name}</Text>
-                    <Text style={styles.fitDesc}>{option.description}</Text>
-                    {selected === option.id && (
-                        <View style={styles.selectedBadge}>
-                            <Ionicons name="checkmark" size={16} color="#FFF" />
+// ── OCCASIONS ─────────────────────────────────────────────────────────────────
+const OccasionsStep = ({ selectedOccasions, onToggleOccasion, onNext, onBack, t }: any) => (
+    <Animated.View style={s.step} entering={SlideInRight.duration(350).springify()}>
+        <Text style={s.title}>{t('styleQuiz.occasions.title')}</Text>
+        <Text style={s.sub}>{t('styleQuiz.occasions.subtitle')}</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, flex: 1, alignContent: 'center' }}>
+            {OCCASIONS.map(o => {
+                const on = selectedOccasions.includes(o.id);
+                return (
+                    <TouchableOpacity
+                        key={o.id}
+                        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onToggleOccasion(o.id); }}
+                        activeOpacity={0.8}
+                        style={[occ.card, { width: (W - 60) / 2 }, on && occ.sel]}
+                    >
+                        <View style={[occ.icon, on && occ.iconSel]}>
+                            <Ionicons name={o.icon as any} size={26} color={on ? '#FFF' : T.primary} />
                         </View>
-                    )}
-                </TouchableOpacity>
-            ))}
+                        <Text style={[occ.name, on && { color: T.text, fontWeight: '700' }]}>{o.name}</Text>
+                    </TouchableOpacity>
+                );
+            })}
         </View>
-
-        <View style={styles.buttonRow}>
-            <TouchableOpacity style={styles.backButton} onPress={onBack}>
-                <Ionicons name="arrow-back" size={24} color={COLORS.textSecondary} />
-            </TouchableOpacity>
-            <TouchableOpacity
-                style={styles.nextButton}
-                onPress={onNext}
-            >
-                <Text style={styles.nextButtonText}>{t('common.continue')}</Text>
-                <Ionicons name="arrow-forward" size={20} color="#FFF" />
-            </TouchableOpacity>
-        </View>
+        <NavRow onBack={onBack} onNext={onNext} disabled={selectedOccasions.length < 1} />
     </Animated.View>
 );
+const occ = StyleSheet.create({
+    card:    { backgroundColor: 'rgba(255, 255, 255, 0.85)', borderRadius: 20, padding: 18, alignItems: 'center', borderWidth: 1, borderColor: T.border, shadowColor: '#173A65', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 2 },
+    sel:     { borderColor: '#0A1931', borderWidth: 1.5, backgroundColor: 'rgba(10, 25, 49, 0.06)' },
+    icon:    { width: 54, height: 54, borderRadius: 27, backgroundColor: 'rgba(10, 25, 49, 0.05)', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+    iconSel: { backgroundColor: '#0A1931' },
+    name:    { fontSize: 13, color: T.primary, textAlign: 'center' },
+});
 
-const GoalsStep = ({
-    selectedGoals,
-    onToggleGoal,
-    onComplete,
-    t
-}: {
-    selectedGoals: string[];
-    onToggleGoal: (id: string) => void;
-    onComplete: () => void;
-    t: any;
-}) => (
-    <Animated.View
-        style={styles.stepContainer}
-        entering={SlideInRight.duration(300)}
-    >
-        <Text style={styles.stepTitle}>{t('styleQuiz.styleGoalsQuestion')}</Text>
-        <Text style={styles.stepSubtitle}>{t('styleQuiz.tailorExperience')}</Text>
-
-        <View style={styles.goalsGrid}>
-            {STYLE_GOALS.map((goal) => (
-                <TouchableOpacity
-                    key={goal.id}
-                    style={[
-                        styles.goalCard,
-                        selectedGoals.includes(goal.id) && styles.goalCardSelected
-                    ]}
-                    onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        onToggleGoal(goal.id);
-                    }}
-                >
-                    <Ionicons
-                        name={goal.icon as any}
-                        size={24}
-                        color={selectedGoals.includes(goal.id) ? COLORS.primary : COLORS.textSecondary}
-                    />
-                    <Text style={[
-                        styles.goalText,
-                        selectedGoals.includes(goal.id) && styles.goalTextSelected
-                    ]}>
-                        {goal.name}
-                    </Text>
-                </TouchableOpacity>
-            ))}
+// ── FIT ───────────────────────────────────────────────────────────────────────
+const FitStep = ({ selected, onSelect, onNext, onBack, t }: any) => (
+    <Animated.View style={s.step} entering={SlideInRight.duration(350).springify()}>
+        <Text style={s.title}>{t('styleQuiz.fit.title')}</Text>
+        <Text style={s.sub}>{t('styleQuiz.fit.subtitle')}</Text>
+        <View style={{ gap: 14, flex: 1, justifyContent: 'center' }}>
+            {FIT_OPTIONS.map(f => {
+                const on = selected === f.id;
+                return (
+                    <TouchableOpacity
+                        key={f.id}
+                        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onSelect(f.id); }}
+                        activeOpacity={0.8}
+                        style={[fit.card, on && fit.sel]}
+                    >
+                        <Text style={fit.emoji}>{f.icon}</Text>
+                        <View style={{ flex: 1 }}>
+                            <Text style={[fit.name, on && { color: T.accent }]}>{f.name}</Text>
+                            <Text style={fit.desc}>{f.description}</Text>
+                        </View>
+                        {on && <Ionicons name="checkmark-circle" size={24} color={T.accent} />}
+                    </TouchableOpacity>
+                );
+            })}
         </View>
-
-        <TouchableOpacity style={styles.completeButton} onPress={onComplete}>
-            <LinearGradient
-                colors={[COLORS.primary, COLORS.accent]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.gradientButton}
-            >
-                <Text style={styles.primaryButtonText}>{t('styleQuiz.completeSetup')}</Text>
-                <Ionicons name="checkmark-circle" size={20} color="#FFF" />
-            </LinearGradient>
-        </TouchableOpacity>
+        <NavRow onBack={onBack} onNext={onNext} />
     </Animated.View>
 );
+const fit = StyleSheet.create({
+    card:  { flexDirection: 'row', alignItems: 'center', gap: 16, backgroundColor: 'rgba(255, 255, 255, 0.85)', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: T.border, shadowColor: '#173A65', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 2 },
+    sel:   { borderColor: '#0A1931', borderWidth: 1.5, backgroundColor: 'rgba(10, 25, 49, 0.06)' },
+    emoji: { fontSize: 32 },
+    name:  { fontSize: 17, fontWeight: '700', color: T.text, marginBottom: 3 },
+    desc:  { fontSize: 13, color: T.sub },
+});
 
-// ============================================
-// MAIN SCREEN
-// ============================================
+// ── GOALS ─────────────────────────────────────────────────────────────────────
+const GoalsStep = ({ selectedGoals, onToggleGoal, onNext, onBack, t }: any) => (
+    <Animated.View style={s.step} entering={SlideInRight.duration(350).springify()}>
+        <Text style={s.title}>{t('styleQuiz.goals.title')}</Text>
+        <Text style={s.sub}>{t('styleQuiz.goals.subtitle')}</Text>
+        <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+            <View style={{ gap: 10, paddingBottom: 16 }}>
+                {STYLE_GOALS.map(g => {
+                    const on = selectedGoals.includes(g.id);
+                    return (
+                        <TouchableOpacity
+                            key={g.id}
+                            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onToggleGoal(g.id); }}
+                            activeOpacity={0.8}
+                            style={[gls.card, on && gls.sel]}
+                        >
+                            <View style={[gls.icon, on && gls.iconSel]}>
+                                <Ionicons name={g.icon as any} size={20} color={on ? '#FFF' : T.primary} />
+                            </View>
+                            <Text style={[gls.name, on && { color: T.text, fontWeight: '700' }]}>{g.name}</Text>
+                            {on && <Ionicons name="checkmark-circle" size={20} color={T.accent} />}
+                        </TouchableOpacity>
+                    );
+                })}
+            </View>
+        </ScrollView>
+        <NavRow onBack={onBack} onNext={onNext} />
+    </Animated.View>
+);
+const gls = StyleSheet.create({
+    card:    { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: 'rgba(255, 255, 255, 0.85)', borderRadius: 18, padding: 16, borderWidth: 1, borderColor: T.border, shadowColor: '#173A65', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 2 },
+    sel:     { borderColor: '#0A1931', borderWidth: 1.5, backgroundColor: 'rgba(10, 25, 49, 0.06)' },
+    icon:    { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(10, 25, 49, 0.05)', alignItems: 'center', justifyContent: 'center' },
+    iconSel: { backgroundColor: '#0A1931' },
+    name:    { flex: 1, fontSize: 15, color: T.primary },
+});
+
+// ── COMPLETE ───────────────────────────────────────────────────────────────────
+const CompleteStep = ({ selectedGoals, selectedOccasions, onComplete, onBack, t }: any) => (
+    <Animated.View style={s.step} entering={FadeIn.duration(600)}>
+        <View style={{ flex: 1, justifyContent: 'center' }}>
+            <Animated.View entering={FadeInDown.delay(100)} style={cmp.badge}>
+                <LinearGradient colors={['#0A1931','#254F86']} style={cmp.badgeInner}>
+                    <Ionicons name="checkmark" size={40} color="#FFF" />
+                </LinearGradient>
+            </Animated.View>
+
+            <Animated.Text entering={FadeInDown.delay(250)} style={cmp.title}>
+                {t('styleQuiz.complete.title')}
+            </Animated.Text>
+            <Animated.Text entering={FadeInDown.delay(400)} style={cmp.sub}>
+                {t('styleQuiz.complete.subtitle')}
+            </Animated.Text>
+
+            <Animated.View entering={FadeInDown.delay(550)} style={{ gap: 12, marginTop: 32 }}>
+                {[
+                    t('styleQuiz.complete.occasionPaths'),
+                    t('styleQuiz.complete.goalsPrioritized'),
+                    t('styleQuiz.complete.aiCalibrated'),
+                ].map(line => (
+                    <View key={line} style={cmp.row}>
+                        <View style={cmp.dot} />
+                        <Text style={cmp.rowTxt}>{line}</Text>
+                    </View>
+                ))}
+            </Animated.View>
+        </View>
+
+        <NavRow onBack={onBack} onNext={onComplete} label={t('styleQuiz.complete.unlockPlan')} isLast />
+    </Animated.View>
+);
+const cmp = StyleSheet.create({
+    badge:      { alignSelf: 'flex-start', marginBottom: 32 },
+    badgeInner: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center' },
+    title:      { fontSize: 40, fontWeight: '800', color: T.text, letterSpacing: -1.2, lineHeight: 48, marginBottom: 14 },
+    sub:        { fontSize: 16, color: T.sub, lineHeight: 25 },
+    row:        { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: 'rgba(255, 255, 255, 0.85)', borderRadius: 14, paddingHorizontal: 18, paddingVertical: 14, borderWidth: 1, borderColor: T.border, shadowColor: '#173A65', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 1 },
+    dot:        { width: 8, height: 8, borderRadius: 4, backgroundColor: T.accent2 },
+    rowTxt:     { fontSize: 15, color: T.text, fontWeight: '500' },
+});
+
+// ── MAIN SCREEN ───────────────────────────────────────────────────────────────
+const STEPS = ['Welcome','Personality','Colors','Occasions','Fit','Goals','Done'];
 
 const StyleQuizScreen = () => {
     const navigation = useNavigation();
     const { t } = useTranslation();
-    const {
-        setPreferences,
-        setOnboardingStep, // Add this
-        completeOnboarding,
-        preferences
-    } = useStylePreferenceStore();
+    const { setPreferences, setOnboardingStep, completeOnboarding } = useStylePreferenceStore();
 
     const [step, setStep] = useState(0);
     const [stylePersonality, setStylePersonality] = useState<string | undefined>();
@@ -441,46 +377,15 @@ const StyleQuizScreen = () => {
     const [fitPreference, setFitPreference] = useState<string>('balanced');
     const [goals, setGoals] = useState<string[]>([]);
 
-    const TOTAL_STEPS = 6;
+    const next = () => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setStep(p => p + 1); };
+    const back = () => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStep(p => Math.max(0, p - 1)); };
 
-    const handleNext = () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        setStep(step + 1);
-    };
-
-    const handleBack = () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        setStep(Math.max(0, step - 1));
-    };
-
-    const toggleColor = (colorId: string) => {
-        setFavoriteColors(prev =>
-            prev.includes(colorId)
-                ? prev.filter(c => c !== colorId)
-                : [...prev, colorId]
-        );
-    };
-
-    const toggleOccasion = (occasionId: string) => {
-        setOccasions(prev =>
-            prev.includes(occasionId)
-                ? prev.filter(o => o !== occasionId)
-                : [...prev, occasionId]
-        );
-    };
-
-    const toggleGoal = (goalId: string) => {
-        setGoals(prev =>
-            prev.includes(goalId)
-                ? prev.filter(g => g !== goalId)
-                : [...prev, goalId]
-        );
-    };
+    const toggleColor   = (id: string) => setFavoriteColors(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+    const toggleOccasion = (id: string) => setOccasions(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+    const toggleGoal    = (id: string) => setGoals(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
 
     const handleComplete = () => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-        // Save all preferences
         setPreferences({
             stylePersonality: stylePersonality as any,
             favoriteColors,
@@ -489,88 +394,49 @@ const StyleQuizScreen = () => {
             styleGoals: goals,
             prefersSustainable: goals.includes('sustainability'),
         });
-
-        // Mark quiz as done (step 6) to trigger Paywall in RootNavigator
         setOnboardingStep(6);
-
-        // Navigation is handled by RootNavigator state change
     };
 
     const renderStep = () => {
         switch (step) {
-            case 0:
-                return <WelcomeStep onNext={handleNext} t={t} />;
-            case 1:
-                return (
-                    <StylePersonalityStep
-                        selected={stylePersonality}
-                        onSelect={setStylePersonality}
-                        onNext={handleNext}
-                        onBack={handleBack}
-                        t={t}
-                    />
-                );
-            case 2:
-                return (
-                    <ColorPreferencesStep
-                        favoriteColors={favoriteColors}
-                        onToggleColor={toggleColor}
-                        onNext={handleNext}
-                        onBack={handleBack}
-                        t={t}
-                    />
-                );
-            case 3:
-                return (
-                    <OccasionsStep
-                        selectedOccasions={occasions}
-                        onToggleOccasion={toggleOccasion}
-                        onNext={handleNext}
-                        onBack={handleBack}
-                        t={t}
-                    />
-                );
-            case 4:
-                return (
-                    <FitPreferenceStep
-                        selected={fitPreference}
-                        onSelect={setFitPreference}
-                        onNext={handleNext}
-                        onBack={handleBack}
-                        t={t}
-                    />
-                );
-            case 5:
-                return (
-                    <GoalsStep
-                        selectedGoals={goals}
-                        onToggleGoal={toggleGoal}
-                        onComplete={handleComplete}
-                        t={t}
-                    />
-                );
-            default:
-                return null;
+            case 0: return <WelcomeStep onNext={next} t={t} />;
+            case 1: return <PersonalityStep selected={stylePersonality} onSelect={setStylePersonality} onNext={next} onBack={back} t={t} />;
+            case 2: return <ColorsStep favoriteColors={favoriteColors} onToggleColor={toggleColor} onNext={next} onBack={back} t={t} />;
+            case 3: return <OccasionsStep selectedOccasions={occasions} onToggleOccasion={toggleOccasion} onNext={next} onBack={back} t={t} />;
+            case 4: return <FitStep selected={fitPreference} onSelect={setFitPreference} onNext={next} onBack={back} t={t} />;
+            case 5: return <GoalsStep selectedGoals={goals} onToggleGoal={toggleGoal} onNext={next} onBack={back} t={t} />;
+            case 6: return <CompleteStep selectedGoals={goals} selectedOccasions={occasions} onComplete={handleComplete} onBack={back} t={t} />;
+            default: return null;
         }
     };
 
     return (
-        <View style={styles.container}>
-            <SafeAreaView style={styles.safeArea}>
-                {step > 0 && <ProgressBar currentStep={step - 1} totalSteps={TOTAL_STEPS - 1} />}
+        <View style={s.root}>
+            <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+            {/* Background gradient */}
+            <LinearGradient
+                colors={['#F6FAFF', '#EEF4FF', '#FFFFFF']}
+                style={StyleSheet.absoluteFill}
+            />
+            {/* Ambient light orbs */}
+            <View style={s.backgroundOrbTop} pointerEvents="none" />
+            <View style={s.backgroundOrbBottom} pointerEvents="none" />
 
-                <TouchableOpacity
-                    style={styles.skipButton}
-                    onPress={() => {
-                        completeOnboarding();
-                        navigation.reset({
-                            index: 0,
-                            routes: [{ name: 'Main' as never }],
-                        });
-                    }}
-                >
-                    <Text style={styles.skipText}>{t('styleQuiz.skip')}</Text>
-                </TouchableOpacity>
+            <SafeAreaView style={s.safe}>
+                {/* Header */}
+                <View style={s.header}>
+                    {step > 0
+                        ? <StepDots total={STEPS.length - 1} current={step - 1} />
+                        : <View style={{ height: 6 }} />
+                    }
+                    {step > 0 && (
+                        <TouchableOpacity
+                            onPress={() => { completeOnboarding(); }}
+                        >
+                            <Text style={s.skip}>{t('common.skip')}</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
 
                 {renderStep()}
             </SafeAreaView>
@@ -578,363 +444,17 @@ const StyleQuizScreen = () => {
     );
 };
 
-// ============================================
-// STYLES
-// ============================================
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: COLORS.background,
-    },
-    safeArea: {
-        flex: 1,
-    },
-    progressContainer: {
-        paddingHorizontal: 24,
-        paddingTop: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    progressBar: {
-        flex: 1,
-        height: 4,
-        backgroundColor: COLORS.border,
-        borderRadius: 2,
-        overflow: 'hidden',
-    },
-    progressFill: {
-        height: '100%',
-        backgroundColor: COLORS.primary,
-        borderRadius: 2,
-    },
-    progressText: {
-        fontSize: 13,
-        color: COLORS.textSecondary,
-    },
-    skipButton: {
-        position: 'absolute',
-        right: 20,
-        top: 60,
-        zIndex: 10,
-    },
-    skipText: {
-        fontSize: 16,
-        color: COLORS.textSecondary,
-    },
-    stepContainer: {
-        flex: 1,
-        padding: 24,
-    },
-    stepTitle: {
-        fontSize: 28,
-        fontWeight: '700',
-        color: COLORS.text,
-        marginBottom: 8,
-        marginTop: 20,
-    },
-    stepSubtitle: {
-        fontSize: 16,
-        color: COLORS.textSecondary,
-        marginBottom: 24,
-    },
-
-    // Welcome
-    welcomeContent: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    welcomeEmoji: {
-        fontSize: 64,
-        marginBottom: 20,
-    },
-    welcomeTitle: {
-        fontSize: 32,
-        fontWeight: '700',
-        color: COLORS.text,
-        textAlign: 'center',
-        marginBottom: 12,
-    },
-    welcomeSubtitle: {
-        fontSize: 18,
-        color: COLORS.textSecondary,
-        textAlign: 'center',
-        marginBottom: 40,
-    },
-    benefitsList: {
-        gap: 16,
-    },
-    benefitItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    benefitText: {
-        fontSize: 16,
-        color: COLORS.text,
-    },
-
-    // Buttons
-    primaryButton: {
-        marginTop: 'auto',
-    },
-    gradientButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 16,
-        borderRadius: 16,
-        gap: 8,
-    },
-    primaryButtonText: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#FFF',
-    },
-    buttonRow: {
-        flexDirection: 'row',
-        gap: 12,
-        marginTop: 'auto',
-    },
-    backButton: {
-        width: 56,
-        height: 56,
-        borderRadius: 16,
-        backgroundColor: COLORS.surface,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    nextButton: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: COLORS.primary,
-        paddingVertical: 16,
-        borderRadius: 16,
-        gap: 8,
-    },
-    nextButtonText: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#FFF',
-    },
-    buttonDisabled: {
-        opacity: 0.5,
-    },
-    completeButton: {
-        marginTop: 'auto',
-    },
-
-    // Options
-    optionsScroll: {
-        flex: 1,
-    },
-    optionsGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 12,
-    },
-
-    // Personality cards
-    personalityCard: {
-        width: (width - 60) / 2,
-        backgroundColor: COLORS.surface,
-        borderRadius: 16,
-        padding: 16,
-        alignItems: 'center',
-        borderWidth: 2,
-        borderColor: 'transparent',
-    },
-    personalityCardSelected: {
-        borderColor: COLORS.primary,
-        backgroundColor: `${COLORS.primary}10`,
-    },
-    personalityEmoji: {
-        fontSize: 36,
-        marginBottom: 8,
-    },
-    personalityName: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: COLORS.text,
-        marginBottom: 4,
-    },
-    personalityDesc: {
-        fontSize: 13,
-        color: COLORS.textSecondary,
-        textAlign: 'center',
-    },
-    selectedBadge: {
-        position: 'absolute',
-        top: 8,
-        right: 8,
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        backgroundColor: COLORS.primary,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-
-    // Colors
-    colorGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 16,
-        justifyContent: 'center',
-    },
-    colorOption: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 3,
-        borderColor: 'transparent',
-    },
-    colorOptionSelected: {
-        borderColor: COLORS.primary,
-    },
-    helperText: {
-        fontSize: 14,
-        color: COLORS.textSecondary,
-        textAlign: 'center',
-        marginTop: 16,
-    },
-
-    // Occasions
-    occasionGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 12,
-    },
-    occasionCard: {
-        width: (width - 60) / 2,
-        backgroundColor: COLORS.surface,
-        borderRadius: 16,
-        padding: 16,
-        alignItems: 'center',
-        borderWidth: 2,
-        borderColor: 'transparent',
-    },
-    occasionCardSelected: {
-        borderColor: COLORS.primary,
-    },
-    occasionIconContainer: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        backgroundColor: `${COLORS.textSecondary}20`,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 8,
-    },
-    occasionIconSelected: {
-        backgroundColor: COLORS.primary,
-    },
-    occasionName: {
-        fontSize: 14,
-        color: COLORS.textSecondary,
-        textAlign: 'center',
-    },
-    occasionNameSelected: {
-        color: COLORS.text,
-        fontWeight: '600',
-    },
-
-    // Fit options
-    fitOptions: {
-        gap: 12,
-    },
-    fitCard: {
-        backgroundColor: COLORS.surface,
-        borderRadius: 16,
-        padding: 20,
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderWidth: 2,
-        borderColor: 'transparent',
-    },
-    fitCardSelected: {
-        borderColor: COLORS.primary,
-    },
-    fitEmoji: {
-        fontSize: 32,
-        marginRight: 16,
-    },
-    fitName: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: COLORS.text,
-    },
-    fitDesc: {
-        fontSize: 14,
-        color: COLORS.textSecondary,
-        marginLeft: 'auto',
-    },
-
-    // Goals
-    goalsGrid: {
-        gap: 12,
-    },
-    goalCard: {
-        backgroundColor: COLORS.surface,
-        borderRadius: 16,
-        padding: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        borderWidth: 2,
-        borderColor: 'transparent',
-    },
-    goalCardSelected: {
-        borderColor: COLORS.primary,
-        backgroundColor: `${COLORS.primary}10`,
-    },
-    goalText: {
-        fontSize: 16,
-        color: COLORS.textSecondary,
-    },
-    goalTextSelected: {
-        color: COLORS.text,
-        fontWeight: '600',
-    },
-
-    // Chips
-    chip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: COLORS.surface,
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 24,
-        gap: 8,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-    },
-    chipSelected: {
-        borderColor: COLORS.primary,
-        backgroundColor: `${COLORS.primary}10`,
-    },
-    chipEmoji: {
-        fontSize: 16,
-    },
-    chipText: {
-        fontSize: 14,
-        color: COLORS.textSecondary,
-    },
-    chipTextSelected: {
-        color: COLORS.text,
-        fontWeight: '600',
-    },
-    colorDot: {
-        width: 16,
-        height: 16,
-        borderRadius: 8,
-    },
+// ── Root styles ───────────────────────────────────────────────────────────────
+const s = StyleSheet.create({
+    root:   { flex: 1, backgroundColor: T.bg },
+    safe:   { flex: 1 },
+    backgroundOrbTop: { position: 'absolute', top: -100, right: -80, width: 280, height: 280, borderRadius: 140, backgroundColor: 'rgba(188, 210, 245, 0.42)' },
+    backgroundOrbBottom: { position: 'absolute', left: -120, bottom: 140, width: 300, height: 300, borderRadius: 150, backgroundColor: 'rgba(216, 229, 252, 0.34)' },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingTop: 12, paddingBottom: 8, minHeight: 40 },
+    skip:   { fontSize: 15, color: T.sub, fontWeight: '500' },
+    step:   { flex: 1, paddingHorizontal: 24, paddingBottom: 24 },
+    title:  { fontSize: 36, fontWeight: '800', color: T.text, letterSpacing: -1.2, lineHeight: 44, marginTop: 24, marginBottom: 10 },
+    sub:    { fontSize: 15, color: T.sub, marginBottom: 28, lineHeight: 23 },
 });
 
 export default StyleQuizScreen;

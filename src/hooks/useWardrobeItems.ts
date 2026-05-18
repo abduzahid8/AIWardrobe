@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { Alert } from 'react-native';
@@ -53,6 +53,8 @@ interface UseWardrobeItemsReturn {
  */
 export const useWardrobeItems = (options: UseWardrobeItemsOptions = {}): UseWardrobeItemsReturn => {
     const { includePopularItems = false, popularItems = [] } = options;
+
+    const { t } = useTranslation();
 
     const [items, setItems] = useState<WardrobeItem[]>([]);
     const [favorites, setFavorites] = useState<string[]>([]);
@@ -130,7 +132,6 @@ export const useWardrobeItems = (options: UseWardrobeItemsOptions = {}): UseWard
 
     // Delete an item from wardrobe
     const deleteItem = useCallback(async (item: WardrobeItem) => {
-        const { t } = useTranslation();
         return new Promise<void>((resolve) => {
             const label = item.type || item.itemType || t('confirmations.thisItem');
             Alert.alert(
@@ -165,11 +166,10 @@ export const useWardrobeItems = (options: UseWardrobeItemsOptions = {}): UseWard
                 ]
             );
         });
-    }, [items, favorites]);
+    }, [items, favorites, t]);
 
     // Update an item in wardrobe
     const updateItem = useCallback(async (item: WardrobeItem, updates: Partial<WardrobeItem>) => {
-        const { t } = useTranslation();
         try {
             const updatedItems = items.map(i =>
                 i.id === item.id ? { ...i, ...updates } : i
@@ -181,7 +181,7 @@ export const useWardrobeItems = (options: UseWardrobeItemsOptions = {}): UseWard
             console.error('Error updating item:', error);
             Alert.alert(t('common.error'), t('wardrobeItems.failedSaveChanges'));
         }
-    }, [items]);
+    }, [items, t]);
 
     // Refresh items manually
     const refreshItems = useCallback(async () => {
@@ -231,7 +231,7 @@ export const useWardrobeItems = (options: UseWardrobeItemsOptions = {}): UseWard
         });
     }, [items, filter, favorites, includePopularItems, popularItems]);
 
-    const filteredItems = getFilteredItems();
+    const filteredItems = useMemo(() => getFilteredItems(), [getFilteredItems]);
 
     return {
         items,

@@ -4,7 +4,7 @@
  * Based on 2026 Digital Experience Report guidelines
  */
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -19,7 +19,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useIsFocused } from "@react-navigation/native";
+import { useIsFocused, useFocusEffect } from "@react-navigation/native";
 import { useAppNavigation } from '../hooks/useAppNavigation';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import useAuthStore from '../store/auth';
@@ -43,6 +43,7 @@ import Config from '../src/config/env';
 
 import StreakBadge from '../components/StreakBadge';
 import useWardrobeStore from '../store/wardrobeStore';
+import { useShallow } from 'zustand/shallow';
 import useSubscriptionStore from '../store/subscriptionStore';
 import useAppContextStore from '../src/store/contextStore';
 import { CachedImage } from '../components/ui/CachedImage';
@@ -60,6 +61,7 @@ import { supabase } from '../lib/supabase';
 import { quickSuggest } from '../src/services/suggestionEngine';
 import { useDailyAIOutfit } from '../hooks/useDailyAIOutfit';
 import { useShopCatalog } from '../hooks/useShopCatalog';
+import useShopCatalogStore from '../store/shopCatalogStore';
 import OutfitCollageDisplay from '../features/outfit-generator/components/OutfitCollageDisplay';
 import TrialCountdownBanner from '../components/TrialCountdownBanner';
 import type { ShopCatalogItem } from '../features/try-on/types';
@@ -67,6 +69,7 @@ import type { ClothingCategory } from '../src/types/domain';
 import { createLogger } from '../src/utils/logger';
 import { useTranslation } from 'react-i18next';
 import { useAdminGuard } from '../hooks/useAdminGuard';
+import { perfMark, perfMeasure, perfAction, perfScreenReady } from '../src/utils/perf';
 
 type EssentialSlot = 'outerwear' | 'shirts' | 'knitwear' | 'tees' | 'bottoms' | 'shoes';
 
@@ -116,18 +119,18 @@ const SHOE_KEYWORDS = [
 
 const classifyUpperBodyItem = (item: ShopCatalogItem): 'outerwear' | 'shirts' | 'knitwear' | 'tees' | null => {
   const text = `${item.name} ${item.description || ''}`.toLowerCase();
-  
+
   // Check in priority order
   if (OUTERWEAR_KEYWORDS.some((k) => text.includes(k))) return 'outerwear';
   if (SHIRT_KEYWORDS.some((k) => text.includes(k))) return 'shirts';
   if (KNITWEAR_KEYWORDS.some((k) => text.includes(k))) return 'knitwear';
   if (TEE_KEYWORDS.some((k) => text.includes(k))) return 'tees';
-  
+
   // Default classification based on common patterns
   if (text.includes('blazer') || text.includes('jacket') || text.includes('coat')) return 'outerwear';
   if (text.includes('shirt')) return 'shirts';
   if (text.includes('sweater') || text.includes('knit')) return 'knitwear';
-  
+
   return 'tees'; // default
 };
 
@@ -145,7 +148,33 @@ const classifyShoeItem = (item: ShopCatalogItem): 'shoes' | null => {
   return null;
 };
 
-const selectEssentialShoppingMix = (items: ShopCatalogItem[]): ShopCatalogItem[] => {
+/**
+ * Deterministic seeded PRNG (mulberry32).
+ * Returns a pseudo-random number in [0, 1) for a given 32-bit seed integer.
+ * Using a stable daily seed (new Date().toDateString()) ensures the shuffle
+ * produces the same order for the entire day, keeping useMemo results stable
+ * across renders within the same day (fixes Defect 1.1).
+ */
+const seededRandom = (seed: number): () => number => {
+  let s = seed >>> 0;
+  return () => {
+    s += 0x6d2b79f5;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) >>> 0;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+};
+
+/** Convert a string seed to a 32-bit integer via a simple hash. */
+const hashStrToInt = (str: string): number => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (Math.imul(31, hash) + str.charCodeAt(i)) | 0;
+  }
+  return hash;
+};
+
+const selectEssentialShoppingMix = (items: ShopCatalogItem[], dailySeed: string): ShopCatalogItem[] => {
   const pickedCounts: Record<EssentialSlot, number> = {
     outerwear: 0,
     shirts: 0,
@@ -157,13 +186,15 @@ const selectEssentialShoppingMix = (items: ShopCatalogItem[]): ShopCatalogItem[]
 
   const selected: ShopCatalogItem[] = [];
   const selectedIds = new Set<string>();
-  
-  // Shuffle items for variety on each load
-  const shuffled = [...items].sort(() => Math.random() - 0.5);
+
+  // Shuffle items for daily variety using a stable seed so the result is
+  // identical across all renders within the same calendar day.
+  const rand = seededRandom(hashStrToInt(dailySeed));
+  const shuffled = [...items].sort(() => rand() - 0.5);
 
   for (const item of shuffled) {
     if (selectedIds.has(item.id)) continue;
-    
+
     let slot: EssentialSlot | null = null;
 
     if (item.garmentType === 'upper_body') {
@@ -208,6 +239,49 @@ const logger = createLogger('HomeScreen');
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
+// ── Stable Zustand selectors ─────────────────────────────────────────────────
+// Defined at module scope so the function reference never changes between
+// renders. React 18's useSyncExternalStore warns "getSnapshot should be cached"
+// when the selector is an inline arrow function that returns a new object on
+// every call. Primitive-returning selectors are fine inline, but object-
+// returning ones must use useShallow (Zustand v5) or be module-level.
+const selectAddItem = (state: any) => state.addItem;
+const selectIsPremium = (state: any) => state.isPremium;
+// Select only the username string (primitive) — selecting the full user object
+// would return a new reference on every render, triggering the getSnapshot warning.
+const selectUsername = (state: any) => state.user?.username as string | undefined;
+
+// Pre-compiled RegExp constants for shop item name classification.
+// Defined at module scope so they are compiled once, not on every render.
+const BOTTOM_NAME_RE    = /\b(pants?|trousers?|jeans?|chinos?|shorts?|skirts?|slacks?|joggers?|sweatpants?|bermudas?|cargos?|leggings?)\b/i;
+const SHORTS_NAME_RE    = /\b(shorts?|bermudas?|cargo\s*shorts?)\b/i;
+const TOP_NAME_RE       = /\b(shirts?|tees?|t-shirts?|tshirts?|polos?|blouses?|tops?|tanks?|sleeveless)\b/i;
+const OUTERWEAR_NAME_RE = /\b(jackets?|coats?|blazers?|cardigans?|sweaters?|hoodies?|puffers?|bombers?|vests?|outerwear|trench(?:es)?|peacoats?|suits?)\b/i;
+const SHOE_NAME_RE      = /\b(shoes?|sneakers?|boots?|loafers?|sandals?|heels?|trainers?|derbys?|mules?)\b/i;
+
+const isBottomName    = (name: string) => typeof name === 'string' && BOTTOM_NAME_RE.test(name);
+const isShortsName    = (name: string) => typeof name === 'string' && SHORTS_NAME_RE.test(name);
+const isTopName       = (name: string) => typeof name === 'string' && TOP_NAME_RE.test(name);
+const isOuterwearName = (name: string) => typeof name === 'string' && OUTERWEAR_NAME_RE.test(name);
+const isShoeName      = (name: string) => {
+  if (!name || typeof name !== 'string') return false;
+  const lower = name.toLowerCase();
+  let res = false;
+  if (lower.includes('oxford')) {
+    if (lower.includes('shirt')) res = false;
+    else if (lower.includes('shoe') || lower.includes('flat') || lower.includes('lace') || lower.includes('brogue') || lower.includes('derby') || lower.includes('loafer')) res = true;
+    else if (/\boxfords\b/i.test(lower)) res = true;
+    else res = false;
+  } else {
+    res = SHOE_NAME_RE.test(name);
+  }
+  // Console log to debug classification when it contains oxford or shoe-like names
+  if (lower.includes('oxford') || lower.includes('shoe') || lower.includes('loafer') || lower.includes('sneaker')) {
+    console.log(`[isShoeName Classification] "${name}" => IsShoe: ${res}`);
+  }
+  return res;
+};
+
 // Theme shortcuts
 const { colors, spacing, typography, radius } = LiquidGlass2026Theme;
 
@@ -223,31 +297,58 @@ interface WeatherData {
 // ============================================
 
 const HomeScreen = () => {
-  logger.debug('Component rendering');
   const navigation = useAppNavigation();
   const isFocused = useIsFocused();
   const { isReducedMotionEnabled } = useAccessibility();
   const { t } = useTranslation();
   const { isAdmin } = useAdminGuard();
 
+  // ── Performance timing ────────────────────────────────────────────────────
+  // Record mount time so we can measure how long until the screen is ready.
+  React.useEffect(() => {
+    perfMark('HomeScreen:mount');
+    // Screen is interactive immediately after mount — weather loads async
+    // in the background and doesn't block user interaction.
+    perfMeasure('HomeScreen:mount');
+    perfScreenReady('Home');
+    return () => {
+      console.log('[PERF] 🏠 HomeScreen unmounted');
+    };
+  }, []);
+
+  // Initialize the player without auto-playing — playback is started lazily
+  // in the useFocusEffect below, only when the screen is actually visible.
+  // This prevents the video from loading into memory on every Home tab visit
+  // before the screen is even rendered (fixes Defect 2.2).
   const player = useVideoPlayer(require("../assets/videos/nux_men_o.mp4"), (player) => {
     player.loop = true;
     player.muted = true;
-    player.play();
+    // Do NOT call player.play() here — play is deferred to useFocusEffect
   });
 
-  useEffect(() => {
-    if (isFocused) {
-      player.play();
-    } else {
-      player.pause();
-    }
-    return () => { player.pause(); };
-  }, [isFocused, player]);
+  // Use useFocusEffect for reliable play/pause tied to tab focus lifecycle.
+  // This fires correctly when the tab navigator shows/hides the screen,
+  // whereas useIsFocused + useEffect can miss rapid tab switches.
+  // The cleanup (blur) callback pauses the video and releases the decoder
+  // buffer so video memory is not held while the user is on other tabs.
+  useFocusEffect(
+    useCallback(() => {
+      try {
+        player.play();
+      } catch (error) {
+        logger.warn('Unable to play hero video', error);
+      }
 
-  useEffect(() => {
-    return () => { try { player.release?.(); } catch {} };
-  }, []);
+      return () => {
+        // Pause on blur — releases decoder resources while off-screen
+        try {
+          player.pause();
+        } catch (error) {
+          logger.warn('Unable to pause hero video', error);
+        }
+      };
+    }, [player])
+  );
 
   // State
   const [userName, setUserName] = useState("User");
@@ -255,17 +356,19 @@ const HomeScreen = () => {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loadingWeather, setLoadingWeather] = useState(true);
   const [videoUri, setVideoUri] = useState<string | null>(null);
-  const [greeting, setGreeting] = useState('Good morning');
+  const [greeting, setGreeting] = useState(t('common.goodMorning'));
   const [showHiddenGems, setShowHiddenGems] = useState(true);
   const [currentOutfitIndex, setCurrentOutfitIndex] = useState(0);
   const outfitFlatListRef = useRef<FlatList>(null);
   const [currentDinnerOutfitIndex, setCurrentDinnerOutfitIndex] = useState(0);
   const dinnerOutfitFlatListRef = useRef<FlatList>(null);
 
-  // Wardrobe store data for core loop
-  const items = useWardrobeStore((state) => state.items);
-  const wearLogs = useWardrobeStore((state) => state.wearLogs);
-  const streak = useWardrobeStore((state) => state.streak);
+  // Wardrobe store data for core loop — useShallow handles snapshot caching
+  // correctly in Zustand v5, preventing the React 18 "getSnapshot should be
+  // cached" warning that fires when a selector returns a new object each call.
+  const { items, wearLogs, streak } = useWardrobeStore(
+    useShallow((state) => ({ items: state.items, wearLogs: state.wearLogs, streak: state.streak }))
+  );
 
   // Contextual prompt
   const [activePrompt, setActivePrompt] = useState<ContextualPrompt | null>(null);
@@ -273,9 +376,15 @@ const HomeScreen = () => {
   // Daily AI outfits — one batch per category, regenerates once per calendar day.
   // Each Home section feeds its own category in so the AI styles its variants
   // to match the section title ("Team Collaboration / Business Casual", etc.).
-  const weatherForAI = weather
-    ? { temp: weather.temp, condition: weather.description }
-    : null;
+  // Memoize weatherForAI so it only changes when the actual temp/condition
+  // values change — passing a new object literal on every render would cause
+  // useDailyAIOutfit's `run` callback to be recreated every render, which
+  // triggers the generation effect → setLoading(true) → re-render → loop.
+  const weatherForAI = useMemo(
+    () => weather ? { temp: weather.temp, condition: weather.description } : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [weather?.temp, weather?.description],
+  );
 
   const dailyBusinessCasual = useDailyAIOutfit({
     style: 'business_casual',
@@ -295,27 +404,33 @@ const HomeScreen = () => {
   const todaysOutfit = useMemo(() => {
     if (items.length >= 3) {
       // Use quickSuggest for a real outfit
-      const engineWeather = weather ? { temp: weather.temp, condition: weather.description } : undefined;
+      const engineWeather = weatherForAI
+        ? { temp: weatherForAI.temp, condition: weatherForAI.condition }
+        : undefined;
       return quickSuggest(items, wearLogs, engineWeather);
     }
     return null;
-  }, [items, wearLogs, weather]);
+  }, [items, wearLogs, weatherForAI]);
 
   // Sync context for AI Assistant
   useEffect(() => {
     useAppContextStore.getState().setContext(weather, todaysOutfit);
   }, [weather, todaysOutfit]);
 
+  // Memoize utilization so wearLogs.flatMap isn't called inside the effect on every focus
+  const closetUtilization = useMemo(() => {
+    if (items.length === 0) return 0;
+    const wornIds = new Set(wearLogs.flatMap(l => l.itemIds));
+    return Math.round((wornIds.size / items.length) * 100);
+  }, [items.length, wearLogs.length]); // length deps are sufficient for utilization
+
   useEffect(() => {
     if (!isFocused) return;
-    const utilization = items.length > 0
-      ? Math.round((new Set(wearLogs.flatMap(l => l.itemIds)).size / items.length) * 100)
-      : 0;
 
-    getContextualPrompt(items, wearLogs, streak, utilization)
+    getContextualPrompt(items, wearLogs, streak, closetUtilization)
       .then(prompt => setActivePrompt(prompt))
       .catch(() => { });
-  }, [isFocused, items.length, wearLogs.length, streak]);
+  }, [isFocused, items.length, wearLogs.length, streak, closetUtilization]);
 
   // Determine greeting based on time
   useEffect(() => {
@@ -326,12 +441,12 @@ const HomeScreen = () => {
   }, [t]);
 
   // Read username from Supabase auth store (no JWT decode needed)
-  const authUser = useAuthStore(s => s.user);
+  const authUsername = useAuthStore(selectUsername);
   useEffect(() => {
-    if (authUser?.username) {
-      setUserName(authUser.username);
+    if (authUsername) {
+      setUserName(authUsername);
     }
-  }, [authUser?.username]);
+  }, [authUsername]);
 
   useEffect(() => {
     const loadSavedVideo = async () => {
@@ -345,43 +460,68 @@ const HomeScreen = () => {
       }
     };
     loadSavedVideo();
-    fetchWeather();
   }, []);
 
-  const fetchWeather = async () => {
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setLoadingWeather(false);
-        return;
+  // Fetch weather in a dedicated useEffect with an AbortController so the
+  // GPS and network calls are non-blocking and are cancelled if the component
+  // unmounts before they complete (fixes Defects 2.1 and 5.3).
+  useEffect(() => {
+    const controller = new AbortController();
+    const { signal } = controller;
+
+    const fetchWeather = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        // Bail out if the component unmounted while waiting for permission
+        if (signal.aborted) return;
+
+        if (status !== 'granted') {
+          if (!signal.aborted) setLoadingWeather(false);
+          return;
+        }
+
+        const location = await Location.getCurrentPositionAsync({});
+        // Bail out if the component unmounted while waiting for GPS
+        if (signal.aborted) return;
+
+        const { latitude, longitude } = location.coords;
+
+        const response = await fetch(
+          `${Config.weather.baseUrl}/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${Config.weather.apiKey}`,
+          { signal }
+        );
+        const data = await response.json();
+
+        if (!signal.aborted && data.main && data.weather) {
+          setWeather({
+            temp: Math.round(data.main.temp),
+            description: data.weather[0].description,
+            icon: data.weather[0].icon,
+            city: data.name,
+          });
+        }
+      } catch (error) {
+        // AbortError is expected when the component unmounts — don't log it
+        if (signal.aborted) return;
+        logger.error('Weather fetch error', error);
+      } finally {
+        if (!signal.aborted) {
+          setLoadingWeather(false);
+        }
       }
+    };
 
-      const location = await Location.getCurrentPositionAsync({});
-      const { latitude, longitude } = location.coords;
+    fetchWeather();
 
-      const response = await fetch(
-        `${Config.weather.baseUrl}/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${Config.weather.apiKey}`
-      );
-      const data = await response.json();
-
-      if (data.main && data.weather) {
-        setWeather({
-          temp: Math.round(data.main.temp),
-          description: data.weather[0].description,
-          icon: data.weather[0].icon,
-          city: data.name,
-        });
-      }
-    } catch (error) {
-      logger.error('Weather fetch error', error);
-    } finally {
-      setLoadingWeather(false);
-    }
-  };
+    // Cancel in-flight GPS and network requests on unmount
+    return () => controller.abort();
+  }, []);
 
   // Wardrobe Essentials — sourced from all shop_catalog sources for maximum variety
-  const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
-  const addItem = useWardrobeStore((state) => state.addItem);
+  // Use a plain object instead of Set so adding one item doesn't invalidate the
+  // entire essentials grid (Set creates a new reference on every add).
+  const [addedItemIds, setAddedItemIds] = useState<Record<string, boolean>>({});
+  const addItem = useWardrobeStore(selectAddItem);
 
   const {
     items: catalogEssentials,
@@ -389,25 +529,31 @@ const HomeScreen = () => {
     error: essentialsError,
   } = useShopCatalog({ enabled: true, source: 'all' });
 
-  // Dedicated shoes fetch from all sources for more variety
-  const { items: catalogShoes } = useShopCatalog({
-    enabled: true,
-    source: 'all',
-    category: 'shoes',
-  });
+  // Sync the fetched catalog into the shared store so other screens (e.g.
+  // ProfileScreen) can read it without firing their own Supabase query
+  // (fixes Defect 1.5).
+  // IMPORTANT: We only sync `items`, NOT `loading`. Syncing loading caused an
+  // infinite loop: setLoading(true) → store update → re-render → essentialsLoading
+  // changes → effect re-runs → setLoading(false) → store update → re-render → loop.
+  // ProfileScreen only reads items from the store, so loading sync is unnecessary.
+  useEffect(() => {
+    if (!essentialsLoading && catalogEssentials.length > 0) {
+      useShopCatalogStore.getState().setItems(catalogEssentials);
+    }
+  }, [catalogEssentials, essentialsLoading]);
+
+  // NOTE: shoes are already included in catalogEssentials (source: 'all').
+  // A second useShopCatalog call for shoes was removed to avoid a redundant
+  // Supabase query that competed with the main fetch on every mount.
 
   const essentialsItems = useMemo(
-    () => selectEssentialShoppingMix(catalogEssentials),
+    () => selectEssentialShoppingMix(catalogEssentials, new Date().toDateString()),
     [catalogEssentials]
   );
 
   // Shop items filtered by category directly from real catalog
   // Filter strictly using name keywords to prevent mislabeled DB entries from being misplaced
-  const isBottomName = (name: string) => /\b(pants?|trousers?|jeans?|chinos?|shorts?|skirts?|slacks?|joggers?|sweatpants?|bermudas?|cargos?|leggings?)\b/i.test(name);
-  const isShortsName = (name: string) => /\b(shorts?|bermudas?|cargo\s*shorts?)\b/i.test(name);
-  const isTopName = (name: string) => /\b(shirts?|tees?|t-shirts?|tshirts?|polos?|blouses?|tops?|tanks?|sleeveless)\b/i.test(name);
-  const isOuterwearName = (name: string) => /\b(jackets?|coats?|blazers?|cardigans?|sweaters?|hoodies?|puffers?|bombers?|vests?|outerwear|trench(?:es)?|peacoats?|suits?)\b/i.test(name);
-  const isShoeName = (name: string) => /\b(shoes?|sneakers?|boots?|loafers?|sandals?|heels?|trainers?|derbys?|mules?|oxfords?)\b/i.test(name);
+  // (isBottomName, isShortsName, isTopName, isOuterwearName, isShoeName are module-level constants)
 
   const shopTops = useMemo(() => catalogEssentials.filter(item =>
     item.garmentType === 'upper_body' && !isBottomName(item.name) && !isShoeName(item.name)
@@ -415,35 +561,43 @@ const HomeScreen = () => {
   const shopBottoms = useMemo(() => catalogEssentials.filter(item =>
     item.garmentType === 'lower_body' && !isTopName(item.name) && !isOuterwearName(item.name) && !isShoeName(item.name) && !isShortsName(item.name)
   ), [catalogEssentials]);
-  const shopShoes = useMemo(() => {
-    const fromMixed = catalogEssentials.filter(item =>
+  const shopShoes = useMemo(() =>
+    catalogEssentials.filter(item =>
       item.garmentType === 'shoes' || isShoeName(item.name)
-    );
-    const fromDedicated = catalogShoes.filter(item =>
-      item.garmentType === 'shoes' || isShoeName(item.name)
-    );
-    const seen = new Set<string>();
-    const merged: typeof fromMixed = [];
-    for (const it of [...fromMixed, ...fromDedicated]) {
-      if (!seen.has(it.id)) {
-        seen.add(it.id);
-        merged.push(it);
-      }
-    }
-    return merged;
-  }, [catalogEssentials, catalogShoes]);
+    )
+  , [catalogEssentials]);
 
-  // Debug: log shop catalog fetch status
-  if (__DEV__) {
-    console.log('[HomeScreen] Shop catalog status:', {
-      total: catalogEssentials.length,
-      tops: shopTops.length,
-      bottoms: shopBottoms.length,
-      shoes: shopShoes.length,
-      loading: essentialsLoading,
-      error: essentialsError,
-    });
-  }
+  // Stable primitive keys derived from sorted item IDs.
+  // These strings only change when the actual set of items changes, not on
+  // every render when useShopCatalog returns a new array reference.
+  // Used as memo dependencies for outfitCombinations / dinnerOutfitCombinations
+  // so those memos are not invalidated by reference churn (fixes Defect 1.2).
+  const catalogEssentialsKey = useMemo(
+    () => catalogEssentials.map(i => i.id).sort().join(','),
+    [catalogEssentials],
+  );
+  const shopTopsKey = useMemo(
+    () => shopTops.map(i => i.id).sort().join(','),
+    [shopTops],
+  );
+  const shopBottomsKey = useMemo(
+    () => shopBottoms.map(i => i.id).sort().join(','),
+    [shopBottoms],
+  );
+  const shopShoesKey = useMemo(
+    () => shopShoes.map(i => i.id).sort().join(','),
+    [shopShoes],
+  );
+
+  // Refs that always hold the latest arrays so the outfit memos can read
+  // current data without listing the arrays themselves as dependencies.
+  const shopTopsRef    = useRef(shopTops);
+  const shopBottomsRef = useRef(shopBottoms);
+  const shopShoesRef   = useRef(shopShoes);
+  shopTopsRef.current    = shopTops;
+  shopBottomsRef.current = shopBottoms;
+  shopShoesRef.current   = shopShoes;
+
 
   // User's wardrobe categories (lowercase) — used to determine which outfit slots are truly "suggested"
   const userCategories = useMemo(
@@ -452,88 +606,105 @@ const HomeScreen = () => {
   );
 
   // Night-Time Dinner outfit combinations (elegant classic)
-  // Safely index into fetched shop arrays using modulo, with fallbacks to avoid empty states
+  // Safely index into fetched shop arrays using modulo, with fallbacks to avoid empty states.
+  // Dependencies are stable string keys (sorted ID joins) rather than array references so
+  // this memo only re-runs when the actual item set changes (fixes Defect 1.2).
   const dinnerOutfitCombinations = useMemo(() => {
-    if (!catalogEssentials.length) return []; // Only fail if catalog is completely empty
-    if (shopTops.length === 0 || shopBottoms.length === 0) return [];
-    
+    const tops    = shopTopsRef.current;
+    const bottoms = shopBottomsRef.current;
+    const shoes   = shopShoesRef.current;
+
+    if (!catalogEssentialsKey) return []; // Only fail if catalog is completely empty
+    if (tops.length === 0 || bottoms.length === 0) return [];
+
     // Only use REAL outerwear (jackets, coats, blazers, suits, etc.)
     const isOuterwear = (name: string) => isOuterwearName(name);
-    const realOuterwear = shopTops.filter(t => isOuterwear(t.name));
-    const realTops = shopTops.filter(t => !isOuterwear(t.name));
-    const topsPool = realTops.length > 0 ? realTops : shopTops;
-    
+    const realOuterwear = tops.filter(t => isOuterwear(t.name));
+    const realTops = tops.filter(t => !isOuterwear(t.name));
+    const topsPool = realTops.length > 0 ? realTops : tops;
+
     return [
       {
         id: 1,
         mainTop: topsPool[2 % topsPool.length],
-        mainBottom: shopBottoms[0 % shopBottoms.length],
+        mainBottom: bottoms[0 % bottoms.length],
         outerLayer: realOuterwear.length > 0 ? realOuterwear[0 % realOuterwear.length] : null,
-        shoes: shopShoes.length > 0 ? shopShoes[1 % shopShoes.length] : null,
+        shoes: shoes.length > 0 ? shoes[1 % shoes.length] : null,
       },
       {
         id: 2,
         mainTop: topsPool[3 % topsPool.length],
-        mainBottom: shopBottoms[3 % shopBottoms.length],
+        mainBottom: bottoms[3 % bottoms.length],
         outerLayer: realOuterwear.length > 0 ? realOuterwear[1 % realOuterwear.length] : null,
-        shoes: shopShoes.length > 0 ? shopShoes[2 % shopShoes.length] : null,
+        shoes: shoes.length > 0 ? shoes[2 % shoes.length] : null,
       },
       {
         id: 3,
         mainTop: topsPool[1 % topsPool.length],
-        mainBottom: shopBottoms[1 % shopBottoms.length],
+        mainBottom: bottoms[1 % bottoms.length],
         outerLayer: realOuterwear.length > 0 ? realOuterwear[0 % realOuterwear.length] : null,
-        shoes: shopShoes.length > 0 ? shopShoes[0 % shopShoes.length] : null,
+        shoes: shoes.length > 0 ? shoes[0 % shoes.length] : null,
       },
     ];
-  }, [catalogEssentials, shopTops, shopBottoms, shopShoes]);
+  // Stable string keys: only re-run when the actual item IDs change, not on
+  // every render when useShopCatalog returns a new array reference.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalogEssentialsKey, shopTopsKey, shopBottomsKey, shopShoesKey]);
 
   const outfitCombinations = useMemo(() => {
-    if (!catalogEssentials.length) return [];
-    if (shopTops.length === 0 || shopBottoms.length === 0) return [];
+    const tops    = shopTopsRef.current;
+    const bottoms = shopBottomsRef.current;
+    const shoes   = shopShoesRef.current;
+
+    if (!catalogEssentialsKey) return [];
+    if (tops.length === 0 || bottoms.length === 0) return [];
 
     const isOuterwear = (name: string) => isOuterwearName(name);
-    const realOuterwear = shopTops.filter(t => isOuterwear(t.name));
-    const realTops = shopTops.filter(t => !isOuterwear(t.name));
-    const topsPool = realTops.length > 0 ? realTops : shopTops;
+    const realOuterwear = tops.filter(t => isOuterwear(t.name));
+    const realTops = tops.filter(t => !isOuterwear(t.name));
+    const topsPool = realTops.length > 0 ? realTops : tops;
 
     return [
       {
         id: 1,
         mainTop: topsPool[0 % topsPool.length],
-        mainBottom: shopBottoms[0 % shopBottoms.length],
+        mainBottom: bottoms[0 % bottoms.length],
         outerLayer: realOuterwear.length > 0 ? realOuterwear[0 % realOuterwear.length] : null,
-        shoes: shopShoes.length > 0 ? shopShoes[0 % shopShoes.length] : null,
+        shoes: shoes.length > 0 ? shoes[0 % shoes.length] : null,
       },
       {
         id: 2,
         mainTop: topsPool[1 % topsPool.length],
-        mainBottom: shopBottoms[1 % shopBottoms.length],
+        mainBottom: bottoms[1 % bottoms.length],
         outerLayer: realOuterwear.length > 0 ? realOuterwear[1 % realOuterwear.length] : null,
-        shoes: shopShoes.length > 0 ? shopShoes[1 % shopShoes.length] : null,
+        shoes: shoes.length > 0 ? shoes[1 % shoes.length] : null,
       },
       {
         id: 3,
         mainTop: topsPool[2 % topsPool.length],
-        mainBottom: shopBottoms[2 % shopBottoms.length],
+        mainBottom: bottoms[2 % bottoms.length],
         outerLayer: realOuterwear.length > 0 ? realOuterwear[2 % realOuterwear.length] : null,
-        shoes: shopShoes.length > 0 ? shopShoes[2 % shopShoes.length] : null,
+        shoes: shoes.length > 0 ? shoes[2 % shoes.length] : null,
       },
       {
         id: 4,
         mainTop: topsPool[3 % topsPool.length],
-        mainBottom: shopBottoms[3 % shopBottoms.length],
+        mainBottom: bottoms[3 % bottoms.length],
         outerLayer: realOuterwear.length > 0 ? realOuterwear[3 % realOuterwear.length] : null,
-        shoes: shopShoes.length > 0 ? shopShoes[1 % shopShoes.length] : null,
+        shoes: shoes.length > 0 ? shoes[1 % shoes.length] : null,
       },
     ];
-  }, [catalogEssentials, shopTops, shopBottoms, shopShoes]);
+  // Stable string keys: only re-run when the actual item IDs change, not on
+  // every render when useShopCatalog returns a new array reference.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalogEssentialsKey, shopTopsKey, shopBottomsKey, shopShoesKey]);
 
   const handleAddToWardrobe = async (item: ShopCatalogItem) => {
-    if (addedItems.has(item.id)) return;
+    if (addedItemIds[item.id] === true) return;
     logger.info('Adding catalog essential to wardrobe', item.name);
+    const donePerf = perfAction(`addToWardrobe:${item.name}`);
 
-    setAddedItems(prev => new Set(prev).add(item.id));
+    setAddedItemIds(prev => ({ ...prev, [item.id]: true }));
 
     const imageUrl = typeof item.imageUrl === 'string' ? item.imageUrl : '';
 
@@ -559,12 +730,14 @@ const HomeScreen = () => {
         seasons: [],
         occasions: [],
       });
+      donePerf();
       logger.info('Catalog essential added to wardrobe', item.name);
     } catch (err) {
+      donePerf();
       logger.error('Failed to add item, reverting', err);
-      setAddedItems(prev => {
-        const next = new Set(prev);
-        next.delete(item.id);
+      setAddedItemIds(prev => {
+        const next = { ...prev };
+        delete next[item.id];
         return next;
       });
     }
@@ -575,7 +748,7 @@ const HomeScreen = () => {
   // ============================================
 
   // Weather widget with Liquid Glass - Minimalist
-  const renderWeatherWidget = () => {
+  const renderWeatherWidget = useCallback(() => {
     if (loadingWeather) {
       return (
         <FrostedGlassCard style={styles.weatherWidget}>
@@ -610,13 +783,13 @@ const HomeScreen = () => {
         </View>
       </Animated.View>
     );
-  };
+  }, [loadingWeather, weather, isReducedMotionEnabled, t]);
 
-  const { isPremium } = useSubscriptionStore(s => ({ isPremium: s.isPremium }));
+  const isPremium = useSubscriptionStore(selectIsPremium);
   const isUnlocked = isPremium;
 
   // Today's Look - Hero card
-  const renderTodaysLook = () => {
+  const renderTodaysLook = useCallback(() => {
     const hasEnoughItems = items.length >= 3;
 
     return (
@@ -650,20 +823,20 @@ const HomeScreen = () => {
         </LiquidGlassCard>
 
         <TouchableOpacity
-              style={styles.createOutfitButton}
-              onPress={() => {
-                logger.debug('Navigating to AI outfit maker with shop source');
-                navigation.navigate('AIOutfit', { source: 'shop' });
-              }}
-              accessibilityLabel={t('home.createOutfitFromShopItems')}
-              accessibilityRole="button"
-            >
-              <Text style={styles.createOutfitText}>{t('home.createOutfit')}</Text>
+          style={styles.createOutfitButton}
+          onPress={() => {
+            logger.debug('Navigating to AI outfit maker with shop source');
+            navigation.navigate('AIOutfit', { source: 'shop' });
+          }}
+          accessibilityLabel={t('home.createOutfitFromShopItems')}
+          accessibilityRole="button"
+        >
+          <Text style={styles.createOutfitText}>{t('home.createOutfit')}</Text>
         </TouchableOpacity>
 
         {/* Unified Nudge Section (Prompts & Home Cards) */}
         {activePrompt && (
-          <Animated.View 
+          <Animated.View
             entering={FadeInDown.delay(300).duration(500)}
             style={styles.hiddenGemsCard}
           >
@@ -674,7 +847,7 @@ const HomeScreen = () => {
                   <Ionicons name={activePrompt.icon as any} size={18} color={activePrompt.color || '#E67E22'} />
                   <Text style={styles.hiddenGemsTitle}>{activePrompt.title}</Text>
                 </View>
-                <TouchableOpacity 
+                <TouchableOpacity
                   onPress={() => {
                     logger.debug('Dismissing prompt', activePrompt.id);
                     dismissPrompt(activePrompt.id);
@@ -685,12 +858,12 @@ const HomeScreen = () => {
                   <Ionicons name="close" size={20} color={colors.text.tertiary} />
                 </TouchableOpacity>
               </View>
-              
+
               <Text style={styles.hiddenGemsText}>
                 {activePrompt.message}
               </Text>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={[styles.viewAnalyticsButton, { backgroundColor: activePrompt.color || '#F39C12' }]}
                 onPress={() => {
                   logger.debug('Prompt action pressed', { route: activePrompt.action.route, params: activePrompt.action.params });
@@ -707,7 +880,7 @@ const HomeScreen = () => {
         )}
       </Animated.View>
     );
-  };
+  }, [items, wearLogs, todaysOutfit, activePrompt, isReducedMotionEnabled, t, navigation, markPromptShown, setActivePrompt]);
 
   // ── AI outfit → tiles (2-per-row grid) ──────────────────────────────────
   // Cold / rainy / windy season: 4 tiles (outerwear + top + bottom + shoes)
@@ -727,18 +900,18 @@ const HomeScreen = () => {
   const mapLegacyOutfitItemsForCollage = (c: any) => {
     // Build shop catalog lookup by macro category for client-side fallback
     const isOuterwear = (name: string) => isOuterwearName(name);
-    
+
     // Some Zara items might not have "shoes" as garmentType, but we know they are shoes
     const allOuterwear = catalogEssentials.filter(t => isOuterwear(t.name));
     const safeOuterwear = allOuterwear.length > 0 ? allOuterwear : catalogEssentials;
-    
+
     // If Zara has exactly 0 shoes on this page, fall back to ANY shoe in the database
     // Note: The UI requires shoes. If Zara has none, we must show a placeholder
     // or a non-Zara shoe. We use placeholders instead of putting shirts on feet.
     const allShoes = shopShoes.length > 0
       ? shopShoes
       : catalogEssentials.filter(t => t.garmentType === 'shoes' || t.name.toLowerCase().includes('shoe') || t.name.toLowerCase().includes('sneaker'));
-    
+
     const shopByMacro: Record<string, ShopCatalogItem[]> = {
       top: shopTops.filter(t => !isOuterwear(t.name)),
       bottom: shopBottoms.length > 0 ? shopBottoms : catalogEssentials,
@@ -757,21 +930,21 @@ const HomeScreen = () => {
       const topName = c.mainTop.name || 'Top';
       // Force 'shirt' keyword in type so OutfitCollageDisplay classifier places it in the top slot
       const forcedTopType = isTopName(topName) && !isOuterwearName(topName) ? topName : `${topName} Shirt`;
-      items.push({ id: `legacy_top_${c.id}`,   image: c.mainTop.imageUrl || c.mainTop.image,    type: forcedTopType, name: topName, macroCategory: 'top' });
+      items.push({ id: `legacy_top_${c.id}`, image: c.mainTop.imageUrl || c.mainTop.image, type: forcedTopType, name: topName, macroCategory: 'top' });
       filledSlots.add('top');
     }
     if (c?.mainBottom) {
       const btmName = c.mainBottom.name || 'Pants';
       // Force 'pant/trouser' keyword in type so OutfitCollageDisplay classifier places it in the bottom slot
       const forcedBtmType = isBottomName(btmName) ? btmName : `${btmName} Pants`;
-      items.push({ id: `legacy_btm_${c.id}`,   image: c.mainBottom.imageUrl || c.mainBottom.image, type: forcedBtmType, name: btmName, macroCategory: 'bottom' });
+      items.push({ id: `legacy_btm_${c.id}`, image: c.mainBottom.imageUrl || c.mainBottom.image, type: forcedBtmType, name: btmName, macroCategory: 'bottom' });
       filledSlots.add('bottom');
     }
     if (c?.shoes && shopByMacro.shoes.length > 0) {
       const shoeName = c.shoes.name || 'Shoes';
       // Force 'shoe' keyword in type so OutfitCollageDisplay classifier places it in the shoes slot
       const forcedShoeType = isShoeName(shoeName) ? shoeName : `${shoeName} Shoe`;
-      items.push({ id: `legacy_shoe_${c.id}`,  image: c.shoes.imageUrl || c.shoes.image,      type: forcedShoeType,     name: shoeName,    macroCategory: 'shoes' });
+      items.push({ id: `legacy_shoe_${c.id}`, image: c.shoes.imageUrl || c.shoes.image, type: forcedShoeType, name: shoeName, macroCategory: 'shoes' });
       filledSlots.add('shoes');
     }
 
@@ -837,7 +1010,7 @@ const HomeScreen = () => {
   }) => {
     // Build shop catalog lookup by macro category for client-side fallback
     const isOuterwear = (name: string) => isOuterwearName(name);
-    
+
     const shopByMacro: Record<string, ShopCatalogItem[]> = {
       top: shopTops.filter(t => !isOuterwear(t.name)),
       bottom: shopBottoms,
@@ -851,18 +1024,15 @@ const HomeScreen = () => {
       // Handle multiple possible image field names from different sources
       let img = item.imageUrl || item.image_url || item.image || '';
       let finalItem = { ...item };
-      
+
       const macro = (item.macroCategory || '').toLowerCase();
       const macroNormalized = macro === 'upper_body' ? 'top' : macro === 'lower_body' ? 'bottom' : macro;
       const shopItems = shopByMacro[macroNormalized] || [];
-      
+
       // AGGRESSIVE FALLBACK: Replace ALL AI-generated items with shop catalog items
       // to ensure they all have valid images that work (shop images are confirmed to work)
       if (shopItems.length > 0) {
         const shopItem = shopItems[Math.floor(Math.random() * shopItems.length)];
-        if (__DEV__) {
-          console.log(`[mapAiOutfitItemsForCollage] Replacing ${item.id} (${macro}) with shop item ${shopItem.id}`);
-        }
         finalItem = {
           ...item,
           id: shopItem.id,
@@ -874,11 +1044,11 @@ const HomeScreen = () => {
         };
         img = shopItem.imageUrl;
       }
-      
+
       if (finalItem.macroCategory) {
         filledSlots.add(finalItem.macroCategory.toLowerCase());
       }
-      
+
       return {
         id: finalItem.id || `home_ai_${index}`,
         image: img,
@@ -895,9 +1065,6 @@ const HomeScreen = () => {
         const fallbackItems = shopByMacro[slot] || [];
         if (fallbackItems.length > 0) {
           const shopItem = fallbackItems[Math.floor(Math.random() * fallbackItems.length)];
-          if (__DEV__) {
-            console.log(`[mapAiOutfitItemsForCollage] Filling MISSING slot (${slot}) with shop item ${shopItem.id}`);
-          }
           mapped.push({
             id: shopItem.id,
             image: shopItem.imageUrl,
@@ -909,22 +1076,29 @@ const HomeScreen = () => {
       }
     });
 
-    // Debug: log image availability for each item so we can trace
-    // where images are being lost in the pipeline.
-    if (__DEV__) {
-      const imgSummary = mapped.map(m => ({
-        id: String(m.id).slice(0, 8),
-        hasImage: typeof m.image === 'string' ? m.image.length > 0 : Boolean(m.image),
-        imgLen: typeof m.image === 'string' ? m.image.length : typeof m.image,
-        macro: m.macroCategory,
-      }));
-      console.log('[mapAiOutfitItemsForCollage]', imgSummary);
-    }
+    console.log('[mapAiOutfitItemsForCollage] Final mapped items:', mapped.map(mi => ({ id: mi.id, name: mi.name, macroCategory: mi.macroCategory })));
     return mapped;
   };
 
+  // Pre-compute collage items for all AI outfits so Math.random() only runs
+  // when the outfit data actually changes — not on every render.
+  // Without this, every re-render (tab switch, state update) calls Math.random()
+  // 6 times per outfit × 6 outfits = 36 random selections, causing visual
+  // flickering as different shop items are picked each time.
+  const businessCasualCollageItems = useMemo(
+    () => dailyBusinessCasual.outfits.map(o => mapAiOutfitItemsForCollage(o)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dailyBusinessCasual.outfits, shopTopsKey, shopBottomsKey, shopShoesKey],
+  );
+
+  const oldMoneyCollageItems = useMemo(
+    () => dailyOldMoney.outfits.map(o => mapAiOutfitItemsForCollage(o)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dailyOldMoney.outfits, shopTopsKey, shopBottomsKey, shopShoesKey],
+  );
+
   // Team Collaboration — Business Casual (regenerates daily via AI)
-  const renderPremiumOutfitSuggestion = () => {
+  const renderPremiumOutfitSuggestion = useCallback(() => {
     const loading = dailyBusinessCasual.loading && dailyBusinessCasual.outfits.length === 0;
 
     // Skeleton while the first-ever batch is loading.
@@ -952,27 +1126,24 @@ const HomeScreen = () => {
     }
 
     const aiOutfits = dailyBusinessCasual.outfits;
-  
+
     // Use AI outfits when available (they generate fresh combinations on regenerate)
     // Fall back to static shop catalog combinations on cold starts or network failures
     const useAI = aiOutfits.length > 0;
-    
-    if (__DEV__) {
-      console.log('[renderPremiumOutfitSuggestion] useAI:', useAI, 'aiOutfits:', aiOutfits.length);
-    }
-    
-    const data = useAI
-      ? aiOutfits.map((o, i) => ({ id: o.id || `ai-bc-${i}`, outfit: o }))
-      : outfitCombinations.map((c) => ({ id: String(c.id), legacy: c }));
 
-    const renderOutfitItem = ({ item }: { item: { id: string; outfit?: any; legacy?: any } }) => {
-      const collageItems = item.outfit 
-        ? mapAiOutfitItemsForCollage(item.outfit) 
+    const data = useAI
+      ? aiOutfits.map((o, i) => ({ id: o.id || `ai-bc-${i}`, outfit: o, index: i }))
+      : outfitCombinations.map((c) => ({ id: String(c.id), legacy: c, index: 0 }));
+
+    const renderOutfitItem = ({ item }: { item: { id: string; outfit?: any; legacy?: any; index: number } }) => {
+      // Use pre-computed collage items (memoized) to avoid Math.random() on every render
+      const collageItems = item.outfit
+        ? (businessCasualCollageItems[item.index] ?? mapAiOutfitItemsForCollage(item.outfit))
         : mapLegacyOutfitItemsForCollage(item.legacy) as any;
       const hasOuter = collageItems.some((ci: any) => ci.macroCategory === 'outerwear');
 
       return (
-        <View style={{ width: SCREEN_WIDTH, paddingHorizontal: spacing.screenPadding}}>
+        <View style={{ width: SCREEN_WIDTH, paddingHorizontal: spacing.screenPadding }}>
           <LiquidGlassCard
             variant="light"
             style={styles.premiumCard}
@@ -1077,12 +1248,8 @@ const HomeScreen = () => {
           <TouchableOpacity
             style={styles.createAvatarButton}
             onPress={() => {
-              if (isAdmin) {
-                logger.debug('Try On button pressed');
-                navigation.navigate('AITryOn');
-              } else {
-                Alert.alert(t('common.comingSoon'));
-              }
+              logger.debug('Try On button pressed');
+              navigation.navigate('AITryOn');
             }}
           >
             <Text style={styles.createAvatarText}>{t('home.tryOn')}</Text>
@@ -1090,10 +1257,10 @@ const HomeScreen = () => {
         </View>
       </View>
     );
-  };
+  }, [dailyBusinessCasual.outfits, dailyBusinessCasual.loading, dailyBusinessCasual.regenerate, businessCasualCollageItems, outfitCombinations, currentOutfitIndex, needsOuterwear, t, navigation]);
 
   // Night-Time Dinner — Elegant Classic / Old Money (regenerates daily via AI)
-  const renderNightDinnerSection = () => {
+  const renderNightDinnerSection = useCallback(() => {
     const loading = dailyOldMoney.loading && dailyOldMoney.outfits.length === 0;
 
     if (loading) {
@@ -1118,12 +1285,13 @@ const HomeScreen = () => {
     const aiOutfits = dailyOldMoney.outfits;
     const useAI = aiOutfits.length > 0;
     const data = useAI
-      ? aiOutfits.map((o, i) => ({ id: o.id || `ai-om-${i}`, outfit: o }))
-      : dinnerOutfitCombinations.map((c) => ({ id: String(c.id), legacy: c }));
+      ? aiOutfits.map((o, i) => ({ id: o.id || `ai-om-${i}`, outfit: o, index: i }))
+      : dinnerOutfitCombinations.map((c) => ({ id: String(c.id), legacy: c, index: 0 }));
 
-    const renderDinnerItem = ({ item }: { item: { id: string; outfit?: any; legacy?: any } }) => {
-      const collageItems = item.outfit 
-        ? mapAiOutfitItemsForCollage(item.outfit)
+    const renderDinnerItem = ({ item }: { item: { id: string; outfit?: any; legacy?: any; index: number } }) => {
+      // Use pre-computed collage items (memoized) to avoid Math.random() on every render
+      const collageItems = item.outfit
+        ? (oldMoneyCollageItems[item.index] ?? mapAiOutfitItemsForCollage(item.outfit))
         : mapLegacyOutfitItemsForCollage(item.legacy) as any;
       const hasOuter = collageItems.some((ci: any) => ci.macroCategory === 'outerwear');
 
@@ -1225,11 +1393,7 @@ const HomeScreen = () => {
           <TouchableOpacity
             style={styles.dinnerAvatarButton}
             onPress={() => {
-              if (isAdmin) {
-                navigation.navigate('AITryOn');
-              } else {
-                Alert.alert(t('common.comingSoon'));
-              }
+              navigation.navigate('AITryOn');
             }}
           >
             <Text style={styles.createAvatarText}>{t('home.tryOn')}</Text>
@@ -1237,10 +1401,10 @@ const HomeScreen = () => {
         </View>
       </View>
     );
-  };
+  }, [dailyOldMoney.outfits, dailyOldMoney.loading, dailyOldMoney.regenerate, oldMoneyCollageItems, dinnerOutfitCombinations, currentDinnerOutfitIndex, needsOuterwear, t, navigation]);
 
   // Wardrobe Essentials Grid — Supabase-backed catalog picks
-  const renderEssentials = () => {
+  const renderEssentials = useCallback(() => {
     const showSkeleton = essentialsLoading && essentialsItems.length === 0;
     const showEmpty = !essentialsLoading && essentialsItems.length === 0;
 
@@ -1269,7 +1433,7 @@ const HomeScreen = () => {
         ) : (
           <View style={styles.gridContainer}>
             {essentialsItems.map((item) => {
-              const isAdded = addedItems.has(item.id);
+              const isAdded = addedItemIds[item.id] === true;
               const imageSrc =
                 typeof item.imageUrl === 'string' ? { uri: item.imageUrl } : item.imageUrl;
 
@@ -1315,7 +1479,7 @@ const HomeScreen = () => {
         )}
       </View>
     );
-  };
+  }, [essentialsLoading, essentialsItems, addedItemIds, t, handleAddToWardrobe]);
 
 
 
@@ -1324,7 +1488,7 @@ const HomeScreen = () => {
 
 
   // Weekly Planner - Horizontal Row
-  const renderWeeklyPlanner = () => {
+  const renderWeeklyPlanner = useCallback(() => {
     if (items.length < 8) return null;
 
     const days = [];
@@ -1381,7 +1545,7 @@ const HomeScreen = () => {
         </ScrollView>
       </Animated.View>
     );
-  };
+  }, [items.length, isReducedMotionEnabled]);
 
   // ============================================
   // MAIN RENDER

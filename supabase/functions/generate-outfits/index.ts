@@ -8,12 +8,28 @@ const corsHeaders = {
 
 function macroCategory(category: string, type: string, name?: string): string {
     const t = `${category} ${type} ${name || ''}`.toLowerCase()
-    if (t.match(/jacket|coat|blazer|hoodie|cardigan|sweater|pullover|vest|puffer|parka|trench|outerwear/)) return 'outerwear'
-    if (t.match(/shirt|t-shirt|tshirt|tee|blouse|polo|tops|top|upper[_\s-]?body/)) return 'top'
-    if (t.match(/pant|trouser|jeans|bottom|shorts|skirt|lower[_\s-]?body/)) return 'bottom'
-    if (t.match(/shoe|sneaker|boot|loafer|sandal|heel|footwear|trainer/)) return 'shoes'
-    if (t.match(/dress/)) return 'top'
-    return 'other'
+    
+    let result = 'other'
+    if (t.match(/\b(blazer|overcoat|topcoat|peacoat|trench(?:es)?|parka|puffer|windbreaker|bomber)s?\b/) ||
+        t.match(/\b(coat|jacket|cardigan|sweater|hoodie|vest|pullover|fleece)s?\b/) ||
+        t.match(/jacket|coat|blazer|hoodie|cardigan|sweater|pullover|vest|puffer|parka|trench|outerwear/)) {
+        result = 'outerwear'
+    } else if (t.match(/\b(pants?|trousers?|jeans|shorts?|skirts?|chinos?|slacks?|joggers?|sweatpants?)\b/) ||
+        t.match(/pant|trouser|jeans|bottom|shorts|skirt|lower[_\s-]?body/)) {
+        result = 'bottom'
+    } else if (t.match(/\b(shoes?|sneakers?|boots?|loafers?|sandals?|heels?|trainers?|derbys?|derbies|mules?)\b/) ||
+        (t.match(/\boxfords?\b/) && !t.match(/\bshirts?\b/)) ||
+        t.match(/\boxfords?\s*(shoes?|flats?|lace|brogues?|derbys?|derbies)\b/) ||
+        t.match(/shoe|sneaker|boot|loafer|sandal|heel|footwear|trainer/)) {
+        result = 'shoes'
+    } else if (t.match(/\b(t-shirt|tshirt|tee|polo|blouse|shirt|dress(?:es)?)s?\b/) ||
+        t.match(/shirt|t-shirt|tshirt|tee|blouse|polo|tops|top|upper[_\s-]?body/) ||
+        t.match(/dress/)) {
+        result = 'top'
+    }
+    
+    console.log(`[Deno macroCategory] Input -> category: "${category}", type: "${type}", name: "${name || ''}" => Mapped to: "${result}"`)
+    return result
 }
 
 function isDressItem(item: any): boolean {
@@ -100,8 +116,9 @@ const STYLE_SIGNALS_EDGE: Record<string, Array<[RegExp, number]>> = {
         [/\bchunky sneaker(s)?\b/i, -4], [/\bbasketball\b/i, -5],
         [/\bskate sneaker(s)?\b/i, -4], [/\bthick[-\s]?soled\b/i, -3],
         [/\bretro sneaker(s)?\b/i, -2], [/\brope lace\b/i, -2],
-        [/\bsneaker(s)?\b/i, -1], [/\bchunky\b/i, -3],
+        [/\bsneaker(s)?\b/i, -3], [/\bchunky\b/i, -3],
         [/\bheavyweight\s+tee\b/i, -2], [/\b3[-\s]?pack\b/i, -2],
+        [/\bt-shirt\b/i, -2], [/\btee\b/i, -2], [/\bwindbreaker\b/i, -3], [/\bzip[-\s]?up\b/i, -3],
     ],
     semi_classic: [
         [/\bblazer\b/i, 3], [/\bcardigan\b/i, 3], [/\bknit polo\b/i, 3], [/\bturtleneck\b/i, 2],
@@ -176,10 +193,11 @@ const STYLE_SIGNALS_EDGE: Record<string, Array<[RegExp, number]>> = {
         [/\bcargo\b/i, -4], [/\bsweatpants\b/i, -4], [/\bjoggers\b/i, -4],
         [/\btrack pants\b/i, -4], [/\bshorts\b/i, -3], [/\bbermuda\b/i, -3],
         [/\bpuffer\b/i, -3], [/\bbomber\b/i, -3], [/\bdenim jacket\b/i, -2],
-        [/\bchunky sneaker(s)?\b/i, -4], [/\bathletic\b/i, -3], [/\bsquare[-\s]?toe\b/i, -4],
+        [/\bchunky sneaker(s)?\b/i, -4], [/\bsneaker(s)?\b/i, -3], [/\bt-shirt\b/i, -2], [/\btee\b/i, -2],
+        [/\bathletic\b/i, -3], [/\bsquare[-\s]?toe\b/i, -4],
         [/\bneon\b/i, -4], [/\bsequin\b/i, -4], [/\bripped\b/i, -3],
         [/\blow[-\s]?rise\b/i, -3], [/\bskinny\b/i, -2], [/\boversized\b/i, -2],
-        [/\bbackpack\b/i, -2], [/\bbi[kc]ini\b/i, -2],
+        [/\bbackpack\b/i, -2], [/\bbi[kc]ini\b/i, -2], [/\bwindbreaker\b/i, -3], [/\bzip[-\s]?up\b/i, -3],
     ],
 }
 
@@ -281,8 +299,6 @@ UNIVERSAL STYLE PRINCIPLES (apply to every outfit regardless of style):
 19. CITY BANS: No shorts, sandals/mules, mesh/see-through tees, or mandarin/stand collars in urban settings. No popped polo collars. Always button polo buttons (all or leave top one open). No exotic leather shoes (crocodile, python) — quality calf or suede only.
 20. PATTERNED SPORT JACKETS: Glen check, Prince of Wales, Gun Club are the most versatile patterns — they contain multiple colors for easy coordination. Avoid smooth solid-color sport jackets (look cheap); choose textured or patterned fabrics. Mixed fabric compositions (wool-linen-silk blends) are more textured and practical than pure fibers.`
 
-// ── Style-specific fashion context ───────────────────────────────────────
-// Each block has: vibe paragraph + MUST / REJECT rules that the model must
 // honor. The REJECT list is what forced the model to stop picking graphic
 // tees, cargo shorts, and hoodies when the user asked for "Old Money".
 const STYLE_CONTEXT: Record<string, { vibe: string; must: string[]; reject: string[]; palette: string[]; fabrics: string[] }> = {
@@ -301,11 +317,10 @@ const STYLE_CONTEXT: Record<string, { vibe: string; must: string[]; reject: stri
             'Pocket square is mandatory with any blazer or suit outfit — its absence is a major style error.',
         ],
         reject: [
-            'NEVER include: graphic tees, logo tees, 3-pack basic tees, printed tees, baby tees, tank tops, crop tops.',
-            'NEVER include: cargo shorts, athletic shorts, basketball shorts, track pants, sweatpants, joggers, shorts/bermudas.',
-            'NEVER include: hoodies, zip-ups, puffers, bomber jackets, denim jackets, graphic sweatshirts.',
-            'NEVER include: chunky sneakers, high-tops, platform shoes, athletic trainers, square-toe shoes.',
-            'NEVER include: neon, rhinestone, sequin, metallic, or tie-dye pieces.',
+            'NEVER include: graphic, logo, print, printed, patterned, floral, paisley, camo, tie-dye, pattern, patterns.',
+            'NEVER include: hoodie, hoodies, hooded, windbreaker, windbreakers, puffer, puffers, zip-up, zip-ups, bomber, bombers, track jacket, track jackets, graphic sweatshirts.',
+            'NEVER include: cargo shorts, cargo pants, athletic shorts, basketball shorts, track pants, sweatpants, joggers, shorts/bermudas.',
+            'NEVER include: chunky sneakers, high-tops, platform shoes, athletic trainers, running shoes, basketball shoes, square-toe shoes.',
             'NEVER include: black as a primary color — replace with navy, charcoal, or dark brown. Black only for formal eveningwear.',
             'NEVER include: exotic leather shoes (crocodile, python, stingray) — they look vulgar. Quality calf leather or suede only.',
             'NEVER pair: formal outerwear with shorts, backpacks with tailored clothing, sports watches with formal outfits.',
@@ -326,7 +341,7 @@ const STYLE_CONTEXT: Record<string, { vibe: string; must: string[]; reject: stri
             'Socks must match trousers, not shoes. Grey, navy, and burgundy socks are the foundation.',
         ],
         reject: [
-            'Avoid: hoodies, graphic tees, cargo pants, sweatpants, joggers.',
+            'Avoid: hoodie, hoodies, hooded, graphic, logo, print, printed, cargo, sweatpants, joggers.',
             'Avoid: chunky sneakers, athletic trainers, basketball shoes.',
             'Avoid: neon, rhinestone, sequin, metallic, or tie-dye pieces.',
             'Avoid: oversized/baggy fits, ripped/distressed denim.',
@@ -366,9 +381,11 @@ const STYLE_CONTEXT: Record<string, { vibe: string; must: string[]; reject: stri
             'Socks must match trousers, not shoes. Grey, navy, and burgundy are the only acceptable sock colors.',
         ],
         reject: [
-            'Avoid: hoodies, graphic tees, cargo pants, ripped jeans, sweatpants, shorts.',
-            'Avoid: sequins, rhinestones, neon colors, crop tops.',
+            'Avoid: hoodie, hoodies, hooded, windbreaker, windbreakers, puffer, puffers, zip-up, zip-ups, bomber, bombers, track jacket, track jackets.',
+            'Avoid: graphic, logo, print, printed, patterned, floral, paisley, camo, tie-dye, pattern, patterns, neon, rhinestones, sequins.',
+            'Avoid: cargo pants, cargo shorts, ripped jeans, sweatpants, joggers, shorts.',
             'Avoid: black as primary color — use navy or charcoal instead.',
+            'Avoid: chunky sneakers, platform shoes, athletic trainers, running shoes, basketball shoes, square-toe shoes.',
             'Avoid: skinny/super-slim fit, low-rise trousers, small shirt collars, narrow lapels.',
         ],
         palette: ['navy', 'charcoal', 'tan', 'white', 'light blue', 'grey', 'cream', 'brown', 'burgundy', 'beige'],
@@ -410,10 +427,10 @@ const STYLE_CONTEXT: Record<string, { vibe: string; must: string[]; reject: stri
             'Navy blazer with metal buttons is the most versatile sport jacket — pairs with almost any trousers except very dark navy or graphite. Next additions: Glen check, Prince of Wales, Gun Club patterns for multi-color coordination.',
         ],
         reject: [
-            'NEVER include: graphic tees, logo tees, printed tees, tank tops, crop tops, shorts/bermudas in city settings.',
-            'NEVER include: cargo pants, athletic shorts, track pants, sweatpants, joggers.',
-            'NEVER include: hoodies, puffer jackets, bomber jackets, denim jackets worn with suits.',
-            'NEVER include: chunky sneakers, athletic trainers, square-toe shoes, high-tops with tailored clothing.',
+            'NEVER include: hoodie, hoodies, hooded, windbreaker, windbreakers, puffer, puffers, zip-up, zip-ups, bomber, bombers, track jacket, track jackets.',
+            'NEVER include: graphic, logo, print, printed, patterned, floral, paisley, camo, tie-dye, pattern, patterns, neon, rhinestones, sequins.',
+            'NEVER include: cargo pants, cargo shorts, athletic shorts, basketball shorts, track pants, sweatpants, joggers, shorts/bermudas.',
+            'NEVER include: chunky sneakers, platform shoes, athletic trainers, running shoes, basketball shoes, square-toe shoes.',
             'NEVER include: black as a primary everyday color — navy, charcoal, dark brown are more versatile and elegant.',
             'NEVER include: exotic leather shoes (crocodile, python, stingray) — they look vulgar. Quality calf leather or suede only.',
             'NEVER pair: formal outerwear with shorts, sportswear with tailored pieces, backpacks with suits.',
@@ -425,14 +442,14 @@ const STYLE_CONTEXT: Record<string, { vibe: string; must: string[]; reject: stri
         palette: ['navy', 'charcoal', 'cream', 'white', 'beige', 'camel', 'brown', 'burgundy', 'forest green', 'light blue', 'grey', 'olive', 'tan'],
         fabrics: ['wool', 'flannel', 'tweed', 'herringbone', 'cashmere', 'merino', 'linen', 'silk', 'cotton', 'poplin', 'oxford cloth', 'suede', 'tropical wool', 'glen check', 'prince of wales', 'gun club'],
     },
-}
+};
 
 function getStyleContext(style: string): typeof STYLE_CONTEXT[string] {
     const key = style.toLowerCase().replace(/[\s-]+/g, '_')
     return STYLE_CONTEXT[key] || STYLE_CONTEXT.casual
 }
 
-function buildSystemPrompt(limit: number, style: string, layered: boolean): string {
+function buildSystemPrompt(limit: number, style: string, layered: boolean, preferences?: any): string {
     const ctx = getStyleContext(style)
     const slotRules = layered
         ? `- EVERY outfit MUST contain exactly these FOUR macroCategory slots, no exceptions:
@@ -456,6 +473,16 @@ ${slotRules}
 - Do not reuse the same item across outfits unless unavoidable.
 - NEVER pair formal outerwear (blazer, suit jacket, sport coat, overcoat, topcoat, trench, peacoat, tuxedo) with shorts or bermudas. If the only available bottom is shorts, drop the formal outerwear and return a non-layered 3-item look instead.
 - Each outfit needs a vivid 1-2 sentence description and 2 actionable styling tips.
+
+USER'S SPECIFIC PERSONAL STYLE SETTINGS:
+You MUST strictly satisfy the following style, color, and pattern settings chosen by the user in onboarding:
+${preferences && preferences.favoriteColors && preferences.favoriteColors.length > 0 ? `- FAVORITE COLORS: ${preferences.favoriteColors.join(', ')}. Actively prioritize and suggest outfits featuring these colors.` : ''}
+${preferences && preferences.avoidColors && preferences.avoidColors.length > 0 ? `- AVOID COLORS: ${preferences.avoidColors.join(', ')}. NEVER include any clothing item in these colors. This is a strict constraint.` : ''}
+${preferences && preferences.fitPreference ? `- FIT PREFERENCE: ${preferences.fitPreference}. Choose garments that match this silhouette.` : ''}
+${preferences && preferences.likedPatterns && preferences.likedPatterns.length > 0 ? `- LIKED PATTERNS: ${preferences.likedPatterns.join(', ')}. Prefer these patterns.` : ''}
+${preferences && preferences.dislikedPatterns && preferences.dislikedPatterns.length > 0 ? `- DISLIKED PATTERNS: ${preferences.dislikedPatterns.join(', ')}. NEVER include any item featuring these patterns.` : ''}
+${preferences && preferences.prefersSustainable ? `- SUSTAINABILITY: The user prefers sustainable materials when possible.` : ''}
+${preferences && preferences.styleGoals && preferences.styleGoals.length > 0 ? `- STYLE GOALS: ${preferences.styleGoals.join(', ')}.` : ''}
 
 ${STYLE_KNOWLEDGE}
 
@@ -481,7 +508,7 @@ Respond ONLY in pure JSON (no markdown, no code fences):
 {"outfits":[{"id":"outfit_1","style":"${style}","occasion":"...","description":"...","confidence":0.9,"items":[{"id":"EXACT_DB_ID","type":"top","color":"cream","name":"...","brand":"...","imageUrl":"...","macroCategory":"top","recommendation":"why this piece works for ${style}"}],"stylingTips":["tip1","tip2"]}]}`
 }
 
-function buildUserPrompt(items: any[], prompt: string, style: string, occasion: string, weather: any, limit: number): string {
+function buildUserPrompt(items: any[], prompt: string, style: string, occasion: string, weather: any, limit: number, preferences?: any): string {
     // Richer bullets: name + description + inferred styleTags give the model
     // real signal instead of only color + type.
     const itemSummary = items.map(i => {
@@ -496,6 +523,7 @@ function buildUserPrompt(items: any[], prompt: string, style: string, occasion: 
         const parts = [
             `[${i.id}]`,
             `${name}`,
+            i.type ? `type:${i.type}` : '',
             `color:${i.color || 'neutral'}`,
             `cat:${i.macroCategory || 'other'}`,
             i.brand ? `brand:${i.brand}` : '',
@@ -506,10 +534,23 @@ function buildUserPrompt(items: any[], prompt: string, style: string, occasion: 
         return `• ${parts}${formality}${desc ? `\n    desc: "${desc}"` : ''}`
     }).join('\n')
 
+    let prefText = ''
+    if (preferences) {
+        const lines = []
+        if (preferences.favoriteColors?.length) lines.push(`- Highly favored colors: ${preferences.favoriteColors.join(', ')}`)
+        if (preferences.avoidColors?.length) lines.push(`- strictly banned colors (Do not use): ${preferences.avoidColors.join(', ')}`)
+        if (preferences.fitPreference) lines.push(`- Fit preference: ${preferences.fitPreference}`)
+        if (preferences.likedPatterns?.length) lines.push(`- Patterns to favor: ${preferences.likedPatterns.join(', ')}`)
+        if (preferences.dislikedPatterns?.length) lines.push(`- Patterns to strictly avoid: ${preferences.dislikedPatterns.join(', ')}`)
+        if (lines.length > 0) {
+            prefText = `\n\nREMINDER OF USER PREFERENCES:\n${lines.join('\n')}`
+        }
+    }
+
     return `${prompt ? `User's specific request: "${prompt}"\n\n` : ''}Requested style: ${style || 'Casual'}
 ${occasion ? `Occasion: ${occasion}\n` : ''}${weather ? `Weather: ${weather.temp}°C, ${weather.condition}\n` : ''}
 Available wardrobe items (use ONLY these exact ids; every id is pre-filtered to be at least plausible for ${style}, but you MUST still reject any item whose name/description/styleTags clash with the style):
-${itemSummary}
+${itemSummary}${prefText}
 
 Create ${limit} distinct, on-aesthetic outfits. Each outfit must feel like it was hand-picked by a ${style} stylist, not a random color-matching algorithm.`
 }
@@ -518,7 +559,7 @@ Create ${limit} distinct, on-aesthetic outfits. Each outfit must feel like it wa
 // Runs AFTER the model responds. If too many outfits clash with the style,
 // we can trigger a retry. This catches the failure mode where the model
 // obeys color rules but picks, say, a graphic tee for Old Money.
-function validateOutfitAgainstStyle(outfit: any, style: string, itemMap: Map<string, any>, layered: boolean): { ok: boolean; reason?: string } {
+function validateOutfitAgainstStyle(outfit: any, style: string, itemMap: Map<string, any>, layered: boolean, preferences?: any): { ok: boolean; reason?: string } {
     const ctx = getStyleContext(style)
     const items = Array.isArray(outfit.items) ? outfit.items : []
     const minItems = layered ? 4 : 3
@@ -548,11 +589,43 @@ function validateOutfitAgainstStyle(outfit: any, style: string, itemMap: Map<str
         if (!hasBaseTop && !hasOuter) return { ok: false, reason: `missing top/outerwear slot (macros: ${Array.from(macros).join(',')})` }
     }
 
+    // Check user's avoided colors if specified
+    if (preferences && Array.isArray(preferences.avoidColors) && preferences.avoidColors.length > 0) {
+        const avoid = preferences.avoidColors.map((c: string) => c.toLowerCase().trim()).filter(Boolean)
+        for (const it of items) {
+            const src = itemMap.get(it.id) || {}
+            const itemColor = (it.color || src.color || '').toLowerCase()
+            const itemName = (it.name || src.name || '').toLowerCase()
+            const itemDesc = (it.description || src.description || '').toLowerCase()
+            for (const color of avoid) {
+                if (itemColor.includes(color) || itemName.includes(` ${color} `) || itemDesc.includes(` ${color} `)) {
+                    return { ok: false, reason: `item "${it.name || it.id}" matches user's avoided color "${color}"` }
+                }
+            }
+        }
+    }
+
+    // Check user's disliked patterns if specified
+    if (preferences && Array.isArray(preferences.dislikedPatterns) && preferences.dislikedPatterns.length > 0) {
+        const disliked = preferences.dislikedPatterns.map((p: string) => p.toLowerCase().trim()).filter(Boolean)
+        for (const it of items) {
+            const src = itemMap.get(it.id) || {}
+            const itemPattern = (it.pattern || src.pattern || '').toLowerCase()
+            const itemName = (it.name || src.name || '').toLowerCase()
+            const itemDesc = (it.description || src.description || '').toLowerCase()
+            for (const pattern of disliked) {
+                if (itemPattern.includes(pattern) || itemName.includes(pattern) || itemDesc.includes(pattern)) {
+                    return { ok: false, reason: `item "${it.name || it.id}" matches user's disliked pattern "${pattern}"` }
+                }
+            }
+        }
+    }
+
     // Check the style's explicit reject keywords on every item.
     const rejectKeywords = extractRejectKeywords(ctx.reject)
     for (const it of items) {
         const src = itemMap.get(it.id) || {}
-        const blob = `${it.name || ''} ${src.name || ''} ${src.description || ''} ${src.type || ''} ${it.type || ''}`.toLowerCase()
+        const blob = `${it.name || ''} ${src.name || ''} ${src.description || ''} ${src.type || ''} ${it.type || ''} ${it.pattern || ''} ${src.pattern || ''} ${it.material || ''} ${src.material || ''}`.toLowerCase()
         for (const kw of rejectKeywords) {
             if (blob.includes(kw)) {
                 return { ok: false, reason: `item "${it.name || it.id}" contains rejected keyword "${kw}" for style ${style}` }
@@ -574,6 +647,7 @@ function extractRejectKeywords(rejectRules: string[]): string[] {
             // Keep multi-word phrases like "graphic tees" intact; also seed the
             // first word as a fallback (e.g. "graphic").
             out.push(p)
+            if (p.includes('sneaker')) out.push('sneaker')
             const firstWord = p.split(/\s+/)[0]
             if (firstWord && firstWord !== p && firstWord.length > 3) out.push(firstWord)
         }
@@ -600,10 +674,10 @@ function validateOutfitCompatibility(outfit: any, itemMap: Map<string, any>): { 
     return { ok: true }
 }
 
-function filterValidOutfits(outfits: any[], style: string, itemMap: Map<string, any>, layered: boolean): any[] {
+function filterValidOutfits(outfits: any[], style: string, itemMap: Map<string, any>, layered: boolean, preferences?: any): any[] {
     const kept: any[] = []
     for (const o of outfits) {
-        const v = validateOutfitAgainstStyle(o, style, itemMap, layered)
+        const v = validateOutfitAgainstStyle(o, style, itemMap, layered, preferences)
         if (!v.ok) {
             console.log(`[validate] rejected outfit for ${style} (layered=${layered}): ${v.reason}`)
             continue
@@ -653,8 +727,23 @@ async function fillMissingSlotsEdge(
             else if (slot === 'bottom') q = q.or('category.eq.bottoms,garment_type.eq.lower_body')
             const { data, error } = await q
             if (error || !data || data.length === 0) continue
-            // Pick the first active row (style scoring is client-side only).
-            const row = data[0]
+
+            // Get style context and reject keywords
+            const ctx = getStyleContext(style)
+            const rejectKeywords = extractRejectKeywords(ctx.reject)
+
+            // Find the first item that doesn't violate style reject rules
+            const allowedItems = data.filter((row: any) => {
+                const nameStr = (row.name || '').toLowerCase()
+                const descStr = (row.description || '').toLowerCase()
+                const blob = `${nameStr} ${descStr} ${row.garment_type || ''} ${row.category || ''}`.toLowerCase()
+                for (const kw of rejectKeywords) {
+                    if (blob.includes(kw)) return false
+                }
+                return true
+            })
+
+            const row = allowedItems.length > 0 ? allowedItems[0] : data[0]
             if (row && row.image_url) {
                 picks.push({
                     id: `shop_${row.id}`,
@@ -669,6 +758,7 @@ async function fillMissingSlotsEdge(
                     style: style || 'Casual',
                     isShopItem: true,
                     price: row.price || undefined,
+                    description: row.description || '',
                     recommendation: `Suggested from shop to complete your ${slot}`,
                 })
             }
@@ -679,15 +769,50 @@ async function fillMissingSlotsEdge(
     return picks
 }
 
-async function localFallback(items: any[], style: string, occasion: string, limit: number, layered: boolean, supabaseClient?: any): Promise<any[]> {
+async function localFallback(items: any[], style: string, occasion: string, limit: number, layered: boolean, supabaseClient?: any, preferences?: any): Promise<any[]> {
+    let filteredItems = [...items]
+    if (preferences) {
+        if (Array.isArray(preferences.avoidColors) && preferences.avoidColors.length > 0) {
+            const avoid = preferences.avoidColors.map((c: string) => c.toLowerCase().trim()).filter(Boolean)
+            filteredItems = filteredItems.filter(item => {
+                const color = (item.color || item.primary_color || '').toLowerCase()
+                const name = (item.name || '').toLowerCase()
+                const desc = (item.description || '').toLowerCase()
+                return !avoid.some(c => color.includes(c) || name.includes(` ${c} `) || desc.includes(` ${c} `))
+            })
+        }
+    }
+
+    const sortByFavorite = (pool: any[]) => {
+        if (!preferences || !Array.isArray(preferences.favoriteColors) || preferences.favoriteColors.length === 0) {
+            return pool
+        }
+        const favorites = preferences.favoriteColors.map((c: string) => c.toLowerCase().trim()).filter(Boolean)
+        return [...pool].sort((a, b) => {
+            const colorA = (a.color || a.primary_color || '').toLowerCase()
+            const colorB = (b.color || b.primary_color || '').toLowerCase()
+            const matchA = favorites.some(c => colorA.includes(c)) ? 1 : 0
+            const matchB = favorites.some(c => colorB.includes(c)) ? 1 : 0
+            return matchB - matchA // Favorite colors first
+        })
+    }
+
     // Shuffle each category to ensure variety when we have limited items
-    const baseTops = shuffleArray(items.filter(i => i.macroCategory === 'top'))
-    const outerwear = shuffleArray(items.filter(i => i.macroCategory === 'outerwear'))
-    const legacyTops = shuffleArray(items.filter(i => ['top','outerwear'].includes(i.macroCategory)))
-    const bottoms = shuffleArray(items.filter(i => i.macroCategory === 'bottom'))
+    let baseTops = shuffleArray(filteredItems.filter(i => i.macroCategory === 'top'))
+    let outerwear = shuffleArray(filteredItems.filter(i => i.macroCategory === 'outerwear'))
+    let legacyTops = shuffleArray(filteredItems.filter(i => ['top','outerwear'].includes(i.macroCategory)))
+    let bottoms = shuffleArray(filteredItems.filter(i => i.macroCategory === 'bottom'))
     const nonShortsBottoms = shuffleArray(bottoms.filter(b => !isShortsItem(b)))
     const casualOuterwear = shuffleArray(outerwear.filter(o => !isFormalLayerItem(o)))
-    const shoes = shuffleArray(items.filter(i => i.macroCategory === 'shoes'))
+    let shoes = shuffleArray(filteredItems.filter(i => i.macroCategory === 'shoes'))
+
+    if (preferences) {
+        baseTops = sortByFavorite(baseTops)
+        outerwear = sortByFavorite(outerwear)
+        legacyTops = sortByFavorite(legacyTops)
+        bottoms = sortByFavorite(bottoms)
+        shoes = sortByFavorite(shoes)
+    }
 
     // ── Fill missing slots from shop_catalog ────────────────────────────
     // If the wardrobe has no shoes (or no outerwear when layered), query
@@ -981,6 +1106,42 @@ async function callGemini(key: string, sys: string, usr: string, retries = 0): P
     return null
 }
 
+// ── Anchor-item enforcement ───────────────────────────────────────────────
+// After the AI (or local fallback) selects outfit items, lock the anchor item
+// into its matching slot in every outfit. If no slot matches the anchor's
+// macroCategory, the anchor is prepended to the items array.
+function enforceAnchorInOutfits(outfits: any[], anchorDbItem: any): any[] {
+    const anchorMacro = macroCategory(anchorDbItem.category || '', anchorDbItem.type || '')
+    const anchorOutfitItem = {
+        id: anchorDbItem.id,
+        type: anchorDbItem.type || anchorDbItem.category || 'clothing',
+        macroCategory: anchorMacro,
+        color: Array.isArray(anchorDbItem.color)
+            ? anchorDbItem.color.join(', ')
+            : (anchorDbItem.primary_color || anchorDbItem.color || 'neutral'),
+        name: anchorDbItem.name || anchorDbItem.type || anchorDbItem.category || 'Item',
+        imageUrl: anchorDbItem.image_url || anchorDbItem.imageUrl || '',
+        image: anchorDbItem.image_url || anchorDbItem.imageUrl || '',
+        brand: anchorDbItem.brand || '',
+        recommendation: 'Anchor item — user selected',
+        isShopItem: false,
+    }
+
+    return outfits.map((outfit: any) => {
+        const items: any[] = Array.isArray(outfit.items) ? [...outfit.items] : []
+        const slotIdx = items.findIndex(
+            (i: any) => macroCategory(i.category || i.macroCategory || '', i.type || '') === anchorMacro
+                || (i.macroCategory || '').toLowerCase() === anchorMacro
+        )
+        if (slotIdx >= 0) {
+            items[slotIdx] = anchorOutfitItem
+        } else {
+            items.unshift(anchorOutfitItem)
+        }
+        return { ...outfit, items }
+    })
+}
+
 serve(async (req) => {
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
@@ -1002,6 +1163,8 @@ serve(async (req) => {
         selectedItemIds = [],
         wardrobeItems: legacyWardrobe = [],
         useProvidedWardrobeOnly = false,
+        anchorItemId,
+        preferences,
     } = body
 
     try {
@@ -1075,6 +1238,19 @@ serve(async (req) => {
             }
         })
 
+        // Filter out avoided colors if requested
+        if (preferences && Array.isArray(preferences.avoidColors) && preferences.avoidColors.length > 0) {
+            const avoid = preferences.avoidColors.map((c: string) => c.toLowerCase().trim()).filter(Boolean)
+            const beforeAvoid = wardrobeItems.length
+            wardrobeItems = wardrobeItems.filter((item: any) => {
+                const color = (item.color || item.primary_color || '').toLowerCase()
+                const name = (item.name || '').toLowerCase()
+                const desc = (item.description || '').toLowerCase()
+                return !avoid.some(c => color.includes(c) || name.includes(` ${c} `) || desc.includes(` ${c} `))
+            })
+            console.log(`[preferences] Filtered out avoided colors: ${beforeAvoid} -> ${wardrobeItems.length} items`)
+        }
+
         // ── 3c. Fill missing macro-category slots from shop_catalog ────────
         // If the user's wardrobe has no shoes (or no outerwear/top/bottom),
         // pull matching items from the shop catalog so the AI prompt includes
@@ -1140,15 +1316,23 @@ serve(async (req) => {
         // ── 5b. No AI key → local fallback ────────────────────────────────
         if (!nvidiaKey && !geminiKey) {
             const svcClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-            const outfits = await localFallback(wardrobeItems, stylePreferences, occasion, limit, layered, svcClient)
+            let outfits = await localFallback(wardrobeItems, stylePreferences, occasion, limit, layered, svcClient, preferences)
+            // Apply anchor enforcement if anchorItemId was provided
+            if (anchorItemId) {
+                const anchorDbItem = wardrobeItems.find((i: any) => String(i.id) === String(anchorItemId))
+                if (anchorDbItem) {
+                    console.log(`[anchor] Enforcing anchor item ${anchorItemId} in local fallback outfits`)
+                    outfits = enforceAnchorInOutfits(outfits, anchorDbItem)
+                }
+            }
             return new Response(JSON.stringify({ success: true, outfits, source: 'local', layered }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             })
         }
 
         // ── 6. Build prompts ───────────────────────────────────────────────
-        const sys = buildSystemPrompt(limit, stylePreferences, layered)
-        const usr = buildUserPrompt(wardrobeItems, prompt, stylePreferences, occasion, weather, limit)
+        const sys = buildSystemPrompt(limit, stylePreferences, layered, preferences)
+        const usr = buildUserPrompt(wardrobeItems, prompt, stylePreferences, occasion, weather, limit, preferences)
 
         // ── 7. Call AI with validator-retry ─────────────────────────────────
         // After generation, run every outfit through validateOutfitAgainstStyle;
@@ -1160,7 +1344,7 @@ serve(async (req) => {
         if (!aiOutfits && geminiKey) aiOutfits = await callGemini(geminiKey, sys, usr)
 
         if (aiOutfits && aiOutfits.length > 0) {
-            const valid = filterValidOutfits(aiOutfits, styleKey, itemMap, layered)
+            const valid = filterValidOutfits(aiOutfits, styleKey, itemMap, layered, preferences)
             const passRate = valid.length / aiOutfits.length
             console.log(`[validate] ${valid.length}/${aiOutfits.length} outfits passed style check for ${styleKey} (layered=${layered})`)
 
@@ -1171,12 +1355,12 @@ serve(async (req) => {
                 const layeredReqs = layered
                     ? `  1. EVERY outfit MUST be a FOUR-slot layered look with ALL of these macroCategories present: "top" (base layer — t-shirt, shirt, polo, blouse), "outerwear" (main top — sweater, blazer, cardigan, hoodie, jacket), "bottom" (pants/trousers/jeans/shorts/skirt), "shoes". A 3-item outfit is INVALID.\n  2. The base top must sit UNDER the outerwear and color-coordinate with it. Think: white oxford shirt under a navy blazer, or cream tee under a camel cardigan.\n  3. Do NOT return two base tops or two outerwear pieces — exactly one of each.`
                     : `  1. EVERY outfit MUST include an item with macroCategory=shoes. No outfit without shoes is acceptable.\n  2. EVERY outfit MUST include a top (or outerwear) AND a bottom.`
-                const correctionUsr = `${usr}\n\nIMPORTANT CORRECTION: Your previous attempt failed because (a) some items violated the ${styleKey} aesthetic, OR (b) outfits were missing required slots. REQUIREMENTS:\n${layeredReqs}\n  ${layered ? '4' : '3'}. Reject any item whose name/description contains: hoodie (unless casual), graphic tee, logo tee, cargo, ripped, sweatpants, neon, sequin, rhinestone, chunky sneaker, basketball, skate sneaker (for old_money / business_casual / minimalist / semi_classic).\n  ${layered ? '5' : '4'}. For ${styleKey} shoes, prefer: loafers, penny loafers, bit loafers, dress shoes, boat shoes, derbies, leather shoes, minimal leather sneakers. Avoid chunky, basketball, or skate sneakers.\nTry again and return ${limit} outfits that each have ${layered ? 'outerwear+base-top+bottom+shoes' : 'top+bottom+shoes'}.`
+                const correctionUsr = `${usr}\n\nIMPORTANT CORRECTION: Your previous attempt failed because (a) some items violated the ${styleKey} aesthetic, OR (b) outfits were missing required slots. REQUIREMENTS:\n${layeredReqs}\n  ${layered ? '4' : '3'}. Reject any item whose name/description contains: hoodie (unless casual), graphic tee, logo tee, cargo, ripped, sweatpants, neon, sequin, rhinestone, chunky sneaker, basketball, skate sneaker, casual t-shirt (for old_money / business_casual / minimalist / semi_classic).\n  ${layered ? '5' : '4'}. For ${styleKey} shoes, prefer: loafers, penny loafers, bit loafers, dress shoes, boat shoes, derbies, leather shoes. Avoid ALL sneakers if style is old_money.\nTry again and return ${limit} outfits that each have ${layered ? 'outerwear+base-top+bottom+shoes' : 'top+bottom+shoes'}.`
                 let retry: any[] | null = null
                 if (nvidiaKey) retry = await callNvidia(nvidiaKey, nvidiaModel, sys, correctionUsr)
                 if (!retry && geminiKey) retry = await callGemini(geminiKey, sys, correctionUsr)
                 if (retry && retry.length > 0) {
-                    const retryValid = filterValidOutfits(retry, styleKey, itemMap, layered)
+                    const retryValid = filterValidOutfits(retry, styleKey, itemMap, layered, preferences)
                     aiOutfits = retryValid.length > valid.length ? retryValid : (valid.length > 0 ? valid : retry)
                 } else if (valid.length > 0) {
                     aiOutfits = valid
@@ -1187,7 +1371,20 @@ serve(async (req) => {
         }
 
         if (!aiOutfits || aiOutfits.length === 0) {
-            return new Response(JSON.stringify({ success: false, outfits: [], error: 'AI failed to generate valid outfits' }), {
+            // AI failed or all outfits failed validation — fall through to local generator
+            // instead of returning a hard error, so the client always gets outfits.
+            console.log('[generate-outfits] AI returned no valid outfits, using localFallback')
+            const svcClient2 = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+            let fallbackOutfits = await localFallback(wardrobeItems, stylePreferences, occasion, limit, layered, svcClient2, preferences)
+            // Apply anchor enforcement if anchorItemId was provided
+            if (anchorItemId) {
+                const anchorDbItem = wardrobeItems.find((i: any) => String(i.id) === String(anchorItemId))
+                if (anchorDbItem) {
+                    console.log(`[anchor] Enforcing anchor item ${anchorItemId} in AI-fallback outfits`)
+                    fallbackOutfits = enforceAnchorInOutfits(fallbackOutfits, anchorDbItem)
+                }
+            }
+            return new Response(JSON.stringify({ success: true, outfits: fallbackOutfits, source: 'local', layered }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             })
         }
@@ -1250,8 +1447,20 @@ serve(async (req) => {
                         }
                     }
                     if (shopByMacro[macroNormalized] && shopByMacro[macroNormalized].length > 0) {
-                        // Pick a random shop catalog item for this macro
-                        const shopItem = shopByMacro[macroNormalized][Math.floor(Math.random() * shopByMacro[macroNormalized].length)]
+                        const ctx = getStyleContext(stylePreferences)
+                        const rejectKeywords = extractRejectKeywords(ctx.reject)
+                        const allowedShopItems = shopByMacro[macroNormalized].filter(shopItem => {
+                            const nameStr = (shopItem.name || '').toLowerCase()
+                            const descStr = (shopItem.description || '').toLowerCase()
+                            const blob = `${nameStr} ${descStr} ${shopItem.garment_type || ''} ${shopItem.category || ''}`.toLowerCase()
+                            for (const kw of rejectKeywords) {
+                                if (blob.includes(kw)) return false
+                            }
+                            return true
+                        })
+
+                        const candidates = allowedShopItems.length > 0 ? allowedShopItems : shopByMacro[macroNormalized]
+                        const shopItem = candidates[Math.floor(Math.random() * candidates.length)]
                         console.log(`[enrich] Replacing placeholder ${item.id} (${macro}) with shop item ${shopItem.id}`)
                         finalItem = {
                             ...item,
@@ -1281,7 +1490,22 @@ serve(async (req) => {
             }),
         }))
 
-        return new Response(JSON.stringify({ success: true, outfits: enriched, source: 'ai', layered }), {
+        // ── 9. Apply anchor-item enforcement ──────────────────────────────
+        // If anchorItemId was provided, lock that item into its slot in every outfit.
+        // This runs after enrichment so the anchor item's imageUrl is already resolved.
+        let finalOutfits = enriched
+        if (anchorItemId) {
+            // Look up the anchor item from the wardrobe pool (pre-enrichment data)
+            const anchorDbItem = wardrobeItems.find((i: any) => String(i.id) === String(anchorItemId))
+            if (anchorDbItem) {
+                console.log(`[anchor] Enforcing anchor item ${anchorItemId} (${anchorDbItem.type || anchorDbItem.category}) in ${finalOutfits.length} AI outfits`)
+                finalOutfits = enforceAnchorInOutfits(finalOutfits, anchorDbItem)
+            } else {
+                console.warn(`[anchor] anchorItemId ${anchorItemId} not found in wardrobeItems pool — skipping enforcement`)
+            }
+        }
+
+        return new Response(JSON.stringify({ success: true, outfits: finalOutfits, source: 'ai', layered }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
 

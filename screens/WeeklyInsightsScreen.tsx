@@ -1,5 +1,5 @@
 /**
- * WeeklyInsightsScreen — "Your week in style"
+ * WeeklyInsightsScreen — weekly style analytics
  *
  * Shows behavioral analytics from the retention service:
  *   - Closet utilization %
@@ -159,7 +159,7 @@ const WeeklyInsightsScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
                         </View>
                         {mostWorn.map((item, index) => (
                             <View key={item.id} style={styles.rankRow}>
-                                <Text style={styles.rankNumber}>#{index + 1}</Text>
+                                <Text style={styles.rankNumber}>{t('weeklyInsights.rankNumber', { rank: index + 1 })}</Text>
                                 {item.imageUrl ? (
                                     <CachedImage
                                         uri={item.imageUrl}

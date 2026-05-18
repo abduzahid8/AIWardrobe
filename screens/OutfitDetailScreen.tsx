@@ -409,12 +409,8 @@ const OutfitDetailScreen = () => {
                 <TouchableOpacity
                     style={styles.avatarButton}
                     onPress={() => {
-                        if (isAdmin) {
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                            (navigation as any).navigate('AITryOn');
-                        } else {
-                            Alert.alert(t('common.comingSoon'));
-                        }
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        (navigation as any).navigate('AITryOn');
                     }}
                 >
                     <Text style={styles.avatarText}>{t('common.avatar')}</Text>

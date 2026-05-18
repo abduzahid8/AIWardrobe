@@ -162,8 +162,8 @@ const PromoCodeScreen = () => {
                                 onPress={handleOfferCode}
                                 activeOpacity={0.8}
                                 disabled={isRedeemingOffer}
-                                accessibilityLabel="Redeem offer code"
-                                accessibilityHint="Opens Apple's offer code redemption sheet"
+                                accessibilityLabel={t('promo.redeemOfferCodeA11y')}
+                                accessibilityHint={t('promo.offerCodeHintA11y')}
                             >
                                 {isRedeemingOffer ? (
                                     <ActivityIndicator color="#0A0A0A" />
@@ -183,7 +183,7 @@ const PromoCodeScreen = () => {
                             <Animated.View entering={FadeInUp.delay(150).springify()}>
                                 <View style={styles.devBadge}>
                                     <Ionicons name="code-slash" size={12} color={COLORS.textSecondary} />
-                                    <Text style={styles.devBadgeText}>DEV ONLY — not visible in production</Text>
+                                    <Text style={styles.devBadgeText}>{t('promo.devOnly')}</Text>
                                 </View>
                                 <View style={styles.inputContainer}>
                                     <TextInput
@@ -256,8 +256,8 @@ const PromoCodeScreen = () => {
                                 style={styles.freeButton}
                                 onPress={handleContinueFree}
                                 activeOpacity={0.8}
-                                accessibilityLabel="Continue with free plan"
-                                accessibilityHint="Skips subscription and opens the app with the free tier"
+                                accessibilityLabel={t('promo.continueFreeA11y')}
+                                accessibilityHint={t('promo.continueFreeHintA11y')}
                             >
                                 <Ionicons name="checkmark-circle-outline" size={18} color={COLORS.freeGreen} />
                                 <Text style={styles.freeButtonText}>

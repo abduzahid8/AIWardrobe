@@ -7,9 +7,34 @@ import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/types';
 import { useTranslation } from 'react-i18next';
 
+import { iapService } from '../src/services/iapService';
+import * as Haptics from 'expo-haptics';
+
 const TrialExpiredScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const [isRestoring, setIsRestoring] = React.useState(false);
+
+  const handleRestore = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setIsRestoring(true);
+    try {
+      const result = await iapService.restorePurchases();
+      if (result.success) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        // The RootNavigator will automatically react to the state change
+        // and remove the TrialExpired screen.
+      } else {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        alert(result.error || 'No previous purchases found.');
+      }
+    } catch (error) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      alert('Failed to restore purchases. Please try again.');
+    } finally {
+      setIsRestoring(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -21,6 +46,16 @@ const TrialExpiredScreen: React.FC = () => {
         <Text style={styles.body}>{t('trialExpired.body')}</Text>
         <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.navigate('Paywall')}>
           <Text style={styles.primaryButtonText}>{t('trialExpired.upgradeToPro')}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.secondaryButton} 
+          onPress={handleRestore}
+          disabled={isRestoring}
+        >
+          <Text style={styles.secondaryButtonText}>
+            {isRestoring ? 'Restoring...' : 'Already a pro? Restore'}
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

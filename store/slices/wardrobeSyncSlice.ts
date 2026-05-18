@@ -5,12 +5,13 @@
 import type { StateCreator } from 'zustand';
 import { supabase } from '../../lib/supabase';
 import { wardrobeApi, wearLogApi, type ApiClothingItem } from '../../src/lib/api';
-import { fetchItemsFromServer, fetchWearLogsFromServer, processPendingActions } from '../wardrobeSyncService';
+import { fetchItemsFromServer, processPendingActions } from '../wardrobeSyncService';
 import type { PendingAction } from '../wardrobeSyncService';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import type { ClothingItem, ClothingCategory, WearLog, Season, Occasion } from '../../src/types/domain';
 import type { WardrobeState } from '../wardrobeStore';
 import { calculateStreak, mapApiItem } from './helpers';
+import useAuthStore from '../auth';
 
 export interface SyncSlice {
     isSyncing: boolean;
@@ -71,29 +72,40 @@ export const createSyncSlice: StateCreator<WardrobeState, [], [], SyncSlice> = (
     rehydrateFromCloud: async () => {
         set({ isLoading: true });
         try {
-            const { pendingActions } = get();
+            const { pendingActions, wearLogs: localWearLogs } = get();
             if (pendingActions.length > 0) {
                 await get().syncToServer();
             }
 
+            // Skip the wear-log fetch when the local store already has persisted
+            // data — up to 1000 logs are saved to AsyncStorage by the persist
+            // middleware, so a full server round-trip on every cold start is
+            // unnecessary (fixes Defect 1.7).
+            const hasLocalWearLogs = localWearLogs.length > 0;
+
             const [apiItems, apiLogs] = await Promise.all([
                 wardrobeApi.list(),
-                wearLogApi.list(),
+                hasLocalWearLogs ? Promise.resolve(null) : wearLogApi.list(),
             ]);
 
             const items: ClothingItem[] = apiItems.map(mapApiItem);
-            const wearLogs: WearLog[] = apiLogs.map((l) => ({
-                id: l.id,
-                userId: l.userId,
-                itemIds: l.itemIds,
-                outfitId: l.outfitId ?? undefined,
-                date: l.date,
-                occasion: l.occasion ?? undefined,
-                weatherTemp: l.weatherTemp ?? undefined,
-                weatherCondition: l.weatherCondition ?? undefined,
-                notes: l.notes ?? undefined,
-                createdAt: l.createdAt,
-            }));
+
+            // Use server wear logs only when we had none locally; otherwise
+            // keep the persisted logs to avoid the extra network round-trip.
+            const wearLogs: WearLog[] = hasLocalWearLogs
+                ? localWearLogs
+                : (apiLogs ?? []).map((l) => ({
+                    id: l.id,
+                    userId: l.userId,
+                    itemIds: l.itemIds,
+                    outfitId: l.outfitId ?? undefined,
+                    date: l.date,
+                    occasion: l.occasion ?? undefined,
+                    weatherTemp: l.weatherTemp ?? undefined,
+                    weatherCondition: l.weatherCondition ?? undefined,
+                    notes: l.notes ?? undefined,
+                    createdAt: l.createdAt,
+                }));
 
             set({
                 items,
@@ -104,12 +116,14 @@ export const createSyncSlice: StateCreator<WardrobeState, [], [], SyncSlice> = (
             });
         } catch {
             try {
+                // Single fallback query — items only. Wear logs are less critical
+                // for the fallback path, so we keep the current in-memory state
+                // rather than issuing a second Supabase round-trip (Defect 4.4 fix).
                 const serverItems = await fetchItemsFromServer();
-                const serverLogs = await fetchWearLogsFromServer();
                 if (serverItems) {
                     set({
                         items: serverItems,
-                        wearLogs: serverLogs || get().wearLogs,
+                        wearLogs: get().wearLogs,
                         isLoading: false,
                         lastSyncedAt: new Date().toISOString(),
                     });
@@ -124,10 +138,15 @@ export const createSyncSlice: StateCreator<WardrobeState, [], [], SyncSlice> = (
     },
 
     subscribeToRealtime: () => {
-        if (_realtimeChannel) return;
+        if (_realtimeChannel) {
+            const status = _realtimeChannel.state;
+            if (status !== 'closed' && status !== 'errored') return;
+            // Channel is dead — clean it up and re-subscribe
+            supabase.removeChannel(_realtimeChannel);
+            _realtimeChannel = null;
+        }
 
-        const useAuthStore = require('../auth').default;
-        const userId = useAuthStore.getState()?.user?.id;
+        const userId = useAuthStore.getState().user?.id;
 
         const channel: RealtimeChannel = supabase
             .channel('wardrobe-realtime')

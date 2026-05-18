@@ -3,6 +3,8 @@ import useUploadQueueStore from '../store/uploadQueueStore';
 import { useVideoAnalysis } from '../features/wardrobe/useVideoAnalysis';
 import logger from '../utils/logger';
 
+const MAX_RETRIES = 3;
+
 /**
  * UploadQueueProcessor - Background service to re-process failed/pending uploads.
  * Subscribes to the upload queue and attempts to process entries when online.
@@ -39,7 +41,7 @@ class UploadQueueProcessor {
         const state = await NetInfo.fetch();
         if (!state.isConnected) return;
 
-        const { pendingUploads, updateStatus, removeUpload } = useUploadQueueStore.getState();
+        const { pendingUploads, updateStatus, incrementRetry, removeUpload } = useUploadQueueStore.getState();
         const toProcess = pendingUploads.filter(u => u.status === 'pending' || u.status === 'failed');
 
         if (toProcess.length === 0) return;
@@ -73,7 +75,21 @@ class UploadQueueProcessor {
                 logger.info(`[QueueProcessor] Successfully processed ${upload.id}`);
             } catch (error: any) {
                 logger.error(`[QueueProcessor] Failed to process ${upload.id}:`, error.message);
-                updateStatus(upload.id, 'failed', error.message);
+
+                // Increment retry count first, then decide the next status.
+                // Re-read the latest state after incrementing to get the updated retryCount.
+                incrementRetry(upload.id);
+                const newRetryCount = (upload.retryCount ?? 0) + 1;
+
+                if (newRetryCount >= MAX_RETRIES) {
+                    // Retries exhausted — permanently mark as failed so the user can see it.
+                    updateStatus(upload.id, 'failed', error.message);
+                    logger.warn(`[QueueProcessor] Item ${upload.id} exhausted ${MAX_RETRIES} retries, marked failed.`);
+                } else {
+                    // Transient error — reset to pending so the queue can retry on next run.
+                    updateStatus(upload.id, 'pending', error.message);
+                    logger.info(`[QueueProcessor] Item ${upload.id} reset to pending (attempt ${newRetryCount}/${MAX_RETRIES}).`);
+                }
             }
         }
 

@@ -2,7 +2,7 @@
  * ProfileScreen — iOS liquid glass rebuild
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -45,7 +45,7 @@ import { supabase } from '../lib/supabase';
 import useAuthStore from '../store/auth';
 import useWardrobeStore from '../store/wardrobeStore';
 import useTryOnLooksStore from '../store/tryOnLooksStore';
-import { useShopCatalog } from '../hooks/useShopCatalog';
+import useShopCatalogStore from '../store/shopCatalogStore';
 import { CachedImage } from '../components/ui/CachedImage';
 import { useTheme } from '../src/theme/ThemeContext';
 import { useSubscriptionGate } from '../src/hooks/useSubscriptionGate';
@@ -56,6 +56,7 @@ import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useTranslation } from 'react-i18next';
 import { iapService } from '../src/services/iapService';
 import { analyticsService } from '../src/services/analyticsService';
+import { perfMark, perfMeasure, perfAction, perfScreenReady } from '../src/utils/perf';
 
 const { width, height } = Dimensions.get('window');
 const HERO_HEIGHT = Math.min(height * 0.43, 390);
@@ -136,12 +137,25 @@ type DTokens = ReturnType<typeof useDesignTokens>;
 
 const ProfileScreen = () => {
   const D = useDesignTokens();
-  const styles = useMemo(() => createStyles(D), [D]);
+  // D is a new object reference every render; depend only on the primitive
+  // that actually changes the styles (isDark) to avoid recreating 150+ rules.
+  const styles = useMemo(() => createStyles(D), [D.isDark]); // eslint-disable-line react-hooks/exhaustive-deps
   const navigation = useAppNavigation();
   const insets = useSafeAreaInsets();
   const { requireFeature: requireSubFeature } = useSubscriptionGate();
   const { isAdmin: isAdminUser } = useAdminGuard();
   const { t } = useTranslation();
+
+  // ── Performance timing ────────────────────────────────────────────────────
+  React.useEffect(() => {
+    perfMark('ProfileScreen:mount');
+    // Profile screen is ready immediately (data comes from store)
+    perfMeasure('ProfileScreen:mount');
+    perfScreenReady('Profile');
+    return () => {
+      console.log('[PERF] 👤 ProfileScreen unmounted');
+    };
+  }, []);
 
   const { user, logout, deleteAccount, fetchUser } = useAuthStore();
   const wardrobeItems = useWardrobeStore((state) => state.items);
@@ -151,7 +165,9 @@ const ProfileScreen = () => {
   const removeTryOnLook = useTryOnLooksStore((state) => state.removeLook);
 
   const { effectiveTier, isTrialActive } = useSubscriptionStore();
-  const { items: liveShopCatalog } = useShopCatalog();
+  // Read catalog from the shared store populated by HomeScreen — no new
+  // Supabase query is fired here (fixes Defect 1.5).
+  const liveShopCatalog = useShopCatalogStore((state) => state.items);
   const { currentLanguage } = useLanguageStore();
 
   const [activeTab, setActiveTab] = useState<'looks' | 'trips'>('looks');
@@ -164,6 +180,14 @@ const ProfileScreen = () => {
   const [cloudOutfits, setCloudOutfits] = useState<SavedOutfit[]>([]);
   const [loading, setLoading] = useState(false);
   const [previewLook, setPreviewLook] = useState<SavedOutfit | null>(null);
+
+  // Skip re-fetching if the user just switched tabs momentarily (fixes Defect 4.5).
+  const OUTFITS_REFRESH_TTL_MS = 60_000; // 60 seconds
+  // Initialize to Date.now() so the very first visit never fires a fetch —
+  // localOutfits (derived from storeOutfits) already shows store data, and
+  // the store fast-path in fetchOutfits handles the empty-store case.
+  // After 60s the TTL expires and the next focus triggers a fresh cloud fetch.
+  const lastOutfitFetchRef = useRef<number>(Date.now());
 
   const scrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler((event) => {
@@ -203,13 +227,14 @@ const ProfileScreen = () => {
 
   const localOutfits = useMemo<SavedOutfit[]>(() => {
     const shopMap = new Map(liveShopCatalog.map((item) => [item.id, item.imageUrl as ImageSrc]));
+    const wardrobeMap = new Map(wardrobeItems.map((item) => [item.id, item.imageUrl]));
     const isValidUri = (value?: string) =>
       typeof value === 'string' &&
       (value.startsWith('http') || value.startsWith('file://') || value.startsWith('data:'));
 
     const resolveImageSrc = (id: string): ImageSrc | undefined => {
-      const wardrobeItem = wardrobeItems.find((item) => item.id === id);
-      if (wardrobeItem?.imageUrl) return wardrobeItem.imageUrl;
+      const wardrobeUrl = wardrobeMap.get(id); // O(1) instead of O(n)
+      if (wardrobeUrl) return wardrobeUrl;
 
       const shopItem = shopMap.get(id);
       if (shopItem !== undefined) return shopItem;
@@ -243,6 +268,16 @@ const ProfileScreen = () => {
   const fetchOutfits = useCallback(async () => {
     if (!user?.id) return;
 
+    // Fast path: if the wardrobe store already has saved outfits (populated by
+    // rehydrateFromCloud on app start), skip the Supabase round-trip entirely.
+    // localOutfits (derived from storeOutfits) will already be shown via the
+    // useMemo below. The cloud fetch is only needed when the store is empty.
+    const savedInStore = useWardrobeStore.getState().outfits.filter((o) => o.saved);
+    if (savedInStore.length > 0) {
+      return;
+    }
+
+    const donePerf = perfAction('Profile:fetchOutfits');
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -251,7 +286,7 @@ const ProfileScreen = () => {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) return;
+      if (error) { donePerf(); return; }
 
       if (data) {
         setCloudOutfits(
@@ -272,8 +307,10 @@ const ProfileScreen = () => {
             };
           })
         );
+        donePerf();
       }
     } catch {
+      donePerf();
       // Keep local data visible if the cloud fetch fails.
     } finally {
       setLoading(false);
@@ -282,7 +319,11 @@ const ProfileScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
-      void fetchOutfits();
+      const now = Date.now();
+      if (now - lastOutfitFetchRef.current > OUTFITS_REFRESH_TTL_MS) {
+        lastOutfitFetchRef.current = now;
+        void fetchOutfits();
+      }
     }, [fetchOutfits])
   );
 
@@ -431,6 +472,37 @@ const ProfileScreen = () => {
     }
   };
 
+  const handleForceExpireTrial = async () => {
+    try {
+      // Set trial start to 8 days ago
+      const eightDaysAgo = new Date();
+      eightDaysAgo.setDate(eightDaysAgo.getDate() - 8);
+      const dateStr = eightDaysAgo.toISOString();
+      
+      await AsyncStorage.setItem('trial_started_at_v1', dateStr);
+      
+      // Update local store state
+      useSubscriptionStore.setState({ trialStartedAt: dateStr });
+      await useSubscriptionStore.getState().initializeSubscription();
+      
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Debug', 'Trial forced to expired state. Restart the app or navigate to see the gate.');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to force expire trial');
+    }
+  };
+
+  const handleResetTrial = async () => {
+    try {
+      await AsyncStorage.removeItem('trial_started_at_v1');
+      await useSubscriptionStore.getState().initializeSubscription();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Debug', 'Trial reset. It will re-initialize on next auth success.');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to reset trial');
+    }
+  };
+
   const handleLogout = () => {
     Alert.alert(t('profile.signOut'), t('profile.areYouSure'), [
       { text: t('common.cancel'), style: 'cancel' },
@@ -438,8 +510,10 @@ const ProfileScreen = () => {
         text: t('profile.signOut'),
         style: 'destructive',
         onPress: async () => {
+          const donePerf = perfAction('Profile:logout');
           await AsyncStorage.removeItem('userToken');
           logout();
+          donePerf();
         },
       },
     ]);
@@ -1010,7 +1084,7 @@ const ProfileScreen = () => {
                 <View style={styles.upgradeLeft}>
                   <View style={styles.upgradeBadge}>
                     <Ionicons name="diamond" size={11} color={D.accentEnd} />
-                    <Text style={styles.upgradeBadgeText}>PRO</Text>
+                    <Text style={styles.upgradeBadgeText}>{t('profile.proBadge')}</Text>
                   </View>
                   <Text style={styles.upgradeTitle}>{t('profile.goPro')}</Text>
                   <Text style={styles.upgradeSubtitle}>{t('profile.goProSubtitle')}</Text>
@@ -1018,7 +1092,7 @@ const ProfileScreen = () => {
 
                 <View style={styles.upgradeRight}>
                   <View style={styles.upgradePriceWrap}>
-                    <Text style={styles.upgradePriceFrom}>from</Text>
+                    <Text style={styles.upgradePriceFrom}>{t('profile.priceFrom')}</Text>
                     <Text style={styles.upgradePrice}>$9.99</Text>
                     <Text style={styles.upgradePricePer}>/mo</Text>
                   </View>
@@ -1192,6 +1266,25 @@ const ProfileScreen = () => {
             />
           </GlassPanel>
         </Animated.View>
+
+        {__DEV__ && (
+          <Animated.View entering={FadeInDown.delay(190).duration(350)} style={styles.sectionBlock}>
+            <Text style={styles.groupHeading}>{t('profile.developerTools')}</Text>
+            <GlassPanel radius={28}>
+              <MenuRow
+                icon="time-outline"
+                label="Force Expire Trial (8 days ago)"
+                onPress={handleForceExpireTrial}
+              />
+              <View style={styles.menuSeparator} />
+              <MenuRow
+                icon="refresh-outline"
+                label="Reset Trial (Clear Storage)"
+                onPress={handleResetTrial}
+              />
+            </GlassPanel>
+          </Animated.View>
+        )}
 
         <Animated.View entering={FadeInDown.delay(205).duration(350)} style={styles.sectionBlock}>
           <Text style={styles.groupHeading}>{t('profile.session')}</Text>
@@ -1411,12 +1504,8 @@ const ProfileScreen = () => {
                       label={t('profile.tryAgain')}
                       icon="sparkles-outline"
                       onPress={() => {
-                        if (isAdminUser) {
-                          navigation.navigate('AITryOn');
-                          setPreviewLook(null);
-                        } else {
-                          Alert.alert(t('common.comingSoon'));
-                        }
+                        navigation.navigate('AITryOn');
+                        setPreviewLook(null);
                       }}
                       style={styles.previewActionButton}
                     />

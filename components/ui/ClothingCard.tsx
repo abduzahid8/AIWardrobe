@@ -11,6 +11,7 @@ import Animated, {
     interpolate,
     SharedValue,
 } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
 import { ClosetlyTheme } from '../../constants/ClosetlyTheme';
 import { CachedImage } from './CachedImage';
 
@@ -56,8 +57,9 @@ const ClothingCard: React.FC<ClothingCardProps> = ({
     isSelected = false,
     style,
 }) => {
+    const { t } = useTranslation();
     const imageUrl = item.imageUrl || item.image;
-    const itemLabel = item.type || item.itemType || item.category || 'Item';
+    const itemLabel = item.type || item.itemType || item.category || t('common.item');
 
     // Parallax animation - image moves faster than card
     const parallaxStyle = useAnimatedStyle(() => {

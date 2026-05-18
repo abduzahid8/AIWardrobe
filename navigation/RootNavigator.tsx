@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { createStackNavigator } from "@react-navigation/stack";
 
 // Imports screens...
@@ -13,9 +13,10 @@ import WardrobeVideoScreen from "../screens/WardrobeVideoScreen";
 import CameraScreen from "../screens/CameraScreen";
 import ChatScreen from "../screens/ChatScreen";
 
-import useAuthStore from "../store/auth";
+import useAuthStore, { cleanupAuthSubscription } from "../store/auth";
 import useSubscriptionStore from "../store/subscriptionStore";
 import useDailyUsageStore from "../store/dailyUsageStore";
+import useWardrobeStore from "../store/wardrobeStore";
 import ReviewScreen from "../screens/ReviewScreen";
 import OutfitCalendarScreen from "../screens/OutfitCalendarScreen";
 import PaywallScreen from "../screens/PaywallScreen";
@@ -34,6 +35,7 @@ import TrialExpiredScreen from "../screens/TrialExpiredScreen";
 import PromoCodeScreen from "../screens/PromoCodeScreen";
 import AdminPanelScreen from "../screens/AdminPanelScreen";
 import GuideScreen from "../screens/GuideScreen";
+import StyleQuizScreen from "../screens/StyleQuizScreen";
 import { addNotificationListeners } from "../src/services/notificationService";
 import { notificationService } from "../src/services/notificationService";
 import { RootStackParamList } from "./types";
@@ -44,6 +46,8 @@ import { iapService } from "../src/services/iapService";
 import { colors } from "../src/theme";
 import { LiquidPresets } from "./liquidTransitions";
 import usePromoCodeStore from "../store/promoCodeStore";
+import { useStylePreferenceStore } from "../store/stylePreferenceStore";
+import { perfMark, perfMeasure } from "../src/utils/perf";
 
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -57,34 +61,52 @@ const RootNavigator = () => {
     hasActiveSubscription,
     isTrialExpired,
     isTrialPending,
+    isLoading: isSubscriptionLoading,
     initializeSubscription,
     verifySubscriptionFromServer,
   } = useSubscriptionStore();
   const { hydrate: hydratePromoCodeStore } = usePromoCodeStore();
+  const { hasCompletedOnboarding, onboardingStep } = useStylePreferenceStore();
 
-  // Show the non-dismissable TrialExpiredScreen when the 7-day trial ends
-  // and the user has no paid subscription.
-  // IMPORTANT: isTrialPending or isLoading must be false — we never show the gate
-  // while the trial date is still being resolved from storage or the server.
-  const showTrialGate =
-    isAuthenticated &&
-    isTrialExpired &&
-    !hasActiveSubscription &&
-    !isTrialPending &&
-    !useSubscriptionStore.getState().isLoading;
+  // Memoize gate booleans so RootNavigator only re-renders when the values
+  // that actually affect routing change. Without useMemo, every subscription
+  // store update (e.g. isLoading flipping true→false during initializeSubscription)
+  // caused the entire conditional Stack.Navigator children tree to be re-evaluated,
+  // which React Navigation interpreted as a structural change and unmounted
+  // TabNavigator — destroying HomeScreen and all other tab screens.
+  const showTrialGate = useMemo(
+    () =>
+      isAuthenticated &&
+      isTrialExpired &&
+      !hasActiveSubscription &&
+      !isTrialPending &&
+      !isSubscriptionLoading,
+    [isAuthenticated, isTrialExpired, hasActiveSubscription, isTrialPending, isSubscriptionLoading],
+  );
 
   // NOTE: showPromoGate is intentionally disabled (always false).
   // Apple Guideline 2.1(a) requires that users can access the free tier
   // without being forced through a promo code or paywall. The PromoCode
   // screen remains accessible voluntarily (e.g. from Profile screen).
   const showPromoGate = false;
+  const showOnboardingGate = useMemo(
+    () => isAuthenticated && !hasCompletedOnboarding && onboardingStep < 6,
+    [isAuthenticated, hasCompletedOnboarding, onboardingStep],
+  );
+  const showOnboardingPaywall = useMemo(
+    () => isAuthenticated && !hasCompletedOnboarding && onboardingStep >= 6,
+    [isAuthenticated, hasCompletedOnboarding, onboardingStep],
+  );
 
   useEffect(() => {
     const initialize = async () => {
+      perfMark('app:init');
       // 1. Auth must happen first — every other service wants to know who
       // the user is before initializing (for user-scoped analytics, IAP, etc.)
       const { initializeAuth } = useAuthStore.getState();
       await initializeAuth();
+      perfMeasure('app:init');
+      console.log('[PERF] 🔐 Auth initialized');
 
       // 2. Analytics is synchronous — start it immediately so early events
       // (like "app_opened") land in the queue.
@@ -94,6 +116,14 @@ const RootNavigator = () => {
       // path. Run them in parallel and never block the UI on them.
       // Individual failures are swallowed so one slow service can't
       // block the others.
+      //
+      // rehydrateFromCloud is included here so wardrobe data fetching
+      // starts immediately after auth resolves, in parallel with the other
+      // services, instead of waiting for all five to finish first
+      // (fixes Defect 1.3 — was previously called sequentially after this block).
+      const { isAuthenticated: authStatus, user: currentUser } = useAuthStore.getState();
+
+      const rehydrateStart = Date.now();
       await Promise.all([
         initializeSubscription().catch((err) =>
           console.warn('[RootNavigator] initializeSubscription failed', err),
@@ -110,11 +140,25 @@ const RootNavigator = () => {
         iapService.initialize().catch((err) =>
           console.warn('[RootNavigator] iapService failed', err),
         ),
+        // Wardrobe rehydration runs in parallel — no need to wait for the
+        // five services above before starting the clothing-items fetch.
+        ...(authStatus && currentUser?.id
+          ? [
+              useWardrobeStore.getState().rehydrateFromCloud()
+                .then(() => {
+                  const elapsed = Date.now() - rehydrateStart;
+                  console.log(`[PERF] 🟢 rehydrateFromCloud completed in ${elapsed}ms`);
+                })
+                .catch((err) => {
+                  const elapsed = Date.now() - rehydrateStart;
+                  console.warn(`[PERF] 🔴 rehydrateFromCloud FAILED after ${elapsed}ms`, err);
+                }),
+            ]
+          : []),
       ]);
 
       // 4. Identify the user once services are ready. Verification against
       // the server is fire-and-forget — the UI doesn't need to block on it.
-      const { isAuthenticated: authStatus, user: currentUser } = useAuthStore.getState();
       if (authStatus && currentUser?.id) {
         analyticsService.setUserId(currentUser.id);
         iapService.identify(currentUser.id);
@@ -136,14 +180,11 @@ const RootNavigator = () => {
       }
     );
 
-    return removeListeners;
+    return () => {
+      removeListeners();
+      cleanupAuthSubscription();
+    };
   }, []);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      verifySubscriptionFromServer();
-    }
-  }, [isAuthenticated]);
 
   // Gates are now rendered as the initial route (see stack below) instead
   // of being pushed via navigateTo side-effects. Declarative routing is
@@ -157,16 +198,43 @@ const RootNavigator = () => {
           // Liquid transition as default
           ...LiquidPresets.slide,
           cardStyle: {
-            backgroundColor: colors.background,
+            // Always use the light background — all screens in this app use the
+            // light design system. Using `colors.background` caused a navy blue
+            // (#0A1931) flash between tab switches when the device is in dark mode
+            // because `colors` is resolved at module load time from the system
+            // color scheme.
+            backgroundColor: '#FFFFFF',
           },
         }}
       >
         {isAuthenticated ? (
           showTrialGate ? (
+            <>
+              <Stack.Screen
+                name="TrialExpired"
+                component={TrialExpiredScreen}
+                options={{ ...LiquidPresets.fade }}
+              />
+              <Stack.Screen
+                name="Paywall"
+                component={PaywallScreen}
+                options={{ ...LiquidPresets.fade }}
+              />
+            </>
+          ) : showOnboardingGate ? (
             <Stack.Screen
-              name="TrialExpired"
-              component={TrialExpiredScreen}
-              options={{ ...LiquidPresets.fade }}
+              name="StyleQuiz"
+              component={StyleQuizScreen}
+              options={{ ...LiquidPresets.fade, gestureEnabled: false }}
+            />
+          ) : showOnboardingPaywall ? (
+            <Stack.Screen
+              name="Paywall"
+              component={PaywallScreen}
+              options={{
+                ...LiquidPresets.fade,
+                gestureEnabled: false,
+              }}
             />
           ) : (
           <>

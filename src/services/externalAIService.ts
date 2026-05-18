@@ -69,12 +69,9 @@ async function invokeProcessingOperation(
 
     const processingTimeMs = Date.now() - startTime;
     
-    // Ensure we always have a valid imageUrl - fallback to original if needed
-    const finalImage = data.cutoutUrl || buildImageDataUrl(imageBase64);
-    
-    if (!data.cutoutUrl) {
-      console.warn(`[ExternalAI] ${operationName} returned no cutoutUrl, using original image`);
-    }
+    // Always return the original uploaded image — the AI only classifies the
+    // clothing type; it never modifies or removes the background.
+    const finalImage = buildImageDataUrl(imageBase64);
 
     return {
       success: true,
@@ -92,7 +89,7 @@ async function invokeProcessingOperation(
 
     return {
       success: false,
-      imageUrl: buildImageDataUrl(imageBase64),
+      imageUrl: buildImageDataUrl(imageBase64),  // original photo is always preserved
       cutoutUrl: null,
       enhancedUrl: null,
       normalizedUrl: null,
@@ -118,14 +115,15 @@ export const ExternalAIService = {
   },
 
   /**
-   * AI Studio photo flow: classify the item and remove the background only.
-   * This avoids generative angle or texture changes that can alter the garment.
+   * Upload photo flow: classify the clothing type only.
+   * The original photo is kept as-is — no background removal is performed.
+   * Classification result is used to correctly categorise the item in the wardrobe.
    */
   async processStudioPhoto(imageBase64: string): Promise<ProcessingResult> {
     return invokeProcessingOperation(
       imageBase64,
-      'studio_photo',
-      ['nvidia_classify', 'nvidia_grounding_dino', 'local_cutout']
+      'classify',            // classify-only — no bg removal, no cutout
+      ['nvidia_classify'],
     );
   },
 

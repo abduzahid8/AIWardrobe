@@ -60,7 +60,10 @@ const CollageImage: React.FC<{ src: string | number | undefined | null }> = ({ s
       style={styles.collageSlotImage}
       resizeMode="contain"
       onError={() => {
-        console.warn('[CollageImage] Failed to load image:', typeof resolved === 'string' ? resolved.slice(0, 80) : resolved);
+        // Silently fall back to placeholder — the component already shows a
+        // shirt-icon placeholder via setImgError(true). No warn needed since
+        // __DEV__ is always true in Expo Go, making the warning appear in all
+        // development sessions even though it's a handled, expected case.
         setImgError(true);
       }}
       onLoad={() => setImgError(false)}
@@ -143,11 +146,13 @@ const OutfitCollageDisplay: React.FC<OutfitCollageDisplayProps> = ({
               ]}
             >
               <CollageImage src={slot.item ? slot.item.image : null} />
-              <View style={styles.collageSlotLabel}>
-                <Text style={styles.collageSlotLabelText} numberOfLines={1}>
-                  {slot.item ? getOutfitPreviewTitle(slot.item) : slot.label}
-                </Text>
-              </View>
+              {!slot.item && (
+                <View style={styles.collageSlotLabel}>
+                  <Text style={styles.collageSlotLabelText} numberOfLines={1}>
+                    {slot.label}
+                  </Text>
+                </View>
+              )}
             </View>
           ))}
           {row.length === 1 ? <View style={styles.collageSlotSpacer} /> : null}
@@ -197,8 +202,8 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   collageSlotImage: {
-    width: '78%',
-    height: '78%',
+    width: '92%',
+    height: '92%',
   },
   collageSlotPlaceholder: {
     width: '85%',

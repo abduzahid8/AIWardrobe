@@ -13,11 +13,12 @@ import Animated, {
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { TabTransitionContext } from "../components/CrossfadeTabView";
+import { perfTabSwitch, perfTabSwitchComplete } from "../src/utils/perf";
 
 // Original Screens
 import HomeScreen from "../screens/HomeScreen";
 import MyClosetScreen from "../screens/MyClosetScreen";
-import AIHubScreen from "../screens/AIHubScreen";
+import AITryOnScreen from "../screens/AITryOnScreen";
 import InspoScreen from "../screens/InspoScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 
@@ -64,9 +65,32 @@ const TabIcon = ({ focused, iconName, color, size, label }: TabIconProps) => {
   );
 };
 
+// ── Memoized tab bar background — BlurView + gradient + glass overlay ────────
+// Extracted into a separate React.memo component so the expensive BlurView
+// GPU pass is paid at most once per mount, not on every tab-press re-render
+// of LiquidParallaxTabBar (fixes Defect 1.6).
+const TabBarBackground = React.memo(() => (
+  <>
+    <BlurView
+      intensity={Platform.OS === 'ios' ? 80 : 100}
+      tint="light"
+      style={StyleSheet.absoluteFill}
+      pointerEvents="none"
+    />
+    <LinearGradient
+      colors={['rgba(255,255,255,0.94)', 'rgba(240,246,255,0.88)']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.tabBarGradient}
+      pointerEvents="none"
+    />
+    <View style={styles.glassOverlay} pointerEvents="none" />
+  </>
+));
+TabBarBackground.displayName = 'TabBarBackground';
+
 // ── Liquid Glass Tab Bar — smooth sliding indicator ───────────────────
-const LiquidParallaxTabBar = ({ state, descriptors, navigation, isAdmin }: any) => {
-  logger.debug('LiquidParallaxTabBar rendering', { tabIndex: state.index });
+const LiquidParallaxTabBar = ({ state, descriptors, navigation, isAdmin, onActiveIndexChange }: any) => {
   const { width } = useWindowDimensions();
   const fallbackTabBarWidth = Math.max(width - (TAB_BAR_HORIZONTAL_MARGIN * 2), 0);
   const [tabBarWidth, setTabBarWidth] = React.useState(fallbackTabBarWidth);
@@ -81,6 +105,10 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation, isAdmin }: any) 
   React.useEffect(() => {
     setTabBarWidth(fallbackTabBarWidth);
   }, [fallbackTabBarWidth]);
+
+  React.useEffect(() => {
+    onActiveIndexChange?.(state.index);
+  }, [state.index, onActiveIndexChange]);
 
   const handleTabBarLayout = React.useCallback((event: LayoutChangeEvent) => {
     const nextWidth = event.nativeEvent.layout.width;
@@ -109,20 +137,7 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation, isAdmin }: any) 
       style={styles.tabBarContainer}
       onLayout={handleTabBarLayout}
     >
-      <BlurView
-        intensity={Platform.OS === 'ios' ? 80 : 100}
-        tint="light"
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
-      />
-      <LinearGradient
-        colors={['rgba(255,255,255,0.94)', 'rgba(240,246,255,0.88)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.tabBarGradient}
-        pointerEvents="none"
-      />
-      <View style={styles.glassOverlay} pointerEvents="none" />
+      <TabBarBackground />
 
       {/* Morphing Blob Indicator */}
       <Animated.View style={[styles.indicatorContainer, animatedBlobStyle]} pointerEvents="none">
@@ -145,9 +160,20 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation, isAdmin }: any) 
               target: route.key,
               canPreventDefault: true,
             });
-            if (!isFocused && !event.defaultPrevented) {
+            if (!event.defaultPrevented) {
               console.log('[IPAD-DEBUG] Navigating to tab:', route.name);
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              // Record the current tab name for perf timing
+              const currentRoute = state.routes[state.index]?.name ?? 'Unknown';
+              // Only record perf + haptics when actually switching tabs
+              if (!isFocused) {
+                perfTabSwitch(currentRoute, route.name);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }
+              // Always call navigate — React Navigation deduplicates same-screen
+              // navigations, so this is safe even when already focused.
+              // Using isFocused as a guard caused a double-tap bug: on rapid
+              // taps the stale state.index made isFocused=true even when the
+              // tab wasn't actually active yet, silently swallowing the press.
               navigation.navigate(route.name);
             }
           };
@@ -183,11 +209,15 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation, isAdmin }: any) 
 // ── Stable wrapper factory — creates components ONCE ─────────────────
 const createAnimatedTabScreen = (Screen: React.ComponentType<any>, tabIndex: number) => {
   const Wrapped = (props: any) => {
-    // DISABLED: CrossfadeTabView causes touch issues on iPad
-    // Using direct screen rendering instead
+    // Wrap in a View with the app background color so the placeholder shown
+    // during lazy first-mount is never a blank white void. Without this,
+    // switching to an unvisited tab shows a white flash for one render cycle
+    // before the screen's own background paints.
     return (
       <ErrorBoundary>
-        <Screen {...props} />
+        <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+          <Screen {...props} />
+        </View>
       </ErrorBoundary>
     );
   };
@@ -197,47 +227,66 @@ const createAnimatedTabScreen = (Screen: React.ComponentType<any>, tabIndex: num
 
 const AnimatedHomeScreen = createAnimatedTabScreen(HomeScreen, 0);
 const AnimatedClosetScreen = createAnimatedTabScreen(MyClosetScreen, 1);
-const AnimatedAIScreen = createAnimatedTabScreen(AIHubScreen, 2);
+const AnimatedAIScreen = createAnimatedTabScreen(AITryOnScreen, 2);
 const AnimatedInspoScreen = createAnimatedTabScreen(InspoScreen, 3);
 const AnimatedProfileScreen = createAnimatedTabScreen(ProfileScreen, 4);
 
 // ── TabNavigator ─────────────────────────────────────────────────────
 const TabNavigator = () => {
-  logger.debug('TabNavigator component rendering');
   const { t } = useTranslation();
+  // Only subscribe to isAdmin (boolean) — the loading state change from
+  // useAdminGuard would otherwise cause TabNavigator to re-render on every
+  // app launch when the async admin check resolves.
   const { isAdmin } = useAdminGuard();
   // Shared values for tab transition direction — updated via ref + deferred setState
   const currentTab = useSharedValue(0);
   const previousTab = useSharedValue(0);
   const trackedIndex = React.useRef(0);
 
-  // Deferred state update: shared values are set in useEffect (after commit),
-  // NOT during render — this prevents the "Cannot update a component while
-  // rendering a different component" crash.
-  const [pendingIndex, setPendingIndex] = React.useState<number | null>(null);
-
-  React.useEffect(() => {
-    if (pendingIndex !== null && pendingIndex !== trackedIndex.current) {
+  const handleActiveIndexChange = React.useCallback((nextIndex: number) => {
+    if (nextIndex !== trackedIndex.current) {
       previousTab.value = trackedIndex.current;
-      currentTab.value = pendingIndex;
-      trackedIndex.current = pendingIndex;
+      currentTab.value = nextIndex;
+      trackedIndex.current = nextIndex;
     }
-  }, [pendingIndex, currentTab, previousTab]);
+  // currentTab and previousTab are Reanimated shared values (mutable refs) —
+  // they do not trigger re-renders and do not need to be listed as deps.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Memoize tabBar to prevent excessive re-renders
   const renderTabBar = React.useCallback((props: any) => {
-    const idx = props.state.index;
-    if (idx !== trackedIndex.current) {
-      queueMicrotask(() => setPendingIndex(idx));
-    }
-    return <LiquidParallaxTabBar {...props} isAdmin={isAdmin} />;
-  }, [isAdmin]);
+    return (
+      <LiquidParallaxTabBar
+        {...props}
+        isAdmin={isAdmin}
+        onActiveIndexChange={handleActiveIndexChange}
+      />
+    );
+  }, [handleActiveIndexChange, isAdmin]);
 
   const screenOptions = React.useCallback(({ route }: any): BottomTabNavigationOptions => ({
     headerShown: false,
     tabBarShowLabel: false,
-    animation: 'fade',
-    lazy: false,
+    // 'none' eliminates the brief animation window where the white
+    // sceneContainerStyle background flashes through during fast tab switches.
+    // The blob indicator animation already provides visual feedback.
+    animation: 'none',
+    // Keep lazy: true (default) so screens mount only when first visited —
+    // this keeps startup fast and the JS thread unblocked.
+    // The white flash on first visit is handled by sceneContainerStyle below
+    // (matching the app background color) so there's nothing white to show.
+  }), []);
+
+  // Fire perfTabSwitchComplete on every tab focus — this is the moment the
+  // screen is actually visible to the user (after the navigator animation).
+  const screenListeners = React.useMemo(() => ({
+    focus: (e: any) => {
+      const routeName = e.target?.split('-')[0] ?? '';
+      if (routeName) {
+        perfTabSwitchComplete(routeName);
+      }
+    },
   }), []);
 
   return (
@@ -245,6 +294,9 @@ const TabNavigator = () => {
       <Tab.Navigator
         tabBar={renderTabBar}
         screenOptions={screenOptions}
+        screenListeners={screenListeners}
+        // @ts-ignore - sceneContainerStyle is supported at runtime but fails typecheck in this React Navigation version
+        sceneContainerStyle={{ backgroundColor: '#FFFFFF' }}
     >
       <Tab.Screen
         name="Home"

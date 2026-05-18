@@ -326,6 +326,11 @@ const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
             //     server query sees the old 'free' state and incorrectly overwrites it.
             // We only skip when resolvedTier is 'free' — if the server found an
             // active subscription we always respect that.
+            //
+            // EXCEPTION — 24-hour grace window: if the local expiry is within 24 hours
+            // of now, the subscription is genuinely expiring/expired soon. In that case
+            // we allow the server's 'free' response to win so that legitimately expired
+            // subscriptions are downgraded instead of being kept active indefinitely.
             if (resolvedTier === 'free') {
                 const currentState = get();
                 if (
@@ -333,15 +338,28 @@ const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
                     currentState.expiryDate &&
                     new Date(currentState.expiryDate) > new Date()
                 ) {
-                    console.warn(
-                        '[subscriptionStore] verifySubscriptionFromServer: server returned free but ' +
-                        'local state has a valid paid subscription — keeping local state to prevent ' +
-                        'race-condition downgrade.',
-                        { localTier: currentState.tier, localExpiry: currentState.expiryDate }
+                    const localExpiry = currentState.expiryDate;
+                    const isNearExpiry =
+                        localExpiry &&
+                        (new Date(localExpiry).getTime() - Date.now()) < 24 * 60 * 60 * 1000;
+
+                    if (!isNearExpiry) {
+                        console.warn(
+                            '[subscriptionStore] verifySubscriptionFromServer: server returned free but ' +
+                            'local state has a valid paid subscription — keeping local state to prevent ' +
+                            'race-condition downgrade.',
+                            { localTier: currentState.tier, localExpiry }
+                        );
+                        // Mark as verified so callers don't re-enter, but preserve tier.
+                        set({ lastVerifiedAt: new Date().toISOString() });
+                        return;
+                    }
+
+                    console.log(
+                        '[subscriptionStore] verifySubscriptionFromServer: local expiry is within 24-hour ' +
+                        'grace window — allowing server free-tier response to downgrade.',
+                        { localTier: currentState.tier, localExpiry }
                     );
-                    // Mark as verified so callers don't re-enter, but preserve tier.
-                    set({ lastVerifiedAt: new Date().toISOString() });
-                    return;
                 }
             }
             // ──────────────────────────────────────────────────────────────────────

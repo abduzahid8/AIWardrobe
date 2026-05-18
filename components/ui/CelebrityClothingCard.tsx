@@ -21,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../src/hooks/useTheme';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -78,6 +79,7 @@ export const CelebrityClothingCard: React.FC<CelebrityClothingCardProps> = ({
     index = 0,
     style,
 }) => {
+    const { t } = useTranslation();
     const { colors, spacing, borderRadius, shadows } = useTheme();
     const pressed = useSharedValue(false);
 
@@ -105,7 +107,7 @@ export const CelebrityClothingCard: React.FC<CelebrityClothingCardProps> = ({
     });
 
     // Display name: prefer specificType over generic type
-    const displayType = specificType || clothingType || 'Clothing';
+    const displayType = specificType || clothingType || t('common.clothing');
     const displayColor = color || attributes?.primaryColor || '';
     const displayMaterial = material || attributes?.material?.type || '';
     const displayPattern = pattern || attributes?.pattern?.type || '';

@@ -23,6 +23,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import useAuthStore from '../store/auth';
+import { useStylePreferenceStore } from '../store/stylePreferenceStore';
 import {
     generateOutfitsFromDB,
     type GeneratedOutfit,
@@ -135,11 +136,15 @@ function canonicalMacro(item: GeneratedOutfit['items'][number]): 'top' | 'outerw
 
     // Outerwear first — sweaters, blazers, jackets must not be collapsed
     // into the base-top slot otherwise a layered look loses its main layer.
-    if (/\b(blazer|overcoat|topcoat|peacoat|trench|parka|puffer|windbreaker|bomber)\b/.test(blob)) return 'outerwear';
-    if (/\b(coat|jacket|cardigan|sweater|hoodie|vest|pullover|fleece)\b/.test(blob)) return 'outerwear';
-    if (/\b(pant|trouser|jeans|short|skirt|chino|slack|jogger|sweatpant)\b/.test(blob)) return 'bottom';
-    if (/\b(shoe|sneaker|boot|loafer|sandal|heel|trainer|oxford|derby|mule)\b/.test(blob)) return 'shoes';
-    if (/\b(t-shirt|tshirt|tee|polo|blouse|shirt|dress)\b/.test(blob)) return 'top';
+    if (/\b(blazer|overcoat|topcoat|peacoat|trench|parka|puffer|windbreaker|bomber)s?\b/.test(blob)) return 'outerwear';
+    if (/\b(coat|jacket|cardigan|sweater|hoodie|vest|pullover|fleece)s?\b/.test(blob)) return 'outerwear';
+    if (/\b(pants?|trousers?|jeans|shorts?|skirts?|chinos?|slacks?|joggers?|sweatpants?)\b/.test(blob)) return 'bottom';
+    if (/\b(shoes?|sneakers?|boots?|loafers?|sandals?|heels?|trainers?|derbys?|derbies|mules?)\b/.test(blob)) return 'shoes';
+    // "oxford" alone is ambiguous (Oxford shirt vs Oxford shoes) — only match
+    // as shoes when paired with a shoe qualifier like "shoe" or "flat", or in plural form "oxfords"
+    if (/\boxfords?\b/i.test(blob) && !/\bshirts?\b/i.test(blob)) return 'shoes';
+    if (/\boxfords?\s*(shoes?|flats?|lace|brogues?|derbys?|derbies)\b/i.test(blob)) return 'shoes';
+    if (/\b(t-shirt|tshirt|tee|polo|blouse|shirt|dress(?:es)?)s?\b/.test(blob)) return 'top';
     if (/upper[_\s-]?body/.test(blob)) return 'top';
     if (/lower[_\s-]?body/.test(blob)) return 'bottom';
 
@@ -213,6 +218,10 @@ function filterRenderableOutfits(outfits: GeneratedOutfit[]): GeneratedOutfit[] 
 // Hook
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Stable selector — selecting a primitive (string | undefined) avoids the
+// React 18 "getSnapshot should be cached" warning.
+const selectUserId = (s: any) => s.user?.id as string | undefined;
+
 export function useDailyAIOutfit({
     style,
     occasion,
@@ -220,13 +229,29 @@ export function useDailyAIOutfit({
     variants = 3,
     enabled = true,
 }: UseDailyAIOutfitOptions): UseDailyAIOutfitResult {
-    const userId = useAuthStore((s) => s.user?.id);
+    const userId = useAuthStore(selectUserId);
+    const preferences = useStylePreferenceStore((state) => state.preferences);
 
     const [outfits, setOutfits] = useState<GeneratedOutfit[]>([]);
-    const [loading, setLoading] = useState(true);
+    // Start as false — the pre-check effect below will set it to true only
+    // when a fresh cache entry is NOT available and the edge function must run.
+    const [loading, setLoading] = useState(false);
     const [error, setError]     = useState<string | null>(null);
 
-    const inflightRef = useRef<Promise<void> | null>(null);
+    const inflightRef   = useRef<Promise<void> | null>(null);
+    // Tracks whether the pre-cache-check has completed so `run` is only
+    // invoked once the check has had a chance to short-circuit.
+    const cacheCheckedRef = useRef(false);
+
+    // Keep weather in a ref so `run` can read the latest value without
+    // needing weather in its dependency array. If weather were a dep, `run`
+    // would be recreated every time weather changes, which would trigger the
+    // generation useEffect → setLoading(true) → re-render → new run → loop.
+    const weatherRef = useRef(weather);
+    weatherRef.current = weather;
+
+    const preferencesRef = useRef(preferences);
+    preferencesRef.current = preferences;
 
     const run = useCallback(
         async (forceRegenerate: boolean) => {
@@ -268,20 +293,24 @@ export function useDailyAIOutfit({
             setLoading(true);
             setError(null);
             try {
+                // Read weather from the ref so this callback doesn't need
+                // weather in its dependency array (avoids infinite loop).
+                const currentWeather = weatherRef.current;
                 // Default to a "cool" (15°C) weather when none is available.
                 // Without this, the edge function's `needsLayering()` returns
                 // false and builds 3-item non-layered outfits — which then
                 // fail our 4-slot renderability filter because there is no
                 // base top underneath the blazer/jacket. See
                 // `supabase/functions/generate-outfits/index.ts::needsLayering`.
-                const effectiveWeather = weather
-                    ? { temp: weather.temp, condition: weather.condition }
+                const effectiveWeather = currentWeather
+                    ? { temp: currentWeather.temp, condition: currentWeather.condition }
                     : { temp: 15, condition: 'cool' };
                 const result = await generateOutfitsFromDB({
                     stylePreferences: style,
                     occasion,
                     weather: effectiveWeather,
                     limit: variants,
+                    preferences: preferencesRef.current,
                 });
 
                 const rawOutfits = (result.outfits ?? []).filter(
@@ -337,20 +366,93 @@ export function useDailyAIOutfit({
                 setLoading(false);
             }
         },
-        [enabled, userId, style, occasion, variants, weather?.temp, weather?.condition],
+        // weather is read from weatherRef inside the callback so it does NOT
+        // need to be listed here. Adding weather to deps would recreate `run`
+        // on every weather update → trigger the generation effect → setLoading
+        // → re-render → new run → infinite loop.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [enabled, userId, style, occasion, variants],
     );
+
+    /**
+     * Pre-check effect — runs BEFORE the main generation effect.
+     *
+     * Reads AsyncStorage synchronously (as early as possible) and, if a
+     * valid cache entry for today already exists, populates state and marks
+     * the check as done WITHOUT ever setting `loading = true` or calling
+     * the edge function.  Only when the cache is stale or absent does it
+     * set `cacheCheckedRef.current = true` so the generation effect below
+     * can proceed.
+     *
+     * This satisfies the spec requirement: "this check SHALL happen before
+     * the useEffect fires the run() function, not inside it after the
+     * loading state is set."
+     */
+    useEffect(() => {
+        if (!enabled) return;
+
+        let cancelled = false;
+
+        (async () => {
+            const key     = storageKey(userId, style);
+            const dateKey = todayKey();
+
+            try {
+                const raw = await AsyncStorage.getItem(key);
+                if (!cancelled && raw) {
+                    const cached = JSON.parse(raw) as CachedEntry;
+                    const cachedRenderable = filterRenderableOutfits(
+                        Array.isArray(cached.outfits) ? cached.outfits : [],
+                    );
+                    if (cached.dateKey === dateKey && cachedRenderable.length > 0) {
+                        logger.debug('Pre-check: serving cached daily outfits (edge function skipped)', {
+                            style,
+                            count: cachedRenderable.length,
+                            dateKey,
+                        });
+                        setOutfits(cachedRenderable);
+                        // loading stays false — no edge function call needed.
+                        cacheCheckedRef.current = true;
+                        return;
+                    }
+                }
+            } catch (cacheErr) {
+                logger.warn('Pre-check: failed to read daily outfit cache', cacheErr);
+            }
+
+            // Cache is absent or stale — allow the generation effect to run.
+            if (!cancelled) {
+                cacheCheckedRef.current = true;
+                // Trigger the generation effect by setting loading now so
+                // the UI shows a spinner while the edge function is called.
+                setLoading(true);
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+        // Re-run whenever the identity of the cache slot changes.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [enabled, userId, style]);
 
     useEffect(() => {
         if (!enabled) return;
+        // Wait until the pre-check has completed before deciding whether to
+        // call the edge function.  If the pre-check already served cached
+        // data it will NOT have set loading=true, so this effect is a no-op.
+        if (!cacheCheckedRef.current) return;
+        if (!loading) return;
         if (inflightRef.current) return;
         const p = run(false).finally(() => {
             inflightRef.current = null;
         });
         inflightRef.current = p;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [enabled, userId, style, occasion, run]);
+    }, [enabled, userId, style, occasion, loading, run]);
 
     const regenerate = useCallback(async () => {
+        cacheCheckedRef.current = true;
         await run(true);
     }, [run]);
 

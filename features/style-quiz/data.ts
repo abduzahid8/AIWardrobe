@@ -7,12 +7,10 @@
 
 export const STYLE_PERSONALITIES = [
     { id: 'classic', name: 'Classic', emoji: '👔', description: 'Timeless, elegant, refined' },
-    { id: 'trendy', name: 'Trendy', emoji: '✨', description: 'Fashion-forward, current' },
+    { id: 'semi_classic', name: 'Semi-Classic', emoji: '🧥', description: 'Tailored comfort, everyday refinement' },
     { id: 'minimalist', name: 'Minimalist', emoji: '⬜', description: 'Clean lines, simple' },
-    { id: 'bohemian', name: 'Bohemian', emoji: '🌸', description: 'Free-spirited, artistic' },
-    { id: 'edgy', name: 'Edgy', emoji: '🖤', description: 'Bold, unconventional' },
-    { id: 'romantic', name: 'Romantic', emoji: '💕', description: 'Soft, feminine, flowy' },
-    { id: 'sporty', name: 'Sporty', emoji: '⚡', description: 'Active, comfortable' },
+    { id: 'casual', name: 'Casual', emoji: '👕', description: 'Relaxed, effortless, clean daily wear' },
+    { id: 'old_money', name: 'Old Money', emoji: '⚜️', description: 'Quiet luxury, heritage sophistication' },
 ] as const;
 
 export const COLOR_OPTIONS = [
@@ -34,9 +32,7 @@ export const OCCASIONS = [
     { id: 'work', name: 'Work/Office', icon: 'briefcase-outline' },
     { id: 'casual', name: 'Casual/Weekend', icon: 'cafe-outline' },
     { id: 'date', name: 'Date Night', icon: 'heart-outline' },
-    { id: 'fitness', name: 'Fitness/Gym', icon: 'fitness-outline' },
     { id: 'formal', name: 'Formal Events', icon: 'diamond-outline' },
-    { id: 'travel', name: 'Travel', icon: 'airplane-outline' },
 ] as const;
 
 export const FIT_OPTIONS = [

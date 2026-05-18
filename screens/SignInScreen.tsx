@@ -18,6 +18,7 @@ import * as Haptics from "expo-haptics";
 import * as AppleAuthentication from "expo-apple-authentication";
 import useAuthStore from "../store/auth";
 import { useTranslation } from "react-i18next";
+import { SUPABASE_AUTH_ERRORS } from "../constants/authErrors";
 
 const SignInScreen = () => {
   const navigation = useNavigation();
@@ -59,9 +60,9 @@ const SignInScreen = () => {
       await login(email, password);
     } catch (error: any) {
       const errorMessage = error.message || t('signIn.loginFailed');
-      if (errorMessage.includes("Invalid login credentials") || errorMessage.includes("invalid claim")) {
+      if (errorMessage.includes(SUPABASE_AUTH_ERRORS.INVALID_CREDENTIALS) || errorMessage.includes("invalid claim")) {
         Alert.alert(t('signIn.loginFailed'), t('signIn.invalidEmailPassword'));
-      } else if (errorMessage.includes("Email not confirmed")) {
+      } else if (errorMessage.includes(SUPABASE_AUTH_ERRORS.EMAIL_NOT_CONFIRMED)) {
         Alert.alert(t('signIn.emailNotVerified'), t('signIn.verifyEmailBeforeLogin'));
       } else {
         Alert.alert(t('signIn.loginFailed'), errorMessage);

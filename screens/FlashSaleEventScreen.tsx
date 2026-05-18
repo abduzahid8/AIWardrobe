@@ -159,7 +159,7 @@ const ProductCard = ({
 
                     {/* Discount badge */}
                     <View style={styles.productDiscountBadge}>
-                        <Text style={styles.productDiscountText}>-{discount}%</Text>
+                        <Text style={styles.productDiscountText}>{t('flashSales.discountBadge', { discount })}</Text>
                     </View>
 
                     {/* Stock badge */}

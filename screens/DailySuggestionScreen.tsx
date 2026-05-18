@@ -1,5 +1,5 @@
 /**
- * DailySuggestionScreen — "Your outfit for today"
+ * DailySuggestionScreen — daily AI outfit suggestion
  *
  * The morning entry point of the behavioral loop.
  * Shows 3 AI-scored outfit options. User picks one or skips.

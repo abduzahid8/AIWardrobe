@@ -4,6 +4,7 @@ import {
     Text,
     StyleSheet,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import Animated, { FadeIn } from 'react-native-reanimated';
@@ -32,6 +33,7 @@ interface WeatherData {
  * - Minimal, non-intrusive design
  */
 const WeatherWidget: React.FC = () => {
+    const { t } = useTranslation();
     const [weather, setWeather] = useState<WeatherData | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -97,7 +99,7 @@ const WeatherWidget: React.FC = () => {
             <Text style={styles.temp}>{weather.temp}°</Text>
             {weather.tempHigh && weather.tempLow && (
                 <Text style={styles.range}>
-                    H:{weather.tempHigh}° L:{weather.tempLow}°
+                    {t('weather.high')}:{weather.tempHigh}° {t('weather.low')}:{weather.tempLow}°
                 </Text>
             )}
         </Animated.View>

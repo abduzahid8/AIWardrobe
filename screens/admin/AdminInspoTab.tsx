@@ -198,8 +198,8 @@ export const AdminInspoTab = () => {
             { httpMethod: 'POST', headers: { Authorization: `Bearer ${token}`, apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!, 'Content-Type': contentType } }
         );
         if (uploadResult.status !== 200) {
-            try { const p = JSON.parse(uploadResult.body); throw new Error(p.message || p.error || 'Upload failed'); }
-            catch (e: any) { throw new Error(e.message || 'Upload failed'); }
+            try { const p = JSON.parse(uploadResult.body); throw new Error(p.message || p.error || t('admin.inspo.uploadFailed')); }
+            catch (e: any) { throw new Error(e.message || t('admin.inspo.uploadFailed')); }
         }
         return supabase.storage.from('shop-catalog').getPublicUrl(filePath).data.publicUrl;
     };
@@ -377,7 +377,7 @@ export const AdminInspoTab = () => {
             );
 
             if (uploadResult.status !== 200) {
-                let errorMsg = 'Upload failed';
+                let errorMsg = t('admin.inspo.uploadFailed');
                 try {
                     const parsed = JSON.parse(uploadResult.body);
                     errorMsg = parsed.message || parsed.error || errorMsg;

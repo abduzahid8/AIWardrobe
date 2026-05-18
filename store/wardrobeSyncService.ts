@@ -106,6 +106,9 @@ export async function fetchWearLogsFromServer(): Promise<WearLog[] | null> {
  * Process pending sync actions against Supabase.
  * Uses conflict resolution: server version wins if newer.
  *
+ * `add_item` actions are batched into a single upsert call to reduce
+ * N sequential round-trips to 1 (Defect 2.5 fix).
+ *
  * @returns IDs of successfully processed actions
  */
 export async function processPendingActions(
@@ -121,46 +124,88 @@ export async function processPendingActions(
         return { processedIds: [], updatedItems: localItems };
     }
 
+    const userId = session.session.user.id;
     const processed: string[] = [];
     let items = [...localItems];
 
-    for (const action of pendingActions) {
+    // ── Separate add_item actions from other action types ──────────────────
+    const addItemActions = pendingActions.filter((a) => a.type === 'add_item');
+    const otherActions = pendingActions.filter((a) => a.type !== 'add_item');
+
+    // ── Batch-process all add_item actions ─────────────────────────────────
+    if (addItemActions.length > 0) {
         try {
-            switch (action.type) {
-                case 'add_item': {
+            // Step 1: Conflict-resolution — fetch server timestamps for all items
+            // in a single query instead of N individual selects.
+            const addItemIds = addItemActions.map(
+                (a) => (a.payload as unknown as ClothingItem).id
+            );
+
+            const { data: serverRows } = await supabase
+                .from('clothing_items')
+                .select('id, updated_at')
+                .in('id', addItemIds);
+
+            const serverTimestampById: Record<string, string> = {};
+            if (serverRows) {
+                for (const row of serverRows) {
+                    serverTimestampById[row.id as string] = row.updated_at as string;
+                }
+            }
+
+            // Step 2: Partition into "server wins" vs "local wins" groups.
+            const serverWinsActions: PendingAction[] = [];
+            const localWinsActions: PendingAction[] = [];
+
+            for (const action of addItemActions) {
+                const item = action.payload as unknown as ClothingItem;
+                const serverUpdatedAt = serverTimestampById[item.id];
+
+                if (
+                    serverUpdatedAt &&
+                    item.updatedAt &&
+                    new Date(serverUpdatedAt) > new Date(item.updatedAt)
+                ) {
+                    serverWinsActions.push(action);
+                } else {
+                    localWinsActions.push(action);
+                }
+            }
+
+            // Step 3: For server-wins items, re-fetch each one individually
+            // (these are genuine conflicts — unavoidable per-item round-trips).
+            for (const action of serverWinsActions) {
+                try {
                     const item = action.payload as unknown as ClothingItem;
-
-                    // Conflict resolution: check server version
-                    const { data: serverItem } = await supabase
+                    const { data: freshItem } = await supabase
                         .from('clothing_items')
-                        .select('updated_at')
+                        .select('*')
                         .eq('id', item.id)
-                        .maybeSingle();
+                        .single();
 
-                    if (
-                        serverItem?.updated_at &&
-                        item.updatedAt &&
-                        new Date(serverItem.updated_at) > new Date(item.updatedAt)
-                    ) {
-                        // Server wins — re-fetch this item
-                        const { data: freshItem } = await supabase
-                            .from('clothing_items')
-                            .select('*')
-                            .eq('id', item.id)
-                            .single();
-
-                        if (freshItem) {
-                            items = items.map((existing) =>
-                                existing.id === item.id ? mapRowToItem(freshItem) : existing
-                            );
-                        }
-                        processed.push(action.id);
-                        break;
+                    if (freshItem) {
+                        items = items.map((existing) =>
+                            existing.id === item.id ? mapRowToItem(freshItem) : existing
+                        );
                     }
+                    processed.push(action.id);
+                } catch (err) {
+                    console.error(
+                        '[WardrobeSyncService] Server-wins re-fetch failed for action',
+                        action.id,
+                        err
+                    );
+                    // Keep in queue for retry — do not push to processed
+                }
+            }
 
-                    await supabase.from('clothing_items').upsert({
+            // Step 4: Batch upsert all local-wins items in a single round-trip.
+            if (localWinsActions.length > 0) {
+                const rows = localWinsActions.map((action) => {
+                    const item = action.payload as unknown as ClothingItem;
+                    return {
                         id: item.id,
-                        user_id: session.session.user.id,
+                        user_id: userId,
                         image_url: item.imageUrl,
                         thumbnail_url: item.thumbnailUrl,
                         category: item.category,
@@ -177,10 +222,36 @@ export async function processPendingActions(
                         is_favorite: item.isFavorite,
                         created_at: item.createdAt,
                         updated_at: item.updatedAt,
-                    });
-                    processed.push(action.id);
-                    break;
+                    };
+                });
+
+                const { error: batchError } = await supabase
+                    .from('clothing_items')
+                    .upsert(rows);
+
+                if (batchError) {
+                    // Batch failed — keep all local-wins actions in the queue for retry.
+                    console.error(
+                        '[WardrobeSyncService] Batch upsert failed:',
+                        batchError
+                    );
+                } else {
+                    // All rows written successfully — mark every action as processed.
+                    for (const action of localWinsActions) {
+                        processed.push(action.id);
+                    }
                 }
+            }
+        } catch (err) {
+            console.error('[WardrobeSyncService] add_item batch processing failed:', err);
+            // Keep all add_item actions in the queue for retry
+        }
+    }
+
+    // ── Process remaining action types sequentially ────────────────────────
+    for (const action of otherActions) {
+        try {
+            switch (action.type) {
                 case 'remove_item': {
                     const { itemId } = action.payload as { itemId: string };
                     await supabase.from('clothing_items').delete().eq('id', itemId);
@@ -191,7 +262,7 @@ export async function processPendingActions(
                     const log = action.payload as unknown as WearLog;
                     await supabase.from('wear_logs').upsert({
                         id: log.id,
-                        user_id: session.session.user.id,
+                        user_id: userId,
                         outfit_id: log.outfitId,
                         item_ids: log.itemIds,
                         date: log.date,

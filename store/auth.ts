@@ -11,6 +11,7 @@ import useSubscriptionStore from './subscriptionStore';
 import { createLogger } from '../src/utils/logger';
 import { clearAllPersistedUserData } from '../src/lib/persistence';
 import { authEvents } from './authEvents';
+import { uploadQueue } from '../src/services/uploadQueue';
 
 const log = createLogger('AuthStore');
 
@@ -69,6 +70,18 @@ export type AuthStore = AuthState & AuthActions;
 let _authSubscription: Subscription | null = null;
 
 /**
+ * Unsubscribes the Supabase onAuthStateChange listener registered by
+ * `initializeAuth`. Called from the `RootNavigator` useEffect cleanup so
+ * the listener does not persist across component remounts (Defect 5.5).
+ */
+export function cleanupAuthSubscription(): void {
+  if (_authSubscription) {
+    _authSubscription.unsubscribe();
+    _authSubscription = null;
+  }
+}
+
+/**
  * Parses the access_token and refresh_token from a Supabase auth URL hash.
  */
 function parseSupabaseUrl(url: string) {
@@ -109,9 +122,9 @@ async function onAuthSuccess(
     // Ensure subscription and trial status are resolved immediately
     await useSubscriptionStore.getState().verifySubscriptionFromServer().catch(() => {});
 
-    // Note: trial is NO longer auto-started on auth.
-    // The promo-code trial gate is currently disabled for App Store review
-    // (see subscriptionStore.needsPromoCode). Users subscribe via StoreKit/RevenueCat.
+    // Automatically start the 7-day free trial on first login if not already started.
+    // This ensures the TrialExpiredScreen gate will work after 7 days.
+    await useSubscriptionStore.getState().initializeTrial(session.user.id).catch(() => {});
 
     log.info('Authentication succeeded', { method, userId: session.user.id });
 }
@@ -153,9 +166,24 @@ const useAuthStore = create<AuthStore>((set, get) => ({
         set({ loading: true });
         try {
             const { data: { session }, error } = await supabase.auth.getSession();
-            if (error) throw error;
-
-            if (session) {
+            // An "Invalid Refresh Token" error means the stored session is stale
+            // (e.g. the user was signed out server-side or the token expired).
+            // Treat it as "no session" rather than a hard error so the app
+            // lands on the sign-in screen instead of crashing.
+            if (error) {
+                const msg = (error as any)?.message ?? '';
+                if (
+                    msg.includes('Invalid Refresh Token') ||
+                    msg.includes('Refresh Token Not Found') ||
+                    msg.includes('refresh_token_not_found')
+                ) {
+                    log.warn('Stale refresh token detected — clearing session', msg);
+                    await supabase.auth.signOut().catch(() => undefined);
+                    // Fall through with no session — user will see sign-in screen
+                } else {
+                    throw error;
+                }
+            } else if (session) {
                 set({ session, isAuthenticated: true });
                 await get().fetchUser();
                 iapService.identify(session.user.id);
@@ -303,10 +331,23 @@ const useAuthStore = create<AuthStore>((set, get) => ({
 
             await onAuthSuccess(set, get, data.session, 'apple');
         } catch (err) {
-            const anyErr = err as { code?: string };
+            const anyErr = err as { code?: string; message?: string };
             // User cancelling the Apple sheet is not an error the UI should show.
             if (anyErr?.code === 'ERR_REQUEST_CANCELED') {
                 set({ loading: false, error: null });
+                return;
+            }
+            // "Unacceptable audience in id_token" happens in Expo Go / simulator
+            // because the Apple identity token is issued for the Expo client app ID,
+            // not the production bundle ID. This is an expected dev-environment
+            // limitation — downgrade to a warning instead of a crash report.
+            const msg = anyErr?.message ?? '';
+            if (msg.includes('Unacceptable audience') || msg.includes('id_token')) {
+                log.warn('Apple Sign-In failed (expected in Expo Go / simulator):', msg);
+                set({
+                    loading: false,
+                    error: 'Apple Sign-In is not available in Expo Go. Please use a development build.',
+                });
                 return;
             }
             setAuthError(set, err, 'Apple sign-in failed');
@@ -318,6 +359,9 @@ const useAuthStore = create<AuthStore>((set, get) => ({
             _authSubscription.unsubscribe();
             _authSubscription = null;
         }
+        // Remove the AppState listener registered by uploadQueue.init() to prevent
+        // listener accumulation across login/logout cycles (Defect 5.2).
+        uploadQueue.destroy();
         authEvents.emitLogout();
 
         try {
@@ -378,8 +422,11 @@ const useAuthStore = create<AuthStore>((set, get) => ({
     fetchUser: async () => {
         log.debug('fetchUser called');
         try {
-            const { data: sessionData } = await supabase.auth.getSession();
-            const user = sessionData.session?.user;
+            // Read the session from Zustand state — initializeAuth() already
+            // stored it there, so we don't need another getSession() round-trip
+            // (fixes Defect 1.2).
+            const existingSession = get().session;
+            const user = existingSession?.user;
             if (!user) {
                 set({ user: null });
                 return;

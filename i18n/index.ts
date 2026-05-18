@@ -23,11 +23,11 @@ const languageDetector = {
             if (savedLanguage) {
                 callback(savedLanguage);
             } else {
-                callback('en'); // Default language
+                callback('ru'); // Default language
             }
         } catch (error) {
             console.error('Error reading language', error);
-            callback('en');
+            callback('ru');
         }
     },
     init: () => { },
@@ -45,7 +45,7 @@ i18n
     .use(initReactI18next)
     .init({
         resources,
-        fallbackLng: 'en',
+        fallbackLng: 'ru',
         compatibilityJSON: 'v4',
         interpolation: {
             escapeValue: false,

@@ -5,6 +5,17 @@ describe('outfitPreview', () => {
     expect(getOutfitItemMacroCategory({ type: 'pants' })).toBe('bottom');
     expect(getOutfitItemMacroCategory({ type: 'clothing', name: 'Wide Leg Trousers' })).toBe('bottom');
     expect(getOutfitItemMacroCategory({ type: 'Slim Fit Jeans', macroCategory: 'pants' })).toBe('bottom');
+    expect(getOutfitItemMacroCategory({ type: 'Chinos' })).toBe('bottom');
+    expect(getOutfitItemMacroCategory({ name: 'Sweatpants' })).toBe('bottom');
+  });
+
+  it('correctly classifies plural shoe terms and oxford variations', () => {
+    expect(getOutfitItemMacroCategory({ type: 'Loafers' })).toBe('shoes');
+    expect(getOutfitItemMacroCategory({ type: 'Sneakers' })).toBe('shoes');
+    expect(getOutfitItemMacroCategory({ name: 'Suede Boots' })).toBe('shoes');
+    expect(getOutfitItemMacroCategory({ name: 'Oxfords' })).toBe('shoes');
+    expect(getOutfitItemMacroCategory({ name: 'Oxford Shoes' })).toBe('shoes');
+    expect(getOutfitItemMacroCategory({ name: 'Oxford Shirt' })).toBe('top');
   });
 
   it('keeps all outfit items in their original order instead of re-sorting them', () => {

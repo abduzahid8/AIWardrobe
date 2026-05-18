@@ -108,3 +108,12 @@ scripts/out/
 *.onnx
 *.pth
 *.bin
+
+# Tool / environment directories
+.codex/
+.kiro/
+.watchmanconfig
+
+# Transcripts and temporary logs
+*transcript*
+

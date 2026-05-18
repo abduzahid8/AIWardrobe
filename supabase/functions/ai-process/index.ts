@@ -1105,27 +1105,17 @@ serve(async (req) => {
       operation === 'all' ||
       operation === 'studio_photo'
     const shouldNormalizeAngle = operation === 'remove_bg' || operation === 'all'
-    const shouldRemoveBackground =
-      operation === 'remove_bg' ||
-      operation === 'all' ||
-      operation === 'studio_photo'
+    // studio_photo only classifies; background removal is intentionally skipped.
+    // The original photo is returned as-is so the user's image is preserved.
+    const shouldRemoveBackground = operation === 'remove_bg' || operation === 'all'
     const shouldEnhanceClothing = operation === 'remove_bg' || operation === 'all'
 
     let result: any = {}
     let initialDetectedBox: DetectionBox | null = null
     let classificationImageDataUrl = imageDataUrl
 
-    if (operation === 'studio_photo') {
-      try {
-        initialDetectedBox = await detectGarmentBoxWithNvidia(NVIDIA_TOKEN, imageDataUrl)
-        const croppedClassificationImage = await cropImageToDetectionBox(imageDataUrl, initialDetectedBox)
-        if (croppedClassificationImage) {
-          classificationImageDataUrl = croppedClassificationImage
-        }
-      } catch (preDetectionError) {
-        console.warn('Studio photo pre-detection failed:', preDetectionError)
-      }
-    }
+    // studio_photo: no pre-detection crop needed — we only classify, not cut out.
+    // Keeping the block intentionally empty so the full image reaches the classifier.
 
     // Classification + Description - NVIDIA Granite Vision (FREE TIER - 10,000 requests/month)
     if (shouldClassify) {
@@ -1364,9 +1354,14 @@ serve(async (req) => {
       }
     }
 
-    // Final safety check: ensure cutoutUrl is always set
+    // For studio_photo the original image IS the intended result (no bg removal).
+    // For all other operations fall back to the original if nothing was produced.
     if (!result.cutoutUrl) {
-      console.warn('⚠️ cutoutUrl not set, falling back to original image')
+      if (operation === 'studio_photo') {
+        console.log('ℹ️ studio_photo: returning original image (no bg removal)')
+      } else {
+        console.warn('⚠️ cutoutUrl not set, falling back to original image')
+      }
       result.cutoutUrl = imageDataUrl
     }
 

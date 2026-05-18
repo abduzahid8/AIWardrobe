@@ -30,13 +30,17 @@
     "userAlreadyRegistered": "User already registered",
     "usernameAlreadyExists": "Username already exists",
     "databaseError": "Database error",
-    "networkRequestFailed": "Network request failed"
+    "networkRequestFailed": "Network request failed",
+    "goodMorning": "Good morning",
+    "skip": "Skip"
   },
   "confirmations": {
     "thisItem": "this item",
     "thisOutfit": "this outfit",
     "removeItem": "Remove Item",
-    "deleteOutfit": "Delete Outfit"
+    "deleteOutfit": "Delete Outfit",
+    "removeItemConfirm": "Are you sure you want to remove {{label}} from your wardrobe? This action cannot be undone.",
+    "deleteOutfitConfirm": "Are you sure you want to delete {{label}}?"
   },
   "api": {
     "accessDenied": "Access Denied",
@@ -87,7 +91,9 @@
     "preparingModelBody": "Loading mannequin assets. This takes just a moment.",
     "piecesSelected": "{{count}} piece(s) selected: {{names}}",
     "saved": "Saved!",
-    "savedMessage": "Look saved to your profile."
+    "savedMessage": "Look saved to your profile.",
+    "piecesSelected_one": "{{count}} selected: {{names}}. Press \"Try on with AI\" to place on mannequin.",
+    "piecesSelected_other": "{{count}} selected: {{names}}. Press \"Try on with AI\" to place on mannequin."
   },
   "outfitLogs": {
     "noItems": "No items",
@@ -107,7 +113,8 @@
     "saved": "Saved",
     "savedToCloset": "Outfit saved to your closet.",
     "addedToCalendar": "Added to Calendar",
-    "couldNotSaveToCalendar": "Could not save outfit to calendar."
+    "couldNotSaveToCalendar": "Could not save outfit to calendar.",
+    "outfitLoggedFor": "Outfit logged for {{dateKey}}."
   },
   "home": {
     "todaysLook": "Today's Look",
@@ -127,7 +134,20 @@
     "aiWardrobe": "AIWardrobe",
     "wearLight": "Wear light",
     "useLayers": "Use layers",
-    "dressWarm": "Dress warm"
+    "dressWarm": "Dress warm",
+    "title": "Looks",
+    "dailyBrief": "Daily Brief",
+    "stylistInsight": "Stylist Insight",
+    "askStylist": "Ask Stylist",
+    "todaysSuggestion": "Today's Suggestion",
+    "askAI": "AI dan so'rang",
+    "yourWeek": "Your Week",
+    "planner": "Planner",
+    "noEssentials": "Asoslar mavjud emas",
+    "businessCasual": "Biznes stil",
+    "dinner": "Kechki ovqat",
+    "itemAddedToWardrobe": "{{itemName}} shkafga qo'shildi",
+    "addItemToWardrobe": "{{itemName}} ni shkafga qo'shish"
   },
   "weeklyPlanner": {
     "days": [
@@ -188,7 +208,8 @@
     "title": "Complete Your Look",
     "seeAll": "See All",
     "shopNow": "Shop Now",
-    "shopSimilar": "Shop Similar"
+    "shopSimilar": "Shop Similar",
+    "addCategory": "{{category}} qo'shish"
   },
   "aiOutfitCreator": {
     "title": "AI Outfit Creator",
@@ -211,7 +232,8 @@
       "jobInterview": "Job Interview",
       "nightOut": "Night Out",
       "travel": "Travel"
-    }
+    },
+    "selectEvent": "{{event}} tadbirini tanlash"
   },
   "clothingEditor": {
     "type": "Type",
@@ -263,7 +285,8 @@
       "sunny": "Sunny",
       "snow": "Snow",
       "wind": "Wind"
-    }
+    },
+    "freePlanLimit": "Bepul plan shkafni {{limit}} ta narsaga cheklaydi. Cheksiz shkaf uchun Pro'ga yangilang."
   },
   "weather": {
     "unavailable": "Weather unavailable",
@@ -288,10 +311,11 @@
     "title": "Your outfit for today"
   },
   "quickActions": {
-    "aiHub": "AI Hub",
     "scanWardrobe": "Scan Wardrobe",
     "aiStylist": "AI Stylist",
-    "addItem": "Add Item"
+    "addItem": "Add Item",
+    "menu": "Menyu",
+    "profile": "Profile"
   },
   "styleInsights": {
     "title": "Style Insights",
@@ -313,7 +337,8 @@
     "pickItems": "Pick Items",
     "selectItemsToLog": "Select items to log",
     "iWoreThisToday": "I wore this today",
-    "logItems": "Log {{count}} item{{plural}}"
+    "logItems": "Log {{count}} item{{plural}}",
+    "dayStreak": "{{count}} kunlik seriya"
   },
   "network": {
     "noInternetConnection": "No Internet Connection"
@@ -355,7 +380,9 @@
     "greatStart": "Great start!"
   },
   "onboarding": {
-    "personalizedLooksUnlocked": "✨ Personalized looks unlocked!"
+    "personalizedLooksUnlocked": "✨ Personalized looks unlocked!",
+    "addItemsToUnlock": "Add {{count}} items to unlock daily personalized outfits",
+    "itemsCounter": "{{current}}/{{target}} narsa"
   },
   "quota": {
     "unlimited": "Unlimited {{label}}",
@@ -375,7 +402,8 @@
     "mid": "Mid",
     "base": "Base",
     "accessories": "Accessories",
-    "noItems": "No items in this outfit"
+    "noItems": "No items in this outfit",
+    "noLayerItems": "{{layer}} narsalari yo'q"
   },
   "aiThinking": {
     "scanningWardrobe": "Scanning your wardrobe...",
@@ -383,7 +411,8 @@
     "matchingCombinations": "Matching combinations...",
     "optimizingOutfits": "Optimizing outfits...",
     "finalizingLooks": "Finalizing your looks...",
-    "styleDna": "STYLE DNA"
+    "styleDna": "STYLE DNA",
+    "synthesizingDna": "{{style}} DNA sintezi"
   },
   "profile": {
     "editProfile": "Edit Profile",
@@ -441,7 +470,28 @@
     "tripFlowStep2Desc": "Tap `Create Outfit with AI` on that day to open the generator with the date attached.",
     "tripFlowStep3": "3. Save it to your plan",
     "tripFlowStep3Desc": "The outfit will be saved to your calendar and added to your packing list.",
-    "aiTryOn": "AI Try-On"
+    "aiTryOn": "AI Try-On",
+    "shareProfile": "Share Profile",
+    "followers": "Followers",
+    "following": "Following",
+    "tabs": {
+      "clothes": "Kiyimlar",
+      "outfits": "Outfits",
+      "collections": "To'plamlar"
+    },
+    "categories": {
+      "all": "All",
+      "tops": "Ustki kiyimlar",
+      "bottoms": "Bottoms",
+      "shoes": "Shoes",
+      "outerwear": "Outerwear"
+    },
+    "noClothes": "Bu kategoriyada kiyimlar yo'q",
+    "proBadge": "PRO",
+    "priceFrom": "from",
+    "developerTools": "Developer Tools",
+    "pro": "PRO",
+    "from": "from"
   },
   "addOutfit": {
     "title": "Add outfit",
@@ -459,13 +509,21 @@
   },
   "aiChat": {
     "title": "AI Style Assistant",
-    "placeholder": "Ask me anything about your style..."
+    "placeholder": "Ask me anything about your style...",
+    "greeting": "Hi! I'm your AI stylist. How can I help you today?"
+  },
+  "aiHub": {
+    "goodMorning": "Good morning",
+    "goodAfternoon": "Good afternoon",
+    "goodEvening": "Good evening"
   },
   "aiTryOn": {
-    "title": "Try On",
+    "title": "Virtual Try-On",
     "premiumFeature": "Premium Feature",
     "premiumFeatureBody": "Virtual Try-On is available exclusively for Pro and Max subscribers. Upgrade to start trying on clothes!",
     "upgradeToAccess": "Upgrade to Access",
+    "comingSoon": "Coming Soon",
+    "comingSoonBody": "Virtual Try-On is getting an upgrade. We'll add it back soon!",
     "featureName": "AI Virtual Try-On",
     "tagline": "See any outfit on a realistic model of yourself — before you wear it.",
     "bullet1": "Unlimited photorealistic try-ons",
@@ -501,10 +559,60 @@
     "noItemsCategory": "No items in this category yet",
     "noItemsCategoryBody": "Switch filters or add more catalog pieces for try-on previews.",
     "item": "Item",
-    "loadMoreMenswear": "Load more menswear"
+    "loadMoreMenswear": "Load more menswear",
+    "heroTitle": "Libos sizda qanday ko'rinishini bilib oling",
+    "heroSubtitle": "To'liq bo'yli rasmingizni yuklang. AI sizga istalgan kiyimni kiydirib, qanday ko'rinishini ko'rsatadi.",
+    "step1Label": "1. To'liq bo'yli rasm",
+    "step1Hint": "Yaxshi natija uchun to'liq tanangiz kadrda bo'lsin.",
+    "step2Label": "2. Kiyib ko'riladigan kiyim",
+    "step3Label": "3. Ko'rinishi",
+    "fullLengthPhoto": "To'liq bo'yli rasm qo'shing",
+    "fullLengthHint": "Camera or gallery — full body works best",
+    "takePhoto": "Rasm olish",
+    "choosePhoto": "Galereyadan tanlash",
+    "cancel": "Cancel",
+    "permissionTitle": "Ruxsat kerak",
+    "cameraPermission": "To'liq bo'yli rasm olish uchun kameraga ruxsat bering.",
+    "photoPermission": "To'liq bo'yli rasm tanlash uchun fotolarga ruxsat bering.",
+    "upload": "Yuklash",
+    "myWardrobe": "Mening shkafim",
+    "selectItem": "Kiyimni tanlang",
+    "loadingWardrobe": "Shkafingiz yuklanmoqda...",
+    "noWardrobeItems": "Shkafda hali hech narsa yo'q",
+    "scanWardrobe": "Shkafni skanerlash",
+    "selected": "tanlangan",
+    "generating": "Yangi ko'rinish yaratilmoqda...",
+    "takesTime": "(~20 soniya vaqt oladi)",
+    "resultHere": "Natija shu yerda paydo bo'ladi",
+    "generate": "Kiyib ko'rishni yaratish",
+    "processing": "Qayta ishlanmoqda...",
+    "savedTitle": "Saqlandi!",
+    "savedMessage": "Kiyib ko'rish natijasi shkafingizga saqlandi!",
+    "viewWardrobe": "Shkafni ko'rish",
+    "saveToWardrobe": "Shkafga saqlash",
+    "saving": "Saqlanmoqda...",
+    "saveFailed": "Failed to save. Please try again.",
+    "demoTitle": "Demo rejim",
+    "demoMessage": "AI xizmati sozlanmagan. Demo natija ko'rsatilmoqda.",
+    "errorTitle": "Xatolik",
+    "errorMessage": "Kiyib ko'rish yaratib bo'lmadi.",
+    "loginRequired": "AI Kiyib ko'rishdan foydalanish uchun kiring.",
+    "try your self": "O'zingiz sinab ko'ring",
+    "model": "Model",
+    "digitalModelTitle": "Your digital model",
+    "digitalModelPro": "PRO",
+    "digitalModelDescription": "Rasmlar yarating va kiyimlarni shaxsiy avataringizda kiyib ko'ring.",
+    "upgradeToPro": "Pro ga o'tish",
+    "errors": {
+      "missingPhotos": "To'liq bo'yli rasm va kiyib ko'riladigan kiyimni qo'shing.",
+      "tryOnFailed": "Kiyib ko'rish muvaffaqiyatsiz. Server konsolini tekshiring."
+    }
   },
   "language": {
-    "selectLanguage": "Select Language"
+    "selectLanguage": "Select Language",
+    "english": "English",
+    "russian": "Rus",
+    "uzbek": "Uzbek"
   },
   "features": {
     "aiSuggestions": {
@@ -528,26 +636,6 @@
       "subtitle": "Digitize your wardrobe"
     }
   },
-  "aiHub": {
-    "askAnythingAboutStyle": "Ask anything about style...",
-    "typeYourStyleQuestion": "Type your style question",
-    "sendMessage": "Send message",
-    "openMagicMirror": "Open Magic Mirror",
-    "talkToStylist": "Talk to Stylist",
-    "aiThinking": "AI is thinking...",
-    "readyToHelp": "Ready to help",
-    "goodMorning": "Good morning",
-    "goodAfternoon": "Good afternoon",
-    "goodEvening": "Good evening",
-    "scanWardrobe": "Scan wardrobe",
-    "addClothes": "Add clothes",
-    "browseItems": "Browse items",
-    "getIdeas": "Get ideas",
-    "photoToOutfit": "Photo to outfit",
-    "virtualFit": "Virtual fit",
-    "planOutfits": "Plan outfits",
-    "weekly": "Weekly"
-  },
   "outfitMaker": {
     "yourOutfits": "Your Outfits",
     "saveToCalendar": "Save to Calendar",
@@ -568,11 +656,21 @@
     "tip2_1": "Add a leather belt and watch",
     "tip2_2": "Layer outerwear for depth",
     "tip3_1": "Choose minimal jewelry",
-    "tip3_2": "Match shoes to belt color"
+    "tip3_2": "Match shoes to belt color",
+    "noOutfitsError": "Could not generate outfits. Add more items to your wardrobe for better suggestions.",
+    "styleChat": "Stil suhbati",
+    "outfitAI": "Libos AI",
+    "cannotSave": "Can't save",
+    "noValidItems": "Saqlash uchun haqiqiy narsalar yo'q",
+    "saved": "Saqlandi",
+    "outfitSavedCloset": "Libos shkafga saqlandi",
+    "outfitExists": "Libos allaqachon mavjud",
+    "replaceOutfit": "Ushbu sana uchun libos allaqachon mavjud. Almashtirishni xohlaysizmi?",
+    "replace": "Almashtirish"
   },
   "paywall": {
     "heroTitle": "Your style, unlocked.",
-    "heroSubtitle": "Keep Free forever — or upgrade when you're ready for more.",
+    "heroSubtitle": "Unlock your wardrobe score, first AI outfits, try-on flow, and a 7-day plan built to keep you coming back.",
     "restorePurchases": "Restore Purchases",
     "manageSubscription": "Manage Subscription",
     "current": "CURRENT",
@@ -588,16 +686,56 @@
     "somethingWrongPurchase": "Something went wrong with the purchase. Please try again.",
     "restoreFailed": "Restore Failed",
     "noPreviousPurchases": "No previous purchases found for this Apple ID.",
-    "somethingWrongRestore": "Something went wrong while restoring. Please try again."
+    "somethingWrongRestore": "Something went wrong while restoring. Please try again.",
+    "restoreSuccessful": "Muvaffaqiyatli tiklandi",
+    "premiumActivated": "Pro obunangiz tiklandi.",
+    "subscriptionUnavailable": "Subscriptions are currently unavailable. Please try again later.",
+    "planScore": "Wardrobe score",
+    "planScoreBodyWithItems": "{{count}} saved items are ready for outfit analysis.",
+    "planScoreBodyScan": "Scan 3 items to reveal your first closet score.",
+    "plan7Day": "7-day outfit plan",
+    "plan7DayBody": "Daily looks, reminders, and streak progress keep the subscription useful after day one.",
+    "planMissingPiece": "Missing-piece report",
+    "planMissingPieceBody": "Know the exact items that unlock more outfits before you shop.",
+    "previewEyebrow": "PERSONALIZED PREVIEW",
+    "previewTitle": "Ready after upgrade",
+    "annualNote": "Best for the full wardrobe reset",
+    "wardrobeScore": "Wardrobe score",
+    "yourStylePlanReady": "Your style plan is ready",
+    "personalizedPreview": "PERSONALIZED PREVIEW",
+    "readyAfterUpgrade": "Ready after upgrade",
+    "bestForFullReset": "Best for the full wardrobe reset",
+    "openPro": "Unlock Pro",
+    "activateCode": "Activate code",
+    "weekly": "Weekly",
+    "monthly": "Monthly",
+    "annually": "Annually",
+    "discount": "Discount",
+    "weeklySubtitle": "US$4.99 / wk.",
+    "monthlySubtitle": "US$3.44 / wk.",
+    "annualSubtitle": "US$1.53 / wk.",
+    "discount29": "Save 29%",
+    "discount69": "Save 69%",
+    "featuresList": [
+      "Try on any look on avatar",
+      "Find clothing by any photo",
+      "Create outfits from closet",
+      "Organize your closet",
+      "Find your best colors",
+      "Turn clothing photos into studio shots"
+    ]
   },
   "featureLock": {
     "feature": "FEATURE",
-    "cancelAnytime": "Cancel anytime · No hidden fees"
+    "cancelAnytime": "Cancel anytime · No hidden fees",
+    "unlockWith": "{{tier}} bilan ochish"
   },
   "trialCountdown": {
     "lessThanOneHour": "Less than 1 hour left in your free trial",
     "openUpgradePlans": "Open upgrade plans",
-    "upgrade": "Upgrade"
+    "upgrade": "Upgrade",
+    "hoursLeft": "{{hours}} hours left in your free trial — Upgrade now",
+    "daysLeft": "Bepul sinov muddatingizda {{days}} kun{{suffix}} qoldi"
   },
   "promo": {
     "heroTitle": "Unlock Your Free Trial",
@@ -610,7 +748,19 @@
     "goProSubtitle": "Get unlimited access instantly",
     "skip": "Skip for now",
     "enterCode": "Please enter a promo code",
-    "invalidCode": "Invalid or expired promo code"
+    "invalidCode": "Invalid or expired promo code",
+    "enterCodeLabel": "PROMOKOD",
+    "trialActivated": "Trial activated!",
+    "trialActivatedMessage": "Your {{days}}-day free trial has been activated. Enjoy full access to all Pro features!",
+    "redeemOfferCodeA11y": "Redeem offer code",
+    "offerCodeHintA11y": "Opens Apple's offer code redemption sheet",
+    "subscribeProA11y": "Subscribe to Pro",
+    "continueFreeA11y": "Continue with free plan",
+    "continueFreeHintA11y": "Skips subscription and opens the app with the free tier",
+    "redeemOfferCode": "Redeem offer code",
+    "continueFreePlan": "Continue with free plan",
+    "skipsSubscriptionHint": "Skips subscription and opens the app with the free tier",
+    "devOnly": "DEV ONLY — not visible in production"
   },
   "analytics": {
     "title": "Wardrobe Analytics",
@@ -623,7 +773,9 @@
     "mostWorn": "Most Worn",
     "colorPalette": "Your Color Palette",
     "categoryBreakdown": "Category Breakdown",
-    "noDataYet": "No Data Yet"
+    "noDataYet": "No Data Yet",
+    "emojiStreak": "🔥 {{count}}",
+    "rankNumber": "#{{rank}}"
   },
   "description": {
     "title": "2. Service Description",
@@ -710,7 +862,9 @@
         "title": "Wardrobe Rediscovery",
         "description": "Wear 3 items you haven't worn in months"
       }
-    ]
+    ],
+    "note": "Eslatma",
+    "couldNotConnectPlanner": "Rejalashtirish xizmatiga ulana olmaydi. Demo reja ko'rsatilmoqda."
   },
   "styleGoals": {
     "alreadyActive": "Already Active",
@@ -722,7 +876,65 @@
     "title": "Style Goals",
     "subtitle": "Track your fashion journey",
     "activeGoals": "Active Goals",
-    "completed": "Completed"
+    "completed": "Completed",
+    "challenges": "Challenges",
+    "yourStyleGoals": "Your Style Goals",
+    "weeklyChallenges": "Weekly Challenges",
+    "completedText": "Completed!",
+    "startGoal": "Start Goal",
+    "logToday": "Log Today",
+    "challengeCompleteText": "Challenge Complete!",
+    "acceptChallenge": "Accept Challenge",
+    "available": [
+      {
+        "title": "Build a Capsule Wardrobe",
+        "unit": "versatile items",
+        "description": "Curate 30 versatile pieces that mix and match"
+      },
+      {
+        "title": "Shop More Sustainably",
+        "unit": "sustainable purchases",
+        "description": "Make 10 conscious fashion choices this month"
+      },
+      {
+        "title": "Add More Color",
+        "unit": "colorful items",
+        "description": "Step out of your comfort zone with 5 colorful pieces"
+      },
+      {
+        "title": "Embrace Minimalism",
+        "unit": "items decluttered",
+        "description": "Declutter 20 items you no longer wear"
+      },
+      {
+        "title": "Elevate Work Style",
+        "unit": "work outfits",
+        "description": "Create 7 polished work outfit combinations"
+      },
+      {
+        "title": "Plan Complete Outfits",
+        "unit": "outfits planned",
+        "description": "Plan 14 complete outfits for the next 2 weeks"
+      }
+    ],
+    "weeklyChallengesList": [
+      {
+        "title": "No Repeat Week",
+        "description": "Wear different outfits every day this week"
+      },
+      {
+        "title": "Monochrome Monday",
+        "description": "Create a single-color outfit on Monday"
+      },
+      {
+        "title": "Accessory Focus",
+        "description": "Add a new accessory to each outfit this week"
+      },
+      {
+        "title": "Wardrobe Rediscovery",
+        "description": "Wear 3 items you haven't worn in months"
+      }
+    ]
   },
   "styleQuiz": {
     "welcomeTitle": "Welcome to AIWardrobe",
@@ -742,7 +954,57 @@
     "styleGoalsQuestion": "What are your style goals?",
     "tailorExperience": "Select all that apply - we'll tailor your experience",
     "completeSetup": "Complete Setup",
-    "skip": "Skip"
+    "skip": "Skip",
+    "continue": "Continue",
+    "welcome": {
+      "title": "Your Style, Decoded.",
+      "subtitle": "A 60-second quiz that builds your personal wardrobe intelligence.",
+      "aiPlans": "AI outfit plans",
+      "colorProfiling": "Color profiling",
+      "gapAnalysis": "Gap analysis"
+    },
+    "personality": {
+      "title": "What's your style soul?",
+      "subtitle": "Pick the one that feels most like you"
+    },
+    "colors": {
+      "title": "Your color palette",
+      "subtitle": "Select all that speak to you — {{count}} chosen"
+    },
+    "occasions": {
+      "title": "Where do you dress for?",
+      "subtitle": "Pick everything that applies"
+    },
+    "fit": {
+      "title": "How do you like your fit?",
+      "subtitle": "This shapes every suggestion we make"
+    },
+    "goals": {
+      "title": "What's your style mission?",
+      "subtitle": "Select all that matter to you"
+    },
+    "complete": {
+      "title": "Your style plan is ready ✦",
+      "subtitle": "We've built a personalized wardrobe intelligence profile based on your answers.",
+      "occasionPaths": "{{count}} occasion paths mapped",
+      "goalsPrioritized": "{{count}} style goals prioritized",
+      "aiCalibrated": "AI outfit engine calibrated",
+      "unlockPlan": "Unlock my plan"
+    },
+    "aiOutfitPlans": "AI outfit plans",
+    "colorProfiling": "Color profiling",
+    "gapAnalysis": "Gap analysis",
+    "styleSoul": "What's your\nstyle soul?",
+    "pickOne": "Pick the one that feels most like you",
+    "colorPalette": "Your color\npalette",
+    "colorsChosen": "Select all that speak to you — {{count}} chosen",
+    "whereDress": "Where do you\ndress for?",
+    "pickApplies": "Pick everything that applies",
+    "howFit": "How do you\nlike your fit?",
+    "shapesSuggestion": "This shapes every suggestion we make",
+    "styleMission": "What's your\nstyle mission?",
+    "selectMatter": "Select all that matter to you",
+    "unlockPlan": "Unlock my plan"
   },
   "guide": {
     "title": "Our Online Boutique AI",
@@ -761,7 +1023,13 @@
   },
   "clothingDetail": {
     "title": "Clothing Detail",
-    "missingImplementation": "This recovered branch is missing the original detail screen implementation."
+    "missingImplementation": "This recovered branch is missing the original detail screen implementation.",
+    "notFound": "Not found in wardrobe",
+    "worn": "Worn",
+    "lastWorn": "Last worn",
+    "aiConfidence": "AI Confidence",
+    "occasions": "Occasions",
+    "removeFromWardrobe": "Remove from Wardrobe"
   },
   "outfitDetail": {
     "detecting": "Detecting items...",
@@ -817,7 +1085,13 @@
     "utilization80": "Amazing! You're making great use of your closet.",
     "utilization60": "Good! You're utilizing your closet well.",
     "utilization40": "Fair. Some items could use more love.",
-    "utilization20": "Low. Consider donating or swapping unused items."
+    "utilization20": "Low. Consider donating or swapping unused items.",
+    "utilization50": "Siz bu oy shkafingizning {{percent}}% ni kiydingiz. Unutilgan narsalarni qo'shishga harakat qiling.",
+    "utilizationLow": "Bu oy shkafingizning faqat {{percent}}% kiyildi. Qayta kashf qilish uchun ko'p narsa bor!",
+    "unwornItems": "{{count}} ta kiyilmagan narsa",
+    "unwornItemsSubtext": "Bu narsalar 30 kun kiyilmagan. Bu hafta birini sinab ko'ring!",
+    "emptySubtext": "Stil tahlillarini ko'rish uchun skanerlash va liboslarni yozishni boshlang",
+    "rankNumber": "#{{rank}}"
   },
   "outfitSwipe": {
     "loading": "Generating outfit ideas...",
@@ -859,7 +1133,10 @@
     "emptyAlertsText": "We'll notify you when prices drop on your tracked items",
     "priceDropped": "Price dropped",
     "from": "from",
-    "to": "to"
+    "to": "to",
+    "alerts": "Bildirishnomalar",
+    "emptyStateText": "Xarid qilmoqchi bo'lgan mahsulotlarni qo'shing, biz narx o'zgarishini kuzatib boramiz",
+    "target": "Maqsad"
   },
   "newOutfit": {
     "title": "New Outfit",
@@ -874,7 +1151,8 @@
     "userNotAuthenticated": "User not authenticated",
     "addCaption": "Add a caption...",
     "addAtLeastOneItem": "Add at least one item",
-    "outfitSavedSuccessfully": "Outfit saved successfully"
+    "outfitSavedSuccessfully": "Outfit saved successfully",
+    "failedToSaveOutfit": "Libosni saqlab bo'lmadi:"
   },
   "resetPassword": {
     "title": "Reset Password",
@@ -922,12 +1200,22 @@
     "couldNotDetect": "Could not detect clothing items",
     "processingImage": "📸 Processing image...",
     "preparingImage": "🔄 Preparing image...",
-    "detectingClothingItems": "🔍 AI detecting clothing items..."
+    "detectingClothingItems": "🔍 AI detecting clothing items...",
+    "next": "Keyingi",
+    "scanVideo": "Video skan qilish",
+    "stickers": "Stickerlar",
+    "background": "Orqa fon",
+    "emptyState": "Dizaynni boshlash uchun kiyim qo'shing",
+    "foundItems": "✅ {{count}} clothing items found!",
+    "failedSaveWardrobe": "Kiyimni shkafga saqlab bo'lmadi",
+    "saved": "Saved! 🎉",
+    "itemsSaved": "narsalar shkafingizga saqlandi!"
   },
   "trialExpired": {
     "title": "Trial Expired",
     "body": "Your 7-day free trial has ended. Upgrade to a paid plan to continue using AI outfits, unlimited wardrobe scans, and all premium features.",
-    "upgradeToPro": "Upgrade to Pro"
+    "upgradeToPro": "Upgrade to Pro",
+    "havePromoCode": "Menda promokod bor"
   },
   "inspo": {
     "title": "Inspiration",
@@ -1016,7 +1304,12 @@
     "importToWardrobe": "Import to Wardrobe",
     "failedScanReceipts": "Failed to scan receipts",
     "viewWardrobe": "View Wardrobe",
-    "failedImportItems": "Failed to import items"
+    "failedImportItems": "Failed to import items",
+    "scanCompleteMessage": "{{receiptsFound}} chekdan {{itemsDetected}} ta kiyim narsasi topildi.",
+    "gmailConnected": "Gmail muvaffaqiyatli ulandi (Simulyatsiya)",
+    "failedConnectEmail": "Emailni ulab bo'lmadi. Qaytadan urinib ko'ring.",
+    "notConnected": "Ulanmagan",
+    "connectEmailFirst": "Iltimos, avval emailingizni ulang."
   },
   "flashSaleEvent": {
     "unableOpenLink": "Unable to open link",
@@ -1041,7 +1334,9 @@
     "sale": "sale",
     "sales": "sales",
     "dontMissOut": "Don't miss out - get notified",
-    "infoText": "Premium brands offer their excess inventory at exclusive prices. Limited time, limited stock – first come, first served."
+    "infoText": "Premium brands offer their excess inventory at exclusive prices. Limited time, limited stock – first come, first served.",
+    "upToOff": "Up to {{discount}}% off",
+    "discountBadge": "-{{discount}}%"
   },
   "closet": {
     "favorite": "Favorite",
@@ -1075,27 +1370,10 @@
     "askAIStylist": "Ask AI Stylist",
     "enableCameraAccess": "Enable camera access in Settings to continue.",
     "analyzingItem": "Analyzing item and removing background...",
+    "identifyingType": "Identifying clothing type...",
     "backgroundRemoved": "Background removed. Review details...",
-    "analyzingClothing": "AI is analyzing your clothing..."
-  },
-  "magicMirror": {
-    "loading": "Loading your wardrobe...",
-    "title": "Magic Mirror",
-    "tops": "TOPS",
-    "tapToAddPhoto": "Tap to add your photo",
-    "creatingMagic": "Creating magic...",
-    "bottoms": "BOTTOMS",
-    "generating": "Generating...",
-    "tryOn": "Try On",
-    "failedLoadWardrobe": "Failed to load wardrobe.",
-    "permissionRequired": "Permission Required",
-    "allowAccessPhotos": "Allow access to photos to continue.",
-    "photoRequired": "Photo Required",
-    "addPhotoFirst": "Please add your photo first.",
-    "selectOutfit": "Select Outfit",
-    "swipeSelectTop": "Swipe to select a top.",
-    "loginRequired": "Login Required",
-    "loginUseMagicMirror": "Please log in to use Magic Mirror."
+    "analyzingClothing": "AI is analyzing your clothing...",
+    "failedDeleteItem": "Kiyimni o'chirib bo'lmadi. U shkafingizga qayta tiklandi."
   },
   "outfitInspo": {
     "title": "Outfit Inspiration",
@@ -1133,7 +1411,8 @@
   "outfitAI": {
     "suggestOutfitIdeas": "Let me suggest some outfit ideas for you!",
     "troubleConnecting": "I'm having trouble connecting right now. Make sure the AI service is running and try again!",
-    "describeOccasion": "Describe your occasion..."
+    "describeOccasion": "Describe your occasion...",
+    "adjustUntilRight": "Adjust until right"
   },
   "privacyPolicy": {
     "title": "Privacy Policy",
@@ -1179,7 +1458,11 @@
     "removeItem": "Remove Item",
     "confirmRemove": "Are you sure you want to remove this item?",
     "generating": "Generating clothes...",
-    "savingToCloud": "Drawing photos and saving to cloud"
+    "savingToCloud": "Drawing photos and saving to cloud",
+    "itemsAdded": "{{count}} narsa qo'shildi. Endi ular uchun chiroyli rasmlar yaratmoqdamiz.",
+    "saveFailed": "Narsalarni saqlab bo'lmadi: {{error}}",
+    "itemsFound": "{{count}} narsa topildi",
+    "addToWardrobe": "Shkafga qo'shish ({{count}})"
   },
   "termsOfService": {
     "title": "Terms of Service",
@@ -1254,7 +1537,11 @@
     "getItems": "Get Items",
     "choosePhoto": "Choose a photo from your device",
     "chooseVideoOrPhoto": "Choose a video or photo from your device",
-    "analyzingVideo": "Our AI is analyzing every frame of your video..."
+    "analyzingVideo": "Our AI is analyzing every frame of your video...",
+    "outfit": "Kiyim {{index}}",
+    "itemsSaved": "{{count}} ta narsa shkafingizga saqlandi. Ular avtomatik ravishda sinxronlanadi.",
+    "foundItems": "{{count}} ta narsa topildi",
+    "itemsCount": "{{count}} ta narsa"
   },
   "auth": {
     "signIn": "Sign In",
@@ -1265,8 +1552,23 @@
     "noAccount": "Don't have an account?",
     "haveAccount": "Already have an account?",
     "signUp": {
-      "signUp": "Sign Up"
-    }
+      "signUp": "Sign Up",
+      "pleaseEnterValidEmail": "Iltimos, amalga oshadigan email kiriting",
+      "passwordRequirements": "Parol talablari:",
+      "passwordRequirementsText": "Your password must include:\n• At least 8 characters\n• Lowercase letter (a-z)\n• Uppercase letter (A-Z)\n• Number (0-9)",
+      "invalidUsername": "Noto'g'ri foydalanuvchi nomi",
+      "usernameRequirements": "Foydalanuvchi nomi 3-30 belgidan iborat bo'lishi va faqat harflar, raqamlar va pastki chiziqlardan iborat bo'lishi mumkin",
+      "invalidGender": "Noto'g'ri jins",
+      "genderOptions": "Iltimos, kiriting: Erkak, Ayol, Boshqa, yoki Aytmashni xohlayman",
+      "gender": "Jins",
+      "preferNotToSay": "Aytmashni xohlayman",
+      "skip": "O'tkazib yuborish",
+      "profileImageUrlOptional": "Profile Image URL (optional)",
+      "creatingAccount": "Hisob yaratilmoqda..."
+    },
+    "createAccount": "Akkount yaratish",
+    "welcome": "Welcome",
+    "getStarted": "Boshlash"
   },
   "signIn": {
     "signingIn": "Signing In...",
@@ -1276,7 +1578,11 @@
     "verifyEmailBeforeLogin": "Please verify your email before logging in",
     "appleSignInFailed": "Apple sign in failed",
     "or": "or",
-    "emailPasswordRequired": "Please enter email and password"
+    "emailPasswordRequired": "Please enter email and password",
+    "title": "Sign In",
+    "email": "Email",
+    "password": "Parol",
+    "signIn": "Sign In"
   },
   "signUp": {
     "missingFields": "Missing Fields",
@@ -1299,7 +1605,8 @@
     "preferNotToSay": "Prefer not to say",
     "skip": "Skip",
     "profileImageUrlOptional": "Profile Image URL (optional)",
-    "creatingAccount": "Creating Account..."
+    "creatingAccount": "Creating Account...",
+    "signUp": "Sign Up"
   },
   "forgotPassword": {
     "invalidEmail": "Invalid Email",
@@ -1341,7 +1648,9 @@
     "error": "Error",
     "selectVideoError": "Failed to select video",
     "cameraNotSimulator": "Camera doesn't work on simulator. Use gallery.",
-    "recognitionError": "Failed to recognize clothing. Try a shorter video."
+    "recognitionError": "Failed to recognize clothing. Try a shorter video.",
+    "addItem": "Add item",
+    "tryAgain": "Try again"
   },
   "wardrobeAnalytics": {
     "featureName": "Wardrobe Insights",
@@ -1349,15 +1658,32 @@
     "bullet1": "Your real closet utilization score",
     "bullet2": "Most-worn items and hidden gems",
     "bullet3": "Color palette and category breakdown",
-    "bullet4": "Unworn items nudge so nothing goes to waste"
+    "bullet4": "Unworn items nudge so nothing goes to waste",
+    "streakLabel": "🔥 {{streak}}",
+    "rankLabel": "#{{rank}}"
   },
   "tabs": {
     "home": "Home",
-    "profile": "Profile"
+    "profile": "Profile",
+    "discover": "Discover",
+    "add": "Qo'shish",
+    "design": "Dizayn"
   },
   "styles": {
     "selectStyle": "Select Style",
-    "yourStyle": "Your Style"
+    "yourStyle": "Your Style",
+    "dior": {
+      "name": "Kristian Dior",
+      "description": "Nafis, ayollarcha, yuqori moda"
+    },
+    "armani": {
+      "name": "Jorjio Armani",
+      "description": "Minimalist, nafis, erkin bichim"
+    },
+    "lauren": {
+      "name": "Ralf Loren",
+      "description": "Preppi, Amerika klassikasi, sport nafisligi"
+    }
   },
   "cameraScreen": {
     "photoSaved": "Photo Saved",
@@ -1400,12 +1726,15 @@
       "addItem": "Add to Shop",
       "success": "Item added to shop catalog",
       "uploadError": "Upload Error",
-      "failedToAddItem": "Failed to add item"
+      "failedToAddItem": "Failed to add item",
+      "uploadFailed": "Upload failed",
+      "exceptionOccurred": "Exception occurred"
     },
     "manage": {
       "deleteTitle": "Delete Item",
       "editItem": "Edit Item",
-      "empty": "No items found"
+      "empty": "No items found",
+      "deleteConfirm": "Do'kondan \"{{name}}\" ni o'chirishni xohlaysizmi?"
     },
     "inspo": {
       "promote": "Promote",
@@ -1419,7 +1748,8 @@
       "linkUrl": "Link URL",
       "empty": "No inspiration items",
       "alreadyInShop": "Item already in shop catalog",
-      "photoUpdateNoAccess": "Update blocked: no permission to modify this capsule"
+      "photoUpdateNoAccess": "Update blocked: no permission to modify this capsule",
+      "uploadFailed": "Upload failed"
     },
     "garmentTypes": {
       "upperBody": "Tops",
@@ -1427,7 +1757,8 @@
       "dresses": "Dresses",
       "outerwear": "Outerwear",
       "shoes": "Shoes",
-      "accessories": "Accessories"
+      "accessories": "Accessories",
+      "outfit": "Libos"
     },
     "validation": {
       "required": "Required",
@@ -1450,7 +1781,17 @@
       "saved": "Guide content saved successfully",
       "fetchFailed": "Failed to fetch guide content",
       "uploadError": "Upload Error",
-      "failedToSave": "Failed to save guide content"
+      "failedToSave": "Failed to save guide content",
+      "saveFailed": "Qo'llanma mazmunini saqlab bo'lmadi",
+      "uploadFailed": "Upload failed",
+      "exceptionOccurred": "Exception occurred"
+    },
+    "categories": {
+      "tops": "Tops",
+      "bottoms": "Bottoms",
+      "shoes": "Shoes",
+      "dresses": "Dresses",
+      "outerwear": "Outerwear"
     }
   },
   "manage": {
@@ -1464,10 +1805,6 @@
   "outfitGenerator": {
     "placeholderShoes": "Shoes",
     "placeholderPants": "Pants"
-  },
-  "description": {
-    "title": "2. Service Description",
-    "body": "AIWardrobe is an AI-powered wardrobe management app that provides:\n\n• Digitizing clothing items via camera/photo scanning\n• AI-based outfit recommendations\n• Virtual try-on functionality\n• Wardrobe analytics and style insights\n• Cloud sync across devices\n\nSome features require active internet connection and may use third-party AI services."
   },
   "subscription": {
     "tiers": {
@@ -1505,5 +1842,11 @@
         "AI Stylist chat with personalized tips"
       ]
     }
+  },
+  "aiOutfitmaker": {
+    "cannotSave": "Can't save",
+    "noValidItems": "Bu libosda saqlash uchun haqiqiy narsalar yo'q.",
+    "saved": "Saqlandi",
+    "outfitSavedCloset": "Libos shkafingizga saqlandi."
   }
 }

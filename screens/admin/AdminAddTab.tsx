@@ -94,7 +94,7 @@ export const AdminAddTab = () => {
             );
 
             if (uploadResult.status !== 200) {
-                let errorMsg = 'Upload failed';
+                let errorMsg = t('admin.add.uploadFailed');
                 try {
                     const parsed = JSON.parse(uploadResult.body);
                     errorMsg = parsed.message || parsed.error || errorMsg;

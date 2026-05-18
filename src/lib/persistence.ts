@@ -12,6 +12,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { deleteSecureItem } from '../utils/secureStorage';
+import { useStylePreferenceStore } from '../../store/stylePreferenceStore';
+import useTryOnLooksStore from '../../store/tryOnLooksStore';
+import useAvatarStore from '../../store/avatarStore';
+import usePriceTrackingStore from '../../store/priceTrackingStore';
 
 /**
  * AsyncStorage keys used by persist(...) middleware or direct reads.
@@ -73,6 +77,15 @@ export async function clearAllPersistedUserData(): Promise<void> {
     } catch {
         // Best-effort: keep going to secure store
     }
+
+    // Reset in-memory state of every persisted Zustand store so the
+    // next login does not inherit the previous user's data from memory.
+    // AsyncStorage.multiRemove only clears the on-disk cache; the
+    // Zustand singleton holds state in memory until explicitly reset.
+    try { useStylePreferenceStore.getState().clearAll(); } catch {}
+    try { useTryOnLooksStore.getState().clearAll(); } catch {}
+    try { useAvatarStore.setState({ heightCm: '175', weightKg: '70', bodyType: 'average', gender: 'male' }); } catch {}
+    try { usePriceTrackingStore.setState({ trackedItems: [], priceAlerts: [] }); } catch {}
 
     await Promise.all(
         PERSISTED_SECURE_KEYS.map((key) =>

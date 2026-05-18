@@ -18,6 +18,7 @@ import useAuthStore from "../store/auth";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { createLogger } from "../src/utils/logger";
+import { SUPABASE_AUTH_ERRORS } from "../constants/authErrors";
 
 const logger = createLogger('SignUp');
 
@@ -119,15 +120,15 @@ const SignUpScreen = () => {
       logger.error('Signup error', errorMessage);
 
       // Parse specific error messages
-      if (errorMessage.includes("User already registered") || errorMessage.includes("already registered")) {
+      if (errorMessage.includes(SUPABASE_AUTH_ERRORS.USER_ALREADY_REGISTERED) || errorMessage.includes("already registered")) {
         Alert.alert(t('signUp.emailTaken'), t('signUp.emailAlreadyRegistered'));
-      } else if (errorMessage.includes("Username already exists")) {
+      } else if (errorMessage.includes(SUPABASE_AUTH_ERRORS.USERNAME_EXISTS)) {
         // This comes from our custom trigger or RLS if we implemented checks there, 
         // otherwise Supabase might return a generic database error 23505 for unique violation.
         Alert.alert(t('signUp.usernameTaken'), t('signUp.usernameAlreadyUse'));
-      } else if (errorMessage.includes("Database error") && errorMessage.includes("username")) {
+      } else if (errorMessage.includes(SUPABASE_AUTH_ERRORS.DATABASE_ERROR) && errorMessage.includes("username")) {
         Alert.alert(t('signUp.usernameTaken'), t('signUp.usernameAlreadyUse'));
-      } else if (errorMessage.includes("Network request failed")) {
+      } else if (errorMessage.includes(SUPABASE_AUTH_ERRORS.NETWORK_FAILED)) {
         Alert.alert(t('signUp.connectionFailed'), t('signUp.cannotConnectServer'));
       } else {
         Alert.alert(t('signUp.registrationFailed'), errorMessage);

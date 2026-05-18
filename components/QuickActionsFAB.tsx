@@ -96,10 +96,10 @@ export const QuickActionsFAB: React.FC = () => {
 
     const ACTIONS: QuickAction[] = [
         {
-            id: 'hub',
-            icon: 'grid',
-            label: t('quickActions.aiHub'),
-            route: 'AIHub',
+            id: 'tryon',
+            icon: 'shirt-outline',
+            label: t('home.tryOn'),
+            route: 'AITryOn',
             color: '#FFFFFF',
             bgColor: '#6366F1',
         },

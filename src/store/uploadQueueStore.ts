@@ -8,6 +8,7 @@ export interface PendingUpload {
     type: 'image' | 'video';
     addedAt: number;
     status: 'pending' | 'processing' | 'failed';
+    retryCount: number;
     error?: string;
 }
 
@@ -16,6 +17,7 @@ interface UploadQueueState {
     addUpload: (uri: string, type: 'image' | 'video') => void;
     removeUpload: (id: string) => void;
     updateStatus: (id: string, status: PendingUpload['status'], error?: string) => void;
+    incrementRetry: (id: string) => void;
     getPendingCount: () => number;
 }
 
@@ -31,6 +33,7 @@ export const useUploadQueueStore = create<UploadQueueState>()(
                     type,
                     addedAt: Date.now(),
                     status: 'pending',
+                    retryCount: 0,
                 };
                 set((state) => ({
                     pendingUploads: [...state.pendingUploads, newUpload],
@@ -47,6 +50,16 @@ export const useUploadQueueStore = create<UploadQueueState>()(
                 set((state) => ({
                     pendingUploads: state.pendingUploads.map((item) =>
                         item.id === id ? { ...item, status, error } : item
+                    ),
+                }));
+            },
+
+            incrementRetry: (id) => {
+                set((state) => ({
+                    pendingUploads: state.pendingUploads.map((item) =>
+                        item.id === id
+                            ? { ...item, retryCount: (item.retryCount ?? 0) + 1 }
+                            : item
                     ),
                 }));
             },

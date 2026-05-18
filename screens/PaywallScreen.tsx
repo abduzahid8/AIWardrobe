@@ -1,5 +1,9 @@
 /**
- * PaywallScreen — Liquid Glass upgrade surface.
+ * PaywallScreen — Iridescent Frosted Glass Full-Screen Background Upgrade Surface.
+ * Fully customized using the user-provided 'Italian Coast Old Money' Speed Boat image.
+ * Implements a full-bleed parallax background with subtle dark contrast mask overlay.
+ * Floating content sits inside an iridescent frosted-glass card (glassmorphism) that
+ * blends BlurView and pastel shimmers for state-of-the-art premium visual aesthetics.
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -14,11 +18,13 @@ import {
     StatusBar,
     ViewStyle,
     Linking,
+    Image,
 } from 'react-native';
 
 // Apple Standard EULA — required by Guideline 3.1.2(c)
 const APPLE_EULA_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
-const PRIVACY_POLICY_URL = 'https://aiwardrobe.app/privacy'; // Update to your hosted URL
+const PRIVACY_POLICY_URL = 'https://aiwardrobe.app/privacy'; // Privacy Policy URL
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -39,6 +45,7 @@ import Animated, {
 import useSubscriptionStore, { SUBSCRIPTION_PRICING } from '../store/subscriptionStore';
 import useDailyUsageStore from '../store/dailyUsageStore';
 import { useStylePreferenceStore } from '../store/stylePreferenceStore';
+import useWardrobeStore from '../store/wardrobeStore';
 import { iapService } from '../src/services/iapService';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../src/theme/ThemeContext';
@@ -52,63 +59,19 @@ function useDesignTokens() {
         isDark,
         tint: (isDark ? 'dark' : 'light') as BlurTint,
         bg: colors.background,
-        glass: isDark ? 'rgba(17, 20, 30, 0.58)' : 'rgba(255, 255, 255, 0.56)',
-        glassStrong: isDark ? 'rgba(14, 16, 26, 0.76)' : 'rgba(255, 255, 255, 0.76)',
-        glassMuted: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.30)',
-        glassBorder: isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(255, 255, 255, 0.68)',
-        glassBorderSoft: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(10, 25, 49, 0.06)',
         text: colors.text.primary,
         textSub: colors.text.secondary,
         textMute: colors.text.muted,
-        accent: isDark ? '#A8C0DA' : '#12385F',
-        accentStart: isDark ? '#446B95' : '#2A537F',
-        accentEnd: isDark ? '#1C3654' : '#0D2743',
-        accentSoft: isDark ? 'rgba(126, 162, 201, 0.18)' : 'rgba(18, 56, 95, 0.12)',
-        accentSoftStrong: isDark ? 'rgba(126, 162, 201, 0.28)' : 'rgba(42, 83, 127, 0.20)',
-        success: colors.success,
         white: '#FFFFFF',
-        heroGradient: (isDark
-            ? ['#142338', '#0D1828', '#070C15']
-            : ['#F2F7FC', '#ECF3FA', '#FAFCFF']) as readonly [string, string, string],
-        panelHighlight: (isDark
-            ? ['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.02)']
-            : ['rgba(255,255,255,0.82)', 'rgba(255,255,255,0.16)']) as readonly [string, string],
-        buttonHighlight: (isDark
-            ? ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.02)']
-            : ['rgba(255,255,255,0.70)', 'rgba(255,255,255,0.12)']) as readonly [string, string],
-        orbPrimary: isDark ? 'rgba(68, 107, 149, 0.30)' : 'rgba(42, 83, 127, 0.18)',
-        orbSecondary: isDark ? 'rgba(122, 161, 203, 0.18)' : 'rgba(121, 158, 198, 0.14)',
-        orbWarm: isDark ? 'rgba(166, 191, 219, 0.12)' : 'rgba(188, 210, 231, 0.22)',
-        shadow: isDark ? '#000000' : '#4C6076',
-        overlay: isDark ? 'rgba(7, 9, 16, 0.74)' : 'rgba(16, 18, 28, 0.34)',
+        brandAccent: '#7B61FF',
+        brandAccentSoft: 'rgba(123, 97, 255, 0.16)',
+        brandAccentSoftStrong: 'rgba(123, 97, 255, 0.28)',
+        glassBorder: 'rgba(255, 255, 255, 0.20)',
+        glassBorderSoft: 'rgba(255, 255, 255, 0.10)',
     };
 }
 
 type DTokens = ReturnType<typeof useDesignTokens>;
-
-const PressableCard: React.FC<{
-    onPress: () => void;
-    children: React.ReactNode;
-    style?: any;
-}> = ({ onPress, children, style }) => {
-    const scale = useSharedValue(1);
-    const animatedStyle = useAnimatedStyle(() => ({
-        transform: [{ scale: withSpring(scale.value, { damping: 15, stiffness: 400 }) }],
-    }));
-    return (
-        <TouchableOpacity
-            onPressIn={() => { scale.value = 0.98; }}
-            onPressOut={() => { scale.value = 1; }}
-            onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                onPress();
-            }}
-            activeOpacity={1}
-        >
-            <Animated.View style={[style, animatedStyle]}>{children}</Animated.View>
-        </TouchableOpacity>
-    );
-};
 
 const PaywallScreen = () => {
     const D = useDesignTokens();
@@ -118,187 +81,70 @@ const PaywallScreen = () => {
     const { completeOnboarding } = useStylePreferenceStore();
     const { t } = useTranslation();
     const [isLoading, setIsLoading] = useState<string | null>(null);
+
+    // RevenueCat Live Pricing
     const [livePrice, setLivePrice] = useState<string | null>(null);
     const [liveProductId, setLiveProductId] = useState<string | null>(null);
     const [liveYearlyPrice, setLiveYearlyPrice] = useState<string | null>(null);
     const [liveYearlyProductId, setLiveYearlyProductId] = useState<string | null>(null);
+
+    // Active Subscription & Wardrobe length
     const subscriptionTier = useSubscriptionStore((s) => s.tier);
-    const needsPromoCode = useSubscriptionStore((s) => s.needsPromoCode);
+    const wardrobeItemCount = useWardrobeStore((s) => s.items.length);
+    const canGoBack = navigation.canGoBack();
+
+    // 3-Card Select State: default selected is Weekly
+    const [selectedProductId, setSelectedProductId] = useState<string>('com.aiwardrobe.premium.weekly');
 
     const scrollY = useSharedValue(0);
     const scrollHandler = useAnimatedScrollHandler((event) => {
         scrollY.value = event.contentOffset.y;
     });
 
-    const heroAnimStyle = useAnimatedStyle(() => ({
+    // Premium elastic overscroll zoom effect on the full-screen background image
+    const bgImageAnimStyle = useAnimatedStyle(() => ({
         transform: [
             {
-                translateY: interpolate(
+                scale: interpolate(
                     scrollY.value,
-                    [0, 200],
-                    [0, -40],
+                    [-150, 0],
+                    [1.20, 1],
                     Extrapolation.CLAMP
                 ),
             },
-            {
-                scale: interpolate(scrollY.value, [-50, 0, 200], [1.02, 1, 0.96], Extrapolation.CLAMP),
-            },
         ],
-        opacity: interpolate(scrollY.value, [0, 160], [1, 0], Extrapolation.CLAMP),
     }));
 
     const triggerLightHaptic = () => {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     };
 
-    const GlassPanel = ({
-        children,
-        style,
-        radius = 30,
-        intensity = 42,
-    }: {
-        children: React.ReactNode;
-        style?: ViewStyle | ViewStyle[];
-        radius?: number;
-        intensity?: number;
-    }) => (
-        <View style={[styles.glassShadow, { borderRadius: radius }, style]}>
-            <View style={[styles.glassPanel, { borderRadius: radius }]}>
-                <BlurView
-                    intensity={Platform.OS === 'ios' ? intensity : 100}
-                    tint={D.tint}
-                    style={StyleSheet.absoluteFillObject}
-                />
-                <LinearGradient
-                    colors={D.panelHighlight}
-                    start={{ x: 0.08, y: 0 }}
-                    end={{ x: 0.92, y: 1 }}
-                    style={StyleSheet.absoluteFillObject}
-                />
-                <View style={[styles.glassScrim, { borderRadius: radius }]} />
-                <View style={styles.glassContent}>{children}</View>
-            </View>
-        </View>
-    );
-
-    const PrimaryGradientButton = ({
-        label,
-        icon,
-        onPress,
-        style,
-        loading,
-    }: {
-        label: string;
-        icon: IconName;
-        onPress: () => void;
-        style?: ViewStyle | ViewStyle[];
-        loading?: boolean;
-    }) => (
-        <TouchableOpacity
-            activeOpacity={0.85}
-            style={style}
-            onPress={() => {
-                triggerLightHaptic();
-                onPress();
-            }}
-        >
-            <LinearGradient
-                colors={[D.accentStart, D.accentEnd]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.primaryButton}
-            >
-                {loading ? (
-                    <ActivityIndicator color={D.white} size="small" />
-                ) : (
-                    <>
-                        <Ionicons name={icon} size={16} color={D.white} />
-                        <Text style={styles.primaryButtonText}>{label}</Text>
-                    </>
-                )}
-            </LinearGradient>
-        </TouchableOpacity>
-    );
-
-    const TIER_CARDS = {
-        free: {
-            label: t('subscription.tiers.free'),
-            sublabel: t('subscription.tiers.freeSublabel'),
-            price: null as string | null,
-            features: [
-                t('subscription.tiers.freeFeatures.0'),
-                t('subscription.tiers.freeFeatures.1'),
-                t('subscription.tiers.freeFeatures.2'),
-                t('subscription.tiers.freeFeatures.3'),
-            ],
-            missing: [
-                t('subscription.tiers.freeMissing.0'),
-                t('subscription.tiers.freeMissing.1'),
-                t('subscription.tiers.freeMissing.2'),
-            ],
-        },
-        pro: {
-            label: t('subscription.tiers.pro'),
-            sublabel: t('subscription.tiers.proSublabel'),
-            productId: 'com.aiwardrobe.premium.monthly' as const,
-            price: null as string | null,
-            period: t('subscription.tiers.period'),
-            features: [
-                t('subscription.tiers.proFeatures.0'),
-                t('subscription.tiers.proFeatures.1'),
-                t('subscription.tiers.proFeatures.2'),
-                t('subscription.tiers.proFeatures.3'),
-                t('subscription.tiers.proFeatures.4'),
-                t('subscription.tiers.proFeatures.5'),
-                t('subscription.tiers.proFeatures.6'),
-                t('subscription.tiers.proFeatures.7'),
-                t('subscription.tiers.proFeatures.8'),
-            ],
-        },
-        max: {
-            label: t('subscription.tiers.max'),
-            sublabel: t('subscription.tiers.maxSublabel'),
-            productId: 'com.aiwardrobe.premium.yearly' as const,
-            price: null as string | null,
-            period: t('subscription.tiers.maxPeriod'),
-            features: [
-                t('subscription.tiers.proFeatures.0'),
-                t('subscription.tiers.proFeatures.1'),
-                t('subscription.tiers.proFeatures.2'),
-                t('subscription.tiers.proFeatures.3'),
-                t('subscription.tiers.proFeatures.4'),
-                t('subscription.tiers.proFeatures.5'),
-                t('subscription.tiers.proFeatures.6'),
-                t('subscription.tiers.proFeatures.7'),
-                t('subscription.tiers.proFeatures.8'),
-                t('subscription.tiers.maxFeatures.0'),
-                t('subscription.tiers.maxFeatures.1'),
-            ],
-            savingsLabel: t('subscription.tiers.maxSavings'),
-        },
+    const triggerSuccessHaptic = () => {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     };
-    const canGoBack = navigation.canGoBack();
 
+    const triggerErrorHaptic = () => {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    };
+
+    // Load available products from RevenueCat
     useEffect(() => {
         let cancelled = false;
         iapService.getProducts().then((products) => {
             if (cancelled) return;
-            const proProduct = products.find(
-                (p) => p.id === TIER_CARDS.pro.productId
-            ) || products.find((p) => {
+            const proProduct = products.find((p) => p.id === 'com.aiwardrobe.premium.monthly') || products.find((p) => {
                 const id = String(p.id || '').toLowerCase();
                 const title = String(p.title || '').toLowerCase();
                 return id.includes('premium') || id.includes('pro') || title.includes('premium') || title.includes('pro');
-            }) || (products.length === 1 ? products[0] : undefined);
+            });
             if (proProduct?.price) {
                 setLivePrice(proProduct.price);
             }
             if (proProduct?.id) {
                 setLiveProductId(proProduct.id);
             }
-            const yearlyProduct = products.find(
-                (p) => p.id === TIER_CARDS.max.productId
-            ) || products.find((p) => {
+
+            const yearlyProduct = products.find((p) => p.id === 'com.aiwardrobe.premium.yearly') || products.find((p) => {
                 const id = String(p.id || '').toLowerCase();
                 return id.includes('yearly') || id.includes('annual');
             });
@@ -308,49 +154,51 @@ const PaywallScreen = () => {
             if (yearlyProduct?.id) {
                 setLiveYearlyProductId(yearlyProduct.id);
             }
-        }).catch(() => {
-            // Keep fallback empty; UI will show nothing or a placeholder
+        }).catch((err) => {
+            console.warn('[Paywall] getProducts failed: ', err);
         });
         return () => { cancelled = true; };
     }, []);
 
-    /**
-     * Return to the app after a successful purchase or restore.
-     * The subscription store will automatically flip hasActiveSubscription → true,
-     * which causes RootNavigator to render the 'Main' stack if it wasn't already.
-     */
-    const resetToMain = () => {
+    // Navigate users back to closet scan or outfit creator
+    const resetToActivation = () => {
+        const target =
+            wardrobeItemCount >= 3
+                ? { name: 'AIOutfit' as const, params: { source: 'wardrobe' as const } }
+                : { name: 'ScanWardrobe' as const };
+
         setTimeout(() => {
-            if (canGoBack) {
-                navigation.goBack();
-            } else if (navigationRef.isReady()) {
-                // Safely reset stack and navigate to Main tab
+            if (navigationRef.isReady()) {
                 navigation.reset({
-                    index: 0,
-                    routes: [{ name: 'Main' }],
+                    index: 1,
+                    routes: [
+                        { name: 'Main' },
+                        target,
+                    ],
                 });
+            } else if (canGoBack) {
+                navigation.goBack();
             }
         }, 300);
     };
 
+    // Execute in-app purchase flow
     const purchase = async (productId: string) => {
-        console.log('[Paywall] purchase() called with productId:', productId);
+        console.log('[Paywall] Purchase initialized for Product ID:', productId);
         setIsLoading(productId);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        triggerSuccessHaptic();
         try {
-            console.log('[Paywall] calling iapService.purchase...');
             const result = await iapService.purchase(productId);
-            console.log('[Paywall] iapService.purchase returned:', result);
             if (result.success) {
                 completeOnboarding();
                 await useDailyUsageStore.getState().resetToday();
-                resetToMain();
+                resetToActivation();
             } else if (result.error) {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                triggerErrorHaptic();
                 Alert.alert(t('paywall.purchaseFailed'), result.error);
             }
         } catch (error) {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            triggerErrorHaptic();
             Alert.alert(
                 t('paywall.purchaseFailed'),
                 error instanceof Error ? error.message : t('paywall.somethingWrongPurchase')
@@ -360,22 +208,23 @@ const PaywallScreen = () => {
         }
     };
 
+    // Restore premium purchase history
     const handleRestore = async () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setIsLoading('restore');
         try {
             const result = await iapService.restorePurchases();
             if (result.success) {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                triggerSuccessHaptic();
                 completeOnboarding();
                 await useDailyUsageStore.getState().resetToday();
-                resetToMain();
+                resetToActivation();
             } else {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
                 Alert.alert(t('paywall.restoreFailed'), result.error || t('paywall.noPreviousPurchases'));
             }
         } catch (error) {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            triggerErrorHaptic();
             Alert.alert(
                 t('paywall.restoreFailed'),
                 error instanceof Error ? error.message : t('paywall.somethingWrongRestore')
@@ -385,201 +234,294 @@ const PaywallScreen = () => {
         }
     };
 
+    // Close paywall and resume free plan path
     const closePaywall = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        // Never redirect to PromoCode — Apple Guideline 2.1(a) requires a free tier
-        // path so users are never forced to subscribe. If we can go back, do so;
-        // otherwise complete onboarding and land on Main (free tier).
         if (canGoBack) {
             navigation.goBack();
         } else {
             completeOnboarding();
-            resetToMain();
         }
     };
 
+    // Features array checklist mapping
+    const rawFeaturesList = t('paywall.featuresList', { returnObjects: true });
+    const featuresList: string[] = Array.isArray(rawFeaturesList)
+        ? rawFeaturesList
+        : [
+            "Примеряйте любой образ на аватар",
+            "Находите одежду по любому фото",
+            "Создавайте образы из гардероба",
+            "Организуйте свой гардероб",
+            "Найдите свои лучшие цвета",
+            "Превращайте фото одежды в студийные снимки"
+        ];
+
+    // Horizontal cards schema details
+    const CARDS = [
+        {
+            id: 'com.aiwardrobe.premium.weekly',
+            title: t('paywall.weekly', 'Неделя'),
+            price: 'US$4.99',
+            footer: t('paywall.weeklySubtitle', 'US$4.99 / нед.'),
+            hasBadge: false,
+            badgeText: '',
+            strikethrough: null,
+        },
+        {
+            id: liveProductId || 'com.aiwardrobe.premium.monthly',
+            title: t('paywall.monthly', 'Месяц'),
+            price: livePrice ? livePrice : 'US$14.99',
+            footer: t('paywall.monthlySubtitle', 'US$3.44 / нед.'),
+            hasBadge: true,
+            badgeText: t('paywall.discount29', 'Скидка 29%'),
+            strikethrough: 'US$21.41',
+        },
+        {
+            id: liveYearlyProductId || 'com.aiwardrobe.premium.yearly',
+            title: t('paywall.annually', 'Год'),
+            price: liveYearlyPrice ? liveYearlyPrice : 'US$79.99',
+            footer: t('paywall.annualSubtitle', 'US$1.53 / нед.'),
+            hasBadge: true,
+            badgeText: t('paywall.discount69', 'Скидка 69%'),
+            strikethrough: 'US$260.18',
+        },
+    ];
+
     return (
-        <View style={{ flex: 1, backgroundColor: D.bg }}>
-            <StatusBar barStyle={D.isDark ? 'light-content' : 'dark-content'} />
+        <View style={{ flex: 1, backgroundColor: '#0A1931' }}>
+            <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+
+            {/* Full-Screen Background Image stretched exactly 100% height & width */}
+            <Image
+                source={require('../assets/images/paywall_hero.png')}
+                style={styles.backgroundImage}
+                resizeMode="cover"
+            />
+
+            {/* Dark translucent LinearGradient mask overlay that fades the photo bottom edge seamlessly into solid dark blue */}
             <LinearGradient
-                colors={D.heroGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
+                colors={[
+                    'rgba(10, 25, 49, 0.10)',
+                    'rgba(10, 25, 49, 0.35)',
+                    'rgba(10, 25, 49, 0.88)',
+                    '#0A1931',
+                    '#0A1931'
+                ]}
+                locations={[0.0, 0.35, 0.65, 0.78, 1.0]}
                 style={StyleSheet.absoluteFillObject}
             />
 
-            {/* Background orbs */}
-            <Animated.View style={[styles.orb, styles.orbPrimary]} entering={FadeIn.duration(800)} />
-            <Animated.View style={[styles.orb, styles.orbSecondary]} entering={FadeIn.duration(1000).delay(200)} />
-            <Animated.View style={[styles.orb, styles.orbWarm]} entering={FadeIn.duration(1200).delay(400)} />
+            {/* Translucent overlay circle Close button (X) */}
+            <TouchableOpacity
+                style={[styles.closeButton, { top: insets.top + 12 }]}
+                onPress={closePaywall}
+                activeOpacity={0.7}
+            >
+                <BlurView
+                    intensity={Platform.OS === 'ios' ? 36 : 100}
+                    tint="dark"
+                    style={StyleSheet.absoluteFillObject}
+                />
+                <Ionicons name="close" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
 
+            {/* Scrollable Container with floating translucent glass card panel */}
             <Animated.ScrollView
                 onScroll={scrollHandler}
                 scrollEventThrottle={16}
                 contentContainerStyle={{
-                    paddingTop: insets.top + 12,
+                    paddingTop: insets.top + 240,
                     paddingBottom: insets.bottom + 32,
+                    paddingHorizontal: 16,
                 }}
                 showsVerticalScrollIndicator={false}
             >
-                {/* Header */}
-                <View style={styles.header}>
-                    <TouchableOpacity style={styles.closeButton} onPress={closePaywall}>
-                        <Ionicons name="close" size={26} color={D.text} />
-                    </TouchableOpacity>
-                </View>
+                {/* Iridescent Frosted Glass Card Panel */}
+                <View style={styles.glassCardWrapper}>
+                    <BlurView
+                        intensity={Platform.OS === 'ios' ? 45 : 100}
+                        tint="dark"
+                        style={StyleSheet.absoluteFillObject}
+                    />
 
-                {/* Hero */}
-                <Animated.View entering={FadeIn.duration(500)} style={[styles.hero, heroAnimStyle]}>
-                    <View style={styles.iconContainer}>
-                        <Ionicons name="sparkles" size={40} color={D.accent} />
+                    {/* Iridescent Pastel Shimmer Shaded Gradient Mask */}
+                    <LinearGradient
+                        colors={['rgba(123, 97, 255, 0.14)', 'rgba(168, 192, 218, 0.08)']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={StyleSheet.absoluteFillObject}
+                    />
+
+                    {/* Inner Content of the Glass Card */}
+                    <View style={styles.glassCardInnerContent}>
+                        {/* Title */}
+                        <Animated.View entering={FadeIn.duration(600)} style={styles.titleSection}>
+                            <Text style={styles.paywallTitle}>{t('paywall.openPro', 'Открыть Pro')}</Text>
+                        </Animated.View>
+
+                        {/* 6 premium benefit checklist rows */}
+                        <Animated.View entering={FadeInUp.delay(100).duration(600)} style={styles.checklistBlock}>
+                            {featuresList.map((item, idx) => (
+                                <View key={idx} style={styles.checkRow}>
+                                    <View style={styles.checkCircle}>
+                                        <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+                                    </View>
+                                    <Text style={styles.checkText}>{item}</Text>
+                                </View>
+                            ))}
+                        </Animated.View>
+
+
+                        {/* Horizontal 3-card grid subscription switcher */}
+                        <Animated.View entering={FadeInUp.delay(150).duration(600)} style={styles.cardsGridRow}>
+                            {CARDS.map((card) => {
+                                const isSelected = selectedProductId === card.id;
+                                return (
+                                    <TouchableOpacity
+                                        key={card.id}
+                                        style={[
+                                            styles.planCard,
+                                            isSelected && styles.planCardSelected,
+                                            !isSelected && styles.planCardUnselected,
+                                        ]}
+                                        activeOpacity={0.9}
+                                        onPress={() => {
+                                            triggerLightHaptic();
+                                            setSelectedProductId(card.id);
+                                        }}
+                                    >
+                                        {/* Discount badge on top card borders */}
+                                        {card.hasBadge && (
+                                            <View style={styles.cardDiscountBadge}>
+                                                <Text style={styles.cardDiscountBadgeText}>{card.badgeText}</Text>
+                                            </View>
+                                        )}
+
+                                        {/* Selected Indicator dot */}
+                                        <View style={styles.cardSelectionRow}>
+                                            <View style={[
+                                                styles.selectionDotOuter,
+                                                isSelected && styles.selectionDotOuterActive
+                                            ]}>
+                                                {isSelected && <View style={styles.selectionDotInner} />}
+                                            </View>
+                                        </View>
+
+                                        {/* Duration Title */}
+                                        <Text style={[
+                                            styles.cardTitle,
+                                            isSelected ? styles.cardTextHighlight : styles.cardTextMuted
+                                        ]}>
+                                            {card.title}
+                                        </Text>
+
+                                        {/* Price Tags */}
+                                        <View style={styles.cardPriceBlock}>
+                                            {card.strikethrough && (
+                                                <Text style={styles.cardOriginalPrice}>
+                                                    {card.strikethrough}
+                                                </Text>
+                                            )}
+                                            <Text style={[
+                                                styles.cardCurrentPrice,
+                                                isSelected ? styles.cardTextHighlight : styles.cardTextNormal
+                                            ]}>
+                                                {card.price}
+                                            </Text>
+                                        </View>
+
+                                        {/* Weekly Breakdown footer rate */}
+                                        <View style={styles.cardFooter}>
+                                            <Text style={styles.cardFooterText} numberOfLines={2}>
+                                                {card.footer}
+                                            </Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </Animated.View>
+
+                        {/* Main Action Pill button */}
+                        <Animated.View entering={FadeInUp.delay(200).duration(600)} style={styles.buttonWrapper}>
+                            <TouchableOpacity
+                                activeOpacity={0.88}
+                                disabled={isLoading !== null}
+                                onPress={() => purchase(selectedProductId)}
+                            >
+                                <LinearGradient
+                                    colors={['#FFFFFF', '#E6EEFF']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 1 }}
+                                    style={styles.continueButton}
+                                >
+                                    {isLoading === selectedProductId ? (
+                                        <ActivityIndicator color="#0A1931" size="small" />
+                                    ) : (
+                                        <Text style={styles.continueButtonText}>
+                                            {t('styleQuiz.continue', 'Продолжить')}
+                                        </Text>
+                                    )}
+                                </LinearGradient>
+                            </TouchableOpacity>
+                        </Animated.View>
+
+                        {/* Footer legal actions row (Restore & Promo activation) */}
+                        <View style={styles.footerActionsBlock}>
+                            <TouchableOpacity style={styles.footerLinkTouch} onPress={handleRestore}>
+                                {isLoading === 'restore' ? (
+                                    <ActivityIndicator color="#FFFFFF" size="small" />
+                                ) : (
+                                    <Text style={styles.footerActionLinkText}>
+                                        {t('paywall.restorePurchases', 'Восстановить покупки')}
+                                    </Text>
+                                )}
+                            </TouchableOpacity>
+                            <View style={styles.footerActionsDivider} />
+                            <TouchableOpacity
+                                style={styles.footerLinkTouch}
+                                onPress={() => {
+                                    triggerLightHaptic();
+                                    navigation.navigate('PromoCode');
+                                }}
+                            >
+                                <Text style={styles.footerActionLinkText}>
+                                    {t('paywall.activateCode', 'Активировать код')}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Legal compliance descriptions */}
+                        <Text style={styles.legalNotesText}>
+                            {t('paywall.termsText', {
+                                price: livePrice ?? `$${SUBSCRIPTION_PRICING.premium.price.toFixed(2)}`,
+                                yearlyPrice: liveYearlyPrice ?? `$${SUBSCRIPTION_PRICING.vip.price.toFixed(2)}`,
+                            })}
+                        </Text>
+
+                        {/* Legal standard linkages */}
+                        <View style={styles.legalLinksBlock}>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    Linking.openURL(PRIVACY_POLICY_URL).catch(() =>
+                                        navigation.navigate('PrivacyPolicy')
+                                    );
+                                }}
+                            >
+                                <Text style={styles.legalLink}>{t('paywall.privacyPolicy')}</Text>
+                            </TouchableOpacity>
+                            <Text style={styles.legalDivider}>|</Text>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    Linking.openURL(APPLE_EULA_URL).catch(() =>
+                                        navigation.navigate('TermsOfService')
+                                    );
+                                }}
+                            >
+                                <Text style={styles.legalLink}>{t('paywall.termsOfUse')}</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
-                    <Text style={styles.heroTitle}>{t('paywall.heroTitle')}</Text>
-                    <Text style={styles.heroSubtitle}>{t('paywall.heroSubtitle')}</Text>
-                </Animated.View>
-
-                {/* FREE tier (informational — already active) */}
-                <Animated.View entering={FadeInUp.delay(100).springify()}>
-                    <GlassPanel style={styles.card} radius={22} intensity={36}>
-                        <View style={styles.cardHeaderRow}>
-                            <Text style={styles.tierName}>{TIER_CARDS.free.label}</Text>
-                            <View style={styles.currentBadge}>
-                                <Text style={styles.currentBadgeText}>{t('paywall.current')}</Text>
-                            </View>
-                        </View>
-                        <Text style={styles.tierSub}>{TIER_CARDS.free.sublabel}</Text>
-                        <View style={styles.featuresBlock}>
-                            {TIER_CARDS.free.features.map((f, i) => (
-                                <View key={i} style={styles.featureRow}>
-                                    <Ionicons name="checkmark" size={16} color={D.success} />
-                                    <Text style={styles.featureText}>{f}</Text>
-                                </View>
-                            ))}
-                            {TIER_CARDS.free.missing.map((f, i) => (
-                                <View key={`m-${i}`} style={styles.featureRow}>
-                                    <Ionicons name="lock-closed" size={14} color={D.textMute} />
-                                    <Text style={[styles.featureText, styles.featureMuted]}>{f}</Text>
-                                </View>
-                            ))}
-                        </View>
-                    </GlassPanel>
-                </Animated.View>
-
-                {/* PRO tier */}
-                <Animated.View entering={FadeInUp.delay(200).springify()}>
-                    <PressableCard
-                        style={styles.card}
-                        onPress={() => purchase(liveProductId ?? TIER_CARDS.pro.productId)}
-                    >
-                        <GlassPanel style={styles.card} radius={22} intensity={48}>
-                            <View style={styles.popularBadge}>
-                                <Text style={styles.popularBadgeText}>{t('paywall.mostPopular')}</Text>
-                            </View>
-                            <Text style={styles.tierName}>{TIER_CARDS.pro.label}</Text>
-                            <Text style={styles.tierSub}>{TIER_CARDS.pro.sublabel}</Text>
-                            <View style={styles.priceRow}>
-                                <Text style={styles.priceBig}>{livePrice ?? `$${SUBSCRIPTION_PRICING.premium.price.toFixed(2)}`}</Text>
-                                <Text style={styles.pricePeriod}>{TIER_CARDS.pro.period}</Text>
-                            </View>
-                            <View style={styles.featuresBlock}>
-                                {TIER_CARDS.pro.features.map((f, i) => (
-                                    <View key={i} style={styles.featureRow}>
-                                        <Ionicons name="checkmark-circle" size={16} color={D.accent} />
-                                        <Text style={styles.featureText}>{f}</Text>
-                                    </View>
-                                ))}
-                            </View>
-                            <PrimaryGradientButton
-                                label={t('paywall.getPro')}
-                                icon="star"
-                                loading={isLoading === (liveProductId ?? TIER_CARDS.pro.productId)}
-                                onPress={() => purchase(liveProductId ?? TIER_CARDS.pro.productId)}
-                            />
-                        </GlassPanel>
-                    </PressableCard>
-                </Animated.View>
-
-                {/* MAX (Yearly) tier */}
-                <Animated.View entering={FadeInUp.delay(300).springify()}>
-                    <PressableCard
-                        style={styles.card}
-                        onPress={() => purchase(liveYearlyProductId ?? TIER_CARDS.max.productId)}
-                    >
-                        <GlassPanel style={styles.card} radius={22} intensity={36}>
-                            <View style={styles.savingsBadge}>
-                                <Text style={styles.savingsBadgeText}>{TIER_CARDS.max.savingsLabel}</Text>
-                            </View>
-                            <Text style={styles.tierName}>{TIER_CARDS.max.label}</Text>
-                            <Text style={styles.tierSub}>{TIER_CARDS.max.sublabel}</Text>
-                            <View style={styles.priceRow}>
-                                <Text style={styles.priceBig}>{liveYearlyPrice ?? `$${SUBSCRIPTION_PRICING.vip.price.toFixed(2)}`}</Text>
-                                <Text style={styles.pricePeriod}>{TIER_CARDS.max.period}</Text>
-                            </View>
-                            <View style={styles.featuresBlock}>
-                                {TIER_CARDS.max.features.map((f, i) => (
-                                    <View key={i} style={styles.featureRow}>
-                                        <Ionicons name="checkmark-circle" size={16} color={D.accent} />
-                                        <Text style={styles.featureText}>{f}</Text>
-                                    </View>
-                                ))}
-                            </View>
-                            <PrimaryGradientButton
-                                label={t('paywall.getMax')}
-                                icon="diamond"
-                                loading={isLoading === (liveYearlyProductId ?? TIER_CARDS.max.productId)}
-                                onPress={() => purchase(liveYearlyProductId ?? TIER_CARDS.max.productId)}
-                            />
-                        </GlassPanel>
-                    </PressableCard>
-                </Animated.View>
-
-                {/* Restore + Manage + Terms */}
-                <View style={styles.actionsRow}>
-                    <TouchableOpacity style={styles.restoreButton} onPress={handleRestore}>
-                        {isLoading === 'restore' ? (
-                            <ActivityIndicator color={D.accent} size="small" />
-                        ) : (
-                            <Text style={styles.restoreText}>{t('paywall.restorePurchases')}</Text>
-                        )}
-                    </TouchableOpacity>
-                    {subscriptionTier !== 'free' && (
-                        <TouchableOpacity style={styles.manageButton} onPress={() => iapService.manageSubscriptions()}>
-                            <Ionicons name="settings-outline" size={16} color={D.accent} />
-                            <Text style={styles.manageText}>{t('paywall.manageSubscription')}</Text>
-                        </TouchableOpacity>
-                    )}
-                </View>
-
-                <Text style={styles.termsText}>
-                    {t('paywall.termsText', {
-                        price: livePrice ?? `$${SUBSCRIPTION_PRICING.premium.price.toFixed(2)}`,
-                        yearlyPrice: liveYearlyPrice ?? `$${SUBSCRIPTION_PRICING.vip.price.toFixed(2)}`,
-                    })}
-                </Text>
-
-                <View style={styles.legalLinks}>
-                    <TouchableOpacity
-                        onPress={() => {
-                            // Open hosted Privacy Policy URL (functional link required by Apple)
-                            Linking.openURL(PRIVACY_POLICY_URL).catch(() =>
-                                navigation.navigate('PrivacyPolicy')
-                            );
-                        }}
-                    >
-                        <Text style={styles.legalLink}>{t('paywall.privacyPolicy')}</Text>
-                    </TouchableOpacity>
-                    <Text style={styles.legalSeparator}>|</Text>
-                    <TouchableOpacity
-                        onPress={() => {
-                            // Open Apple standard EULA URL — required by Guideline 3.1.2(c).
-                            // This is the functional link Apple checks in the purchase flow.
-                            Linking.openURL(APPLE_EULA_URL).catch(() =>
-                                navigation.navigate('TermsOfService')
-                            );
-                        }}
-                    >
-                        <Text style={styles.legalLink}>{t('paywall.termsOfUse')}</Text>
-                    </TouchableOpacity>
                 </View>
             </Animated.ScrollView>
         </View>
@@ -588,251 +530,269 @@ const PaywallScreen = () => {
 
 const createStyles = (D: DTokens) =>
     StyleSheet.create({
-        // Orbs
-        orb: { position: 'absolute', borderRadius: 999 },
-        orbPrimary: {
-            width: 340,
-            height: 340,
-            top: -60,
-            left: -100,
-            backgroundColor: D.orbPrimary,
-        },
-        orbSecondary: {
-            width: 280,
-            height: 280,
-            top: 120,
-            right: -80,
-            backgroundColor: D.orbSecondary,
-        },
-        orbWarm: {
-            width: 220,
-            height: 220,
-            bottom: 180,
-            left: -40,
-            backgroundColor: D.orbWarm,
-        },
-
-        header: {
-            flexDirection: 'row',
-            justifyContent: 'flex-end',
-            paddingHorizontal: 20,
-            paddingVertical: 10,
+        backgroundImage: {
+            position: 'absolute',
+            top: -120,
+            left: 0,
+            width: '100%',
+            height: '82%',
+            zIndex: 0,
         },
         closeButton: {
+            position: 'absolute',
+            left: 20,
             width: 38,
             height: 38,
             borderRadius: 19,
-            backgroundColor: D.glassMuted,
+            overflow: 'hidden',
             alignItems: 'center',
             justifyContent: 'center',
+            zIndex: 10,
         },
-
-        hero: { alignItems: 'center', marginBottom: 22 },
-        iconContainer: {
-            width: 76,
-            height: 76,
-            borderRadius: 38,
-            backgroundColor: D.accentSoft,
+        // Iridescent Glass Card styling (Frosted Glassmorphism)
+        glassCardWrapper: {
+            borderRadius: 24,
+            borderWidth: 1.5,
+            borderColor: 'rgba(255, 255, 255, 0.16)',
+            overflow: 'hidden',
+            backgroundColor: 'rgba(10, 25, 49, 0.40)',
+            ...Platform.select({
+                ios: {
+                    shadowColor: '#000000',
+                    shadowOffset: { width: 0, height: 12 },
+                    shadowOpacity: 0.35,
+                    shadowRadius: 20,
+                },
+                android: { elevation: 8 },
+            }),
+        },
+        glassCardInnerContent: {
+            paddingTop: 24,
+            paddingHorizontal: 16,
+            paddingBottom: 24,
+            zIndex: 1,
+        },
+        titleSection: {
             alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: 14,
+            marginVertical: 14,
+            paddingHorizontal: 10,
         },
-        heroTitle: {
+        paywallTitle: {
             fontSize: 28,
-            fontWeight: '800',
-            color: D.text,
-            marginBottom: 8,
+            fontWeight: '900',
+            color: '#FFFFFF',
             textAlign: 'center',
+            letterSpacing: 0.5,
         },
-        heroSubtitle: {
+        checklistBlock: {
+            paddingHorizontal: 12,
+            marginTop: 6,
+            gap: 12,
+        },
+        checkRow: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+        },
+        checkCircle: {
+            width: 22,
+            height: 22,
+            borderRadius: 11,
+            backgroundColor: D.brandAccent,
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
+        checkText: {
             fontSize: 14,
-            color: D.textSub,
-            textAlign: 'center',
-            lineHeight: 20,
-            paddingHorizontal: 20,
+            fontWeight: '600',
+            color: 'rgba(255, 255, 255, 0.90)',
+            flex: 1,
+            lineHeight: 19,
         },
 
-        card: { marginBottom: 14, marginHorizontal: 20 },
-        cardHeaderRow: {
+        // 3-Card horizontal grid switcher styles (floating glass style)
+        cardsGridRow: {
             flexDirection: 'row',
+            justifyContent: 'space-between',
+            marginTop: 29,
+            marginBottom: 20,
+            gap: 6,
+        },
+        planCard: {
+            flex: 1,
+            borderRadius: 16,
+            borderWidth: 1.5,
+            paddingVertical: 14,
+            paddingHorizontal: 8,
             alignItems: 'center',
             justifyContent: 'space-between',
+            position: 'relative',
+            height: 146,
         },
-        currentBadge: {
-            backgroundColor: D.accentSoftStrong,
-            paddingHorizontal: 10,
-            paddingVertical: 4,
-            borderRadius: 8,
+        planCardSelected: {
+            borderColor: D.brandAccent,
+            backgroundColor: D.brandAccentSoft,
         },
-        currentBadgeText: {
-            color: D.text,
-            fontSize: 10,
-            fontWeight: '700',
-            letterSpacing: 0.5,
+        planCardUnselected: {
+            borderColor: 'rgba(255, 255, 255, 0.12)',
+            backgroundColor: 'rgba(255, 255, 255, 0.04)',
         },
-        popularBadge: {
+        cardDiscountBadge: {
             position: 'absolute',
-            top: 12,
-            right: 12,
-            backgroundColor: D.glassMuted,
-            paddingHorizontal: 10,
-            paddingVertical: 4,
-            borderRadius: 10,
+            bottom: -10,
+            alignSelf: 'center',
+            backgroundColor: D.brandAccent,
+            paddingHorizontal: 7,
+            paddingVertical: 3,
+            borderRadius: 6,
+            zIndex: 2,
         },
-        popularBadgeText: {
-            color: D.text,
-            fontSize: 10,
-            fontWeight: '700',
-            letterSpacing: 0.5,
+        cardDiscountBadgeText: {
+            color: '#FFFFFF',
+            fontSize: 8,
+            fontWeight: '900',
+            textAlign: 'center',
         },
-        tierName: {
-            fontSize: 22,
-            fontWeight: '800',
-            color: D.text,
-        },
-        tierSub: {
-            fontSize: 13,
-            color: D.textSub,
-            marginTop: 4,
-            marginBottom: 8,
-        },
-        priceRow: {
-            flexDirection: 'row',
+        cardSelectionRow: {
+            width: '100%',
             alignItems: 'flex-end',
-            marginBottom: 4,
+            marginBottom: 2,
         },
-        priceBig: {
-            fontSize: 36,
-            fontWeight: '800',
-            color: D.text,
-        },
-        pricePeriod: {
-            fontSize: 14,
-            color: D.textSub,
-            marginBottom: 6,
-            marginLeft: 4,
-        },
-
-        featuresBlock: { marginTop: 12, marginBottom: 16 },
-        featureRow: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            marginBottom: 8,
-            gap: 10,
-        },
-        featureText: {
-            fontSize: 14,
-            color: D.text,
-            fontWeight: '500',
-        },
-        featureMuted: { color: D.textMute },
-
-        primaryButton: {
-            flexDirection: 'row',
+        selectionDotOuter: {
+            width: 14,
+            height: 14,
+            borderRadius: 7,
+            borderWidth: 1.5,
+            borderColor: 'rgba(255, 255, 255, 0.30)',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 8,
-            paddingVertical: 14,
-            borderRadius: 12,
-            marginTop: 6,
         },
-        primaryButtonText: {
-            fontSize: 15,
+        selectionDotOuterActive: {
+            borderColor: D.brandAccent,
+        },
+        selectionDotInner: {
+            width: 8,
+            height: 8,
+            borderRadius: 4,
+            backgroundColor: D.brandAccent,
+        },
+        cardTitle: {
+            fontSize: 14,
             fontWeight: '800',
-            color: D.white,
+            textAlign: 'center',
+            marginBottom: 2,
         },
-
-        savingsBadge: {
-            position: 'absolute',
-            top: 12,
-            right: 12,
-            backgroundColor: D.accent,
-            paddingHorizontal: 10,
-            paddingVertical: 4,
-            borderRadius: 10,
+        cardPriceBlock: {
+            alignItems: 'center',
+            marginVertical: 4,
         },
-        savingsBadgeText: {
-            color: D.bg,
+        cardOriginalPrice: {
             fontSize: 10,
-            fontWeight: '700',
-            letterSpacing: 0.5,
+            color: 'rgba(255, 255, 255, 0.40)',
+            textDecorationLine: 'line-through',
+            marginBottom: 2,
         },
-
-        actionsRow: {
+        cardCurrentPrice: {
+            fontSize: 16,
+            fontWeight: '900',
+            textAlign: 'center',
+        },
+        cardFooter: {
+            borderTopWidth: 1,
+            borderTopColor: 'rgba(255, 255, 255, 0.10)',
+            paddingTop: 6,
+            width: '100%',
+            alignItems: 'center',
+        },
+        cardFooterText: {
+            fontSize: 9,
+            fontWeight: '700',
+            color: 'rgba(255, 255, 255, 0.60)',
+            textAlign: 'center',
+            lineHeight: 11,
+        },
+        cardTextHighlight: {
+            color: '#FFFFFF',
+        },
+        cardTextNormal: {
+            color: 'rgba(255, 255, 255, 0.90)',
+        },
+        cardTextMuted: {
+            color: 'rgba(255, 255, 255, 0.60)',
+        },
+        // Continue Action Button
+        buttonWrapper: {
+            marginTop: 6,
+            marginBottom: 16,
+        },
+        continueButton: {
+            height: 52,
+            borderRadius: 26,
+            alignItems: 'center',
+            justifyContent: 'center',
+            ...Platform.select({
+                ios: {
+                    shadowColor: '#FFFFFF',
+                    shadowOffset: { width: 0, height: 6 },
+                    shadowOpacity: 0.15,
+                    shadowRadius: 10,
+                },
+                android: { elevation: 4 },
+            }),
+        },
+        continueButtonText: {
+            fontSize: 16,
+            fontWeight: '800',
+            letterSpacing: 0.5,
+            color: '#0A1931',
+        },
+        // Legal Footers
+        footerActionsBlock: {
             flexDirection: 'row',
             justifyContent: 'center',
             alignItems: 'center',
             gap: 16,
-            paddingVertical: 14,
+            paddingVertical: 10,
         },
-        restoreButton: { alignItems: 'center', paddingVertical: 14 },
-        restoreText: {
+        footerLinkTouch: {
+            paddingVertical: 6,
+            paddingHorizontal: 8,
+        },
+        footerActionLinkText: {
             fontSize: 13,
-            color: D.accent,
-            fontWeight: '600',
+            color: '#FFFFFF',
+            fontWeight: '700',
         },
-        manageButton: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
+        footerActionsDivider: {
+            width: 1,
+            height: 14,
+            backgroundColor: 'rgba(255, 255, 255, 0.20)',
         },
-        manageText: {
-            fontSize: 13,
-            color: D.accent,
-            fontWeight: '600',
-        },
-
-        termsText: {
+        legalNotesText: {
             fontSize: 11,
-            color: D.textSub,
+            color: 'rgba(255, 255, 255, 0.50)',
             textAlign: 'center',
             lineHeight: 16,
-            paddingHorizontal: 10,
-            marginBottom: 20,
+            paddingHorizontal: 12,
+            marginTop: 14,
+            marginBottom: 16,
         },
-        legalLinks: {
+        legalLinksBlock: {
             flexDirection: 'row',
             justifyContent: 'center',
             alignItems: 'center',
             gap: 12,
-            marginBottom: 20,
+            marginBottom: 10,
         },
         legalLink: {
             fontSize: 12,
-            color: D.accent,
-            fontWeight: '500',
+            color: '#FFFFFF',
+            fontWeight: '600',
+            textDecorationLine: 'underline',
         },
-        legalSeparator: {
+        legalDivider: {
             fontSize: 12,
-            color: D.textMute,
-        },
-
-        // Glass
-        glassShadow: {
-            ...Platform.select({
-                ios: {
-                    shadowColor: D.shadow,
-                    shadowOffset: { width: 0, height: 8 },
-                    shadowOpacity: 0.22,
-                    shadowRadius: 16,
-                },
-                android: { elevation: 6 },
-            }),
-        },
-        glassPanel: {
-            overflow: 'hidden',
-            borderWidth: 1,
-            borderColor: D.glassBorder,
-            backgroundColor: D.glass,
-        },
-        glassScrim: {
-            ...StyleSheet.absoluteFillObject,
-            backgroundColor: D.glassStrong,
-        },
-        glassContent: {
-            padding: 20,
-            position: 'relative',
-            zIndex: 1,
+            color: 'rgba(255, 255, 255, 0.20)',
         },
     });
 

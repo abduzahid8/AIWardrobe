@@ -29,6 +29,7 @@ import Animated, {
     SlideOutDown,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 import { colors, spacing, borderRadius, shadows } from '../../src/theme';
 import { useFeatureHints } from '../../src/hooks/useFeatureHints';
 
@@ -208,6 +209,7 @@ export const FeatureHint: React.FC<FeatureHintProps> = ({
     position = 'center',
     onDismiss,
 }) => {
+    const { t } = useTranslation();
     const { hasSeenHint, markHintAsSeen, isLoading } = useFeatureHints();
     const [visible, setVisible] = useState(false);
 
@@ -280,13 +282,13 @@ export const FeatureHint: React.FC<FeatureHintProps> = ({
                             end={{ x: 1, y: 0 }}
                             style={styles.ctaGradient}
                         >
-                            <Text style={styles.ctaText}>Got it!</Text>
+                            <Text style={styles.ctaText}>{t('common.gotIt')}</Text>
                         </LinearGradient>
                     </TouchableOpacity>
 
                     {/* Skip hint */}
                     <TouchableOpacity onPress={handleDismiss} style={styles.skipButton}>
-                        <Text style={styles.skipText}>Tap anywhere to dismiss</Text>
+                        <Text style={styles.skipText}>{t('common.tapToDismiss')}</Text>
                     </TouchableOpacity>
                 </Animated.View>
             </Animated.View>

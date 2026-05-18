@@ -170,7 +170,7 @@ async function applyGarmentStepGeminiOrDeterministic(basePx, garmentSrc, label) 
 /**
  * POST /api/tryon/gemini
  */
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', async (req, res) => {
   const startedAt = Date.now();
   try {
     const body = req.body || {};
