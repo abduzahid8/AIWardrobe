@@ -20,14 +20,19 @@ export interface SyncSlice {
 
     fetchItems: () => Promise<void>;
     syncToServer: () => Promise<void>;
-    rehydrateFromCloud: () => Promise<void>;
+    rehydrateFromCloud: (force?: boolean) => Promise<void>;
     subscribeToRealtime: () => void;
     unsubscribeRealtime: () => void;
 }
 
+// 60-second TTL: skip a full Supabase round-trip when items are already
+// loaded and the last sync was recent. Upload/delete pass force=true to
+// bypass this guard and immediately reflect the mutation.
+const REHYDRATE_TTL_MS = 60_000;
+
 let _realtimeChannel: RealtimeChannel | null = null;
 
-export const createSyncSlice: StateCreator<WardrobeState, [], [], SyncSlice> = (set, get) => ({
+export const createSyncSlice: StateCreator<WardrobeState, [], [], SyncSlice> = (set, get, store) => ({
     isSyncing: false,
     lastSyncedAt: null,
     pendingActions: [],
@@ -69,7 +74,31 @@ export const createSyncSlice: StateCreator<WardrobeState, [], [], SyncSlice> = (
         }
     },
 
-    rehydrateFromCloud: async () => {
+    rehydrateFromCloud: async (force = false) => {
+        // Wait for Zustand storage hydration to finish if it hasn't already
+        const persistStore = store as any;
+        if (persistStore && persistStore.persist && typeof persistStore.persist.hasHydrated === 'function' && !persistStore.persist.hasHydrated()) {
+            await new Promise<void>((resolve) => {
+                const unsub = persistStore.persist.onFinishHydration(() => {
+                    unsub();
+                    resolve();
+                });
+            });
+        }
+
+        // TTL guard: skip network round-trip when items are already loaded
+        // and the last sync was recent. Upload/delete operations pass force=true
+        // to bypass this and immediately reflect the mutation.
+        const { items: currentItems, lastSyncedAt } = get();
+        if (
+            !force &&
+            currentItems.length > 0 &&
+            lastSyncedAt &&
+            Date.now() - new Date(lastSyncedAt).getTime() < REHYDRATE_TTL_MS
+        ) {
+            return;
+        }
+
         set({ isLoading: true });
         try {
             const { pendingActions, wearLogs: localWearLogs } = get();

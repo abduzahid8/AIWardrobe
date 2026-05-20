@@ -6,11 +6,7 @@ import {
     StyleProp,
 } from 'react-native';
 import { Image, ImageProps } from 'expo-image';
-import Animated, {
-    useSharedValue,
-    useAnimatedStyle,
-    withTiming,
-} from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { colors } from '../../src/theme';
 
 interface CachedImageProps extends Omit<ImageProps, 'source'> {
@@ -20,8 +16,6 @@ interface CachedImageProps extends Omit<ImageProps, 'source'> {
     fadeIn?: boolean;
     style?: StyleProp<ImageStyle>;
 }
-
-const AnimatedImage = Animated.createAnimatedComponent(Image) as React.ComponentType<any>;
 
 export const CachedImage: React.FC<CachedImageProps> = React.memo(({
     uri,
@@ -33,36 +27,21 @@ export const CachedImage: React.FC<CachedImageProps> = React.memo(({
     ...props
 }) => {
     const [error, setError] = useState(false);
-    const opacity = useSharedValue(0);
-
-    const animatedStyle = useAnimatedStyle(() => ({
-        opacity: fadeIn ? opacity.value : 1,
-    }));
-
-    const handleLoad = () => {
-        if (fadeIn) {
-            opacity.value = withTiming(1, { duration: 300 });
-        } else {
-            opacity.value = 1;
-        }
-    };
+    const sourceUri = error ? fallbackUri : uri;
 
     const handleError = () => {
         setError(true);
     };
 
-    const sourceUri = error ? fallbackUri : uri;
-
     return (
         <View style={[styles.container, style as any]}>
-            <AnimatedImage
+            <Image
                 {...props}
                 source={sourceUri}
-                style={[styles.image, style, animatedStyle]}
+                style={[styles.image, style]}
                 contentFit={contentFit}
                 cachePolicy="memory-disk"
-                transition={fadeIn ? { duration: 300 } : undefined}
-                onLoad={handleLoad}
+                transition={fadeIn ? 200 : undefined}
                 onError={handleError}
             />
         </View>
@@ -82,30 +61,19 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = React.memo(({
     style,
     ...props
 }) => {
-    const opacity = useSharedValue(0);
-
-    const animatedStyle = useAnimatedStyle(() => ({
-        opacity: opacity.value,
-    }));
-
-    const handleLoad = () => {
-        opacity.value = withTiming(1, { duration: 200 });
-    };
-
     return (
         <View style={[styles.optimizedContainer, { aspectRatio }, style as any]}>
             {/* Placeholder */}
             <View style={[styles.placeholder, { backgroundColor: placeholderColor }]} />
 
             {/* Actual image */}
-            <AnimatedImage
+            <Image
                 {...props}
                 source={uri}
-                style={[styles.optimizedImage, animatedStyle]}
+                style={[styles.optimizedImage]}
                 contentFit="cover"
                 cachePolicy="memory-disk"
-                transition={{ duration: 200 }}
-                onLoad={handleLoad}
+                transition={200}
             />
         </View>
     );

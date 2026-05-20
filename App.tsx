@@ -80,8 +80,10 @@ const AppContent = () => {
   // MissingConfigScreen path so the user can see the actionable error
   // instead of an indefinite splash.
   useEffect(() => {
-    SplashScreen.hideAsync().catch(() => undefined);
-  }, []);
+    if (missingVars.length > 0) {
+      SplashScreen.hideAsync().catch(() => undefined);
+    }
+  }, [missingVars.length]);
 
   useEffect(() => {
     const handleDeepLink = async (event: { url: string }) => {

@@ -7,10 +7,11 @@ import { useAdminGuard } from '../hooks/useAdminGuard';
 import { useTranslation } from 'react-i18next';
 import { AdminAddTab } from './admin/AdminAddTab';
 import { AdminManageTab } from './admin/AdminManageTab';
+import { AdminOccasionsTab } from './admin/AdminOccasionsTab';
 import { AdminInspoTab } from './admin/AdminInspoTab';
 import { AdminGuideTab } from './admin/AdminGuideTab';
 
-type AdminTab = 'add' | 'manage' | 'inspo' | 'guide';
+type AdminTab = 'add' | 'manage' | 'occasions' | 'inspo' | 'guide';
 
 const AdminPanelScreen = () => {
     const { t } = useTranslation();
@@ -34,6 +35,7 @@ const AdminPanelScreen = () => {
     const tabs: { key: AdminTab; icon: string; label: string }[] = [
         { key: 'add', icon: 'add-circle', label: t('admin.tabs.add') },
         { key: 'manage', icon: 'list', label: t('admin.tabs.manage') },
+        { key: 'occasions', icon: 'shirt', label: t('admin.tabs.occasions', 'Occasions') },
         { key: 'inspo', icon: 'images', label: t('admin.tabs.inspo') },
         { key: 'guide', icon: 'book', label: t('admin.tabs.guide') },
     ];
@@ -61,6 +63,7 @@ const AdminPanelScreen = () => {
             </View>
             {activeTab === 'add' && <AdminAddTab />}
             {activeTab === 'manage' && <AdminManageTab />}
+            {activeTab === 'occasions' && <AdminOccasionsTab />}
             {activeTab === 'inspo' && <AdminInspoTab />}
             {activeTab === 'guide' && <AdminGuideTab />}
         </SafeAreaView>

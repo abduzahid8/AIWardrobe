@@ -287,6 +287,32 @@ const MyClosetScreen = () => {
         };
     }, []);
     const [items, setItems] = useState<ClothingItem[]>([]);
+    const storeItems = useWardrobeStore((state) => state.items);
+
+    // Sync local items state with Zustand store items reactively
+    useEffect(() => {
+        if (storeItems && storeItems.length > 0) {
+            const mappedFromStore: ClothingItem[] = storeItems.map(item => ({
+                _id: item.id,
+                id: item.id,
+                type: normalizeCategory(item.subCategory || item.category || ''),
+                itemType: normalizeCategory(item.subCategory || item.category || ''),
+                color: item.primaryColor || 'various',
+                imageUrl: item.imageUrl,
+                image: item.imageUrl,
+                category: normalizeCategory(item.category || ''),
+                wearCount: item.wearCount,
+                createdAt: item.createdAt,
+                isFavorite: item.isFavorite ?? false,
+            }));
+            setItems(mappedFromStore);
+            hasItemsRef.current = mappedFromStore.length > 0;
+            setLoading(false);
+        } else {
+            setItems([]);
+            hasItemsRef.current = false;
+        }
+    }, [storeItems]);
 
     // Skip re-fetching if the user just switched tabs momentarily.
     // Upload/delete operations call loadItems() directly, bypassing this TTL.
@@ -482,8 +508,13 @@ const MyClosetScreen = () => {
                     const aiResult = await ExternalAIService.classifyOnly(asset.base64 || '');
                     const cat = (aiResult.classification?.category || '').toLowerCase();
                     const sec = (aiResult.classification?.section || '').toLowerCase();
+                    
+                    const imageData = asset.base64
+                        ? (asset.base64.startsWith('data:') ? asset.base64 : `data:image/jpeg;base64,${asset.base64}`)
+                        : aiResult.imageUrl;
+
                     navigation.navigate('ClothingDetailEditor', {
-                        imageUri: asset.uri,
+                        imageUri: imageData,
                         detectedType: mapCategoryToType(cat, sec),
                         detectedColor: mapColorToId(aiResult.classification?.attributes?.color || ''),
                         detectedStyle: aiResult.classification?.attributes?.style,
@@ -491,7 +522,11 @@ const MyClosetScreen = () => {
                         aiConfidence: aiResult.classification?.confidence,
                     });
                 } catch {
-                    navigation.navigate('ClothingDetailEditor', { imageUri: asset.uri });
+                    const fallbackData = asset.base64
+                        ? (asset.base64.startsWith('data:') ? asset.base64 : `data:image/jpeg;base64,${asset.base64}`)
+                        : asset.uri;
+
+                    navigation.navigate('ClothingDetailEditor', { imageUri: fallbackData });
                 } finally {
                     setIsUploadingOverlay(false);
                 }
@@ -541,27 +576,18 @@ const MyClosetScreen = () => {
 
         const donePerf = perfAction('MyCloset:deleteItem');
         try {
-            // Optimistic UI update
-            setItems(prev => prev.filter(i => (i._id || i.id) !== idToDelete));
-
-            const { error } = await supabase
-                .from('clothing_items')
-                .delete()
-                .eq('id', idToDelete);
-
-            if (error) throw error;
+            await useWardrobeStore.getState().removeItem(idToDelete);
             donePerf();
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         } catch (error) {
             donePerf();
             console.error('Failed to delete item:', error);
             Alert.alert(t('common.error'), t('myCloset.failedDeleteItem'));
-            loadItems(); // Revert on failure
         }
     };
 
     // Load wardrobe items
-    const loadItems = useCallback(async (silent = false) => {
+    const loadItems = useCallback(async (silent = false, force = false) => {
         if (!user) {
             setLoading(false);
             return;
@@ -570,78 +596,18 @@ const MyClosetScreen = () => {
         const donePerf = perfAction('MyCloset:loadItems');
         perfMark('MyClosetScreen:load'); // Reset per-load mark for accurate tab-switch timing
         try {
-            // Only show spinner on the very first load — background refreshes
-            // keep existing items visible to avoid the flash-of-empty-screen.
             if (!silent) setLoading(true);
 
-            // Fast path: read from the Zustand wardrobeStore if it has already
-            // been populated by rehydrateFromCloud() (called once on app start).
-            // This avoids a redundant Supabase round-trip (~800ms) on every
-            // TTL-gated refresh when the data is already in memory.
-            const storeItems = useWardrobeStore.getState().items;
-            if (storeItems.length > 0) {
-                const mappedFromStore: ClothingItem[] = storeItems.map(item => ({
-                    _id: item.id,
-                    id: item.id,
-                    type: normalizeCategory(item.subCategory || item.category || ''),
-                    itemType: normalizeCategory(item.subCategory || item.category || ''),
-                    color: item.primaryColor || 'various',
-                    imageUrl: item.imageUrl,
-                    image: item.imageUrl,
-                    category: normalizeCategory(item.category || ''),
-                    wearCount: item.wearCount,
-                    createdAt: item.createdAt,
-                    isFavorite: item.isFavorite ?? false,
-                }));
-                setItems(mappedFromStore);
-                hasItemsRef.current = mappedFromStore.length > 0;
-                donePerf();
-                logger.debug(`Loaded ${mappedFromStore.length} items from store (no network)`, {
-                    images: mappedFromStore.map(i => ({ type: i.type, hasImage: !!i.imageUrl, imgLen: i.imageUrl?.length || 0 })),
-                });
-                perfMeasure('MyClosetScreen:load');
-                perfScreenReady('Closet');
-                return;
-            }
-
-            // Slow path: store is empty (first launch before rehydration completes),
-            // fall back to a direct Supabase query scoped to the authenticated user.
-            const { data, error } = await supabase
-                .from('clothing_items')
-                .select('*')
-                .eq('user_id', user.id)
-                .order('created_at', { ascending: false });
-
-            if (data) {
-                // Map snake_case to camelCase
-                const mappedItems: ClothingItem[] = data.map(item => ({
-                    _id: item.id,
-                    id: item.id,
-                    type: normalizeCategory(item.type || item.category || ''),
-                    itemType: normalizeCategory(item.type || item.category || ''),
-                    color: item.color && item.color.length > 0 ? item.color[0] : 'various',
-                    imageUrl: item.image_url,
-                    image: item.image_url,
-                    category: normalizeCategory(item.category || item.type || ''),
-                    wearCount: item.wear_count,
-                    createdAt: item.created_at,
-                    isFavorite: item.is_favorite ?? false,
-                }));
-
-                setItems(mappedItems);
-                hasItemsRef.current = mappedItems.length > 0;
-                donePerf();
-                logger.debug(`Loaded ${mappedItems.length} items`, {
-                    images: mappedItems.map(i => ({ type: i.type, hasImage: !!i.imageUrl, imgLen: i.imageUrl?.length || 0 })),
-                });
-                // Screen is ready once items are loaded — measure from the per-load mark
-                perfMeasure('MyClosetScreen:load');
-                perfScreenReady('Closet');
-            }
+            // Rehydrate/Fetch wardrobe items using the store
+            await useWardrobeStore.getState().rehydrateFromCloud(force);
+            
+            donePerf();
+            perfMeasure('MyClosetScreen:load');
+            perfScreenReady('Closet');
         } catch (error) {
             donePerf();
             console.error('Failed to load wardrobe:', error);
-            // local storage
+            // local storage fallback
             const localItems = await AsyncStorage.getItem('myWardrobeItems');
             if (localItems) {
                 setItems(JSON.parse(localItems));
@@ -651,33 +617,6 @@ const MyClosetScreen = () => {
         }
     }, [user]);
 
-    // Seed the local items state from the Zustand wardrobeStore on mount.
-    // If rehydrateFromCloud() has already populated the store (called once on
-    // app start in RootNavigator), this gives the screen instant data without
-    // waiting for the TTL-gated Supabase fetch below.
-    useEffect(() => {
-        const storeItems = useWardrobeStore.getState().items;
-        if (storeItems.length > 0) {
-            const mapped: ClothingItem[] = storeItems.map(item => ({
-                _id: item.id,
-                id: item.id,
-                type: normalizeCategory(item.subCategory || item.category || ''),
-                itemType: normalizeCategory(item.subCategory || item.category || ''),
-                color: item.primaryColor || 'various',
-                imageUrl: item.imageUrl,
-                image: item.imageUrl,
-                category: normalizeCategory(item.category || ''),
-                wearCount: item.wearCount,
-                createdAt: item.createdAt,
-                isFavorite: item.isFavorite ?? false,
-            }));
-            setItems(mapped);
-            hasItemsRef.current = mapped.length > 0;
-            setLoading(false);
-        }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // Run once on mount only
-
     useFocusEffect(
         useCallback(() => {
             const now = Date.now();
@@ -686,7 +625,7 @@ const MyClosetScreen = () => {
                 // Pass silent=true when items are already visible — no spinner flash.
                 // Read items.length from the ref to avoid recreating this callback
                 // every time items change (which would reset the TTL guard on each load).
-                loadItems(hasItemsRef.current);
+                loadItems(hasItemsRef.current, false);
             }
         // Intentionally omit items.length — reading it here would cause the
         // callback to recreate on every load, defeating the 60s TTL guard.
@@ -930,7 +869,7 @@ const MyClosetScreen = () => {
                         maxToRenderPerBatch={10}
                         updateCellsBatchingPeriod={50}
                         initialNumToRender={8}
-                        windowSize={11}
+                        windowSize={5}
                         renderItem={({ item }) => (
                             <ClothingGridItem
                                 item={item}

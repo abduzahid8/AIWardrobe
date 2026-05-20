@@ -3,7 +3,7 @@
  * Minimalist Liquid Glass design with Guide + Shop tabs
  */
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
     View,
     Text,
@@ -17,6 +17,7 @@ import {
     ActivityIndicator,
     Linking,
     Platform,
+    InteractionManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -94,17 +95,16 @@ const trackBrandClick = async (item: ShopCatalogItem) => {
             p_source: 'app',
             p_device_type: Platform.OS,
         });
-    } catch (err) {
+    } catch (_) {
         // Silent fail - don't block user experience
-        console.log('Brand click tracking error:', err);
     }
 };
 
 const handleBuyPress = async (item: ShopCatalogItem) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    // Track the brand click
-    await trackBrandClick(item);
+    // Track the brand click in the background (fire-and-forget) to not block redirect
+    trackBrandClick(item);
 
     // Open brand website (search for product)
     const searchQuery = encodeURIComponent(`${item.brand} ${item.name}`);
@@ -115,8 +115,7 @@ const handleBuyPress = async (item: ShopCatalogItem) => {
         if (canOpen) {
             await Linking.openURL(url);
         }
-    } catch (err) {
-        console.log('Failed to open URL:', err);
+    } catch (_) {
     }
 };
 
@@ -239,6 +238,7 @@ const InspoScreen = () => {
     const navigation = useAppNavigation();
     const items = useWardrobeStore((s) => s.items);
     const wearLogs = useWardrobeStore((s) => s.wearLogs);
+
     const {
         items: syncedShopItems,
         loading: shopCatalogLoading,
@@ -267,8 +267,7 @@ const InspoScreen = () => {
             try {
                 const { data } = await supabase.from('guide_page').select('*').eq('is_active', true).single();
                 if (data) setGuideHero(data);
-            } catch (err) {
-                console.warn('Failed to fetch guide hero', err);
+            } catch (_) {
             }
         };
         fetchHero();
@@ -319,19 +318,30 @@ const InspoScreen = () => {
     const [segment, setSegment] = useState<SegmentType>('guide');
     const [searchQuery, setSearchQuery] = useState('');
 
-    const varietyOutfits = useMemo<ScoredOutfit[]>(() => {
-        if (items.length < 3) return [];
-        const outfits = generateVarietyOutfits(items, wearLogs);
-        // Deduplicate by itemIds combination
-        const seen = new Set<string>();
-        const unique = outfits.filter((o) => {
-            const key = [...o.outfit.itemIds].sort().join(',');
-            if (seen.has(key)) return false;
-            seen.add(key);
-            return true;
+    const [computedVarietyOutfits, setComputedVarietyOutfits] = useState<ScoredOutfit[]>([]);
+
+    useEffect(() => {
+        const task = InteractionManager.runAfterInteractions(() => {
+            if (items.length < 3) {
+                setComputedVarietyOutfits([]);
+                return;
+            }
+            const outfits = generateVarietyOutfits(items, wearLogs);
+            // Deduplicate by itemIds combination
+            const seen = new Set<string>();
+            const unique = outfits.filter((o) => {
+                const key = [...o.outfit.itemIds].sort().join(',');
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+            setComputedVarietyOutfits(unique.slice(0, 6));
         });
-        return unique.slice(0, 6);
-    }, [items.length, wearLogs.length]);
+        return () => task.cancel();
+    }, [items, wearLogs]);
+
+    const lastFetchRef = useRef<number>(Date.now());
+    const INSPO_REFRESH_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
     useFocusEffect(
         useCallback(() => {
@@ -342,8 +352,14 @@ const InspoScreen = () => {
                     if (raw && mounted) setSavedInspo(JSON.parse(raw));
                 } catch (_) { }
             };
-            refreshFeaturedCapsules();
-            refreshShopCatalog();
+
+            const now = Date.now();
+            if (now - lastFetchRef.current > INSPO_REFRESH_TTL_MS) {
+                lastFetchRef.current = now;
+                refreshFeaturedCapsules();
+                refreshShopCatalog();
+            }
+
             load();
             return () => { mounted = false; };
         }, [refreshFeaturedCapsules, refreshShopCatalog])
@@ -538,6 +554,57 @@ const InspoScreen = () => {
         </>
     ), [searchQuery, setSearchQuery, shopCatalogError, showingFallbackCatalog, refreshShopCatalog, navigation, featuredCapsulesLoading, featuredCapsules, t, colors.text.primary, colors.text.tertiary]);
 
+    const renderGuideRow = useCallback(({ item, index }: { item: any; index: number }) => (
+        <Animated.View entering={FadeInDown.delay(Math.min(100 + (index % 6) * 60, 400)).duration(400)}>
+            <View style={styles.guideCardContainer}>
+                <View style={styles.guideCard}>
+                    <CachedImage
+                        uri={typeof item.image === 'string' ? item.image : ''}
+                        style={styles.guideImage}
+                        contentFit="cover"
+                        fadeIn={false}
+                    />
+                    <LinearGradient
+                        colors={['transparent', 'rgba(0,0,0,0.75)']}
+                        style={styles.guideGradient}
+                    >
+                        <Text style={styles.guideTitle}>{item.title}</Text>
+                        <Text style={styles.guideSubtitle}>{item.subtitle}</Text>
+                    </LinearGradient>
+                </View>
+            </View>
+        </Animated.View>
+    ), []);
+
+    const renderGuideFooter = useCallback(() => (
+        <>
+            {/* From Your Closet — variety outfits */}
+            {computedVarietyOutfits.length > 0 && (
+                <Animated.View entering={FadeInDown.delay(300).duration(400)} style={styles.section}>
+                    <Text style={styles.sectionTitle} accessibilityRole="header">{t('inspo.fromYourCloset')}</Text>
+                    <FlatList
+                        data={computedVarietyOutfits}
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        keyExtractor={(o, idx) => `${o.outfit.itemIds.join(',')}_${idx}`}
+                        contentContainerStyle={styles.variationsScroll}
+                        renderItem={({ item: outfit }) => (
+                            <VariationCard
+                                outfit={outfit}
+                                items={items}
+                                onPress={() => {
+                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                    navigation.navigate('Main', { screen: 'Home' });
+                                }}
+                            />
+                        )}
+                    />
+                </Animated.View>
+            )}
+            <View style={{ height: 120 }} />
+        </>
+    ), [computedVarietyOutfits, items, navigation, t]);
+
     return (
         <View style={styles.container}>
             <LinearGradient
@@ -580,60 +647,18 @@ const InspoScreen = () => {
                 </View>
 
                 {segment === 'guide' ? (
-                    <ScrollView
+                    <FlatList
+                        data={displayGuides}
+                        keyExtractor={(item) => item.id}
+                        renderItem={renderGuideRow}
+                        ListFooterComponent={renderGuideFooter()}
                         contentContainerStyle={styles.scrollContent}
                         showsVerticalScrollIndicator={false}
-                    >
-                        {/* ── Guide Tab ── */}
-                        <View style={styles.section}>
-                            {displayGuides.map((item, index) => (
-                                <Animated.View key={item.id} entering={FadeInDown.delay(100 + index * 120).duration(500)}>
-                                    <View style={styles.guideCardContainer}>
-                                        <View style={styles.guideCard}>
-                                            <CachedImage
-                                                uri={typeof item.image === 'string' ? item.image : ''}
-                                                style={styles.guideImage}
-                                                contentFit="cover"
-                                                fadeIn={false}
-                                            />
-                                            <LinearGradient
-                                                colors={['transparent', 'rgba(0,0,0,0.75)']}
-                                                style={styles.guideGradient}
-                                            >
-                                                <Text style={styles.guideTitle}>{item.title}</Text>
-                                                <Text style={styles.guideSubtitle}>{item.subtitle}</Text>
-                                            </LinearGradient>
-                                        </View>
-                                    </View>
-                                </Animated.View>
-                            ))}
-                        </View>
-
-                        {/* From Your Closet — variety outfits */}
-                        {varietyOutfits.length > 0 && (
-                            <Animated.View entering={FadeInDown.delay(350).duration(400)} style={styles.section}>
-                                <Text style={styles.sectionTitle} accessibilityRole="header">{t('inspo.fromYourCloset')}</Text>
-                                <FlatList
-                                    data={varietyOutfits}
-                                    horizontal
-                                    showsHorizontalScrollIndicator={false}
-                                    keyExtractor={(o, idx) => `${o.outfit.itemIds.join(',')}_${idx}`}
-                                    contentContainerStyle={styles.variationsScroll}
-                                    renderItem={({ item: outfit }) => (
-                                        <VariationCard
-                                            outfit={outfit}
-                                            items={items}
-                                            onPress={() => {
-                                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                                navigation.navigate('Main', { screen: 'Home' });
-                                            }}
-                                        />
-                                    )}
-                                />
-                            </Animated.View>
-                        )}
-                        <View style={{ height: 120 }} />
-                    </ScrollView>
+                        initialNumToRender={3}
+                        maxToRenderPerBatch={3}
+                        windowSize={3}
+                        removeClippedSubviews={Platform.OS === 'android'}
+                    />
                 ) : (
                     <>
                         {isInitialShopLoad ? (
@@ -667,9 +692,9 @@ const InspoScreen = () => {
                                 ListFooterComponent={shopListFooter()}
                                 contentContainerStyle={[styles.scrollContent, styles.productsGrid]}
                                 showsVerticalScrollIndicator={false}
-                                initialNumToRender={6}
-                                maxToRenderPerBatch={6}
-                                windowSize={5}
+                                initialNumToRender={4}
+                                maxToRenderPerBatch={4}
+                                windowSize={3}
                                 removeClippedSubviews={true}
                             />
                         )}

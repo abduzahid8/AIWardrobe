@@ -716,6 +716,7 @@
     "annualSubtitle": "US$1.53 / wk.",
     "discount29": "Save 29%",
     "discount69": "Save 69%",
+    "activateCodeHeader": "Do you have a promo code?",
     "featuresList": [
       "Try on any look on avatar",
       "Find clothing by any photo",
@@ -738,6 +739,7 @@
     "daysLeft": "Bepul sinov muddatingizda {{days}} kun{{suffix}} qoldi"
   },
   "promo": {
+    "apply": "Apply",
     "heroTitle": "Unlock Your Free Trial",
     "heroSubtitle": "Enter a promo code to start your 7-day free trial with full access to all Pro features.",
     "codePlaceholder": "Enter your code",
@@ -1701,6 +1703,7 @@
     "tabs": {
       "add": "Add",
       "manage": "Manage",
+      "occasions": "Occasions",
       "inspo": "Inspo",
       "guide": "Guide"
     },

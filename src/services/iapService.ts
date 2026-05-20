@@ -609,19 +609,34 @@ class IAPService {
      * subscription and the webhook updates Supabase.
      */
     async presentCodeRedemptionSheet(): Promise<void> {
-        if (!this.isRevenueCatAvailable) return;
         if (Platform.OS !== 'ios') {
             // Offer codes are iOS-only; Android uses alternative flows.
             return;
         }
+        
+        const appStoreRedeemUrl = 'https://apps.apple.com/redeem?ctx=offercodes&id=6761912805';
+        
         try {
-            await Purchases.presentCodeRedemptionSheet();
-            // After the sheet dismisses, refresh subscription status
-            // (redemption may have succeeded or been cancelled)
-            const { customerInfo } = await Purchases.getCustomerInfo();
-            await this.syncSubscriptionStatus(customerInfo);
+            if (this.isRevenueCatAvailable && Purchases) {
+                await Purchases.presentCodeRedemptionSheet();
+                // After the sheet dismisses, refresh subscription status
+                // (redemption may have succeeded or been cancelled)
+                const { customerInfo } = await Purchases.getCustomerInfo();
+                await this.syncSubscriptionStatus(customerInfo);
+            } else {
+                // Fallback: Open the official App Store redemption URL directly
+                console.log('[IAP] RevenueCat not available, redirecting to App Store redemption URL');
+                const { Linking } = require('react-native');
+                await Linking.openURL(appStoreRedeemUrl);
+            }
         } catch (error) {
-            console.warn('[IAP] presentCodeRedemptionSheet error:', error);
+            console.warn('[IAP] Purchases.presentCodeRedemptionSheet failed, falling back to App Store URL:', error);
+            try {
+                const { Linking } = require('react-native');
+                await Linking.openURL(appStoreRedeemUrl);
+            } catch (linkErr) {
+                console.error('[IAP] Failed to open App Store redemption link:', linkErr);
+            }
         }
     }
 

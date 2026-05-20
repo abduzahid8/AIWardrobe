@@ -6,7 +6,7 @@
  * blends BlurView and pastel shimmers for state-of-the-art premium visual aesthetics.
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
     View,
     Text,
@@ -78,9 +78,13 @@ const PaywallScreen = () => {
     const styles = useMemo(() => createStyles(D), [D]);
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
+    const scrollViewRef = useRef<any>(null);
     const { completeOnboarding } = useStylePreferenceStore();
     const { t } = useTranslation();
     const [isLoading, setIsLoading] = useState<string | null>(null);
+
+    // Offer Code States
+    const [isRedeemingOffer, setIsRedeemingOffer] = useState(false);
 
     // RevenueCat Live Pricing
     const [livePrice, setLivePrice] = useState<string | null>(null);
@@ -244,6 +248,27 @@ const PaywallScreen = () => {
         }
     };
 
+    // Present Apple's native Offer Code redemption sheet
+    const handleOfferCode = async () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        setIsRedeemingOffer(true);
+        try {
+            await iapService.presentCodeRedemptionSheet();
+            // After the sheet dismisses, check subscription status from state
+            const { hasActiveSubscription } = useSubscriptionStore.getState();
+            if (hasActiveSubscription) {
+                triggerSuccessHaptic();
+                completeOnboarding();
+                resetToActivation();
+            }
+        } catch (error) {
+            console.warn('[Paywall] Apple offer code presentation error:', error);
+            triggerErrorHaptic();
+        } finally {
+            setIsRedeemingOffer(false);
+        }
+    };
+
     // Features array checklist mapping
     const rawFeaturesList = t('paywall.featuresList', { returnObjects: true });
     const featuresList: string[] = Array.isArray(rawFeaturesList)
@@ -312,22 +337,9 @@ const PaywallScreen = () => {
                 style={StyleSheet.absoluteFillObject}
             />
 
-            {/* Translucent overlay circle Close button (X) */}
-            <TouchableOpacity
-                style={[styles.closeButton, { top: insets.top + 12 }]}
-                onPress={closePaywall}
-                activeOpacity={0.7}
-            >
-                <BlurView
-                    intensity={Platform.OS === 'ios' ? 36 : 100}
-                    tint="dark"
-                    style={StyleSheet.absoluteFillObject}
-                />
-                <Ionicons name="close" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-
             {/* Scrollable Container with floating translucent glass card panel */}
             <Animated.ScrollView
+                ref={scrollViewRef}
                 onScroll={scrollHandler}
                 scrollEventThrottle={16}
                 contentContainerStyle={{
@@ -389,6 +401,11 @@ const PaywallScreen = () => {
                                         onPress={() => {
                                             triggerLightHaptic();
                                             setSelectedProductId(card.id);
+                                            if (card.id !== 'com.aiwardrobe.premium.weekly') {
+                                                setTimeout(() => {
+                                                    scrollViewRef.current?.scrollToEnd({ animated: true });
+                                                }, 100);
+                                            }
                                         }}
                                     >
                                         {/* Discount badge on top card borders */}
@@ -442,6 +459,39 @@ const PaywallScreen = () => {
                             })}
                         </Animated.View>
 
+                        {/* Promo Code Input Wrapper -> Replaced with Apple Offer Code Button */}
+                        <Animated.View entering={FadeInUp.delay(180).duration(600)} style={styles.promoInputCardWrapper}>
+                            {/* Accent Subtitle Header */}
+                            <Text style={styles.promoHeaderTitle}>
+                                {t('paywall.activateCodeHeader', 'У вас есть промокод?')}
+                            </Text>
+
+                            <TouchableOpacity
+                                style={styles.activatePromoButton}
+                                activeOpacity={0.8}
+                                disabled={isRedeemingOffer}
+                                onPress={handleOfferCode}
+                            >
+                                <LinearGradient
+                                    colors={['#7B61FF', '#6366F1']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 1 }}
+                                    style={styles.activatePromoGradient}
+                                >
+                                    {isRedeemingOffer ? (
+                                        <ActivityIndicator color="#FFFFFF" size="small" />
+                                    ) : (
+                                        <>
+                                            <Ionicons name="ticket-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+                                            <Text style={styles.activatePromoButtonText}>
+                                                {t('promo.redeemOfferCode', 'Активировать промокод (Apple)')}
+                                            </Text>
+                                        </>
+                                    )}
+                                </LinearGradient>
+                            </TouchableOpacity>
+                        </Animated.View>
+
                         {/* Main Action Pill button */}
                         <Animated.View entering={FadeInUp.delay(200).duration(600)} style={styles.buttonWrapper}>
                             <TouchableOpacity
@@ -466,7 +516,7 @@ const PaywallScreen = () => {
                             </TouchableOpacity>
                         </Animated.View>
 
-                        {/* Footer legal actions row (Restore & Promo activation) */}
+                        {/* Footer legal actions row (Restore purchases only) */}
                         <View style={styles.footerActionsBlock}>
                             <TouchableOpacity style={styles.footerLinkTouch} onPress={handleRestore}>
                                 {isLoading === 'restore' ? (
@@ -476,18 +526,6 @@ const PaywallScreen = () => {
                                         {t('paywall.restorePurchases', 'Восстановить покупки')}
                                     </Text>
                                 )}
-                            </TouchableOpacity>
-                            <View style={styles.footerActionsDivider} />
-                            <TouchableOpacity
-                                style={styles.footerLinkTouch}
-                                onPress={() => {
-                                    triggerLightHaptic();
-                                    navigation.navigate('PromoCode');
-                                }}
-                            >
-                                <Text style={styles.footerActionLinkText}>
-                                    {t('paywall.activateCode', 'Активировать код')}
-                                </Text>
                             </TouchableOpacity>
                         </View>
 
@@ -719,6 +757,40 @@ const createStyles = (D: DTokens) =>
         },
         cardTextMuted: {
             color: 'rgba(255, 255, 255, 0.60)',
+        },
+        // Promo Input Styling
+        promoInputCardWrapper: {
+            marginHorizontal: 12,
+            marginTop: 10,
+            marginBottom: 16,
+            gap: 6,
+        },
+        promoHeaderTitle: {
+            fontSize: 11,
+            fontWeight: '800',
+            color: 'rgba(255, 255, 255, 0.50)',
+            textTransform: 'uppercase',
+            letterSpacing: 1,
+            marginBottom: 2,
+            paddingLeft: 4,
+        },
+        activatePromoButton: {
+            borderRadius: 14,
+            height: 52,
+            overflow: 'hidden',
+        },
+        activatePromoGradient: {
+            flex: 1,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: 16,
+        },
+        activatePromoButtonText: {
+            color: '#FFFFFF',
+            fontSize: 14,
+            fontWeight: '800',
+            letterSpacing: 0.5,
         },
         // Continue Action Button
         buttonWrapper: {

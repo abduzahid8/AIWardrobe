@@ -1,4 +1,4 @@
-import { LayoutChangeEvent, Platform, Pressable, StyleSheet, View, useWindowDimensions, Alert } from "react-native";
+import { LayoutChangeEvent, Platform, Pressable, StyleSheet, View, useWindowDimensions, Alert, InteractionManager } from "react-native";
 import React from "react";
 import { BottomTabNavigationOptions, createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,7 +18,6 @@ import { perfTabSwitch, perfTabSwitchComplete } from "../src/utils/perf";
 // Original Screens
 import HomeScreen from "../screens/HomeScreen";
 import MyClosetScreen from "../screens/MyClosetScreen";
-import AITryOnScreen from "../screens/AITryOnScreen";
 import InspoScreen from "../screens/InspoScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 
@@ -42,7 +41,6 @@ const Tab = createBottomTabNavigator();
 const getIconName = (routeName: string, focused: boolean) => {
   if (routeName === "Home") return focused ? "today" : "today-outline";
   if (routeName === "Closet") return focused ? "shirt" : "shirt-outline";
-  if (routeName === "AI") return focused ? "sparkles" : "sparkles";
   if (routeName === "Inspo") return focused ? "compass" : "compass-outline";
   if (routeName === "Profile") return focused ? "person" : "person-outline";
   return "help-outline";
@@ -209,6 +207,15 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation, isAdmin, onActiv
 // ── Stable wrapper factory — creates components ONCE ─────────────────
 const createAnimatedTabScreen = (Screen: React.ComponentType<any>, tabIndex: number) => {
   const Wrapped = (props: any) => {
+    const [isReady, setIsReady] = React.useState(false);
+
+    React.useEffect(() => {
+      const task = InteractionManager.runAfterInteractions(() => {
+        setIsReady(true);
+      });
+      return () => task.cancel();
+    }, []);
+
     // Wrap in a View with the app background color so the placeholder shown
     // during lazy first-mount is never a blank white void. Without this,
     // switching to an unvisited tab shows a white flash for one render cycle
@@ -216,7 +223,11 @@ const createAnimatedTabScreen = (Screen: React.ComponentType<any>, tabIndex: num
     return (
       <ErrorBoundary>
         <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
-          <Screen {...props} />
+          {isReady ? (
+            <Screen {...props} />
+          ) : (
+            <View style={{ flex: 1, backgroundColor: '#FFFFFF' }} />
+          )}
         </View>
       </ErrorBoundary>
     );
@@ -227,9 +238,8 @@ const createAnimatedTabScreen = (Screen: React.ComponentType<any>, tabIndex: num
 
 const AnimatedHomeScreen = createAnimatedTabScreen(HomeScreen, 0);
 const AnimatedClosetScreen = createAnimatedTabScreen(MyClosetScreen, 1);
-const AnimatedAIScreen = createAnimatedTabScreen(AITryOnScreen, 2);
-const AnimatedInspoScreen = createAnimatedTabScreen(InspoScreen, 3);
-const AnimatedProfileScreen = createAnimatedTabScreen(ProfileScreen, 4);
+const AnimatedInspoScreen = createAnimatedTabScreen(InspoScreen, 2);
+const AnimatedProfileScreen = createAnimatedTabScreen(ProfileScreen, 3);
 
 // ── TabNavigator ─────────────────────────────────────────────────────
 const TabNavigator = () => {
@@ -307,12 +317,6 @@ const TabNavigator = () => {
         name="Closet"
         component={AnimatedClosetScreen}
         options={{ tabBarAccessibilityLabel: t('tabs.closet') }}
-      />
-      <Tab.Screen
-        name="AI"
-        component={AnimatedAIScreen}
-        initialParams={{ asTab: true }}
-        options={{ tabBarAccessibilityLabel: t('tabs.ai') }}
       />
       <Tab.Screen
         name="Inspo"

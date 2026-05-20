@@ -731,6 +731,7 @@
     "annualSubtitle": "US$1.53 / haft.",
     "discount29": "Chegirma 29%",
     "discount69": "Chegirma 69%",
+    "activateCodeHeader": "Sizda promokod bormi?",
     "featuresList": [
       "Har qanday kiyimni avatarda kiyib ko'ring",
       "Har qanday rasmdan kiyim toping",
@@ -753,6 +754,7 @@
     "upgrade": "Yangilash"
   },
   "promo": {
+    "apply": "Kiritish",
     "heroTitle": "Bepul sinov muddatini oching",
     "heroSubtitle": "Promokodni kiriting va barcha Pro funksiyalariga 7 kunlik bepul kirish huquqini qo'lga kiriting.",
     "enterCodeLabel": "PROMOKOD",
@@ -1703,6 +1705,7 @@
     "tabs": {
       "add": "Qo'shish",
       "manage": "Boshqarish",
+      "occasions": "Tadbirlar",
       "inspo": "Ilhom",
       "guide": "Qo'llanma"
     },

@@ -339,6 +339,93 @@ function shuffleArray<T>(array: T[]): T[] {
   return arr;
 }
 
+const OFFLINE_MOCK_SHOP_CATALOG = [
+  {
+    id: 'mock_top_1',
+    name: 'Classic White T-Shirt',
+    brand: 'Essential',
+    type: 'top',
+    category: 'tops',
+    macroCategory: 'top',
+    color: 'white',
+    imageUrl: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=500&q=80',
+    image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=500&q=80',
+    description: 'A classic organic cotton white tee.',
+  },
+  {
+    id: 'mock_top_2',
+    name: 'Oxford Button-Down Shirt',
+    brand: 'Classic',
+    type: 'top',
+    category: 'tops',
+    macroCategory: 'top',
+    color: 'blue',
+    imageUrl: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=500&q=80',
+    image: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=500&q=80',
+    description: 'Light blue oxford cotton button-down shirt.',
+  },
+  {
+    id: 'mock_bottom_1',
+    name: 'Slim-Fit Chino Pants',
+    brand: 'Essential',
+    type: 'bottom',
+    category: 'bottoms',
+    macroCategory: 'bottom',
+    color: 'beige',
+    imageUrl: 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=500&q=80',
+    image: 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=500&q=80',
+    description: 'Slim-fit stretch chino pants in light beige.',
+  },
+  {
+    id: 'mock_bottom_2',
+    name: 'Dark Wash Denim Jeans',
+    brand: 'Denim Co',
+    type: 'bottom',
+    category: 'bottoms',
+    macroCategory: 'bottom',
+    color: 'navy',
+    imageUrl: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=500&q=80',
+    image: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=500&q=80',
+    description: 'Classic dark wash straight-leg jeans.',
+  },
+  {
+    id: 'mock_outerwear_1',
+    name: 'Unstructured Wool Blazer',
+    brand: 'Tailored',
+    type: 'outerwear',
+    category: 'outerwear',
+    macroCategory: 'outerwear',
+    color: 'grey',
+    imageUrl: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=500&q=80',
+    image: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=500&q=80',
+    description: 'Comfortable grey wool blazer for smart casual occasions.',
+  },
+  {
+    id: 'mock_shoes_1',
+    name: 'White Leather Sneakers',
+    brand: 'Minimalist',
+    type: 'shoes',
+    category: 'shoes',
+    macroCategory: 'shoes',
+    color: 'white',
+    imageUrl: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=500&q=80',
+    image: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=500&q=80',
+    description: 'Clean minimalist white leather low-top sneakers.',
+  },
+  {
+    id: 'mock_shoes_2',
+    name: 'Suede Penny Loafers',
+    brand: 'Classic',
+    type: 'shoes',
+    category: 'shoes',
+    macroCategory: 'shoes',
+    color: 'brown',
+    imageUrl: 'https://images.unsplash.com/photo-1533867617858-e7b97e060509?w=500&q=80',
+    image: 'https://images.unsplash.com/photo-1533867617858-e7b97e060509?w=500&q=80',
+    description: 'Handcrafted brown suede penny loafers.',
+  }
+];
+
 // ── 100% OFFLINE OUTFIT GENERATOR (No Edge Function Required) ─────────────
 async function generateOfflineOutfits(
   items: any[],
@@ -379,6 +466,22 @@ async function generateOfflineOutfits(
       }));
     } catch (_) {
       // Shop catalog unreachable — continue with wardrobe only.
+    }
+
+    // Safety fallback: if database returned no shop fills for missing slots, use our local static mock catalog!
+    if (shopFills.length < missingSlots.length) {
+      const missingFills = missingSlots.filter(slot => !shopFills.some(sf => sf.macroCategory === slot));
+      for (const slot of missingFills) {
+        const mockMatch = OFFLINE_MOCK_SHOP_CATALOG.find(m => m.macroCategory === slot);
+        if (mockMatch) {
+          shopFills.push({
+            ...mockMatch,
+            id: `${mockMatch.id}_fallback`,
+            isShopItem: true,
+            recommendation: `Basic ${slot} suggested as fallback`,
+          });
+        }
+      }
     }
   }
   const allItems = [...availableItems, ...shopFills];
@@ -728,28 +831,15 @@ const AIOutfitGenerator = () => {
         return;
       }
 
-      // ── Wardrobe mode: prefer Supabase clothing_items, fall back to AsyncStorage ──
+      // ── Wardrobe mode: prefer Zustand useWardrobeStore items, then Supabase, then AsyncStorage ──
       let items: any[] = [];
 
       try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const userId = sessionData?.session?.user?.id;
-
-        if (userId) {
-          const { data: remoteItems, error } = await supabase
-            .from('clothing_items')
-            .select('*')
-            .eq('user_id', userId)
-            .order('created_at', { ascending: false });
-
-          if (error) throw error;
-
-          items = (remoteItems || []).map((item: any) => {
-            const rawType = item.type || item.sub_category || item.category || '';
-            const rawName = item.name || item.type || '';
-            // Compute macroCategory here so offline generator never drops the
-            // item as "other". getBackendMacroCategory falls back to keyword
-            // matching on name/type/category if no canonical alias is found.
+        const storeItems = useWardrobeStore.getState().items;
+        if (storeItems && storeItems.length > 0) {
+          items = storeItems.map((item: any) => {
+            const rawType = item.subCategory || item.category || '';
+            const rawName = item.name || item.subCategory || '';
             const computedMacro = getBackendMacroCategory(rawType, item.category || '', rawName);
             return {
               id: item.id,
@@ -757,20 +847,61 @@ const AIOutfitGenerator = () => {
               type: rawType || 'Clothing Piece',
               category: item.category || rawType || 'tops',
               macroCategory: computedMacro,
-              subCategory: item.sub_category || undefined,
-              color: Array.isArray(item.color) ? item.color[0] : (item.primary_color || 'neutral'),
+              subCategory: item.subCategory || undefined,
+              color: item.primaryColor || 'neutral',
               brand: item.brand || '',
               name: rawName || t('common.clothingItem'),
               description: item.description || rawName || '',
-              image: item.image_url || '',
-              imageUrl: item.image_url || '',
+              image: item.imageUrl || '',
+              imageUrl: item.imageUrl || '',
             };
           });
         }
-      } catch (remoteError) {
-        console.warn('[AIOutfitmaker] Failed to load Supabase wardrobe, falling back to local storage:', remoteError);
+      } catch (storeError) {
+        console.warn('[AIOutfitmaker] Failed to load Zustand store items:', storeError);
       }
 
+      // Fall back to direct Supabase query if store was empty/failed
+      if (items.length === 0) {
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const userId = sessionData?.session?.user?.id;
+
+          if (userId) {
+            const { data: remoteItems, error } = await supabase
+              .from('clothing_items')
+              .select('*')
+              .eq('user_id', userId)
+              .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            items = (remoteItems || []).map((item: any) => {
+              const rawType = item.type || item.sub_category || item.category || '';
+              const rawName = item.name || item.type || '';
+              const computedMacro = getBackendMacroCategory(rawType, item.category || '', rawName);
+              return {
+                id: item.id,
+                isWardrobe: true,
+                type: rawType || 'Clothing Piece',
+                category: item.category || rawType || 'tops',
+                macroCategory: computedMacro,
+                subCategory: item.sub_category || undefined,
+                color: Array.isArray(item.color) ? item.color[0] : (item.primary_color || 'neutral'),
+                brand: item.brand || '',
+                name: rawName || t('common.clothingItem'),
+                description: item.description || rawName || '',
+                image: item.image_url || '',
+                imageUrl: item.image_url || '',
+              };
+            });
+          }
+        } catch (remoteError) {
+          console.warn('[AIOutfitmaker] Failed to load Supabase wardrobe, falling back to local storage:', remoteError);
+        }
+      }
+
+      // Fall back to AsyncStorage directly
       if (items.length === 0) {
         const data = await AsyncStorage.getItem('myWardrobeItems');
         items = data ? JSON.parse(data).map((it: any) => ({ ...it, isWardrobe: true })) : [];
@@ -785,6 +916,30 @@ const AIOutfitGenerator = () => {
 
       // Drop items with no usable image
       items = items.filter((i: any) => i && (i.imageUrl || typeof i.image === 'string'));
+
+      // Prepend/inject the anchor item (baseItem) if provided but not in items pool.
+      // This guarantees that "build around this item" always has the selected item,
+      // even if the user has no other saved items or sync is lagging!
+      if (baseItem && baseItemId && !items.some(i => i.id === baseItemId)) {
+        console.log('[AIOutfitmaker] Injected baseItem into wardrobe pool:', baseItemId);
+        const rawType = baseItem.type || baseItem.category || '';
+        const rawName = baseItem.name || baseItem.type || '';
+        const computedMacro = getBackendMacroCategory(rawType, baseItem.category || '', rawName);
+        items.unshift({
+          id: baseItemId,
+          isWardrobe: true,
+          type: rawType || 'Clothing Piece',
+          category: baseItem.category || rawType || 'tops',
+          macroCategory: computedMacro,
+          subCategory: undefined,
+          color: baseItem.color || 'neutral',
+          brand: baseItem.brand || '',
+          name: rawName || t('common.clothingItem'),
+          description: baseItem.description || rawName || '',
+          image: baseItem.imageUrl || '',
+          imageUrl: baseItem.imageUrl || '',
+        });
+      }
 
       // Always inject shop items but mark them.
       // When source is 'wardrobe', outfits will be a mix of owned and shop items.
@@ -805,7 +960,7 @@ const AIOutfitGenerator = () => {
         description: item.description || item.name || '',
       })));
     } catch (e) {
-      console.error('Failed to load wardrobe', e);
+      console.warn('Failed to load wardrobe', e);
     }
   };
 
@@ -1295,7 +1450,7 @@ const AIOutfitGenerator = () => {
       // Backend returned success=false or empty outfits — fall through to local fallback
       throw new Error(data?.error || 'No outfits returned from AI');
     } catch (err: any) {
-      console.error('[AIOutfitmaker] Edge function failed, using offline generator:', err);
+      console.warn('[AIOutfitmaker] Edge function failed, using offline generator:', err);
 
       // ENHANCED OFFLINE GENERATOR — Works 100% without internet/edge function
       if (fallbackTimer.current) clearTimeout(fallbackTimer.current);

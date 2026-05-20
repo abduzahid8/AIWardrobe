@@ -86,7 +86,29 @@ const usePromoCodeStore = create<PromoCodeState>((set, get) => ({
             });
 
             if (error) {
-                const message = data?.error || error.message || 'Redemption failed';
+                let message = 'Redemption failed';
+                
+                // Try to parse error context if it is a FunctionsHttpError
+                if (error.context) {
+                    try {
+                        const body = typeof error.context.json === 'function' 
+                            ? await error.context.json() 
+                            : JSON.parse(await error.context.text());
+                        message = body?.error || body?.message || message;
+                    } catch (_) {
+                        try {
+                            if (typeof error.context.text === 'function') {
+                                const text = await error.context.text();
+                                if (text) message = text;
+                            }
+                        } catch (__) {}
+                    }
+                }
+                
+                if (message === 'Redemption failed' || message === 'Edge Function returned a non-2xx status code') {
+                    message = error.message || message;
+                }
+                
                 log.error('Promo code redemption failed', message);
                 return { success: false, error: message };
             }

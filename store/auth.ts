@@ -41,6 +41,7 @@ export interface AuthState {
     loading: boolean;
     error: string | null;
     isAuthenticated: boolean;
+    isInitialized: boolean;
 }
 
 export interface AuthActions {
@@ -122,9 +123,9 @@ async function onAuthSuccess(
     // Ensure subscription and trial status are resolved immediately
     await useSubscriptionStore.getState().verifySubscriptionFromServer().catch(() => {});
 
-    // Automatically start the 7-day free trial on first login if not already started.
-    // This ensures the TrialExpiredScreen gate will work after 7 days.
-    await useSubscriptionStore.getState().initializeTrial(session.user.id).catch(() => {});
+    // Trial is voluntary: users start on the standard freemium tier
+    // and must activate a promo code (Offer Code) or purchase a subscription to unlock the trial.
+    // await useSubscriptionStore.getState().initializeTrial(session.user.id).catch(() => {});
 
     log.info('Authentication succeeded', { method, userId: session.user.id });
 }
@@ -160,6 +161,7 @@ const useAuthStore = create<AuthStore>((set, get) => ({
     loading: false,
     error: null,
     isAuthenticated: false,
+    isInitialized: false,
 
     initializeAuth: async () => {
         log.debug('initializeAuth called');
@@ -204,7 +206,7 @@ const useAuthStore = create<AuthStore>((set, get) => ({
         } catch (err) {
             log.error('Auth initialization failed', err);
         } finally {
-            set({ loading: false });
+            set({ loading: false, isInitialized: true });
         }
     },
 

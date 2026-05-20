@@ -21,6 +21,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { InteractionManager } from 'react-native';
 
 import useAuthStore from '../store/auth';
 import { useStylePreferenceStore } from '../store/stylePreferenceStore';
@@ -393,44 +394,47 @@ export function useDailyAIOutfit({
 
         let cancelled = false;
 
-        (async () => {
-            const key     = storageKey(userId, style);
-            const dateKey = todayKey();
+        const task = InteractionManager.runAfterInteractions(() => {
+            (async () => {
+                const key     = storageKey(userId, style);
+                const dateKey = todayKey();
 
-            try {
-                const raw = await AsyncStorage.getItem(key);
-                if (!cancelled && raw) {
-                    const cached = JSON.parse(raw) as CachedEntry;
-                    const cachedRenderable = filterRenderableOutfits(
-                        Array.isArray(cached.outfits) ? cached.outfits : [],
-                    );
-                    if (cached.dateKey === dateKey && cachedRenderable.length > 0) {
-                        logger.debug('Pre-check: serving cached daily outfits (edge function skipped)', {
-                            style,
-                            count: cachedRenderable.length,
-                            dateKey,
-                        });
-                        setOutfits(cachedRenderable);
-                        // loading stays false — no edge function call needed.
-                        cacheCheckedRef.current = true;
-                        return;
+                try {
+                    const raw = await AsyncStorage.getItem(key);
+                    if (!cancelled && raw) {
+                        const cached = JSON.parse(raw) as CachedEntry;
+                        const cachedRenderable = filterRenderableOutfits(
+                            Array.isArray(cached.outfits) ? cached.outfits : [],
+                        );
+                        if (cached.dateKey === dateKey && cachedRenderable.length > 0) {
+                            logger.debug('Pre-check: serving cached daily outfits (edge function skipped)', {
+                                style,
+                                count: cachedRenderable.length,
+                                dateKey,
+                            });
+                            setOutfits(cachedRenderable);
+                            // loading stays false — no edge function call needed.
+                            cacheCheckedRef.current = true;
+                            return;
+                        }
                     }
+                } catch (cacheErr) {
+                    logger.warn('Pre-check: failed to read daily outfit cache', cacheErr);
                 }
-            } catch (cacheErr) {
-                logger.warn('Pre-check: failed to read daily outfit cache', cacheErr);
-            }
 
-            // Cache is absent or stale — allow the generation effect to run.
-            if (!cancelled) {
-                cacheCheckedRef.current = true;
-                // Trigger the generation effect by setting loading now so
-                // the UI shows a spinner while the edge function is called.
-                setLoading(true);
-            }
-        })();
+                // Cache is absent or stale — allow the generation effect to run.
+                if (!cancelled) {
+                    cacheCheckedRef.current = true;
+                    // Trigger the generation effect by setting loading now so
+                    // the UI shows a spinner while the edge function is called.
+                    setLoading(true);
+                }
+            })();
+        });
 
         return () => {
             cancelled = true;
+            task.cancel();
         };
         // Re-run whenever the identity of the cache slot changes.
         // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
+import * as SplashScreen from "expo-splash-screen";
 import { createStackNavigator } from "@react-navigation/stack";
 
 // Imports screens...
@@ -55,7 +56,7 @@ const Stack = createStackNavigator<RootStackParamList>();
 const RootNavigator = () => {
   useSessionGuard();
 
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, isInitialized } = useAuthStore();
   const {
     tier,
     hasActiveSubscription,
@@ -144,7 +145,7 @@ const RootNavigator = () => {
         // five services above before starting the clothing-items fetch.
         ...(authStatus && currentUser?.id
           ? [
-              useWardrobeStore.getState().rehydrateFromCloud()
+              useWardrobeStore.getState().rehydrateFromCloud(false)
                 .then(() => {
                   const elapsed = Date.now() - rehydrateStart;
                   console.log(`[PERF] 🟢 rehydrateFromCloud completed in ${elapsed}ms`);
@@ -190,6 +191,23 @@ const RootNavigator = () => {
   // of being pushed via navigateTo side-effects. Declarative routing is
   // race-free: when `showPromoGate` / `showTrialGate` flip back to false,
   // React Navigation unmounts the gate automatically.
+
+  useEffect(() => {
+    if (isInitialized) {
+      // Hide the splash screen only after auth is resolved and the 
+      // correct stack is ready to render. Using requestAnimationFrame
+      // ensures the first frame of the new stack has painted.
+      requestAnimationFrame(() => {
+        SplashScreen.hideAsync().catch(() => undefined);
+      });
+    }
+  }, [isInitialized]);
+
+  if (!isInitialized) {
+    // Keep the splash screen visible and render nothing while determining auth state
+    // to prevent a brief flash of the SignIn screen.
+    return null;
+  }
 
   return (
       <Stack.Navigator
