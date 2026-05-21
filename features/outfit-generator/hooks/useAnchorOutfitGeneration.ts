@@ -32,7 +32,7 @@ import {
   generateOutfitsLocally,
 } from '../../../src/services/outfitGenerationService';
 import apiClient from '../../../src/services/apiClient';
-import { getMacroCategory } from './useItemSelection';
+import { getMacroCategory, canonicalizeMacroCategory } from '../../../src/utils/categoryMapper';
 
 // ============================================
 // TYPES
@@ -240,10 +240,11 @@ export function useAnchorOutfitGeneration({
       }
 
       // Enforce anchor item in the outfit (client-side guarantee)
-      const anchorMacro =
+      const anchorMacro = canonicalizeMacroCategory(
         anchorItem.category
           ? getMacroCategory(anchorItem.category, anchorItem.type ?? '')
-          : getMacroCategory(anchorItem.type ?? '', anchorItem.type ?? '');
+          : getMacroCategory(anchorItem.type ?? '', anchorItem.type ?? '')
+      );
 
       const anchorOutfitItem = {
         id: anchorItemId,
@@ -263,7 +264,7 @@ export function useAnchorOutfitGeneration({
       let patchedItems = [...rawOutfit.items];
       if (!alreadyHasAnchor) {
         const slotIdx = patchedItems.findIndex(
-          (i) => (i.macroCategory ?? getMacroCategory(i.type ?? '', i.name ?? '')) === anchorMacro,
+          (i) => canonicalizeMacroCategory(i.macroCategory ?? getMacroCategory(i.type ?? '', i.name ?? '')) === anchorMacro,
         );
         if (slotIdx >= 0) {
           patchedItems.splice(slotIdx, 1, anchorOutfitItem);

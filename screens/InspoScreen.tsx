@@ -48,11 +48,6 @@ const { colors, spacing, typography, radius } = LiquidGlass2026Theme;
 // Featured Capsules now come from Supabase (`featured_capsules` table) via
 // `useFeaturedCapsules`. Rows are admin-editable from the Supabase dashboard.
 
-const GUIDE_ITEMS = [
-    { id: '1', title: 'Lewis Hamilton', subtitle: 'Street Style Icon', image: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=600&q=80' },
-    { id: '2', title: 'A$AP Rocky', subtitle: 'Experimental Luxury', image: 'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=600&q=80' },
-];
-
 const CAPSULE_CARD_WIDTH = 180;
 const CAPSULE_CARD_HEIGHT = 250;
 const PRODUCT_CARD_WIDTH = (SCREEN_WIDTH - spacing.screenPadding * 2 - spacing.sm) / 2;
@@ -310,8 +305,7 @@ const InspoScreen = () => {
             });
         }
 
-        if (results.length > 0) return results;
-        return GUIDE_ITEMS;
+        return results;
     }, [guideHero, featuredCapsules, guideOutfits]);
 
     const [savedInspo, setSavedInspo] = useState<ShopCatalogItem[]>([]);
@@ -374,8 +368,9 @@ const InspoScreen = () => {
         });
     }, []);
 
-    const showingFallbackCatalog = syncedShopItems.length === 0;
-    const isInitialShopLoad = !showingFallbackCatalog && shopCatalogLoading && syncedShopItems.length === 0;
+    const isShopEmpty = syncedShopItems.length === 0;
+    const isInitialShopLoad = isShopEmpty && shopCatalogLoading;
+    const showingFallbackCatalog = isShopEmpty && !shopCatalogLoading;
 
     const shopItems = useMemo(() => {
         const baseItems = showingFallbackCatalog ? INSPO_MENS_SHOP_ITEMS : syncedShopItems;
@@ -647,18 +642,24 @@ const InspoScreen = () => {
                 </View>
 
                 {segment === 'guide' ? (
-                    <FlatList
-                        data={displayGuides}
-                        keyExtractor={(item) => item.id}
-                        renderItem={renderGuideRow}
-                        ListFooterComponent={renderGuideFooter()}
-                        contentContainerStyle={styles.scrollContent}
-                        showsVerticalScrollIndicator={false}
-                        initialNumToRender={3}
-                        maxToRenderPerBatch={3}
-                        windowSize={3}
-                        removeClippedSubviews={Platform.OS === 'android'}
-                    />
+                    displayGuides.length === 0 && featuredCapsulesLoading ? (
+                        <View style={styles.guideLoadingContainer}>
+                            <ActivityIndicator size="large" color={colors.text.primary} />
+                        </View>
+                    ) : (
+                        <FlatList
+                            data={displayGuides}
+                            keyExtractor={(item) => item.id}
+                            renderItem={renderGuideRow}
+                            ListFooterComponent={renderGuideFooter()}
+                            contentContainerStyle={styles.scrollContent}
+                            showsVerticalScrollIndicator={false}
+                            initialNumToRender={3}
+                            maxToRenderPerBatch={3}
+                            windowSize={3}
+                            removeClippedSubviews={Platform.OS === 'android'}
+                        />
+                    )
                 ) : (
                     <>
                         {isInitialShopLoad ? (
@@ -1212,6 +1213,12 @@ const styles = StyleSheet.create({
         color: '#FFF',
         flex: 1,
         marginLeft: spacing.sm,
+    },
+    guideLoadingContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 100,
     },
 });
 

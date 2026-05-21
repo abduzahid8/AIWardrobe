@@ -6,6 +6,7 @@ import type { StateCreator } from 'zustand';
 import type { Outfit, Occasion } from '../../src/types/domain';
 import type { WardrobeState } from '../wardrobeStore';
 import { generateId } from './helpers';
+import { getMacroCategory } from '../../src/utils/categoryMapper';
 
 export interface OutfitsSlice {
     outfits: Outfit[];
@@ -26,18 +27,25 @@ export const createOutfitsSlice: StateCreator<WardrobeState, [], [], OutfitsSlic
     addOutfit: (outfitInput) => {
         let newId = '';
         set((state) => {
-            // For AI-generated outfits, allow up to 2 items per category
+            // For AI-generated outfits, allow up to 2 items per macro-category
             // (layered outfits have base top + outerwear which may both
-            // share category 'tops'). For user-created outfits, keep the
+            // share macro-category 'top'). For user-created outfits, keep the
             // stricter 1-per-category rule.
             const maxPerCategory = outfitInput.generatedBy === 'ai' ? 2 : 1;
-            const categoryCounts = new Map<string, number>();
+            const macroCounts = new Map<string, number>();
+            const seenIds = new Set<string>();
             const validItemIds = outfitInput.itemIds.filter((id) => {
+                if (seenIds.has(id)) return false;
+                seenIds.add(id);
                 const item = state.items.find((i) => i.id === id);
-                if (!item) return true;
-                const count = categoryCounts.get(item.category) ?? 0;
+                if (!item) {
+                    // Unknown item — allow it but prevent exact duplicates
+                    return true;
+                }
+                const macro = getMacroCategory(item.category);
+                const count = macroCounts.get(macro) ?? 0;
                 if (count >= maxPerCategory) return false;
-                categoryCounts.set(item.category, count + 1);
+                macroCounts.set(macro, count + 1);
                 return true;
             });
 

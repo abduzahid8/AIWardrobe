@@ -32,7 +32,7 @@ const logger = createLogger('TabNavigator');
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 
 const { colors, spacing } = LiquidGlass2026Theme;
-const TAB_BAR_HORIZONTAL_MARGIN = 16;
+const TAB_BAR_HORIZONTAL_MARGIN = 64;
 const TAB_BAR_HORIZONTAL_PADDING = spacing.sm;
 
 const Tab = createBottomTabNavigator();

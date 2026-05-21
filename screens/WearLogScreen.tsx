@@ -36,6 +36,7 @@ import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 import { CachedImage } from '../components/ui/CachedImage';
 import useWardrobeStore from '../store/wardrobeStore';
 import type { ClothingItem, Occasion } from '../src/types/domain';
+import { getMacroCategory } from '../src/utils/categoryMapper';
 import { useTranslation } from 'react-i18next';
 
 const { colors, spacing, radius, typography } = LiquidGlass2026Theme;
@@ -95,11 +96,29 @@ const WearLogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     const toggleItem = useCallback(
         (id: string) => {
             Haptics.selectionAsync();
-            setSelectedIds((prev) =>
-                prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-            );
+            setSelectedIds((prev) => {
+                if (prev.includes(id)) {
+                    return prev.filter((i) => i !== id);
+                }
+                const item = items.find(i => i.id === id);
+                if (!item) return [...prev, id];
+                const macro = getMacroCategory(item.category);
+                const hasExistingInCategory = prev.some(existingId => {
+                    const existing = items.find(i => i.id === existingId);
+                    return existing && getMacroCategory(existing.category) === macro;
+                });
+                if (hasExistingInCategory) {
+                    return prev.map(existingId => {
+                        const existing = items.find(i => i.id === existingId);
+                        return existing && getMacroCategory(existing.category) === macro
+                            ? id
+                            : existingId;
+                    });
+                }
+                return [...prev, id];
+            });
         },
-        []
+        [items]
     );
 
     const handleLogWear = useCallback(async () => {

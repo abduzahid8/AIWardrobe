@@ -394,7 +394,7 @@ const StyleQuizScreen = () => {
             styleGoals: goals,
             prefersSustainable: goals.includes('sustainability'),
         });
-        setOnboardingStep(6);
+        completeOnboarding();
     };
 
     const renderStep = () => {

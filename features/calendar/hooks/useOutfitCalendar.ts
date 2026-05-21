@@ -28,6 +28,7 @@ import {
     wardrobeToOutfitItem,
 } from '../types';
 import { supabase } from '../../../lib/supabase';
+import { getMacroCategory } from '../../../src/utils/categoryMapper';
 
 // Re-export everything consumers need
 export {
@@ -198,7 +199,7 @@ export function useOutfitCalendar() {
         }
     };
 
-    // Item selection
+    // Item selection — enforces one item per macro-category
     const toggleItemSelection = (item: WardrobeItem) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setSelectedItems(prevSelectedItems => {
@@ -207,6 +208,17 @@ export function useOutfitCalendar() {
             }
             if (prevSelectedItems.length >= 6) {
                 return prevSelectedItems;
+            }
+            const macro = getMacroCategory(item.type || item.category || 'other');
+            const hasExistingInCategory = prevSelectedItems.some(
+                existing => getMacroCategory(existing.type || existing.category || 'other') === macro
+            );
+            if (hasExistingInCategory) {
+                return prevSelectedItems.map(existing =>
+                    getMacroCategory(existing.type || existing.category || 'other') === macro
+                        ? item
+                        : existing
+                );
             }
             return [...prevSelectedItems, item];
         });

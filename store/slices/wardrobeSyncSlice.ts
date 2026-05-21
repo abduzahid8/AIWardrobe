@@ -31,6 +31,7 @@ export interface SyncSlice {
 const REHYDRATE_TTL_MS = 60_000;
 
 let _realtimeChannel: RealtimeChannel | null = null;
+let activeRehydratePromise: Promise<void> | null = null;
 
 export const createSyncSlice: StateCreator<WardrobeState, [], [], SyncSlice> = (set, get, store) => ({
     isSyncing: false,
@@ -99,71 +100,81 @@ export const createSyncSlice: StateCreator<WardrobeState, [], [], SyncSlice> = (
             return;
         }
 
-        set({ isLoading: true });
-        try {
-            const { pendingActions, wearLogs: localWearLogs } = get();
-            if (pendingActions.length > 0) {
-                await get().syncToServer();
-            }
+        if (activeRehydratePromise) {
+            return activeRehydratePromise;
+        }
 
-            // Skip the wear-log fetch when the local store already has persisted
-            // data — up to 1000 logs are saved to AsyncStorage by the persist
-            // middleware, so a full server round-trip on every cold start is
-            // unnecessary (fixes Defect 1.7).
-            const hasLocalWearLogs = localWearLogs.length > 0;
-
-            const [apiItems, apiLogs] = await Promise.all([
-                wardrobeApi.list(),
-                hasLocalWearLogs ? Promise.resolve(null) : wearLogApi.list(),
-            ]);
-
-            const items: ClothingItem[] = apiItems.map(mapApiItem);
-
-            // Use server wear logs only when we had none locally; otherwise
-            // keep the persisted logs to avoid the extra network round-trip.
-            const wearLogs: WearLog[] = hasLocalWearLogs
-                ? localWearLogs
-                : (apiLogs ?? []).map((l) => ({
-                    id: l.id,
-                    userId: l.userId,
-                    itemIds: l.itemIds,
-                    outfitId: l.outfitId ?? undefined,
-                    date: l.date,
-                    occasion: l.occasion ?? undefined,
-                    weatherTemp: l.weatherTemp ?? undefined,
-                    weatherCondition: l.weatherCondition ?? undefined,
-                    notes: l.notes ?? undefined,
-                    createdAt: l.createdAt,
-                }));
-
-            set({
-                items,
-                wearLogs,
-                streak: calculateStreak(wearLogs),
-                isLoading: false,
-                lastSyncedAt: new Date().toISOString(),
-            });
-        } catch {
+        activeRehydratePromise = (async () => {
+            set({ isLoading: true });
             try {
-                // Single fallback query — items only. Wear logs are less critical
-                // for the fallback path, so we keep the current in-memory state
-                // rather than issuing a second Supabase round-trip (Defect 4.4 fix).
-                const serverItems = await fetchItemsFromServer();
-                if (serverItems) {
-                    set({
-                        items: serverItems,
-                        wearLogs: get().wearLogs,
-                        isLoading: false,
-                        lastSyncedAt: new Date().toISOString(),
-                    });
-                } else {
+                const { pendingActions, wearLogs: localWearLogs } = get();
+                if (pendingActions.length > 0) {
+                    await get().syncToServer();
+                }
+
+                // Skip the wear-log fetch when the local store already has persisted
+                // data — up to 1000 logs are saved to AsyncStorage by the persist
+                // middleware, so a full server round-trip on every cold start is
+                // unnecessary (fixes Defect 1.7).
+                const hasLocalWearLogs = localWearLogs.length > 0;
+
+                const [apiItems, apiLogs] = await Promise.all([
+                    wardrobeApi.list(),
+                    hasLocalWearLogs ? Promise.resolve(null) : wearLogApi.list(),
+                ]);
+
+                const items: ClothingItem[] = apiItems.map(mapApiItem);
+
+                // Use server wear logs only when we had none locally; otherwise
+                // keep the persisted logs to avoid the extra network round-trip.
+                const wearLogs: WearLog[] = hasLocalWearLogs
+                    ? localWearLogs
+                    : (apiLogs ?? []).map((l) => ({
+                        id: l.id,
+                        userId: l.userId,
+                        itemIds: l.itemIds,
+                        outfitId: l.outfitId ?? undefined,
+                        date: l.date,
+                        occasion: l.occasion ?? undefined,
+                        weatherTemp: l.weatherTemp ?? undefined,
+                        weatherCondition: l.weatherCondition ?? undefined,
+                        notes: l.notes ?? undefined,
+                        createdAt: l.createdAt,
+                    }));
+
+                set({
+                    items,
+                    wearLogs,
+                    streak: calculateStreak(wearLogs),
+                    isLoading: false,
+                    lastSyncedAt: new Date().toISOString(),
+                });
+            } catch {
+                try {
+                    // Single fallback query — items only. Wear logs are less critical
+                    // for the fallback path, so we keep the current in-memory state
+                    // rather than issuing a second Supabase round-trip (Defect 4.4 fix).
+                    const serverItems = await fetchItemsFromServer();
+                    if (serverItems) {
+                        set({
+                            items: serverItems,
+                            wearLogs: get().wearLogs,
+                            isLoading: false,
+                            lastSyncedAt: new Date().toISOString(),
+                        });
+                    } else {
+                        set({ isLoading: false });
+                    }
+                } catch (err) {
+                    console.error('[WardrobeStore] Rehydrate failed:', err);
                     set({ isLoading: false });
                 }
-            } catch (err) {
-                console.error('[WardrobeStore] Rehydrate failed:', err);
-                set({ isLoading: false });
             }
-        }
+        })().finally(() => {
+            activeRehydratePromise = null;
+        });
+
+        return activeRehydratePromise;
     },
 
     subscribeToRealtime: () => {

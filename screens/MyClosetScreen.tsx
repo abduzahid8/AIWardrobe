@@ -317,7 +317,7 @@ const MyClosetScreen = () => {
     // Skip re-fetching if the user just switched tabs momentarily.
     // Upload/delete operations call loadItems() directly, bypassing this TTL.
     const CLOSET_REFRESH_TTL_MS = 60_000; // 60 seconds
-    const lastClosetFetchRef = React.useRef<number>(0);
+    const lastClosetFetchRef = React.useRef<number>(Date.now());
     // Track whether we have items already visible so silent=true can be passed
     // without reading items.length inside useFocusEffect (which would recreate
     // the callback on every load and defeat the TTL guard).
@@ -334,8 +334,11 @@ const MyClosetScreen = () => {
     ];
 
     const [filteredItems, setFilteredItems] = useState<ClothingItem[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [selectedCategory, setSelectedCategory] = useState('tops'); // Default from screenshot
+    const [loading, setLoading] = useState(() => {
+        const currentItems = useWardrobeStore.getState().items;
+        return !currentItems || currentItems.length === 0;
+    });
+    const [selectedCategory, setSelectedCategory] = useState('all');
     const [viewMode, setViewMode] = useState<'clothes' | 'collections'>('clothes');
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
@@ -587,7 +590,7 @@ const MyClosetScreen = () => {
     };
 
     // Load wardrobe items
-    const loadItems = useCallback(async (silent = false, force = false) => {
+    const loadItems = useCallback((silent = false, force = false) => {
         if (!user) {
             setLoading(false);
             return;
@@ -595,26 +598,30 @@ const MyClosetScreen = () => {
 
         const donePerf = perfAction('MyCloset:loadItems');
         perfMark('MyClosetScreen:load'); // Reset per-load mark for accurate tab-switch timing
-        try {
-            if (!silent) setLoading(true);
+        if (!silent) setLoading(true);
 
-            // Rehydrate/Fetch wardrobe items using the store
-            await useWardrobeStore.getState().rehydrateFromCloud(force);
-            
-            donePerf();
-            perfMeasure('MyClosetScreen:load');
-            perfScreenReady('Closet');
-        } catch (error) {
-            donePerf();
-            console.error('Failed to load wardrobe:', error);
-            // local storage fallback
-            const localItems = await AsyncStorage.getItem('myWardrobeItems');
-            if (localItems) {
-                setItems(JSON.parse(localItems));
-            }
-        } finally {
-            setLoading(false);
-        }
+        // Rehydrate/Fetch wardrobe items in background so navigation transitions are instant (<0.05s)
+        useWardrobeStore.getState().rehydrateFromCloud(force)
+            .then(() => {
+                donePerf();
+                perfMeasure('MyClosetScreen:load');
+                perfScreenReady('Closet');
+                setLoading(false);
+            })
+            .catch(async (error) => {
+                donePerf();
+                console.error('Failed to load wardrobe:', error);
+                // local storage fallback
+                try {
+                    const localItems = await AsyncStorage.getItem('myWardrobeItems');
+                    if (localItems) {
+                        setItems(JSON.parse(localItems));
+                    }
+                } catch (e) {
+                    console.error('Failed to read local fallback items:', e);
+                }
+                setLoading(false);
+            });
     }, [user]);
 
     useFocusEffect(

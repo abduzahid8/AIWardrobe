@@ -241,11 +241,23 @@ const PaywallScreen = () => {
     // Close paywall and resume free plan path
     const closePaywall = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        if (canGoBack) {
-            navigation.goBack();
-        } else {
-            completeOnboarding();
-        }
+        Alert.alert(
+            t('paywall.congratsTitle', 'Поздравляем! 🎉'),
+            t('paywall.congratsBody', 'Ваш бесплатный 7-дневный пробный период успешно активирован. Попробуйте все Pro-функции прямо сейчас!'),
+            [
+                {
+                    text: t('common.ok', 'Отлично'),
+                    onPress: () => {
+                        if (canGoBack) {
+                            navigation.goBack();
+                        } else {
+                            completeOnboarding();
+                        }
+                    }
+                }
+            ],
+            { cancelable: false }
+        );
     };
 
     // Present Apple's native Offer Code redemption sheet
@@ -323,6 +335,15 @@ const PaywallScreen = () => {
                 style={styles.backgroundImage}
                 resizeMode="cover"
             />
+
+            {/* Close Button */}
+            <TouchableOpacity
+                style={[styles.closeButton, { top: insets.top + 10 }]}
+                onPress={closePaywall}
+                activeOpacity={0.7}
+            >
+                <Ionicons name="close" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
 
             {/* Dark translucent LinearGradient mask overlay that fades the photo bottom edge seamlessly into solid dark blue */}
             <LinearGradient
@@ -459,38 +480,7 @@ const PaywallScreen = () => {
                             })}
                         </Animated.View>
 
-                        {/* Promo Code Input Wrapper -> Replaced with Apple Offer Code Button */}
-                        <Animated.View entering={FadeInUp.delay(180).duration(600)} style={styles.promoInputCardWrapper}>
-                            {/* Accent Subtitle Header */}
-                            <Text style={styles.promoHeaderTitle}>
-                                {t('paywall.activateCodeHeader', 'У вас есть промокод?')}
-                            </Text>
 
-                            <TouchableOpacity
-                                style={styles.activatePromoButton}
-                                activeOpacity={0.8}
-                                disabled={isRedeemingOffer}
-                                onPress={handleOfferCode}
-                            >
-                                <LinearGradient
-                                    colors={['#7B61FF', '#6366F1']}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 1 }}
-                                    style={styles.activatePromoGradient}
-                                >
-                                    {isRedeemingOffer ? (
-                                        <ActivityIndicator color="#FFFFFF" size="small" />
-                                    ) : (
-                                        <>
-                                            <Ionicons name="ticket-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-                                            <Text style={styles.activatePromoButtonText}>
-                                                {t('promo.redeemOfferCode', 'Активировать промокод (Apple)')}
-                                            </Text>
-                                        </>
-                                    )}
-                                </LinearGradient>
-                            </TouchableOpacity>
-                        </Animated.View>
 
                         {/* Main Action Pill button */}
                         <Animated.View entering={FadeInUp.delay(200).duration(600)} style={styles.buttonWrapper}>
@@ -578,11 +568,11 @@ const createStyles = (D: DTokens) =>
         },
         closeButton: {
             position: 'absolute',
-            left: 20,
+            right: 20,
             width: 38,
             height: 38,
             borderRadius: 19,
-            overflow: 'hidden',
+            backgroundColor: 'rgba(255, 255, 255, 0.16)',
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 10,

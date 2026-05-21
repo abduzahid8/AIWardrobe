@@ -312,6 +312,9 @@ const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
                             trialStartedAt: profile.trial_started_at,
                             ...derived,
                         });
+                    } else if (resolvedTier === 'free') {
+                        // Auto-start trial on server if missing (completely free 7-day trial on first login/open)
+                        await get().initializeTrial(userId);
                     }
                 }
             }

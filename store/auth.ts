@@ -123,9 +123,8 @@ async function onAuthSuccess(
     // Ensure subscription and trial status are resolved immediately
     await useSubscriptionStore.getState().verifySubscriptionFromServer().catch(() => {});
 
-    // Trial is voluntary: users start on the standard freemium tier
-    // and must activate a promo code (Offer Code) or purchase a subscription to unlock the trial.
-    // await useSubscriptionStore.getState().initializeTrial(session.user.id).catch(() => {});
+    // Automatically initialize 7-day free trial on signup/login
+    await useSubscriptionStore.getState().initializeTrial(session.user.id).catch(() => {});
 
     log.info('Authentication succeeded', { method, userId: session.user.id });
 }

@@ -94,7 +94,8 @@ const OutfitCalendarScreen = () => {
             })
             .catch(() => {});
 
-        fetchItems().catch(() => {});
+        // Only run background rehydrate if needed (respecting 60s TTL guard to avoid duplicate fetches)
+        useWardrobeStore.getState().rehydrateFromCloud(false).catch(() => {});
 
         return () => {
             isActive = false;

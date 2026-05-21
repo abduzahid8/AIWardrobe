@@ -18,6 +18,7 @@ import { generateOutfitsFromDB } from '../../../src/services/outfitGenerationSer
 import apiClient from '../../../src/services/apiClient';
 import { fillMissingSlots, type OutfitSlotId } from '../../../src/services/shoppingService';
 import { getMacroCategory } from './useItemSelection';
+import { canonicalizeMacroCategory } from '../../../src/utils/categoryMapper';
 import { STYLE_PERSONALITY_MAP } from '../types';
 import type { GeneratedOutfit, OutfitVisual, WardrobeDisplayItem } from '../types';
 import { sanitizeGeneratedOutfitItemsDetailed } from '../utils/sanitizeGeneratedOutfit';
@@ -26,6 +27,7 @@ import {
   rankItemsForStyle,
   normalizeStyleId,
   needsLayering,
+  scoreItemForStyle,
 } from '../utils/styleInference';
 
 interface UseOutfitGenerationParams {
@@ -173,9 +175,10 @@ export function useOutfitGeneration({
       const anchor = wardrobeItems.find((w) => String(w.id) === String(baseItemId));
       if (!anchor) return outfitsToPatch;
 
-      const anchorMacro =
+      const anchorMacro = canonicalizeMacroCategory(
         anchor.macroCategory ||
-        getMacroCategory(anchor.category || anchor.type || '', anchor.name || anchor.type);
+        getMacroCategory(anchor.category || anchor.type || '', anchor.name || anchor.type)
+      );
 
       const anchorItem = {
         id: String(anchor.id),
@@ -195,7 +198,7 @@ export function useOutfitGeneration({
 
         const matchIdx = outfit.items.findIndex((i) => {
           const m = i.macroCategory || getMacroCategory(i.type || '', i.name);
-          return m === anchorMacro;
+          return canonicalizeMacroCategory(m) === anchorMacro;
         });
 
         const patchedItems = [...outfit.items];
@@ -288,12 +291,79 @@ export function useOutfitGeneration({
     setOutfits([]);
     setOutfitVisuals({});
 
-    // Shop source: send shop items to the AI for intelligent outfit composition.
-    // We pre-score every item against the requested style, drop items that
-    // strongly clash (e.g. graphic hoodies when the user asked for Old Money),
-    // and forward rich metadata (name, description, inferred styleTags,
-    // materials, patterns) so the LLM can actually reason about fit.
-    if (source === 'shop') {
+    let effectiveSource = source;
+
+    if (source === 'wardrobe') {
+      const MIN_REQUIRED = baseItemId ? 1 : 3;
+      const countBaseTops = wardrobeItems.filter(i => {
+        const mc = canonicalizeMacroCategory(i.macroCategory || getMacroCategory(i.type || ''));
+        return mc === 'top';
+      }).length;
+      const countOuterwear = wardrobeItems.filter(i => {
+        const mc = canonicalizeMacroCategory(i.macroCategory || getMacroCategory(i.type || ''));
+        return mc === 'outerwear';
+      }).length;
+      const countTops = countBaseTops + countOuterwear;
+      const countPants = wardrobeItems.filter(i => {
+        const mc = canonicalizeMacroCategory(i.macroCategory || getMacroCategory(i.type || ''));
+        return mc === 'bottom';
+      }).length;
+      const countShoes = wardrobeItems.filter(i => {
+        const mc = canonicalizeMacroCategory(i.macroCategory || getMacroCategory(i.type || ''));
+        return mc === 'shoes';
+      }).length;
+
+      const suitableTops = wardrobeItems.filter(i => {
+        if (baseItemId && String(i.id) === String(baseItemId)) return false;
+        const mc = canonicalizeMacroCategory(i.macroCategory || getMacroCategory(i.type || ''));
+        if (mc !== 'top' && mc !== 'outerwear') return false;
+        const score = scoreItemForStyle({
+          name: i.name,
+          brand: i.brand,
+          color: i.color,
+          type: i.type,
+          macroCategory: i.macroCategory,
+        }, normalizeStyleId(styleToUse));
+        return score >= 0.35;
+      });
+
+      const suitablePants = wardrobeItems.filter(i => {
+        if (baseItemId && String(i.id) === String(baseItemId)) return false;
+        const mc = canonicalizeMacroCategory(i.macroCategory || getMacroCategory(i.type || ''));
+        if (mc !== 'bottom') return false;
+        const score = scoreItemForStyle({
+          name: i.name,
+          brand: i.brand,
+          color: i.color,
+          type: i.type,
+          macroCategory: i.macroCategory,
+        }, normalizeStyleId(styleToUse));
+        return score >= 0.35;
+      });
+
+      const suitableShoes = wardrobeItems.filter(i => {
+        if (baseItemId && String(i.id) === String(baseItemId)) return false;
+        const mc = canonicalizeMacroCategory(i.macroCategory || getMacroCategory(i.type || ''));
+        if (mc !== 'shoes') return false;
+        const score = scoreItemForStyle({
+          name: i.name,
+          brand: i.brand,
+          color: i.color,
+          type: i.type,
+          macroCategory: i.macroCategory,
+        }, normalizeStyleId(styleToUse));
+        return score >= 0.35;
+      });
+
+      const isUnsuitable = suitableTops.length < MIN_REQUIRED || suitablePants.length < MIN_REQUIRED || suitableShoes.length < MIN_REQUIRED;
+
+      if (countTops < MIN_REQUIRED || countPants < MIN_REQUIRED || countShoes < MIN_REQUIRED || isUnsuitable) {
+        console.log(`[useOutfitGeneration] Wardrobe items are insufficient/unsuitable. Transitioning to shop mode.`);
+        effectiveSource = 'shop';
+      }
+    }
+
+    if (effectiveSource === 'shop') {
       const baseItems = activeMode === 'manual' && selectedItemIds.size > 0
         ? wardrobeItems.filter(i => selectedItemIds.has(i.id))
         : wardrobeItems;

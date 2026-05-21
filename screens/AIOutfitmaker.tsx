@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -29,6 +29,7 @@ import Config from '../src/config/env';
 import { createOutfitLog, type OutfitItem as CalendarOutfitItem, type OutfitLog } from '../features/calendar/types';
 import AIThinkingAnimation from '../components/AIThinkingAnimation';
 import { canonicalizeMacroCategory } from '../src/utils/categoryMapper';
+import { scoreItemForStyle, normalizeStyleId } from '../features/outfit-generator/utils/styleInference';
 import useWardrobeStore from '../store/wardrobeStore';
 import { useTranslation } from 'react-i18next';
 
@@ -725,11 +726,11 @@ const slotStyles = StyleSheet.create({
 const AIOutfitGenerator = () => {
   const navigation = useNavigation();
   const route = useRoute<any>();
-  const source = route.params?.source;
+  const [currentSource, setCurrentSource] = useState(route.params?.source || 'wardrobe');
   // Anchor item passed from MyClosetScreen — when set, every generated outfit
   // must include this item locked into its slot.
   const baseItemId: string | undefined = route.params?.baseItemId;
-  const baseItem: { id: string; imageUrl?: string; name?: string; type?: string; macroCategory?: string; color?: string } | undefined = route.params?.baseItem;
+  const baseItem: { id: string; imageUrl?: string; name?: string; type?: string; macroCategory?: string; color?: string; category?: string; brand?: string; description?: string } | undefined = route.params?.baseItem;
   const { t } = useTranslation();
   const [selectedStyle, setSelectedStyle] = useState('old_money');
   const [loading, setLoading] = useState(false);
@@ -809,14 +810,14 @@ const AIOutfitGenerator = () => {
       isMounted.current = false;
       if (fallbackTimer.current) clearTimeout(fallbackTimer.current);
     };
-  }, [shopCatalogLoading, liveShopMapped]);
+  }, [shopCatalogLoading, liveShopMapped, currentSource]);
 
   const loadWardrobeItems = async () => {
     try {
       // ── Shop mode: use ONLY live Supabase shop catalog items.
       // Real Supabase UUIDs MUST be preserved so the edge function can enrich
       // items with imageUrl via its itemMap lookup. Do NOT mix in AsyncStorage.
-      if (source === 'shop') {
+      if (currentSource === 'shop') {
         if (!isMounted.current) return;
         setWardrobeItems(
           liveShopMapped.map((item: any) => ({
@@ -1011,19 +1012,44 @@ const AIOutfitGenerator = () => {
     fetchWeather();
   }, []);
 
-  const normalizeTo4Slots = (items: OutfitItem[], styleId?: string): OutfitItem[] => {
-    const pool = source === 'shop'
+  const candidatePool = useMemo(() => {
+    const pool = currentSource === 'shop'
       ? liveShopMapped
-      : source === 'wardrobe'
+      : currentSource === 'wardrobe'
         ? wardrobeItems
         : [...wardrobeItems, ...liveShopMapped];
 
+    // Helper: prefer an item's own macroCategory (canonicalized) over the
+    // keyword-based fallback. Keeps items whose type/category are raw
+    // garmentType strings (`upper_body`, `lower_body`) from being dropped.
+    const resolveMacroCategory = (it: any): string => {
+      const ownCanonical = canonicalizeMacroCategory(it?.macroCategory || '');
+      if (ownCanonical !== 'other') return ownCanonical;
+      return getBackendMacroCategory(it?.type || '', it?.category || '', it?.name || '');
+    };
+
+    return pool.map((it: any) => ({
+      id: it.id || it.imageUrl || it.name,
+      name: it.name || it.type || 'Item',
+      image: (typeof it.image === 'string' ? it.image : undefined) || it.imageUrl || '',
+      imageUrl: it.imageUrl || (typeof it.image === 'string' ? it.image : ''),
+      type: it.type || it.category || 'top',
+      macroCategory: resolveMacroCategory(it),
+      color: it.color || 'neutral',
+      brand: it.brand || '',
+      isWardrobe: it.isWardrobe ?? false,
+    })).sort((a, b) => (b.isWardrobe ? 1 : 0) - (a.isWardrobe ? 1 : 0));
+  }, [currentSource, liveShopMapped, wardrobeItems]);
+
+  const normalizeTo4Slots = (items: OutfitItem[], styleId?: string): OutfitItem[] => {
     // If an anchor item was passed from MyClosetScreen, inject it into the
     // incoming items list so it is always picked for its slot.
     let incomingItems = items;
     if (baseItem && baseItemId) {
-      const anchorMacro = baseItem.macroCategory
-        || getBackendMacroCategory(baseItem.type || '', '', baseItem.name || '');
+      const anchorMacro = canonicalizeMacroCategory(
+        baseItem.macroCategory
+        || getBackendMacroCategory(baseItem.type || '', '', baseItem.name || '')
+      );
       const anchorOutfitItem: OutfitItem = {
         id: baseItemId,
         name: baseItem.name || baseItem.type || 'Item',
@@ -1039,7 +1065,7 @@ const AIOutfitGenerator = () => {
       if (!alreadyPresent) {
         const slotIdx = incomingItems.findIndex(
           i => (canonicalizeMacroCategory(i.macroCategory || '') === anchorMacro
-            || getBackendMacroCategory(i.type || '', i.category || '', i.name || '') === anchorMacro)
+            || canonicalizeMacroCategory(getBackendMacroCategory(i.type || '', i.category || '', i.name || '')) === anchorMacro)
         );
         if (slotIdx >= 0) {
           incomingItems = [...incomingItems];
@@ -1057,18 +1083,6 @@ const AIOutfitGenerator = () => {
       if (ownCanonical !== 'other') return ownCanonical;
       return getBackendMacroCategory(it?.type || '', it?.category || '', it?.name || '');
     };
-
-    const candidatePool = pool.map((it: any) => ({
-      id: it.id || it.imageUrl || it.name,
-      name: it.name || it.type || 'Item',
-      image: (typeof it.image === 'string' ? it.image : undefined) || it.imageUrl || '',
-      imageUrl: it.imageUrl || (typeof it.image === 'string' ? it.image : ''),
-      type: it.type || it.category || 'top',
-      macroCategory: resolveMacroCategory(it),
-      color: it.color || 'neutral',
-      brand: it.brand || '',
-      isWardrobe: it.isWardrobe ?? false,
-    })).sort((a, b) => (b.isWardrobe ? 1 : 0) - (a.isWardrobe ? 1 : 0));
 
     const resolveImage = (it: any) => (typeof it.image === 'string' ? it.image : undefined) || it.imageUrl || '';
 
@@ -1322,19 +1336,85 @@ const AIOutfitGenerator = () => {
 
     const selectedClothing: any[] = [];
 
+    let effectiveSource = currentSource;
+
+    if (currentSource === 'wardrobe') {
+      const userOwnedItems = wardrobeItems.filter(i => i.isWardrobe === true);
+      const MIN_REQUIRED = baseItemId ? 1 : 3;
+
+      // Pre-compute macro category and score once per item to avoid redundant regex operations
+      const userOwnedItemsWithMeta = userOwnedItems.map(i => {
+        const mc = canonicalizeMacroCategory(i.macroCategory || getBackendMacroCategory(i.type || '', i.category || '', i.name || ''));
+        const score = scoreItemForStyle({
+          name: i.name,
+          brand: i.brand,
+          color: i.color,
+          type: i.type,
+          macroCategory: i.macroCategory,
+        }, normalizeStyleId(styleToUse));
+        return { item: i, mc, score };
+      });
+
+      const countBaseTops = userOwnedItemsWithMeta.filter(x => x.mc === 'top').length;
+      const countOuterwear = userOwnedItemsWithMeta.filter(x => x.mc === 'outerwear').length;
+      const countTops = countBaseTops + countOuterwear;
+      const countPants = userOwnedItemsWithMeta.filter(x => x.mc === 'bottom').length;
+      const countShoes = userOwnedItemsWithMeta.filter(x => x.mc === 'shoes').length;
+
+      const suitableTops = userOwnedItemsWithMeta.filter(x => {
+        if (baseItemId && String(x.item.id) === String(baseItemId)) return false;
+        return (x.mc === 'top' || x.mc === 'outerwear') && x.score >= 0.35;
+      }).map(x => x.item);
+
+      const suitablePants = userOwnedItemsWithMeta.filter(x => {
+        if (baseItemId && String(x.item.id) === String(baseItemId)) return false;
+        return x.mc === 'bottom' && x.score >= 0.35;
+      }).map(x => x.item);
+
+      const suitableShoes = userOwnedItemsWithMeta.filter(x => {
+        if (baseItemId && String(x.item.id) === String(baseItemId)) return false;
+        return x.mc === 'shoes' && x.score >= 0.35;
+      }).map(x => x.item);
+
+      const isUnsuitable = suitableTops.length < MIN_REQUIRED || suitablePants.length < MIN_REQUIRED || suitableShoes.length < MIN_REQUIRED;
+
+      if (countTops < MIN_REQUIRED || countPants < MIN_REQUIRED || countShoes < MIN_REQUIRED || isUnsuitable) {
+        console.log(`[AIOutfitmaker] Wardrobe items are insufficient/unsuitable. Transitioning to shop mode.`);
+        effectiveSource = 'shop';
+        setCurrentSource('shop');
+      }
+    }
+
     // Build a clean payload for the backend — strip non-serialisable fields
     // (require() numbers) and ensure every item has macroCategory + imageUrl.
-    const payloadItems = wardrobeItems.map((item: any) => ({
-      id: item.id,
-      name: item.name || item.type || t('common.clothingItem'),
-      type: item.type || 'top',
-      category: item.category || item.type || 'tops',
-      color: item.color || 'neutral',
-      brand: item.brand || '',
-      description: item.description || item.name || '',
-      imageUrl: item.imageUrl || (typeof item.image === 'string' ? item.image : '') || '',
-      macroCategory: getBackendMacroCategory(item.type || '', item.category || '', item.name || ''),
-    }));
+    let payloadItems = [];
+    if (effectiveSource === 'shop') {
+      payloadItems = wardrobeItems
+        .filter((item: any) => !item.isWardrobe || (baseItemId && String(item.id) === String(baseItemId)))
+        .map((item: any) => ({
+          id: item.id,
+          name: item.name || item.type || t('common.clothingItem'),
+          type: item.type || 'top',
+          category: item.category || item.type || 'tops',
+          color: item.color || 'neutral',
+          brand: item.brand || '',
+          description: item.description || item.name || '',
+          imageUrl: item.imageUrl || (typeof item.image === 'string' ? item.image : '') || '',
+          macroCategory: getBackendMacroCategory(item.type || '', item.category || '', item.name || ''),
+        }));
+    } else {
+      payloadItems = wardrobeItems.map((item: any) => ({
+        id: item.id,
+        name: item.name || item.type || t('common.clothingItem'),
+        type: item.type || 'top',
+        category: item.category || item.type || 'tops',
+        color: item.color || 'neutral',
+        brand: item.brand || '',
+        description: item.description || item.name || '',
+        imageUrl: item.imageUrl || (typeof item.image === 'string' ? item.image : '') || '',
+        macroCategory: getBackendMacroCategory(item.type || '', item.category || '', item.name || ''),
+      }));
+    }
 
     let pureWardrobeOutfit: GeneratedOutfit | null = null;
 
@@ -1355,7 +1435,7 @@ const AIOutfitGenerator = () => {
 
       // ── Special Logic for My Wardrobe page ──
       // Requirement: first outfit must be pure wardrobe, others mixed.
-      if (source === 'wardrobe') {
+      if (effectiveSource === 'wardrobe') {
         try {
           const offlinePure = await generateOfflineOutfits(
             wardrobeItems,
@@ -1384,7 +1464,7 @@ const AIOutfitGenerator = () => {
           selectedItemIds: [],
           wardrobeItems: payloadItems,
           weather: resolvedWeather,
-          limit: source === 'wardrobe' ? 2 : 3, // request fewer if we already have a pure one
+          limit: effectiveSource === 'wardrobe' ? 2 : 3, // request fewer if we already have a pure one
           prompt: userPrompt,
           // Lock the anchor item into every outfit when navigated from MyClosetScreen
           anchorItemId: baseItemId,
@@ -1461,7 +1541,7 @@ const AIOutfitGenerator = () => {
 
           // Ensure first outfit is pure if source is wardrobe
           let finalOffline = offlineOutfits;
-          if (source === 'wardrobe' && pureWardrobeOutfit) {
+          if (effectiveSource === 'wardrobe' && pureWardrobeOutfit) {
             finalOffline = [pureWardrobeOutfit, ...offlineOutfits.slice(0, 2)];
           }
 
