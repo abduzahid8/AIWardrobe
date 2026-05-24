@@ -89,9 +89,9 @@ app.use(cors({
   maxAge: 86400
 }));
 
-// Body parsing with size limits (10MB max to prevent memory exhaustion)
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ limit: "10mb", extended: true }));
+// Body parsing with size limits (20MB max — try-on sends base64 mannequin + garments)
+app.use(express.json({ limit: "20mb" }));
+app.use(express.urlencoded({ limit: "20mb", extended: true }));
 
 // Apply general rate limiting to all routes
 app.use(apiLimiter);
@@ -216,8 +216,10 @@ const server = app.listen(port, "0.0.0.0", () => {
 // requestTimeout: total time a single request may take.
 // headersTimeout:  must be > requestTimeout per Node docs.
 // keepAliveTimeout: > LB idle timeout to avoid 502s from Render's proxy.
-server.requestTimeout = 30_000;
-server.headersTimeout = 35_000;
+// NOTE: Mobile-VTON /tryon can take 30-60s for GPU inference, so 180s matches
+// the mobile app's Axios timeout and gives headroom for cold-start + inference.
+server.requestTimeout = 180_000;
+server.headersTimeout = 185_000;
 server.keepAliveTimeout = 65_000;
 
 async function gracefulShutdown(signal) {

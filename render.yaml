@@ -39,5 +39,9 @@ services:
         sync: false
       - key: REPLICATE_API_TOKEN
         sync: false
+      - key: MOBILE_VTON_SERVICE_URL
+        value: "https://ppolqx065--aiwardrobe-mobile-vton-fastapi-app.modal.run"
+      - key: MODAL_MOBILE_VTON_URL
+        value: "https://ppolqx065--aiwardrobe-mobile-vton-fastapi-app.modal.run"
       - key: ALLOWED_ORIGINS
-        value: "https://aiwardrobe-web.onrender.com"
+        value: "*"
