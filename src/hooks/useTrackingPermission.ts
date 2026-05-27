@@ -17,18 +17,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 
-// Lazy import — only available on iOS builds with the native module installed.
-// Using a try/require so the app doesn't crash on Android or web.
-let TrackingTransparency: {
-    requestTrackingPermissionsAsync: () => Promise<{ status: string }>;
-    getTrackingPermissionsAsync: () => Promise<{ status: string }>;
-} | null = null;
-
-try {
-    TrackingTransparency = require('expo-tracking-transparency');
-} catch {
-    // SDK not linked (Android, web, old SDK) — no-op.
-}
+import * as TrackingTransparency from 'expo-tracking-transparency';
 
 export type TrackingStatus =
     | 'unavailable'   // Android / web / iOS < 14
@@ -71,9 +60,10 @@ export function useTrackingPermission(delayMs = 1200): TrackingPermissionResult 
         const run = async () => {
             try {
                 // Check if already determined (reinstall edge case, etc.)
-                const existing = await TrackingTransparency!.getTrackingPermissionsAsync();
-                if (existing.status !== 'not-determined') {
-                    setStatus(existing.status as TrackingStatus);
+                const existing = await TrackingTransparency.getTrackingPermissionsAsync();
+                if (existing.status !== TrackingTransparency.PermissionStatus.UNDETERMINED) {
+                    const mappedStatus = existing.status === 'granted' ? 'granted' : (existing.status === 'denied' ? 'denied' : 'not-determined');
+                    setStatus(mappedStatus);
                     setIsReady(true);
                     return;
                 }
@@ -81,8 +71,9 @@ export function useTrackingPermission(delayMs = 1200): TrackingPermissionResult 
                 // Brief delay so the app UI is visible before the system dialog appears
                 await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
 
-                const result = await TrackingTransparency!.requestTrackingPermissionsAsync();
-                setStatus(result.status as TrackingStatus);
+                const result = await TrackingTransparency.requestTrackingPermissionsAsync();
+                const finalStatus = result.status === 'granted' ? 'granted' : (result.status === 'denied' ? 'denied' : 'not-determined');
+                setStatus(finalStatus);
             } catch (err) {
                 // Non-critical — fall through with 'denied' so the app keeps working
                 console.warn('[ATT] requestTrackingPermissionsAsync error:', err);

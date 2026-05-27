@@ -157,7 +157,7 @@ const ProductCard = ({
                     </View>
                 </TouchableOpacity>
             </View>
-            <Text style={styles.productBrand} numberOfLines={1}>
+            <Text style={styles.productBrand} numberOfLines={2}>
                 {item.brand}
             </Text>
             <Text style={styles.productPrice}>${item.price.toFixed(2)}</Text>
@@ -215,7 +215,7 @@ const VariationCard = ({ outfit, items, onPress }: VariationCardProps) => {
                 ))}
             </View>
             <View style={styles.variationFooter}>
-                <Text style={styles.variationOccasion} numberOfLines={1}>
+                <Text style={styles.variationOccasion} numberOfLines={2}>
                     {OCCASION_LABEL[outfit.outfit.occasion] ?? outfit.outfit.occasion}
                 </Text>
                 <Text style={styles.variationScore}>{Math.round(outfit.score * 100)}%</Text>

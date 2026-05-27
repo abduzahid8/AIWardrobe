@@ -117,7 +117,7 @@ async function onAuthSuccess(
 
     analyticsService.setUserId(session.user.id);
     crashReporting.setUser(session.user.id);
-    iapService.identify(session.user.id);
+    iapService.identify(session.user.id).catch(() => {});
     authEvents.emitLogin(session.user.id);
     
     // Ensure subscription and trial status are resolved immediately
@@ -185,9 +185,26 @@ const useAuthStore = create<AuthStore>((set, get) => ({
                     throw error;
                 }
             } else if (session) {
-                set({ session, isAuthenticated: true });
-                await get().fetchUser();
-                iapService.identify(session.user.id);
+                // Fast-path: set basic user from session metadata immediately so
+                // the UI can render without waiting for the profiles round-trip.
+                // fetchUser() enriches with the full profile in the background.
+                const fastUser: AuthUser = {
+                    id: session.user.id,
+                    email: session.user.email || '',
+                    username: session.user.user_metadata?.username || '',
+                    gender: session.user.user_metadata?.gender,
+                    profile_image: session.user.user_metadata?.profile_image,
+                };
+                set({ session, isAuthenticated: true, user: fastUser });
+
+                // Fire profile enrichment in the background — do NOT block
+                // initializeAuth() on this Supabase round-trip (fixes slow
+                // cold-start where fetchUser took 1-2s on marginal networks).
+                get().fetchUser().catch((err) => {
+                    log.warn('Background fetchUser failed during session restore', err);
+                });
+
+                iapService.identify(session.user.id).catch(() => {});
                 authEvents.emitLogin(session.user.id);
                 log.info('Restored existing session', { userId: session.user.id });
             }

@@ -454,7 +454,7 @@ const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
                     isLoading: false,
                 });
                 if (userId) {
-                    get().verifySubscriptionFromServer();
+                    get().verifySubscriptionFromServer().catch(() => {});
                 }
             }
         } catch (error) {

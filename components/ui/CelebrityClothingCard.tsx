@@ -192,7 +192,7 @@ export const CelebrityClothingCard: React.FC<CelebrityClothingCardProps> = ({
                                     styles.typeName,
                                     { color: colors.text.primary },
                                 ]}
-                                numberOfLines={1}
+                                numberOfLines={2}
                             >
                                 {displayType}
                             </Text>
@@ -205,7 +205,7 @@ export const CelebrityClothingCard: React.FC<CelebrityClothingCardProps> = ({
                                     styles.colorName,
                                     { color: colors.text.secondary },
                                 ]}
-                                numberOfLines={1}
+                                numberOfLines={2}
                             >
                                 {displayColor}
                             </Text>

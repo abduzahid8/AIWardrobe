@@ -75,7 +75,9 @@ const AITryOnScreen = () => {
     const [aiError, setAiError] = useState<string | null>(null);
     const [lookSaved, setLookSaved] = useState(false);
     const [isModelReady, setIsModelReady] = useState(false);
-    const [useGemini, setUseGemini] = useState(true); // Gemini is 6-12x cheaper than FLUX
+    const [diagnostics, setDiagnostics] = useState<any>(null);
+    const [pipelineVersion, setPipelineVersion] = useState<'sequential_v1' | 'fused_v2' | 'fused_v3'>('fused_v3');
+
     const activeSlotDef = useMemo(() => SLOTS.find((s) => s.key === activeSlot)!, [activeSlot]);
     const mannequinShopFilter = activeSlotDef.category;
     const {
@@ -98,7 +100,7 @@ const AITryOnScreen = () => {
             try {
                 const asset = Asset.fromModule(MANNEQUIN_IMAGE);
                 await asset.downloadAsync();
-                
+
                 if (!asset.localUri) {
                     throw new Error('Asset localUri is null after download');
                 }
@@ -147,9 +149,9 @@ const AITryOnScreen = () => {
             { label: t('tryOn.pieces'), value: selectedCategoryLabel },
             { label: t('tryOn.status'), value: statusLabel },
             { label: t('tryOn.plan'), value: hasActiveSubscription ? t('tryOn.pro') : t('tryOn.free') },
-            { label: 'AI', value: useGemini ? 'Gemini ⚡' : 'FLUX ✨', accent: useGemini },
+            { label: 'AI', value: 'Mobile-VTON 🎯', accent: true },
         ],
-        [hasActiveSubscription, remainingCountLabel, selectedCategoryLabel, statusLabel, tryOnsRemaining, useGemini]
+        [hasActiveSubscription, remainingCountLabel, selectedCategoryLabel, statusLabel, tryOnsRemaining]
     );
 
     const statusCard = useMemo(() => {
@@ -238,6 +240,7 @@ const AITryOnScreen = () => {
         setAiError(null);
         setLookSaved(false);
         setAiProgress(null);
+        setDiagnostics(null);
     }, []);
 
     const handleClearSlot = useCallback((key: SlotKey) => {
@@ -317,16 +320,17 @@ const AITryOnScreen = () => {
 
             let data: any;
             const runTryOnRequest = async () => {
-                const endpoint = useGemini ? '/api/tryon/gemini' : '/api/tryon/render';
-                console.log(`[AITryOn] Using ${useGemini ? 'GEMINI' : 'FLUX'} endpoint: ${endpoint}`);
+                const endpoint = '/api/tryon/mobile-vton';
+                console.log(`[AITryOn] Using Mobile-VTON endpoint: ${endpoint}`);
                 const response = await apiClient.post(
                     endpoint,
                     {
                         mannequin_image: mannequinImage,
                         garments,
                         total: visibleTotal,
+                        pipeline_version: pipelineVersion,
                     },
-                    { timeout: 120_000 },
+                    { timeout: 180_000 },
                 );
                 return response.data;
             };
@@ -344,6 +348,10 @@ const AITryOnScreen = () => {
             if (!data.resultUrl) throw new Error('No result image returned from renderer.');
 
             console.log(`[AITryOn] outfit render OK in ${data.elapsedMs}ms (${data.methodUsed || 'gemini-flash'})`);
+            if (data.diagnostics) {
+                console.log('[AITryOn] diagnostics:', JSON.stringify(data.diagnostics, null, 2));
+                setDiagnostics(data.diagnostics);
+            }
             setAiProgress(`Preview ready ✓  (${visibleTotal}/${visibleTotal})`);
             setAiResultImage(data.resultUrl as string);
             setLookSaved(false);
@@ -357,7 +365,7 @@ const AITryOnScreen = () => {
             setAiLoading(false);
             setAiProgress(null);
         }
-    }, [buildWearDescription, consume, filledCount, getGarmentImageUrl, requireFeature, slots, tryOnsRemaining, useGemini]);
+    }, [buildWearDescription, consume, filledCount, getGarmentImageUrl, requireFeature, slots, tryOnsRemaining]);
 
     const handleSaveLook = useCallback(() => {
         if (!aiResultImage || !hasAnySelection || lookSaved) {
@@ -417,17 +425,11 @@ const AITryOnScreen = () => {
                                 <Text style={styles.headerPillText}>Inspo</Text>
                             </TouchableOpacity>
 
-                            {/* AI Provider Toggle — Gemini is 6-12x cheaper than FLUX */}
-                            <TouchableOpacity
-                                style={[styles.headerPill, useGemini && { backgroundColor: '#E8F5E9' }]}
-                                onPress={() => setUseGemini((v) => !v)}
-                                activeOpacity={0.85}
-                            >
-                                <Ionicons name={useGemini ? 'flash-outline' : 'sparkles'} size={16} color={useGemini ? '#2E7D32' : '#183A67'} />
-                                <Text style={[styles.headerPillText, useGemini && { color: '#2E7D32' }]}>
-                                    {useGemini ? 'Gemini' : 'FLUX'}
-                                </Text>
-                            </TouchableOpacity>
+                            {/* Mobile-VTON — CVPR 2026 on-device try-on */}
+                            <View style={[styles.headerPill, { backgroundColor: '#EDE7F6' }]}>
+                                <Ionicons name="sparkles" size={16} color="#4527A0" />
+                                <Text style={[styles.headerPillText, { color: '#4527A0' }]}>Mobile-VTON</Text>
+                            </View>
 
                             <TouchableOpacity
                                 style={[styles.headerPill, !canReset && styles.headerPillDisabled]}
@@ -616,6 +618,94 @@ const AITryOnScreen = () => {
                             <Text style={styles.statusText}>{statusCard.body}</Text>
                         </View>
                     </View>
+
+                    {__DEV__ && (
+                        <View style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 8,
+                            marginBottom: 8,
+                        }}>
+                            <TouchableOpacity
+                                onPress={() => setPipelineVersion(v => {
+                                    if (v === 'fused_v3') return 'fused_v2';
+                                    if (v === 'fused_v2') return 'sequential_v1';
+                                    return 'fused_v3';
+                                })}
+                                style={{
+                                    backgroundColor: pipelineVersion === 'fused_v3' ? '#E8F5E9' : (pipelineVersion === 'fused_v2' ? '#E3F2FD' : '#FFF3E0'),
+                                    borderRadius: 10,
+                                    paddingHorizontal: 12,
+                                    paddingVertical: 6,
+                                    borderWidth: 1,
+                                    borderColor: pipelineVersion === 'fused_v3' ? '#4CAF50' : (pipelineVersion === 'fused_v2' ? '#2196F3' : '#FF9800'),
+                                }}
+                            >
+                                <Text style={{ fontSize: 11, fontWeight: '700', color: pipelineVersion === 'fused_v3' ? '#2E7D32' : (pipelineVersion === 'fused_v2' ? '#1565C0' : '#E65100') }}>
+                                    {pipelineVersion === 'fused_v3' ? 'Fused v3 (Single Pass)' : (pipelineVersion === 'fused_v2' ? 'Fused v2' : 'Sequential v1')}
+                                </Text>
+                            </TouchableOpacity>
+                            <Text style={{ fontSize: 10, color: '#7D889A' }}>
+                                Tap to toggle pipeline
+                            </Text>
+                        </View>
+                    )}
+
+                    {__DEV__ && diagnostics && (
+                        <View style={{
+                            backgroundColor: '#F8FAFF',
+                            borderRadius: 14,
+                            padding: 12,
+                            marginTop: 4,
+                            borderWidth: 1,
+                            borderColor: 'rgba(17,46,82,0.08)',
+                        }}>
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#5F6D84', marginBottom: 6 }}>
+                                Pipeline Diagnostics
+                            </Text>
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                                <View style={{ backgroundColor: '#FFFFFF', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}>
+                                    <Text style={{ fontSize: 10, color: '#7D889A' }}>Version</Text>
+                                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#183A67' }}>
+                                        {diagnostics.pipelineVersion || 'sequential_v1'}
+                                    </Text>
+                                </View>
+                                <View style={{ backgroundColor: '#FFFFFF', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}>
+                                    <Text style={{ fontSize: 10, color: '#7D889A' }}>Total</Text>
+                                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#183A67' }}>
+                                        {(diagnostics.totalElapsedMs || 0).toFixed(0)}ms
+                                    </Text>
+                                </View>
+                                <View style={{ backgroundColor: '#FFFFFF', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}>
+                                    <Text style={{ fontSize: 10, color: '#7D889A' }}>VRAM</Text>
+                                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#183A67' }}>
+                                        {(diagnostics.peakVramMb || 0).toFixed(0)}MB
+                                    </Text>
+                                </View>
+                                {Object.entries(diagnostics.cacheHits || {}).length > 0 && (
+                                    <View style={{ backgroundColor: '#E8F5E9', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}>
+                                        <Text style={{ fontSize: 10, color: '#2E7D32' }}>Cache Hits</Text>
+                                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#1B5E20' }}>
+                                            {(Object.values(diagnostics.cacheHits || {}) as number[]).reduce((a, b) => a + b, 0)}
+                                        </Text>
+                                    </View>
+                                )}
+                                {diagnostics.degraded && (
+                                    <View style={{ backgroundColor: '#FFEBEE', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}>
+                                        <Text style={{ fontSize: 10, color: '#C14444' }}>Degraded</Text>
+                                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#B71C1C' }}>
+                                            {diagnostics.degradedReason || 'Yes'}
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
+                            {diagnostics.renderedGarments && (
+                                <Text style={{ fontSize: 10, color: '#7D889A', marginTop: 6 }}>
+                                    Order: {(diagnostics.renderedGarments || []).join(' → ')}
+                                </Text>
+                            )}
+                        </View>
+                    )}
 
                     <View style={styles.catalogCard}>
                         <View style={styles.catalogHeaderRow}>

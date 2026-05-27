@@ -58,6 +58,16 @@ catvton-service/
 alicevision-service/
 scratch/
 
+# Backend / ML services — NOT part of the mobile app
+mobile-vton-service/
+api/
+cache/
+workers/
+
+# Python venvs inside mobile-vton-service (already excluded above, but just in case)
+*.venv/
+*.venv-modal/
+
 # One-off probes left at repo root
 appleuploadissueneedfix/
 test_*.js
@@ -86,8 +96,9 @@ find_hardcoded_text.js
 # Test coverage
 coverage/
 
-# Supabase local
+# Supabase (edge functions deployed separately, migrations not needed for iOS build)
 supabase/.temp/
+supabase/functions/
 
 # Keep the 3D mannequin asset — outfit try-on needs it.
 # (If you drop the 3D try-on feature, re-add: assets/models/*.glb)
@@ -95,3 +106,33 @@ supabase/.temp/
 # Git internals
 .git/
 .github/
+
+# iOS build artifacts (rebuilt on EAS)
+ios/Pods/
+ios/build/
+
+# Android build artifacts (rebuilt on EAS)
+android/.gradle/
+android/build/
+android/app/build/
+
+# Maestro test flows
+.maestro/
+
+# Logs
+*.log
+api_server.log
+
+# Docs & meta (not needed for build)
+docs/
+style-guide/
+*.md
+!README.md
+
+# WDIO / Appium test infra
+__tests__/
+wdio.conf.ts
+
+# CI
+.github/
+ios-backup/

@@ -21,7 +21,7 @@
     <key>CFBundlePackageType</key>
     <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0.5</string>
+    <string>1.0.6</string>
     <key>CFBundleSignature</key>
     <string>????</string>
     <key>CFBundleURLTypes</key>
@@ -30,19 +30,22 @@
         <key>CFBundleURLSchemes</key>
         <array>
           <string>com.aiwardrobe</string>
+          <string>com.aiwardrobe</string>
         </array>
       </dict>
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
-          <string>exp+aiwardrobe</string>
+          <string>exp+wardrobe-app</string>
         </array>
       </dict>
     </array>
     <key>CFBundleVersion</key>
-    <string>40</string>
+    <string>44</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
+    <key>LSMinimumSystemVersion</key>
+    <string>12.0</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
     <key>NSAppTransportSecurity</key>
@@ -54,6 +57,12 @@
     </dict>
     <key>NSCameraUsageDescription</key>
     <string>AIWardrobe uses the camera to photograph clothing items you choose to add to your wardrobe and to capture outfit photos.</string>
+    <key>NSFaceIDUsageDescription</key>
+    <string>Allow $(PRODUCT_NAME) to access your Face ID biometric data.</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>Allow $(PRODUCT_NAME) to access your location</string>
+    <key>NSLocationAlwaysUsageDescription</key>
+    <string>Allow $(PRODUCT_NAME) to access your location</string>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>Your current location is used once per session to fetch local weather so AIWardrobe can suggest weather-appropriate outfits. Location is not stored or shared.</string>
     <key>NSMicrophoneUsageDescription</key>
@@ -62,6 +71,8 @@
     <string>AIWardrobe saves outfit photos you create to your photo library when you choose to share or export them.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>AIWardrobe accesses the photo library only to import clothing images you select and to save or share outfit photos you create.</string>
+    <key>NSUserTrackingUsageDescription</key>
+    <string>Your data is used to deliver personalized ads and measure their effectiveness.</string>
     <key>RCTNewArchEnabled</key>
     <true/>
     <key>UILaunchStoryboardName</key>
@@ -72,26 +83,14 @@
     </array>
     <key>UIRequiresFullScreen</key>
     <false/>
-    <key>UIApplicationSupportsMultipleScenes</key>
-    <false/>
-    <key>UISceneConfigurations</key>
-    <dict>
-      <key>UIWindowSceneSessionRoleApplication</key>
-      <array>
-        <dict>
-          <key>UISceneConfigurationName</key>
-          <string>Default Configuration</string>
-          <key>UISceneDelegateClassName</key>
-          <string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
-        </dict>
-      </array>
-    </dict>
     <key>UIStatusBarStyle</key>
     <string>UIStatusBarStyleDefault</string>
     <key>UISupportedInterfaceOrientations</key>
     <array>
       <string>UIInterfaceOrientationPortrait</string>
       <string>UIInterfaceOrientationPortraitUpsideDown</string>
+      <string>UIInterfaceOrientationLandscapeLeft</string>
+      <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
     <key>UISupportedInterfaceOrientations~ipad</key>
     <array>

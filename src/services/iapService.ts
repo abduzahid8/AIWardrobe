@@ -235,7 +235,7 @@ class IAPService {
                         introductoryPeriod: introPrice?.period?.unit
                             ? `${introPrice.period.numberOfUnits} ${introPrice.period.unit}${introPrice.period.numberOfUnits > 1 ? 's' : ''}`
                             : undefined,
-                        hasFreeTrial: introPrice?.price?.toNumber() === 0 || undefined,
+                        hasFreeTrial: introPrice?.price === 0 || undefined,
                     };
                 });
             }
@@ -255,7 +255,7 @@ class IAPService {
                         introductoryPeriod: introPrice?.period?.unit
                             ? `${introPrice.period.numberOfUnits} ${introPrice.period.unit}${introPrice.period.numberOfUnits > 1 ? 's' : ''}`
                             : undefined,
-                        hasFreeTrial: introPrice?.price?.toNumber() === 0 || undefined,
+                        hasFreeTrial: introPrice?.price === 0 || undefined,
                     };
                 });
             }
@@ -527,7 +527,7 @@ class IAPService {
             // entitlement keys differ across environments.
             const activeProductIds = new Set<string>(customerInfo.activeSubscriptions || []);
             const findProductForTier = (tier: SubscriptionTier): string | null => {
-                for (const productId of activeProductIds) {
+                for (const productId of Array.from(activeProductIds)) {
                     if (getDynamicTier(productId) === tier) return productId;
                 }
                 return null;

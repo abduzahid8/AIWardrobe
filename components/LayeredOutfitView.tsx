@@ -121,7 +121,7 @@ export default function LayeredOutfitView({
                                                 compact && styles.itemImageCompact,
                                             ]}
                                         />
-                                        <Text style={styles.itemName} numberOfLines={1}>
+                                        <Text style={styles.itemName} numberOfLines={2}>
                                             {item.name || item.subCategory || item.category}
                                         </Text>
                                         {editable && (

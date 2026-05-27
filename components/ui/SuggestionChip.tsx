@@ -103,7 +103,7 @@ export const SuggestionChip: React.FC<SuggestionChipProps> = ({
                         styles.text,
                         { color: variantStyles.textColor },
                     ]}
-                    numberOfLines={1}
+                    numberOfLines={2}
                 >
                     {text}
                 </Text>

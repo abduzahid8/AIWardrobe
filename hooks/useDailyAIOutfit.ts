@@ -394,42 +394,55 @@ export function useDailyAIOutfit({
 
         let cancelled = false;
 
+        // Defer outfit generation by 1500ms on startup to avoid competing
+        // with app initialization (wardrobe rehydrate, subscription checks,
+        // notification scheduling). This spreads CPU/network load and
+        // eliminates the UI freeze users see right after splash screen.
+        const startupDelayMs = 1500;
+
         const task = InteractionManager.runAfterInteractions(() => {
-            (async () => {
-                const key     = storageKey(userId, style);
-                const dateKey = todayKey();
+            const timeoutId = setTimeout(() => {
+                if (cancelled) return;
 
-                try {
-                    const raw = await AsyncStorage.getItem(key);
-                    if (!cancelled && raw) {
-                        const cached = JSON.parse(raw) as CachedEntry;
-                        const cachedRenderable = filterRenderableOutfits(
-                            Array.isArray(cached.outfits) ? cached.outfits : [],
-                        );
-                        if (cached.dateKey === dateKey && cachedRenderable.length > 0) {
-                            logger.debug('Pre-check: serving cached daily outfits (edge function skipped)', {
-                                style,
-                                count: cachedRenderable.length,
-                                dateKey,
-                            });
-                            setOutfits(cachedRenderable);
-                            // loading stays false — no edge function call needed.
-                            cacheCheckedRef.current = true;
-                            return;
+                (async () => {
+                    const key     = storageKey(userId, style);
+                    const dateKey = todayKey();
+
+                    try {
+                        const raw = await AsyncStorage.getItem(key);
+                        if (!cancelled && raw) {
+                            const cached = JSON.parse(raw) as CachedEntry;
+                            const cachedRenderable = filterRenderableOutfits(
+                                Array.isArray(cached.outfits) ? cached.outfits : [],
+                            );
+                            if (cached.dateKey === dateKey && cachedRenderable.length > 0) {
+                                logger.debug('Pre-check: serving cached daily outfits (edge function skipped)', {
+                                    style,
+                                    count: cachedRenderable.length,
+                                    dateKey,
+                                });
+                                setOutfits(cachedRenderable);
+                                // loading stays false — no edge function call needed.
+                                cacheCheckedRef.current = true;
+                                return;
+                            }
                         }
+                    } catch (cacheErr) {
+                        logger.warn('Pre-check: failed to read daily outfit cache', cacheErr);
                     }
-                } catch (cacheErr) {
-                    logger.warn('Pre-check: failed to read daily outfit cache', cacheErr);
-                }
 
-                // Cache is absent or stale — allow the generation effect to run.
-                if (!cancelled) {
-                    cacheCheckedRef.current = true;
-                    // Trigger the generation effect by setting loading now so
-                    // the UI shows a spinner while the edge function is called.
-                    setLoading(true);
-                }
-            })();
+                    // Cache is absent or stale — allow the generation effect to run.
+                    if (!cancelled) {
+                        cacheCheckedRef.current = true;
+                        // Trigger the generation effect by setting loading now so
+                        // the UI shows a spinner while the edge function is called.
+                        setLoading(true);
+                    }
+                })();
+            }, startupDelayMs);
+
+            // Return cleanup for the timeout
+            return () => clearTimeout(timeoutId);
         });
 
         return () => {

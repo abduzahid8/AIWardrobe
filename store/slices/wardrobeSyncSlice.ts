@@ -76,15 +76,19 @@ export const createSyncSlice: StateCreator<WardrobeState, [], [], SyncSlice> = (
     },
 
     rehydrateFromCloud: async (force = false) => {
+        const rehydrateStart = Date.now();
+
         // Wait for Zustand storage hydration to finish if it hasn't already
         const persistStore = store as any;
         if (persistStore && persistStore.persist && typeof persistStore.persist.hasHydrated === 'function' && !persistStore.persist.hasHydrated()) {
+            const hydrationStart = Date.now();
             await new Promise<void>((resolve) => {
                 const unsub = persistStore.persist.onFinishHydration(() => {
                     unsub();
                     resolve();
                 });
             });
+            console.log(`[PERF] 🟡 wardrobe hydration wait: ${Date.now() - hydrationStart}ms`);
         }
 
         // TTL guard: skip network round-trip when items are already loaded
@@ -97,6 +101,7 @@ export const createSyncSlice: StateCreator<WardrobeState, [], [], SyncSlice> = (
             lastSyncedAt &&
             Date.now() - new Date(lastSyncedAt).getTime() < REHYDRATE_TTL_MS
         ) {
+            console.log(`[PERF] 🟢 wardrobe rehydrate skipped (TTL ${Math.round((Date.now() - new Date(lastSyncedAt).getTime()) / 1000)}s ago)`);
             return;
         }
 
@@ -109,7 +114,9 @@ export const createSyncSlice: StateCreator<WardrobeState, [], [], SyncSlice> = (
             try {
                 const { pendingActions, wearLogs: localWearLogs } = get();
                 if (pendingActions.length > 0) {
+                    const syncStart = Date.now();
                     await get().syncToServer();
+                    console.log(`[PERF] 🟡 wardrobe syncToServer: ${Date.now() - syncStart}ms`);
                 }
 
                 // Skip the wear-log fetch when the local store already has persisted
@@ -118,10 +125,12 @@ export const createSyncSlice: StateCreator<WardrobeState, [], [], SyncSlice> = (
                 // unnecessary (fixes Defect 1.7).
                 const hasLocalWearLogs = localWearLogs.length > 0;
 
+                const fetchStart = Date.now();
                 const [apiItems, apiLogs] = await Promise.all([
                     wardrobeApi.list(),
                     hasLocalWearLogs ? Promise.resolve(null) : wearLogApi.list(),
                 ]);
+                console.log(`[PERF] 🟡 wardrobe fetch (${hasLocalWearLogs ? 'items only' : 'items + wearLogs'}): ${Date.now() - fetchStart}ms`);
 
                 const items: ClothingItem[] = apiItems.map(mapApiItem);
 
@@ -172,6 +181,7 @@ export const createSyncSlice: StateCreator<WardrobeState, [], [], SyncSlice> = (
             }
         })().finally(() => {
             activeRehydratePromise = null;
+            console.log(`[PERF] 🟢 wardrobe rehydrateFromCloud total: ${Date.now() - rehydrateStart}ms`);
         });
 
         return activeRehydratePromise;

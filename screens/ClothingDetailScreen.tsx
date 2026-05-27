@@ -237,7 +237,7 @@ const ClothingDetailScreen: React.FC = () => {
           <Ionicons name="chevron-back" size={24} color="#1C1C1E" />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle} numberOfLines={1}>
+        <Text style={styles.headerTitle} numberOfLines={2}>
           {item.name || item.subCategory || item.category}
         </Text>
 

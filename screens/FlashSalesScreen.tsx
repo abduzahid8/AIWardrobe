@@ -257,7 +257,7 @@ const EventCard = ({
 
                 <View style={styles.eventCardContent}>
                     <Text style={styles.eventCardBrand}>{event.brand}</Text>
-                    <Text style={styles.eventCardTitle} numberOfLines={1}>
+                    <Text style={styles.eventCardTitle} numberOfLines={2}>
                         {event.title}
                     </Text>
                     <Text style={styles.eventCardItems}>

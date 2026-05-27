@@ -45,10 +45,12 @@ yarn-error.*
 __pycache__/
 *.py[cod]
 venv/
+.venv-hf-test/
 
 # AI Data & Weights
 alicevision-service/weights/
 alicevision-service/datasets/
+mobile-vton-service/checkpoint/
 
 # Training Artifacts
 alicevision-service/training/datasets/
@@ -116,4 +118,8 @@ scripts/out/
 
 # Transcripts and temporary logs
 *transcript*
+
+# Local service credentials and logs
+service-account-key.json
+api_server.log
 

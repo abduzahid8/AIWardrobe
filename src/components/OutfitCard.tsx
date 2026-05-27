@@ -195,7 +195,7 @@ const OutfitCard = ({
 
             {/* Reasoning */}
             {outfit.reasoning ? (
-                <Text style={styles.reasoning} numberOfLines={1}>{outfit.reasoning}</Text>
+                <Text style={styles.reasoning} numberOfLines={2}>{outfit.reasoning}</Text>
             ) : null}
 
             {/* Action bar */}

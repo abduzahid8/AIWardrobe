@@ -106,14 +106,14 @@ export const ActionCard: React.FC<ActionCardProps> = ({
                 <View style={styles.content}>
                     <Text
                         style={[styles.title, { color: colors.text.primary }]}
-                        numberOfLines={1}
+                        numberOfLines={2}
                     >
                         {title}
                     </Text>
                     {subtitle && (
                         <Text
                             style={[styles.subtitle, { color: colors.text.secondary }]}
-                            numberOfLines={1}
+                            numberOfLines={2}
                         >
                             {subtitle}
                         </Text>

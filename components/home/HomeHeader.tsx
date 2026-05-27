@@ -22,7 +22,7 @@ export default function HomeHeader({ greeting, userName, onCalendarPress }: Prop
             </View>
 
             <View style={[styles.greetingSection, { marginBottom: spacing.md }]}>
-                <Text style={styles.greetingText} numberOfLines={1}>
+                <Text style={styles.greetingText} numberOfLines={2}>
                     {greeting}, {userName}
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>

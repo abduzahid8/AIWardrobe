@@ -190,10 +190,10 @@ serve(async (req: Request) => {
     }
 
     if (profileError || !profile) {
-      console.error('[RevenueCat] User not found:', userId, { originalAppUserId: event.app_user_id })
+      console.warn('[RevenueCat] User not found, but returning 200 OK to acknowledge receipt:', userId, { originalAppUserId: event.app_user_id })
       return new Response(
-        JSON.stringify({ error: 'User not found' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
+        JSON.stringify({ success: true, message: 'User not found in database, event acknowledged' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       )
     }
 
@@ -314,7 +314,6 @@ async function handlePurchase(
           amount: event.price || 0,
           currency: event.currency || 'USD',
           status: 'completed',
-          type: 'renewal',
           product_id: event.product_id,
           transaction_id: event.transaction_id,
           platform,
@@ -373,7 +372,6 @@ async function handlePurchase(
       amount: event.price || 0,
       currency: event.currency || 'USD',
       status: 'completed',
-      type: 'subscription',
       product_id: event.product_id,
       transaction_id: event.transaction_id,
       platform,

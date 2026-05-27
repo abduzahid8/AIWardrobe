@@ -203,10 +203,10 @@ const ChatBubble = ({ message, isAI, outfit, onAdjust, adjustmentOptions, t }: {
                             {outfit.items.slice(0, 4).map((item: OutfitItemType, idx: number) => (
                                 <View key={idx} style={styles.outfitItemCard}>
                                     <View style={[styles.outfitItemColor, { backgroundColor: item.colorHex || COLORS.surface }]} />
-                                    <Text style={styles.outfitItemType} numberOfLines={1}>
+                                    <Text style={styles.outfitItemType} numberOfLines={2}>
                                         {item.specificType || item.category}
                                     </Text>
-                                    <Text style={styles.outfitItemColorName} numberOfLines={1}>
+                                    <Text style={styles.outfitItemColorName} numberOfLines={2}>
                                         {item.primaryColor}
                                     </Text>
                                 </View>

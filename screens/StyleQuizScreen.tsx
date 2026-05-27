@@ -429,13 +429,6 @@ const StyleQuizScreen = () => {
                         ? <StepDots total={STEPS.length - 1} current={step - 1} />
                         : <View style={{ height: 6 }} />
                     }
-                    {step > 0 && (
-                        <TouchableOpacity
-                            onPress={() => { completeOnboarding(); }}
-                        >
-                            <Text style={s.skip}>{t('common.skip')}</Text>
-                        </TouchableOpacity>
-                    )}
                 </View>
 
                 {renderStep()}
@@ -451,7 +444,6 @@ const s = StyleSheet.create({
     backgroundOrbTop: { position: 'absolute', top: -100, right: -80, width: 280, height: 280, borderRadius: 140, backgroundColor: 'rgba(188, 210, 245, 0.42)' },
     backgroundOrbBottom: { position: 'absolute', left: -120, bottom: 140, width: 300, height: 300, borderRadius: 150, backgroundColor: 'rgba(216, 229, 252, 0.34)' },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingTop: 12, paddingBottom: 8, minHeight: 40 },
-    skip:   { fontSize: 15, color: T.sub, fontWeight: '500' },
     step:   { flex: 1, paddingHorizontal: 24, paddingBottom: 24 },
     title:  { fontSize: 36, fontWeight: '800', color: T.text, letterSpacing: -1.2, lineHeight: 44, marginTop: 24, marginBottom: 10 },
     sub:    { fontSize: 15, color: T.sub, marginBottom: 28, lineHeight: 23 },

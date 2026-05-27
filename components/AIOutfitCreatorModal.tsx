@@ -238,7 +238,7 @@ const AIOutfitCreatorModal: React.FC<AIOutfitCreatorModalProps> = ({
                     styles.chipLabel,
                     isSelected && styles.chipLabelSelected,
                   ]}
-                  numberOfLines={1}
+                  numberOfLines={2}
                 >
                   {event.label}
                 </Text>
@@ -299,7 +299,7 @@ const AIOutfitCreatorModal: React.FC<AIOutfitCreatorModalProps> = ({
                 style={styles.outfitItemImage as any}
                 resizeMode="cover"
               />
-              <Text style={styles.outfitItemLabel} numberOfLines={1}>
+              <Text style={styles.outfitItemLabel} numberOfLines={2}>
                 {item!.subCategory || item!.category}
               </Text>
             </Animated.View>

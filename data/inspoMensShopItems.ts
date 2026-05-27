@@ -1,43 +1,4 @@
 import type { ShopCatalogItem } from '../features/try-on/types';
-import { BASIC_CLOTHING_ITEMS } from './basicClothingItems';
-
-const SHOP_PRICES: Record<string, number> = {
-    'basic-1': 39.9,
-    'basic-2': 149.0,
-    'basic-3': 119.0,
-    'basic-4': 145.0,
-    'basic-5': 129.0,
-    'basic-6': 125.0,
-    'basic-7': 135.0,
-    'basic-8': 139.0,
-    'basic-9': 149.0,
-    'basic-10': 89.9,
-    'basic-11': 95.9,
-};
-
-function categoryToGarmentType(category: string): ShopCatalogItem['garmentType'] {
-    if (category === 'bottom') return 'lower_body';
-    if (category === 'shoes') return 'shoes';
-    return 'upper_body';
-}
-
-function itemBrand(itemId: string, category: string): string {
-    if (category === 'shoes' || itemId === 'basic-11') return 'ZARA';
-    return 'ZARA';
-}
-
-const LOCAL_BASIC_ITEMS: ShopCatalogItem[] = BASIC_CLOTHING_ITEMS
-    .filter((item) => item.category !== 'accessory')
-    .map((item) => ({
-        id: item.id,
-        brand: itemBrand(item.id, item.category),
-        name: item.name,
-        price: SHOP_PRICES[item.id] ?? 99.0,
-        currency: 'USD',
-        garmentType: categoryToGarmentType(item.category),
-        description: item.description,
-        imageUrl: item.image,
-    }));
 
 /**
  * Curated classic menswear — Oxfords, chinos, blazers, loafers, trenches, etc.
@@ -56,16 +17,6 @@ export const CLASSIC_MENS_ITEMS: ShopCatalogItem[] = [
         garmentType: 'upper_body',
         description: 'Spring 2026 - Button-down collar 100% cotton oxford in light blue',
         imageUrl: 'https://image.uniqlo.com/UQ/ST3/us/imagesgoods/456630/item/usgoods_64_456630_3x4.jpg',
-    },
-    {
-        id: 'classic-m-shirt-02',
-        brand: 'Uniqlo',
-        name: 'Easy Care Broadcloth Shirt',
-        price: 29.9,
-        currency: 'USD',
-        garmentType: 'upper_body',
-        description: '2026 - Wrinkle-resistant slim-fit broadcloth dress shirt in blue',
-        imageUrl: 'https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/448264/item/goods_67_448264_3x4.jpg',
     },
     {
         id: 'classic-m-shirt-03',
@@ -234,16 +185,6 @@ export const CLASSIC_MENS_ITEMS: ShopCatalogItem[] = [
         imageUrl: 'https://image.uniqlo.com/UQ/ST3/us/imagesgoods/455492/item/usgoods_38_455492_3x4.jpg',
     },
     {
-        id: 'classic-m-jean-01',
-        brand: 'Uniqlo',
-        name: 'Straight Jeans',
-        price: 39.9,
-        currency: 'USD',
-        garmentType: 'lower_body',
-        description: 'Spring 2026 - Classic straight-leg denim in mid blue wash',
-        imageUrl: 'https://image.uniqlo.com/UQ/ST3/us/imagesgoods/479816/item/usgoods_63_479816_3x4.jpg',
-    },
-    {
         id: 'classic-m-jean-02',
         brand: 'Uniqlo',
         name: 'Selvedge Straight Jeans',
@@ -329,16 +270,6 @@ export const CLASSIC_MENS_ITEMS: ShopCatalogItem[] = [
     // ── Semi-Classic Additions ─────────────────────────────────────────
     // Dress Shirts (more variety)
     {
-        id: 'classic-m-shirt-05',
-        brand: 'Charles Tyrwhitt',
-        name: 'Non-Iron White Twill Shirt',
-        price: 59.0,
-        currency: 'USD',
-        garmentType: 'upper_body',
-        description: '2026 Classic fit non-iron cotton twill in white',
-        imageUrl: 'https://www.ctshirts.com/dw/image/v2/AAWS_PRD/on/demandware.static/-/Sites-ctshirts-master/default/dw654321/white_twill.jpg',
-    },
-    {
         id: 'classic-m-shirt-06',
         brand: 'Charles Tyrwhitt',
         name: 'Slim Fit Bengal Stripe Shirt',
@@ -359,16 +290,6 @@ export const CLASSIC_MENS_ITEMS: ShopCatalogItem[] = [
         imageUrl: 'https://image.uniqlo.com/UQ/ST3/us/imagesgoods/460980/item/usgoods_01_460980_3x4.jpg',
     },
     // Blazers & Sports Coats
-    {
-        id: 'classic-m-blazer-02',
-        brand: 'Massimo Dutti',
-        name: 'Slim Fit Wool Blazer',
-        price: 199.0,
-        currency: 'USD',
-        garmentType: 'upper_body',
-        description: '2026 Collection - Navy wool blazer with notch lapels and patch pockets',
-        imageUrl: 'https://massimodutti.com/content/dam/massimodutti/Men/2024/blazers/1200x1500/2060_331_401.jpg',
-    },
     {
         id: 'classic-m-blazer-03',
         brand: 'Suitsupply',
@@ -450,16 +371,6 @@ export const CLASSIC_MENS_ITEMS: ShopCatalogItem[] = [
         garmentType: 'upper_body',
         description: '2026 Classic Collection - Iconic cotton mesh polo in white with navy pony',
         imageUrl: 'https://www.ralphlauren.com/dw/image/v2/AAWS_PRD/on/demandware.static/-/Sites-ralphlauren-master/default/dw123456/classic_polo_white.jpg',
-    },
-    {
-        id: 'classic-m-polo-04',
-        brand: 'Lacoste',
-        name: 'L.12.12 Classic Polo',
-        price: 89.5,
-        currency: 'USD',
-        garmentType: 'upper_body',
-        description: 'Spring 2026 - Petit pique cotton polo in navy with green croc',
-        imageUrl: 'https://www.lacoste.com/dw/image/v2/AAWS_PRD/on/demandware.static/-/Sites-lacoste-master/default/dw789012/l1212_navy.jpg',
     },
     {
         id: 'classic-m-tee-01',
@@ -553,17 +464,6 @@ export const CLASSIC_MENS_ITEMS: ShopCatalogItem[] = [
         description: '2026 Collection - Iconic straight-leg jeans in dark stonewash',
         imageUrl: 'https://www.levi.com/dw/image/v2/AAWS_PRD/on/demandware.static/-/Sites-levi-master/default/dw567890/501_dark.jpg',
     },
-    {
-        id: 'classic-m-jean-04',
-        brand: 'Uniqlo',
-        name: 'Slim-Fit Jeans',
-        price: 49.9,
-        currency: 'USD',
-        garmentType: 'lower_body',
-        description: 'Spring 2026 - Slim-fit stretch denim in dark blue',
-        imageUrl: 'https://image.uniqlo.com/UQ/ST3/us/imagesgoods/450244/item/usgoods_67_450244_3x4.jpg',
-    },
-    // Outerwear
     {
         id: 'classic-m-coat-03',
         brand: 'Uniqlo',
@@ -678,16 +578,6 @@ export const CLASSIC_MENS_ITEMS: ShopCatalogItem[] = [
         garmentType: 'shoes',
         description: 'Heritage 2026 - Hand-polished black calf leather oxford, bench-made in England',
         imageUrl: 'https://www.church-footwear.com/dw/image/v2/AAWS_PRD/on/demandware.static/-/Sites-churchs-master/default/dw555555/consul_black.jpg',
-    },
-    {
-        id: 'classic-m-shoe-08',
-        brand: 'John Lobb',
-        name: 'City II Oxford',
-        price: 1695.0,
-        currency: 'USD',
-        garmentType: 'shoes',
-        description: '2026 Bespoke Collection - Handcrafted black leather oxford on 7000 last',
-        imageUrl: 'https://www.johnlobb.com/dw/image/v2/AAWS_PRD/on/demandware.static/-/Sites-johnlobb-master/default/dw666666/city_ii.jpg',
     },
     {
         id: 'classic-m-shoe-09',
@@ -1029,6 +919,5 @@ export const CLASSIC_MENS_ITEMS: ShopCatalogItem[] = [
 ];
 
 export const INSPO_MENS_SHOP_ITEMS: ShopCatalogItem[] = [
-    ...LOCAL_BASIC_ITEMS,
     ...CLASSIC_MENS_ITEMS,
 ];

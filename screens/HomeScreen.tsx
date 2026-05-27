@@ -1434,7 +1434,7 @@ const HomeScreen = () => {
                   variant="light"
                 >
                   <CachedImage uri={typeof item.imageUrl === 'string' ? item.imageUrl : ''} style={styles.gridImage} contentFit="cover" fadeIn={false} />
-                  <Text style={styles.essentialItemName} numberOfLines={1}>{item.name}</Text>
+                  <Text style={styles.essentialItemName} numberOfLines={2}>{item.name}</Text>
                   <View style={styles.gridActions}>
                     <TouchableOpacity
                       style={[styles.addButton, isAdded && styles.addedButton]}
@@ -1571,7 +1571,7 @@ const HomeScreen = () => {
 
           {/* Greeting Row (Swapped position with Planner) */}
           <View style={[styles.greetingSection, { marginBottom: spacing.md }]}>
-            <Text style={styles.greetingText} numberOfLines={1}>
+            <Text style={styles.greetingText} numberOfLines={2}>
               {greeting}, {userName}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>

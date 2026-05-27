@@ -631,11 +631,11 @@ const createStyles = (D: DTokens) =>
             justifyContent: 'center',
         },
         checkText: {
-            fontSize: 14,
+            fontSize: 13,
             fontWeight: '600',
             color: 'rgba(255, 255, 255, 0.90)',
             flex: 1,
-            lineHeight: 19,
+            lineHeight: 18,
         },
 
         // 3-Card horizontal grid switcher styles (floating glass style)
@@ -705,7 +705,7 @@ const createStyles = (D: DTokens) =>
             backgroundColor: D.brandAccent,
         },
         cardTitle: {
-            fontSize: 14,
+            fontSize: 13,
             fontWeight: '800',
             textAlign: 'center',
             marginBottom: 2,
@@ -733,11 +733,11 @@ const createStyles = (D: DTokens) =>
             alignItems: 'center',
         },
         cardFooterText: {
-            fontSize: 9,
+            fontSize: 8,
             fontWeight: '700',
             color: 'rgba(255, 255, 255, 0.60)',
             textAlign: 'center',
-            lineHeight: 11,
+            lineHeight: 10,
         },
         cardTextHighlight: {
             color: '#FFFFFF',

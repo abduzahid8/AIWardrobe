@@ -12,21 +12,26 @@ import { createLogger } from '../utils/logger';
 const logger = createLogger('Notifications');
 
 const NOTIFICATION_STORAGE_KEY = 'notificationSettings';
+const NOTIFICATION_LAST_SCHEDULED_KEY = 'notificationLastScheduled';
 
 // ============================================
 // CONFIGURATION
 // ============================================
 
 // Set notification handler
-Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-        shouldShowBanner: true,
-        shouldShowList: true,
-    }),
-});
+try {
+    Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: true,
+            shouldShowBanner: true,
+            shouldShowList: true,
+        }),
+    });
+} catch (e) {
+    logger.warn('Failed to set notification handler', e);
+}
 
 // Notification types
 export type NotificationType =
@@ -121,12 +126,21 @@ class NotificationService {
                 this.settings = { ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) };
             }
 
-            // Request permissions
+            // Request permissions (fast, required every init)
             await this.requestPermissions();
 
-            // Schedule recurring notifications
-            if (this.settings.enabled) {
+            // Skip the heavy cancelAll+reschedule cycle if we already scheduled
+            // today. This cuts ~200-500ms off every cold start.
+            const lastScheduled = await AsyncStorage.getItem(NOTIFICATION_LAST_SCHEDULED_KEY);
+            const today = new Date().toISOString().split('T')[0];
+            const alreadyScheduledToday = lastScheduled === today;
+
+            if (this.settings.enabled && !alreadyScheduledToday) {
                 await this.scheduleRecurringNotifications();
+                await AsyncStorage.setItem(NOTIFICATION_LAST_SCHEDULED_KEY, today);
+                logger.info('📱 Notifications scheduled for', today);
+            } else if (alreadyScheduledToday) {
+                logger.info('📱 Notifications already scheduled today — skipping reschedule');
             }
 
             logger.info('📱 Notification service initialized');
@@ -192,7 +206,9 @@ class NotificationService {
         this.settings = { ...this.settings, ...newSettings };
         await AsyncStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify(this.settings));
 
-        // Reschedule notifications
+        // Reschedule notifications and reset the daily skip flag so the next
+        // init won't incorrectly skip the reschedule.
+        await AsyncStorage.removeItem(NOTIFICATION_LAST_SCHEDULED_KEY);
         await Notifications.cancelAllScheduledNotificationsAsync();
         if (this.settings.enabled) {
             await this.scheduleRecurringNotifications();

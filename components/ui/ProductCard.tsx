@@ -176,7 +176,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                         {brand && (
                             <Text
                                 style={[styles.brand, { color: colors.text.muted, fontSize: 10 }]}
-                                numberOfLines={1}
+                                numberOfLines={2}
                             >
                                 {brand.toUpperCase()}
                             </Text>
@@ -184,7 +184,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                         {title && (
                             <Text
                                 style={[styles.title, { color: colors.text.primary, fontSize: 13 }]}
-                                numberOfLines={1}
+                                numberOfLines={2}
                             >
                                 {title}
                             </Text>
@@ -192,7 +192,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                         {category && (
                             <Text
                                 style={[styles.category, { color: colors.text.secondary, fontSize: 11 }]}
-                                numberOfLines={1}
+                                numberOfLines={2}
                             >
                                 {category}
                             </Text>

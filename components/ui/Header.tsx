@@ -81,11 +81,11 @@ export const Header: React.FC<HeaderProps> = ({
 
             <View style={[styles.centerContainer, centerTitle && styles.centerTitleContainer]}>
                 {title && (
-                    <Text style={[styles.title, centerTitle && styles.centeredTitle]} numberOfLines={1}>
+                    <Text style={[styles.title, centerTitle && styles.centeredTitle]} numberOfLines={2}>
                         {title}
                     </Text>
                 )}
-                {subtitle && <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>}
+                {subtitle && <Text style={styles.subtitle} numberOfLines={2}>{subtitle}</Text>}
             </View>
 
             <View style={styles.rightContainer}>

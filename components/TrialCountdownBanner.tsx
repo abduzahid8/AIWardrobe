@@ -98,7 +98,7 @@ export const TrialCountdownBanner: React.FC = () => {
                             color="#FFF"
                             style={styles.icon}
                         />
-                        <Text style={styles.text} numberOfLines={1}>
+                        <Text style={styles.text} numberOfLines={2}>
                             {label}
                         </Text>
                     </View>

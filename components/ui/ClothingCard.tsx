@@ -133,7 +133,7 @@ const ClothingCard: React.FC<ClothingCardProps> = ({
 
                 {/* Item Label */}
                 <View style={styles.labelContainer}>
-                    <Text style={styles.label} numberOfLines={1}>
+                    <Text style={styles.label} numberOfLines={2}>
                         {itemLabel}
                     </Text>
                     {item.color && (

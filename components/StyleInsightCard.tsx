@@ -46,7 +46,7 @@ const StyleInsightCard: React.FC<StyleInsightCardProps> = ({ insight, onPress })
                 />
             </View>
             <View style={styles.content}>
-                <Text style={styles.title} numberOfLines={1}>{insight.title}</Text>
+                <Text style={styles.title} numberOfLines={2}>{insight.title}</Text>
                 <Text style={styles.description} numberOfLines={2}>{insight.description}</Text>
             </View>
             {onPress && (

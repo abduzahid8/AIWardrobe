@@ -882,10 +882,22 @@ const MyClosetScreen = () => {
                                 item={item}
                                 onPress={() => {
                                     Haptics.selectionAsync();
-                                    navigation.navigate('ClothingDetail', {
-                                        itemId: item.id || (item as any)._id,
-                                        fullItem: item
-                                    });
+                                    const domainItem = storeItems.find(i => i.id === item.id || i.id === (item as any)._id);
+                                    if (domainItem) {
+                                        navigation.navigate('ClothingDetailEditor', {
+                                            imageUri: domainItem.imageUrl,
+                                            detectedType: domainItem.subCategory || domainItem.category,
+                                            detectedColor: mapColorToId(domainItem.primaryColor),
+                                            detectedMaterial: domainItem.material,
+                                            detectedDescription: domainItem.name,
+                                            existingItem: domainItem,
+                                        });
+                                    } else {
+                                        navigation.navigate('ClothingDetail', {
+                                            itemId: item.id || (item as any)._id,
+                                            fullItem: item,
+                                        });
+                                    }
                                 }}
                                 onGenerateOutfit={handleGenerateOutfit}
                                 isAnchorSelected={false}

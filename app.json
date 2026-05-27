@@ -2,7 +2,7 @@
   "expo": {
     "name": "AIWardrobe",
     "slug": "wardrobe-app",
-    "version": "1.0.5",
+    "version": "1.0.6",
     "assetBundlePatterns": [
       "assets/**"
     ],
@@ -10,10 +10,10 @@
     "icon": "./assets/AIWardrobe-mainlogo-square-1024.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "runtimeVersion": "1.0.5",
+    "runtimeVersion": "1.0.6",
     "updates": {
       "enabled": true,
-      "checkAutomatically": "ON_LOAD",
+      "checkAutomatically": "NEVER",
       "fallbackToCacheTimeout": 10000,
       "url": "https://u.expo.dev/7a8932b2-cbe7-4536-bae0-e8d6b36d6dea"
     },
@@ -24,17 +24,17 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "buildNumber": "40",
+      "buildNumber": "45",
       "supportsTablet": true,
       "bundleIdentifier": "com.aiwardrobe",
-      "minimumOsVersion": "16.0",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "AIWardrobe uses the camera to photograph clothing items you choose to add to your wardrobe and to capture outfit photos.",
         "NSPhotoLibraryUsageDescription": "AIWardrobe accesses the photo library only to import clothing images you select and to save or share outfit photos you create.",
         "NSPhotoLibraryAddUsageDescription": "AIWardrobe saves outfit photos you create to your photo library when you choose to share or export them.",
         "NSLocationWhenInUseUsageDescription": "Your current location is used once per session to fetch local weather so AIWardrobe can suggest weather-appropriate outfits. Location is not stored or shared.",
-        "NSMicrophoneUsageDescription": "AIWardrobe uses the microphone only while recording a wardrobe video you choose to capture."
+        "NSMicrophoneUsageDescription": "AIWardrobe uses the microphone only while recording a wardrobe video you choose to capture.",
+        "NSUserTrackingUsageDescription": "Your data is used to deliver personalized ads and measure their effectiveness."
       }
     },
     "android": {
@@ -80,7 +80,10 @@
       "expo-secure-store",
       "expo-video",
       "expo-apple-authentication",
-      "expo-updates"
+      "expo-updates",
+      "expo-splash-screen",
+      "expo-notifications",
+      "expo-tracking-transparency"
     ],
     "extra": {
       "eas": {

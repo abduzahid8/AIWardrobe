@@ -3,7 +3,7 @@
  * Allows users to verify and edit AI-detected clothing attributes
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     View,
     Text,
@@ -22,7 +22,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import useWardrobeStore from '../store/wardrobeStore';
 import useAuthStore from '../store/auth';
-import type { Season, Occasion } from '../src/types/domain';
+import { wardrobeApi } from '../src/lib/api';
+import type { Season, Occasion, ClothingItem } from '../src/types/domain';
 import { ExternalAIService } from '../src/services/externalAIService';
 import * as FileSystem from 'expo-file-system';
 import { mapCategoryToType, mapColorToId } from '../src/utils/mappingUtils';
@@ -125,30 +126,52 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
         { id: 'wind', icon: 'flag-outline', label: t('clothingEditor.weather.wind') },
     ];
 
-    // Get data from route params or props
-    const itemImageUri = route.params?.imageUri || imageUri;
-    const detectedType = route.params?.detectedType || initialData?.type || 'tops';
-    const detectedColor = route.params?.detectedColor || initialData?.color || 'beige';
-    const detectedStyle: string | undefined = route.params?.detectedStyle;
-    const detectedMaterial: string | undefined = route.params?.detectedMaterial;
-    const aiConfidence: number | undefined = route.params?.aiConfidence;
-    const detectedDescription: string | undefined = route.params?.detectedDescription;
+    // Existing item editing mode
+    const existingItem = route.params?.existingItem as ClothingItem | undefined;
+    const isEditingExisting = !!existingItem;
 
-    // AI analysis for images opened without pre-detected data
-    const [isAnalyzing, setIsAnalyzing] = useState(!route.params?.detectedType && !!itemImageUri);
+    const domainSeasonToEditor = (season?: string): string => {
+        if (season === 'fall') return 'autumn';
+        return season || 'spring';
+    };
+    const editorSeasonToDomain = (season: string): Season => {
+        if (season === 'autumn') return 'fall';
+        return season as Season;
+    };
+
+    // Get data from route params, props, or existing item
+    const itemImageUri = existingItem?.imageUrl || route.params?.imageUri || imageUri;
+    const detectedType = existingItem?.subCategory || route.params?.detectedType || initialData?.type || 'tops';
+    const detectedColor = (existingItem?.primaryColor ? mapColorToId(existingItem.primaryColor) : undefined)
+        || route.params?.detectedColor || initialData?.color || 'beige';
+    const detectedStyle: string | undefined = route.params?.detectedStyle;
+    const detectedMaterial: string | undefined = existingItem?.material || route.params?.detectedMaterial;
+    const aiConfidence: number | undefined = existingItem?.detectionConfidence || route.params?.aiConfidence;
+    const detectedDescription: string | undefined = existingItem?.name || route.params?.detectedDescription;
+
+    // AI analysis for images opened without pre-detected data (skip for existing items)
+    const [isAnalyzing, setIsAnalyzing] = useState(!isEditingExisting && !route.params?.detectedType && !!itemImageUri);
     const hasRunAnalysis = useRef(false);
 
-    const [selectedType, setSelectedType] = useState(detectedType);
+    const [selectedType, setSelectedType] = useState(
+        isEditingExisting && existingItem?.subCategory
+            ? mapCategoryToType(existingItem.subCategory, existingItem.category || '')
+            : detectedType
+    );
     const [selectedColor, setSelectedColor] = useState(detectedColor);
     const [selectedSeason, setSelectedSeason] = useState(
-        route.params?.detectedType
-            ? inferSeasonFromType(detectedType, detectedMaterial)
-            : 'spring'
+        isEditingExisting && existingItem?.seasons?.length
+            ? domainSeasonToEditor(existingItem.seasons[0])
+            : (route.params?.detectedType
+                ? inferSeasonFromType(detectedType, detectedMaterial)
+                : 'spring')
     );
     const [selectedWeather, setSelectedWeather] = useState<string[]>(
-        route.params?.detectedType
+        isEditingExisting && existingItem
             ? inferWeatherFromType(detectedType, detectedMaterial)
-            : ['sun']
+            : (route.params?.detectedType
+                ? inferWeatherFromType(detectedType, detectedMaterial)
+                : ['sun'])
     );
 
     // Live AI analysis when editor opened with just imageUri (no pre-classified data)
@@ -221,7 +244,33 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
             return;
         }
 
-        // Otherwise save directly to wardrobe
+        const selectedColorData = COLORS.find(c => c.id === selectedColor) || COLORS[2];
+
+        // Editing existing item
+        if (isEditingExisting && existingItem) {
+            try {
+                const updateItemInStore = useWardrobeStore.getState().updateItem;
+                const updates = {
+                    subCategory: selectedType,
+                    primaryColor: selectedColorData.label,
+                    colorHex: selectedColorData.hex,
+                    seasons: [editorSeasonToDomain(selectedSeason)] as Season[],
+                };
+                updateItemInStore(existingItem.id, updates);
+                await wardrobeApi.update(existingItem.id, updates);
+                Alert.alert(
+                    t('clothingEditor.saved'),
+                    t('clothingEditor.itemAddedToWardrobe'),
+                    [{ text: t('clothingEditor.ok'), onPress: () => navigation.goBack() }]
+                );
+            } catch (error: any) {
+                console.error('Failed to update item:', error);
+                Alert.alert(t('clothingEditor.error'), t('clothingEditor.failedToSaveItem'));
+            }
+            return;
+        }
+
+        // Otherwise save new item to wardrobe
         const { user } = useAuthStore.getState();
         if (!user) {
             Alert.alert(t('clothingEditor.loginRequired'), t('clothingEditor.pleaseLoginToSave'));
@@ -229,7 +278,6 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
         }
 
         const addItem = useWardrobeStore.getState().addItem;
-        const selectedColorData = COLORS.find(c => c.id === selectedColor) || COLORS[2];
 
         try {
             await addItem({
@@ -245,7 +293,7 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
                 name: detectedDescription
                     ? detectedDescription.slice(0, 60)
                     : `${selectedColorData.label} ${selectedType}`,
-                seasons: [selectedSeason] as Season[],
+                seasons: [editorSeasonToDomain(selectedSeason)] as Season[],
                 occasions: styleToOccasions(detectedStyle),
             });
 
@@ -275,6 +323,30 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
         }
     };
 
+    const handleDelete = useCallback(() => {
+        if (!existingItem) return;
+        Alert.alert(
+            t('clothingDetail.removeFromWardrobe'),
+            'This cannot be undone.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Remove',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            const removeItem = useWardrobeStore.getState().removeItem;
+                            await removeItem(existingItem.id);
+                            navigation.goBack();
+                        } catch {
+                            Alert.alert('Error', 'Failed to remove item. Please try again.');
+                        }
+                    },
+                },
+            ]
+        );
+    }, [existingItem, navigation]);
+
     const handleClose = () => {
         if (onCancel) {
             onCancel();
@@ -301,14 +373,14 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
                     contentContainerStyle={styles.content}
                     showsVerticalScrollIndicator={false}
                 >
-                    {/* AI Analysis Banner */}
-                    {isAnalyzing && (
+                    {/* AI Analysis Banner — hidden when editing existing item */}
+                    {!isEditingExisting && isAnalyzing && (
                         <View style={styles.aiBanner}>
                             <ActivityIndicator size="small" color="#007AFF" style={{ marginRight: 8 }} />
                             <Text style={styles.aiBannerText}>{t('clothingEditor.aiAnalyzing')}</Text>
                         </View>
                     )}
-                    {!isAnalyzing && aiConfidence !== undefined && (
+                    {!isEditingExisting && !isAnalyzing && aiConfidence !== undefined && (
                         <View style={styles.aiBanner}>
                             <Ionicons name="sparkles" size={14} color="#007AFF" style={{ marginRight: 6 }} />
                             <Text style={styles.aiBannerText}>
@@ -324,7 +396,7 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
                             ) : null}
                         </View>
                     )}
-                    {detectedDescription ? (
+                    {detectedDescription && !isEditingExisting ? (
                         <Text style={styles.aiDescription}>{detectedDescription}</Text>
                     ) : null}
 
@@ -459,6 +531,18 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
                         </View>
                     </View>
 
+                    {/* Delete button when editing existing */}
+                    {isEditingExisting && (
+                        <TouchableOpacity
+                            style={styles.deleteButton}
+                            onPress={handleDelete}
+                            activeOpacity={0.7}
+                        >
+                            <Ionicons name="trash-outline" size={18} color="#FF3B30" style={{ marginRight: 6 }} />
+                            <Text style={styles.deleteButtonText}>{t('clothingDetail.removeFromWardrobe')}</Text>
+                        </TouchableOpacity>
+                    )}
+
                     {/* Bottom padding for save button */}
                     <View style={{ height: 100 }} />
                 </ScrollView>
@@ -470,7 +554,9 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
                         onPress={handleSave}
                         activeOpacity={0.8}
                     >
-                        <Text style={styles.saveButtonText}>{t('clothingEditor.save')}</Text>
+                        <Text style={styles.saveButtonText}>
+                            {isEditingExisting ? 'Update Item' : t('clothingEditor.save')}
+                        </Text>
                     </TouchableOpacity>
                 </View>
             </SafeAreaView>
@@ -715,6 +801,23 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 17,
         fontWeight: '600',
+    },
+    // Delete
+    deleteButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 14,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#FFCDD2',
+        backgroundColor: '#FFF5F5',
+        marginBottom: 8,
+    },
+    deleteButtonText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#FF3B30',
     },
 });
 

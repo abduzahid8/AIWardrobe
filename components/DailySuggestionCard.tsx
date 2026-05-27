@@ -82,7 +82,7 @@ const DailySuggestionCard: React.FC<DailySuggestionCardProps> = ({ suggestion, o
                                 <Ionicons name="shirt-outline" size={20} color={colors.text.tertiary} />
                             </View>
                         )}
-                        <Text style={styles.itemLabel} numberOfLines={1}>
+                        <Text style={styles.itemLabel} numberOfLines={2}>
                             {item!.subCategory || item!.category}
                         </Text>
                     </View>

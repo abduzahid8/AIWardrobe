@@ -403,7 +403,7 @@ const OutfitInspoScreen = () => {
                                                     <Ionicons name="shirt-outline" size={20} color={colors.text.tertiary} />
                                                 </View>
                                             )}
-                                            <Text style={styles.matchName} numberOfLines={1}>
+                                            <Text style={styles.matchName} numberOfLines={2}>
                                                 {match.sub_category || match.category || t('outfitInspo.item')}
                                             </Text>
                                             <View style={styles.matchScoreBadge}>

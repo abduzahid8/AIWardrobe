@@ -262,7 +262,7 @@ const DailySuggestionScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                                 <Text style={styles.outfitItemCategory}>
                                     {item!.category}
                                 </Text>
-                                <Text style={styles.outfitItemName} numberOfLines={1}>
+                                <Text style={styles.outfitItemName} numberOfLines={2}>
                                     {item!.subCategory || item!.primaryColor}
                                 </Text>
                             </Animated.View>

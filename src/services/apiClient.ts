@@ -12,7 +12,7 @@ import { Alert } from 'react-native';
 import useAuthStore from '../../store/auth';
 import Config from '../config/env';
 import crashReporting from './crashReporting';
-import { useTranslation } from 'react-i18next';
+import i18n from 'i18next';
 import { supabase } from '../../lib/supabase';
 
 // ── Standardized error shape ──
@@ -73,17 +73,15 @@ const createClient = (baseURL: string, timeout: number) => {
                 const { logout } = useAuthStore.getState();
                 await logout();
             } else if (status === 403) {
-                const { t } = useTranslation();
                 Alert.alert(
-                    t('api.accessDenied'),
-                    t('api.accessDeniedMessage'),
+                    i18n.t('api.accessDenied'),
+                    i18n.t('api.accessDeniedMessage'),
                 );
             } else if (status && status >= 500) {
                 crashReporting.logBreadcrumb(`Server error ${status}: ${error.config?.url}`);
-                const { t } = useTranslation();
                 Alert.alert(
-                    t('api.serverError'),
-                    t('api.serverErrorMessage'),
+                    i18n.t('api.serverError'),
+                    i18n.t('api.serverErrorMessage'),
                 );
             } else if (!error.response) {
                 crashReporting.logBreadcrumb('Network error: no response');

@@ -173,7 +173,7 @@ const WeeklyInsightsScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
                                     </View>
                                 )}
                                 <View style={styles.rankInfo}>
-                                    <Text style={styles.rankName} numberOfLines={1}>
+                                    <Text style={styles.rankName} numberOfLines={2}>
                                         {item.subCategory || item.category}
                                     </Text>
                                     <Text style={styles.rankMeta}>{item.primaryColor}</Text>
@@ -269,7 +269,7 @@ const UnwornItemCard: React.FC<{ item: ClothingItem }> = ({ item }) => (
                 <View style={[styles.unwornColorDot, { backgroundColor: item.colorHex || '#CCC' }]} />
             </View>
         )}
-        <Text style={styles.unwornLabel} numberOfLines={1}>
+        <Text style={styles.unwornLabel} numberOfLines={2}>
             {item.subCategory || item.category}
         </Text>
     </View>
