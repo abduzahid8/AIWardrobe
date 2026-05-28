@@ -26,7 +26,7 @@ export const Config = {
     anonKey: str(process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY),
   },
   api: {
-    url: str(process.env.EXPO_PUBLIC_API_URL),
+    url: str(process.env.EXPO_PUBLIC_API_URL, 'https://aiwardrobe-api.onrender.com'),
     alicevisionUrl: str(process.env.EXPO_PUBLIC_ALICEVISION_URL),
   },
   ai: {
