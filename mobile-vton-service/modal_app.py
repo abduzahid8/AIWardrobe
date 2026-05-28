@@ -20,13 +20,16 @@ import os
 # Configuration
 # ---------------------------------------------------------------------------
 APP_NAME = "aiwardrobe-mobile-vton"
-GPU_TYPE = "A10G"  # Options: T4, A10G, A100, H100, L4
+GPU_TYPE = "T4"    # T4 is ~3x cheaper than A10G
 
 # Local checkpoint directory (must exist before deploying)
 LOCAL_CHECKPOINT_DIR = os.path.join(os.path.dirname(__file__), "checkpoint", "checkpoint")
 
+# Remote checkpoint directory (downloaded at runtime on first request)
+CHECKPOINT_REMOTE_DIR = "/app/checkpoint/checkpoint"
+
 # ---------------------------------------------------------------------------
-# Modal Image (container environment with checkpoint baked in)
+# Modal Image (container environment)
 # ---------------------------------------------------------------------------
 image = (
     modal.Image.debian_slim(python_version="3.11")
@@ -50,10 +53,8 @@ image = (
         "omegaconf>=2.3.0",
         "matplotlib>=3.8.0",
     )
-    # Copy application code into the image
-    .add_local_dir(".", remote_path="/app")
-    # Copy checkpoint into the image (3.5GB, but ensures fast cold starts)
-    .add_local_dir(LOCAL_CHECKPOINT_DIR, remote_path="/app/checkpoint/checkpoint")
+    # Copy only main.py into the image (not the whole directory)
+    .add_local_file(os.path.join(os.path.dirname(__file__), "main.py"), remote_path="/app/main.py")
 )
 
 # ---------------------------------------------------------------------------
@@ -66,24 +67,25 @@ app = modal.App(APP_NAME, image=image)
 # ---------------------------------------------------------------------------
 @app.function(
     gpu=GPU_TYPE,
-    memory=32768,      # 32 GB RAM
-    timeout=600,       # 10 minutes
-    min_containers=1,  # Keep 1 container warm (~$0.50/hr for A10G)
+    memory=16384,      # 16 GB RAM — enough for SD3.5 inference
+    timeout=300,       # 5 minutes
+    # min_containers removed — cold start on first request saves money
+    env={"HF_TOKEN": os.environ.get("HF_TOKEN", "")},
 )
 @modal.concurrent(max_inputs=1)
 @modal.asgi_app()
 def fastapi_app():
     """
     Returns the FastAPI application configured for Modal.
-    The checkpoint is baked into the image at /app/checkpoint/checkpoint.
+    Checkpoint is downloaded at runtime on first request if not present.
     """
     import sys
     sys.path.insert(0, "/app")
 
     # Patch environment before importing main.py
-    os.environ["MOBILE_VTON_CHECKPOINT"] = "/app/checkpoint/checkpoint"
+    os.environ["MOBILE_VTON_CHECKPOINT"] = CHECKPOINT_REMOTE_DIR
     os.environ["MOBILE_VTON_DEVICE"] = "cuda"
-    os.environ["MOBILE_VTON_DTYPE"] = "bf16"
+    os.environ["MOBILE_VTON_DTYPE"] = "fp16"
 
     from main import app as fastapi_app
     return fastapi_app
@@ -93,8 +95,9 @@ def fastapi_app():
 # ---------------------------------------------------------------------------
 @app.function(
     gpu=GPU_TYPE,
-    memory=32768,
-    timeout=600,
+    memory=16384,
+    timeout=300,
+    env={"HF_TOKEN": os.environ.get("HF_TOKEN", "")},
 )
 @modal.fastapi_endpoint(method="GET")
 def health():
@@ -103,5 +106,6 @@ def health():
         "status": "ok",
         "gpu_available": torch.cuda.is_available(),
         "gpu_name": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
-        "checkpoint_path": "/app/checkpoint/checkpoint",
+        "checkpoint_path": CHECKPOINT_REMOTE_DIR,
     }
+

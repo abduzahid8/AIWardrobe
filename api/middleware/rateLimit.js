@@ -1,4 +1,4 @@
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 
 /**
  * Rate Limiting Middleware
@@ -10,10 +10,11 @@ import rateLimit from 'express-rate-limit';
  */
 
 /**
- * Prefer authenticated user id, fall back to client IP. Requires
- * `app.set('trust proxy', 1)` so req.ip is the real client IP behind Render.
+ * Prefer authenticated user id, fall back to IPv6-safe client IP.
+ * Uses ipKeyGenerator to correctly handle IPv6 addresses and prevent bypass.
+ * Requires `app.set('trust proxy', 1)` so req.ip is the real client IP behind Render.
  */
-const userOrIp = (req) => req.user?.id ? `u:${req.user.id}` : `ip:${req.ip}`;
+const userOrIp = (req) => req.user?.id ? `u:${req.user.id}` : ipKeyGenerator(req);
 
 /**
  * General API rate limiter
@@ -21,6 +22,7 @@ const userOrIp = (req) => req.user?.id ? `u:${req.user.id}` : `ip:${req.ip}`;
 export const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 500,
+    validate: { xForwardedForHeader: false },
     keyGenerator: userOrIp,
     message: {
         error: 'Too many requests, please try again after 15 minutes.',
@@ -37,6 +39,7 @@ export const apiLimiter = rateLimit({
 export const authLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
     max: 5,
+    validate: { xForwardedForHeader: false },
     message: {
         error: 'Too many login attempts from this IP, please try again after an hour.',
         retryAfter: 3600
@@ -53,6 +56,7 @@ export const authLimiter = rateLimit({
 export const registrationLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
     max: 3,
+    validate: { xForwardedForHeader: false },
     message: {
         error: 'Too many accounts created from this IP, please try again after an hour.',
         retryAfter: 3600
@@ -63,11 +67,12 @@ export const registrationLimiter = rateLimit({
 
 /**
  * Rate limiter for AI-powered routes (expensive operations)
- * 10 requests per minute per IP
+ * 20 requests per minute per user/IP
  */
 export const aiLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
     max: 20,
+    validate: { xForwardedForHeader: false },
     keyGenerator: userOrIp,
     message: {
         error: 'AI rate limit exceeded. Please wait a moment before trying again.',
@@ -84,6 +89,7 @@ export const aiLimiter = rateLimit({
 export const uploadLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
     max: 5,
+    validate: { xForwardedForHeader: false },
     message: {
         error: 'Too many uploads. Please wait a moment before trying again.',
         retryAfter: 60

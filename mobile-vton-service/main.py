@@ -68,11 +68,39 @@ def _get_torch_dtype():
     return torch.float32
 
 
+def _ensure_checkpoint():
+    """If local checkpoint doesn't exist, download from HuggingFace."""
+    if os.path.isdir(_checkpoint) and len(os.listdir(_checkpoint)) > 0:
+        return
+
+    hf_model_id = os.environ.get("HF_CHECKPOINT_ID", "stabilityai/stable-diffusion-3.5-medium")
+    hf_token = os.environ.get("HF_TOKEN")
+
+    logger.info(f"Checkpoint not found at {_checkpoint}. Downloading {hf_model_id} from HuggingFace...")
+    start = time.time()
+
+    try:
+        from huggingface_hub import snapshot_download
+        os.makedirs(_checkpoint, exist_ok=True)
+        snapshot_download(
+            repo_id=hf_model_id,
+            local_dir=_checkpoint,
+            token=hf_token,
+            resume_download=True,
+        )
+        logger.info(f"Checkpoint downloaded in {time.time() - start:.1f}s")
+    except Exception as exc:
+        logger.error(f"Failed to download checkpoint: {exc}", exc_info=True)
+        raise RuntimeError(f"Checkpoint download failed: {exc}") from exc
+
+
 def _load_pipeline():
     """Load the diffusion pipeline (lazy, called on first request)."""
     global _pipeline
     if _pipeline is not None:
         return _pipeline
+
+    _ensure_checkpoint()
 
     logger.info(f"Loading pipeline from {_checkpoint} on {_device} ({_dtype_str})")
     start = time.time()
@@ -85,7 +113,7 @@ def _load_pipeline():
             torch_dtype=_get_torch_dtype(),
             use_safetensors=True,
         )
-        pipe = pipe.to(_device)
+        pipe.enable_model_cpu_offload()  # saves ~50% VRAM vs pipe.to()
         pipe.enable_attention_slicing()
 
         _pipeline = pipe

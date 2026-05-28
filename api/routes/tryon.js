@@ -43,7 +43,7 @@
 
 import express from 'express';
 import sharp from 'sharp';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { authenticateToken } from '../middleware/auth.js';
 import logger from '../utils/logger.js';
 import {
@@ -70,6 +70,7 @@ import { idmVtonRender } from '../services/strategies/idmVton.js';
 import { checkIdmVtonHealth } from '../services/idmVtonClient.js';
 import { catvtonRender } from '../services/strategies/catvton.js';
 import { callCatvton, checkCatvtonHealth } from '../services/catvtonClient.js';
+import { mobileVtonRender } from '../services/strategies/mobileVton.js';
 
 // ── Rate limiting for expensive FLUX.1 calls ────────────────────────────
 // 5 requests per minute per user — FLUX.1 is costly and slow
@@ -78,7 +79,8 @@ const tryonLimiter = rateLimit({
   max: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.user?.id || req.ip,
+  validate: { xForwardedForHeader: false },
+  keyGenerator: (req) => req.user?.id ? `u:${req.user.id}` : ipKeyGenerator(req),
   handler: (req, res) => {
     logger.warn(`Rate limit exceeded for user ${req.user?.id}`);
     res.status(429).json({
@@ -739,6 +741,28 @@ router.post('/catvton', authenticateToken, tryonLimiter, async (req, res) => {
     return res.status(500).json({
       success: false,
       error: err?.message || 'CatVTON try-on failed',
+    });
+  }
+});
+
+/**
+ * POST /api/tryon/mobile-vton
+ *
+ * Mobile-VTON try-on endpoint.
+ */
+router.post('/mobile-vton', authenticateToken, tryonLimiter, async (req, res) => {
+  const startedAt = Date.now();
+  try {
+    const result = await mobileVtonRender(req.body || {});
+    if (!result.success) {
+      return res.status(500).json(result);
+    }
+    return res.json(result);
+  } catch (err) {
+    logger.error('[tryon/mobile-vton] failed:', err?.message || err);
+    return res.status(500).json({
+      success: false,
+      error: err?.message || 'Mobile-VTON try-on failed',
     });
   }
 });

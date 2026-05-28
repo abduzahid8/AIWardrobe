@@ -28,7 +28,7 @@ export class MobileVtonServiceError extends Error {
 const getBaseUrl = () =>
   process.env.MOBILE_VTON_SERVICE_URL ||
   process.env.MODAL_MOBILE_VTON_URL ||
-  'https://ppolqx4--aiwardrobe-mobile-vton-fastapi-app.modal.run';
+  'https://karimdzanovzoha--aiwardrobe-mobile-vton-fastapi-app.modal.run';
 
 /** Normalize an Axios / network error into a MobileVtonServiceError. */
 function wrapError(error) {
