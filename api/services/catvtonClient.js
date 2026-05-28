@@ -1,6 +1,7 @@
 /**
  * CatVTON client stub.
  * Full implementation should be added when CatVTON integration is needed.
+ * Force rebuild: v2
  */
 
 export async function callCatvton() {
