@@ -14,7 +14,7 @@ import {
 
 const logger = createLogger('Shopping');
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://aiwardrobe-ivh4.onrender.com';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://aiwardrobe-api.onrender.com';
 
 // Affiliate networks (would need real API keys in production)
 const AFFILIATE_CONFIG = {

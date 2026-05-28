@@ -180,7 +180,7 @@ const AIAssistant = () => {
     setIsLoading(true);
 
     try {
-      const baseUrl = API_URL || "https://aiwardrobe-ivh4.onrender.com";
+      const baseUrl = API_URL || "https://aiwardrobe-api.onrender.com";
 
       // Build conversation context from recent messages
       const recentMessages = messages.slice(-6).map(m => ({
