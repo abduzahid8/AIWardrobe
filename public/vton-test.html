@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Virtual Try-On Test Result</title>
+  <style>
+    body { font-family: sans-serif; padding: 40px; background: #111; color: #eee; }
+    h1 { color: #4ade80; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 1200px; }
+    .card { background: #1e1e1e; border-radius: 12px; padding: 20px; }
+    .card img { width: 100%; border-radius: 8px; }
+    .label { font-size: 14px; color: #aaa; margin-bottom: 8px; text-transform: uppercase; }
+    .success { color: #4ade80; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Virtual Try-On Test Result</h1>
+  <p class="success">Status: WORKING</p>
+  <p>Method: SD3.5 Inpaint (single garment) | GPU: Tesla T4 | Time: ~31s</p>
+  <div class="grid">
+    <div class="card">
+      <div class="label">Input Mannequin</div>
+      <img src="../assets/images/mannequin_front.png" alt="Mannequin">
+    </div>
+    <div class="card">
+      <div class="label">Input Garment (Navy Polo)</div>
+      <img src="../assets/images/basic_polo_navy.png" alt="Garment">
+    </div>
+    <div class="card" style="grid-column: 1 / -1;">
+      <div class="label">Try-On Result (1024 x 1024)</div>
+      <img src="vton-test-result.png" alt="Try-On Result">
+    </div>
+  </div>
+</body>
+</html>
