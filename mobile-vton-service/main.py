@@ -124,6 +124,15 @@ def _load_pipeline():
         logger.error(f"Failed to load pipeline: {exc}", exc_info=True)
         raise RuntimeError(f"Pipeline load failed: {exc}") from exc
 
+# Eagerly load the pipeline at container boot time.
+# This ensures that when min_containers=1 spins up, the model is fully downloaded
+# and loaded into VRAM *before* any user requests are routed to it, eliminating
+# the 60-120s cold-start timeout penalty on the first request.
+try:
+    _load_pipeline()
+except Exception as e:
+    logger.error(f"Failed to eagerly load pipeline: {e}")
+
 
 # ---------------------------------------------------------------------------
 # Image helpers
