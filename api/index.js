@@ -216,10 +216,11 @@ const server = app.listen(port, "0.0.0.0", () => {
 // requestTimeout: total time a single request may take.
 // headersTimeout:  must be > requestTimeout per Node docs.
 // keepAliveTimeout: > LB idle timeout to avoid 502s from Render's proxy.
-// NOTE: Mobile-VTON /tryon can take 30-60s for GPU inference, so 180s matches
-// the mobile app's Axios timeout and gives headroom for cold-start + inference.
-server.requestTimeout = 180_000;
-server.headersTimeout = 185_000;
+// NOTE: Mobile-VTON /tryon can take 60-120s for GPU inference (cold-start
+// download + inference). 250s gives headroom for mobileVtonClient's 240s
+// timeout + one retry pass. Always keep requestTimeout > client timeout.
+server.requestTimeout = 250_000;
+server.headersTimeout = 255_000;
 server.keepAliveTimeout = 65_000;
 
 async function gracefulShutdown(signal) {

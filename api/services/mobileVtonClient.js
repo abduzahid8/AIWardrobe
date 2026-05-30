@@ -28,7 +28,7 @@ export class MobileVtonServiceError extends Error {
 const getBaseUrl = () =>
   process.env.MOBILE_VTON_SERVICE_URL ||
   process.env.MODAL_MOBILE_VTON_URL ||
-  'https://karimdzanovzoha--aiwardrobe-mobile-vton-fastapi-app.modal.run';
+  'https://zoxxid75--aiwardrobe-mobile-vton-fastapi-app.modal.run';
 
 /** Normalize an Axios / network error into a MobileVtonServiceError. */
 function wrapError(error) {
@@ -54,9 +54,32 @@ function wrapError(error) {
   return new MobileVtonServiceError(friendly, { isServiceDown, statusCode, details: detail });
 }
 
+// ─── Internal retry helper ───────────────────────────────────────────────────
+/**
+ * Execute an async fn, retrying once after `delayMs` if the first call throws
+ * a retriable error (network-level or 5xx). 4xx errors are not retried.
+ */
+async function withRetry(fn, { maxRetries = 1, delayMs = 5000, label = '' } = {}) {
+  let lastErr;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      const wrapped = err instanceof MobileVtonServiceError ? err : wrapError(err);
+      // Retry only on service-level errors (network / 5xx), not 4xx
+      if (!wrapped.isServiceDown || attempt >= maxRetries) throw wrapped;
+      logger.warn(`[mobileVtonClient] ${label} attempt ${attempt + 1} failed (${wrapped.message}), retrying in ${delayMs}ms…`);
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  throw lastErr;
+}
+
 // ─── Single-garment try-on ───────────────────────────────────────────────────
 /**
  * POST /tryon — single garment onto mannequin.
+ * Retries once after 5 s on network / 5xx errors (covers Render cold-start).
  * @throws {MobileVtonServiceError}
  */
 export async function callMobileVton({
@@ -71,34 +94,29 @@ export async function callMobileVton({
   const startTime = Date.now();
   logger.info(`[mobileVtonClient] single try-on → ${baseUrl}/tryon`);
 
-  try {
-    const response = await axios.post(
-      `${baseUrl}/tryon`,
-      {
-        person_image: personImage,
-        garment_image: garmentImage,
-        garment_description: garmentDescription,
-        guidance_scale: Number(guidanceScale),
-        num_inference_steps: Number(numInferenceSteps),
-        seed: seed ? Number(seed) : 42,
-      },
-      { timeout: 180_000 },
-    );
+  const payload = {
+    person_image: personImage,
+    garment_image: garmentImage,
+    garment_description: garmentDescription,
+    guidance_scale: Number(guidanceScale),
+    num_inference_steps: Number(numInferenceSteps),
+    seed: seed ? Number(seed) : 42,
+  };
 
-    const elapsedMs = Date.now() - startTime;
-    logger.info(`[mobileVtonClient] single try-on OK in ${elapsedMs}ms`);
+  const result = await withRetry(
+    () => axios.post(`${baseUrl}/tryon`, payload, { timeout: 240_000 }),
+    { maxRetries: 1, delayMs: 5_000, label: 'single try-on' },
+  );
 
-    const data = response.data || {};
-    return {
-      ...data,
-      resultImage: data.result_image || data.resultImage,
-      elapsedMs: data.elapsed_ms || data.elapsedMs || elapsedMs,
-    };
-  } catch (error) {
-    const wrapped = wrapError(error);
-    logger.error(`[mobileVtonClient] single try-on failed (serviceDown=${wrapped.isServiceDown}): ${wrapped.message}`);
-    throw wrapped;
-  }
+  const elapsedMs = Date.now() - startTime;
+  logger.info(`[mobileVtonClient] single try-on OK in ${elapsedMs}ms`);
+
+  const data = result.data || {};
+  return {
+    ...data,
+    resultImage: data.result_image || data.resultImage,
+    elapsedMs: data.elapsed_ms || data.elapsedMs || elapsedMs,
+  };
 }
 
 // ─── Multi-garment try-on ────────────────────────────────────────────────────
@@ -138,22 +156,20 @@ export async function callMobileVtonMulti({
       payload.pipeline_version = pipelineVersion;
     }
 
-    const response = await axios.post(`${baseUrl}${endpoint}`, payload, { timeout: 180_000 });
+  const result = await withRetry(
+      () => axios.post(`${baseUrl}${endpoint}`, payload, { timeout: 240_000 }),
+      { maxRetries: 1, delayMs: 5_000, label: `multi try-on (${pipelineVersion})` },
+    );
 
-    const elapsedMs = Date.now() - startTime;
-    logger.info(`[mobileVtonClient] multi try-on OK in ${elapsedMs}ms`);
+  const elapsedMs = Date.now() - startTime;
+  logger.info(`[mobileVtonClient] multi try-on OK in ${elapsedMs}ms`);
 
-    const data = response.data || {};
-    return {
-      ...data,
-      resultImage: data.result_image || data.resultImage,
-      elapsedMs: data.elapsed_ms || data.elapsedMs || elapsedMs,
-    };
-  } catch (error) {
-    const wrapped = wrapError(error);
-    logger.error(`[mobileVtonClient] multi try-on failed (serviceDown=${wrapped.isServiceDown}): ${wrapped.message}`);
-    throw wrapped;
-  }
+  const data = result.data || {};
+  return {
+    ...data,
+    resultImage: data.result_image || data.resultImage,
+    elapsedMs: data.elapsed_ms || data.elapsedMs || elapsedMs,
+  };
 }
 
 // ─── Health check ────────────────────────────────────────────────────────────

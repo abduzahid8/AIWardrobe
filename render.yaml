@@ -41,8 +41,10 @@ services:
       - key: REPLICATE_API_TOKEN
         sync: false
       - key: MOBILE_VTON_SERVICE_URL
-        value: "https://karimdzanovzoha--aiwardrobe-mobile-vton-fastapi-app.modal.run"
+        value: "https://zoxxid75--aiwardrobe-mobile-vton-fastapi-app.modal.run"
       - key: MODAL_MOBILE_VTON_URL
-        value: "https://karimdzanovzoha--aiwardrobe-mobile-vton-fastapi-app.modal.run"
+        value: "https://zoxxid75--aiwardrobe-mobile-vton-fastapi-app.modal.run"
       - key: ALLOWED_ORIGINS
         value: "*"
+      - key: RENDER_API_URL
+        value: "https://aiwardrobe-api.onrender.com"

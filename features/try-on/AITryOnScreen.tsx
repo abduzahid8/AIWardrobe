@@ -101,11 +101,15 @@ const AITryOnScreen = () => {
                 const asset = Asset.fromModule(MANNEQUIN_IMAGE);
                 await asset.downloadAsync();
 
-                if (!asset.localUri) {
-                    throw new Error('Asset localUri is null after download');
+                let localUri = asset.localUri;
+                if (!localUri) {
+                    const ext = asset.uri.split('.').pop()?.toLowerCase() ?? 'png';
+                    const tempPath = `${FileSystem.cacheDirectory}mannequin_front.${ext}`;
+                    const downloadResult = await FileSystem.downloadAsync(asset.uri, tempPath);
+                    localUri = downloadResult.uri;
                 }
 
-                const b64 = await FileSystem.readAsStringAsync(asset.localUri, { encoding: 'base64' as any });
+                const b64 = await FileSystem.readAsStringAsync(localUri, { encoding: 'base64' as any });
                 if (!b64 || b64.length < 100) {
                     throw new Error('Read base64 is empty or too short');
                 }
@@ -216,7 +220,13 @@ const AITryOnScreen = () => {
         if (typeof item.imageUrl === 'number') {
             const asset = Asset.fromModule(item.imageUrl);
             await asset.downloadAsync();
-            const localUri = asset.localUri!;
+            let localUri = asset.localUri;
+            if (!localUri) {
+                const ext = asset.uri.split('.').pop()?.toLowerCase() ?? 'png';
+                const tempPath = `${FileSystem.cacheDirectory}asset_${asset.hash || asset.name || Date.now()}.${ext}`;
+                const downloadResult = await FileSystem.downloadAsync(asset.uri, tempPath);
+                localUri = downloadResult.uri;
+            }
             const b64 = await FileSystem.readAsStringAsync(localUri, { encoding: 'base64' as any });
             const ext = localUri.split('.').pop()?.toLowerCase() ?? 'png';
             const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png';
@@ -330,7 +340,7 @@ const AITryOnScreen = () => {
                         total: visibleTotal,
                         pipeline_version: pipelineVersion,
                     },
-                    { timeout: 180_000 },
+                    { timeout: 240_000 },   // 240 s — matches mobileVtonClient
                 );
                 return response.data;
             };
@@ -338,8 +348,23 @@ const AITryOnScreen = () => {
             try {
                 data = await runTryOnRequest();
             } catch (err: any) {
-                const apiError = err?.response?.data?.error || err?.message;
-                throw new Error(apiError || 'Outfit render failed.');
+                // If first attempt fails with a server error (502/503 = Render
+                // cold-start), wait 8 s then try once more.
+                const status = err?.response?.status;
+                const isServerDown = !err?.response || status === 502 || status === 503 || status === 504;
+                if (isServerDown) {
+                    setAiProgress('Server waking up, retrying…');
+                    await new Promise((r) => setTimeout(r, 8_000));
+                    try {
+                        data = await runTryOnRequest();
+                    } catch (retryErr: any) {
+                        const apiError = retryErr?.response?.data?.error || retryErr?.message;
+                        throw new Error(apiError || 'Outfit render failed after retry.');
+                    }
+                } else {
+                    const apiError = err?.response?.data?.error || err?.message;
+                    throw new Error(apiError || 'Outfit render failed.');
+                }
             }
 
             if (!data?.success) {
