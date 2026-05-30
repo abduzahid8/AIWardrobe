@@ -22,7 +22,7 @@ const userOrIp = (req) => req.user?.id ? `u:${req.user.id}` : ipKeyGenerator(req
 export const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 500,
-    validate: { xForwardedForHeader: false },
+    validate: { xForwardedForHeader: false, defaultKeys: false },
     keyGenerator: userOrIp,
     message: {
         error: 'Too many requests, please try again after 15 minutes.',
@@ -72,7 +72,7 @@ export const registrationLimiter = rateLimit({
 export const aiLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
     max: 20,
-    validate: { xForwardedForHeader: false },
+    validate: { xForwardedForHeader: false, defaultKeys: false },
     keyGenerator: userOrIp,
     message: {
         error: 'AI rate limit exceeded. Please wait a moment before trying again.',

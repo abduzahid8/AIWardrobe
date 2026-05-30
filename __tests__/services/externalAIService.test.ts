@@ -46,13 +46,13 @@ describe('ExternalAIService', () => {
     expect(mockedInvoke).toHaveBeenCalledWith('ai-process', {
       body: {
         image: 'abc123',
-        operation: 'studio_photo',
+        operation: 'classify',
       },
     });
     expect(result.success).toBe(true);
-    expect(result.imageUrl).toBe('https://cdn.example.com/cutout.png');
+    expect(result.imageUrl).toBe('data:image/jpeg;base64,abc123');
     expect(result.cutoutUrl).toBe('https://cdn.example.com/cutout.png');
-    expect(result.steps).toEqual(['nvidia_classify', 'nvidia_grounding_dino', 'local_cutout']);
+    expect(result.steps).toEqual(['nvidia_classify']);
   });
 
   it('falls back to the original image when studio processing fails', async () => {
