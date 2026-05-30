@@ -10,6 +10,11 @@ import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
 import { Asset } from 'expo-asset';
 import * as FileSystem from 'expo-file-system/legacy';
 import apiClient from '../../src/services/apiClient';
+import axios from 'axios';
+
+// Direct Modal GPU URL — bypasses Render completely, eliminating 502/503.
+// Modal keeps 1 container warm (min_containers=1) so this is always <60s.
+const MODAL_VTON_URL = 'https://zoxxid75--aiwardrobe-mobile-vton-fastapi-app.modal.run';
 
 import type { ShopCatalogItem } from './types';
 import { INSPO_MENS_SHOP_ITEMS } from '../../data/inspoMensShopItems';
@@ -329,41 +334,58 @@ const AITryOnScreen = () => {
             );
 
             let data: any;
-            const runTryOnRequest = async () => {
-                const endpoint = '/api/tryon/mobile-vton';
-                console.log(`[AITryOn] Using Mobile-VTON endpoint: ${endpoint}`);
-                const response = await apiClient.post(
-                    endpoint,
-                    {
-                        mannequin_image: mannequinImage,
-                        garments,
-                        total: visibleTotal,
-                        pipeline_version: pipelineVersion,
-                    },
-                    { timeout: 240_000 },   // 240 s — matches mobileVtonClient
+
+            // ── Direct Modal call (bypasses Render completely) ──────────────
+            // Modal runs min_containers=1 so the GPU is always warm.
+            // This eliminates 502/503 from Render's load-balancer.
+            const callModalDirectly = async () => {
+                console.log(`[AITryOn] Calling Modal directly: ${MODAL_VTON_URL}/tryon/multi`);
+
+                // Build the payload in Modal's multi-garment format
+                const modalPayload = {
+                    person_image: mannequinImage,
+                    garments: garments.map((g) => ({
+                        garment_image: g.garment_image,
+                        description: g.description || g.name || 'clothing',
+                        label: g.label,
+                    })),
+                    num_inference_steps: 10,
+                    guidance_scale: 2.0,
+                    seed: 42,
+                    pipeline_version: pipelineVersion ?? 'sequential_v1',
+                };
+
+                const resp = await axios.post(
+                    `${MODAL_VTON_URL}/tryon/multi`,
+                    modalPayload,
+                    { timeout: 240_000 },
                 );
-                return response.data;
+
+                const d = resp.data;
+                // Map Modal response shape → shape the UI expects
+                return {
+                    success: d.success,
+                    resultUrl: d.result_image || d.resultImage || d.resultUrl,
+                    methodUsed: d.method_used || 'modal_direct',
+                    elapsedMs: d.elapsed_ms || d.elapsedMs,
+                    renderedGarments: d.rendered_garments || d.renderedGarments,
+                };
             };
 
             try {
-                data = await runTryOnRequest();
+                data = await callModalDirectly();
             } catch (err: any) {
-                // If first attempt fails with a server error (502/503 = Render
-                // cold-start), wait 8 s then try once more.
+                // On any error, show message and retry once after 8s
                 const status = err?.response?.status;
-                const isServerDown = !err?.response || status === 502 || status === 503 || status === 504;
-                if (isServerDown) {
-                    setAiProgress('Server waking up, retrying…');
-                    await new Promise((r) => setTimeout(r, 8_000));
-                    try {
-                        data = await runTryOnRequest();
-                    } catch (retryErr: any) {
-                        const apiError = retryErr?.response?.data?.error || retryErr?.message;
-                        throw new Error(apiError || 'Outfit render failed after retry.');
-                    }
-                } else {
-                    const apiError = err?.response?.data?.error || err?.message;
-                    throw new Error(apiError || 'Outfit render failed.');
+                const msg = err?.response?.data?.detail || err?.response?.data?.error || err?.message;
+                console.warn(`[AITryOn] Modal call failed (${status}): ${msg}`);
+                setAiProgress('Retrying…');
+                await new Promise((r) => setTimeout(r, 8_000));
+                try {
+                    data = await callModalDirectly();
+                } catch (retryErr: any) {
+                    const apiError = retryErr?.response?.data?.detail || retryErr?.response?.data?.error || retryErr?.message;
+                    throw new Error(apiError || 'Outfit render failed after retry.');
                 }
             }
 
