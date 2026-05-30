@@ -37,7 +37,7 @@ services:
       - key: OPENAI_API_KEY
         sync: false
       - key: HF_TOKEN
-        value: "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"
+        sync: false
       - key: REPLICATE_API_TOKEN
         sync: false
       - key: MOBILE_VTON_SERVICE_URL
