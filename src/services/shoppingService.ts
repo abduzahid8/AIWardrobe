@@ -460,6 +460,7 @@ interface ShopCatalogRow {
     description?: string | null;
     primary_color?: string | null;
     source?: string | null;
+    source_url?: string | null;
 }
 
 /**
@@ -470,7 +471,7 @@ interface ShopCatalogRow {
 function buildShopQueryForSlot(slot: OutfitSlotId, limit: number) {
     const base = supabase
         .from('shop_catalog')
-        .select('id, brand, name, price, currency, image_url, garment_type, category, description, primary_color, source')
+        .select('id, brand, name, price, currency, image_url, garment_type, category, description, primary_color, source, source_url')
         .eq('is_active', true)
         .limit(limit);
 
@@ -499,7 +500,7 @@ function rowToShopFillItem(row: ShopCatalogRow, slot: OutfitSlotId): ShopFillIte
         color: row.primary_color || 'neutral',
         brand: row.brand || undefined,
         price: typeof row.price === 'number' ? row.price : undefined,
-        shopUrl: undefined,
+        shopUrl: row.source_url || undefined,
         isShopItem: true,
         recommendation: `Suggested from shop to complete your ${slot === 'outerwear' ? 'main-top layer' : slot}`,
         missingSlot: slot,

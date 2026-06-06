@@ -1,16 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import {
-    View,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    ScrollView,
-    StyleSheet,
-    Dimensions,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-} from 'react-native';
+import { View, TextInput, TouchableOpacity, ScrollView, StyleSheet, Dimensions, Alert, KeyboardAvoidingView, Platform,  } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -57,9 +47,9 @@ const PriceTrend = ({ history }: { history: { price: number }[] }) => {
                 size={12}
                 color={isDown ? "#34C759" : "#FF3B30"}
             />
-            <Text style={[styles.trendText, isDown ? styles.trendTextDown : styles.trendTextUp]}>
+            <ScaledText style={[styles.trendText, isDown ? styles.trendTextDown : styles.trendTextUp]}>
                 {change}%
-            </Text>
+            </ScaledText>
         </View>
     );
 };
@@ -110,24 +100,24 @@ const TrackedItemCard = ({
                     />
                     {item.isOnSale && (
                         <View style={styles.saleBadge}>
-                            <Text style={styles.saleBadgeText}>{t('priceTracker.sale')}</Text>
+                            <ScaledText style={styles.saleBadgeText}>{t('priceTracker.sale')}</ScaledText>
                         </View>
                     )}
                 </View>
 
                 {/* Info */}
                 <View style={styles.itemInfo}>
-                    <Text style={styles.itemBrand}>{item.brand}</Text>
-                    <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
+                    <ScaledText style={styles.itemBrand}>{item.brand}</ScaledText>
+                    <ScaledText style={styles.itemName} numberOfLines={2}>{item.name}</ScaledText>
 
                     <View style={styles.priceRow}>
-                        <Text style={styles.currentPrice}>
+                        <ScaledText style={styles.currentPrice}>
                             {item.currency}{item.currentPrice.toFixed(2)}
-                        </Text>
+                        </ScaledText>
                         {item.originalPrice && item.originalPrice > item.currentPrice && (
-                            <Text style={styles.originalPrice}>
+                            <ScaledText style={styles.originalPrice}>
                                 {item.currency}{item.originalPrice.toFixed(2)}
-                            </Text>
+                            </ScaledText>
                         )}
                         <PriceTrend history={item.priceHistory} />
                     </View>
@@ -135,9 +125,9 @@ const TrackedItemCard = ({
                     {item.targetPrice && (
                         <View style={styles.targetRow}>
                             <Ionicons name="flag-outline" size={12} color={AppColors.textMuted} />
-                            <Text style={styles.targetText}>
+                            <ScaledText style={styles.targetText}>
                                 Target: {item.currency}{item.targetPrice.toFixed(2)}
-                            </Text>
+                            </ScaledText>
                         </View>
                     )}
                 </View>
@@ -156,10 +146,10 @@ const AlertCard = ({ alert, onPress, t }: { alert: PriceAlert; onPress: () => vo
             <Ionicons name="pricetag" size={20} color="#34C759" />
         </View>
         <View style={styles.alertContent}>
-            <Text style={styles.alertTitle}>{alert.itemName}</Text>
-            <Text style={styles.alertText}>
+            <ScaledText style={styles.alertTitle}>{alert.itemName}</ScaledText>
+            <ScaledText style={styles.alertText}>
                 {t('priceTracker.priceDropped')} {alert.dropPercent}% ${t('priceTracker.from')} ${alert.previousPrice.toFixed(2)} ${t('priceTracker.to')} ${alert.newPrice.toFixed(2)}
-            </Text>
+            </ScaledText>
         </View>
         {!alert.seen && <View style={styles.alertDot} />}
     </TouchableOpacity>
@@ -218,7 +208,7 @@ const AddItemModal = ({
             >
                 <Animated.View entering={FadeInUp.springify()} style={styles.modalContent}>
                     <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>{t('priceTracker.trackNewItem')}</Text>
+                        <ScaledText style={styles.modalTitle}>{t('priceTracker.trackNewItem')}</ScaledText>
                         <TouchableOpacity onPress={onClose}>
                             <Ionicons name="close" size={24} color={AppColors.text} />
                         </TouchableOpacity>
@@ -226,7 +216,7 @@ const AddItemModal = ({
 
                     <View style={styles.modalBody}>
                         <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>{t('priceTracker.itemName')}</Text>
+                            <ScaledText style={styles.inputLabel}>{t('priceTracker.itemName')}</ScaledText>
                             <TextInput
                                 style={styles.input}
                                 placeholder={t('priceTracker.itemNamePlaceholder')}
@@ -238,7 +228,7 @@ const AddItemModal = ({
                         </View>
 
                         <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>{t('priceTracker.brand')}</Text>
+                            <ScaledText style={styles.inputLabel}>{t('priceTracker.brand')}</ScaledText>
                             <TextInput
                                 style={styles.input}
                                 placeholder={t('priceTracker.brandPlaceholder')}
@@ -251,7 +241,7 @@ const AddItemModal = ({
 
                         <View style={styles.inputRow}>
                             <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                                <Text style={styles.inputLabel}>{t('priceTracker.currentPrice')}</Text>
+                                <ScaledText style={styles.inputLabel}>{t('priceTracker.currentPrice')}</ScaledText>
                                 <TextInput
                                     style={styles.input}
                                     placeholder={t('priceTracker.currentPricePlaceholder')}
@@ -263,7 +253,7 @@ const AddItemModal = ({
                                 />
                             </View>
                             <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                                <Text style={styles.inputLabel}>{t('priceTracker.targetPrice')}</Text>
+                                <ScaledText style={styles.inputLabel}>{t('priceTracker.targetPrice')}</ScaledText>
                                 <TextInput
                                     style={styles.input}
                                     placeholder={t('priceTracker.targetPricePlaceholder')}
@@ -277,7 +267,7 @@ const AddItemModal = ({
                         </View>
 
                         <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>{t('priceTracker.imageUrl')}</Text>
+                            <ScaledText style={styles.inputLabel}>{t('priceTracker.imageUrl')}</ScaledText>
                             <TextInput
                                 style={styles.input}
                                 placeholder={t('priceTracker.imageUrlPlaceholder')}
@@ -291,7 +281,7 @@ const AddItemModal = ({
                     </View>
 
                     <TouchableOpacity style={styles.addButton} onPress={handleAdd}>
-                        <Text style={styles.addButtonText}>{t('priceTracker.addToTracker')}</Text>
+                        <ScaledText style={styles.addButtonText}>{t('priceTracker.addToTracker')}</ScaledText>
                     </TouchableOpacity>
                 </Animated.View>
             </KeyboardAvoidingView>
@@ -336,7 +326,7 @@ const PriceTrackerScreen = () => {
                     >
                         <Ionicons name="arrow-back" size={24} color={AppColors.text} />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>{t('priceTracker.title')}</Text>
+                    <ScaledText style={styles.headerTitle}>{t('priceTracker.title')}</ScaledText>
                     <TouchableOpacity
                         onPress={() => setShowAddModal(true)}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -348,20 +338,20 @@ const PriceTrackerScreen = () => {
                 {/* Stats Bar */}
                 <Animated.View entering={FadeIn.delay(100)} style={styles.statsBar}>
                     <View style={styles.statItem}>
-                        <Text style={styles.statNumber}>{trackedItems.length}</Text>
-                        <Text style={styles.statLabel}>{t('priceTracker.tracking')}</Text>
+                        <ScaledText style={styles.statNumber}>{trackedItems.length}</ScaledText>
+                        <ScaledText style={styles.statLabel}>{t('priceTracker.tracking')}</ScaledText>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.statItem}>
-                        <Text style={styles.statNumber}>{itemsOnSale.length}</Text>
-                        <Text style={styles.statLabel}>{t('priceTracker.onSale')}</Text>
+                        <ScaledText style={styles.statNumber}>{itemsOnSale.length}</ScaledText>
+                        <ScaledText style={styles.statLabel}>{t('priceTracker.onSale')}</ScaledText>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.statItem}>
-                        <Text style={[styles.statNumber, { color: '#34C759' }]}>
+                        <ScaledText style={[styles.statNumber, { color: '#34C759' }]}>
                             ${totalSavings.toFixed(0)}
-                        </Text>
-                        <Text style={styles.statLabel}>{t('priceTracker.savings')}</Text>
+                        </ScaledText>
+                        <ScaledText style={styles.statLabel}>{t('priceTracker.savings')}</ScaledText>
                     </View>
                 </Animated.View>
 
@@ -371,20 +361,20 @@ const PriceTrackerScreen = () => {
                         style={[styles.tab, activeTab === 'items' && styles.tabActive]}
                         onPress={() => setActiveTab('items')}
                     >
-                        <Text style={[styles.tabText, activeTab === 'items' && styles.tabTextActive]}>
+                        <ScaledText style={[styles.tabText, activeTab === 'items' && styles.tabTextActive]}>
                             {t('common.items')}
-                        </Text>
+                        </ScaledText>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.tab, activeTab === 'alerts' && styles.tabActive]}
                         onPress={() => setActiveTab('alerts')}
                     >
-                        <Text style={[styles.tabText, activeTab === 'alerts' && styles.tabTextActive]}>
+                        <ScaledText style={[styles.tabText, activeTab === 'alerts' && styles.tabTextActive]}>
                             Alerts
-                        </Text>
+                        </ScaledText>
                         {unseenCount > 0 && (
                             <View style={styles.alertBadge}>
-                                <Text style={styles.alertBadgeText}>{unseenCount}</Text>
+                                <ScaledText style={styles.alertBadgeText}>{unseenCount}</ScaledText>
                             </View>
                         )}
                     </TouchableOpacity>
@@ -402,16 +392,16 @@ const PriceTrackerScreen = () => {
                                 <View style={styles.emptyIcon}>
                                     <Ionicons name="pricetags-outline" size={48} color={AppColors.textMuted} />
                                 </View>
-                                <Text style={styles.emptyTitle}>{t('priceTracker.noItems')}</Text>
-                                <Text style={styles.emptyText}>
+                                <ScaledText style={styles.emptyTitle}>{t('priceTracker.noItems')}</ScaledText>
+                                <ScaledText style={styles.emptyText}>
                                     Add items you want to buy and we'll track price changes for you
-                                </Text>
+                                </ScaledText>
                                 <TouchableOpacity
                                     style={styles.emptyButton}
                                     onPress={() => setShowAddModal(true)}
                                 >
                                     <Ionicons name="add" size={20} color={AppColors.background} />
-                                    <Text style={styles.emptyButtonText}>{t('priceTracker.addItem')}</Text>
+                                    <ScaledText style={styles.emptyButtonText}>{t('priceTracker.addItem')}</ScaledText>
                                 </TouchableOpacity>
                             </Animated.View>
                         ) : (
@@ -434,10 +424,10 @@ const PriceTrackerScreen = () => {
                                 <View style={styles.emptyIcon}>
                                     <Ionicons name="notifications-outline" size={48} color={AppColors.textMuted} />
                                 </View>
-                                <Text style={styles.emptyTitle}>{t('priceTracker.noAlerts')}</Text>
-                                <Text style={styles.emptyText}>
+                                <ScaledText style={styles.emptyTitle}>{t('priceTracker.noAlerts')}</ScaledText>
+                                <ScaledText style={styles.emptyText}>
                                     {t('priceTracker.emptyAlertsText')}
-                                </Text>
+                                </ScaledText>
                             </Animated.View>
                         ) : (
                             priceAlerts.map((alert) => (

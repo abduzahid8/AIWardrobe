@@ -9,14 +9,8 @@
  */
 
 import React from 'react';
-import {
-    View,
-    Text,
-    Image,
-    StyleSheet,
-    ScrollView,
-    TouchableOpacity,
-} from 'react-native';
+import { View, Image, StyleSheet, ScrollView, TouchableOpacity,  } from 'react-native'
+import { ScaledText } from './ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
@@ -78,7 +72,7 @@ export default function LayeredOutfitView({
         return (
             <View style={styles.emptyContainer}>
                 <Ionicons name="layers-outline" size={40} color={colors.text.tertiary} />
-                <Text style={styles.emptyText}>{t('layeredOutfit.noItems')}</Text>
+                <ScaledText style={styles.emptyText}>{t('layeredOutfit.noItems')}</ScaledText>
             </View>
         );
     }
@@ -93,11 +87,11 @@ export default function LayeredOutfitView({
                     <View key={key} style={styles.layerSection}>
                         <View style={styles.layerHeader}>
                             <Ionicons name={icon as any} size={16} color={color} />
-                            <Text style={[styles.layerLabel, { color }]}>{label}</Text>
+                            <ScaledText style={[styles.layerLabel, { color }]}>{label}</ScaledText>
                             <View style={[styles.layerBadge, { backgroundColor: color + '20' }]}>
-                                <Text style={[styles.layerBadgeText, { color }]}>
+                                <ScaledText style={[styles.layerBadgeText, { color }]}>
                                     {layerItems.length}
-                                </Text>
+                                </ScaledText>
                             </View>
                         </View>
 
@@ -121,9 +115,9 @@ export default function LayeredOutfitView({
                                                 compact && styles.itemImageCompact,
                                             ]}
                                         />
-                                        <Text style={styles.itemName} numberOfLines={2}>
+                                        <ScaledText style={styles.itemName} numberOfLines={2}>
                                             {item.name || item.subCategory || item.category}
-                                        </Text>
+                                        </ScaledText>
                                         {editable && (
                                             <View style={[styles.layerDot, { backgroundColor: color }]} />
                                         )}
@@ -132,9 +126,9 @@ export default function LayeredOutfitView({
                             </ScrollView>
                         ) : (
                             <View style={styles.emptyLayer}>
-                                <Text style={styles.emptyLayerText}>
+                                <ScaledText style={styles.emptyLayerText}>
                                     {t('layeredOutfit.noLayerItems', { layer: label.toLowerCase() })}
-                                </Text>
+                                </ScaledText>
                             </View>
                         )}
 

@@ -1,14 +1,6 @@
 import React, { useState } from 'react';
-import {
-    View,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    StyleSheet,
-    Dimensions,
-    FlatList,
-    ScrollView,
-} from 'react-native';
+import { View, TextInput, TouchableOpacity, StyleSheet, Dimensions, FlatList, ScrollView,  } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -106,7 +98,7 @@ const BrandRow = ({
             }}
             activeOpacity={0.8}
         >
-            <Text style={styles.brandName}>{brand.name}</Text>
+            <ScaledText style={styles.brandName}>{brand.name}</ScaledText>
             <Animated.View style={animatedStyle}>
                 <Ionicons
                     name={isLiked ? 'heart' : 'heart-outline'}
@@ -161,7 +153,7 @@ const BrandSelectionScreen = () => {
                 >
                     <ProgressBar steps={5} currentStep={4} />
                     <TouchableOpacity onPress={handleSkip} style={styles.skipButton}>
-                        <Text style={styles.skipText}>{t('common.skip')}</Text>
+                        <ScaledText style={styles.skipText}>{t('common.skip')}</ScaledText>
                     </TouchableOpacity>
                 </Animated.View>
 
@@ -180,12 +172,12 @@ const BrandSelectionScreen = () => {
                     entering={FadeInUp.delay(150).springify()}
                     style={styles.titleContainer}
                 >
-                    <Text style={styles.title}>
+                    <ScaledText style={styles.title}>
                         {t('brandSelection.chooseBrands')}
-                    </Text>
-                    <Text style={styles.subtitle}>
+                    </ScaledText>
+                    <ScaledText style={styles.subtitle}>
                         Choose brands of clothes you currently own or want
-                    </Text>
+                    </ScaledText>
                 </Animated.View>
 
                 {/* Search Input */}
@@ -234,7 +226,7 @@ const BrandSelectionScreen = () => {
                         onPress={handleContinue}
                         activeOpacity={canContinue ? 0.9 : 1}
                     >
-                        <Text style={[
+                        <ScaledText style={[
                             styles.ctaText,
                             !canContinue && styles.ctaTextDisabled
                         ]}>
@@ -242,7 +234,7 @@ const BrandSelectionScreen = () => {
                                 ? 'Continue'
                                 : `Like at least ${3 - likedBrands.length} more brand${3 - likedBrands.length > 1 ? 's' : ''}`
                             }
-                        </Text>
+                        </ScaledText>
                     </TouchableOpacity>
                 </Animated.View>
             </SafeAreaView>

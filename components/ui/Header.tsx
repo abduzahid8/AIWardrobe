@@ -1,13 +1,6 @@
 import React from 'react';
-import {
-    View,
-    Text,
-    TouchableOpacity,
-    StyleSheet,
-    ViewStyle,
-    Platform,
-    StatusBar,
-} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, ViewStyle, Platform, StatusBar,  } from 'react-native'
+import { ScaledText } from '../ui/ScaledText';;
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
@@ -81,11 +74,11 @@ export const Header: React.FC<HeaderProps> = ({
 
             <View style={[styles.centerContainer, centerTitle && styles.centerTitleContainer]}>
                 {title && (
-                    <Text style={[styles.title, centerTitle && styles.centeredTitle]} numberOfLines={2}>
+                    <ScaledText style={[styles.title, centerTitle && styles.centeredTitle]} numberOfLines={2}>
                         {title}
-                    </Text>
+                    </ScaledText>
                 )}
-                {subtitle && <Text style={styles.subtitle} numberOfLines={2}>{subtitle}</Text>}
+                {subtitle && <ScaledText style={styles.subtitle} numberOfLines={2}>{subtitle}</ScaledText>}
             </View>
 
             <View style={styles.rightContainer}>

@@ -10,15 +10,8 @@
  */
 
 import React, { useState } from 'react';
-import {
-    View,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    StyleSheet,
-    ScrollView,
-    ActivityIndicator,
-} from 'react-native';
+import { View, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator,  } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -149,10 +142,10 @@ const PromoCodeScreen = () => {
                             <View style={styles.iconContainer}>
                                 <Ionicons name="gift" size={40} color={COLORS.premium} />
                             </View>
-                            <Text style={styles.heroTitle}>{t('promo.heroTitle')}</Text>
-                            <Text style={styles.heroSubtitle}>
+                            <ScaledText style={styles.heroTitle}>{t('promo.heroTitle')}</ScaledText>
+                            <ScaledText style={styles.heroSubtitle}>
                                 {t('promo.heroSubtitle')}
-                            </Text>
+                            </ScaledText>
                         </Animated.View>
 
                         {/* Apple Offer Code button (production) */}
@@ -170,9 +163,9 @@ const PromoCodeScreen = () => {
                                 ) : (
                                     <>
                                         <Ionicons name="ticket-outline" size={20} color="#0A0A0A" />
-                                        <Text style={styles.offerCodeButtonText}>
+                                        <ScaledText style={styles.offerCodeButtonText}>
                                             {t('promo.redeemOfferCode', 'Redeem Offer Code')}
-                                        </Text>
+                                        </ScaledText>
                                     </>
                                 )}
                             </TouchableOpacity>
@@ -183,7 +176,7 @@ const PromoCodeScreen = () => {
                             <Animated.View entering={FadeInUp.delay(150).springify()}>
                                 <View style={styles.devBadge}>
                                     <Ionicons name="code-slash" size={12} color={COLORS.textSecondary} />
-                                    <Text style={styles.devBadgeText}>{t('promo.devOnly')}</Text>
+                                    <ScaledText style={styles.devBadgeText}>{t('promo.devOnly')}</ScaledText>
                                 </View>
                                 <View style={styles.inputContainer}>
                                     <TextInput
@@ -201,7 +194,7 @@ const PromoCodeScreen = () => {
                                         editable={!isRedeeming}
                                     />
                                     {promoError && (
-                                        <Text style={styles.errorText}>{promoError}</Text>
+                                        <ScaledText style={styles.errorText}>{promoError}</ScaledText>
                                     )}
                                 </View>
                                 <TouchableOpacity
@@ -215,7 +208,7 @@ const PromoCodeScreen = () => {
                                     ) : (
                                         <>
                                             <Ionicons name="checkmark-circle" size={20} color="#0A0A0A" />
-                                            <Text style={styles.redeemButtonText}>{t('promo.activateTrial')}</Text>
+                                            <ScaledText style={styles.redeemButtonText}>{t('promo.activateTrial')}</ScaledText>
                                         </>
                                     )}
                                 </TouchableOpacity>
@@ -226,7 +219,7 @@ const PromoCodeScreen = () => {
                         <Animated.View entering={FadeInUp.delay(200).springify()}>
                             <View style={styles.dividerRow}>
                                 <View style={styles.dividerLine} />
-                                <Text style={styles.dividerText}>{t('promo.or')}</Text>
+                                <ScaledText style={styles.dividerText}>{t('promo.or')}</ScaledText>
                                 <View style={styles.dividerLine} />
                             </View>
                         </Animated.View>
@@ -242,8 +235,8 @@ const PromoCodeScreen = () => {
                                 <View style={styles.upgradeLeft}>
                                     <Ionicons name="sparkles" size={24} color={COLORS.premium} />
                                     <View style={styles.upgradeTextBlock}>
-                                        <Text style={styles.upgradeTitle}>{t('promo.goPro')}</Text>
-                                        <Text style={styles.upgradeSubtitle}>{t('promo.goProSubtitle')}</Text>
+                                        <ScaledText style={styles.upgradeTitle}>{t('promo.goPro')}</ScaledText>
+                                        <ScaledText style={styles.upgradeSubtitle}>{t('promo.goProSubtitle')}</ScaledText>
                                     </View>
                                 </View>
                                 <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
@@ -260,13 +253,13 @@ const PromoCodeScreen = () => {
                                 accessibilityHint={t('promo.continueFreeHintA11y')}
                             >
                                 <Ionicons name="checkmark-circle-outline" size={18} color={COLORS.freeGreen} />
-                                <Text style={styles.freeButtonText}>
+                                <ScaledText style={styles.freeButtonText}>
                                     {t('promo.continueFree', 'Continue with Free Plan')}
-                                </Text>
+                                </ScaledText>
                             </TouchableOpacity>
-                            <Text style={styles.freeNote}>
+                            <ScaledText style={styles.freeNote}>
                                 {t('promo.freeNote', 'Free plan includes 10 AI outfits/day and wardrobe scanning.')}
-                            </Text>
+                            </ScaledText>
                         </Animated.View>
 
                         <View style={{ height: 40 }} />

@@ -276,3 +276,72 @@ export function getNudgeType(
 
     return 'none';
 }
+
+// ============================================
+// MOST WORN BY CATEGORY
+// ============================================
+
+export interface WornByCategoryEntry {
+    category: string;
+    items: ClothingItem[];
+    totalWears: number;
+}
+
+export function getMostWornByCategory(items: ClothingItem[], wearLogs: WearLog[]): WornByCategoryEntry[] {
+    const categories = new Map<string, ClothingItem[]>();
+    for (const item of items) {
+        const list = categories.get(item.category) || [];
+        list.push(item);
+        categories.set(item.category, list);
+    }
+
+    const result: WornByCategoryEntry[] = [];
+    categories.forEach((catItems, category) => {
+        const sorted = catItems.sort((a, b) => b.wearCount - a.wearCount);
+        result.push({
+            category,
+            items: sorted.slice(0, 3),
+            totalWears: catItems.reduce((sum, i) => sum + i.wearCount, 0),
+        });
+    });
+    return result.sort((a, b) => b.totalWears - a.totalWears);
+}
+
+// ============================================
+// WEAR FREQUENCY
+// ============================================
+
+export interface WearFrequency {
+    averagePerDay: number;
+    averagePerWeek: number;
+    totalDaysTracked: number;
+    activeDays: number;
+}
+
+export function getWearFrequency(wearLogs: WearLog[]): WearFrequency {
+    if (wearLogs.length === 0) {
+        return { averagePerDay: 0, averagePerWeek: 0, totalDaysTracked: 0, activeDays: 0 };
+    }
+
+    const dates = [...new Set(wearLogs.map((log) => log.date))].sort();
+    const activeDays = dates.length;
+    const firstDate = new Date(dates[0]);
+    const today = new Date();
+    const totalDaysTracked = Math.max(1, Math.round((today.getTime() - firstDate.getTime()) / 86400000));
+    const averagePerDay = activeDays / totalDaysTracked;
+    const averagePerWeek = averagePerDay * 7;
+
+    return { averagePerDay: Math.round(averagePerDay * 100) / 100, averagePerWeek: Math.round(averagePerWeek * 100) / 100, totalDaysTracked, activeDays };
+}
+
+// ============================================
+// FAVORITE UTILIZATION
+// ============================================
+
+export function getFavoriteUtilization(items: ClothingItem[]): { favoriteCount: number; wornFavorites: number; percentage: number } {
+    const favorites = items.filter((i) => i.isFavorite);
+    const favoriteCount = favorites.length;
+    const wornFavorites = favorites.filter((i) => i.wearCount > 0).length;
+    const percentage = favoriteCount > 0 ? Math.round((wornFavorites / favoriteCount) * 100) : 0;
+    return { favoriteCount, wornFavorites, percentage };
+}

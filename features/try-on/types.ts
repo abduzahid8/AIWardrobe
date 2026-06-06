@@ -19,6 +19,7 @@ export interface ShopCatalogItem {
     imageUrl: string | any;
     garmentType: 'upper_body' | 'lower_body' | 'dresses' | 'shoes' | 'outfit' | 'accessory';
     description?: string;
+    sourceUrl?: string;
     outfitItems?: ShopCatalogItem[];
 }
 

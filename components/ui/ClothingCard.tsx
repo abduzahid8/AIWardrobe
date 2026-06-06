@@ -1,11 +1,6 @@
 import React from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    Dimensions,
-    ViewStyle,
-} from 'react-native';
+import { View, StyleSheet, Dimensions, ViewStyle,  } from 'react-native'
+import { ScaledText } from '../ui/ScaledText';;
 import Animated, {
     useAnimatedStyle,
     interpolate,
@@ -125,7 +120,7 @@ const ClothingCard: React.FC<ClothingCardProps> = ({
                             />
                         ) : (
                             <View style={styles.placeholderImage}>
-                                <Text style={styles.placeholderText}>👕</Text>
+                                <ScaledText style={styles.placeholderText}>👕</ScaledText>
                             </View>
                         )}
                     </Animated.View>
@@ -133,15 +128,15 @@ const ClothingCard: React.FC<ClothingCardProps> = ({
 
                 {/* Item Label */}
                 <View style={styles.labelContainer}>
-                    <Text style={styles.label} numberOfLines={2}>
+                    <ScaledText style={styles.label} numberOfLines={2}>
                         {itemLabel}
-                    </Text>
+                    </ScaledText>
                     {item.color && (
                         <View style={styles.colorRow}>
                             {item.colorHex && (
                                 <View style={[styles.colorDot, { backgroundColor: item.colorHex }]} />
                             )}
-                            <Text style={styles.colorText}>{item.color}</Text>
+                            <ScaledText style={styles.colorText}>{item.color}</ScaledText>
                         </View>
                     )}
                 </View>
@@ -149,14 +144,14 @@ const ClothingCard: React.FC<ClothingCardProps> = ({
                 {/* Match Score Badge */}
                 {matchScore !== undefined && matchScore > 0 && (
                     <View style={styles.matchBadge}>
-                        <Text style={styles.matchText}>{matchScore}%</Text>
+                        <ScaledText style={styles.matchText}>{matchScore}%</ScaledText>
                     </View>
                 )}
 
                 {/* Selected Indicator */}
                 {isSelected && (
                     <View style={styles.selectedIndicator}>
-                        <Text style={styles.selectedCheck}>✓</Text>
+                        <ScaledText style={styles.selectedCheck}>✓</ScaledText>
                     </View>
                 )}
             </View>

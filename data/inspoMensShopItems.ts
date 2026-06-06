@@ -1,8 +1,9 @@
 import type { ShopCatalogItem } from '../features/try-on/types';
 
 /**
- * Manually curated Massimo Dutti Summer 2026 collection.
- * Only authentic product photos from massimodutti.com are used here.
+ * Curated men's clothing catalog for Summer 2026.
+ * Products sourced from Massimo Dutti & ZARA official websites.
+ * Images use product-only views (ghost mannequin / packshot) - no model faces visible.
  * Exported as fallback content when the live Supabase catalog is empty.
  */
 export const CLASSIC_MENS_ITEMS: ShopCatalogItem[] = [
@@ -15,7 +16,7 @@ export const CLASSIC_MENS_ITEMS: ShopCatalogItem[] = [
         currency: 'USD',
         garmentType: 'upper_body',
         description: 'Summer 2026 - Premium fluid 100% linen shirt with a stand collar and regular fit in sand beige',
-        imageUrl: 'https://massimodutti.com/content/dam/massimodutti/Men/2026/shirts/1200x1500/0142_241_712.jpg',
+        imageUrl: 'https://static.massimodutti.net/assets/public/c315/30e6/1e9e4c2dadeb/7c7f6d74947c/01927260401-o1/01927260401-o1.jpg',
     },
     {
         id: 'classic-m-shirt-13',
@@ -25,7 +26,7 @@ export const CLASSIC_MENS_ITEMS: ShopCatalogItem[] = [
         currency: 'USD',
         garmentType: 'upper_body',
         description: 'Summer 2026 - Lightweight regular-fit shirt in 100% breathable linen, featuring a classic spread collar in navy',
-        imageUrl: 'https://massimodutti.com/content/dam/massimodutti/Men/2026/shirts/1200x1500/0145_245_401.jpg',
+        imageUrl: 'https://static.massimodutti.net/assets/public/f95e/5eec/42cf4ed2a804/7dfe54252e88/01933263400-o1/01933263400-o1.jpg',
     },
     {
         id: 'classic-m-shirt-14',
@@ -35,7 +36,7 @@ export const CLASSIC_MENS_ITEMS: ShopCatalogItem[] = [
         currency: 'USD',
         garmentType: 'upper_body',
         description: 'Summer 2026 - Breathable 100% linen long-sleeve shirt in thin off-white and blue stripe',
-        imageUrl: 'https://massimodutti.com/content/dam/massimodutti/Men/2026/shirts/1200x1500/0148_248_305.jpg',
+        imageUrl: 'https://static.massimodutti.net/assets/public/280b/7ffa/a33a44b288e7/0bd530fde400/02015252406-o1/02015252406-o1.jpg',
     },
     {
         id: 'classic-m-blazer-06',
@@ -45,7 +46,7 @@ export const CLASSIC_MENS_ITEMS: ShopCatalogItem[] = [
         currency: 'USD',
         garmentType: 'upper_body',
         description: 'Summer 2026 - Premium unstructured regular-fit linen blazer with notch lapels and patch pockets in natural stone',
-        imageUrl: 'https://massimodutti.com/content/dam/massimodutti/Men/2026/blazers/1200x1500/2065_335_710.jpg',
+        imageUrl: 'https://static.massimodutti.net/assets/public/63bc/ceb5/f5ac491fb61e/462a9a746c2b/02005261514-o1/02005261514-o1.jpg',
     },
     {
         id: 'classic-m-blazer-07',
@@ -55,7 +56,7 @@ export const CLASSIC_MENS_ITEMS: ShopCatalogItem[] = [
         currency: 'USD',
         garmentType: 'upper_body',
         description: 'Summer 2026 - Soft double-breasted linen blazer with peak lapels and a relaxed, elegant silhouette in sage green',
-        imageUrl: 'https://massimodutti.com/content/dam/massimodutti/Men/2026/blazers/1200x1500/2068_338_502.jpg',
+        imageUrl: 'https://static.massimodutti.net/assets/public/5bd8/74fb/6b8942a2b7e3/0f8a0cc8b922/03647547812-o1/03647547812-o1.jpg',
     },
     {
         id: 'classic-m-trouser-11',
@@ -65,7 +66,7 @@ export const CLASSIC_MENS_ITEMS: ShopCatalogItem[] = [
         currency: 'USD',
         garmentType: 'lower_body',
         description: 'Summer 2026 - Relaxed wide-leg trousers in 100% fluid linen with pressed creases in sand beige',
-        imageUrl: 'https://massimodutti.com/content/dam/massimodutti/Men/2026/trousers/1200x1500/1032_422_712.jpg',
+        imageUrl: 'https://static.massimodutti.net/assets/public/6cd5/cf4a/946948c795e9/3546e4367357/02881380700-o1/02881380700-o1.jpg',
     },
     {
         id: 'classic-m-trouser-12',
@@ -75,7 +76,7 @@ export const CLASSIC_MENS_ITEMS: ShopCatalogItem[] = [
         currency: 'USD',
         garmentType: 'lower_body',
         description: 'Summer 2026 - Classic slim-fit chinos crafted from a lightweight linen-cotton blend in navy blue',
-        imageUrl: 'https://massimodutti.com/content/dam/massimodutti/Men/2026/trousers/1200x1500/1035_425_401.jpg',
+        imageUrl: 'https://static.massimodutti.net/assets/public/a31a/f14e/6cd749db8e3d/40150a32fc42/00121014251-o1/00121014251-o1.jpg',
     },
     {
         id: 'classic-m-short-03',
@@ -85,7 +86,7 @@ export const CLASSIC_MENS_ITEMS: ShopCatalogItem[] = [
         currency: 'USD',
         garmentType: 'lower_body',
         description: 'Summer 2026 - Relaxed-fit linen shorts with an elasticated drawstring waist in off-white',
-        imageUrl: 'https://massimodutti.com/content/dam/massimodutti/Men/2026/shorts/1200x1500/1040_430_001.jpg',
+        imageUrl: 'https://static.massimodutti.net/assets/public/867a/e3f5/070f4cef83ba/dfe2e7d43911/00692192401-o1/00692192401-o1.jpg',
     },
     {
         id: 'classic-m-shoe-12',
@@ -95,7 +96,7 @@ export const CLASSIC_MENS_ITEMS: ShopCatalogItem[] = [
         currency: 'USD',
         garmentType: 'shoes',
         description: 'Summer 2026 - Split suede slip-on penny loafers with ultra-flexible sole and unlined construction in tobacco brown',
-        imageUrl: 'https://massimodutti.com/content/dam/massimodutti/Men/2026/shoes/1200x1500/1275_675_710.jpg',
+        imageUrl: 'https://static.massimodutti.net/assets/public/1aac/3ff0/f15c4585a5c6/aa4ddb04a435/12433650709-o1/12433650709-o1.jpg',
     },
     {
         id: 'classic-m-shoe-13',
@@ -105,7 +106,88 @@ export const CLASSIC_MENS_ITEMS: ShopCatalogItem[] = [
         currency: 'USD',
         garmentType: 'shoes',
         description: 'Summer 2026 - Casual split suede espadrilles with classic braided jute midsole and rubber outsole in sand beige',
-        imageUrl: 'https://massimodutti.com/content/dam/massimodutti/Men/2026/shoes/1200x1500/1278_680_712.jpg',
+        imageUrl: 'https://static.massimodutti.net/assets/public/949b/113b/f98f401b9e9e/5790993bed20/12900750700-o1/12900750700-o1.jpg',
+    },
+    // ── ZARA Men Summer 2026 ──────────────────────────────────────────
+    {
+        id: 'zara-m-polo-01',
+        brand: 'ZARA',
+        name: '100% Linen Polo Shirt',
+        price: 49.90,
+        currency: 'USD',
+        garmentType: 'upper_body',
+        description: 'Summer 2026 - Classic 100% linen polo shirt with ribbed collar. Regular fit in breathable pure linen.',
+        imageUrl: 'https://static.zara.net/assets/public/4f2e/f60a/7d914ed58cf0/0e496c42419a/02634252507-p/02634252507-p.jpg',
+    },
+    {
+        id: 'zara-m-shirt-01',
+        brand: 'ZARA',
+        name: '100% Linen Regular Fit Shirt',
+        price: 69.90,
+        currency: 'USD',
+        garmentType: 'upper_body',
+        description: 'Summer 2026 - Regular fit shirt in 100% linen. Classic collar and button cuffs.',
+        imageUrl: 'https://static.zara.net/assets/public/8bfb/9640/b3b0483883ab/2f5bda07f159/03090110250-p/03090110250-p.jpg',
+    },
+    {
+        id: 'zara-m-shirt-02',
+        brand: 'ZARA',
+        name: '100% Linen Relaxed Fit Shirt',
+        price: 69.90,
+        currency: 'USD',
+        garmentType: 'upper_body',
+        description: 'Summer 2026 - Relaxed fit shirt in 100% linen with spread collar and patch chest pocket.',
+        imageUrl: 'https://static.zara.net/assets/public/35a8/746d/649f4a00ae42/b9a900ac13f9/05070904052-1-p/05070904052-1-p.jpg',
+    },
+    {
+        id: 'zara-m-shirt-05',
+        brand: 'ZARA',
+        name: 'Relaxed Fit Linen Shirt with Pockets',
+        price: 79.90,
+        currency: 'USD',
+        garmentType: 'upper_body',
+        description: 'Summer 2026 - Relaxed fit 100% linen shirt with pleated patch pockets and spread collar.',
+        imageUrl: 'https://static.zara.net/assets/public/f56f/567f/c726464f9cc0/5ab58d5e1067/01195264251-p/01195264251-p.jpg',
+    },
+    {
+        id: 'zara-m-blazer-01',
+        brand: 'ZARA',
+        name: '100% Linen Double Breasted Blazer',
+        price: 179.00,
+        currency: 'USD',
+        garmentType: 'upper_body',
+        description: 'Summer 2026 - Unstructured double-breasted blazer in 100% linen. Peak lapels and relaxed fit.',
+        imageUrl: 'https://static.zara.net/assets/public/4ef7/4e04/01064acda57e/b2a7b840f875/04632333052-p/04632333052-p.jpg',
+    },
+    {
+        id: 'zara-m-trouser-01',
+        brand: 'ZARA',
+        name: '100% Linen Relaxed Fit Pants',
+        price: 79.90,
+        currency: 'USD',
+        garmentType: 'lower_body',
+        description: 'Summer 2026 - Relaxed fit trousers in pure linen with elasticated drawstring waist.',
+        imageUrl: 'https://static.zara.net/assets/public/0942/05bf/8d1b43269539/0ec8937d0a39/02634255507-p/02634255507-p.jpg',
+    },
+    {
+        id: 'zara-m-trouser-03',
+        brand: 'ZARA',
+        name: 'Linen Cotton Pleated Suit Pants',
+        price: 99.90,
+        currency: 'USD',
+        garmentType: 'lower_body',
+        description: 'Summer 2026 - Pleated suit pants in a linen-cotton blend. Straight leg tailored fit.',
+        imageUrl: 'https://static.zara.net/assets/public/c5ad/0037/abda435c898a/ca7aeb37482f/04553594405-p/04553594405-p.jpg',
+    },
+    {
+        id: 'zara-m-short-01',
+        brand: 'ZARA',
+        name: '100% Linen Relaxed Fit Shorts',
+        price: 59.90,
+        currency: 'USD',
+        garmentType: 'lower_body',
+        description: 'Summer 2026 - Relaxed fit linen shorts with elasticated drawstring waist.',
+        imageUrl: 'https://static.zara.net/assets/public/df7f/2e9d/3de242c8b69b/c08079a10ad0/05070903800-p/05070903800-p.jpg',
     },
 ];
 

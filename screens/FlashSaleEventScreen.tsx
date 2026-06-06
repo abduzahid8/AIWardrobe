@@ -1,16 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-    View,
-    Text,
-    ScrollView,
-    TouchableOpacity,
-    StyleSheet,
-    Dimensions,
-    RefreshControl,
-    ActivityIndicator,
-    Linking,
-    Alert,
-} from 'react-native';
+import { View, ScrollView, TouchableOpacity, StyleSheet, Dimensions, RefreshControl, ActivityIndicator, Linking, Alert,  } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -59,19 +49,19 @@ const CountdownTimer = ({ event, t }: { event: FlashSaleEvent; t: any }) => {
 
     return (
         <View style={styles.countdownRow}>
-            <Text style={styles.countdownLabel}>{label}</Text>
+            <ScaledText style={styles.countdownLabel}>{label}</ScaledText>
             <View style={[styles.countdownPill, isEnding && styles.countdownPillEnding]}>
                 <Ionicons
                     name="time-outline"
                     size={14}
                     color={isEnding ? '#FF3B30' : AppColors.text}
                 />
-                <Text style={[styles.countdownText, isEnding && styles.countdownTextEnding]}>
+                <ScaledText style={[styles.countdownText, isEnding && styles.countdownTextEnding]}>
                     {hours > 0
                         ? `${hours}h ${minutes}m ${seconds}s`
                         : `${minutes}m ${seconds}s`
                     }
-                </Text>
+                </ScaledText>
             </View>
         </View>
     );
@@ -84,7 +74,7 @@ const StockBadge = ({ status, count, t }: { status: string; count?: number; t: a
     if (status === 'sold_out') {
         return (
             <View style={[styles.stockBadge, styles.stockSoldOut]}>
-                <Text style={styles.stockBadgeText}>{t('flashSaleEvent.soldOut')}</Text>
+                <ScaledText style={styles.stockBadgeText}>{t('flashSaleEvent.soldOut')}</ScaledText>
             </View>
         );
     }
@@ -92,9 +82,9 @@ const StockBadge = ({ status, count, t }: { status: string; count?: number; t: a
     if (status === 'low_stock') {
         return (
             <View style={[styles.stockBadge, styles.stockLow]}>
-                <Text style={styles.stockBadgeText}>
+                <ScaledText style={styles.stockBadgeText}>
                     {count ? t('flashSaleEvent.onlyLeft', { count }) : t('flashSaleEvent.lowStock')}
-                </Text>
+                </ScaledText>
             </View>
         );
     }
@@ -159,7 +149,7 @@ const ProductCard = ({
 
                     {/* Discount badge */}
                     <View style={styles.productDiscountBadge}>
-                        <Text style={styles.productDiscountText}>{t('flashSales.discountBadge', { discount })}</Text>
+                        <ScaledText style={styles.productDiscountText}>{t('flashSales.discountBadge', { discount })}</ScaledText>
                     </View>
 
                     {/* Stock badge */}
@@ -185,35 +175,35 @@ const ProductCard = ({
 
                 {/* Details */}
                 <View style={styles.productDetails}>
-                    <Text style={styles.productBrand}>{product.brand}</Text>
-                    <Text style={styles.productName} numberOfLines={2}>
+                    <ScaledText style={styles.productBrand}>{product.brand}</ScaledText>
+                    <ScaledText style={styles.productName} numberOfLines={2}>
                         {product.name}
-                    </Text>
+                    </ScaledText>
 
                     <View style={styles.productPriceRow}>
-                        <Text style={styles.productSalePrice}>
+                        <ScaledText style={styles.productSalePrice}>
                             ${product.salePrice}
-                        </Text>
-                        <Text style={styles.productOriginalPrice}>
+                        </ScaledText>
+                        <ScaledText style={styles.productOriginalPrice}>
                             ${product.originalPrice}
-                        </Text>
+                        </ScaledText>
                     </View>
 
                     {/* Rating */}
                     {product.rating && (
                         <View style={styles.productRating}>
                             <Ionicons name="star" size={12} color="#FFD700" />
-                            <Text style={styles.productRatingText}>
+                            <ScaledText style={styles.productRatingText}>
                                 {product.rating} ({product.reviewCount})
-                            </Text>
+                            </ScaledText>
                         </View>
                     )}
 
                     {/* Sizes */}
                     {product.size && product.size.length > 0 && (
-                        <Text style={styles.productSizes}>
+                        <ScaledText style={styles.productSizes}>
                             Sizes: {product.size.join(', ')}
-                        </Text>
+                        </ScaledText>
                     )}
                 </View>
             </TouchableOpacity>
@@ -326,12 +316,12 @@ const FlashSaleEventScreen = () => {
         return (
             <View style={styles.errorContainer}>
                 <Ionicons name="alert-circle-outline" size={48} color={AppColors.textSecondary} />
-                <Text style={styles.errorText}>{t('flashSaleEvent.eventNotFound')}</Text>
+                <ScaledText style={styles.errorText}>{t('flashSaleEvent.eventNotFound')}</ScaledText>
                 <TouchableOpacity
                     style={styles.errorButton}
                     onPress={() => navigation.goBack()}
                 >
-                    <Text style={styles.errorButtonText}>{t('common.goBack')}</Text>
+                    <ScaledText style={styles.errorButtonText}>{t('common.goBack')}</ScaledText>
                 </TouchableOpacity>
             </View>
         );
@@ -382,36 +372,36 @@ const FlashSaleEventScreen = () => {
                             {event.status === 'active' && (
                                 <View style={styles.liveBadge}>
                                     <View style={styles.liveDot} />
-                                    <Text style={styles.liveText}>{t('flashSaleEvent.liveNow')}</Text>
+                                    <ScaledText style={styles.liveText}>{t('flashSaleEvent.liveNow')}</ScaledText>
                                 </View>
                             )}
                             {event.isExclusive && (
                                 <View style={styles.exclusiveBadge}>
                                     <Ionicons name="diamond" size={12} color="#FFD700" />
-                                    <Text style={styles.exclusiveText}>{t('flashSaleEvent.exclusive')}</Text>
+                                    <ScaledText style={styles.exclusiveText}>{t('flashSaleEvent.exclusive')}</ScaledText>
                                 </View>
                             )}
                         </View>
 
-                        <Text style={styles.heroTitle}>{event.title}</Text>
-                        <Text style={styles.heroDescription}>{event.description}</Text>
+                        <ScaledText style={styles.heroTitle}>{event.title}</ScaledText>
+                        <ScaledText style={styles.heroDescription}>{event.description}</ScaledText>
 
                         <View style={styles.heroStats}>
                             <View style={styles.heroStat}>
-                                <Text style={styles.heroStatValue}>{event.discountPercentage}%</Text>
-                                <Text style={styles.heroStatLabel}>{t('flashSaleEvent.off')}</Text>
+                                <ScaledText style={styles.heroStatValue}>{event.discountPercentage}%</ScaledText>
+                                <ScaledText style={styles.heroStatLabel}>{t('flashSaleEvent.off')}</ScaledText>
                             </View>
                             <View style={styles.heroStatDivider} />
                             <View style={styles.heroStat}>
-                                <Text style={styles.heroStatValue}>{products.length}</Text>
-                                <Text style={styles.heroStatLabel}>{t('flashSaleEvent.items')}</Text>
+                                <ScaledText style={styles.heroStatValue}>{products.length}</ScaledText>
+                                <ScaledText style={styles.heroStatLabel}>{t('flashSaleEvent.items')}</ScaledText>
                             </View>
                             <View style={styles.heroStatDivider} />
                             <View style={styles.heroStat}>
-                                <Text style={styles.heroStatValue}>
+                                <ScaledText style={styles.heroStatValue}>
                                     {event.subscriberCount?.toLocaleString() || '0'}
-                                </Text>
-                                <Text style={styles.heroStatLabel}>{t('flashSaleEvent.waiting')}</Text>
+                                </ScaledText>
+                                <ScaledText style={styles.heroStatLabel}>{t('flashSaleEvent.waiting')}</ScaledText>
                             </View>
                         </View>
                     </View>
@@ -434,24 +424,24 @@ const FlashSaleEventScreen = () => {
                                 size={18}
                                 color={isSubscribed ? "#FFD700" : AppColors.text}
                             />
-                            <Text style={[
+                            <ScaledText style={[
                                 styles.notifyButtonText,
                                 isSubscribed && styles.notifyButtonTextActive
                             ]}>
                                 {isSubscribed ? 'Notified' : 'Notify Me'}
-                            </Text>
+                            </ScaledText>
                         </TouchableOpacity>
                     )}
                 </View>
 
                 {/* Products Grid */}
                 <View style={styles.productsSection}>
-                    <Text style={styles.productsSectionTitle}>
+                    <ScaledText style={styles.productsSectionTitle}>
                         {event.status === 'active' ? 'Shop the Sale' : 'What\'s Coming'}
-                    </Text>
-                    <Text style={styles.productsSectionSubtitle}>
+                    </ScaledText>
+                    <ScaledText style={styles.productsSectionSubtitle}>
                         {products.length} exclusive items
-                    </Text>
+                    </ScaledText>
 
                     <View style={styles.productsGrid}>
                         {products.map((product, index) => (

@@ -1,18 +1,6 @@
 import React, { useState, useRef } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    Modal,
-    TouchableOpacity,
-    Share,
-    Image,
-    Dimensions,
-    TextInput,
-    ScrollView,
-    Alert,
-    ActivityIndicator,
-} from 'react-native';
+import { View, StyleSheet, Modal, TouchableOpacity, Share, Image, Dimensions, TextInput, ScrollView, Alert, ActivityIndicator,  } from 'react-native'
+import { ScaledText } from './ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
@@ -138,9 +126,9 @@ export const OutfitShareModal = ({ visible, onClose, outfit }: OutfitShareModalP
                 {/* Header */}
                 <View style={styles.modalHeader}>
                     <TouchableOpacity onPress={onClose}>
-                        <Text style={styles.cancelText}>{t('outfitShare.cancel')}</Text>
+                        <ScaledText style={styles.cancelText}>{t('outfitShare.cancel')}</ScaledText>
                     </TouchableOpacity>
-                    <Text style={styles.modalTitle}>{t('outfitShare.shareOutfit')}</Text>
+                    <ScaledText style={styles.modalTitle}>{t('outfitShare.shareOutfit')}</ScaledText>
                     <View style={{ width: 50 }} />
                 </View>
 
@@ -175,14 +163,14 @@ export const OutfitShareModal = ({ visible, onClose, outfit }: OutfitShareModalP
 
                             {outfit.occasion && (
                                 <View style={styles.previewBadge}>
-                                    <Text style={styles.previewBadgeText}>
+                                    <ScaledText style={styles.previewBadgeText}>
                                         {outfit.occasion.toUpperCase()}
-                                    </Text>
+                                    </ScaledText>
                                 </View>
                             )}
 
                             <View style={styles.watermark}>
-                                <Text style={styles.watermarkText}>✨ AIWardrobe</Text>
+                                <ScaledText style={styles.watermarkText}>✨ AIWardrobe</ScaledText>
                             </View>
                         </LinearGradient>
                     </ViewShot>
@@ -198,7 +186,7 @@ export const OutfitShareModal = ({ visible, onClose, outfit }: OutfitShareModalP
                             multiline
                             maxLength={200}
                         />
-                        <Text style={styles.charCount}>{caption.length}/200</Text>
+                        <ScaledText style={styles.charCount}>{caption.length}/200</ScaledText>
                     </View>
 
                     {/* Save to Gallery */}
@@ -207,11 +195,11 @@ export const OutfitShareModal = ({ visible, onClose, outfit }: OutfitShareModalP
                         onPress={handleSaveToGallery}
                     >
                         <Ionicons name="download-outline" size={20} color={COLORS.primary} />
-                        <Text style={styles.saveButtonText}>{t('outfitShare.saveToGallery')}</Text>
+                        <ScaledText style={styles.saveButtonText}>{t('outfitShare.saveToGallery')}</ScaledText>
                     </TouchableOpacity>
 
                     {/* Share Options */}
-                    <Text style={styles.sectionTitle}>{t('outfitShare.shareTo')}</Text>
+                    <ScaledText style={styles.sectionTitle}>{t('outfitShare.shareTo')}</ScaledText>
                     <View style={styles.shareGrid}>
                         {SHARE_OPTIONS.map((option) => (
                             <TouchableOpacity
@@ -227,23 +215,23 @@ export const OutfitShareModal = ({ visible, onClose, outfit }: OutfitShareModalP
                                         color={option.color}
                                     />
                                 </View>
-                                <Text style={styles.shareName}>{option.name}</Text>
+                                <ScaledText style={styles.shareName}>{option.name}</ScaledText>
                             </TouchableOpacity>
                         ))}
                     </View>
 
                     {/* Send to Friends */}
-                    <Text style={styles.sectionTitle}>{t('outfitShare.getFriendFeedback')}</Text>
+                    <ScaledText style={styles.sectionTitle}>{t('outfitShare.getFriendFeedback')}</ScaledText>
                     <View style={styles.friendFeedbackInfo}>
                         <Ionicons name="people" size={24} color={COLORS.primary} />
-                        <Text style={styles.friendFeedbackText}>
+                        <ScaledText style={styles.friendFeedbackText}>
                             {t('outfitShare.friendFeedbackDescription')}
-                        </Text>
+                        </ScaledText>
                     </View>
 
                     <View style={styles.reactionsPreview}>
                         {REACTIONS.map((emoji, idx) => (
-                            <Text key={idx} style={styles.reactionEmoji}>{emoji}</Text>
+                            <ScaledText key={idx} style={styles.reactionEmoji}>{emoji}</ScaledText>
                         ))}
                     </View>
                 </ScrollView>
@@ -252,7 +240,7 @@ export const OutfitShareModal = ({ visible, onClose, outfit }: OutfitShareModalP
                 {isSharing && (
                     <View style={styles.loadingOverlay}>
                         <ActivityIndicator size="large" color={COLORS.primary} />
-                        <Text style={styles.loadingText}>{t('outfitShare.preparingToShare')}</Text>
+                        <ScaledText style={styles.loadingText}>{t('outfitShare.preparingToShare')}</ScaledText>
                     </View>
                 )}
             </View>
@@ -275,7 +263,7 @@ export const FriendFeedback = ({ outfitId, reactions, onReact, myReaction }: Fri
     const { t } = useTranslation();
     return (
         <View style={styles.feedbackContainer}>
-            <Text style={styles.feedbackTitle}>{t('outfitShare.friendReactions')}</Text>
+            <ScaledText style={styles.feedbackTitle}>{t('outfitShare.friendReactions')}</ScaledText>
 
             <View style={styles.reactionsRow}>
                 {REACTIONS.map((emoji) => {
@@ -296,9 +284,9 @@ export const FriendFeedback = ({ outfitId, reactions, onReact, myReaction }: Fri
                                 onReact(emoji);
                             }}
                         >
-                            <Text style={styles.reactionButtonEmoji}>{emoji}</Text>
+                            <ScaledText style={styles.reactionButtonEmoji}>{emoji}</ScaledText>
                             {count > 0 && (
-                                <Text style={styles.reactionCount}>{count}</Text>
+                                <ScaledText style={styles.reactionCount}>{count}</ScaledText>
                             )}
                         </TouchableOpacity>
                     );

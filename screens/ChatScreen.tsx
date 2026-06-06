@@ -19,18 +19,8 @@ import React, {
     useEffect,
     useMemo,
 } from 'react';
-import {
-    View,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    FlatList,
-    StyleSheet,
-    Dimensions,
-    KeyboardAvoidingView,
-    Platform,
-    ActivityIndicator,
-} from 'react-native';
+import { View, TextInput, TouchableOpacity, FlatList, StyleSheet, Dimensions, KeyboardAvoidingView, Platform, ActivityIndicator,  } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -76,7 +66,7 @@ const MessageBubble = ({ message }: BubbleProps) => {
         >
             {!isUser && (
                 <View style={styles.avatarDot}>
-                    <Text style={styles.avatarDotText}>A</Text>
+                    <ScaledText style={styles.avatarDotText}>A</ScaledText>
                 </View>
             )}
             <View
@@ -86,11 +76,11 @@ const MessageBubble = ({ message }: BubbleProps) => {
                     message.fromCache && styles.bubbleCached,
                 ]}
             >
-                <Text style={[styles.bubbleText, isUser && styles.bubbleTextUser]}>
+                <ScaledText style={[styles.bubbleText, isUser && styles.bubbleTextUser]}>
                     {message.text}
-                </Text>
+                </ScaledText>
                 {message.fromCache && (
-                    <Text style={styles.cachedLabel}>· {t('common.cached')}</Text>
+                    <ScaledText style={styles.cachedLabel}>· {t('common.cached')}</ScaledText>
                 )}
             </View>
         </Animated.View>
@@ -220,10 +210,10 @@ const ChatScreen = () => {
             {/* Header */}
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.headerTitle}>{t('chat.title')}</Text>
-                    <Text style={styles.headerSubtitle}>
+                    <ScaledText style={styles.headerTitle}>{t('chat.title')}</ScaledText>
+                    <ScaledText style={styles.headerSubtitle}>
                         {items.length > 0 ? `${items.length} ${t('chat.itemsInWardrobe')}` : t('chat.addItemsToGetStarted')}
-                    </Text>
+                    </ScaledText>
                 </View>
                 {messages.length > 0 && (
                     <TouchableOpacity
@@ -244,14 +234,14 @@ const ChatScreen = () => {
                 {isEmpty && (
                     <View style={styles.emptyState}>
                         <View style={styles.emptyIcon}>
-                            <Text style={styles.emptyIconText}>✦</Text>
+                            <ScaledText style={styles.emptyIconText}>✦</ScaledText>
                         </View>
-                        <Text style={styles.emptyTitle}>{t('chat.emptyTitle')}</Text>
-                        <Text style={styles.emptySubtitle}>
+                        <ScaledText style={styles.emptyTitle}>{t('chat.emptyTitle')}</ScaledText>
+                        <ScaledText style={styles.emptySubtitle}>
                             {items.length === 0
                                 ? 'Add items to your wardrobe first so I can suggest real outfits.'
                                 : 'Ask me anything about your wardrobe.'}
-                        </Text>
+                        </ScaledText>
                         <View style={styles.emptyChips}>
                             {QUICK_SUGGESTIONS.slice(0, 3).map((s) => (
                                 <TouchableOpacity
@@ -260,7 +250,7 @@ const ChatScreen = () => {
                                     onPress={() => handleChip(s)}
                                     activeOpacity={0.8}
                                 >
-                                    <Text style={styles.emptyChipText}>{s}</Text>
+                                    <ScaledText style={styles.emptyChipText}>{s}</ScaledText>
                                 </TouchableOpacity>
                             ))}
                         </View>
@@ -284,11 +274,11 @@ const ChatScreen = () => {
                 {isLoading && (
                     <View style={styles.thinkingRow}>
                         <View style={styles.avatarDot}>
-                            <Text style={styles.avatarDotText}>A</Text>
+                            <ScaledText style={styles.avatarDotText}>A</ScaledText>
                         </View>
                         <View style={styles.thinkingBubble}>
                             {isThinking ? (
-                                <Text style={styles.thinkingText}>{t('chat.thinking')}</Text>
+                                <ScaledText style={styles.thinkingText}>{t('chat.thinking')}</ScaledText>
                             ) : (
                                 <View style={styles.dotsRow}>
                                     {[0, 1, 2].map((i) => (
@@ -314,7 +304,7 @@ const ChatScreen = () => {
                                 onPress={() => handleChip(item)}
                                 activeOpacity={0.8}
                             >
-                                <Text style={styles.chipText} numberOfLines={1}>{item}</Text>
+                                <ScaledText style={styles.chipText} numberOfLines={1}>{item}</ScaledText>
                             </TouchableOpacity>
                         )}
                     />

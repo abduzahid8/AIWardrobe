@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
-import {
-    View, Text, StyleSheet, Dimensions, TouchableOpacity,
-    ScrollView, StatusBar,
-} from 'react-native';
+import { View, StyleSheet, Dimensions, TouchableOpacity, ScrollView, StatusBar } from 'react-native';
+import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -16,6 +14,8 @@ import {
     STYLE_PERSONALITIES, COLOR_OPTIONS, OCCASIONS, FIT_OPTIONS, STYLE_GOALS,
 } from '../features/style-quiz/data';
 import { useTranslation } from 'react-i18next';
+
+const AnimatedScaledText = Animated.createAnimatedComponent(ScaledText);
 
 const { width: W } = Dimensions.get('window');
 
@@ -73,7 +73,7 @@ const NavRow = ({
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                 style={nav.gradient}
             >
-                <Text style={[nav.label, disabled && { color: '#94A3B8' }]}>{label ?? 'Continue'}</Text>
+                <ScaledText style={[nav.label, disabled && { color: '#94A3B8' }]}>{label ?? 'Continue'}</ScaledText>
                 <Ionicons name={isLast ? 'checkmark' : 'arrow-forward'} size={18} color={disabled ? '#94A3B8' : '#FFF'} />
             </LinearGradient>
         </TouchableOpacity>
@@ -100,12 +100,12 @@ const WelcomeStep = ({ onNext, t }: { onNext: () => void; t: any }) => (
                 />
             </Animated.View>
 
-            <Animated.Text entering={FadeInDown.delay(200).duration(700)} style={wlc.headline}>
+            <AnimatedScaledText entering={FadeInDown.delay(200).duration(700)} style={wlc.headline}>
                 {t('styleQuiz.welcome.title')}
-            </Animated.Text>
-            <Animated.Text entering={FadeInDown.delay(350).duration(700)} style={wlc.sub}>
+            </AnimatedScaledText>
+            <AnimatedScaledText entering={FadeInDown.delay(350).duration(700)} style={wlc.sub}>
                 {t('styleQuiz.welcome.subtitle')}
-            </Animated.Text>
+            </AnimatedScaledText>
 
             <Animated.View entering={FadeInDown.delay(500).duration(700)} style={wlc.pills}>
                 {[
@@ -115,7 +115,7 @@ const WelcomeStep = ({ onNext, t }: { onNext: () => void; t: any }) => (
                 ].map(key => (
                     <View key={key} style={wlc.pill}>
                         <Ionicons name="sparkles" size={13} color={T.accent} />
-                        <Text style={wlc.pillTxt}>{t(key)}</Text>
+                        <ScaledText style={wlc.pillTxt}>{t(key)}</ScaledText>
                     </View>
                 ))}
             </Animated.View>
@@ -128,7 +128,7 @@ const WelcomeStep = ({ onNext, t }: { onNext: () => void; t: any }) => (
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                     style={wlc.cta}
                 >
-                    <Text style={wlc.ctaTxt}>{t('styleQuiz.continue')}</Text>
+                    <ScaledText style={wlc.ctaTxt}>{t('styleQuiz.continue')}</ScaledText>
                     <Ionicons name="arrow-forward" size={20} color="#FFF" />
                 </LinearGradient>
             </TouchableOpacity>
@@ -149,8 +149,8 @@ const wlc = StyleSheet.create({
 // ── PERSONALITY ──────────────────────────────────────────────────────────────
 const PersonalityStep = ({ selected, onSelect, onNext, onBack, t }: any) => (
     <Animated.View style={s.step} entering={SlideInRight.duration(350).springify()}>
-        <Text style={s.title}>{t('styleQuiz.personality.title')}</Text>
-        <Text style={s.sub}>{t('styleQuiz.personality.subtitle')}</Text>
+        <ScaledText style={s.title}>{t('styleQuiz.personality.title')}</ScaledText>
+        <ScaledText style={s.sub}>{t('styleQuiz.personality.subtitle')}</ScaledText>
         <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, paddingBottom: 16 }}>
                 {STYLE_PERSONALITIES.map(item => {
@@ -162,9 +162,9 @@ const PersonalityStep = ({ selected, onSelect, onNext, onBack, t }: any) => (
                             activeOpacity={0.8}
                             style={[pc.card, { width: (W - 60) / 2 }, on && pc.sel]}
                         >
-                            <Text style={pc.emoji}>{item.emoji}</Text>
-                            <Text style={[pc.name, on && { color: T.accent }]}>{item.name}</Text>
-                            <Text style={pc.desc}>{item.description}</Text>
+                            <ScaledText style={pc.emoji}>{item.emoji}</ScaledText>
+                            <ScaledText style={[pc.name, on && { color: T.accent }]}>{t(item.tKey)}</ScaledText>
+                            <ScaledText style={pc.desc}>{t(item.tDescKey)}</ScaledText>
                             {on && <View style={pc.check}><Ionicons name="checkmark" size={12} color="#FFF" /></View>}
                         </TouchableOpacity>
                     );
@@ -186,8 +186,8 @@ const pc = StyleSheet.create({
 // ── COLORS ────────────────────────────────────────────────────────────────────
 const ColorsStep = ({ favoriteColors, onToggleColor, onNext, onBack, t }: any) => (
     <Animated.View style={s.step} entering={SlideInRight.duration(350).springify()}>
-        <Text style={s.title}>{t('styleQuiz.colors.title')}</Text>
-        <Text style={s.sub}>{t('styleQuiz.colors.subtitle', { count: favoriteColors.length })}</Text>
+        <ScaledText style={s.title}>{t('styleQuiz.colors.title')}</ScaledText>
+        <ScaledText style={s.sub}>{t('styleQuiz.colors.subtitle', { count: favoriteColors.length })}</ScaledText>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16, justifyContent: 'center', flex: 1, alignContent: 'center' }}>
             {COLOR_OPTIONS.map(c => {
                 const on = favoriteColors.includes(c.id);
@@ -214,8 +214,8 @@ const col = StyleSheet.create({
 // ── OCCASIONS ─────────────────────────────────────────────────────────────────
 const OccasionsStep = ({ selectedOccasions, onToggleOccasion, onNext, onBack, t }: any) => (
     <Animated.View style={s.step} entering={SlideInRight.duration(350).springify()}>
-        <Text style={s.title}>{t('styleQuiz.occasions.title')}</Text>
-        <Text style={s.sub}>{t('styleQuiz.occasions.subtitle')}</Text>
+        <ScaledText style={s.title}>{t('styleQuiz.occasions.title')}</ScaledText>
+        <ScaledText style={s.sub}>{t('styleQuiz.occasions.subtitle')}</ScaledText>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, flex: 1, alignContent: 'center' }}>
             {OCCASIONS.map(o => {
                 const on = selectedOccasions.includes(o.id);
@@ -229,7 +229,7 @@ const OccasionsStep = ({ selectedOccasions, onToggleOccasion, onNext, onBack, t 
                         <View style={[occ.icon, on && occ.iconSel]}>
                             <Ionicons name={o.icon as any} size={26} color={on ? '#FFF' : T.primary} />
                         </View>
-                        <Text style={[occ.name, on && { color: T.text, fontWeight: '700' }]}>{o.name}</Text>
+                        <ScaledText style={[occ.name, on && { color: T.text, fontWeight: '700' }]}>{t(o.tKey)}</ScaledText>
                     </TouchableOpacity>
                 );
             })}
@@ -248,8 +248,8 @@ const occ = StyleSheet.create({
 // ── FIT ───────────────────────────────────────────────────────────────────────
 const FitStep = ({ selected, onSelect, onNext, onBack, t }: any) => (
     <Animated.View style={s.step} entering={SlideInRight.duration(350).springify()}>
-        <Text style={s.title}>{t('styleQuiz.fit.title')}</Text>
-        <Text style={s.sub}>{t('styleQuiz.fit.subtitle')}</Text>
+        <ScaledText style={s.title}>{t('styleQuiz.fit.title')}</ScaledText>
+        <ScaledText style={s.sub}>{t('styleQuiz.fit.subtitle')}</ScaledText>
         <View style={{ gap: 14, flex: 1, justifyContent: 'center' }}>
             {FIT_OPTIONS.map(f => {
                 const on = selected === f.id;
@@ -260,10 +260,10 @@ const FitStep = ({ selected, onSelect, onNext, onBack, t }: any) => (
                         activeOpacity={0.8}
                         style={[fit.card, on && fit.sel]}
                     >
-                        <Text style={fit.emoji}>{f.icon}</Text>
+                        <ScaledText style={fit.emoji}>{f.icon}</ScaledText>
                         <View style={{ flex: 1 }}>
-                            <Text style={[fit.name, on && { color: T.accent }]}>{f.name}</Text>
-                            <Text style={fit.desc}>{f.description}</Text>
+                            <ScaledText style={[fit.name, on && { color: T.accent }]}>{t(f.tKey)}</ScaledText>
+                            <ScaledText style={fit.desc}>{t(f.tDescKey)}</ScaledText>
                         </View>
                         {on && <Ionicons name="checkmark-circle" size={24} color={T.accent} />}
                     </TouchableOpacity>
@@ -284,8 +284,8 @@ const fit = StyleSheet.create({
 // ── GOALS ─────────────────────────────────────────────────────────────────────
 const GoalsStep = ({ selectedGoals, onToggleGoal, onNext, onBack, t }: any) => (
     <Animated.View style={s.step} entering={SlideInRight.duration(350).springify()}>
-        <Text style={s.title}>{t('styleQuiz.goals.title')}</Text>
-        <Text style={s.sub}>{t('styleQuiz.goals.subtitle')}</Text>
+        <ScaledText style={s.title}>{t('styleQuiz.goals.title')}</ScaledText>
+        <ScaledText style={s.sub}>{t('styleQuiz.goals.subtitle')}</ScaledText>
         <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
             <View style={{ gap: 10, paddingBottom: 16 }}>
                 {STYLE_GOALS.map(g => {
@@ -300,7 +300,7 @@ const GoalsStep = ({ selectedGoals, onToggleGoal, onNext, onBack, t }: any) => (
                             <View style={[gls.icon, on && gls.iconSel]}>
                                 <Ionicons name={g.icon as any} size={20} color={on ? '#FFF' : T.primary} />
                             </View>
-                            <Text style={[gls.name, on && { color: T.text, fontWeight: '700' }]}>{g.name}</Text>
+                            <ScaledText style={[gls.name, on && { color: T.text, fontWeight: '700' }]}>{t(g.tKey)}</ScaledText>
                             {on && <Ionicons name="checkmark-circle" size={20} color={T.accent} />}
                         </TouchableOpacity>
                     );
@@ -328,12 +328,12 @@ const CompleteStep = ({ selectedGoals, selectedOccasions, onComplete, onBack, t 
                 </LinearGradient>
             </Animated.View>
 
-            <Animated.Text entering={FadeInDown.delay(250)} style={cmp.title}>
+            <AnimatedScaledText entering={FadeInDown.delay(250)} style={cmp.title}>
                 {t('styleQuiz.complete.title')}
-            </Animated.Text>
-            <Animated.Text entering={FadeInDown.delay(400)} style={cmp.sub}>
+            </AnimatedScaledText>
+            <AnimatedScaledText entering={FadeInDown.delay(400)} style={cmp.sub}>
                 {t('styleQuiz.complete.subtitle')}
-            </Animated.Text>
+            </AnimatedScaledText>
 
             <Animated.View entering={FadeInDown.delay(550)} style={{ gap: 12, marginTop: 32 }}>
                 {[
@@ -343,7 +343,7 @@ const CompleteStep = ({ selectedGoals, selectedOccasions, onComplete, onBack, t 
                 ].map(line => (
                     <View key={line} style={cmp.row}>
                         <View style={cmp.dot} />
-                        <Text style={cmp.rowTxt}>{line}</Text>
+                        <ScaledText style={cmp.rowTxt}>{line}</ScaledText>
                     </View>
                 ))}
             </Animated.View>

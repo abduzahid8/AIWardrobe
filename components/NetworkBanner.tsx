@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { Text, Animated, StyleSheet, Platform } from 'react-native';
+import { Animated, StyleSheet, Platform } from 'react-native'
+import { ScaledText } from './ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useNetInfo } from '@react-native-community/netinfo';
@@ -39,7 +40,7 @@ const NetworkBanner: React.FC = () => {
             pointerEvents={isOnline ? 'none' : 'auto'}
         >
             <Ionicons name="cloud-offline-outline" size={16} color="#FFF" />
-            <Text style={styles.text}>{t('network.noInternetConnection')}</Text>
+            <ScaledText style={styles.text}>{t('network.noInternetConnection')}</ScaledText>
         </Animated.View>
     );
 };

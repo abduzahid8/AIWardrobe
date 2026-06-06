@@ -1,0 +1,12 @@
+Testing Mobile VTON multi-fused try-on...
+URL: https://zoxxid75--aiwardrobe-mobile-vton-fastapi-app.modal.run/tryon/multi-fused
+
+=== RESULT ===
+Success: True
+Method: sd15_ip_adapter_fused_v2
+Rendered Garments: ['top', 'pants', 'shoes']
+Elapsed: 5963 ms
+Result image length: 794706 chars
+
+✓ Mobile VTON multi-fused is working correctly
+✓ Result image saved to test_multi_result.png

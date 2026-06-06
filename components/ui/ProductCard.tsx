@@ -2,14 +2,8 @@
 // Features: 3D hover effect, professional image display, quick actions, glass variant
 
 import React from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    Pressable,
-    ViewStyle,
-    Dimensions,
-} from 'react-native';
+import { View, StyleSheet, Pressable, ViewStyle, Dimensions,  } from 'react-native'
+import { ScaledText } from '../ui/ScaledText';;
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -174,28 +168,28 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 {(title || category || brand) && (
                     <View style={[styles.info, { padding: spacing.s }]}>
                         {brand && (
-                            <Text
+                            <ScaledText
                                 style={[styles.brand, { color: colors.text.muted, fontSize: 10 }]}
                                 numberOfLines={2}
                             >
                                 {brand.toUpperCase()}
-                            </Text>
+                            </ScaledText>
                         )}
                         {title && (
-                            <Text
+                            <ScaledText
                                 style={[styles.title, { color: colors.text.primary, fontSize: 13 }]}
                                 numberOfLines={2}
                             >
                                 {title}
-                            </Text>
+                            </ScaledText>
                         )}
                         {category && (
-                            <Text
+                            <ScaledText
                                 style={[styles.category, { color: colors.text.secondary, fontSize: 11 }]}
                                 numberOfLines={2}
                             >
                                 {category}
-                            </Text>
+                            </ScaledText>
                         )}
                     </View>
                 )}

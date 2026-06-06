@@ -2,7 +2,8 @@
 // Features: User/AI variants, typing indicator, image previews, outfit cards
 
 import React from 'react';
-import { View, Text, StyleSheet, Image, ViewStyle } from 'react-native';
+import { View, StyleSheet, Image, ViewStyle } from 'react-native'
+import { ScaledText } from '../ui/ScaledText';;
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../src/hooks/useTheme';
 import { Ionicons } from '@expo/vector-icons';
@@ -105,9 +106,9 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                             />
                         )}
                         {message && (
-                            <Text style={[styles.messageText, { color: colors.text.primary }]}>
+                            <ScaledText style={[styles.messageText, { color: colors.text.primary }]}>
                                 {message}
-                            </Text>
+                            </ScaledText>
                         )}
                         {children}
                     </View>
@@ -130,9 +131,9 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                             />
                         )}
                         {message && (
-                            <Text style={[styles.messageText, { color: colors.button.primaryText }]}>
+                            <ScaledText style={[styles.messageText, { color: colors.button.primaryText }]}>
                                 {message}
-                            </Text>
+                            </ScaledText>
                         )}
                         {children}
                     </LinearGradient>
@@ -141,7 +142,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
 
             {/* Timestamp */}
             {timestamp && (
-                <Text
+                <ScaledText
                     style={[
                         styles.timestamp,
                         {
@@ -153,7 +154,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                     ]}
                 >
                     {timestamp}
-                </Text>
+                </ScaledText>
             )}
         </View>
     );

@@ -534,6 +534,15 @@ function getFeaturesByTier(tier) {
             prioritySupport: false,
             unlimitedStorage: false,
         },
+        lite: {
+            maxUses: -1,
+            aiOutfits: -1,
+            wardrobeScans: -1,
+            tryOns: 0,
+            analytics: true,
+            prioritySupport: false,
+            unlimitedStorage: false,
+        },
         premium: {
             maxUses: -1,
             aiOutfits: -1,

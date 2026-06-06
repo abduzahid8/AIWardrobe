@@ -44,14 +44,15 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // ============================================
 
 export interface OutfitSuggestionCarouselProps {
-    outfits: ScoredOutfit[];
-    allItems: ClothingItem[];
-    onSave: (outfitId: string, itemIds: string[]) => void;
-    onDislike: (itemIds: string[]) => void;
-    onEdit: (itemIds: string[]) => void;
-    onAvatarPress: (itemIds: string[]) => void;
-    onStylistChat?: (initialMessage: string) => void;
-    savedOutfitKeys?: Set<string>;
+  outfits: ScoredOutfit[];
+  allItems: ClothingItem[];
+  onSave: (outfitId: string, itemIds: string[]) => void;
+  onDislike: (itemIds: string[]) => void;
+  onEdit: (itemIds: string[]) => void;
+  onAvatarPress: (itemIds: string[]) => void;
+  onStylistChat?: (initialMessage: string) => void;
+  savedOutfitKeys?: Set<string>;
+  onRegenerate?: () => void;
 }
 
 // ============================================
@@ -64,14 +65,15 @@ export interface OutfitSuggestionCarouselProps {
  * Dot pagination reflects current card position.
  */
 const OutfitSuggestionCarousel = ({
-    outfits,
-    allItems,
-    onSave,
-    onDislike,
-    onEdit,
-    onAvatarPress,
-    onStylistChat,
-    savedOutfitKeys = new Set(),
+  outfits,
+  allItems,
+  onSave,
+  onDislike,
+  onEdit,
+  onAvatarPress,
+  onStylistChat,
+  savedOutfitKeys = new Set(),
+  onRegenerate,
 }: OutfitSuggestionCarouselProps) => {
     const [activeIndex, setActiveIndex] = useState(0);
     const flatListRef = useRef<FlatList<ScoredOutfit>>(null);
@@ -108,20 +110,21 @@ const OutfitSuggestionCarousel = ({
 
     const renderItem = useCallback(({ item, index }: { item: ScoredOutfit; index: number }) => {
         const key = [...item.outfit.itemIds].sort().join(',');
-        return (
-            <OutfitCard
-                scoredOutfit={item}
-                allItems={allItems}
-                onSave={onSave}
-                onDislike={handleDislike}
-                onEdit={onEdit}
-                onAvatarPress={onAvatarPress}
-                onStylistChat={onStylistChat}
-                tempId={`outfit_${index}`}
-                isSaved={savedOutfitKeys.has(key)}
-            />
-        );
-    }, [allItems, onSave, handleDislike, onEdit, onAvatarPress, onStylistChat, savedOutfitKeys]);
+    return (
+      <OutfitCard
+        scoredOutfit={item}
+        allItems={allItems}
+        onSave={onSave}
+        onDislike={handleDislike}
+        onEdit={onEdit}
+        onAvatarPress={onAvatarPress}
+        onStylistChat={onStylistChat}
+        onRegenerate={onRegenerate}
+        tempId={`outfit_${index}`}
+        isSaved={savedOutfitKeys.has(key)}
+      />
+    );
+    }, [allItems, onSave, handleDislike, onEdit, onAvatarPress, onStylistChat, onRegenerate, savedOutfitKeys]);
 
     if (validOutfits.length === 0) return null;
 

@@ -2,20 +2,8 @@
  * AdminGuideTab — Edit guide page content and upload hero image
  */
 import React, { useState, useEffect } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View,  } from 'react-native'
+import { ScaledText } from '../../components/ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../../lib/supabase';
@@ -209,12 +197,12 @@ export const AdminGuideTab = () => {
           ) : (
             <View style={s.imagePlaceholder}>
               <Ionicons name="image" size={32} color="#8E8E93" />
-              <Text style={s.imagePlaceholderText}>{t('admin.guide.pickImage')}</Text>
+              <ScaledText style={s.imagePlaceholderText}>{t('admin.guide.pickImage')}</ScaledText>
             </View>
           )}
         </TouchableOpacity>
 
-        <Text style={s.label}>{t('admin.guide.title')}</Text>
+        <ScaledText style={s.label}>{t('admin.guide.title')}</ScaledText>
         <TextInput
           style={s.input}
           value={title}
@@ -222,7 +210,7 @@ export const AdminGuideTab = () => {
           placeholder={t('admin.guide.titlePlaceholder')}
         />
 
-        <Text style={s.label}>{t('admin.guide.subtitle')}</Text>
+        <ScaledText style={s.label}>{t('admin.guide.subtitle')}</ScaledText>
         <TextInput
           style={[s.input, s.textArea]}
           value={subtitle}
@@ -232,7 +220,7 @@ export const AdminGuideTab = () => {
           numberOfLines={3}
         />
 
-        <Text style={s.label}>{t('admin.guide.ctaText')}</Text>
+        <ScaledText style={s.label}>{t('admin.guide.ctaText')}</ScaledText>
         <TextInput
           style={s.input}
           value={ctaText}
@@ -240,7 +228,7 @@ export const AdminGuideTab = () => {
           placeholder={t('admin.guide.ctaTextPlaceholder')}
         />
 
-        <Text style={s.label}>{t('admin.guide.ctaUrl')}</Text>
+        <ScaledText style={s.label}>{t('admin.guide.ctaUrl')}</ScaledText>
         <TextInput
           style={s.input}
           value={ctaUrl}
@@ -251,7 +239,7 @@ export const AdminGuideTab = () => {
           keyboardType="url"
         />
 
-        <Text style={s.label}>{t('admin.guide.backgroundColor')}</Text>
+        <ScaledText style={s.label}>{t('admin.guide.backgroundColor')}</ScaledText>
         <View style={s.colorRow}>
           <TextInput
             style={[s.input, s.colorInput]}
@@ -265,7 +253,7 @@ export const AdminGuideTab = () => {
         </View>
 
         <View style={s.switchRow}>
-          <Text style={s.label}>{t('admin.guide.isActive')}</Text>
+          <ScaledText style={s.label}>{t('admin.guide.isActive')}</ScaledText>
           <Switch value={isActive} onValueChange={setIsActive} />
         </View>
 
@@ -277,7 +265,7 @@ export const AdminGuideTab = () => {
           {submitting ? (
             <ActivityIndicator color="#FFF" />
           ) : (
-            <Text style={s.submitBtnText}>{t('admin.guide.save')}</Text>
+            <ScaledText style={s.submitBtnText}>{t('admin.guide.save')}</ScaledText>
           )}
         </TouchableOpacity>
         <View style={{ height: 40 }} />

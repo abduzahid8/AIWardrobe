@@ -1,9 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-} from 'react-native';
+import { View, StyleSheet,  } from 'react-native'
+import { ScaledText } from './ui/ScaledText';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -96,11 +93,11 @@ const WeatherWidget: React.FC = () => {
                 size={16}
                 color="#8E8E8E"
             />
-            <Text style={styles.temp}>{weather.temp}°</Text>
+            <ScaledText style={styles.temp}>{weather.temp}°</ScaledText>
             {weather.tempHigh && weather.tempLow && (
-                <Text style={styles.range}>
+                <ScaledText style={styles.range}>
                     {t('weather.high')}:{weather.tempHigh}° {t('weather.low')}:{weather.tempLow}°
-                </Text>
+                </ScaledText>
             )}
         </Animated.View>
     );

@@ -6,7 +6,8 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native'
+import { ScaledText } from './ui/ScaledText';
 import { useTranslation } from 'react-i18next';
 import Animated, {
     useAnimatedStyle,
@@ -53,14 +54,14 @@ const StreakBadge: React.FC<StreakBadgeProps> = ({ variant = 'inline' }) => {
             <View style={styles.card}>
                 <Animated.Text style={[styles.flameIcon, flameStyle]}>🔥</Animated.Text>
                 <View style={styles.cardContent}>
-                    <Text style={styles.cardStreak}>{streak} {t('streak.dayStreak')}</Text>
-                    <Text style={styles.cardSubtext}>
+                    <ScaledText style={styles.cardStreak}>{streak} {t('streak.dayStreak')}</ScaledText>
+                    <ScaledText style={styles.cardSubtext}>
                         {streak >= 7
                             ? t('streak.amazingConsistency')
                             : streak >= 3
                                 ? t('streak.keepItGoing')
                                 : t('streak.greatStart')}
-                    </Text>
+                    </ScaledText>
                 </View>
             </View>
         );
@@ -69,7 +70,7 @@ const StreakBadge: React.FC<StreakBadgeProps> = ({ variant = 'inline' }) => {
     return (
         <View style={styles.inline}>
             <Animated.Text style={[styles.inlineFlame, flameStyle]}>🔥</Animated.Text>
-            <Text style={styles.inlineText}>{streak}</Text>
+            <ScaledText style={styles.inlineText}>{streak}</ScaledText>
         </View>
     );
 };

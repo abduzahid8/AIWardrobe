@@ -244,6 +244,100 @@ export function getCategoryBreakdown(items: ClothingItem[]): CategoryBreakdownEn
 }
 
 // ============================================
+// SEASON BREAKDOWN
+// ============================================
+
+export interface SeasonBreakdownEntry {
+    season: string;
+    count: number;
+}
+
+export function getSeasonBreakdown(items: ClothingItem[]): SeasonBreakdownEntry[] {
+    const map = new Map<string, number>();
+
+    for (const item of items) {
+        if (item.seasons) {
+            item.seasons.forEach((s) => {
+                map.set(s, (map.get(s) || 0) + 1);
+            });
+        }
+    }
+
+    return Array.from(map.entries())
+        .map(([season, count]) => ({ season, count }))
+        .sort((a, b) => b.count - a.count);
+}
+
+// ============================================
+// OCCASION BREAKDOWN
+// ============================================
+
+export interface OccasionBreakdownEntry {
+    occasion: string;
+    count: number;
+}
+
+export function getOccasionBreakdown(items: ClothingItem[]): OccasionBreakdownEntry[] {
+    const map = new Map<string, number>();
+
+    for (const item of items) {
+        if (item.occasions) {
+            item.occasions.forEach((o) => {
+                map.set(o, (map.get(o) || 0) + 1);
+            });
+        }
+    }
+
+    return Array.from(map.entries())
+        .map(([occasion, count]) => ({ occasion, count }))
+        .sort((a, b) => b.count - a.count);
+}
+
+// ============================================
+// WARDROBE HEALTH SCORE
+// ============================================
+
+export interface WardrobeHealthScore {
+    overall: number;
+    utilization: number;
+    diversity: number;
+    maintenance: number;
+    freshness: number;
+}
+
+export function getWardrobeHealthScore(items: ClothingItem[], wearLogs: WearLog[]): WardrobeHealthScore {
+    const totalItems = items.length;
+    if (totalItems === 0) {
+        return { overall: 0, utilization: 0, diversity: 0, maintenance: 0, freshness: 0 };
+    }
+
+    // Utilization score (30%)
+    const cutoff = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+    const recentLogs = wearLogs.filter((log) => log.date >= cutoff);
+    const wornItemIds = new Set(recentLogs.flatMap((log) => log.itemIds));
+    const utilizationPct = wornItemIds.size / totalItems;
+    const utilizationScore = Math.round(utilizationPct * 100);
+
+    // Diversity score (30%)
+    const diversityScore = scoreDiversity(items, wearLogs);
+
+    // Maintenance score (20%) - items without wear are okay, but favor items with some use
+    const neverWorn = items.filter((i) => i.wearCount === 0).length;
+    const maintenanceScore = Math.round(Math.max(0, (1 - neverWorn / totalItems)) * 100);
+
+    // Freshness score (20%) - recently added items indicate active wardrobe management
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
+    const recentItems = items.filter((i) => i.createdAt >= thirtyDaysAgo).length;
+    const freshnessScore = Math.min(100, Math.round((recentItems / Math.max(totalItems, 1)) * 200));
+
+    const overall = Math.round(
+        utilizationScore * 0.3 + diversityScore * 0.3 + maintenanceScore * 0.2 + freshnessScore * 0.2
+    );
+
+    return { overall: Math.min(100, overall), utilization: utilizationScore, diversity: diversityScore, maintenance: maintenanceScore, freshness: Math.min(100, freshnessScore) };
+}
+
+// ============================================
 // DEFAULT LAYER ASSIGNMENT
 // ============================================
 

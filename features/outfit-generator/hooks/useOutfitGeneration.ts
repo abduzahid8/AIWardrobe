@@ -679,7 +679,7 @@ export function useOutfitGeneration({
     }
   };
 
-  const saveOutfit = async (outfit: GeneratedOutfit) => {
+  const saveOutfit = async (outfit: GeneratedOutfit, collectionCategory?: string) => {
     const itemIds = outfit.items
       .map((item) => String(item.id || item.image))
       .filter(Boolean);
@@ -689,7 +689,7 @@ export function useOutfitGeneration({
       return;
     }
 
-    const occasion = styleToOccasion(selectedStyle);
+    const occasion = collectionCategory || styleToOccasion(selectedStyle);
     const store = useWardrobeStore.getState();
     const newOutfitId = store.addOutfit({
       userId: user?.id || 'guest',
@@ -701,7 +701,7 @@ export function useOutfitGeneration({
       style: selectedStyle,
     });
     if (newOutfitId) {
-      store.saveOutfit(newOutfitId);
+      store.saveOutfit(newOutfitId, collectionCategory);
       likeOutfit(newOutfitId, itemIds, occasion);
     }
 

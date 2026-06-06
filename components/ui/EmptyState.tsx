@@ -1,12 +1,6 @@
 import React from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    ViewStyle,
-    Image,
-    ImageSourcePropType,
-} from 'react-native';
+import { View, StyleSheet, ViewStyle, Image, ImageSourcePropType,  } from 'react-native'
+import { ScaledText } from '../ui/ScaledText';;
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing } from '../../src/theme';
 import { AnimatedButton } from '../AnimatedButton';
@@ -59,10 +53,10 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
                 </View>
             )}
 
-            <Text style={styles.title}>{title}</Text>
+            <ScaledText style={styles.title}>{title}</ScaledText>
 
             {description && (
-                <Text style={styles.description}>{description}</Text>
+                <ScaledText style={styles.description}>{description}</ScaledText>
             )}
 
             {actionLabel && onActionPress && (

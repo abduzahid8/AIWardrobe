@@ -1,14 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-    View,
-    Text,
-    ScrollView,
-    TouchableOpacity,
-    StyleSheet,
-    Dimensions,
-    RefreshControl,
-    ActivityIndicator,
-} from 'react-native';
+import { View, ScrollView, TouchableOpacity, StyleSheet, Dimensions, RefreshControl, ActivityIndicator,  } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -70,32 +62,32 @@ const CountdownTimer = ({
                     size={12}
                     color={isEnding ? '#FF3B30' : '#FFF'}
                 />
-                <Text style={[styles.countdownCompactText, isEnding && styles.countdownEndingText]}>
+                <ScaledText style={[styles.countdownCompactText, isEnding && styles.countdownEndingText]}>
                     {hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m ${seconds}s`}
-                </Text>
+                </ScaledText>
             </View>
         );
     }
 
     return (
         <View style={styles.countdownContainer}>
-            <Text style={styles.countdownLabel}>{label}</Text>
+            <ScaledText style={styles.countdownLabel}>{label}</ScaledText>
             <View style={styles.countdownDigits}>
                 <View style={styles.countdownBlock}>
-                    <Text style={styles.countdownNumber}>{String(hours).padStart(2, '0')}</Text>
-                    <Text style={styles.countdownUnit}>{t('flashSales.hrs')}</Text>
+                    <ScaledText style={styles.countdownNumber}>{String(hours).padStart(2, '0')}</ScaledText>
+                    <ScaledText style={styles.countdownUnit}>{t('flashSales.hrs')}</ScaledText>
                 </View>
-                <Text style={styles.countdownSeparator}>:</Text>
+                <ScaledText style={styles.countdownSeparator}>:</ScaledText>
                 <View style={styles.countdownBlock}>
-                    <Text style={styles.countdownNumber}>{String(minutes).padStart(2, '0')}</Text>
-                    <Text style={styles.countdownUnit}>{t('flashSales.min')}</Text>
+                    <ScaledText style={styles.countdownNumber}>{String(minutes).padStart(2, '0')}</ScaledText>
+                    <ScaledText style={styles.countdownUnit}>{t('flashSales.min')}</ScaledText>
                 </View>
-                <Text style={styles.countdownSeparator}>:</Text>
+                <ScaledText style={styles.countdownSeparator}>:</ScaledText>
                 <View style={styles.countdownBlock}>
-                    <Text style={[styles.countdownNumber, isEnding && styles.countdownEndingText]}>
+                    <ScaledText style={[styles.countdownNumber, isEnding && styles.countdownEndingText]}>
                         {String(seconds).padStart(2, '0')}
-                    </Text>
-                    <Text style={styles.countdownUnit}>{t('flashSales.sec')}</Text>
+                    </ScaledText>
+                    <ScaledText style={styles.countdownUnit}>{t('flashSales.sec')}</ScaledText>
                 </View>
             </View>
         </View>
@@ -153,7 +145,7 @@ const HeroEventCard = ({
                 {event.status === 'active' && (
                     <Animated.View style={[styles.liveBadge, pulseStyle]}>
                         <View style={styles.liveDot} />
-                        <Text style={styles.liveText}>{t('flashSales.live')}</Text>
+                        <ScaledText style={styles.liveText}>{t('flashSales.live')}</ScaledText>
                     </Animated.View>
                 )}
 
@@ -161,7 +153,7 @@ const HeroEventCard = ({
                 {event.isExclusive && (
                     <View style={styles.exclusiveBadge}>
                         <Ionicons name="diamond" size={12} color="#FFD700" />
-                        <Text style={styles.exclusiveText}>{t('flashSales.exclusive')}</Text>
+                        <ScaledText style={styles.exclusiveText}>{t('flashSales.exclusive')}</ScaledText>
                     </View>
                 )}
 
@@ -175,22 +167,22 @@ const HeroEventCard = ({
                                 fadeIn={false}
                             />
                         )}
-                        <Text style={styles.heroDiscount}>{t('flashSales.upToOff', { discount: event.discountPercentage })}</Text>
+                        <ScaledText style={styles.heroDiscount}>{t('flashSales.upToOff', { discount: event.discountPercentage })}</ScaledText>
                     </View>
 
-                    <Text style={styles.heroTitle}>{event.title}</Text>
-                    <Text style={styles.heroDescription} numberOfLines={2}>
+                    <ScaledText style={styles.heroTitle}>{event.title}</ScaledText>
+                    <ScaledText style={styles.heroDescription} numberOfLines={2}>
                         {event.description}
-                    </Text>
+                    </ScaledText>
 
                     <CountdownTimer event={event} t={t} />
 
                     <View style={styles.heroFooter}>
-                        <Text style={styles.heroItemCount}>
+                        <ScaledText style={styles.heroItemCount}>
                             {event.itemCount} {t('flashSales.exclusivePieces')}
-                        </Text>
+                        </ScaledText>
                         <View style={styles.heroShopButton}>
-                            <Text style={styles.heroShopButtonText}>{t('flashSales.shopNow')}</Text>
+                            <ScaledText style={styles.heroShopButtonText}>{t('flashSales.shopNow')}</ScaledText>
                             <Ionicons name="arrow-forward" size={16} color="#0A1931" />
                         </View>
                     </View>
@@ -247,7 +239,7 @@ const EventCard = ({
 
                 {/* Discount badge */}
                 <View style={styles.discountBadge}>
-                    <Text style={styles.discountBadgeText}>{t('flashSales.discountBadge', { discount: event.discountPercentage })}</Text>
+                    <ScaledText style={styles.discountBadgeText}>{t('flashSales.discountBadge', { discount: event.discountPercentage })}</ScaledText>
                 </View>
 
                 {/* Countdown */}
@@ -256,13 +248,13 @@ const EventCard = ({
                 </View>
 
                 <View style={styles.eventCardContent}>
-                    <Text style={styles.eventCardBrand}>{event.brand}</Text>
-                    <Text style={styles.eventCardTitle} numberOfLines={2}>
+                    <ScaledText style={styles.eventCardBrand}>{event.brand}</ScaledText>
+                    <ScaledText style={styles.eventCardTitle} numberOfLines={2}>
                         {event.title}
-                    </Text>
-                    <Text style={styles.eventCardItems}>
+                    </ScaledText>
+                    <ScaledText style={styles.eventCardItems}>
                         {event.itemCount} {t('common.items')}
-                    </Text>
+                    </ScaledText>
                 </View>
 
                 {/* Notify button for upcoming */}
@@ -335,7 +327,7 @@ const FlashSalesScreen = () => {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={AppColors.accent} />
-                <Text style={styles.loadingText}>{t('flashSales.loading')}</Text>
+                <ScaledText style={styles.loadingText}>{t('flashSales.loading')}</ScaledText>
             </View>
         );
     }
@@ -351,9 +343,9 @@ const FlashSalesScreen = () => {
                     <Ionicons name="chevron-back" size={24} color={AppColors.text} />
                 </TouchableOpacity>
                 <View style={styles.headerTitleContainer}>
-                    <Text style={styles.headerTitle}>{t('flashSales.title')}</Text>
+                    <ScaledText style={styles.headerTitle}>{t('flashSales.title')}</ScaledText>
                     <View style={styles.headerBadge}>
-                        <Text style={styles.headerBadgeText}>{t('flashSales.liveBadge')}</Text>
+                        <ScaledText style={styles.headerBadgeText}>{t('flashSales.liveBadge')}</ScaledText>
                     </View>
                 </View>
                 <TouchableOpacity style={styles.filterButton}>
@@ -384,10 +376,10 @@ const FlashSalesScreen = () => {
                 {activeEvents.length > 0 && (
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>{t('flashSales.happeningNow')}</Text>
-                            <Text style={styles.sectionSubtitle}>
+                            <ScaledText style={styles.sectionTitle}>{t('flashSales.happeningNow')}</ScaledText>
+                            <ScaledText style={styles.sectionSubtitle}>
                                 {activeEvents.length} active {activeEvents.length === 1 ? t('flashSales.sale') : t('flashSales.sales')}
-                            </Text>
+                            </ScaledText>
                         </View>
                         <ScrollView
                             horizontal
@@ -411,10 +403,10 @@ const FlashSalesScreen = () => {
                 {upcomingEvents.length > 0 && (
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>{t('flashSales.comingSoon')}</Text>
-                            <Text style={styles.sectionSubtitle}>
+                            <ScaledText style={styles.sectionTitle}>{t('flashSales.comingSoon')}</ScaledText>
+                            <ScaledText style={styles.sectionSubtitle}>
                                 {t('flashSales.dontMissOut')}
-                            </Text>
+                            </ScaledText>
                         </View>
                         <ScrollView
                             horizontal
@@ -443,10 +435,10 @@ const FlashSalesScreen = () => {
                         <View style={styles.infoIcon}>
                             <Ionicons name="diamond-outline" size={28} color={AppColors.accent} />
                         </View>
-                        <Text style={styles.infoTitle}>{t('flashSales.exclusiveAccess')}</Text>
-                        <Text style={styles.infoText}>
+                        <ScaledText style={styles.infoTitle}>{t('flashSales.exclusiveAccess')}</ScaledText>
+                        <ScaledText style={styles.infoText}>
                             {t('flashSales.infoText')}
-                        </Text>
+                        </ScaledText>
                     </LinearGradient>
                 </View>
 

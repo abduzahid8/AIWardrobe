@@ -42,17 +42,19 @@ const ITEM_CELL_SIZE = (CARD_WIDTH - 32 - 8) / 2;
 // ============================================
 
 export interface OutfitCardProps {
-    scoredOutfit: ScoredOutfit;
-    allItems: ClothingItem[];
-    onSave: (outfitId: string, itemIds: string[]) => void;
-    onDislike: (itemIds: string[]) => void;
-    onEdit: (itemIds: string[]) => void;
-    onAvatarPress: (itemIds: string[]) => void;
-    /** Opens Gemini stylist chat pre-seeded with this outfit context */
-    onStylistChat?: (initialMessage: string) => void;
-    /** Transient ID used for save/dislike actions before outfit is persisted */
-    tempId: string;
-    isSaved?: boolean;
+  scoredOutfit: ScoredOutfit;
+  allItems: ClothingItem[];
+  onSave: (outfitId: string, itemIds: string[]) => void;
+  onDislike: (itemIds: string[]) => void;
+  onEdit: (itemIds: string[]) => void;
+  onAvatarPress: (itemIds: string[]) => void;
+  /** Opens Gemini stylist chat pre-seeded with this outfit context */
+  onStylistChat?: (initialMessage: string) => void;
+  /** Transient ID used for save/dislike actions before outfit is persisted */
+  tempId: string;
+  isSaved?: boolean;
+  /** Regenerate this outfit with different items */
+  onRegenerate?: () => void;
 }
 
 // ============================================
@@ -104,15 +106,16 @@ const ItemCell = ({ item, suggestion, darker = false }: ItemCellProps) => (
  * item count, and action bar.
  */
 const OutfitCard = ({
-    scoredOutfit,
-    allItems,
-    onSave,
-    onDislike,
-    onEdit,
-    onAvatarPress,
-    onStylistChat,
-    tempId,
-    isSaved = false,
+  scoredOutfit,
+  allItems,
+  onSave,
+  onDislike,
+  onEdit,
+  onAvatarPress,
+  onStylistChat,
+  onRegenerate,
+  tempId,
+  isSaved = false,
 }: OutfitCardProps) => {
     const { outfit, occasionLabel, dressCode, shoppingSuggestions } = scoredOutfit;
     const { itemIds } = outfit;
@@ -198,43 +201,52 @@ const OutfitCard = ({
                 <Text style={styles.reasoning} numberOfLines={2}>{outfit.reasoning}</Text>
             ) : null}
 
-            {/* Action bar */}
-            <View style={styles.actionBar}>
-                {/* Left actions */}
-                <View style={styles.leftActions}>
-                    <TouchableOpacity
-                        style={styles.actionButton}
-                        onPress={() => onSave(tempId, itemIds)}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                        <Ionicons
-                            name={isSaved ? 'heart' : 'heart-outline'}
-                            size={22}
-                            color={isSaved ? '#E05C5C' : colors.text.secondary}
-                        />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.actionButton}
-                        onPress={() => onEdit(itemIds)}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                        <Ionicons name="pencil-outline" size={22} color={colors.text.secondary} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.actionButton}
-                        onPress={() => onDislike(itemIds)}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                        <Ionicons name="thumbs-down-outline" size={22} color={colors.text.secondary} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.actionButton}
-                        onPress={handleShare}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                        <Ionicons name="share-outline" size={22} color={colors.text.secondary} />
-                    </TouchableOpacity>
-                </View>
+      {/* Action bar */}
+      <View style={styles.actionBar}>
+        {/* Left actions */}
+        <View style={styles.leftActions}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => onSave(tempId, itemIds)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons
+              name={isSaved ? 'heart' : 'heart-outline'}
+              size={22}
+              color={isSaved ? '#E05C5C' : colors.text.secondary}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => onEdit(itemIds)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="pencil-outline" size={22} color={colors.text.secondary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => onDislike(itemIds)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="thumbs-down-outline" size={22} color={colors.text.secondary} />
+          </TouchableOpacity>
+          {onRegenerate && (
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={onRegenerate}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="refresh-outline" size={22} color={colors.text.secondary} />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleShare}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="share-outline" size={22} color={colors.text.secondary} />
+          </TouchableOpacity>
+        </View>
 
                 {/* Right: Ask Stylist + Create Avatar */}
                 <View style={styles.rightActions}>
@@ -375,12 +387,14 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: 4,
     },
-    actionButton: {
-        width: 40,
-        height: 40,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
+  actionButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.6)',
+  },
     rightActions: {
         flexDirection: 'row',
         alignItems: 'center',

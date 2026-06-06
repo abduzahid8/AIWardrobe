@@ -1,21 +1,10 @@
 /**
  * AdminAddTab — Form to add new clothing items to shop_catalog
+ * AI auto-analyzes the image and populates fields
  */
 import React, { useState } from 'react';
-import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-} from 'react-native';
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScaledText } from '../../components/ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -24,6 +13,30 @@ import { useTranslation } from 'react-i18next';
 import { createLogger } from '../../src/utils/logger';
 
 const logger = createLogger('AdminAddTab');
+
+function sectionToGarmentType(section: string): string {
+    switch (section) {
+        case 'tops': return 'upper_body';
+        case 'bottoms': return 'lower_body';
+        case 'dresses': return 'dresses';
+        case 'outerwear': return 'upper_body';
+        case 'shoes': return 'shoes';
+        default: return 'upper_body';
+    }
+}
+
+function sectionToCategory(section: string): string {
+    return ['tops', 'bottoms', 'dresses', 'shoes', 'outerwear'].includes(section) ? section : 'tops';
+}
+
+function generateName(category: string, color?: string, material?: string): string {
+    const parts: string[] = [];
+    if (color && !['unknown', 'various', 'multicolor'].includes(color)) {
+        parts.push(color.charAt(0).toUpperCase() + color.slice(1));
+    }
+    parts.push(category.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '));
+    return parts.join(' ');
+}
 
 export const AdminAddTab = () => {
     const { t } = useTranslation();
@@ -49,12 +62,74 @@ export const AdminAddTab = () => {
         { value: 'dresses', label: t('admin.categories.dresses') },
         { value: 'outerwear', label: t('admin.categories.outerwear') },
     ];
+
     const [description, setDescription] = useState('');
     const [imageUrl, setImageUrl] = useState('');
     const [localImage, setLocalImage] = useState<string | null>(null);
     const [isActive, setIsActive] = useState(true);
     const [sortOrder, setSortOrder] = useState('0');
     const [submitting, setSubmitting] = useState(false);
+    const [analyzing, setAnalyzing] = useState(false);
+
+    const applyAiResult = (data: any) => {
+        const cls = data?.classification;
+        if (!cls) return;
+        const section = cls.section || 'tops';
+        setGarmentType(sectionToGarmentType(section));
+        setCategory(sectionToCategory(section));
+        setName(generateName(cls.category, cls.attributes?.color, cls.attributes?.material));
+        if (data.description) setDescription(data.description);
+    };
+
+    const analyzeImageBase64 = async (base64: string) => {
+        setAnalyzing(true);
+        try {
+            const dataUrl = `data:image/jpeg;base64,${base64}`;
+            const { data, error } = await supabase.functions.invoke('ai-process', {
+                body: { image: dataUrl, operation: 'classify' },
+            });
+            if (error) throw new Error(error.message);
+            if (!data?.success) throw new Error(data?.error || 'AI analysis failed');
+            applyAiResult(data);
+        } catch (err: any) {
+            logger.error('AI analysis failed', err);
+            Alert.alert('AI Analysis Failed', err.message || 'Could not analyze image');
+        } finally {
+            setAnalyzing(false);
+        }
+    };
+
+    const analyzeImage = async (uri: string) => {
+        try {
+            const base64 = await FileSystem.readAsStringAsync(uri, {
+                encoding: FileSystem.EncodingType.Base64,
+            });
+            await analyzeImageBase64(base64);
+        } catch (err: any) {
+            logger.error('Image read failed', err);
+            Alert.alert('Error', 'Failed to read image file');
+            setAnalyzing(false);
+        }
+    };
+
+    const analyzeImageUrl = async () => {
+        const url = imageUrl.trim();
+        if (!url) { Alert.alert('Required', 'Enter an image URL first'); return; }
+        setAnalyzing(true);
+        try {
+            const dest = FileSystem.cacheDirectory + 'temp_ai_url.jpg';
+            await FileSystem.downloadAsync(url, dest);
+            const base64 = await FileSystem.readAsStringAsync(dest, {
+                encoding: FileSystem.EncodingType.Base64,
+            });
+            await FileSystem.deleteAsync(dest, { idempotent: true });
+            await analyzeImageBase64(base64);
+        } catch (err: any) {
+            logger.error('URL image fetch failed', err);
+            Alert.alert('Error', 'Failed to fetch image from URL');
+            setAnalyzing(false);
+        }
+    };
 
     const pickImage = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
@@ -63,8 +138,10 @@ export const AdminAddTab = () => {
             allowsEditing: true,
         });
         if (!result.canceled && result.assets[0] && result.assets[0].uri) {
-            setLocalImage(result.assets[0].uri);
+            const uri = result.assets[0].uri;
+            setLocalImage(uri);
             setImageUrl('');
+            await analyzeImage(uri);
         }
     };
 
@@ -151,68 +228,78 @@ export const AdminAddTab = () => {
     return (
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
             <ScrollView style={s.scroll} keyboardShouldPersistTaps="handled">
-                <TouchableOpacity style={s.imagePicker} onPress={pickImage}>
-                    {localImage ? (
+                <TouchableOpacity style={s.imagePicker} onPress={pickImage} disabled={analyzing}>
+                    {analyzing ? (
+                        <View style={s.imagePlaceholder}>
+                            <ActivityIndicator size="large" color="#007AFF" />
+                            <ScaledText style={s.imagePlaceholderText}>AI Analyzing...</ScaledText>
+                        </View>
+                    ) : localImage ? (
                         <Image source={{ uri: localImage }} style={s.imagePreview} />
                     ) : (
                         <View style={s.imagePlaceholder}>
                             <Ionicons name="camera" size={32} color="#8E8E93" />
-                            <Text style={s.imagePlaceholderText}>{t('admin.add.pickImage')}</Text>
+                            <ScaledText style={s.imagePlaceholderText}>{t('admin.add.pickImage')}</ScaledText>
                         </View>
                     )}
                 </TouchableOpacity>
 
-                <Text style={s.label}>{t('admin.add.orImageUrl')}</Text>
-                <TextInput style={s.input} value={imageUrl} onChangeText={setImageUrl} placeholder={t('admin.add.imageUrlPlaceholder')} autoCapitalize="none" autoCorrect={false} keyboardType="url" />
+                <ScaledText style={s.label}>{t('admin.add.orImageUrl')}</ScaledText>
+                <View style={s.urlRow}>
+                    <TextInput style={[s.input, s.urlInput]} value={imageUrl} onChangeText={setImageUrl} placeholder={t('admin.add.imageUrlPlaceholder')} autoCapitalize="none" autoCorrect={false} keyboardType="url" />
+                    <TouchableOpacity style={s.aiBtn} onPress={analyzeImageUrl} disabled={analyzing || !imageUrl.trim()}>
+                        {analyzing ? <ActivityIndicator size="small" color="#FFF" /> : <Ionicons name="sparkles" size={18} color="#FFF" />}
+                    </TouchableOpacity>
+                </View>
 
-                <Text style={s.label}>{t('admin.add.brand')} *</Text>
+                <ScaledText style={s.label}>{t('admin.add.brand')} *</ScaledText>
                 <TextInput style={s.input} value={brand} onChangeText={setBrand} placeholder={t('admin.add.brandPlaceholder')} />
 
-                <Text style={s.label}>{t('admin.add.name')} *</Text>
+                <ScaledText style={s.label}>{t('admin.add.name')} *</ScaledText>
                 <TextInput style={s.input} value={name} onChangeText={setName} placeholder={t('admin.add.namePlaceholder')} />
 
                 <View style={s.row}>
                     <View style={{ flex: 2 }}>
-                        <Text style={s.label}>{t('admin.add.price')}</Text>
+                        <ScaledText style={s.label}>{t('admin.add.price')}</ScaledText>
                         <TextInput style={s.input} value={price} onChangeText={setPrice} placeholder={t('admin.add.pricePlaceholder')} keyboardType="decimal-pad" />
                     </View>
                     <View style={{ flex: 1, marginLeft: 10 }}>
-                        <Text style={s.label}>{t('admin.add.currency')}</Text>
+                        <ScaledText style={s.label}>{t('admin.add.currency')}</ScaledText>
                         <TextInput style={s.input} value={currency} onChangeText={setCurrency} placeholder={t('admin.add.currencyPlaceholder')} autoCapitalize="characters" maxLength={3} />
                     </View>
                 </View>
 
-                <Text style={s.label}>{t('admin.add.garmentType')}</Text>
+                <ScaledText style={s.label}>{t('admin.add.garmentType')}</ScaledText>
                 <View style={s.chipRow}>
                     {GARMENT_TYPES.map((gt) => (
                         <TouchableOpacity key={gt.value} style={[s.chip, garmentType === gt.value && s.chipActive]} onPress={() => setGarmentType(gt.value)}>
-                            <Text style={[s.chipText, garmentType === gt.value && s.chipTextActive]}>{gt.label}</Text>
+                            <ScaledText style={[s.chipText, garmentType === gt.value && s.chipTextActive]}>{gt.label}</ScaledText>
                         </TouchableOpacity>
                     ))}
                 </View>
 
-                <Text style={s.label}>{t('admin.add.category')}</Text>
+                <ScaledText style={s.label}>{t('admin.add.category')}</ScaledText>
                 <View style={s.chipRow}>
                     {CATEGORIES.map((c) => (
                         <TouchableOpacity key={c.value} style={[s.chip, category === c.value && s.chipActive]} onPress={() => setCategory(c.value)}>
-                            <Text style={[s.chipText, category === c.value && s.chipTextActive]}>{c.label}</Text>
+                            <ScaledText style={[s.chipText, category === c.value && s.chipTextActive]}>{c.label}</ScaledText>
                         </TouchableOpacity>
                     ))}
                 </View>
 
-                <Text style={s.label}>{t('admin.add.description')}</Text>
+                <ScaledText style={s.label}>{t('admin.add.description')}</ScaledText>
                 <TextInput style={[s.input, s.textArea]} value={description} onChangeText={setDescription} placeholder={t('admin.add.descriptionPlaceholder')} multiline numberOfLines={3} />
 
-                <Text style={s.label}>{t('admin.add.sortOrder')}</Text>
+                <ScaledText style={s.label}>{t('admin.add.sortOrder')}</ScaledText>
                 <TextInput style={s.input} value={sortOrder} onChangeText={setSortOrder} placeholder={t('admin.add.sortOrderPlaceholder')} keyboardType="number-pad" />
 
                 <View style={s.switchRow}>
-                    <Text style={s.label}>{t('admin.add.isActive')}</Text>
+                    <ScaledText style={s.label}>{t('admin.add.isActive')}</ScaledText>
                     <Switch value={isActive} onValueChange={setIsActive} />
                 </View>
 
-                <TouchableOpacity style={[s.submitBtn, submitting && s.submitBtnDisabled]} onPress={handleSubmit} disabled={submitting}>
-                    {submitting ? <ActivityIndicator color="#FFF" /> : <Text style={s.submitBtnText}>{t('admin.add.addItem')}</Text>}
+                <TouchableOpacity style={[s.submitBtn, (submitting || analyzing) && s.submitBtnDisabled]} onPress={handleSubmit} disabled={submitting || analyzing}>
+                    {submitting ? <ActivityIndicator color="#FFF" /> : <ScaledText style={s.submitBtnText}>{t('admin.add.addItem')}</ScaledText>}
                 </TouchableOpacity>
                 <View style={{ height: 40 }} />
             </ScrollView>
@@ -223,6 +310,9 @@ export const AdminAddTab = () => {
 const s = StyleSheet.create({
     scroll: { flex: 1, paddingHorizontal: 20 },
     imagePicker: { height: 160, borderRadius: 16, backgroundColor: '#E5E5EA', marginBottom: 16, overflow: 'hidden' },
+    urlRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    urlInput: { flex: 1 },
+    aiBtn: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#007AFF', justifyContent: 'center', alignItems: 'center' },
     imagePreview: { width: '100%', height: '100%', resizeMode: 'cover' },
     imagePlaceholder: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     imagePlaceholderText: { fontSize: 14, color: '#8E8E93', marginTop: 6 },

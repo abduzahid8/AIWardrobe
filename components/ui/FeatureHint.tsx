@@ -1,13 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    Dimensions,
-    Modal,
-    Pressable,
-} from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Dimensions, Modal, Pressable,  } from 'react-native'
+import { ScaledText } from '../ui/ScaledText';;
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -263,8 +256,8 @@ export const FeatureHint: React.FC<FeatureHintProps> = ({
 
                     {/* Content */}
                     <View style={styles.content}>
-                        <Text style={styles.title}>{title}</Text>
-                        <Text style={styles.description}>{description}</Text>
+                        <ScaledText style={styles.title}>{title}</ScaledText>
+                        <ScaledText style={styles.description}>{description}</ScaledText>
                     </View>
 
                     {/* Gesture Indicator */}
@@ -282,13 +275,13 @@ export const FeatureHint: React.FC<FeatureHintProps> = ({
                             end={{ x: 1, y: 0 }}
                             style={styles.ctaGradient}
                         >
-                            <Text style={styles.ctaText}>{t('common.gotIt')}</Text>
+                            <ScaledText style={styles.ctaText}>{t('common.gotIt')}</ScaledText>
                         </LinearGradient>
                     </TouchableOpacity>
 
                     {/* Skip hint */}
                     <TouchableOpacity onPress={handleDismiss} style={styles.skipButton}>
-                        <Text style={styles.skipText}>{t('common.tapToDismiss')}</Text>
+                        <ScaledText style={styles.skipText}>{t('common.tapToDismiss')}</ScaledText>
                     </TouchableOpacity>
                 </Animated.View>
             </Animated.View>

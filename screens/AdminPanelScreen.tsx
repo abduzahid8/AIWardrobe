@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
+import { ActivityIndicator, TouchableOpacity, View, StyleSheet } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -26,8 +27,8 @@ const AdminPanelScreen = () => {
         return (
             <SafeAreaView style={s.center}>
                 <Ionicons name="lock-closed" size={48} color="#FF3B30" />
-                <Text style={s.noAccess}>{t('admin.accessDenied')}</Text>
-                <Text style={s.noAccessSub}>{t('admin.adminPrivilegesRequired')}</Text>
+                <ScaledText style={s.noAccess}>{t('admin.accessDenied')}</ScaledText>
+                <ScaledText style={s.noAccessSub}>{t('admin.adminPrivilegesRequired')}</ScaledText>
             </SafeAreaView>
         );
     }
@@ -48,8 +49,8 @@ const AdminPanelScreen = () => {
                         <Ionicons name="chevron-back" size={28} color="#007AFF" />
                     </TouchableOpacity>
                     <View>
-                        <Text style={s.headerTitle}>{t('admin.title')}</Text>
-                        <Text style={s.headerSub}>{t('admin.subtitle')}</Text>
+                        <ScaledText style={s.headerTitle}>{t('admin.title')}</ScaledText>
+                        <ScaledText style={s.headerSub}>{t('admin.subtitle')}</ScaledText>
                     </View>
                 </View>
             </View>
@@ -57,7 +58,7 @@ const AdminPanelScreen = () => {
                 {tabs.map((tab) => (
                     <TouchableOpacity key={tab.key} style={[s.tabBtn, activeTab === tab.key && s.tabBtnActive]} onPress={() => setActiveTab(tab.key)}>
                         <Ionicons name={tab.icon as any} size={20} color={activeTab === tab.key ? '#007AFF' : '#8E8E93'} />
-                        <Text style={[s.tabLabel, activeTab === tab.key && s.tabLabelActive]}>{tab.label}</Text>
+                        <ScaledText style={[s.tabLabel, activeTab === tab.key && s.tabLabelActive]}>{tab.label}</ScaledText>
                     </TouchableOpacity>
                 ))}
             </View>

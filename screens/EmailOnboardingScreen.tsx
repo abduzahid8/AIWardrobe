@@ -1,13 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import {
-    View,
-    Text,
-    TouchableOpacity,
-    ActivityIndicator,
-    ScrollView,
-    Alert,
-    Linking
-} from 'react-native';
+import { View, TouchableOpacity, ActivityIndicator, ScrollView, Alert, Linking } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -163,18 +156,18 @@ const EmailOnboardingScreen = () => {
                             <Ionicons name="mail-outline" size={40} color="white" />
                         </View>
 
-                        <Text className="text-4xl font-bold text-white mb-3">
+                        <ScaledText className="text-4xl font-bold text-white mb-3">
                             Auto-Fill Your Wardrobe
-                        </Text>
+                        </ScaledText>
 
-                        <Text className="text-lg text-white/90">
+                        <ScaledText className="text-lg text-white/90">
                             Connect your email and we'll automatically find your clothing purchases in seconds.
-                        </Text>
+                        </ScaledText>
                     </View>
 
                     {/* Features List */}
                     <View className="bg-white/10 rounded-3xl p-6 mb-6 border border-white/20">
-                        <Text className="text-xl font-bold text-white mb-4">{t('emailOnboarding.howItWorks')}</Text>
+                        <ScaledText className="text-xl font-bold text-white mb-4">{t('emailOnboarding.howItWorks')}</ScaledText>
 
                         {[
                             { icon: '🔒', text: 'We only read purchase receipts (100% safe)' },
@@ -183,10 +176,10 @@ const EmailOnboardingScreen = () => {
                             { icon: '🎯', text: 'Skip manual upload - save hours of time' }
                         ].map((item, index) => (
                             <View key={index} className="flex-row items-start mb-3">
-                                <Text className="text-2xl mr-3">{item.icon}</Text>
-                                <Text className="text-white/90 text-base flex-1 pt-1">
+                                <ScaledText className="text-2xl mr-3">{item.icon}</ScaledText>
+                                <ScaledText className="text-white/90 text-base flex-1 pt-1">
                                     {item.text}
-                                </Text>
+                                </ScaledText>
                             </View>
                         ))}
                     </View>
@@ -195,27 +188,27 @@ const EmailOnboardingScreen = () => {
                     {connected && (
                         <View className="bg-green-500/20 border border-green-300/30 rounded-2xl p-4 mb-6 flex-row items-center">
                             <Ionicons name="checkmark-circle" size={24} color="#10B981" />
-                            <Text className="text-green-100 ml-3 flex-1">
+                            <ScaledText className="text-green-100 ml-3 flex-1">
                                 Gmail Connected Successfully
-                            </Text>
+                            </ScaledText>
                         </View>
                     )}
 
                     {/* Scan Results */}
                     {scanResults && (
                         <View className="bg-white/10 rounded-2xl p-5 mb-6 border border-white/20">
-                            <Text className="text-white font-bold text-lg mb-3">
+                            <ScaledText className="text-white font-bold text-lg mb-3">
                                 Scan Results
-                            </Text>
-                            <Text className="text-white/90 text-base mb-2">
+                            </ScaledText>
+                            <ScaledText className="text-white/90 text-base mb-2">
                                 📧 Emails scanned: {scanResults.receiptsScanned}
-                            </Text>
-                            <Text className="text-white/90 text-base mb-2">
+                            </ScaledText>
+                            <ScaledText className="text-white/90 text-base mb-2">
                                 🧾 Receipts found: {scanResults.receiptsFound}
-                            </Text>
-                            <Text className="text-white/90 text-base">
+                            </ScaledText>
+                            <ScaledText className="text-white/90 text-base">
                                 👔 Items detected: {scanResults.itemsDetected}
-                            </Text>
+                            </ScaledText>
                         </View>
                     )}
 
@@ -232,9 +225,9 @@ const EmailOnboardingScreen = () => {
                                 ) : (
                                     <View className="flex-row items-center justify-center">
                                         <Ionicons name="logo-google" size={20} color="#8B5CF6" />
-                                        <Text className="text-purple-600 font-bold text-lg ml-3">
+                                        <ScaledText className="text-purple-600 font-bold text-lg ml-3">
                                             Connect Gmail
-                                        </Text>
+                                        </ScaledText>
                                     </View>
                                 )}
                             </TouchableOpacity>
@@ -247,16 +240,16 @@ const EmailOnboardingScreen = () => {
                                 {scanning ? (
                                     <View>
                                         <ActivityIndicator color="#8B5CF6" size="small" />
-                                        <Text className="text-purple-600 text-center mt-2 font-medium">
+                                        <ScaledText className="text-purple-600 text-center mt-2 font-medium">
                                             Scanning receipts...
-                                        </Text>
+                                        </ScaledText>
                                     </View>
                                 ) : (
                                     <View className="flex-row items-center justify-center">
                                         <Ionicons name="scan-outline" size={20} color="#8B5CF6" />
-                                        <Text className="text-purple-600 font-bold text-lg ml-3">
+                                        <ScaledText className="text-purple-600 font-bold text-lg ml-3">
                                             Scan My Receipts
-                                        </Text>
+                                        </ScaledText>
                                     </View>
                                 )}
                             </TouchableOpacity>
@@ -266,18 +259,18 @@ const EmailOnboardingScreen = () => {
                             onPress={handleSkip}
                             className="py-4"
                         >
-                            <Text className="text-white text-center text-base font-medium">
+                            <ScaledText className="text-white text-center text-base font-medium">
                                 I'll upload manually instead
-                            </Text>
+                            </ScaledText>
                         </TouchableOpacity>
                     </View>
 
                     {/* Privacy Notice */}
                     <View className="bg-white/5 rounded-xl p-4 mb-8 border border-white/10">
-                        <Text className="text-white/70 text-xs leading-5">
+                        <ScaledText className="text-white/70 text-xs leading-5">
                             🔒 Privacy: We only read emails containing clothing purchases.
                             Your data is encrypted and never shared. You can disconnect anytime.
-                        </Text>
+                        </ScaledText>
                     </View>
                 </ScrollView>
             </SafeAreaView>

@@ -5,17 +5,8 @@
  */
 
 import React, { useState, useCallback, useRef } from 'react';
-import {
-    View,
-    Text,
-    ScrollView,
-    TouchableOpacity,
-    StyleSheet,
-    Dimensions,
-    ActivityIndicator,
-    Share,
-    Alert,
-} from 'react-native';
+import { View, ScrollView, TouchableOpacity, StyleSheet, Dimensions, ActivityIndicator, Share, Alert,  } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -220,12 +211,12 @@ const OutfitInspoScreen = () => {
 
     const renderImageUpload = () => (
         <Animated.View entering={FadeIn.duration(400)} style={styles.uploadSection}>
-            <Text style={styles.sectionTitle}>{t('outfitInspo.uploadTitle')}</Text>
-            <Text style={styles.sectionSubtitle}>
+            <ScaledText style={styles.sectionTitle}>{t('outfitInspo.uploadTitle')}</ScaledText>
+            <ScaledText style={styles.sectionSubtitle}>
                 {mode === 'outfit'
                     ? t('outfitInspo.uploadSubtitleOutfit')
                     : t('outfitInspo.uploadSubtitleSingle')}
-            </Text>
+            </ScaledText>
 
             {imageUri ? (
                 <Animated.View entering={ZoomIn.duration(300)} style={styles.imagePreviewContainer}>
@@ -236,7 +227,7 @@ const OutfitInspoScreen = () => {
                             onPress={() => pickImage(false)}
                         >
                             <Ionicons name="camera-outline" size={18} color="#FFF" />
-                            <Text style={styles.changeImageText}>{t('outfitInspo.changePhoto')}</Text>
+                            <ScaledText style={styles.changeImageText}>{t('outfitInspo.changePhoto')}</ScaledText>
                         </TouchableOpacity>
                     </View>
                 </Animated.View>
@@ -252,7 +243,7 @@ const OutfitInspoScreen = () => {
                             style={styles.uploadButtonGradient}
                         >
                             <Ionicons name="camera-outline" size={24} color="#FFF" />
-                            <Text style={styles.uploadButtonText}>{t('outfitInspo.takePhoto')}</Text>
+                            <ScaledText style={styles.uploadButtonText}>{t('outfitInspo.takePhoto')}</ScaledText>
                         </LinearGradient>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -265,7 +256,7 @@ const OutfitInspoScreen = () => {
                             style={styles.uploadButtonGradient}
                         >
                             <Ionicons name="images-outline" size={24} color="#FFF" />
-                            <Text style={styles.uploadButtonText}>{t('outfitInspo.chooseGallery')}</Text>
+                            <ScaledText style={styles.uploadButtonText}>{t('outfitInspo.chooseGallery')}</ScaledText>
                         </LinearGradient>
                     </TouchableOpacity>
                 </View>
@@ -283,9 +274,9 @@ const OutfitInspoScreen = () => {
                         size={18}
                         color={mode === 'outfit' ? '#FFF' : colors.text.secondary}
                     />
-                    <Text style={[styles.modeText, mode === 'outfit' && styles.modeTextActive]}>
+                    <ScaledText style={[styles.modeText, mode === 'outfit' && styles.modeTextActive]}>
                         {t('outfitInspo.fullOutfit')}
-                    </Text>
+                    </ScaledText>
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[styles.modeOption, mode === 'single' && styles.modeOptionActive]}
@@ -297,9 +288,9 @@ const OutfitInspoScreen = () => {
                         size={18}
                         color={mode === 'single' ? '#FFF' : colors.text.secondary}
                     />
-                    <Text style={[styles.modeText, mode === 'single' && styles.modeTextActive]}>
+                    <ScaledText style={[styles.modeText, mode === 'single' && styles.modeTextActive]}>
                         {t('outfitInspo.findSimilar')}
-                    </Text>
+                    </ScaledText>
                 </TouchableOpacity>
             </View>
 
@@ -321,11 +312,11 @@ const OutfitInspoScreen = () => {
                             ) : (
                                 <>
                                     <Ionicons name="sparkles" size={20} color="#FFF" />
-                                    <Text style={styles.analyzeButtonText}>
+                                    <ScaledText style={styles.analyzeButtonText}>
                                         {mode === 'outfit'
                                             ? t('outfitInspo.analyzeOutfit')
                                             : t('outfitInspo.findSimilarItems')}
-                                    </Text>
+                                    </ScaledText>
                                 </>
                             )}
                         </LinearGradient>
@@ -353,10 +344,10 @@ const OutfitInspoScreen = () => {
                     <View style={styles.detectedItemInfo}>
                         <View style={[styles.colorDot, { backgroundColor: item.colorHex || '#808080' }]} />
                         <View style={styles.detectedItemText}>
-                            <Text style={styles.detectedItemName}>{item.specificType}</Text>
-                            <Text style={styles.detectedItemMeta}>
+                            <ScaledText style={styles.detectedItemName}>{item.specificType}</ScaledText>
+                            <ScaledText style={styles.detectedItemMeta}>
                                 {item.primaryColor} · {item.style} · {item.pattern}
-                            </Text>
+                            </ScaledText>
                         </View>
                     </View>
                     <Ionicons
@@ -369,16 +360,16 @@ const OutfitInspoScreen = () => {
                 {isExpanded && rec && (
                     <Animated.View entering={FadeInDown.duration(250)} style={styles.expandedContent}>
                         {item.description ? (
-                            <Text style={styles.itemDescription}>{item.description}</Text>
+                            <ScaledText style={styles.itemDescription}>{item.description}</ScaledText>
                         ) : null}
 
                         {/* Wardrobe Matches */}
                         {rec.similarFromWardrobe.length > 0 && (
                             <View style={styles.matchSection}>
-                                <Text style={styles.matchSectionTitle}>
+                                <ScaledText style={styles.matchSectionTitle}>
                                     <Ionicons name="shirt-outline" size={14} color={colors.accent.primary} />
                                     {'  '}{t('outfitInspo.fromYourWardrobe')}
-                                </Text>
+                                </ScaledText>
                                 <ScrollView
                                     horizontal
                                     showsHorizontalScrollIndicator={false}
@@ -403,13 +394,13 @@ const OutfitInspoScreen = () => {
                                                     <Ionicons name="shirt-outline" size={20} color={colors.text.tertiary} />
                                                 </View>
                                             )}
-                                            <Text style={styles.matchName} numberOfLines={2}>
+                                            <ScaledText style={styles.matchName} numberOfLines={2}>
                                                 {match.sub_category || match.category || t('outfitInspo.item')}
-                                            </Text>
+                                            </ScaledText>
                                             <View style={styles.matchScoreBadge}>
-                                                <Text style={styles.matchScoreText}>
+                                                <ScaledText style={styles.matchScoreText}>
                                                     {Math.round(match.matchScore)}%
-                                                </Text>
+                                                </ScaledText>
                                             </View>
                                         </TouchableOpacity>
                                     ))}
@@ -420,10 +411,10 @@ const OutfitInspoScreen = () => {
                         {/* Shop Matches */}
                         {rec.similarFromShop.length > 0 && (
                             <View style={styles.matchSection}>
-                                <Text style={styles.matchSectionTitle}>
+                                <ScaledText style={styles.matchSectionTitle}>
                                     <Ionicons name="bag-outline" size={14} color={colors.accent.primary} />
                                     {'  '}{t('outfitInspo.shopRecommendations')}
-                                </Text>
+                                </ScaledText>
                                 <ScrollView
                                     horizontal
                                     showsHorizontalScrollIndicator={false}
@@ -448,18 +439,18 @@ const OutfitInspoScreen = () => {
                                                     <Ionicons name="bag-outline" size={20} color={colors.text.tertiary} />
                                                 </View>
                                             )}
-                                            <Text style={styles.matchName} numberOfLines={2}>
+                                            <ScaledText style={styles.matchName} numberOfLines={2}>
                                                 {match.name}
-                                            </Text>
+                                            </ScaledText>
                                             {match.price > 0 && (
-                                                <Text style={styles.matchPrice}>
+                                                <ScaledText style={styles.matchPrice}>
                                                     {match.currency || '$'}{match.price}
-                                                </Text>
+                                                </ScaledText>
                                             )}
                                             <View style={styles.matchScoreBadge}>
-                                                <Text style={styles.matchScoreText}>
+                                                <ScaledText style={styles.matchScoreText}>
                                                     {Math.round(match.matchScore)}%
-                                                </Text>
+                                                </ScaledText>
                                             </View>
                                         </TouchableOpacity>
                                     ))}
@@ -471,7 +462,7 @@ const OutfitInspoScreen = () => {
                         {rec.similarFromWardrobe.length === 0 && rec.similarFromShop.length === 0 && (
                             <View style={styles.noMatches}>
                                 <Ionicons name="search-outline" size={24} color={colors.text.tertiary} />
-                                <Text style={styles.noMatchesText}>{t('outfitInspo.noMatchesFound')}</Text>
+                                <ScaledText style={styles.noMatchesText}>{t('outfitInspo.noMatchesFound')}</ScaledText>
                             </View>
                         )}
                     </Animated.View>
@@ -485,9 +476,9 @@ const OutfitInspoScreen = () => {
             return (
                 <Animated.View entering={FadeIn.duration(300)} style={styles.errorContainer}>
                     <Ionicons name="alert-circle-outline" size={40} color={colors.accent.primary} />
-                    <Text style={styles.errorText}>{error}</Text>
+                    <ScaledText style={styles.errorText}>{error}</ScaledText>
                     <TouchableOpacity style={styles.retryButton} onPress={analyzeImage}>
-                        <Text style={styles.retryButtonText}>{t('outfitInspo.tryAgain')}</Text>
+                        <ScaledText style={styles.retryButtonText}>{t('outfitInspo.tryAgain')}</ScaledText>
                     </TouchableOpacity>
                 </Animated.View>
             );
@@ -503,14 +494,14 @@ const OutfitInspoScreen = () => {
                         <View style={styles.summaryIconContainer}>
                             <Ionicons name="sparkles" size={20} color={colors.accent.primary} />
                         </View>
-                        <Text style={styles.outfitSummaryText}>{outfitDescription}</Text>
+                        <ScaledText style={styles.outfitSummaryText}>{outfitDescription}</ScaledText>
                         <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
                             <Ionicons name="share-outline" size={18} color={colors.text.secondary} />
                         </TouchableOpacity>
                     </View>
                 ) : null}
 
-                <Text style={styles.sectionTitle}>{t('outfitInspo.detectedItems')}</Text>
+                <ScaledText style={styles.sectionTitle}>{t('outfitInspo.detectedItems')}</ScaledText>
 
                 {recommendations.map((rec, index) =>
                     renderDetectedItem(rec.detectedItem, index)
@@ -533,7 +524,7 @@ const OutfitInspoScreen = () => {
                         <View style={styles.headerBadge}>
                             <Ionicons name="sparkles" size={12} color={colors.accent.primary} />
                         </View>
-                        <Text style={styles.headerTitle}>{t('outfitInspo.title')}</Text>
+                        <ScaledText style={styles.headerTitle}>{t('outfitInspo.title')}</ScaledText>
                     </View>
                     <View style={styles.headerPlaceholder} />
                 </Animated.View>
@@ -549,12 +540,12 @@ const OutfitInspoScreen = () => {
                     {analyzing && (
                         <Animated.View entering={FadeIn.duration(300)} style={styles.analyzingContainer}>
                             <ActivityIndicator size="large" color={colors.accent.primary} />
-                            <Text style={styles.analyzingText}>
+                            <ScaledText style={styles.analyzingText}>
                                 {mode === 'outfit'
                                     ? t('outfitInspo.analyzingOutfit')
                                     : t('outfitInspo.findingSimilar')}
-                            </Text>
-                            <Text style={styles.analyzingSubtext}>{t('outfitInspo.takesMoment')}</Text>
+                            </ScaledText>
+                            <ScaledText style={styles.analyzingSubtext}>{t('outfitInspo.takesMoment')}</ScaledText>
                         </Animated.View>
                     )}
 

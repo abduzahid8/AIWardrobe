@@ -28,6 +28,7 @@ import OutfitInspoScreen from "../screens/OutfitInspoScreen";
 import CreateAvatarScreen from "../screens/CreateAvatarScreen";
 import MyClosetScreen from "../screens/MyClosetScreen";
 import WardrobeAnalyticsScreen from "../screens/WardrobeAnalyticsScreen";
+import WeeklyInsightsScreen from "../screens/WeeklyInsightsScreen";
 import PrivacyPolicyScreen from "../screens/PrivacyPolicyScreen";
 import TermsOfServiceScreen from "../screens/TermsOfServiceScreen";
 import ClothingDetailEditor from "../components/ClothingDetailEditor";
@@ -382,6 +383,13 @@ const RootNavigator = () => {
               }}
             />
             <Stack.Screen
+              name="WeeklyInsights"
+              component={WeeklyInsightsScreen}
+              options={{
+                ...LiquidPresets.slide,
+              }}
+            />
+            <Stack.Screen
               name="StylistChat"
               component={ChatScreen}
               options={{
@@ -455,7 +463,7 @@ const RootNavigator = () => {
             />
           </>
         )
-      ) : (
+        ) : (
         <>
           <Stack.Screen
             name="SignIn"
@@ -472,13 +480,19 @@ const RootNavigator = () => {
             component={ForgotPasswordScreen}
             options={{ ...LiquidPresets.slide }}
           />
-          <Stack.Screen
-            name="ResetPassword"
-            component={ResetPasswordScreen}
-            options={{ ...LiquidPresets.slide }}
-          />
         </>
       )}
+
+      {/*
+        ResetPassword must be registered outside the auth ternary so it survives
+        the isAuthenticated flip triggered by the deep-link session handshake.
+        Without this, the screen unmounts before the user can set a new password.
+      */}
+      <Stack.Screen
+        name="ResetPassword"
+        component={ResetPasswordScreen}
+        options={{ ...LiquidPresets.slide }}
+      />
     </Stack.Navigator>
   );
 };

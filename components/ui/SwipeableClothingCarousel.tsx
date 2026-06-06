@@ -1,12 +1,6 @@
 import React, { useCallback, useRef } from 'react';
-import {
-    View,
-    FlatList,
-    StyleSheet,
-    Dimensions,
-    ViewToken,
-    Text,
-} from 'react-native';
+import { View, FlatList, StyleSheet, Dimensions, ViewToken,  } from 'react-native'
+import { ScaledText } from '../ui/ScaledText';;
 import Animated, {
     useSharedValue,
     useAnimatedScrollHandler,
@@ -144,9 +138,9 @@ const SwipeableClothingCarousel: React.FC<SwipeableClothingCarouselProps> = ({
         return (
             <View style={[styles.emptyContainer, { height: containerHeight }]}>
                 <View style={styles.emptyCard}>
-                    <Text style={styles.emptyIcon}>
+                    <ScaledText style={styles.emptyIcon}>
                         {category === 'tops' ? '👕' : '👖'}
-                    </Text>
+                    </ScaledText>
                 </View>
             </View>
         );

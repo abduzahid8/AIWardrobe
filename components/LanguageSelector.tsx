@@ -1,13 +1,6 @@
 import React, { useState } from 'react';
-import {
-    View,
-    Text,
-    TouchableOpacity,
-    Modal,
-    StyleSheet,
-    Pressable,
-    Animated,
-} from 'react-native';
+import { View, TouchableOpacity, Modal, StyleSheet, Pressable, Animated,  } from 'react-native'
+import { ScaledText } from './ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 
@@ -66,10 +59,10 @@ const LanguageSelector = () => {
                 onPress={openModal}
                 className="flex-row items-center bg-gray-100 px-3 py-2 rounded-full"
             >
-                <Text className="text-lg mr-1">{currentLanguage?.flag}</Text>
-                <Text className="text-xs font-semibold text-gray-700 mr-1">
+                <ScaledText className="text-lg mr-1">{currentLanguage?.flag}</ScaledText>
+                <ScaledText className="text-xs font-semibold text-gray-700 mr-1">
                     {currentLanguage?.code.toUpperCase()}
-                </Text>
+                </ScaledText>
                 <Ionicons name="chevron-down" size={12} color="#374151" />
             </TouchableOpacity>
 
@@ -103,9 +96,9 @@ const LanguageSelector = () => {
                         <Pressable>
                             <View className="bg-white rounded-2xl p-4 shadow-lg">
                                 <View className="flex-row items-center justify-between mb-4">
-                                    <Text className="text-lg font-bold text-gray-800">
+                                    <ScaledText className="text-lg font-bold text-gray-800">
                                         {t('language.selectLanguage')}
-                                    </Text>
+                                    </ScaledText>
                                     <TouchableOpacity onPress={closeModal}>
                                         <Ionicons name="close" size={24} color="#6B7280" />
                                     </TouchableOpacity>
@@ -121,14 +114,14 @@ const LanguageSelector = () => {
                                             }`}
                                     >
                                         <View className="flex-row items-center">
-                                            <Text className="text-2xl mr-3">{language.flag}</Text>
+                                            <ScaledText className="text-2xl mr-3">{language.flag}</ScaledText>
                                             <View>
-                                                <Text className="text-base font-semibold text-gray-800">
+                                                <ScaledText className="text-base font-semibold text-gray-800">
                                                     {language.nativeName}
-                                                </Text>
-                                                <Text className="text-xs text-gray-500">
+                                                </ScaledText>
+                                                <ScaledText className="text-xs text-gray-500">
                                                     {t(`language.${language.code === 'en' ? 'english' : language.code === 'ru' ? 'russian' : 'uzbek'}`)}
-                                                </Text>
+                                                </ScaledText>
                                             </View>
                                         </View>
                                         {selectedLanguage === language.code && (

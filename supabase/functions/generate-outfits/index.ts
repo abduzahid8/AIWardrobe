@@ -705,6 +705,80 @@ const PLACEHOLDER_SHOES: Record<string, any> = {
     isShopItem: false,
 }
 
+// ── Shop-catalog fill for all required slots ──────────────────────────
+// Fetches multiple style-ranked items from shop_catalog for EVERY required
+// outfit slot (top, bottom, shoes, outerwear), not just missing ones.
+// This ensures outfits always include shop catalog items as primary options.
+async function fetchShopItemsForAllSlotsEdge(
+    supabaseClient: any,
+    requiredSlots: string[],
+    style: string,
+    perSlot = 4,
+): Promise<any[]> {
+    const picks: any[] = []
+    const styleKey = style.toLowerCase().replace(/[\s-]+/g, '_')
+    const ctx = getStyleContext(style)
+    const rejectKeywords = extractRejectKeywords(ctx.reject)
+
+    for (const slot of requiredSlots) {
+        try {
+            let q = supabaseClient
+                .from('shop_catalog')
+                .select('id, brand, name, price, image_url, garment_type, category, description, primary_color, source')
+                .eq('is_active', true)
+                .limit(40)
+            if (slot === 'shoes') q = q.or('category.eq.shoes,garment_type.eq.shoes')
+            else if (slot === 'outerwear') q = q.or('category.eq.outerwear,garment_type.eq.outerwear,name.ilike.%jacket%,name.ilike.%coat%,name.ilike.%blazer%,name.ilike.%cardigan%,name.ilike.%sweater%,name.ilike.%hoodie%,name.ilike.%puffer%,name.ilike.%vest%')
+            else if (slot === 'top') q = q.or('category.eq.tops,garment_type.eq.upper_body')
+            else if (slot === 'bottom') q = q.or('category.eq.bottoms,garment_type.eq.lower_body')
+            const { data, error } = await q
+            if (error || !data || data.length === 0) continue
+
+            const scored = data
+                .map((row: any) => ({
+                    row,
+                    score: scoreItemForStyleEdge(
+                        { name: row.name, description: row.description, brand: row.brand, color: row.primary_color, type: row.garment_type, category: row.category, macroCategory: slot },
+                        styleKey,
+                    ),
+                }))
+                .filter(({ row }: { row: any }) => {
+                    const blob = `${(row.name || '').toLowerCase()} ${(row.description || '').toLowerCase()} ${row.garment_type || ''} ${row.category || ''}`.toLowerCase()
+                    for (const kw of rejectKeywords) { if (blob.includes(kw)) return false }
+                    return true
+                })
+                .sort((a: any, b: any) => b.score - a.score)
+
+            let added = 0
+            for (const { row } of scored) {
+                if (added >= perSlot) break
+                if (row && row.image_url) {
+                    picks.push({
+                        id: `shop_${row.id}`,
+                        type: row.garment_type || row.category || slot,
+                        category: row.category || slot,
+                        macroCategory: slot,
+                        name: row.name || row.brand || 'Shop pick',
+                        brand: row.brand || '',
+                        color: row.primary_color || 'neutral',
+                        imageUrl: row.image_url,
+                        image: row.image_url,
+                        style: style || 'Casual',
+                        isShopItem: true,
+                        price: row.price || undefined,
+                        description: row.description || '',
+                        recommendation: `Suggested from shop to complete your ${slot}`,
+                    })
+                    added++
+                }
+            }
+        } catch (_) {
+            // Shop catalog unreachable — skip.
+        }
+    }
+    return picks
+}
+
 // ── Shop-catalog fill for missing slots (shoes, outerwear, etc.) ───────
 // Mirrors the client-side fillMissingSlots from shoppingService.ts.
 // Queries shop_catalog for 1 style-matching item per missing macro slot.
@@ -814,19 +888,17 @@ async function localFallback(items: any[], style: string, occasion: string, limi
         shoes = sortByFavorite(shoes)
     }
 
-    // ── Fill missing slots from shop_catalog ────────────────────────────
-    // If the wardrobe has no shoes (or no outerwear when layered), query
-    // the shop catalog so the AI / local builder can still produce a
-    // complete outfit.
-    const macros = new Set(items.map((i: any) => (i.macroCategory || '').toLowerCase()))
-    const missingSlots: string[] = []
-    if (!macros.has('shoes')) missingSlots.push('shoes')
-    if (!macros.has('bottom')) missingSlots.push('bottom')
-    if (!macros.has('top')) missingSlots.push('top')
-    if (layered && !macros.has('outerwear')) missingSlots.push('outerwear')
+    // ── Fetch shop catalog items for ALL required slots ─────────────────
+    // Proactively fetch multiple style-ranked items from shop_catalog for
+    // every required outfit slot, not just missing ones. This ensures outfits
+    // always include shop catalog items as primary options for all categories.
+    const fillSlots: string[] = ['top', 'bottom', 'shoes']
+    if (layered) fillSlots.push('outerwear')
     let shopFills: any[] = []
-    if (missingSlots.length > 0 && supabaseClient) {
-        shopFills = await fillMissingSlotsEdge(supabaseClient, missingSlots, style)
+    if (supabaseClient) {
+        try {
+            shopFills = await fetchShopItemsForAllSlotsEdge(supabaseClient, fillSlots, style, 3)
+        } catch (_) { /* skip */ }
     }
     // Merge shop items into the pool so the builder picks them naturally.
     const allItems = [...items, ...shopFills]
@@ -1251,21 +1323,23 @@ serve(async (req) => {
             console.log(`[preferences] Filtered out avoided colors: ${beforeAvoid} -> ${wardrobeItems.length} items`)
         }
 
-        // ── 3c. Fill missing macro-category slots from shop_catalog ────────
-        // If the user's wardrobe has no shoes (or no outerwear/top/bottom),
-        // pull matching items from the shop catalog so the AI prompt includes
-        // them and can produce a complete outfit.
-        const wardrobeMacros = new Set(wardrobeItems.map((i: any) => (i.macroCategory || '').toLowerCase()))
+        // ── 3c. Fetch shop catalog items for ALL required slots ────────────
+        // Outfits must be created from shop category clothing in Supabase.
+        // We proactively fetch multiple style-ranked items from shop_catalog
+        // for every required outfit slot (top, bottom, shoes, outerwear),
+        // not just for slots missing from the user's wardrobe. This ensures
+        // the AI prompt always includes shop catalog items as primary options.
         const requiredSlots = ['top', 'bottom', 'shoes']
         if (needsLayering(stylePreferences, weather, prompt)) requiredSlots.push('outerwear')
-        const missingWardrobeSlots = requiredSlots.filter(s => !wardrobeMacros.has(s))
-        if (missingWardrobeSlots.length > 0) {
+        try {
             const svcClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-            const shopFills = await fillMissingSlotsEdge(svcClient, missingWardrobeSlots, stylePreferences)
-            if (shopFills.length > 0) {
-                console.log(`[shop-fill] Added ${shopFills.length} shop item(s) for missing slots: ${missingWardrobeSlots.join(', ')}`)
-                wardrobeItems = [...wardrobeItems, ...shopFills]
+            const shopItems = await fetchShopItemsForAllSlotsEdge(svcClient, requiredSlots, stylePreferences, 4)
+            if (shopItems.length > 0) {
+                console.log(`[shop-fill] Added ${shopItems.length} shop catalog item(s) across all slots: ${requiredSlots.join(', ')}`)
+                wardrobeItems = [...wardrobeItems, ...shopItems]
             }
+        } catch (_) {
+            console.warn('[shop-fill] Failed to fetch shop catalog items')
         }
 
         // ── 3d. Rank + trim the pool for the requested style so the LLM only

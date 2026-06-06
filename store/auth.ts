@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { Platform } from 'react-native';
 import { Session } from '@supabase/supabase-js';
 import type { Subscription } from '@supabase/supabase-js';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 
 import { supabase } from '../lib/supabase';
 import { analyticsService } from '../src/services/analyticsService';
@@ -19,7 +21,7 @@ const log = createLogger('AuthStore');
 // TYPES
 // ============================================
 
-export type AuthMethod = 'email' | 'apple';
+export type AuthMethod = 'email' | 'apple' | 'google';
 
 export interface AuthUser {
     id: string;
@@ -55,6 +57,7 @@ export interface AuthActions {
     ) => Promise<void>;
     login: (email: string, password: string) => Promise<void>;
     signInWithApple: () => Promise<void>;
+    signInWithGoogle: () => Promise<void>;
     logout: () => Promise<void>;
     deleteAccount: () => Promise<void>;
     fetchUser: () => Promise<void>;
@@ -114,6 +117,7 @@ async function onAuthSuccess(
 
     if (method === 'email') analyticsService.trackLogin('email');
     else if (method === 'apple') analyticsService.trackLogin('apple');
+    else if (method === 'google') analyticsService.trackLogin('google');
 
     analyticsService.setUserId(session.user.id);
     crashReporting.setUser(session.user.id);
@@ -231,6 +235,11 @@ const useAuthStore = create<AuthStore>((set, get) => ({
         const tokens = parseSupabaseUrl(url);
         if (!tokens) return;
 
+        // Check if this is a password-recovery deep link (type=recovery in the hash)
+        const hash = url.split('#')[1];
+        const params = new URLSearchParams(hash || '');
+        const isRecovery = params.get('type') === 'recovery';
+
         set({ loading: true, error: null });
         try {
             const { data, error } = await supabase.auth.setSession({
@@ -239,8 +248,14 @@ const useAuthStore = create<AuthStore>((set, get) => ({
             });
             if (error) throw error;
             if (data.session) {
-                await onAuthSuccess(set, get, data.session, 'email');
-                log.info('Deep link auth successful', { userId: data.session.user.id });
+                if (isRecovery) {
+                    // Password-recovery flow: just set session + auth state without
+                    // triggering login analytics, IAP identity, or trial initialisation.
+                    set({ session: data.session, isAuthenticated: true, loading: false, error: null });
+                } else {
+                    await onAuthSuccess(set, get, data.session, 'email');
+                }
+                log.info('Deep link auth successful', { userId: data.session.user.id, isRecovery });
             }
         } catch (err) {
             log.error('Deep link auth failed', err);
@@ -370,6 +385,44 @@ const useAuthStore = create<AuthStore>((set, get) => ({
             }
             setAuthError(set, err, 'Apple sign-in failed');
         }
+    },
+
+    signInWithGoogle: async () => {
+      set({ loading: true, error: null });
+      try {
+        const redirectUrl = Linking.createURL('/auth/callback');
+
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: redirectUrl,
+            skipBrowserRedirect: true,
+          },
+        });
+
+        if (error) throw error;
+        if (!data?.url) throw new Error('Failed to get Google auth URL');
+
+        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+
+        if (result.type === 'success') {
+          const tokens = parseSupabaseUrl(result.url);
+          if (!tokens) throw new Error('Failed to parse auth response');
+
+          const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+            access_token: tokens.accessToken,
+            refresh_token: tokens.refreshToken,
+          });
+          if (sessionError) throw sessionError;
+          if (sessionData.session) {
+            await onAuthSuccess(set, get, sessionData.session, 'google');
+          }
+        } else {
+          set({ loading: false });
+        }
+      } catch (err) {
+        setAuthError(set, err, 'Google sign-in failed');
+      }
     },
 
     logout: async () => {

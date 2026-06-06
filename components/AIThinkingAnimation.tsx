@@ -1,13 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import {
-  View,
-  Text,
-  Animated,
-  Dimensions,
-  StyleSheet,
-  Easing,
-  Image,
-} from 'react-native';
+import { View, Animated, Dimensions, StyleSheet, Easing, Image,  } from 'react-native'
+import { ScaledText } from './ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -257,7 +250,7 @@ export const AIThinkingAnimation: React.FC<AIThinkingAnimationProps> = ({
           <View style={styles.aiIconContainer}>
             <Ionicons name="flask" size={32} color="#2B5CE9" />
           </View>
-          <Text style={styles.brainText}>{t('aiThinking.styleDna')}</Text>
+          <ScaledText style={styles.brainText}>{t('aiThinking.styleDna')}</ScaledText>
         </View>
         <View style={styles.glowRing} />
         <View style={styles.glowRingOuter} />
@@ -275,10 +268,10 @@ export const AIThinkingAnimation: React.FC<AIThinkingAnimationProps> = ({
         <Animated.View style={{ opacity: stepFadeAnim }}>
           <View style={styles.stepRow}>
             <Ionicons name={currentStepData.icon} size={20} color="#2B5CE9" style={styles.stepIcon} />
-            <Text style={styles.stepText}>{currentStepData.text}</Text>
+            <ScaledText style={styles.stepText}>{currentStepData.text}</ScaledText>
           </View>
         </Animated.View>
-        {styleName && <Text style={styles.styleTag}>{t('aiThinking.synthesizingDna', { style: styleName })}</Text>}
+        {styleName && <ScaledText style={styles.styleTag}>{t('aiThinking.synthesizingDna', { style: styleName })}</ScaledText>}
       </View>
 
       {/* Progress bar */}
@@ -286,7 +279,7 @@ export const AIThinkingAnimation: React.FC<AIThinkingAnimationProps> = ({
         <View style={styles.progressBackground}>
           <Animated.View style={[styles.progressFill, { width: progressWidth }]} />
         </View>
-        <Text style={styles.progressText}>{Math.round((currentStep / (THINKING_STEPS.length - 1)) * 100)}%</Text>
+        <ScaledText style={styles.progressText}>{Math.round((currentStep / (THINKING_STEPS.length - 1)) * 100)}%</ScaledText>
       </View>
     </View>
   );

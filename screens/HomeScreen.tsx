@@ -5,19 +5,8 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  Image,
-  Dimensions,
-  StyleSheet,
-  ActivityIndicator,
-  TouchableOpacity,
-  FlatList,
-  Alert,
-  InteractionManager,
-} from "react-native";
+import { View, ScrollView, Image, Dimensions, StyleSheet, ActivityIndicator, TouchableOpacity, FlatList, Alert, InteractionManager } from 'react-native';
+import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useIsFocused, useFocusEffect } from "@react-navigation/native";
@@ -27,6 +16,7 @@ import useAuthStore from '../store/auth';
 import { LinearGradient } from "expo-linear-gradient";
 import { useVideoPlayer, VideoView } from 'expo-video';
 import * as Location from 'expo-location';
+import * as Haptics from 'expo-haptics';
 import Animated, {
   FadeInDown,
 } from 'react-native-reanimated';
@@ -66,7 +56,7 @@ import useShopCatalogStore from '../store/shopCatalogStore';
 import OutfitCollageDisplay from '../features/outfit-generator/components/OutfitCollageDisplay';
 import TrialCountdownBanner from '../components/TrialCountdownBanner';
 import type { ShopCatalogItem } from '../features/try-on/types';
-import type { ClothingCategory } from '../src/types/domain';
+import type { ClothingCategory, Occasion } from '../src/types/domain';
 import { createLogger } from '../src/utils/logger';
 import { useTranslation } from 'react-i18next';
 import { useAdminGuard } from '../hooks/useAdminGuard';
@@ -302,6 +292,7 @@ interface DailyOutfitSectionProps {
   isReducedMotionEnabled: boolean;
   navigation: any;
   t: any;
+  userId?: string;
 }
 
 const toCamelCase = (str: string) => {
@@ -325,9 +316,15 @@ const DailyOutfitSection = React.memo(({
   isReducedMotionEnabled,
   navigation,
   t,
+  userId,
 }: DailyOutfitSectionProps) => {
   const [currentOutfitIndex, setCurrentOutfitIndex] = useState(0);
   const outfitFlatListRef = useRef<FlatList>(null);
+  const [savedOutfitKeys, setSavedOutfitKeys] = useState<Set<string>>(new Set());
+
+  const addOutfit = useWardrobeStore((s) => s.addOutfit);
+  const saveOutfit = useWardrobeStore((s) => s.saveOutfit);
+  const dislikeOutfitItems = useWardrobeStore((s) => s.dislikeOutfit);
 
   // Load the daily outfits for this style and occasion
   const dailyAI = useDailyAIOutfit({
@@ -336,6 +333,50 @@ const DailyOutfitSection = React.memo(({
     weather: weatherForAI,
     variants: 3,
   });
+
+  // Determine occasion from the style prop
+  const deriveOccasion = useMemo((): Occasion => {
+    const lower = occasion.toLowerCase();
+    if (lower.includes('team') || lower.includes('work') || lower.includes('office')) return 'work';
+    if (lower.includes('dinner') || lower.includes('night') || lower.includes('date')) return 'date';
+    if (lower.includes('formal') || lower.includes('wedding') || lower.includes('gala')) return 'formal';
+    if (lower.includes('gym') || lower.includes('sport') || lower.includes('workout')) return 'sport';
+    if (lower.includes('travel') || lower.includes('airport') || lower.includes('flight')) return 'travel';
+    return 'casual';
+  }, [occasion]);
+
+  // Helper: compute outfit key from item IDs
+  const getOutfitKey = useCallback(() => {
+    const currentOutfit = dailyAI.outfits[currentOutfitIndex];
+    if (!currentOutfit) return '';
+    const itemIds = currentOutfit.items
+      ?.filter((it: any) => it.id)
+      .map((it: any) => String(it.id)) ?? [];
+    return itemIds.length > 0 ? [...itemIds].sort().join(',') : '';
+  }, [dailyAI.outfits, currentOutfitIndex]);
+
+  // Helper: get item IDs from current outfit
+  const getCurrentItemIds = useCallback(() => {
+    const currentOutfit = dailyAI.outfits[currentOutfitIndex];
+    if (!currentOutfit) return [] as string[];
+    return currentOutfit.items
+      ?.filter((it: any) => it.id)
+      .map((it: any) => String(it.id)) ?? [];
+  }, [dailyAI.outfits, currentOutfitIndex]);
+
+  const currentOutfitItemIds = useMemo(
+    () =>
+      dailyAI.outfits[currentOutfitIndex]?.items
+        ?.filter((it: any) => it.id)
+        .map((it: any) => String(it.id)) ?? [],
+    [dailyAI.outfits, currentOutfitIndex],
+  );
+
+  const currentOutfitKey = useMemo(
+    () => [...currentOutfitItemIds].sort().join(','),
+    [currentOutfitItemIds],
+  );
+  const isOutfitSaved = savedOutfitKeys.has(currentOutfitKey);
 
   const isOldMoney = style === 'old_money';
   const cardStyle = isOldMoney ? styles.dinnerCard : styles.premiumCard;
@@ -541,16 +582,16 @@ const DailyOutfitSection = React.memo(({
     return (
       <View style={styles.premiumSection}>
         <View style={[styles.premiumHeader, { paddingHorizontal: spacing.screenPadding }]}>
-          <Text style={styles.premiumHeaderTitle}>{titleText}</Text>
-          <Text style={isOldMoney ? styles.dinnerHeaderSubtitle : styles.premiumHeaderSubtitle}>{subtitleText}</Text>
+          <ScaledText style={styles.premiumHeaderTitle}>{titleText}</ScaledText>
+          <ScaledText style={isOldMoney ? styles.dinnerHeaderSubtitle : styles.premiumHeaderSubtitle}>{subtitleText}</ScaledText>
         </View>
         <View style={{ paddingHorizontal: spacing.screenPadding }}>
           {isOldMoney ? (
             <View style={[styles.dinnerCard, { minHeight: 340, alignItems: 'center', justifyContent: 'center' }]}>
               <ActivityIndicator size="small" color={colors.accent.primary} />
-              <Text style={[styles.dinnerSuggestionText, { marginTop: spacing.sm }]}>
+              <ScaledText style={[styles.dinnerSuggestionText, { marginTop: spacing.sm }]}>
                 Styling tonight&apos;s looks…
-              </Text>
+              </ScaledText>
             </View>
           ) : (
             <LiquidGlassCard
@@ -559,9 +600,9 @@ const DailyOutfitSection = React.memo(({
               contentStyle={[styles.premiumCardContent, { minHeight: 340, justifyContent: 'center' }]}
             >
               <ActivityIndicator size="small" color={colors.accent.primary} />
-              <Text style={[styles.premiumSuggestionText, { marginTop: spacing.sm }]}>
+              <ScaledText style={[styles.premiumSuggestionText, { marginTop: spacing.sm }]}>
                 Styling today&apos;s looks…
-              </Text>
+              </ScaledText>
             </LiquidGlassCard>
           )}
         </View>
@@ -593,9 +634,9 @@ const DailyOutfitSection = React.memo(({
             />
 
             <View style={styles.premiumSuggestionInfo}>
-              <Text style={styles.dinnerSuggestionText}>
+              <ScaledText style={styles.dinnerSuggestionText}>
                 {`${collageItems.length} shop items suggested`}
-              </Text>
+              </ScaledText>
               <Ionicons name="bag-outline" size={16} color="rgba(255,255,255,0.4)" />
             </View>
 
@@ -623,9 +664,9 @@ const DailyOutfitSection = React.memo(({
           />
 
           <View style={styles.premiumSuggestionInfo}>
-            <Text style={styles.premiumSuggestionText}>
+            <ScaledText style={styles.premiumSuggestionText}>
               {`${collageItems.length} shop items suggested`}
-            </Text>
+            </ScaledText>
             <Ionicons name="bag-outline" size={16} color={colors.text.tertiary} />
           </View>
 
@@ -642,8 +683,8 @@ const DailyOutfitSection = React.memo(({
   return (
     <View style={styles.premiumSection}>
       <View style={[styles.premiumHeader, { paddingHorizontal: spacing.screenPadding }]}>
-        <Text style={styles.premiumHeaderTitle}>{titleText}</Text>
-        <Text style={isOldMoney ? styles.dinnerHeaderSubtitle : styles.premiumHeaderSubtitle}>{subtitleText}</Text>
+        <ScaledText style={styles.premiumHeaderTitle}>{titleText}</ScaledText>
+        <ScaledText style={isOldMoney ? styles.dinnerHeaderSubtitle : styles.premiumHeaderSubtitle}>{subtitleText}</ScaledText>
       </View>
 
       {data.length === 0 ? (
@@ -651,9 +692,9 @@ const DailyOutfitSection = React.memo(({
           {isOldMoney ? (
             <View style={[styles.dinnerCard, { minHeight: 300, alignItems: 'center', justifyContent: 'center' }]}>
               <Ionicons name={emptyIconName} size={48} color="rgba(255,255,255,0.6)" />
-              <Text style={[suggestionTextStyle, { marginTop: spacing.md, textAlign: 'center' }]}>
+              <ScaledText style={[suggestionTextStyle, { marginTop: spacing.md, textAlign: 'center' }]}>
                 No looks available right now.
-              </Text>
+              </ScaledText>
               <TouchableOpacity
                 style={[styles.createAvatarButton, { marginTop: spacing.md }]}
                 onPress={() => {
@@ -663,7 +704,7 @@ const DailyOutfitSection = React.memo(({
                 accessibilityLabel={t('home.tryAgain')}
                 accessibilityRole="button"
               >
-                <Text style={styles.createAvatarText}>{t('home.tryAgain')}</Text>
+                <ScaledText style={styles.createAvatarText}>{t('home.tryAgain')}</ScaledText>
               </TouchableOpacity>
             </View>
           ) : (
@@ -673,9 +714,9 @@ const DailyOutfitSection = React.memo(({
               contentStyle={[styles.premiumCardContent, { minHeight: 300, justifyContent: 'center', alignItems: 'center' }]}
             >
               <Ionicons name={emptyIconName} size={48} color={colors.text.tertiary} />
-              <Text style={[suggestionTextStyle, { marginTop: spacing.md, textAlign: 'center' }]}>
+              <ScaledText style={[suggestionTextStyle, { marginTop: spacing.md, textAlign: 'center' }]}>
                 No looks available right now.
-              </Text>
+              </ScaledText>
               <TouchableOpacity
                 style={[styles.createAvatarButton, { marginTop: spacing.md }]}
                 onPress={() => {
@@ -685,7 +726,7 @@ const DailyOutfitSection = React.memo(({
                 accessibilityLabel={t('home.tryAgain')}
                 accessibilityRole="button"
               >
-                <Text style={styles.createAvatarText}>{t('home.tryAgain')}</Text>
+                <ScaledText style={styles.createAvatarText}>{t('home.tryAgain')}</ScaledText>
               </TouchableOpacity>
             </LiquidGlassCard>
           )}
@@ -711,8 +752,30 @@ const DailyOutfitSection = React.memo(({
       {/* Action Footer */}
       <View style={styles.premiumFooter}>
         <View style={styles.premiumActionIcons}>
-          <TouchableOpacity style={styles.actionIconButton}>
-            <Ionicons name="heart-outline" size={24} color={colors.text.primary} />
+          <TouchableOpacity
+            style={styles.actionIconButton}
+            onPress={() => {
+              const itemIds = getCurrentItemIds();
+              const key = getOutfitKey();
+              if (itemIds.length === 0 || savedOutfitKeys.has(key)) return;
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              const outfitId = addOutfit({
+                userId: userId ?? '',
+                itemIds,
+                occasion: deriveOccasion,
+                generatedBy: 'ai',
+              });
+              saveOutfit(outfitId);
+              setSavedOutfitKeys(prev => new Set(prev).add(key));
+            }}
+            accessibilityLabel={t('home.saveOutfit', 'Save outfit')}
+            accessibilityRole="button"
+          >
+            <Ionicons
+              name={isOutfitSaved ? 'heart' : 'heart-outline'}
+              size={24}
+              color={isOutfitSaved ? '#E05C5C' : colors.text.primary}
+            />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionIconButton}
@@ -725,7 +788,24 @@ const DailyOutfitSection = React.memo(({
           >
             <Ionicons name="refresh-outline" size={22} color={colors.text.primary} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionIconButton}>
+          <TouchableOpacity
+            style={styles.actionIconButton}
+            onPress={() => {
+              const itemIds = getCurrentItemIds();
+              if (itemIds.length === 0) return;
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              dislikeOutfitItems(itemIds);
+              const nextIndex = Math.min(currentOutfitIndex + 1, dailyAI.outfits.length - 1);
+              if (nextIndex !== currentOutfitIndex) {
+                setTimeout(() => {
+                  outfitFlatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+                  setCurrentOutfitIndex(nextIndex);
+                }, 200);
+              }
+            }}
+            accessibilityLabel={t('home.dislikeOutfit', 'Dislike outfit')}
+            accessibilityRole="button"
+          >
             <Ionicons name="thumbs-down-outline" size={24} color={colors.text.primary} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionIconButton}>
@@ -739,7 +819,7 @@ const DailyOutfitSection = React.memo(({
             navigation.navigate('AITryOn');
           }}
         >
-          <Text style={styles.createAvatarText}>{t('home.tryOn')}</Text>
+          <ScaledText style={styles.createAvatarText}>{t('home.tryOn')}</ScaledText>
         </TouchableOpacity>
       </View>
     </View>
@@ -936,6 +1016,7 @@ const HomeScreen = () => {
 
   // Read username from Supabase auth store (no JWT decode needed)
   const authUsername = useAuthStore(selectUsername);
+  const userId = useAuthStore((state) => state.user?.id);
   useEffect(() => {
     if (authUsername) {
       setUserName(authUsername);
@@ -1263,15 +1344,15 @@ const HomeScreen = () => {
               accessibilityLabel={`Weather icon: ${weather.description}`}
             />
             <View style={styles.weatherInfo}>
-              <Text style={styles.weatherTemp}>{weather.temp}°C</Text>
-              <Text style={styles.weatherDesc}>{weather.description}</Text>
+              <ScaledText style={styles.weatherTemp}>{weather.temp}°C</ScaledText>
+              <ScaledText style={styles.weatherDesc}>{weather.description}</ScaledText>
             </View>
             <View style={styles.weatherSuggestion}>
               <Ionicons name="shirt-outline" size={16} color={colors.text.secondary} />
-              <Text style={styles.suggestionText}>
+              <ScaledText style={styles.suggestionText}>
                 {weather.temp > 25 ? t('home.wearLight') :
                   weather.temp > 15 ? t('home.useLayers') : t('home.dressWarm')}
-              </Text>
+              </ScaledText>
             </View>
           </View>
         </View>
@@ -1311,7 +1392,7 @@ const HomeScreen = () => {
             style={styles.heroOverlay}
           >
             <View style={styles.heroInfo}>
-              <Text style={styles.heroTitle}>{t('home.todaysLook')}</Text>
+              <ScaledText style={styles.heroTitle}>{t('home.todaysLook')}</ScaledText>
             </View>
           </LinearGradient>
         </LiquidGlassCard>
@@ -1319,13 +1400,13 @@ const HomeScreen = () => {
         <TouchableOpacity
           style={styles.createOutfitButton}
           onPress={() => {
-            logger.debug('Navigating to AI outfit maker with shop source');
-            navigation.navigate('AIOutfit', { source: 'shop' });
+            logger.debug('Navigating to AI outfit maker with wardrobe source');
+            navigation.navigate('AIOutfit', { source: 'wardrobe' });
           }}
-          accessibilityLabel={t('home.createOutfitFromShopItems')}
+          accessibilityLabel={t('home.createOutfitFromWardrobe')}
           accessibilityRole="button"
         >
-          <Text style={styles.createOutfitText}>{t('home.createOutfit')}</Text>
+          <ScaledText style={styles.createOutfitText}>{t('home.createOutfit')}</ScaledText>
         </TouchableOpacity>
 
         {/* Unified Nudge Section (Prompts & Home Cards) */}
@@ -1339,7 +1420,7 @@ const HomeScreen = () => {
               <View style={styles.hiddenGemsHeader}>
                 <View style={styles.hiddenGemsTitleContainer}>
                   <Ionicons name={activePrompt.icon as any} size={18} color={activePrompt.color || '#E67E22'} />
-                  <Text style={styles.hiddenGemsTitle}>{activePrompt.title}</Text>
+                  <ScaledText style={styles.hiddenGemsTitle}>{activePrompt.title}</ScaledText>
                 </View>
                 <TouchableOpacity
                   onPress={() => {
@@ -1353,9 +1434,9 @@ const HomeScreen = () => {
                 </TouchableOpacity>
               </View>
 
-              <Text style={styles.hiddenGemsText}>
+              <ScaledText style={styles.hiddenGemsText}>
                 {activePrompt.message}
-              </Text>
+              </ScaledText>
 
               <TouchableOpacity
                 style={[styles.viewAnalyticsButton, { backgroundColor: activePrompt.color || '#F39C12' }]}
@@ -1366,7 +1447,7 @@ const HomeScreen = () => {
                   navigation.navigate(activePrompt.action.route as any, activePrompt.action.params as any);
                 }}
               >
-                <Text style={styles.viewAnalyticsText}>{activePrompt.action.label.toUpperCase()}</Text>
+                <ScaledText style={styles.viewAnalyticsText}>{activePrompt.action.label.toUpperCase()}</ScaledText>
                 <Ionicons name="arrow-forward" size={16} color="#FFF" />
               </TouchableOpacity>
             </View>
@@ -1393,18 +1474,30 @@ const HomeScreen = () => {
   // (and drops outerwear in warm weather via the `needsOuterwear` prop).
 
   // Wardrobe Essentials Grid — Supabase-backed catalog picks
+  const garmentTypeLabel = (type: string): string => {
+    const labels: Record<string, string> = {
+      upper_body: 'Top',
+      lower_body: 'Bottom',
+      dresses: 'Dress',
+      shoes: 'Shoes',
+      accessory: 'Accessory',
+      outfit: 'Outfit',
+    };
+    return labels[type] || type;
+  };
+
   const renderEssentials = useCallback(() => {
     const showSkeleton = essentialsLoading && essentialsItems.length === 0;
     const showEmpty = !essentialsLoading && essentialsItems.length === 0;
 
     return (
       <View style={styles.essentialsSection}>
-        <Text style={styles.sectionTitle} accessibilityRole="header">{t('home.wardrobeEssentials')}</Text>
+        <ScaledText style={styles.sectionTitle} accessibilityRole="header">{t('home.wardrobeEssentials')}</ScaledText>
 
         {showSkeleton ? (
           <View style={styles.essentialsLoadingBlock}>
             <ActivityIndicator size="small" color={colors.accent.primary} />
-            <Text style={styles.essentialsLoadingText}>{t('home.loadingEssentials')}</Text>
+            <ScaledText style={styles.essentialsLoadingText}>{t('home.loadingEssentials')}</ScaledText>
           </View>
         ) : showEmpty ? (
           <View style={styles.essentialsEmptyBlock}>
@@ -1413,18 +1506,16 @@ const HomeScreen = () => {
               size={22}
               color={colors.text.tertiary}
             />
-            <Text style={styles.essentialsEmptyText}>
+            <ScaledText style={styles.essentialsEmptyText}>
               {essentialsError
                 ? 'Could not load essentials. Pull to refresh.'
                 : 'No essentials available yet.'}
-            </Text>
+            </ScaledText>
           </View>
         ) : (
           <View style={styles.gridContainer}>
             {essentialsItems.map((item) => {
               const isAdded = addedItemIds[item.id] === true;
-              const imageSrc =
-                typeof item.imageUrl === 'string' ? { uri: item.imageUrl } : item.imageUrl;
 
               return (
                 <LiquidGlassCard
@@ -1432,35 +1523,48 @@ const HomeScreen = () => {
                   style={styles.gridItem}
                   contentStyle={styles.gridItemContent}
                   variant="light"
+                  radius={16}
                 >
-                  <CachedImage uri={typeof item.imageUrl === 'string' ? item.imageUrl : ''} style={styles.gridImage} contentFit="cover" fadeIn={false} />
-                  <Text style={styles.essentialItemName} numberOfLines={2}>{item.name}</Text>
-                  <View style={styles.gridActions}>
-                    <TouchableOpacity
-                      style={[styles.addButton, isAdded && styles.addedButton]}
-                      onPress={() => {
-                        if (!isAdded) {
-                          logger.debug('Add button pressed', item.name);
-                          handleAddToWardrobe(item);
-                        }
-                      }}
-                      accessibilityLabel={
-                        isAdded
-                          ? t('home.itemAddedToWardrobe', { itemName: item.name })
-                          : t('home.addItemToWardrobe', { itemName: item.name })
-                      }
-                      accessibilityRole="button"
-                    >
-                      <Ionicons
-                        name={isAdded ? 'checkmark' : 'add'}
-                        size={20}
-                        color={isAdded ? '#FFF' : colors.text.primary}
-                      />
-                      <Text style={[styles.addButtonText, isAdded && styles.addedButtonText]}>
-                        {isAdded ? t('common.added') : t('common.add')}
-                      </Text>
-                    </TouchableOpacity>
+                  <View style={styles.gridImageWrapper}>
+                    <CachedImage uri={typeof item.imageUrl === 'string' ? item.imageUrl : ''} style={styles.gridImage} contentFit="cover" fadeIn={false} />
+                    <View style={styles.gridImageOverlay} pointerEvents="none">
+                      <View style={styles.garmentBadge}>
+                        <ScaledText style={styles.garmentBadgeText}>
+                          {garmentTypeLabel(item.garmentType)}
+                        </ScaledText>
+                      </View>
+                    </View>
                   </View>
+                  <View style={styles.gridItemInfo}>
+                    <ScaledText style={styles.essentialItemName} numberOfLines={1}>{item.name}</ScaledText>
+                    {item.brand ? (
+                      <ScaledText style={styles.essentialItemBrand} numberOfLines={1}>{item.brand}</ScaledText>
+                    ) : null}
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.addButton, isAdded && styles.addedButton]}
+                    onPress={() => {
+                      if (!isAdded) {
+                        logger.debug('Add button pressed', item.name);
+                        handleAddToWardrobe(item);
+                      }
+                    }}
+                    accessibilityLabel={
+                      isAdded
+                        ? t('home.itemAddedToWardrobe', { itemName: item.name })
+                        : t('home.addItemToWardrobe', { itemName: item.name })
+                    }
+                    accessibilityRole="button"
+                  >
+                    <Ionicons
+                      name={isAdded ? 'checkmark-circle' : 'add-circle-outline'}
+                      size={18}
+                      color={isAdded ? '#FFF' : colors.text.primary}
+                    />
+                    <ScaledText style={[styles.addButtonText, isAdded && styles.addedButtonText]}>
+                      {isAdded ? t('common.added') : t('common.add')}
+                    </ScaledText>
+                  </TouchableOpacity>
                 </LiquidGlassCard>
               );
             })}
@@ -1503,9 +1607,9 @@ const HomeScreen = () => {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.plannerScroll}>
           {days.map((day, idx) => (
             <View key={idx} style={[styles.plannerDayItem, day.isToday && styles.plannerDayToday]}>
-              <Text style={styles.plannerDayName}>{day.name}</Text>
+              <ScaledText style={styles.plannerDayName}>{day.name}</ScaledText>
               <View style={[styles.plannerDateCircle, day.isToday && styles.plannerDateCircleToday]}>
-                <Text style={[styles.plannerDateText, day.isToday && styles.plannerDateTextToday]}>{day.date}</Text>
+                <ScaledText style={[styles.plannerDateText, day.isToday && styles.plannerDateTextToday]}>{day.date}</ScaledText>
               </View>
               <View style={styles.plannerOutfitContainer}>
                 {/* Outfits: Top, Pants, Shoes */}
@@ -1557,7 +1661,7 @@ const HomeScreen = () => {
         >
           {/* Header */}
           <View style={styles.headerSection}>
-            <Text style={styles.appTitleText} accessibilityRole="header">{t('home.aiWardrobe')}</Text>
+            <ScaledText style={styles.appTitleText} accessibilityRole="header">{t('home.aiWardrobe')}</ScaledText>
           </View>
 
           {/* Trial Countdown Banner — visible only during active 7-day trial */}
@@ -1571,9 +1675,9 @@ const HomeScreen = () => {
 
           {/* Greeting Row (Swapped position with Planner) */}
           <View style={[styles.greetingSection, { marginBottom: spacing.md }]}>
-            <Text style={styles.greetingText} numberOfLines={2}>
+            <ScaledText style={styles.greetingText} numberOfLines={2}>
               {greeting}, {userName}
-            </Text>
+            </ScaledText>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
               <StreakBadge variant="inline" />
               <TouchableOpacity
@@ -1617,6 +1721,7 @@ const HomeScreen = () => {
                 isReducedMotionEnabled={isReducedMotionEnabled}
                 navigation={navigation}
                 t={t}
+                userId={userId}
               />
             ))
           )}
@@ -2253,7 +2358,7 @@ const styles = StyleSheet.create({
   // Essentials Grid
   essentialsSection: {
     paddingHorizontal: spacing.screenPadding,
-    marginBottom: spacing.xxl, // Increased again per request
+    marginBottom: spacing.xxl,
   },
   gridContainer: {
     flexDirection: 'row',
@@ -2262,23 +2367,59 @@ const styles = StyleSheet.create({
   },
   gridItem: {
     width: (SCREEN_WIDTH - (spacing.screenPadding * 2) - spacing.md) / 2,
-    aspectRatio: 0.8,
-    borderRadius: 24,
+    aspectRatio: 0.72,
   },
   gridItemContent: {
-    padding: spacing.sm,
-    justifyContent: 'space-between',
+    padding: 0,
+    overflow: 'hidden',
+  },
+  gridImageWrapper: {
+    width: '100%',
+    height: '62%',
+    overflow: 'hidden',
   },
   gridImage: {
     width: '100%',
-    height: '75%',
-    borderRadius: radius.md,
+    height: '100%',
   },
-  gridActions: {
+  gridImageOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    padding: spacing.sm,
     flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: spacing.sm,
+    justifyContent: 'flex-start',
+  },
+  garmentBadge: {
+    backgroundColor: 'rgba(10, 25, 49, 0.75)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+  },
+  garmentBadgeText: {
+    ...typography.scale.labelSmall,
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+  gridItemInfo: {
+    paddingHorizontal: spacing.sm,
+    paddingTop: spacing.sm,
+    paddingBottom: 2,
+  },
+  essentialItemName: {
+    ...typography.scale.bodySmall,
+    color: colors.text.primary,
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  essentialItemBrand: {
+    ...typography.scale.bodySmall,
+    color: colors.text.tertiary,
+    fontSize: 11,
+    marginTop: 1,
   },
   addButton: {
     flexDirection: 'row',
@@ -2288,10 +2429,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(24,58,103,0.08)',
     paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingHorizontal: spacing.sm,
     borderRadius: radius.pill,
     gap: 4,
-    width: '100%',
+    marginHorizontal: spacing.sm,
+    marginBottom: spacing.sm,
+    marginTop: 2,
   },
   addedButton: {
     backgroundColor: '#173A65',
@@ -2301,17 +2444,10 @@ const styles = StyleSheet.create({
     ...typography.scale.labelSmall,
     color: colors.text.primary,
     fontWeight: '600',
+    fontSize: 11,
   },
   addedButtonText: {
     color: '#FFF',
-  },
-  essentialItemName: {
-    ...typography.scale.bodySmall,
-    color: colors.text.primary,
-    fontWeight: '600',
-    marginTop: spacing.xs,
-    marginBottom: 2,
-    textAlign: 'center',
   },
   essentialsLoadingBlock: {
     alignItems: 'center',

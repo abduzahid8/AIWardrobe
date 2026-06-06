@@ -9,12 +9,8 @@
  */
 
 import React, { useState } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-} from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -67,7 +63,7 @@ const AIStylistScreen = () => {
                         <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
                     </TouchableOpacity>
 
-                    <Text style={styles.title}>{t('aiStylist.title')}</Text>
+                    <ScaledText style={styles.title}>{t('aiStylist.title')}</ScaledText>
 
                     <View style={styles.placeholder} />
                 </Animated.View>
@@ -84,9 +80,9 @@ const AIStylistScreen = () => {
                                 size={16}
                                 color={activeTab === 'chat' ? '#FFF' : colors.text.secondary}
                             />
-                            <Text style={[styles.segmentText, activeTab === 'chat' && styles.segmentTextActive]}>
+                            <ScaledText style={[styles.segmentText, activeTab === 'chat' && styles.segmentTextActive]}>
                                 {t('aiStylist.styleChat')}
-                            </Text>
+                            </ScaledText>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[styles.segment, activeTab === 'outfit' && styles.segmentActive]}
@@ -97,9 +93,9 @@ const AIStylistScreen = () => {
                                 size={16}
                                 color={activeTab === 'outfit' ? '#FFF' : colors.text.secondary}
                             />
-                            <Text style={[styles.segmentText, activeTab === 'outfit' && styles.segmentTextActive]}>
+                            <ScaledText style={[styles.segmentText, activeTab === 'outfit' && styles.segmentTextActive]}>
                                 {t('aiStylist.outfitAI')}
-                            </Text>
+                            </ScaledText>
                         </TouchableOpacity>
                     </View>
                 </Animated.View>

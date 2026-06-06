@@ -1,14 +1,6 @@
 import React, { useState } from 'react';
-import {
-    View,
-    TextInput,
-    Text,
-    TextInputProps,
-    StyleSheet,
-    ViewStyle,
-    TextStyle,
-    TouchableOpacity,
-} from 'react-native';
+import { View, TextInput, TextInputProps, StyleSheet, ViewStyle, TextStyle, TouchableOpacity,  } from 'react-native'
+import { ScaledText } from '../ui/ScaledText';;
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -123,7 +115,7 @@ export const Input: React.FC<InputProps> = ({
 
     return (
         <View style={[styles.container, containerStyle]}>
-            {label && <Text style={styles.label}>{label}</Text>}
+            {label && <ScaledText style={styles.label}>{label}</ScaledText>}
 
             <AnimatedView style={[styles.inputContainer, getVariantStyles(), animatedBorderStyle]}>
                 {leftIcon && (
@@ -172,8 +164,8 @@ export const Input: React.FC<InputProps> = ({
                 ) : null}
             </AnimatedView>
 
-            {error && <Text style={styles.error}>{error}</Text>}
-            {hint && !error && <Text style={styles.hint}>{hint}</Text>}
+            {error && <ScaledText style={styles.error}>{error}</ScaledText>}
+            {hint && !error && <ScaledText style={styles.hint}>{hint}</ScaledText>}
         </View>
     );
 };

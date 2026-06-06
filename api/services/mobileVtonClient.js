@@ -156,20 +156,23 @@ export async function callMobileVtonMulti({
       payload.pipeline_version = pipelineVersion;
     }
 
-  const result = await withRetry(
+    const result = await withRetry(
       () => axios.post(`${baseUrl}${endpoint}`, payload, { timeout: 240_000 }),
       { maxRetries: 1, delayMs: 5_000, label: `multi try-on (${pipelineVersion})` },
     );
 
-  const elapsedMs = Date.now() - startTime;
-  logger.info(`[mobileVtonClient] multi try-on OK in ${elapsedMs}ms`);
+    const elapsedMs = Date.now() - startTime;
+    logger.info(`[mobileVtonClient] multi try-on OK in ${elapsedMs}ms`);
 
-  const data = result.data || {};
-  return {
-    ...data,
-    resultImage: data.result_image || data.resultImage,
-    elapsedMs: data.elapsed_ms || data.elapsedMs || elapsedMs,
-  };
+    const data = result.data || {};
+    return {
+      ...data,
+      resultImage: data.result_image || data.resultImage,
+      elapsedMs: data.elapsed_ms || data.elapsedMs || elapsedMs,
+    };
+  } catch (err) {
+    throw wrapError(err);
+  }
 }
 
 // ─── Health check ────────────────────────────────────────────────────────────

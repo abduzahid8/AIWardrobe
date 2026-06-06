@@ -1,11 +1,6 @@
 import React from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    Switch,
-} from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Switch,  } from 'react-native'
+import { ScaledText } from './ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
@@ -53,9 +48,9 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
                     color={colors.text.primary}
                 />
                 {showLabel && (
-                    <Text style={[styles.label, { color: colors.text.primary }]}>
+                    <ScaledText style={[styles.label, { color: colors.text.primary }]}>
                         {t('theme.darkMode')}
-                    </Text>
+                    </ScaledText>
                 )}
             </View>
             <Switch
@@ -90,9 +85,9 @@ export const ThemeSelector: React.FC = () => {
 
     return (
         <View style={[styles.selectorContainer, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.selectorTitle, { color: colors.text.primary }]}>
+            <ScaledText style={[styles.selectorTitle, { color: colors.text.primary }]}>
                 {t('theme.appearance')}
-            </Text>
+            </ScaledText>
             <View style={styles.optionsRow}>
                 {options.map((option) => {
                     const isActive = themeMode === option.mode;
@@ -115,7 +110,7 @@ export const ThemeSelector: React.FC = () => {
                                 size={20}
                                 color={isActive ? colors.text.inverse : colors.text.secondary}
                             />
-                            <Text
+                            <ScaledText
                                 style={[
                                     styles.optionLabel,
                                     {
@@ -126,7 +121,7 @@ export const ThemeSelector: React.FC = () => {
                                 ]}
                             >
                                 {option.label}
-                            </Text>
+                            </ScaledText>
                         </TouchableOpacity>
                     );
                 })}

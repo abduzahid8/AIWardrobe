@@ -1,0 +1,1972 @@
+[
+  {
+    "id": "uniqlo-m-422992-crew-neck-t-shirt",
+    "brand": "UNIQLO",
+    "name": "Crew Neck T-Shirt",
+    "price": 24.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - Crew Neck T-Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/422992/item/usgoods_73_422992_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-448034-airsense-blazer-wool-like",
+    "brand": "UNIQLO",
+    "name": "AirSense Blazer | Wool-Like",
+    "price": 79.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Outerwear - AirSense Blazer | Wool-Like. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/448034/item/goods_09_448034_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-450179-soft-brushed-t-shirt-long-sleeve",
+    "brand": "UNIQLO",
+    "name": "Soft Brushed T-Shirt | Long Sleeve",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - Soft Brushed T-Shirt | Long Sleeve. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/450179/item/usgoods_69_450179_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-450195-fleece-full-zip-jacket",
+    "brand": "UNIQLO",
+    "name": "Fleece Full-Zip Jacket",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Outerwear - Fleece Full-Zip Jacket. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/450195/item/goods_09_450195_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-450251-slim-chino-pants",
+    "brand": "UNIQLO",
+    "name": "Slim Chino Pants",
+    "price": 59.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Slim Chino Pants. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/450251/item/usgoods_32_450251_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-450260-broadcloth-shirt-button-down",
+    "brand": "UNIQLO",
+    "name": "Broadcloth Shirt | Button Down",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Shirts & Polos - Broadcloth Shirt | Button Down. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/450260/item/usgoods_00_450260_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-450535-merino-sweater",
+    "brand": "UNIQLO",
+    "name": "Merino Sweater",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Sweaters - Merino Sweater. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/450535/item/usgoods_07_450535_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-450543-cashmere-sweater",
+    "brand": "UNIQLO",
+    "name": "Cashmere Sweater",
+    "price": 99.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Sweaters - Cashmere Sweater. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/450543/item/goods_03_450543_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-453754-washable-milano-ribbed-sweater",
+    "brand": "UNIQLO",
+    "name": "Washable Milano Ribbed Sweater",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Sweaters - Washable Milano Ribbed Sweater. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/453754/item/usgoods_64_453754_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-455365-supima-cotton-t-shirt",
+    "brand": "UNIQLO",
+    "name": "SUPIMA® Cotton T-Shirt",
+    "price": 19.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - SUPIMA® Cotton T-Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/455365/item/usgoods_17_455365_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-455533-stretch-slim-shorts-9",
+    "brand": "UNIQLO",
+    "name": "Stretch Slim Shorts | 9\"",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Shorts - Stretch Slim Shorts | 9\". Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/455533/item/usgoods_69_455533_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-455957-premium-linen-shirt",
+    "brand": "UNIQLO",
+    "name": "Premium Linen Shirt",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO T-Shirts - Premium Linen Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/455957/item/usgoods_57_455957_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-456630-oxford-slim-shirt",
+    "brand": "UNIQLO",
+    "name": "Oxford Slim Shirt",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Shirts & Polos - Oxford Slim Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/456630/item/usgoods_64_456630_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-457517-airism-cotton-t-shirt-sleeveless",
+    "brand": "UNIQLO",
+    "name": "AIRism Cotton T-Shirt | Sleeveless",
+    "price": 19.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - AIRism Cotton T-Shirt | Sleeveless. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/457517/item/usgoods_53_457517_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-458325-stretch-easy-shorts-seersucker-8",
+    "brand": "UNIQLO",
+    "name": "Stretch Easy Shorts | Seersucker | 8\"",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Shorts - Stretch Easy Shorts | Seersucker | 8\". Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/458325/item/usgoods_64_458325_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-461003-heattech-t-shirt",
+    "brand": "UNIQLO",
+    "name": "HEATTECH T-Shirt",
+    "price": 19.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - HEATTECH T-Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/461003/item/usgoods_00_461003_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-461420-stretch-easy-ankle-pants-denim",
+    "brand": "UNIQLO",
+    "name": "Stretch Easy Ankle Pants | Denim",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Stretch Easy Ankle Pants | Denim. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/461420/item/usgoods_07_461420_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-462191-cotton-reusable-tote-bag",
+    "brand": "UNIQLO",
+    "name": "Cotton Reusable Tote Bag",
+    "price": 3.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - Cotton Reusable Tote Bag. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/462191/item/usgoods_01_462191_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-462197-pleated-wide-pants",
+    "brand": "UNIQLO",
+    "name": "Pleated Wide Pants",
+    "price": 59.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Pleated Wide Pants. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/462197/item/usgoods_32_462197_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-462369-oxford-slim-shirt-striped",
+    "brand": "UNIQLO",
+    "name": "Oxford Slim Shirt | Striped",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Shirts & Polos - Oxford Slim Shirt | Striped. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/462369/item/usgoods_65_462369_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-463729-italian-leather-stitched-belt",
+    "brand": "UNIQLO",
+    "name": "Italian Leather Stitched Belt",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - Italian Leather Stitched Belt. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/463729/item/goods_09_463729_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-463730-italian-oiled-leather-belt",
+    "brand": "UNIQLO",
+    "name": "Italian Oiled Leather Belt",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - Italian Oiled Leather Belt. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/463730/item/goods_09_463730_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-465185-airism-cotton-oversized-t-shirt-half-sle",
+    "brand": "UNIQLO",
+    "name": "AIRism Cotton Oversized T-Shirt | Half-Sleeve",
+    "price": 24.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - AIRism Cotton Oversized T-Shirt | Half-Sleeve. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/465185/item/usgoods_70_465185_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-465187-dry-color-t-shirt",
+    "brand": "UNIQLO",
+    "name": "DRY Color T-Shirt",
+    "price": 9.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - DRY Color T-Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/465187/item/usgoods_64_465187_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-465189-dry-color-ribbed-tank-top",
+    "brand": "UNIQLO",
+    "name": "DRY Color Ribbed Tank Top",
+    "price": 9.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - DRY Color Ribbed Tank Top. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/465189/item/usgoods_08_465189_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-465193-airism-cotton-t-shirt-long-sleeve",
+    "brand": "UNIQLO",
+    "name": "AIRism Cotton T-Shirt | Long Sleeve",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - AIRism Cotton T-Shirt | Long Sleeve. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/465193/item/usgoods_68_465193_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-465203-dry-ex-uv-protection-full-zip-hoodie",
+    "brand": "UNIQLO",
+    "name": "DRY-EX UV Protection Full-Zip Hoodie",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Sweatshirts & Hoodies - DRY-EX UV Protection Full-Zip Hoodie. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/465203/item/usgoods_66_465203_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-465206-ultra-stretch-active-jogger-pants-2025-v",
+    "brand": "UNIQLO",
+    "name": "Ultra Stretch Active Jogger Pants | 2025 Version",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Ultra Stretch Active Jogger Pants | 2025 Version. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/465206/item/goods_08_465206_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-467769-ultra-stretch-dry-ex-tapered-pants",
+    "brand": "UNIQLO",
+    "name": "Ultra Stretch DRY-EX Tapered Pants",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Ultra Stretch DRY-EX Tapered Pants. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/467769/item/usgoods_57_467769_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-468671-airsense-houndstooth-blazer-wool-like",
+    "brand": "UNIQLO",
+    "name": "AirSense Houndstooth Blazer | Wool-Like",
+    "price": 79.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Outerwear - AirSense Houndstooth Blazer | Wool-Like. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/468671/item/usgoods_05_468671_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-469292-pocketable-uv-protection-parka",
+    "brand": "UNIQLO",
+    "name": "Pocketable UV Protection Parka",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Outerwear - Pocketable UV Protection Parka. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/469292/item/usgoods_30_469292_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-469956-fleece-full-zip-jacket-color-block",
+    "brand": "UNIQLO",
+    "name": "Fleece Full-Zip Jacket | Color Block",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Outerwear - Fleece Full-Zip Jacket | Color Block. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/469956/item/usgoods_08_469956_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-470008-leather-combination-mesh-belt",
+    "brand": "UNIQLO",
+    "name": "Leather Combination Mesh Belt",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - Leather Combination Mesh Belt. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/470008/item/goods_37_470008_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-470077-seamless-down-parka",
+    "brand": "UNIQLO",
+    "name": "Seamless Down Parka",
+    "price": 179.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Outerwear - Seamless Down Parka. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/470077/item/usgoods_09_470077_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-470118-pufftech-parka",
+    "brand": "UNIQLO",
+    "name": "PUFFTECH Parka",
+    "price": 89.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Outerwear - PUFFTECH Parka. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/470118/item/goods_69_470118_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-471808-sweat-oversized-pullover-hoodie",
+    "brand": "UNIQLO",
+    "name": "Sweat Oversized Pullover Hoodie",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - Sweat Oversized Pullover Hoodie. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/471808/item/usgoods_03_471808_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-471809-wide-sweatpants",
+    "brand": "UNIQLO",
+    "name": "Wide Sweatpants",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Wide Sweatpants. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/471809/item/usgoods_69_471809_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-473319-wide-straight-jeans-tall",
+    "brand": "UNIQLO",
+    "name": "Wide Straight Jeans | Tall",
+    "price": 19.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Wide Straight Jeans | Tall. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/473319/item/usgoods_66_473319_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-474244-airism-cotton-t-shirt",
+    "brand": "UNIQLO",
+    "name": "AIRism Cotton T-Shirt",
+    "price": 14.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - AIRism Cotton T-Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/474244/item/usgoods_69_474244_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-474506-premium-linen-shirt-striped",
+    "brand": "UNIQLO",
+    "name": "Premium Linen Shirt | Striped",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Shirts & Polos - Premium Linen Shirt | Striped. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/474506/item/usgoods_64_474506_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-475367-airism-cotton-pique-polo-shirt",
+    "brand": "UNIQLO",
+    "name": "AIRism Cotton Pique Polo Shirt",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Polos - AIRism Cotton Pique Polo Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/475367/item/usgoods_68_475367_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-475376-dry-v-neck-t-shirt",
+    "brand": "UNIQLO",
+    "name": "DRY V-Neck T-Shirt",
+    "price": 9.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - DRY V-Neck T-Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/475376/item/usgoods_00_475376_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-475377-sweatshirt",
+    "brand": "UNIQLO",
+    "name": "Sweatshirt",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Sweatshirts & Hoodies - Sweatshirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/475377/item/usgoods_31_475377_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-475378-sweat-pullover-hoodie",
+    "brand": "UNIQLO",
+    "name": "Sweat Pullover Hoodie",
+    "price": 14.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Sweatshirts & Hoodies - Sweat Pullover Hoodie. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/475378/item/usgoods_01_475378_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-475380-sweat-full-zip-hoodie",
+    "brand": "UNIQLO",
+    "name": "Sweat Full-Zip Hoodie",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Sweatshirts & Hoodies - Sweat Full-Zip Hoodie. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/475380/item/usgoods_09_475380_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-475598-ultra-stretch-pants",
+    "brand": "UNIQLO",
+    "name": "Ultra Stretch Pants",
+    "price": 59.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Ultra Stretch Pants. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/475598/item/usgoods_69_475598_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-476081-stretch-easy-shorts-2025-version",
+    "brand": "UNIQLO",
+    "name": "Stretch Easy Shorts | 2025 Version",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Shorts - Stretch Easy Shorts | 2025 Version. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/476081/item/goods_31_476081_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-476853-italian-leather-garrison-belt",
+    "brand": "UNIQLO",
+    "name": "Italian Leather Garrison Belt",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - Italian Leather Garrison Belt. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/476853/item/goods_09_476853_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-476997-washable-knitted-polo-sweater-short-slee",
+    "brand": "UNIQLO",
+    "name": "Washable Knitted Polo Sweater | Short Sleeve",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Polos - Washable Knitted Polo Sweater | Short Sleeve. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/476997/item/usgoods_56_476997_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-477181-cotton-linen-shirt-short-sleeve",
+    "brand": "UNIQLO",
+    "name": "Cotton Linen Shirt | Short Sleeve",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Shirts & Polos - Cotton Linen Shirt | Short Sleeve. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/477181/item/usgoods_69_477181_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-477704-airsense-blazer",
+    "brand": "UNIQLO",
+    "name": "AirSense Blazer",
+    "price": 99.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Outerwear - AirSense Blazer. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/477704/item/usgoods_69_477704_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-477753-ultra-stretch-active-shorts-5",
+    "brand": "UNIQLO",
+    "name": "Ultra Stretch Active Shorts | 5\"",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Shorts - Ultra Stretch Active Shorts | 5\". Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/477753/item/usgoods_67_477753_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-477875-sweatpants",
+    "brand": "UNIQLO",
+    "name": "Sweatpants",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Sweatpants. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/477875/item/usgoods_69_477875_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-478270-pufftech-vest",
+    "brand": "UNIQLO",
+    "name": "PUFFTECH Vest",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Outerwear - PUFFTECH Vest. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/478270/item/usgoods_09_478270_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-478277-hybrid-down-parka",
+    "brand": "UNIQLO",
+    "name": "Hybrid Down Parka",
+    "price": 179.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Outerwear - Hybrid Down Parka. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/478277/item/usgoods_09_478277_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-478306-uv-protection-2way-stretch-cap",
+    "brand": "UNIQLO",
+    "name": "UV Protection 2Way Stretch Cap",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - UV Protection 2Way Stretch Cap. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/478306/item/goods_09_478306_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-478487-ultra-stretch-pants-tall",
+    "brand": "UNIQLO",
+    "name": "Ultra Stretch Pants | Tall",
+    "price": 59.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Ultra Stretch Pants | Tall. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/478487/item/usgoods_08_478487_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-478670-linen-blend-easy-ankle-pants",
+    "brand": "UNIQLO",
+    "name": "Linen Blend Easy Ankle Pants",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Linen Blend Easy Ankle Pants. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/478670/item/usgoods_69_478670_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-479134-stretch-easy-ankle-pants",
+    "brand": "UNIQLO",
+    "name": "Stretch Easy Ankle Pants",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Stretch Easy Ankle Pants. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/479134/item/usgoods_09_479134_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-479305-crossbody-bag",
+    "brand": "UNIQLO",
+    "name": "Crossbody Bag",
+    "price": 19.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - Crossbody Bag. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/479305/item/goods_09_479305_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-479525-heattech-ultra-warm-t-shirt",
+    "brand": "UNIQLO",
+    "name": "HEATTECH Ultra Warm T-Shirt",
+    "price": 34.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - HEATTECH Ultra Warm T-Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/479525/item/usgoods_09_479525_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-479724-airism-cotton-pique-polo-shirt",
+    "brand": "UNIQLO",
+    "name": "AIRism Cotton Pique Polo Shirt",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Polos - AIRism Cotton Pique Polo Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/479724/item/usgoods_38_479724_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-479755-pufftech-jacket",
+    "brand": "UNIQLO",
+    "name": "PUFFTECH Jacket",
+    "price": 79.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Outerwear - PUFFTECH Jacket. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/479755/item/goods_57_479755_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-479791-soft-knitted-fleece-t-shirt",
+    "brand": "UNIQLO",
+    "name": "Soft Knitted Fleece T-Shirt",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - Soft Knitted Fleece T-Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/479791/item/usgoods_03_479791_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-479996-oxford-oversized-shirt",
+    "brand": "UNIQLO",
+    "name": "Oxford Oversized Shirt",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Shirts & Polos - Oxford Oversized Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/479996/item/goods_00_479996_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-480346-studio-ghibli-sweatshirt-the-boy-and-the",
+    "brand": "UNIQLO",
+    "name": "STUDIO GHIBLI Sweatshirt | The Boy and the Heron",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Sweatshirts & Hoodies - STUDIO GHIBLI Sweatshirt | The Boy and the Heron. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/480346/item/goods_00_480346_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-480411-ultra-stretch-active-jacket",
+    "brand": "UNIQLO",
+    "name": "Ultra Stretch Active Jacket",
+    "price": 14.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Outerwear - Ultra Stretch Active Jacket. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/480411/item/usgoods_69_480411_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-480764-broadcloth-shirt-button-down-hairline-fa",
+    "brand": "UNIQLO",
+    "name": "Broadcloth Shirt | Button Down | Hairline Fabric",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Shirts & Polos - Broadcloth Shirt | Button Down | Hairline Fabric. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/480764/item/usgoods_65_480764_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-480856-studio-ghibli-sweatshirt-spirited-away",
+    "brand": "UNIQLO",
+    "name": "STUDIO GHIBLI Sweatshirt | Spirited Away",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Sweatshirts & Hoodies - STUDIO GHIBLI Sweatshirt | Spirited Away. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/480856/item/goods_09_480856_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-481004-washable-milano-ribbed-knitted-t-shirt",
+    "brand": "UNIQLO",
+    "name": "Washable Milano Ribbed Knitted T-Shirt",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - Washable Milano Ribbed Knitted T-Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/481004/item/usgoods_65_481004_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-481040-oversized-sweatshirt",
+    "brand": "UNIQLO",
+    "name": "Oversized Sweatshirt",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Sweatshirts & Hoodies - Oversized Sweatshirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/481040/item/usgoods_69_481040_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-481430-uv-protection-cap-jean-michel-basquiat",
+    "brand": "UNIQLO",
+    "name": "UV Protection Cap | Jean-Michel Basquiat",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - UV Protection Cap | Jean-Michel Basquiat. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/481430/item/goods_08_481430_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-481441-heattech-extra-warm-cashmere-blend-t-shi",
+    "brand": "UNIQLO",
+    "name": "HEATTECH Extra Warm Cashmere Blend T-Shirt",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - HEATTECH Extra Warm Cashmere Blend T-Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/481441/item/goods_03_481441_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-481442-heattech-extra-warm-cashmere-blend-turtl",
+    "brand": "UNIQLO",
+    "name": "HEATTECH Extra Warm Cashmere Blend Turtleneck",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - HEATTECH Extra Warm Cashmere Blend Turtleneck. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/481442/item/goods_79_481442_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-481582-stretch-easy-shorts-8",
+    "brand": "UNIQLO",
+    "name": "Stretch Easy Shorts | 8\"",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Shorts - Stretch Easy Shorts | 8\". Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/481582/item/usgoods_08_481582_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-481583-stretch-easy-shorts-denim-8",
+    "brand": "UNIQLO",
+    "name": "Stretch Easy Shorts | Denim | 8\"",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Shorts - Stretch Easy Shorts | Denim | 8\". Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/481583/item/usgoods_64_481583_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-481610-round-mini-shoulder-bag",
+    "brand": "UNIQLO",
+    "name": "Round Mini Shoulder Bag",
+    "price": 24.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - Round Mini Shoulder Bag. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/481610/item/goods_63_481610_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-481623-leather-mesh-belt",
+    "brand": "UNIQLO",
+    "name": "Leather Mesh Belt",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - Leather Mesh Belt. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/481623/item/goods_09_481623_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-481626-italian-leather-slide-buckle-belt",
+    "brand": "UNIQLO",
+    "name": "Italian Leather Slide Buckle Belt",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - Italian Leather Slide Buckle Belt. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/481626/item/goods_09_481626_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-481629-multi-pocket-backpack",
+    "brand": "UNIQLO",
+    "name": "Multi Pocket Backpack",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - Multi Pocket Backpack. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/481629/item/goods_57_481629_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-481633-uv-protection-cap",
+    "brand": "UNIQLO",
+    "name": "UV Protection Cap",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - UV Protection Cap. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/481633001/item/goods_62_481633001_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482211-blocktech-parka",
+    "brand": "UNIQLO",
+    "name": "BLOCKTECH Parka",
+    "price": 89.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Outerwear - BLOCKTECH Parka. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482211/item/usgoods_02_482211_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482259-linen-blend-easy-ankle-pants-striped",
+    "brand": "UNIQLO",
+    "name": "Linen Blend Easy Ankle Pants | Striped",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Linen Blend Easy Ankle Pants | Striped. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482259/item/usgoods_31_482259_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482295-airism-cotton-oversized-t-shirt",
+    "brand": "UNIQLO",
+    "name": "AIRism Cotton Oversized T-Shirt",
+    "price": 24.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - AIRism Cotton Oversized T-Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482295/item/usgoods_42_482295_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482299-dry-ex-t-shirt",
+    "brand": "UNIQLO",
+    "name": "DRY-EX T-Shirt",
+    "price": 24.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - DRY-EX T-Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482299/item/usgoods_64_482299_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482301-v-neck-t-shirt",
+    "brand": "UNIQLO",
+    "name": "V-Neck T-Shirt",
+    "price": 9.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - V-Neck T-Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482301/item/usgoods_57_482301_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482303-airism-cotton-pique-full-open-polo-shirt",
+    "brand": "UNIQLO",
+    "name": "AIRism Cotton Pique Full Open Polo Shirt",
+    "price": 19.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Shirts & Polos - AIRism Cotton Pique Full Open Polo Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482303/item/usgoods_58_482303_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482304-dry-pique-polo-shirt",
+    "brand": "UNIQLO",
+    "name": "DRY Pique Polo Shirt",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Polos - DRY Pique Polo Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482304/item/usgoods_00_482304_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482305-dry-ex-polo-shirt",
+    "brand": "UNIQLO",
+    "name": "DRY-EX Polo Shirt",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Polos - DRY-EX Polo Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482305/item/usgoods_68_482305_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482306-dry-ex-quarter-zip-polo-shirt",
+    "brand": "UNIQLO",
+    "name": "DRY-EX Quarter-Zip Polo Shirt",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Polos - DRY-EX Quarter-Zip Polo Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482306/item/usgoods_69_482306_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482328-washable-knitted-skipper-polo-sweater",
+    "brand": "UNIQLO",
+    "name": "Washable Knitted Skipper Polo Sweater",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Shirts & Polos - Washable Knitted Skipper Polo Sweater. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482328/item/usgoods_79_482328_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482434-premium-linen-shirt-striped",
+    "brand": "UNIQLO",
+    "name": "Premium Linen Shirt | Striped",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Shirts & Polos - Premium Linen Shirt | Striped. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482434/item/usgoods_56_482434_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482460-broadcloth-shirt-button-down-striped",
+    "brand": "UNIQLO",
+    "name": "Broadcloth Shirt | Button Down | Striped",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Shirts & Polos - Broadcloth Shirt | Button Down | Striped. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482460/item/usgoods_52_482460_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482479-open-collar-shirt-short-sleeve",
+    "brand": "UNIQLO",
+    "name": "Open Collar Shirt | Short Sleeve",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Shirts & Polos - Open Collar Shirt | Short Sleeve. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482479/item/usgoods_00_482479_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482480-open-collar-shirt-short-sleeve-printed",
+    "brand": "UNIQLO",
+    "name": "Open Collar Shirt | Short Sleeve | Printed",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Shirts & Polos - Open Collar Shirt | Short Sleeve | Printed. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482480/item/usgoods_01_482480_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482481-open-collar-shirt-short-sleeve-printed",
+    "brand": "UNIQLO",
+    "name": "Open Collar Shirt | Short Sleeve | Printed",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Shirts & Polos - Open Collar Shirt | Short Sleeve | Printed. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482481/item/usgoods_06_482481_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482483-open-collar-shirt-short-sleeve-printed",
+    "brand": "UNIQLO",
+    "name": "Open Collar Shirt | Short Sleeve | Printed",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Shirts & Polos - Open Collar Shirt | Short Sleeve | Printed. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482483/item/usgoods_65_482483_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482498-boxy-shirt-short-sleeve-checked",
+    "brand": "UNIQLO",
+    "name": "Boxy Shirt | Short Sleeve | Checked",
+    "price": 9.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Shirts & Polos - Boxy Shirt | Short Sleeve | Checked. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482498/item/usgoods_31_482498_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482514-airism-crew-neck-t-shirt",
+    "brand": "UNIQLO",
+    "name": "AIRism Crew Neck T-Shirt",
+    "price": 14.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - AIRism Crew Neck T-Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482514/item/usgoods_00_482514_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482758-wide-sweat-shorts",
+    "brand": "UNIQLO",
+    "name": "Wide Sweat Shorts",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Shorts - Wide Sweat Shorts. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482758/item/usgoods_69_482758_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482816-uv-protection-reversible-bucket-hat",
+    "brand": "UNIQLO",
+    "name": "UV Protection Reversible Bucket Hat",
+    "price": 14.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - UV Protection Reversible Bucket Hat. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/482816/item/goods_32_482816_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482858-slim-straight-jeans-selvedge",
+    "brand": "UNIQLO",
+    "name": "Slim Straight Jeans | Selvedge",
+    "price": 59.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Jeans - Slim Straight Jeans | Selvedge. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482858/item/usgoods_69_482858_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482861-straight-jeans-tall",
+    "brand": "UNIQLO",
+    "name": "Straight Jeans | Tall",
+    "price": 59.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Straight Jeans | Tall. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482861/item/usgoods_07_482861_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482868-baggy-jeans",
+    "brand": "UNIQLO",
+    "name": "Baggy Jeans",
+    "price": 59.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Baggy Jeans. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482868/item/usgoods_08_482868_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482874-wide-tapered-jeans",
+    "brand": "UNIQLO",
+    "name": "Wide Tapered Jeans",
+    "price": 14.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Wide Tapered Jeans. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482874/item/usgoods_09_482874_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482880-chino-pants",
+    "brand": "UNIQLO",
+    "name": "Chino Pants",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Chino Pants. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482880/item/usgoods_34_482880_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482883-wide-cargo-pants",
+    "brand": "UNIQLO",
+    "name": "Wide Cargo Pants",
+    "price": 59.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Wide Cargo Pants. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482883/item/usgoods_58_482883_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482920-linen-blend-relaxed-pants",
+    "brand": "UNIQLO",
+    "name": "Linen Blend Relaxed Pants",
+    "price": 59.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Linen Blend Relaxed Pants. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482920/item/usgoods_69_482920_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482930-ultra-stretch-pants-tall",
+    "brand": "UNIQLO",
+    "name": "Ultra Stretch Pants | Tall",
+    "price": 59.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Ultra Stretch Pants | Tall. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482930/item/usgoods_69_482930_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482933-premium-linen-wide-pants",
+    "brand": "UNIQLO",
+    "name": "Premium Linen Wide Pants",
+    "price": 19.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Premium Linen Wide Pants. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482933/item/usgoods_04_482933_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482936-cargo-pants",
+    "brand": "UNIQLO",
+    "name": "Cargo Pants",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Cargo Pants. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482936/item/usgoods_67_482936_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482937-geared-shorts-8",
+    "brand": "UNIQLO",
+    "name": "Geared Shorts | 8\"",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Shorts - Geared Shorts | 8\". Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482937/item/usgoods_77_482937_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482942-cargo-shorts-10-5",
+    "brand": "UNIQLO",
+    "name": "Cargo Shorts | 10.5\"",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Shorts - Cargo Shorts | 10.5\". Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482942/item/usgoods_69_482942_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482944-chino-shorts-8-5",
+    "brand": "UNIQLO",
+    "name": "Chino Shorts | 8.5\"",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Shorts - Chino Shorts | 8.5\". Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482944/item/usgoods_01_482944_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-482958-linen-blend-shorts-9-5",
+    "brand": "UNIQLO",
+    "name": "Linen Blend Shorts | 9.5\"",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Shorts - Linen Blend Shorts | 9.5\". Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482958/item/usgoods_69_482958_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-483050-drawstring-bag",
+    "brand": "UNIQLO",
+    "name": "Drawstring Bag",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - Drawstring Bag. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/483050/item/goods_69_483050_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-483771-straight-jeans-tall",
+    "brand": "UNIQLO",
+    "name": "Straight Jeans | Tall",
+    "price": 59.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Straight Jeans | Tall. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/483771/item/usgoods_63_483771_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-483819-utility-jacket",
+    "brand": "UNIQLO",
+    "name": "Utility Jacket",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Outerwear - Utility Jacket. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/483819/item/usgoods_09_483819_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-483835-short-blouson",
+    "brand": "UNIQLO",
+    "name": "Short Blouson",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Outerwear - Short Blouson. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/483835/item/usgoods_09_483835_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-483836-relaxed-fit-jacket",
+    "brand": "UNIQLO",
+    "name": "Relaxed Fit Jacket",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Outerwear - Relaxed Fit Jacket. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/483836/item/usgoods_34_483836_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-483924-dry-waffle-henley-t-shirt",
+    "brand": "UNIQLO",
+    "name": "DRY Waffle Henley T-Shirt",
+    "price": 24.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - DRY Waffle Henley T-Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/483924/item/usgoods_57_483924_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-483960-washable-3d-knit-pullover-hoodie",
+    "brand": "UNIQLO",
+    "name": "Washable 3D Knit Pullover Hoodie",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Sweatshirts & Hoodies - Washable 3D Knit Pullover Hoodie. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/483960/item/usgoods_69_483960_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-483970-dry-ex-t-shirt-patterned",
+    "brand": "UNIQLO",
+    "name": "DRY-EX T-Shirt | Patterned",
+    "price": 24.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - DRY-EX T-Shirt | Patterned. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/483970/item/usgoods_03_483970_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-483972-dry-ex-polo-shirt-pattern",
+    "brand": "UNIQLO",
+    "name": "DRY-EX Polo Shirt | Pattern",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - DRY-EX Polo Shirt | Pattern. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/483972/item/usgoods_66_483972_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-483975-dry-ex-uv-protection-full-zip-hoodie-pri",
+    "brand": "UNIQLO",
+    "name": "DRY-EX UV Protection Full-Zip Hoodie | Print",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Sweatshirts & Hoodies - DRY-EX UV Protection Full-Zip Hoodie | Print. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/483975/item/usgoods_03_483975_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-484080-washed-cotton-t-shirt-long-sleeve",
+    "brand": "UNIQLO",
+    "name": "Washed Cotton T-Shirt | Long Sleeve",
+    "price": 9.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - Washed Cotton T-Shirt | Long Sleeve. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484080/item/usgoods_00_484080_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-484203-raglan-t-shirt",
+    "brand": "UNIQLO",
+    "name": "Raglan T-Shirt",
+    "price": 24.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - Raglan T-Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484203/item/usgoods_03_484203_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-484209-jorts-13",
+    "brand": "UNIQLO",
+    "name": "Jorts | 13\"",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Shorts - Jorts | 13\". Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484209/item/usgoods_01_484209_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-484244-oxford-oversized-shirt",
+    "brand": "UNIQLO",
+    "name": "Oxford Oversized Shirt",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Shirts & Polos - Oxford Oversized Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484244/item/usgoods_00_484244_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-484245-denim-shirt",
+    "brand": "UNIQLO",
+    "name": "Denim Shirt",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Shirts & Polos - Denim Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484245/item/usgoods_68_484245_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-484247-windproof-stand-blouson",
+    "brand": "UNIQLO",
+    "name": "Windproof Stand Blouson",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Outerwear - Windproof Stand Blouson. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484247/item/usgoods_31_484247_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-484249-zip-up-blouson",
+    "brand": "UNIQLO",
+    "name": "Zip-Up Blouson",
+    "price": 59.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Outerwear - Zip-Up Blouson. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484249/item/usgoods_67_484249_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-484397-ultra-stretch-active-shorts-6-5",
+    "brand": "UNIQLO",
+    "name": "Ultra Stretch Active Shorts | 6.5\"",
+    "price": 14.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Shorts - Ultra Stretch Active Shorts | 6.5\". Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484397/item/usgoods_55_484397_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-484398-dry-stretch-sweat-jacket",
+    "brand": "UNIQLO",
+    "name": "DRY Stretch Sweat Jacket",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Sweatshirts & Hoodies - DRY Stretch Sweat Jacket. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484398/item/usgoods_69_484398_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-484399-dry-stretch-sweatpants",
+    "brand": "UNIQLO",
+    "name": "DRY Stretch Sweatpants",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - DRY Stretch Sweatpants. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484399/item/usgoods_09_484399_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-484403-milano-ribbed-jacket",
+    "brand": "UNIQLO",
+    "name": "Milano Ribbed Jacket",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Sweaters - Milano Ribbed Jacket. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484403/item/usgoods_07_484403_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-484508-airism-cotton-oversized-striped-t-shirt",
+    "brand": "UNIQLO",
+    "name": "AIRism Cotton Oversized Striped T-Shirt",
+    "price": 24.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - AIRism Cotton Oversized Striped T-Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484508/item/usgoods_69_484508_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-484610-harrington-jacket",
+    "brand": "UNIQLO",
+    "name": "Harrington Jacket",
+    "price": 69.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Outerwear - Harrington Jacket. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484610/item/usgoods_32_484610_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-484663-peanuts-coach-jacket",
+    "brand": "UNIQLO",
+    "name": "PEANUTS Coach Jacket",
+    "price": 14.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Outerwear - PEANUTS Coach Jacket. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484663002/item/usgoods_55_484663002_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-484780-waffle-t-shirt",
+    "brand": "UNIQLO",
+    "name": "Waffle T-Shirt",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - Waffle T-Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484780/item/usgoods_65_484780_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-484783-leather-combination-striped-belt",
+    "brand": "UNIQLO",
+    "name": "Leather Combination Striped Belt",
+    "price": 7.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - Leather Combination Striped Belt. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/484783/item/goods_55_484783_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-484784-stretch-easy-ankle-pants-seersucker",
+    "brand": "UNIQLO",
+    "name": "Stretch Easy Ankle Pants | Seersucker",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Stretch Easy Ankle Pants | Seersucker. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484784/item/usgoods_64_484784_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-484803-dry-waffle-t-shirt",
+    "brand": "UNIQLO",
+    "name": "DRY Waffle T-Shirt",
+    "price": 9.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - DRY Waffle T-Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484803/item/usgoods_09_484803_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-484875-barrel-pants",
+    "brand": "UNIQLO",
+    "name": "Barrel Pants",
+    "price": 59.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Barrel Pants. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484875/item/usgoods_34_484875_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-484876-premium-linen-oversized-shirt-short-slee",
+    "brand": "UNIQLO",
+    "name": "Premium Linen Oversized Shirt | Short Sleeve",
+    "price": 19.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Shirts & Polos - Premium Linen Oversized Shirt | Short Sleeve. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484876/item/usgoods_09_484876_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-484896-broadcloth-shirt-regular-collar-checked",
+    "brand": "UNIQLO",
+    "name": "Broadcloth Shirt | Regular Collar | Checked",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Shirts & Polos - Broadcloth Shirt | Regular Collar | Checked. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484896/item/usgoods_69_484896_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-484904-oxford-oversized-shirt-striped",
+    "brand": "UNIQLO",
+    "name": "Oxford Oversized Shirt | Striped",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Shirts & Polos - Oxford Oversized Shirt | Striped. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484904/item/usgoods_64_484904_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-484905-oxford-oversized-shirt-striped",
+    "brand": "UNIQLO",
+    "name": "Oxford Oversized Shirt | Striped",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Shirts & Polos - Oxford Oversized Shirt | Striped. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484905/item/usgoods_01_484905_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485454-bicolor-t-shirt",
+    "brand": "UNIQLO",
+    "name": "Bicolor T-Shirt",
+    "price": 24.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - Bicolor T-Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485454/item/usgoods_26_485454_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485455-henley-neck-t-shirt",
+    "brand": "UNIQLO",
+    "name": "Henley Neck T-Shirt",
+    "price": 24.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - Henley Neck T-Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485455/item/usgoods_05_485455_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485564-dry-pique-polo-shirt-tipping",
+    "brand": "UNIQLO",
+    "name": "DRY Pique Polo Shirt | Tipping",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Polos - DRY Pique Polo Shirt | Tipping. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485564/item/usgoods_69_485564_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485565-dry-pique-striped-polo-shirt-wide-stripe",
+    "brand": "UNIQLO",
+    "name": "DRY Pique Striped Polo Shirt | Wide Stripe",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Polos - DRY Pique Striped Polo Shirt | Wide Stripe. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485565/item/usgoods_69_485565_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485566-dry-pique-striped-polo-shirt-narrow-stri",
+    "brand": "UNIQLO",
+    "name": "DRY Pique Striped Polo Shirt | Narrow Stripe",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Polos - DRY Pique Striped Polo Shirt | Narrow Stripe. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485566/item/usgoods_12_485566_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485567-dry-pique-striped-polo-shirt",
+    "brand": "UNIQLO",
+    "name": "DRY Pique Striped Polo Shirt",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Polos - DRY Pique Striped Polo Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485567/item/usgoods_01_485567_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485568-dry-pique-striped-polo-shirt-panel",
+    "brand": "UNIQLO",
+    "name": "DRY Pique Striped Polo Shirt | Panel",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Polos - DRY Pique Striped Polo Shirt | Panel. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485568/item/usgoods_69_485568_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485612-washable-knitted-polo-sweater-short-slee",
+    "brand": "UNIQLO",
+    "name": "Washable Knitted Polo Sweater | Short Sleeve | Striped",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Shirts & Polos - Washable Knitted Polo Sweater | Short Sleeve | Striped. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485612/item/usgoods_02_485612_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485652-broadcloth-shirt-button-down-checked",
+    "brand": "UNIQLO",
+    "name": "Broadcloth Shirt | Button Down | Checked",
+    "price": 14.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Shirts & Polos - Broadcloth Shirt | Button Down | Checked. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485652/item/usgoods_61_485652_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485653-broadcloth-shirt-regular-collar-striped",
+    "brand": "UNIQLO",
+    "name": "Broadcloth Shirt | Regular Collar | Striped",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Shirts & Polos - Broadcloth Shirt | Regular Collar | Striped. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485653/item/usgoods_01_485653_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485684-washable-knitted-shirt-short-sleeve",
+    "brand": "UNIQLO",
+    "name": "Washable Knitted Shirt | Short Sleeve",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Shirts & Polos - Washable Knitted Shirt | Short Sleeve. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485684/item/usgoods_01_485684_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485689-premium-linen-shirt-striped",
+    "brand": "UNIQLO",
+    "name": "Premium Linen Shirt | Striped",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Shirts & Polos - Premium Linen Shirt | Striped. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485689/item/usgoods_64_485689_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485735-sweat-oversized-full-zip-hoodie",
+    "brand": "UNIQLO",
+    "name": "Sweat Oversized Full-Zip Hoodie",
+    "price": 59.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - Sweat Oversized Full-Zip Hoodie. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485735/item/usgoods_09_485735_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485738-selvedge-straight-jeans-tall",
+    "brand": "UNIQLO",
+    "name": "Selvedge Straight Jeans | Tall",
+    "price": 59.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Selvedge Straight Jeans | Tall. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485738/item/usgoods_69_485738_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485744-ultra-stretch-active-jogger-pants",
+    "brand": "UNIQLO",
+    "name": "Ultra Stretch Active Jogger Pants",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Ultra Stretch Active Jogger Pants. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485744/item/usgoods_03_485744_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485755-wellington-sunglasses",
+    "brand": "UNIQLO",
+    "name": "Wellington Sunglasses",
+    "price": 24.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - Wellington Sunglasses. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/485755/item/goods_80_485755_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485756-square-sunglasses",
+    "brand": "UNIQLO",
+    "name": "Square Sunglasses",
+    "price": 24.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - Square Sunglasses. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/485756/item/goods_09_485756_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485757-boston-combination-sunglasses",
+    "brand": "UNIQLO",
+    "name": "Boston Combination Sunglasses",
+    "price": 24.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - Boston Combination Sunglasses. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/485757/item/goods_33_485757_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485758-wellington-folding-sunglasses",
+    "brand": "UNIQLO",
+    "name": "Wellington Folding Sunglasses",
+    "price": 24.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - Wellington Folding Sunglasses. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/485758/item/goods_09_485758_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485759-metal-double-bridge-sunglasses",
+    "brand": "UNIQLO",
+    "name": "Metal Double Bridge Sunglasses",
+    "price": 24.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - Metal Double Bridge Sunglasses. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/485759/item/goods_09_485759_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485760-metal-sunglasses",
+    "brand": "UNIQLO",
+    "name": "Metal Sunglasses",
+    "price": 24.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - Metal Sunglasses. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/485760/item/goods_21_485760_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485762-metal-rectangle-sunglasses",
+    "brand": "UNIQLO",
+    "name": "Metal Rectangle Sunglasses",
+    "price": 24.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - Metal Rectangle Sunglasses. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/485762/item/goods_58_485762_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485763-flat-top-sunglasses",
+    "brand": "UNIQLO",
+    "name": "Flat Top Sunglasses",
+    "price": 24.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - Flat Top Sunglasses. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/485763/item/goods_80_485763_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485764-big-square-sunglasses",
+    "brand": "UNIQLO",
+    "name": "Big Square Sunglasses",
+    "price": 24.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - Big Square Sunglasses. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/485764/item/goods_80_485764_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485765-double-bridge-sunglasses",
+    "brand": "UNIQLO",
+    "name": "Double Bridge Sunglasses",
+    "price": 24.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - Double Bridge Sunglasses. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/485765/item/goods_37_485765_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485766-narrow-sunglasses",
+    "brand": "UNIQLO",
+    "name": "Narrow Sunglasses",
+    "price": 24.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - Narrow Sunglasses. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/485766/item/goods_09_485766_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485767-rectangle-sunglasses",
+    "brand": "UNIQLO",
+    "name": "Rectangle Sunglasses",
+    "price": 24.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - Rectangle Sunglasses. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/485767/item/goods_09_485767_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485768-bold-square-sunglasses",
+    "brand": "UNIQLO",
+    "name": "Bold Square Sunglasses",
+    "price": 24.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - Bold Square Sunglasses. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/485768/item/goods_80_485768_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485769-angular-sunglasses",
+    "brand": "UNIQLO",
+    "name": "Angular Sunglasses",
+    "price": 24.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - Angular Sunglasses. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/485769/item/goods_09_485769_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485782-dry-ex-polo-shirt",
+    "brand": "UNIQLO",
+    "name": "DRY-EX Polo Shirt",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Polos - DRY-EX Polo Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485782/item/usgoods_00_485782_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485800-slim-straight-jeans-tall",
+    "brand": "UNIQLO",
+    "name": "Slim Straight Jeans | Tall",
+    "price": 59.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Slim Straight Jeans | Tall. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485800/item/usgoods_64_485800_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485801-slim-straight-jeans-tall",
+    "brand": "UNIQLO",
+    "name": "Slim Straight Jeans | Tall",
+    "price": 59.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Slim Straight Jeans | Tall. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485801/item/usgoods_09_485801_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485855-linen-blend-easy-shorts-5",
+    "brand": "UNIQLO",
+    "name": "Linen Blend Easy Shorts | 5\"",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Shorts - Linen Blend Easy Shorts | 5\". Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485855/item/usgoods_37_485855_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-485856-ultra-stretch-sweat-shorts-7",
+    "brand": "UNIQLO",
+    "name": "Ultra Stretch Sweat Shorts | 7\"",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Shorts - Ultra Stretch Sweat Shorts | 7\". Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485856/item/usgoods_69_485856_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-486056-boston-sunglasses",
+    "brand": "UNIQLO",
+    "name": "Boston Sunglasses",
+    "price": 24.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - Boston Sunglasses. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/486056/item/goods_37_486056_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-486103-airism-cotton-striped-t-shirt",
+    "brand": "UNIQLO",
+    "name": "AIRism Cotton Striped T-Shirt",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - AIRism Cotton Striped T-Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/486103/item/usgoods_09_486103_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-486766-crossbody-bag",
+    "brand": "UNIQLO",
+    "name": "Crossbody Bag",
+    "price": 19.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - Crossbody Bag. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/486766/item/goods_64_486766_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-486772-shield-sunglasses",
+    "brand": "UNIQLO",
+    "name": "Shield Sunglasses",
+    "price": 24.9,
+    "currency": "USD",
+    "garmentType": "accessory",
+    "description": "UNIQLO Accessories - Shield Sunglasses. Accessory from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/486772001/item/goods_37_486772001_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-487302-supima-cotton-v-neck-t-shirt",
+    "brand": "UNIQLO",
+    "name": "SUPIMA® Cotton V-Neck T-Shirt",
+    "price": 14.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - SUPIMA® Cotton V-Neck T-Shirt. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/487302/item/usgoods_09_487302_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-487374-sweatpants-tall",
+    "brand": "UNIQLO",
+    "name": "Sweatpants | Tall",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Sweatpants | Tall. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/487374/item/usgoods_05_487374_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-487505-airism-cotton-striped-t-shirt-long-sleev",
+    "brand": "UNIQLO",
+    "name": "AIRism Cotton Striped T-Shirt | Long Sleeve",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Tops - AIRism Cotton Striped T-Shirt | Long Sleeve. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/487505/item/usgoods_00_487505_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-487636-wide-chino-pants",
+    "brand": "UNIQLO",
+    "name": "Wide Chino Pants",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Wide Chino Pants. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/487636/item/usgoods_07_487636_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-487640-utility-jacket-denim",
+    "brand": "UNIQLO",
+    "name": "Utility Jacket | Denim",
+    "price": 29.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Outerwear - Utility Jacket | Denim. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/487640/item/usgoods_68_487640_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-487679-seersucker-shirt-short-sleeve",
+    "brand": "UNIQLO",
+    "name": "Seersucker Shirt | Short Sleeve",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Shirts & Polos - Seersucker Shirt | Short Sleeve. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/487679/item/usgoods_01_487679_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-487680-seersucker-shirt-short-sleeve-striped",
+    "brand": "UNIQLO",
+    "name": "Seersucker Shirt | Short Sleeve | Striped",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "upper_body",
+    "description": "UNIQLO Shirts & Polos - Seersucker Shirt | Short Sleeve | Striped. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/487680/item/usgoods_64_487680_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-487705-wide-chino-pants-tall",
+    "brand": "UNIQLO",
+    "name": "Wide Chino Pants | Tall",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Wide Chino Pants | Tall. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/487705/item/goods_38_487705_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-487743-straight-jeans-tall",
+    "brand": "UNIQLO",
+    "name": "Straight Jeans | Tall",
+    "price": 59.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Bottoms - Straight Jeans | Tall. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/487743/item/usgoods_63_487743_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-487905-airism-cotton-easy-shorts",
+    "brand": "UNIQLO",
+    "name": "AIRism Cotton Easy Shorts",
+    "price": 39.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Shorts - AIRism Cotton Easy Shorts. Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/487905/item/usgoods_01_487905_3x4.jpg"
+  },
+  {
+    "id": "uniqlo-m-488371-geared-shorts-8",
+    "brand": "UNIQLO",
+    "name": "Geared Shorts | 8\"",
+    "price": 49.9,
+    "currency": "USD",
+    "garmentType": "lower_body",
+    "description": "UNIQLO Shorts - Geared Shorts | 8\". Men's apparel from UNIQLO.",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/488371/item/usgoods_77_488371_3x4.jpg"
+  }
+]

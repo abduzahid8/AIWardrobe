@@ -69,6 +69,7 @@ function dbRowToItem(row: Record<string, any>): ShopCatalogItem {
         imageUrl:    getThumbnailUrl(row.image_url),
         garmentType: row.garment_type as ShopCatalogItem['garmentType'],
         description: row.description ?? '',
+        sourceUrl:   row.source_url ?? '',
     };
 }
 
@@ -91,7 +92,7 @@ export function useShopCatalog({
         const size = (cat === 'shoes' || cat === 'all') ? 300 : 100;
         let q = supabase
             .from('shop_catalog')
-            .select('id, brand, name, price, currency, image_url, garment_type, description')
+            .select('id, brand, name, price, currency, image_url, garment_type, description, source_url')
             .eq('is_active', true)
             .order('sort_order', { ascending: true })
             .range(page * size, page * size + size - 1);

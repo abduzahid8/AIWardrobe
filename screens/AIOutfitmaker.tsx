@@ -1,18 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  Image,
-  Dimensions,
-  StyleSheet,
-  Animated,
-  Platform,
-  Modal,
-  TextInput,
-  Alert,
-} from 'react-native';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { View, TouchableOpacity, ScrollView, Image, Dimensions, StyleSheet, Animated, Platform, Modal, TextInput, Alert, Linking } from 'react-native';
+import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -32,6 +20,7 @@ import { canonicalizeMacroCategory } from '../src/utils/categoryMapper';
 import { scoreItemForStyle, normalizeStyleId } from '../features/outfit-generator/utils/styleInference';
 import useWardrobeStore from '../store/wardrobeStore';
 import { useTranslation } from 'react-i18next';
+import useAuthStore from '../store/auth';
 
 const { width, height } = Dimensions.get('window');
 
@@ -46,6 +35,8 @@ interface OutfitItem {
   color?: string;
   brand?: string;
   isWardrobe?: boolean;
+  isShopItem?: boolean;
+  shopUrl?: string;
 }
 
 interface GeneratedOutfit {
@@ -139,11 +130,10 @@ const getOfflineMacroCategory = (type: string, category?: string, name?: string)
   if (aliasHit !== 'other') return aliasHit;
 
   const t = `${type || ''} ${category || ''} ${name || ''}`.toLowerCase();
-  if (t.match(/jacket|coat|blazer|hoodie|cardigan|sweater|pullover|vest|puffer|outerwear|trench|peacoat/)) return 'outerwear';
-  if (t.match(/shirt|t-shirt|tee|blouse|polo|tops?(?:\b)/)) return 'top';
-  if (t.match(/pant|trouser|jeans?|bottom|shorts?|skirt|lower[_\s-]?body/)) return 'bottom';
-  if (t.match(/shoe|sneaker|boot|loafer|sandal|footwear/)) return 'shoes';
-  if (t.match(/dress|upper[_\s-]?body/)) return 'top';
+  if (t.match(/\b(jacket|coat|blazer|hoodie|cardigan|sweater|pullover|vest|puffer|outerwear|trench|peacoat)\b/)) return 'outerwear';
+  if (t.match(/\b(pant|trouser|jeans?|bottom|shorts?|skirt|lower[_\s-]?body)\b/)) return 'bottom';
+  if (t.match(/\b(shoe|sneaker|boot|loafer|sandal|footwear)\b/)) return 'shoes';
+  if (t.match(/\b(shirt|t-shirt|tee|blouse|polo|top|dress|upper[_\s-]?body)\b/)) return 'top';
   return 'top';
 };
 
@@ -189,6 +179,7 @@ interface OutfitSlotGridProps {
 
 function OutfitSlotGrid({ items, weather }: OutfitSlotGridProps) {
   const D = useDesignTokens();
+  const { t } = useTranslation();
 
   const needsOuterwear = React.useMemo(() => {
     if (!weather) return true;
@@ -311,6 +302,12 @@ function OutfitSlotGrid({ items, weather }: OutfitSlotGridProps) {
     return slots;
   }, [items, needsOuterwear]);
 
+  const handleBuy = useCallback(async (url?: string) => {
+    if (url) {
+      try { await Linking.openURL(url); } catch (_) {}
+    }
+  }, []);
+
   return (
     <View style={slotStyles.grid}>
       {slotConfig.map((slot, idx) => (
@@ -321,8 +318,18 @@ function OutfitSlotGrid({ items, weather }: OutfitSlotGridProps) {
             resizeMode="cover"
           />
           <View style={slotStyles.labelWrap}>
-            <Text style={[slotStyles.label, { color: D.textSecondary }]}>{slot.label}</Text>
-            <Text style={[slotStyles.name, { color: D.textPrimary }]} numberOfLines={1}>{slot.item?.name || 'Item'}</Text>
+            <ScaledText style={[slotStyles.label, { color: D.textSecondary }]}>{slot.label}</ScaledText>
+            <ScaledText style={[slotStyles.name, { color: D.textPrimary }]} numberOfLines={1}>{slot.item?.name || 'Item'}</ScaledText>
+            {slot.item?.shopUrl ? (
+              <TouchableOpacity
+                style={slotStyles.buyButton}
+                onPress={() => handleBuy(slot.item?.shopUrl)}
+                activeOpacity={0.75}
+              >
+                <Ionicons name="cart-outline" size={11} color="#FFFFFF" />
+                <ScaledText style={slotStyles.buyButtonText}>{t('outfitMaker.buy', 'Buy')}</ScaledText>
+              </TouchableOpacity>
+            ) : null}
           </View>
         </View>
       ))}
@@ -721,6 +728,23 @@ const slotStyles = StyleSheet.create({
     marginTop: 1,
     fontSize: 11,
   },
+  buyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginTop: 6,
+    backgroundColor: '#0A1931',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: LiquidGlass2026Theme.radius.pill,
+  },
+  buyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
 });
 
 const AIOutfitGenerator = () => {
@@ -737,6 +761,8 @@ const AIOutfitGenerator = () => {
   const [outfits, setOutfits] = useState<GeneratedOutfit[]>([]);
   const [error, setError] = useState('');
   const [userPrompt, setUserPrompt] = useState('');
+  const [collectionPickerVisible, setCollectionPickerVisible] = useState(false);
+  const [pendingSaveOutfit, setPendingSaveOutfit] = useState<GeneratedOutfit | null>(null);
   const insets = useSafeAreaInsets();
 
 
@@ -753,9 +779,10 @@ const AIOutfitGenerator = () => {
   // Wardrobe Items State
   const [wardrobeItems, setWardrobeItems] = useState<any[]>([]);
 
-  // Use the live catalog from Supabase
+  // Use the live catalog from Supabase (all sources: Zara + Massimo Dutti)
   const { items: liveShopCatalog, loading: shopCatalogLoading } = useShopCatalog({
-    enabled: true, // we always want it ready for fallback/shop injections
+    enabled: true,
+    source: 'all',
   });
 
   // Map the new catalog format into what the outfit generator expects
@@ -791,6 +818,8 @@ const AIOutfitGenerator = () => {
       name: item.name,
       brand: item.brand,
       description: item.description || `${item.name} by ${item.brand}`,
+      shopUrl: item.sourceUrl,
+      isShopItem: true,
     };
   }), [liveShopCatalog]);
 
@@ -976,11 +1005,10 @@ const AIOutfitGenerator = () => {
     if (aliasHit !== 'other') return aliasHit;
 
     const t = `${type || ''} ${category || ''} ${name || ''}`.toLowerCase();
-    if (t.match(/jacket|coat|blazer|hoodie|cardigan|sweater|pullover|vest|puffer|outerwear|trench|peacoat/)) return 'outerwear';
-    if (t.match(/shirt|t-shirt|tee|blouse|polo|tops?(?:\b)/)) return 'top';
-    if (t.match(/pant|trouser|jeans?|bottom|shorts?|skirt|lower[_\s-]?body/)) return 'bottom';
-    if (t.match(/shoe|sneaker|boot|loafer|sandal|footwear/)) return 'shoes';
-    if (t.match(/dress|upper[_\s-]?body/)) return 'top';
+    if (t.match(/\b(jacket|coat|blazer|hoodie|cardigan|sweater|pullover|vest|puffer|outerwear|trench|peacoat)\b/)) return 'outerwear';
+    if (t.match(/\b(pant|trouser|jeans?|bottom|shorts?|skirt|lower[_\s-]?body)\b/)) return 'bottom';
+    if (t.match(/\b(shoe|sneaker|boot|loafer|sandal|footwear)\b/)) return 'shoes';
+    if (t.match(/\b(shirt|t-shirt|tee|blouse|polo|top|dress|upper[_\s-]?body)\b/)) return 'top';
     return 'top'; // fallback keeps the backend happy
   };
 
@@ -1038,6 +1066,8 @@ const AIOutfitGenerator = () => {
       color: it.color || 'neutral',
       brand: it.brand || '',
       isWardrobe: it.isWardrobe ?? false,
+      isShopItem: it.isShopItem ?? false,
+      shopUrl: it.shopUrl || undefined,
     })).sort((a, b) => (b.isWardrobe ? 1 : 0) - (a.isWardrobe ? 1 : 0));
   }, [currentSource, liveShopMapped, wardrobeItems]);
 
@@ -1219,19 +1249,28 @@ const AIOutfitGenerator = () => {
     }
   };
 
+  const COLLECTION_CATEGORIES: Array<{ id: string; label: string; icon: string }> = [
+    { id: 'casual', label: t('outfitMaker.casual'), icon: 'sunny' },
+    { id: 'work', label: t('outfitMaker.work'), icon: 'briefcase' },
+    { id: 'formal', label: t('outfitMaker.formal'), icon: 'shirt' },
+    { id: 'sport', label: t('outfitMaker.sport'), icon: 'fitness' },
+    { id: 'date', label: t('outfitMaker.date'), icon: 'heart' },
+    { id: 'travel', label: t('outfitMaker.travel'), icon: 'airplane' },
+  ];
+
   // ── Save Outfit to Closet ─────────────────────────────────────────
-  const saveOutfitToCloset = async (outfit: GeneratedOutfit) => {
+  const saveOutfitToCloset = async (outfit: GeneratedOutfit, collectionCategory?: string) => {
     const itemIds = outfit.items
       .map((item) => String(item.id || item.image))
       .filter(Boolean);
     if (itemIds.length === 0) {
-      Alert.alert(t('aiOutfitmaker.cannotSave'), t('aiOutfitmaker.noValidItems'));
+      Alert.alert(t('outfitMaker.cannotSave'), t('outfitMaker.noValidItems'));
       return;
     }
 
     const store = useWardrobeStore.getState();
-    const occasion = getCalendarOccasion(selectedStyle);
-    store.addOutfit({
+    const occasion = collectionCategory || getCalendarOccasion(selectedStyle);
+    const newOutfitId = store.addOutfit({
       userId: 'user',
       itemIds,
       occasion,
@@ -1241,41 +1280,53 @@ const AIOutfitGenerator = () => {
       style: selectedStyle,
     });
 
-    // Find the outfit we just added by matching itemIds
-    const savedOutfit = useWardrobeStore.getState().outfits.find(
-      (o) => o.itemIds.length === itemIds.length && o.itemIds.every((id) => itemIds.includes(id))
-    );
-    if (savedOutfit?.id) {
-      store.saveOutfit(savedOutfit.id);
+    if (newOutfitId) {
+      store.saveOutfit(newOutfitId, collectionCategory);
     }
 
-    // Persist to Supabase if authenticated
+    // Also save to Supabase saved_outfits table
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const userId = sessionData?.session?.user?.id;
       if (userId) {
-        await supabase.from('saved_outfits').insert({
+        const { error: saveError } = await supabase.from('saved_outfits').insert({
           user_id: userId,
           items: outfit.items.map((item) => ({
             id: String(item.id || item.image),
             type: item.type || 'Clothing Piece',
-            image: item.image || item.imageUrl || '',
+            image: item.image,
+            imageUrl: item.imageUrl,
+            name: item.name,
           })),
           date: new Date().toISOString().split('T')[0],
           occasion,
-          season: 'All',
-          name: `${selectedStyle} outfit`,
-          caption: outfit.description,
+          caption: outfit.description || '',
           visibility: 'Everyone',
           is_ootd: false,
         });
+        if (saveError) {
+          console.warn('[AIOutfitmaker] Failed to sync saved outfit to Supabase:', saveError);
+        }
       }
-    } catch (saveError) {
-      console.error('Failed to sync saved outfit', saveError);
+    } catch (err) {
+      console.warn('[AIOutfitmaker] Error syncing saved outfit:', err);
     }
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert(t('aiOutfitmaker.saved'), t('aiOutfitmaker.outfitSavedCloset'));
+    Alert.alert(t('outfitMaker.saved'), t('outfitMaker.outfitSavedCloset'));
+  };
+
+  const handleSaveOutfitPress = (outfit: GeneratedOutfit) => {
+    setPendingSaveOutfit(outfit);
+    setCollectionPickerVisible(true);
+  };
+
+  const handleCollectionSelect = (collectionId: string) => {
+    setCollectionPickerVisible(false);
+    if (pendingSaveOutfit) {
+      saveOutfitToCloset(pendingSaveOutfit, collectionId);
+      setPendingSaveOutfit(null);
+    }
   };
 
   // ── Add to Calendar ─────────────────────────────────────────────
@@ -1296,12 +1347,12 @@ const AIOutfitGenerator = () => {
       // Warn before overwriting an existing outfit for this date
       if (logs[dateStr]) {
         Alert.alert(
-          t('aiOutfitmaker.outfitExists'),
-          t('aiOutfitmaker.replaceOutfit'),
+          t('outfitMaker.outfitExists'),
+          t('outfitMaker.replaceOutfit'),
           [
             { text: t('common.cancel'), style: 'cancel' },
             {
-              text: t('aiOutfitmaker.replace'),
+              text: t('outfitMaker.replace'),
               style: 'destructive',
               onPress: async () => {
                 logs[dateStr] = log;
@@ -1468,6 +1519,9 @@ const AIOutfitGenerator = () => {
           prompt: userPrompt,
           // Lock the anchor item into every outfit when navigated from MyClosetScreen
           anchorItemId: baseItemId,
+          // When source is 'shop', use only the provided shop catalog items
+          // (Massimo Dutti etc.) and do NOT mix in user's own wardrobe items
+          useProvidedWardrobeOnly: effectiveSource === 'shop',
         },
       });
 
@@ -1573,7 +1627,7 @@ const AIOutfitGenerator = () => {
             <TouchableOpacity onPress={() => setOutfits([])} style={styles.backButton}>
               <Ionicons name="chevron-back" size={26} color={D.textPrimary} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>{t('outfitMaker.yourOutfits')}</Text>
+            <ScaledText style={styles.headerTitle}>{t('outfitMaker.yourOutfits')}</ScaledText>
             <View style={{ width: 40 }} />
           </View>
 
@@ -1587,23 +1641,23 @@ const AIOutfitGenerator = () => {
                   {outfit.weather ? (
                     <View style={styles.weatherChip}>
                       <Ionicons name="cloud-outline" size={14} color={D.textSecondary} />
-                      <Text style={styles.weatherChipText}>{outfit.weather.temp}°C · {outfit.weather.condition}</Text>
+                      <ScaledText style={styles.weatherChipText}>{outfit.weather.temp}°C · {outfit.weather.condition}</ScaledText>
                     </View>
                   ) : <View />}
                   <LinearGradient colors={[D.accent, '#5B7CF9']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.matchPill}>
-                    <Text style={styles.matchPillText}>{Math.round(outfit.matchScore * 100)}% Match</Text>
+                    <ScaledText style={styles.matchPillText}>{Math.round(outfit.matchScore * 100)}% Match</ScaledText>
                   </LinearGradient>
                 </View>
 
                 <OutfitSlotGrid items={outfit.items} weather={outfit.weather} />
 
-                <Text style={styles.outfitDesc}>{outfit.description}</Text>
+                <ScaledText style={styles.outfitDesc} minScale={0.65}>{outfit.description}</ScaledText>
 
                 <View style={styles.tipCard}>
                   <LinearGradient colors={D.panelHighlight} style={StyleSheet.absoluteFill} />
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     <Ionicons name="sparkles-outline" size={16} color={D.accent} />
-                    <Text style={styles.tipCardText}>{outfit.stylingTips}</Text>
+                    <ScaledText style={styles.tipCardText}>{outfit.stylingTips}</ScaledText>
                   </View>
                 </View>
 
@@ -1615,16 +1669,16 @@ const AIOutfitGenerator = () => {
                   >
                     <LinearGradient colors={[D.accent, '#5B7CF9']} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
                     <Ionicons name="calendar-outline" size={18} color="#fff" />
-                    <Text style={styles.primaryActionText}>{t('outfitMaker.addToCalendar')}</Text>
+                    <ScaledText style={styles.primaryActionText} minScale={0.65}>{t('outfitMaker.addToCalendar')}</ScaledText>
                   </TouchableOpacity>
 
                   <TouchableOpacity
                     activeOpacity={0.85}
                     style={styles.secondaryAction}
-                    onPress={() => saveOutfitToCloset(outfit)}
+                    onPress={() => handleSaveOutfitPress(outfit)}
                   >
                     <Ionicons name="checkmark-circle-outline" size={18} color={D.textPrimary} />
-                    <Text style={styles.secondaryActionText}>{t('outfitMaker.saveOutfit')}</Text>
+                    <ScaledText style={styles.secondaryActionText} minScale={0.65}>{t('outfitMaker.saveOutfit')}</ScaledText>
                   </TouchableOpacity>
                 </View>
               </Animated.View>
@@ -1636,29 +1690,61 @@ const AIOutfitGenerator = () => {
           <View style={styles.modalOverlay}>
             <BlurView intensity={Platform.OS === 'ios' ? 60 : 100} tint="light" style={StyleSheet.absoluteFill} />
             <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>{t('outfitMaker.saveToCalendar')}</Text>
-              <Text style={styles.modalSubtitle}>{t('outfitMaker.pickDate')}</Text>
+              <ScaledText style={styles.modalTitle} minScale={0.65}>{t('outfitMaker.saveToCalendar')}</ScaledText>
+              <ScaledText style={styles.modalSubtitle} minScale={0.65}>{t('outfitMaker.pickDate')}</ScaledText>
               <View style={styles.datePickerRow}>
                 <TouchableOpacity onPress={() => setCalendarDate(new Date(calendarDate.getTime() - 86400000))}>
                   <Ionicons name="chevron-back" size={24} color={D.textPrimary} />
                 </TouchableOpacity>
-                <Text style={styles.datePickerValue}>{calendarDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
+                <ScaledText style={styles.datePickerValue} minScale={0.6}>{calendarDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</ScaledText>
                 <TouchableOpacity onPress={() => setCalendarDate(new Date(calendarDate.getTime() + 86400000))}>
                   <Ionicons name="chevron-forward" size={24} color={D.textPrimary} />
                 </TouchableOpacity>
               </View>
               <View style={styles.modalActions}>
                 <TouchableOpacity style={styles.modalCancel} onPress={() => setCalendarVisible(false)}>
-                  <Text style={styles.modalCancelText}>{t('common.cancel')}</Text>
+                  <ScaledText style={styles.modalCancelText} minScale={0.65}>{t('common.cancel')}</ScaledText>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.modalConfirm}
                   onPress={() => calendarOutfit && addToCalendar(calendarOutfit, calendarDate)}
                 >
                   <LinearGradient colors={[D.accent, '#5B7CF9']} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
-                  <Text style={styles.modalConfirmText}>{t('common.save')}</Text>
+                  <ScaledText style={styles.modalConfirmText} minScale={0.65}>{t('common.save')}</ScaledText>
                 </TouchableOpacity>
               </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Collection Category Picker Modal */}
+        <Modal animationType="slide" transparent visible={collectionPickerVisible} onRequestClose={() => setCollectionPickerVisible(false)}>
+          <View style={styles.modalOverlay}>
+            <BlurView intensity={Platform.OS === 'ios' ? 60 : 100} tint="light" style={StyleSheet.absoluteFill} />
+            <View style={styles.modalCard}>
+              <ScaledText style={styles.modalTitle} minScale={0.65}>{t('outfitMaker.chooseCollection')}</ScaledText>
+              <ScaledText style={styles.modalSubtitle} minScale={0.65}>{t('outfitMaker.collectionSubtitle')}</ScaledText>
+              <View style={styles.collectionGrid}>
+                {COLLECTION_CATEGORIES.map((cat) => (
+                  <TouchableOpacity
+                    key={cat.id}
+                    style={styles.collectionOption}
+                    onPress={() => handleCollectionSelect(cat.id)}
+                    activeOpacity={0.7}
+                  >
+                    <LinearGradient
+                      colors={[D.accent + '20', D.accent + '10']}
+                      style={StyleSheet.absoluteFill}
+                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                    />
+                    <Ionicons name={cat.icon as any} size={24} color={D.accent} />
+                    <ScaledText style={styles.collectionOptionText}>{cat.label}</ScaledText>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TouchableOpacity style={styles.modalCancel} onPress={() => setCollectionPickerVisible(false)}>
+                <ScaledText style={styles.modalCancelText}>{t('common.cancel')}</ScaledText>
+              </TouchableOpacity>
             </View>
           </View>
         </Modal>
@@ -1689,7 +1775,7 @@ const AIOutfitGenerator = () => {
             <TouchableOpacity onPress={() => { setLoading(false); setOutfits([]); }} style={styles.backButton}>
               <Ionicons name="chevron-back" size={28} color={LiquidGlass2026Theme.colors.text.primary} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>{t('outfitMaker.aiStylist')}</Text>
+          <ScaledText style={styles.headerTitle} minScale={0.65}>{t('outfitMaker.aiStylist')}</ScaledText>
             <View style={{ width: 44 }} />
           </View>
           <AIThinkingAnimation styleName={selectedStyleLabel} clothingItems={animationItems} />
@@ -1715,18 +1801,18 @@ const AIOutfitGenerator = () => {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Ionicons name="chevron-back" size={28} color={LiquidGlass2026Theme.colors.text.primary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{t('outfitMaker.aiStylist')}</Text>
+          <ScaledText style={styles.headerTitle}>{t('outfitMaker.aiStylist')}</ScaledText>
           <Ionicons name="sparkles" size={24} color="#F59E0B" />
         </View>
 
         {/* Title Area */}
         <View style={{ paddingHorizontal: 20, paddingTop: 36, paddingBottom: 24 }}>
-          <Text style={styles.sectionTitle}>
+          <ScaledText style={styles.sectionTitle} minScale={0.65}>
             {baseItem ? t('outfitMaker.buildAroundItem', { defaultValue: 'Build an outfit around' }) : t('outfitMaker.discoverVibe')}
-          </Text>
-          <Text style={styles.sectionSubtitle}>
+          </ScaledText>
+          <ScaledText style={styles.sectionSubtitle} minScale={0.65}>
             {baseItem ? t('outfitMaker.tapStyleCardAnchor', { defaultValue: 'Choose a style and we\'ll complete the look' }) : t('outfitMaker.tapStyleCard')}
-          </Text>
+          </ScaledText>
         </View>
 
         {/* Anchor item preview — shown when navigated from MyClosetScreen */}
@@ -1745,14 +1831,14 @@ const AIOutfitGenerator = () => {
                 </View>
               )}
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={styles.anchorLabel}>{t('outfitMaker.anchorItem', { defaultValue: 'Anchor item' })}</Text>
-                <Text style={styles.anchorName} numberOfLines={1}>
+                <ScaledText style={styles.anchorLabel} minScale={0.65}>{t('outfitMaker.anchorItem', { defaultValue: 'Anchor item' })}</ScaledText>
+                <ScaledText style={styles.anchorName} numberOfLines={1} minScale={0.65}>
                   {baseItem.name || baseItem.type || t('common.clothingItem')}
-                </Text>
+                </ScaledText>
               </View>
               <View style={styles.anchorBadge}>
                 <Ionicons name="lock-closed" size={12} color="#007AFF" />
-                <Text style={styles.anchorBadgeText}>{t('outfitMaker.locked', { defaultValue: 'Locked' })}</Text>
+                <ScaledText style={styles.anchorBadgeText} minScale={0.65}>{t('outfitMaker.locked', { defaultValue: 'Locked' })}</ScaledText>
               </View>
             </View>
           </View>
@@ -1763,7 +1849,7 @@ const AIOutfitGenerator = () => {
           <View style={styles.promptCard}>
             <View style={styles.promptHeader}>
               <Ionicons name="chatbubble-outline" size={18} color={D.accent} />
-              <Text style={styles.promptTitle}>{t('outfitMaker.whereGoing')}</Text>
+              <ScaledText style={styles.promptTitle} minScale={0.65}>{t('outfitMaker.whereGoing')}</ScaledText>
             </View>
             <TextInput
               style={styles.promptInput}
@@ -1782,7 +1868,7 @@ const AIOutfitGenerator = () => {
             >
               <LinearGradient colors={[D.accent, '#5B7CF9']} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
               <Ionicons name="send" size={18} color="#fff" />
-              <Text style={styles.promptSubmitButtonText}>{t('outfitMaker.generate')}</Text>
+              <ScaledText style={styles.promptSubmitButtonText} minScale={0.65}>{t('outfitMaker.generate')}</ScaledText>
             </TouchableOpacity>
           </View>
         </View>
@@ -1791,7 +1877,7 @@ const AIOutfitGenerator = () => {
         {error ? (
           <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
             <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
+              <ScaledText style={styles.errorText}>{error}</ScaledText>
             </View>
           </View>
         ) : null}
@@ -1813,8 +1899,8 @@ const AIOutfitGenerator = () => {
                     <Ionicons name={styleObj.icon as any} size={24} color={'#FFFFFF'} />
                   </View>
                   <View style={{ flex: 1, marginLeft: 20 }}>
-                    <Text style={styles.vibeTitle}>{styleObj.label}</Text>
-                    <Text style={styles.vibeDesc}>{styleObj.desc}</Text>
+                    <ScaledText style={styles.vibeTitle}>{styleObj.label}</ScaledText>
+                    <ScaledText style={styles.vibeDesc}>{styleObj.desc}</ScaledText>
                   </View>
                   <View style={{ paddingLeft: 12 }}>
                     <Ionicons name="chevron-forward" size={24} color={'#4B5563'} />
@@ -1852,19 +1938,19 @@ const styles = StyleSheet.create({
     ...SpatialElevation.getShadow(SpatialElevation.levels.raised),
   },
   headerTitle: {
-    ...LiquidGlass2026Theme.typography.scale.headlineMedium,
+    ...LiquidGlass2026Theme.typography.scale.titleLarge,
     color: LiquidGlass2026Theme.colors.text.primary,
     flex: 1,
   },
   sectionTitle: {
-    ...LiquidGlass2026Theme.typography.scale.titleLarge,
+    ...LiquidGlass2026Theme.typography.scale.titleMedium,
     color: LiquidGlass2026Theme.colors.text.primary,
   },
   sectionSubtitle: {
-    ...LiquidGlass2026Theme.typography.scale.bodyMedium,
+    ...LiquidGlass2026Theme.typography.scale.bodySmall,
     color: LiquidGlass2026Theme.colors.text.secondary,
-    marginTop: 6,
-    lineHeight: 22,
+    marginTop: 4,
+    lineHeight: 18,
   },
 
   // Anchor item banner (shown when navigated from MyClosetScreen)
@@ -1961,33 +2047,33 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   promptTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     color: LiquidGlass2026Theme.colors.text.primary,
   },
   promptInput: {
-    fontSize: 15,
+    fontSize: 14,
     color: LiquidGlass2026Theme.colors.text.primary,
-    lineHeight: 22,
-    minHeight: 56,
+    lineHeight: 20,
+    minHeight: 48,
     padding: 0,
+  },
+  promptSubmitButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
   },
   promptSubmitButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    marginTop: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    gap: 6,
+    marginTop: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     borderRadius: 12,
     overflow: 'hidden',
     ...SpatialElevation.getShadow(SpatialElevation.levels.raised),
-  },
-  promptSubmitButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#fff',
   },
 
   // Auto-Mode Vibe Cards
@@ -2006,28 +2092,28 @@ const styles = StyleSheet.create({
   vibeCardInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    paddingRight: 24,
+    padding: 14,
+    paddingRight: 18,
   },
   vibeIconWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 18,
-    backgroundColor: '#0A1931', // Dark Navy
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: '#0A1931',
     alignItems: 'center',
     justifyContent: 'center',
   },
   vibeTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#0A1931',
-    marginBottom: 8,
-    letterSpacing: -0.3,
+    marginBottom: 4,
+    letterSpacing: -0.2,
   },
   vibeDesc: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#4B5563',
-    lineHeight: 22,
+    lineHeight: 18,
   },
 
   gridContainer: {
@@ -2111,9 +2197,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   outfitDesc: {
-    ...LiquidGlass2026Theme.typography.scale.bodyLarge,
+    ...LiquidGlass2026Theme.typography.scale.bodyMedium,
     color: LiquidGlass2026Theme.colors.text.primary,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   itemsLabel: {
     ...LiquidGlass2026Theme.typography.scale.titleSmall,
@@ -2334,7 +2420,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.35)',
   },
   tipCardText: {
-    ...LiquidGlass2026Theme.typography.scale.bodyMedium,
+    ...LiquidGlass2026Theme.typography.scale.bodySmall,
     color: LiquidGlass2026Theme.colors.text.secondary,
     flex: 1,
   },
@@ -2347,8 +2433,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
+    gap: 6,
+    paddingVertical: 12,
     borderRadius: LiquidGlass2026Theme.radius.pill,
     overflow: 'hidden',
   },
@@ -2356,14 +2442,15 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     ...LiquidGlass2026Theme.typography.scale.labelLarge,
     fontWeight: '700',
+    fontSize: 13,
   },
   secondaryAction: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderRadius: LiquidGlass2026Theme.radius.pill,
     backgroundColor: 'rgba(255,255,255,0.55)',
     borderWidth: 1,
@@ -2373,6 +2460,7 @@ const styles = StyleSheet.create({
   secondaryActionText: {
     color: LiquidGlass2026Theme.colors.text.primary,
     ...LiquidGlass2026Theme.typography.scale.labelLarge,
+    fontSize: 13,
     fontWeight: '600',
   },
 
@@ -2383,27 +2471,27 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     backgroundColor: 'rgba(255,255,255,0.85)',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 24,
-    paddingTop: 28,
-    paddingBottom: 36,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 28,
     marginHorizontal: 0,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.5)',
     ...SpatialElevation.getShadow(SpatialElevation.levels.floating),
   },
   modalTitle: {
-    ...LiquidGlass2026Theme.typography.scale.titleLarge,
+    ...LiquidGlass2026Theme.typography.scale.titleMedium,
     color: LiquidGlass2026Theme.colors.text.primary,
     textAlign: 'center',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   modalSubtitle: {
-    ...LiquidGlass2026Theme.typography.scale.bodyMedium,
+    ...LiquidGlass2026Theme.typography.scale.bodySmall,
     color: LiquidGlass2026Theme.colors.text.secondary,
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   datePickerRow: {
     flexDirection: 'row',
@@ -2411,14 +2499,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: 'rgba(255,255,255,0.6)',
     borderRadius: LiquidGlass2026Theme.radius.md,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    marginBottom: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.4)',
   },
   datePickerValue: {
-    ...LiquidGlass2026Theme.typography.scale.bodyLarge,
+    ...LiquidGlass2026Theme.typography.scale.bodyMedium,
     color: LiquidGlass2026Theme.colors.text.primary,
     fontWeight: '600',
   },
@@ -2428,7 +2516,7 @@ const styles = StyleSheet.create({
   },
   modalCancel: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderRadius: LiquidGlass2026Theme.radius.pill,
     backgroundColor: 'rgba(255,255,255,0.6)',
     alignItems: 'center',
@@ -2437,12 +2525,13 @@ const styles = StyleSheet.create({
   },
   modalCancelText: {
     ...LiquidGlass2026Theme.typography.scale.labelLarge,
+    fontSize: 13,
     color: LiquidGlass2026Theme.colors.text.primary,
     fontWeight: '600',
   },
   modalConfirm: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderRadius: LiquidGlass2026Theme.radius.pill,
     overflow: 'hidden',
     alignItems: 'center',
@@ -2450,7 +2539,32 @@ const styles = StyleSheet.create({
   modalConfirmText: {
     color: '#FFFFFF',
     ...LiquidGlass2026Theme.typography.scale.labelLarge,
+    fontSize: 13,
     fontWeight: '700',
+  },
+  collectionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    justifyContent: 'center',
+    paddingVertical: 16,
+  },
+  collectionOption: {
+    width: (Dimensions.get('window').width - 112) / 3 - 6,
+    paddingVertical: 18,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+    gap: 6,
+  },
+  collectionOptionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: LiquidGlass2026Theme.colors.text.primary,
+    textAlign: 'center',
   },
 });
 

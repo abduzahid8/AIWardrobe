@@ -1,13 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-    View,
-    Text,
-    TouchableOpacity,
-    StyleSheet,
-    Dimensions,
-    ScrollView,
-    Alert,
-} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Dimensions, ScrollView, Alert,  } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -133,9 +126,9 @@ const ProgressRing = ({
                         }
                     ]}
                 >
-                    <Text style={[styles.progressText, { color }]}>
+                    <ScaledText style={[styles.progressText, { color }]}>
                         {Math.round(progressValue)}%
-                    </Text>
+                    </ScaledText>
                 </View>
             </View>
         </View>
@@ -159,10 +152,10 @@ const GoalCard = ({ goal, userGoal, isActive, isCompleted, progress, onPress, on
                     <Ionicons name={goal.icon as any} size={24} color={goal.color} />
                 </View>
                 <View style={styles.goalInfo}>
-                    <Text style={styles.goalTitle}>{goal.title}</Text>
-                    <Text style={styles.goalDescription} numberOfLines={1}>
+                    <ScaledText style={styles.goalTitle}>{goal.title}</ScaledText>
+                    <ScaledText style={styles.goalDescription} numberOfLines={1}>
                         {goal.description}
-                    </Text>
+                    </ScaledText>
                 </View>
                 {isActive && (
                     <ProgressRing progress={progress} size={50} color={goal.color} />
@@ -179,9 +172,9 @@ const GoalCard = ({ goal, userGoal, isActive, isCompleted, progress, onPress, on
                             ]}
                         />
                     </View>
-                    <Text style={styles.progressLabel}>
+                    <ScaledText style={styles.progressLabel}>
                         {userGoal?.progress ?? 0} / {goal.target} {goal.unit}
-                    </Text>
+                    </ScaledText>
 
                     {/* Quick increment buttons */}
                     <View style={styles.incrementButtons}>
@@ -193,7 +186,7 @@ const GoalCard = ({ goal, userGoal, isActive, isCompleted, progress, onPress, on
                             }}
                         >
                             <Ionicons name="add" size={20} color={COLORS.primary} />
-                            <Text style={styles.incrementBtnText}>+1</Text>
+                            <ScaledText style={styles.incrementBtnText}>+1</ScaledText>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -202,7 +195,7 @@ const GoalCard = ({ goal, userGoal, isActive, isCompleted, progress, onPress, on
             {isCompleted && (
                 <View style={styles.completedBadge}>
                     <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
-                    <Text style={styles.completedText}>{t('styleGoals.completedText')}</Text>
+                    <ScaledText style={styles.completedText}>{t('styleGoals.completedText')}</ScaledText>
                 </View>
             )}
 
@@ -211,7 +204,7 @@ const GoalCard = ({ goal, userGoal, isActive, isCompleted, progress, onPress, on
                     style={[styles.startGoalBtn, { backgroundColor: goal.color }]}
                     onPress={onPress}
                 >
-                    <Text style={styles.startGoalBtnText}>{t('styleGoals.startGoal')}</Text>
+                    <ScaledText style={styles.startGoalBtnText}>{t('styleGoals.startGoal')}</ScaledText>
                     <Ionicons name="arrow-forward" size={16} color="#fff" />
                 </TouchableOpacity>
             )}
@@ -244,10 +237,10 @@ const ChallengeCard = ({
             isCompleted && styles.challengeCardCompleted,
         ]}>
             <View style={styles.challengeHeader}>
-                <Text style={styles.challengeReward}>{challenge.reward}</Text>
+                <ScaledText style={styles.challengeReward}>{challenge.reward}</ScaledText>
                 <View style={styles.challengeInfo}>
-                    <Text style={styles.challengeTitle}>{challenge.title}</Text>
-                    <Text style={styles.challengeDescription}>{challenge.description}</Text>
+                    <ScaledText style={styles.challengeTitle}>{challenge.title}</ScaledText>
+                    <ScaledText style={styles.challengeDescription}>{challenge.description}</ScaledText>
                 </View>
             </View>
 
@@ -264,9 +257,9 @@ const ChallengeCard = ({
                             />
                         ))}
                     </View>
-                    <Text style={styles.daysText}>
+                    <ScaledText style={styles.daysText}>
                         {progress?.daysCompleted || 0} / {challenge.days} days
-                    </Text>
+                    </ScaledText>
                     <TouchableOpacity
                         style={styles.logDayBtn}
                         onPress={() => {
@@ -275,7 +268,7 @@ const ChallengeCard = ({
                         }}
                     >
                         <Ionicons name="checkmark" size={18} color="#fff" />
-                        <Text style={styles.logDayBtnText}>{t('styleGoals.logToday')}</Text>
+                        <ScaledText style={styles.logDayBtnText}>{t('styleGoals.logToday')}</ScaledText>
                     </TouchableOpacity>
                 </View>
             )}
@@ -283,7 +276,7 @@ const ChallengeCard = ({
             {isCompleted && (
                 <View style={styles.completedBadge}>
                     <Ionicons name="trophy" size={18} color={COLORS.warning} />
-                    <Text style={styles.completedText}>{t('styleGoals.challengeCompleteText')}</Text>
+                    <ScaledText style={styles.completedText}>{t('styleGoals.challengeCompleteText')}</ScaledText>
                 </View>
             )}
 
@@ -295,7 +288,7 @@ const ChallengeCard = ({
                         onAccept();
                     }}
                 >
-                    <Text style={styles.acceptChallengeBtnText}>{t('styleGoals.acceptChallenge')}</Text>
+                    <ScaledText style={styles.acceptChallengeBtnText}>{t('styleGoals.acceptChallenge')}</ScaledText>
                 </TouchableOpacity>
             )}
         </View>
@@ -546,8 +539,8 @@ const StyleGoalsScreen = () => {
                     />
 
                     <View style={styles.headerCenter}>
-                        <Text style={styles.headerTitle}>{t('styleGoals.title')}</Text>
-                        <Text style={styles.headerSubtitle}>{t('styleGoals.subtitle')}</Text>
+                        <ScaledText style={styles.headerTitle}>{t('styleGoals.title')}</ScaledText>
+                        <ScaledText style={styles.headerSubtitle}>{t('styleGoals.subtitle')}</ScaledText>
                     </View>
 
                     <View style={{ width: 40 }} />
@@ -559,18 +552,18 @@ const StyleGoalsScreen = () => {
                     style={styles.statsSection}
                 >
                     <View style={styles.statItem}>
-                        <Text style={styles.statNumber}>{activeGoalsCount}</Text>
-                        <Text style={styles.statLabel}>{t('styleGoals.activeGoals')}</Text>
+                        <ScaledText style={styles.statNumber}>{activeGoalsCount}</ScaledText>
+                        <ScaledText style={styles.statLabel}>{t('styleGoals.activeGoals')}</ScaledText>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.statItem}>
-                        <Text style={styles.statNumber}>{completedGoalsCount}</Text>
-                        <Text style={styles.statLabel}>{t('styleGoals.completed')}</Text>
+                        <ScaledText style={styles.statNumber}>{completedGoalsCount}</ScaledText>
+                        <ScaledText style={styles.statLabel}>{t('styleGoals.completed')}</ScaledText>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.statItem}>
-                        <Text style={styles.statNumber}>{activeChallengesCount}</Text>
-                        <Text style={styles.statLabel}>{t('styleGoals.challenges')}</Text>
+                        <ScaledText style={styles.statNumber}>{activeChallengesCount}</ScaledText>
+                        <ScaledText style={styles.statLabel}>{t('styleGoals.challenges')}</ScaledText>
                     </View>
                 </Animated.View>
 
@@ -580,17 +573,17 @@ const StyleGoalsScreen = () => {
                         style={[styles.tab, activeTab === 'goals' && styles.tabActive]}
                         onPress={() => setActiveTab('goals')}
                     >
-                        <Text style={[styles.tabText, activeTab === 'goals' && styles.tabTextActive]}>
+                        <ScaledText style={[styles.tabText, activeTab === 'goals' && styles.tabTextActive]}>
                             Goals
-                        </Text>
+                        </ScaledText>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.tab, activeTab === 'challenges' && styles.tabActive]}
                         onPress={() => setActiveTab('challenges')}
                     >
-                        <Text style={[styles.tabText, activeTab === 'challenges' && styles.tabTextActive]}>
+                        <ScaledText style={[styles.tabText, activeTab === 'challenges' && styles.tabTextActive]}>
                             Challenges
-                        </Text>
+                        </ScaledText>
                     </TouchableOpacity>
                 </View>
 
@@ -600,10 +593,10 @@ const StyleGoalsScreen = () => {
                 >
                     {activeTab === 'goals' ? (
                         <Animated.View entering={FadeIn.delay(150)}>
-                            <Text style={styles.sectionTitle}>{t('styleGoals.yourStyleGoals')}</Text>
-                            <Text style={styles.sectionSubtitle}>
+                            <ScaledText style={styles.sectionTitle}>{t('styleGoals.yourStyleGoals')}</ScaledText>
+                            <ScaledText style={styles.sectionSubtitle}>
                                 Set goals to level up your wardrobe
-                            </Text>
+                            </ScaledText>
 
                             {AVAILABLE_GOALS.map((goal) => {
                                 const userGoal = userGoals.find(g => g.goalId === goal.id);
@@ -627,10 +620,10 @@ const StyleGoalsScreen = () => {
                         </Animated.View>
                     ) : (
                         <Animated.View entering={FadeIn.delay(150)}>
-                            <Text style={styles.sectionTitle}>{t('styleGoals.weeklyChallenges')}</Text>
-                            <Text style={styles.sectionSubtitle}>
+                            <ScaledText style={styles.sectionTitle}>{t('styleGoals.weeklyChallenges')}</ScaledText>
+                            <ScaledText style={styles.sectionSubtitle}>
                                 Push your style boundaries with fun challenges
-                            </Text>
+                            </ScaledText>
 
                             {WEEKLY_CHALLENGES.map((challenge) => {
                                 const progress = challenges.find(c => c.challengeId === challenge.id);

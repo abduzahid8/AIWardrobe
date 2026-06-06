@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Image, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Image, ActivityIndicator, StyleSheet } from 'react-native'
+import { ScaledText } from '../ui/ScaledText';;
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -46,12 +47,12 @@ export default function WeatherWidget({ weather, loading, isReducedMotionEnabled
                         accessibilityLabel={`Weather: ${weather.description}`}
                     />
                     <View style={styles.info}>
-                        <Text style={styles.temp}>{weather.temp}°C</Text>
-                        <Text style={styles.desc}>{weather.description}</Text>
+                        <ScaledText style={styles.temp}>{weather.temp}°C</ScaledText>
+                        <ScaledText style={styles.desc}>{weather.description}</ScaledText>
                     </View>
                     <View style={styles.suggestion}>
                         <Ionicons name="shirt-outline" size={16} color={colors.text.secondary} />
-                        <Text style={styles.suggestionText}>{suggestion}</Text>
+                        <ScaledText style={styles.suggestionText}>{suggestion}</ScaledText>
                     </View>
                 </View>
             </View>

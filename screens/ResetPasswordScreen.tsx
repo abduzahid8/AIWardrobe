@@ -1,16 +1,6 @@
 import React, { useState } from 'react';
-import {
-    View,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    Alert,
-    StyleSheet,
-    KeyboardAvoidingView,
-    Platform,
-    TouchableWithoutFeedback,
-    Keyboard,
-} from 'react-native';
+import { View, TextInput, TouchableOpacity, Alert, StyleSheet, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard,  } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppNavigation } from '../hooks/useAppNavigation';
@@ -42,15 +32,15 @@ const ResetPasswordScreen = () => {
                     <View style={styles.iconContainer}>
                         <Ionicons name="alert-circle-outline" size={40} color="#EF4444" />
                     </View>
-                    <Text style={styles.title}>{t('resetPassword.invalidSession')}</Text>
-                    <Text style={styles.subtitle}>
+                    <ScaledText style={styles.title}>{t('resetPassword.invalidSession')}</ScaledText>
+                    <ScaledText style={styles.subtitle}>
                         {t('resetPassword.resetLinkExpired')}
-                    </Text>
+                    </ScaledText>
                     <TouchableOpacity
                         onPress={() => navigation.navigate('SignIn')}
                         style={styles.submitButton}
                     >
-                        <Text style={styles.submitButtonText}>{t('resetPassword.backToSignIn')}</Text>
+                        <ScaledText style={styles.submitButtonText}>{t('resetPassword.backToSignIn')}</ScaledText>
                     </TouchableOpacity>
                 </View>
             </LinearGradient>
@@ -116,7 +106,7 @@ const ResetPasswordScreen = () => {
                 size={16}
                 color={valid ? '#FFD700' : 'rgba(255,255,255,0.3)'}
             />
-            <Text style={[styles.checkText, valid && styles.checkTextValid]}>{text}</Text>
+            <ScaledText style={[styles.checkText, valid && styles.checkTextValid]}>{text}</ScaledText>
         </View>
     );
 
@@ -145,12 +135,12 @@ const ResetPasswordScreen = () => {
                             <Ionicons name="lock-closed-outline" size={40} color="#FFD700" />
                         </View>
 
-                        <Text style={styles.title} accessibilityRole="header">
+                        <ScaledText style={styles.title} accessibilityRole="header">
                             {t('resetPassword.title')}
-                        </Text>
-                        <Text style={styles.subtitle}>
+                        </ScaledText>
+                        <ScaledText style={styles.subtitle}>
                             {t('resetPassword.subtitle')}
-                        </Text>
+                        </ScaledText>
 
                         {/* New Password */}
                         <View style={styles.inputContainer}>
@@ -192,7 +182,7 @@ const ResetPasswordScreen = () => {
                                 maxLength={128}
                             />
                             {confirmPassword.length > 0 && !passwordsMatch && (
-                                <Text style={styles.errorHint}>{t('resetPassword.passwordsDontMatch')}</Text>
+                                <ScaledText style={styles.errorHint}>{t('resetPassword.passwordsDontMatch')}</ScaledText>
                             )}
                         </View>
 
@@ -208,9 +198,9 @@ const ResetPasswordScreen = () => {
                             accessibilityLabel={isLoading ? t('resetPassword.resettingPassword') : t('resetPassword.resetPassword')}
                             accessibilityRole="button"
                         >
-                            <Text style={styles.submitButtonText}>
+                            <ScaledText style={styles.submitButtonText}>
                                 {isLoading ? t('resetPassword.resetting') : t('resetPassword.resetPassword')}
-                            </Text>
+                            </ScaledText>
                         </TouchableOpacity>
                     </View>
                 </LinearGradient>

@@ -2,15 +2,8 @@
 // Clean white background, centered cutout, professional styling
 
 import React from 'react';
-import {
-    View,
-    Image,
-    Text,
-    StyleSheet,
-    Pressable,
-    ViewStyle,
-    Dimensions,
-} from 'react-native';
+import { View, Image, StyleSheet, Pressable, ViewStyle, Dimensions,  } from 'react-native'
+import { ScaledText } from '../ui/ScaledText';;
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -187,7 +180,7 @@ export const CelebrityClothingCard: React.FC<CelebrityClothingCardProps> = ({
                                     ]}
                                 />
                             )}
-                            <Text
+                            <ScaledText
                                 style={[
                                     styles.typeName,
                                     { color: colors.text.primary },
@@ -195,12 +188,12 @@ export const CelebrityClothingCard: React.FC<CelebrityClothingCardProps> = ({
                                 numberOfLines={2}
                             >
                                 {displayType}
-                            </Text>
+                            </ScaledText>
                         </View>
 
                         {/* Color Name */}
                         {displayColor && (
-                            <Text
+                            <ScaledText
                                 style={[
                                     styles.colorName,
                                     { color: colors.text.secondary },
@@ -208,7 +201,7 @@ export const CelebrityClothingCard: React.FC<CelebrityClothingCardProps> = ({
                                 numberOfLines={2}
                             >
                                 {displayColor}
-                            </Text>
+                            </ScaledText>
                         )}
 
                         {/* Material/Pattern Tags */}
@@ -221,14 +214,14 @@ export const CelebrityClothingCard: React.FC<CelebrityClothingCardProps> = ({
                                             { backgroundColor: colors.surfaceHighlight },
                                         ]}
                                     >
-                                        <Text
+                                        <ScaledText
                                             style={[
                                                 styles.tagText,
                                                 { color: colors.text.muted },
                                             ]}
                                         >
                                             {displayMaterial}
-                                        </Text>
+                                        </ScaledText>
                                     </View>
                                 )}
                                 {displayPattern && displayPattern !== 'solid' && displayPattern !== 'unknown' && (
@@ -238,14 +231,14 @@ export const CelebrityClothingCard: React.FC<CelebrityClothingCardProps> = ({
                                             { backgroundColor: colors.surfaceHighlight },
                                         ]}
                                     >
-                                        <Text
+                                        <ScaledText
                                             style={[
                                                 styles.tagText,
                                                 { color: colors.text.muted },
                                             ]}
                                         >
                                             {displayPattern}
-                                        </Text>
+                                        </ScaledText>
                                     </View>
                                 )}
                             </View>

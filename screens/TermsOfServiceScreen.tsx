@@ -3,13 +3,8 @@
  */
 
 import React from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    ScrollView,
-    TouchableOpacity,
-} from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity,  } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
@@ -72,7 +67,7 @@ export default function TermsOfServiceScreen({ navigation }: any) {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>{t('termsOfService.title')}</Text>
+                <ScaledText style={styles.headerTitle}>{t('termsOfService.title')}</ScaledText>
                 <View style={{ width: 32 }} />
             </View>
 
@@ -80,16 +75,16 @@ export default function TermsOfServiceScreen({ navigation }: any) {
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
-                <Text style={styles.lastUpdated}>{t('termsOfService.lastUpdated')}</Text>
+                <ScaledText style={styles.lastUpdated}>{t('termsOfService.lastUpdated')}</ScaledText>
 
-                <Text style={styles.intro}>
+                <ScaledText style={styles.intro}>
                     {t('termsOfService.intro')}
-                </Text>
+                </ScaledText>
 
                 {SECTIONS.map((section, idx) => (
                     <View key={idx} style={styles.section}>
-                        <Text style={styles.sectionTitle}>{t(section.title)}</Text>
-                        <Text style={styles.sectionBody}>{t(section.body)}</Text>
+                        <ScaledText style={styles.sectionTitle}>{t(section.title)}</ScaledText>
+                        <ScaledText style={styles.sectionBody}>{t(section.body)}</ScaledText>
                     </View>
                 ))}
             </ScrollView>

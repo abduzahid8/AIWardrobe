@@ -3,23 +3,8 @@
  */
 
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  ViewStyle,
-} from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, Image, KeyboardAvoidingView, Modal, Platform, Pressable, StatusBar, StyleSheet, TextInput, TouchableOpacity, View, ViewStyle,  } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -610,7 +595,7 @@ const ProfileScreen = () => {
         />
         <View style={styles.inlineGlassButtonContent}>
           <Ionicons name={icon} size={16} color={danger ? D.danger : D.text} />
-          <Text style={[styles.inlineGlassButtonText, danger && { color: D.danger }]}>{label}</Text>
+          <ScaledText style={[styles.inlineGlassButtonText, danger && { color: D.danger }]}>{label}</ScaledText>
         </View>
       </View>
     </TouchableOpacity>
@@ -642,7 +627,7 @@ const ProfileScreen = () => {
         style={styles.primaryButton}
       >
         <Ionicons name={icon} size={16} color={D.white} />
-        <Text style={styles.primaryButtonText}>{label}</Text>
+        <ScaledText style={styles.primaryButtonText}>{label}</ScaledText>
       </LinearGradient>
     </TouchableOpacity>
   );
@@ -673,17 +658,17 @@ const ProfileScreen = () => {
         </View>
 
         <View style={styles.menuCopy}>
-          <Text style={[styles.menuTitle, danger && { color: D.danger }]} numberOfLines={1}>
+          <ScaledText style={[styles.menuTitle, danger && { color: D.danger }]} numberOfLines={1}>
             {label}
-          </Text>
+          </ScaledText>
         </View>
       </View>
 
       <View style={styles.menuTrailing}>
         {trailing ? (
-          <Text style={[styles.menuTrailingText, danger && { color: D.danger }]} numberOfLines={1}>
+          <ScaledText style={[styles.menuTrailingText, danger && { color: D.danger }]} numberOfLines={1}>
             {trailing}
-          </Text>
+          </ScaledText>
         ) : null}
         <Ionicons name="chevron-forward" size={16} color={danger ? D.danger : D.textSub} />
       </View>
@@ -753,20 +738,20 @@ const ProfileScreen = () => {
           />
 
           <View style={styles.lookFooter}>
-            <Text style={styles.lookTitle} numberOfLines={1}>
+            <ScaledText style={styles.lookTitle} numberOfLines={1}>
               {cardTitle}
-            </Text>
+            </ScaledText>
             {outfit.date ? (
-              <Text style={styles.lookDate} numberOfLines={1}>
+              <ScaledText style={styles.lookDate} numberOfLines={1}>
                 {outfit.date}
-              </Text>
+              </ScaledText>
             ) : null}
           </View>
 
           {outfit.isTryOn ? (
             <View style={styles.lookBadge}>
               <Ionicons name="sparkles" size={10} color={D.white} />
-              <Text style={styles.lookBadgeText}>{t('profile.ai')}</Text>
+              <ScaledText style={styles.lookBadgeText}>{t('profile.ai')}</ScaledText>
             </View>
           ) : null}
         </View>
@@ -780,7 +765,7 @@ const ProfileScreen = () => {
         <GlassPanel style={styles.contentPanel}>
           <View style={styles.loadingBlock}>
             <ActivityIndicator color={D.accent} />
-            <Text style={styles.loadingText}>{t('common.loading')}</Text>
+            <ScaledText style={styles.loadingText}>{t('common.loading')}</ScaledText>
           </View>
         </GlassPanel>
       );
@@ -800,10 +785,10 @@ const ProfileScreen = () => {
                 <Ionicons name="sparkles-outline" size={28} color={D.accent} />
               </LinearGradient>
             </View>
-            <Text style={styles.emptyTitle}>{t('profile.noOutfits')}</Text>
-            <Text style={styles.emptySubtitle}>
+            <ScaledText style={styles.emptyTitle}>{t('profile.noOutfits')}</ScaledText>
+            <ScaledText style={styles.emptySubtitle}>
               Create looks with AI or save your favorite combinations from your wardrobe.
-            </Text>
+            </ScaledText>
             <PrimaryGradientButton
               label={t('profile.new')}
               icon="sparkles"
@@ -837,10 +822,10 @@ const ProfileScreen = () => {
             <Ionicons name="airplane-outline" size={28} color={D.accent} />
           </LinearGradient>
         </View>
-        <Text style={styles.emptyTitle}>{t('profile.planTripOutfits')}</Text>
-        <Text style={styles.emptySubtitle}>
+        <ScaledText style={styles.emptyTitle}>{t('profile.planTripOutfits')}</ScaledText>
+        <ScaledText style={styles.emptySubtitle}>
           {t('profile.planTripDescription')}
-        </Text>
+        </ScaledText>
         <PrimaryGradientButton
           label={t('profile.openCalendar')}
           icon="calendar-outline"
@@ -855,10 +840,10 @@ const ProfileScreen = () => {
             <Ionicons name="calendar-outline" size={16} color={D.accent} />
           </View>
           <View style={styles.tripFlowCopy}>
-            <Text style={styles.tripFlowTitle}>{t('profile.tripFlowStep1')}</Text>
-            <Text style={styles.tripFlowSubtitle}>
+            <ScaledText style={styles.tripFlowTitle}>{t('profile.tripFlowStep1')}</ScaledText>
+            <ScaledText style={styles.tripFlowSubtitle}>
               {t('profile.tripFlowStep1Desc')}
-            </Text>
+            </ScaledText>
           </View>
         </View>
 
@@ -867,10 +852,10 @@ const ProfileScreen = () => {
             <Ionicons name="sparkles-outline" size={16} color={D.accent} />
           </View>
           <View style={styles.tripFlowCopy}>
-            <Text style={styles.tripFlowTitle}>{t('profile.tripFlowStep2')}</Text>
-            <Text style={styles.tripFlowSubtitle}>
+            <ScaledText style={styles.tripFlowTitle}>{t('profile.tripFlowStep2')}</ScaledText>
+            <ScaledText style={styles.tripFlowSubtitle}>
               {t('profile.tripFlowStep2Desc')}
-            </Text>
+            </ScaledText>
           </View>
         </View>
 
@@ -879,10 +864,10 @@ const ProfileScreen = () => {
             <Ionicons name="checkmark-done-outline" size={16} color={D.accent} />
           </View>
           <View style={styles.tripFlowCopy}>
-            <Text style={styles.tripFlowTitle}>{t('profile.tripFlowStep3')}</Text>
-            <Text style={styles.tripFlowSubtitle}>
+            <ScaledText style={styles.tripFlowTitle}>{t('profile.tripFlowStep3')}</ScaledText>
+            <ScaledText style={styles.tripFlowSubtitle}>
               {t('profile.tripFlowStep3Desc')}
-            </Text>
+            </ScaledText>
           </View>
         </View>
       </View>
@@ -921,10 +906,10 @@ const ProfileScreen = () => {
             style={StyleSheet.absoluteFillObject}
           />
           <View style={styles.stickyHeaderContent}>
-            <Text style={styles.stickyHeaderTitle}>{userName}</Text>
+            <ScaledText style={styles.stickyHeaderTitle}>{userName}</ScaledText>
             <View style={styles.stickyPlanChip}>
               <Ionicons name={isPro ? 'diamond-outline' : 'sparkles-outline'} size={11} color={D.textSub} />
-              <Text style={styles.stickyPlanChipText}>{planLabel}</Text>
+              <ScaledText style={styles.stickyPlanChipText}>{planLabel}</ScaledText>
             </View>
           </View>
         </View>
@@ -944,7 +929,7 @@ const ProfileScreen = () => {
             <View style={styles.heroTopRow}>
               <View style={styles.profileChip}>
                 <Ionicons name="person-circle-outline" size={14} color={D.textSub} />
-                <Text style={styles.profileChipText}>{t('profile.account')}</Text>
+                <ScaledText style={styles.profileChipText}>{t('profile.account')}</ScaledText>
               </View>
 
               <SecondaryGlassButton label={t('common.edit')} icon="create-outline" onPress={openEditProfile} />
@@ -990,8 +975,8 @@ const ProfileScreen = () => {
             </View>
 
             <View style={styles.identityBlock}>
-              <Text style={styles.heroName}>{userName}</Text>
-              {userEmail ? <Text style={styles.heroEmail}>{userEmail}</Text> : null}
+              <ScaledText style={styles.heroName}>{userName}</ScaledText>
+              {userEmail ? <ScaledText style={styles.heroEmail}>{userEmail}</ScaledText> : null}
 
               <View style={styles.membershipBadge}>
                 <Ionicons
@@ -1006,11 +991,11 @@ const ProfileScreen = () => {
                     end={{ x: 1, y: 1 }}
                     style={styles.membershipBadgeFill}
                   >
-                    <Text style={styles.membershipBadgeText}>{topPlanLabel}</Text>
+                    <ScaledText style={styles.membershipBadgeText}>{topPlanLabel}</ScaledText>
                   </LinearGradient>
                 ) : (
                   <View style={styles.membershipBadgeGlass}>
-                    <Text style={styles.membershipBadgeSubtleText}>{topPlanLabel}</Text>
+                    <ScaledText style={styles.membershipBadgeSubtleText}>{topPlanLabel}</ScaledText>
                   </View>
                 )}
               </View>
@@ -1052,8 +1037,8 @@ const ProfileScreen = () => {
                     <View style={styles.statIconWrap}>
                       <Ionicons name={item.icon} size={15} color={D.textSub} />
                     </View>
-                    <Text style={styles.statValue}>{item.value}</Text>
-                    <Text style={styles.statLabel}>{item.label}</Text>
+                    <ScaledText style={styles.statValue}>{item.value}</ScaledText>
+                    <ScaledText style={styles.statLabel}>{item.label}</ScaledText>
                   </View>
                   {index < stats.length - 1 ? <View style={styles.statDivider} /> : null}
                 </React.Fragment>
@@ -1084,17 +1069,17 @@ const ProfileScreen = () => {
                 <View style={styles.upgradeLeft}>
                   <View style={styles.upgradeBadge}>
                     <Ionicons name="diamond" size={11} color={D.accentEnd} />
-                    <Text style={styles.upgradeBadgeText}>{t('profile.proBadge')}</Text>
+                    <ScaledText style={styles.upgradeBadgeText}>{t('profile.proBadge')}</ScaledText>
                   </View>
-                  <Text style={styles.upgradeTitle}>{t('profile.goPro')}</Text>
-                  <Text style={styles.upgradeSubtitle}>{t('profile.goProSubtitle')}</Text>
+                  <ScaledText style={styles.upgradeTitle}>{t('profile.goPro')}</ScaledText>
+                  <ScaledText style={styles.upgradeSubtitle}>{t('profile.goProSubtitle')}</ScaledText>
                 </View>
 
                 <View style={styles.upgradeRight}>
                   <View style={styles.upgradePriceWrap}>
-                    <Text style={styles.upgradePriceFrom}>{t('profile.priceFrom')}</Text>
-                    <Text style={styles.upgradePrice}>$9.99</Text>
-                    <Text style={styles.upgradePricePer}>/mo</Text>
+                    <ScaledText style={styles.upgradePriceFrom}>{t('profile.priceFrom')}</ScaledText>
+                    <ScaledText style={styles.upgradePrice}>$9.99</ScaledText>
+                    <ScaledText style={styles.upgradePricePer}>/mo</ScaledText>
                   </View>
                   <View style={styles.upgradeArrow}>
                     <Ionicons name="arrow-forward" size={16} color={D.white} />
@@ -1127,13 +1112,13 @@ const ProfileScreen = () => {
                         style={StyleSheet.absoluteFillObject}
                       />
                     ) : null}
-                    <Text style={[styles.segmentedText, isActive && styles.segmentedTextActive]}>
+                    <ScaledText style={[styles.segmentedText, isActive && styles.segmentedTextActive]}>
                       {titleCase(tab)}
-                    </Text>
+                    </ScaledText>
                     <View style={[styles.segmentedBadge, isActive && styles.segmentedBadgeActive]}>
-                      <Text style={[styles.segmentedBadgeText, isActive && styles.segmentedBadgeTextActive]}>
+                      <ScaledText style={[styles.segmentedBadgeText, isActive && styles.segmentedBadgeTextActive]}>
                         {tab === 'looks' ? outfits.length : 0}
-                      </Text>
+                      </ScaledText>
                     </View>
                   </Pressable>
                 );
@@ -1145,8 +1130,8 @@ const ProfileScreen = () => {
         <Animated.View entering={FadeInDown.delay(100).duration(350)} style={styles.sectionBlock}>
           <View style={styles.sectionHeaderRow}>
             <View>
-              <Text style={styles.sectionEyebrow}>{activeTab === 'looks' ? t('profile.style') : t('profile.travel')}</Text>
-              <Text style={styles.sectionTitle}>{activeTab === 'looks' ? t('profile.savedLooks') : t('profile.tripsAndPacking')}</Text>
+              <ScaledText style={styles.sectionEyebrow}>{activeTab === 'looks' ? t('profile.style') : t('profile.travel')}</ScaledText>
+              <ScaledText style={styles.sectionTitle}>{activeTab === 'looks' ? t('profile.savedLooks') : t('profile.tripsAndPacking')}</ScaledText>
             </View>
             {activeTab === 'looks' ? (
               <SecondaryGlassButton
@@ -1167,7 +1152,7 @@ const ProfileScreen = () => {
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(130).duration(350)} style={styles.sectionBlock}>
-          <Text style={styles.groupHeading}>{t('profile.accountHeading')}</Text>
+          <ScaledText style={styles.groupHeading}>{t('profile.accountHeading')}</ScaledText>
           <GlassPanel radius={28}>
             <MenuRow
               icon="create-outline"
@@ -1194,7 +1179,7 @@ const ProfileScreen = () => {
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(155).duration(350)} style={styles.sectionBlock}>
-          <Text style={styles.groupHeading}>{t('profile.membershipHeading')}</Text>
+          <ScaledText style={styles.groupHeading}>{t('profile.membershipHeading')}</ScaledText>
           <GlassPanel radius={28}>
             <MenuRow
               icon="diamond-outline"
@@ -1230,7 +1215,7 @@ const ProfileScreen = () => {
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(180).duration(350)} style={styles.sectionBlock}>
-          <Text style={styles.groupHeading}>{t('profile.preferencesHeading')}</Text>
+          <ScaledText style={styles.groupHeading}>{t('profile.preferencesHeading')}</ScaledText>
           <GlassPanel radius={28}>
             <MenuRow
               icon="language-outline"
@@ -1269,7 +1254,7 @@ const ProfileScreen = () => {
 
         {__DEV__ && (
           <Animated.View entering={FadeInDown.delay(190).duration(350)} style={styles.sectionBlock}>
-            <Text style={styles.groupHeading}>{t('profile.developerTools')}</Text>
+            <ScaledText style={styles.groupHeading}>{t('profile.developerTools')}</ScaledText>
             <GlassPanel radius={28}>
               <MenuRow
                 icon="time-outline"
@@ -1287,7 +1272,7 @@ const ProfileScreen = () => {
         )}
 
         <Animated.View entering={FadeInDown.delay(205).duration(350)} style={styles.sectionBlock}>
-          <Text style={styles.groupHeading}>{t('profile.session')}</Text>
+          <ScaledText style={styles.groupHeading}>{t('profile.session')}</ScaledText>
           <GlassPanel radius={28}>
             <MenuRow
               icon="log-out-outline"
@@ -1343,8 +1328,8 @@ const ProfileScreen = () => {
               <View style={styles.sheetScrim} />
 
               <View style={styles.sheetHandle} />
-              <Text style={styles.sheetTitle}>{t('profile.editAccount')}</Text>
-              <Text style={styles.sheetSubtitle}>{t('profile.updateDetails')}</Text>
+              <ScaledText style={styles.sheetTitle}>{t('profile.editAccount')}</ScaledText>
+              <ScaledText style={styles.sheetSubtitle}>{t('profile.updateDetails')}</ScaledText>
 
               <TouchableOpacity style={styles.sheetAvatarWrap} activeOpacity={0.85} onPress={pickAvatar}>
                 <LinearGradient
@@ -1377,7 +1362,7 @@ const ProfileScreen = () => {
                 </View>
               </TouchableOpacity>
 
-              <Text style={styles.fieldLabel}>{t('profile.name')}</Text>
+              <ScaledText style={styles.fieldLabel}>{t('profile.name')}</ScaledText>
               <View style={styles.fieldCard}>
                 <BlurView
                   intensity={Platform.OS === 'ios' ? 30 : 100}
@@ -1396,7 +1381,7 @@ const ProfileScreen = () => {
                 />
               </View>
 
-              <Text style={styles.fieldLabel}>{t('profile.email')}</Text>
+              <ScaledText style={styles.fieldLabel}>{t('profile.email')}</ScaledText>
               <View style={styles.fieldCard}>
                 <BlurView
                   intensity={Platform.OS === 'ios' ? 30 : 100}
@@ -1406,7 +1391,7 @@ const ProfileScreen = () => {
                 <View style={styles.fieldScrim} />
                 <View style={styles.readonlyRow}>
                   <Ionicons name="mail-outline" size={16} color={D.textSub} />
-                  <Text style={styles.readonlyValue}>{userEmail || t('profile.noEmail')}</Text>
+                  <ScaledText style={styles.readonlyValue}>{userEmail || t('profile.noEmail')}</ScaledText>
                 </View>
               </View>
 
@@ -1428,7 +1413,7 @@ const ProfileScreen = () => {
               {saving ? (
                 <View style={styles.savingRow}>
                   <ActivityIndicator size="small" color={D.accent} />
-                  <Text style={styles.savingText}>{t('profile.savingUpdates')}</Text>
+                  <ScaledText style={styles.savingText}>{t('profile.savingUpdates')}</ScaledText>
                 </View>
               ) : null}
             </View>
@@ -1485,17 +1470,17 @@ const ProfileScreen = () => {
                   {previewLook.isTryOn ? (
                     <View style={styles.previewBadgeRow}>
                       <Ionicons name="sparkles" size={13} color={D.white} />
-                      <Text style={styles.previewBadgeText}>{t('profile.aiTryOn')}</Text>
+                      <ScaledText style={styles.previewBadgeText}>{t('profile.aiTryOn')}</ScaledText>
                     </View>
                   ) : null}
-                  <Text style={styles.previewTitle} numberOfLines={2}>
+                  <ScaledText style={styles.previewTitle} numberOfLines={2}>
                     {previewLook.isTryOn
                       ? `${previewLook.tryOnGarmentBrand ? `${previewLook.tryOnGarmentBrand} · ` : ''}${
                           previewLook.tryOnGarmentName || 'AI Look'
                         }`
                       : previewLook.occasion || 'Saved Look'}
-                  </Text>
-                  {previewLook.date ? <Text style={styles.previewDate}>{previewLook.date}</Text> : null}
+                  </ScaledText>
+                  {previewLook.date ? <ScaledText style={styles.previewDate}>{previewLook.date}</ScaledText> : null}
                 </View>
 
                 <View style={styles.previewActions}>

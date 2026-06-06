@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Alert, ActivityIndicator, Image } from 'react-native';
+import { View, FlatList, TouchableOpacity, Alert, ActivityIndicator, Image } from 'react-native';
+import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -76,8 +77,8 @@ export default function ReviewScanScreen() {
         return (
             <View className="flex-1 bg-[#0A1931] justify-center items-center">
                 <ActivityIndicator size="large" color="#fff" />
-                <Text className="text-white text-lg font-bold mt-4">{t('review.generating')}</Text>
-                <Text className="text-gray-400 text-sm mt-2">{t('review.savingToCloud')}</Text>
+                <ScaledText className="text-white text-lg font-bold mt-4">{t('review.generating')}</ScaledText>
+                <ScaledText className="text-gray-400 text-sm mt-2">{t('review.savingToCloud')}</ScaledText>
             </View>
         );
     }
@@ -89,7 +90,7 @@ export default function ReviewScanScreen() {
                 <TouchableOpacity onPress={() => navigation.goBack()} className="mr-4">
                     <Ionicons name="arrow-back" size={24} color="#0A1931" />
                 </TouchableOpacity>
-                <Text className="text-xl font-bold">{t('review.itemsFound', { count: reviewedItems.length })}</Text>
+                <ScaledText className="text-xl font-bold">{t('review.itemsFound', { count: reviewedItems.length })}</ScaledText>
             </View>
 
             {/* Список найденного */}
@@ -105,13 +106,13 @@ export default function ReviewScanScreen() {
                         </View>
 
                         <View className="flex-1">
-                            <Text className="text-lg font-semibold text-gray-800">{item.itemType}</Text>
-                            <Text className="text-sm text-gray-500 capitalize">
+                            <ScaledText className="text-lg font-semibold text-gray-800">{item.itemType}</ScaledText>
+                            <ScaledText className="text-sm text-gray-500 capitalize">
                                 {item.color} • {item.style} • {item.season}
-                            </Text>
-                            <Text className="text-xs text-gray-400 mt-1" numberOfLines={1}>
+                            </ScaledText>
+                            <ScaledText className="text-xs text-gray-400 mt-1" numberOfLines={1}>
                                 {item.description}
-                            </Text>
+                            </ScaledText>
                         </View>
 
                         <TouchableOpacity onPress={() => removeItem(index)} className="p-2">
@@ -127,9 +128,9 @@ export default function ReviewScanScreen() {
                     onPress={handleSaveToWardrobe}
                     className="bg-[#0A1931] py-4 rounded-2xl items-center shadow-lg"
                 >
-                    <Text className="text-white font-bold text-lg">
+                    <ScaledText className="text-white font-bold text-lg">
                         {t('review.addToWardrobe', { count: reviewedItems.length })}
-                    </Text>
+                    </ScaledText>
                 </TouchableOpacity>
             </View>
         </SafeAreaView>

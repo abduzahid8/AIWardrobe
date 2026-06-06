@@ -1,22 +1,13 @@
-import {
-  Alert,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-} from "react-native";
+import { Alert, StyleSheet, TextInput, TouchableOpacity, View, ScrollView, KeyboardAvoidingView, Platform, } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import React, { useState, useMemo, useEffect } from "react";
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import * as AppleAuthentication from "expo-apple-authentication";
+import { Ionicons } from "@expo/vector-icons";
 import useAuthStore from "../store/auth";
 import { useTranslation } from "react-i18next";
-import { Ionicons } from "@expo/vector-icons";
 import { createLogger } from "../src/utils/logger";
 import { SUPABASE_AUTH_ERRORS } from "../constants/authErrors";
 
@@ -31,7 +22,7 @@ const SignUpScreen = () => {
   const [profileImage, setProfileImage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigation = useNavigation();
-  const { register, signInWithApple } = useAuthStore();
+  const { register, signInWithApple, signInWithGoogle } = useAuthStore();
   const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
 
   useEffect(() => {
@@ -48,6 +39,20 @@ const SignUpScreen = () => {
     } catch (error: any) {
       if (error?.code !== 'ERR_REQUEST_CANCELED') {
         Alert.alert(t('signUp.registrationFailed'), error.message || t('signIn.appleSignInFailed'));
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignUp = async () => {
+    if (isLoading) return;
+    setIsLoading(true);
+    try {
+      await signInWithGoogle();
+    } catch (error: any) {
+      if (error?.message && !error?.message?.includes('cancel')) {
+        Alert.alert(t('signUp.registrationFailed'), error.message || t('signIn.googleSignInFailed'));
       }
     } finally {
       setIsLoading(false);
@@ -145,7 +150,7 @@ const SignUpScreen = () => {
         size={16}
         color={isValid ? "#FFD700" : "rgba(255,255,255,0.3)"}
       />
-      <Text style={[styles.checkText, isValid && styles.checkTextValid]}>{text}</Text>
+      <ScaledText style={[styles.checkText, isValid && styles.checkTextValid]}>{text}</ScaledText>
     </View>
   );
 
@@ -163,25 +168,36 @@ const SignUpScreen = () => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.title}>{t('auth.signUp.signUp')}</Text>
+          <ScaledText style={styles.title}>{t('auth.signUp.signUp')}</ScaledText>
 
-          {/* Sign in with Apple — shown first per Apple HIG prominence requirement */}
+          {/* Social sign-up buttons */}
           {appleAuthAvailable && (
-            <>
-              <AppleAuthentication.AppleAuthenticationButton
-                buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
-                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE_OUTLINE}
-                cornerRadius={16}
-                style={styles.appleButton}
-                onPress={handleAppleSignUp}
-              />
-              <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>{t('signIn.or')}</Text>
-                <View style={styles.dividerLine} />
-              </View>
-            </>
+            <AppleAuthentication.AppleAuthenticationButton
+              buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
+              buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE_OUTLINE}
+              cornerRadius={16}
+              style={styles.socialButton}
+              onPress={handleAppleSignUp}
+            />
           )}
+
+          <TouchableOpacity
+            onPress={handleGoogleSignUp}
+            style={styles.googleButton}
+            disabled={isLoading}
+            activeOpacity={0.8}
+            accessibilityLabel={t('signUp.signUpWithGoogle')}
+            accessibilityRole="button"
+          >
+            <Ionicons name="logo-google" size={20} color="#FFF" style={styles.googleIcon} />
+            <ScaledText style={styles.googleButtonText}>{t('signUp.signUpWithGoogle')}</ScaledText>
+          </TouchableOpacity>
+
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <ScaledText style={styles.dividerText}>{t('signIn.or')}</ScaledText>
+            <View style={styles.dividerLine} />
+          </View>
 
           {/* Email */}
           <View style={styles.inputContainer}>
@@ -197,7 +213,7 @@ const SignUpScreen = () => {
               maxLength={255}
             />
             {email && !isEmailValid && (
-              <Text style={styles.errorHint}>{t('auth.signUp.pleaseEnterValidEmail')}</Text>
+              <ScaledText style={styles.errorHint}>{t('auth.signUp.pleaseEnterValidEmail')}</ScaledText>
             )}
           </View>
 
@@ -217,7 +233,7 @@ const SignUpScreen = () => {
             {/* Password Requirements Checklist */}
             {password.length > 0 && (
               <View style={styles.passwordChecks}>
-                <Text style={styles.checklistTitle}>{t('auth.signUp.passwordRequirements')}</Text>
+                <ScaledText style={styles.checklistTitle}>{t('auth.signUp.passwordRequirements')}</ScaledText>
                 <PasswordCheckItem isValid={passwordChecks.minLength} text={t('resetPassword.minLength')} />
                 <PasswordCheckItem isValid={passwordChecks.hasLowercase} text={t('resetPassword.lowercase')} />
                 <PasswordCheckItem isValid={passwordChecks.hasUppercase} text={t('resetPassword.uppercase')} />
@@ -239,13 +255,13 @@ const SignUpScreen = () => {
               maxLength={30}
             />
             {username && !isUsernameValid && (
-              <Text style={styles.errorHint}>{t('signUp.usernameRequirements')}</Text>
+              <ScaledText style={styles.errorHint}>{t('signUp.usernameRequirements')}</ScaledText>
             )}
           </View>
 
           {/* Gender Picker */}
           <View style={styles.inputContainer}>
-            <Text style={styles.genderLabel}>{t('auth.signUp.gender')}</Text>
+            <ScaledText style={styles.genderLabel}>{t('auth.signUp.gender')}</ScaledText>
             <View style={styles.genderRow}>
               {['male', 'female', 'other', 'prefer_not_to_say'].map((g) => (
                 <TouchableOpacity
@@ -262,14 +278,14 @@ const SignUpScreen = () => {
                   accessibilityRole="radio"
                   accessibilityState={{ selected: gender === g }}
                 >
-                  <Text
+                  <ScaledText
                     style={[
                       styles.genderChipText,
                       gender === g && styles.genderChipTextActive,
                     ]}
                   >
                     {g === 'prefer_not_to_say' ? t('signUp.skip') : g.charAt(0).toUpperCase() + g.slice(1)}
-                  </Text>
+                  </ScaledText>
                 </TouchableOpacity>
               ))}
             </View>
@@ -301,9 +317,9 @@ const SignUpScreen = () => {
             accessibilityLabel={isLoading ? t('signUp.creatingAccount') : t('auth.signUp.signUp')}
             accessibilityRole="button"
           >
-            <Text style={styles.signUpButtonText}>
+            <ScaledText style={styles.signUpButtonText}>
               {isLoading ? t('signUp.creatingAccount') : t("auth.signUp.signUp")}
-            </Text>
+            </ScaledText>
           </TouchableOpacity>
 
           {/* Sign In Link */}
@@ -314,10 +330,10 @@ const SignUpScreen = () => {
             }}
             style={styles.signInLinkButton}
           >
-            <Text style={styles.signInLinkText}>
-              <Text style={styles.signInLinkTextMuted}>{t("auth.haveAccount")} </Text>
+            <ScaledText style={styles.signInLinkText}>
+              <ScaledText style={styles.signInLinkTextMuted}>{t("auth.haveAccount")} </ScaledText>
               {t("auth.signIn")}
-            </Text>
+            </ScaledText>
           </TouchableOpacity>
 
         </ScrollView>
@@ -457,10 +473,30 @@ const styles = StyleSheet.create({
     color: "#FFD700",
     fontWeight: "600",
   },
-  appleButton: {
+  socialButton: {
     width: "100%",
     height: 50,
     marginBottom: 8,
+  },
+  googleButton: {
+    width: "100%",
+    height: 50,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.15)",
+    borderRadius: 16,
+    marginBottom: 8,
+  },
+  googleIcon: {
+    marginRight: 10,
+  },
+  googleButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FFF",
   },
   divider: {
     flexDirection: "row",

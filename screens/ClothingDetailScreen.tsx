@@ -5,16 +5,8 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Image,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ScrollView, Image, Alert, ActivityIndicator,  } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -129,9 +121,9 @@ const ClothingDetailScreen: React.FC = () => {
       <SafeAreaView style={styles.container}>
         <View style={styles.centered}>
           <Ionicons name="alert-circle-outline" size={48} color="#8E8E93" />
-          <Text style={styles.notFoundText}>{t('clothingDetail.notFound')}</Text>
+          <ScaledText style={styles.notFoundText}>{t('clothingDetail.notFound')}</ScaledText>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Text style={styles.backButtonText}>{t('common.goBack')}</Text>
+            <ScaledText style={styles.backButtonText}>{t('common.goBack')}</ScaledText>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -237,9 +229,9 @@ const ClothingDetailScreen: React.FC = () => {
           <Ionicons name="chevron-back" size={24} color="#1C1C1E" />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle} numberOfLines={2}>
+        <ScaledText style={styles.headerTitle} numberOfLines={2}>
           {item.name || item.subCategory || item.category}
-        </Text>
+        </ScaledText>
 
         <View style={styles.headerActions}>
           <TouchableOpacity onPress={handleFavorite} style={styles.iconButton}>
@@ -282,26 +274,26 @@ const ClothingDetailScreen: React.FC = () => {
         {/* Stats row */}
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{item.wearCount ?? 0}</Text>
-            <Text style={styles.statLabel}>{t('clothingDetail.worn')}</Text>
+            <ScaledText style={styles.statValue}>{item.wearCount ?? 0}</ScaledText>
+            <ScaledText style={styles.statLabel}>{t('clothingDetail.worn')}</ScaledText>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>
+            <ScaledText style={styles.statValue}>
               {item.lastWornAt
                 ? new Date(item.lastWornAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
                 : '—'}
-            </Text>
-            <Text style={styles.statLabel}>{t('clothingDetail.lastWorn')}</Text>
+            </ScaledText>
+            <ScaledText style={styles.statLabel}>{t('clothingDetail.lastWorn')}</ScaledText>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>
+            <ScaledText style={styles.statValue}>
               {item.detectionConfidence != null
                 ? `${Math.round(item.detectionConfidence * 100)}%`
                 : '—'}
-            </Text>
-            <Text style={styles.statLabel}>{t('clothingDetail.aiConfidence')}</Text>
+            </ScaledText>
+            <ScaledText style={styles.statLabel}>{t('clothingDetail.aiConfidence')}</ScaledText>
           </View>
         </View>
 
@@ -311,17 +303,17 @@ const ClothingDetailScreen: React.FC = () => {
             <View style={styles.metaRow}>
               {item.brand ? (
                 <View style={styles.metaChip}>
-                  <Text style={styles.metaChipText}>{item.brand}</Text>
+                  <ScaledText style={styles.metaChipText}>{item.brand}</ScaledText>
                 </View>
               ) : null}
               {item.material ? (
                 <View style={styles.metaChip}>
-                  <Text style={styles.metaChipText}>{item.material}</Text>
+                  <ScaledText style={styles.metaChipText}>{item.material}</ScaledText>
                 </View>
               ) : null}
               {item.pattern ? (
                 <View style={styles.metaChip}>
-                  <Text style={styles.metaChipText}>{item.pattern}</Text>
+                  <ScaledText style={styles.metaChipText}>{item.pattern}</ScaledText>
                 </View>
               ) : null}
             </View>
@@ -330,7 +322,7 @@ const ClothingDetailScreen: React.FC = () => {
 
         {/* ── Type ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{t('clothingEditor.type')}</Text>
+          <ScaledText style={styles.sectionLabel}>{t('clothingEditor.type')}</ScaledText>
           {isEditing ? (
             <View style={styles.chipGrid}>
               {TYPES.map(type => (
@@ -340,22 +332,22 @@ const ClothingDetailScreen: React.FC = () => {
                   onPress={() => { setSelectedType(type.id); Haptics.selectionAsync(); }}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.chipText, selectedType === type.id && styles.chipTextSelected]}>
+                  <ScaledText style={[styles.chipText, selectedType === type.id && styles.chipTextSelected]}>
                     {type.label}
-                  </Text>
+                  </ScaledText>
                 </TouchableOpacity>
               ))}
             </View>
           ) : (
-            <Text style={styles.valueText}>
+            <ScaledText style={styles.valueText}>
               {TYPES.find(t => t.id === selectedType)?.label ?? selectedType}
-            </Text>
+            </ScaledText>
           )}
         </View>
 
         {/* ── Colour ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{t('clothingEditor.colour')}</Text>
+          <ScaledText style={styles.sectionLabel}>{t('clothingEditor.colour')}</ScaledText>
           {isEditing ? (
             <ScrollView
               horizontal
@@ -398,14 +390,14 @@ const ClothingDetailScreen: React.FC = () => {
                   ]}
                 />
               )}
-              <Text style={styles.valueText}>{displayColor?.label ?? item.primaryColor}</Text>
+              <ScaledText style={styles.valueText}>{displayColor?.label ?? item.primaryColor}</ScaledText>
             </View>
           )}
         </View>
 
         {/* ── Season ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{t('clothingEditor.seasonLabel')}</Text>
+          <ScaledText style={styles.sectionLabel}>{t('clothingEditor.seasonLabel')}</ScaledText>
           <View style={styles.chipRow}>
             {SEASONS.map(season => {
               const active = selectedSeasons.includes(season.id);
@@ -416,9 +408,9 @@ const ClothingDetailScreen: React.FC = () => {
                   onPress={() => isEditing && toggleSeason(season.id)}
                   activeOpacity={isEditing ? 0.7 : 1}
                 >
-                  <Text style={[styles.chipText, active && styles.chipTextSelected]}>
+                  <ScaledText style={[styles.chipText, active && styles.chipTextSelected]}>
                     {season.label}
-                  </Text>
+                  </ScaledText>
                 </TouchableOpacity>
               );
             })}
@@ -427,7 +419,7 @@ const ClothingDetailScreen: React.FC = () => {
 
         {/* ── Occasions ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{t('clothingDetail.occasions')}</Text>
+          <ScaledText style={styles.sectionLabel}>{t('clothingDetail.occasions')}</ScaledText>
           <View style={styles.chipGrid}>
             {OCCASIONS.map(occ => {
               const active = selectedOccasions.includes(occ.id);
@@ -444,9 +436,9 @@ const ClothingDetailScreen: React.FC = () => {
                     color={active ? '#FFFFFF' : '#636366'}
                     style={{ marginRight: 4 }}
                   />
-                  <Text style={[styles.chipText, active && styles.chipTextSelected]}>
+                  <ScaledText style={[styles.chipText, active && styles.chipTextSelected]}>
                     {occ.label}
-                  </Text>
+                  </ScaledText>
                 </TouchableOpacity>
               );
             })}
@@ -465,7 +457,7 @@ const ClothingDetailScreen: React.FC = () => {
           ) : (
             <>
               <Ionicons name="trash-outline" size={18} color="#FF3B30" style={{ marginRight: 6 }} />
-              <Text style={styles.deleteButtonText}>{t('clothingDetail.removeFromWardrobe')}</Text>
+              <ScaledText style={styles.deleteButtonText}>{t('clothingDetail.removeFromWardrobe')}</ScaledText>
             </>
           )}
         </TouchableOpacity>
@@ -485,7 +477,7 @@ const ClothingDetailScreen: React.FC = () => {
             {isSaving ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <Text style={styles.saveButtonText}>{t('clothingEditor.save')}</Text>
+              <ScaledText style={styles.saveButtonText}>{t('clothingEditor.save')}</ScaledText>
             )}
           </TouchableOpacity>
         </View>

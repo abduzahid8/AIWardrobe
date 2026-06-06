@@ -8,7 +8,8 @@
  */
 
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native'
+import { ScaledText } from '../ui/ScaledText';;
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -71,19 +72,19 @@ const FeatureLockOverlay: React.FC<FeatureLockOverlayProps> = ({
                         size={12}
                         color={accent}
                     />
-                    <Text style={[styles.tierPillText, { color: accent }]}>
+                    <ScaledText style={[styles.tierPillText, { color: accent }]}>
                         {requiredTier.toUpperCase()} {t('featureLock.feature')}
-                    </Text>
+                    </ScaledText>
                 </View>
 
-                <Text style={styles.title}>{featureName}</Text>
-                <Text style={styles.tagline}>{tagline}</Text>
+                <ScaledText style={styles.title}>{featureName}</ScaledText>
+                <ScaledText style={styles.tagline}>{tagline}</ScaledText>
 
                 <View style={styles.bullets}>
                     {bullets.map((b, i) => (
                         <View key={i} style={styles.bulletRow}>
                             <View style={[styles.bulletDot, { backgroundColor: accent }]} />
-                            <Text style={styles.bulletText}>{b}</Text>
+                            <ScaledText style={styles.bulletText}>{b}</ScaledText>
                         </View>
                     ))}
                 </View>
@@ -100,11 +101,11 @@ const FeatureLockOverlay: React.FC<FeatureLockOverlayProps> = ({
                         style={styles.cta}
                     >
                         <Ionicons name="rocket" size={18} color="#0A0A0A" />
-                        <Text style={styles.ctaText}>{t('featureLock.unlockWith', { tier: requiredTier })}</Text>
+                        <ScaledText style={styles.ctaText}>{t('featureLock.unlockWith', { tier: requiredTier })}</ScaledText>
                     </LinearGradient>
                 </TouchableOpacity>
 
-                <Text style={styles.subCta}>{t('featureLock.cancelAnytime')}</Text>
+                <ScaledText style={styles.subCta}>{t('featureLock.cancelAnytime')}</ScaledText>
             </View>
         </View>
     );

@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native'
+import { ScaledText } from '../ui/ScaledText';;
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import StreakBadge from '../StreakBadge';
@@ -18,13 +19,13 @@ export default function HomeHeader({ greeting, userName, onCalendarPress }: Prop
     return (
         <>
             <View style={styles.titleSection}>
-                <Text style={styles.appTitle} accessibilityRole="header">AIWardrobe</Text>
+                <ScaledText style={styles.appTitle} accessibilityRole="header">AIWardrobe</ScaledText>
             </View>
 
             <View style={[styles.greetingSection, { marginBottom: spacing.md }]}>
-                <Text style={styles.greetingText} numberOfLines={2}>
+                <ScaledText style={styles.greetingText} numberOfLines={2}>
                     {greeting}, {userName}
-                </Text>
+                </ScaledText>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
                     <StreakBadge variant="inline" />
                     <TouchableOpacity

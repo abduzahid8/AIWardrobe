@@ -1,12 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    Dimensions,
-    TouchableOpacity,
-    ActivityIndicator,
-} from 'react-native';
+import { View, StyleSheet, Dimensions, TouchableOpacity, ActivityIndicator,  } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -248,7 +242,7 @@ const OutfitCard = ({ outfit, index, onSwipe, isTop, t }: OutfitCardProps) => {
                                 ) : (
                                     <View style={styles.itemPlaceholder}>
                                         <Ionicons name="shirt-outline" size={40} color={COLORS.textSecondary} />
-                                        <Text style={styles.itemPlaceholderText}>{item.type}</Text>
+                                        <ScaledText style={styles.itemPlaceholderText}>{item.type}</ScaledText>
                                     </View>
                                 )}
                             </View>
@@ -260,19 +254,19 @@ const OutfitCard = ({ outfit, index, onSwipe, isTop, t }: OutfitCardProps) => {
                         <View style={styles.outfitMeta}>
                             <View style={styles.occasionBadge}>
                                 <Ionicons name="pricetag-outline" size={14} color={COLORS.primary} />
-                                <Text style={styles.occasionText}>
+                                <ScaledText style={styles.occasionText}>
                                     {outfit.occasion.charAt(0).toUpperCase() + outfit.occasion.slice(1)}
-                                </Text>
+                                </ScaledText>
                             </View>
                             <View style={styles.matchBadge}>
                                 <Ionicons name="sparkles" size={14} color={COLORS.accent} />
-                                <Text style={styles.matchText}>{t('outfitSwipe.matchScore')}</Text>
+                                <ScaledText style={styles.matchText}>{t('outfitSwipe.matchScore')}</ScaledText>
                             </View>
                         </View>
 
-                        <Text style={styles.outfitItems}>
+                        <ScaledText style={styles.outfitItems}>
                             {outfit.items.map((i: OutfitItemType) => i.type || i.itemType).join(' + ')}
-                        </Text>
+                        </ScaledText>
                     </View>
                 </View>
 
@@ -280,21 +274,21 @@ const OutfitCard = ({ outfit, index, onSwipe, isTop, t }: OutfitCardProps) => {
                 <Animated.View style={[styles.overlay, styles.likeOverlay, likeOverlayStyle]}>
                     <View style={styles.overlayBadge}>
                         <Ionicons name="heart" size={48} color="#FFF" />
-                        <Text style={styles.overlayText}>{t('outfitSwipe.like')}</Text>
+                        <ScaledText style={styles.overlayText}>{t('outfitSwipe.like')}</ScaledText>
                     </View>
                 </Animated.View>
 
                 <Animated.View style={[styles.overlay, styles.dislikeOverlay, dislikeOverlayStyle]}>
                     <View style={styles.overlayBadge}>
                         <Ionicons name="close" size={48} color="#FFF" />
-                        <Text style={styles.overlayText}>{t('outfitSwipe.nope')}</Text>
+                        <ScaledText style={styles.overlayText}>{t('outfitSwipe.nope')}</ScaledText>
                     </View>
                 </Animated.View>
 
                 <Animated.View style={[styles.overlay, styles.superLikeOverlay, superLikeOverlayStyle]}>
                     <View style={[styles.overlayBadge, { backgroundColor: COLORS.superLike }]}>
                         <Ionicons name="star" size={48} color="#FFF" />
-                        <Text style={styles.overlayText}>{t('outfitSwipe.loveIt')}</Text>
+                        <ScaledText style={styles.overlayText}>{t('outfitSwipe.loveIt')}</ScaledText>
                     </View>
                 </Animated.View>
             </Animated.View>
@@ -354,7 +348,7 @@ const OutfitSwipeScreen = () => {
         return (
             <View style={[styles.container, styles.centered]}>
                 <ActivityIndicator size="large" color={COLORS.primary} />
-                <Text style={styles.loadingText}>{t('outfitSwipe.loading')}</Text>
+                <ScaledText style={styles.loadingText}>{t('outfitSwipe.loading')}</ScaledText>
             </View>
         );
     }
@@ -373,16 +367,16 @@ const OutfitSwipeScreen = () => {
                         </TouchableOpacity>
 
                         <View style={styles.headerCenter}>
-                            <Text style={styles.headerTitle}>{t('outfitSwipe.styleDiscovery')}</Text>
-                            <Text style={styles.headerSubtitle}>
+                            <ScaledText style={styles.headerTitle}>{t('outfitSwipe.styleDiscovery')}</ScaledText>
+                            <ScaledText style={styles.headerSubtitle}>
                                 {t('outfitSwipe.swipeToTeach')}
-                            </Text>
+                            </ScaledText>
                         </View>
 
                         <View style={styles.statsContainer}>
                             <View style={styles.statItem}>
                                 <Ionicons name="heart" size={16} color={COLORS.like} />
-                                <Text style={styles.statText}>{totalLikes}</Text>
+                                <ScaledText style={styles.statText}>{totalLikes}</ScaledText>
                             </View>
                         </View>
                     </View>
@@ -405,11 +399,11 @@ const OutfitSwipeScreen = () => {
                                 style={styles.emptyState}
                                 entering={FadeIn}
                             >
-                                <Text style={styles.emptyEmoji}>🎉</Text>
-                                <Text style={styles.emptyTitle}>{t('outfitSwipe.allDone')}</Text>
-                                <Text style={styles.emptySubtitle}>
+                                <ScaledText style={styles.emptyEmoji}>🎉</ScaledText>
+                                <ScaledText style={styles.emptyTitle}>{t('outfitSwipe.allDone')}</ScaledText>
+                                <ScaledText style={styles.emptySubtitle}>
                                     {t('outfitSwipe.aiStylistSmarter')}
-                                </Text>
+                                </ScaledText>
                                 <TouchableOpacity
                                     style={styles.refreshButton}
                                     onPress={() => {
@@ -419,7 +413,7 @@ const OutfitSwipeScreen = () => {
                                     }}
                                 >
                                     <Ionicons name="refresh" size={20} color="#FFF" />
-                                    <Text style={styles.refreshButtonText}>{t('outfitSwipe.getMoreOutfits')}</Text>
+                                    <ScaledText style={styles.refreshButtonText}>{t('outfitSwipe.getMoreOutfits')}</ScaledText>
                                 </TouchableOpacity>
                             </Animated.View>
                         )}
@@ -457,12 +451,12 @@ const OutfitSwipeScreen = () => {
                             style={styles.hintContainer}
                             entering={FadeIn.delay(500)}
                         >
-                            <Text style={styles.hintText}>
+                            <ScaledText style={styles.hintText}>
                                 {t('outfitSwipe.swipeHintLeft')} • {t('outfitSwipe.swipeHintRight')}
-                            </Text>
-                            <Text style={styles.hintText}>
+                            </ScaledText>
+                            <ScaledText style={styles.hintText}>
                                 {t('outfitSwipe.swipeHintUp')}
-                            </Text>
+                            </ScaledText>
                         </Animated.View>
                     )}
                 </SafeAreaView>

@@ -1,17 +1,6 @@
 import React, { useState } from 'react';
-import {
-    View,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    StyleSheet,
-    KeyboardAvoidingView,
-    Platform,
-    TouchableWithoutFeedback,
-    Keyboard,
-    ActivityIndicator,
-    Alert,
-} from 'react-native';
+import { View, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, ActivityIndicator, Alert,  } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -65,21 +54,21 @@ const ForgotPasswordScreen = () => {
                     <View style={styles.successIcon}>
                         <Ionicons name="mail-outline" size={48} color="#FFD700" />
                     </View>
-                    <Text style={styles.successTitle}>{t('forgotPasswordScreen.checkYourEmail')}</Text>
-                    <Text style={styles.successMessage}>
+                    <ScaledText style={styles.successTitle}>{t('forgotPasswordScreen.checkYourEmail')}</ScaledText>
+                    <ScaledText style={styles.successMessage}>
                         {t('forgotPassword.resetLinkSent')}{'\n'}
-                        <Text style={styles.emailHighlight}>{email}</Text>
-                    </Text>
-                    <Text style={styles.successHint}>
+                        <ScaledText style={styles.emailHighlight}>{email}</ScaledText>
+                    </ScaledText>
+                    <ScaledText style={styles.successHint}>
                         {t('forgotPassword.checkSpamFolder')}
-                    </Text>
+                    </ScaledText>
                     <TouchableOpacity
                         onPress={() => navigation.goBack()}
                         style={styles.backButton}
                         accessibilityLabel={t('forgotPasswordScreen.backToSignIn')}
                         accessibilityRole="button"
                     >
-                        <Text style={styles.backButtonText}>{t('forgotPasswordScreen.backToSignIn')}</Text>
+                        <ScaledText style={styles.backButtonText}>{t('forgotPasswordScreen.backToSignIn')}</ScaledText>
                     </TouchableOpacity>
                 </View>
             </LinearGradient>
@@ -104,10 +93,10 @@ const ForgotPasswordScreen = () => {
                             <Ionicons name="arrow-back" size={24} color="#FFF" />
                         </TouchableOpacity>
 
-                        <Text style={styles.title}>{t('forgotPasswordScreen.resetPassword')}</Text>
-                        <Text style={styles.subtitle}>
+                        <ScaledText style={styles.title}>{t('forgotPasswordScreen.resetPassword')}</ScaledText>
+                        <ScaledText style={styles.subtitle}>
                             {t('forgotPasswordScreen.enterEmail')}
-                        </Text>
+                        </ScaledText>
 
                         <View style={styles.inputContainer}>
                             <TextInput
@@ -123,7 +112,7 @@ const ForgotPasswordScreen = () => {
                                 accessibilityLabel={t('auth.email')}
                             />
                             {email && !isEmailValid && (
-                                <Text style={styles.errorHint}>{t('forgotPasswordScreen.pleaseEnterValidEmail')}</Text>
+                                <ScaledText style={styles.errorHint}>{t('forgotPasswordScreen.pleaseEnterValidEmail')}</ScaledText>
                             )}
                         </View>
 
@@ -141,7 +130,7 @@ const ForgotPasswordScreen = () => {
                             {isLoading ? (
                                 <ActivityIndicator color="#000" />
                             ) : (
-                                <Text style={styles.submitButtonText}>{t('forgotPasswordScreen.sendResetLink')}</Text>
+                                <ScaledText style={styles.submitButtonText}>{t('forgotPasswordScreen.sendResetLink')}</ScaledText>
                             )}
                         </TouchableOpacity>
                     </View>

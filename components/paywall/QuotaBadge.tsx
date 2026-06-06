@@ -12,7 +12,8 @@
  */
 
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native'
+import { ScaledText } from '../ui/ScaledText';;
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
@@ -48,7 +49,7 @@ const QuotaBadge: React.FC<QuotaBadgeProps> = ({
         return (
             <View style={[styles.pill, styles.pillUnlimited, style]}>
                 <Ionicons name="infinite" size={12} color="#FFD700" />
-                <Text style={[styles.text, styles.textLight]}>{t('quota.unlimited', { label })}</Text>
+                <ScaledText style={[styles.text, styles.textLight]}>{t('quota.unlimited', { label })}</ScaledText>
             </View>
         );
     }
@@ -62,7 +63,7 @@ const QuotaBadge: React.FC<QuotaBadgeProps> = ({
                 activeOpacity={0.85}
             >
                 <Ionicons name="lock-closed" size={11} color="#FFFFFF" />
-                <Text style={[styles.text, styles.textLight]}>{t('quota.unlock', { label })}</Text>
+                <ScaledText style={[styles.text, styles.textLight]}>{t('quota.unlock', { label })}</ScaledText>
             </TouchableOpacity>
         );
     }
@@ -95,11 +96,11 @@ const QuotaBadge: React.FC<QuotaBadgeProps> = ({
                 size={12}
                 color={textColor}
             />
-            <Text style={[styles.text, { color: textColor }]}>
+            <ScaledText style={[styles.text, { color: textColor }]}>
                 {exhausted
                     ? t('quota.outOfLabel', { label })
                     : t('quota.remainingToday', { remaining, limit, label })}
-            </Text>
+            </ScaledText>
         </TouchableOpacity>
     );
 };

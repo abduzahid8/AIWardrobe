@@ -18,11 +18,12 @@ export const FREE_TRIAL_DAYS = 7;
 // ─────────────────────────────────────────────────────────────
 // Tiers
 // ─────────────────────────────────────────────────────────────
-export type SubscriptionTier = 'free' | 'premium' | 'vip';
+export type SubscriptionTier = 'free' | 'lite' | 'premium' | 'vip';
 
 /** Friendly display labels used in the UI. */
 export const TIER_DISPLAY_NAMES: Record<SubscriptionTier, string> = {
     free: 'Free',
+    lite: 'Lite',
     premium: 'Pro',
     vip: 'Max',
 };
@@ -53,6 +54,19 @@ export const TIER_FEATURES = {
         /** Early access to beta features */
         earlyAccess: false,
         /** Priority customer support */
+        prioritySupport: false,
+    },
+    lite: {
+        aiOutfits: -1,
+        tryOns: 0,
+        wardrobeItems: 100,
+        wardrobeScans: 30,
+        analytics: true,
+        tripPlanner: false,
+        fullCalendar: true,
+        priorityModel: false,
+        adFree: false,
+        earlyAccess: false,
         prioritySupport: false,
     },
     premium: {
@@ -100,6 +114,12 @@ export const DAILY_QUOTA_FEATURES: FeatureKey[] = [
 // Pricing
 // ─────────────────────────────────────────────────────────────
 export const SUBSCRIPTION_PRICING = {
+    lite: {
+        price: 2.99,
+        currency: 'USD',
+        period: 'month',
+        productId: '2.99',
+    },
     premium: {
         price: 9.99,
         currency: 'USD',
@@ -586,7 +606,7 @@ const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
                                     end_date: expiry,
                                     auto_renew: true,
                                     platform: 'ios',
-                                    product_id: productId || (tier === 'vip' ? 'com.aiwardrobe.premium.yearly' : 'com.aiwardrobe.premium.monthly'),
+                                    product_id: productId || (tier === 'vip' ? 'com.aiwardrobe.premium.yearly' : tier === 'lite' ? '2.99' : 'com.aiwardrobe.premium.monthly'),
                                 });
                             if (insertError) {
                                 console.error('[subscriptionStore] setSubscription: insert sub failed:', insertError);
@@ -659,7 +679,7 @@ function getDefaultExpiry(tier: SubscriptionTier, productId?: string): string {
     const isYearly = productId?.includes('yearly');
     if (isYearly) {
         now.setFullYear(now.getFullYear() + 1);
-    } else if (tier === 'premium' || tier === 'vip') {
+    } else if (tier === 'lite' || tier === 'premium' || tier === 'vip') {
         now.setMonth(now.getMonth() + 1);
     }
     return now.toISOString();

@@ -4,14 +4,8 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import {
-    View,
-    Text,
-    TouchableOpacity,
-    StyleSheet,
-    StatusBar,
-    Alert,
-} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, StatusBar, Alert,  } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, CameraType, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
@@ -169,9 +163,9 @@ const CameraScreen = () => {
         return (
             <View style={styles.permissionContainer}>
                 <Ionicons name="camera-outline" size={64} color="#666" />
-                <Text style={styles.permissionText}>{t('camera.permissionNeeded')}</Text>
+                <ScaledText style={styles.permissionText}>{t('camera.permissionNeeded')}</ScaledText>
                 <TouchableOpacity style={styles.permissionButton} onPress={requestCameraPermission}>
-                    <Text style={styles.permissionButtonText}>{t('camera.grantAccess')}</Text>
+                    <ScaledText style={styles.permissionButtonText}>{t('camera.grantAccess')}</ScaledText>
                 </TouchableOpacity>
             </View>
         );
@@ -203,7 +197,7 @@ const CameraScreen = () => {
                 {isRecording && (
                     <Animated.View entering={FadeIn} style={styles.recordingIndicator}>
                         <View style={styles.recordingDot} />
-                        <Text style={styles.recordingText}>{t('camera.recording')}</Text>
+                        <ScaledText style={styles.recordingText}>{t('camera.recording')}</ScaledText>
                     </Animated.View>
                 )}
 
@@ -218,7 +212,7 @@ const CameraScreen = () => {
                                 setMode('photo');
                             }}
                         >
-                            <Text style={[styles.modeText, mode === 'photo' && styles.modeTextActive]}>{t('camera.photo')}</Text>
+                            <ScaledText style={[styles.modeText, mode === 'photo' && styles.modeTextActive]}>{t('camera.photo')}</ScaledText>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[styles.modeButton, mode === 'video' && styles.modeButtonActive]}
@@ -227,7 +221,7 @@ const CameraScreen = () => {
                                 setMode('video');
                             }}
                         >
-                            <Text style={[styles.modeText, mode === 'video' && styles.modeTextActive]}>{t('camera.video')}</Text>
+                            <ScaledText style={[styles.modeText, mode === 'video' && styles.modeTextActive]}>{t('camera.video')}</ScaledText>
                         </TouchableOpacity>
                     </View>
 

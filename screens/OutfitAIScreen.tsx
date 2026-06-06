@@ -1,17 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import {
-    View,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    StyleSheet,
-    Dimensions,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    ActivityIndicator,
-    Image,
-} from 'react-native';
+import { View, TextInput, TouchableOpacity, StyleSheet, Dimensions, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Image,  } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -192,9 +181,9 @@ const ChatBubble = ({ message, isAI, outfit, onAdjust, adjustmentOptions, t }: {
                 </View>
             )}
             <View style={[styles.bubble, isAI ? styles.aiBubble : styles.userBubble]}>
-                <Text style={[styles.bubbleText, isAI ? styles.aiBubbleText : styles.userBubbleText]}>
+                <ScaledText style={[styles.bubbleText, isAI ? styles.aiBubbleText : styles.userBubbleText]}>
                     {message}
-                </Text>
+                </ScaledText>
 
                 {/* Outfit recommendations */}
                 {outfit && outfit.items && outfit.items.length > 0 && (
@@ -203,31 +192,31 @@ const ChatBubble = ({ message, isAI, outfit, onAdjust, adjustmentOptions, t }: {
                             {outfit.items.slice(0, 4).map((item: OutfitItemType, idx: number) => (
                                 <View key={idx} style={styles.outfitItemCard}>
                                     <View style={[styles.outfitItemColor, { backgroundColor: item.colorHex || COLORS.surface }]} />
-                                    <Text style={styles.outfitItemType} numberOfLines={2}>
+                                    <ScaledText style={styles.outfitItemType} numberOfLines={2}>
                                         {item.specificType || item.category}
-                                    </Text>
-                                    <Text style={styles.outfitItemColorName} numberOfLines={2}>
+                                    </ScaledText>
+                                    <ScaledText style={styles.outfitItemColorName} numberOfLines={2}>
                                         {item.primaryColor}
-                                    </Text>
+                                    </ScaledText>
                                 </View>
                             ))}
                         </View>
                         <View style={styles.outfitMeta}>
                             <View style={styles.confidenceBadge}>
                                 <Ionicons name="checkmark-circle" size={14} color={COLORS.success} />
-                                <Text style={styles.confidenceText}>
+                                <ScaledText style={styles.confidenceText}>
                                     {Math.round((outfit.confidence || 0.85) * 100)}% match
-                                </Text>
+                                </ScaledText>
                             </View>
-                            <Text style={styles.reasoningText} numberOfLines={2}>
+                            <ScaledText style={styles.reasoningText} numberOfLines={2}>
                                 {outfit.reasoning}
-                            </Text>
+                            </ScaledText>
                         </View>
 
                         {/* Adjustment buttons — adjust until right */}
                         {onAdjust && (
                             <View style={styles.adjustmentSection}>
-                                <Text style={styles.adjustmentLabel}>{t('outfitAI.notQuiteRight')}</Text>
+                                <ScaledText style={styles.adjustmentLabel}>{t('outfitAI.notQuiteRight')}</ScaledText>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.adjustmentScroll}>
                                     {adjustmentOptions.map((option) => (
                                         <TouchableOpacity
@@ -239,7 +228,7 @@ const ChatBubble = ({ message, isAI, outfit, onAdjust, adjustmentOptions, t }: {
                                             }}
                                         >
                                             <Ionicons name={option.icon as any} size={14} color={COLORS.primary} />
-                                            <Text style={styles.adjustmentChipText}>{option.label}</Text>
+                                            <ScaledText style={styles.adjustmentChipText}>{option.label}</ScaledText>
                                         </TouchableOpacity>
                                     ))}
                                 </ScrollView>
@@ -264,9 +253,9 @@ const OccasionCard = ({ occasion, onPress }: { occasion: OccasionSuggestion; onP
             activeOpacity={0.7}
         >
             <View style={[styles.occasionIconBg, { backgroundColor: occasion.color + '20' }]}>
-                <Text style={styles.occasionEmoji}>{occasion.emoji}</Text>
+                <ScaledText style={styles.occasionEmoji}>{occasion.emoji}</ScaledText>
             </View>
-            <Text style={styles.occasionCardText}>{occasion.text}</Text>
+            <ScaledText style={styles.occasionCardText}>{occasion.text}</ScaledText>
             <Ionicons name="arrow-forward" size={14} color={COLORS.textMuted} />
         </TouchableOpacity>
     );
@@ -529,7 +518,7 @@ const OutfitAIScreen = () => {
                         <View style={styles.headerAIBadge}>
                             <Ionicons name="sparkles" size={14} color={COLORS.primary} />
                         </View>
-                        <Text style={styles.headerTitle}>{t('outfitAI.title')}</Text>
+                        <ScaledText style={styles.headerTitle}>{t('outfitAI.title')}</ScaledText>
                     </View>
 
                     <TahoeIconButton
@@ -554,10 +543,10 @@ const OutfitAIScreen = () => {
                         <View style={styles.aiAvatarLarge}>
                             <Ionicons name="sparkles" size={32} color={COLORS.primary} />
                         </View>
-                        <Text style={styles.welcomeTitle}>{t('outfitAI.welcomeTitle')}</Text>
-                        <Text style={styles.welcomeSubtitle}>
+                        <ScaledText style={styles.welcomeTitle}>{t('outfitAI.welcomeTitle')}</ScaledText>
+                        <ScaledText style={styles.welcomeSubtitle}>
                             Powered by vision + fashion intelligence
-                        </Text>
+                        </ScaledText>
                     </Animated.View>
 
                     {/* Messages */}
@@ -582,8 +571,8 @@ const OutfitAIScreen = () => {
                             entering={FadeInUp.delay(300).springify()}
                             style={styles.suggestionsSection}
                         >
-                            <Text style={styles.suggestionsTitle}>{t('outfitAI.occasionTitle')}</Text>
-                            <Text style={styles.suggestionsSubtitle}>{t('outfitAI.occasionSubtitle')}</Text>
+                            <ScaledText style={styles.suggestionsTitle}>{t('outfitAI.occasionTitle')}</ScaledText>
+                            <ScaledText style={styles.suggestionsSubtitle}>{t('outfitAI.occasionSubtitle')}</ScaledText>
                             <View style={styles.occasionGrid}>
                                 {OCCASION_SUGGESTIONS.map((occasion) => (
                                     <OccasionCard

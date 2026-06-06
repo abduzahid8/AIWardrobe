@@ -1,15 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    ScrollView,
-    TouchableOpacity,
-    Image,
-    Dimensions,
-    Linking,
-    ActivityIndicator,
-} from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Linking, ActivityIndicator,  } from 'react-native'
+import { ScaledText } from './ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
@@ -83,7 +74,7 @@ export const CompleteYourLook = ({ outfitItems, onProductPress }: CompleteYourLo
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="small" color={COLORS.primary} />
-                <Text style={styles.loadingText}>{t('completeYourLook.findingMatchingItems')}</Text>
+                <ScaledText style={styles.loadingText}>{t('completeYourLook.findingMatchingItems')}</ScaledText>
             </View>
         );
     }
@@ -97,10 +88,10 @@ export const CompleteYourLook = ({ outfitItems, onProductPress }: CompleteYourLo
             <View style={styles.header}>
                 <View style={styles.headerLeft}>
                     <Ionicons name="sparkles" size={20} color={COLORS.accent} />
-                    <Text style={styles.title}>{t('completeYourLook.title')}</Text>
+                    <ScaledText style={styles.title}>{t('completeYourLook.title')}</ScaledText>
                 </View>
                 <TouchableOpacity>
-                    <Text style={styles.seeAllText}>{t('completeYourLook.seeAll')}</Text>
+                    <ScaledText style={styles.seeAllText}>{t('completeYourLook.seeAll')}</ScaledText>
                 </TouchableOpacity>
             </View>
 
@@ -115,10 +106,10 @@ export const CompleteYourLook = ({ outfitItems, onProductPress }: CompleteYourLo
                         )}
                     >
                         <View>
-                            <Text style={styles.categoryTitle}>
+                            <ScaledText style={styles.categoryTitle}>
                                 {t('completeYourLook.addCategory', { category: suggestion.missingCategory.charAt(0).toUpperCase() + suggestion.missingCategory.slice(1) })}
-                            </Text>
-                            <Text style={styles.categoryReason}>{suggestion.reason}</Text>
+                            </ScaledText>
+                            <ScaledText style={styles.categoryReason}>{suggestion.reason}</ScaledText>
                         </View>
                         <Ionicons
                             name={expandedCategory === suggestion.missingCategory ? "chevron-up" : "chevron-down"}
@@ -198,40 +189,40 @@ const ProductCard = ({ product, onPress, onWishlist }: ProductCardProps) => {
                 {/* Discount badge */}
                 {hasDiscount && (
                     <View style={styles.discountBadge}>
-                        <Text style={styles.discountText}>-{discountPercent}%</Text>
+                        <ScaledText style={styles.discountText}>-{discountPercent}%</ScaledText>
                     </View>
                 )}
             </View>
 
             {/* Info */}
             <View style={styles.productInfo}>
-                <Text style={styles.productBrand}>{product.brand}</Text>
-                <Text style={styles.productName} numberOfLines={2}>{product.name}</Text>
+                <ScaledText style={styles.productBrand}>{product.brand}</ScaledText>
+                <ScaledText style={styles.productName} numberOfLines={2}>{product.name}</ScaledText>
 
                 <View style={styles.priceRow}>
-                    <Text style={styles.productPrice}>
+                    <ScaledText style={styles.productPrice}>
                         ${product.price.toFixed(0)}
-                    </Text>
+                    </ScaledText>
                     {hasDiscount && (
-                        <Text style={styles.originalPrice}>
+                        <ScaledText style={styles.originalPrice}>
                             ${product.originalPrice!.toFixed(0)}
-                        </Text>
+                        </ScaledText>
                     )}
                 </View>
 
                 {product.rating && (
                     <View style={styles.ratingRow}>
                         <Ionicons name="star" size={12} color="#FFD700" />
-                        <Text style={styles.ratingText}>
+                        <ScaledText style={styles.ratingText}>
                             {product.rating} ({product.reviewCount})
-                        </Text>
+                        </ScaledText>
                     </View>
                 )}
             </View>
 
             {/* Shop button */}
             <TouchableOpacity style={styles.shopButton} onPress={onPress}>
-                <Text style={styles.shopButtonText}>{t('completeYourLook.shopNow')}</Text>
+                <ScaledText style={styles.shopButtonText}>{t('completeYourLook.shopNow')}</ScaledText>
                 <Ionicons name="open-outline" size={14} color={COLORS.primary} />
             </TouchableOpacity>
         </TouchableOpacity>
@@ -277,7 +268,7 @@ export const SimilarProducts = ({ item, title }: SimilarProductsProps) => {
             <View style={styles.header}>
                 <View style={styles.headerLeft}>
                     <Ionicons name="cart-outline" size={20} color={COLORS.primary} />
-                    <Text style={styles.title}>{displayTitle}</Text>
+                    <ScaledText style={styles.title}>{displayTitle}</ScaledText>
                 </View>
             </View>
 

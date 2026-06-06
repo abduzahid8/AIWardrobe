@@ -2,19 +2,8 @@
  * AdminOccasionsTab — List / edit / delete home daily outfit occasions and styles
  */
 import React, { useState, useCallback, useEffect } from 'react';
-import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-} from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Modal, ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View,  } from 'react-native'
+import { ScaledText } from '../../components/ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
@@ -184,10 +173,10 @@ export const AdminOccasionsTab = () => {
     const renderItem = ({ item }: { item: HomeOccasion }) => (
         <View style={[s.card, !item.is_active && s.cardInactive]}>
             <View style={s.cardInfo}>
-                <Text style={s.cardOccasion}>{item.occasion}</Text>
-                <Text style={s.cardStyle}>
-                    Style Type: <Text style={s.boldText}>{item.style}</Text> · Order: {item.sort_order}
-                </Text>
+                <ScaledText style={s.cardOccasion}>{item.occasion}</ScaledText>
+                <ScaledText style={s.cardStyle}>
+                    Style Type: <ScaledText style={s.boldText}>{item.style}</ScaledText> · Order: {item.sort_order}
+                </ScaledText>
             </View>
             <View style={s.cardActions}>
                 <TouchableOpacity onPress={() => handleToggleActive(item)} style={s.iconBtn}>
@@ -210,10 +199,10 @@ export const AdminOccasionsTab = () => {
     return (
         <View style={s.container}>
             <View style={s.headerRow}>
-                <Text style={s.sectionTitle}>Home Suggestions Configuration</Text>
+                <ScaledText style={s.sectionTitle}>Home Suggestions Configuration</ScaledText>
                 <TouchableOpacity style={s.addButton} onPress={openAdd}>
                     <Ionicons name="add" size={16} color="#FFF" />
-                    <Text style={s.addButtonText}>Add Occasion</Text>
+                    <ScaledText style={s.addButtonText}>Add Occasion</ScaledText>
                 </TouchableOpacity>
             </View>
 
@@ -224,8 +213,8 @@ export const AdminOccasionsTab = () => {
             ) : occasions.length === 0 ? (
                 <View style={s.center}>
                     <Ionicons name="sparkles-outline" size={48} color="#8E8E93" />
-                    <Text style={s.emptyText}>No custom occasions set in Supabase.</Text>
-                    <Text style={s.emptySubText}>The app will fall back to hardcoded default configurations.</Text>
+                    <ScaledText style={s.emptyText}>No custom occasions set in Supabase.</ScaledText>
+                    <ScaledText style={s.emptySubText}>The app will fall back to hardcoded default configurations.</ScaledText>
                 </View>
             ) : (
                 <FlatList
@@ -243,29 +232,29 @@ export const AdminOccasionsTab = () => {
                 <SafeAreaView style={s.modalContainer}>
                     <View style={s.modalHeader}>
                         <TouchableOpacity onPress={() => setModalVisible(false)}>
-                            <Text style={s.modalCancel}>{t('common.cancel')}</Text>
+                            <ScaledText style={s.modalCancel}>{t('common.cancel')}</ScaledText>
                         </TouchableOpacity>
-                        <Text style={s.modalTitle}>
+                        <ScaledText style={s.modalTitle}>
                             {isAddMode ? 'Add Home Occasion' : 'Edit Home Occasion'}
-                        </Text>
+                        </ScaledText>
                         <TouchableOpacity onPress={saveChanges}>
-                            <Text style={s.modalSave}>{t('common.save')}</Text>
+                            <ScaledText style={s.modalSave}>{t('common.save')}</ScaledText>
                         </TouchableOpacity>
                     </View>
                     {editItem && (
                         <ScrollView style={s.modalBody} keyboardShouldPersistTaps="handled">
-                            <Text style={s.label}>Occasion Name (English/Key or Custom)</Text>
+                            <ScaledText style={s.label}>Occasion Name (English/Key or Custom)</ScaledText>
                             <TextInput
                                 style={s.input}
                                 value={editItem.occasion}
                                 onChangeText={(v) => setEditItem({ ...editItem, occasion: v })}
                                 placeholder="e.g. Team Collaboration"
                             />
-                            <Text style={s.helperText}>
+                            <ScaledText style={s.helperText}>
                                 If the value matches keys in i18n locales, it will be automatically translated (e.g. 'Team Collaboration' / 'Night-Time Dinner').
-                            </Text>
+                            </ScaledText>
 
-                            <Text style={s.label}>Style Type (Used by AI Outfit Generator)</Text>
+                            <ScaledText style={s.label}>Style Type (Used by AI Outfit Generator)</ScaledText>
                             <View style={s.chipRow}>
                                 {STYLE_OPTIONS.map((styleOpt) => (
                                     <TouchableOpacity
@@ -273,14 +262,14 @@ export const AdminOccasionsTab = () => {
                                         style={[s.chip, editItem.style === styleOpt.value && s.chipActive]}
                                         onPress={() => setEditItem({ ...editItem, style: styleOpt.value })}
                                     >
-                                        <Text style={[s.chipText, editItem.style === styleOpt.value && s.chipTextActive]}>
+                                        <ScaledText style={[s.chipText, editItem.style === styleOpt.value && s.chipTextActive]}>
                                             {styleOpt.label}
-                                        </Text>
+                                        </ScaledText>
                                     </TouchableOpacity>
                                 ))}
                             </View>
 
-                            <Text style={s.label}>{t('admin.add.sortOrder')}</Text>
+                            <ScaledText style={s.label}>{t('admin.add.sortOrder')}</ScaledText>
                             <TextInput
                                 style={s.input}
                                 value={String(editItem.sort_order)}
@@ -289,7 +278,7 @@ export const AdminOccasionsTab = () => {
                             />
 
                             <View style={s.switchRow}>
-                                <Text style={s.label}>{t('admin.add.isActive')}</Text>
+                                <ScaledText style={s.label}>{t('admin.add.isActive')}</ScaledText>
                                 <Switch
                                     value={editItem.is_active}
                                     onValueChange={(v) => setEditItem({ ...editItem, is_active: v })}

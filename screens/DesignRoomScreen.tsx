@@ -1,16 +1,6 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Dimensions,
-  ScrollView,
-  Image,
-  Alert,
-  Platform,
-  ActivityIndicator,
-} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Dimensions, ScrollView, Image, Alert, Platform, ActivityIndicator,  } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -151,9 +141,9 @@ const ToolbarButton = ({ icon, label, onPress, isActive = false }: {
           color={isActive ? '#fff' : ALTA.textSecondary}
         />
       </Animated.View>
-      <Text style={[styles.toolbarLabel, isActive && styles.toolbarLabelActive]}>
+      <ScaledText style={[styles.toolbarLabel, isActive && styles.toolbarLabelActive]}>
         {label}
-      </Text>
+      </ScaledText>
     </TouchableOpacity>
   );
 };
@@ -369,8 +359,8 @@ const DesignRoomScreen = () => {
           style={styles.header}
         >
           <View style={styles.headerLeft}>
-            <Text style={styles.headerTitle}>{t('designRoom.title')}</Text>
-            <Text style={styles.headerDate}>{currentDate}</Text>
+            <ScaledText style={styles.headerTitle}>{t('designRoom.title')}</ScaledText>
+            <ScaledText style={styles.headerDate}>{currentDate}</ScaledText>
           </View>
 
           {detectedItems.length > 0 ? (
@@ -385,7 +375,7 @@ const DesignRoomScreen = () => {
                 style={styles.saveAllButton}
                 onPress={handleSaveAll}
               >
-                <Text style={styles.saveAllText}>{t('common.saveAll')}</Text>
+                <ScaledText style={styles.saveAllText}>{t('common.saveAll')}</ScaledText>
                 <Ionicons name="checkmark-circle" size={16} color="#fff" />
               </TouchableOpacity>
             </View>
@@ -398,12 +388,12 @@ const DesignRoomScreen = () => {
               onPress={handleNext}
               disabled={isEmpty}
             >
-              <Text style={[
+              <ScaledText style={[
                 styles.nextButtonText,
                 isEmpty && styles.nextButtonTextDisabled
               ]}>
                 Preview
-              </Text>
+              </ScaledText>
               <Ionicons
                 name="arrow-forward"
                 size={16}
@@ -422,10 +412,10 @@ const DesignRoomScreen = () => {
               style={styles.loadingState}
             >
               <ActivityIndicator size="large" color={ALTA.primary} />
-              <Text style={styles.loadingText}>{analysisProgress}</Text>
-              <Text style={styles.loadingSubtext}>
+              <ScaledText style={styles.loadingText}>{analysisProgress}</ScaledText>
+              <ScaledText style={styles.loadingSubtext}>
                 Detecting clothing with AI...
-              </Text>
+              </ScaledText>
             </Animated.View>
           ) : detectedItems.length > 0 ? (
             // Results Grid
@@ -433,9 +423,9 @@ const DesignRoomScreen = () => {
               contentContainerStyle={styles.resultsGrid}
               showsVerticalScrollIndicator={false}
             >
-              <Text style={styles.resultsTitle}>
+              <ScaledText style={styles.resultsTitle}>
                 🌟 Celebrity Look ({detectedItems.length} items)
-              </Text>
+              </ScaledText>
               <View style={styles.cardsContainer}>
                 {detectedItems.map((item, index) => (
                   <CelebrityClothingCard
@@ -463,10 +453,10 @@ const DesignRoomScreen = () => {
               style={styles.emptyState}
             >
               <FloatingShirtIcon />
-              <Text style={styles.emptyTitle}>{t('designRoom.createOutfit')}</Text>
-              <Text style={styles.emptyText}>
+              <ScaledText style={styles.emptyTitle}>{t('designRoom.createOutfit')}</ScaledText>
+              <ScaledText style={styles.emptyText}>
                 Add clothes from your wardrobe or{'\n'}scan new items to get started
-              </Text>
+              </ScaledText>
 
               {/* Quick Actions */}
               <View style={styles.quickActions}>
@@ -475,7 +465,7 @@ const DesignRoomScreen = () => {
                   onPress={handleUploadCelebrity}
                 >
                   <Ionicons name="star" size={20} color="#FFD700" />
-                  <Text style={styles.quickActionText}>{t('designRoom.celebrityLook')}</Text>
+                  <ScaledText style={styles.quickActionText}>{t('designRoom.celebrityLook')}</ScaledText>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -483,7 +473,7 @@ const DesignRoomScreen = () => {
                   onPress={handleScanVideo}
                 >
                   <Ionicons name="camera-outline" size={20} color={ALTA.primary} />
-                  <Text style={styles.quickActionText}>{t('designRoom.scanWardrobe')}</Text>
+                  <ScaledText style={styles.quickActionText}>{t('designRoom.scanWardrobe')}</ScaledText>
                 </TouchableOpacity>
               </View>
 
@@ -492,7 +482,7 @@ const DesignRoomScreen = () => {
                 onPress={handleAI}
               >
                 <Ionicons name="sparkles-outline" size={20} color={ALTA.accent} />
-                <Text style={styles.aiSuggestText}>{t('designRoom.aiSuggestOutfit')}</Text>
+                <ScaledText style={styles.aiSuggestText}>{t('designRoom.aiSuggestOutfit')}</ScaledText>
               </TouchableOpacity>
             </Animated.View>
           )}

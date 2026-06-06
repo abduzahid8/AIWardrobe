@@ -7,14 +7,19 @@ import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../lib/supabase';
 import { useSubscriptionGate } from '../../src/hooks/useSubscriptionGate';
+import { useAdminGuard } from '../../hooks/useAdminGuard';
 import { Asset } from 'expo-asset';
 import * as FileSystem from 'expo-file-system/legacy';
 import apiClient from '../../src/services/apiClient';
 import axios from 'axios';
+import Config from '../../src/config/env';
 
 // Direct Modal GPU URL — bypasses Render completely, eliminating 502/503.
 // Modal keeps 1 container warm (min_containers=1) so this is always <60s.
-const MODAL_VTON_URL = 'https://zoxxid75--aiwardrobe-mobile-vton-fastapi-app.modal.run';
+// Configurable via EXPO_PUBLIC_MODAL_VTON_URL (see src/config/env.ts) so we
+// can point TestFlight/staging builds at a different endpoint without a code
+// change. Falls back to the production deployment when the env var is unset.
+const MODAL_VTON_URL = Config.api.modalVtonUrl;
 
 import type { ShopCatalogItem } from './types';
 import { INSPO_MENS_SHOP_ITEMS } from '../../data/inspoMensShopItems';
@@ -66,6 +71,32 @@ const formatPrice = (item: ShopCatalogItem | null) => {
     return `$${item.price % 1 === 0 ? item.price.toFixed(0) : item.price.toFixed(2)}`;
 };
 
+// Translate an axios/network error into a clear, user-facing message.
+// A request that never reaches the server (no `response`) is a connectivity
+// problem, not an API failure — surface that distinctly so testers/users on
+// flaky networks understand what to do instead of seeing a generic error.
+const describeTryOnError = (err: any): string => {
+    const status = err?.response?.status;
+
+    // Server responded with an error payload.
+    if (err?.response) {
+        const detail = err?.response?.data?.detail || err?.response?.data?.error;
+        if (detail) return String(detail);
+        if (status >= 500) return 'The try-on service is temporarily unavailable. Please try again in a moment.';
+        if (status === 429) return 'The try-on service is busy right now. Please try again shortly.';
+        return `Outfit render failed (error ${status}).`;
+    }
+
+    // No response → connectivity / timeout problem.
+    if (err?.code === 'ECONNABORTED' || /timeout/i.test(err?.message ?? '')) {
+        return 'The request timed out. Please check your connection and try again.';
+    }
+    if (err?.message === 'Network Error' || err?.code === 'ENOTFOUND' || err?.code === 'ECONNREFUSED') {
+        return 'Cannot reach the try-on service. Please check your internet connection and try again.';
+    }
+    return err?.message || 'Network connection failed. Please try again.';
+};
+
 const AITryOnScreen = () => {
     const navigation = useNavigation();
     const route = useRoute<RouteProp<{ params: AITryOnRouteParams }, 'params'>>();
@@ -95,6 +126,7 @@ const AITryOnScreen = () => {
         refresh: refreshShopCatalog,
     } = useShopCatalog({ category: mannequinShopFilter });
 
+    const { isAdmin, loading: adminLoading } = useAdminGuard();
     const { requireFeature, getRemaining, hasActiveSubscription, consume } = useSubscriptionGate();
     const tryOnsRemaining = getRemaining('tryOns');
     const saveLook = useTryOnLooksStore((s) => s.saveLook);
@@ -339,7 +371,11 @@ const AITryOnScreen = () => {
             // Modal runs min_containers=1 so the GPU is always warm.
             // This eliminates 502/503 from Render's load-balancer.
             const callModalDirectly = async () => {
-                console.log(`[AITryOn] Calling Modal directly: ${MODAL_VTON_URL}/tryon/multi`);
+                // Route fused pipelines to /tryon/multi-fused (single-pass, ~11s for 3 garments)
+                // and sequential to /tryon/multi (~24s per garment step).
+                const isFused = pipelineVersion === 'fused_v2' || pipelineVersion === 'fused_v3';
+                const endpoint = isFused ? '/tryon/multi-fused' : '/tryon/multi';
+                console.log(`[AITryOn] Calling Modal directly: ${MODAL_VTON_URL}${endpoint} (pipeline=${pipelineVersion})`);
 
                 // Build the payload in Modal's multi-garment format
                 const modalPayload = {
@@ -352,13 +388,19 @@ const AITryOnScreen = () => {
                     num_inference_steps: 10,
                     guidance_scale: 2.0,
                     seed: 42,
-                    pipeline_version: pipelineVersion ?? 'sequential_v1',
+                    pipeline_version: pipelineVersion ?? 'fused_v2',
                 };
 
                 const resp = await axios.post(
-                    `${MODAL_VTON_URL}/tryon/multi`,
+                    `${MODAL_VTON_URL}${endpoint}`,
                     modalPayload,
-                    { timeout: 240_000 },
+                    {
+                        timeout: 240_000,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Accept: 'application/json',
+                        },
+                    },
                 );
 
                 const d = resp.data;
@@ -375,17 +417,18 @@ const AITryOnScreen = () => {
             try {
                 data = await callModalDirectly();
             } catch (err: any) {
-                // On any error, show message and retry once after 8s
+                // First attempt failed. Classify the error so the user sees a
+                // meaningful message, then retry once after a short backoff.
                 const status = err?.response?.status;
                 const msg = err?.response?.data?.detail || err?.response?.data?.error || err?.message;
-                console.warn(`[AITryOn] Modal call failed (${status}): ${msg}`);
-                setAiProgress('Retrying…');
+                console.warn(`[AITryOn] Modal call failed (${status ?? 'no-response'}): ${msg}`);
+                setAiProgress('Retrying (attempt 2 of 2)…');
                 await new Promise((r) => setTimeout(r, 8_000));
                 try {
                     data = await callModalDirectly();
                 } catch (retryErr: any) {
-                    const apiError = retryErr?.response?.data?.detail || retryErr?.response?.data?.error || retryErr?.message;
-                    throw new Error(apiError || 'Outfit render failed after retry.');
+                    console.warn('[AITryOn] Modal retry failed:', retryErr?.message);
+                    throw new Error(describeTryOnError(retryErr));
                 }
             }
 
@@ -412,7 +455,7 @@ const AITryOnScreen = () => {
             setAiLoading(false);
             setAiProgress(null);
         }
-    }, [buildWearDescription, consume, filledCount, getGarmentImageUrl, requireFeature, slots, tryOnsRemaining]);
+    }, [buildWearDescription, consume, filledCount, getGarmentImageUrl, pipelineVersion, requireFeature, slots, tryOnsRemaining]);
 
     const handleSaveLook = useCallback(() => {
         if (!aiResultImage || !hasAnySelection || lookSaved) {
@@ -436,6 +479,64 @@ const AITryOnScreen = () => {
 
     const activeSlotItem = slots[activeSlot];
     const canReset = Boolean(hasAnySelection || aiResultImage || aiError);
+
+    if (adminLoading) {
+        return (
+            <LinearGradient colors={['#F6FAFF', '#EEF4FF', '#FFFFFF']} style={styles.backgroundGradient}>
+                <SafeAreaView style={styles.safeArea}>
+                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                        <ActivityIndicator size="large" color="#183A67" />
+                    </View>
+                </SafeAreaView>
+            </LinearGradient>
+        );
+    }
+
+    if (!isAdmin) {
+        return (
+            <LinearGradient colors={['#F6FAFF', '#EEF4FF', '#FFFFFF']} style={styles.backgroundGradient}>
+                <View style={styles.backgroundOrbTop} />
+                <View style={styles.backgroundOrbBottom} />
+                <SafeAreaView style={styles.safeArea}>
+                    <View style={{ flex: 1, paddingHorizontal: 32, alignItems: 'center', justifyContent: 'center' }}>
+                        <View style={{
+                            width: 96, height: 96, borderRadius: 48,
+                            backgroundColor: '#EDE7F6', alignItems: 'center', justifyContent: 'center',
+                            marginBottom: 24,
+                        }}>
+                            <Ionicons name="sparkles" size={44} color="#7C4DFF" />
+                        </View>
+                        <Text style={{
+                            fontSize: 26, fontWeight: '800', color: '#10233E',
+                            textAlign: 'center', marginBottom: 12,
+                        }}>
+                            Coming Soon
+                        </Text>
+                        <Text style={{
+                            fontSize: 15, lineHeight: 22, color: '#6E7891',
+                            textAlign: 'center', marginBottom: 32,
+                        }}>
+                            Virtual Try-On is currently in preview. We're working hard to bring this feature to all users — stay tuned!
+                        </Text>
+                        <TouchableOpacity
+                            onPress={() => navigation.goBack()}
+                            activeOpacity={0.85}
+                            style={{
+                                flexDirection: 'row', alignItems: 'center', gap: 8,
+                                paddingHorizontal: 24, paddingVertical: 14,
+                                borderRadius: 22, backgroundColor: '#173A65',
+                            }}
+                        >
+                            <Ionicons name="arrow-back" size={18} color="#FFFFFF" />
+                            <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>
+                                Go Back
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                </SafeAreaView>
+            </LinearGradient>
+        );
+    }
 
     return (
         <LinearGradient colors={['#F6FAFF', '#EEF4FF', '#FFFFFF']} style={styles.backgroundGradient}>

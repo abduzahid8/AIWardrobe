@@ -13,7 +13,9 @@
  * 3. Add API key to .env: EXPO_PUBLIC_REVENUECAT_API_KEY=your-key
  *
  * Products:
+ * - 2.99 ($2.99/month)
  * - com.aiwardrobe.premium.monthly ($9.99/month)
+ * - com.aiwardrobe.premium.yearly ($99.99/year)
  */
 import { Platform } from 'react-native';
 import useSubscriptionStore, { SubscriptionTier } from '../../store/subscriptionStore';
@@ -25,6 +27,8 @@ import { supabase } from '../../lib/supabase';
 export type ProductId = string;
 
 const TIER_BY_PRODUCT_ID: Record<string, SubscriptionTier> = {
+    '2.99': 'lite',
+    'com.aiwardrobe.lite.monthly': 'lite',
     'com.aiwardrobe.premium.monthly': 'premium',
     'com.aiwardrobe.premium.yearly': 'vip',
 };
@@ -34,6 +38,7 @@ function getDynamicTier(productId: string): SubscriptionTier {
 
     const lowerId = String(productId || '').toLowerCase();
     if (lowerId.includes('yearly') || lowerId.includes('annual')) return 'vip';
+    if (lowerId.includes('lite')) return 'lite';
     if (lowerId.includes('premium') || lowerId.includes('pro') || lowerId.includes('monthly')) return 'premium';
 
     return 'free';
@@ -45,9 +50,17 @@ function getDynamicTier(productId: string): SubscriptionTier {
  * as long as the products exist in the native store.
  */
 const KNOWN_PRODUCT_IDS: string[] = [
+    '2.99',
     'com.aiwardrobe.premium.monthly',
     'com.aiwardrobe.premium.yearly',
 ];
+
+const ANALYTICS_PRICE_BY_TIER: Record<SubscriptionTier, number> = {
+    free: 0,
+    lite: 2.99,
+    premium: 9.99,
+    vip: 99.99,
+};
 
 /**
  * Convert verbose RevenueCat / StoreKit error text into a short,
@@ -214,6 +227,7 @@ class IAPService {
         if (!this.isRevenueCatAvailable) {
             // Mock products for development
             return [
+                { id: '2.99', title: 'Lite Monthly', price: '$2.99' },
                 { id: 'com.aiwardrobe.premium.monthly', title: 'Premium Monthly', price: '$9.99' },
                 { id: 'com.aiwardrobe.premium.yearly', title: 'Premium Yearly', price: '$99.99' },
             ];
@@ -331,12 +345,7 @@ class IAPService {
             // Preferred path: find a RevenueCat offering package.
             const packages = await this.getAvailablePackages();
             const exactPackage = packages.find((pkg: any) => pkg.product.identifier === productId);
-            const premiumLikePackage = packages.find((pkg: any) => {
-                const identifier = String(pkg?.product?.identifier || '').toLowerCase();
-                const title = String(pkg?.product?.title || '').toLowerCase();
-                return identifier.includes('premium') || identifier.includes('pro') || title.includes('premium') || title.includes('pro');
-            });
-            const targetPackage = exactPackage || premiumLikePackage || (packages.length === 1 ? packages[0] : null);
+            const targetPackage = exactPackage || null;
 
             let customerInfo: any;
             let resolvedProductId: string;
@@ -345,7 +354,7 @@ class IAPService {
                 requested: productId,
                 availablePackages: packages.length,
                 matchedExact: !!exactPackage,
-                matchedPremiumLike: !!premiumLikePackage,
+                availableProductIds: packages.map((pkg: any) => pkg?.product?.identifier).filter(Boolean),
             });
 
             if (targetPackage) {
@@ -355,8 +364,7 @@ class IAPService {
             } else {
                 // Fallback: buy the product directly from the store without an offering.
                 console.log('[IAP] No offering package found — falling back to purchaseStoreProduct');
-                const idsToFetch = productId ? [productId, ...KNOWN_PRODUCT_IDS] : KNOWN_PRODUCT_IDS;
-                const uniqueIds = Array.from(new Set(idsToFetch));
+                const uniqueIds = productId ? [productId] : KNOWN_PRODUCT_IDS;
                 let storeProducts: any[] = [];
                 try {
                     storeProducts = await Purchases.getProducts(uniqueIds);
@@ -369,17 +377,15 @@ class IAPService {
                     returnedIds: storeProducts?.map((p: any) => p.identifier) || [],
                 });
 
-                const storeProduct =
-                    storeProducts?.find((p: any) => p.identifier === productId) ||
-                    (storeProducts?.length ? storeProducts[0] : undefined);
+                const storeProduct = storeProducts?.find((p: any) => p.identifier === productId);
 
                 if (!storeProduct) {
                     return {
                         success: false,
                         error:
-                            'This subscription is not yet available on the App Store. ' +
-                            'If you are the developer, ensure the product is in "Ready to Submit" ' +
-                            'state and attached to the current app version.',
+                            `App Store did not return ${productId}. ` +
+                            'Check that this exact product ID exists in App Store Connect, is Ready to Submit, ' +
+                            'is attached to the current app version, and is added to the active RevenueCat offering.',
                     };
                 }
 
@@ -429,7 +435,7 @@ class IAPService {
                 );
             }, 5000);
 
-            analyticsService.trackSubscriptionPurchased(tier, 9.99);
+            analyticsService.trackSubscriptionPurchased(tier, ANALYTICS_PRICE_BY_TIER[tier]);
 
             return {
                 success: true,
@@ -539,12 +545,15 @@ class IAPService {
                 return byProduct[productId] || undefined;
             };
 
-            // Check VIP first (higher tier), then premium
+            // Check VIP first (higher tier), then premium, then lite
             const vipEntitlement = findEntitlement(['vip', 'max', 'aiwardrobe_pro_yearly', 'com.aiwardrobe.premium.yearly']);
             const vipProductId = findProductForTier('vip');
 
             const premiumEntitlement = findEntitlement(['premium', 'pro', 'aiwardrobe pro', 'com.aiwardrobe.premium.monthly']);
             const premiumProductId = findProductForTier('premium');
+
+            const liteEntitlement = findEntitlement(['lite', 'aiwardrobe_lite', '2.99', 'com.aiwardrobe.lite.monthly']);
+            const liteProductId = findProductForTier('lite');
 
             if (vipEntitlement || vipProductId) {
                 const expiry = vipEntitlement?.expirationDate || getExpiryForProduct(vipProductId);
@@ -552,6 +561,9 @@ class IAPService {
             } else if (premiumEntitlement || premiumProductId) {
                 const expiry = premiumEntitlement?.expirationDate || getExpiryForProduct(premiumProductId);
                 await setSubscription('premium', expiry, premiumProductId || undefined);
+            } else if (liteEntitlement || liteProductId) {
+                const expiry = liteEntitlement?.expirationDate || getExpiryForProduct(liteProductId);
+                await setSubscription('lite', expiry, liteProductId || undefined);
             } else if (entitlementEntries.length === 0 && activeProductIds.size === 0) {
                 // Truly no active entitlements or subscriptions — safe to downgrade.
                 await clearSubscription();

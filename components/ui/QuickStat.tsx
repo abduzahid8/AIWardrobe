@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { View, StyleSheet, Dimensions } from 'react-native'
+import { ScaledText } from '../ui/ScaledText';;
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
     FadeInRight,
@@ -85,12 +86,12 @@ export const QuickStat: React.FC<QuickStatProps> = ({
                         <Ionicons name={icon} size={20} color={accentColor} />
                     </View>
 
-                    <Text style={[styles.gradientValue, { color: colors.text.primary }]}>
+                    <ScaledText style={[styles.gradientValue, { color: colors.text.primary }]}>
                         {value}
-                    </Text>
-                    <Text style={[styles.gradientLabel, { color: colors.text.secondary }]}>
+                    </ScaledText>
+                    <ScaledText style={[styles.gradientLabel, { color: colors.text.secondary }]}>
                         {label}
-                    </Text>
+                    </ScaledText>
 
                     {trend && trendValue && (
                         <View style={styles.trendContainer}>
@@ -99,9 +100,9 @@ export const QuickStat: React.FC<QuickStatProps> = ({
                                 size={12}
                                 color={getTrendColor()}
                             />
-                            <Text style={[styles.trendText, { color: getTrendColor() }]}>
+                            <ScaledText style={[styles.trendText, { color: getTrendColor() }]}>
                                 {trendValue}
-                            </Text>
+                            </ScaledText>
                         </View>
                     )}
                 </LinearGradient>
@@ -119,12 +120,12 @@ export const QuickStat: React.FC<QuickStatProps> = ({
                 ]}
             >
                 <Ionicons name={icon} size={18} color={accentColor} />
-                <Text style={[styles.compactValue, { color: colors.text.primary }]}>
+                <ScaledText style={[styles.compactValue, { color: colors.text.primary }]}>
                     {value}
-                </Text>
-                <Text style={[styles.compactLabel, { color: colors.text.secondary }]}>
+                </ScaledText>
+                <ScaledText style={[styles.compactLabel, { color: colors.text.secondary }]}>
                     {label}
-                </Text>
+                </ScaledText>
             </Animated.View>
         );
     }
@@ -145,12 +146,12 @@ export const QuickStat: React.FC<QuickStatProps> = ({
                 <Ionicons name={icon} size={18} color={accentColor} />
             </View>
 
-            <Text style={[styles.defaultValue, { color: colors.text.primary }]}>
+            <ScaledText style={[styles.defaultValue, { color: colors.text.primary }]}>
                 {value}
-            </Text>
-            <Text style={[styles.defaultLabel, { color: colors.text.secondary }]}>
+            </ScaledText>
+            <ScaledText style={[styles.defaultLabel, { color: colors.text.secondary }]}>
                 {label}
-            </Text>
+            </ScaledText>
         </Animated.View>
     );
 };

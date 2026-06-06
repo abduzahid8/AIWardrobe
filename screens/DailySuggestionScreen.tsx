@@ -12,16 +12,8 @@
  */
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    ScrollView,
-    SafeAreaView,
-    ActivityIndicator,
-    Dimensions,
-} from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator, Dimensions,  } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Animated, { FadeIn, FadeInDown, SlideInRight } from 'react-native-reanimated';
@@ -152,7 +144,7 @@ const DailySuggestionScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
             <SafeAreaView style={styles.container}>
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={colors.text.primary} />
-                    <Text style={styles.loadingText}>{t('dailySuggestion.loading')}</Text>
+                    <ScaledText style={styles.loadingText}>{t('dailySuggestion.loading')}</ScaledText>
                 </View>
             </SafeAreaView>
         );
@@ -164,17 +156,17 @@ const DailySuggestionScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
             <SafeAreaView style={styles.container}>
                 <View style={styles.emptyContainer}>
                     <Ionicons name="shirt-outline" size={56} color={colors.text.tertiary} />
-                    <Text style={styles.emptyTitle}>{t('dailySuggestion.noSuggestions')}</Text>
-                    <Text style={styles.emptySubtext}>
+                    <ScaledText style={styles.emptyTitle}>{t('dailySuggestion.noSuggestions')}</ScaledText>
+                    <ScaledText style={styles.emptySubtext}>
                         {items.length === 0
                             ? t('dailySuggestion.scanWardrobeForSuggestions')
                             : t('dailySuggestion.addMoreItemsForSuggestions')}
-                    </Text>
+                    </ScaledText>
                     <TouchableOpacity
                         style={styles.emptyButton}
                         onPress={() => navigation.navigate('ScanWardrobe')}
                     >
-                        <Text style={styles.emptyButtonText}>{t('dailySuggestion.scanWardrobe')}</Text>
+                        <ScaledText style={styles.emptyButtonText}>{t('dailySuggestion.scanWardrobe')}</ScaledText>
                     </TouchableOpacity>
                 </View>
             </SafeAreaView>
@@ -186,16 +178,16 @@ const DailySuggestionScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
         return (
             <SafeAreaView style={styles.container}>
                 <Animated.View entering={FadeIn.duration(400)} style={styles.loggedContainer}>
-                    <Text style={styles.loggedEmoji}>
+                    <ScaledText style={styles.loggedEmoji}>
                         {streak + 1 >= 7 ? '🏆' : streak + 1 >= 3 ? '🔥' : '✅'}
-                    </Text>
-                    <Text style={styles.loggedTitle}>{t('dailySuggestion.outfitLogged')}</Text>
-                    <Text style={styles.loggedStreak}>{streak + 1} {t('dailySuggestion.dayStreak')}</Text>
+                    </ScaledText>
+                    <ScaledText style={styles.loggedTitle}>{t('dailySuggestion.outfitLogged')}</ScaledText>
+                    <ScaledText style={styles.loggedStreak}>{streak + 1} {t('dailySuggestion.dayStreak')}</ScaledText>
                     <TouchableOpacity
                         style={styles.loggedButton}
                         onPress={() => navigation.goBack()}
                     >
-                        <Text style={styles.loggedButtonText}>{t('dailySuggestion.backToHome')}</Text>
+                        <ScaledText style={styles.loggedButtonText}>{t('dailySuggestion.backToHome')}</ScaledText>
                     </TouchableOpacity>
                 </Animated.View>
             </SafeAreaView>
@@ -208,19 +200,19 @@ const DailySuggestionScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={handleSkip}>
-                    <Text style={styles.skipText}>{t('common.skip')}</Text>
+                    <ScaledText style={styles.skipText}>{t('common.skip')}</ScaledText>
                 </TouchableOpacity>
                 <View style={styles.headerCenter}>
-                    <Text style={styles.headerTitle}>{t('dailySuggestion.todaysOutfit')}</Text>
+                    <ScaledText style={styles.headerTitle}>{t('dailySuggestion.todaysOutfit')}</ScaledText>
                     {weather && (
-                        <Text style={styles.weatherBadge}>
+                        <ScaledText style={styles.weatherBadge}>
                             {Math.round(weather.temp)}° · {weather.condition}
-                        </Text>
+                        </ScaledText>
                     )}
                 </View>
-                <Text style={styles.pageIndicator}>
+                <ScaledText style={styles.pageIndicator}>
                     {selectedIndex + 1}/{suggestions.length}
-                </Text>
+                </ScaledText>
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -233,9 +225,9 @@ const DailySuggestionScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                     {/* Score */}
                     <View style={styles.scoreRow}>
                         <View style={styles.scoreBadge}>
-                            <Text style={styles.scoreText}>
+                            <ScaledText style={styles.scoreText}>
                                 {Math.round(currentSuggestion.score * 100)}% match
-                            </Text>
+                            </ScaledText>
                         </View>
                     </View>
 
@@ -259,12 +251,12 @@ const DailySuggestionScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                                         <View style={[styles.colorDot, { backgroundColor: item!.colorHex || '#CCC' }]} />
                                     </View>
                                 )}
-                                <Text style={styles.outfitItemCategory}>
+                                <ScaledText style={styles.outfitItemCategory}>
                                     {item!.category}
-                                </Text>
-                                <Text style={styles.outfitItemName} numberOfLines={2}>
+                                </ScaledText>
+                                <ScaledText style={styles.outfitItemName} numberOfLines={2}>
                                     {item!.subCategory || item!.primaryColor}
-                                </Text>
+                                </ScaledText>
                             </Animated.View>
                         ))}
                     </View>
@@ -272,7 +264,7 @@ const DailySuggestionScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                     {/* Reasoning */}
                     <View style={styles.reasoningBox}>
                         <Ionicons name="sparkles" size={16} color={colors.text.secondary} />
-                        <Text style={styles.reasoningText}>{currentSuggestion.reasoning}</Text>
+                        <ScaledText style={styles.reasoningText}>{currentSuggestion.reasoning}</ScaledText>
                     </View>
 
                     {/* Score breakdown */}
@@ -294,7 +286,7 @@ const DailySuggestionScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                         activeOpacity={0.7}
                     >
                         <Ionicons name="shuffle-outline" size={20} color={colors.text.primary} />
-                        <Text style={styles.nextButtonText}>{t('dailySuggestion.tryAnother')}</Text>
+                        <ScaledText style={styles.nextButtonText}>{t('dailySuggestion.tryAnother')}</ScaledText>
                     </TouchableOpacity>
                 )}
                 <TouchableOpacity
@@ -303,7 +295,7 @@ const DailySuggestionScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                     activeOpacity={0.8}
                 >
                     <Ionicons name="checkmark-circle" size={22} color="#FFF" />
-                    <Text style={styles.wearButtonText}>{t('dailySuggestion.wearToday')}</Text>
+                    <ScaledText style={styles.wearButtonText}>{t('dailySuggestion.wearToday')}</ScaledText>
                 </TouchableOpacity>
             </View>
         </SafeAreaView>
@@ -316,7 +308,7 @@ const DailySuggestionScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
 
 const ScoreBar: React.FC<{ label: string; value: number }> = ({ label, value }) => (
     <View style={styles.scoreBarContainer}>
-        <Text style={styles.scoreBarLabel}>{label}</Text>
+        <ScaledText style={styles.scoreBarLabel}>{label}</ScaledText>
         <View style={styles.scoreBarTrack}>
             <View style={[styles.scoreBarFill, { width: `${Math.round(value * 100)}%` }]} />
         </View>

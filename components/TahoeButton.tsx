@@ -1,13 +1,6 @@
 import React from 'react';
-import {
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-    Platform,
-    ViewStyle,
-    TextStyle,
-} from 'react-native';
+import { StyleSheet, TouchableOpacity, View, Platform, ViewStyle, TextStyle,  } from 'react-native'
+import { ScaledText } from './ui/ScaledText';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
@@ -186,13 +179,13 @@ export const TahoeButton: React.FC<TahoeButtonProps> = ({
         <View style={styles.contentRow}>
             {iconPosition === 'left' && iconComponent}
             {title && (
-                <Text style={[
+                <ScaledText style={[
                     styles.buttonText,
                     { fontSize: getTextSize(), color: getTextColor() },
                     textStyle
                 ]}>
                     {title}
-                </Text>
+                </ScaledText>
             )}
             {iconPosition === 'right' && iconComponent}
             {children}
@@ -371,8 +364,8 @@ export const TahoeActionCard: React.FC<TahoeActionCardProps> = ({
                 <View style={styles.actionIconContainer}>
                     <Ionicons name={icon} size={24} color={BW.black} />
                 </View>
-                <Text style={styles.actionTitle}>{title}</Text>
-                {subtitle && <Text style={styles.actionSubtitle}>{subtitle}</Text>}
+                <ScaledText style={styles.actionTitle}>{title}</ScaledText>
+                {subtitle && <ScaledText style={styles.actionSubtitle}>{subtitle}</ScaledText>}
             </View>
         </AnimatedTouchable>
     );
@@ -424,9 +417,9 @@ export const TahoeChip: React.FC<TahoeChipProps> = ({
                 style
             ]}
         >
-            <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
+            <ScaledText style={[styles.chipText, isActive && styles.chipTextActive]}>
                 {title}
-            </Text>
+            </ScaledText>
         </AnimatedTouchable>
     );
 };

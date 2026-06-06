@@ -6,7 +6,8 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { TouchableOpacity, Text, StyleSheet, View, ActivityIndicator } from 'react-native';
+import { TouchableOpacity, StyleSheet, View, ActivityIndicator } from 'react-native'
+import { ScaledText } from './ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
@@ -111,11 +112,11 @@ const WearLogButton: React.FC<WearLogButtonProps> = ({
                             size={22}
                             color={isLogged ? '#FFF' : colors.text.primary}
                         />
-                        <Text style={[styles.buttonText, isLogged && styles.loggedText]}>
+                        <ScaledText style={[styles.buttonText, isLogged && styles.loggedText]}>
                             {isLogged
                                 ? t('wearLog.logged', { streak: streak + 1 })
                                 : t('wearLog.wearingToday')}
-                        </Text>
+                        </ScaledText>
                     </>
                 )}
             </TouchableOpacity>

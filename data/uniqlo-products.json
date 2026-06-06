@@ -1,0 +1,1866 @@
+[
+  {
+    "productId": "422992",
+    "name": "Crew Neck T-Shirt",
+    "price": "$24.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/422992/item/usgoods_73_422992_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E422992-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "439661",
+    "name": "Woven Trunks | Broadcloth",
+    "price": "$7.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/439661/item/goods_07_439661_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E439661-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "448034",
+    "name": "AirSense Blazer | Wool-Like",
+    "price": "$79.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/448034/item/goods_09_448034_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E448034-000/00",
+    "category": "Outerwear"
+  },
+  {
+    "productId": "450179",
+    "name": "Soft Brushed T-Shirt | Long Sleeve",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/450179/item/usgoods_69_450179_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E450179-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "450195",
+    "name": "Fleece Full-Zip Jacket",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/450195/item/goods_09_450195_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E450195-000/00",
+    "category": "Outerwear"
+  },
+  {
+    "productId": "450251",
+    "name": "Slim Chino Pants",
+    "price": "$59.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/450251/item/usgoods_32_450251_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E450251-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "450260",
+    "name": "Broadcloth Shirt | Button Down",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/450260/item/usgoods_00_450260_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E450260-000/00",
+    "category": "Shirts & Polos"
+  },
+  {
+    "productId": "450535",
+    "name": "Merino Sweater",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/450535/item/usgoods_07_450535_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E450535-000/00",
+    "category": "Sweaters"
+  },
+  {
+    "productId": "450543",
+    "name": "Cashmere Sweater",
+    "price": "$99.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/450543/item/goods_03_450543_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E450543-000/00",
+    "category": "Sweaters"
+  },
+  {
+    "productId": "453754",
+    "name": "Washable Milano Ribbed Sweater",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/453754/item/usgoods_64_453754_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E453754-000/00",
+    "category": "Sweaters"
+  },
+  {
+    "productId": "454326",
+    "name": "AIRism Boxer Briefs",
+    "price": "$14.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/454326/item/goods_69_454326_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E454326-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "455365",
+    "name": "SUPIMA® Cotton T-Shirt",
+    "price": "$19.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/455365/item/usgoods_17_455365_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E455365-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "455533",
+    "name": "Stretch Slim Shorts | 9\"",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/455533/item/usgoods_69_455533_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E455533-000/00",
+    "category": "Shorts"
+  },
+  {
+    "productId": "455957",
+    "name": "Premium Linen Shirt",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/455957/item/usgoods_57_455957_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E455957-000/00",
+    "category": "T-Shirts"
+  },
+  {
+    "productId": "456630",
+    "name": "Oxford Slim Shirt",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/456630/item/usgoods_64_456630_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E456630-000/00",
+    "category": "Shirts & Polos"
+  },
+  {
+    "productId": "456710",
+    "name": "AIRism Ultra Seamless Boxer Briefs",
+    "price": "$14.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/456710/item/goods_58_456710_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E456710-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "457288",
+    "name": "SUPIMA® Cotton Blend Wide Ribbed Socks",
+    "price": "$5.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/457288/item/goods_51_457288_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E457288-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "457517",
+    "name": "AIRism Cotton T-Shirt | Sleeveless",
+    "price": "$19.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/457517/item/usgoods_53_457517_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E457517-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "458325",
+    "name": "Stretch Easy Shorts | Seersucker | 8\"",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/458325/item/usgoods_64_458325_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E458325-000/00",
+    "category": "Shorts"
+  },
+  {
+    "productId": "461003",
+    "name": "HEATTECH T-Shirt",
+    "price": "$19.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/461003/item/usgoods_00_461003_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E461003-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "461025",
+    "name": "Colorful 50 Socks",
+    "price": "$4.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/461025/item/goods_02_461025_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E461025-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "461420",
+    "name": "Stretch Easy Ankle Pants | Denim",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/461420/item/usgoods_07_461420_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E461420-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "461488",
+    "name": "Woven Trunks | London Striped",
+    "price": "$7.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/461488/item/goods_64_461488_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E461488-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "462191",
+    "name": "Cotton Reusable Tote Bag",
+    "price": "$3.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/462191/item/usgoods_01_462191_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E462191-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "462197",
+    "name": "Pleated Wide Pants",
+    "price": "$59.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/462197/item/usgoods_32_462197_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E462197-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "462369",
+    "name": "Oxford Slim Shirt | Striped",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/462369/item/usgoods_65_462369_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E462369-000/00",
+    "category": "Shirts & Polos"
+  },
+  {
+    "productId": "463729",
+    "name": "Italian Leather Stitched Belt",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/463729/item/goods_09_463729_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E463729-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "463730",
+    "name": "Italian Oiled Leather Belt",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/463730/item/goods_09_463730_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E463730-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "464311",
+    "name": "Cotton Boxer Briefs",
+    "price": "$7.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/464311/item/goods_38_464311_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E464311-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "465185",
+    "name": "AIRism Cotton Oversized T-Shirt | Half-Sleeve",
+    "price": "$24.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/465185/item/usgoods_70_465185_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E465185-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "465187",
+    "name": "DRY Color T-Shirt",
+    "price": "$9.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/465187/item/usgoods_64_465187_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E465187-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "465189",
+    "name": "DRY Color Ribbed Tank Top",
+    "price": "$9.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/465189/item/usgoods_08_465189_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E465189-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "465193",
+    "name": "AIRism Cotton T-Shirt | Long Sleeve",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/465193/item/usgoods_68_465193_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E465193-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "465203",
+    "name": "DRY-EX UV Protection Full-Zip Hoodie",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/465203/item/usgoods_66_465203_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E465203-000/00",
+    "category": "Sweatshirts & Hoodies"
+  },
+  {
+    "productId": "465206",
+    "name": "Ultra Stretch Active Jogger Pants | 2025 Version",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/465206/item/goods_08_465206_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E465206-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "467769",
+    "name": "Ultra Stretch DRY-EX Tapered Pants",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/467769/item/usgoods_57_467769_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E467769-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "468671",
+    "name": "AirSense Houndstooth Blazer | Wool-Like",
+    "price": "$79.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/468671/item/usgoods_05_468671_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E468671-000/00",
+    "category": "Outerwear"
+  },
+  {
+    "productId": "469292",
+    "name": "Pocketable UV Protection Parka",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/469292/item/usgoods_30_469292_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E469292-000/00",
+    "category": "Outerwear"
+  },
+  {
+    "productId": "469956",
+    "name": "Fleece Full-Zip Jacket | Color Block",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/469956/item/usgoods_08_469956_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E469956-000/00",
+    "category": "Outerwear"
+  },
+  {
+    "productId": "469990",
+    "name": "Cotton Low Rise Boxer Briefs",
+    "price": "$7.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/469990/item/goods_09_469990_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E469990-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "470008",
+    "name": "Leather Combination Mesh Belt",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/470008/item/goods_37_470008_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E470008-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "470077",
+    "name": "Seamless Down Parka",
+    "price": "$179.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/470077/item/usgoods_09_470077_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E470077-000/00",
+    "category": "Outerwear"
+  },
+  {
+    "productId": "470118",
+    "name": "PUFFTECH Parka",
+    "price": "$89.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/470118/item/goods_69_470118_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E470118-000/00",
+    "category": "Outerwear"
+  },
+  {
+    "productId": "471808",
+    "name": "Sweat Oversized Pullover Hoodie",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/471808/item/usgoods_03_471808_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E471808-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "471809",
+    "name": "Wide Sweatpants",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/471809/item/usgoods_69_471809_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E471809-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "471951",
+    "name": "Pile Socks",
+    "price": "$5.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/471951/item/goods_01_471951_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E471951-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "473319",
+    "name": "Wide Straight Jeans | Tall",
+    "price": "$19.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/473319/item/usgoods_66_473319_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E473319-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "474214",
+    "name": "Low Rise Cotton Boxer Briefs",
+    "price": "$7.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/474214/item/goods_03_474214_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E474214-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "474244",
+    "name": "AIRism Cotton T-Shirt",
+    "price": "$14.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/474244/item/usgoods_69_474244_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E474244-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "474506",
+    "name": "Premium Linen Shirt | Striped",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/474506/item/usgoods_64_474506_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E474506-000/00",
+    "category": "Shirts & Polos"
+  },
+  {
+    "productId": "475367",
+    "name": "AIRism Cotton Pique Polo Shirt",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/475367/item/usgoods_68_475367_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E475367-000/00",
+    "category": "Polos"
+  },
+  {
+    "productId": "475376",
+    "name": "DRY V-Neck T-Shirt",
+    "price": "$9.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/475376/item/usgoods_00_475376_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E475376-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "475377",
+    "name": "Sweatshirt",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/475377/item/usgoods_31_475377_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E475377-000/00",
+    "category": "Sweatshirts & Hoodies"
+  },
+  {
+    "productId": "475378",
+    "name": "Sweat Pullover Hoodie",
+    "price": "$14.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/475378/item/usgoods_01_475378_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E475378-000/00",
+    "category": "Sweatshirts & Hoodies"
+  },
+  {
+    "productId": "475380",
+    "name": "Sweat Full-Zip Hoodie",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/475380/item/usgoods_09_475380_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E475380-000/00",
+    "category": "Sweatshirts & Hoodies"
+  },
+  {
+    "productId": "475598",
+    "name": "Ultra Stretch Pants",
+    "price": "$59.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/475598/item/usgoods_69_475598_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E475598-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "476081",
+    "name": "Stretch Easy Shorts | 2025 Version",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/476081/item/goods_31_476081_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E476081-000/00",
+    "category": "Shorts"
+  },
+  {
+    "productId": "476320",
+    "name": "Cotton Boxer Briefs | Striped",
+    "price": "$7.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/476320/item/goods_18_476320_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E476320-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "476853",
+    "name": "Italian Leather Garrison Belt",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/476853/item/goods_09_476853_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E476853-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "476997",
+    "name": "Washable Knitted Polo Sweater | Short Sleeve",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/476997/item/usgoods_56_476997_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E476997-000/00",
+    "category": "Polos"
+  },
+  {
+    "productId": "477181",
+    "name": "Cotton Linen Shirt | Short Sleeve",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/477181/item/usgoods_69_477181_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E477181-000/00",
+    "category": "Shirts & Polos"
+  },
+  {
+    "productId": "477704",
+    "name": "AirSense Blazer",
+    "price": "$99.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/477704/item/usgoods_69_477704_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E477704-000/00",
+    "category": "Outerwear"
+  },
+  {
+    "productId": "477753",
+    "name": "Ultra Stretch Active Shorts | 5\"",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/477753/item/usgoods_67_477753_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E477753-000/00",
+    "category": "Shorts"
+  },
+  {
+    "productId": "477875",
+    "name": "Sweatpants",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/477875/item/usgoods_69_477875_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E477875-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "478270",
+    "name": "PUFFTECH Vest",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/478270/item/usgoods_09_478270_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E478270-000/00",
+    "category": "Outerwear"
+  },
+  {
+    "productId": "478277",
+    "name": "Hybrid Down Parka",
+    "price": "$179.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/478277/item/usgoods_09_478277_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E478277-000/00",
+    "category": "Outerwear"
+  },
+  {
+    "productId": "478306",
+    "name": "UV Protection 2Way Stretch Cap",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/478306/item/goods_09_478306_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E478306-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "478487",
+    "name": "Ultra Stretch Pants | Tall",
+    "price": "$59.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/478487/item/usgoods_08_478487_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E478487-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "478670",
+    "name": "Linen Blend Easy Ankle Pants",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/478670/item/usgoods_69_478670_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E478670-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "479035",
+    "name": "Cotton Boxer Briefs",
+    "price": "$7.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/479035/item/goods_00_479035_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E479035-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "479036",
+    "name": "Cotton Low Rise Boxer Briefs",
+    "price": "$7.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/479036/item/goods_00_479036_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E479036-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "479134",
+    "name": "Stretch Easy Ankle Pants",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/479134/item/usgoods_09_479134_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E479134-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "479305",
+    "name": "Crossbody Bag",
+    "price": "$19.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/479305/item/goods_09_479305_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E479305-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "479487",
+    "name": "Woven Trunks | Striped",
+    "price": "$7.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/479487/item/goods_56_479487_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E479487-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "479488",
+    "name": "Woven Trunks | Checked",
+    "price": "$7.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/479488/item/goods_65_479488_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E479488-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "479497",
+    "name": "Cotton Boxer Briefs | Striped",
+    "price": "$7.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/479497/item/goods_04_479497_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E479497-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "479502",
+    "name": "Cotton Low Rise Boxer Briefs",
+    "price": "$7.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/479502/item/goods_03_479502_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E479502-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "479525",
+    "name": "HEATTECH Ultra Warm T-Shirt",
+    "price": "$34.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/479525/item/usgoods_09_479525_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E479525-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "479724",
+    "name": "AIRism Cotton Pique Polo Shirt",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/479724/item/usgoods_38_479724_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E479724-000/00",
+    "category": "Polos"
+  },
+  {
+    "productId": "479755",
+    "name": "PUFFTECH Jacket",
+    "price": "$79.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/479755/item/goods_57_479755_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E479755-000/00",
+    "category": "Outerwear"
+  },
+  {
+    "productId": "479791",
+    "name": "Soft Knitted Fleece T-Shirt",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/479791/item/usgoods_03_479791_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E479791-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "479996",
+    "name": "Oxford Oversized Shirt",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/479996/item/goods_00_479996_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E479996-000/00",
+    "category": "Shirts & Polos"
+  },
+  {
+    "productId": "480346",
+    "name": "STUDIO GHIBLI Sweatshirt | The Boy and the Heron",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/480346/item/goods_00_480346_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E480346-000/00",
+    "category": "Sweatshirts & Hoodies"
+  },
+  {
+    "productId": "480411",
+    "name": "Ultra Stretch Active Jacket",
+    "price": "$14.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/480411/item/usgoods_69_480411_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E480411-000/00",
+    "category": "Outerwear"
+  },
+  {
+    "productId": "480764",
+    "name": "Broadcloth Shirt | Button Down | Hairline Fabric",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/480764/item/usgoods_65_480764_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E480764-000/00",
+    "category": "Shirts & Polos"
+  },
+  {
+    "productId": "480856",
+    "name": "STUDIO GHIBLI Sweatshirt | Spirited Away",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/480856/item/goods_09_480856_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E480856-000/00",
+    "category": "Sweatshirts & Hoodies"
+  },
+  {
+    "productId": "480997",
+    "name": "AIRism Boxer Briefs",
+    "price": "$14.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/480997/item/goods_09_480997_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E480997-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "481004",
+    "name": "Washable Milano Ribbed Knitted T-Shirt",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/481004/item/usgoods_65_481004_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E481004-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "481040",
+    "name": "Oversized Sweatshirt",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/481040/item/usgoods_69_481040_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E481040-000/00",
+    "category": "Sweatshirts & Hoodies"
+  },
+  {
+    "productId": "481430",
+    "name": "UV Protection Cap | Jean-Michel Basquiat",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/481430/item/goods_08_481430_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E481430-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "481441",
+    "name": "HEATTECH Extra Warm Cashmere Blend T-Shirt",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/481441/item/goods_03_481441_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E481441-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "481442",
+    "name": "HEATTECH Extra Warm Cashmere Blend Turtleneck",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/481442/item/goods_79_481442_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E481442-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "481582",
+    "name": "Stretch Easy Shorts | 8\"",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/481582/item/usgoods_08_481582_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E481582-000/00",
+    "category": "Shorts"
+  },
+  {
+    "productId": "481583",
+    "name": "Stretch Easy Shorts | Denim | 8\"",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/481583/item/usgoods_64_481583_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E481583-000/00",
+    "category": "Shorts"
+  },
+  {
+    "productId": "481610",
+    "name": "Round Mini Shoulder Bag",
+    "price": "$24.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/481610/item/goods_63_481610_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E481610-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "481623",
+    "name": "Leather Mesh Belt",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/481623/item/goods_09_481623_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E481623-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "481626",
+    "name": "Italian Leather Slide Buckle Belt",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/481626/item/goods_09_481626_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E481626-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "481629",
+    "name": "Multi Pocket Backpack",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/481629/item/goods_57_481629_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E481629-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "481633",
+    "name": "UV Protection Cap",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/481633001/item/goods_62_481633001_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E481633-001/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "482211",
+    "name": "BLOCKTECH Parka",
+    "price": "$89.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482211/item/usgoods_02_482211_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482211-000/00",
+    "category": "Outerwear"
+  },
+  {
+    "productId": "482259",
+    "name": "Linen Blend Easy Ankle Pants | Striped",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482259/item/usgoods_31_482259_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482259-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "482295",
+    "name": "AIRism Cotton Oversized T-Shirt",
+    "price": "$24.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482295/item/usgoods_42_482295_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482295-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "482299",
+    "name": "DRY-EX T-Shirt",
+    "price": "$24.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482299/item/usgoods_64_482299_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482299-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "482301",
+    "name": "V-Neck T-Shirt",
+    "price": "$9.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482301/item/usgoods_57_482301_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482301-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "482303",
+    "name": "AIRism Cotton Pique Full Open Polo Shirt",
+    "price": "$19.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482303/item/usgoods_58_482303_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482303-000/00",
+    "category": "Shirts & Polos"
+  },
+  {
+    "productId": "482304",
+    "name": "DRY Pique Polo Shirt",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482304/item/usgoods_00_482304_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482304-000/00",
+    "category": "Polos"
+  },
+  {
+    "productId": "482305",
+    "name": "DRY-EX Polo Shirt",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482305/item/usgoods_68_482305_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482305-000/00",
+    "category": "Polos"
+  },
+  {
+    "productId": "482306",
+    "name": "DRY-EX Quarter-Zip Polo Shirt",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482306/item/usgoods_69_482306_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482306-000/00",
+    "category": "Polos"
+  },
+  {
+    "productId": "482328",
+    "name": "Washable Knitted Skipper Polo Sweater",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482328/item/usgoods_79_482328_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482328-000/00",
+    "category": "Shirts & Polos"
+  },
+  {
+    "productId": "482434",
+    "name": "Premium Linen Shirt | Striped",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482434/item/usgoods_56_482434_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482434-000/00",
+    "category": "Shirts & Polos"
+  },
+  {
+    "productId": "482460",
+    "name": "Broadcloth Shirt | Button Down | Striped",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482460/item/usgoods_52_482460_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482460-000/00",
+    "category": "Shirts & Polos"
+  },
+  {
+    "productId": "482479",
+    "name": "Open Collar Shirt | Short Sleeve",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482479/item/usgoods_00_482479_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482479-000/00",
+    "category": "Shirts & Polos"
+  },
+  {
+    "productId": "482480",
+    "name": "Open Collar Shirt | Short Sleeve | Printed",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482480/item/usgoods_01_482480_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482480-000/00",
+    "category": "Shirts & Polos"
+  },
+  {
+    "productId": "482481",
+    "name": "Open Collar Shirt | Short Sleeve | Printed",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482481/item/usgoods_06_482481_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482481-000/00",
+    "category": "Shirts & Polos"
+  },
+  {
+    "productId": "482483",
+    "name": "Open Collar Shirt | Short Sleeve | Printed",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482483/item/usgoods_65_482483_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482483-000/00",
+    "category": "Shirts & Polos"
+  },
+  {
+    "productId": "482498",
+    "name": "Boxy Shirt | Short Sleeve | Checked",
+    "price": "$9.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482498/item/usgoods_31_482498_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482498-000/00",
+    "category": "Shirts & Polos"
+  },
+  {
+    "productId": "482514",
+    "name": "AIRism Crew Neck T-Shirt",
+    "price": "$14.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482514/item/usgoods_00_482514_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482514-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "482538",
+    "name": "AIRism Boxer Briefs",
+    "price": "$14.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/482538/item/goods_06_482538_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482538-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "482556",
+    "name": "AIRism Ultra Seamless Boxer Briefs",
+    "price": "$14.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/482556/item/goods_58_482556_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482556-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "482557",
+    "name": "AIRism Ultra Seamless Boxer Briefs",
+    "price": "$14.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/482557/item/goods_09_482557_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482557-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "482558",
+    "name": "AIRism Seamless Boxer Briefs | Printed",
+    "price": "$14.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/482558/item/goods_08_482558_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482558-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "482589",
+    "name": "Woven Trunks | Striped",
+    "price": "$7.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/482589/item/goods_61_482589_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482589-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "482591",
+    "name": "Woven Trunks | Tattersall",
+    "price": "$7.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/482591/item/goods_15_482591_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482591-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "482593",
+    "name": "Woven Trunks | Crest",
+    "price": "$7.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/482593/item/goods_67_482593_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482593-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "482596",
+    "name": "Cotton Boxer Briefs",
+    "price": "$7.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/482596/item/goods_16_482596_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482596-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "482598",
+    "name": "Cotton Boxer Briefs | Striped",
+    "price": "$7.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/482598/item/goods_67_482598_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482598-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "482600",
+    "name": "Cotton Boxer Briefs | Printed",
+    "price": "$7.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/482600/item/goods_68_482600_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482600-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "482601",
+    "name": "Low Rise Boxer Briefs",
+    "price": "$7.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/482601/item/goods_16_482601_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482601-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "482602",
+    "name": "Boxer Briefs Low Rise | Striped",
+    "price": "$7.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/482602/item/goods_09_482602_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482602-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "482605",
+    "name": "Colorful 50 Socks",
+    "price": "$4.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/482605/item/goods_04_482605_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482605-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "482758",
+    "name": "Wide Sweat Shorts",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482758/item/usgoods_69_482758_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482758-000/00",
+    "category": "Shorts"
+  },
+  {
+    "productId": "482816",
+    "name": "UV Protection Reversible Bucket Hat",
+    "price": "$14.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/482816/item/goods_32_482816_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482816-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "482858",
+    "name": "Slim Straight Jeans | Selvedge",
+    "price": "$59.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482858/item/usgoods_69_482858_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482858-000/00",
+    "category": "Jeans"
+  },
+  {
+    "productId": "482861",
+    "name": "Straight Jeans | Tall",
+    "price": "$59.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482861/item/usgoods_07_482861_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482861-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "482868",
+    "name": "Baggy Jeans",
+    "price": "$59.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482868/item/usgoods_08_482868_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482868-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "482874",
+    "name": "Wide Tapered Jeans",
+    "price": "$14.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482874/item/usgoods_09_482874_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482874-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "482880",
+    "name": "Chino Pants",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482880/item/usgoods_34_482880_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482880-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "482883",
+    "name": "Wide Cargo Pants",
+    "price": "$59.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482883/item/usgoods_58_482883_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482883-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "482920",
+    "name": "Linen Blend Relaxed Pants",
+    "price": "$59.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482920/item/usgoods_69_482920_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482920-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "482930",
+    "name": "Ultra Stretch Pants | Tall",
+    "price": "$59.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482930/item/usgoods_69_482930_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482930-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "482933",
+    "name": "Premium Linen Wide Pants",
+    "price": "$19.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482933/item/usgoods_04_482933_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482933-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "482936",
+    "name": "Cargo Pants",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482936/item/usgoods_67_482936_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482936-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "482937",
+    "name": "Geared Shorts | 8\"",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482937/item/usgoods_77_482937_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482937-000/00",
+    "category": "Shorts"
+  },
+  {
+    "productId": "482942",
+    "name": "Cargo Shorts | 10.5\"",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482942/item/usgoods_69_482942_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482942-000/00",
+    "category": "Shorts"
+  },
+  {
+    "productId": "482944",
+    "name": "Chino Shorts | 8.5\"",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482944/item/usgoods_01_482944_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482944-000/00",
+    "category": "Shorts"
+  },
+  {
+    "productId": "482958",
+    "name": "Linen Blend Shorts | 9.5\"",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482958/item/usgoods_69_482958_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E482958-000/00",
+    "category": "Shorts"
+  },
+  {
+    "productId": "483050",
+    "name": "Drawstring Bag",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/483050/item/goods_69_483050_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E483050-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "483771",
+    "name": "Straight Jeans | Tall",
+    "price": "$59.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/483771/item/usgoods_63_483771_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E483771-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "483819",
+    "name": "Utility Jacket",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/483819/item/usgoods_09_483819_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E483819-000/00",
+    "category": "Outerwear"
+  },
+  {
+    "productId": "483835",
+    "name": "Short Blouson",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/483835/item/usgoods_09_483835_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E483835-000/00",
+    "category": "Outerwear"
+  },
+  {
+    "productId": "483836",
+    "name": "Relaxed Fit Jacket",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/483836/item/usgoods_34_483836_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E483836-000/00",
+    "category": "Outerwear"
+  },
+  {
+    "productId": "483924",
+    "name": "DRY Waffle Henley T-Shirt",
+    "price": "$24.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/483924/item/usgoods_57_483924_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E483924-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "483960",
+    "name": "Washable 3D Knit Pullover Hoodie",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/483960/item/usgoods_69_483960_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E483960-000/00",
+    "category": "Sweatshirts & Hoodies"
+  },
+  {
+    "productId": "483970",
+    "name": "DRY-EX T-Shirt | Patterned",
+    "price": "$24.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/483970/item/usgoods_03_483970_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E483970-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "483972",
+    "name": "DRY-EX Polo Shirt | Pattern",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/483972/item/usgoods_66_483972_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E483972-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "483975",
+    "name": "DRY-EX UV Protection Full-Zip Hoodie | Print",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/483975/item/usgoods_03_483975_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E483975-000/00",
+    "category": "Sweatshirts & Hoodies"
+  },
+  {
+    "productId": "483996",
+    "name": "Woven Trunks | Crest",
+    "price": "$7.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/483996/item/goods_63_483996_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E483996-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "484080",
+    "name": "Washed Cotton T-Shirt | Long Sleeve",
+    "price": "$9.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484080/item/usgoods_00_484080_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E484080-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "484203",
+    "name": "Raglan T-Shirt",
+    "price": "$24.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484203/item/usgoods_03_484203_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E484203-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "484209",
+    "name": "Jorts | 13\"",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484209/item/usgoods_01_484209_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E484209-000/00",
+    "category": "Shorts"
+  },
+  {
+    "productId": "484244",
+    "name": "Oxford Oversized Shirt",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484244/item/usgoods_00_484244_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E484244-000/00",
+    "category": "Shirts & Polos"
+  },
+  {
+    "productId": "484245",
+    "name": "Denim Shirt",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484245/item/usgoods_68_484245_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E484245-000/00",
+    "category": "Shirts & Polos"
+  },
+  {
+    "productId": "484247",
+    "name": "Windproof Stand Blouson",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484247/item/usgoods_31_484247_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E484247-000/00",
+    "category": "Outerwear"
+  },
+  {
+    "productId": "484249",
+    "name": "Zip-Up Blouson",
+    "price": "$59.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484249/item/usgoods_67_484249_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E484249-000/00",
+    "category": "Outerwear"
+  },
+  {
+    "productId": "484397",
+    "name": "Ultra Stretch Active Shorts | 6.5\"",
+    "price": "$14.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484397/item/usgoods_55_484397_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E484397-000/00",
+    "category": "Shorts"
+  },
+  {
+    "productId": "484398",
+    "name": "DRY Stretch Sweat Jacket",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484398/item/usgoods_69_484398_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E484398-000/00",
+    "category": "Sweatshirts & Hoodies"
+  },
+  {
+    "productId": "484399",
+    "name": "DRY Stretch Sweatpants",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484399/item/usgoods_09_484399_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E484399-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "484403",
+    "name": "Milano Ribbed Jacket",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484403/item/usgoods_07_484403_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E484403-000/00",
+    "category": "Sweaters"
+  },
+  {
+    "productId": "484508",
+    "name": "AIRism Cotton Oversized Striped T-Shirt",
+    "price": "$24.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484508/item/usgoods_69_484508_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E484508-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "484610",
+    "name": "Harrington Jacket",
+    "price": "$69.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484610/item/usgoods_32_484610_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E484610-000/00",
+    "category": "Outerwear"
+  },
+  {
+    "productId": "484663",
+    "name": "PEANUTS Coach Jacket",
+    "price": "$14.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484663002/item/usgoods_55_484663002_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E484663-002/00",
+    "category": "Outerwear"
+  },
+  {
+    "productId": "484719",
+    "name": "Gift Bag",
+    "price": "$3.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/484719/item/goods_01_484719_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E484719-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "484780",
+    "name": "Waffle T-Shirt",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484780/item/usgoods_65_484780_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E484780-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "484783",
+    "name": "Leather Combination Striped Belt",
+    "price": "$7.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/484783/item/goods_55_484783_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E484783-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "484784",
+    "name": "Stretch Easy Ankle Pants | Seersucker",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484784/item/usgoods_64_484784_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E484784-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "484803",
+    "name": "DRY Waffle T-Shirt",
+    "price": "$9.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484803/item/usgoods_09_484803_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E484803-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "484875",
+    "name": "Barrel Pants",
+    "price": "$59.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484875/item/usgoods_34_484875_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E484875-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "484876",
+    "name": "Premium Linen Oversized Shirt | Short Sleeve",
+    "price": "$19.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484876/item/usgoods_09_484876_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E484876-000/00",
+    "category": "Shirts & Polos"
+  },
+  {
+    "productId": "484896",
+    "name": "Broadcloth Shirt | Regular Collar | Checked",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484896/item/usgoods_69_484896_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E484896-000/00",
+    "category": "Shirts & Polos"
+  },
+  {
+    "productId": "484904",
+    "name": "Oxford Oversized Shirt | Striped",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484904/item/usgoods_64_484904_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E484904-000/00",
+    "category": "Shirts & Polos"
+  },
+  {
+    "productId": "484905",
+    "name": "Oxford Oversized Shirt | Striped",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/484905/item/usgoods_01_484905_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E484905-000/00",
+    "category": "Shirts & Polos"
+  },
+  {
+    "productId": "484996",
+    "name": "AIRism Ultra Seamless Boxer Briefs | Heather Printed",
+    "price": "$14.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/484996/item/goods_08_484996_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E484996-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "485454",
+    "name": "Bicolor T-Shirt",
+    "price": "$24.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485454/item/usgoods_26_485454_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485454-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "485455",
+    "name": "Henley Neck T-Shirt",
+    "price": "$24.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485455/item/usgoods_05_485455_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485455-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "485564",
+    "name": "DRY Pique Polo Shirt | Tipping",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485564/item/usgoods_69_485564_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485564-000/00",
+    "category": "Polos"
+  },
+  {
+    "productId": "485565",
+    "name": "DRY Pique Striped Polo Shirt | Wide Stripe",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485565/item/usgoods_69_485565_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485565-000/00",
+    "category": "Polos"
+  },
+  {
+    "productId": "485566",
+    "name": "DRY Pique Striped Polo Shirt | Narrow Stripe",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485566/item/usgoods_12_485566_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485566-000/00",
+    "category": "Polos"
+  },
+  {
+    "productId": "485567",
+    "name": "DRY Pique Striped Polo Shirt",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485567/item/usgoods_01_485567_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485567-000/00",
+    "category": "Polos"
+  },
+  {
+    "productId": "485568",
+    "name": "DRY Pique Striped Polo Shirt | Panel",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485568/item/usgoods_69_485568_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485568-000/00",
+    "category": "Polos"
+  },
+  {
+    "productId": "485612",
+    "name": "Washable Knitted Polo Sweater | Short Sleeve | Striped",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485612/item/usgoods_02_485612_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485612-000/00",
+    "category": "Shirts & Polos"
+  },
+  {
+    "productId": "485652",
+    "name": "Broadcloth Shirt | Button Down | Checked",
+    "price": "$14.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485652/item/usgoods_61_485652_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485652-000/00",
+    "category": "Shirts & Polos"
+  },
+  {
+    "productId": "485653",
+    "name": "Broadcloth Shirt | Regular Collar | Striped",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485653/item/usgoods_01_485653_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485653-000/00",
+    "category": "Shirts & Polos"
+  },
+  {
+    "productId": "485684",
+    "name": "Washable Knitted Shirt | Short Sleeve",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485684/item/usgoods_01_485684_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485684-000/00",
+    "category": "Shirts & Polos"
+  },
+  {
+    "productId": "485689",
+    "name": "Premium Linen Shirt | Striped",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485689/item/usgoods_64_485689_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485689-000/00",
+    "category": "Shirts & Polos"
+  },
+  {
+    "productId": "485735",
+    "name": "Sweat Oversized Full-Zip Hoodie",
+    "price": "$59.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485735/item/usgoods_09_485735_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485735-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "485738",
+    "name": "Selvedge Straight Jeans | Tall",
+    "price": "$59.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485738/item/usgoods_69_485738_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485738-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "485744",
+    "name": "Ultra Stretch Active Jogger Pants",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485744/item/usgoods_03_485744_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485744-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "485755",
+    "name": "Wellington Sunglasses",
+    "price": "$24.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/485755/item/goods_80_485755_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485755-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "485756",
+    "name": "Square Sunglasses",
+    "price": "$24.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/485756/item/goods_09_485756_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485756-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "485757",
+    "name": "Boston Combination Sunglasses",
+    "price": "$24.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/485757/item/goods_33_485757_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485757-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "485758",
+    "name": "Wellington Folding Sunglasses",
+    "price": "$24.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/485758/item/goods_09_485758_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485758-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "485759",
+    "name": "Metal Double Bridge Sunglasses",
+    "price": "$24.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/485759/item/goods_09_485759_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485759-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "485760",
+    "name": "Metal Sunglasses",
+    "price": "$24.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/485760/item/goods_21_485760_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485760-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "485762",
+    "name": "Metal Rectangle Sunglasses",
+    "price": "$24.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/485762/item/goods_58_485762_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485762-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "485763",
+    "name": "Flat Top Sunglasses",
+    "price": "$24.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/485763/item/goods_80_485763_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485763-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "485764",
+    "name": "Big Square Sunglasses",
+    "price": "$24.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/485764/item/goods_80_485764_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485764-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "485765",
+    "name": "Double Bridge Sunglasses",
+    "price": "$24.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/485765/item/goods_37_485765_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485765-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "485766",
+    "name": "Narrow Sunglasses",
+    "price": "$24.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/485766/item/goods_09_485766_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485766-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "485767",
+    "name": "Rectangle Sunglasses",
+    "price": "$24.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/485767/item/goods_09_485767_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485767-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "485768",
+    "name": "Bold Square Sunglasses",
+    "price": "$24.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/485768/item/goods_80_485768_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485768-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "485769",
+    "name": "Angular Sunglasses",
+    "price": "$24.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/485769/item/goods_09_485769_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485769-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "485782",
+    "name": "DRY-EX Polo Shirt",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485782/item/usgoods_00_485782_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485782-000/00",
+    "category": "Polos"
+  },
+  {
+    "productId": "485800",
+    "name": "Slim Straight Jeans | Tall",
+    "price": "$59.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485800/item/usgoods_64_485800_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485800-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "485801",
+    "name": "Slim Straight Jeans | Tall",
+    "price": "$59.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485801/item/usgoods_09_485801_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485801-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "485855",
+    "name": "Linen Blend Easy Shorts | 5\"",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485855/item/usgoods_37_485855_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485855-000/00",
+    "category": "Shorts"
+  },
+  {
+    "productId": "485856",
+    "name": "Ultra Stretch Sweat Shorts | 7\"",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/485856/item/usgoods_69_485856_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E485856-000/00",
+    "category": "Shorts"
+  },
+  {
+    "productId": "486056",
+    "name": "Boston Sunglasses",
+    "price": "$24.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/486056/item/goods_37_486056_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E486056-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "486103",
+    "name": "AIRism Cotton Striped T-Shirt",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/486103/item/usgoods_09_486103_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E486103-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "486766",
+    "name": "Crossbody Bag",
+    "price": "$19.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/486766/item/goods_64_486766_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E486766-000/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "486772",
+    "name": "Shield Sunglasses",
+    "price": "$24.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/486772001/item/goods_37_486772001_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E486772-001/00",
+    "category": "Accessories"
+  },
+  {
+    "productId": "487302",
+    "name": "SUPIMA® Cotton V-Neck T-Shirt",
+    "price": "$14.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/487302/item/usgoods_09_487302_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E487302-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "487374",
+    "name": "Sweatpants | Tall",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/487374/item/usgoods_05_487374_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E487374-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "487505",
+    "name": "AIRism Cotton Striped T-Shirt | Long Sleeve",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/487505/item/usgoods_00_487505_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E487505-000/00",
+    "category": "Tops"
+  },
+  {
+    "productId": "487636",
+    "name": "Wide Chino Pants",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/487636/item/usgoods_07_487636_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E487636-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "487640",
+    "name": "Utility Jacket | Denim",
+    "price": "$29.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/487640/item/usgoods_68_487640_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E487640-000/00",
+    "category": "Outerwear"
+  },
+  {
+    "productId": "487650",
+    "name": "Cotton Boxer Briefs",
+    "price": "$7.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/487650/item/goods_54_487650_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E487650-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "487679",
+    "name": "Seersucker Shirt | Short Sleeve",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/487679/item/usgoods_01_487679_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E487679-000/00",
+    "category": "Shirts & Polos"
+  },
+  {
+    "productId": "487680",
+    "name": "Seersucker Shirt | Short Sleeve | Striped",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/487680/item/usgoods_64_487680_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E487680-000/00",
+    "category": "Shirts & Polos"
+  },
+  {
+    "productId": "487705",
+    "name": "Wide Chino Pants | Tall",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/487705/item/goods_38_487705_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E487705-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "487743",
+    "name": "Straight Jeans | Tall",
+    "price": "$59.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/487743/item/usgoods_63_487743_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E487743-000/00",
+    "category": "Bottoms"
+  },
+  {
+    "productId": "487888",
+    "name": "AIRism Boxer Briefs | Striped",
+    "price": "$14.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/487888/item/goods_68_487888_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E487888-000/00",
+    "category": "Innerwear"
+  },
+  {
+    "productId": "487905",
+    "name": "AIRism Cotton Easy Shorts",
+    "price": "$39.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/487905/item/usgoods_01_487905_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E487905-000/00",
+    "category": "Shorts"
+  },
+  {
+    "productId": "488371",
+    "name": "Geared Shorts | 8\"",
+    "price": "$49.90",
+    "imageUrl": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/488371/item/usgoods_77_488371_3x4.jpg",
+    "productUrl": "https://www.uniqlo.com/us/en/products/E488371-000/00",
+    "category": "Shorts"
+  }
+]

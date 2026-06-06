@@ -1,11 +1,6 @@
 import React, { useState } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    Dimensions,
-} from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Dimensions,  } from 'react-native'
+import { ScaledText } from './ui/ScaledText';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
@@ -83,7 +78,7 @@ const ActionItem: React.FC<ActionItemProps> = ({ action, index, progress, onPres
                 <Ionicons name={action.icon} size={24} color={action.color} />
             </TouchableOpacity>
             <Animated.View style={[styles.labelContainer, labelStyle]}>
-                <Text style={styles.label}>{action.label}</Text>
+                <ScaledText style={styles.label}>{action.label}</ScaledText>
             </Animated.View>
         </Animated.View>
     );

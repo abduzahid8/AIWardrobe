@@ -1,36 +1,15 @@
-/**
- * WardrobeAnalyticsScreen — Full wardrobe stats dashboard
- *
- * Features:
- *   - Closet utilization score (hero metric)
- *   - Most worn items (top 5)
- *   - Color palette distribution
- *   - Category breakdown (horizontal bar chart)
- *   - Unworn items nudge
- *   - Diversity score
- *
- * Uses existing store methods + new diversityEngine service.
- */
-
 import React, { useMemo } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    ScrollView,
-    Dimensions,
-    TouchableOpacity,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { ScaledText } from '../components/ui/ScaledText';
+import { ScreenWrapper } from '../components/ui/ScreenWrapper';
+import { LiquidGlassCard, PressableGlassCard } from '../components/ui/LiquidGlassCard';
+import { QuickStat } from '../components/ui/QuickStat';
+import { StatsCard } from '../components/ui/StatsCard';
 import { CachedImage } from '../components/ui/CachedImage';
 import { Ionicons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
-import Animated, {
-    FadeInDown,
-    FadeInRight,
-} from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
+import { colors, spacing, borderRadius, shadows, typography } from '../src/theme';
 import useWardrobeStore from '../store/wardrobeStore';
 import { useSubscriptionGate } from '../src/hooks/useSubscriptionGate';
 import FeatureLockOverlay from '../components/paywall/FeatureLockOverlay';
@@ -38,656 +17,735 @@ import { scoreDiversity, getColorDistribution, getCategoryBreakdown } from '../s
 import type { ColorDistEntry, CategoryBreakdownEntry } from '../src/services/diversityEngine';
 import { useTranslation } from 'react-i18next';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const { colors, spacing, radius, typography } = LiquidGlass2026Theme;
-
-// ============================================
-// SUB-COMPONENTS
-// ============================================
-
-/** Circular progress indicator for utilization score */
-const CircularProgress = ({ percentage, size = 120, t }: { percentage: number; size?: number; t: any }) => {
-    const strokeWidth = 10;
-    const r = (size - strokeWidth) / 2;
-    const circumference = 2 * Math.PI * r;
-    const fillLength = (percentage / 100) * circumference;
-
-    const getColor = (pct: number) => {
-        if (pct >= 70) return '#34D399'; // green
-        if (pct >= 40) return '#FBBF24'; // amber
-        return '#F87171'; // red
-    };
-
-    return (
-        <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-            <View style={{
-                width: size,
-                height: size,
-                borderRadius: size / 2,
-                borderWidth: strokeWidth,
-                borderColor: colors.border.glass,
-                position: 'absolute',
-            }} />
-            <View style={{
-                width: size,
-                height: size,
-                borderRadius: size / 2,
-                borderWidth: strokeWidth,
-                borderColor: getColor(percentage),
-                borderTopColor: percentage >= 25 ? getColor(percentage) : 'transparent',
-                borderRightColor: percentage >= 50 ? getColor(percentage) : 'transparent',
-                borderBottomColor: percentage >= 75 ? getColor(percentage) : 'transparent',
-                borderLeftColor: percentage < 100 ? 'transparent' : getColor(percentage),
-                position: 'absolute',
-                transform: [{ rotate: '-90deg' }],
-            }} />
-            <Text style={styles.circularValue}>{percentage}%</Text>
-            <Text style={styles.circularLabel}>{t('analytics.utilized')}</Text>
-        </View>
-    );
+const CATEGORY_COLORS: Record<string, string> = {
+  top: '#60A5FA',
+  bottom: '#A78BFA',
+  shoes: '#F472B6',
+  outerwear: '#34D399',
+  dress: '#FBBF24',
+  accessory: '#FB923C',
+  other: '#94A3B8',
 };
 
-/** Horizontal bar for category breakdown */
-const CategoryBar = ({ label, count, total, color }: {
-    label: string; count: number; total: number; color: string;
-}) => {
-    const pct = total > 0 ? (count / total) * 100 : 0;
-    return (
-        <View style={styles.categoryBarContainer}>
-            <View style={styles.categoryBarLabelRow}>
-                <Text style={styles.categoryBarLabel}>{label}</Text>
-                <Text style={styles.categoryBarCount}>{count}</Text>
-            </View>
-            <View style={styles.categoryBarTrack}>
-                <Animated.View
-                    entering={FadeInRight.duration(600).delay(200)}
-                    style={[styles.categoryBarFill, { width: `${Math.max(pct, 2)}%`, backgroundColor: color }]}
-                />
-            </View>
-        </View>
-    );
+const ColorSwatch = ({ color, name, count, total }: { color: string; name: string; count: number; total: number }) => {
+  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+  return (
+    <View style={styles.swatchContainer}>
+      <View style={[styles.swatchCircle, { backgroundColor: color }]} />
+      <ScaledText style={styles.swatchName} numberOfLines={1}>{name}</ScaledText>
+      <ScaledText style={styles.swatchPct}>{pct}%</ScaledText>
+    </View>
+  );
 };
 
-/** Color swatch in palette */
-const ColorSwatch = ({ color, name, count, total }: {
-    color: string; name: string; count: number; total: number;
-}) => {
-    const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-    return (
-        <View style={styles.swatchContainer}>
-            <View style={[styles.swatchCircle, { backgroundColor: color }]} />
-            <Text style={styles.swatchName} numberOfLines={1}>{name}</Text>
-            <Text style={styles.swatchPct}>{pct}%</Text>
-        </View>
-    );
+const CategoryBar = ({ label, count, total, color }: { label: string; count: number; total: number; color: string }) => {
+  const pct = total > 0 ? (count / total) * 100 : 0;
+  return (
+    <View style={styles.categoryBarContainer}>
+      <View style={styles.categoryBarLabelRow}>
+        <ScaledText style={styles.categoryBarLabel}>{label}</ScaledText>
+        <ScaledText style={styles.categoryBarCount}>{count}</ScaledText>
+      </View>
+      <View style={styles.categoryBarTrack}>
+        <Animated.View
+          entering={FadeInRight.duration(600).delay(200)}
+          style={[styles.categoryBarFill, { width: `${Math.max(pct, 2)}%`, backgroundColor: color }]}
+        />
+      </View>
+    </View>
+  );
 };
-
-// ============================================
-// MAIN COMPONENT
-// ============================================
 
 export default function WardrobeAnalyticsScreen({ navigation }: any) {
-    const { canAccess } = useSubscriptionGate();
-    const { t } = useTranslation();
-    const hasAccess = canAccess('analytics');
+  const { canAccess } = useSubscriptionGate();
+  const { t } = useTranslation();
+  const hasAccess = canAccess('analytics');
 
-    const items = useWardrobeStore((s) => s.items);
-    const wearLogs = useWardrobeStore((s) => s.wearLogs);
+  const items = useWardrobeStore((s) => s.items);
+  const wearLogs = useWardrobeStore((s) => s.wearLogs);
+  const streak = useWardrobeStore((s) => s.streak);
 
-    // Compute derived values from store without creating infinite loops
-    // by using the existing state snapshot
-    const utilization = useMemo(() => useWardrobeStore.getState().getClosetUtilization(30), [items, wearLogs]);
-    const unwornItems = useMemo(() => useWardrobeStore.getState().getUnwornItems(30), [items, wearLogs]);
-    const streak = useMemo(() => useWardrobeStore.getState().getStreak(), [wearLogs]);
+  const analytics = useMemo(() => {
+    const utilization = items.length > 0
+      ? (() => {
+        const cutoff = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+        const recentLogs = wearLogs.filter((log) => log.date >= cutoff);
+        const wornItemIds = new Set(recentLogs.flatMap((log) => log.itemIds));
+        return Math.round((wornItemIds.size / items.length) * 100);
+      })()
+      : 0;
 
-    // Derived analytics
-    const analytics = useMemo(() => {
-        const diversity = scoreDiversity(items, wearLogs);
-        const colorDist = getColorDistribution(items);
-        const categoryBreakdown = getCategoryBreakdown(items);
+    const unwornItems = (() => {
+      const cutoff = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+      const recentLogs = wearLogs.filter((log) => log.date >= cutoff);
+      const wornItemIds = new Set(recentLogs.flatMap((log) => log.itemIds));
+      return items.filter((item) => !wornItemIds.has(item.id));
+    })();
 
-        // Most worn (top 5)
-        const mostWorn = [...items]
-            .sort((a, b) => b.wearCount - a.wearCount)
-            .filter(i => i.wearCount > 0)
-            .slice(0, 5);
+    const diversity = scoreDiversity(items, wearLogs);
+    const colorDist = getColorDistribution(items);
+    const categoryBreakdown = getCategoryBreakdown(items);
 
-        // Total wears
-        const totalWears = wearLogs.length;
+    const mostWorn = [...items]
+      .sort((a, b) => b.wearCount - a.wearCount)
+      .filter(i => i.wearCount > 0)
+      .slice(0, 5);
 
-        // Avg wears per item
-        const avgWears = items.length > 0
-            ? Math.round((items.reduce((sum, i) => sum + i.wearCount, 0) / items.length) * 10) / 10
-            : 0;
+    const totalWears = wearLogs.length;
+    const avgWears = items.length > 0
+      ? Math.round((items.reduce((sum, i) => sum + i.wearCount, 0) / items.length) * 10) / 10
+      : 0;
+    const totalWearCounts = items.reduce((sum, i) => sum + i.wearCount, 0);
 
-        return { diversity, colorDist, categoryBreakdown, mostWorn, totalWears, avgWears };
-    }, [items, wearLogs]);
+    const seasonBreakdown = (() => {
+      const counts: Record<string, number> = {};
+      items.forEach((item) => {
+        if (item.seasons) {
+          item.seasons.forEach((s) => {
+            counts[s] = (counts[s] || 0) + 1;
+          });
+        }
+      });
+      return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    })();
 
-    // Analytics is gated for Free users. We render a tease overlay instead of
-    // navigating away — seeing "locked, but your data is waiting" drives
-    // meaningfully higher upgrade rates than a silent redirect.
-    if (!hasAccess) {
-        return (
-            <FeatureLockOverlay
-                requiredTier="Pro"
-                featureName={t('wardrobeAnalytics.featureName')}
-                tagline={t('wardrobeAnalytics.tagline')}
-                icon="bar-chart"
-                bullets={[
-                    t('wardrobeAnalytics.bullet1'),
-                    t('wardrobeAnalytics.bullet2'),
-                    t('wardrobeAnalytics.bullet3'),
-                    t('wardrobeAnalytics.bullet4'),
-                ]}
-            />
-        );
-    }
+    const occasionBreakdown = (() => {
+      const counts: Record<string, number> = {};
+      items.forEach((item) => {
+        if (item.occasions) {
+          item.occasions.forEach((o) => {
+            counts[o] = (counts[o] || 0) + 1;
+          });
+        }
+      });
+      return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    })();
 
-    const CATEGORY_COLORS: Record<string, string> = {
-        top: '#60A5FA',
-        bottom: '#A78BFA',
-        shoes: '#F472B6',
-        outerwear: '#34D399',
-        accessory: '#FBBF24',
+    const favoritesCount = items.filter((i) => i.isFavorite).length;
+    const favoriteUtilization = favoritesCount > 0
+      ? items.filter((i) => i.isFavorite && i.wearCount > 0).length / favoritesCount
+      : 0;
+
+    return {
+      utilization, unwornItems, diversity, colorDist, categoryBreakdown,
+      mostWorn, totalWears, avgWears, totalWearCounts,
+      seasonBreakdown, occasionBreakdown, favoritesCount, favoriteUtilization,
     };
+  }, [items, wearLogs]);
 
+  if (!hasAccess) {
     return (
-        <SafeAreaView style={styles.container}>
-            <LinearGradient
-                colors={['#F6FAFF', '#EEF4FF', '#FFFFFF']}
-                style={StyleSheet.absoluteFill}
-                pointerEvents="none"
-            />
-            <View pointerEvents="none" style={styles.backgroundOrbTop} />
-            <View pointerEvents="none" style={styles.backgroundOrbBottom} />
-            {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>{t('analytics.title')}</Text>
-                <View style={{ width: 32 }} />
-            </View>
-
-            <ScrollView
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-            >
-                {/* Hero Stats Row */}
-                <Animated.View entering={FadeInDown.duration(500)} style={styles.heroRow}>
-                    <View style={styles.heroCard}>
-                        <CircularProgress percentage={utilization} t={t} />
-                    </View>
-                    <View style={styles.heroStatsColumn}>
-                        <View style={styles.heroStat}>
-                            <Text style={styles.heroStatValue}>{items.length}</Text>
-                            <Text style={styles.heroStatLabel}>{t('analytics.totalItems')}</Text>
-                        </View>
-                        <View style={styles.heroStat}>
-                            <Text style={styles.heroStatValue}>{analytics.totalWears}</Text>
-                            <Text style={styles.heroStatLabel}>{t('analytics.totalWears')}</Text>
-                        </View>
-                        <View style={styles.heroStat}>
-                            <Text style={styles.heroStatValue}>{analytics.avgWears}</Text>
-                            <Text style={styles.heroStatLabel}>{t('analytics.avgItem')}</Text>
-                        </View>
-                        <View style={styles.heroStat}>
-                            <Text style={styles.heroStatValue}>{t('analytics.emojiStreak', { streak })}</Text>
-                            <Text style={styles.heroStatLabel}>{t('analytics.dayStreak')}</Text>
-                        </View>
-                    </View>
-                </Animated.View>
-
-                {/* Diversity Score */}
-                <Animated.View entering={FadeInDown.duration(500).delay(100)} style={styles.card}>
-                    <View style={styles.cardHeader}>
-                        <Text style={styles.cardTitle}>{t('analytics.styleDiversity')}</Text>
-                        <View style={[styles.scoreBadge, {
-                            backgroundColor: analytics.diversity >= 70 ? '#DCFCE7' :
-                                analytics.diversity >= 40 ? '#FEF9C3' : '#FEE2E2'
-                        }]}>
-                            <Text style={[styles.scoreBadgeText, {
-                                color: analytics.diversity >= 70 ? '#166534' :
-                                    analytics.diversity >= 40 ? '#854D0E' : '#991B1B'
-                            }]}>
-                                {analytics.diversity}/100
-                            </Text>
-                        </View>
-                    </View>
-                    <Text style={styles.cardSubtitle}>
-                        {analytics.diversity >= 70
-                            ? 'Great variety! You use your wardrobe well.'
-                            : analytics.diversity >= 40
-                                ? 'Good start. Try mixing in some unworn items!'
-                                : 'You tend to repeat the same items. Try the Surprise Me feature!'}
-                    </Text>
-                    <View style={styles.diversityBar}>
-                        <Animated.View
-                            entering={FadeInRight.duration(800).delay(300)}
-                            style={[styles.diversityFill, { width: `${analytics.diversity}%` }]}
-                        />
-                    </View>
-                </Animated.View>
-
-                {/* Most Worn Items */}
-                {analytics.mostWorn.length > 0 ? (
-                    <Animated.View entering={FadeInDown.duration(500).delay(200)} style={styles.card}>
-                        <Text style={styles.cardTitle}>{t('analytics.mostWorn')}</Text>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mostWornScroll}>
-                            {analytics.mostWorn.map((item, idx) => (
-                                <View key={item.id} style={styles.mostWornItem}>
-                                    <View style={styles.mostWornRank}>
-                                        <Text style={styles.mostWornRankText}>{t('analytics.rankNumber', { rank: idx + 1 })}</Text>
-                                    </View>
-                                    <CachedImage
-                                        uri={item.imageUrl || item.thumbnailUrl || ''}
-                                        style={styles.mostWornImage}
-                                        contentFit="cover"
-                                        fadeIn={false}
-                                    />
-                                    <Text style={styles.mostWornCount}>{item.wearCount}×</Text>
-                                    <Text style={styles.mostWornName} numberOfLines={1}>
-                                        {item.name || item.subCategory || item.category}
-                                    </Text>
-                                </View>
-                            ))}
-                        </ScrollView>
-                    </Animated.View>
-                ) : null}
-
-                {/* Color Palette */}
-                {analytics.colorDist.length > 0 ? (
-                    <Animated.View entering={FadeInDown.duration(500).delay(300)} style={styles.card}>
-                        <Text style={styles.cardTitle}>{t('analytics.colorPalette')}</Text>
-                        <View style={styles.swatchRow}>
-                            {analytics.colorDist.slice(0, 8).map(({ color, name, count }: ColorDistEntry) => (
-                                <ColorSwatch
-                                    key={name}
-                                    color={color}
-                                    name={name}
-                                    count={count}
-                                    total={items.length}
-                                />
-                            ))}
-                        </View>
-                    </Animated.View>
-                ) : null}
-
-                {/* Category Breakdown */}
-                <Animated.View entering={FadeInDown.duration(500).delay(400)} style={styles.card}>
-                    <Text style={styles.cardTitle}>{t('analytics.categoryBreakdown')}</Text>
-                    {analytics.categoryBreakdown.map(({ category, count }: CategoryBreakdownEntry) => (
-                        <CategoryBar
-                            key={category}
-                            label={category.charAt(0).toUpperCase() + category.slice(1)}
-                            count={count}
-                            total={items.length}
-                            color={CATEGORY_COLORS[category] || '#94A3B8'}
-                        />
-                    ))}
-                </Animated.View>
-
-                {/* Unworn Alert */}
-                {unwornItems.length > 0 ? (
-                    <Animated.View entering={FadeInDown.duration(500).delay(500)} style={styles.unwornCard}>
-                        <View style={styles.unwornHeader}>
-                            <Ionicons name="alert-circle" size={20} color="#F59E0B" />
-                            <Text style={styles.unwornTitle}>
-                                {unwornItems.length} items unworn in 30 days
-                            </Text>
-                        </View>
-                        <Text style={styles.unwornSubtitle}>
-                            That's {Math.round((unwornItems.length / items.length) * 100)}% of your wardrobe sitting idle.
-                        </Text>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.unwornScroll}>
-                            {unwornItems.slice(0, 10).map((item) => (
-                                <CachedImage
-                                    key={item.id}
-                                    uri={item.imageUrl || item.thumbnailUrl || ''}
-                                    style={styles.unwornImage}
-                                    contentFit="cover"
-                                    fadeIn={false}
-                                />
-                            ))}
-                        </ScrollView>
-                    </Animated.View>
-                ) : null}
-
-                {/* Empty state */}
-                {items.length === 0 ? (
-                    <View style={styles.emptyState}>
-                        <Ionicons name="analytics-outline" size={64} color={colors.text.tertiary} />
-                        <Text style={styles.emptyTitle}>{t('analytics.noDataYet')}</Text>
-                        <Text style={styles.emptySubtitle}>
-                            Add items to your wardrobe and log what you wear to see analytics.
-                        </Text>
-                    </View>
-                ) : null}
-            </ScrollView>
-        </SafeAreaView>
+      <FeatureLockOverlay
+        requiredTier="Pro"
+        featureName={t('wardrobeAnalytics.featureName')}
+        tagline={t('wardrobeAnalytics.tagline')}
+        icon="bar-chart"
+        bullets={[
+          t('wardrobeAnalytics.bullet1'),
+          t('wardrobeAnalytics.bullet2'),
+          t('wardrobeAnalytics.bullet3'),
+          t('wardrobeAnalytics.bullet4'),
+        ]}
+      />
     );
+  }
+
+  return (
+    <ScreenWrapper animation="fade">
+      <LinearGradient
+        colors={['rgba(188, 210, 245, 0.32)', 'rgba(216, 229, 252, 0.24)', '#FFFFFF']}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+      <View pointerEvents="none" style={styles.backgroundOrbTop} />
+      <View pointerEvents="none" style={styles.backgroundOrbBottom} />
+
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
+          </TouchableOpacity>
+          <ScaledText style={styles.headerTitle}>{t('analytics.title')}</ScaledText>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('WeeklyInsights')}
+            style={styles.headerAction}
+          >
+            <Ionicons name="calendar-outline" size={22} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Hero Utilization */}
+        <Animated.View entering={FadeInDown.duration(500)} style={styles.heroSection}>
+          <LiquidGlassCard variant="opaque" radius="xl">
+            <StatsCard
+              title={t('analytics.closetUtilization')}
+              value={analytics.utilization}
+              subtitle={`${analytics.totalWearCounts} total wears across ${items.length} items`}
+              progress={analytics.utilization / 100}
+              icon="pie-chart"
+              trend={analytics.utilization >= 50 ? 'up' : analytics.utilization >= 20 ? 'neutral' : 'down'}
+              trendValue={analytics.utilization >= 50 ? 'Good rotation' : 'Needs attention'}
+              gradient
+              gradientColors={['#0A1931', '#1E3A5F']}
+            />
+          </LiquidGlassCard>
+        </Animated.View>
+
+        {/* Quick Stats Row */}
+        <Animated.View entering={FadeInDown.duration(500).delay(80)} style={styles.quickStatsRow}>
+          <QuickStat icon="shirt-outline" value={items.length} label={t('analytics.totalItems')} color={colors.primary} index={0} />
+          <QuickStat icon="flame-outline" value={streak} label={t('analytics.dayStreak')} color="#F97316" index={1} />
+          <QuickStat icon="repeat-outline" value={analytics.totalWears} label={t('analytics.totalWears')} color="#8B5CF6" index={2} />
+        </Animated.View>
+
+        {/* Diversity Score */}
+        <Animated.View entering={FadeInDown.duration(500).delay(120)} style={styles.sectionContainer}>
+          <LiquidGlassCard variant="frosted" radius="xl">
+            <View style={styles.cardHeaderRow}>
+              <View style={styles.cardHeaderLeft}>
+                <View style={[styles.iconBadge, { backgroundColor: '#3B82F615' }]}>
+                  <Ionicons name="color-palette-outline" size={20} color="#3B82F6" />
+                </View>
+                <ScaledText style={styles.cardTitle}>{t('analytics.styleDiversity')}</ScaledText>
+              </View>
+              <View style={[styles.scoreBadge, {
+                backgroundColor: analytics.diversity >= 70 ? '#DCFCE7' : analytics.diversity >= 40 ? '#FEF9C3' : '#FEE2E2',
+              }]}>
+                <ScaledText style={[styles.scoreBadgeText, {
+                  color: analytics.diversity >= 70 ? '#166534' : analytics.diversity >= 40 ? '#854D0E' : '#991B1B',
+                }]}>
+                  {analytics.diversity}/100
+                </ScaledText>
+              </View>
+            </View>
+            <ScaledText style={styles.cardSubtext}>
+              {analytics.diversity >= 70
+                ? 'Great variety! You use your wardrobe well.'
+                : analytics.diversity >= 40
+                  ? 'Good start. Try mixing in some unworn items!'
+                  : 'You tend to repeat the same items. Try the Surprise Me feature!'}
+            </ScaledText>
+            <View style={styles.diversityBar}>
+              <Animated.View
+                entering={FadeInRight.duration(800).delay(300)}
+                style={[styles.diversityFill, { width: `${analytics.diversity}%` }]}
+              />
+            </View>
+          </LiquidGlassCard>
+        </Animated.View>
+
+        {/* Most Worn Items */}
+        {analytics.mostWorn.length > 0 && (
+          <Animated.View entering={FadeInDown.duration(500).delay(160)} style={styles.sectionContainer}>
+            <LiquidGlassCard variant="frosted" radius="xl">
+              <View style={styles.cardHeaderRow}>
+                <View style={styles.cardHeaderLeft}>
+                  <View style={[styles.iconBadge, { backgroundColor: '#10B98115' }]}>
+                    <Ionicons name="trending-up-outline" size={20} color="#10B981" />
+                  </View>
+                  <ScaledText style={styles.cardTitle}>{t('analytics.mostWorn')}</ScaledText>
+                </View>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
+                {analytics.mostWorn.map((item, idx) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={styles.mostWornItem}
+                    onPress={() => navigation.navigate('ClothingDetail', { itemId: item.id })}
+                  >
+                    <View style={styles.mostWornRank}>
+                      <ScaledText style={styles.mostWornRankText}>{idx + 1}</ScaledText>
+                    </View>
+                    <CachedImage
+                      uri={item.imageUrl || item.thumbnailUrl || ''}
+                      style={styles.mostWornImage}
+                      contentFit="cover"
+                      fadeIn={false}
+                    />
+                    <ScaledText style={styles.mostWornCount}>{item.wearCount}×</ScaledText>
+                    <ScaledText style={styles.mostWornName} numberOfLines={1}>
+                      {item.name || item.subCategory || item.category}
+                    </ScaledText>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </LiquidGlassCard>
+          </Animated.View>
+        )}
+
+        {/* Color Palette */}
+        {analytics.colorDist.length > 0 && (
+          <Animated.View entering={FadeInDown.duration(500).delay(200)} style={styles.sectionContainer}>
+            <LiquidGlassCard variant="frosted" radius="xl">
+              <View style={styles.cardHeaderRow}>
+                <View style={styles.cardHeaderLeft}>
+                  <View style={[styles.iconBadge, { backgroundColor: '#EC489915' }]}>
+                    <Ionicons name="color-fill-outline" size={20} color="#EC4899" />
+                  </View>
+                  <ScaledText style={styles.cardTitle}>{t('analytics.colorPalette')}</ScaledText>
+                </View>
+              </View>
+              <View style={styles.swatchRow}>
+                {analytics.colorDist.slice(0, 8).map(({ color, name, count }: ColorDistEntry) => (
+                  <ColorSwatch key={name} color={color} name={name} count={count} total={items.length} />
+                ))}
+              </View>
+            </LiquidGlassCard>
+          </Animated.View>
+        )}
+
+        {/* Category Breakdown */}
+        {analytics.categoryBreakdown.length > 0 && (
+          <Animated.View entering={FadeInDown.duration(500).delay(240)} style={styles.sectionContainer}>
+            <LiquidGlassCard variant="frosted" radius="xl">
+              <View style={styles.cardHeaderRow}>
+                <View style={styles.cardHeaderLeft}>
+                  <View style={[styles.iconBadge, { backgroundColor: '#8B5CF615' }]}>
+                    <Ionicons name="grid-outline" size={20} color="#8B5CF6" />
+                  </View>
+                  <ScaledText style={styles.cardTitle}>{t('analytics.categoryBreakdown')}</ScaledText>
+                </View>
+              </View>
+              {analytics.categoryBreakdown.map(({ category, count }: CategoryBreakdownEntry) => (
+                <CategoryBar
+                  key={category}
+                  label={category.charAt(0).toUpperCase() + category.slice(1)}
+                  count={count}
+                  total={items.length}
+                  color={CATEGORY_COLORS[category] || '#94A3B8'}
+                />
+              ))}
+            </LiquidGlassCard>
+          </Animated.View>
+        )}
+
+        {/* Season Breakdown */}
+        {analytics.seasonBreakdown.length > 0 && (
+          <Animated.View entering={FadeInDown.duration(500).delay(280)} style={styles.sectionContainer}>
+            <LiquidGlassCard variant="frosted" radius="xl">
+              <View style={styles.cardHeaderRow}>
+                <View style={styles.cardHeaderLeft}>
+                  <View style={[styles.iconBadge, { backgroundColor: '#06B6D415' }]}>
+                    <Ionicons name="thermometer-outline" size={20} color="#06B6D4" />
+                  </View>
+                  <ScaledText style={styles.cardTitle}>Season Breakdown</ScaledText>
+                </View>
+              </View>
+              {analytics.seasonBreakdown.map(([season, count]) => {
+                const pct = Math.round((count / items.length) * 100);
+                const seasonColors: Record<string, string> = {
+                  spring: '#34D399', summer: '#FBBF24', fall: '#FB923C', winter: '#60A5FA',
+                };
+                return (
+                  <View key={season} style={styles.categoryBarContainer}>
+                    <View style={styles.categoryBarLabelRow}>
+                      <ScaledText style={styles.categoryBarLabel}>{season.charAt(0).toUpperCase() + season.slice(1)}</ScaledText>
+                      <ScaledText style={styles.categoryBarCount}>{count}</ScaledText>
+                    </View>
+                    <View style={styles.categoryBarTrack}>
+                      <Animated.View
+                        entering={FadeInRight.duration(600).delay(200)}
+                        style={[styles.categoryBarFill, { width: `${Math.max(pct, 2)}%`, backgroundColor: seasonColors[season] || '#94A3B8' }]}
+                      />
+                    </View>
+                  </View>
+                );
+              })}
+            </LiquidGlassCard>
+          </Animated.View>
+        )}
+
+        {/* Unworn Alert */}
+        {analytics.unwornItems.length > 0 && (
+          <Animated.View entering={FadeInDown.duration(500).delay(320)} style={styles.sectionContainer}>
+            <LiquidGlassCard variant="light" radius="xl" style={styles.unwornCard}>
+              <View style={styles.cardHeaderRow}>
+                <View style={styles.cardHeaderLeft}>
+                  <View style={[styles.iconBadge, { backgroundColor: '#F59E0B15' }]}>
+                    <Ionicons name="alert-circle-outline" size={20} color="#F59E0B" />
+                  </View>
+                  <ScaledText style={[styles.cardTitle, { color: '#D97706' }]}>
+                    {analytics.unwornItems.length} items unworn
+                  </ScaledText>
+                </View>
+              </View>
+              <ScaledText style={styles.unwornSubtext}>
+                That's {Math.round((analytics.unwornItems.length / items.length) * 100)}% of your wardrobe sitting idle.
+              </ScaledText>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
+                {analytics.unwornItems.slice(0, 10).map((item) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    onPress={() => navigation.navigate('ClothingDetail', { itemId: item.id })}
+                  >
+                    <CachedImage
+                      uri={item.imageUrl || item.thumbnailUrl || ''}
+                      style={styles.unwornImage}
+                      contentFit="cover"
+                      fadeIn={false}
+                    />
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              <TouchableOpacity
+                style={styles.unwornAction}
+                onPress={() => navigation.navigate('WeeklyInsights')}
+              >
+                <ScaledText style={styles.unwornActionText}>View Weekly Insights</ScaledText>
+                <Ionicons name="arrow-forward" size={16} color="#D97706" />
+              </TouchableOpacity>
+            </LiquidGlassCard>
+          </Animated.View>
+        )}
+
+        {/* Quick Actions */}
+        <Animated.View entering={FadeInDown.duration(500).delay(360)} style={styles.sectionContainer}>
+          <LiquidGlassCard variant="frosted" radius="xl">
+            <View style={styles.cardHeaderRow}>
+              <ScaledText style={styles.cardTitle}>Quick Actions</ScaledText>
+            </View>
+            <View style={styles.quickActionsRow}>
+              <TouchableOpacity
+                style={styles.quickAction}
+                onPress={() => navigation.navigate('MyCloset')}
+              >
+                <View style={[styles.quickActionIcon, { backgroundColor: '#3B82F615' }]}>
+                  <Ionicons name="folder-open-outline" size={24} color="#3B82F6" />
+                </View>
+                <ScaledText style={styles.quickActionLabel}>My Closet</ScaledText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.quickAction}
+                onPress={() => navigation.navigate('Calendar')}
+              >
+                <View style={[styles.quickActionIcon, { backgroundColor: '#8B5CF615' }]}>
+                  <Ionicons name="calendar-outline" size={24} color="#8B5CF6" />
+                </View>
+                <ScaledText style={styles.quickActionLabel}>Calendar</ScaledText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.quickAction}
+                onPress={() => navigation.navigate('WeeklyInsights')}
+              >
+                <View style={[styles.quickActionIcon, { backgroundColor: '#10B98115' }]}>
+                  <Ionicons name="stats-chart-outline" size={24} color="#10B981" />
+                </View>
+                <ScaledText style={styles.quickActionLabel}>Weekly Insights</ScaledText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.quickAction}
+                onPress={() => navigation.navigate('AIOutfit')}
+              >
+                <View style={[styles.quickActionIcon, { backgroundColor: '#F9731615' }]}>
+                  <Ionicons name="sparkles-outline" size={24} color="#F97316" />
+                </View>
+                <ScaledText style={styles.quickActionLabel}>AI Outfits</ScaledText>
+              </TouchableOpacity>
+            </View>
+          </LiquidGlassCard>
+        </Animated.View>
+
+        {/* Empty State */}
+        {items.length === 0 && (
+          <View style={styles.emptyState}>
+            <Ionicons name="analytics-outline" size={64} color={colors.text.muted} />
+            <ScaledText style={styles.emptyTitle}>{t('analytics.noDataYet')}</ScaledText>
+            <ScaledText style={styles.emptySubtext}>
+              {t('analytics.emptySubtext')}
+            </ScaledText>
+          </View>
+        )}
+
+        <View style={{ height: 40 }} />
+      </ScrollView>
+    </ScreenWrapper>
+  );
 }
 
-// ============================================
-// STYLES
-// ============================================
-
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: colors.background.primary,
-    },
-    backgroundOrbTop: {
-        position: 'absolute',
-        top: -100,
-        right: -80,
-        width: 280,
-        height: 280,
-        borderRadius: 140,
-        backgroundColor: 'rgba(188, 210, 245, 0.42)',
-    },
-    backgroundOrbBottom: {
-        position: 'absolute',
-        left: -120,
-        bottom: 140,
-        width: 300,
-        height: 300,
-        borderRadius: 150,
-        backgroundColor: 'rgba(216, 229, 252, 0.34)',
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: spacing.lg,
-        paddingVertical: spacing.md,
-    },
-    backButton: {
-        width: 32,
-        height: 32,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: 16,
-        backgroundColor: 'rgba(255,255,255,0.84)',
-        borderWidth: 1,
-        borderColor: 'rgba(24,58,103,0.08)',
-    },
-    headerTitle: {
-        ...typography.scale.titleLarge,
-        color: colors.text.primary,
-        fontWeight: '700',
-    },
-    scrollContent: {
-        paddingBottom: spacing.xxxl,
-    },
-
-    // Hero
-    heroRow: {
-        flexDirection: 'row',
-        marginHorizontal: spacing.lg,
-        marginBottom: spacing.lg,
-        gap: spacing.lg,
-    },
-    heroCard: {
-        backgroundColor: 'rgba(255,255,255,0.9)',
-        borderRadius: 28,
-        padding: spacing.lg,
-        borderWidth: 1,
-        borderColor: 'rgba(24,58,103,0.08)',
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowColor: '#173A65',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.06,
-        shadowRadius: 16,
-        elevation: 4,
-    },
-    heroStatsColumn: {
-        flex: 1,
-        gap: spacing.sm,
-        justifyContent: 'center',
-    },
-    heroStat: {
-        backgroundColor: 'rgba(255,255,255,0.9)',
-        borderRadius: 22,
-        paddingVertical: spacing.sm,
-        paddingHorizontal: spacing.md,
-        borderWidth: 1,
-        borderColor: 'rgba(24,58,103,0.08)',
-    },
-    heroStatValue: {
-        ...typography.scale.titleMedium,
-        color: colors.text.primary,
-        fontWeight: '800',
-    },
-    heroStatLabel: {
-        ...typography.scale.labelSmall,
-        color: colors.text.tertiary,
-    },
-
-    // Circular
-    circularValue: {
-        ...typography.scale.headlineMedium,
-        color: colors.text.primary,
-        fontWeight: '800',
-    },
-    circularLabel: {
-        ...typography.scale.labelSmall,
-        color: colors.text.tertiary,
-        marginTop: -2,
-    },
-
-    // Card
-    card: {
-        marginHorizontal: spacing.lg,
-        marginBottom: spacing.lg,
-        backgroundColor: 'rgba(255,255,255,0.9)',
-        borderRadius: 28,
-        padding: spacing.lg,
-        borderWidth: 1,
-        borderColor: 'rgba(24,58,103,0.08)',
-        shadowColor: '#173A65',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.06,
-        shadowRadius: 16,
-        elevation: 4,
-    },
-    cardHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: spacing.sm,
-    },
-    cardTitle: {
-        ...typography.scale.titleMedium,
-        color: colors.text.primary,
-        fontWeight: '700',
-        marginBottom: spacing.sm,
-    },
-    cardSubtitle: {
-        ...typography.scale.bodySmall,
-        color: colors.text.tertiary,
-        marginBottom: spacing.md,
-        lineHeight: 18,
-    },
-
-    // Score badge
-    scoreBadge: {
-        paddingHorizontal: spacing.md,
-        paddingVertical: spacing.xs,
-        borderRadius: radius.pill,
-    },
-    scoreBadgeText: {
-        ...typography.scale.labelMedium,
-        fontWeight: '700',
-    },
-
-    // Diversity bar
-    diversityBar: {
-        height: 8,
-        backgroundColor: colors.border.glass,
-        borderRadius: 4,
-        overflow: 'hidden',
-    },
-    diversityFill: {
-        height: '100%',
-        borderRadius: 4,
-        backgroundColor: '#3B82F6',
-    },
-
-    // Most worn
-    mostWornScroll: {
-        marginHorizontal: -spacing.sm,
-    },
-    mostWornItem: {
-        alignItems: 'center',
-        marginHorizontal: spacing.sm,
-        width: 72,
-    },
-    mostWornRank: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        zIndex: 1,
-        backgroundColor: 'rgba(0,0,0,0.7)',
-        borderRadius: 8,
-        paddingHorizontal: 4,
-        paddingVertical: 1,
-    },
-    mostWornRankText: {
-        fontSize: 10,
-        color: '#FFF',
-        fontWeight: '700',
-    },
-    mostWornImage: {
-        width: 64,
-        height: 64,
-        borderRadius: radius.md,
-        backgroundColor: colors.border.glass,
-    },
-    mostWornCount: {
-        ...typography.scale.labelSmall,
-        color: colors.text.primary,
-        fontWeight: '700',
-        marginTop: 4,
-    },
-    mostWornName: {
-        ...typography.scale.labelSmall,
-        color: colors.text.tertiary,
-        textAlign: 'center',
-    },
-
-    // Color swatches
-    swatchRow: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: spacing.md,
-    },
-    swatchContainer: {
-        alignItems: 'center',
-        width: 56,
-    },
-    swatchCircle: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        borderWidth: 2,
-        borderColor: 'rgba(255,255,255,0.5)',
-        marginBottom: 4,
-    },
-    swatchName: {
-        ...typography.scale.labelSmall,
-        color: colors.text.secondary,
-        fontSize: 9,
-        textAlign: 'center',
-    },
-    swatchPct: {
-        ...typography.scale.labelSmall,
-        color: colors.text.tertiary,
-        fontSize: 9,
-    },
-
-    // Category bars
-    categoryBarContainer: {
-        marginBottom: spacing.sm,
-    },
-    categoryBarLabelRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 4,
-    },
-    categoryBarLabel: {
-        ...typography.scale.labelMedium,
-        color: colors.text.secondary,
-    },
-    categoryBarCount: {
-        ...typography.scale.labelMedium,
-        color: colors.text.primary,
-        fontWeight: '600',
-    },
-    categoryBarTrack: {
-        height: 8,
-        backgroundColor: colors.border.glass,
-        borderRadius: 4,
-        overflow: 'hidden',
-    },
-    categoryBarFill: {
-        height: '100%',
-        borderRadius: 4,
-    },
-
-    // Unworn
-    unwornCard: {
-        marginHorizontal: spacing.lg,
-        marginBottom: spacing.lg,
-        backgroundColor: 'rgba(245, 158, 11, 0.08)',
-        borderRadius: radius.xl,
-        padding: spacing.lg,
-        borderWidth: 1,
-        borderColor: 'rgba(245, 158, 11, 0.2)',
-    },
-    unwornHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.sm,
-        marginBottom: spacing.xs,
-    },
-    unwornTitle: {
-        ...typography.scale.titleSmall,
-        color: '#D97706',
-        fontWeight: '700',
-    },
-    unwornSubtitle: {
-        ...typography.scale.bodySmall,
-        color: colors.text.tertiary,
-        marginBottom: spacing.md,
-    },
-    unwornScroll: {
-        marginHorizontal: -spacing.xs,
-    },
-    unwornImage: {
-        width: 56,
-        height: 56,
-        borderRadius: radius.md,
-        marginHorizontal: spacing.xs,
-        backgroundColor: colors.border.glass,
-    },
-
-    // Empty
-    emptyState: {
-        alignItems: 'center',
-        paddingVertical: spacing.xxxl,
-        gap: spacing.md,
-    },
-    emptyTitle: {
-        ...typography.scale.titleLarge,
-        color: colors.text.secondary,
-        fontWeight: '600',
-    },
-    emptySubtitle: {
-        ...typography.scale.bodyMedium,
-        color: colors.text.tertiary,
-        textAlign: 'center',
-        paddingHorizontal: spacing.xl,
-    },
+  backgroundOrbTop: {
+    position: 'absolute',
+    top: -100,
+    right: -80,
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: 'rgba(188, 210, 245, 0.42)',
+  },
+  backgroundOrbBottom: {
+    position: 'absolute',
+    left: -120,
+    bottom: 140,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: 'rgba(216, 229, 252, 0.34)',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.l,
+    paddingVertical: spacing.m,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.84)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.08)',
+  },
+  headerTitle: {
+    ...typography.h2,
+    color: colors.text.primary,
+  },
+  headerAction: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.84)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.08)',
+  },
+  scrollContent: {
+    paddingHorizontal: spacing.l,
+    paddingBottom: spacing.xxl,
+  },
+  heroSection: {
+    marginBottom: spacing.m,
+  },
+  quickStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.m,
+    gap: spacing.s,
+  },
+  sectionContainer: {
+    marginBottom: spacing.m,
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.s,
+  },
+  cardHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.s,
+  },
+  iconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardTitle: {
+    ...typography.h3,
+    color: colors.text.primary,
+  },
+  cardSubtext: {
+    ...typography.bodySmall,
+    color: colors.text.secondary,
+    lineHeight: 18,
+    marginBottom: spacing.s,
+  },
+  scoreBadge: {
+    paddingHorizontal: spacing.m,
+    paddingVertical: spacing.xs,
+    borderRadius: 99,
+  },
+  scoreBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  diversityBar: {
+    height: 8,
+    backgroundColor: 'rgba(0,0,0,0.08)',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  diversityFill: {
+    height: '100%',
+    borderRadius: 4,
+    backgroundColor: '#3B82F6',
+  },
+  horizontalScroll: {
+    marginHorizontal: -spacing.s,
+  },
+  mostWornItem: {
+    alignItems: 'center',
+    marginHorizontal: spacing.s,
+    width: 72,
+  },
+  mostWornRank: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    zIndex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  mostWornRankText: {
+    fontSize: 10,
+    color: '#FFF',
+    fontWeight: '700',
+  },
+  mostWornImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  mostWornCount: {
+    fontSize: 12,
+    color: colors.text.primary,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  mostWornName: {
+    fontSize: 11,
+    color: colors.text.muted,
+    textAlign: 'center',
+  },
+  swatchRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.m,
+  },
+  swatchContainer: {
+    alignItems: 'center',
+    width: 52,
+  },
+  swatchCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.5)',
+    marginBottom: 4,
+  },
+  swatchName: {
+    fontSize: 10,
+    color: colors.text.secondary,
+    textAlign: 'center',
+  },
+  swatchPct: {
+    fontSize: 10,
+    color: colors.text.muted,
+  },
+  categoryBarContainer: {
+    marginBottom: spacing.s,
+  },
+  categoryBarLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  categoryBarLabel: {
+    fontSize: 13,
+    color: colors.text.secondary,
+    fontWeight: '500',
+  },
+  categoryBarCount: {
+    fontSize: 13,
+    color: colors.text.primary,
+    fontWeight: '600',
+  },
+  categoryBarTrack: {
+    height: 8,
+    backgroundColor: 'rgba(0,0,0,0.08)',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  categoryBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  unwornCard: {
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.25)',
+  },
+  unwornSubtext: {
+    ...typography.bodySmall,
+    color: colors.text.secondary,
+    marginBottom: spacing.s,
+  },
+  unwornImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    marginHorizontal: spacing.xs,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  unwornAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.s,
+    paddingVertical: spacing.s,
+    borderRadius: 20,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+  },
+  unwornActionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#D97706',
+  },
+  quickActionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.s,
+    marginTop: spacing.xs,
+  },
+  quickAction: {
+    flex: 1,
+    minWidth: 70,
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.s,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.5)',
+  },
+  quickActionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickActionLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.text.secondary,
+    textAlign: 'center',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: spacing.xxl,
+    gap: spacing.m,
+  },
+  emptyTitle: {
+    ...typography.h2,
+    color: colors.text.secondary,
+  },
+  emptySubtext: {
+    ...typography.body,
+    color: colors.text.muted,
+    textAlign: 'center',
+    paddingHorizontal: spacing.xl,
+  },
 });

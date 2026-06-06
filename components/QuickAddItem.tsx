@@ -7,16 +7,8 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    Image,
-    ScrollView,
-    TextInput,
-    Alert,
-} from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Image, ScrollView, TextInput, Alert,  } from 'react-native'
+import { ScaledText } from './ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
@@ -146,8 +138,8 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({ onItemAdded, onCancel }) =>
 
     return (
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-            <Text style={styles.title}>{t('quickAdd.title')}</Text>
-            <Text style={styles.subtitle}>{t('quickAdd.subtitle')}</Text>
+            <ScaledText style={styles.title}>{t('quickAdd.title')}</ScaledText>
+            <ScaledText style={styles.subtitle}>{t('quickAdd.subtitle')}</ScaledText>
 
             {/* Photo Section */}
             <View style={styles.photoSection}>
@@ -156,18 +148,18 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({ onItemAdded, onCancel }) =>
                         <Image source={{ uri: imageUri }} style={styles.photoPreview} />
                         <View style={styles.changePhotoOverlay}>
                             <Ionicons name="camera-outline" size={20} color="#FFF" />
-                            <Text style={styles.changePhotoText}>{t('quickAdd.change')}</Text>
+                            <ScaledText style={styles.changePhotoText}>{t('quickAdd.change')}</ScaledText>
                         </View>
                     </TouchableOpacity>
                 ) : (
                     <View style={styles.photoButtons}>
                         <TouchableOpacity style={styles.photoButton} onPress={takePhoto}>
                             <Ionicons name="camera-outline" size={28} color={colors.text.primary} />
-                            <Text style={styles.photoButtonText}>{t('quickAdd.camera')}</Text>
+                            <ScaledText style={styles.photoButtonText}>{t('quickAdd.camera')}</ScaledText>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.photoButton} onPress={pickImage}>
                             <Ionicons name="images-outline" size={28} color={colors.text.primary} />
-                            <Text style={styles.photoButtonText}>{t('quickAdd.gallery')}</Text>
+                            <ScaledText style={styles.photoButtonText}>{t('quickAdd.gallery')}</ScaledText>
                         </TouchableOpacity>
                     </View>
                 )}
@@ -175,7 +167,7 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({ onItemAdded, onCancel }) =>
 
             {/* Name (optional) */}
             <View style={styles.section}>
-                <Text style={styles.sectionLabel}>{t('quickAdd.nameOptional')}</Text>
+                <ScaledText style={styles.sectionLabel}>{t('quickAdd.nameOptional')}</ScaledText>
                 <TextInput
                     style={styles.textInput}
                     value={itemName}
@@ -187,7 +179,7 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({ onItemAdded, onCancel }) =>
 
             {/* Category */}
             <View style={styles.section}>
-                <Text style={styles.sectionLabel}>{t('quickAdd.category')}</Text>
+                <ScaledText style={styles.sectionLabel}>{t('quickAdd.category')}</ScaledText>
                 <View style={styles.categoryRow}>
                     {CATEGORIES.map((cat) => (
                         <TouchableOpacity
@@ -206,14 +198,14 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({ onItemAdded, onCancel }) =>
                                 size={18}
                                 color={category === cat.value ? '#FFF' : colors.text.secondary}
                             />
-                            <Text
+                            <ScaledText
                                 style={[
                                     styles.categoryLabel,
                                     category === cat.value && styles.categoryLabelActive,
                                 ]}
                             >
                                 {cat.label}
-                            </Text>
+                            </ScaledText>
                         </TouchableOpacity>
                     ))}
                 </View>
@@ -221,7 +213,7 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({ onItemAdded, onCancel }) =>
 
             {/* Color */}
             <View style={styles.section}>
-                <Text style={styles.sectionLabel}>{t('quickAdd.primaryColor')}</Text>
+                <ScaledText style={styles.sectionLabel}>{t('quickAdd.primaryColor')}</ScaledText>
                 <View style={styles.colorRow}>
                     {BASIC_COLORS.map((c) => (
                         <TouchableOpacity
@@ -257,14 +249,14 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({ onItemAdded, onCancel }) =>
                 activeOpacity={0.8}
             >
                 <Ionicons name="add-circle-outline" size={20} color="#FFF" />
-                <Text style={styles.submitText}>
+                <ScaledText style={styles.submitText}>
                     {isSubmitting ? t('quickAdd.adding') : t('quickAdd.addToCloset')}
-                </Text>
+                </ScaledText>
             </TouchableOpacity>
 
             {onCancel && (
                 <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
-                    <Text style={styles.cancelText}>{t('quickAdd.cancel')}</Text>
+                    <ScaledText style={styles.cancelText}>{t('quickAdd.cancel')}</ScaledText>
                 </TouchableOpacity>
             )}
         </ScrollView>

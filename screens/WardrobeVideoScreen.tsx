@@ -8,16 +8,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import {
-    View,
-    Text,
-    TouchableOpacity,
-    StyleSheet,
-    ScrollView,
-    Alert,
-    Platform,
-    Dimensions,
-} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, ScrollView, Alert, Platform, Dimensions } from 'react-native';
+import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -153,7 +145,7 @@ const GlassStep = ({ icon, label, index }: { icon: string; label: string; index:
                 <Ionicons name={icon as any} size={22} color={GLASS.accent} />
             </View>
         </BlurView>
-        <Text style={styles.stepLabel}>{label}</Text>
+        <ScaledText style={styles.stepLabel}>{label}</ScaledText>
     </Animated.View>
 );
 
@@ -455,7 +447,7 @@ const WardrobeVideoScreen = () => {
                         >
                             <Ionicons name="chevron-back" size={20} color={GLASS.textPrimary} />
                         </TouchableOpacity>
-                        <Text style={styles.headerTitle}>{t('wardrobeVideo.title')}</Text>
+                        <ScaledText style={styles.headerTitle}>{t('wardrobeVideo.title')}</ScaledText>
                         <View style={{ width: 36 }} />
                     </BlurView>
                 </Animated.View>
@@ -512,13 +504,13 @@ const WardrobeVideoScreen = () => {
                                             <Ionicons name="images-outline" size={32} color="#fff" />
                                         </LinearGradient>
                                     </View>
-                                    <Text style={styles.uploadTitle}>{t('wardrobeVideo.selectGallery')}</Text>
-                                    <Text style={styles.uploadSubtitle}>
+                                    <ScaledText style={styles.uploadTitle}>{t('wardrobeVideo.selectGallery')}</ScaledText>
+                                    <ScaledText style={styles.uploadSubtitle}>
                                         {Platform.OS === 'web' 
                                             ? t('wardrobeVideo.choosePhoto') 
                                             : t('wardrobeVideo.chooseVideoOrPhoto')
                                         }
-                                    </Text>
+                                    </ScaledText>
                                 </BlurView>
                             </TouchableOpacity>
                         </Animated.View>
@@ -543,10 +535,10 @@ const WardrobeVideoScreen = () => {
                             {/* Results header */}
                             <View style={styles.resultsHeader}>
                                 <View>
-                                    <Text style={styles.resultsTitle}>{t('wardrobeVideo.analysisComplete')}</Text>
-                                    <Text style={styles.resultsSubtitle}>
+                                    <ScaledText style={styles.resultsTitle}>{t('wardrobeVideo.analysisComplete')}</ScaledText>
+                                    <ScaledText style={styles.resultsSubtitle}>
                                         {t('wardrobeVideo.foundItems', { count: results.detectedItems.length })}
-                                    </Text>
+                                    </ScaledText>
                                 </View>
                                 <TouchableOpacity
                                     style={styles.retryPill}
@@ -573,13 +565,13 @@ const WardrobeVideoScreen = () => {
                                                 colors={[GLASS.accent, '#5856D6']}
                                                 style={styles.outfitBadgeGradient}
                                             >
-                                                <Text style={styles.outfitBadgeText}>{outfitIndex + 1}</Text>
+                                                <ScaledText style={styles.outfitBadgeText}>{outfitIndex + 1}</ScaledText>
                                             </LinearGradient>
                                         </View>
-                                        <Text style={styles.outfitTitle}>{t('wardrobeVideo.outfit', { index: outfitIndex + 1 })}</Text>
-                                        <Text style={styles.outfitCount}>
+                                        <ScaledText style={styles.outfitTitle}>{t('wardrobeVideo.outfit', { index: outfitIndex + 1 })}</ScaledText>
+                                        <ScaledText style={styles.outfitCount}>
                                             ({t('wardrobeVideo.itemsCount', { count: outfitGroups[outfitId].length })})
-                                        </Text>
+                                        </ScaledText>
                                     </View>
 
                                     {/* Item cards */}
@@ -610,10 +602,10 @@ const WardrobeVideoScreen = () => {
 
                                                     {/* Item info */}
                                                     <View style={styles.resultInfo}>
-                                                        <Text style={styles.resultType}>{item.itemType}</Text>
-                                                        <Text style={styles.resultDetails}>
+                                                        <ScaledText style={styles.resultType}>{item.itemType}</ScaledText>
+                                                        <ScaledText style={styles.resultDetails}>
                                                             {item.color}{item.material ? ` · ${item.material}` : ''}
-                                                        </Text>
+                                                        </ScaledText>
                                                     </View>
 
                                                     {/* Check badge */}
@@ -655,7 +647,7 @@ const WardrobeVideoScreen = () => {
                                         end={{ x: 1, y: 1 }}
                                         style={styles.saveGradient}
                                     >
-                                        <Text style={styles.saveText}>{t('wardrobeVideo.reviewSave')}</Text>
+                                        <ScaledText style={styles.saveText}>{t('wardrobeVideo.reviewSave')}</ScaledText>
                                         <View style={styles.saveArrow}>
                                             <Ionicons name="arrow-forward" size={18} color="#fff" />
                                         </View>

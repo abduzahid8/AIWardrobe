@@ -4,16 +4,8 @@
  */
 
 import React, { useState, useMemo, useCallback } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  Image,
-  TouchableOpacity,
-  StyleSheet,
-  Dimensions,
-  ActivityIndicator,
-} from 'react-native';
+import { View, ScrollView, Image, TouchableOpacity, StyleSheet, Dimensions, ActivityIndicator,  } from 'react-native'
+import { ScaledText } from './ui/ScaledText';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import Animated, {
@@ -198,7 +190,7 @@ const AIOutfitCreatorModal: React.FC<AIOutfitCreatorModalProps> = ({
 
   const renderEventChips = () => (
     <View style={styles.chipsSection}>
-      <Text style={styles.sectionLabel}>{t('aiOutfitCreator.chooseEvent')}</Text>
+      <ScaledText style={styles.sectionLabel}>{t('aiOutfitCreator.chooseEvent')}</ScaledText>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -233,7 +225,7 @@ const AIOutfitCreatorModal: React.FC<AIOutfitCreatorModalProps> = ({
                     color={isSelected ? '#FFF' : colors.text.secondary}
                   />
                 </View>
-                <Text
+                <ScaledText
                   style={[
                     styles.chipLabel,
                     isSelected && styles.chipLabelSelected,
@@ -241,7 +233,7 @@ const AIOutfitCreatorModal: React.FC<AIOutfitCreatorModalProps> = ({
                   numberOfLines={2}
                 >
                   {event.label}
-                </Text>
+                </ScaledText>
               </TouchableOpacity>
             </Animated.View>
           );
@@ -268,9 +260,9 @@ const AIOutfitCreatorModal: React.FC<AIOutfitCreatorModalProps> = ({
         ) : (
           <>
             <Ionicons name="sparkles" size={18} color="#FFF" />
-            <Text style={styles.generateButtonText}>
+            <ScaledText style={styles.generateButtonText}>
               {t('aiOutfitCreator.generateWithAI')}
-            </Text>
+            </ScaledText>
           </>
         )}
       </TouchableOpacity>
@@ -299,9 +291,9 @@ const AIOutfitCreatorModal: React.FC<AIOutfitCreatorModalProps> = ({
                 style={styles.outfitItemImage as any}
                 resizeMode="cover"
               />
-              <Text style={styles.outfitItemLabel} numberOfLines={2}>
+              <ScaledText style={styles.outfitItemLabel} numberOfLines={2}>
                 {item!.subCategory || item!.category}
-              </Text>
+              </ScaledText>
             </Animated.View>
           ))}
         </View>
@@ -309,9 +301,9 @@ const AIOutfitCreatorModal: React.FC<AIOutfitCreatorModalProps> = ({
         {/* Reasoning */}
         <View style={styles.reasoningContainer}>
           <Ionicons name="bulb-outline" size={16} color={colors.text.secondary} />
-          <Text style={styles.reasoningText}>
+          <ScaledText style={styles.reasoningText}>
             {result.reasoning}
-          </Text>
+          </ScaledText>
         </View>
 
         {/* Actions */}
@@ -323,7 +315,7 @@ const AIOutfitCreatorModal: React.FC<AIOutfitCreatorModalProps> = ({
               activeOpacity={0.7}
             >
               <Ionicons name="refresh" size={18} color={colors.text.primary} />
-              <Text style={styles.tryAnotherText}>{t('aiOutfitCreator.tryAnother')}</Text>
+              <ScaledText style={styles.tryAnotherText}>{t('aiOutfitCreator.tryAnother')}</ScaledText>
             </TouchableOpacity>
           )}
           <TouchableOpacity
@@ -332,7 +324,7 @@ const AIOutfitCreatorModal: React.FC<AIOutfitCreatorModalProps> = ({
             activeOpacity={0.8}
           >
             <Ionicons name="checkmark" size={18} color="#FFF" />
-            <Text style={styles.saveButtonText}>{t('aiOutfitCreator.looksGood')}</Text>
+            <ScaledText style={styles.saveButtonText}>{t('aiOutfitCreator.looksGood')}</ScaledText>
           </TouchableOpacity>
         </View>
       </Animated.View>
@@ -342,10 +334,10 @@ const AIOutfitCreatorModal: React.FC<AIOutfitCreatorModalProps> = ({
   const renderEmptyState = () => (
     <Animated.View entering={FadeIn.duration(300)} style={styles.emptyState}>
       <Ionicons name="shirt-outline" size={40} color={colors.text.tertiary} />
-      <Text style={styles.emptyTitle}>{t('aiOutfitCreator.addMoreItemsFirst')}</Text>
-      <Text style={styles.emptySubtitle}>
+      <ScaledText style={styles.emptyTitle}>{t('aiOutfitCreator.addMoreItemsFirst')}</ScaledText>
+      <ScaledText style={styles.emptySubtitle}>
         {t('aiOutfitCreator.needAtLeastThreeItems')}
-      </Text>
+      </ScaledText>
     </Animated.View>
   );
 
@@ -360,10 +352,10 @@ const AIOutfitCreatorModal: React.FC<AIOutfitCreatorModalProps> = ({
       {/* Title */}
       <View style={styles.titleRow}>
         <View>
-          <Text style={styles.title}>{t('aiOutfitCreator.title')}</Text>
-          <Text style={styles.subtitle}>
+          <ScaledText style={styles.title}>{t('aiOutfitCreator.title')}</ScaledText>
+          <ScaledText style={styles.subtitle}>
             {t('aiOutfitCreator.subtitle')}
-          </Text>
+          </ScaledText>
         </View>
         <View style={styles.aiBadge}>
           <Ionicons name="sparkles" size={14} color="#FFF" />

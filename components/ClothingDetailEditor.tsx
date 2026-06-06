@@ -4,17 +4,8 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    ScrollView,
-    Image,
-    StatusBar,
-    Alert,
-    ActivityIndicator,
-} from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ScrollView, Image, StatusBar, Alert, ActivityIndicator,  } from 'react-native'
+import { ScaledText } from './ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -377,27 +368,27 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
                     {!isEditingExisting && isAnalyzing && (
                         <View style={styles.aiBanner}>
                             <ActivityIndicator size="small" color="#007AFF" style={{ marginRight: 8 }} />
-                            <Text style={styles.aiBannerText}>{t('clothingEditor.aiAnalyzing')}</Text>
+                            <ScaledText style={styles.aiBannerText}>{t('clothingEditor.aiAnalyzing')}</ScaledText>
                         </View>
                     )}
                     {!isEditingExisting && !isAnalyzing && aiConfidence !== undefined && (
                         <View style={styles.aiBanner}>
                             <Ionicons name="sparkles" size={14} color="#007AFF" style={{ marginRight: 6 }} />
-                            <Text style={styles.aiBannerText}>
+                            <ScaledText style={styles.aiBannerText}>
                                 {t('clothingEditor.aiDetected')}
-                            </Text>
+                            </ScaledText>
                             <View style={styles.aiBannerBadge}>
-                                <Text style={styles.aiBannerBadgeText}>
+                                <ScaledText style={styles.aiBannerBadgeText}>
                                     {Math.round(aiConfidence * 100)}% {t('clothingEditor.confidence')}
-                                </Text>
+                                </ScaledText>
                             </View>
                             {detectedMaterial ? (
-                                <Text style={styles.aiBannerMaterial}> · {detectedMaterial}</Text>
+                                <ScaledText style={styles.aiBannerMaterial}> · {detectedMaterial}</ScaledText>
                             ) : null}
                         </View>
                     )}
                     {detectedDescription && !isEditingExisting ? (
-                        <Text style={styles.aiDescription}>{detectedDescription}</Text>
+                        <ScaledText style={styles.aiDescription}>{detectedDescription}</ScaledText>
                     ) : null}
 
                     {/* Clothing Image */}
@@ -413,7 +404,7 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
 
                     {/* Type Section */}
                     <View style={styles.section}>
-                        <Text style={styles.sectionLabel}>{t('clothingEditor.type')}</Text>
+                        <ScaledText style={styles.sectionLabel}>{t('clothingEditor.type')}</ScaledText>
                         <View style={styles.typeGrid}>
                             {TYPES.map(type => (
                                 <TouchableOpacity
@@ -425,14 +416,14 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
                                     onPress={() => handleTypeSelect(type.id)}
                                     activeOpacity={0.7}
                                 >
-                                    <Text
+                                    <ScaledText
                                         style={[
                                             styles.typeChipText,
                                             selectedType === type.id && styles.typeChipTextSelected,
                                         ]}
                                     >
                                         {type.label}
-                                    </Text>
+                                    </ScaledText>
                                 </TouchableOpacity>
                             ))}
                         </View>
@@ -441,8 +432,8 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
                     {/* Colour Section */}
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionLabel}>{t('clothingEditor.colour')}</Text>
-                            <Text style={styles.allLink}>{COLORS.find(c => c.id === selectedColor)?.label || ''}</Text>
+                            <ScaledText style={styles.sectionLabel}>{t('clothingEditor.colour')}</ScaledText>
+                            <ScaledText style={styles.allLink}>{COLORS.find(c => c.id === selectedColor)?.label || ''}</ScaledText>
                         </View>
                         <ScrollView
                             horizontal
@@ -479,7 +470,7 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
 
                     {/* Season Section */}
                     <View style={styles.section}>
-                        <Text style={styles.sectionLabel}>{t('clothingEditor.seasonLabel')}</Text>
+                        <ScaledText style={styles.sectionLabel}>{t('clothingEditor.seasonLabel')}</ScaledText>
                         <View style={styles.seasonRow}>
                             {SEASONS.map(season => (
                                 <TouchableOpacity
@@ -491,14 +482,14 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
                                     onPress={() => handleSeasonSelect(season.id)}
                                     activeOpacity={0.7}
                                 >
-                                    <Text
+                                    <ScaledText
                                         style={[
                                             styles.seasonChipText,
                                             selectedSeason === season.id && styles.seasonChipTextSelected,
                                         ]}
                                     >
                                         {season.label}
-                                    </Text>
+                                    </ScaledText>
                                 </TouchableOpacity>
                             ))}
                         </View>
@@ -506,7 +497,7 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
 
                     {/* Weather Section */}
                     <View style={styles.section}>
-                        <Text style={styles.sectionLabel}>{t('clothingEditor.weatherLabel')}</Text>
+                        <ScaledText style={styles.sectionLabel}>{t('clothingEditor.weatherLabel')}</ScaledText>
                         <View style={styles.weatherRow}>
                             {WEATHER.map(weather => {
                                 const isSelected = selectedWeather.includes(weather.id);
@@ -539,7 +530,7 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
                             activeOpacity={0.7}
                         >
                             <Ionicons name="trash-outline" size={18} color="#FF3B30" style={{ marginRight: 6 }} />
-                            <Text style={styles.deleteButtonText}>{t('clothingDetail.removeFromWardrobe')}</Text>
+                            <ScaledText style={styles.deleteButtonText}>{t('clothingDetail.removeFromWardrobe')}</ScaledText>
                         </TouchableOpacity>
                     )}
 
@@ -554,9 +545,9 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
                         onPress={handleSave}
                         activeOpacity={0.8}
                     >
-                        <Text style={styles.saveButtonText}>
+                        <ScaledText style={styles.saveButtonText}>
                             {isEditingExisting ? 'Update Item' : t('clothingEditor.save')}
-                        </Text>
+                        </ScaledText>
                     </TouchableOpacity>
                 </View>
             </SafeAreaView>

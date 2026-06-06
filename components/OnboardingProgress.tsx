@@ -1,10 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    Dimensions,
-} from 'react-native';
+import { View, StyleSheet, Dimensions,  } from 'react-native'
+import { ScaledText } from './ui/ScaledText';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
@@ -98,7 +94,7 @@ const OnboardingProgress: React.FC<OnboardingProgressProps> = ({
                     />
                 </View>
                 <View style={styles.textContainer}>
-                    <Text style={styles.title}>
+                    <ScaledText style={styles.title}>
                         {isComplete
                             ? t('onboarding.personalizedLooksUnlocked')
                             : t('onboarding.addItemsToUnlock', { 
@@ -106,7 +102,7 @@ const OnboardingProgress: React.FC<OnboardingProgressProps> = ({
                                 suffix: remaining !== 1 ? 's' : ''
                             })
                         }
-                    </Text>
+                    </ScaledText>
                 </View>
             </View>
 
@@ -114,7 +110,7 @@ const OnboardingProgress: React.FC<OnboardingProgressProps> = ({
                 <Animated.View style={[styles.progressBarFill, progressAnimatedStyle]} />
             </View>
 
-            <Text style={styles.counter}>{t('onboarding.itemsCounter', { current: currentItems, target: targetItems })}</Text>
+            <ScaledText style={styles.counter}>{t('onboarding.itemsCounter', { current: currentItems, target: targetItems })}</ScaledText>
         </Animated.View>
     );
 };

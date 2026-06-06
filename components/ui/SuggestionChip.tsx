@@ -1,5 +1,6 @@
 import React from 'react';
-import { Text, StyleSheet, Pressable, View } from 'react-native';
+import { StyleSheet, Pressable, View } from 'react-native'
+import { ScaledText } from '../ui/ScaledText';;
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../src/theme/ThemeContext';
 import Animated, {
@@ -98,7 +99,7 @@ export const SuggestionChip: React.FC<SuggestionChipProps> = ({
                         style={styles.icon}
                     />
                 )}
-                <Text
+                <ScaledText
                     style={[
                         styles.text,
                         { color: variantStyles.textColor },
@@ -106,7 +107,7 @@ export const SuggestionChip: React.FC<SuggestionChipProps> = ({
                     numberOfLines={2}
                 >
                     {text}
-                </Text>
+                </ScaledText>
             </View>
         </AnimatedPressable>
     );

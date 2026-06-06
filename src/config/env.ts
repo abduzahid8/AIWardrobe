@@ -28,6 +28,14 @@ export const Config = {
   api: {
     url: str(process.env.EXPO_PUBLIC_API_URL, 'https://aiwardrobe-api.onrender.com'),
     alicevisionUrl: str(process.env.EXPO_PUBLIC_ALICEVISION_URL),
+    // Direct Modal GPU endpoint for virtual try-on. Configurable per
+    // environment via EXPO_PUBLIC_MODAL_VTON_URL; falls back to the
+    // production deployment so the feature keeps working if the env var
+    // is missing from a build profile.
+    modalVtonUrl: str(
+      process.env.EXPO_PUBLIC_MODAL_VTON_URL,
+      'https://zoxxid75--aiwardrobe-mobile-vton-fastapi-app.modal.run',
+    ),
   },
   ai: {
     provider: (str(process.env.EXPO_PUBLIC_AI_VISION_PROVIDER, 'gemini') as

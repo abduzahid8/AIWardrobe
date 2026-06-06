@@ -12,15 +12,8 @@
  */
 
 import React, { useState, useCallback, useMemo } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    ScrollView,
-    FlatList,
-    SafeAreaView,
-} from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ScrollView, FlatList, SafeAreaView,  } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Animated, {
@@ -156,11 +149,11 @@ const WearLogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                     <Animated.Text style={[styles.celebrationEmoji, celebrationStyle]}>
                         {newStreak >= 7 ? '🏆' : newStreak >= 3 ? '🔥' : '✅'}
                     </Animated.Text>
-                    <Text style={styles.celebrationTitle}>{t('wearLog.outfitLogged')}</Text>
-                    <Text style={styles.celebrationStreak}>
+                    <ScaledText style={styles.celebrationTitle}>{t('wearLog.outfitLogged')}</ScaledText>
+                    <ScaledText style={styles.celebrationStreak}>
                         {t('wearLog.dayStreak', { count: newStreak })}
-                    </Text>
-                    <Text style={styles.celebrationSubtext}>
+                    </ScaledText>
+                    <ScaledText style={styles.celebrationSubtext}>
                         {newStreak >= 30
                             ? t('wearLog.streak30')
                             : newStreak >= 14
@@ -170,14 +163,14 @@ const WearLogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                                     : newStreak >= 3
                                         ? t('wearLog.streak3')
                                         : t('wearLog.streak1')}
-                    </Text>
+                    </ScaledText>
 
                     <TouchableOpacity
                         style={styles.doneButton}
                         onPress={() => navigation.goBack()}
                         activeOpacity={0.8}
                     >
-                        <Text style={styles.doneButtonText}>{t('common.done')}</Text>
+                        <ScaledText style={styles.doneButtonText}>{t('common.done')}</ScaledText>
                     </TouchableOpacity>
                 </Animated.View>
             </SafeAreaView>
@@ -193,7 +186,7 @@ const WearLogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                     <TouchableOpacity onPress={() => navigation.goBack()}>
                         <Ionicons name="close" size={28} color={colors.text.primary} />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>{t('wearLog.logTodaysOutfit')}</Text>
+                    <ScaledText style={styles.headerTitle}>{t('wearLog.logTodaysOutfit')}</ScaledText>
                     <View style={{ width: 28 }} />
                 </View>
 
@@ -204,17 +197,17 @@ const WearLogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                             style={[styles.modeButton, mode === 'suggestion' && styles.modeButtonActive]}
                             onPress={() => setMode('suggestion')}
                         >
-                            <Text style={[styles.modeText, mode === 'suggestion' && styles.modeTextActive]}>
+                            <ScaledText style={[styles.modeText, mode === 'suggestion' && styles.modeTextActive]}>
                                 {t('wearLog.suggestedOutfit')}
-                            </Text>
+                            </ScaledText>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[styles.modeButton, mode === 'manual' && styles.modeButtonActive]}
                             onPress={() => setMode('manual')}
                         >
-                            <Text style={[styles.modeText, mode === 'manual' && styles.modeTextActive]}>
+                            <ScaledText style={[styles.modeText, mode === 'manual' && styles.modeTextActive]}>
                                 {t('wearLog.pickItems')}
-                            </Text>
+                            </ScaledText>
                         </TouchableOpacity>
                     </View>
                 )}
@@ -222,7 +215,7 @@ const WearLogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 {/* Suggestion Mode */}
                 {mode === 'suggestion' && dailySuggestion && (
                     <Animated.View entering={FadeIn.duration(300)} style={styles.suggestionCard}>
-                        <Text style={styles.suggestionLabel}>{t('wearLog.todaysSuggestion')}</Text>
+                        <ScaledText style={styles.suggestionLabel}>{t('wearLog.todaysSuggestion')}</ScaledText>
                         <View style={styles.suggestionItems}>
                             {suggestionItems.map((item) => (
                                 <View key={item.id} style={styles.suggestionItem}>
@@ -238,14 +231,14 @@ const WearLogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                                             <Ionicons name="shirt-outline" size={24} color={colors.text.tertiary} />
                                         </View>
                                     )}
-                                    <Text style={styles.suggestionItemLabel} numberOfLines={1}>
+                                    <ScaledText style={styles.suggestionItemLabel} numberOfLines={1}>
                                         {item.subCategory || item.category}
-                                    </Text>
+                                    </ScaledText>
                                 </View>
                             ))}
                         </View>
                         {dailySuggestion.reason && (
-                            <Text style={styles.suggestionReason}>{dailySuggestion.reason}</Text>
+                            <ScaledText style={styles.suggestionReason}>{dailySuggestion.reason}</ScaledText>
                         )}
                     </Animated.View>
                 )}
@@ -255,9 +248,9 @@ const WearLogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                     <Animated.View entering={FadeIn.duration(300)}>
                         {Object.entries(groupedItems).map(([category, categoryItems]) => (
                             <View key={category} style={styles.categorySection}>
-                                <Text style={styles.categoryTitle}>
+                                <ScaledText style={styles.categoryTitle}>
                                     {category.charAt(0).toUpperCase() + category.slice(1)}
-                                </Text>
+                                </ScaledText>
                                 <FlatList
                                     data={categoryItems}
                                     horizontal
@@ -293,9 +286,9 @@ const WearLogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                                                         <Ionicons name="checkmark" size={14} color="#FFF" />
                                                     </View>
                                                 )}
-                                                <Text style={styles.itemLabel} numberOfLines={1}>
+                                                <ScaledText style={styles.itemLabel} numberOfLines={1}>
                                                     {item.subCategory || item.primaryColor || item.category}
-                                                </Text>
+                                                </ScaledText>
                                             </TouchableOpacity>
                                         );
                                     }}
@@ -306,8 +299,8 @@ const WearLogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                         {items.length === 0 && (
                             <View style={styles.emptyState}>
                                 <Ionicons name="shirt-outline" size={48} color={colors.text.tertiary} />
-                                <Text style={styles.emptyText}>{t('wearLog.noItemsYet')}</Text>
-                                <Text style={styles.emptySubtext}>{t('wearLog.scanWardrobe')}</Text>
+                                <ScaledText style={styles.emptyText}>{t('wearLog.noItemsYet')}</ScaledText>
+                                <ScaledText style={styles.emptySubtext}>{t('wearLog.scanWardrobe')}</ScaledText>
                             </View>
                         )}
                     </Animated.View>
@@ -315,7 +308,7 @@ const WearLogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
                 {/* Occasion Picker */}
                 <View style={styles.occasionSection}>
-                    <Text style={styles.sectionLabel}>{t('wearLog.occasion')}</Text>
+                    <ScaledText style={styles.sectionLabel}>{t('wearLog.occasion')}</ScaledText>
                     <View style={styles.occasionRow}>
                         {OCCASIONS.map((occ) => (
                             <TouchableOpacity
@@ -334,14 +327,14 @@ const WearLogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                                     size={16}
                                     color={occasion === occ.value ? '#FFF' : colors.text.secondary}
                                 />
-                                <Text
+                                <ScaledText
                                     style={[
                                         styles.occasionLabel,
                                         occasion === occ.value && styles.occasionLabelActive,
                                     ]}
                                 >
                                     {occ.label}
-                                </Text>
+                                </ScaledText>
                             </TouchableOpacity>
                         ))}
                     </View>
@@ -360,7 +353,7 @@ const WearLogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                     activeOpacity={0.8}
                 >
                     <Ionicons name="checkmark-circle" size={22} color="#FFF" />
-                    <Text style={styles.logButtonText}>
+                    <ScaledText style={styles.logButtonText}>
                         {mode === 'suggestion'
                             ? t('wearLog.iWoreThisToday')
                             : selectedIds.length > 0
@@ -369,7 +362,7 @@ const WearLogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                                     plural: selectedIds.length > 1 ? 's' : '' 
                                 })
                                 : t('wearLog.selectItemsToLog')}
-                    </Text>
+                    </ScaledText>
                 </TouchableOpacity>
             </View>
         </SafeAreaView>

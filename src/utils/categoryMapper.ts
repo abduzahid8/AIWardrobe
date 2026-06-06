@@ -61,11 +61,11 @@ export function mapDbCategory(category: string): ClothingCategory {
   return CATEGORY_MAP[category.toLowerCase().trim()] ?? 'other';
 }
 
-const OUTERWEAR_RE = /jacket|coat|blazer|hoodie|cardigan|sweater|pullover|vest|puffer|zip|outerwear/;
-const TOP_RE = /shirt|t-shirt|tee|blouse|polo|top|dress/;
-const BOTTOM_RE = /pant|trouser|jeans|jean|bottom|shorts?|skirt/;
-const SHOES_RE = /shoe|sneaker|boot|loafer|sandal/;
-const ACCESSORY_RE = /hat|scarf|belt|watch|bag|glasses|sunglasses|necklace|bracelet|earring|ring|tie|gloves/;
+const OUTERWEAR_RE = /\b(jackets?|coats?|blazers?|hoodies?|cardigans?|sweaters?|pullovers?|vests?|puffers?|zips?|outerwear)\b/;
+const TOP_RE = /\b(shirts?|t-shirts?|tees?|blouses?|polos?|tops?|dresses?)\b/;
+const BOTTOM_RE = /\b(pants?|trousers?|jeans?|bottoms?|shorts?|skirts?)\b/;
+const SHOES_RE = /\b(shoes?|sneakers?|boots?|loafers?|sandals?)\b/;
+const ACCESSORY_RE = /\b(hats?|scarfs?|belts?|watches?|bags?|glasses?|sunglasses?|necklaces?|bracelets?|earrings?|rings?|ties?|gloves?)\b/;
 
 /**
  * Infer a macro category from a combination of category + sub-type strings.
@@ -80,9 +80,9 @@ export function getMacroCategory(categoryOrType: string, subType?: string): Macr
   if (/\bupper[_\s-]?body\b/.test(t)) return 'top';
   if (/\blower[_\s-]?body\b/.test(t)) return 'bottom';
   if (OUTERWEAR_RE.test(t)) return 'outerwear';
-  if (TOP_RE.test(t)) return 'top';
   if (BOTTOM_RE.test(t)) return 'bottom';
   if (SHOES_RE.test(t)) return 'shoes';
+  if (TOP_RE.test(t)) return 'top';
   if (ACCESSORY_RE.test(t)) return 'accessory';
   return 'other';
 }

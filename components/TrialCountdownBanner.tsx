@@ -9,13 +9,8 @@
  */
 
 import React, { useEffect } from 'react';
-import {
-    TouchableOpacity,
-    View,
-    Text,
-    StyleSheet,
-    Platform,
-} from 'react-native';
+import { TouchableOpacity, View, StyleSheet, Platform,  } from 'react-native'
+import { ScaledText } from './ui/ScaledText';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
@@ -98,12 +93,12 @@ export const TrialCountdownBanner: React.FC = () => {
                             color="#FFF"
                             style={styles.icon}
                         />
-                        <Text style={styles.text} numberOfLines={2}>
+                        <ScaledText style={styles.text} numberOfLines={2}>
                             {label}
-                        </Text>
+                        </ScaledText>
                     </View>
                     <View style={styles.cta}>
-                        <Text style={styles.ctaText}>{t('trialCountdown.upgrade')}</Text>
+                        <ScaledText style={styles.ctaText}>{t('trialCountdown.upgrade')}</ScaledText>
                         <Ionicons name="chevron-forward" size={13} color="#FFF" />
                     </View>
                 </LinearGradient>

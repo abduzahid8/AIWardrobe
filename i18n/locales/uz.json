@@ -652,6 +652,7 @@
     "uzbek": "O'zbek"
   },
   "outfitMaker": {
+    "buy": "Sotib olish",
     "yourOutfits": "Sizning liboslaringiz",
     "saveToCalendar": "Kalanderga saqlash",
     "pickDate": "Bu libos uchun sanani tanlang",
@@ -668,6 +669,14 @@
     "outfitExists": "Libos allaqachon mavjud",
     "replaceOutfit": "Ushbu sana uchun libos allaqachon mavjud. Almashtirishni xohlaysizmi?",
     "replace": "Almashtirish",
+    "chooseCollection": "To'plamni tanlang",
+    "collectionSubtitle": "Saqlangan libos uchun kategoriyani tanlang",
+    "casual": "Kundalik",
+    "work": "Ish",
+    "formal": "Rasmiy",
+    "sport": "Sport",
+    "date": "Uchrashuv",
+    "travel": "Sayohat",
     "discoverVibe": "Stilingizni kashf qiling",
     "tapStyleCard": "Quyidagi stil kartasini bosing va AI shkafingizdan to'liq libos yaratadi.",
     "promptPlaceholder": "masalan, Uchrashuv, intervyu, oddiy brunch, plyaj ta'tili...",
@@ -685,15 +694,12 @@
   },
   "paywall": {
     "heroTitle": "Sizning stilingiz ochilgan.",
-    "heroSubtitle": "Bepul abadiy — yoki tayyor bo'lganingizda yangilang.",
+    "heroSubtitle": "Sizga mos rejani tanlang.",
     "restorePurchases": "Xaridlarni tiklash",
     "manageSubscription": "Obunani boshqarish",
     "current": "JORIY",
     "mostPopular": "ENG OMADLI",
-    "freeTrial": "Bepul {{period}} sinov",
     "getPro": "Pro olish",
-    "getMax": "Max olish",
-    "redeemOfferCode": "Taklif kodini faollashtirish",
     "privacyPolicy": "Maxfiylik siyosati",
     "termsOfUse": "Foydalanish shartlari",
     "termsText": "To'lov xaridni tasdiqlashda Apple ID hisobingizdan yechiladi. Obuna avtomatik ravishda yangilanadi, agar u joriy davr tugashidan kamida 24 soat oldin bekor qilinmasa. Hisobingiz joriy davr tugashidan 24 soat oldin yangilash uchun yechiladi. Obunalarni xariddan keyin App Store hisob sozlamalarida boshqarishingiz va bekor qilishingiz mumkin. Obuna sotib olishda bepul sinov davrining ishlatilmagan qismi bekor qilinadi.",
@@ -702,44 +708,37 @@
     "restoreFailed": "Qayta tiklash muvaffaqiyatsiz bo'ldi",
     "noPreviousPurchases": "Oldingi xaridlar topilmadi.",
     "somethingWrongRestore": "Xaridlarni tiklashda xatolik yuz berdi. Iltimos, qayta urinib ko'ring.",
-    "restoreSuccessful": "Muvaffaqiyatli tiklandi",
-    "premiumActivated": "Pro obunangiz tiklandi.",
     "subscriptionUnavailable": "Obunalar hozir mavjud emas. Iltimos, keyinroq urinib ko'ring.",
-    "wardrobeScore": "Shkaf bahosi",
-    "yourStylePlanReady": "Uslub rejangiz tayyor",
-    "personalizedPreview": "SHAXSIYLASHTIRILGAN KO'RINISH",
-    "readyAfterUpgrade": "Yangilashdan keyin tayyor",
-    "bestForFullReset": "To'liq shkaf yangilash uchun eng yaxshisi",
-    "planScore": "Shkaf bahosi",
-    "planScoreBodyWithItems": "AI shkafingizdagi {{count}} narsani tahlil qildi",
-    "planScoreBodyScan": "Aniq baho uchun ko'proq narsa qo'shing",
-    "plan7Day": "7 kunlik reja",
-    "plan7DayBody": "Haftalik shaxsiy uslub rejangiz",
-    "planMissingPiece": "Yetishmayotgan element",
-    "planMissingPieceBody": "Libosni to'ldirish uchun bu narsani qo'shing",
-    "previewEyebrow": "SHAXSIY KO'RINISH",
-    "previewTitle": "Uslub rejangiz tayyor",
-    "annualNote": "Shkafni to'liq yangilash uchun eng yaxshisi",
-    "openPro": "Pro-ni ochish",
-    "activateCode": "Kodni faollashtirish",
-    "weekly": "Haftalik",
+    "openPro": "Rejangizni tanlang",
+    "subtitle": "Sizga mos rejani tanlang",
+    "lite": "Lite",
+    "liteSubtitle": "$2.99 / oy",
+    "pro": "Pro",
+    "proSubtitle": "$9.99 / oy",
     "monthly": "Oylik",
-    "annually": "Yillik",
-    "discount": "Chegirma",
-    "weeklySubtitle": "US$4.99 / haft.",
-    "monthlySubtitle": "US$3.44 / haft.",
-    "annualSubtitle": "US$1.53 / haft.",
-    "discount29": "Chegirma 29%",
-    "discount69": "Chegirma 69%",
-    "activateCodeHeader": "Sizda promokod bormi?",
-    "featuresList": [
-      "Har qanday kiyimni avatarda kiyib ko'ring",
-      "Har qanday rasmdan kiyim toping",
-      "Shkafdan kiyim kombinatsiyalarini yarating",
-      "Shkafingizni tartibga soling",
-      "O'zingizga eng mos ranglarni toping",
-      "Kiyim rasmlarini studiya suratlariga aylantiring"
-    ]
+    "yearly": "Yillik",
+    "yearlyPlan": "Pro yillik",
+    "yearlySubtitle": "$79.99 / yil",
+    "perYear": "/yil",
+    "yearlySave": "Oylikka nisbatan 33% tejang",
+    "notIncluded": "Kirmaydi:",
+    "liteMissing": "Virtual kiyib ko'rish, sayohat rejalashtiruvchi, ustuvor qo'llab-quvvatlash",
+    "liteFeature1": "Cheksiz AI liboslar",
+    "liteFeature2": "100 tagacha shkaf buyumlari",
+    "liteFeature3": "Shkaf tahlili va statistikasi",
+    "liteFeature4": "To'liq libos taqvimi",
+    "proFeature1": "Cheksiz AI liboslar",
+    "proFeature2": "Cheksiz shkaf hajmi",
+    "proFeature3": "Shkaf tahlili va statistikasi",
+    "proFeature4": "AI sayohat rejalashtiruvchi",
+    "proFeature5": "To'liq libos taqvimi",
+    "proFeature6": "Virtual kiyib ko'rish",
+    "proFeature7": "Ustuvor AI model · reklamasiz",
+    "proFeature8": "Erta kirish va ustuvor qo'llab-quvvatlash",
+    "subscribe": "Obuna bo'lish",
+    "getStarted": "Boshlash",
+    "activateCode": "Kodni faollashtirish",
+    "activateCodeHeader": "Sizda promokod bormi?"
   },
   "featureLock": {
     "feature": "FUNKSIYA",
@@ -920,7 +919,9 @@
     "top": "Yuqori",
     "bottom": "Past",
     "shoes": "Oyoq kiyim",
-    "notAddedYet": "Hali qo'shilmagan"
+    "layer": "Qatlam",
+    "notAddedYet": "Hali qo'shilmagan",
+    "loggedDays": "{{logged}}/{{total}} kun yozilgan"
   },
   "weeklyInsights": {
     "title": "Stil tahlillari",
@@ -1056,7 +1057,17 @@
     },
     "personality": {
       "title": "Stilingiz qanday?",
-      "subtitle": "Eng yaqin variantni tanlang"
+      "subtitle": "Eng yaqin variantni tanlang",
+      "classic": "Klassik",
+      "classicDesc": "Vaqt sinovidan o'tgan, nafis, sipo",
+      "semiClassic": "Yarim klassik",
+      "semiClassicDesc": "Qulaylik va kundalik nafislik",
+      "minimalist": "Minimalist",
+      "minimalistDesc": "Toza chiziqlar, sodda ko'rinish",
+      "casual": "Kundalik",
+      "casualDesc": "Erkin, oson, toza kundalik kiyinish",
+      "oldMoney": "Old Money",
+      "oldMoneyDesc": "Sokin hashamat va meros uslubi"
     },
     "colors": {
       "title": "Rang palitrangiz",
@@ -1064,15 +1075,31 @@
     },
     "occasions": {
       "title": "Nima uchun kiyinasiz?",
-      "subtitle": "Barcha mos keladiganlarni tanlang"
+      "subtitle": "Barcha mos keladiganlarni tanlang",
+      "work": "Ish/Ofis",
+      "casual": "Kundalik/Dam olish",
+      "date": "Uchrashuv",
+      "formal": "Rasmiy tadbirlar"
     },
     "fit": {
       "title": "Kiyimlaringiz qanday o'rnashsin?",
-      "subtitle": "Bu to'g'ri uslublarni taklif qilishga yordam beradi"
+      "subtitle": "Bu to'g'ri uslublarni taklif qilishga yordam beradi",
+      "relaxed": "Erkin bichim",
+      "relaxedDesc": "Qulay, kengroq",
+      "fitted": "Tanaga mos",
+      "fittedDesc": "Tikilgan, tartibli",
+      "balanced": "Muvozanatli",
+      "balancedDesc": "Ikkalasining aralashmasi"
     },
     "goals": {
       "title": "Stil maqsadlaringiz qanday?",
-      "subtitle": "Siz uchun muhimlarini tanlang"
+      "subtitle": "Siz uchun muhimlarini tanlang",
+      "organizeCloset": "Shkafimni tartiblash",
+      "getStyled": "AI libos g'oyalarini olish",
+      "shopSmarter": "Aqlliroq xarid qilish",
+      "buildCapsule": "Kapsula garderob yaratish",
+      "exploreTrends": "Yangi trendlarni ko'rish",
+      "sustainability": "Barqarorroq bo'lish"
     },
     "complete": {
       "title": "Rejangiz tayyor!",
@@ -1589,6 +1616,8 @@
     "emailNotVerified": "Email tasdiqlanmagan",
     "verifyEmailBeforeLogin": "Iltimos, kirishdan oldin emailingizni tasdiqlang",
     "appleSignInFailed": "Apple orqali kirish xatosi",
+    "googleSignInFailed": "Google orqali kirish xatosi",
+    "signInWithGoogle": "Google orqali davom eting",
     "or": "yoki"
   },
   "auth": {
@@ -1681,7 +1710,8 @@
     "preferNotToSay": "Aytishni xohlamayman",
     "skip": "O'tkazib yuborish",
     "profileImageUrlOptional": "Profil rasmi URL (ixtiyoriy)",
-    "creatingAccount": "Hisob yaratilmoqda..."
+    "creatingAccount": "Hisob yaratilmoqda...",
+    "signUpWithGoogle": "Google orqali ro'yxatdan o'tish"
   },
   "aiOutfitmaker": {
     "cannotSave": "Saqlab bo'lmaydi",

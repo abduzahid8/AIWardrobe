@@ -1,10 +1,6 @@
 import React from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity
-} from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native'
+import { ScaledText } from '../ui/ScaledText';;
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
     useSharedValue,
@@ -104,19 +100,19 @@ export const ActionCard: React.FC<ActionCardProps> = ({
 
                 {/* Content */}
                 <View style={styles.content}>
-                    <Text
+                    <ScaledText
                         style={[styles.title, { color: colors.text.primary }]}
                         numberOfLines={2}
                     >
                         {title}
-                    </Text>
+                    </ScaledText>
                     {subtitle && (
-                        <Text
+                        <ScaledText
                             style={[styles.subtitle, { color: colors.text.secondary }]}
                             numberOfLines={2}
                         >
                             {subtitle}
-                        </Text>
+                        </ScaledText>
                     )}
                 </View>
 

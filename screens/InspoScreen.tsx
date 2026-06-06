@@ -4,21 +4,8 @@
  */
 
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import {
-    View,
-    Text,
-    TouchableOpacity,
-    StyleSheet,
-    Dimensions,
-    ScrollView,
-    FlatList,
-    StatusBar,
-    TextInput,
-    ActivityIndicator,
-    Linking,
-    Platform,
-    InteractionManager,
-} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Dimensions, ScrollView, FlatList, StatusBar, TextInput, ActivityIndicator, Linking, Platform, InteractionManager,  } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -73,7 +60,7 @@ const FeaturedCapsuleCard = ({ item, index, t }: { item: FeaturedCapsule; index:
                 colors={['transparent', 'rgba(0,0,0,0.65)']}
                 style={styles.capsuleGradient}
             >
-                <Text style={styles.capsuleTitle}>{item.title}</Text>
+                <ScaledText style={styles.capsuleTitle}>{item.title}</ScaledText>
             </LinearGradient>
         </TouchableOpacity>
     </Animated.View>
@@ -157,10 +144,10 @@ const ProductCard = ({
                     </View>
                 </TouchableOpacity>
             </View>
-            <Text style={styles.productBrand} numberOfLines={2}>
+            <ScaledText style={styles.productBrand} numberOfLines={2}>
                 {item.brand}
-            </Text>
-            <Text style={styles.productPrice}>${item.price.toFixed(2)}</Text>
+            </ScaledText>
+            <ScaledText style={styles.productPrice}>${item.price.toFixed(2)}</ScaledText>
             <TouchableOpacity
                 style={styles.buyButton}
                 onPress={() => handleBuyPress(item)}
@@ -175,7 +162,7 @@ const ProductCard = ({
                     style={styles.buyButtonGradient}
                 >
                     <Ionicons name="cart-outline" size={14} color="#FFF" style={styles.buyIcon} />
-                    <Text style={styles.buyButtonText}>{t('inspo.buy')}</Text>
+                    <ScaledText style={styles.buyButtonText}>{t('inspo.buy')}</ScaledText>
                 </LinearGradient>
             </TouchableOpacity>
         </View>
@@ -215,10 +202,10 @@ const VariationCard = ({ outfit, items, onPress }: VariationCardProps) => {
                 ))}
             </View>
             <View style={styles.variationFooter}>
-                <Text style={styles.variationOccasion} numberOfLines={2}>
+                <ScaledText style={styles.variationOccasion} numberOfLines={2}>
                     {OCCASION_LABEL[outfit.outfit.occasion] ?? outfit.outfit.occasion}
-                </Text>
-                <Text style={styles.variationScore}>{Math.round(outfit.score * 100)}%</Text>
+                </ScaledText>
+                <ScaledText style={styles.variationScore}>{Math.round(outfit.score * 100)}%</ScaledText>
             </View>
         </TouchableOpacity>
     );
@@ -450,7 +437,7 @@ const InspoScreen = () => {
                 {shopCatalogLoadingMore ? (
                     <ActivityIndicator size="small" color={colors.text.primary} />
                 ) : (
-                    <Text style={styles.loadMoreButtonText}>{t('inspo.loadMoreProducts')}</Text>
+                    <ScaledText style={styles.loadMoreButtonText}>{t('inspo.loadMoreProducts')}</ScaledText>
                 )}
             </TouchableOpacity>
         );
@@ -483,13 +470,13 @@ const InspoScreen = () => {
             {(shopCatalogError || showingFallbackCatalog) && (
                 <Animated.View entering={FadeInDown.delay(90).duration(300)}>
                     <View style={styles.catalogStatusBanner}>
-                        <Text style={styles.catalogStatusText}>
+                        <ScaledText style={styles.catalogStatusText}>
                             {showingFallbackCatalog
                                 ? t('inspo.catalogEmpty')
                                 : t('inspo.catalogRefreshFailed')}
-                        </Text>
+                        </ScaledText>
                         <TouchableOpacity onPress={refreshShopCatalog} accessibilityRole="button">
-                            <Text style={styles.catalogStatusAction}>{t('common.retry')}</Text>
+                            <ScaledText style={styles.catalogStatusAction}>{t('common.retry')}</ScaledText>
                         </TouchableOpacity>
                     </View>
                 </Animated.View>
@@ -513,7 +500,7 @@ const InspoScreen = () => {
                         style={styles.personalStylistGradient}
                     >
                         <Ionicons name="sparkles" size={20} color="#FFF" />
-                        <Text style={styles.personalStylistText}>{t('inspo.personalStylist')}</Text>
+                        <ScaledText style={styles.personalStylistText}>{t('inspo.personalStylist')}</ScaledText>
                         <Ionicons name="arrow-forward" size={18} color="rgba(255,255,255,0.8)" />
                     </LinearGradient>
                 </TouchableOpacity>
@@ -522,7 +509,7 @@ const InspoScreen = () => {
             {/* Featured Capsules */}
             {(featuredCapsulesLoading || featuredCapsules.length > 0) && (
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle} accessibilityRole="header">{t('inspo.featuredCapsules')}</Text>
+                    <ScaledText style={styles.sectionTitle} accessibilityRole="header">{t('inspo.featuredCapsules')}</ScaledText>
                     {featuredCapsulesLoading && featuredCapsules.length === 0 ? (
                         <View style={styles.capsulesLoadingRow}>
                             <ActivityIndicator size="small" color={colors.text.primary} />
@@ -542,9 +529,9 @@ const InspoScreen = () => {
             )}
 
             <View style={styles.section}>
-                <Text style={styles.sectionTitle} accessibilityRole="header">
+                <ScaledText style={styles.sectionTitle} accessibilityRole="header">
                     {t('inspo.shop')}
-                </Text>
+                </ScaledText>
             </View>
         </>
     ), [searchQuery, setSearchQuery, shopCatalogError, showingFallbackCatalog, refreshShopCatalog, navigation, featuredCapsulesLoading, featuredCapsules, t, colors.text.primary, colors.text.tertiary]);
@@ -563,8 +550,8 @@ const InspoScreen = () => {
                         colors={['transparent', 'rgba(0,0,0,0.75)']}
                         style={styles.guideGradient}
                     >
-                        <Text style={styles.guideTitle}>{item.title}</Text>
-                        <Text style={styles.guideSubtitle}>{item.subtitle}</Text>
+                        <ScaledText style={styles.guideTitle}>{item.title}</ScaledText>
+                        <ScaledText style={styles.guideSubtitle}>{item.subtitle}</ScaledText>
                     </LinearGradient>
                 </View>
             </View>
@@ -576,7 +563,7 @@ const InspoScreen = () => {
             {/* From Your Closet — variety outfits */}
             {computedVarietyOutfits.length > 0 && (
                 <Animated.View entering={FadeInDown.delay(300).duration(400)} style={styles.section}>
-                    <Text style={styles.sectionTitle} accessibilityRole="header">{t('inspo.fromYourCloset')}</Text>
+                    <ScaledText style={styles.sectionTitle} accessibilityRole="header">{t('inspo.fromYourCloset')}</ScaledText>
                     <FlatList
                         data={computedVarietyOutfits}
                         horizontal
@@ -614,7 +601,7 @@ const InspoScreen = () => {
                 {/* Header */}
                 <View style={styles.header}>
                     <View style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]} pointerEvents="none">
-                        <Text style={styles.headerTitle} accessibilityRole="header">{t('inspo.title')}</Text>
+                        <ScaledText style={styles.headerTitle} accessibilityRole="header">{t('inspo.title')}</ScaledText>
                     </View>
                 </View>
 
@@ -633,9 +620,9 @@ const InspoScreen = () => {
                                 accessibilityRole="tab"
                                 accessibilityState={{ selected: segment === seg }}
                             >
-                                <Text style={[styles.segmentText, segment === seg && styles.segmentTextActive]}>
+                                <ScaledText style={[styles.segmentText, segment === seg && styles.segmentTextActive]}>
                                     {seg === 'guide' ? t('inspo.guide') : t('inspo.shop')}
-                                </Text>
+                                </ScaledText>
                             </TouchableOpacity>
                         ))}
                     </View>
@@ -681,7 +668,7 @@ const InspoScreen = () => {
                             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                                 {renderShopHeader()}
                                 <View style={styles.emptyState}>
-                                    <Text style={styles.emptyStateText}>{t('inspo.noMenswearMatches')}</Text>
+                                    <ScaledText style={styles.emptyStateText}>{t('inspo.noMenswearMatches')}</ScaledText>
                                 </View>
                             </ScrollView>
                         ) : (

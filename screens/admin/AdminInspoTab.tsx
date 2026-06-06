@@ -4,22 +4,8 @@
  *  - Shop / Inspo items: edit text (brand, name, price, description), change image, promote, delete
  */
 import React, { useEffect, useState } from 'react';
-import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-} from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View,  } from 'react-native'
+import { ScaledText } from '../../components/ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -449,18 +435,18 @@ export const AdminInspoTab = () => {
                 defaultSource={require('../../assets/images/basic_cardigan.png')}
             />
             <View style={s.cardInfo}>
-                <Text style={s.cardBrand}>{item.brand}</Text>
-                <Text style={s.cardName} numberOfLines={1}>{item.name}</Text>
-                <Text style={s.cardMeta}>{item.garmentType} · ${item.price}</Text>
+                <ScaledText style={s.cardBrand}>{item.brand}</ScaledText>
+                <ScaledText style={s.cardName} numberOfLines={1}>{item.name}</ScaledText>
+                <ScaledText style={s.cardMeta}>{item.garmentType} · ${item.price}</ScaledText>
             </View>
             <View style={s.cardActions}>
                 <TouchableOpacity style={s.actionBtn} onPress={() => openEdit(item)}>
                     <Ionicons name="create-outline" size={18} color="#007AFF" />
-                    <Text style={s.actionLabel}>{t('common.edit', 'Edit')}</Text>
+                    <ScaledText style={s.actionLabel}>{t('common.edit', 'Edit')}</ScaledText>
                 </TouchableOpacity>
                 <TouchableOpacity style={s.actionBtn} onPress={() => changePhoto(item)}>
                     <Ionicons name="image" size={18} color="#007AFF" />
-                    <Text style={s.actionLabel}>{t('admin.inspo.changePhoto', 'Photo')}</Text>
+                    <ScaledText style={s.actionLabel}>{t('admin.inspo.changePhoto', 'Photo')}</ScaledText>
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[s.actionBtn, (promoting === item.id || item.id.startsWith('capsule_real_')) && s.actionBtnDisabled]}
@@ -472,11 +458,11 @@ export const AdminInspoTab = () => {
                     ) : (
                         <Ionicons name="arrow-up-circle" size={18} color="#34C759" />
                     )}
-                    <Text style={[s.actionLabel, { color: '#34C759' }]}>{t('admin.inspo.promote')}</Text>
+                    <ScaledText style={[s.actionLabel, { color: '#34C759' }]}>{t('admin.inspo.promote')}</ScaledText>
                 </TouchableOpacity>
                 <TouchableOpacity style={s.actionBtn} onPress={() => deleteItem(item)}>
                     <Ionicons name="trash-outline" size={18} color="#FF3B30" />
-                    <Text style={[s.actionLabel, { color: '#FF3B30' }]}>{t('common.delete', 'Delete')}</Text>
+                    <ScaledText style={[s.actionLabel, { color: '#FF3B30' }]}>{t('common.delete', 'Delete')}</ScaledText>
                 </TouchableOpacity>
             </View>
         </View>
@@ -494,13 +480,13 @@ export const AdminInspoTab = () => {
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterRow}>
                     {FILTER_OPTIONS.map((opt) => (
                         <TouchableOpacity key={opt.value} style={[s.filterChip, filterType === opt.value && s.filterChipActive]} onPress={() => setFilterType(opt.value)}>
-                            <Text style={[s.filterChipText, filterType === opt.value && s.filterChipTextActive]}>{opt.label}</Text>
+                            <ScaledText style={[s.filterChipText, filterType === opt.value && s.filterChipTextActive]}>{opt.label}</ScaledText>
                         </TouchableOpacity>
                     ))}
                 </ScrollView>
                 <TouchableOpacity style={s.addBtn} onPress={addNewCapsule}>
                     <Ionicons name="add-circle" size={18} color="#FFF" />
-                    <Text style={s.addBtnText}>{t('admin.inspo.addCapsule', 'Add Capsule')}</Text>
+                    <ScaledText style={s.addBtnText}>{t('admin.inspo.addCapsule', 'Add Capsule')}</ScaledText>
                 </TouchableOpacity>
             </View>
             {loading ? (
@@ -510,7 +496,7 @@ export const AdminInspoTab = () => {
             ) : filtered.length === 0 ? (
                 <View style={s.center}>
                     <Ionicons name="images-outline" size={48} color="#8E8E93" />
-                    <Text style={s.emptyText}>{t('admin.inspo.empty', 'No inspiration items')}</Text>
+                    <ScaledText style={s.emptyText}>{t('admin.inspo.empty', 'No inspiration items')}</ScaledText>
                 </View>
             ) : (
                 <FlatList data={filtered} keyExtractor={(item) => item.id} renderItem={renderInspoItem} contentContainerStyle={{ paddingBottom: 40 }} />
@@ -520,15 +506,15 @@ export const AdminInspoTab = () => {
                 <SafeAreaView style={s.modalContainer}>
                     <View style={s.modalHeader}>
                         <TouchableOpacity onPress={() => { setEditTarget(null); setEditLocalImage(null); }} disabled={savingEdit}>
-                            <Text style={s.modalCancel}>{t('common.cancel')}</Text>
+                            <ScaledText style={s.modalCancel}>{t('common.cancel')}</ScaledText>
                         </TouchableOpacity>
-                        <Text style={s.modalTitle}>
+                        <ScaledText style={s.modalTitle}>
                             {isCapsuleEdit
                                 ? (editTarget?.kind === 'capsule' && editTarget.row.id ? t('admin.inspo.editCapsule', 'Edit Capsule') : t('admin.inspo.addCapsule', 'Add Capsule'))
                                 : t('admin.manage.editItem', 'Edit Item')}
-                        </Text>
+                        </ScaledText>
                         <TouchableOpacity onPress={saveEdit} disabled={savingEdit}>
-                            {savingEdit ? <ActivityIndicator color="#007AFF" /> : <Text style={s.modalSave}>{t('common.save')}</Text>}
+                            {savingEdit ? <ActivityIndicator color="#007AFF" /> : <ScaledText style={s.modalSave}>{t('common.save')}</ScaledText>}
                         </TouchableOpacity>
                     </View>
 
@@ -540,23 +526,23 @@ export const AdminInspoTab = () => {
                                 ) : (
                                     <View style={s.imagePlaceholder}>
                                         <Ionicons name="camera" size={32} color="#8E8E93" />
-                                        <Text style={s.imagePlaceholderText}>{t('admin.add.pickImage')}</Text>
+                                        <ScaledText style={s.imagePlaceholderText}>{t('admin.add.pickImage')}</ScaledText>
                                     </View>
                                 )}
                             </TouchableOpacity>
 
                             {editTarget?.kind === 'capsule' && (
                                 <>
-                                    <Text style={s.label}>{t('admin.guide.title')} *</Text>
+                                    <ScaledText style={s.label}>{t('admin.guide.title')} *</ScaledText>
                                     <TextInput style={s.input} value={editTarget.row.title} onChangeText={(v) => setEditTarget({ kind: 'capsule', row: { ...editTarget.row, title: v } })} placeholder="Winter Dressing Guide" />
-                                    <Text style={s.label}>{t('admin.guide.subtitle')}</Text>
+                                    <ScaledText style={s.label}>{t('admin.guide.subtitle')}</ScaledText>
                                     <TextInput style={s.input} value={editTarget.row.subtitle} onChangeText={(v) => setEditTarget({ kind: 'capsule', row: { ...editTarget.row, subtitle: v } })} placeholder="Optional subtitle" />
-                                    <Text style={s.label}>{t('admin.inspo.linkUrl', 'Link URL')}</Text>
+                                    <ScaledText style={s.label}>{t('admin.inspo.linkUrl', 'Link URL')}</ScaledText>
                                     <TextInput style={s.input} value={editTarget.row.link_url} onChangeText={(v) => setEditTarget({ kind: 'capsule', row: { ...editTarget.row, link_url: v } })} placeholder="https://..." autoCapitalize="none" autoCorrect={false} keyboardType="url" />
-                                    <Text style={s.label}>{t('admin.add.sortOrder')}</Text>
+                                    <ScaledText style={s.label}>{t('admin.add.sortOrder')}</ScaledText>
                                     <TextInput style={s.input} value={String(editTarget.row.sort_order)} onChangeText={(v) => setEditTarget({ kind: 'capsule', row: { ...editTarget.row, sort_order: parseInt(v) || 0 } })} keyboardType="number-pad" />
                                     <View style={s.switchRow}>
-                                        <Text style={s.label}>{t('admin.add.isActive')}</Text>
+                                        <ScaledText style={s.label}>{t('admin.add.isActive')}</ScaledText>
                                         <Switch value={editTarget.row.is_active} onValueChange={(v) => setEditTarget({ kind: 'capsule', row: { ...editTarget.row, is_active: v } })} />
                                     </View>
                                 </>
@@ -564,18 +550,18 @@ export const AdminInspoTab = () => {
 
                             {editTarget?.kind === 'shop' && (
                                 <>
-                                    <Text style={s.label}>{t('admin.add.brand')} *</Text>
+                                    <ScaledText style={s.label}>{t('admin.add.brand')} *</ScaledText>
                                     <TextInput style={s.input} value={editTarget.row.brand} onChangeText={(v) => setEditTarget({ kind: 'shop', row: { ...editTarget.row, brand: v } })} />
-                                    <Text style={s.label}>{t('admin.add.name')} *</Text>
+                                    <ScaledText style={s.label}>{t('admin.add.name')} *</ScaledText>
                                     <TextInput style={s.input} value={editTarget.row.name} onChangeText={(v) => setEditTarget({ kind: 'shop', row: { ...editTarget.row, name: v } })} />
-                                    <Text style={s.label}>{t('admin.add.price')}</Text>
+                                    <ScaledText style={s.label}>{t('admin.add.price')}</ScaledText>
                                     <TextInput style={s.input} value={String(editTarget.row.price)} onChangeText={(v) => setEditTarget({ kind: 'shop', row: { ...editTarget.row, price: parseFloat(v) || 0 } })} keyboardType="decimal-pad" />
-                                    <Text style={s.label}>{t('admin.add.description')}</Text>
+                                    <ScaledText style={s.label}>{t('admin.add.description')}</ScaledText>
                                     <TextInput style={[s.input, s.textArea]} value={editTarget.row.description} onChangeText={(v) => setEditTarget({ kind: 'shop', row: { ...editTarget.row, description: v } })} multiline numberOfLines={3} />
-                                    <Text style={s.label}>{t('admin.add.sortOrder')}</Text>
+                                    <ScaledText style={s.label}>{t('admin.add.sortOrder')}</ScaledText>
                                     <TextInput style={s.input} value={String(editTarget.row.sort_order)} onChangeText={(v) => setEditTarget({ kind: 'shop', row: { ...editTarget.row, sort_order: parseInt(v) || 0 } })} keyboardType="number-pad" />
                                     <View style={s.switchRow}>
-                                        <Text style={s.label}>{t('admin.add.isActive')}</Text>
+                                        <ScaledText style={s.label}>{t('admin.add.isActive')}</ScaledText>
                                         <Switch value={editTarget.row.is_active} onValueChange={(v) => setEditTarget({ kind: 'shop', row: { ...editTarget.row, is_active: v } })} />
                                     </View>
                                 </>

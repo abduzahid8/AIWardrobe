@@ -246,10 +246,12 @@ serve(async (req: Request) => {
   }
 })
 
-function mapProductToTier(productId: string): 'premium' | 'vip' | 'free' {
+function mapProductToTier(productId: string): 'lite' | 'premium' | 'vip' | 'free' {
   const id = productId.toLowerCase();
+  if (id === '2.99') return 'lite'
   if (id.includes('vip') || id.includes('yearly')) return 'vip'
   if (id.includes('premium') || id.includes('pro')) return 'premium'
+  if (id.includes('lite')) return 'lite'
   return 'free'
 }
 
@@ -271,7 +273,7 @@ async function handlePurchase(
   supabase: any,
   userId: string,
   event: RevenueCatEvent['event'],
-  tier: 'premium' | 'vip',
+  tier: 'lite' | 'premium' | 'vip',
   platform: 'apple' | 'google' | 'stripe' | 'manual',
   isInitial: boolean
 ) {
@@ -476,7 +478,7 @@ async function handleUncancellation(supabase: any, userId: string, event: Revenu
   console.log(`[RevenueCat] Uncancellation recorded for ${userId}`)
 }
 
-async function handleProductChange(supabase: any, userId: string, event: RevenueCatEvent['event'], tier: 'premium' | 'vip', platform: string) {
+async function handleProductChange(supabase: any, userId: string, event: RevenueCatEvent['event'], tier: 'lite' | 'premium' | 'vip', platform: string) {
   // Handle upgrade/downgrade
   const newTier = mapProductToTier(event.product_id || '')
   const expiryDate = toIsoFromMs(event.expiration_at_ms)

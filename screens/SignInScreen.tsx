@@ -1,21 +1,11 @@
-import {
-  Alert,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  KeyboardAvoidingView,
-  TouchableWithoutFeedback,
-  Keyboard,
-  ScrollView,
-} from "react-native";
+import { Alert, Platform, StyleSheet, TextInput, TouchableOpacity, View, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, ScrollView } from 'react-native';
+import { ScaledText } from '../components/ui/ScaledText';
 import React, { useState, useEffect } from "react";
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import * as AppleAuthentication from "expo-apple-authentication";
+import { Ionicons } from "@expo/vector-icons";
 import useAuthStore from "../store/auth";
 import { useTranslation } from "react-i18next";
 import { SUPABASE_AUTH_ERRORS } from "../constants/authErrors";
@@ -26,7 +16,7 @@ const SignInScreen = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { login, signInWithApple } = useAuthStore();
+  const { login, signInWithApple, signInWithGoogle } = useAuthStore();
   const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
 
   useEffect(() => {
@@ -43,6 +33,20 @@ const SignInScreen = () => {
     } catch (error: any) {
       if (error?.code !== 'ERR_REQUEST_CANCELED') {
         Alert.alert(t('signIn.loginFailed'), error.message || t('signIn.appleSignInFailed'));
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    if (isLoading) return;
+    setIsLoading(true);
+    try {
+      await signInWithGoogle();
+    } catch (error: any) {
+      if (error?.message && !error?.message?.includes('cancel')) {
+        Alert.alert(t('signIn.loginFailed'), error.message || t('signIn.googleSignInFailed'));
       }
     } finally {
       setIsLoading(false);
@@ -88,25 +92,36 @@ const SignInScreen = () => {
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.formContainer}>
-              <Text style={styles.title}>{t('auth.signIn')}</Text>
+              <ScaledText style={styles.title}>{t('auth.signIn')}</ScaledText>
 
-              {/* Sign in with Apple — shown first per Apple HIG prominence requirement */}
+              {/* Social sign-in buttons */}
               {appleAuthAvailable && (
-                <>
-                  <AppleAuthentication.AppleAuthenticationButton
-                    buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-                    buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE_OUTLINE}
-                    cornerRadius={16}
-                    style={styles.appleButton}
-                    onPress={handleAppleSignIn}
-                  />
-                  <View style={styles.divider}>
-                    <View style={styles.dividerLine} />
-                    <Text style={styles.dividerText}>{t('signIn.or')}</Text>
-                    <View style={styles.dividerLine} />
-                  </View>
-                </>
+                <AppleAuthentication.AppleAuthenticationButton
+                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                  buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE_OUTLINE}
+                  cornerRadius={16}
+                  style={styles.socialButton}
+                  onPress={handleAppleSignIn}
+                />
               )}
+
+              <TouchableOpacity
+                onPress={handleGoogleSignIn}
+                style={styles.googleButton}
+                disabled={isLoading}
+                activeOpacity={0.8}
+                accessibilityLabel={t('signIn.signInWithGoogle')}
+                accessibilityRole="button"
+              >
+                <Ionicons name="logo-google" size={20} color="#FFF" style={styles.googleIcon} />
+                <ScaledText style={styles.googleButtonText}>{t('signIn.signInWithGoogle')}</ScaledText>
+              </TouchableOpacity>
+
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <ScaledText style={styles.dividerText}>{t('signIn.or')}</ScaledText>
+                <View style={styles.dividerLine} />
+              </View>
 
               <View style={styles.inputContainer}>
                 <TextInput
@@ -144,7 +159,7 @@ const SignInScreen = () => {
                 accessibilityLabel={t('auth.forgotPassword')}
                 accessibilityRole="button"
               >
-                <Text style={styles.forgotText}>{t('auth.forgotPassword')}</Text>
+                <ScaledText style={styles.forgotText}>{t('auth.forgotPassword')}</ScaledText>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -158,9 +173,9 @@ const SignInScreen = () => {
                 accessibilityLabel={isLoading ? t('signIn.signingIn') : t('auth.signIn')}
                 accessibilityRole="button"
               >
-                <Text style={styles.primaryButtonText}>
+                <ScaledText style={styles.primaryButtonText}>
                   {isLoading ? t('signIn.signingIn') : t('auth.signIn')}
-                </Text>
+                </ScaledText>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -170,10 +185,10 @@ const SignInScreen = () => {
                 }}
                 style={styles.linkButton}
               >
-                <Text style={styles.linkText}>
-                  <Text style={styles.linkTextMuted}>{t('auth.noAccount')} </Text>
+                <ScaledText style={styles.linkText}>
+                  <ScaledText style={styles.linkTextMuted}>{t('auth.noAccount')} </ScaledText>
                   {t('auth.signUp.signUp')}
-                </Text>
+                </ScaledText>
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -261,10 +276,30 @@ const styles = StyleSheet.create({
   linkTextMuted: {
     color: "rgba(255,255,255,0.6)",
   },
-  appleButton: {
+  socialButton: {
     width: "100%",
     height: 50,
     marginBottom: 8,
+  },
+  googleButton: {
+    width: "100%",
+    height: 50,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.15)",
+    borderRadius: 16,
+    marginBottom: 8,
+  },
+  googleIcon: {
+    marginRight: 10,
+  },
+  googleButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FFF",
   },
   divider: {
     flexDirection: "row",

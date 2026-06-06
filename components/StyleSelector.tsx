@@ -1,13 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import {
-    View,
-    Text,
-    TouchableOpacity,
-    Modal,
-    StyleSheet,
-    Animated,
-    Image,
-} from 'react-native';
+import { View, TouchableOpacity, Modal, StyleSheet, Animated, Image,  } from 'react-native'
+import { ScaledText } from './ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -90,8 +83,8 @@ const StyleSelector = ({ onStyleChange }: StyleSelectorProps) => {
                 <View style={styles.buttonContent}>
                     <Ionicons name="sparkles" size={20} color="#4f46e5" />
                     <View style={styles.textContainer}>
-                        <Text style={styles.label}>{t('styles.yourStyle')}</Text>
-                        <Text style={styles.selectedValue}>{getSelectedStyleName()}</Text>
+                        <ScaledText style={styles.label}>{t('styles.yourStyle')}</ScaledText>
+                        <ScaledText style={styles.selectedValue}>{getSelectedStyleName()}</ScaledText>
                     </View>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
@@ -125,7 +118,7 @@ const StyleSelector = ({ onStyleChange }: StyleSelectorProps) => {
                         ]}
                     >
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>{t('styles.selectStyle')}</Text>
+                            <ScaledText style={styles.modalTitle}>{t('styles.selectStyle')}</ScaledText>
                             <TouchableOpacity onPress={closeModal} style={styles.closeButton}>
                                 <Ionicons name="close" size={24} color="#64748b" />
                             </TouchableOpacity>
@@ -147,7 +140,7 @@ const StyleSelector = ({ onStyleChange }: StyleSelectorProps) => {
                                         style={styles.cardGradient}
                                     >
                                         <View style={styles.cardHeader}>
-                                            <Text style={styles.styleIcon}>{style.icon}</Text>
+                                            <ScaledText style={styles.styleIcon}>{style.icon}</ScaledText>
                                             <View style={styles.colorsPreview}>
                                                 {style.colors.map((color, idx) => (
                                                     <View
@@ -157,12 +150,12 @@ const StyleSelector = ({ onStyleChange }: StyleSelectorProps) => {
                                                 ))}
                                             </View>
                                         </View>
-                                        <Text style={styles.styleName}>
+                                        <ScaledText style={styles.styleName}>
                                             {t(`${style.translationKey}.name`)}
-                                        </Text>
-                                        <Text style={styles.styleDescription}>
+                                        </ScaledText>
+                                        <ScaledText style={styles.styleDescription}>
                                             {t(`${style.translationKey}.description`)}
-                                        </Text>
+                                        </ScaledText>
                                         {selectedStyle === style.id && (
                                             <View style={styles.checkmark}>
                                                 <Ionicons name="checkmark-circle" size={24} color="#4f46e5" />

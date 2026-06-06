@@ -1,12 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    ScrollView,
-    Dimensions,
-} from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ScrollView, Dimensions,  } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
@@ -217,14 +211,14 @@ const OutfitCalendarScreen = () => {
             {item?.image ? (
                 <CachedImage uri={item.image} style={styles.miniSlotImage} contentFit="cover" fadeIn={false} />
             ) : (
-                <Text style={[styles.miniSlotPlaceholder, isSelected && styles.miniSlotPlaceholderSelected]}>
+                <ScaledText style={[styles.miniSlotPlaceholder, isSelected && styles.miniSlotPlaceholderSelected]} minScale={0.55}>
                     {shortLabel}
-                </Text>
+                </ScaledText>
             )}
         </View>
     );
 
-    const renderPreviewTile = (label: string, item: OutfitItem | null) => (
+    const renderPreviewTile = (tKey: string, item: OutfitItem | null) => (
         <View style={[styles.previewTile, styles.previewTileGrid]}>
             {item?.image ? (
                 <View style={styles.previewMedia}>
@@ -232,18 +226,18 @@ const OutfitCalendarScreen = () => {
                 </View>
             ) : (
                 <View style={styles.previewEmpty}>
-                    <Text style={styles.previewEmptyLabel}>{label}</Text>
-                    <Text style={styles.previewEmptyHint}>{t('calendar.notAdded')}</Text>
+                    <ScaledText tKey={tKey} style={styles.previewEmptyLabel} />
+                    <ScaledText style={styles.previewEmptyHint}>{t('calendar.notAdded')}</ScaledText>
                 </View>
             )}
 
             <View style={styles.previewLabelPill}>
-                <Text style={styles.previewLabelText}>{label}</Text>
+                <ScaledText tKey={tKey} style={styles.previewLabelText} />
             </View>
         </View>
     );
 
-    const renderDockItem = (label: string, item: OutfitItem | null) => (
+    const renderDockItem = (tKey: string, item: OutfitItem | null) => (
         <View style={styles.dockItem}>
             <View style={styles.dockThumbWrap}>
                 {item?.image ? (
@@ -254,9 +248,9 @@ const OutfitCalendarScreen = () => {
                     </View>
                 )}
             </View>
-            <Text style={[styles.dockName, !item && styles.dockNameMuted]} numberOfLines={2}>
-                {item ? formatItemName(item, t) : label}
-            </Text>
+            <ScaledText style={[styles.dockName, !item && styles.dockNameMuted]} numberOfLines={2}>
+                {item ? formatItemName(item, t) : t(tKey)}
+            </ScaledText>
         </View>
     );
 
@@ -273,8 +267,8 @@ const OutfitCalendarScreen = () => {
                     </TouchableOpacity>
 
                     <View style={styles.streakPill}>
-                        <Text style={styles.streakEmoji}>🔥</Text>
-                        <Text style={styles.streakCount}>{cal.streak}</Text>
+                        <ScaledText style={styles.streakEmoji}>🔥</ScaledText>
+                        <ScaledText style={styles.streakCount}>{cal.streak}</ScaledText>
                     </View>
 
                     <View style={styles.iconButtonPlaceholder} />
@@ -288,7 +282,7 @@ const OutfitCalendarScreen = () => {
                     <Animated.View entering={FadeIn.duration(220)} style={styles.plannerCard}>
                         <View style={styles.plannerHeader}>
                             <View style={styles.plannerCopy}>
-                                <Text style={styles.plannerTitle}>{t('calendar.planLooks')}</Text>
+                                <ScaledText style={styles.plannerTitle}>{t('calendar.planLooks')}</ScaledText>
                             </View>
 
                             <TouchableOpacity style={styles.openDayButton} onPress={openSelectedDay}>
@@ -305,9 +299,9 @@ const OutfitCalendarScreen = () => {
                                 <Ionicons name="chevron-back" size={20} color="#0F172A" />
                             </TouchableOpacity>
 
-                            <Text style={styles.monthTitle}>
+                            <ScaledText style={styles.monthTitle} minScale={0.65}>
                                 {MONTHS[cal.currentMonth]} {cal.currentYear}
-                            </Text>
+                            </ScaledText>
 
                             <TouchableOpacity style={styles.monthArrow} onPress={cal.goToNextMonth}>
                                 <Ionicons name="chevron-forward" size={20} color="#0F172A" />
@@ -322,24 +316,25 @@ const OutfitCalendarScreen = () => {
                                     activeOpacity={0.85}
                                     onPress={() => setSelectedDay(day.day)}
                                 >
-                                    <Text
+                                    <ScaledText
                                         style={[
                                             styles.dayWeekday,
                                             day.isSelected && styles.dayTextOnSelected,
                                             day.isToday && !day.isSelected && styles.dayWeekdayToday,
                                         ]}
+                                        minScale={0.55}
                                     >
                                         {WEEKDAYS[day.date.getDay()]}
-                                    </Text>
+                                    </ScaledText>
 
-                                    <Text
+                                    <ScaledText
                                         style={[
                                             styles.dayNumber,
                                             day.isSelected && styles.dayTextOnSelected,
                                         ]}
                                     >
                                         {day.day}
-                                    </Text>
+                                    </ScaledText>
 
                                     <View style={styles.miniSlotStack}>
                                         {SLOT_META.map((slot) =>
@@ -373,22 +368,22 @@ const OutfitCalendarScreen = () => {
                     <Animated.View entering={FadeInDown.delay(70).duration(260)} style={styles.summaryCard}>
                         <View style={styles.summaryItem}>
                             <Ionicons name="calendar-outline" size={15} color="#94A3B8" />
-                            <Text style={styles.summaryValue}>{safeSelectedDay}</Text>
+                            <ScaledText style={styles.summaryValue}>{safeSelectedDay}</ScaledText>
                         </View>
                         <View style={styles.summaryDivider} />
                         <View style={styles.summaryItem}>
                             <Ionicons name="checkmark-done-outline" size={15} color="#94A3B8" />
-                            <Text style={styles.summaryValue}>{monthlyStats.logged}</Text>
+                            <ScaledText style={styles.summaryValue}>{monthlyStats.logged}</ScaledText>
                         </View>
                         <View style={styles.summaryDivider} />
                         <View style={styles.summaryItem}>
                             <Ionicons name="flame-outline" size={15} color="#94A3B8" />
-                            <Text style={styles.summaryValue}>{cal.streak}</Text>
+                            <ScaledText style={styles.summaryValue}>{cal.streak}</ScaledText>
                         </View>
                         <View style={styles.summaryDivider} />
                         <View style={styles.summaryItem}>
                             <Ionicons name="today-outline" size={15} color="#94A3B8" />
-                            <Text style={styles.summaryValue}>{MONTHS[cal.currentMonth].toUpperCase()}</Text>
+                            <ScaledText style={styles.summaryValue}>{MONTHS[cal.currentMonth].toUpperCase()}</ScaledText>
                         </View>
                     </Animated.View>
 
@@ -396,7 +391,7 @@ const OutfitCalendarScreen = () => {
                         <View style={styles.outfitCard}>
                             <View style={styles.outfitHeader}>
                                 <View style={styles.outfitHeaderCopy}>
-                                    <Text style={styles.outfitTitle}>{formatReadableDate(selectedDate)}</Text>
+                                    <ScaledText style={styles.outfitTitle}>{formatReadableDate(selectedDate)}</ScaledText>
                                 </View>
 
                                 <View
@@ -407,7 +402,7 @@ const OutfitCalendarScreen = () => {
                                             : styles.statusBadgeEmpty,
                                     ]}
                                 >
-                                    <Text
+                                    <ScaledText
                                         style={[
                                             styles.statusBadgeText,
                                             !selectedLog && styles.statusBadgeTextEmpty,
@@ -418,36 +413,36 @@ const OutfitCalendarScreen = () => {
                                             : isPastDay
                                             ? t('calendar.emptyDay')
                                             : t('calendar.openDay')}
-                                    </Text>
+                                    </ScaledText>
                                 </View>
                             </View>
 
                             <View style={styles.boardShell}>
                                 <View style={styles.previewGrid}>
-                                    {renderPreviewTile('Top', selectedSlots.top)}
-                                    {renderPreviewTile('Bottom', selectedSlots.pants)}
-                                    {showLayer && renderPreviewTile('Layer', selectedSlots.layer)}
-                                    {renderPreviewTile('Shoes', selectedSlots.shoes)}
+                                    {renderPreviewTile('calendar.top', selectedSlots.top)}
+                                    {renderPreviewTile('calendar.bottom', selectedSlots.pants)}
+                                    {showLayer && renderPreviewTile('calendar.layer', selectedSlots.layer)}
+                                    {renderPreviewTile('calendar.shoes', selectedSlots.shoes)}
                                 </View>
                             </View>
 
                             <View style={styles.pieceDock}>
-                                {renderDockItem('Top', selectedSlots.top)}
+                                {renderDockItem('calendar.top', selectedSlots.top)}
                                 <View style={styles.pieceDockDivider} />
-                                {renderDockItem('Bottom', selectedSlots.pants)}
+                                {renderDockItem('calendar.bottom', selectedSlots.pants)}
                                 {showLayer ? (
                                     <>
                                         <View style={styles.pieceDockDivider} />
-                                        {renderDockItem('Layer', selectedSlots.layer)}
+                                        {renderDockItem('calendar.layer', selectedSlots.layer)}
                                     </>
                                 ) : null}
                                 <View style={styles.pieceDockDivider} />
-                                {renderDockItem('Shoes', selectedSlots.shoes)}
+                                {renderDockItem('calendar.shoes', selectedSlots.shoes)}
                             </View>
 
                             {selectedSlots.extras.length > 0 && (
                                 <View style={styles.extraSection}>
-                                    <Text style={styles.extraTitle}>{t('calendar.extras')}</Text>
+                                    <ScaledText style={styles.extraTitle}>{t('calendar.extras')}</ScaledText>
                                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                                         {selectedSlots.extras.map((item) => (
                                             <View key={item.id} style={styles.extraCard}>
@@ -457,9 +452,9 @@ const OutfitCalendarScreen = () => {
                                                     contentFit="cover"
                                                     fadeIn={false}
                                                 />
-                                                <Text style={styles.extraName} numberOfLines={2}>
+                                                <ScaledText style={styles.extraName} numberOfLines={2}>
                                                     {formatItemName(item, t)}
-                                                </Text>
+                                                </ScaledText>
                                             </View>
                                         ))}
                                     </ScrollView>
@@ -473,13 +468,13 @@ const OutfitCalendarScreen = () => {
                                         size={18}
                                         color="#FFFFFF"
                                     />
-                                    <Text style={styles.primaryActionText}>
+                                    <ScaledText style={styles.primaryActionText}>
                                         {selectedLog
                                             ? t('calendar.replaceOutfit')
                                             : isPastDay
                                             ? t('calendar.logOutfit')
                                             : t('calendar.planOutfit')}
-                                    </Text>
+                                    </ScaledText>
                                 </TouchableOpacity>
 
                                 {selectedLog ? (
@@ -488,7 +483,7 @@ const OutfitCalendarScreen = () => {
                                         onPress={() => cal.confirmDelete(selectedDateKey)}
                                     >
                                         <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                                        <Text style={styles.secondaryActionDangerText}>{t('common.delete')}</Text>
+                                        <ScaledText style={styles.secondaryActionDangerText}>{t('common.delete')}</ScaledText>
                                     </TouchableOpacity>
                                 ) : (
                                     <TouchableOpacity
@@ -501,7 +496,7 @@ const OutfitCalendarScreen = () => {
                                         }
                                     >
                                         <Ionicons name="sparkles-outline" size={18} color="#0F172A" />
-                                        <Text style={styles.secondaryActionText}>{t('calendar.createWithAI')}</Text>
+                                        <ScaledText style={styles.secondaryActionText}>{t('calendar.createWithAI')}</ScaledText>
                                     </TouchableOpacity>
                                 )}
                             </View>
@@ -575,7 +570,7 @@ const styles = StyleSheet.create({
         fontSize: 18,
     },
     streakCount: {
-        fontSize: 22,
+        fontSize: 18,
         fontWeight: '900',
         color: '#0F172A',
     },
@@ -596,8 +591,8 @@ const styles = StyleSheet.create({
     },
     plannerCard: {
         backgroundColor: 'rgba(255,255,255,0.92)',
-        borderRadius: 32,
-        padding: 18,
+        borderRadius: 28,
+        padding: 14,
         borderWidth: 1,
         borderColor: 'rgba(15,23,42,0.06)',
         shadowColor: '#173A65',
@@ -618,10 +613,10 @@ const styles = StyleSheet.create({
         paddingRight: 8,
     },
     plannerTitle: {
-        fontSize: 22,
+        fontSize: 18,
         fontWeight: '900',
         color: '#0F172A',
-        lineHeight: 26,
+        lineHeight: 22,
     },
     eyebrow: {
         fontSize: 11,
@@ -664,10 +659,10 @@ const styles = StyleSheet.create({
         backgroundColor: '#FBFDFF',
         borderWidth: 1,
         borderColor: '#E2E8F0',
-        borderRadius: 24,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        marginBottom: 16,
+        borderRadius: 20,
+        paddingHorizontal: 8,
+        paddingVertical: 8,
+        marginBottom: 12,
     },
     monthArrow: {
         width: 36,
@@ -680,7 +675,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     monthTitle: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: '800',
         color: '#0F172A',
     },
@@ -691,10 +686,10 @@ const styles = StyleSheet.create({
     },
     dayCard: {
         width: DAY_CARD_WIDTH,
-        borderRadius: 24,
-        paddingHorizontal: 8,
-        paddingTop: 12,
-        paddingBottom: 10,
+        borderRadius: 20,
+        paddingHorizontal: 6,
+        paddingTop: 10,
+        paddingBottom: 8,
         backgroundColor: '#FFFFFF',
         borderWidth: 1,
         borderColor: '#E6ECF5',
@@ -705,33 +700,33 @@ const styles = StyleSheet.create({
         borderColor: '#254F86',
     },
     dayWeekday: {
-        fontSize: 10,
+        fontSize: 9,
         fontWeight: '800',
         color: '#94A3B8',
         textTransform: 'uppercase',
-        letterSpacing: 0.8,
-        marginBottom: 6,
+        letterSpacing: 0.6,
+        marginBottom: 4,
     },
     dayWeekdayToday: {
         color: '#254F86',
     },
     dayNumber: {
-        fontSize: 18,
+        fontSize: 15,
         fontWeight: '900',
         color: '#0F172A',
-        marginBottom: 10,
+        marginBottom: 8,
     },
     dayTextOnSelected: {
         color: '#FFFFFF',
     },
     miniSlotStack: {
         width: '100%',
-        gap: 6,
-        marginBottom: 10,
+        gap: 4,
+        marginBottom: 8,
     },
     miniSlot: {
-        height: 26,
-        borderRadius: 10,
+        height: 22,
+        borderRadius: 8,
         backgroundColor: '#F8FAFF',
         borderWidth: 1,
         borderColor: '#E2E8F0',
@@ -756,9 +751,9 @@ const styles = StyleSheet.create({
         color: 'rgba(255,255,255,0.75)',
     },
     dayStatusPill: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
+        width: 24,
+        height: 24,
+        borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -783,9 +778,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: 'rgba(255,255,255,0.92)',
-        borderRadius: 28,
-        paddingVertical: 18,
-        paddingHorizontal: 8,
+        borderRadius: 24,
+        paddingVertical: 14,
+        paddingHorizontal: 6,
         borderWidth: 1,
         borderColor: 'rgba(15,23,42,0.06)',
     },
@@ -801,7 +796,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#E2E8F0',
     },
     summaryValue: {
-        fontSize: 18,
+        fontSize: 15,
         fontWeight: '900',
         color: '#0F172A',
     },
@@ -816,8 +811,8 @@ const styles = StyleSheet.create({
     },
     outfitCard: {
         backgroundColor: 'rgba(255,255,255,0.94)',
-        borderRadius: 32,
-        padding: 18,
+        borderRadius: 28,
+        padding: 14,
         borderWidth: 1,
         borderColor: 'rgba(15,23,42,0.06)',
         shadowColor: '#173A65',
@@ -830,15 +825,15 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: 12,
-        marginBottom: 10,
+        gap: 8,
+        marginBottom: 8,
     },
     outfitHeaderCopy: {
         flex: 1,
         paddingRight: 8,
     },
     outfitTitle: {
-        fontSize: 20,
+        fontSize: 17,
         fontWeight: '900',
         color: '#0F172A',
     },
@@ -849,16 +844,15 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     statusBadge: {
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 18,
-        maxWidth: 140,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 16,
     },
     statusBadgeEmpty: {
         backgroundColor: '#E2E8F0',
     },
     statusBadgeText: {
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '800',
         color: '#FFFFFF',
         textAlign: 'center',
@@ -868,11 +862,11 @@ const styles = StyleSheet.create({
     },
     boardShell: {
         backgroundColor: '#F8FAFF',
-        borderRadius: 28,
+        borderRadius: 24,
         borderWidth: 1,
         borderColor: '#EEF2F7',
-        padding: 12,
-        marginBottom: 14,
+        padding: 10,
+        marginBottom: 12,
     },
     previewRow: {
         flexDirection: 'row',
@@ -904,7 +898,7 @@ const styles = StyleSheet.create({
     },
     previewTileGrid: {
         width: '48.5%',
-        height: 150,
+        height: 130,
     },
     previewTileLarge: {
         height: 248,
@@ -914,7 +908,7 @@ const styles = StyleSheet.create({
     },
     previewMedia: {
         flex: 1,
-        padding: 18,
+        padding: 12,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -930,28 +924,28 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     previewEmptyLabel: {
-        fontSize: 16,
+        fontSize: 13,
         fontWeight: '800',
         color: '#475569',
     },
     previewEmptyHint: {
-        fontSize: 12,
+        fontSize: 10,
         fontWeight: '600',
         color: '#94A3B8',
     },
     previewLabelPill: {
         position: 'absolute',
-        left: 12,
-        top: 12,
+        left: 8,
+        top: 8,
         backgroundColor: 'rgba(255,255,255,0.94)',
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: 14,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
         borderWidth: 1,
         borderColor: '#E2E8F0',
     },
     previewLabelText: {
-        fontSize: 11,
+        fontSize: 10,
         fontWeight: '800',
         color: '#334155',
     },
@@ -959,12 +953,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'stretch',
         backgroundColor: '#FBFDFF',
-        borderRadius: 24,
+        borderRadius: 20,
         borderWidth: 1,
         borderColor: '#E2E8F0',
-        paddingHorizontal: 12,
-        paddingVertical: 12,
-        marginBottom: 12,
+        paddingHorizontal: 8,
+        paddingVertical: 10,
+        marginBottom: 10,
     },
     pieceDockDivider: {
         width: 1,
@@ -981,9 +975,9 @@ const styles = StyleSheet.create({
         marginBottom: 10,
     },
     dockThumb: {
-        width: 64,
-        height: 64,
-        borderRadius: 18,
+        width: 52,
+        height: 52,
+        borderRadius: 14,
         backgroundColor: '#F1F5F9',
     },
     dockThumbEmpty: {
@@ -1012,32 +1006,32 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     extraTitle: {
-        fontSize: 14,
+        fontSize: 12,
         fontWeight: '800',
         color: '#0F172A',
-        marginBottom: 10,
+        marginBottom: 8,
     },
     extraCard: {
-        width: 108,
-        marginRight: 10,
+        width: 92,
+        marginRight: 8,
         backgroundColor: '#FBFDFF',
-        borderRadius: 20,
-        padding: 8,
+        borderRadius: 16,
+        padding: 6,
         borderWidth: 1,
         borderColor: '#E2E8F0',
     },
     extraImage: {
         width: '100%',
-        height: 92,
-        borderRadius: 14,
+        height: 78,
+        borderRadius: 12,
         backgroundColor: '#E2E8F0',
-        marginBottom: 8,
+        marginBottom: 6,
     },
     extraName: {
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '700',
         color: '#0F172A',
-        lineHeight: 16,
+        lineHeight: 14,
     },
     actionRow: {
         flexDirection: 'row',
@@ -1046,22 +1040,22 @@ const styles = StyleSheet.create({
     },
     primaryAction: {
         flex: 1,
-        minHeight: 52,
+        minHeight: 48,
         borderRadius: 18,
         backgroundColor: '#0F172A',
         alignItems: 'center',
         justifyContent: 'center',
         flexDirection: 'row',
-        gap: 8,
-        paddingHorizontal: 16,
+        gap: 6,
+        paddingHorizontal: 12,
     },
     primaryActionText: {
-        fontSize: 15,
+        fontSize: 13,
         fontWeight: '800',
         color: '#FFFFFF',
     },
     secondaryAction: {
-        minHeight: 52,
+        minHeight: 48,
         borderRadius: 18,
         backgroundColor: '#FFFFFF',
         borderWidth: 1,
@@ -1069,16 +1063,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         flexDirection: 'row',
-        gap: 8,
-        paddingHorizontal: 16,
+        gap: 6,
+        paddingHorizontal: 12,
     },
     secondaryActionText: {
-        fontSize: 15,
+        fontSize: 13,
         fontWeight: '800',
         color: '#0F172A',
     },
     secondaryActionDangerText: {
-        fontSize: 15,
+        fontSize: 13,
         fontWeight: '800',
         color: '#EF4444',
     },

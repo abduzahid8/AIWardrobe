@@ -13,7 +13,7 @@ export interface OutfitsSlice {
     dislikedOutfitKeys: string[];
 
     addOutfit: (outfit: Omit<Outfit, 'id' | 'createdAt' | 'wornCount' | 'lastWornAt' | 'saved'>) => string;
-    saveOutfit: (id: string) => void;
+    saveOutfit: (id: string, collectionCategory?: string) => void;
     rateOutfit: (id: string, rating: 1 | 2 | 3 | 4 | 5) => void;
     dislikeOutfit: (itemIds: string[]) => void;
     undislikeOutfit: (itemIds: string[]) => void;
@@ -66,10 +66,10 @@ export const createOutfitsSlice: StateCreator<WardrobeState, [], [], OutfitsSlic
         return newId;
     },
 
-    saveOutfit: (id) => {
+    saveOutfit: (id, collectionCategory?: string) => {
         set((state) => ({
             outfits: state.outfits.map((outfit) =>
-                outfit.id === id ? { ...outfit, saved: true } : outfit
+                outfit.id === id ? { ...outfit, saved: true, ...(collectionCategory ? { collectionCategory } : {}) } : outfit
             ),
         }));
     },

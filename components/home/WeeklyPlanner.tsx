@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, ScrollView, StyleSheet } from 'react-native'
+import { ScaledText } from '../ui/ScaledText';;
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -49,9 +50,9 @@ export default function WeeklyPlanner({ itemCount, isReducedMotionEnabled }: Pro
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scroll}>
                 {days.map((day, idx) => (
                     <View key={idx} style={[styles.dayItem, day.isToday && styles.dayToday]}>
-                        <Text style={styles.dayName}>{day.name}</Text>
+                        <ScaledText style={styles.dayName}>{day.name}</ScaledText>
                         <View style={[styles.dateCircle, day.isToday && styles.dateCircleToday]}>
-                            <Text style={[styles.dateText, day.isToday && styles.dateTextToday]}>{day.date}</Text>
+                            <ScaledText style={[styles.dateText, day.isToday && styles.dateTextToday]}>{day.date}</ScaledText>
                         </View>
                         <View style={styles.outfitContainer}>
                             <MaterialCommunityIcons name={"tshirt-crew" as any} size={14} color={day.isToday ? colors.text.primary : colors.text.tertiary} style={{ opacity: 0.3 }} />

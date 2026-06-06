@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -42,10 +43,10 @@ const TrialExpiredScreen: React.FC = () => {
         <View style={styles.iconContainer}>
           <Ionicons name="time" size={40} color="#7C3AED" />
         </View>
-        <Text style={styles.title}>{t('trialExpired.title')}</Text>
-        <Text style={styles.body}>{t('trialExpired.body')}</Text>
+        <ScaledText style={styles.title}>{t('trialExpired.title')}</ScaledText>
+        <ScaledText style={styles.body}>{t('trialExpired.body')}</ScaledText>
         <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.navigate('Paywall')}>
-          <Text style={styles.primaryButtonText}>{t('trialExpired.upgradeToPro')}</Text>
+          <ScaledText style={styles.primaryButtonText}>{t('trialExpired.upgradeToPro')}</ScaledText>
         </TouchableOpacity>
 
         <TouchableOpacity 
@@ -53,9 +54,9 @@ const TrialExpiredScreen: React.FC = () => {
           onPress={handleRestore}
           disabled={isRestoring}
         >
-          <Text style={styles.secondaryButtonText}>
+          <ScaledText style={styles.secondaryButtonText}>
             {isRestoring ? 'Restoring...' : 'Already a pro? Restore'}
-          </Text>
+          </ScaledText>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

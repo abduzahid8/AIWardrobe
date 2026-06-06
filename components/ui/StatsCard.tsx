@@ -2,7 +2,8 @@
 // Features: Animated counters, progress rings, trend indicators, gradient backgrounds
 
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, ViewStyle } from 'react-native';
+import { View, StyleSheet, ViewStyle } from 'react-native'
+import { ScaledText } from '../ui/ScaledText';;
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -139,7 +140,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
         <View style={styles.content}>
             {/* Left side - Text content */}
             <View style={styles.textContainer}>
-                <Text
+                <ScaledText
                     style={[
                         styles.title,
                         {
@@ -149,9 +150,9 @@ export const StatsCard: React.FC<StatsCardProps> = ({
                     ]}
                 >
                     {title.toUpperCase()}
-                </Text>
+                </ScaledText>
 
-                <Text
+                <ScaledText
                     style={[
                         styles.value,
                         {
@@ -162,10 +163,10 @@ export const StatsCard: React.FC<StatsCardProps> = ({
                     ]}
                 >
                     {typeof value === 'number' && animateCounter ? animatedValue.value : value}
-                </Text>
+                </ScaledText>
 
                 {subtitle && (
-                    <Text
+                    <ScaledText
                         style={[
                             styles.subtitle,
                             {
@@ -177,7 +178,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
                         ]}
                     >
                         {subtitle}
-                    </Text>
+                    </ScaledText>
                 )}
 
                 {/* Trend indicator */}
@@ -185,9 +186,9 @@ export const StatsCard: React.FC<StatsCardProps> = ({
                     <View style={styles.trendContainer}>
                         <Ionicons name={getTrendIcon()} size={16} color={getTrendColor()} />
                         {trendValue && (
-                            <Text style={[styles.trendText, { color: getTrendColor(), fontSize: 13 }]}>
+                            <ScaledText style={[styles.trendText, { color: getTrendColor(), fontSize: 13 }]}>
                                 {trendValue}
-                            </Text>
+                            </ScaledText>
                         )}
                     </View>
                 )}
@@ -222,7 +223,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
                         />
                     </Svg>
                     <View style={styles.progressTextContainer}>
-                        <Text
+                        <ScaledText
                             style={[
                                 styles.progressText,
                                 {
@@ -233,7 +234,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
                             ]}
                         >
                             {Math.round((progress || 0) * 100)}%
-                        </Text>
+                        </ScaledText>
                     </View>
                 </View>
             ) : icon ? (

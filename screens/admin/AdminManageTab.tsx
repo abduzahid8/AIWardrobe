@@ -2,20 +2,8 @@
  * AdminManageTab — List / edit / delete shop catalog items
  */
 import React, { useState, useCallback, useEffect } from 'react';
-import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Image,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-} from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, Modal, ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View,  } from 'react-native'
+import { ScaledText } from '../../components/ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
@@ -100,9 +88,9 @@ export const AdminManageTab = () => {
         <View style={[s.card, !item.is_active && s.cardInactive]}>
             <Image source={{ uri: item.image_url }} style={s.cardImage} />
             <View style={s.cardInfo}>
-                <Text style={s.cardBrand}>{item.brand}</Text>
-                <Text style={s.cardName} numberOfLines={1}>{item.name}</Text>
-                <Text style={s.cardMeta}>{item.garment_type} · ${item.price} · {item.source}</Text>
+                <ScaledText style={s.cardBrand}>{item.brand}</ScaledText>
+                <ScaledText style={s.cardName} numberOfLines={1}>{item.name}</ScaledText>
+                <ScaledText style={s.cardMeta}>{item.garment_type} · ${item.price} · {item.source}</ScaledText>
             </View>
             <View style={s.cardActions}>
                 <TouchableOpacity onPress={() => handleToggleActive(item)} style={s.iconBtn}>
@@ -125,7 +113,7 @@ export const AdminManageTab = () => {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterRow}>
                 {FILTER_OPTIONS.map((opt) => (
                     <TouchableOpacity key={opt.value} style={[s.filterChip, filterCategory === opt.value && s.filterChipActive]} onPress={() => setFilterCategory(opt.value)}>
-                        <Text style={[s.filterChipText, filterCategory === opt.value && s.filterChipTextActive]}>{opt.label}</Text>
+                        <ScaledText style={[s.filterChipText, filterCategory === opt.value && s.filterChipTextActive]}>{opt.label}</ScaledText>
                     </TouchableOpacity>
                 ))}
             </ScrollView>
@@ -135,7 +123,7 @@ export const AdminManageTab = () => {
             ) : items.length === 0 ? (
                 <View style={s.center}>
                     <Ionicons name="shirt-outline" size={48} color="#8E8E93" />
-                    <Text style={s.emptyText}>{t('admin.manage.empty')}</Text>
+                    <ScaledText style={s.emptyText}>{t('admin.manage.empty')}</ScaledText>
                 </View>
             ) : (
                 <FlatList data={items} keyExtractor={(item) => item.id} renderItem={renderItem} contentContainerStyle={{ paddingBottom: 40 }} refreshing={loading} onRefresh={fetchItems} />
@@ -145,50 +133,50 @@ export const AdminManageTab = () => {
             <Modal visible={editModalVisible} animationType="slide" presentationStyle="pageSheet">
                 <SafeAreaView style={s.modalContainer}>
                     <View style={s.modalHeader}>
-                        <TouchableOpacity onPress={() => setEditModalVisible(false)}><Text style={s.modalCancel}>{t('common.cancel')}</Text></TouchableOpacity>
-                        <Text style={s.modalTitle}>{t('admin.manage.editItem')}</Text>
-                        <TouchableOpacity onPress={saveEdit}><Text style={s.modalSave}>{t('common.save')}</Text></TouchableOpacity>
+                        <TouchableOpacity onPress={() => setEditModalVisible(false)}><ScaledText style={s.modalCancel}>{t('common.cancel')}</ScaledText></TouchableOpacity>
+                        <ScaledText style={s.modalTitle}>{t('admin.manage.editItem')}</ScaledText>
+                        <TouchableOpacity onPress={saveEdit}><ScaledText style={s.modalSave}>{t('common.save')}</ScaledText></TouchableOpacity>
                     </View>
                     {editItem && (
                         <ScrollView style={s.modalBody} keyboardShouldPersistTaps="handled">
-                            <Text style={s.label}>{t('admin.add.brand')}</Text>
+                            <ScaledText style={s.label}>{t('admin.add.brand')}</ScaledText>
                             <TextInput style={s.input} value={editItem.brand} onChangeText={(v) => setEditItem({ ...editItem, brand: v })} />
-                            <Text style={s.label}>{t('admin.add.name')}</Text>
+                            <ScaledText style={s.label}>{t('admin.add.name')}</ScaledText>
                             <TextInput style={s.input} value={editItem.name} onChangeText={(v) => setEditItem({ ...editItem, name: v })} />
                             <View style={s.row}>
                                 <View style={{ flex: 2 }}>
-                                    <Text style={s.label}>{t('admin.add.price')}</Text>
+                                    <ScaledText style={s.label}>{t('admin.add.price')}</ScaledText>
                                     <TextInput style={s.input} value={String(editItem.price)} onChangeText={(v) => setEditItem({ ...editItem, price: parseFloat(v) || 0 })} keyboardType="decimal-pad" />
                                 </View>
                                 <View style={{ flex: 1, marginLeft: 10 }}>
-                                    <Text style={s.label}>{t('admin.add.currency')}</Text>
+                                    <ScaledText style={s.label}>{t('admin.add.currency')}</ScaledText>
                                     <TextInput style={s.input} value={editItem.currency} onChangeText={(v) => setEditItem({ ...editItem, currency: v })} />
                                 </View>
                             </View>
-                            <Text style={s.label}>{t('admin.add.garmentType')}</Text>
+                            <ScaledText style={s.label}>{t('admin.add.garmentType')}</ScaledText>
                             <View style={s.chipRow}>
                                 {GARMENT_TYPES.map((gt) => (
                                     <TouchableOpacity key={gt.value} style={[s.chip, editItem.garment_type === gt.value && s.chipActive]} onPress={() => setEditItem({ ...editItem, garment_type: gt.value })}>
-                                        <Text style={[s.chipText, editItem.garment_type === gt.value && s.chipTextActive]}>{gt.label}</Text>
+                                        <ScaledText style={[s.chipText, editItem.garment_type === gt.value && s.chipTextActive]}>{gt.label}</ScaledText>
                                     </TouchableOpacity>
                                 ))}
                             </View>
-                            <Text style={s.label}>{t('admin.add.category')}</Text>
+                            <ScaledText style={s.label}>{t('admin.add.category')}</ScaledText>
                             <View style={s.chipRow}>
                                 {CATEGORIES.map((c) => (
                                     <TouchableOpacity key={c.value} style={[s.chip, editItem.category === c.value && s.chipActive]} onPress={() => setEditItem({ ...editItem, category: c.value })}>
-                                        <Text style={[s.chipText, editItem.category === c.value && s.chipTextActive]}>{c.label}</Text>
+                                        <ScaledText style={[s.chipText, editItem.category === c.value && s.chipTextActive]}>{c.label}</ScaledText>
                                     </TouchableOpacity>
                                 ))}
                             </View>
-                            <Text style={s.label}>{t('admin.add.description')}</Text>
+                            <ScaledText style={s.label}>{t('admin.add.description')}</ScaledText>
                             <TextInput style={[s.input, s.textArea]} value={editItem.description} onChangeText={(v) => setEditItem({ ...editItem, description: v })} multiline numberOfLines={3} />
-                            <Text style={s.label}>{t('admin.add.orImageUrl')}</Text>
+                            <ScaledText style={s.label}>{t('admin.add.orImageUrl')}</ScaledText>
                             <TextInput style={s.input} value={editItem.image_url} onChangeText={(v) => setEditItem({ ...editItem, image_url: v })} autoCapitalize="none" keyboardType="url" />
-                            <Text style={s.label}>{t('admin.add.sortOrder')}</Text>
+                            <ScaledText style={s.label}>{t('admin.add.sortOrder')}</ScaledText>
                             <TextInput style={s.input} value={String(editItem.sort_order)} onChangeText={(v) => setEditItem({ ...editItem, sort_order: parseInt(v) || 0 })} keyboardType="number-pad" />
                             <View style={s.switchRow}>
-                                <Text style={s.label}>{t('admin.add.isActive')}</Text>
+                                <ScaledText style={s.label}>{t('admin.add.isActive')}</ScaledText>
                                 <Switch value={editItem.is_active} onValueChange={(v) => setEditItem({ ...editItem, is_active: v })} />
                             </View>
                             <View style={{ height: 40 }} />

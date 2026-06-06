@@ -1,17 +1,6 @@
 import React, { useState, useCallback } from "react";
-import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    Dimensions,
-    Platform,
-    ScrollView,
-    TextInput,
-    KeyboardAvoidingView,
-    Keyboard,
-    Image,
-} from "react-native";
+import { View, StyleSheet, TouchableOpacity, Dimensions, Platform, ScrollView, TextInput, KeyboardAvoidingView, Keyboard, Image,  } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAppNavigation } from '../hooks/useAppNavigation';
@@ -101,8 +90,8 @@ export default function CreateAvatarScreen() {
                         <Ionicons name="arrow-back" size={22} color={LiquidGlass2026Theme.colors.text.primary} />
                     </TouchableOpacity>
                     <View style={styles.headerCenter}>
-                        <Text style={styles.headerTitle}>{t('createAvatar.title')}</Text>
-                        <Text style={styles.headerSubtitle}>{t('createAvatar.subtitle')}</Text>
+                        <ScaledText style={styles.headerTitle}>{t('createAvatar.title')}</ScaledText>
+                        <ScaledText style={styles.headerSubtitle}>{t('createAvatar.subtitle')}</ScaledText>
                     </View>
                     <View style={{ width: 44 }} />
                 </View>
@@ -125,9 +114,9 @@ export default function CreateAvatarScreen() {
                         <View style={styles.mannequinOverlay}>
                             <BlurView intensity={30} tint="light" style={styles.mannequinOverlayInner}>
                                 <Ionicons name="body-outline" size={14} color="rgba(0,0,0,0.5)" />
-                                <Text style={styles.mannequinOverlayText}>
+                                <ScaledText style={styles.mannequinOverlayText}>
                                     {heightCm}cm • {weightKg}kg • {BODY_TYPES.find(b => b.id === bodyType)?.label}
-                                </Text>
+                                </ScaledText>
                             </BlurView>
                         </View>
                     </View>
@@ -135,7 +124,7 @@ export default function CreateAvatarScreen() {
                     {/* Controls — directly below mannequin */}
                     <View style={styles.sheetHandle} />
 
-                            <Text style={styles.sectionTitle}>{t('createAvatar.bodyMeasurements')}</Text>
+                            <ScaledText style={styles.sectionTitle}>{t('createAvatar.bodyMeasurements')}</ScaledText>
                                 <View style={styles.slidersContainer}>
                                     {/* Height Input */}
                                     <View style={styles.sliderCard}>
@@ -144,7 +133,7 @@ export default function CreateAvatarScreen() {
                                                 <View style={styles.measurementIcon}>
                                                     <Ionicons name="resize-outline" size={18} color="#fff" />
                                                 </View>
-                                                <Text style={styles.measurementLabel}>{t('createAvatar.height')}</Text>
+                                                <ScaledText style={styles.measurementLabel}>{t('createAvatar.height')}</ScaledText>
                                             </View>
                                             <View style={styles.inputWrapper}>
                                                 <TextInput
@@ -156,10 +145,10 @@ export default function CreateAvatarScreen() {
                                                     returnKeyType="done"
                                                     onSubmitEditing={Keyboard.dismiss}
                                                 />
-                                                <Text style={styles.inputUnit}>{t('createAvatar.cm')}</Text>
+                                                <ScaledText style={styles.inputUnit}>{t('createAvatar.cm')}</ScaledText>
                                             </View>
                                         </View>
-                                        <Text style={styles.inputHint}>{t('createAvatar.heightRange')}</Text>
+                                        <ScaledText style={styles.inputHint}>{t('createAvatar.heightRange')}</ScaledText>
                                     </View>
 
                                     {/* Weight Input */}
@@ -169,7 +158,7 @@ export default function CreateAvatarScreen() {
                                                 <View style={[styles.measurementIcon, { backgroundColor: '#4A5568' }]}>
                                                     <Ionicons name="scale-outline" size={18} color="#fff" />
                                                 </View>
-                                                <Text style={styles.measurementLabel}>{t('createAvatar.weight')}</Text>
+                                                <ScaledText style={styles.measurementLabel}>{t('createAvatar.weight')}</ScaledText>
                                             </View>
                                             <View style={styles.inputWrapper}>
                                                 <TextInput
@@ -181,15 +170,15 @@ export default function CreateAvatarScreen() {
                                                     returnKeyType="done"
                                                     onSubmitEditing={Keyboard.dismiss}
                                                 />
-                                                <Text style={styles.inputUnit}>{t('createAvatar.kg')}</Text>
+                                                <ScaledText style={styles.inputUnit}>{t('createAvatar.kg')}</ScaledText>
                                             </View>
                                         </View>
-                                        <Text style={styles.inputHint}>{t('createAvatar.weightRange')}</Text>
+                                        <ScaledText style={styles.inputHint}>{t('createAvatar.weightRange')}</ScaledText>
                                     </View>
                                 </View>
 
                                 {/* Body Type Selection */}
-                                <Text style={[styles.sectionTitle, { marginTop: 20 }]}>{t('createAvatar.bodyType')}</Text>
+                                <ScaledText style={[styles.sectionTitle, { marginTop: 20 }]}>{t('createAvatar.bodyType')}</ScaledText>
                                 <View style={styles.bodyTypeGrid}>
                                     {BODY_TYPES.map((bt) => {
                                         const isActive = bodyType === bt.id;
@@ -211,18 +200,18 @@ export default function CreateAvatarScreen() {
                                                     size={20}
                                                     color={isActive ? "#fff" : LiquidGlass2026Theme.colors.text.secondary}
                                                 />
-                                                <Text style={[
+                                                <ScaledText style={[
                                                     styles.bodyTypeLabel,
                                                     isActive && styles.bodyTypeLabelActive,
                                                 ]}>
                                                     {bt.label}
-                                                </Text>
-                                                <Text style={[
+                                                </ScaledText>
+                                                <ScaledText style={[
                                                     styles.bodyTypeDesc,
                                                     isActive && styles.bodyTypeDescActive,
                                                 ]}>
                                                     {bt.desc}
-                                                </Text>
+                                                </ScaledText>
                                             </TouchableOpacity>
                                         );
                                     })}
@@ -232,12 +221,12 @@ export default function CreateAvatarScreen() {
                                 {heightCm && weightKg && parseInt(heightCm) > 0 && parseInt(weightKg) > 0 && (
                                     <View style={styles.bmiCard}>
                                         <View style={styles.bmiRow}>
-                                            <Text style={styles.bmiLabel}>{t('createAvatar.bmi')}</Text>
-                                            <Text style={styles.bmiValue}>
+                                            <ScaledText style={styles.bmiLabel}>{t('createAvatar.bmi')}</ScaledText>
+                                            <ScaledText style={styles.bmiValue}>
                                                 {(parseInt(weightKg) / Math.pow(parseInt(heightCm) / 100, 2)).toFixed(1)}
-                                            </Text>
+                                            </ScaledText>
                                         </View>
-                                        <Text style={styles.bmiDesc}>
+                                        <ScaledText style={styles.bmiDesc}>
                                             {(() => {
                                                 const bmi = parseInt(weightKg) / Math.pow(parseInt(heightCm) / 100, 2);
                                                 if (bmi < 18.5) return t('createAvatar.underweight');
@@ -245,7 +234,7 @@ export default function CreateAvatarScreen() {
                                                 if (bmi < 30) return t('createAvatar.overweight');
                                                 return t('createAvatar.obese');
                                             })()}
-                                        </Text>
+                                        </ScaledText>
                                     </View>
                                 )}
                 </ScrollView>
@@ -259,7 +248,7 @@ export default function CreateAvatarScreen() {
                             activeOpacity={0.85}
                         >
                             <Ionicons name="checkmark-circle-outline" size={22} color="#fff" style={{ marginRight: 8 }} />
-                            <Text style={styles.continueButtonText}>{t('createAvatar.saveBodyModel')}</Text>
+                            <ScaledText style={styles.continueButtonText}>{t('createAvatar.saveBodyModel')}</ScaledText>
                         </TouchableOpacity>
                     </BlurView>
                 </View>

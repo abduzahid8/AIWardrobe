@@ -1,12 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-  StyleSheet,
-} from "react-native";
+import { View, TouchableOpacity, ActivityIndicator, Alert, StyleSheet,  } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { Camera, CameraView } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
@@ -39,12 +33,12 @@ export default function ScanWardrobeScreen() {
   if (hasPermission === false) {
     return (
       <View style={styles.center}>
-        <Text style={{ marginBottom: 20 }}>{t('wardrobe.cameraAccess')}</Text>
+        <ScaledText style={{ marginBottom: 20 }}>{t('wardrobe.cameraAccess')}</ScaledText>
         <TouchableOpacity onPress={async () => {
           const { status } = await Camera.requestCameraPermissionsAsync();
           setHasPermission(status === 'granted');
         }} style={styles.btn}>
-          <Text style={styles.btnText}>{t('wardrobe.allow')}</Text>
+          <ScaledText style={styles.btnText}>{t('wardrobe.allow')}</ScaledText>
         </TouchableOpacity>
       </View>
     );
@@ -147,8 +141,8 @@ export default function ScanWardrobeScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: '#0A1931', justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color="#fff" />
-        <Text style={{ color: 'white', marginTop: 16, fontSize: 18, fontWeight: 'bold' }}>{t('wardrobe.aiAnalyzing')}</Text>
-        <Text style={{ color: '#aaa', marginTop: 5 }}>{t('wardrobe.mayTakeMinute')}</Text>
+        <ScaledText style={{ color: 'white', marginTop: 16, fontSize: 18, fontWeight: 'bold' }}>{t('wardrobe.aiAnalyzing')}</ScaledText>
+        <ScaledText style={{ color: '#aaa', marginTop: 5 }}>{t('wardrobe.mayTakeMinute')}</ScaledText>
       </View>
     );
   }
@@ -164,9 +158,9 @@ export default function ScanWardrobeScreen() {
 
       <View style={styles.overlay}>
         <View style={styles.tipContainer}>
-          <Text style={{ color: 'white', fontWeight: '600' }}>
+          <ScaledText style={{ color: 'white', fontWeight: '600' }}>
             {isRecording ? `🔴 ${t('wardrobe.recording')}` : t('wardrobe.holdToScan')}
-          </Text>
+          </ScaledText>
         </View>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', width: '100%', paddingHorizontal: 20 }}>

@@ -1,15 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  Linking,
-  ActivityIndicator,
-  Platform,
-} from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Linking, ActivityIndicator, Platform,  } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabase';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -109,7 +100,7 @@ export default function GuideScreen() {
                   resizeMode="contain"
                 />
                 <View style={styles.handOverlay}>
-                  <Text style={styles.handIcon}>✏️</Text>
+                  <ScaledText style={styles.handIcon}>✏️</ScaledText>
                 </View>
               </View>
             </View>
@@ -129,11 +120,11 @@ export default function GuideScreen() {
 
       {/* Text Section */}
       <View style={styles.textSection}>
-        <Text style={styles.title}>{content?.title || t('guide.title')}</Text>
-        <Text style={styles.subtitle}>{content?.subtitle || t('guide.subtitle')}</Text>
+        <ScaledText style={styles.title}>{content?.title || t('guide.title')}</ScaledText>
+        <ScaledText style={styles.subtitle}>{content?.subtitle || t('guide.subtitle')}</ScaledText>
 
         <TouchableOpacity style={styles.ctaButton} onPress={handleCTAPress}>
-          <Text style={styles.ctaText}>{content?.cta_text || t('guide.cta')}</Text>
+          <ScaledText style={styles.ctaText}>{content?.cta_text || t('guide.cta')}</ScaledText>
           <View style={styles.ctaUnderline} />
         </TouchableOpacity>
       </View>

@@ -1,11 +1,6 @@
 import React, { useEffect, useCallback } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    Dimensions,
-    TouchableOpacity,
-} from 'react-native';
+import { View, StyleSheet, Dimensions, TouchableOpacity,  } from 'react-native'
+import { ScaledText } from '../ui/ScaledText';;
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -170,8 +165,8 @@ const Toast: React.FC<ToastProps> = ({
                         <Ionicons name={config.name} size={24} color={config.color} />
                     </View>
                     <View style={styles.textContainer}>
-                        <Text style={styles.title}>{title}</Text>
-                        {message && <Text style={styles.message}>{message}</Text>}
+                        <ScaledText style={styles.title}>{title}</ScaledText>
+                        {message && <ScaledText style={styles.message}>{message}</ScaledText>}
                     </View>
                     <TouchableOpacity onPress={dismiss} style={styles.closeButton}>
                         <Ionicons name="close" size={20} color={colors.text.secondary} />

@@ -1,13 +1,6 @@
 import React from 'react';
-import {
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-    Platform,
-    ViewStyle,
-    TextStyle,
-} from 'react-native';
+import { StyleSheet, TouchableOpacity, View, Platform, ViewStyle, TextStyle,  } from 'react-native'
+import { ScaledText } from './ui/ScaledText';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
@@ -155,9 +148,9 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
                 />
             )}
             {title && (
-                <Text style={[styles.buttonText, styles[`${size}Text`], { color: getTextColor() }, textStyle]}>
+                <ScaledText style={[styles.buttonText, styles[`${size}Text`], { color: getTextColor() }, textStyle]}>
                     {title}
-                </Text>
+                </ScaledText>
             )}
             {children}
         </>
@@ -316,9 +309,9 @@ export const ChipButton: React.FC<{
                 style,
             ]}
         >
-            <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
+            <ScaledText style={[styles.chipText, isActive && styles.chipTextActive]}>
                 {title}
-            </Text>
+            </ScaledText>
         </AnimatedTouchable>
     );
 };

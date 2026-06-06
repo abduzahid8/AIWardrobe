@@ -1,16 +1,5 @@
-import {
-  ActivityIndicator,
-  Linking,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-} from "react-native";
+import { ActivityIndicator, Linking, ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Alert, KeyboardAvoidingView, Platform,  } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from "react-native-safe-area-context";
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigation } from "@react-navigation/native";
@@ -260,11 +249,11 @@ const AIAssistant = () => {
             <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>{t('aiChat.title')}</Text>
+            <ScaledText style={styles.headerTitle}>{t('aiChat.title')}</ScaledText>
             {getSelectedStyleInfo() && (
-              <Text style={styles.headerSubtitle}>
+              <ScaledText style={styles.headerSubtitle}>
                 Style: {getSelectedStyleInfo()?.name}
-              </Text>
+              </ScaledText>
             )}
           </View>
           <TouchableOpacity onPress={clearChatHistory} style={styles.clearButton}>
@@ -291,7 +280,7 @@ const AIAssistant = () => {
               onPress={() => handleSuggestion(action.query)}
             >
               <Ionicons name={action.icon as any} size={18} color={colors.text.accent} />
-              <Text style={styles.quickActionText}>{action.label}</Text>
+              <ScaledText style={styles.quickActionText}>{action.label}</ScaledText>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -323,15 +312,15 @@ const AIAssistant = () => {
                   </View>
                 )}
                 <View style={styles.messageContent}>
-                  <Text style={[
+                  <ScaledText style={[
                     styles.messageText,
                     message.sender === "user" ? styles.userText : styles.aiText,
                   ]}>
                     {message.text}
-                  </Text>
-                  <Text style={styles.messageTime}>
+                  </ScaledText>
+                  <ScaledText style={styles.messageTime}>
                     {formatTime(message.timestamp)}
-                  </Text>
+                  </ScaledText>
                 </View>
               </Animated.View>
             ))}
@@ -359,7 +348,7 @@ const AIAssistant = () => {
                   key={index}
                   style={styles.suggestionChip}
                 >
-                  <Text style={styles.suggestionText}>{sugg}</Text>
+                  <ScaledText style={styles.suggestionText}>{sugg}</ScaledText>
                 </TouchableOpacity>
               ))}
             </ScrollView>

@@ -6,7 +6,8 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native'
+import { ScaledText } from './ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
@@ -46,8 +47,8 @@ const StyleInsightCard: React.FC<StyleInsightCardProps> = ({ insight, onPress })
                 />
             </View>
             <View style={styles.content}>
-                <Text style={styles.title} numberOfLines={2}>{insight.title}</Text>
-                <Text style={styles.description} numberOfLines={2}>{insight.description}</Text>
+                <ScaledText style={styles.title} numberOfLines={2}>{insight.title}</ScaledText>
+                <ScaledText style={styles.description} numberOfLines={2}>{insight.description}</ScaledText>
             </View>
             {onPress && (
                 <Ionicons
@@ -74,7 +75,7 @@ export const StyleInsightsList: React.FC<{
 
     return (
         <View style={styles.list}>
-            <Text style={styles.listTitle}>{t('styleInsights.title')}</Text>
+            <ScaledText style={styles.listTitle}>{t('styleInsights.title')}</ScaledText>
             {visible.map((insight, index) => (
                 <StyleInsightCard key={`${insight.type}_${index}`} insight={insight} />
             ))}

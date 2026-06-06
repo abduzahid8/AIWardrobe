@@ -4,10 +4,10 @@
 
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { ScaledText } from '../../../components/ui/ScaledText';
 import { colors, spacing } from '../../../src/theme';
 import {
-    WEEKDAYS,
-    MONTHS,
     getDaysInMonth,
     getFirstDayOfMonth,
     formatDate,
@@ -16,7 +16,7 @@ import {
 } from '../hooks/useOutfitCalendar';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const DAY_SIZE = (SCREEN_WIDTH - spacing.l * 2 - spacing.xs * 12) / 7;
+const DAY_SIZE = Math.max(30, (SCREEN_WIDTH - spacing.l * 2 - spacing.xs * 12) / 7);
 
 interface CalendarGridProps {
     currentMonth: number;
@@ -41,6 +41,18 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
     onNextMonth,
     monthlyStats,
 }) => {
+    const { t } = useTranslation();
+
+    const MONTHS = [
+        t('calendar.jan'), t('calendar.feb'), t('calendar.mar'), t('calendar.apr'),
+        t('calendar.may'), t('calendar.jun'), t('calendar.jul'), t('calendar.aug'),
+        t('calendar.sep'), t('calendar.oct'), t('calendar.nov'), t('calendar.dec'),
+    ];
+    const WEEKDAYS = [
+        t('calendar.sun'), t('calendar.mon'), t('calendar.tue'),
+        t('calendar.wed'), t('calendar.thu'), t('calendar.fri'), t('calendar.sat'),
+    ];
+
     const daysInMonth = getDaysInMonth(currentYear, currentMonth);
     const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
 
@@ -89,12 +101,12 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
                     <Text style={styles.navText}>‹</Text>
                 </TouchableOpacity>
                 <View style={styles.monthInfo}>
-                    <Text style={styles.monthTitle}>
+                    <ScaledText style={styles.monthTitle} minScale={0.65}>
                         {MONTHS[currentMonth]} {currentYear}
-                    </Text>
-                    <Text style={styles.monthStats}>
-                        {monthlyStats.logged}/{monthlyStats.total} days logged
-                    </Text>
+                    </ScaledText>
+                    <ScaledText style={styles.monthStats} minScale={0.6}>
+                        {t('calendar.loggedDays', { logged: monthlyStats.logged, total: monthlyStats.total })}
+                    </ScaledText>
                 </View>
                 <TouchableOpacity onPress={onNextMonth} style={styles.navButton}>
                     <Text style={styles.navText}>›</Text>
@@ -105,7 +117,9 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
             <View style={styles.weekdayRow}>
                 {WEEKDAYS.map((day, idx) => (
                     <View key={idx} style={styles.weekdayCell}>
-                        <Text style={styles.weekdayText}>{day}</Text>
+                        <ScaledText style={styles.weekdayText} minScale={0.55}>
+                            {day}
+                        </ScaledText>
                     </View>
                 ))}
             </View>
@@ -134,16 +148,16 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: spacing.m,
+        marginBottom: spacing.s,
     },
-    navButton: { padding: spacing.xs },
-    navText: { fontSize: 28, color: colors.text.primary },
-    monthInfo: { alignItems: 'center' },
-    monthTitle: { fontSize: 18, fontWeight: '700', color: colors.text.primary },
-    monthStats: { fontSize: 12, color: colors.text.secondary, marginTop: 2 },
+    navButton: { padding: spacing.xs, minWidth: 36, alignItems: 'center' },
+    navText: { fontSize: 24, color: colors.text.primary, lineHeight: 28 },
+    monthInfo: { alignItems: 'center', flex: 1, paddingHorizontal: spacing.xs },
+    monthTitle: { fontSize: 16, fontWeight: '700', color: colors.text.primary },
+    monthStats: { fontSize: 11, color: colors.text.secondary, marginTop: 1 },
     weekdayRow: { flexDirection: 'row', marginBottom: spacing.xs },
     weekdayCell: { width: DAY_SIZE, alignItems: 'center', marginHorizontal: spacing.xs },
-    weekdayText: { fontSize: 12, fontWeight: '600', color: colors.text.secondary },
+    weekdayText: { fontSize: 10, fontWeight: '600', color: colors.text.secondary },
     calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
     dayCell: {
         width: DAY_SIZE,
@@ -157,10 +171,10 @@ const styles = StyleSheet.create({
         backgroundColor: colors.button.primary,
         borderRadius: DAY_SIZE / 2,
     },
-    dayText: { fontSize: 14, fontWeight: '500', color: colors.text.primary },
+    dayText: { fontSize: 13, fontWeight: '500', color: colors.text.primary },
     todayText: { fontWeight: '700', color: '#FFF' },
     futureDayText: { color: colors.text.muted },
-    outfitDot: { width: 5, height: 5, borderRadius: 2.5, marginTop: 2 },
+    outfitDot: { width: 4, height: 4, borderRadius: 2, marginTop: 1.5 },
 });
 
 export default CalendarGrid;

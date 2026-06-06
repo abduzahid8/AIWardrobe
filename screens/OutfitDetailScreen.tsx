@@ -1,15 +1,6 @@
 import React, { useState, useEffect } from "react";
-import {
-    View,
-    Text,
-    TouchableOpacity,
-    StyleSheet,
-    Dimensions,
-    ScrollView,
-    Modal,
-    ActivityIndicator,
-    Alert,
-} from "react-native";
+import { View, TouchableOpacity, StyleSheet, Dimensions, ScrollView, Modal, ActivityIndicator, Alert,  } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CachedImage } from '../components/ui/CachedImage';
 import { Ionicons } from "@expo/vector-icons";
@@ -239,9 +230,9 @@ const ProductDetailModal = ({
 
                         {/* Product Info */}
                         <View style={styles.modalProductInfo}>
-                            <Text style={styles.modalBrand}>{item.brand}</Text>
-                            <Text style={styles.modalName}>{item.name}</Text>
-                            <Text style={styles.modalPrice}>{item.price}</Text>
+                            <ScaledText style={styles.modalBrand}>{item.brand}</ScaledText>
+                            <ScaledText style={styles.modalName}>{item.name}</ScaledText>
+                            <ScaledText style={styles.modalPrice}>{item.price}</ScaledText>
                         </View>
 
                         {/* Action Buttons */}
@@ -251,14 +242,14 @@ const ProductDetailModal = ({
                                 onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
                             >
                                 <Ionicons name="bookmark-outline" size={20} color={COLORS.white} />
-                                <Text style={styles.modalSaveText}>{t('common.save')}</Text>
+                                <ScaledText style={styles.modalSaveText}>{t('common.save')}</ScaledText>
                             </TouchableOpacity>
 
                             <TouchableOpacity
                                 style={styles.modalShopButton}
                                 onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
                             >
-                                <Text style={styles.modalShopText}>{t('outfitDetail.shopNow')}</Text>
+                                <ScaledText style={styles.modalShopText}>{t('outfitDetail.shopNow')}</ScaledText>
                                 <Ionicons name="arrow-forward" size={16} color={COLORS.background} />
                             </TouchableOpacity>
                         </View>
@@ -349,7 +340,7 @@ const OutfitDetailScreen = () => {
                 {isLoading ? (
                     <Animated.View entering={FadeIn} style={styles.loadingContainer}>
                         <ActivityIndicator size="small" color={COLORS.white} />
-                        <Text style={styles.loadingText}>{t('outfitDetail.detecting')}</Text>
+                        <ScaledText style={styles.loadingText}>{t('outfitDetail.detecting')}</ScaledText>
                     </Animated.View>
                 ) : (
                     <ScrollView
@@ -400,7 +391,7 @@ const OutfitDetailScreen = () => {
                         size={22}
                         color={COLORS.white}
                     />
-                    <Text style={styles.bookmarkCount}>{bookmarkCount}</Text>
+                    <ScaledText style={styles.bookmarkCount}>{bookmarkCount}</ScaledText>
                 </TouchableOpacity>
 
                 <View style={styles.bottomSpacer} />
@@ -413,12 +404,12 @@ const OutfitDetailScreen = () => {
                         (navigation as any).navigate('AITryOn');
                     }}
                 >
-                    <Text style={styles.avatarText}>{t('common.avatar')}</Text>
+                    <ScaledText style={styles.avatarText}>{t('common.avatar')}</ScaledText>
                     <View style={styles.avatarIcon}>
                         <Ionicons name="person" size={14} color={COLORS.white} />
                     </View>
                     <View style={styles.avatarBadge}>
-                        <Text style={styles.avatarBadgeText}>+22</Text>
+                        <ScaledText style={styles.avatarBadgeText}>+22</ScaledText>
                     </View>
                 </TouchableOpacity>
             </Animated.View>

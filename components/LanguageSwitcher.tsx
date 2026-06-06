@@ -1,13 +1,6 @@
 import React, { useState } from 'react';
-import {
-  Modal,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Modal, Platform, Pressable, StyleSheet, TouchableOpacity, View,  } from 'react-native'
+import { ScaledText } from './ui/ScaledText';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -95,29 +88,29 @@ const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ visible, onClose })
 
         <View style={styles.languageOptionContent}>
           <View style={styles.languageInfo}>
-            <Text
+            <ScaledText
               style={[
                 styles.languageName,
                 { color: isSelected ? '#FFFFFF' : text },
               ]}
             >
               {LANGUAGE_NAMES[lang]}
-            </Text>
-            <Text
+            </ScaledText>
+            <ScaledText
               style={[
                 styles.languageCode,
                 { color: isSelected ? 'rgba(255,255,255,0.8)' : textSub },
               ]}
             >
               {lang.toUpperCase()}
-            </Text>
+            </ScaledText>
           </View>
 
           {isLoadingLang ? (
             <View style={styles.loadingContainer}>
-              <Text style={[styles.loadingText, { color: isSelected ? '#FFFFFF' : accent }]}>
+              <ScaledText style={[styles.loadingText, { color: isSelected ? '#FFFFFF' : accent }]}>
                 {t('common.loading')}
-              </Text>
+              </ScaledText>
             </View>
           ) : isSelected ? (
             <View style={styles.checkContainer}>
@@ -171,9 +164,9 @@ const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ visible, onClose })
             />
 
             <View style={styles.header}>
-              <Text style={[styles.title, { color: text }]}>
+              <ScaledText style={[styles.title, { color: text }]}>
                 {t('language.selectLanguage')}
-              </Text>
+              </ScaledText>
               <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                 <BlurView
                   intensity={Platform.OS === 'ios' ? 30 : 100}
@@ -191,9 +184,9 @@ const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ visible, onClose })
             </View>
 
             <View style={styles.footer}>
-              <Text style={[styles.footerText, { color: textSub }]}>
+              <ScaledText style={[styles.footerText, { color: textSub }]}>
                 {t('language.selectLanguage')}
-              </Text>
+              </ScaledText>
             </View>
           </View>
         </Animated.View>

@@ -1,14 +1,5 @@
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  SafeAreaView,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ActivityIndicator, Alert, Image, SafeAreaView, Switch, TextInput, TouchableOpacity, View,  } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import React, { useState } from "react";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { supabase } from '../lib/supabase';
@@ -109,9 +100,9 @@ const NewOutfitScreen = () => {
     <SafeAreaView className="flex-1 bg-white">
       <View className="flex-row justify-between items-center p-4">
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text className="text-[#0A1931]">{t('common.back')}</Text>
+          <ScaledText className="text-[#0A1931]">{t('common.back')}</ScaledText>
         </TouchableOpacity>
-        <Text className="text-lg font-semibold">{t('newOutfit.title')}</Text>
+        <ScaledText className="text-lg font-semibold">{t('newOutfit.title')}</ScaledText>
       </View>
       <View className="flex-1 items-center justify-center">
         {selectedItems
@@ -142,20 +133,20 @@ const NewOutfitScreen = () => {
         />
         <View className="mt-4">
           <View className="flex-row items-center justify-between">
-            <Text className="text-gray-500">{t('newOutfit.date')}</Text>
-            <Text className="text-[#0A1931]">{date || t('newOutfit.today')}</Text>
+            <ScaledText className="text-gray-500">{t('newOutfit.date')}</ScaledText>
+            <ScaledText className="text-[#0A1931]">{date || t('newOutfit.today')}</ScaledText>
           </View>
           <View className="flex-row items-center justify-between mt-2">
-            <Text className="text-gray-500">{t('newOutfit.addToOotd')}</Text>
+            <ScaledText className="text-gray-500">{t('newOutfit.addToOotd')}</ScaledText>
             <Switch value={isOotd} onValueChange={setIsOotd} />
           </View>
           <View className="flex-row items-center justify-between mt-2">
-            <Text className="text-gray-500">{t('newOutfit.occasion')}</Text>
-            <Text className="text-[#0A1931]">{occasion}</Text>
+            <ScaledText className="text-gray-500">{t('newOutfit.occasion')}</ScaledText>
+            <ScaledText className="text-[#0A1931]">{occasion}</ScaledText>
           </View>
           <View className="flex-row items-center justify-between mt-2">
-            <Text className="text-gray-500">{t('newOutfit.visibility')}</Text>
-            <Text className="text-[#0A1931]">{visiblilty}</Text>
+            <ScaledText className="text-gray-500">{t('newOutfit.visibility')}</ScaledText>
+            <ScaledText className="text-[#0A1931]">{visiblilty}</ScaledText>
           </View>
         </View>
       </View>
@@ -163,7 +154,7 @@ const NewOutfitScreen = () => {
         {loading ? (
           <ActivityIndicator color="#ffffff" />
         ) : (
-          <Text className="text-white text-center font-semibold">{t('newOutfit.save')}</Text>
+          <ScaledText className="text-white text-center font-semibold">{t('newOutfit.save')}</ScaledText>
         )}
       </TouchableOpacity>
     </SafeAreaView>

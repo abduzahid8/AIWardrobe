@@ -6,7 +6,8 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, StyleSheet, Image } from 'react-native'
+import { ScaledText } from './ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
@@ -35,10 +36,10 @@ const DailySuggestionCard: React.FC<DailySuggestionCardProps> = ({ suggestion, o
         return (
             <View style={styles.emptyCard}>
                 <Ionicons name="sparkles-outline" size={32} color={colors.text.tertiary} />
-                <Text style={styles.emptyTitle}>{t('dailySuggestion.noSuggestionYet')}</Text>
-                <Text style={styles.emptySubtext}>
+                <ScaledText style={styles.emptyTitle}>{t('dailySuggestion.noSuggestionYet')}</ScaledText>
+                <ScaledText style={styles.emptySubtext}>
                     {t('dailySuggestion.addItemToCloset')}
-                </Text>
+                </ScaledText>
             </View>
         );
     }
@@ -52,20 +53,20 @@ const DailySuggestionCard: React.FC<DailySuggestionCardProps> = ({ suggestion, o
             {/* Header */}
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.title}>{t('dailySuggestion.todaysOutfit')}</Text>
+                    <ScaledText style={styles.title}>{t('dailySuggestion.todaysOutfit')}</ScaledText>
                     {activeSuggestion.weatherContext && (
-                        <Text style={styles.weatherText}>
+                        <ScaledText style={styles.weatherText}>
                             {Math.round(activeSuggestion.weatherContext.temp)}°
                             {' · '}
                             {activeSuggestion.weatherContext.condition}
-                        </Text>
+                        </ScaledText>
                     )}
                 </View>
                 <StreakBadge variant="inline" />
             </View>
 
             {/* Reason */}
-            <Text style={styles.reason}>{activeSuggestion.reason}</Text>
+            <ScaledText style={styles.reason}>{activeSuggestion.reason}</ScaledText>
 
             {/* Item thumbnails */}
             <View style={styles.itemsRow}>
@@ -82,9 +83,9 @@ const DailySuggestionCard: React.FC<DailySuggestionCardProps> = ({ suggestion, o
                                 <Ionicons name="shirt-outline" size={20} color={colors.text.tertiary} />
                             </View>
                         )}
-                        <Text style={styles.itemLabel} numberOfLines={2}>
+                        <ScaledText style={styles.itemLabel} numberOfLines={2}>
                             {item!.subCategory || item!.category}
-                        </Text>
+                        </ScaledText>
                     </View>
                 ))}
             </View>

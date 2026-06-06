@@ -1,19 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-    View,
-    Text,
-    TouchableOpacity,
-    StyleSheet,
-    Dimensions,
-    ScrollView,
-    FlatList,
-    ActivityIndicator,
-    Alert,
-    TextInput,
-    StatusBar,
-    Platform,
-    Linking,
-} from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { View, TouchableOpacity, StyleSheet, Dimensions, ScrollView, FlatList, ActivityIndicator, Alert, TextInput, StatusBar, Platform, Linking,  } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { Image } from 'expo-image';
 import { TrialCountdownBanner } from '../components/TrialCountdownBanner';
 import GenerateOutfitButton from '../features/outfit-generator/components/GenerateOutfitButton';
@@ -49,6 +36,7 @@ import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 import Config from '../src/config/env';
 import useAuthStore from '../store/auth';
 import useWardrobeStore from '../store/wardrobeStore';
+import type { Outfit } from '../src/types/domain';
 import { ExternalAIService } from '../src/services/externalAIService';
 import { BASIC_CLOTHING_ITEMS } from '../data/basicClothingItems';
 import { ClosetClothingItem } from '../features/outfit-generator/types';
@@ -119,7 +107,7 @@ const LiquidGlassSpinner = () => {
 const { width, height } = Dimensions.get('window');
 const { colors, spacing, radius, typography } = LiquidGlass2026Theme;
 
-import { mapCategoryToType, mapColorToId, normalizeCategory } from '../src/utils/mappingUtils';
+import { mapCategoryToType, mapColorToId, normalizeCategory, getMacroCategory, canonicalizeMacroCategory } from '../src/utils/mappingUtils';
 
 // Pre-compiled category RegExp objects — avoids creating new RegExp instances
 // on every filter pass (100 items × 8 keywords = 800 allocations per keystroke).
@@ -140,10 +128,12 @@ type ClothingItem = ClosetClothingItem;
 // Category Chip from Design
 const FilterChip = ({
     label,
+    enText,
     isSelected,
     onPress
 }: {
     label: string;
+    enText?: string;
     isSelected: boolean;
     onPress: () => void;
 }) => {
@@ -162,12 +152,15 @@ const FilterChip = ({
             accessibilityRole="button"
             accessibilityState={{ selected: isSelected }}
         >
-            <Text style={[
-                styles.filterChipText,
-                isSelected ? styles.filterChipTextSelected : styles.filterChipTextUnselected
-            ]}>
+            <ScaledText
+                style={[
+                    styles.filterChipText,
+                    isSelected ? styles.filterChipTextSelected : styles.filterChipTextUnselected
+                ]}
+                enText={enText}
+            >
                 {label}
-            </Text>
+            </ScaledText>
         </TouchableOpacity>
     );
 };
@@ -344,14 +337,19 @@ const MyClosetScreen = () => {
     const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
     const [isSearching, setIsSearching] = useState(false);
     const [filterCategory, setFilterCategory] = useState('All');
+    const [selectedCollectionFilter, setSelectedCollectionFilter] = useState('all');
 
     // AI Studio State
-    const { user } = useAuthStore();
+    const user = useAuthStore((state) => state.user);
     const [isUploadingOverlay, setIsUploadingOverlay] = useState(false);
     const [uploadStatusMsg, setUploadStatusMsg] = useState('');
 
     // ── Subscription store (for trial banner) ─────────────────────────────────
     const isTrialActive = useSubscriptionStore((state) => state.isTrialActive);
+
+    // ── Saved outfits for collections view ────────────────────────────────────
+    const outfits = useWardrobeStore((state) => state.outfits);
+    const savedOutfits = useMemo(() => outfits.filter((o: Outfit) => o.saved), [outfits]);
 
     // Handler: tap "Generate Outfit" on a card — navigate to AIOutfit with the item as anchor
     const handleGenerateOutfit = useCallback((item: ClothingItem) => {
@@ -362,8 +360,9 @@ const MyClosetScreen = () => {
             baseItem: {
                 id: item.id || item._id || '',
                 imageUrl: item.imageUrl || item.image,
-                name: item.type || item.category,
-                type: item.type || item.category,
+                name: item.category,
+                type: item.category,
+                macroCategory: item.category,
             },
         });
     }, [navigation]);
@@ -741,7 +740,7 @@ const MyClosetScreen = () => {
                             </View>
 
                             <View style={styles.headerCenter}>
-                                <Text style={styles.headerTitle} accessibilityRole="header">{t('wardrobe.title')}</Text>
+                                <ScaledText style={styles.headerTitle} accessibilityRole="header">{t('wardrobe.title')}</ScaledText>
                             </View>
 
                             <View style={styles.headerRight}>
@@ -753,7 +752,7 @@ const MyClosetScreen = () => {
                                         accessibilityRole="button"
                                     >
                                         <Ionicons name="add" size={18} color="#0A1931" />
-                                        <Text style={styles.headerUploadText}>{t('wardrobe.upload')}</Text>
+                                        <ScaledText style={styles.headerUploadText}>{t('wardrobe.upload')}</ScaledText>
                                     </TouchableOpacity>
                                 )}
                             </View>
@@ -768,9 +767,9 @@ const MyClosetScreen = () => {
                 {items.length > 0 && items.length < 2 && (
                     <View style={styles.smallWardrobeBanner}>
                         <Ionicons name="information-circle-outline" size={16} color="#007AFF" />
-                        <Text style={styles.smallWardrobeBannerText}>
+                        <ScaledText style={styles.smallWardrobeBannerText}>
                             Add more items to improve outfit quality. Missing slots will be filled with shop suggestions.
-                        </Text>
+                        </ScaledText>
                     </View>
                 )}
 
@@ -787,7 +786,7 @@ const MyClosetScreen = () => {
                             accessibilityRole="tab"
                             accessibilityState={{ selected: viewMode === 'clothes' }}
                         >
-                            <Text style={[styles.segmentText, viewMode === 'clothes' && styles.segmentTextActive]}>{t('wardrobe.clothes')}</Text>
+                            <ScaledText style={[styles.segmentText, viewMode === 'clothes' && styles.segmentTextActive]}>{t('wardrobe.clothes')}</ScaledText>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[styles.segmentButton, viewMode === 'collections' && styles.segmentButtonActive]}
@@ -799,7 +798,7 @@ const MyClosetScreen = () => {
                             accessibilityRole="tab"
                             accessibilityState={{ selected: viewMode === 'collections' }}
                         >
-                            <Text style={[styles.segmentText, viewMode === 'collections' && styles.segmentTextActive]}>{t('wardrobe.collections')}</Text>
+                            <ScaledText style={[styles.segmentText, viewMode === 'collections' && styles.segmentTextActive]}>{t('wardrobe.collections')}</ScaledText>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -816,6 +815,7 @@ const MyClosetScreen = () => {
                                 <FilterChip
                                     key={cat.id}
                                     label={cat.label}
+                                    enText={t(`closet.${cat.id}`, { lng: 'en' })}
                                     isSelected={selectedCategory === cat.id}
                                     onPress={() => setSelectedCategory(cat.id)}
                                 />
@@ -826,24 +826,98 @@ const MyClosetScreen = () => {
 
                 {/* Content */}
                 {viewMode === 'collections' ? (
-                    /* ── Collections View ── */
-                    <View style={styles.emptyStateContainer}>
-                        <View style={styles.collectionsIconWrap}>
-                            <Ionicons name="albums-outline" size={56} color={colors.text.tertiary} />
+                    savedOutfits.length > 0 ? (
+                        <>
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={styles.collectionFilterRaw}
+                            >
+                                <FilterChip
+                                    label={t('closet.all')}
+                                    enText={t('closet.all', { lng: 'en' })}
+                                    isSelected={selectedCollectionFilter === 'all'}
+                                    onPress={() => setSelectedCollectionFilter('all')}
+                                />
+                                {['casual', 'work', 'formal', 'sport', 'date', 'travel'].map((cat) => (
+                                    <FilterChip
+                                        key={cat}
+                                        label={t(`outfitMaker.${cat}`, cat)}
+                                        enText={cat}
+                                        isSelected={selectedCollectionFilter === cat}
+                                        onPress={() => setSelectedCollectionFilter(cat)}
+                                    />
+                                ))}
+                            </ScrollView>
+                            <FlatList
+                                data={selectedCollectionFilter === 'all' ? savedOutfits : savedOutfits.filter((o) => o.occasion === selectedCollectionFilter)}
+                                keyExtractor={(item) => item.id}
+                                numColumns={2}
+                                contentContainerStyle={styles.scrollContent}
+                                showsVerticalScrollIndicator={false}
+                                removeClippedSubviews={true}
+                                maxToRenderPerBatch={10}
+                                updateCellsBatchingPeriod={50}
+                                initialNumToRender={8}
+                            windowSize={5}
+                            renderItem={({ item: outfit }) => {
+                                const previewItem = outfit.previewImageUrl
+                                    ? null
+                                    : storeItems.find(i => outfit.itemIds.includes(i.id));
+                                return (
+                                    <TouchableOpacity
+                                        style={styles.outfitCard}
+                                        onPress={() => navigation.navigate('AIOutfit', { source: 'wardrobe' })}
+                                        activeOpacity={0.8}
+                                    >
+                                        {outfit.previewImageUrl ? (
+                                            <Image
+                                                source={{ uri: outfit.previewImageUrl }}
+                                                style={styles.outfitCardImage}
+                                                contentFit="cover"
+                                            />
+                                        ) : previewItem ? (
+                                            <Image
+                                                source={{ uri: previewItem.imageUrl }}
+                                                style={styles.outfitCardImage}
+                                                contentFit="cover"
+                                            />
+                                        ) : (
+                                            <View style={[styles.outfitCardImage, styles.outfitCardPlaceholder]}>
+                                                <Ionicons name="shirt-outline" size={32} color={colors.text.tertiary} />
+                                            </View>
+                                        )}
+                                        <View style={styles.outfitCardOverlay}>
+                                            <ScaledText style={styles.outfitCardOccasion} numberOfLines={2}>
+                                                {outfit.occasion}
+                                            </ScaledText>
+                                            <Ionicons name="heart" size={14} color="#E05C5C" />
+                                        </View>
+                                    </TouchableOpacity>
+                                );
+                            }}
+                            ListFooterComponent={<View style={{ height: 100 }} />}
+                        />
+                        </>
+                    ) : (
+                        <View style={styles.emptyStateContainer}>
+                            <View style={styles.collectionsIconWrap}>
+                                <Ionicons name="albums-outline" size={56} color={colors.text.tertiary} />
+                            </View>
+                            <ScaledText style={styles.emptyTitle}>{t('wardrobe.noCollections')}</ScaledText>
+                            <ScaledText style={styles.emptySubtitle}>
+                                Like outfits from your daily suggestions and they will appear here.
+                            </ScaledText>
+                            <TouchableOpacity
+                                style={styles.emptyButton}
+                                onPress={() => navigation.navigate('AIOutfit', { source: 'wardrobe' })}
+                                accessibilityLabel={t('myCloset.createFirstCollection')}
+                                accessibilityRole="button"
+                            >
+                                <ScaledText style={styles.emptyButtonText}>{t('wardrobe.createFirstLook')}</ScaledText>
+                            </TouchableOpacity>
                         </View>
-                        <Text style={styles.emptyTitle}>{t('wardrobe.noCollections')}</Text>
-                        <Text style={styles.emptySubtitle}>
-                            Group your outfits into collections — for work, weekends, seasons, or any occasion.
-                        </Text>
-                        <TouchableOpacity
-                            style={styles.emptyButton}
-                            onPress={() => navigation.navigate('AIOutfit', { source: 'wardrobe' })}
-                            accessibilityLabel={t('myCloset.createFirstCollection')}
-                            accessibilityRole="button"
-                        >
-                            <Text style={styles.emptyButtonText}>{t('wardrobe.createFirstLook')}</Text>
-                        </TouchableOpacity>
-                    </View>
+                    )
                 ) : loading ? (
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="small" color={colors.text.primary} />
@@ -853,8 +927,8 @@ const MyClosetScreen = () => {
                         <View style={styles.videoContainer}>
                             <ClosetVideoPlayer />
                         </View>
-                        <Text style={styles.emptyTitle}>{t('wardrobe.emptyCloset')}</Text>
-                        <Text style={styles.emptySubtitle}>{t('wardrobe.emptyClosetSubtitle')}</Text>
+                        <ScaledText style={styles.emptyTitle}>{t('wardrobe.emptyCloset')}</ScaledText>
+                        <ScaledText style={styles.emptySubtitle}>{t('wardrobe.emptyClosetSubtitle')}</ScaledText>
 
                         <TouchableOpacity
                             style={styles.emptyButton}
@@ -862,7 +936,7 @@ const MyClosetScreen = () => {
                             accessibilityLabel={t('myCloset.scanWardrobe')}
                             accessibilityRole="button"
                         >
-                            <Text style={styles.emptyButtonText}>{t('wardrobe.scanWardrobe')}</Text>
+                            <ScaledText style={styles.emptyButtonText}>{t('wardrobe.scanWardrobe')}</ScaledText>
                         </TouchableOpacity>
                     </View>
                 ) : (
@@ -920,7 +994,7 @@ const MyClosetScreen = () => {
             >
                 <View style={styles.stylistFABGlass}>
                     <Ionicons name="chatbubble-ellipses" size={20} color={colors.text.primary} />
-                    <Text style={styles.stylistFABText}>{t('wardrobe.askStylist')}</Text>
+                    <ScaledText style={styles.stylistFABText}>{t('wardrobe.askStylist')}</ScaledText>
                 </View>
             </TouchableOpacity>
 
@@ -1038,7 +1112,7 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     headerUploadText: {
-        fontSize: 14,
+        fontSize: 11,
         fontWeight: '600',
         color: '#0A1931',
         marginLeft: 2,
@@ -1120,6 +1194,11 @@ const styles = StyleSheet.create({
     filterContentRaw: {
         paddingHorizontal: 16,
         paddingRight: 8,
+    },
+    collectionFilterRaw: {
+        paddingHorizontal: 16,
+        paddingRight: 8,
+        paddingBottom: 12,
     },
     filterChip: {
         paddingVertical: 10,
@@ -1226,6 +1305,47 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 20,
+    },
+    outfitCard: {
+        flex: 1,
+        margin: 6,
+        borderRadius: 16,
+        overflow: 'hidden',
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: 'rgba(0, 0, 0, 0.06)',
+        aspectRatio: 0.8,
+    },
+    outfitCardImage: {
+        width: '100%',
+        height: '100%',
+    },
+    outfitCardPlaceholder: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#F4F8FF',
+    },
+    outfitCardOverlay: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        backgroundColor: 'rgba(255,255,255,0.85)',
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(0,0,0,0.04)',
+    },
+    outfitCardOccasion: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#1C1C1E',
+        textTransform: 'capitalize',
+        flex: 1,
+        marginRight: 6,
     },
     videoContainer: {
         width: 250,

@@ -1,15 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import {
-    View,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    ScrollView,
-    ActivityIndicator,
-    Dimensions,
-    Platform,
-    KeyboardAvoidingView,
-} from 'react-native';
+import { View, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Dimensions, Platform, KeyboardAvoidingView,  } from 'react-native'
+import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -179,7 +170,7 @@ const OutfitItemCard = ({ item, index }: { item: OutfitItem; index: number }) =>
 
                     {/* Item Info */}
                     <View style={{ padding: 12 }}>
-                        <Text style={{
+                        <ScaledText style={{
                             fontSize: 11,
                             color: AppColors.textMuted,
                             textTransform: 'uppercase',
@@ -187,14 +178,14 @@ const OutfitItemCard = ({ item, index }: { item: OutfitItem; index: number }) =>
                             marginBottom: 4,
                         }}>
                             {item.category}
-                        </Text>
-                        <Text style={{
+                        </ScaledText>
+                        <ScaledText style={{
                             fontSize: 14,
                             fontWeight: '600',
                             color: AppColors.text,
                         }} numberOfLines={2}>
                             {item.name}
-                        </Text>
+                        </ScaledText>
                     </View>
                 </Animated.View>
             </TouchableOpacity>
@@ -410,7 +401,7 @@ const MeetingOutfitScreen = () => {
             >
                 <FloatingSparkle />
 
-                <Text style={{
+                <ScaledText style={{
                     fontSize: 28,
                     fontWeight: '700',
                     color: AppColors.text,
@@ -419,9 +410,9 @@ const MeetingOutfitScreen = () => {
                     letterSpacing: -0.5,
                 }}>
                     {t('meetingOutfit.createYourStyle')}
-                </Text>
+                </ScaledText>
 
-                <Text style={{
+                <ScaledText style={{
                     fontSize: 16,
                     color: AppColors.textSecondary,
                     textAlign: 'center',
@@ -429,7 +420,7 @@ const MeetingOutfitScreen = () => {
                     paddingHorizontal: 20,
                 }}>
                     {t('meetingOutfit.describeEvent')}
-                </Text>
+                </ScaledText>
             </Animated.View>
 
             {/* Input area */}
@@ -486,13 +477,13 @@ const MeetingOutfitScreen = () => {
                             color={AppColors.background}
                             style={{ marginRight: 10 }}
                         />
-                        <Text style={{
+                        <ScaledText style={{
                             fontSize: 17,
                             fontWeight: '600',
                             color: AppColors.background,
                         }}>
                             {t('meetingOutfit.generateOutfit')}
-                        </Text>
+                        </ScaledText>
                     </Animated.View>
                 </TouchableOpacity>
             </Animated.View>
@@ -502,13 +493,13 @@ const MeetingOutfitScreen = () => {
                 entering={FadeInUp.delay(400)}
                 style={{ marginTop: 20, alignItems: 'center' }}
             >
-                <Text style={{
+                <ScaledText style={{
                     fontSize: 13,
                     color: AppColors.textMuted,
                     textAlign: 'center',
                 }}>
                     ✨ AI creates a complete outfit: sweater, pants, shoes & more
-                </Text>
+                </ScaledText>
             </Animated.View>
         </View>
     );
@@ -580,7 +571,7 @@ const MeetingOutfitScreen = () => {
                     entering={FadeInDown.delay(50).springify()}
                     style={{ marginTop: 8, marginBottom: 20 }}
                 >
-                    <Text style={{
+                    <ScaledText style={{
                         fontSize: 13,
                         color: AppColors.textMuted,
                         textTransform: 'uppercase',
@@ -588,22 +579,22 @@ const MeetingOutfitScreen = () => {
                         marginBottom: 6,
                     }}>
                         {generatedOutfit.style}
-                    </Text>
-                    <Text style={{
+                    </ScaledText>
+                    <ScaledText style={{
                         fontSize: 26,
                         fontWeight: '700',
                         color: AppColors.text,
                         letterSpacing: -0.5,
                     }}>
                         {generatedOutfit.title}
-                    </Text>
-                    <Text style={{
+                    </ScaledText>
+                    <ScaledText style={{
                         fontSize: 15,
                         color: AppColors.textSecondary,
                         marginTop: 8,
                     }}>
                         {generatedOutfit.items.length} items curated for your event
-                    </Text>
+                    </ScaledText>
                 </Animated.View>
 
                 {/* Items Grid */}
@@ -639,13 +630,13 @@ const MeetingOutfitScreen = () => {
                             color={AppColors.background}
                             style={{ marginRight: 8 }}
                         />
-                        <Text style={{
+                        <ScaledText style={{
                             fontSize: 17,
                             fontWeight: '600',
                             color: AppColors.background,
                         }}>
                             Create Another Style
-                        </Text>
+                        </ScaledText>
                     </TouchableOpacity>
                 </Animated.View>
             </ScrollView>

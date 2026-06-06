@@ -70,6 +70,7 @@ export interface Outfit {
     wornCount: number;
     lastWornAt: string | null;
     rating?: 1 | 2 | 3 | 4 | 5;
+    collectionCategory?: string;   // MyWardrobe collection group (e.g. 'casual', 'work', 'travel')
 
     // AI metadata
     reasoning?: string;           // Why AI suggested this
