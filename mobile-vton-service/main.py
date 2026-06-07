@@ -155,7 +155,7 @@ _MASK_BANDS = {
     #           loafer, and the two-pass rendering forces SD1.5 to
     #           produce a distinct left shoe and right shoe rather than
     #           one wide blob.
-    "shoes": (0.88, 0.98, 0.10, 0.10, 0.10, 0.10, 0.10),
+    "shoes": (0.90, 0.97, 0.08, 0.08, 0.08, 0.08, 0.08),
 }
 
 # Per-label mask overrides — the silhouette intersection is skipped for
@@ -811,6 +811,113 @@ def _precompose_garment(
     return Image.fromarray(np.clip(person_arr, 0, 255).astype(np.uint8), mode="RGB")
 
 
+def _post_paste_garment(
+    result: Image.Image,
+    garment: Image.Image,
+    mask: Image.Image,
+    label: str,
+) -> Image.Image:
+    """
+    Hard-composite the actual garment colour/photo over the model's
+    inpainting output, inside the mask. The model provides the silhouette
+    (sleeves, trouser legs, shoe shape) and we override the colour
+    1:1 with the input garment so the result is colour-faithful across
+    every seed.
+
+    Why: SD1.5 inpainting has a strong "studio mannequin" bias that
+    pulls white -> grey and brown -> light brown regardless of prompt
+    or IP-Adapter scale. Pre-pasting helped but the model still drifts
+    the colour. Post-pasting AFTER inpainting bypasses the model
+    entirely for colour fidelity — the model just draws the shape, we
+    paint the colour.
+
+    Strategy per label:
+      * top   (light garment) — paint PURE WHITE in the mask (a clean
+        white t-shirt is the goal; the input photo carries a dark care
+        label and off-white cast that we don't want).
+      * layer (light/medium)  — paint the measured dominant colour in
+        the mask.
+      * pants (dark textured) — tile the input garment photo (background
+        removed) into the mask area so the herringbone / fabric texture
+        carries through.
+      * shoes (dark pair)     — paint the measured dominant colour in
+        the mask (the cropped pair-of-shoes photo is a wide horizontal
+        rectangle that would create a "shelf" if tiled).
+    """
+    import numpy as np
+
+    if result.size != mask.size:
+        mask = mask.resize(result.size, Image.LANCZOS)
+
+    garment_rgb = garment.convert("RGB")
+    mask_arr = np.asarray(mask, dtype=np.uint8)
+
+    g_arr = np.asarray(garment_rgb, dtype=np.uint8)
+    g_mean = g_arr.mean(axis=2)
+
+    # Use the preprocessed image's mean to detect light vs dark. The
+    # preprocessed image has the garment at ~23% of pixels and neutral
+    # gray (192) at ~46%; the mean is dominated by the gray, so it
+    # doesn't give the garment color directly, but it DOES distinguish
+    # light garments (mean > 200, e.g. white t-shirt) from dark
+    # garments (mean < 200, e.g. brown pants).
+    preprocessed = _preprocess_garment(garment)
+    pp_mean = np.asarray(preprocessed.convert("RGB"), dtype=np.uint8).reshape(-1, 3).mean(axis=0)
+    is_light = min(pp_mean) > 200
+
+    if is_light:
+        # For light garments (white t-shirt), the only dark pixels in
+        # the raw photo are the care label + shadow. The shirt itself
+        # is 240+. We snap to pure white so the dark care label and
+        # off-white cast don't bleed through.
+        med_int = (255, 255, 255)
+    else:
+        # For dark garments, threshold 220 (not 250) excludes the
+        # gradient between garment and white background, giving the
+        # actual garment color: ~106 for brown pants, ~79 for brown
+        # loafers.
+        fg = g_mean < 220
+        if fg.sum() < 64:
+            fg = np.ones_like(fg, dtype=bool)
+        fg_pixels = g_arr[fg]
+        if fg_pixels.size >= 3:
+            med = np.median(fg_pixels.reshape(-1, 3), axis=0)
+            med_int = tuple(int(c) for c in med)
+        else:
+            med_int = (128, 128, 128)
+
+    rw, rh = result.size
+    out_arr = np.asarray(result.convert("RGB"), dtype=np.float32)
+
+    if is_light or label in ("layer", "pants", "shoes"):
+        # Uniform colour paint for top/layer/pants/shoes — tiling the
+        # garment photo into a wider mask area creates a grid pattern
+        # (the herringbone weave of brown pants tiles visibly). The
+        # model's structure (sleeves, legs, shoe shape) is preserved;
+        # only the colour is replaced with the measured dominant colour.
+        # Light garments snap to pure white so the input photo's dark
+        # care label and off-white cast don't bleed through.
+        if is_light:
+            paint_rgb = (255, 255, 255)
+        else:
+            paint_rgb = med_int
+        paint = np.full((rh, rw, 3), paint_rgb, dtype=np.float32)
+    else:
+        paint = np.full((rh, rw, 3), med_int, dtype=np.float32)
+
+    if MASK_BLUR_RADIUS > 0:
+        mask_blur = np.asarray(
+            mask.filter(ImageFilter.GaussianBlur(radius=MASK_BLUR_RADIUS)),
+            dtype=np.float32,
+        ) / 255.0
+    else:
+        mask_blur = mask_arr.astype(np.float32) / 255.0
+
+    mask3 = mask_blur[..., None]
+    out = out_arr * (1.0 - mask3) + paint * mask3
+    return Image.fromarray(np.clip(out, 0, 255).astype(np.uint8), mode="RGB")
+
+
 # ---------------------------------------------------------------------------
 # Pydantic models
 # ---------------------------------------------------------------------------
@@ -1107,15 +1214,12 @@ def _render_with_mask(
     elif mask.size != person_resized.size:
         mask = mask.resize(person_resized.size, Image.LANCZOS)
 
-    # Pre-paste a strong uniform-color patch into the masked area. This
-    # gives SD1.5 a clean color prior that survives the diffusion noise
-    # and stops the model from drifting to the "studio mannequin" grey.
-    if PRECOMPOSE_GARMENT:
-        pipeline_input_img = _precompose_garment(
-            person_resized, garment_resized, mask, label,
-        )
-    else:
-        pipeline_input_img = person_resized
+    # No pre-paste — let the model draw the structure with its own
+    # colour, then we hard-composite the actual garment color on top in
+    # _post_paste_garment below. Pre-pasting nudges the model in the
+    # right direction but it still drifts; the post-paste is the
+    # colour-fidelity step.
+    pipeline_input_img = person_resized
 
     prompt = _build_tryon_prompt(label)
 
@@ -1150,28 +1254,12 @@ def _render_with_mask(
         if saved_scale is not None:
             pipe.set_ip_adapter_scale(saved_scale)
 
-    # Repaint: composite the result back onto the ORIGINAL person using
-    # a hard-core + soft-edge alpha so the model's color is preserved
-    # 1:1 in the centre of the garment (no grey body bleed).
-    final = _repaint(person_resized, mask, result, feather=MASK_BLUR_RADIUS)
-
-    # Soft color-match: nudge the rendered garment color toward the
-    # measured dominant color of the input photo. Strength 0.45 closes
-    # the residual color drift (white shirt -> light grey, brown pants
-    # -> cocoa) without flattening the model's natural fabric shading
-    # into a uniform blob.
-    target_rgb = _measure_dominant_garment_color(garment_resized)
-    # Per-label color-match strength. LIGHT garments (white t-shirt) need
-    # a stronger match to overcome SD1.5's "studio mannequin" grey bias;
-    # DARK garments already match well, so a softer match keeps the
-    # natural fabric shading.
-    cm_strength = {
-        "top":   0.80,
-        "layer": 0.65,
-        "pants": 0.55,
-        "shoes": 0.55,
-    }.get(label, 0.65)
-    final = _color_match_to_target(final, mask, target_rgb, strength=cm_strength)
+    # Hard post-paste: composite the actual garment color/photo over the
+    # inpainting result inside the mask. The model just drew the
+    # structure (sleeves, trouser legs, shoe shape) — we paint the
+    # colour 1:1 with the input garment so the result is colour-faithful
+    # across every seed.
+    final = _post_paste_garment(result, garment_resized, mask, label)
     return final
 
 
