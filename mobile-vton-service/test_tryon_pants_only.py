@@ -11,20 +11,18 @@ def to_base64(file_path):
     return f"data:{mime};base64,{base64.b64encode(data).decode()}"
 
 person_image = to_base64('/Users/zohidvohidjonov/Desktop/AIWardrobe/assets/images/mannequin_front.png')
-garment_image = to_base64('/Users/zohidvohidjonov/Desktop/AIWardrobe/assets/images/basic_white_tshirt.png')
+garment_image = to_base64('/Users/zohidvohidjonov/Desktop/AIWardrobe/assets/images/basic_brown_pants.png')
 
 payload = {
     'person_image': person_image,
     'garment_image': garment_image,
-    'garment_description': 'white tshirt',
-    'guidance_scale': 7.5,
-    'num_inference_steps': 25,
+    'garment_description': 'brown pants',
+    'guidance_scale': 9.0,
+    'num_inference_steps': 30,
     'seed': 42
 }
 
-print('Testing Mobile VTON single try-on...')
-print('URL: https://karimdzanovzoha--aiwardrobe-mobile-vton-fastapi-app.modal.run
-
+print('Testing brown pants single try-on...')
 req = urllib.request.Request(
     'https://karimdzanovzoha--aiwardrobe-mobile-vton-fastapi-app.modal.run
     data=json.dumps(payload).encode('utf-8'),
@@ -35,24 +33,14 @@ req = urllib.request.Request(
 try:
     with urllib.request.urlopen(req, timeout=180) as response:
         data = json.loads(response.read().decode())
-
-    print('\n=== RESULT ===')
-    print(f'Success: {data.get("success")}')
-    print(f'Method: {data.get("method_used")}')
-    print(f'Elapsed: {data.get("elapsed_ms")} ms')
-    print(f'Result image length: {len(data.get("result_image", ""))} chars')
-
+    print(f"Success: {data.get('success')}  Elapsed: {data.get('elapsed_ms')} ms")
     if data.get('success'):
-        print('\n✓ Mobile VTON is working correctly')
-        # Save result image to file
         result_image = data.get('result_image', '')
-        if result_image and result_image.startswith('data:'):
+        if result_image.startswith('data:'):
             header, b64data = result_image.split(',', 1)
             image_data = base64.b64decode(b64data)
-            with open('/Users/zohidvohidjonov/Desktop/AIWardrobe/mobile-vton-service/test_result.png', 'wb') as f:
+            with open('/Users/zohidvohidjonov/Desktop/AIWardrobe/mobile-vton-service/test_pants_result.png', 'wb') as f:
                 f.write(image_data)
-            print('✓ Result image saved to test_result.png')
-    else:
-        print('\n✗ Mobile VTON failed')
+            print('Saved to test_pants_result.png')
 except urllib.error.URLError as e:
-    print(f'\n✗ Error: {e.reason}')
+    print(f'Error: {e.reason}')

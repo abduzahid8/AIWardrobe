@@ -28,17 +28,17 @@ garments = [
 payload = {
     'person_image': person_image,
     'garments': garments,
-    'guidance_scale': 2.0,
-    'num_inference_steps': 10,
+    'guidance_scale': 7.5,
+    'num_inference_steps': 25,
     'seed': 42,
     'pipeline_version': 'fused_v2'
 }
 
 print('Testing Mobile VTON multi-fused try-on...')
-print('URL: https://zoxxid75--aiwardrobe-mobile-vton-fastapi-app.modal.run/tryon/multi-fused')
+print('URL: https://karimdzanovzoha--aiwardrobe-mobile-vton-fastapi-app.modal.run
 
 req = urllib.request.Request(
-    'https://zoxxid75--aiwardrobe-mobile-vton-fastapi-app.modal.run/tryon/multi-fused',
+    'https://karimdzanovzoha--aiwardrobe-mobile-vton-fastapi-app.modal.run
     data=json.dumps(payload).encode('utf-8'),
     headers={'Content-Type': 'application/json'},
     method='POST'
