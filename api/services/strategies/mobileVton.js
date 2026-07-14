@@ -154,10 +154,14 @@ export async function mobileVtonRender(params) {
     garment,
     step,
     total,
-    num_inference_steps = 10,
-    guidance_scale = 2.0,
+    num_inference_steps = 25,
+    guidance_scale = 7.5,
     seed,
     pipeline_version = 'sequential_v1',
+    // Body-fit additions (Month 1) — forwarded to the Python service.
+    body_profile: bodyProfile,
+    fit_assessment: fitAssessment,
+    fit_assessments: fitAssessments,
   } = params;
 
   if (!mannequinSrc) {
@@ -200,6 +204,8 @@ export async function mobileVtonRender(params) {
         numInferenceSteps: num_inference_steps,
         seed,
         pipelineVersion: pipeline_version,
+        bodyProfile: bodyProfile || null,
+        fitAssessments: fitAssessments || null,
       });
 
       return {
@@ -250,6 +256,8 @@ export async function mobileVtonRender(params) {
       guidanceScale: guidance_scale,
       numInferenceSteps: num_inference_steps,
       seed,
+      bodyProfile: bodyProfile || null,
+      fitAssessment: fitAssessment || null,
     });
 
     return {

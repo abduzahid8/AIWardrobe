@@ -115,7 +115,7 @@ const ResetPasswordScreen = () => {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.container}
         >
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
                 <LinearGradient
                     colors={['#0A0A0A', '#1A1C29', '#16213E']}
                     style={styles.gradient}

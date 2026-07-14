@@ -719,6 +719,7 @@ const MyClosetScreen = () => {
                                 onChangeText={setSearchQuery}
                                 autoFocus
                                 returnKeyType="search"
+                                testID="searchInput"
                             />
                             <TouchableOpacity onPress={() => { setIsSearching(false); setSearchQuery(''); }}>
                                 <Ionicons name="close-circle" size={18} color={colors.text.tertiary} />
@@ -731,6 +732,7 @@ const MyClosetScreen = () => {
                                     <TouchableOpacity
                                         style={styles.headerIconButton}
                                         onPress={() => setIsSearching(true)}
+                                        testID="searchButton"
                                         accessibilityLabel={t('myCloset.searchCloset')}
                                         accessibilityRole="button"
                                     >
@@ -745,15 +747,16 @@ const MyClosetScreen = () => {
 
                             <View style={styles.headerRight}>
                                 {items.length > 0 && (
-                                    <TouchableOpacity
-                                        style={styles.headerUploadButton}
-                                        onPress={handleUploadChoice}
-                                        accessibilityLabel={t('myCloset.uploadClothing')}
-                                        accessibilityRole="button"
-                                    >
-                                        <Ionicons name="add" size={18} color="#0A1931" />
-                                        <ScaledText style={styles.headerUploadText}>{t('wardrobe.upload')}</ScaledText>
-                                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.headerUploadButton}
+                        onPress={handleUploadChoice}
+                        testID="uploadButton"
+                        accessibilityLabel={t('myCloset.uploadClothing')}
+                        accessibilityRole="button"
+                    >
+                        <Ionicons name="add" size={18} color="#0A1931" />
+                        <ScaledText style={styles.headerUploadText}>{t('wardrobe.upload')}</ScaledText>
+                    </TouchableOpacity>
                                 )}
                             </View>
                         </View>
@@ -782,6 +785,7 @@ const MyClosetScreen = () => {
                                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                 setViewMode('clothes');
                             }}
+                            testID="clothesTab"
                             accessibilityLabel={t('wardrobe.clothes')}
                             accessibilityRole="tab"
                             accessibilityState={{ selected: viewMode === 'clothes' }}
@@ -794,6 +798,7 @@ const MyClosetScreen = () => {
                                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                 setViewMode('collections');
                             }}
+                            testID="collectionsTab"
                             accessibilityLabel={t('wardrobe.collections')}
                             accessibilityRole="tab"
                             accessibilityState={{ selected: viewMode === 'collections' }}
@@ -805,7 +810,7 @@ const MyClosetScreen = () => {
 
                 {/* Filter Chips */}
                 {viewMode === 'clothes' && (
-                    <View style={styles.filterContainer}>
+                    <View style={styles.filterContainer} testID="filterContainer">
                         <ScrollView
                             horizontal
                             showsHorizontalScrollIndicator={false}
@@ -908,14 +913,15 @@ const MyClosetScreen = () => {
                             <ScaledText style={styles.emptySubtitle}>
                                 Like outfits from your daily suggestions and they will appear here.
                             </ScaledText>
-                            <TouchableOpacity
-                                style={styles.emptyButton}
-                                onPress={() => navigation.navigate('AIOutfit', { source: 'wardrobe' })}
-                                accessibilityLabel={t('myCloset.createFirstCollection')}
-                                accessibilityRole="button"
-                            >
-                                <ScaledText style={styles.emptyButtonText}>{t('wardrobe.createFirstLook')}</ScaledText>
-                            </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.emptyButton}
+                        onPress={() => navigation.navigate('AIOutfit', { source: 'wardrobe' })}
+                        testID="createFirstLookButton"
+                        accessibilityLabel={t('myCloset.createFirstCollection')}
+                        accessibilityRole="button"
+                    >
+                        <ScaledText style={styles.emptyButtonText}>{t('wardrobe.createFirstLook')}</ScaledText>
+                    </TouchableOpacity>
                         </View>
                     )
                 ) : loading ? (
@@ -930,14 +936,15 @@ const MyClosetScreen = () => {
                         <ScaledText style={styles.emptyTitle}>{t('wardrobe.emptyCloset')}</ScaledText>
                         <ScaledText style={styles.emptySubtitle}>{t('wardrobe.emptyClosetSubtitle')}</ScaledText>
 
-                        <TouchableOpacity
-                            style={styles.emptyButton}
-                            onPress={handleUploadChoice}
-                            accessibilityLabel={t('myCloset.scanWardrobe')}
-                            accessibilityRole="button"
-                        >
-                            <ScaledText style={styles.emptyButtonText}>{t('wardrobe.scanWardrobe')}</ScaledText>
-                        </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.emptyButton}
+                        onPress={handleUploadChoice}
+                        testID="scanWardrobeButton"
+                        accessibilityLabel={t('myCloset.scanWardrobe')}
+                        accessibilityRole="button"
+                    >
+                        <ScaledText style={styles.emptyButtonText}>{t('wardrobe.scanWardrobe')}</ScaledText>
+                    </TouchableOpacity>
                     </View>
                 ) : (
                     <FlatList
@@ -985,14 +992,15 @@ const MyClosetScreen = () => {
             </SafeAreaView>
 
             {/* Floating Ask Stylist button — Liquid Glass */}
-            <TouchableOpacity
-                style={styles.stylistFAB}
-                onPress={() => navigation.navigate('AIOutfit', { source: 'wardrobe' })}
-                activeOpacity={0.88}
-                accessibilityLabel={t('myCloset.askAIStylist')}
-                accessibilityRole="button"
-            >
-                <View style={styles.stylistFABGlass}>
+                <TouchableOpacity
+                    style={styles.stylistFAB}
+                    onPress={() => navigation.navigate('AIOutfit', { source: 'wardrobe' })}
+                    activeOpacity={0.88}
+                    testID="stylistFAB"
+                    accessibilityLabel={t('myCloset.askAIStylist')}
+                    accessibilityRole="button"
+                >
+                    <View style={styles.stylistFABGlass}>
                     <Ionicons name="chatbubble-ellipses" size={20} color={colors.text.primary} />
                     <ScaledText style={styles.stylistFABText}>{t('wardrobe.askStylist')}</ScaledText>
                 </View>

@@ -26,6 +26,7 @@ export const PERSISTED_ASYNC_STORAGE_KEYS: readonly string[] = [
     'wardrobe-storage',
     'try-on-looks-storage',
     'avatar-storage',
+    'body-profile-storage-v1', // bodyProfileStore (Month 1 of body-fit plan)
     'subscription-storage',
     'price-tracking-storage',
     'style-preferences', // stylePreferenceStore (was incorrectly 'style-preference-storage')
@@ -86,6 +87,11 @@ export async function clearAllPersistedUserData(): Promise<void> {
     try { useTryOnLooksStore.getState().clearAll(); } catch {}
     try { useAvatarStore.setState({ heightCm: '175', weightKg: '70', bodyType: 'average', gender: 'male' }); } catch {}
     try { usePriceTrackingStore.setState({ trackedItems: [], priceAlerts: [] }); } catch {}
+    try {
+      // bodyProfileStore is a default export; default-imported below to avoid a circular dep
+      const { default: useBodyProfileStore } = await import('../../store/bodyProfileStore');
+      useBodyProfileStore.getState().reset();
+    } catch {}
 
     await Promise.all(
         PERSISTED_SECURE_KEYS.map((key) =>

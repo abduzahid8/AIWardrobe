@@ -2,12 +2,11 @@ import { NavigationContainer } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useRef } from "react";
-import { StyleSheet, View, Text, Alert } from "react-native";
+import { StyleSheet, View, Text } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as Linking from 'expo-linking';
-import * as Updates from "expo-updates";
 import "./global.css";
 import "./i18n";
 import RootNavigator from "./navigation/RootNavigator";
@@ -26,6 +25,8 @@ const linking = {
   config: {
     screens: {
       ResetPassword: 'reset-password',
+      SignUp: 'sign-up',
+      ForgotPassword: 'forgot-password',
     },
   },
 };
@@ -108,22 +109,6 @@ const AppContent = () => {
   useEffect(() => {
     if (updatesChecked.current) return;
     updatesChecked.current = true;
-
-    (async () => {
-      try {
-        const update = await Updates.checkForUpdateAsync();
-        if (update.isAvailable) {
-          await Updates.fetchUpdateAsync();
-          Alert.alert(
-            "Update Available",
-            "A new update has been downloaded. Restart the app to apply it.",
-            [{ text: "Restart", onPress: () => Updates.reloadAsync() }]
-          );
-        }
-      } catch {
-        // Silently ignore update check failures
-      }
-    })();
   }, []);
 
   if (missingVars.length > 0) {

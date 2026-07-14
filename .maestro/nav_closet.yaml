@@ -1,0 +1,9 @@
+appId: org.name.AIWardrobe
+---
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 15000
+- tapOn:
+    point: "37%,94%"
+- waitForAnimationToEnd:
+    timeout: 5000

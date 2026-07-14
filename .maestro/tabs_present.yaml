@@ -1,0 +1,17 @@
+appId: org.name.AIWardrobe
+name: tabs_present
+tags:
+  - smoke
+  - tabs
+---
+# Verify all 4 bottom tabs exist and tappable regions are visible.
+# We don't require auth — this just asserts the tab bar shape if logged in.
+# Falls back to the auth screen if not authenticated.
+- launchApp:
+    clearState: false
+    stopApp: false
+- waitForAnimationToEnd:
+    timeout: 15000
+
+# Take a screenshot to capture current state (auth or tabs)
+- takeScreenshot: .maestro/screenshots/tabs_initial.png

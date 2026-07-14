@@ -38,6 +38,7 @@ import PromoCodeScreen from "../screens/PromoCodeScreen";
 import AdminPanelScreen from "../screens/AdminPanelScreen";
 import GuideScreen from "../screens/GuideScreen";
 import StyleQuizScreen from "../screens/StyleQuizScreen";
+import BodyProfileScreen from "../screens/BodyProfileScreen";
 import { addNotificationListeners } from "../src/services/notificationService";
 import { notificationService } from "../src/services/notificationService";
 import { RootStackParamList } from "./types";

@@ -32,6 +32,8 @@ import accountRoutes from "./routes/account.js";
 import tryonRenderRoutes from "./routes/tryon.js";
 import tryonGeminiRoutes from "./routes/tryon-gemini.js";
 import adminRoutes from "./routes/admin.js";
+import bodyProfileRoutes from "./routes/bodyProfiles.js";
+import fitRoutes from "./routes/fit.js";
 // Legacy try-on routes (tryon-v1/v2/v3) are intentionally NOT mounted.
 // Try-on is admin-only; only the canonical /api/tryon/render is exposed.
 
@@ -172,6 +174,10 @@ app.use("/api/tryon", authenticateToken, aiLimiter, tryonRenderRoutes);
 
 // Admin management routes (requires admin authentication)
 app.use("/api/admin", authenticateToken, adminRoutes);
+
+// Body-fit (Month 1 of docs/AIWARDROBE_6_MONTH_BODY_FIT_VTON_PLAN.md)
+app.use("/body-profiles", authenticateToken, aiLimiter, bodyProfileRoutes);
+app.use("/api/fit", authenticateToken, aiLimiter, fitRoutes);
 
 // No local DB seeding. Handled via Supabase directly.
 

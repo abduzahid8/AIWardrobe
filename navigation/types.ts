@@ -88,6 +88,8 @@ export type RootStackParamList = {
     TermsOfService: undefined;
     AdminPanel: undefined;
     Guide: undefined;
+    /** Body-fit profile (Month 1 of body-fit plan). Editable in Profile tab. */
+    BodyProfile: undefined;
 };
 
 export type TabParamList = {

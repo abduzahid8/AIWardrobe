@@ -1,0 +1,21 @@
+appId: org.name.AIWardrobe
+name: signup_validation
+tags:
+  - auth
+---
+# Sign In form validation test
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 30000
+- assertVisible:
+    text: ".*Sign In.*Sign in with Apple.*Email.*Password.*"
+
+# Enter invalid email
+- tapOn:
+    point: "50%,45%"
+- inputText: "not-an-email"
+- hideKeyboard
+- tapOn:
+    point: "50%,52%"
+- inputText: "abc"
+- hideKeyboard

@@ -18,6 +18,7 @@ const SignInScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { login, signInWithApple, signInWithGoogle } = useAuthStore();
   const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
+  const isFormValid = email.length > 0 && password.length > 0;
 
   useEffect(() => {
     if (Platform.OS === 'ios') {
@@ -81,7 +82,7 @@ const SignInScreen = () => {
       behavior="padding"
       style={styles.container}
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <LinearGradient
           colors={["#0A0A0A", "#1A1C29", "#16213E"]}
           style={styles.gradient}
@@ -90,9 +91,16 @@ const SignInScreen = () => {
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
+            accessible={false}
           >
-            <View style={styles.formContainer}>
-              <ScaledText style={styles.title}>{t('auth.signIn')}</ScaledText>
+            <View style={styles.formContainer} testID="formContainer">
+              <ScaledText
+  style={styles.title}
+  testID="signInTitle"
+  accessibilityLabel={t('auth.signIn')}
+>
+  {t('auth.signIn')}
+</ScaledText>
 
               {/* Social sign-in buttons */}
               {appleAuthAvailable && (
@@ -110,8 +118,10 @@ const SignInScreen = () => {
                 style={styles.googleButton}
                 disabled={isLoading}
                 activeOpacity={0.8}
-                accessibilityLabel={t('signIn.signInWithGoogle')}
+                testID="googleSignInButton"
+                accessibilityLabel={t('auth.signInWithGoogle')}
                 accessibilityRole="button"
+                accessible={false}
               >
                 <Ionicons name="logo-google" size={20} color="#FFF" style={styles.googleIcon} />
                 <ScaledText style={styles.googleButtonText}>{t('signIn.signInWithGoogle')}</ScaledText>
@@ -123,7 +133,7 @@ const SignInScreen = () => {
                 <View style={styles.dividerLine} />
               </View>
 
-              <View style={styles.inputContainer}>
+              <View style={styles.inputContainer} testID="emailField">
                 <TextInput
                   style={styles.input}
                   value={email}
@@ -132,12 +142,13 @@ const SignInScreen = () => {
                   placeholderTextColor="rgba(255,255,255,0.4)"
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  testID="emailInputNative"
                   accessibilityLabel={t('auth.email')}
                   maxLength={255}
                 />
               </View>
 
-              <View style={styles.inputContainer}>
+              <View style={styles.inputContainer} testID="passwordField">
                 <TextInput
                   style={styles.input}
                   value={password}
@@ -145,6 +156,7 @@ const SignInScreen = () => {
                   placeholder={t('auth.password')}
                   placeholderTextColor="rgba(255,255,255,0.4)"
                   secureTextEntry
+                  testID="passwordInputNative"
                   accessibilityLabel={t('auth.password')}
                 />
               </View>
@@ -156,23 +168,27 @@ const SignInScreen = () => {
                   (navigation.navigate as any)("ForgotPassword");
                 }}
                 style={styles.forgotButton}
+                testID="forgotPasswordButton"
                 accessibilityLabel={t('auth.forgotPassword')}
                 accessibilityRole="button"
+                accessible={false}
               >
                 <ScaledText style={styles.forgotText}>{t('auth.forgotPassword')}</ScaledText>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  handleSignIn();
-                }}
-                style={[styles.primaryButton, isLoading && styles.primaryButtonDisabled]}
-                disabled={isLoading}
-                activeOpacity={0.8}
-                accessibilityLabel={isLoading ? t('signIn.signingIn') : t('auth.signIn')}
-                accessibilityRole="button"
-              >
+                <TouchableOpacity
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    handleSignIn();
+                  }}
+                  style={styles.signInButton}
+                  disabled={!isFormValid || isLoading}
+                  activeOpacity={0.8}
+                  testID="signInButton"
+                  accessibilityLabel={t('auth.signIn')}
+                  accessibilityRole="button"
+                  accessible={false}
+                >
                 <ScaledText style={styles.primaryButtonText}>
                   {isLoading ? t('signIn.signingIn') : t('auth.signIn')}
                 </ScaledText>
@@ -184,6 +200,9 @@ const SignInScreen = () => {
                   (navigation.navigate as any)("SignUp");
                 }}
                 style={styles.linkButton}
+                testID="signUpLink"
+                accessibilityRole="button"
+                accessibilityLabel={t('auth.signUp.signUp')}
               >
                 <ScaledText style={styles.linkText}>
                   <ScaledText style={styles.linkTextMuted}>{t('auth.noAccount')} </ScaledText>
@@ -238,6 +257,14 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     fontSize: 16,
     color: "#FFF",
+  },
+  signInButton: {
+    backgroundColor: "#FFF",
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: "center",
+    marginTop: 8,
+    marginBottom: 20,
   },
   primaryButton: {
     backgroundColor: "#FFF",

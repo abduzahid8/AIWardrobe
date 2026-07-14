@@ -6,7 +6,7 @@ import base64
 # Small 1x1 base64 transparent PNG
 DUMMY_IMAGE = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
 
-MODAL_URL = "https://zoxxid75--aiwardrobe-mobile-vton-fastapi-app.modal.run/tryon"
+MODAL_URL = "https://karimdzanovzoha--aiwardrobe-mobile-vton-fastapi-app.modal.run"
 
 def test_tryon():
     payload = {

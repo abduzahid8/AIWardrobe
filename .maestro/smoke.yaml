@@ -1,0 +1,18 @@
+appId: org.name.AIWardrobe
+name: smoke
+tags:
+  - smoke
+---
+# Smoke test: app launches cleanly and reaches Sign In screen.
+- launchApp:
+    stopApp: false
+- repeat:
+    while:
+      notVisible: "Sign In"
+    times: 20
+    commands:
+      - waitForAnimationToEnd:
+          timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: .maestro/screenshots/01_signin_initial.png

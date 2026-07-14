@@ -1,4 +1,2 @@
-appId: com.aiwardrobe
----
-# Global Maestro Configuration
-# This file is used to specify common variables or settings for all flows.
+flows:
+  - e2e_full_flow.yaml

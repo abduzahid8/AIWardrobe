@@ -80,7 +80,7 @@ const ForgotPasswordScreen = () => {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.flex1}
         >
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
                 <LinearGradient colors={['#0A0A0A', '#1A1C29', '#16213E']} style={styles.flex1}>
                     <View style={styles.container}>
                         {/* Back arrow */}

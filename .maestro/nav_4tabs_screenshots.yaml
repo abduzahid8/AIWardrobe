@@ -1,0 +1,24 @@
+appId: org.name.AIWardrobe
+---
+- waitForAnimationToEnd:
+    timeout: 10000
+- tapOn:
+    point: "37%,94%"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: closet_tab
+- tapOn:
+    point: "62%,94%"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: inspo_tab
+- tapOn:
+    point: "87%,94%"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: profile_tab
+- tapOn:
+    point: "12%,94%"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: home_tab

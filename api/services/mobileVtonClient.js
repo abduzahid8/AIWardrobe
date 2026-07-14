@@ -86,9 +86,11 @@ export async function callMobileVton({
   personImage,
   garmentImage,
   garmentDescription = 'clothing',
-  guidanceScale = 2.0,
-  numInferenceSteps = 10,
+  guidanceScale = 7.5,
+  numInferenceSteps = 25,
   seed,
+  bodyProfile = null,        // ← Month 1: forwarded when present
+  fitAssessment = null,      // ← Month 1: forwarded when present
 }) {
   const baseUrl = getBaseUrl();
   const startTime = Date.now();
@@ -102,6 +104,10 @@ export async function callMobileVton({
     num_inference_steps: Number(numInferenceSteps),
     seed: seed ? Number(seed) : 42,
   };
+
+  // Body-fit context (optional — engines that don't support it ignore).
+  if (bodyProfile) payload.body_profile = bodyProfile;
+  if (fitAssessment) payload.fit_assessment = fitAssessment;
 
   const result = await withRetry(
     () => axios.post(`${baseUrl}/tryon`, payload, { timeout: 240_000 }),
@@ -127,10 +133,12 @@ export async function callMobileVton({
 export async function callMobileVtonMulti({
   personImage,
   garments,
-  guidanceScale = 2.0,
-  numInferenceSteps = 10,
+  guidanceScale = 7.5,
+  numInferenceSteps = 25,
   seed,
   pipelineVersion = 'sequential_v1',
+  bodyProfile = null,    // ← Month 1: forwarded when present
+  fitAssessments = null, // ← Month 1: array, one per garment
 }) {
   const baseUrl = getBaseUrl();
   const startTime = Date.now();
@@ -142,10 +150,15 @@ export async function callMobileVtonMulti({
   try {
     const payload = {
       person_image: personImage,
-      garments: garments.map((g) => ({
+      garments: garments.map((g, i) => ({
         garment_image: g.garment_image || g.image,
         description: g.description || 'clothing',
         label: g.label,
+        // Pass through per-garment fit context if the caller supplied it.
+        selected_size: g.selected_size || g.selectedSize || null,
+        physical_profile: g.physical_profile || g.physicalProfile || null,
+        fit_assessment: g.fit_assessment || g.fitAssessment
+          || (Array.isArray(fitAssessments) ? fitAssessments[i] : null),
       })),
       guidance_scale: Number(guidanceScale),
       num_inference_steps: Number(numInferenceSteps),
@@ -154,6 +167,12 @@ export async function callMobileVtonMulti({
 
     if (isFused) {
       payload.pipeline_version = pipelineVersion;
+    }
+
+    // Top-level body profile + the per-garment assessments array.
+    if (bodyProfile) payload.body_profile = bodyProfile;
+    if (Array.isArray(fitAssessments) && fitAssessments.length > 0) {
+      payload.fit_assessments = fitAssessments;
     }
 
     const result = await withRetry(

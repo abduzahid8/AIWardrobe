@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<testsuites>
+  <testsuite name="Test Suite" device="iPhone 17 Pro - iOS 26.1 - 1DA32B1C-A068-4CB2-812E-E78659D23BF4" tests="1" failures="1" time="34.0">
+    <testcase id="e2e_full_flow" name="e2e_full_flow" classname="e2e_full_flow" file=".maestro/e2e_full_flow.yaml" time="34.0" status="ERROR">
+      <failure>Unknown error</failure>
+    </testcase>
+  </testsuite>
+</testsuites>

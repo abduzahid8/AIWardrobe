@@ -167,8 +167,9 @@ const SignUpScreen = () => {
           contentContainerStyle={styles.container}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          accessible={false}
         >
-          <ScaledText style={styles.title}>{t('auth.signUp.signUp')}</ScaledText>
+          <ScaledText style={styles.title} testID="signUpTitle">{t('auth.signUp.signUp')}</ScaledText>
 
           {/* Social sign-up buttons */}
           {appleAuthAvailable && (
@@ -186,8 +187,10 @@ const SignUpScreen = () => {
             style={styles.googleButton}
             disabled={isLoading}
             activeOpacity={0.8}
+            testID="googleSignUpButton"
             accessibilityLabel={t('signUp.signUpWithGoogle')}
             accessibilityRole="button"
+            accessible={false}
           >
             <Ionicons name="logo-google" size={20} color="#FFF" style={styles.googleIcon} />
             <ScaledText style={styles.googleButtonText}>{t('signUp.signUpWithGoogle')}</ScaledText>
@@ -209,6 +212,7 @@ const SignUpScreen = () => {
               placeholderTextColor="rgba(255,255,255,0.4)"
               keyboardType="email-address"
               autoCapitalize="none"
+              testID="signUpEmailInput"
               accessibilityLabel={t('auth.email')}
               maxLength={255}
             />
@@ -226,6 +230,7 @@ const SignUpScreen = () => {
               placeholder={t('auth.password')}
               placeholderTextColor="rgba(255,255,255,0.4)"
               secureTextEntry
+              testID="signUpPasswordInput"
               accessibilityLabel={t('auth.password')}
               maxLength={128}
             />
@@ -251,6 +256,7 @@ const SignUpScreen = () => {
               placeholder={t('auth.username')}
               placeholderTextColor="rgba(255,255,255,0.4)"
               autoCapitalize="none"
+              testID="signUpUsernameInput"
               accessibilityLabel={t('auth.username')}
               maxLength={30}
             />
@@ -270,6 +276,7 @@ const SignUpScreen = () => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setGender(g);
                   }}
+                  accessible={false}
                   style={[
                     styles.genderChip,
                     gender === g && styles.genderChipActive,
@@ -314,6 +321,7 @@ const SignUpScreen = () => {
             style={[styles.signUpButton, !canSubmit && styles.signUpButtonDisabled]}
             disabled={isLoading || !canSubmit}
             activeOpacity={0.8}
+            testID="signUpSubmitButton"
             accessibilityLabel={isLoading ? t('signUp.creatingAccount') : t('auth.signUp.signUp')}
             accessibilityRole="button"
           >
@@ -329,6 +337,8 @@ const SignUpScreen = () => {
               navigation.goBack();
             }}
             style={styles.signInLinkButton}
+            testID="signInLink"
+            accessible={false}
           >
             <ScaledText style={styles.signInLinkText}>
               <ScaledText style={styles.signInLinkTextMuted}>{t("auth.haveAccount")} </ScaledText>

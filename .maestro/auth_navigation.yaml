@@ -1,0 +1,29 @@
+appId: org.name.AIWardrobe
+name: auth_navigation
+tags:
+  - auth
+  - navigation
+---
+# Walk the unauthenticated navigation tree:
+# Sign In -> Forgot Password -> back.
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 30000
+- assertVisible:
+    text: "Sign In"
+
+# Navigate to Forgot Password
+- tapOn:
+    text: "Forgot Password?"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    text: "Reset Password"
+    optional: true
+
+# Go back to Sign In
+- back
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible:
+    text: "Sign In"

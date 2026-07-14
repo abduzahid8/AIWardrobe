@@ -68,40 +68,59 @@ _dtype_str: str = os.environ.get("MOBILE_VTON_DTYPE", "fp16")
 _checkpoint: str = os.environ.get("MOBILE_VTON_CHECKPOINT", "/app/checkpoint/checkpoint")
 _ip_adapter_dir: str = os.environ.get("MOBILE_VTON_IP_ADAPTER_DIR", "/app/checkpoint/ip_adapter")
 
-# IP-Adapter default conditioning strength. Bumped from 0.70 -> 0.85 so the
-# color/pattern signal from the garment photo actually wins against SD1.5's
-# generic "studio mannequin" bias. The earlier 0.70 produced light-grey
-# t-shirts, dark cocoa pants and grey loafers even when the input photo
-# was pure white / walnut brown / cognac brown. At 0.85 the model still
-# has freedom to drape the fabric realistically, but the dominant color
-# of the input garment is preserved end-to-end.
-IP_ADAPTER_SCALE = 0.85
+# IP-Adapter default conditioning strength.
+#
+# v17 change: lowered from 0.85 (and per-label 0.95-1.20) down to a flat
+# 0.65 across all labels. The previous high scales forced the model to
+# COPY the input photo literally, which killed SD1.5's natural fabric
+# shading, folds, and its built-in "studio mannequin" prior. At 0.65 the
+# IP-Adapter still carries color + texture cues while SD1.5 is free to
+# drape and shade the fabric realistically. Combined with `_soft_color_match`
+# (which recolors the output to the measured target while preserving
+# shading), this produces a much more natural-looking result than the
+# previous "high scale + flat post-paste" approach.
+IP_ADAPTER_SCALE = 0.65
 
-# Per-label IP-Adapter scale overrides. The photo of a white t-shirt has a
-# dark care label and lots of highlight/shadow that CLIP encodes as
-# "white-with-dark-spot" or "grey".  For LIGHT garments we boost the
-# uniform swatch's weight (handled in _build_ip_adapter_reference) AND
-# nudge the scale up.  For DARK/SATURATED garments (brown pants, brown
-# loafers) the photo already carries a strong, clean color signal so
-# 0.85 is plenty; pushing higher makes the texture dominate the silhouette.
 IP_ADAPTER_SCALE_PER_LABEL = {
-    "top":   1.20,
-    "layer": 0.95,
-    "pants": 0.95,
-    "shoes": 0.95,
+    "top":   0.65,
+    "layer": 0.65,
+    "pants": 0.65,
+    "shoes": 0.65,
 }
 
 MASK_BLUR_RADIUS = 8
 SD15_TARGET_SIZE = (512, 512)
 
-# Pre-paste the actual garment photo into the masked area before sending
-# the image to SD1.5. This forces the inpaint pipeline to use the
-# garment's exact fabric, color, pattern, hardware and stitching as a
-# strong prior (the noisy version of `image * mask` is what the model
-# denoises). Without pre-paste the model has to imagine the garment
-# from the prompt + IP-Adapter alone, which loses fine details like
-# herringbone weave, moccasin stitching and ribbed collars.
-PRECOMPOSE_GARMENT = os.environ.get("MOBILE_VTON_PRECOMPOSE_GARMENT", "1") not in ("0", "false", "False", "FALSE")
+# v17 change: post-process control flags.
+#
+# The previous versions applied a FLAT-COLOR post-paste over the model's
+# output. This killed all shading and folds, producing the "painted patch"
+# look seen in test_v5..test_v16. The new default is `_soft_color_match`,
+# which recolors the model output toward the input garment's measured
+# color while preserving shading.
+#
+# Both flags default to OFF (new behavior). Toggle via env vars to compare
+# against the old behavior for A/B testing.
+
+# Pre-paste the cropped garment photo into the masked area before SD1.5
+# inpainting. Gives the model extra texture prior but can also force
+# literal copying of care labels / shadows. OFF by default; turn on with
+# MOBILE_VTON_PRECOMPOSE_PHOTO_PASTE=1.
+PRECOMPOSE_PHOTO_PASTE = os.environ.get("MOBILE_VTON_PRECOMPOSE_PHOTO_PASTE", "0") not in ("0", "false", "False", "FALSE")
+
+# Use the OLD flat-color post-paste (`_post_paste_garment`) instead of
+# `_soft_color_match`. OFF by default; turn on with MOBILE_VTON_POST_PASTE=1
+# to reproduce the previous "painted patch" look for comparison.
+ENABLE_POST_PASTE = os.environ.get("MOBILE_VTON_POST_PASTE", "0") not in ("0", "false", "False", "FALSE")
+
+# Strength of `_soft_color_match` (0.0 = no-op, 1.0 = full color match).
+# Default 0.80 nudges the rendered color toward the input garment's measured
+# color while preserving most of the model's shading.
+SOFT_COLOR_MATCH_STRENGTH = float(os.environ.get("MOBILE_VTON_SOFT_COLOR_MATCH", "0.80"))
+
+# Legacy env var kept for backward compat with old health-endpoint output.
+# Now aliases PRECOMPOSE_PHOTO_PASTE.
+PRECOMPOSE_GARMENT = PRECOMPOSE_PHOTO_PASTE
 
 # Dressing order for sequential multi-garment try-on
 DRESSING_ORDER = ["top", "layer", "pants", "shoes"]
@@ -148,20 +167,23 @@ _MASK_BANDS = {
     #           at the hip so SD1.5 can draw a trouser leg that covers
     #           the full leg instead of a narrow stick.
     "pants": (0.48, 0.92, 0.30, 0.30, 0.32, 0.30, 0.20),
-    #  SHOES  — split-rendered (see _run_shoes_two_pass): the full
-    #           bottom band is 0.20 half-width (40% of image width) so
-    #           the left half-mask is 20% wide and the right half-mask
-    #           is 20% wide — each half is just wide enough for one
-    #           loafer, and the two-pass rendering forces SD1.5 to
-    #           produce a distinct left shoe and right shoe rather than
-    #           one wide blob.
-    "shoes": (0.90, 0.97, 0.08, 0.08, 0.08, 0.08, 0.08),
+    #  SHOES  — v17 change: widened from 0.08 -> 0.22 half-width (44% of
+    #           image width per shoe). Loafers are physically wider than
+    #           the mannequin's bare foot, so we skip the silhouette clip
+    #           (see _SKIP_SILHOUETTE_CLIP) and use a wider band. Combined
+    #           with the two-pass split, each shoe gets a ~22% half-width
+    #           region to draw in — enough for a realistic loafer shape.
+    #           Vertical extent 0.86 -> 1.00 covers the full foot-to-floor
+    #           height (loafers are flat, no heel rise).
+    "shoes": (0.86, 1.00, 0.22, 0.22, 0.22, 0.22, 0.22),
 }
 
 # Per-label mask overrides — the silhouette intersection is skipped for
-# labels that need to extend beyond the natural body line (shoes extend
-# past the natural foot width).
-_SKIP_SILHOUETTE_CLIP = set()
+# labels that need to extend beyond the natural body line. v17 fix: shoes
+# MUST be in this set, otherwise the mannequin's narrow foot clips the
+# mask to a thin vertical slice and SD1.5 cannot draw two distinct shoes
+# (you get one wide brown loafer spanning both feet).
+_SKIP_SILHOUETTE_CLIP = {"shoes"}
 
 # How much to dilate the silhouette before intersecting with the band.
 # This adds "fabric slack" beyond the natural body line so SD1.5 can
@@ -998,21 +1020,18 @@ def _build_tryon_prompt(label: str) -> str:
     """
     label = _normalize_garment_label(label)
     spec = {
+        # v17 change: shorter, cleaner prompts. The previous versions
+        # had aggressive color-weight tokens ((white:1.9)) and "not grey
+        # not light grey not silver..." enumerations — these FIGHTED the
+        # model's natural prior and IP-Adapter, producing worse results
+        # than letting the model just describe what it sees. The new
+        # prompts describe STRUCTURE only; IP-Adapter carries the color
+        # and texture signal.
         "top": (
-            "plain solid pure (white:1.9) bright snow white crew-neck "
-            "t-shirt with short sleeves that fully cover the upper arms "
-            "down to the elbows, smooth cotton jersey fabric, ribbed "
-            "crew neckline with a small band of ribbing around the "
-            "collar, no patterns no stripes no prints no logos no labels "
-            "no text, clean straight hem at the waist, soft natural "
-            "fabric drape, pure bright snow white color throughout the "
-            "entire garment from shoulder seam to hem and sleeve cuff "
-            "to sleeve cuff, bright pure white, not grey not light grey "
-            "not silver not off-white not cream not ivory not beige not "
-            "light tan, saturated pure clean white, the t-shirt completely "
-            "covers the chest torso and upper arms, no bare skin showing "
-            "through the shirt, set against a plain white seamless studio "
-            "backdrop with no shadows on the ground"
+            "plain solid crew-neck t-shirt with short sleeves, smooth "
+            "cotton jersey fabric, ribbed crew neckline, no patterns no "
+            "prints no logos, clean straight hem at the waist, the "
+            "t-shirt completely covers the chest torso and upper arms"
         ),
         "layer": (
             "tailored outerwear jacket with long sleeves that fully "
@@ -1021,47 +1040,31 @@ def _build_tryon_prompt(label: str) -> str:
             "at the hip"
         ),
         "pants": (
-            "full-length classic-fit chino trousers in solid "
-            "(walnut brown:1.8) (chocolate brown:1.5) color with a very "
-            "subtle fine herringbone twill weave (barely visible, not "
-            "pronounced, not striped, not lined), clearly defined wide "
-            "waistband with five belt loops, single button closure and "
-            "zip fly at the front, two slash front pockets, two welted "
-            "back pockets, straight leg from hip through the knee, slight "
-            "taper from knee to ankle, clean horizontal hem at the ankle "
-            "ending just above the shoes, the trousers completely cover "
-            "both legs from waist to ankle with no bare legs showing "
-            "through, rich warm walnut brown / chocolate brown color "
-            "saturated throughout the entire garment, not black not "
-            "charcoal not dark grey not navy not olive not tan not khaki "
-            "not beige, no patterns no stripes no prints no logos, "
-            "floating on a plain white seamless studio backdrop with no "
-            "floor no ground no surface no shelf no table no pedestal"
+            "full-length classic-fit chino trousers in solid brown color "
+            "with a very subtle fine herringbone twill weave, clearly "
+            "defined waistband with belt loops, button closure and zip "
+            "fly at the front, two slash front pockets, two welted back "
+            "pockets, straight leg from hip through the knee with a "
+            "slight taper to the ankle, clean horizontal hem at the "
+            "ankle, the trousers completely cover both legs from waist "
+            "to ankle"
         ),
         "shoes": (
-            "TWO separate shoes: one loafer on the left foot and one "
-            "loafer on the right foot, distinctly drawn as two separate "
-            "objects with a visible gap between them at the ankle, "
-            "classic moccasin toe stitching with a visible hand-stitched "
-            "seam around the toe box, raw-hide leather laces threaded "
-            "through metal eyelets, solid (rich cognac brown:1.8) "
-            "(warm walnut brown:1.5) leather upper, slightly darker "
-            "brown rubber sole, low profile, saturated warm cognac "
-            "brown leather color throughout, not black not dark grey "
-            "not taupe not tan, each shoe appropriately scaled to one "
-            "of the mannequin's feet, not oversized, floating against "
-            "a plain white studio background, no floor no ground no "
-            "surface no shelf no table no pedestal underneath the feet"
+            "pair of classic moccasin-toe leather loafers, two "
+            "distinctly drawn shoes with a visible gap between them at "
+            "the ankle, hand-stitched seam around the toe box, low "
+            "profile leather upper, darker rubber sole, each shoe "
+            "appropriately scaled to one of the mannequin's feet"
         ),
     }.get(label, "garment")
 
     return (
-        "Photorealistic e-commerce studio photograph of a smooth headless grey "
-        "fashion mannequin wearing " + spec + ". "
-        "The garment has the exact color, fabric, and silhouette of the reference "
-        "product photo. Natural fabric drape with realistic folds and creases. "
-        "Soft even studio lighting, clean white seamless background, sharp focus, "
-        "high-end fashion product photography, 4k."
+        "Photorealistic studio photograph of a smooth headless grey fashion "
+        "mannequin wearing " + spec + ". The garment has the exact color, "
+        "fabric, and silhouette of the reference product photo. Natural "
+        "fabric drape with realistic folds and creases. Soft even studio "
+        "lighting, clean white seamless background, sharp focus, high-end "
+        "fashion product photography, 4k."
     )
 
 
@@ -1070,14 +1073,11 @@ _NEGATIVE_PROMPT = (
     "extra limbs, missing limbs, face, human skin, naked body, "
     "watermark, text, logo, oversaturated, undersaturated, worst quality, "
     "artificial, cartoon, painting, sketch, noisy, grainy, busy pattern, "
-    "striped, striped shirt, striped pants, breton, stripes, "
-    "horizontal stripes, vertical stripes, lined, pinstripe, "
-    "patterned, print, logo, brand, text, words, navy, black, grey pants, "
+    "striped, breton, lined, pinstripe, print, brand, words, "
     "skirt, dress, kilt, sarong, tutu, pleated, ruffled, frilly, "
     "floor, ground, surface, shelf, table, pedestal, podium, platform, "
-    "reflection, shadow on floor, contact shadow, cast shadow, "
-    "drop shadow, hard shadow, soft shadow, ambient occlusion shadow, "
-    "ground shadow, mirror, puddle, wet floor, no shadow"
+    "reflection, contact shadow, cast shadow, drop shadow, hard shadow, "
+    "ground shadow, mirror, puddle, wet floor"
 )
 
 
@@ -1158,18 +1158,31 @@ def _render_with_mask(
 ) -> Image.Image:
     """Run one inpainting pass with a pre-computed (or auto) mask.
 
-    The single-garment pipeline factors into three steps:
-      1. build a label-aware IP-Adapter reference (uniform swatch for
-         light/shoe garments, photo for the rest);
-      2. pre-paste a strong uniform-color patch into the masked area so
-         SD1.5 has a clean color prior;
-      3. inpaint, then post-process with `_repaint` (hard core + soft
-         edge band alpha) and `_color_match_to_target` (per-channel
-         scale inside the hard core).
+    v17 pipeline (replaces the v5-v16 pipeline that produced "painted
+    patch" results):
+
+      1. Build a clean IP-Adapter reference: the preprocessed garment
+         (background neutralised, cropped to bbox, padded to square)
+         gives CLIP a focused color + texture signal for BOTH light
+         and dark garments. Previous versions used uniform swatches
+         which lost texture for dark garments.
+      2. Optionally pre-paste the cropped garment photo (env flag
+         MOBILE_VTON_PRECOMPOSE_PHOTO_PASTE=1) to give SD1.5 a strong
+         texture prior. OFF by default.
+      3. SD1.5 inpaint with the cleaned image + mask + IP-Adapter ref.
+         IP-Adapter scale = 0.65 (down from 0.85-1.20) so the model
+         has room to drape and shade fabric naturally.
+      4. Post-process: `_soft_color_match` (HUE-preserving recolor
+         toward target) OR `_post_paste_garment` (legacy flat paint),
+         controlled by ENABLE_POST_PASTE env flag. NEW default is
+         `_soft_color_match`.
+      5. `_repaint` composites the recolored output back onto the
+         ORIGINAL person image with a feathered alpha (hard core +
+         soft edge band), so the mask boundary is invisible.
 
     `mask` — when None, the mask is auto-derived from `label` via
-        `_make_mask_for_garment`. When provided, it is used as-is. This
-        lets the shoes two-pass code supply a custom left/right
+        `_make_mask_for_garment`. When provided, it is used as-is.
+        This lets the shoes two-pass code supply a custom left/right
         half-mask without re-implementing the whole pipeline.
     """
     pipe = _load_pipeline()
@@ -1177,35 +1190,13 @@ def _render_with_mask(
     person_resized = person_img.resize(SD15_TARGET_SIZE, Image.LANCZOS)
     garment_resized = garment_img.resize(SD15_TARGET_SIZE, Image.LANCZOS)
 
-    # IP-Adapter reference: prefer the explicit override; otherwise build
-    # a label-aware reference. For LIGHT garments (white t-shirt) we
-    # use a pure white swatch (the photo's dark care label and off-white
-    # cast confuse CLIP). For SHOES (cognac leather with strong shadow
-    # and a dark sole) we ALSO use a uniform-color swatch in the measured
-    # dominant color, because the photo's contact shadow makes CLIP
-    # encode "brown with dark spot" which the model under-renders.
-    # For other DARK garments (brown pants) the photo is the cleanest
-    # color signal.
+    # IP-Adapter reference: prefer the explicit override; otherwise use
+    # the preprocessed garment (background neutralised, cropped, padded
+    # to square). The previous code branched on label to pick between
+    # uniform swatches and the raw photo; both had problems. The
+    # preprocessed garment works for both light and dark garments.
     if ip_adapter_image is None:
-        import numpy as np
-        g_arr = np.asarray(garment_resized.convert("RGB"), dtype=np.uint8)
-        g_mean = g_arr.mean(axis=2)
-        fg = g_mean < 250
-        if fg.sum() >= 64 and np.median(g_arr[fg].reshape(-1, 3), axis=0).min() > 200:
-            # Light garment — pure white swatch
-            ip_ref = _build_uniform_swatch((255, 255, 255), SD15_TARGET_SIZE[0])
-        elif label == "shoes":
-            # Shoes — uniform brown swatch in the measured dominant color.
-            # The contact shadow under the sole is the main reason the
-            # model's IP-Adapter conditioning under-weights the leather
-            # color; a flat swatch bypasses that.
-            target = _measure_dominant_garment_color(garment_resized)
-            ip_ref = _build_uniform_swatch(target, SD15_TARGET_SIZE[0])
-        else:
-            # Pants / layer — use the actual photo (CLIP encodes the
-            # brown cleanly here, and the photo's texture helps the
-            # model render a natural weave).
-            ip_ref = garment_resized
+        ip_ref = _preprocess_garment(garment_resized)
     else:
         ip_ref = ip_adapter_image.convert("RGB").resize(SD15_TARGET_SIZE, Image.LANCZOS)
 
@@ -1214,20 +1205,30 @@ def _render_with_mask(
     elif mask.size != person_resized.size:
         mask = mask.resize(person_resized.size, Image.LANCZOS)
 
-    # No pre-paste — let the model draw the structure with its own
-    # colour, then we hard-composite the actual garment color on top in
-    # _post_paste_garment below. Pre-pasting nudges the model in the
-    # right direction but it still drifts; the post-paste is the
-    # colour-fidelity step.
+    # Optional pre-paste: if enabled, paste the cropped garment photo
+    # (with bg removed and blurred) into the masked area. This gives
+    # SD1.5 a strong texture + color prior. Disabled by default
+    # because the model + IP-Adapter + soft color-match usually
+    # produces good results without it.
     pipeline_input_img = person_resized
+    if PRECOMPOSE_PHOTO_PASTE:
+        try:
+            pipeline_input_img = _precompose_garment(
+                person_resized, garment_resized, mask, label,
+            )
+        except Exception as exc:  # pragma: no cover — defensive
+            logger.warning(
+                "[render_with_mask] precompose failed (%s); using original person image",
+                exc,
+            )
+            pipeline_input_img = person_resized
 
     prompt = _build_tryon_prompt(label)
 
     generator = torch.Generator(device="cpu").manual_seed(seed)
 
     # Temporarily override the scale if a per-request value was supplied,
-    # otherwise use the per-label default for stronger color transfer on
-    # labels that have the worst drift (top + shoes).
+    # otherwise use the per-label default.
     effective_scale = (
         ip_adapter_scale
         if ip_adapter_scale is not None
@@ -1254,12 +1255,21 @@ def _render_with_mask(
         if saved_scale is not None:
             pipe.set_ip_adapter_scale(saved_scale)
 
-    # Hard post-paste: composite the actual garment color/photo over the
-    # inpainting result inside the mask. The model just drew the
-    # structure (sleeves, trouser legs, shoe shape) — we paint the
-    # colour 1:1 with the input garment so the result is colour-faithful
-    # across every seed.
-    final = _post_paste_garment(result, garment_resized, mask, label)
+    # Post-process: NEW default is `_soft_color_match` (preserves shading,
+    # fixes hue drift). Old behavior (`_post_paste_garment` flat paint)
+    # is opt-in via ENABLE_POST_PASTE for A/B comparison.
+    target_rgb = _measure_dominant_garment_color(garment_resized)
+    if ENABLE_POST_PASTE:
+        recolored = _post_paste_garment(result, garment_resized, mask, label)
+    else:
+        recolored = _soft_color_match(
+            result, mask, target_rgb, strength=SOFT_COLOR_MATCH_STRENGTH,
+        )
+
+    # Composite recolored output back onto the ORIGINAL person image
+    # with feathered alpha. This hides any mask-boundary halo SD1.5
+    # leaves behind and gives a clean garment edge.
+    final = _repaint(person_resized, mask, recolored, feather=MASK_BLUR_RADIUS)
     return final
 
 
@@ -1534,6 +1544,95 @@ def _color_match_to_target(
     return Image.fromarray(np.clip(final, 0, 255).astype(np.uint8), mode="RGB")
 
 
+def _soft_color_match(
+    rendered: Image.Image,
+    mask: Image.Image,
+    target_rgb: tuple,
+    strength: float = 0.80,
+    mask_blur: int = 8,
+) -> Image.Image:
+    """
+    v17 NEW: soft color-match that recolors the model's output toward the
+    target garment color while preserving shading and fabric folds.
+
+    The previous pipeline (`_post_paste_garment`) painted a uniform flat
+    color blob over the model's output, killing all shading and producing
+    the "painted patch" look seen in test_v5..test_v16. `_color_match_to_target`
+    above does a per-channel multiplicative scale, which fixes brightness
+    but doesn't fix hue drift (cool grey rendered for a brown garment
+    stays cool grey, just darker).
+
+    This function does HUE correction: for each masked pixel, it keeps the
+    rendered LUMINANCE (so folds and highlights stay in the same place)
+    but maps the color RATIOS to the target's color ratios. The result is
+    a shaded, folded garment in the correct color — like recoloring a
+    t-shirt photo but keeping every wrinkle and highlight.
+
+    Math:
+        lum     = Rec.601 luminance of rendered pixel
+        ratios  = target_rgb / target_luminance         (color ratios)
+        out_rgb = lum * ratios                          (recolored pixel)
+        alpha   = mask * strength                       (blend strength)
+        result  = rendered * (1 - alpha) + out_rgb * alpha
+
+    Args:
+        rendered:   PIL image — the model's inpaint output
+        mask:       PIL 'L' image — the inpaint mask (255 = inside)
+        target_rgb: (R, G, B) target color, e.g. measured dominant color
+                    of the input garment photo
+        strength:   0.0 = no change, 1.0 = full recolor. Default 0.80 leaves
+                    ~20% of the model's natural color variation visible.
+        mask_blur:  Gaussian blur radius applied to the mask before alpha
+                    blending. Larger = softer boundary.
+
+    Returns:
+        PIL image with the masked region recolored to the target hue,
+        shading preserved.
+    """
+    import numpy as np
+
+    if rendered.size != mask.size:
+        mask = mask.resize(rendered.size, Image.LANCZOS)
+    if mask.mode != "L":
+        mask = mask.convert("L")
+
+    rendered_arr = np.asarray(rendered.convert("RGB"), dtype=np.float32)
+
+    # Smooth mask for blending — feathered boundary, no hard edge.
+    mask_smooth = np.asarray(
+        mask.filter(ImageFilter.GaussianBlur(radius=mask_blur)),
+        dtype=np.float32,
+    ) / 255.0  # (H, W) in 0..1
+
+    # Rec.601 luminance per pixel (preserves shading).
+    lum = (
+        0.299 * rendered_arr[..., 0]
+        + 0.587 * rendered_arr[..., 1]
+        + 0.114 * rendered_arr[..., 2]
+    )  # (H, W)
+
+    # Target color ratios: target[i] / target_lum. Setting recolored pixel
+    # to lum * ratios gives a pixel with the same brightness as the model
+    # rendered but the same color hue as the target.
+    target = np.array(target_rgb, dtype=np.float32)
+    target_lum = 0.299 * target[0] + 0.587 * target[1] + 0.114 * target[2]
+    if target_lum < 1e-3:
+        # Near-black target: fall back to neutral grey to avoid div-by-zero
+        ratios = np.array([1.0, 1.0, 1.0], dtype=np.float32)
+    else:
+        ratios = target / target_lum  # (3,)
+
+    # Recolor: keep luminance, swap hue.
+    recolored = lum[..., None] * ratios.reshape(1, 1, 3)  # (H, W, 3)
+
+    # Blend with original. Inside the mask, lerp between original and
+    # recolored at strength. Outside the mask, keep original 1:1.
+    blend_alpha = (mask_smooth * strength)[..., None]  # (H, W, 1)
+    out = rendered_arr * (1.0 - blend_alpha) + recolored * blend_alpha
+
+    return Image.fromarray(np.clip(out, 0, 255).astype(np.uint8), mode="RGB")
+
+
 def _guess_dominant_garment_color(garment: Image.Image) -> tuple:
     """Sample the median color of the central 50% of the garment photo,
     after excluding near-white background pixels. Used as a fallback
@@ -1680,14 +1779,19 @@ async def health():
         "device": _device,
         "dtype": _dtype_str,
         "pipeline": "sd15_inpaint_ip_adapter",
+        "pipeline_version": "v17_soft_color_match",
         "mask_strategy": "dilated_silhouette_x_band",
         "silhouette_dilate_radius": _SILHOUETTE_DILATE_RADIUS,
+        "skip_silhouette_clip": sorted(_SKIP_SILHOUETTE_CLIP),
         "repaint_feather": MASK_BLUR_RADIUS,
-        "precompose_garment": PRECOMPOSE_GARMENT,
+        "precompose_photo_paste": PRECOMPOSE_PHOTO_PASTE,
+        "enable_post_paste": ENABLE_POST_PASTE,
+        "soft_color_match_strength": SOFT_COLOR_MATCH_STRENGTH,
         "post_process": {
-            "hard_core_repaint": True,
-            "color_match_to_target": True,
-            "color_match_strength": 0.85,
+            "soft_color_match": True,
+            "repaint_composite": True,
+            "soft_color_match_strength": SOFT_COLOR_MATCH_STRENGTH,
+            "fallback_flat_post_paste": ENABLE_POST_PASTE,
         },
     }
 

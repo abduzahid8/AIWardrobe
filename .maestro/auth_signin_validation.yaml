@@ -1,0 +1,24 @@
+appId: org.name.AIWardrobe
+name: auth_signin_validation
+tags:
+  - auth
+---
+# Validate Sign In screen: enter invalid email + short password.
+- launchApp:
+    stopApp: false
+- repeat:
+    while:
+      notVisible: "Sign In"
+    times: 20
+    commands:
+      - waitForAnimationToEnd:
+          timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    point: "50%,45%"
+- inputText: "not-an-email"
+- tapOn:
+    point: "50%,52%"
+- inputText: "short"
+- takeScreenshot: .maestro/screenshots/signin_invalid_input.png

@@ -26,6 +26,13 @@ import { INSPO_MENS_SHOP_ITEMS } from '../../data/inspoMensShopItems';
 import { useShopCatalog } from '../../hooks/useShopCatalog';
 import styles from './styles';
 import useTryOnLooksStore from '../../store/tryOnLooksStore';
+// Body-fit (Month 2): the active body profile drives the fit verdict, and
+// the Mobile-VTON request now carries body context so future server-side
+// renderers can bias toward the user's shape.
+import { useBodyProfileStore, selectActiveProfile } from '../../store/bodyProfileStore';
+import { assessFitLocal, resolveGarmentProfile } from '../../src/services/fitService';
+import type { FitAssessment } from '../../src/types/fitAssessment';
+import FitPanel from '../../components/try-on/FitPanel';
 
 const MANNEQUIN_IMAGE = require('../../assets/images/mannequin_front.png');
 const TRY_ON_CATEGORY_KEYS = new Set(['upper_body', 'lower_body', 'shoes']);
@@ -113,6 +120,11 @@ const AITryOnScreen = () => {
     const [isModelReady, setIsModelReady] = useState(false);
     const [diagnostics, setDiagnostics] = useState<any>(null);
     const [pipelineVersion, setPipelineVersion] = useState<'sequential_v1' | 'fused_v2' | 'fused_v3'>('fused_v3');
+    // Body-fit additions (Month 2) — fit verdict per slot, recomputed when
+    // the user picks a size or the body profile changes.
+    const [fitPerSlot, setFitPerSlot] = useState<Partial<Record<SlotKey, FitAssessment>>>({});
+    const [sizePerSlot, setSizePerSlot] = useState<Partial<Record<SlotKey, string>>>({});
+    const activeBodyProfile = useBodyProfileStore(selectActiveProfile);
 
     const activeSlotDef = useMemo(() => SLOTS.find((s) => s.key === activeSlot)!, [activeSlot]);
     const mannequinShopFilter = activeSlotDef.category;
@@ -288,6 +300,8 @@ const AITryOnScreen = () => {
         setLookSaved(false);
         setAiProgress(null);
         setDiagnostics(null);
+        setFitPerSlot({});
+        setSizePerSlot({});
     }, []);
 
     const handleClearSlot = useCallback((key: SlotKey) => {
@@ -365,6 +379,34 @@ const AITryOnScreen = () => {
                 }),
             );
 
+            // ── Body-fit: run the engine per garment so we can forward
+            //    fit_assessment with the try-on request. If the user has
+            //    no body profile or no garment physical data, we silently
+            //    skip — the existing try-on still works.
+            const fitAssessments = (() => {
+                if (!activeBodyProfile) return null;
+                return orderedSlots.map((slotKey) => {
+                    const item = slots[slotKey]!;
+                    const sizeLabel = sizePerSlot[slotKey] || item.defaultSize || 'M';
+                    const garment = resolveGarmentProfile(item.id, sizeLabel, item as any);
+                    if (!garment) return null;
+                    try {
+                        return assessFitLocal(activeBodyProfile, garment).assessment;
+                    } catch {
+                        return null;
+                    }
+                });
+            })();
+            const bodyProfilePayload = activeBodyProfile ? {
+                id: activeBodyProfile.id,
+                heightCm: activeBodyProfile.height?.valueCm,
+                weightKg: activeBodyProfile.weightKg,
+                bodyType: activeBodyProfile.bodyType,
+                gender: activeBodyProfile.gender,
+                measurements: activeBodyProfile.measurements,
+                version: activeBodyProfile.version,
+            } : null;
+
             let data: any;
 
             // ── Direct Modal call (bypasses Render completely) ──────────────
@@ -380,15 +422,21 @@ const AITryOnScreen = () => {
                 // Build the payload in Modal's multi-garment format
                 const modalPayload = {
                     person_image: mannequinImage,
-                    garments: garments.map((g) => ({
+                    garments: garments.map((g, gi) => ({
                         garment_image: g.garment_image,
                         description: g.description || g.name || 'clothing',
                         label: g.label,
+                        // Body-fit additions (Month 2): per-garment size + fit context.
+                        selected_size: sizePerSlot[(orderedSlots[gi] || 'top') as SlotKey] || null,
+                        fit_assessment: (fitAssessments?.[gi]) || null,
                     })),
                     num_inference_steps: 10,
                     guidance_scale: 2.0,
                     seed: 42,
                     pipeline_version: pipelineVersion ?? 'fused_v2',
+                    // Top-level body context (Month 2).
+                    body_profile: bodyProfilePayload,
+                    fit_assessments: fitAssessments?.filter(Boolean) || [],
                 };
 
                 const resp = await axios.post(
@@ -445,6 +493,15 @@ const AITryOnScreen = () => {
             setAiProgress(`Preview ready ✓  (${visibleTotal}/${visibleTotal})`);
             setAiResultImage(data.resultUrl as string);
             setLookSaved(false);
+            // Body-fit: persist the assessments we computed for the fit panel.
+            if (fitAssessments) {
+                const next: Partial<Record<SlotKey, FitAssessment>> = {};
+                orderedSlots.forEach((slotKey, i) => {
+                    const a = fitAssessments[i];
+                    if (a) next[slotKey] = a;
+                });
+                setFitPerSlot(next);
+            }
             const usage = await consume('tryOns');
             if (!usage.allowed) console.warn('[TryOn] quota consume denied after success');
         } catch (error: any) {
@@ -713,12 +770,45 @@ const AITryOnScreen = () => {
                                         activeOpacity={0.88}
                                     >
                                         <Ionicons name="close-outline" size={18} color="#183A67" />
-                                        <Text style={styles.secondaryActionText}>{t('aiTryOn.clear')}</Text>
-                                    </TouchableOpacity>
-                                </>
-                            )}
+                                            <Text style={styles.secondaryActionText}>{t('aiTryOn.clear')}</Text>
+                                        </TouchableOpacity>
+                                    </>
+                                )}
+                            </View>
                         </View>
-                    </View>
+
+                    {/* ── Body-fit (Month 2): fit verdict below the preview. ── */}
+                    {/* Show the most recently completed assessment, or the active slot's
+                        assessment if the user just picked a size. Empty state is the
+                        "Set up body profile" CTA. */}
+                    {(() => {
+                        const ordered = APPLY_ORDER.filter((k) => slots[k] !== null) as SlotKey[];
+                        const lastSlot = ordered[ordered.length - 1];
+                        const assessment = lastSlot ? fitPerSlot[lastSlot] : undefined;
+                        if (assessment) {
+                            return (
+                                <View style={{ paddingHorizontal: 16 }}>
+                                    <FitPanel assessment={assessment} />
+                                </View>
+                            );
+                        }
+                        if (!activeBodyProfile) {
+                            return (
+                                <View style={{ paddingHorizontal: 16 }}>
+                                    <FitPanel
+                                        onSetupBodyProfile={() =>
+                                            (navigation as any).navigate('BodyProfile')
+                                        }
+                                    />
+                                </View>
+                            );
+                        }
+                        return (
+                            <View style={{ paddingHorizontal: 16 }}>
+                                <FitPanel />
+                            </View>
+                        );
+                    })()}
 
                     <View style={styles.statsCard}>
                         {summaryStats.map((stat, index) => (

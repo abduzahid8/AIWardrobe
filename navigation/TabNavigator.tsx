@@ -311,22 +311,22 @@ const TabNavigator = () => {
       <Tab.Screen
         name="Home"
         component={AnimatedHomeScreen}
-        options={{ tabBarAccessibilityLabel: t('tabs.home') }}
+        options={{ tabBarAccessibilityLabel: t('tabs.home'), tabBarTestID: 'homeTab' }}
       />
       <Tab.Screen
         name="Closet"
         component={AnimatedClosetScreen}
-        options={{ tabBarAccessibilityLabel: t('tabs.closet') }}
+        options={{ tabBarAccessibilityLabel: t('tabs.closet'), tabBarTestID: 'closetTab' }}
       />
       <Tab.Screen
         name="Inspo"
         component={AnimatedInspoScreen}
-        options={{ tabBarAccessibilityLabel: t('tabs.inspo') }}
+        options={{ tabBarAccessibilityLabel: t('tabs.inspo'), tabBarTestID: 'inspoTab' }}
       />
       <Tab.Screen
         name="Profile"
         component={AnimatedProfileScreen}
-        options={{ tabBarAccessibilityLabel: t('tabs.profile') }}
+        options={{ tabBarAccessibilityLabel: t('tabs.profile'), tabBarTestID: 'profileTab' }}
       />
     </Tab.Navigator>
     </TabTransitionContext.Provider>
