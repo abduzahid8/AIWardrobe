@@ -2,7 +2,7 @@
   "expo": {
     "name": "AIWardrobe",
     "slug": "wardrobe-app",
-    "version": "1.3.0",
+    "version": "1.3.3",
     "assetBundlePatterns": [
       "assets/**"
     ],
@@ -10,7 +10,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
-    "runtimeVersion": "1.3.0",
+    "runtimeVersion": "1.3.3",
     "updates": {
       "enabled": true,
       "checkAutomatically": "NEVER",

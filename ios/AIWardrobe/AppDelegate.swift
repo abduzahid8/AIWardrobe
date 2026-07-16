@@ -1,6 +1,7 @@
 import Expo
 import React
 import ReactAppDependencyProvider
+import EXUpdates
 
 @UIApplicationMain
 public class AppDelegate: ExpoAppDelegate {
@@ -13,6 +14,16 @@ public class AppDelegate: ExpoAppDelegate {
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
+#if !DEBUG
+    // Initialize expo-updates AppController BEFORE React Native starts.
+    // This wires the AppController into the launch sequence so the bundle
+    // URL resolves from the update's cached launch asset (or embedded
+    // fallback). Without initializeWithoutStarting(), expo-updates'
+    // errorRecoveryQueue raises NSException on any JS startup error,
+    // causing an immediate SIGABRT crash before React ever renders.
+    AppController.initializeWithoutStarting()
+#endif
+
     let delegate = ReactNativeDelegate()
     let factory = ExpoReactNativeFactory(delegate: delegate)
     delegate.dependencyProvider = RCTAppDependencyProvider()
@@ -64,6 +75,13 @@ class ReactNativeDelegate: ExpoReactNativeFactoryDelegate {
 #if DEBUG
     return RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: ".expo/.virtual-metro-entry")
 #else
+    // In release/production builds, ask expo-updates' AppController for the
+    // bundle URL. This loads any cached OTA update, or falls back to the
+    // embedded jsbundle on first launch or when updates are disabled.
+    if AppController.isInitialized() {
+      return AppController.sharedInstance.launchAssetUrl()
+        ?? Bundle.main.url(forResource: "main", withExtension: "jsbundle")
+    }
     return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
 #endif
   }
