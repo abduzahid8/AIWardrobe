@@ -253,10 +253,11 @@ const RootNavigator = () => {
 
   if (!isInitialized || !isAppReady) {
     // Keep the splash screen visible and render nothing while initializing.
-    // This prevents a frozen UI flash while wardrobe rehydrate, notifications,
-    // IAP, and outfit generation are still running in background.
     return null;
   }
+
+  // Once both are true, we hide the splash immediately to guarantee it disappears
+  SplashScreen.hideAsync().catch(() => undefined);
 
   return (
     <Stack.Navigator
