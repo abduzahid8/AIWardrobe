@@ -186,22 +186,16 @@ const springSpec = (config: typeof LIQUID_SPRING) => ({
 export const LiquidPresets = {
   /** Default horizontal liquid slide */
   slide: {
-    cardStyleInterpolator: LiquidSlideInterpolator,
-    transitionSpec: springSpec(LIQUID_SPRING),
     gestureEnabled: true,
     gestureDirection: 'horizontal' as const,
   },
   /** Vertical rise (for modals, AI screens, camera) */
   rise: {
-    cardStyleInterpolator: LiquidRiseInterpolator,
-    transitionSpec: springSpec(ELASTIC_SPRING),
     gestureEnabled: true,
     gestureDirection: 'vertical' as const,
   },
   /** Gentle fade (for auth, trial expired) */
   fade: {
-    cardStyleInterpolator: LiquidFadeInterpolator,
-    transitionSpec: springSpec(FADE_SPRING),
     gestureEnabled: false,
   },
 };
