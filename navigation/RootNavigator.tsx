@@ -107,8 +107,19 @@ const RootNavigator = () => {
       perfMark('app:init');
       // 1. Auth must happen first — every other service wants to know who
       // the user is before initializing (for user-scoped analytics, IAP, etc.)
+      // Hard 5-second timeout so the app never stays frozen on the splash if
+      // Supabase's getSession() hangs (e.g. first cold-start on slow networks).
       const { initializeAuth } = useAuthStore.getState();
-      await initializeAuth();
+      await Promise.race([
+        initializeAuth(),
+        new Promise<void>((_, reject) =>
+          setTimeout(() => reject(new Error('initializeAuth timed out after 5000ms')), 5000)
+        ),
+      ]).catch((err) => {
+        console.warn('[RootNavigator] initializeAuth timeout or error — forcing isInitialized', err);
+        // Ensure isInitialized is always set so the app can render
+        useAuthStore.setState({ isInitialized: true, loading: false });
+      });
       perfMeasure('app:init');
       console.log('[PERF] 🔐 Auth initialized');
 
