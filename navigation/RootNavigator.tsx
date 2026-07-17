@@ -241,15 +241,15 @@ const RootNavigator = () => {
   // React Navigation unmounts the gate automatically.
 
   useEffect(() => {
-    if (isAppReady) {
-      // Hide the splash screen only after ALL services are initialized.
-      // Previously this hid after auth (3s) while heavy work continued in
-      // background (wardrobe rehydrate, outfit generation), causing freezes.
-      requestAnimationFrame(() => {
+    if (isAppReady && isInitialized) {
+      // Hide the splash screen only after ALL services are initialized and the app is ready to render.
+      // Defer slightly to ensure the Navigator has mounted and rendered its first frame.
+      const timer = setTimeout(() => {
         SplashScreen.hideAsync().catch(() => undefined);
-      });
+      }, 100);
+      return () => clearTimeout(timer);
     }
-  }, [isAppReady]);
+  }, [isAppReady, isInitialized]);
 
   if (!isInitialized || !isAppReady) {
     // Keep the splash screen visible and render nothing while initializing.
