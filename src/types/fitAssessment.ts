@@ -11,6 +11,7 @@
  */
 
 import { Confidence } from './bodyProfile';
+export type { Confidence } from './bodyProfile';
 
 export type OverallFit =
   | 'too_small'

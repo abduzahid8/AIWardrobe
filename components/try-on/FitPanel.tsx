@@ -146,6 +146,7 @@ const ConfidenceChip: React.FC<{ confidence: Confidence }> = ({ confidence }) =>
       case 'high': return { bg: '#E6F0FF', fg: '#0055FF' };
       case 'medium': return { bg: '#F0F0F0', fg: '#555' };
       case 'low': return { bg: '#F4F4F4', fg: '#999' };
+      default: return { bg: '#F4F4F4', fg: '#999' };
     }
   })();
   return (
