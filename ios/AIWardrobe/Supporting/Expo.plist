@@ -6,6 +6,8 @@
     <string>NEVER</string>
     <key>EXUpdatesEnabled</key>
     <false/>
+    <key>EXUpdatesDisableAntiBrickingMeasures</key>
+    <true/>
     <key>EXUpdatesLaunchWaitMs</key>
     <integer>0</integer>
     <key>EXUpdatesRuntimeVersion</key>
