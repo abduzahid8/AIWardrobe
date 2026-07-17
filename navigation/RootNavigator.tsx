@@ -256,9 +256,6 @@ const RootNavigator = () => {
     return null;
   }
 
-  // Once both are true, we hide the splash immediately to guarantee it disappears
-  SplashScreen.hideAsync().catch(() => undefined);
-
   return (
     <Stack.Navigator
       screenOptions={{
