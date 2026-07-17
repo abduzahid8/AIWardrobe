@@ -89,7 +89,7 @@ export async function clearAllPersistedUserData(): Promise<void> {
     try { usePriceTrackingStore.setState({ trackedItems: [], priceAlerts: [] }); } catch {}
     try {
       // bodyProfileStore is a default export; default-imported below to avoid a circular dep
-      const { default: useBodyProfileStore } = await import('../../store/bodyProfileStore');
+      const useBodyProfileStore = require('../../store/bodyProfileStore').default;
       useBodyProfileStore.getState().reset();
     } catch {}
 

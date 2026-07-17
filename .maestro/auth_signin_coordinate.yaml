@@ -1,0 +1,17 @@
+appId: org.name.AIWardrobe
+---
+- launchApp:
+    clearState: true
+    stopApp: true
+- waitForAnimationToEnd:
+    timeout: 60000
+- tapOn:
+    point: "50%,26%"
+- inputText: "e2etest@aiwardrobe.club"
+- tapOn:
+    point: "50%,33%"
+- inputText: "E2eTestPass123!"
+- tapOn:
+    point: "50%,44%"
+- waitForAnimationToEnd:
+    timeout: 20000

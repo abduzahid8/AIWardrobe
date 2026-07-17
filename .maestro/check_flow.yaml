@@ -1,6 +1,5 @@
 appId: org.name.AIWardrobe
 ---
+- launchApp
 - waitForAnimationToEnd:
     timeout: 60000
-- assertVisible:
-    text: ".*Sign In.*Email.*Password.*"

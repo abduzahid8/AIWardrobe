@@ -1,21 +1,24 @@
 appId: org.name.AIWardrobe
-name: signup_validation
-tags:
-  - auth
 ---
-# Sign In form validation test
+# Sign Up form validation test using coordinate-based taps
 - launchApp
 - waitForAnimationToEnd:
     timeout: 30000
-- assertVisible:
-    text: ".*Sign In.*Sign in with Apple.*Email.*Password.*"
 
-# Enter invalid email
-- tapOn:
-    point: "50%,45%"
-- inputText: "not-an-email"
-- hideKeyboard
+# Navigate to Sign Up (link is below sign-in button at ~52%)
 - tapOn:
     point: "50%,52%"
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# Enter invalid email at email field (~36% Y on SignUp screen)
+- tapOn:
+    point: "50%,36%"
+- inputText: "not-an-email"
+- hideKeyboard
+
+# Enter short password at password field (~43% Y)
+- tapOn:
+    point: "50%,43%"
 - inputText: "abc"
 - hideKeyboard

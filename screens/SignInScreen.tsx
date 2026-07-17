@@ -1,4 +1,4 @@
-import { Alert, Platform, StyleSheet, TextInput, TouchableOpacity, View, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, ScrollView } from 'react-native';
+import { Alert, Platform, StyleSheet, TextInput, TouchableOpacity, View, KeyboardAvoidingView, ScrollView } from 'react-native';
 import { ScaledText } from '../components/ui/ScaledText';
 import React, { useState, useEffect } from "react";
 import { useNavigation } from "@react-navigation/native";
@@ -82,18 +82,17 @@ const SignInScreen = () => {
       behavior="padding"
       style={styles.container}
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-        <LinearGradient
-          colors={["#0A0A0A", "#1A1C29", "#16213E"]}
-          style={styles.gradient}
+      <LinearGradient
+        colors={["#0A0A0A", "#1A1C29", "#16213E"]}
+        style={styles.gradient}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          accessible={false}
         >
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-            accessible={false}
-          >
-            <View style={styles.formContainer} testID="formContainer">
+          <View style={styles.formContainer} testID="formContainer">
               <ScaledText
   style={styles.title}
   testID="signInTitle"
@@ -212,7 +211,6 @@ const SignInScreen = () => {
             </View>
           </ScrollView>
         </LinearGradient>
-      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 };

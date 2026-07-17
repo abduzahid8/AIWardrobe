@@ -31,6 +31,7 @@ import Animated, {
     Easing,
     interpolate,
     useAnimatedProps,
+    cancelAnimation,
 } from 'react-native-reanimated';
 import CorrectionModal from '../src/components/CorrectionModal';
 import { RootStackParamList } from '../navigation/types';
@@ -102,6 +103,11 @@ const LiquidGlassSpinner = () => {
             ),
             -1, true
         );
+        return () => {
+            cancelAnimation(rotation);
+            cancelAnimation(pulse);
+            cancelAnimation(innerPulse);
+        };
     }, []);
 
     const outerStyle = useAnimatedStyle(() => ({

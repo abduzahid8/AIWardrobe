@@ -98,6 +98,10 @@ export default function ReviewScanScreen() {
                 data={reviewedItems}
                 keyExtractor={(item, index) => index.toString()}
                 contentContainerStyle={{ padding: 16 }}
+                initialNumToRender={6}
+                maxToRenderPerBatch={6}
+                windowSize={5}
+                removeClippedSubviews={true}
                 renderItem={({ item, index }) => (
                     <View className="flex-row bg-gray-50 p-4 rounded-xl mb-3 items-center border border-gray-100">
                         {/* Иконка типа вещи */}

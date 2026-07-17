@@ -187,8 +187,8 @@ class AnalyticsService {
 
             // Try to send to backend
             try {
-                // Dynamic import to avoid circular dependency with apiClient
-                const { default: apiClient } = await import('./apiClient');
+                // Dynamic require to avoid circular dependency with apiClient
+                const apiClient = require('./apiClient').default;
                 await apiClient.post('/api/analytics/events', {
                     events: queue,
                     sessionId: this.sessionId,

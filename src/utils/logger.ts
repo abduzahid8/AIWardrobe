@@ -86,7 +86,7 @@ async function reportToCrashService(
     payload: unknown,
 ): Promise<void> {
     try {
-        const mod = await import('../services/crashReporting');
+        const mod = require('../services/crashReporting');
         const svc = mod.default ?? mod.crashReporting;
         if (!svc || typeof svc.reportCrash !== 'function') return;
         const err = error instanceof Error ? error : new Error(String(error ?? message));
@@ -98,7 +98,7 @@ async function reportToCrashService(
 
 async function breadcrumb(scope: string, message: string): Promise<void> {
     try {
-        const mod = await import('../services/crashReporting');
+        const mod = require('../services/crashReporting');
         const svc = mod.default ?? mod.crashReporting;
         if (svc?.logBreadcrumb) svc.logBreadcrumb(`[${scope}] ${message}`);
     } catch {

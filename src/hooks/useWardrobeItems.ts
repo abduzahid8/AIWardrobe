@@ -106,8 +106,11 @@ export const useWardrobeItems = (options: UseWardrobeItemsOptions = {}): UseWard
     // Refresh data when screen is focused
     useFocusEffect(
         useCallback(() => {
-            loadItems();
-            loadFavorites();
+            let mounted = true;
+            loadItems().then(() => {
+                if (mounted) loadFavorites();
+            });
+            return () => { mounted = false; };
         }, [loadItems, loadFavorites])
     );
 

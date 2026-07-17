@@ -1,0 +1,61 @@
+appId: org.name.AIWardrobe
+---
+# Sign in first (uses existing test account)
+- launchApp:
+    clearState: true
+- waitForAnimationToEnd:
+    timeout: 60000
+- tapOn:
+    point: "50%,26%"
+- inputText: "e2etest@aiwardrobe.club"
+- tapOn:
+    point: "50%,33%"
+- inputText: "E2eTestPass123!"
+- tapOn:
+    point: "50%,44%"
+- waitForAnimationToEnd:
+    timeout: 20000
+
+# HOME
+- takeScreenshot: home
+
+# CLOSET
+- tapOn:
+    point: "37%,94%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: closet
+
+# INSPO - top segment
+- tapOn:
+    point: "62%,94%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: inspo_guide
+- tapOn:
+    point: "30%,10%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: inspo_guide_after_left
+- tapOn:
+    point: "70%,10%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: inspo_guide_after_right
+
+# PROFILE - scroll twice for sections
+- tapOn:
+    point: "87%,94%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: profile_top
+- swipe:
+    direction: UP
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: profile_mid
+- swipe:
+    direction: UP
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: profile_bottom

@@ -23,7 +23,10 @@ module.exports = function (api) {
   ];
 
   // Strip console.* in production to prevent sensitive data leaks
-  if (process.env.NODE_ENV === 'production' || process.env.BABEL_ENV === 'production') {
+  // and improve JS thread performance. Also strips debug/info/perf logs
+  // in dev to keep the Metro console clean.
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.BABEL_ENV === 'production';
+  if (isProduction) {
     plugins.push(['transform-remove-console', { exclude: ['error', 'warn'] }]);
   }
 

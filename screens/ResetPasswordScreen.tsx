@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, Alert, StyleSheet, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard,  } from 'react-native'
+import { View, TextInput, TouchableOpacity, Alert, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
 import { ScaledText } from '../components/ui/ScaledText';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -115,96 +115,99 @@ const ResetPasswordScreen = () => {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.container}
         >
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-                <LinearGradient
-                    colors={['#0A0A0A', '#1A1C29', '#16213E']}
-                    style={styles.gradient}
+            <LinearGradient
+                colors={['#0A0A0A', '#1A1C29', '#16213E']}
+                style={styles.gradient}
+            >
+                <ScrollView
+                    contentContainerStyle={styles.formContainer}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                    accessible={false}
                 >
-                    <View style={styles.formContainer}>
-                        {/* Back Button */}
-                        <TouchableOpacity
-                            onPress={() => navigation.goBack()}
-                            style={styles.backButton}
-                            accessibilityLabel={t('resetPassword.goBack')}
-                            accessibilityRole="button"
-                        >
-                            <Ionicons name="arrow-back" size={24} color="#FFF" />
-                        </TouchableOpacity>
+                    {/* Back Button */}
+                    <TouchableOpacity
+                        onPress={() => navigation.goBack()}
+                        style={styles.backButton}
+                        accessibilityLabel={t('resetPassword.goBack')}
+                        accessibilityRole="button"
+                    >
+                        <Ionicons name="arrow-back" size={24} color="#FFF" />
+                    </TouchableOpacity>
 
-                        <View style={styles.iconContainer}>
-                            <Ionicons name="lock-closed-outline" size={40} color="#FFD700" />
-                        </View>
-
-                        <ScaledText style={styles.title} accessibilityRole="header">
-                            {t('resetPassword.title')}
-                        </ScaledText>
-                        <ScaledText style={styles.subtitle}>
-                            {t('resetPassword.subtitle')}
-                        </ScaledText>
-
-                        {/* New Password */}
-                        <View style={styles.inputContainer}>
-                            <TextInput
-                                style={styles.input}
-                                value={password}
-                                onChangeText={setPassword}
-                                placeholder={t('resetPassword.newPassword')}
-                                placeholderTextColor="rgba(255,255,255,0.4)"
-                                secureTextEntry
-                                accessibilityLabel={t('resetPassword.newPassword')}
-                                maxLength={128}
-                            />
-                        </View>
-
-                        {/* Password Requirements */}
-                        {password.length > 0 && (
-                            <View style={styles.checksContainer}>
-                                <CheckItem valid={passwordChecks.minLength} text={t('resetPassword.minLength')} />
-                                <CheckItem valid={passwordChecks.hasLowercase} text={t('resetPassword.lowercase')} />
-                                <CheckItem valid={passwordChecks.hasUppercase} text={t('resetPassword.uppercase')} />
-                                <CheckItem valid={passwordChecks.hasNumber} text={t('resetPassword.number')} />
-                            </View>
-                        )}
-
-                        {/* Confirm Password */}
-                        <View style={styles.inputContainer}>
-                            <TextInput
-                                style={[
-                                    styles.input,
-                                    confirmPassword.length > 0 && !passwordsMatch && styles.inputError,
-                                ]}
-                                value={confirmPassword}
-                                onChangeText={setConfirmPassword}
-                                placeholder={t('resetPassword.confirmPassword')}
-                                placeholderTextColor="rgba(255,255,255,0.4)"
-                                secureTextEntry
-                                accessibilityLabel={t('resetPassword.confirmPassword')}
-                                maxLength={128}
-                            />
-                            {confirmPassword.length > 0 && !passwordsMatch && (
-                                <ScaledText style={styles.errorHint}>{t('resetPassword.passwordsDontMatch')}</ScaledText>
-                            )}
-                        </View>
-
-                        {/* Submit */}
-                        <TouchableOpacity
-                            onPress={() => {
-                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                handleResetPassword();
-                            }}
-                            style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
-                            disabled={isLoading || !canSubmit}
-                            activeOpacity={0.8}
-                            accessibilityLabel={isLoading ? t('resetPassword.resettingPassword') : t('resetPassword.resetPassword')}
-                            accessibilityRole="button"
-                        >
-                            <ScaledText style={styles.submitButtonText}>
-                                {isLoading ? t('resetPassword.resetting') : t('resetPassword.resetPassword')}
-                            </ScaledText>
-                        </TouchableOpacity>
+                    <View style={styles.iconContainer}>
+                        <Ionicons name="lock-closed-outline" size={40} color="#FFD700" />
                     </View>
-                </LinearGradient>
-            </TouchableWithoutFeedback>
+
+                    <ScaledText style={styles.title} accessibilityRole="header">
+                        {t('resetPassword.title')}
+                    </ScaledText>
+                    <ScaledText style={styles.subtitle}>
+                        {t('resetPassword.subtitle')}
+                    </ScaledText>
+
+                    {/* New Password */}
+                    <View style={styles.inputContainer}>
+                        <TextInput
+                            style={styles.input}
+                            value={password}
+                            onChangeText={setPassword}
+                            placeholder={t('resetPassword.newPassword')}
+                            placeholderTextColor="rgba(255,255,255,0.4)"
+                            secureTextEntry
+                            accessibilityLabel={t('resetPassword.newPassword')}
+                            maxLength={128}
+                        />
+                    </View>
+
+                    {/* Password Requirements */}
+                    {password.length > 0 && (
+                        <View style={styles.checksContainer}>
+                            <CheckItem valid={passwordChecks.minLength} text={t('resetPassword.minLength')} />
+                            <CheckItem valid={passwordChecks.hasLowercase} text={t('resetPassword.lowercase')} />
+                            <CheckItem valid={passwordChecks.hasUppercase} text={t('resetPassword.uppercase')} />
+                            <CheckItem valid={passwordChecks.hasNumber} text={t('resetPassword.number')} />
+                        </View>
+                    )}
+
+                    {/* Confirm Password */}
+                    <View style={styles.inputContainer}>
+                        <TextInput
+                            style={[
+                                styles.input,
+                                confirmPassword.length > 0 && !passwordsMatch && styles.inputError,
+                            ]}
+                            value={confirmPassword}
+                            onChangeText={setConfirmPassword}
+                            placeholder={t('resetPassword.confirmPassword')}
+                            placeholderTextColor="rgba(255,255,255,0.4)"
+                            secureTextEntry
+                            accessibilityLabel={t('resetPassword.confirmPassword')}
+                            maxLength={128}
+                        />
+                        {confirmPassword.length > 0 && !passwordsMatch && (
+                            <ScaledText style={styles.errorHint}>{t('resetPassword.passwordsDontMatch')}</ScaledText>
+                        )}
+                    </View>
+
+                    {/* Submit */}
+                    <TouchableOpacity
+                        onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            handleResetPassword();
+                        }}
+                        style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
+                        disabled={isLoading || !canSubmit}
+                        activeOpacity={0.8}
+                        accessibilityLabel={isLoading ? t('resetPassword.resettingPassword') : t('resetPassword.resetPassword')}
+                        accessibilityRole="button"
+                    >
+                        <ScaledText style={styles.submitButtonText}>
+                            {isLoading ? t('resetPassword.resetting') : t('resetPassword.resetPassword')}
+                        </ScaledText>
+                    </TouchableOpacity>
+                </ScrollView>
+            </LinearGradient>
         </KeyboardAvoidingView>
     );
 };

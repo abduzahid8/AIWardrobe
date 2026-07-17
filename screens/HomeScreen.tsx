@@ -746,6 +746,10 @@ const DailyOutfitSection = React.memo(({
           }}
           decelerationRate="fast"
           scrollEventThrottle={16}
+          initialNumToRender={2}
+          maxToRenderPerBatch={2}
+          windowSize={3}
+          removeClippedSubviews={true}
         />
       )}
 
@@ -1000,10 +1004,13 @@ const HomeScreen = () => {
 
   useEffect(() => {
     if (!isFocused) return;
+    let mounted = true;
 
     getContextualPrompt(items, wearLogs, streak, closetUtilization)
-      .then(prompt => setActivePrompt(prompt))
+      .then(prompt => { if (mounted) setActivePrompt(prompt); })
       .catch(() => { });
+
+    return () => { mounted = false; };
   }, [isFocused, items.length, wearLogs.length, streak, closetUtilization]);
 
   // Determine greeting based on time
@@ -1024,10 +1031,11 @@ const HomeScreen = () => {
   }, [authUsername]);
 
   useEffect(() => {
+    let mounted = true;
     const loadSavedVideo = async () => {
       try {
         const savedVideo = await AsyncStorage.getItem('lastWardrobeVideo');
-        if (savedVideo) {
+        if (mounted && savedVideo) {
           setVideoUri(savedVideo);
         }
       } catch (error) {
@@ -1035,6 +1043,7 @@ const HomeScreen = () => {
       }
     };
     loadSavedVideo();
+    return () => { mounted = false; };
   }, []);
 
   // Fetch weather in a dedicated useEffect with an AbortController so the

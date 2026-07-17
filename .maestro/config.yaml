@@ -1,2 +1,21 @@
 flows:
-  - e2e_full_flow.yaml
+  - full_app_e2e.yaml
+  - auth_flow.yaml
+  - auth_navigation.yaml
+  - auth_signin_coordinate.yaml
+  - auth_signin_wrong_credentials.yaml
+  - check_flow.yaml
+  - closet_flow.yaml
+  - forgot_password_flow.yaml
+  - nav_3tabs.yaml
+  - nav_4tabs_nolaunch.yaml
+  - nav_4tabs_screenshots.yaml
+  - nav_closet.yaml
+  - nav_closet_inspo.yaml
+  - nav_home.yaml
+  - nav_inspo.yaml
+  - nav_profile.yaml
+  - navigation_flow.yaml
+  - signup_validation.yaml
+  - smoke.yaml
+  - tabs_present.yaml

@@ -230,7 +230,7 @@ const PromoCodeScreen = () => {
                                 style={styles.upgradeCard}
                                 onPress={handlePaywall}
                                 activeOpacity={0.8}
-                                accessibilityLabel="Subscribe to Pro"
+                                accessibilityLabel={t('promo.subscribeProA11y')}
                             >
                                 <View style={styles.upgradeLeft}>
                                     <Ionicons name="sparkles" size={24} color={COLORS.premium} />

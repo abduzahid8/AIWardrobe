@@ -312,8 +312,11 @@ const useAuthStore = create<AuthStore>((set, get) => ({
 
         set({ loading: true, error: null });
         try {
-            // Dynamic import so Android and Expo Go don't crash on missing module.
-            const AppleAuthentication = await import('expo-apple-authentication').catch(() => null);
+            // Use require so Android/iOS/Expo Go don't crash at startup or run dynamic import.
+            let AppleAuthentication: any = null;
+            try {
+                AppleAuthentication = require('expo-apple-authentication');
+            } catch (e) {}
             if (!AppleAuthentication) {
                 throw new Error(
                     'Sign in with Apple requires a native development build with expo-apple-authentication installed.',

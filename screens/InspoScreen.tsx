@@ -245,14 +245,16 @@ const InspoScreen = () => {
     const [guideHero, setGuideHero] = useState<any>(null);
 
     useEffect(() => {
+        let mounted = true;
         const fetchHero = async () => {
             try {
                 const { data } = await supabase.from('guide_page').select('*').eq('is_active', true).single();
-                if (data) setGuideHero(data);
+                if (mounted && data) setGuideHero(data);
             } catch (_) {
             }
         };
         fetchHero();
+        return () => { mounted = false; };
     }, []);
 
     const displayGuides = useMemo(() => {

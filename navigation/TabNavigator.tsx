@@ -119,7 +119,7 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation, isAdmin, onActiv
   React.useEffect(() => {
     const offset = (tabWidth - BLOB_SIZE) / 2;
     blobTranslateX.value = withTiming(state.index * tabWidth + offset, {
-      duration: 250,
+      duration: 150,
       easing: Easing.bezier(0.25, 0.1, 0.25, 1),
     });
   }, [state.index, tabWidth, blobTranslateX]);

@@ -16,26 +16,28 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // ── Spring configs for liquid feel ──────────────────────────────────
 // Higher stiffness = faster start. Higher damping = less oscillation tail.
-// These values cut perceived transition time ~35% vs the original settings.
+// These values cut perceived transition time ~50% vs the original settings
+// for snappier page switches.
 const LIQUID_SPRING = {
-  damping: 26,
-  stiffness: 280,
-  mass: 0.6,
+  damping: 32,
+  stiffness: 400,
+  mass: 0.4,
 };
 
 const ELASTIC_SPRING = {
-  damping: 24,
-  stiffness: 320,
-  mass: 0.45,
+  damping: 30,
+  stiffness: 450,
+  mass: 0.3,
 };
 
 const FADE_SPRING = {
-  damping: 28,
-  stiffness: 300,
-  mass: 0.5,
+  damping: 34,
+  stiffness: 420,
+  mass: 0.35,
 };
 
 // ── LiquidSlide: horizontal push with elastic scale + fade ──────────
+// Reduced translateX distance and scale range for snappier feel
 export const LiquidSlideInterpolator: StackCardStyleInterpolator = ({
   current,
   next,
@@ -48,25 +50,25 @@ export const LiquidSlideInterpolator: StackCardStyleInterpolator = ({
 
   const translateX = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: [SCREEN_WIDTH * 0.35, 0],
+    outputRange: [SCREEN_WIDTH * 0.2, 0],
     extrapolate: 'clamp',
   });
 
   const scale = progress.interpolate({
-    inputRange: [0, 0.6, 1],
-    outputRange: [0.92, 1.03, 1],
+    inputRange: [0, 1],
+    outputRange: [0.96, 1],
     extrapolate: 'clamp',
   });
 
   const opacity = progress.interpolate({
-    inputRange: [0, 0.4, 1],
-    outputRange: [0, 0.7, 1],
+    inputRange: [0, 0.5, 1],
+    outputRange: [0.5, 0.85, 1],
     extrapolate: 'clamp',
   });
 
   const overlayOpacity = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.3, 0],
+    outputRange: [0.2, 0],
     extrapolate: 'clamp',
   });
 
@@ -85,6 +87,7 @@ export const LiquidSlideInterpolator: StackCardStyleInterpolator = ({
 };
 
 // ── LiquidRise: vertical rise from bottom with spring overshoot ──────
+// Reduced translateY distance and scale range for snappier feel
 export const LiquidRiseInterpolator: StackCardStyleInterpolator = ({
   current,
   next,
@@ -97,25 +100,25 @@ export const LiquidRiseInterpolator: StackCardStyleInterpolator = ({
 
   const translateY = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: [SCREEN_HEIGHT * 0.5, 0],
+    outputRange: [SCREEN_HEIGHT * 0.3, 0],
     extrapolate: 'clamp',
   });
 
   const scale = progress.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [0.88, 1.04, 1],
+    inputRange: [0, 1],
+    outputRange: [0.94, 1],
     extrapolate: 'clamp',
   });
 
   const opacity = progress.interpolate({
-    inputRange: [0, 0.3, 1],
-    outputRange: [0, 0.8, 1],
+    inputRange: [0, 0.4, 1],
+    outputRange: [0, 0.85, 1],
     extrapolate: 'clamp',
   });
 
   const overlayOpacity = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.4, 0],
+    outputRange: [0.3, 0],
     extrapolate: 'clamp',
   });
 

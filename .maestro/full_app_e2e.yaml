@@ -1,0 +1,140 @@
+appId: org.name.AIWardrobe
+---
+# ============================================================
+# FULL APP E2E TEST
+# Covers: auth, home, closet, inspo, profile, and navigation
+# iOS 26.1 + RN 0.81.5 workaround: coordinate taps only
+# ============================================================
+
+# ---- 1. AUTH ----
+- launchApp:
+    clearState: true
+    stopApp: true
+- waitForAnimationToEnd:
+    timeout: 60000
+- tapOn:
+    point: "50%,26%"
+- inputText: "e2etest@aiwardrobe.club"
+- tapOn:
+    point: "50%,33%"
+- inputText: "E2eTestPass123!"
+- tapOn:
+    point: "50%,44%"
+- waitForAnimationToEnd:
+    timeout: 20000
+
+# ---- 2. HOME TAB ----
+# Tap Home tab (should already be on home after sign-in)
+- tapOn:
+    point: "12%,94%"
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# Scroll down on home screen to trigger content loading
+- swipe:
+    direction: UP
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# Scroll back to top
+- swipe:
+    direction: DOWN
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# ---- 3. CLOSET TAB ----
+- tapOn:
+    point: "37%,94%"
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# Tap the upload button area (top right of header, ~85%,6%)
+- tapOn:
+    point: "85%,6%"
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# Dismiss action sheet by tapping outside
+- tapOn:
+    point: "50%,50%"
+- waitForAnimationToEnd:
+    timeout: 2000
+
+# Tap stylist FAB (bottom right corner, ~90%,90%)
+- tapOn:
+    point: "90%,90%"
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# Navigate back if needed
+- tapOn:
+    point: "5%,6%"
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# ---- 4. INSPO TAB ----
+- tapOn:
+    point: "62%,94%"
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# Tap Guide segment (left, ~30%,10%)
+- tapOn:
+    point: "30%,10%"
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# Tap Shop segment (right, ~70%,10%)
+- tapOn:
+    point: "70%,10%"
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# Tap Personal Stylist button area (~50%,25%)
+- tapOn:
+    point: "50%,25%"
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# ---- 5. PROFILE TAB ----
+- tapOn:
+    point: "87%,94%"
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# Scroll down on profile to view sections
+- swipe:
+    direction: UP
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# Scroll further
+- swipe:
+    direction: UP
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# ---- 6. RETURN TO HOME ----
+- tapOn:
+    point: "12%,94%"
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# ---- 7. FINAL NAVIGATION SWEEP ----
+# Quick round through all tabs to verify navigation still works
+- tapOn:
+    point: "37%,94%"
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    point: "62%,94%"
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    point: "87%,94%"
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    point: "12%,94%"
+- waitForAnimationToEnd:
+    timeout: 5000

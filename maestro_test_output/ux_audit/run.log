@@ -1,0 +1,32 @@
+Running on iPhone 17 Pro - iOS 26.1 - 1DA32B1C-A068-4CB2-812E-E78659D23BF4
+ > Flow ux_capture
+Launch app "org.name.AIWardrobe" with clear state... COMPLETED
+Wait for animation to end within 60000 ms... COMPLETED
+Tap on point (50%,26%)... COMPLETED
+Input text e2etest@aiwardrobe.club... COMPLETED
+Tap on point (50%,33%)... COMPLETED
+Input text E2eTestPass123!... COMPLETED
+Tap on point (50%,44%)... COMPLETED
+Wait for animation to end within 20000 ms... COMPLETED
+Take screenshot home... COMPLETED
+Tap on point (37%,94%)... COMPLETED
+Wait for animation to end within 8000 ms... COMPLETED
+Take screenshot closet... COMPLETED
+Tap on point (62%,94%)... COMPLETED
+Wait for animation to end within 8000 ms... COMPLETED
+Take screenshot inspo_guide... COMPLETED
+Tap on point (30%,10%)... COMPLETED
+Wait for animation to end within 3000 ms... COMPLETED
+Take screenshot inspo_guide_after_left... COMPLETED
+Tap on point (70%,10%)... COMPLETED
+Wait for animation to end within 3000 ms... COMPLETED
+Take screenshot inspo_guide_after_right... COMPLETED
+Tap on point (87%,94%)... COMPLETED
+Wait for animation to end within 8000 ms... COMPLETED
+Take screenshot profile_top... COMPLETED
+Swiping in UP direction in 400 ms... COMPLETED
+Wait for animation to end within 3000 ms... COMPLETED
+Take screenshot profile_mid... COMPLETED
+Swiping in UP direction in 400 ms... COMPLETED
+Wait for animation to end within 3000 ms... COMPLETED
+Take screenshot profile_bottom... COMPLETED

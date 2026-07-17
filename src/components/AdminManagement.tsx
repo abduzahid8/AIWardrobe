@@ -97,6 +97,8 @@ const styles = StyleSheet.create({
         borderColor: '#bdc3c7',
         borderRadius: 6,
         backgroundColor: '#f9f9f9',
+        flexDirection: 'row',
+        overflow: 'hidden',
     },
     button: {
         backgroundColor: '#3498db',
@@ -234,6 +236,23 @@ const styles = StyleSheet.create({
     },
     tabTextActive: {
         color: '#fff',
+    },
+    tabButton: {
+        flex: 1,
+        paddingVertical: 10,
+        alignItems: 'center',
+    },
+    tabButtonActive: {
+        backgroundColor: '#3498db',
+    },
+    tabButtonText: {
+        fontSize: 12,
+        color: '#7f8c8d',
+        fontWeight: '500',
+    },
+    tabButtonTextActive: {
+        color: '#fff',
+        fontWeight: 'bold',
     },
 });
 

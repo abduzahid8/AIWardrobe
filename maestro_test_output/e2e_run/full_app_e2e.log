@@ -1,0 +1,50 @@
+Running on iPhone 17 Pro - iOS 26.1 - 1DA32B1C-A068-4CB2-812E-E78659D23BF4
+ > Flow full_app_e2e
+Launch app "org.name.AIWardrobe" with clear state... COMPLETED
+Wait for animation to end within 60000 ms... COMPLETED
+Tap on point (50%,26%)... COMPLETED
+Input text e2etest@aiwardrobe.club... COMPLETED
+Tap on point (50%,33%)... COMPLETED
+Input text E2eTestPass123!... COMPLETED
+Tap on point (50%,44%)... COMPLETED
+Wait for animation to end within 20000 ms... COMPLETED
+Tap on point (12%,94%)... COMPLETED
+Wait for animation to end within 5000 ms... COMPLETED
+Swiping in UP direction in 400 ms... COMPLETED
+Wait for animation to end within 3000 ms... COMPLETED
+Swiping in DOWN direction in 400 ms... COMPLETED
+Wait for animation to end within 3000 ms... COMPLETED
+Tap on point (37%,94%)... COMPLETED
+Wait for animation to end within 8000 ms... COMPLETED
+Tap on point (85%,6%)... COMPLETED
+Wait for animation to end within 3000 ms... COMPLETED
+Tap on point (50%,50%)... COMPLETED
+Wait for animation to end within 2000 ms... COMPLETED
+Tap on point (90%,90%)... COMPLETED
+Wait for animation to end within 3000 ms... COMPLETED
+Tap on point (5%,6%)... COMPLETED
+Wait for animation to end within 3000 ms... COMPLETED
+Tap on point (62%,94%)... COMPLETED
+Wait for animation to end within 8000 ms... COMPLETED
+Tap on point (30%,10%)... COMPLETED
+Wait for animation to end within 3000 ms... COMPLETED
+Tap on point (70%,10%)... COMPLETED
+Wait for animation to end within 3000 ms... COMPLETED
+Tap on point (50%,25%)... COMPLETED
+Wait for animation to end within 3000 ms... COMPLETED
+Tap on point (87%,94%)... COMPLETED
+Wait for animation to end within 8000 ms... COMPLETED
+Swiping in UP direction in 400 ms... COMPLETED
+Wait for animation to end within 3000 ms... COMPLETED
+Swiping in UP direction in 400 ms... COMPLETED
+Wait for animation to end within 3000 ms... COMPLETED
+Tap on point (12%,94%)... COMPLETED
+Wait for animation to end within 8000 ms... COMPLETED
+Tap on point (37%,94%)... COMPLETED
+Wait for animation to end within 5000 ms... COMPLETED
+Tap on point (62%,94%)... COMPLETED
+Wait for animation to end within 5000 ms... COMPLETED
+Tap on point (87%,94%)... COMPLETED
+Wait for animation to end within 5000 ms... COMPLETED
+Tap on point (12%,94%)... COMPLETED
+Wait for animation to end within 5000 ms... COMPLETED

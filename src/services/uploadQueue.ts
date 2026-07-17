@@ -252,8 +252,8 @@ class UploadQueueService {
         this.notify(queue);
 
         try {
-            // Lazy import avoids circular dependency at module load time
-            const { aiProvider } = await import('./aiProviderService');
+            // Lazy require avoids circular dependency at module load time
+            const aiProvider = require('./aiProviderService').aiProvider;
             const result = await aiProvider.processUpload(item.imageBase64);
 
             if (!result.imageUrl) {

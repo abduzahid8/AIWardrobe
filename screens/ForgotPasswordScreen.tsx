@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, ActivityIndicator, Alert,  } from 'react-native'
+import { View, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Alert, ScrollView } from 'react-native'
 import { ScaledText } from '../components/ui/ScaledText';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -80,62 +80,65 @@ const ForgotPasswordScreen = () => {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.flex1}
         >
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-                <LinearGradient colors={['#0A0A0A', '#1A1C29', '#16213E']} style={styles.flex1}>
-                    <View style={styles.container}>
-                        {/* Back arrow */}
-                        <TouchableOpacity
-                            onPress={() => navigation.goBack()}
-                            style={styles.backArrow}
-                            accessibilityLabel={t('resetPassword.goBack')}
-                            accessibilityRole="button"
-                        >
-                            <Ionicons name="arrow-back" size={24} color="#FFF" />
-                        </TouchableOpacity>
+            <LinearGradient colors={['#0A0A0A', '#1A1C29', '#16213E']} style={styles.flex1}>
+                <ScrollView
+                    contentContainerStyle={styles.container}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                    accessible={false}
+                >
+                    {/* Back arrow */}
+                    <TouchableOpacity
+                        onPress={() => navigation.goBack()}
+                        style={styles.backArrow}
+                        accessibilityLabel={t('resetPassword.goBack')}
+                        accessibilityRole="button"
+                    >
+                        <Ionicons name="arrow-back" size={24} color="#FFF" />
+                    </TouchableOpacity>
 
-                        <ScaledText style={styles.title}>{t('forgotPasswordScreen.resetPassword')}</ScaledText>
-                        <ScaledText style={styles.subtitle}>
-                            {t('forgotPasswordScreen.enterEmail')}
-                        </ScaledText>
+                    <ScaledText style={styles.title}>{t('forgotPasswordScreen.resetPassword')}</ScaledText>
+                    <ScaledText style={styles.subtitle}>
+                        {t('forgotPasswordScreen.enterEmail')}
+                    </ScaledText>
 
-                        <View style={styles.inputContainer}>
-                            <TextInput
-                                style={[styles.input, email && !isEmailValid && styles.inputError]}
-                                value={email}
-                                onChangeText={setEmail}
-                                placeholder={t('auth.email')}
-                                placeholderTextColor="rgba(255,255,255,0.4)"
-                                keyboardType="email-address"
-                                autoCapitalize="none"
-                                autoFocus
-                                maxLength={255}
-                                accessibilityLabel={t('auth.email')}
-                            />
-                            {email && !isEmailValid && (
-                                <ScaledText style={styles.errorHint}>{t('forgotPasswordScreen.pleaseEnterValidEmail')}</ScaledText>
-                            )}
-                        </View>
-
-                        <TouchableOpacity
-                            onPress={() => {
-                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                handleResetPassword();
-                            }}
-                            style={[styles.submitButton, (!isEmailValid || isLoading) && styles.submitButtonDisabled]}
-                            disabled={!isEmailValid || isLoading}
-                            activeOpacity={0.8}
-                            accessibilityLabel={t('forgotPasswordScreen.sendResetLink')}
-                            accessibilityRole="button"
-                        >
-                            {isLoading ? (
-                                <ActivityIndicator color="#000" />
-                            ) : (
-                                <ScaledText style={styles.submitButtonText}>{t('forgotPasswordScreen.sendResetLink')}</ScaledText>
-                            )}
-                        </TouchableOpacity>
+                    <View style={styles.inputContainer}>
+                        <TextInput
+                            style={[styles.input, email && !isEmailValid && styles.inputError]}
+                            value={email}
+                            onChangeText={setEmail}
+                            placeholder={t('auth.email')}
+                            placeholderTextColor="rgba(255,255,255,0.4)"
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            autoFocus
+                            maxLength={255}
+                            accessibilityLabel={t('auth.email')}
+                        />
+                        {email && !isEmailValid && (
+                            <ScaledText style={styles.errorHint}>{t('forgotPasswordScreen.pleaseEnterValidEmail')}</ScaledText>
+                        )}
                     </View>
-                </LinearGradient>
-            </TouchableWithoutFeedback>
+
+                    <TouchableOpacity
+                        onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            handleResetPassword();
+                        }}
+                        style={[styles.submitButton, (!isEmailValid || isLoading) && styles.submitButtonDisabled]}
+                        disabled={!isEmailValid || isLoading}
+                        activeOpacity={0.8}
+                        accessibilityLabel={t('forgotPasswordScreen.sendResetLink')}
+                        accessibilityRole="button"
+                    >
+                        {isLoading ? (
+                            <ActivityIndicator color="#000" />
+                        ) : (
+                            <ScaledText style={styles.submitButtonText}>{t('forgotPasswordScreen.sendResetLink')}</ScaledText>
+                        )}
+                    </TouchableOpacity>
+                </ScrollView>
+            </LinearGradient>
         </KeyboardAvoidingView>
     );
 };

@@ -9,6 +9,7 @@ import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import { useShallow } from 'zustand/shallow';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
@@ -143,11 +144,12 @@ const ProfileScreen = () => {
   }, []);
 
   const { user, logout, deleteAccount, fetchUser } = useAuthStore();
-  const wardrobeItems = useWardrobeStore((state) => state.items);
-  const storeOutfits = useWardrobeStore((state) => state.outfits);
-  const wearLogs = useWardrobeStore((state) => state.wearLogs);
-  const tryOnLooks = useTryOnLooksStore((state) => state.looks);
-  const removeTryOnLook = useTryOnLooksStore((state) => state.removeLook);
+  const { items: wardrobeItems, outfits: storeOutfits, wearLogs } = useWardrobeStore(
+    useShallow((state) => ({ items: state.items, outfits: state.outfits, wearLogs: state.wearLogs }))
+  );
+  const { looks: tryOnLooks, removeLook: removeTryOnLook } = useTryOnLooksStore(
+    useShallow((state) => ({ looks: state.looks, removeLook: state.removeLook }))
+  );
 
   const { effectiveTier, isTrialActive } = useSubscriptionStore();
   // Read catalog from the shared store populated by HomeScreen — no new
@@ -250,7 +252,7 @@ const ProfileScreen = () => {
       });
   }, [storeOutfits, wardrobeItems]);
 
-  const fetchOutfits = useCallback(async () => {
+  const fetchOutfits = useCallback(async (mounted?: { current: boolean }) => {
     if (!user?.id) return;
 
     // Fast path: if the wardrobe store already has saved outfits (populated by
@@ -263,6 +265,7 @@ const ProfileScreen = () => {
     }
 
     const donePerf = perfAction('Profile:fetchOutfits');
+    if (!mounted?.current) return;
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -270,6 +273,8 @@ const ProfileScreen = () => {
         .select('id, date, occasion, items, created_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
+
+      if (!mounted?.current) { donePerf(); return; }
 
       if (error) { donePerf(); return; }
 
@@ -298,17 +303,19 @@ const ProfileScreen = () => {
       donePerf();
       // Keep local data visible if the cloud fetch fails.
     } finally {
-      setLoading(false);
+      if (mounted?.current) setLoading(false);
     }
   }, [user?.id]);
 
   useFocusEffect(
     useCallback(() => {
+      const mounted = { current: true };
       const now = Date.now();
       if (now - lastOutfitFetchRef.current > OUTFITS_REFRESH_TTL_MS) {
         lastOutfitFetchRef.current = now;
-        void fetchOutfits();
+        fetchOutfits(mounted);
       }
+      return () => { mounted.current = false; };
     }, [fetchOutfits])
   );
 
