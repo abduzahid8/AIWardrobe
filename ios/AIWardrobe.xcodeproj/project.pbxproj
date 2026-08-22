@@ -252,6 +252,7 @@
 			inputPaths = (
 				"$(SRCROOT)/.xcode.env",
 				"$(SRCROOT)/.xcode.env.local",
+				"$(SRCROOT)/AIWardrobe/AIWardrobe.entitlements",
 				"$(SRCROOT)/Pods/Target Support Files/Pods-AIWardrobe/expo-configure-project.sh",
 			);
 			name = "[Expo] Configure project";
@@ -352,14 +353,14 @@
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 7C115A36B8DF700DBFD4534B /* Pods-AIWardrobe.debug.xcconfig */;
- 			buildSettings = {
- 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
- 				CLANG_ENABLE_MODULES = YES;
- 				CODE_SIGN_ENTITLEMENTS = AIWardrobe/AIWardrobe.entitlements;
- 				CURRENT_PROJECT_VERSION = 48;
- 				DEVELOPMENT_TEAM = 4CBV6A6D4G;
- 				ENABLE_BITCODE = NO;
- 				GCC_PREPROCESSOR_DEFINITIONS = (
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = AIWardrobe/AIWardrobe.entitlements;
+				CURRENT_PROJECT_VERSION = 48;
+				DEVELOPMENT_TEAM = 4CBV6A6D4G;
+				ENABLE_BITCODE = NO;
+				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
 					"FB_SONARKIT_ENABLED=1",
 				);
