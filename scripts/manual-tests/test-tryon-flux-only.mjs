@@ -41,8 +41,8 @@ import {
   maskMergeFluxIntoBase,
   W,
   H,
-} from '../api/services/tryonShared.js';
-import { buildKontextComposite, buildDressingPrompt } from '../api/routes/tryon.js';
+} from '../../backend/api/services/tryonShared.js';
+import { buildKontextComposite, buildDressingPrompt } from '../../backend/api/routes/tryon.js';
 
 const OUT_DIR = path.resolve('scripts/out');
 

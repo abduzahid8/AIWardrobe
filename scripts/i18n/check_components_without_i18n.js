@@ -2,8 +2,8 @@ const fs = require('fs');
 const path = require('path');
 
 // Get all TSX files in screens and components
-const screensDir = path.join(__dirname, 'screens');
-const componentsDir = path.join(__dirname, 'components');
+const screensDir = path.join(__dirname, '..', '..', 'screens');
+const componentsDir = path.join(__dirname, '..', '..', 'components');
 
 function getTsxFiles(dir) {
   const files = [];

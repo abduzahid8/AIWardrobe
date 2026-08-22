@@ -2,9 +2,9 @@ const fs = require('fs');
 const path = require('path');
 
 // Read JSON files
-const en = JSON.parse(fs.readFileSync(path.join(__dirname, 'i18n/locales/en.json'), 'utf8'));
-const ru = JSON.parse(fs.readFileSync(path.join(__dirname, 'i18n/locales/ru.json'), 'utf8'));
-const uz = JSON.parse(fs.readFileSync(path.join(__dirname, 'i18n/locales/uz.json'), 'utf8'));
+const en = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'i18n/locales/en.json'), 'utf8'));
+const ru = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'i18n/locales/ru.json'), 'utf8'));
+const uz = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'i18n/locales/uz.json'), 'utf8'));
 
 // Function to get all keys recursively
 function getAllKeys(obj, prefix = '') {

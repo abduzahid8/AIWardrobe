@@ -36,8 +36,8 @@ if (!SUPABASE_URL || !SUPABASE_ANON) {
 }
 
 const FN_URL = `${SUPABASE_URL.replace(/\/$/, '')}/functions/v1/mannequin-tryon`;
-const OUT_DIR = path.join(__dirname, 'out');
-const MANNEQUIN_PATH = path.join(__dirname, '..', 'assets', 'images', 'mannequin_front.png');
+const OUT_DIR = path.join(__dirname, '..', 'out');
+const MANNEQUIN_PATH = path.join(__dirname, '..', '..', 'assets', 'images', 'mannequin_front.png');
 
 // 4 garments mirroring the screen's APPLY_ORDER: top → layer → pants → shoes.
 const GARMENTS: Garment[] = [

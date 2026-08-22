@@ -13,7 +13,7 @@ import { fileURLToPath } from 'url';
 import sharp from 'sharp';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, '..');
+const ROOT = path.resolve(__dirname, '..', '..');
 
 // ── Mock fetch so callFluxKontext returns a perturbed mannequin ──
 const originalFetch = global.fetch;

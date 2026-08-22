@@ -2,7 +2,7 @@ import { Image, SafeAreaView, ScrollView, StyleSheet, TextInput, TouchableOpacit
 import { ScaledText } from '../components/ui/ScaledText';
 import React, { useState } from "react";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { mpants, mshirts, pants, shoes, skirts, tops } from "../images";
+import { mpants, mshirts, pants, shoes, skirts, tops } from "../data/legacyImageCatalog";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 // Убедитесь, что путь верный!

@@ -2,9 +2,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const enPath = path.join(__dirname, 'i18n', 'locales', 'en.json');
-const ruPath = path.join(__dirname, 'i18n', 'locales', 'ru.json');
-const uzPath = path.join(__dirname, 'i18n', 'locales', 'uz.json');
+const enPath = path.join(__dirname, '..', '..', 'i18n', 'locales', 'en.json');
+const ruPath = path.join(__dirname, '..', '..', 'i18n', 'locales', 'ru.json');
+const uzPath = path.join(__dirname, '..', '..', 'i18n', 'locales', 'uz.json');
 
 const en = JSON.parse(fs.readFileSync(enPath, 'utf8'));
 const ru = JSON.parse(fs.readFileSync(ruPath, 'utf8'));

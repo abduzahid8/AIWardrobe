@@ -2,8 +2,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const ruPath = path.join(__dirname, 'i18n', 'locales', 'ru.json');
-const uzPath = path.join(__dirname, 'i18n', 'locales', 'uz.json');
+const ruPath = path.join(__dirname, '..', '..', 'i18n', 'locales', 'ru.json');
+const uzPath = path.join(__dirname, '..', '..', 'i18n', 'locales', 'uz.json');
 
 // Helper to recursively find and replace [RU] and [UZ] placeholders
 function replacePlaceholders(obj, lang) {

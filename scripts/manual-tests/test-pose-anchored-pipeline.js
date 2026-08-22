@@ -13,7 +13,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, '..');
+const ROOT = path.resolve(__dirname, '..', '..');
 
 const COMPOSITE_OUT = path.join(ROOT, 'scratch', 'v3_composite_input.png');
 const PROMPT_OUT = path.join(ROOT, 'scratch', 'v3_prompt.txt');
