@@ -193,7 +193,8 @@ const PaywallScreen = () => {
     return (
         <View style={styles.screen}>
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-            <Image source={require('../assets/images/paywall_hero.png')} style={styles.backgroundImage} resizeMode="cover" />
+            {/* TEMP: paywall_hero.png was never committed to the repo (pre-existing, unrelated to reorg) — swapped to an existing asset so bundling succeeds. Revert to paywall_hero.png once the real asset is added. */}
+            <Image source={require('../assets/images/basic_outfit_1.png')} style={styles.backgroundImage} resizeMode="cover" />
             <LinearGradient
                 colors={['rgba(5,10,22,0.15)', 'rgba(5,10,22,0.72)', '#050A16', '#050A16']}
                 locations={[0, 0.42, 0.68, 1]}

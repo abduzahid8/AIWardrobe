@@ -337,8 +337,8 @@ const CompleteStep = ({ selectedGoals, selectedOccasions, onComplete, onBack, t 
 
             <Animated.View entering={FadeInDown.delay(550)} style={{ gap: 12, marginTop: 32 }}>
                 {[
-                    t('styleQuiz.complete.occasionPaths'),
-                    t('styleQuiz.complete.goalsPrioritized'),
+                    t('styleQuiz.complete.occasionPaths', { count: selectedOccasions.length }),
+                    t('styleQuiz.complete.goalsPrioritized', { count: selectedGoals.length }),
                     t('styleQuiz.complete.aiCalibrated'),
                 ].map(line => (
                     <View key={line} style={cmp.row}>
