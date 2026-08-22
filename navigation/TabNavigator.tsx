@@ -96,7 +96,7 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation, isAdmin, onActiv
     Math.max(tabBarWidth - (TAB_BAR_HORIZONTAL_PADDING * 2), 0) / Math.max(state.routes.length, 1);
 
   // Blob indicator — smooth slide to center of active icon
-  const BLOB_SIZE = 48;
+  const BLOB_SIZE = 70; // must match liquidBlob's width (styles.liquidBlob)
   const blobCenterOffset = (tabWidth - BLOB_SIZE) / 2;
   const blobTranslateX = useSharedValue(state.index * tabWidth + blobCenterOffset);
 
@@ -195,6 +195,7 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation, isAdmin, onActiv
                 color={iconColor}
                 size={24}
                 label={route.name}
+                
               />
             </Pressable>
           );
@@ -380,6 +381,8 @@ const styles = StyleSheet.create({
   tabItemContainer: {
     alignItems: 'center',
     justifyContent: 'center',
+    // backgroundColor: '#000',
+    padding:10,
   },
   indicatorContainer: {
     position: 'absolute',
@@ -390,8 +393,8 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   liquidBlob: {
-    width: 48,
-    height: 48,
+    width: 70,
+    height: 50,
     borderRadius: 24,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,

@@ -11,6 +11,7 @@ const SUPPRESSED_WARNING_PATTERNS = [
     'Expo Go can no longer provide full access to the media library',
     'Android Push notifications (remote notifications) functionality',
     'The native store is not available when running inside Expo Go',
+    'Error fetching offering',
 ];
 
 function shouldSuppress(...args: unknown[]): boolean {
@@ -40,13 +41,17 @@ console.error = (...args: unknown[]) => {
     _originalError(...(args as []));
 };
 
-// LogBox also displays warnings via its own pipeline (yellow-box banners).
-// Register a matching ignore list so they do not surface on-device either.
+// LogBox also displays warnings via its own pipeline (yellow/red on-device
+// toasts, plus the generic "Open debugger to view warnings" banner that
+// accompanies any of them). Dev-mode-only UI noise — crashes and real
+// issues are already tracked via Sentry (see src/services/crashReporting.ts)
+// and the Metro terminal, so the on-device overlay isn't needed.
 try {
     // Lazy-require to keep this file runnable before react-native is fully
     // initialised in any odd environments.
     const { LogBox } = require('react-native');
     LogBox?.ignoreLogs?.(SUPPRESSED_WARNING_PATTERNS);
+    LogBox?.ignoreAllLogs?.(true);
 } catch {
     // Non-fatal: if LogBox is unavailable for any reason, the console
     // interceptors above still filter the messages.

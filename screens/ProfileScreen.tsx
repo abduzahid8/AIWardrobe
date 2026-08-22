@@ -1587,6 +1587,8 @@ const createStyles = (D: DTokens) =>
     },
     glassPanel: {
       overflow: 'hidden',
+      padding:10,
+      gap:10,
       borderWidth: 1,
       borderColor: D.glassBorder,
       backgroundColor: D.glass,
@@ -2028,8 +2030,8 @@ const createStyles = (D: DTokens) =>
       color: D.white,
     },
     sectionBlock: {
-      marginTop: 16,
-      paddingHorizontal: 20,
+      marginTop: 28,
+      paddingHorizontal: 24,
     },
     sectionHeaderRow: {
       flexDirection: 'row',
@@ -2317,6 +2319,7 @@ const createStyles = (D: DTokens) =>
     menuSeparator: {
       height: 1,
       marginLeft: 64,
+      marginTop:7,
       backgroundColor: D.separator,
     },
     deleteAccountWrap: {
