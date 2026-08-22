@@ -59,8 +59,7 @@ alicevision-service/
 scratch/
 
 # Backend / ML services — NOT part of the mobile app
-mobile-vton-service/
-api/
+backend/
 cache/
 workers/
 
@@ -69,7 +68,6 @@ workers/
 *.venv-modal/
 
 # One-off probes left at repo root
-appleuploadissueneedfix/
 test_*.js
 test_*.ts
 test-check.js
@@ -89,14 +87,11 @@ tryon_step_*.png
 catvton_result.png
 tryon_result.png
 groq_prompt_enhancements.json
-check_components_without_i18n.js
-check_translation_keys.js
-find_hardcoded_text.js
 
 # Test coverage
 coverage/
 
-# Supabase (edge functions deployed separately, migrations not needed for iOS build)
+# Supabase (edge functions deployed separately, migrations not needed for iOS build; also covered by backend/ above)
 supabase/.temp/
 supabase/functions/
 

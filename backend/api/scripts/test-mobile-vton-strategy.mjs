@@ -7,7 +7,7 @@
  *  3. Service-down detection + fallback activation
  *  4. Multi-garment payload routing (sequential vs fused)
  *
- * Run: node api/scripts/test-mobile-vton-strategy.mjs
+ * Run: node backend/api/scripts/test-mobile-vton-strategy.mjs
  */
 
 import assert from 'node:assert/strict';

@@ -9,7 +9,7 @@ Prerequisites:
   modal setup  # Authenticate with your Modal token
 
 Deploy:
-  cd mobile-vton-service
+  cd backend/mobile-vton-service
   modal deploy modal_app.py
 """
 
@@ -27,7 +27,7 @@ CHECKPOINT_REMOTE_DIR = "/app/checkpoint/checkpoint"
 IP_ADAPTER_REMOTE_DIR = "/app/checkpoint/ip_adapter"
 
 # Root .env file path (contains HF_TOKEN and other secrets)
-_DOTENV_PATH = os.path.join(os.path.dirname(__file__), "..", ".env")
+_DOTENV_PATH = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
 
 # Render API base URL — kept alive by the cron below
 RENDER_API_URL = os.environ.get(

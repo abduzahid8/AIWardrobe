@@ -7,10 +7,10 @@
  * - Gemini 2.0 Flash: ~$0.04 per image
  *
  * Usage:
- *   node api/scripts/test-gemini-tryon.mjs [path-to-mannequin] [path-to-garment]
+ *   node backend/api/scripts/test-gemini-tryon.mjs [path-to-mannequin] [path-to-garment]
  *
  * Example:
- *   node api/scripts/test-gemini-tryon.mjs api/blank_mannequin.jpg api/data/shirt.png
+ *   node backend/api/scripts/test-gemini-tryon.mjs backend/api/blank_mannequin.jpg backend/api/data/shirt.png
  */
 
 import fs from 'fs/promises';
@@ -186,8 +186,8 @@ async function main() {
   }
 
   const args = process.argv.slice(2);
-  const mannequinPath = args[0] || 'api/blank_mannequin.jpg';
-  const garmentPath = args[1] || 'api/data/shirt.png';
+  const mannequinPath = args[0] || 'backend/api/blank_mannequin.jpg';
+  const garmentPath = args[1] || 'backend/api/data/shirt.png';
 
   console.log('═══════════════════════════════════════════════════════════');
   console.log('  Gemini 2.0 Flash Try-On Test');

@@ -8,7 +8,7 @@
 #   3. .env at project root has:   HF_TOKEN=hf_...
 #
 # Usage:
-#   cd /Users/zohidvohidjonov/Desktop/AIWardrobe/mobile-vton-service
+#   cd backend/mobile-vton-service   (from the repo root)
 #   bash deploy_and_test.sh
 #
 # What it does:
@@ -16,7 +16,7 @@
 #   2. modal deploy modal_app.py           (builds image, downloads SD1.5 weights ~4 GB)
 #   3. parses the deployed URL from output
 #   4. curl /health to verify GPU
-#   5. python test_new_code_live.py        (3-garment test: top + pants + shoes)
+#   5. python tests/test_new_code_live.py  (3-garment test: top + pants + shoes)
 #
 # First deploy takes 5-10 minutes (model download). Subsequent deploys ~30s.
 
@@ -41,7 +41,7 @@ URL=$(echo "$DEPLOY_OUTPUT" | grep -oE 'https://[^ ]+aiwardrobe-mobile-vton-fast
 
 if [ -z "$URL" ]; then
   echo "ERROR: Could not find deployed URL in Modal output."
-  echo "Look for the URL above and update ENDPOINT in test_new_code_live.py manually."
+  echo "Look for the URL above and update ENDPOINT in tests/test_new_code_live.py manually."
   exit 1
 fi
 
@@ -62,15 +62,16 @@ fi
 
 echo ""
 echo "==> [4/4] Running 3-garment test (seed=7, 100)..."
-# Patch the ENDPOINT in test_new_code_live.py for this run.
+# Patch the ENDPOINT in tests/test_new_code_live.py for this run.
 ENDPOINT="${URL}/tryon/multi-fused" python3 -c "
 import os, sys
 import ssl, urllib.request, json, base64, time
 from pathlib import Path
 
-ROOT = Path('/Users/zohidvohidjonov/Desktop/AIWardrobe')
+# CWD is already backend/mobile-vton-service/ (see the `cd` above).
+ROOT = Path(os.getcwd()).resolve().parent.parent
 ASSETS = ROOT / 'assets' / 'images'
-OUT = ROOT / 'mobile-vton-service'
+OUT = Path(os.getcwd())
 ENDPOINT = os.environ['ENDPOINT']
 ctx = ssl._create_unverified_context()
 

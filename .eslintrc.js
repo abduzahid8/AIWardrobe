@@ -100,7 +100,7 @@ module.exports = {
     overrides: [
         {
             // API files are JavaScript / node
-            files: ['api/**/*.js', 'scripts/**/*.js', 'scripts/**/*.ts'],
+            files: ['backend/api/**/*.js', 'scripts/**/*.js', 'scripts/**/*.ts'],
             env: { node: true, browser: false },
             rules: {
                 '@typescript-eslint/no-var-requires': 'off',
@@ -132,7 +132,7 @@ module.exports = {
         },
         {
             // Supabase Edge Functions run on Deno, not Node.
-            files: ['supabase/functions/**'],
+            files: ['backend/supabase/functions/**'],
             rules: {
                 'no-console': 'off',
                 'no-undef': 'off',
@@ -148,9 +148,8 @@ module.exports = {
         'babel.config.js',
         'metro.config.js',
         'tailwind.config.js',
-        'api/node_modules/',
+        'backend/',
         'alicevision-service/',
-        'supabase/.temp/',
         'coverage/',
     ],
 };

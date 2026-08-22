@@ -2,7 +2,7 @@
 Debug script to check mask and garment dimensions.
 """
 import sys, os
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ['MOBILE_VTON_EAGER_LOAD'] = '0'
 
 import types

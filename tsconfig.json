@@ -21,8 +21,7 @@
   },
   "exclude": [
     "node_modules",
-    "supabase",
-    "api",
+    "backend",
     "open-design",
     "test"
   ]

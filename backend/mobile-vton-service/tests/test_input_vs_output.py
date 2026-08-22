@@ -11,9 +11,9 @@ import urllib.request
 from pathlib import Path
 from PIL import Image, ImageDraw
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent.parent
 ASSETS = ROOT / "assets" / "images"
-OUT_DIR = ROOT / "mobile-vton-service"
+OUT_DIR = ROOT / "backend" / "mobile-vton-service"
 ENDPOINT = "https://karimdzanovzoha--aiwardrobe-mobile-vton-fastapi-app.modal.run/tryon/multi-fused"
 
 CELL = 384

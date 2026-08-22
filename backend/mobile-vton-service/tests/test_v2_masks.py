@@ -49,7 +49,7 @@ class _BaseModel: pass
 _install_stub("pydantic", {"BaseModel": _BaseModel})
 
 os.environ.setdefault("MOBILE_VTON_EAGER_LOAD", "0")
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from PIL import Image, ImageFilter, ImageDraw
 import numpy as np

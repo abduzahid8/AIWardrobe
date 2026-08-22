@@ -9,13 +9,13 @@ import base64
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent.parent
 MANNEQUIN = ROOT / "assets" / "images" / "mannequin_front.png"
 TSHIRT    = ROOT / "assets" / "images" / "basic_white_tshirt.png"
 PANTS     = ROOT / "assets" / "images" / "basic_brown_pants.png"
 SHOES     = ROOT / "assets" / "images" / "basic_brown_loafers.png"
-RESULT    = ROOT / "mobile-vton-service" / "test_multi_seed7.png"
-OUT       = ROOT / "mobile-vton-service" / "test_overall.png"
+RESULT    = ROOT / "backend" / "mobile-vton-service" / "test_multi_seed7.png"
+OUT       = ROOT / "backend" / "mobile-vton-service" / "test_overall.png"
 
 CELL = 512
 

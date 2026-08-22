@@ -17,7 +17,7 @@ import types
 
 os.environ.setdefault("MOBILE_VTON_EAGER_LOAD", "0")
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Stub torch (and any other heavy deps) so we can import main.py on a machine
 # without a CUDA toolchain. Only the pure-PIL/numpy helpers are exercised.

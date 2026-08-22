@@ -8,8 +8,8 @@ import os, sys, types
 from pathlib import Path
 
 os.environ.setdefault("MOBILE_VTON_EAGER_LOAD", "0")
-ROOT = Path("/Users/zohidvohidjonov/Desktop/AIWardrobe")
-sys.path.insert(0, str(ROOT / "mobile-vton-service"))
+ROOT = Path(__file__).resolve().parent.parent.parent.parent
+sys.path.insert(0, str(ROOT / "backend" / "mobile-vton-service"))
 
 def _install_stub(name, attrs=None):
     attrs = attrs or {}

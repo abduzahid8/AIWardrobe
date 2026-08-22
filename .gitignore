@@ -50,7 +50,7 @@ venv/
 # AI Data & Weights
 alicevision-service/weights/
 alicevision-service/datasets/
-mobile-vton-service/checkpoint/
+backend/mobile-vton-service/checkpoint/
 
 # Training Artifacts
 alicevision-service/training/datasets/
@@ -69,6 +69,7 @@ basic_clothing/
 tmp/
 test/
 tests/
+!backend/mobile-vton-service/tests/
 /dist*/
 
 # One-off test/demo files
@@ -79,7 +80,7 @@ appleconnect_settings.png
 coverage/
 
 # Supabase local
-supabase/.temp/
+backend/supabase/.temp/
 
 # IDE / tool folders
 .idea/
@@ -94,12 +95,14 @@ weights/
 *.pth
 *.bin
 test_*.js
+!backend/api/scripts/test_*.js
 *.png
 *.jpg
 !assets/**/*.png
 !assets/**/*.jpg
-!supabase/functions/**/*.png
-!supabase/functions/**/*.jpg
+!backend/supabase/functions/**/*.png
+!backend/supabase/functions/**/*.jpg
+!backend/api/blank_mannequin.jpg
 
 # Temporary Scratch and Scripts
 scratch/
@@ -110,6 +113,7 @@ scripts/out/
 *.onnx
 *.pth
 *.bin
+!backend/api/blank_mannequin.jpg
 
 # Tool / environment directories
 .codex/

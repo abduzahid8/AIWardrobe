@@ -20,8 +20,8 @@ import io
 from pathlib import Path
 
 os.environ.setdefault("MOBILE_VTON_EAGER_LOAD", "0")
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "mobile-vton-service"))
+ROOT = Path(__file__).resolve().parent.parent.parent.parent
+sys.path.insert(0, str(ROOT / "backend" / "mobile-vton-service"))
 
 # Stub torch / fastapi / pydantic so main.py imports without GPU
 def _install_stub(name, attrs=None):
@@ -60,7 +60,7 @@ _install_stub("pydantic", {"BaseModel": _BaseModel})
 from PIL import Image, ImageDraw
 import main  # noqa: E402
 
-SERVICE = ROOT / "mobile-vton-service"
+SERVICE = ROOT / "backend" / "mobile-vton-service"
 ASSETS  = ROOT / "assets" / "images"
 
 # The most recent multi-garment render saved on disk

@@ -16,7 +16,7 @@ services:
     runtime: node
     region: oregon
     plan: starter
-    rootDir: api
+    rootDir: backend/api
     buildCommand: npm install
     startCommand: node index.js
     healthCheckPath: /health

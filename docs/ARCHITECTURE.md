@@ -10,9 +10,9 @@
 
 **Decision:** Supabase (Postgres + Auth + Edge Functions) is the only backend
 surface the mobile app targets. Server-side logic lives in
-`supabase/functions/*`. The legacy `api/` Express tree is **deprecated** —
-do not add new routes there, and migrate any remaining code paths that the
-app still calls.
+`backend/supabase/functions/*`. The legacy `backend/api/` Express tree is
+**deprecated** — do not add new routes there, and migrate any remaining code
+paths that the app still calls.
 
 **Why:**
 - Single deployment target, single auth story (Supabase JWTs end-to-end).
@@ -22,12 +22,12 @@ app still calls.
   + `increment_rate_bucket` RPC) used by the in-app daily quota.
 
 **Rules:**
-- No new files under `api/routes/**`. ESLint `no-restricted-imports` forbids
-  importing from `api/` in the mobile bundle.
+- No new files under `backend/api/routes/**`. ESLint `no-restricted-imports`
+  forbids importing from `api/` in the mobile bundle.
 - All user-authoritative state (subscription tier, daily quota, trial start)
   is owned by Postgres, verified server-side.
 - Edge Functions MUST call `enforceRateLimit()` from
-  `supabase/functions/_shared/rateLimit.ts` before doing any paid work.
+  `backend/supabase/functions/_shared/rateLimit.ts` before doing any paid work.
 
 ---
 

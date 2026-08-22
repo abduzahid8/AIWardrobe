@@ -49,8 +49,8 @@ React Native · Expo SDK 54 · TypeScript · Supabase · Zustand · React Query
 - **State:** Zustand 5 (UI/local), React Query 5 (server cache).
 - **Backend:** Supabase — Postgres, Auth, Storage, Edge Functions.
 - **AI:** All provider calls (NVIDIA, Replicate, Hugging Face, Gemini)
-  go through Edge Functions in `supabase/functions/ai-process/`. No
-  provider keys ship with the client.
+  go through Edge Functions in `backend/supabase/functions/ai-process/`.
+  No provider keys ship with the client.
 - **Observability:** Sentry (crashes), a home-rolled analytics queue,
   RevenueCat for IAP.
 - **Tooling:** Jest, Maestro, ESLint (strict: forbids client-side AI
@@ -72,12 +72,17 @@ src/
   utils/                 Logger, secure storage, validators, image helpers
   types/                 Canonical domain types — single source of truth
   lib/persistence.ts     Registry of every AsyncStorage key (used on logout)
-supabase/
-  functions/             Edge Functions (ai-process, try-on, delete-account)
-  migrations/            SQL migrations, incl. 007_rls_audit.sql drift guard
-scripts/                 Node scripts (shop sync etc.) — not bundled into the app
+scripts/                 Node scripts (shop sync, i18n/ maintenance) — not bundled into the app
+docs/                    Engineering docs, reports/, admin/, product/, research/
 __tests__/               Jest tests (incl. suggestionEngine golden cases)
 ios/, android/           Native projects managed by expo prebuild
+
+backend/                 Services independent of the RN app (own deploy lifecycle)
+  api/                   Legacy Express API — deprecated, see docs/ARCHITECTURE.md ADR-001
+  supabase/
+    functions/           Edge Functions (ai-process, try-on, delete-account)
+    migrations/          SQL migrations, incl. 007_rls_audit.sql drift guard
+  mobile-vton-service/   Modal-deployed FastAPI virtual try-on GPU service
 ```
 
 ## Getting started
@@ -101,7 +106,7 @@ required env vars are absent. No silent black-screen crashes.
 
 - Node 22 (matches `eas.json`).
 - Xcode 15+ for iOS builds, Android Studio for Android.
-- A Supabase project with the migrations in `supabase/migrations/`
+- A Supabase project with the migrations in `backend/supabase/migrations/`
   applied. The latest migration (`007_rls_audit.sql`) will fail to
   apply if any public table lacks RLS — by design.
 
