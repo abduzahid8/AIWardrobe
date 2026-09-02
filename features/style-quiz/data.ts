@@ -8,7 +8,7 @@
 export const STYLE_PERSONALITIES = [
     { id: 'classic', name: 'Classic', emoji: '👔', description: 'Timeless, elegant, refined', tKey: 'styleQuiz.personality.classic', tDescKey: 'styleQuiz.personality.classicDesc' },
     { id: 'semi_classic', name: 'Semi-Classic', emoji: '🧥', description: 'Tailored comfort, everyday refinement', tKey: 'styleQuiz.personality.semiClassic', tDescKey: 'styleQuiz.personality.semiClassicDesc' },
-    { id: 'minimalist', name: 'Minimalist', emoji: '⬜', description: 'Clean lines, simple', tKey: 'styleQuiz.personality.minimalist', tDescKey: 'styleQuiz.personality.minimalistDesc' },
+    { id: 'minimalist', name: 'Minimalist', emoji: '🤍', description: 'Clean lines, simple', tKey: 'styleQuiz.personality.minimalist', tDescKey: 'styleQuiz.personality.minimalistDesc' },
     { id: 'casual', name: 'Casual', emoji: '👕', description: 'Relaxed, effortless, clean daily wear', tKey: 'styleQuiz.personality.casual', tDescKey: 'styleQuiz.personality.casualDesc' },
     { id: 'old_money', name: 'Old Money', emoji: '⚜️', description: 'Quiet luxury, heritage sophistication', tKey: 'styleQuiz.personality.oldMoney', tDescKey: 'styleQuiz.personality.oldMoneyDesc' },
 ] as const;

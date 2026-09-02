@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     View,
     StyleSheet,
@@ -7,42 +7,62 @@ import {
 } from 'react-native';
 import { Image, ImageProps } from 'expo-image';
 import Animated from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../src/theme';
 
 interface CachedImageProps extends Omit<ImageProps, 'source'> {
     uri: string;
+    /** @deprecated No longer fetched — a broken/missing image now renders a
+     * local icon placeholder instead of a remote fallback URL (that remote
+     * service was unreliable and left cards blank with no indication of
+     * failure). Kept only so existing call sites don't break at compile time. */
     fallbackUri?: string;
     showLoader?: boolean;
     fadeIn?: boolean;
     style?: StyleProp<ImageStyle>;
+    /** Icon shown when `uri` is missing or fails to load. */
+    fallbackIconSize?: number;
+    fallbackIconColor?: string;
 }
 
 export const CachedImage: React.FC<CachedImageProps> = React.memo(({
     uri,
-    fallbackUri = 'https://via.placeholder.com/150',
     showLoader = true,
     fadeIn = true,
     style,
     contentFit = 'cover',
+    fallbackIconSize = 28,
+    fallbackIconColor = 'rgba(10,25,49,0.2)',
     ...props
 }) => {
     const [error, setError] = useState(false);
-    const sourceUri = error ? fallbackUri : uri;
 
-    const handleError = () => {
-        setError(true);
-    };
+    // A list reuses this component instance across items as `uri` changes
+    // (e.g. FlatList row recycling); without this the failed-load flag from
+    // a previous item's broken photo would stick and blank out the next
+    // item's perfectly good one.
+    useEffect(() => {
+        setError(false);
+    }, [uri]);
+
+    if (!uri || error) {
+        return (
+            <View style={[styles.container, styles.fallback, style as any]}>
+                <Ionicons name="shirt-outline" size={fallbackIconSize} color={fallbackIconColor} />
+            </View>
+        );
+    }
 
     return (
         <View style={[styles.container, style as any]}>
             <Image
                 {...props}
-                source={sourceUri}
+                source={uri}
                 style={[styles.image, style]}
                 contentFit={contentFit}
                 cachePolicy="memory-disk"
                 transition={fadeIn ? 200 : undefined}
-                onError={handleError}
+                onError={() => setError(true)}
             />
         </View>
     );
@@ -120,6 +140,11 @@ export const CachedAvatar: React.FC<CachedAvatarProps> = React.memo(({
 const styles = StyleSheet.create({
     container: {
         overflow: 'hidden',
+    },
+    fallback: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(10,25,49,0.04)',
     },
     loaderContainer: {
         ...StyleSheet.absoluteFillObject,

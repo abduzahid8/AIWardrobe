@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, TouchableOpacity, StyleSheet, Dimensions, ScrollView, FlatList, ActivityIndicator, Alert, TextInput, StatusBar, Platform, Linking,  } from 'react-native'
 import { ScaledText } from '../components/ui/ScaledText';
+import { OutfitCollagePreview } from '../components/ui/OutfitCollagePreview';
 import { Image } from 'expo-image';
 import { TrialCountdownBanner } from '../components/TrialCountdownBanner';
 import GenerateOutfitButton from '../features/outfit-generator/components/GenerateOutfitButton';
@@ -835,6 +836,7 @@ const MyClosetScreen = () => {
                         <>
                             <ScrollView
                                 horizontal
+                                style={styles.collectionFilterScroll}
                                 showsHorizontalScrollIndicator={false}
                                 contentContainerStyle={styles.collectionFilterRaw}
                             >
@@ -866,34 +868,19 @@ const MyClosetScreen = () => {
                                 initialNumToRender={8}
                             windowSize={5}
                             renderItem={({ item: outfit }) => {
-                                const previewItem = outfit.previewImageUrl
-                                    ? null
-                                    : storeItems.find(i => outfit.itemIds.includes(i.id));
+                                const outfitItems = outfit.itemIds
+                                    .map(id => storeItems.find(i => i.id === id))
+                                    .filter((i): i is typeof storeItems[number] => !!i?.imageUrl)
+                                    .map(i => ({ id: i.id, image: i.imageUrl, category: i.category }));
                                 return (
                                     <TouchableOpacity
                                         style={styles.outfitCard}
                                         onPress={() => navigation.navigate('AIOutfit', { source: 'wardrobe' })}
-                                        activeOpacity={0.8}
+                                        activeOpacity={0.85}
                                     >
-                                        {outfit.previewImageUrl ? (
-                                            <Image
-                                                source={{ uri: outfit.previewImageUrl }}
-                                                style={styles.outfitCardImage}
-                                                contentFit="cover"
-                                            />
-                                        ) : previewItem ? (
-                                            <Image
-                                                source={{ uri: previewItem.imageUrl }}
-                                                style={styles.outfitCardImage}
-                                                contentFit="cover"
-                                            />
-                                        ) : (
-                                            <View style={[styles.outfitCardImage, styles.outfitCardPlaceholder]}>
-                                                <Ionicons name="shirt-outline" size={32} color={colors.text.tertiary} />
-                                            </View>
-                                        )}
+                                        <OutfitCollagePreview items={outfitItems} backgroundColor="#F9FBFF" footerInset={44} />
                                         <View style={styles.outfitCardOverlay}>
-                                            <ScaledText style={styles.outfitCardOccasion} numberOfLines={2}>
+                                            <ScaledText style={styles.outfitCardOccasion} numberOfLines={1}>
                                                 {outfit.occasion}
                                             </ScaledText>
                                             <Ionicons name="heart" size={14} color="#E05C5C" />
@@ -1203,10 +1190,14 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingRight: 8,
     },
+    collectionFilterScroll: {
+        flexGrow: 0,
+    },
     collectionFilterRaw: {
         paddingHorizontal: 16,
         paddingRight: 8,
         paddingBottom: 12,
+        alignItems: 'center',
     },
     filterChip: {
         paddingVertical: 10,
@@ -1317,21 +1308,17 @@ const styles = StyleSheet.create({
     outfitCard: {
         flex: 1,
         margin: 6,
-        borderRadius: 16,
+        borderRadius: 22,
         overflow: 'hidden',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: 'rgba(255,255,255,0.92)',
         borderWidth: 1,
-        borderColor: 'rgba(0, 0, 0, 0.06)',
+        borderColor: 'rgba(24,58,103,0.06)',
         aspectRatio: 0.8,
-    },
-    outfitCardImage: {
-        width: '100%',
-        height: '100%',
-    },
-    outfitCardPlaceholder: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#F4F8FF',
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.06,
+        shadowRadius: 14,
+        elevation: 3,
     },
     outfitCardOverlay: {
         position: 'absolute',
@@ -1341,11 +1328,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 10,
-        paddingVertical: 8,
-        backgroundColor: 'rgba(255,255,255,0.85)',
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        backgroundColor: 'rgba(255,255,255,0.88)',
         borderTopWidth: 1,
-        borderTopColor: 'rgba(0,0,0,0.04)',
+        borderTopColor: 'rgba(24,58,103,0.06)',
     },
     outfitCardOccasion: {
         fontSize: 13,

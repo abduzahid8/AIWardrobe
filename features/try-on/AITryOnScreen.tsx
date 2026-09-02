@@ -71,7 +71,13 @@ const APPLY_ORDER: SlotKey[] = ['top', 'layer', 'pants', 'shoes'];
 type Slots = Record<SlotKey, ShopCatalogItem | null>;
 const EMPTY_SLOTS: Slots = { layer: null, top: null, pants: null, shoes: null };
 
-type AITryOnRouteParams = { asTab?: boolean; initialGarmentUri?: string; initialGarmentType?: string };
+type AITryOnRouteParams = {
+    asTab?: boolean;
+    initialGarmentUri?: string;
+    initialGarmentType?: string;
+    /** Pre-fill try-on slots with an outfit surfaced elsewhere (e.g. Home's daily outfit card). */
+    initialSlots?: Partial<Slots>;
+};
 
 const formatPrice = (item: ShopCatalogItem | null) => {
     if (!item) return '--';
@@ -110,7 +116,10 @@ const AITryOnScreen = () => {
     const asTab = (route.params as AITryOnRouteParams)?.asTab === true;
     const { t } = useTranslation();
 
-    const [slots, setSlots] = useState<Slots>(EMPTY_SLOTS);
+    const [slots, setSlots] = useState<Slots>(() => ({
+        ...EMPTY_SLOTS,
+        ...(route.params as AITryOnRouteParams)?.initialSlots,
+    }));
     const [activeSlot, setActiveSlot] = useState<SlotKey>('top');
     const [aiResultImage, setAiResultImage] = useState<string | null>(null);
     const [aiLoading, setAiLoading] = useState(false);

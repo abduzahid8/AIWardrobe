@@ -33,6 +33,7 @@ import useWardrobeStore from '../store/wardrobeStore';
 import useTryOnLooksStore from '../store/tryOnLooksStore';
 import useShopCatalogStore from '../store/shopCatalogStore';
 import { CachedImage } from '../components/ui/CachedImage';
+import { OutfitCollagePreview } from '../components/ui/OutfitCollagePreview';
 import { useTheme } from '../src/theme/ThemeContext';
 import { useSubscriptionGate } from '../src/hooks/useSubscriptionGate';
 import { useAdminGuard } from '../hooks/useAdminGuard';
@@ -246,7 +247,11 @@ const ProfileScreen = () => {
           _id: outfit.id,
           date: outfit.createdAt?.split('T')[0],
           occasion: typeof outfit.occasion === 'string' ? outfit.occasion : undefined,
-          image: coverImage ?? itemImages[0],
+          // previewImageUrl is just the first item's own image, not a real
+          // composite of the outfit — only fall back to it when none of the
+          // outfit's items resolved to an image, so multi-item outfits show
+          // the itemImages collage below instead of a single garment.
+          image: itemImages.length === 0 ? coverImage : undefined,
           itemImages,
         };
       });
@@ -293,7 +298,10 @@ const ProfileScreen = () => {
               date: outfit.date || outfit.created_at?.split('T')[0],
               occasion: outfit.occasion,
               itemImages,
-              image: itemImages[0],
+              // Only set a single cover image when there's just one item to
+              // show — outfits with multiple items render the itemImages
+              // collage instead (see renderLookCard).
+              image: itemImages.length === 1 ? itemImages[0] : undefined,
             };
           })
         );
@@ -705,31 +713,14 @@ const ProfileScreen = () => {
               source={typeof outfit.image === 'number' ? outfit.image : { uri: outfit.image as string }}
               style={styles.lookImage}
             />
-          ) : outfit.itemImages.length > 0 ? (
-            outfit.itemImages.length === 1 ? (
-              <Image
-                source={
-                  typeof outfit.itemImages[0] === 'number'
-                    ? outfit.itemImages[0]
-                    : { uri: outfit.itemImages[0] as string }
-                }
-                style={styles.lookImage}
-              />
-            ) : (
-              <View style={styles.collageGrid}>
-                {outfit.itemImages.slice(0, 4).map((src, index) => (
-                  <Image
-                    key={`${outfit._id}-${index}`}
-                    source={typeof src === 'number' ? src : { uri: src as string }}
-                    style={styles.collageCell}
-                  />
-                ))}
-              </View>
-            )
           ) : (
-            <View style={styles.lookEmpty}>
-              <Ionicons name="shirt-outline" size={30} color="rgba(255,255,255,0.8)" />
-            </View>
+            <OutfitCollagePreview
+              items={outfit.itemImages.map((src, index) => ({ id: index, image: src }))}
+              backgroundColor="#F4F6FA"
+              placeholderIconColor="rgba(15,23,42,0.22)"
+              placeholderIconSize={30}
+              footerInset={90}
+            />
           )}
 
           <BlurView
@@ -1445,19 +1436,15 @@ const ProfileScreen = () => {
                     style={styles.previewImage}
                     resizeMode="cover"
                   />
-                ) : previewLook.itemImages.length > 0 ? (
-                  <View style={styles.previewCollage}>
-                    {previewLook.itemImages.slice(0, 4).map((src, index) => (
-                      <Image
-                        key={`${previewLook._id}-${index}`}
-                        source={typeof src === 'number' ? src : { uri: src as string }}
-                        style={styles.previewCollageCell}
-                      />
-                    ))}
-                  </View>
                 ) : (
-                  <View style={styles.previewFallback}>
-                    <Ionicons name="shirt-outline" size={38} color="rgba(255,255,255,0.85)" />
+                  <View style={styles.previewCollage}>
+                    <OutfitCollagePreview
+                      items={previewLook.itemImages.map((src, index) => ({ id: index, image: src }))}
+                      backgroundColor="#F4F6FA"
+                      placeholderIconColor="rgba(15,23,42,0.22)"
+                      placeholderIconSize={38}
+                      footerInset={190}
+                    />
                   </View>
                 )}
 
@@ -2177,22 +2164,6 @@ const createStyles = (D: DTokens) =>
       height: '100%',
       resizeMode: 'cover',
     },
-    collageGrid: {
-      flex: 1,
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-    },
-    collageCell: {
-      width: '50%',
-      height: '50%',
-      resizeMode: 'cover',
-    },
-    lookEmpty: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: D.darkBackdrop,
-    },
     lookFooterBlur: {
       position: 'absolute',
       left: 0,
@@ -2508,33 +2479,20 @@ const createStyles = (D: DTokens) =>
     previewCollage: {
       width: '100%',
       height: 390,
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-    },
-    previewCollageCell: {
-      width: '50%',
-      height: '50%',
-    },
-    previewFallback: {
-      width: '100%',
-      height: 390,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: D.darkBackdrop,
     },
     previewFooterBlur: {
       position: 'absolute',
       left: 0,
       right: 0,
       bottom: 92,
-      height: 130,
+      height: 80,
     },
     previewFooterGradient: {
       position: 'absolute',
       left: 0,
       right: 0,
       bottom: 92,
-      height: 150,
+      height: 95,
     },
     previewInfo: {
       position: 'absolute',

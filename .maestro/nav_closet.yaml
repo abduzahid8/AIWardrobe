@@ -1,4 +1,4 @@
-appId: org.name.AIWardrobe
+appId: com.aiwardrobe
 ---
 - launchApp
 - waitForAnimationToEnd:

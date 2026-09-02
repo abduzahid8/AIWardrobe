@@ -1275,7 +1275,11 @@
     "saveItem": "Mahsulotni saqlash",
     "capsule": "kapsula",
     "buy": "Sotib olish",
-    "buyNow": "Hozir sotib olish"
+    "buyNow": "Hozir sotib olish",
+    "shopThisLook": "Do'kon",
+    "noGuideMatches": "Hozircha ko'rinish yo'q — keyinroq tekshiring.",
+    "guideTagline": "Ko'rinishni bosing va uni xarid qiling.",
+    "featuredLook": "Tavsiya etilgan ko'rinish"
   },
   "camera": {
     "permissionNeeded": "Kamera ruxsat kerak",

@@ -26,7 +26,9 @@ import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 import {
   LiquidGlassCard,
   FrostedGlassCard,
+  OutfitSwipeStack,
 } from '../components/ui';
+import type { OutfitSwipeStackHandle, SwipeStackCard } from '../components/ui';
 import { useAccessibility } from '../hooks/useAccessibility';
 import Config from '../src/config/env';
 
@@ -53,8 +55,8 @@ import { quickSuggest } from '../src/services/suggestionEngine';
 import { useDailyAIOutfit } from '../hooks/useDailyAIOutfit';
 import { useShopCatalog } from '../hooks/useShopCatalog';
 import useShopCatalogStore from '../store/shopCatalogStore';
-import OutfitCollageDisplay from '../features/outfit-generator/components/OutfitCollageDisplay';
 import TrialCountdownBanner from '../components/TrialCountdownBanner';
+import { OutfitShareModal } from '../components/OutfitShareModal';
 import type { ShopCatalogItem } from '../features/try-on/types';
 import type { ClothingCategory, Occasion } from '../src/types/domain';
 import { createLogger } from '../src/utils/logger';
@@ -295,6 +297,41 @@ interface DailyOutfitSectionProps {
   userId?: string;
 }
 
+// actionIconButton renders a 32x32 tap target, below the 44x44 minimum
+// recommended by Apple's HIG — hitSlop pads the touchable area without
+// changing the visible icon layout.
+const ACTION_ICON_HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
+
+// Maps a collage item's macro-category to the try-on screen's slot key so
+// tapping "Try On" on a suggested outfit pre-fills the mannequin instead of
+// dropping the user on an empty try-on screen.
+const TRY_ON_SLOT_BY_MACRO: Record<string, 'layer' | 'top' | 'pants' | 'shoes'> = {
+  outerwear: 'layer',
+  top: 'top',
+  bottom: 'pants',
+  shoes: 'shoes',
+};
+
+const buildInitialTryOnSlots = (
+  items: any[]
+): Partial<Record<'layer' | 'top' | 'pants' | 'shoes', ShopCatalogItem>> => {
+  const slots: Partial<Record<'layer' | 'top' | 'pants' | 'shoes', ShopCatalogItem>> = {};
+  items.forEach((item) => {
+    const slotKey = TRY_ON_SLOT_BY_MACRO[item.macroCategory];
+    if (!slotKey || !item.image) return;
+    slots[slotKey] = {
+      id: String(item.id ?? `${slotKey}-${item.name ?? 'item'}`),
+      brand: item.brand ?? '',
+      name: item.name ?? slotKey,
+      price: item.price ?? 0,
+      imageUrl: item.image,
+      garmentType: slotKey === 'pants' ? 'lower_body' : slotKey === 'shoes' ? 'shoes' : 'upper_body',
+      sourceUrl: item.shopUrl,
+    };
+  });
+  return slots;
+};
+
 const toCamelCase = (str: string) => {
   return str
     .replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => {
@@ -318,9 +355,9 @@ const DailyOutfitSection = React.memo(({
   t,
   userId,
 }: DailyOutfitSectionProps) => {
-  const [currentOutfitIndex, setCurrentOutfitIndex] = useState(0);
-  const outfitFlatListRef = useRef<FlatList>(null);
-  const [savedOutfitKeys, setSavedOutfitKeys] = useState<Set<string>>(new Set());
+  const [stackIndex, setStackIndex] = useState(0);
+  const stackRef = useRef<OutfitSwipeStackHandle>(null);
+  const [shareModalVisible, setShareModalVisible] = useState(false);
 
   const addOutfit = useWardrobeStore((s) => s.addOutfit);
   const saveOutfit = useWardrobeStore((s) => s.saveOutfit);
@@ -331,8 +368,53 @@ const DailyOutfitSection = React.memo(({
     style,
     occasion,
     weather: weatherForAI,
-    variants: 3,
+    variants: 15,
   });
+
+  // Tracks the `dailyAI.outfits` batch (by reference) we've already asked to
+  // be refilled, so the effect below fires regenerate() at most once per
+  // batch even if it re-runs on a stale pre-reset `stackIndex` (see below).
+  const refillRequestedForRef = useRef<unknown>(null);
+
+  // Reset the swipe deck to the top whenever a fresh batch of outfits arrives
+  // (initial load or a "regenerate" tap) — otherwise a stale stackIndex from
+  // the previous batch could point past the end of the new one.
+  //
+  // Keyed on the `outfits` ARRAY REFERENCE, not a content hash of its ids:
+  // the local rule-based fallback (used whenever the AI edge function comes
+  // back empty) is deterministic and can return the exact same 15 ids every
+  // call, so a content-based key would never change and this reset would
+  // never fire again — leaving stackIndex stuck past the end forever.
+  // `setOutfits` always produces a new array instance, so the reference
+  // reliably changes on every load, cached or not, identical content or not.
+  useEffect(() => {
+    setStackIndex(0);
+    refillRequestedForRef.current = null;
+  }, [dailyAI.outfits]);
+
+  // Once the user swipes through every AI look in today's batch, quietly
+  // prepare a fresh one instead of dead-ending the deck — the stack shows a
+  // brief "preparing new looks" state (below) while this is in flight, and
+  // the reset effect above snaps stackIndex back to 0 as soon as it lands.
+  //
+  // `refillRequestedForRef` caps this to ONE regenerate() call per distinct
+  // `dailyAI.outfits` batch. Without it, this effect can still observe a
+  // stale (pre-reset) `stackIndex` on the very render a new batch lands —
+  // the reset effect above runs in the same pass but its setState hasn't
+  // committed yet — and would otherwise fire a second, redundant regenerate.
+  useEffect(() => {
+    if (
+      dailyAI.outfits.length > 0
+      && stackIndex >= dailyAI.outfits.length
+      && !dailyAI.loading
+      && refillRequestedForRef.current !== dailyAI.outfits
+    ) {
+      refillRequestedForRef.current = dailyAI.outfits;
+      logger.debug(`Deck exhausted, preparing a fresh ${style} batch`);
+      dailyAI.regenerate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stackIndex, dailyAI.outfits, dailyAI.loading]);
 
   // Determine occasion from the style prop
   const deriveOccasion = useMemo((): Occasion => {
@@ -345,44 +427,15 @@ const DailyOutfitSection = React.memo(({
     return 'casual';
   }, [occasion]);
 
-  // Helper: compute outfit key from item IDs
-  const getOutfitKey = useCallback(() => {
-    const currentOutfit = dailyAI.outfits[currentOutfitIndex];
-    if (!currentOutfit) return '';
-    const itemIds = currentOutfit.items
-      ?.filter((it: any) => it.id)
-      .map((it: any) => String(it.id)) ?? [];
-    return itemIds.length > 0 ? [...itemIds].sort().join(',') : '';
-  }, [dailyAI.outfits, currentOutfitIndex]);
-
-  // Helper: get item IDs from current outfit
-  const getCurrentItemIds = useCallback(() => {
-    const currentOutfit = dailyAI.outfits[currentOutfitIndex];
-    if (!currentOutfit) return [] as string[];
-    return currentOutfit.items
-      ?.filter((it: any) => it.id)
-      .map((it: any) => String(it.id)) ?? [];
-  }, [dailyAI.outfits, currentOutfitIndex]);
-
-  const currentOutfitItemIds = useMemo(
-    () =>
-      dailyAI.outfits[currentOutfitIndex]?.items
-        ?.filter((it: any) => it.id)
-        .map((it: any) => String(it.id)) ?? [],
-    [dailyAI.outfits, currentOutfitIndex],
-  );
-
-  const currentOutfitKey = useMemo(
-    () => [...currentOutfitItemIds].sort().join(','),
-    [currentOutfitItemIds],
-  );
-  const isOutfitSaved = savedOutfitKeys.has(currentOutfitKey);
-
+  // Every occasion card now renders through the same LiquidGlassCard path —
+  // isOldMoney only picks the occasion-flavored copy and empty-state icon,
+  // it no longer swaps in a separate "dinner" theme (that theme had drifted
+  // to be visually identical to the default card except for a stray italic
+  // subtitle and a different pager-dot color, which read as a bug, not a
+  // design choice).
   const isOldMoney = style === 'old_money';
-  const cardStyle = isOldMoney ? styles.dinnerCard : styles.premiumCard;
-  const suggestionTextStyle = isOldMoney ? styles.dinnerSuggestionText : styles.premiumSuggestionText;
-  const tryOnButtonStyle = isOldMoney ? styles.dinnerAvatarButton : styles.createAvatarButton;
-  const pagerBarActiveStyle = isOldMoney ? styles.dinnerPagerBarActive : styles.pagerBarActive;
+  const suggestionTextStyle = styles.premiumSuggestionText;
+  const tryOnButtonStyle = styles.createAvatarButton;
   const emptyIconName = isOldMoney ? 'wine-outline' : 'shirt-outline';
 
   // Helper classifiers inside component
@@ -557,6 +610,64 @@ const DailyOutfitSection = React.memo(({
     return dailyAI.outfits.map(o => mapAiOutfitItemsForCollage(o));
   }, [dailyAI.outfits, mapAiOutfitItemsForCollage]);
 
+  // Built once per actual data change rather than on every render — the
+  // OutfitSwipeStack's image-prefetch effect depends on `cards`, and an
+  // unstable reference there made it re-issue Image.prefetch() for the SAME
+  // uri on every unrelated re-render (weather ticks, wardrobe-store updates,
+  // etc.), which could flicker whichever piece was already on screen.
+  const deckData = useMemo(() => {
+    const aiOutfits = dailyAI.outfits;
+    const useAI = aiOutfits.length > 0;
+
+    type DailyOutfitCard = { id: string; outfit?: any; legacy?: any; index: number };
+    const data: DailyOutfitCard[] = useAI
+      ? aiOutfits.map((o, i) => ({ id: o.id || `ai-${style}-${i}`, outfit: o, index: i }))
+      : curatedCombinations.map((c) => ({ id: String(c.id), legacy: c, index: 0 }));
+
+    // Full-fidelity collage items per card (image + name + macroCategory) —
+    // used for the share sheet and the Try On handoff. The swipe stack
+    // itself only needs the trimmed {id, image, category} shape below.
+    const collageItemsByCardKey = new Map<string, any[]>();
+    data.forEach((d) => {
+      const items = d.outfit
+        ? (collageItemsList[d.index] ?? mapAiOutfitItemsForCollage(d.outfit))
+        : mapLegacyOutfitItemsForCollage(d.legacy);
+      collageItemsByCardKey.set(d.id, items);
+    });
+
+    // Item IDs actually saved/disliked when the user decides on a card — the
+    // AI outfit's own items for AI-generated looks, or the underlying shop
+    // items for a curated combo when the AI batch hasn't loaded yet.
+    const itemIdsByCardKey = new Map<string, string[]>();
+    data.forEach((d) => {
+      if (d.outfit) {
+        itemIdsByCardKey.set(
+          d.id,
+          (d.outfit.items || []).filter((it: any) => it.id).map((it: any) => String(it.id)),
+        );
+      } else {
+        const c = d.legacy;
+        itemIdsByCardKey.set(
+          d.id,
+          [c?.mainTop?.id, c?.mainBottom?.id, c?.outerLayer?.id, c?.shoes?.id]
+            .filter((v: any) => v !== undefined && v !== null)
+            .map(String),
+        );
+      }
+    });
+
+    const cards: SwipeStackCard[] = data.map((d) => {
+      const collageItems = collageItemsByCardKey.get(d.id) ?? [];
+      return {
+        key: d.id,
+        items: collageItems.map((ci: any) => ({ id: ci.id, image: ci.image, category: ci.macroCategory })),
+        caption: `${collageItems.length} shop items suggested`,
+      };
+    });
+
+    return { cards, collageItemsByCardKey, itemIdsByCardKey };
+  }, [dailyAI.outfits, curatedCombinations, collageItemsList, mapLegacyOutfitItemsForCollage, mapAiOutfitItemsForCollage, style]);
+
   const getOccasionTranslation = (key: string) => {
     const camel = toCamelCase(key);
     if (t(`home.${camel}`) !== `home.${camel}`) return t(`home.${camel}`);
@@ -583,206 +694,129 @@ const DailyOutfitSection = React.memo(({
       <View style={styles.premiumSection}>
         <View style={[styles.premiumHeader, { paddingHorizontal: spacing.screenPadding }]}>
           <ScaledText style={styles.premiumHeaderTitle}>{titleText}</ScaledText>
-          <ScaledText style={isOldMoney ? styles.dinnerHeaderSubtitle : styles.premiumHeaderSubtitle}>{subtitleText}</ScaledText>
+          <ScaledText style={styles.premiumHeaderSubtitle}>{subtitleText}</ScaledText>
         </View>
         <View style={{ paddingHorizontal: spacing.screenPadding }}>
-          {isOldMoney ? (
-            <View style={[styles.dinnerCard, { minHeight: 340, alignItems: 'center', justifyContent: 'center' }]}>
-              <ActivityIndicator size="small" color={colors.accent.primary} />
-              <ScaledText style={[styles.dinnerSuggestionText, { marginTop: spacing.sm }]}>
-                Styling tonight&apos;s looks…
-              </ScaledText>
-            </View>
-          ) : (
-            <LiquidGlassCard
-              variant="light"
-              style={styles.premiumCard}
-              contentStyle={[styles.premiumCardContent, { minHeight: 340, justifyContent: 'center' }]}
-            >
-              <ActivityIndicator size="small" color={colors.accent.primary} />
-              <ScaledText style={[styles.premiumSuggestionText, { marginTop: spacing.sm }]}>
-                Styling today&apos;s looks…
-              </ScaledText>
-            </LiquidGlassCard>
-          )}
+          <LiquidGlassCard
+            variant="light"
+            style={styles.premiumCard}
+            contentStyle={[styles.premiumCardContent, { minHeight: 340, justifyContent: 'center' }]}
+          >
+            <ActivityIndicator size="small" color={colors.accent.primary} />
+            <ScaledText style={[styles.premiumSuggestionText, { marginTop: spacing.sm }]}>
+              {isOldMoney ? "Styling tonight's looks…" : "Styling today's looks…"}
+            </ScaledText>
+          </LiquidGlassCard>
         </View>
       </View>
     );
   }
 
-  const aiOutfits = dailyAI.outfits;
-  const useAI = aiOutfits.length > 0;
+  const { cards, collageItemsByCardKey, itemIdsByCardKey } = deckData;
 
-  const data = useAI
-    ? aiOutfits.map((o, i) => ({ id: o.id || `ai-${style}-${i}`, outfit: o, index: i }))
-    : curatedCombinations.map((c) => ({ id: String(c.id), legacy: c, index: 0 }));
+  const topCard = cards[stackIndex];
+  const hasTopCard = !!topCard;
+  const topCollageItems = topCard ? (collageItemsByCardKey.get(topCard.key) ?? []) : [];
+  const topOutfitForShare = topCard ? { id: topCard.key, items: topCollageItems, occasion, style } : null;
+  // True once the user has swiped through every card in today's batch —
+  // distinct from `cards.length === 0`, which means generation hasn't
+  // produced anything at all yet (a real failure, not "all caught up").
+  const stackExhausted = cards.length > 0 && !hasTopCard;
 
-  const renderOutfitItem = ({ item }: { item: { id: string; outfit?: any; legacy?: any; index: number } }) => {
-    const collageItems = item.outfit
-      ? (collageItemsList[item.index] ?? mapAiOutfitItemsForCollage(item.outfit))
-      : mapLegacyOutfitItemsForCollage(item.legacy) as any;
-    const hasOuter = collageItems.some((ci: any) => ci.macroCategory === 'outerwear');
-
-    if (isOldMoney) {
-      return (
-        <View style={{ width: SCREEN_WIDTH, paddingHorizontal: spacing.screenPadding }}>
-          <View style={styles.dinnerCard}>
-            <OutfitCollageDisplay
-              items={collageItems}
-              height={300}
-              needsOuterwear={needsOuterwear && hasOuter}
-            />
-
-            <View style={styles.premiumSuggestionInfo}>
-              <ScaledText style={styles.dinnerSuggestionText}>
-                {`${collageItems.length} shop items suggested`}
-              </ScaledText>
-              <Ionicons name="bag-outline" size={16} color="rgba(255,255,255,0.4)" />
-            </View>
-
-            <View style={styles.premiumPager}>
-              {data.map((_, index) => (
-                <View key={index} style={[styles.pagerBar, index === currentOutfitIndex && styles.dinnerPagerBarActive]} />
-              ))}
-            </View>
-          </View>
-        </View>
-      );
+  const handleSwipeRight = (card: SwipeStackCard) => {
+    const itemIds = itemIdsByCardKey.get(card.key) ?? [];
+    if (itemIds.length > 0) {
+      const outfitId = addOutfit({
+        userId: userId ?? '',
+        itemIds,
+        occasion: deriveOccasion,
+        generatedBy: 'ai',
+      });
+      saveOutfit(outfitId);
     }
-
-    return (
-      <View style={{ width: SCREEN_WIDTH, paddingHorizontal: spacing.screenPadding }}>
-        <LiquidGlassCard
-          variant="light"
-          style={styles.premiumCard}
-          contentStyle={styles.premiumCardContent}
-        >
-          <OutfitCollageDisplay
-            items={collageItems}
-            height={300}
-            needsOuterwear={needsOuterwear && hasOuter}
-          />
-
-          <View style={styles.premiumSuggestionInfo}>
-            <ScaledText style={styles.premiumSuggestionText}>
-              {`${collageItems.length} shop items suggested`}
-            </ScaledText>
-            <Ionicons name="bag-outline" size={16} color={colors.text.tertiary} />
-          </View>
-
-          <View style={styles.premiumPager}>
-            {data.map((_, index) => (
-              <View key={index} style={[styles.pagerBar, index === currentOutfitIndex && styles.pagerBarActive]} />
-            ))}
-          </View>
-        </LiquidGlassCard>
-      </View>
-    );
+    setStackIndex((i) => i + 1);
   };
+
+  const handleSwipeLeft = (card: SwipeStackCard) => {
+    const itemIds = itemIdsByCardKey.get(card.key) ?? [];
+    if (itemIds.length > 0) dislikeOutfitItems(itemIds);
+    setStackIndex((i) => i + 1);
+  };
+
+  // While a fresh batch is in flight — either because the deck just ran out
+  // (auto-triggered above) or the user tapped "Try again" after a failure —
+  // show a brief loading state instead of a dead-end "no more" card.
+  const emptyStateContent = stackExhausted || dailyAI.loading ? (
+    <>
+      <ActivityIndicator size="small" color={colors.accent.primary} />
+      <ScaledText style={[suggestionTextStyle, { marginTop: spacing.md, textAlign: 'center' }]}>
+        Preparing new looks…
+      </ScaledText>
+    </>
+  ) : (
+    <>
+      <Ionicons name={emptyIconName} size={44} color={colors.text.tertiary} />
+      <ScaledText style={[suggestionTextStyle, { marginTop: spacing.md, textAlign: 'center' }]}>
+        No looks available right now.
+      </ScaledText>
+      <TouchableOpacity
+        style={[styles.createAvatarButton, { marginTop: spacing.md }]}
+        onPress={() => {
+          logger.debug(`Regenerate ${style} daily outfits (empty state)`);
+          dailyAI.regenerate();
+        }}
+        accessibilityLabel={t('home.tryAgain')}
+        accessibilityRole="button"
+      >
+        <ScaledText style={styles.createAvatarText}>{t('home.tryAgain')}</ScaledText>
+      </TouchableOpacity>
+    </>
+  );
 
   return (
     <View style={styles.premiumSection}>
       <View style={[styles.premiumHeader, { paddingHorizontal: spacing.screenPadding }]}>
         <ScaledText style={styles.premiumHeaderTitle}>{titleText}</ScaledText>
-        <ScaledText style={isOldMoney ? styles.dinnerHeaderSubtitle : styles.premiumHeaderSubtitle}>{subtitleText}</ScaledText>
+        <ScaledText style={styles.premiumHeaderSubtitle}>{subtitleText}</ScaledText>
       </View>
 
-      {data.length === 0 ? (
-        <View style={{ paddingHorizontal: spacing.screenPadding }}>
-          {isOldMoney ? (
-            <View style={[styles.dinnerCard, { minHeight: 300, alignItems: 'center', justifyContent: 'center' }]}>
-              <Ionicons name={emptyIconName} size={48} color="rgba(255,255,255,0.6)" />
-              <ScaledText style={[suggestionTextStyle, { marginTop: spacing.md, textAlign: 'center' }]}>
-                No looks available right now.
-              </ScaledText>
-              <TouchableOpacity
-                style={[styles.createAvatarButton, { marginTop: spacing.md }]}
-                onPress={() => {
-                  logger.debug(`Regenerate ${style} daily outfits (empty state)`);
-                  dailyAI.regenerate();
-                }}
-                accessibilityLabel={t('home.tryAgain')}
-                accessibilityRole="button"
-              >
-                <ScaledText style={styles.createAvatarText}>{t('home.tryAgain')}</ScaledText>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <LiquidGlassCard
-              variant="light"
-              style={styles.premiumCard}
-              contentStyle={[styles.premiumCardContent, { minHeight: 300, justifyContent: 'center', alignItems: 'center' }]}
-            >
-              <Ionicons name={emptyIconName} size={48} color={colors.text.tertiary} />
-              <ScaledText style={[suggestionTextStyle, { marginTop: spacing.md, textAlign: 'center' }]}>
-                No looks available right now.
-              </ScaledText>
-              <TouchableOpacity
-                style={[styles.createAvatarButton, { marginTop: spacing.md }]}
-                onPress={() => {
-                  logger.debug(`Regenerate ${style} daily outfits (empty state)`);
-                  dailyAI.regenerate();
-                }}
-                accessibilityLabel={t('home.tryAgain')}
-                accessibilityRole="button"
-              >
-                <ScaledText style={styles.createAvatarText}>{t('home.tryAgain')}</ScaledText>
-              </TouchableOpacity>
-            </LiquidGlassCard>
-          )}
+      {hasTopCard && (
+        <View style={[styles.stackCounterRow, { paddingHorizontal: spacing.screenPadding }]}>
+          <ScaledText style={styles.stackCounterText}>
+            {`${Math.min(stackIndex + 1, cards.length)} of ${cards.length}`}
+          </ScaledText>
         </View>
-      ) : (
-        <FlatList
-          ref={outfitFlatListRef}
-          data={data}
-          renderItem={renderOutfitItem}
-          keyExtractor={(item) => item.id}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={(event) => {
-            const index = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-            setCurrentOutfitIndex(index);
-          }}
-          decelerationRate="fast"
-          scrollEventThrottle={16}
-          initialNumToRender={2}
-          maxToRenderPerBatch={2}
-          windowSize={3}
-          removeClippedSubviews={true}
-        />
       )}
+
+      <View style={{ paddingHorizontal: spacing.screenPadding }}>
+        <OutfitSwipeStack
+          ref={stackRef}
+          cards={cards}
+          activeIndex={stackIndex}
+          onSwipeRight={handleSwipeRight}
+          onSwipeLeft={handleSwipeLeft}
+          reducedMotion={isReducedMotionEnabled}
+          height={340}
+          emptyState={emptyStateContent}
+        />
+      </View>
 
       {/* Action Footer */}
       <View style={styles.premiumFooter}>
         <View style={styles.premiumActionIcons}>
           <TouchableOpacity
             style={styles.actionIconButton}
-            onPress={() => {
-              const itemIds = getCurrentItemIds();
-              const key = getOutfitKey();
-              if (itemIds.length === 0 || savedOutfitKeys.has(key)) return;
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              const outfitId = addOutfit({
-                userId: userId ?? '',
-                itemIds,
-                occasion: deriveOccasion,
-                generatedBy: 'ai',
-              });
-              saveOutfit(outfitId);
-              setSavedOutfitKeys(prev => new Set(prev).add(key));
-            }}
+            hitSlop={ACTION_ICON_HIT_SLOP}
+            disabled={!hasTopCard}
+            onPress={() => stackRef.current?.swipeRight()}
             accessibilityLabel={t('home.saveOutfit', 'Save outfit')}
             accessibilityRole="button"
           >
-            <Ionicons
-              name={isOutfitSaved ? 'heart' : 'heart-outline'}
-              size={24}
-              color={isOutfitSaved ? '#E05C5C' : colors.text.primary}
-            />
+            <Ionicons name="heart-outline" size={24} color={hasTopCard ? colors.text.primary : colors.text.tertiary} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionIconButton}
+            hitSlop={ACTION_ICON_HIT_SLOP}
             onPress={() => {
               logger.debug(`Regenerate ${style} daily outfits`);
               dailyAI.regenerate();
@@ -794,38 +828,50 @@ const DailyOutfitSection = React.memo(({
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionIconButton}
-            onPress={() => {
-              const itemIds = getCurrentItemIds();
-              if (itemIds.length === 0) return;
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              dislikeOutfitItems(itemIds);
-              const nextIndex = Math.min(currentOutfitIndex + 1, dailyAI.outfits.length - 1);
-              if (nextIndex !== currentOutfitIndex) {
-                setTimeout(() => {
-                  outfitFlatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
-                  setCurrentOutfitIndex(nextIndex);
-                }, 200);
-              }
-            }}
+            hitSlop={ACTION_ICON_HIT_SLOP}
+            disabled={!hasTopCard}
+            onPress={() => stackRef.current?.swipeLeft()}
             accessibilityLabel={t('home.dislikeOutfit', 'Dislike outfit')}
             accessibilityRole="button"
           >
-            <Ionicons name="thumbs-down-outline" size={24} color={colors.text.primary} />
+            <Ionicons name="thumbs-down-outline" size={24} color={hasTopCard ? colors.text.primary : colors.text.tertiary} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionIconButton}>
+          <TouchableOpacity
+            style={styles.actionIconButton}
+            hitSlop={ACTION_ICON_HIT_SLOP}
+            disabled={!topOutfitForShare}
+            onPress={() => {
+              if (!topOutfitForShare) return;
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setShareModalVisible(true);
+            }}
+            accessibilityLabel={t('home.shareOutfit', 'Share outfit')}
+            accessibilityRole="button"
+          >
             <Ionicons name="paper-plane-outline" size={22} color={colors.text.primary} />
           </TouchableOpacity>
         </View>
         <TouchableOpacity
-          style={tryOnButtonStyle}
+          style={[tryOnButtonStyle, !hasTopCard && styles.createAvatarButtonDisabled]}
+          disabled={!hasTopCard}
           onPress={() => {
             logger.debug('Try On button pressed');
-            navigation.navigate('AITryOn');
+            const initialSlots = buildInitialTryOnSlots(topCollageItems);
+            navigation.navigate('AITryOn', Object.keys(initialSlots).length > 0 ? { initialSlots } : undefined);
           }}
+          accessibilityLabel={t('home.tryOn')}
+          accessibilityRole="button"
         >
           <ScaledText style={styles.createAvatarText}>{t('home.tryOn')}</ScaledText>
         </TouchableOpacity>
       </View>
+      {topOutfitForShare && (
+        <OutfitShareModal
+          visible={shareModalVisible}
+          onClose={() => setShareModalVisible(false)}
+          outfit={topOutfitForShare}
+        />
+      )}
     </View>
   );
 });
@@ -1477,11 +1523,6 @@ const HomeScreen = () => {
     return /\b(rain|drizzle|shower|storm|wind|gust|breezy|snow|sleet|hail)\b/.test(c);
   }, [weather]);
 
-  // Convert a legacy curated outfit combination into the OutfitItem[] shape
-  // that `OutfitCollageDisplay` expects, tagging each piece with a
-  // macroCategory so the collage's slot logic keeps one item per category
-  // (and drops outerwear in warm weather via the `needsOuterwear` prop).
-
   // Wardrobe Essentials Grid — Supabase-backed catalog picks
   const garmentTypeLabel = (type: string): string => {
     const labels: Record<string, string> = {
@@ -1813,7 +1854,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 0,
-    paddingBottom: spacing.sm,
+    paddingBottom: 100,
   },
   plannerSection: {
     marginBottom: spacing.md,
@@ -1948,22 +1989,14 @@ const styles = StyleSheet.create({
     ...typography.scale.bodySmall,
     color: colors.text.secondary,
   },
-  premiumPager: {
-    flexDirection: 'row',
-    gap: 6,
-    marginTop: spacing.lg,
-    marginBottom: spacing.xs,
+  stackCounterRow: {
+    alignItems: 'flex-end',
+    marginBottom: spacing.sm,
   },
-  pagerBar: {
-    width: 12,
-    height: 3,
-    backgroundColor: colors.text.tertiary,
-    opacity: 0.3,
-    borderRadius: 2,
-  },
-  pagerBarActive: {
-    backgroundColor: colors.text.primary,
-    opacity: 1,
+  stackCounterText: {
+    ...typography.scale.labelSmall,
+    color: colors.text.tertiary,
+    textTransform: 'none',
   },
   premiumFooter: {
     flexDirection: 'row',
@@ -1998,83 +2031,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 15,
   },
-  // Night-Time Dinner styles
-  dinnerCard: {
-    borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    padding: spacing.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(24,58,103,0.06)',
-    shadowColor: '#173A65',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.06,
-    shadowRadius: 18,
-    elevation: 4,
-  },
-  dinnerLargeImage: {
-    flex: 1,
-    width: '100%',
-    tintColor: undefined,
-  },
-  dinnerSmallBox: {
-    flex: 1,
-    backgroundColor: '#FBFCFF',
-    borderRadius: radius.md,
-    padding: spacing.xs,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(24,58,103,0.06)',
-  },
-  dinnerBadgeRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    marginTop: spacing.sm,
-    width: '100%',
-  },
-  dinnerBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(212,175,55,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(212,175,55,0.35)',
-    borderRadius: radius.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  dinnerBadgeText: {
-    color: '#D4AF37',
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 0.4,
-  },
-  dinnerSuggestionText: {
-    ...typography.scale.bodySmall,
-    color: colors.text.secondary,
-  },
-  dinnerHeaderSubtitle: {
-    ...typography.scale.bodyMedium,
-    color: colors.text.tertiary,
-    fontStyle: 'italic',
-  },
-  dinnerPagerBarActive: {
-    backgroundColor: '#000000',
-    opacity: 1,
-  },
-  dinnerAvatarButton: {
-    backgroundColor: '#173A65',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 2,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: '#173A65',
-    shadowColor: '#173A65',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 4,
+  createAvatarButtonDisabled: {
+    opacity: 0.35,
   },
   // Header & Greeting
   headerSection: {

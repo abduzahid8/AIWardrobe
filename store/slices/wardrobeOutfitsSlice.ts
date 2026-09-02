@@ -14,6 +14,7 @@ export interface OutfitsSlice {
 
     addOutfit: (outfit: Omit<Outfit, 'id' | 'createdAt' | 'wornCount' | 'lastWornAt' | 'saved'>) => string;
     saveOutfit: (id: string, collectionCategory?: string) => void;
+    unsaveOutfit: (id: string) => void;
     rateOutfit: (id: string, rating: 1 | 2 | 3 | 4 | 5) => void;
     dislikeOutfit: (itemIds: string[]) => void;
     undislikeOutfit: (itemIds: string[]) => void;
@@ -70,6 +71,14 @@ export const createOutfitsSlice: StateCreator<WardrobeState, [], [], OutfitsSlic
         set((state) => ({
             outfits: state.outfits.map((outfit) =>
                 outfit.id === id ? { ...outfit, saved: true, ...(collectionCategory ? { collectionCategory } : {}) } : outfit
+            ),
+        }));
+    },
+
+    unsaveOutfit: (id) => {
+        set((state) => ({
+            outfits: state.outfits.map((outfit) =>
+                outfit.id === id ? { ...outfit, saved: false } : outfit
             ),
         }));
     },

@@ -1264,7 +1264,11 @@
     "saveItem": "Save item",
     "capsule": "capsule",
     "buy": "Buy",
-    "buyNow": "Buy Now"
+    "buyNow": "Buy Now",
+    "shopThisLook": "Shop",
+    "noGuideMatches": "No looks yet — check back soon.",
+    "guideTagline": "Tap any look to shop it instantly.",
+    "featuredLook": "Featured Look"
   },
   "camera": {
     "permissionNeeded": "Camera permission needed",

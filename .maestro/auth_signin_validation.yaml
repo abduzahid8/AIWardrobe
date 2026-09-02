@@ -1,4 +1,4 @@
-appId: org.name.AIWardrobe
+appId: com.aiwardrobe
 name: auth_signin_validation
 tags:
   - auth

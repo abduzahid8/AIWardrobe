@@ -1,5 +1,6 @@
 
 import { NavigatorScreenParams } from '@react-navigation/native';
+import type { ShopCatalogItem } from '../features/try-on/types';
 
 export type ScannedItem = {
     id?: string;
@@ -68,7 +69,11 @@ export type RootStackParamList = {
         /** Optional preview of the anchor item shown immediately while the AI loads. */
         baseItem?: { id: string; imageUrl?: string; name?: string; type?: string; macroCategory?: string; color?: string };
     } | undefined;
-    AITryOn: undefined;
+    AITryOn: {
+        asTab?: boolean;
+        /** Pre-fill try-on slots with an outfit surfaced elsewhere (e.g. Home's daily outfit card). */
+        initialSlots?: Partial<Record<'layer' | 'top' | 'pants' | 'shoes', ShopCatalogItem>>;
+    } | undefined;
     OutfitInspo: undefined;
     OutfitAI: { initialTab?: 'chat' | 'outfit' } | undefined;
     CreateAvatar: undefined;

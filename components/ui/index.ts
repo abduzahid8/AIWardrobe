@@ -19,6 +19,10 @@ export { LoadingState } from './LoadingState';
 export { ToastContainer, toast } from './Toast';
 export { Skeleton } from './Skeleton';
 export { CachedImage } from './CachedImage';
+export { OutfitCollagePreview } from './OutfitCollagePreview';
+export type { OutfitCollageItem } from './OutfitCollagePreview';
+export { OutfitSwipeStack } from './OutfitSwipeStack';
+export type { OutfitSwipeStackHandle, SwipeStackCard } from './OutfitSwipeStack';
 export { FeatureHint } from './FeatureHint';
 
 // Premium Components (New)

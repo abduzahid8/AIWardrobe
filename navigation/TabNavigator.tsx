@@ -12,7 +12,7 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
-import { TabTransitionContext } from "../components/CrossfadeTabView";
+import { ScreenTransitionWrapper } from "../components/ScreenTransitionWrapper";
 import { perfTabSwitch, perfTabSwitchComplete } from "../src/utils/perf";
 
 // Original Screens
@@ -88,7 +88,7 @@ const TabBarBackground = React.memo(() => (
 TabBarBackground.displayName = 'TabBarBackground';
 
 // ── Liquid Glass Tab Bar — smooth sliding indicator ───────────────────
-const LiquidParallaxTabBar = ({ state, descriptors, navigation, isAdmin, onActiveIndexChange }: any) => {
+const LiquidParallaxTabBar = ({ state, descriptors, navigation, isAdmin }: any) => {
   const { width } = useWindowDimensions();
   const fallbackTabBarWidth = Math.max(width - (TAB_BAR_HORIZONTAL_MARGIN * 2), 0);
   const [tabBarWidth, setTabBarWidth] = React.useState(fallbackTabBarWidth);
@@ -103,10 +103,6 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation, isAdmin, onActiv
   React.useEffect(() => {
     setTabBarWidth(fallbackTabBarWidth);
   }, [fallbackTabBarWidth]);
-
-  React.useEffect(() => {
-    onActiveIndexChange?.(state.index);
-  }, [state.index, onActiveIndexChange]);
 
   const handleTabBarLayout = React.useCallback((event: LayoutChangeEvent) => {
     const nextWidth = event.nativeEvent.layout.width;
@@ -223,13 +219,15 @@ const createAnimatedTabScreen = (Screen: React.ComponentType<any>, tabIndex: num
     // before the screen's own background paints.
     return (
       <ErrorBoundary>
-        <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
-          {isReady ? (
-            <Screen {...props} />
-          ) : (
-            <View style={{ flex: 1, backgroundColor: '#FFFFFF' }} />
-          )}
-        </View>
+        <ScreenTransitionWrapper preset="fade_slide_up">
+          <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+            {isReady ? (
+              <Screen {...props} />
+            ) : (
+              <View style={{ flex: 1, backgroundColor: '#FFFFFF' }} />
+            )}
+          </View>
+        </ScreenTransitionWrapper>
       </ErrorBoundary>
     );
   };
@@ -249,21 +247,6 @@ const TabNavigator = () => {
   // useAdminGuard would otherwise cause TabNavigator to re-render on every
   // app launch when the async admin check resolves.
   const { isAdmin } = useAdminGuard();
-  // Shared values for tab transition direction — updated via ref + deferred setState
-  const currentTab = useSharedValue(0);
-  const previousTab = useSharedValue(0);
-  const trackedIndex = React.useRef(0);
-
-  const handleActiveIndexChange = React.useCallback((nextIndex: number) => {
-    if (nextIndex !== trackedIndex.current) {
-      previousTab.value = trackedIndex.current;
-      currentTab.value = nextIndex;
-      trackedIndex.current = nextIndex;
-    }
-  // currentTab and previousTab are Reanimated shared values (mutable refs) —
-  // they do not trigger re-renders and do not need to be listed as deps.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Memoize tabBar to prevent excessive re-renders
   const renderTabBar = React.useCallback((props: any) => {
@@ -271,10 +254,9 @@ const TabNavigator = () => {
       <LiquidParallaxTabBar
         {...props}
         isAdmin={isAdmin}
-        onActiveIndexChange={handleActiveIndexChange}
       />
     );
-  }, [handleActiveIndexChange, isAdmin]);
+  }, [isAdmin]);
 
   const screenOptions = React.useCallback(({ route }: any): BottomTabNavigationOptions => ({
     headerShown: false,
@@ -301,13 +283,12 @@ const TabNavigator = () => {
   }), []);
 
   return (
-    <TabTransitionContext.Provider value={{ currentTab, previousTab }}>
-      <Tab.Navigator
-        tabBar={renderTabBar}
-        screenOptions={screenOptions}
-        screenListeners={screenListeners}
-        // @ts-ignore - sceneContainerStyle is supported at runtime but fails typecheck in this React Navigation version
-        sceneContainerStyle={{ backgroundColor: '#FFFFFF' }}
+    <Tab.Navigator
+      tabBar={renderTabBar}
+      screenOptions={screenOptions}
+      screenListeners={screenListeners}
+      // @ts-ignore - sceneContainerStyle is supported at runtime but fails typecheck in this React Navigation version
+      sceneContainerStyle={{ backgroundColor: '#FFFFFF' }}
     >
       <Tab.Screen
         name="Home"
@@ -330,7 +311,6 @@ const TabNavigator = () => {
         options={{ tabBarAccessibilityLabel: t('tabs.profile'), tabBarTestID: 'profileTab' } as any}
       />
     </Tab.Navigator>
-    </TabTransitionContext.Provider>
   );
 };
 

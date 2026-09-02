@@ -101,7 +101,7 @@ export const AI_STYLES: AIStyle[] = [
   { id: 'old_money', label: 'Old Money', icon: 'diamond', desc: 'Classic, refined pieces with a subtle focus on pure luxury.' },
   { id: 'semi_classic', label: 'Semi-Classic', icon: 'umbrella', desc: 'Refined everyday elegance — tailored touches with relaxed comfort.' },
   { id: 'minimalist', label: 'Minimalist', icon: 'remove', desc: 'Clean lines, neutral colors, and essential wardrobe staples.' },
-  { id: 'casual', label: 'Casual', icon: 'coffee', desc: 'Relaxed, effortless style with well-fitted basics and clean combos.' },
+  { id: 'casual', label: 'Casual', icon: 'cafe', desc: 'Relaxed, effortless style with well-fitted basics and clean combos.' },
   { id: 'business_casual', label: 'Modern Professional', icon: 'briefcase', desc: 'Sharp, tailored looks perfect for the modern workplace.' },
 ];
 

@@ -462,7 +462,7 @@ export function useDailyAIOutfit({
         if (!loading) return;
         if (inflightRef.current) return;
         const p = run(false).finally(() => {
-            inflightRef.current = null;
+            if (inflightRef.current === p) inflightRef.current = null;
         });
         inflightRef.current = p;
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -470,7 +470,19 @@ export function useDailyAIOutfit({
 
     const regenerate = useCallback(async () => {
         cacheCheckedRef.current = true;
-        await run(true);
+        // Register this call in `inflightRef` (same guard the auto-run effect
+        // above uses) BEFORE awaiting anything. `run(true)` synchronously sets
+        // `loading = true`, which by itself would satisfy that effect's
+        // `if (!loading) return;` check on the next render and fire a second,
+        // redundant `run(false)` alongside this forced one — wasting a full
+        // generation call (a real cost when it hits the AI edge function
+        // rather than the local fallback). Claiming `inflightRef` here makes
+        // that effect's `if (inflightRef.current) return;` guard skip it.
+        const p = run(true).finally(() => {
+            if (inflightRef.current === p) inflightRef.current = null;
+        });
+        inflightRef.current = p;
+        await p;
     }, [run]);
 
     return { outfits, loading, error, regenerate };

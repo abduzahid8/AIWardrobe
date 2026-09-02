@@ -1,4 +1,4 @@
-appId: org.name.AIWardrobe
+appId: com.aiwardrobe
 ---
 # Sign In -> Forgot Password -> back using coordinate-based taps
 - launchApp

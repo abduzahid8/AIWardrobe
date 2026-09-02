@@ -14,7 +14,14 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, {
+    FadeInDown,
+    useSharedValue,
+    useAnimatedStyle,
+    withRepeat,
+    withSequence,
+    withTiming,
+} from 'react-native-reanimated';
 
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 import useWardrobeStore from '../store/wardrobeStore';
@@ -101,31 +108,49 @@ const handleBuyPress = async (item: ShopCatalogItem) => {
     }
 };
 
+// A flat, typographic tile: full-bleed photo, no chrome, price set as a
+// graphic element rather than a labeled control. The spotlight variant is
+// the same component at a different scale — the size shift alone marks it
+// as featured, no ribbon or caption needed to say so.
 const ProductCard = ({
     item,
     isSaved,
     onSave,
     index,
     t,
+    spotlight = false,
+    plate,
 }: {
     item: ShopCatalogItem;
     isSaved: boolean;
     onSave: () => void;
     index: number;
     t: (key: string) => string;
+    spotlight?: boolean;
+    plate?: number;
 }) => (
     // Cap the stagger so later pages (index 100+) don't wait many seconds
     // before their entering animation starts — otherwise pressing Load more
     // appears to do nothing because new cards are invisible until the delay elapses.
     <Animated.View entering={FadeInDown.delay(Math.min(150 + (index % 12) * 40, 600)).duration(320)}>
-        <View style={styles.productCard}>
-            <View style={styles.productImageBox}>
+        <View style={[styles.productCard, spotlight && styles.productCardSpotlight]}>
+            <View style={[styles.productImageBox, spotlight && styles.productImageBoxSpotlight]}>
                 <CachedImage
                     uri={typeof item.imageUrl === 'string' ? item.imageUrl : ''}
                     style={styles.productImage}
-                    contentFit="contain"
+                    contentFit={spotlight ? 'cover' : 'contain'}
+                    contentPosition="center"
                     fadeIn={false}
                 />
+
+                {/* A lookbook plate number, quiet and typographic — the one
+                    editorial flourish this flat design allows itself. */}
+                {spotlight && typeof plate === 'number' && (
+                    <ScaledText style={styles.plateNumber} pointerEvents="none">
+                        {String(plate).padStart(2, '0')}
+                    </ScaledText>
+                )}
+
                 <TouchableOpacity
                     style={styles.saveButton}
                     onPress={() => {
@@ -138,36 +163,104 @@ const ProductCard = ({
                     <View style={styles.saveButtonCircle}>
                         <Ionicons
                             name={isSaved ? 'heart' : 'heart-outline'}
-                            size={18}
-                            color={isSaved ? '#FF3B5C' : colors.text.primary}
+                            size={spotlight ? 19 : 16}
+                            color={isSaved ? '#FF3B5C' : '#0A1931'}
                         />
                     </View>
                 </TouchableOpacity>
             </View>
-            <ScaledText style={styles.productBrand} numberOfLines={2}>
-                {item.brand}
-            </ScaledText>
-            <ScaledText style={styles.productPrice}>${item.price.toFixed(2)}</ScaledText>
-            <TouchableOpacity
-                style={styles.buyButton}
-                onPress={() => handleBuyPress(item)}
-                activeOpacity={0.8}
-                accessibilityLabel={t('inspo.buyNow')}
-                accessibilityRole="button"
-            >
-                <LinearGradient
-                    colors={['#0A1931', '#1a3a5c']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.buyButtonGradient}
-                >
-                    <Ionicons name="cart-outline" size={14} color="#FFF" style={styles.buyIcon} />
-                    <ScaledText style={styles.buyButtonText}>{t('inspo.buy')}</ScaledText>
-                </LinearGradient>
-            </TouchableOpacity>
+
+            <View style={styles.caption}>
+                <ScaledText style={[styles.captionBrand, spotlight && styles.captionBrandLarge]} numberOfLines={1}>
+                    {item.brand}
+                </ScaledText>
+                <View style={styles.captionRow}>
+                    <ScaledText style={[styles.captionPrice, spotlight && styles.captionPriceLarge]}>
+                        ${item.price.toFixed(0)}
+                    </ScaledText>
+                    <TouchableOpacity
+                        style={[styles.captionBuy, spotlight && styles.captionBuyLarge]}
+                        onPress={() => handleBuyPress(item)}
+                        activeOpacity={0.6}
+                        accessibilityLabel={t('inspo.buyNow')}
+                        accessibilityRole="button"
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                        <Ionicons name="arrow-forward" size={spotlight ? 16 : 13} color="#0A1931" />
+                    </TouchableOpacity>
+                </View>
+            </View>
         </View>
     </Animated.View>
 );
+
+// A loading placeholder shaped like the real product tile (price tag +
+// brand strip silhouettes) so the grid doesn't jump when real cards land.
+const ShimmerProductCard = () => {
+    const opacity = useSharedValue(0.55);
+
+    useEffect(() => {
+        opacity.value = withRepeat(
+            withSequence(withTiming(1, { duration: 750 }), withTiming(0.55, { duration: 750 })),
+            -1,
+            true,
+        );
+    }, [opacity]);
+
+    const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+
+    return (
+        <Animated.View style={[styles.skeletonCard, animatedStyle]}>
+            <View style={styles.skeletonImage} />
+            <View style={styles.skeletonBrandLine} />
+            <View style={styles.skeletonPriceLine} />
+        </Animated.View>
+    );
+};
+
+// A clean plate: the photo carries no overlay at all, every word lives in
+// the flat caption beneath it — a printed lookbook index page rather than
+// an Instagram-style gradient card. The italic plate number is the same
+// device the Shop tab's spotlight cards use, so the two tabs read as one
+// numbered catalogue.
+const GuideGridCard = ({
+    item,
+    plate,
+    onPress,
+    t,
+}: {
+    item: any | null;
+    plate: number;
+    onPress: (item: any) => void;
+    t: (key: string) => string;
+}) => {
+    if (!item) return <View style={styles.guideGridCardWrap} />;
+    return (
+        <View style={styles.guideGridCardWrap}>
+            <TouchableOpacity
+                style={styles.guideGridCard}
+                activeOpacity={0.92}
+                onPress={() => onPress(item)}
+                accessibilityRole="button"
+                accessibilityLabel={`${item.title}. ${t('inspo.shopThisLook')}`}
+            >
+                <CachedImage
+                    uri={typeof item.image === 'string' ? item.image : ''}
+                    style={styles.guideImage}
+                    contentFit="cover"
+                    fadeIn={false}
+                />
+            </TouchableOpacity>
+            <View style={styles.guideGridCaption}>
+                <ScaledText style={styles.guideGridPlate}>{String(plate).padStart(2, '0')}</ScaledText>
+                <ScaledText style={styles.guideGridCardTitle} numberOfLines={1}>{item.title}</ScaledText>
+                {!!item.subtitle && (
+                    <ScaledText style={styles.guideGridCardSubtitle} numberOfLines={1}>{item.subtitle}</ScaledText>
+                )}
+            </View>
+        </View>
+    );
+};
 
 // ── Outfit Variation Mini Card ─────────────────────────
 
@@ -210,6 +303,8 @@ const VariationCard = ({ outfit, items, onPress }: VariationCardProps) => {
         </TouchableOpacity>
     );
 };
+
+type GuideCategory = 'featured' | 'capsules' | 'outfits';
 
 // ── Main Component ──────────────────────────────────────
 
@@ -260,13 +355,16 @@ const InspoScreen = () => {
     const displayGuides = useMemo(() => {
         const results: any[] = [];
 
-        // 1. Add static/dynamic Hero from guide_page
+        // 1. Add static/dynamic Hero from guide_page — admin-set cta_url, if
+        // any, is where "shop this look" should actually go.
         if (guideHero) {
             results.push({
                 id: 'guide_hero',
                 title: guideHero.title,
                 subtitle: guideHero.subtitle,
-                image: guideHero.hero_image_url
+                image: guideHero.hero_image_url,
+                category: 'featured' as GuideCategory,
+                linkUrl: guideHero.cta_url || undefined,
             });
         }
 
@@ -277,12 +375,15 @@ const InspoScreen = () => {
                     id: c.id,
                     title: c.title,
                     subtitle: c.subtitle || '',
-                    image: c.imageUrl
+                    image: c.imageUrl,
+                    category: 'capsules' as GuideCategory,
+                    linkUrl: c.linkUrl,
                 });
             });
         }
 
-        // 3. Add outfits if we have them
+        // 3. Add outfits if we have them — each is a real shop catalog item,
+        // so tapping it should go straight to buying that item, not a link.
         if (guideOutfits && guideOutfits.length > 0) {
             guideOutfits.forEach((item) => {
                 results.push({
@@ -290,6 +391,8 @@ const InspoScreen = () => {
                     title: item.name,
                     subtitle: item.description || item.brand,
                     image: item.imageUrl,
+                    category: 'outfits' as GuideCategory,
+                    shopItem: item,
                 });
             });
         }
@@ -385,17 +488,48 @@ const InspoScreen = () => {
         [savedInspo],
     );
 
-    const shopItemPairs = useMemo(() => {
-        const pairs: [ShopCatalogItem, ShopCatalogItem | null][] = [];
-        for (let i = 0; i < shopItems.length; i += 2) {
-            pairs.push([shopItems[i], shopItems[i + 1] ?? null]);
+    // Break the grid's rhythm on purpose: every 5th item leads a fresh
+    // block as a full-width spotlight before the next pair of small cards,
+    // so the shop reads like a curated editorial spread instead of a flat
+    // uniform tile wall.
+    type ShopRow =
+        | { type: 'spotlight'; item: ShopCatalogItem; plate: number }
+        | { type: 'pair'; items: [ShopCatalogItem, ShopCatalogItem | null] };
+
+    const shopRows = useMemo<ShopRow[]>(() => {
+        const rows: ShopRow[] = [];
+        let i = 0;
+        let plate = 1;
+        while (i < shopItems.length) {
+            rows.push({ type: 'spotlight', item: shopItems[i], plate: plate++ });
+            i += 1;
+            for (let pairCount = 0; pairCount < 2 && i < shopItems.length; pairCount++) {
+                const left = shopItems[i];
+                const right = shopItems[i + 1] ?? null;
+                rows.push({ type: 'pair', items: [left, right] });
+                i += right ? 2 : 1;
+            }
         }
-        return pairs;
+        return rows;
     }, [shopItems]);
 
     const renderShopRow = useCallback(
-        ({ item: pair }: { item: [ShopCatalogItem, ShopCatalogItem | null] }) => {
-            const [left, right] = pair;
+        ({ item: row }: { item: ShopRow }) => {
+            if (row.type === 'spotlight') {
+                return (
+                    <ProductCard
+                        item={row.item}
+                        isSaved={savedInspoSet.has(row.item.id)}
+                        onSave={() => saveInspo(row.item)}
+                        index={0}
+                        t={t}
+                        spotlight
+                        plate={row.plate}
+                    />
+                );
+            }
+
+            const [left, right] = row.items;
             return (
                 <View style={styles.shopRow}>
                     <View style={styles.productCardWrap}>
@@ -435,57 +569,29 @@ const InspoScreen = () => {
                 disabled={shopCatalogLoadingMore}
                 accessibilityRole="button"
                 accessibilityLabel={t('inspo.loadMoreShopProducts')}
+                activeOpacity={0.85}
             >
                 {shopCatalogLoadingMore ? (
-                    <ActivityIndicator size="small" color={colors.text.primary} />
+                    <ActivityIndicator size="small" color="#0A1931" />
                 ) : (
-                    <ScaledText style={styles.loadMoreButtonText}>{t('inspo.loadMoreProducts')}</ScaledText>
+                    <>
+                        <ScaledText style={styles.loadMoreButtonText}>{t('inspo.loadMoreProducts')}</ScaledText>
+                        <Ionicons name="add" size={16} color="#0A1931" />
+                    </>
                 )}
             </TouchableOpacity>
         );
     }, [showingFallbackCatalog, shopCatalogHasMore, shopCatalogLoadingMore, loadMoreShopCatalog, t, colors.text.primary]);
 
     const shopListKeyExtractor = useCallback(
-        (pair: [ShopCatalogItem, ShopCatalogItem | null]) => pair[0].id,
+        (row: ShopRow) => (row.type === 'spotlight' ? `spotlight-${row.item.id}` : `pair-${row.items[0].id}`),
         [],
     );
 
     const renderShopHeader = useCallback(() => (
         <>
-            {/* Search */}
-            <Animated.View entering={FadeInDown.delay(80).duration(400)}>
-                <View style={styles.searchContainer}>
-                    <Ionicons name="search" size={20} color={colors.text.tertiary} style={styles.searchIcon} />
-                    <TextInput
-                        placeholder={t('inspo.searchPlaceholder')}
-                        placeholderTextColor={colors.text.tertiary}
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                        style={styles.searchInput}
-                        returnKeyType="search"
-                        accessibilityLabel={t('inspo.searchForClothingItems')}
-                        maxLength={200}
-                    />
-                </View>
-            </Animated.View>
-
-            {(shopCatalogError || showingFallbackCatalog) && (
-                <Animated.View entering={FadeInDown.delay(90).duration(300)}>
-                    <View style={styles.catalogStatusBanner}>
-                        <ScaledText style={styles.catalogStatusText}>
-                            {showingFallbackCatalog
-                                ? t('inspo.catalogEmpty')
-                                : t('inspo.catalogRefreshFailed')}
-                        </ScaledText>
-                        <TouchableOpacity onPress={refreshShopCatalog} accessibilityRole="button">
-                            <ScaledText style={styles.catalogStatusAction}>{t('common.retry')}</ScaledText>
-                        </TouchableOpacity>
-                    </View>
-                </Animated.View>
-            )}
-
             {/* Personal Stylist Button */}
-            <Animated.View entering={FadeInDown.delay(120).duration(400)}>
+            <Animated.View entering={FadeInDown.delay(80).duration(400)}>
                 <TouchableOpacity
                     style={styles.personalStylistButton}
                     onPress={() => {
@@ -494,17 +600,15 @@ const InspoScreen = () => {
                     }}
                     accessibilityLabel={t('inspo.personalStylist')}
                     accessibilityRole="button"
+                    activeOpacity={0.85}
                 >
-                    <LinearGradient
-                        colors={['#0A1931', '#1a3a5c']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.personalStylistGradient}
-                    >
-                        <Ionicons name="sparkles" size={20} color="#FFF" />
+                    <View style={styles.personalStylistFlat}>
+                        <Ionicons name="sparkles-outline" size={18} color="#FFF" />
                         <ScaledText style={styles.personalStylistText}>{t('inspo.personalStylist')}</ScaledText>
-                        <Ionicons name="arrow-forward" size={18} color="rgba(255,255,255,0.8)" />
-                    </LinearGradient>
+                        <View style={styles.personalStylistArrowWrap}>
+                            <Ionicons name="arrow-forward" size={14} color="#FFF" />
+                        </View>
+                    </View>
                 </TouchableOpacity>
             </Animated.View>
 
@@ -530,35 +634,152 @@ const InspoScreen = () => {
                 </View>
             )}
 
-            <View style={styles.section}>
-                <ScaledText style={styles.sectionTitle} accessibilityRole="header">
+            <Animated.View entering={FadeInDown.delay(140).duration(400)}>
+                <View style={styles.searchContainer}>
+                    <Ionicons name="search" size={20} color={colors.text.tertiary} style={styles.searchIcon} />
+                    <TextInput
+                        placeholder={t('inspo.searchPlaceholder')}
+                        placeholderTextColor={colors.text.tertiary}
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                        style={styles.searchInput}
+                        returnKeyType="search"
+                        accessibilityLabel={t('inspo.searchForClothingItems')}
+                        maxLength={200}
+                    />
+                </View>
+            </Animated.View>
+
+            {(shopCatalogError || showingFallbackCatalog) && (
+                <Animated.View entering={FadeInDown.delay(160).duration(300)}>
+                    <View style={styles.catalogStatusBanner}>
+                        <ScaledText style={styles.catalogStatusText}>
+                            {showingFallbackCatalog
+                                ? t('inspo.catalogEmpty')
+                                : t('inspo.catalogRefreshFailed')}
+                        </ScaledText>
+                        <TouchableOpacity onPress={refreshShopCatalog} accessibilityRole="button">
+                            <ScaledText style={styles.catalogStatusAction}>{t('common.retry')}</ScaledText>
+                        </TouchableOpacity>
+                    </View>
+                </Animated.View>
+            )}
+
+            <View style={styles.shopHeaderRow}>
+                <ScaledText style={[styles.sectionTitle, styles.shopHeaderTitle]} accessibilityRole="header">
                     {t('inspo.shop')}
                 </ScaledText>
+                <ScaledText style={styles.shopCountText}>{shopItems.length}</ScaledText>
             </View>
         </>
-    ), [searchQuery, setSearchQuery, shopCatalogError, showingFallbackCatalog, refreshShopCatalog, navigation, featuredCapsulesLoading, featuredCapsules, t, colors.text.primary, colors.text.tertiary]);
+    ), [searchQuery, setSearchQuery, shopCatalogError, showingFallbackCatalog, refreshShopCatalog, navigation, featuredCapsulesLoading, featuredCapsules, shopItems.length, t, colors.text.primary, colors.text.tertiary]);
 
-    const renderGuideRow = useCallback(({ item, index }: { item: any; index: number }) => (
-        <Animated.View entering={FadeInDown.delay(Math.min(100 + (index % 6) * 60, 400)).duration(400)}>
-            <View style={styles.guideCardContainer}>
-                <View style={styles.guideCard}>
-                    <CachedImage
-                        uri={typeof item.image === 'string' ? item.image : ''}
-                        style={styles.guideImage}
-                        contentFit="cover"
-                        fadeIn={false}
-                    />
-                    <LinearGradient
-                        colors={['transparent', 'rgba(0,0,0,0.75)']}
-                        style={styles.guideGradient}
-                    >
-                        <ScaledText style={styles.guideTitle}>{item.title}</ScaledText>
-                        <ScaledText style={styles.guideSubtitle}>{item.subtitle}</ScaledText>
-                    </LinearGradient>
-                </View>
-            </View>
-        </Animated.View>
+    // Goal of the Guide tab: see a look, shop it — immediately, not by
+    // dropping the user into the unrelated full catalog. A capsule/hero with
+    // an admin-set link goes straight there; an outfit that's a real shop
+    // item goes straight to buying it; only a look with neither falls back
+    // to the Shop tab, since there's nowhere more specific to send it.
+    const handleGuideCardPress = useCallback((item: any) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+        if (item?.linkUrl) {
+            Linking.canOpenURL(item.linkUrl)
+                .then((canOpen) => {
+                    if (canOpen) Linking.openURL(item.linkUrl);
+                })
+                .catch(() => {});
+            return;
+        }
+
+        if (item?.shopItem) {
+            handleBuyPress(item.shopItem);
+            return;
+        }
+
+        setSegment('shop');
+    }, []);
+
+    type GuideRow =
+        | { type: 'hero'; item: any }
+        | { type: 'pair'; items: [any, any | null]; plates: [number, number | null] };
+
+    // The first "Featured" item spans full width as the one editorial cover
+    // moment; everything else packs into a 2-column grid of numbered plates,
+    // like the index pages of a printed lookbook.
+    const guideRows = useMemo<GuideRow[]>(() => {
+        if (displayGuides.length === 0) return [];
+        const rows: GuideRow[] = [];
+        let startIdx = 0;
+        if (displayGuides[0]?.category === 'featured') {
+            rows.push({ type: 'hero', item: displayGuides[0] });
+            startIdx = 1;
+        }
+        let plate = 1;
+        for (let i = startIdx; i < displayGuides.length; i += 2) {
+            const left = displayGuides[i];
+            const right = displayGuides[i + 1] ?? null;
+            const leftPlate = plate++;
+            const rightPlate = right ? plate++ : null;
+            rows.push({ type: 'pair', items: [left, right], plates: [leftPlate, rightPlate] });
+        }
+        return rows;
+    }, [displayGuides]);
+
+    const guideKeyExtractor = useCallback((row: GuideRow) => (
+        row.type === 'hero' ? `hero-${row.item.id}` : `pair-${row.items[0].id}`
     ), []);
+
+    const renderGuideRow = useCallback(({ item: row, index }: { item: GuideRow; index: number }) => {
+        if (row.type === 'hero') {
+            const { item } = row;
+            return (
+                <Animated.View entering={FadeInDown.delay(100).duration(400)}>
+                    <TouchableOpacity
+                        style={styles.guideCardContainer}
+                        activeOpacity={0.92}
+                        onPress={() => handleGuideCardPress(item)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${item.title}. ${t('inspo.shopThisLook')}`}
+                    >
+                        <View style={styles.guideCard}>
+                            <CachedImage
+                                uri={typeof item.image === 'string' ? item.image : ''}
+                                style={styles.guideImage}
+                                contentFit="cover"
+                                fadeIn={false}
+                            />
+                            <View style={styles.guideHeroArrow} pointerEvents="none">
+                                <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+                            </View>
+                        </View>
+                        <View style={styles.guideHeroCaption}>
+                            <ScaledText style={styles.guideEyebrow}>{t('inspo.featuredLook')}</ScaledText>
+                            <ScaledText style={styles.guideHeroTitle}>{item.title}</ScaledText>
+                            {!!item.subtitle && (
+                                <ScaledText style={styles.guideHeroSubtitle} numberOfLines={2}>{item.subtitle}</ScaledText>
+                            )}
+                        </View>
+                    </TouchableOpacity>
+                </Animated.View>
+            );
+        }
+
+        const [left, right] = row.items;
+        const [leftPlate, rightPlate] = row.plates;
+        const delay = Math.min(120 + (index % 6) * 60, 420);
+        return (
+            <Animated.View entering={FadeInDown.delay(delay).duration(380)}>
+                <View style={styles.guideGridRow}>
+                    <GuideGridCard item={left} plate={leftPlate} onPress={handleGuideCardPress} t={t} />
+                    {right ? (
+                        <GuideGridCard item={right} plate={rightPlate as number} onPress={handleGuideCardPress} t={t} />
+                    ) : (
+                        <View style={styles.guideGridCardWrap} />
+                    )}
+                </View>
+            </Animated.View>
+        );
+    }, [handleGuideCardPress, t]);
 
     const renderGuideFooter = useCallback(() => (
         <>
@@ -598,7 +819,7 @@ const InspoScreen = () => {
             />
             <View pointerEvents="none" style={styles.backgroundOrbTop} />
             <View pointerEvents="none" style={styles.backgroundOrbBottom} />
-            <StatusBar barStyle="dark-content" backgroundColor={colors.background.primary} />
+            <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
             <SafeAreaView style={styles.safeArea} edges={['top']}>
                 {/* Header */}
                 <View style={styles.header}>
@@ -631,24 +852,34 @@ const InspoScreen = () => {
                 </View>
 
                 {segment === 'guide' ? (
-                    displayGuides.length === 0 && featuredCapsulesLoading ? (
-                        <View style={styles.guideLoadingContainer}>
-                            <ActivityIndicator size="large" color={colors.text.primary} />
-                        </View>
-                    ) : (
-                        <FlatList
-                            data={displayGuides}
-                            keyExtractor={(item) => item.id}
-                            renderItem={renderGuideRow}
-                            ListFooterComponent={renderGuideFooter()}
-                            contentContainerStyle={styles.scrollContent}
-                            showsVerticalScrollIndicator={false}
-                            initialNumToRender={3}
-                            maxToRenderPerBatch={3}
-                            windowSize={3}
-                            removeClippedSubviews={Platform.OS === 'android'}
-                        />
-                    )
+                    <>
+                        <ScaledText style={styles.guideTagline}>{t('inspo.guideTagline')}</ScaledText>
+                        {displayGuides.length === 0 && featuredCapsulesLoading ? (
+                            <View style={styles.guideLoadingContainer}>
+                                <ActivityIndicator size="large" color={colors.text.primary} />
+                            </View>
+                        ) : guideRows.length === 0 ? (
+                            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                                <View style={styles.emptyState}>
+                                    <ScaledText style={styles.emptyStateText}>{t('inspo.noGuideMatches')}</ScaledText>
+                                </View>
+                                {renderGuideFooter()}
+                            </ScrollView>
+                        ) : (
+                            <FlatList
+                                data={guideRows}
+                                keyExtractor={guideKeyExtractor}
+                                renderItem={renderGuideRow}
+                                ListFooterComponent={renderGuideFooter()}
+                                contentContainerStyle={styles.scrollContent}
+                                showsVerticalScrollIndicator={false}
+                                initialNumToRender={4}
+                                maxToRenderPerBatch={4}
+                                windowSize={3}
+                                removeClippedSubviews={Platform.OS === 'android'}
+                            />
+                        )}
+                    </>
                 ) : (
                     <>
                         {isInitialShopLoad ? (
@@ -656,13 +887,9 @@ const InspoScreen = () => {
                                 {renderShopHeader()}
                                 <View style={styles.loadingRow}>
                                     {[0, 1, 2, 3].map((idx) => (
-                                        <View
-                                            key={`shop-skeleton-${idx}`}
-                                            style={[
-                                                styles.productCardWrap,
-                                                styles.skeletonCard,
-                                            ]}
-                                        />
+                                        <View key={`shop-skeleton-${idx}`} style={styles.productCardWrap}>
+                                            <ShimmerProductCard />
+                                        </View>
                                     ))}
                                 </View>
                             </ScrollView>
@@ -675,7 +902,7 @@ const InspoScreen = () => {
                             </ScrollView>
                         ) : (
                             <FlatList
-                                data={shopItemPairs}
+                                data={shopRows}
                                 keyExtractor={shopListKeyExtractor}
                                 renderItem={renderShopRow}
                                 ListHeaderComponent={renderShopHeader()}
@@ -700,7 +927,7 @@ const InspoScreen = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: colors.background.primary,
+        backgroundColor: '#FFFFFF',
     },
     backgroundOrbTop: {
         position: 'absolute',
@@ -747,46 +974,80 @@ const styles = StyleSheet.create({
     },
     segmentBackground: {
         flexDirection: 'row',
-        backgroundColor: 'rgba(255,255,255,0.84)',
-        borderRadius: 26,
+        backgroundColor: 'rgba(255,255,255,0.85)',
+        borderRadius: 14,
         padding: 4,
-        width: 300,
+        width: 280,
         borderWidth: 1,
-        borderColor: 'rgba(24,58,103,0.08)',
+        borderColor: 'rgba(255,255,255,0.7)',
         shadowColor: '#173A65',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.06,
-        shadowRadius: 16,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.07,
+        shadowRadius: 14,
         elevation: 4,
     },
     segmentButton: {
         flex: 1,
-        paddingVertical: 10,
+        paddingVertical: 9,
         alignItems: 'center',
         justifyContent: 'center',
-        borderRadius: 20,
+        borderRadius: 10,
     },
     segmentButtonActive: {
-        backgroundColor: colors.background.primary,
-        shadowColor: '#173A65',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 10,
-        elevation: 2,
+        backgroundColor: '#0A1931',
+        shadowColor: '#0A1931',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 3,
     },
     segmentText: {
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: '500',
         color: colors.text.tertiary,
+        letterSpacing: 0.2,
     },
     segmentTextActive: {
-        color: colors.text.primary,
+        color: '#FFFFFF',
         fontWeight: '600',
+    },
+
+    // Guide tab tagline — a quiet italic masthead line, the one caption
+    // explaining the whole page's job.
+    guideTagline: {
+        fontSize: 12.5,
+        fontWeight: '500',
+        fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
+        fontStyle: 'italic',
+        color: colors.text.tertiary,
+        textAlign: 'center',
+        letterSpacing: 0.3,
+        paddingHorizontal: spacing.screenPadding,
+        marginBottom: spacing.lg,
+    },
+
+    // Shop section header — count reads as a visual chip, not a sentence.
+    shopHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: spacing.screenPadding,
+        marginBottom: spacing.md,
+    },
+    shopHeaderTitle: {
+        paddingHorizontal: 0,
+        marginBottom: 0,
+    },
+    shopCountText: {
+        fontSize: 13,
+        fontWeight: '500',
+        color: colors.text.tertiary,
     },
 
     // Scroll
     scrollContent: {
         paddingTop: spacing.sm,
+        paddingBottom: 100,
     },
 
     // Search
@@ -796,16 +1057,16 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255,255,255,0.88)',
         marginHorizontal: spacing.screenPadding,
         paddingHorizontal: spacing.md,
-        paddingVertical: spacing.sm + 2,
-        borderRadius: 999,
-        marginBottom: spacing.lg,
+        paddingVertical: spacing.sm + 4,
+        borderRadius: 14,
         borderWidth: 1,
-        borderColor: 'rgba(24,58,103,0.08)',
+        borderColor: 'rgba(255,255,255,0.7)',
+        marginBottom: spacing.lg,
         shadowColor: '#173A65',
-        shadowOffset: { width: 0, height: 8 },
+        shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.06,
-        shadowRadius: 16,
-        elevation: 4,
+        shadowRadius: 14,
+        elevation: 3,
     },
     searchIcon: {
         marginRight: spacing.sm,
@@ -823,22 +1084,24 @@ const styles = StyleSheet.create({
     },
     sectionTitle: {
         ...typography.scale.titleMedium,
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: '700',
+        fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
         color: colors.text.primary,
         marginBottom: spacing.md,
         paddingHorizontal: spacing.screenPadding,
     },
 
-    // Guide Cards (full-width squares)
+    // Guide Hero — the one full-bleed cover moment, editorial proportions
+    // (taller than square, like a lookbook plate rather than an app tile).
     guideCardContainer: {
         paddingHorizontal: spacing.screenPadding,
-        marginBottom: spacing.lg,
+        marginBottom: spacing.xl,
     },
     guideCard: {
         width: '100%',
-        aspectRatio: 1,
-        borderRadius: 28,
+        aspectRatio: 4 / 5,
+        borderRadius: 20,
         overflow: 'hidden',
         backgroundColor: colors.background.secondary,
         position: 'relative',
@@ -854,24 +1117,97 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
     },
-    guideGradient: {
+    // The one quiet on-image affordance in the whole tab — a plain circle,
+    // not a labeled pill, so the photo stays uninterrupted.
+    guideHeroArrow: {
         position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        padding: spacing.md,
-        paddingBottom: spacing.lg,
+        right: spacing.md,
+        bottom: spacing.md,
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        backgroundColor: 'rgba(10,25,49,0.55)',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
-    guideTitle: {
+    guideHeroCaption: {
+        paddingTop: spacing.md,
+        paddingHorizontal: 2,
+    },
+    guideEyebrow: {
+        fontSize: 11,
+        fontWeight: '600',
+        fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
+        fontStyle: 'italic',
+        color: colors.text.tertiary,
+        textTransform: 'uppercase',
+        letterSpacing: 1.4,
+        marginBottom: 6,
+    },
+    guideHeroTitle: {
         fontSize: 24,
         fontWeight: '700',
-        color: '#FFF',
+        fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
+        color: colors.text.primary,
+        letterSpacing: -0.3,
         marginBottom: 4,
     },
-    guideSubtitle: {
-        fontSize: 16,
+    guideHeroSubtitle: {
+        fontSize: 14,
+        fontWeight: '400',
+        color: colors.text.secondary,
+        lineHeight: 20,
+    },
+
+    // Guide Grid — numbered lookbook plates. No overlay on the photo; every
+    // word lives in the flat caption below it, same language as the Shop
+    // tab's product tiles.
+    guideGridRow: {
+        flexDirection: 'row',
+        paddingHorizontal: spacing.screenPadding,
+        marginBottom: spacing.lg,
+    },
+    guideGridCardWrap: {
+        flex: 1,
+        marginHorizontal: spacing.xs,
+    },
+    guideGridCard: {
+        width: '100%',
+        aspectRatio: 3 / 4,
+        borderRadius: 14,
+        overflow: 'hidden',
+        backgroundColor: colors.background.secondary,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.72)',
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.07,
+        shadowRadius: 12,
+        elevation: 3,
+    },
+    guideGridCaption: {
+        paddingTop: spacing.sm,
+        paddingHorizontal: 2,
+    },
+    guideGridPlate: {
+        fontSize: 10.5,
+        fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
+        fontStyle: 'italic',
+        color: colors.text.tertiary,
+        letterSpacing: 0.5,
+        marginBottom: 3,
+    },
+    guideGridCardTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: colors.text.primary,
+        letterSpacing: -0.1,
+    },
+    guideGridCardSubtitle: {
+        fontSize: 11,
         fontWeight: '500',
-        color: 'rgba(255,255,255,0.8)',
+        color: colors.text.tertiary,
+        marginTop: 2,
     },
 
     // Capsule Cards
@@ -888,7 +1224,7 @@ const styles = StyleSheet.create({
     capsuleCard: {
         width: CAPSULE_CARD_WIDTH,
         height: CAPSULE_CARD_HEIGHT,
-        borderRadius: 24,
+        borderRadius: 16,
         overflow: 'hidden',
         backgroundColor: colors.background.secondary,
         borderWidth: 1,
@@ -905,7 +1241,7 @@ const styles = StyleSheet.create({
     },
     shopRow: {
         flexDirection: 'row',
-        marginBottom: spacing.md,
+        marginBottom: spacing.lg,
     },
     capsuleGradient: {
         position: 'absolute',
@@ -936,12 +1272,31 @@ const styles = StyleSheet.create({
         paddingHorizontal: spacing.screenPadding,
     },
     skeletonCard: {
-        height: PRODUCT_CARD_WIDTH * (4 / 3) + 40,
-        backgroundColor: colors.background.secondary,
-        borderRadius: radius.lg,
-        marginBottom: spacing.md,
         flex: 1,
         marginHorizontal: spacing.xs,
+        marginBottom: spacing.lg,
+    },
+    skeletonImage: {
+        width: '100%',
+        aspectRatio: 3 / 4,
+        borderRadius: 8,
+        backgroundColor: '#F4F5F7',
+    },
+    skeletonBrandLine: {
+        marginTop: spacing.sm,
+        width: '50%',
+        height: 10,
+        borderRadius: 3,
+        backgroundColor: 'rgba(10,25,49,0.1)',
+        alignSelf: 'flex-start',
+    },
+    skeletonPriceLine: {
+        marginTop: 8,
+        width: 50,
+        height: 16,
+        borderRadius: 3,
+        backgroundColor: 'rgba(10,25,49,0.16)',
+        alignSelf: 'flex-start',
     },
     productCardWrap: {
         flex: 1,
@@ -951,39 +1306,61 @@ const styles = StyleSheet.create({
         // No longer needed with marginHorizontal, but keep for skeleton backwards compat
         marginRight: spacing.sm,
     },
+    // Flat tile — no card background, no shadow, no border. The photo and
+    // the caption typography below it carry the whole design.
+    // No explicit width — a plain View already stretches to fill its
+    // parent's cross-axis. Setting width:'100%' here AND marginHorizontal
+    // on the spotlight variant below made the box 100% + 2*margin wide,
+    // overflowing past the right edge while the left margin still pushed
+    // the box inward — a left gap with no matching gap on the right.
     productCard: {
-        width: '100%',
-        backgroundColor: 'rgba(255,255,255,0.9)',
-        borderRadius: radius.lg,
-        overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: 'rgba(24,58,103,0.06)',
-        shadowColor: '#173A65',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.05,
-        shadowRadius: 12,
-        elevation: 3,
-        marginBottom: 2, // Space for shadow
     },
+    // Editorial lead card — full width, breaks the grid every 5 items.
+    productCardSpotlight: {
+        marginHorizontal: spacing.screenPadding,
+        marginBottom: spacing.lg,
+    },
+    // A soft neutral fill, not pure white — product photos carry their own
+    // near-white studio backdrop, and matching it against true #FFF makes
+    // that backdrop's edge show up as a visible seam. Light gray hides it.
     productImageBox: {
         width: '100%',
         aspectRatio: 3 / 4,
-        backgroundColor: 'rgba(255,255,255,0.92)',
-        borderRadius: 22,
+        backgroundColor: '#F6F6F4',
+        borderRadius: 12,
         overflow: 'hidden',
-        marginBottom: spacing.xs,
-        padding: spacing.sm,
         borderWidth: 1,
-        borderColor: 'rgba(24,58,103,0.06)',
+        borderColor: 'rgba(255,255,255,0.7)',
         shadowColor: '#173A65',
         shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.05,
+        shadowOpacity: 0.07,
         shadowRadius: 12,
         elevation: 3,
+    },
+    productImageBoxSpotlight: {
+        // Portrait, not landscape — garment photos are tall, and a wide box
+        // forced heavy contain-fit letterboxing that made any asymmetry in
+        // the source photo's own framing read as an off-center product.
+        aspectRatio: 4 / 5,
+        borderRadius: 16,
+        shadowOpacity: 0.09,
+        shadowRadius: 18,
+        shadowOffset: { width: 0, height: 10 },
+        elevation: 5,
     },
     productImage: {
         width: '100%',
         height: '100%',
+    },
+    plateNumber: {
+        position: 'absolute',
+        left: spacing.sm,
+        bottom: spacing.sm,
+        fontSize: 13,
+        fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
+        fontStyle: 'italic',
+        color: 'rgba(10,25,49,0.38)',
+        letterSpacing: 0.5,
     },
     saveButton: {
         position: 'absolute',
@@ -992,65 +1369,83 @@ const styles = StyleSheet.create({
         zIndex: 10,
     },
     saveButtonCircle: {
-        width: 34,
-        height: 34,
-        borderRadius: 17,
-        backgroundColor: 'rgba(255,255,255,0.9)',
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        backgroundColor: '#FFFFFF',
         alignItems: 'center',
         justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(10,25,49,0.06)',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
+        shadowOpacity: 0.1,
         shadowRadius: 4,
         elevation: 2,
     },
-    productBrand: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: colors.text.secondary,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-        marginBottom: 2,
+    // Caption — brand and price as plain typography, no badges or chips.
+    caption: {
+        paddingTop: spacing.sm,
+        paddingHorizontal: 2,
     },
-    productPrice: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: colors.text.primary,
+    captionBrand: {
+        fontSize: 10.5,
+        fontWeight: '600',
+        color: colors.text.tertiary,
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+        marginBottom: 4,
+    },
+    captionBrandLarge: {
+        fontSize: 12,
+        letterSpacing: 1.3,
         marginBottom: 8,
     },
-    buyButton: {
-        borderRadius: 20,
-        overflow: 'hidden',
-        marginTop: 4,
-        shadowColor: '#173A65',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-        elevation: 4,
-    },
-    buyButtonGradient: {
+    captionRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
+        justifyContent: 'space-between',
     },
-    buyIcon: {
-        marginRight: 6,
-    },
-    buyButtonText: {
-        fontSize: 13,
+    captionPrice: {
+        fontSize: 15,
         fontWeight: '700',
-        color: '#FFF',
+        color: '#0A1931',
+        letterSpacing: -0.2,
+    },
+    captionPriceLarge: {
+        fontSize: 36,
+        fontWeight: '700',
+        fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
+        letterSpacing: -0.5,
+    },
+    captionBuy: {
+        width: 26,
+        height: 26,
+        borderRadius: 13,
+        borderWidth: 1,
+        borderColor: 'rgba(10,25,49,0.16)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    captionBuyLarge: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        borderColor: '#0A1931',
     },
     emptyState: {
         paddingHorizontal: spacing.screenPadding,
         marginHorizontal: spacing.screenPadding,
         paddingVertical: 20,
-        borderRadius: 24,
+        borderRadius: 16,
         backgroundColor: 'rgba(255,255,255,0.88)',
         borderWidth: 1,
-        borderColor: 'rgba(24,58,103,0.06)',
+        borderColor: 'rgba(255,255,255,0.7)',
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.05,
+        shadowRadius: 12,
+        elevation: 2,
     },
     emptyStateText: {
         ...typography.scale.bodyMedium,
@@ -1061,14 +1456,19 @@ const styles = StyleSheet.create({
         marginBottom: spacing.lg,
         paddingHorizontal: spacing.md,
         paddingVertical: spacing.sm + 2,
-        borderRadius: 22,
+        borderRadius: 16,
         backgroundColor: 'rgba(255,255,255,0.88)',
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: spacing.md,
         borderWidth: 1,
-        borderColor: 'rgba(24,58,103,0.08)',
+        borderColor: 'rgba(255,255,255,0.7)',
+        shadowColor: '#173A65',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.05,
+        shadowRadius: 12,
+        elevation: 2,
     },
     catalogStatusText: {
         ...typography.scale.bodySmall,
@@ -1084,21 +1484,23 @@ const styles = StyleSheet.create({
         marginTop: spacing.sm,
         marginHorizontal: spacing.screenPadding,
         paddingVertical: spacing.md,
-        borderRadius: 22,
-        backgroundColor: 'rgba(255,255,255,0.9)',
+        borderRadius: 14,
+        backgroundColor: 'rgba(255,255,255,0.88)',
+        flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
+        gap: 6,
         borderWidth: 1,
-        borderColor: 'rgba(24,58,103,0.08)',
+        borderColor: 'rgba(255,255,255,0.7)',
         shadowColor: '#173A65',
-        shadowOffset: { width: 0, height: 8 },
+        shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.06,
-        shadowRadius: 16,
-        elevation: 4,
+        shadowRadius: 12,
+        elevation: 3,
     },
     loadMoreButtonText: {
         ...typography.scale.bodyMedium,
-        color: colors.text.primary,
+        color: '#0A1931',
         fontWeight: '600',
     },
 
@@ -1110,13 +1512,13 @@ const styles = StyleSheet.create({
     variationCard: {
         width: 140,
         backgroundColor: 'rgba(255,255,255,0.9)',
-        borderRadius: 22,
+        borderRadius: 16,
         overflow: 'hidden',
         borderWidth: 1,
-        borderColor: 'rgba(24,58,103,0.06)',
+        borderColor: 'rgba(255,255,255,0.7)',
         shadowColor: '#173A65',
         shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.05,
+        shadowOpacity: 0.06,
         shadowRadius: 12,
         elevation: 3,
     },
@@ -1180,28 +1582,38 @@ const styles = StyleSheet.create({
     // Personal Stylist Button
     personalStylistButton: {
         marginHorizontal: spacing.screenPadding,
-        marginBottom: spacing.lg,
-        borderRadius: 24,
-        overflow: 'hidden',
-        shadowColor: '#173A65',
+        marginBottom: spacing.xl,
+        borderRadius: 16,
+        shadowColor: '#0A1931',
         shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.14,
+        shadowOpacity: 0.22,
         shadowRadius: 18,
         elevation: 6,
     },
-    personalStylistGradient: {
+    personalStylistFlat: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
+        backgroundColor: '#0A1931',
+        borderRadius: 16,
+        overflow: 'hidden',
         paddingHorizontal: spacing.lg,
-        paddingVertical: spacing.md + 6,
+        paddingVertical: spacing.md + 2,
     },
     personalStylistText: {
-        fontSize: 16,
-        fontWeight: '700',
+        fontSize: 15,
+        fontWeight: '600',
         color: '#FFF',
         flex: 1,
-        marginLeft: spacing.sm,
+        marginLeft: spacing.sm + 2,
+    },
+    personalStylistArrowWrap: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.4)',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     guideLoadingContainer: {
         flex: 1,

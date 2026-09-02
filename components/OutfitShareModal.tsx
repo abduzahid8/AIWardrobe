@@ -148,7 +148,13 @@ export const OutfitShareModal = ({ visible, onClose, outfit }: OutfitShareModalP
                                     <View key={idx} style={styles.previewItem}>
                                         {item.image || item.imageUrl ? (
                                             <Image
-                                                source={{ uri: item.image || item.imageUrl }}
+                                                source={
+                                                    typeof item.image === 'number'
+                                                        ? item.image
+                                                        : typeof item.imageUrl === 'number'
+                                                        ? item.imageUrl
+                                                        : { uri: item.image || item.imageUrl }
+                                                }
                                                 style={styles.previewItemImage}
                                                 resizeMode="cover"
                                             />

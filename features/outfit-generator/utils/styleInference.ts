@@ -135,6 +135,10 @@ const STYLE_SIGNALS: Record<StyleId, Signal[]> = {
     kw('sneaker', -1), kw('sneakers', -1), kw('chunky', -3),
     // NEVER pair shorts with old_money - they're fundamentally incompatible
     kw('shorts', -5), kw('short', -5), kw('bermuda', -5), kw('bermudas', -5),
+    // Blue jeans read as casual streetwear, not old money - exclude them
+    // the same way shorts are excluded (was previously unscored/neutral,
+    // letting jeans slip into "old money" outfits alongside dinner shirts).
+    kw('jeans', -4), kw('denim', -3), kw('jean', -4),
   ],
   semi_classic: [
     kw('blazer', 3), kw('cardigan', 3), kw('knit polo', 3), kw('turtleneck', 2),
@@ -196,6 +200,8 @@ const STYLE_SIGNALS: Record<StyleId, Signal[]> = {
     kw('square-toe', -4), kw('square toe', -4),
     // Shorts are inappropriate for business_casual
     kw('shorts', -5), kw('short', -5), kw('bermuda', -5), kw('bermudas', -5),
+    // Jeans read as casual, not business casual
+    kw('jeans', -3), kw('denim', -2), kw('jean', -3),
   ],
   casual: [
     kw('t-shirt', 2), kw('tee', 2), kw('jeans', 2), kw('jean', 1),
@@ -240,6 +246,8 @@ const STYLE_SIGNALS: Record<StyleId, Signal[]> = {
     kw('neon', -4), kw('sequin', -4), kw('ripped', -3),
     kw('low-rise', -3), kw('low rise', -3), kw('skinny', -2), kw('oversized', -2),
     kw('backpack', -2),
+    // Jeans read as casual, not classic tailoring
+    kw('jeans', -3), kw('denim', -2), kw('jean', -3),
   ],
 };
 

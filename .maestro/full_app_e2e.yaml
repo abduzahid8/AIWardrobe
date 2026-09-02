@@ -1,34 +1,137 @@
-appId: org.name.AIWardrobe
+appId: com.aiwardrobe
 ---
 # ============================================================
 # FULL APP E2E TEST
-# Covers: auth, home, closet, inspo, profile, and navigation
+# Covers: auth, onboarding, home, closet, inspo, profile, and navigation
 # iOS 26.1 + RN 0.81.5 workaround: coordinate taps only
+#
+# Coordinates below were re-measured against the CURRENT screens (pixel-
+# calibrated against a raw 1206x2622 simulator capture, 3x the 402x874
+# point space Maestro/the simulator use). Every step also asserts real
+# on-screen content — without that, a stale coordinate can silently miss
+# its target and the rest of the flow just taps blindly on whatever
+# screen happens to be showing, while still reporting Passed. That is
+# exactly what happened before this rewrite: the Sign In screen grew
+# Apple/Google buttons above Email/Password, the old 26%/33%/44% taps
+# started missing, and the flow "passed" anyway while stuck logged out.
+#
+# Text selectors are regex, ANCHORED to the full element text (verified
+# empirically against Maestro 2.8.0 — a bare substring like "Continue"
+# does not match an element whose real accessible text is "Continue, "
+# plus the icon glyph). Every text match below is wrapped in `.*...*.`
+# unless it's meant to match a screen's full one-line subtitle exactly.
 # ============================================================
 
 # ---- 1. AUTH ----
+# clearState wipes local storage, which logs the account out AND resets
+# the local-only `hasCompletedOnboarding` flag (store/stylePreferenceStore.ts)
+# even for an already-onboarded account — so a clean run always sees the
+# Sign In screen, and then the style quiz, exactly like a brand-new
+# install would. Both are handled conditionally below so this flow works
+# the same whether storage was just cleared or not.
 - launchApp:
     clearState: true
     stopApp: true
 - waitForAnimationToEnd:
     timeout: 60000
-- tapOn:
-    point: "50%,26%"
-- inputText: "e2etest@aiwardrobe.club"
-- tapOn:
-    point: "50%,33%"
-- inputText: "E2eTestPass123!"
-- tapOn:
-    point: "50%,44%"
-- waitForAnimationToEnd:
-    timeout: 20000
 
-# ---- 2. HOME TAB ----
-# Tap Home tab (should already be on home after sign-in)
+- runFlow:
+    when:
+      visible: "Sign In"
+    commands:
+      # Text/placeholder-based taps instead of coordinates — the keyboard
+      # avoiding layout shifts field positions as focus moves between
+      # Email and Password, which made a second blind percentage tap miss
+      # the Password field entirely (confirmed while writing this flow:
+      # the Email tap landed fine, but the following point-based Password
+      # tap left the field empty and the whole login silently no-opped).
+      - tapOn: "Email"
+      - inputText: "e2etest@aiwardrobe.club"
+      - tapOn: "Password"
+      - inputText: "E2eTestPass123!"
+      - tapOn:
+          text: "Sign In"
+          index: 1
+      - waitForAnimationToEnd:
+          timeout: 20000
+      # iOS may offer to save the password to Keychain — dismiss if shown.
+      - runFlow:
+          when:
+            visible: "Save Password?"
+          commands:
+            - tapOn: "Not Now"
+
+# ---- 2. ONBOARDING (style quiz) ----
+# Only appears for a not-yet-onboarded local state (see note above).
+# Starts with a "Your Style, Decoded." intro card, then six quiz steps:
+# style soul (single-select) -> color palette (multi-select, needs >=1)
+# -> occasions (multi-select, needs >=1) -> fit (defaults to a valid
+# selection) -> style mission (optional) -> summary.
+#
+# The two `when: visible:` guards below use each screen's full one-line
+# subtitle text verbatim (verified against Maestro's captured
+# accessibility-tree dump, screen-hierarchy/* under ~/.maestro/tests/).
+# `when: visible:` matches the full element text, so a short substring
+# ("60-second quiz", "style soul") never matched here and the runFlow
+# was silently skipped every time while writing this. The two-line
+# headlines ("Your Style, Decoded.", "What's your style soul?") are
+# each still ONE accessibility node despite wrapping visually, so they
+# would work too, but the subtitle text below happens to be what was
+# already verified working.
+- runFlow:
+    when:
+      visible: "A 60-second quiz that builds your personal wardrobe intelligence."
+    commands:
+      - tapOn: "Continue.*"
+      - waitForAnimationToEnd:
+          timeout: 3000
+
+- runFlow:
+    when:
+      visible: "Pick the one that feels most like you"
+    commands:
+      - tapOn:
+          point: "27%,40%"
+      - tapOn: "Continue.*"
+      - waitForAnimationToEnd:
+          timeout: 3000
+      - assertVisible: ".*speak to you.*"
+      - tapOn:
+          point: "21%,47%"
+      - tapOn: "Continue.*"
+      - waitForAnimationToEnd:
+          timeout: 3000
+      - assertVisible: ".*everything that applies.*"
+      - tapOn:
+          point: "27%,50%"
+      - tapOn: "Continue.*"
+      - waitForAnimationToEnd:
+          timeout: 3000
+      - assertVisible: ".*shapes every suggestion.*"
+      - tapOn: "Continue.*"
+      - waitForAnimationToEnd:
+          timeout: 3000
+      - assertVisible: ".*matter to you.*"
+      - tapOn: "Continue.*"
+      - waitForAnimationToEnd:
+          timeout: 3000
+      - assertVisible: ".*wardrobe intelligence.*"
+      - tapOn: ".*Unlock my plan.*"
+      - waitForAnimationToEnd:
+          timeout: 5000
+
+# Whichever path got us here (already onboarded, or just finished the
+# quiz above), we must now actually be on Home with tabs available.
+- assertVisible:
+    text: "Good (morning|afternoon|evening|night).*"
+
+# ---- 3. HOME TAB ----
 - tapOn:
-    point: "12%,94%"
+    point: "26%,92%"
 - waitForAnimationToEnd:
     timeout: 5000
+- assertVisible:
+    text: "Good (morning|afternoon|evening|night).*"
 
 # Scroll down on home screen to trigger content loading
 - swipe:
@@ -42,11 +145,12 @@ appId: org.name.AIWardrobe
 - waitForAnimationToEnd:
     timeout: 3000
 
-# ---- 3. CLOSET TAB ----
+# ---- 4. CLOSET TAB ----
 - tapOn:
-    point: "37%,94%"
+    point: "42%,92%"
 - waitForAnimationToEnd:
     timeout: 8000
+- assertVisible: ".*Tops.*"
 
 # Tap the upload button area (top right of header, ~85%,6%)
 - tapOn:
@@ -71,12 +175,14 @@ appId: org.name.AIWardrobe
     point: "5%,6%"
 - waitForAnimationToEnd:
     timeout: 3000
+- assertVisible: ".*Tops.*"
 
-# ---- 4. INSPO TAB ----
+# ---- 5. INSPO TAB ----
 - tapOn:
-    point: "62%,94%"
+    point: "58%,92%"
 - waitForAnimationToEnd:
     timeout: 8000
+- assertVisible: ".*Inspiration.*"
 
 # Tap Guide segment (left, ~30%,10%)
 - tapOn:
@@ -96,11 +202,22 @@ appId: org.name.AIWardrobe
 - waitForAnimationToEnd:
     timeout: 3000
 
-# ---- 5. PROFILE TAB ----
+# ---- 6. PROFILE TAB ----
+# All four tab coordinates in this flow were re-measured by clustering
+# icon pixels in a raw simulator capture (they used to assume an evenly
+# spaced 12/37/62/87%, which isn't how the floating tab bar pill is
+# actually laid out — true centers are ~26/42/58/74%). Home and Inspo
+# were close enough to the old guess to still land inside their tap
+# targets; Profile at 87% (real center 74%) missed by ~13 points of
+# screen width and landed past the tab bar entirely. That's why this
+# flow used to silently stay on the Inspo tab through the rest of the
+# run — the tap missed, no assertion existed to catch it, and the flow
+# still reported Passed.
 - tapOn:
-    point: "87%,94%"
+    point: "74%,92%"
 - waitForAnimationToEnd:
     timeout: 8000
+- assertVisible: ".*Account.*"
 
 # Scroll down on profile to view sections
 - swipe:
@@ -114,27 +231,34 @@ appId: org.name.AIWardrobe
 - waitForAnimationToEnd:
     timeout: 3000
 
-# ---- 6. RETURN TO HOME ----
+# ---- 7. RETURN TO HOME ----
 - tapOn:
-    point: "12%,94%"
+    point: "26%,92%"
 - waitForAnimationToEnd:
     timeout: 8000
+- assertVisible:
+    text: "Good (morning|afternoon|evening|night).*"
 
-# ---- 7. FINAL NAVIGATION SWEEP ----
+# ---- 8. FINAL NAVIGATION SWEEP ----
 # Quick round through all tabs to verify navigation still works
 - tapOn:
-    point: "37%,94%"
+    point: "42%,92%"
 - waitForAnimationToEnd:
     timeout: 5000
+- assertVisible: ".*Tops.*"
 - tapOn:
-    point: "62%,94%"
+    point: "58%,92%"
 - waitForAnimationToEnd:
     timeout: 5000
+- assertVisible: ".*Inspiration.*"
 - tapOn:
-    point: "87%,94%"
+    point: "74%,92%"
 - waitForAnimationToEnd:
     timeout: 5000
+- assertVisible: ".*Account.*"
 - tapOn:
-    point: "12%,94%"
+    point: "26%,92%"
 - waitForAnimationToEnd:
     timeout: 5000
+- assertVisible:
+    text: "Good (morning|afternoon|evening|night).*"

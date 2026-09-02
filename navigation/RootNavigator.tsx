@@ -160,7 +160,17 @@ const RootNavigator = () => {
           });
       }
 
-      // We only await fast local AsyncStorage hydrations (daily usage, subscription status, promo codes).
+      // initializeSubscription is NOT included in the race below — when there's
+      // no locally-cached trial date it deliberately awaits a server round trip
+      // (see subscriptionStore.ts) to avoid flashing an incorrect "trial expired"
+      // screen, so its runtime isn't bounded by a fast local-storage budget. It
+      // keeps `isPending` true in the store until it resolves, which is what
+      // actually protects the UI, so app-ready doesn't need to wait for it too.
+      initializeSubscription().catch((err) =>
+        console.warn('[RootNavigator] initializeSubscription failed', err),
+      );
+
+      // We only await fast local AsyncStorage hydrations (daily usage, promo codes).
       // This is extremely fast (typically < 50ms) and prevents any native app launch hangs.
       const INIT_TIMEOUT_MS = 1500;
       const timeoutPromise = new Promise<void>((_, reject) =>
@@ -169,9 +179,6 @@ const RootNavigator = () => {
 
       await Promise.race([
         Promise.all([
-          initializeSubscription().catch((err) =>
-            console.warn('[RootNavigator] initializeSubscription failed', err),
-          ),
           useDailyUsageStore.getState().hydrate().catch((err) =>
             console.warn('[RootNavigator] dailyUsage hydrate failed', err),
           ),

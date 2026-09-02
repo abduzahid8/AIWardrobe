@@ -1,4 +1,4 @@
-appId: org.name.AIWardrobe
+appId: com.aiwardrobe
 ---
 # Sign Up form validation test using coordinate-based taps
 - launchApp
