@@ -11,6 +11,9 @@ import {
     normalizeStyleId,
     type StyleId,
 } from '../../features/outfit-generator/utils/styleInference';
+import { SHOP_CATALOG_ITEMS } from '../../data/shopCatalogItems';
+import { CLASSIC_MENS_ITEMS } from '../../data/inspoMensShopItems';
+import type { ShopCatalogItem } from '../../features/try-on/types';
 
 const logger = createLogger('Shopping');
 
@@ -507,6 +510,48 @@ function rowToShopFillItem(row: ShopCatalogRow, slot: OutfitSlotId): ShopFillIte
     };
 }
 
+function isOuterwearCatalogItem(item: Pick<ShopCatalogItem, 'name' | 'description' | 'garmentType'>): boolean {
+    const blob = `${item.name || ''} ${item.description || ''} ${item.garmentType || ''}`.toLowerCase();
+    return /\b(jacket|coat|blazer|cardigan|sweater|hoodie|puffer|bomber|vest|outerwear|trench|peacoat|overshirt)\b/.test(blob);
+}
+
+function localCatalogRowsForSlot(slot: OutfitSlotId): ShopCatalogRow[] {
+    const seen = new Set<string>();
+    const rows: ShopCatalogRow[] = [];
+
+    const allItems = [...SHOP_CATALOG_ITEMS, ...CLASSIC_MENS_ITEMS];
+    for (const item of allItems) {
+        if (!item?.id || !item?.imageUrl) continue;
+        if (seen.has(item.id)) continue;
+
+        const isOuter = isOuterwearCatalogItem(item);
+        const matchesSlot =
+            (slot === 'outerwear' && item.garmentType === 'upper_body' && isOuter)
+            || (slot === 'top' && item.garmentType === 'upper_body' && !isOuter)
+            || (slot === 'bottom' && item.garmentType === 'lower_body')
+            || (slot === 'shoes' && item.garmentType === 'shoes');
+
+        if (!matchesSlot) continue;
+        seen.add(item.id);
+        rows.push({
+            id: item.id,
+            brand: item.brand,
+            name: item.name,
+            price: item.price,
+            currency: item.currency,
+            image_url: typeof item.imageUrl === 'string' ? item.imageUrl : '',
+            garment_type: item.garmentType,
+            category: slot === 'top' ? 'tops' : slot === 'bottom' ? 'bottoms' : slot,
+            description: item.description,
+            primary_color: undefined,
+            source: 'local_catalog',
+            source_url: item.sourceUrl,
+        });
+    }
+
+    return rows;
+}
+
 /**
  * Fetch multiple style-ranked shop items for ALL outfit slots, not just
  * missing ones. Used by the local outfit fallback so that style-specific
@@ -528,9 +573,12 @@ export async function fetchShopPoolForStyle(
     for (const slot of slots) {
         try {
             const { data, error } = await buildShopQueryForSlot(slot, 30);
-            if (error || !data || data.length === 0) continue;
+            const sourceRows = (!error && data && data.length > 0)
+                ? (data as ShopCatalogRow[])
+                : localCatalogRowsForSlot(slot);
+            if (sourceRows.length === 0) continue;
 
-            const scored = (data as ShopCatalogRow[])
+            const scored = sourceRows
                 .map((row) => ({
                     row,
                     score: scoreItemForStyle(
@@ -580,9 +628,12 @@ export async function fillMissingSlots(
     for (const slot of missingSlots) {
         try {
             const { data, error } = await buildShopQueryForSlot(slot, 30);
-            if (error || !data || data.length === 0) continue;
+            const sourceRows = (!error && data && data.length > 0)
+                ? (data as ShopCatalogRow[])
+                : localCatalogRowsForSlot(slot);
+            if (sourceRows.length === 0) continue;
 
-            const scored = (data as ShopCatalogRow[])
+            const scored = sourceRows
                 .map((row) => ({
                     row,
                     score: scoreItemForStyle(

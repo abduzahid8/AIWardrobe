@@ -466,6 +466,8 @@ TASK: Create ${limit} complete outfits using ONLY items from the provided wardro
 
 GENERAL STYLING RULES:
 ${slotRules}
+- PRIORITIZE USER-OWNED ITEMS. Items whose id starts with "shop_" are optional catalog suggestions; use them only to complete a missing/sparse slot or add necessary variety. Every outfit should contain owned pieces whenever any compatible owned pieces exist.
+- ALL ${limit} OUTFITS MUST BE UNIQUE BY ITEM COMBINATION. Rotate the wardrobe anchor and shop complements; never return the same set of item ids twice, even in a different order.
 - If no shoe item obviously matches the style, pick the LEAST off-aesthetic shoe available. An outfit WITHOUT shoes is invalid — never return one.
 - NEVER invent items. Use ONLY the exact ids listed in "Available wardrobe items".
 - Pick items whose styleTags, name, description, or material indicate they FIT the requested style. If an item's tags or description clash with the style, do NOT use it (unless it is the only option for that slot — see shoes rule above).
@@ -527,6 +529,7 @@ function buildUserPrompt(items: any[], prompt: string, style: string, occasion: 
             `color:${i.color || 'neutral'}`,
             `cat:${i.macroCategory || 'other'}`,
             i.brand ? `brand:${i.brand}` : '',
+            i.isShopItem || String(i.id || '').startsWith('shop_') ? 'source:shop suggestion' : 'source:user wardrobe',
             material ? `material:${material}` : '',
             pattern ? `pattern:${pattern}` : '',
             tags ? `styleTags:${tags}` : '',
@@ -676,6 +679,10 @@ function validateOutfitCompatibility(outfit: any, itemMap: Map<string, any>): { 
 
 function filterValidOutfits(outfits: any[], style: string, itemMap: Map<string, any>, layered: boolean, preferences?: any): any[] {
     const kept: any[] = []
+    const signatures = new Set<string>()
+    const hasOwnedCandidates = Array.from(itemMap.values()).some(
+        (item: any) => !item.isShopItem && !String(item.id || '').startsWith('shop_'),
+    )
     for (const o of outfits) {
         const v = validateOutfitAgainstStyle(o, style, itemMap, layered, preferences)
         if (!v.ok) {
@@ -687,6 +694,23 @@ function filterValidOutfits(outfits: any[], style: string, itemMap: Map<string, 
             console.log(`[validate] rejected outfit for ${style} (layered=${layered}): ${c.reason}`)
             continue
         }
+        const ids = (o.items || []).map((item: any) => String(item.id)).sort()
+        const signature = ids.join('|')
+        if (!signature || signatures.has(signature)) {
+            console.log(`[validate] rejected duplicate outfit combination: ${signature}`)
+            continue
+        }
+        if (hasOwnedCandidates) {
+            const usesOwnedItem = (o.items || []).some((item: any) => {
+                const source = itemMap.get(String(item.id)) || item
+                return !source.isShopItem && !String(source.id || item.id || '').startsWith('shop_')
+            })
+            if (!usesOwnedItem) {
+                console.log('[validate] rejected shop-only outfit while wardrobe items are available')
+                continue
+            }
+        }
+        signatures.add(signature)
         kept.push(o)
     }
     return kept
@@ -705,10 +729,9 @@ const PLACEHOLDER_SHOES: Record<string, any> = {
     isShopItem: false,
 }
 
-// ── Shop-catalog fill for all required slots ──────────────────────────
-// Fetches multiple style-ranked items from shop_catalog for EVERY required
-// outfit slot (top, bottom, shoes, outerwear), not just missing ones.
-// This ensures outfits always include shop catalog items as primary options.
+// ── Shop-catalog candidate fetch ──────────────────────────────────────
+// The caller passes only wardrobe slots that are absent or too sparse.
+// Candidates are style-ranked before they are offered to the outfit builder.
 async function fetchShopItemsForAllSlotsEdge(
     supabaseClient: any,
     requiredSlots: string[],
@@ -777,6 +800,30 @@ async function fetchShopItemsForAllSlotsEdge(
         }
     }
     return picks
+}
+
+function requiredShopSupplementSlots(
+    items: any[],
+    requiredSlots: string[],
+    limit: number,
+    selectedItemIds: string[] = [],
+): { slots: string[]; targetChoicesPerSlot: number } {
+    const manualSelection = Array.isArray(selectedItemIds) && selectedItemIds.length > 0
+    const targetChoicesPerSlot = manualSelection
+        ? 1
+        : (limit >= 10 ? 5 : (limit > 1 ? 2 : 1))
+    const countBySlot = new Map<string, number>()
+
+    for (const item of items) {
+        const slot = String(item.macroCategory || '').toLowerCase()
+        if (!slot) continue
+        countBySlot.set(slot, (countBySlot.get(slot) || 0) + 1)
+    }
+
+    return {
+        targetChoicesPerSlot,
+        slots: requiredSlots.filter((slot) => (countBySlot.get(slot) || 0) < targetChoicesPerSlot),
+    }
 }
 
 // ── Shop-catalog fill for missing slots (shoes, outerwear, etc.) ───────
@@ -888,20 +935,22 @@ async function localFallback(items: any[], style: string, occasion: string, limi
         shoes = sortByFavorite(shoes)
     }
 
-    // ── Fetch shop catalog items for ALL required slots ─────────────────
-    // Proactively fetch multiple style-ranked items from shop_catalog for
-    // every required outfit slot, not just missing ones. This ensures outfits
-    // always include shop catalog items as primary options for all categories.
-    const fillSlots: string[] = ['top', 'bottom', 'shoes']
-    if (layered) fillSlots.push('outerwear')
+    // Wardrobe-first, but daily 15-card decks need enough choices per slot to
+    // vary. A sparse wardrobe with one item per category should be supplemented
+    // from the shop catalog instead of repeating the same outfit all day.
+    const requiredSlots: string[] = ['top', 'bottom', 'shoes']
+    if (layered) requiredSlots.push('outerwear')
+    const { slots: fillSlots, targetChoicesPerSlot } = requiredShopSupplementSlots(filteredItems, requiredSlots, limit)
     let shopFills: any[] = []
     if (supabaseClient) {
         try {
-            shopFills = await fetchShopItemsForAllSlotsEdge(supabaseClient, fillSlots, style, 3)
+            shopFills = await fetchShopItemsForAllSlotsEdge(supabaseClient, fillSlots, style, targetChoicesPerSlot)
+            if (shopFills.length > 0) {
+                console.log(`[shop-fill] Local fallback added ${shopFills.length} shop item(s) for sparse slots: ${fillSlots.join(', ')} (target=${targetChoicesPerSlot})`)
+            }
         } catch (_) { /* skip */ }
     }
-    // Merge shop items into the pool so the builder picks them naturally.
-    const allItems = [...items, ...shopFills]
+    const allItems = [...filteredItems, ...shopFills]
     // Re-derive category buckets from the merged pool.
     const allBaseTops = allItems.filter((i: any) => i.macroCategory === 'top')
     const allOuterwear = allItems.filter((i: any) => i.macroCategory === 'outerwear')
@@ -910,6 +959,25 @@ async function localFallback(items: any[], style: string, occasion: string, limi
     const allNonShortsBottoms = allBottoms.filter((b: any) => !isShortsItem(b))
     const allCasualOuterwear = allOuterwear.filter((o: any) => !isFormalLayerItem(o))
     const allShoes = allItems.filter((i: any) => i.macroCategory === 'shoes')
+    const ownedItems = allItems.filter((i: any) => !i.isShopItem && !String(i.id || '').startsWith('shop_'))
+    const shopItems = allItems.filter((i: any) => i.isShopItem || String(i.id || '').startsWith('shop_'))
+    const isOwnedPart = (p: any) => p && !p.isShopItem && !String(p.id || '').startsWith('shop_') && p.id !== PLACEHOLDER_SHOES.id
+    const isShopPart = (p: any) => p && (p.isShopItem || String(p.id || '').startsWith('shop_'))
+    const replacePart = (parts: any[], replacement: any, protectId?: string) => {
+        const slot = String(replacement.macroCategory || '').toLowerCase()
+        const sameSlotIndex = parts.findIndex((p: any) => String(p.macroCategory || '').toLowerCase() === slot && p.id !== replacement.id && p.id !== protectId)
+        if (sameSlotIndex >= 0) {
+            parts[sameSlotIndex] = replacement
+            return
+        }
+        const shopIndex = parts.findIndex((p: any) => isShopPart(p) && p.id !== protectId)
+        if (shopIndex >= 0) {
+            parts[shopIndex] = replacement
+            return
+        }
+        const replaceableIndex = parts.findIndex((p: any) => p.id !== protectId)
+        if (replaceableIndex >= 0) parts[replaceableIndex] = replacement
+    }
 
     // For old_money, classic, and business_casual styles, completely exclude shorts
     // when formal outerwear is available. This prevents the illogical coat + shorts combination.
@@ -921,37 +989,41 @@ async function localFallback(items: any[], style: string, occasion: string, limi
     }
 
     const outfits: any[] = []
+    const slotSize = (pool: any[]) => Math.max(pool.length, 1)
     
     // Generate outfits with enforced variety
     for (let i = 0; i < limit; i++) {
         const parts: any[] = []
-        
-        // Use random offsets to ensure variety even with small wardrobes
-        // Each outfit gets a different random starting point
-        const randOffset1 = Math.floor(Math.random() * 100)
-        const randOffset2 = Math.floor(Math.random() * 100)
+
+        // Enumerate the Cartesian product of available slots. This guarantees
+        // different combinations until the available combination space is
+        // genuinely exhausted, instead of randomly repeating four pieces.
+        const topIndex = i
+        const baseIndex = Math.floor(i / slotSize(allOuterwear))
+        const bottomIndex = Math.floor(i / (slotSize(allOuterwear) * slotSize(allBaseTops)))
+        const shoeIndex = Math.floor(i / (slotSize(allOuterwear) * slotSize(allBaseTops) * slotSize(allBottoms)))
         
         // Pre-pick the bottom so we can decide whether a formal layer is safe.
-        const bottom = allBottoms[(i + randOffset1) % Math.max(allBottoms.length, 1)] || allBottoms[0]
+        const bottom = allBottoms[(layered ? bottomIndex : Math.floor(i / slotSize(allLegacyTops))) % slotSize(allBottoms)] || allBottoms[0]
         const bottomIsShorts = !!bottom && isShortsItem(bottom)
         
         if (layered) {
             // If the bottom is shorts, never pair with a formal outerwear piece;
             // prefer casual outerwear, else fall back to a safe non-shorts bottom.
-            let outer = allOuterwear[(i + randOffset1) % Math.max(allOuterwear.length, 1)]
+            let outer = allOuterwear[topIndex % slotSize(allOuterwear)]
             if (bottomIsShorts && outer && isFormalLayerItem(outer)) {
-                outer = allCasualOuterwear[(i + randOffset1) % Math.max(allCasualOuterwear.length, 1)] || undefined
+                outer = allCasualOuterwear[topIndex % slotSize(allCasualOuterwear)] || undefined
             }
             // Use outerwear if available, otherwise fallback to any top item
-            const mainTop = outer || allLegacyTops[(i + randOffset1) % Math.max(allLegacyTops.length, 1)]
+            const mainTop = outer || allLegacyTops[topIndex % slotSize(allLegacyTops)]
             if (mainTop) parts.push({ ...mainTop, recommendation: 'Main top / outerwear layer' })
             
             // For second top, use a different offset to ensure variety
-            const base = allBaseTops[(i + randOffset2) % Math.max(allBaseTops.length, 1)]
-            const baseTopItem = base || outer || allLegacyTops[(i + randOffset2 + 1) % Math.max(allLegacyTops.length, 1)]
+            const base = allBaseTops[baseIndex % slotSize(allBaseTops)]
+            const baseTopItem = base || outer || allLegacyTops[(baseIndex + 1) % slotSize(allLegacyTops)]
             if (baseTopItem) parts.push({ ...baseTopItem, recommendation: 'Base top worn underneath' })
         } else {
-            const top = allLegacyTops[(i + randOffset1) % Math.max(allLegacyTops.length, 1)]
+            const top = allLegacyTops[topIndex % slotSize(allLegacyTops)]
             if (top) parts.push({ ...top, recommendation: 'Key piece' })
         }
         
@@ -960,10 +1032,11 @@ async function localFallback(items: any[], style: string, occasion: string, limi
         if (layered && bottomIsShorts) {
             const mainTopItem = parts[0]
             if (mainTopItem && isFormalLayerItem(mainTopItem) && allNonShortsBottoms.length > 0) {
-                finalBottom = allNonShortsBottoms[(i + randOffset1) % allNonShortsBottoms.length]
+                finalBottom = allNonShortsBottoms[bottomIndex % allNonShortsBottoms.length]
             }
         }
-        const shoe = allShoes[(i + randOffset2) % Math.max(allShoes.length, 1)] || allShoes[0]
+        const nonLayeredShoeIndex = Math.floor(i / (slotSize(allLegacyTops) * slotSize(allBottoms)))
+        const shoe = allShoes[(layered ? shoeIndex : nonLayeredShoeIndex) % slotSize(allShoes)] || allShoes[0]
         if (finalBottom) parts.push({ ...finalBottom, recommendation: 'Pairs well' })
         if (shoe) parts.push({ ...shoe, recommendation: 'Completes the look' })
         else parts.push({ ...PLACEHOLDER_SHOES })
@@ -985,13 +1058,25 @@ async function localFallback(items: any[], style: string, occasion: string, limi
         // For non-layered, trim any accidental extras down to 3.
         if (!layered && parts.length > targetItems) parts.length = targetItems
         if (!parts.length) continue
+
+        let protectedOwnedId: string | undefined
+        if (ownedItems.length > 0 && !parts.some(isOwnedPart)) {
+            const owned = { ...ownedItems[i % ownedItems.length], recommendation: 'From your wardrobe' }
+            protectedOwnedId = owned.id
+            replacePart(parts, owned)
+        } else {
+            protectedOwnedId = parts.find(isOwnedPart)?.id
+        }
+        if (shopItems.length > 0 && !parts.some(isShopPart)) {
+            replacePart(parts, { ...shopItems[i % shopItems.length], recommendation: 'Suggested from shop' }, protectedOwnedId)
+        }
         
         // Ensure each outfit has a unique ID
         outfits.push({
             id: `local_${i}_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
             style: style || 'Casual',
             occasion: occasion || 'Everyday',
-            description: `A ${style || 'casual'} look from your wardrobe.`,
+            description: `A ${style || 'casual'} look built around your wardrobe.`,
             confidence: 0.75 + (Math.random() * 0.1), // Slight confidence variation
             items: parts,
             stylingTips: layered
@@ -1037,7 +1122,7 @@ async function localFallback(items: any[], style: string, occasion: string, limi
                 id: `local_0_${Date.now()}`,
                 style: style || 'Casual',
                 occasion: occasion || 'Everyday',
-                description: `A ${style || 'casual'} look from your wardrobe.`,
+                description: `A ${style || 'casual'} look built around your wardrobe.`,
                 confidence: 0.75,
                 items: parts,
                 stylingTips: layered
@@ -1323,19 +1408,23 @@ serve(async (req) => {
             console.log(`[preferences] Filtered out avoided colors: ${beforeAvoid} -> ${wardrobeItems.length} items`)
         }
 
-        // ── 3c. Fetch shop catalog items for ALL required slots ────────────
-        // Outfits must be created from shop category clothing in Supabase.
-        // We proactively fetch multiple style-ranked items from shop_catalog
-        // for every required outfit slot (top, bottom, shoes, outerwear),
-        // not just for slots missing from the user's wardrobe. This ensures
-        // the AI prompt always includes shop catalog items as primary options.
+        // ── 3c. Supplement sparse wardrobe slots from the shop ─────────────
+        // Wardrobe pieces remain in the pool, but a 15-card daily deck needs
+        // several choices per slot. If the user owns only a few garments, add
+        // style-ranked shop catalog items so the combinations can actually vary.
         const requiredSlots = ['top', 'bottom', 'shoes']
         if (needsLayering(stylePreferences, weather, prompt)) requiredSlots.push('outerwear')
+        const { slots: missingSlots, targetChoicesPerSlot } = requiredShopSupplementSlots(
+            wardrobeItems,
+            requiredSlots,
+            limit,
+            selectedItemIds,
+        )
         try {
             const svcClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-            const shopItems = await fetchShopItemsForAllSlotsEdge(svcClient, requiredSlots, stylePreferences, 4)
+            const shopItems = await fetchShopItemsForAllSlotsEdge(svcClient, missingSlots, stylePreferences, targetChoicesPerSlot)
             if (shopItems.length > 0) {
-                console.log(`[shop-fill] Added ${shopItems.length} shop catalog item(s) across all slots: ${requiredSlots.join(', ')}`)
+                console.log(`[shop-fill] Added ${shopItems.length} shop item(s) for sparse slots: ${missingSlots.join(', ')} (target=${targetChoicesPerSlot})`)
                 wardrobeItems = [...wardrobeItems, ...shopItems]
             }
         } catch (_) {
@@ -1442,6 +1531,34 @@ serve(async (req) => {
             } else if (valid.length > 0) {
                 aiOutfits = valid
             }
+        }
+
+        // The model may technically return 15 records while repeating the
+        // same combination, leaving only a few after signature de-duplication.
+        // Fill the remainder with the deterministic combination builder so
+        // the Home deck receives as many genuinely distinct looks as possible.
+        if (aiOutfits && aiOutfits.length > 0 && aiOutfits.length < limit) {
+            const svcClient2 = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+            const generatedFill = await localFallback(
+                wardrobeItems,
+                stylePreferences,
+                occasion,
+                limit,
+                layered,
+                svcClient2,
+                preferences,
+            )
+            const signatures = new Set(
+                aiOutfits.map((outfit: any) => (outfit.items || []).map((item: any) => String(item.id)).sort().join('|')),
+            )
+            for (const outfit of generatedFill) {
+                const signature = (outfit.items || []).map((item: any) => String(item.id)).sort().join('|')
+                if (!signature || signatures.has(signature)) continue
+                signatures.add(signature)
+                aiOutfits.push(outfit)
+                if (aiOutfits.length >= limit) break
+            }
+            console.log(`[diversity] Filled daily deck to ${aiOutfits.length}/${limit} unique combinations`)
         }
 
         if (!aiOutfits || aiOutfits.length === 0) {

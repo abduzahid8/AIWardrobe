@@ -38,7 +38,6 @@ import StreakBadge from '../components/StreakBadge';
 import useWardrobeStore from '../store/wardrobeStore';
 import { useShallow } from 'zustand/shallow';
 import useSubscriptionStore from '../store/subscriptionStore';
-import useAppContextStore from '../src/store/contextStore';
 import { CachedImage } from '../components/ui/CachedImage';
 import type { ContextualPrompt } from '../src/services/contextualPromptService';
 import {
@@ -65,6 +64,7 @@ import { useAdminGuard } from '../hooks/useAdminGuard';
 import { perfMark, perfMeasure, perfAction, perfScreenReady } from '../src/utils/perf';
 
 type EssentialSlot = 'outerwear' | 'shirts' | 'knitwear' | 'tees' | 'bottoms' | 'shoes';
+type EssentialAddState = 'adding' | 'added';
 
 const ESSENTIALS_REQUIREMENTS: Record<EssentialSlot, number> = {
   outerwear: 2,  // blazers, jackets, coats
@@ -539,7 +539,8 @@ const DailyOutfitSection = React.memo(({
       }
     });
 
-    return items;
+    // Curated fallback combinations are sourced from the shop catalog.
+    return items.map((item) => ({ ...item, isShopItem: true }));
   }, [catalogEssentials, shopTops, shopBottoms, shopShoes, needsOuterwear]);
 
   const mapAiOutfitItemsForCollage = useCallback((outfit: any) => {
@@ -559,8 +560,16 @@ const DailyOutfitSection = React.memo(({
       const macroNormalized = macro === 'upper_body' ? 'top' : macro === 'lower_body' ? 'bottom' : macro;
       const shopItems = shopByMacro[macroNormalized] || [];
 
-      if (shopItems.length > 0) {
-        const shopItem = shopItems[Math.floor(Math.random() * shopItems.length)];
+      // Keep real wardrobe pieces intact. The old implementation replaced
+      // every AI-selected item with a random catalog product from the same
+      // category, which made a wardrobe outfit look like an advert. Only
+      // resolve through the catalog when the item is explicitly a shop pick,
+      // or use it as a visual fallback when the original item has no image.
+      const exactShopItem = shopItems.find((candidate) => String(candidate.id) === String(item.id));
+      const shopItem = exactShopItem || (!img && shopItems.length > 0
+        ? shopItems[Math.floor(Math.random() * shopItems.length)]
+        : undefined);
+      if (shopItem && (item.isShopItem === true || !img)) {
         finalItem = {
           ...item,
           id: shopItem.id,
@@ -569,6 +578,7 @@ const DailyOutfitSection = React.memo(({
           name: shopItem.name,
           type: shopItem.name,
           macroCategory: macroNormalized,
+          isShopItem: true,
         };
         img = shopItem.imageUrl;
       }
@@ -583,6 +593,7 @@ const DailyOutfitSection = React.memo(({
         type: finalItem.type || finalItem.name || 'Item',
         name: finalItem.name || finalItem.type || 'Item',
         macroCategory: finalItem.macroCategory,
+        isShopItem: finalItem.isShopItem === true,
       };
     });
 
@@ -598,6 +609,7 @@ const DailyOutfitSection = React.memo(({
             type: shopItem.name,
             name: shopItem.name,
             macroCategory: slot,
+            isShopItem: true,
           });
         }
       }
@@ -621,7 +633,11 @@ const DailyOutfitSection = React.memo(({
 
     type DailyOutfitCard = { id: string; outfit?: any; legacy?: any; index: number };
     const data: DailyOutfitCard[] = useAI
-      ? aiOutfits.map((o, i) => ({ id: o.id || `ai-${style}-${i}`, outfit: o, index: i }))
+      // The backend can repeat an outfit id across variants. A guaranteed
+      // unique deck key is required here because the maps below and React's
+      // card reconciliation both use it; duplicate ids made multiple swipes
+      // appear to show the same outfit.
+      ? aiOutfits.map((o, i) => ({ id: `${o.id || 'ai'}-${style}-${i}`, outfit: o, index: i }))
       : curatedCombinations.map((c) => ({ id: String(c.id), legacy: c, index: 0 }));
 
     // Full-fidelity collage items per card (image + name + macroCategory) —
@@ -658,15 +674,27 @@ const DailyOutfitSection = React.memo(({
 
     const cards: SwipeStackCard[] = data.map((d) => {
       const collageItems = collageItemsByCardKey.get(d.id) ?? [];
+      const shopCount = collageItems.filter((ci: any) => ci.isShopItem === true).length;
+      const wardrobeCount = collageItems.length - shopCount;
       return {
         key: d.id,
-        items: collageItems.map((ci: any) => ({ id: ci.id, image: ci.image, category: ci.macroCategory })),
-        caption: `${collageItems.length} shop items suggested`,
+        items: collageItems.map((ci: any) => ({
+          id: ci.id,
+          image: ci.image,
+          category: ci.macroCategory,
+          name: ci.name,
+          isShopItem: ci.isShopItem === true,
+        })),
+        wardrobeCount,
+        shopCount,
+        caption: shopCount > 0
+          ? t('home.outfitSources', { wardrobeCount, shopCount })
+          : t('home.fromYourWardrobe', { count: wardrobeCount || collageItems.length }),
       };
     });
 
     return { cards, collageItemsByCardKey, itemIdsByCardKey };
-  }, [dailyAI.outfits, curatedCombinations, collageItemsList, mapLegacyOutfitItemsForCollage, mapAiOutfitItemsForCollage, style]);
+  }, [dailyAI.outfits, curatedCombinations, collageItemsList, mapLegacyOutfitItemsForCollage, mapAiOutfitItemsForCollage, style, t]);
 
   const getOccasionTranslation = (key: string) => {
     const camel = toCamelCase(key);
@@ -780,14 +808,6 @@ const DailyOutfitSection = React.memo(({
         <ScaledText style={styles.premiumHeaderSubtitle}>{subtitleText}</ScaledText>
       </View>
 
-      {hasTopCard && (
-        <View style={[styles.stackCounterRow, { paddingHorizontal: spacing.screenPadding }]}>
-          <ScaledText style={styles.stackCounterText}>
-            {`${Math.min(stackIndex + 1, cards.length)} of ${cards.length}`}
-          </ScaledText>
-        </View>
-      )}
-
       <View style={{ paddingHorizontal: spacing.screenPadding }}>
         <OutfitSwipeStack
           ref={stackRef}
@@ -796,10 +816,18 @@ const DailyOutfitSection = React.memo(({
           onSwipeRight={handleSwipeRight}
           onSwipeLeft={handleSwipeLeft}
           reducedMotion={isReducedMotionEnabled}
-          height={340}
+          height={390}
           emptyState={emptyStateContent}
         />
       </View>
+
+      {hasTopCard && (
+        <View style={styles.swipeHintRow}>
+          <Ionicons name="arrow-back" size={12} color={colors.text.tertiary} />
+          <ScaledText style={styles.swipeHintText}>{t('home.swipeHint')}</ScaledText>
+          <Ionicons name="arrow-forward" size={12} color={colors.text.tertiary} />
+        </View>
+      )}
 
       {/* Action Footer */}
       <View style={styles.premiumFooter}>
@@ -834,7 +862,7 @@ const DailyOutfitSection = React.memo(({
             accessibilityLabel={t('home.dislikeOutfit', 'Dislike outfit')}
             accessibilityRole="button"
           >
-            <Ionicons name="thumbs-down-outline" size={24} color={hasTopCard ? colors.text.primary : colors.text.tertiary} />
+            <Ionicons name="close" size={24} color={hasTopCard ? colors.text.primary : colors.text.tertiary} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionIconButton}
@@ -1036,11 +1064,6 @@ const HomeScreen = () => {
     return null;
   }, [items, wearLogs, weatherForAI]);
 
-  // Sync context for AI Assistant
-  useEffect(() => {
-    useAppContextStore.getState().setContext(weather, todaysOutfit);
-  }, [weather, todaysOutfit]);
-
   // Memoize utilization so wearLogs.flatMap isn't called inside the effect on every focus
   const closetUtilization = useMemo(() => {
     if (items.length === 0) return 0;
@@ -1150,7 +1173,7 @@ const HomeScreen = () => {
   // Wardrobe Essentials — sourced from all shop_catalog sources for maximum variety
   // Use a plain object instead of Set so adding one item doesn't invalidate the
   // entire essentials grid (Set creates a new reference on every add).
-  const [addedItemIds, setAddedItemIds] = useState<Record<string, boolean>>({});
+  const [essentialAddStates, setEssentialAddStates] = useState<Record<string, EssentialAddState>>({});
   const addItem = useWardrobeStore(selectAddItem);
 
   const {
@@ -1329,12 +1352,12 @@ const HomeScreen = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalogEssentialsKey, shopTopsKey, shopBottomsKey, shopShoesKey]);
 
-  const handleAddToWardrobe = async (item: ShopCatalogItem) => {
-    if (addedItemIds[item.id] === true) return;
+  const handleAddToWardrobe = useCallback(async (item: ShopCatalogItem) => {
+    if (essentialAddStates[item.id]) return;
     logger.info('Adding catalog essential to wardrobe', item.name);
     const donePerf = perfAction(`addToWardrobe:${item.name}`);
 
-    setAddedItemIds(prev => ({ ...prev, [item.id]: true }));
+    setEssentialAddStates(prev => ({ ...prev, [item.id]: 'adding' }));
 
     const imageUrl = typeof item.imageUrl === 'string' ? item.imageUrl : '';
 
@@ -1361,17 +1384,21 @@ const HomeScreen = () => {
         occasions: [],
       });
       donePerf();
+      setEssentialAddStates(prev => ({ ...prev, [item.id]: 'added' }));
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       logger.info('Catalog essential added to wardrobe', item.name);
     } catch (err) {
       donePerf();
       logger.error('Failed to add item, reverting', err);
-      setAddedItemIds(prev => {
+      setEssentialAddStates(prev => {
         const next = { ...prev };
         delete next[item.id];
         return next;
       });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(t('home.addEssentialFailed'), t('home.addEssentialFailedMessage'));
     }
-  };
+  }, [addItem, essentialAddStates, t]);
 
   // ============================================
   // RENDER COMPONENTS
@@ -1523,26 +1550,29 @@ const HomeScreen = () => {
     return /\b(rain|drizzle|shower|storm|wind|gust|breezy|snow|sleet|hail)\b/.test(c);
   }, [weather]);
 
-  // Wardrobe Essentials Grid — Supabase-backed catalog picks
-  const garmentTypeLabel = (type: string): string => {
-    const labels: Record<string, string> = {
-      upper_body: 'Top',
-      lower_body: 'Bottom',
-      dresses: 'Dress',
-      shoes: 'Shoes',
-      accessory: 'Accessory',
-      outfit: 'Outfit',
-    };
-    return labels[type] || type;
-  };
-
+  // Wardrobe Essentials — one cohesive, curated closet builder.
   const renderEssentials = useCallback(() => {
     const showSkeleton = essentialsLoading && essentialsItems.length === 0;
     const showEmpty = !essentialsLoading && essentialsItems.length === 0;
+    const addedCount = Object.values(essentialAddStates).filter((state) => state === 'added').length;
 
     return (
       <View style={styles.essentialsSection}>
-        <ScaledText style={styles.sectionTitle} accessibilityRole="header">{t('home.wardrobeEssentials')}</ScaledText>
+        <View style={styles.essentialsHeader}>
+          <View style={styles.essentialsHeadingCopy}>
+            <ScaledText style={styles.essentialsEyebrow}>{t('home.essentialsCurated')}</ScaledText>
+            <ScaledText style={styles.essentialsTitle} accessibilityRole="header">{t('home.wardrobeEssentials')}</ScaledText>
+            <ScaledText style={styles.essentialsSubtitle}>{t('home.essentialsSubtitle')}</ScaledText>
+          </View>
+          {addedCount > 0 ? (
+            <View style={styles.essentialsAddedCount}>
+              <Ionicons name="checkmark" size={13} color="#FFFFFF" />
+              <ScaledText style={styles.essentialsAddedCountText}>
+                {t('home.essentialsAddedCount', { count: addedCount })}
+              </ScaledText>
+            </View>
+          ) : null}
+        </View>
 
         {showSkeleton ? (
           <View style={styles.essentialsLoadingBlock}>
@@ -1565,7 +1595,9 @@ const HomeScreen = () => {
         ) : (
           <View style={styles.gridContainer}>
             {essentialsItems.map((item) => {
-              const isAdded = addedItemIds[item.id] === true;
+              const addState = essentialAddStates[item.id];
+              const isAdding = addState === 'adding';
+              const isAdded = addState === 'added';
 
               return (
                 <LiquidGlassCard
@@ -1576,43 +1608,49 @@ const HomeScreen = () => {
                   radius={16}
                 >
                   <View style={styles.gridImageWrapper}>
-                    <CachedImage uri={typeof item.imageUrl === 'string' ? item.imageUrl : ''} style={styles.gridImage} contentFit="cover" fadeIn={false} />
+                    <CachedImage uri={typeof item.imageUrl === 'string' ? item.imageUrl : ''} style={styles.gridImage} contentFit="contain" fadeIn={false} />
                     <View style={styles.gridImageOverlay} pointerEvents="none">
-                      <View style={styles.garmentBadge}>
-                        <ScaledText style={styles.garmentBadgeText}>
-                          {garmentTypeLabel(item.garmentType)}
-                        </ScaledText>
-                      </View>
+                      {isAdded ? (
+                        <View style={styles.itemAddedBadge}>
+                          <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                        </View>
+                      ) : null}
                     </View>
                   </View>
                   <View style={styles.gridItemInfo}>
-                    <ScaledText style={styles.essentialItemName} numberOfLines={1}>{item.name}</ScaledText>
                     {item.brand ? (
                       <ScaledText style={styles.essentialItemBrand} numberOfLines={1}>{item.brand}</ScaledText>
                     ) : null}
+                    <ScaledText style={styles.essentialItemName} numberOfLines={2}>{item.name}</ScaledText>
                   </View>
                   <TouchableOpacity
                     style={[styles.addButton, isAdded && styles.addedButton]}
                     onPress={() => {
-                      if (!isAdded) {
+                      if (!isAdded && !isAdding) {
                         logger.debug('Add button pressed', item.name);
                         handleAddToWardrobe(item);
                       }
                     }}
+                    disabled={isAdded || isAdding}
                     accessibilityLabel={
                       isAdded
                         ? t('home.itemAddedToWardrobe', { itemName: item.name })
                         : t('home.addItemToWardrobe', { itemName: item.name })
                     }
                     accessibilityRole="button"
+                    accessibilityState={{ disabled: isAdded || isAdding, busy: isAdding }}
                   >
-                    <Ionicons
-                      name={isAdded ? 'checkmark-circle' : 'add-circle-outline'}
-                      size={18}
-                      color={isAdded ? '#FFF' : colors.text.primary}
-                    />
+                    {isAdding ? (
+                      <ActivityIndicator size="small" color={colors.text.primary} />
+                    ) : (
+                      <Ionicons
+                        name={isAdded ? 'checkmark' : 'add'}
+                        size={17}
+                        color={isAdded ? '#FFF' : colors.text.primary}
+                      />
+                    )}
                     <ScaledText style={[styles.addButtonText, isAdded && styles.addedButtonText]}>
-                      {isAdded ? t('common.added') : t('common.add')}
+                      {isAdding ? t('home.addingToWardrobe') : isAdded ? t('common.added') : t('home.addToCloset')}
                     </ScaledText>
                   </TouchableOpacity>
                 </LiquidGlassCard>
@@ -1622,7 +1660,7 @@ const HomeScreen = () => {
         )}
       </View>
     );
-  }, [essentialsLoading, essentialsItems, addedItemIds, t, handleAddToWardrobe]);
+  }, [essentialAddStates, essentialsLoading, essentialsError, essentialsItems, handleAddToWardrobe, t]);
 
 
 
@@ -1920,7 +1958,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'baseline',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
   premiumHeaderTitle: {
     ...typography.scale.titleLarge,
@@ -1989,37 +2027,47 @@ const styles = StyleSheet.create({
     ...typography.scale.bodySmall,
     color: colors.text.secondary,
   },
-  stackCounterRow: {
-    alignItems: 'flex-end',
-    marginBottom: spacing.sm,
-  },
-  stackCounterText: {
-    ...typography.scale.labelSmall,
-    color: colors.text.tertiary,
-    textTransform: 'none',
-  },
   premiumFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
     paddingHorizontal: spacing.screenPadding,
   },
   premiumActionIcons: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: 8,
   },
   actionIconButton: {
-    width: 32,
-    height: 32,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.84)',
+    borderWidth: 1,
+    borderColor: 'rgba(23,58,101,0.09)',
+  },
+  swipeHintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: 7,
+    marginTop: spacing.md,
+  },
+  swipeHintText: {
+    ...typography.scale.labelSmall,
+    color: colors.text.tertiary,
+    textTransform: 'none',
+    letterSpacing: 0,
   },
   createAvatarButton: {
     backgroundColor: '#173A65',
-    paddingHorizontal: spacing.lg,
+    minHeight: 46,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg + 2,
     paddingVertical: spacing.sm + 2,
-    borderRadius: 22,
+    borderRadius: 23,
     shadowColor: '#173A65',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.12,
@@ -2327,6 +2375,57 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.screenPadding,
     marginBottom: spacing.xxl,
   },
+  essentialsHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  essentialsHeadingCopy: {
+    flex: 1,
+    paddingRight: spacing.md,
+  },
+  essentialsEyebrow: {
+    ...typography.scale.labelSmall,
+    color: '#315C8C',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginBottom: 5,
+  },
+  essentialsTitle: {
+    ...typography.scale.titleLarge,
+    color: colors.text.primary,
+    fontWeight: '700',
+    letterSpacing: -0.4,
+  },
+  essentialsSubtitle: {
+    ...typography.scale.bodySmall,
+    color: colors.text.secondary,
+    lineHeight: 18,
+    marginTop: 4,
+    maxWidth: 290,
+  },
+  essentialsAddedCount: {
+    minWidth: 38,
+    minHeight: 30,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    backgroundColor: '#173A65',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+    marginTop: 18,
+  },
+  essentialsAddedCountText: {
+    ...typography.scale.labelSmall,
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 10,
+  },
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -2334,7 +2433,9 @@ const styles = StyleSheet.create({
   },
   gridItem: {
     width: (SCREEN_WIDTH - (spacing.screenPadding * 2) - spacing.md) / 2,
-    aspectRatio: 0.72,
+    aspectRatio: 0.68,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderColor: 'rgba(23,58,101,0.08)',
   },
   gridItemContent: {
     padding: 0,
@@ -2342,8 +2443,9 @@ const styles = StyleSheet.create({
   },
   gridImageWrapper: {
     width: '100%',
-    height: '62%',
+    height: '60%',
     overflow: 'hidden',
+    backgroundColor: '#F4F1EC',
   },
   gridImage: {
     width: '100%',
@@ -2356,52 +2458,54 @@ const styles = StyleSheet.create({
     right: 0,
     padding: spacing.sm,
     flexDirection: 'row',
-    justifyContent: 'flex-start',
+    alignItems: 'flex-start',
+    justifyContent: 'flex-end',
   },
-  garmentBadge: {
-    backgroundColor: 'rgba(10, 25, 49, 0.75)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: radius.pill,
-  },
-  garmentBadgeText: {
-    ...typography.scale.labelSmall,
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '600',
-    letterSpacing: 0.3,
+  itemAddedBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#173A65',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   gridItemInfo: {
+    flex: 1,
     paddingHorizontal: spacing.sm,
-    paddingTop: spacing.sm,
-    paddingBottom: 2,
+    paddingTop: 9,
+    paddingBottom: 4,
   },
   essentialItemName: {
     ...typography.scale.bodySmall,
     color: colors.text.primary,
     fontWeight: '600',
     fontSize: 13,
+    lineHeight: 17,
+    marginTop: 3,
   },
   essentialItemBrand: {
-    ...typography.scale.bodySmall,
-    color: colors.text.tertiary,
-    fontSize: 11,
-    marginTop: 1,
+    ...typography.scale.labelSmall,
+    color: '#6C7A8D',
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
   },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F4F7FD',
+    minHeight: 36,
+    backgroundColor: '#F1F5FA',
     borderWidth: 1,
-    borderColor: 'rgba(24,58,103,0.08)',
-    paddingVertical: 6,
+    borderColor: 'rgba(23,58,101,0.08)',
+    paddingVertical: 8,
     paddingHorizontal: spacing.sm,
     borderRadius: radius.pill,
     gap: 4,
     marginHorizontal: spacing.sm,
     marginBottom: spacing.sm,
-    marginTop: 2,
+    marginTop: 0,
   },
   addedButton: {
     backgroundColor: '#173A65',
@@ -2410,8 +2514,9 @@ const styles = StyleSheet.create({
   addButtonText: {
     ...typography.scale.labelSmall,
     color: colors.text.primary,
-    fontWeight: '600',
-    fontSize: 11,
+    fontWeight: '700',
+    fontSize: 10,
+    letterSpacing: 0.25,
   },
   addedButtonText: {
     color: '#FFF',

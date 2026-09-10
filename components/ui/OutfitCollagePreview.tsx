@@ -17,6 +17,8 @@ export interface OutfitCollageItem {
     /** Macro category (top/bottom/shoes/outerwear/...) used to order pieces
      * the way an outfit is worn. Optional — falls back to the order given. */
     category?: string;
+    name?: string;
+    isShopItem?: boolean;
 }
 
 interface OutfitCollagePreviewProps {
@@ -27,6 +29,8 @@ interface OutfitCollagePreviewProps {
     /** Reserve this many px at the bottom (clear of the cascade) for a
      * caption footer drawn on top of this component. */
     footerInset?: number;
+    /** Editorial, tappable piece layout used by the Home look deck. */
+    variant?: 'cascade' | 'lookboard';
 }
 
 const CATEGORY_PRIORITY: Record<string, number> = {
@@ -67,6 +71,25 @@ const SLOTS_BY_COUNT: Record<number, StyleProp<ImageStyle>[]> = {
     ],
 };
 
+const LOOKBOARD_SLOTS: Record<number, StyleProp<ImageStyle>[]> = {
+    1: [{ top: '3%', left: '10%', width: '80%', height: '92%' }],
+    2: [
+        { top: '1%', left: '3%', width: '61%', height: '64%' },
+        { bottom: '1%', right: '2%', width: '56%', height: '56%' },
+    ],
+    3: [
+        { top: '0%', left: '2%', width: '59%', height: '56%' },
+        { bottom: '0%', left: '20%', width: '55%', height: '55%' },
+        { bottom: '1%', right: '0%', width: '38%', height: '27%' },
+    ],
+    4: [
+        { top: '0%', left: '0%', width: '54%', height: '57%' },
+        { top: '1%', right: '0%', width: '47%', height: '49%' },
+        { bottom: '0%', left: '18%', width: '54%', height: '55%' },
+        { bottom: '0%', right: '0%', width: '37%', height: '28%' },
+    ],
+};
+
 const Piece: React.FC<{ src: CollageImageSrc; style: StyleProp<ImageStyle>; zIndex: number }> = ({
     src,
     style,
@@ -90,6 +113,7 @@ export const OutfitCollagePreview: React.FC<OutfitCollagePreviewProps> = ({
     placeholderIconColor = 'rgba(15,23,42,0.22)',
     placeholderIconSize = 32,
     footerInset = 0,
+    variant = 'cascade',
 }) => {
     const ordered = orderByWorn(items.filter((i) => i.image !== undefined && i.image !== null && i.image !== '')).slice(
         0,
@@ -100,6 +124,28 @@ export const OutfitCollagePreview: React.FC<OutfitCollagePreviewProps> = ({
         return (
             <View style={[styles.root, styles.centered, { backgroundColor }]}>
                 <Ionicons name="shirt-outline" size={placeholderIconSize} color={placeholderIconColor} />
+            </View>
+        );
+    }
+
+    if (variant === 'lookboard') {
+        const slots = LOOKBOARD_SLOTS[ordered.length];
+        return (
+            <View style={[styles.root, { backgroundColor }]}>
+                <View style={[styles.lookboardArea, { bottom: footerInset }]}>
+                    <View style={styles.lookboardHalo} />
+                    <View style={styles.lookboardHaloSmall} />
+                    <View style={styles.lookboardRule} />
+                    {ordered.map((item, index) => (
+                        <Image
+                            key={item.id ?? index}
+                            source={typeof item.image === 'number' ? item.image : { uri: item.image }}
+                            style={[styles.lookboardPiece, slots[index], { zIndex: index + 1 }]}
+                            resizeMode="contain"
+                            accessibilityLabel={item.name || item.category || 'Outfit piece'}
+                        />
+                    ))}
+                </View>
             </View>
         );
     }
@@ -134,6 +180,42 @@ const styles = StyleSheet.create({
         right: 0,
     },
     piece: {
+        position: 'absolute',
+    },
+    lookboardArea: {
+        position: 'absolute',
+        top: 42,
+        left: 0,
+        right: 0,
+        overflow: 'hidden',
+    },
+    lookboardHalo: {
+        position: 'absolute',
+        width: 250,
+        height: 250,
+        borderRadius: 125,
+        backgroundColor: 'rgba(160, 176, 153, 0.14)',
+        top: '8%',
+        left: '12%',
+    },
+    lookboardHaloSmall: {
+        position: 'absolute',
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        backgroundColor: 'rgba(211, 198, 181, 0.14)',
+        right: '-5%',
+        bottom: '3%',
+    },
+    lookboardRule: {
+        position: 'absolute',
+        top: '49%',
+        left: '8%',
+        right: '8%',
+        height: 1,
+        backgroundColor: 'rgba(23,58,101,0.055)',
+    },
+    lookboardPiece: {
         position: 'absolute',
     },
 });

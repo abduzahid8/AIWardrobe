@@ -478,6 +478,11 @@ const RootNavigator = () => {
               component={GuideScreen}
               options={{ ...LiquidPresets.slide }}
             />
+            <Stack.Screen
+              name="BodyProfile"
+              component={BodyProfileScreen}
+              options={{ ...LiquidPresets.slide }}
+            />
           </>
         )
         ) : (

@@ -256,7 +256,7 @@ class NotificationService {
             content: {
                 title: randomMessage.title,
                 body: randomMessage.body,
-                data: { type: 'daily_outfit', screen: 'DailySuggestion' },
+                data: { type: 'daily_outfit', screen: 'Home' },
                 categoryIdentifier: 'outfit',
             },
             trigger: {
@@ -281,7 +281,7 @@ class NotificationService {
             content: {
                 title: randomMessage.title,
                 body: randomMessage.body,
-                data: { type: 'evening_wearlog', screen: 'WearLog' },
+                data: { type: 'evening_wearlog', screen: 'Home' },
             },
             trigger: {
                 type: Notifications.SchedulableTriggerInputTypes.DAILY,
@@ -362,7 +362,7 @@ class NotificationService {
             content: {
                 title: message.title,
                 body: message.body,
-                data: { type: 'weather_alert', condition, screen: 'DailySuggestion' },
+                data: { type: 'weather_alert', condition, screen: 'Home' },
             },
             trigger: null, // Send immediately
         });

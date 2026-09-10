@@ -15,7 +15,6 @@ import { deleteSecureItem } from '../utils/secureStorage';
 import { useStylePreferenceStore } from '../../store/stylePreferenceStore';
 import useTryOnLooksStore from '../../store/tryOnLooksStore';
 import useAvatarStore from '../../store/avatarStore';
-import usePriceTrackingStore from '../../store/priceTrackingStore';
 
 /**
  * AsyncStorage keys used by persist(...) middleware or direct reads.
@@ -28,7 +27,6 @@ export const PERSISTED_ASYNC_STORAGE_KEYS: readonly string[] = [
     'avatar-storage',
     'body-profile-storage-v1', // bodyProfileStore (Month 1 of body-fit plan)
     'subscription-storage',
-    'price-tracking-storage',
     'style-preferences', // stylePreferenceStore (was incorrectly 'style-preference-storage')
 
     // Direct AsyncStorage keys (non-persist stores)
@@ -86,7 +84,6 @@ export async function clearAllPersistedUserData(): Promise<void> {
     try { useStylePreferenceStore.getState().clearAll(); } catch {}
     try { useTryOnLooksStore.getState().clearAll(); } catch {}
     try { useAvatarStore.setState({ heightCm: '175', weightKg: '70', bodyType: 'average', gender: 'male' }); } catch {}
-    try { usePriceTrackingStore.setState({ trackedItems: [], priceAlerts: [] }); } catch {}
     try {
       // bodyProfileStore is a default export; default-imported below to avoid a circular dep
       const useBodyProfileStore = require('../../store/bodyProfileStore').default;

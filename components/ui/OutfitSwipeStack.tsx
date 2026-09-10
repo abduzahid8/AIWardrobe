@@ -37,6 +37,8 @@ export interface SwipeStackCard {
   key: string;
   items: OutfitCollageItem[];
   caption: string;
+  wardrobeCount?: number;
+  shopCount?: number;
 }
 
 export interface OutfitSwipeStackHandle {
@@ -54,14 +56,36 @@ interface OutfitSwipeStackProps {
   emptyState?: React.ReactNode;
 }
 
-const CardFace: React.FC<{ card: SwipeStackCard }> = ({ card }) => (
+const CardFace: React.FC<{ card: SwipeStackCard; position: number; total: number }> = ({ card, position, total }) => (
   <View style={styles.cardInner}>
-    <OutfitCollagePreview items={card.items} backgroundColor="#F7F9FC" footerInset={CAPTION_BAR_HEIGHT} />
+    <View style={styles.cardHeader}>
+      <View style={styles.wardrobePill}>
+        <View style={styles.wardrobeDot} />
+        <ScaledText style={styles.wardrobePillText}>
+          {card.wardrobeCount ? 'YOUR WARDROBE' : 'CURATED LOOK'}
+        </ScaledText>
+      </View>
+      <View style={styles.lookCounter} accessibilityLabel={`Look ${position} of ${total}`}>
+        <ScaledText style={styles.lookCounterCurrent}>{String(position).padStart(2, '0')}</ScaledText>
+        <View style={styles.lookCounterRule} />
+        <ScaledText style={styles.lookCounterTotal}>{String(total).padStart(2, '0')}</ScaledText>
+      </View>
+    </View>
+    <OutfitCollagePreview
+      items={card.items}
+      backgroundColor="#F2F4F0"
+      footerInset={CAPTION_BAR_HEIGHT}
+      variant="lookboard"
+    />
     <View style={styles.captionBar}>
-      <ScaledText style={styles.captionText} numberOfLines={1}>
-        {card.caption}
-      </ScaledText>
-      <Ionicons name="bag-outline" size={15} color="rgba(10,25,49,0.4)" />
+      <View>
+        <ScaledText style={styles.captionTitle}>{card.items.length}-piece outfit</ScaledText>
+        <ScaledText style={styles.captionText} numberOfLines={1}>{card.caption}</ScaledText>
+      </View>
+      <View style={styles.pieceCountBadge}>
+        <ScaledText style={styles.pieceCountText}>{card.items.length}</ScaledText>
+        <Ionicons name="shirt-outline" size={13} color="#173A65" />
+      </View>
     </View>
   </View>
 );
@@ -217,19 +241,19 @@ export const OutfitSwipeStack = forwardRef<OutfitSwipeStackHandle, OutfitSwipeSt
     return (
       <View style={[styles.stage, { height }]}>
         {backCard && (
-          <View style={[styles.cardSlot, styles.backSlot]}>
-            <CardFace card={backCard} />
+          <View key={`back-${backCard.key}`} style={[styles.cardSlot, styles.backSlot]}>
+            <CardFace card={backCard} position={activeIndex + 3} total={cards.length} />
           </View>
         )}
         {midCard && (
-          <Animated.View style={[styles.cardSlot, midCardStyle]}>
-            <CardFace card={midCard} />
+          <Animated.View key={`mid-${midCard.key}`} style={[styles.cardSlot, midCardStyle]}>
+            <CardFace card={midCard} position={activeIndex + 2} total={cards.length} />
           </Animated.View>
         )}
         {topCard ? (
           <GestureDetector gesture={panGesture}>
-            <Animated.View style={[styles.cardSlot, topCardStyle]}>
-              <CardFace card={topCard} />
+            <Animated.View key={`top-${topCard.key}`} style={[styles.cardSlot, topCardStyle]}>
+              <CardFace card={topCard} position={activeIndex + 1} total={cards.length} />
               <Animated.View pointerEvents="none" style={[styles.stamp, styles.stampSave, saveStampStyle]}>
                 <Ionicons name="heart" size={15} color="#FFFFFF" />
                 <ScaledText style={styles.stampSaveText}>SAVE</ScaledText>
@@ -276,6 +300,59 @@ const styles = StyleSheet.create({
     shadowRadius: 22,
     elevation: 5,
   },
+  cardHeader: {
+    position: 'absolute',
+    zIndex: 10,
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+  },
+  wardrobePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.82)',
+  },
+  wardrobeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#58734E',
+  },
+  wardrobePillText: {
+    color: '#334238',
+    fontSize: 8,
+    fontWeight: '800',
+    letterSpacing: 0.65,
+  },
+  lookCounter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  lookCounterCurrent: {
+    color: '#173A65',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  lookCounterRule: {
+    width: 16,
+    height: 1,
+    backgroundColor: 'rgba(23,58,101,0.3)',
+  },
+  lookCounterTotal: {
+    color: 'rgba(23,58,101,0.45)',
+    fontSize: 10,
+    fontWeight: '700',
+  },
   captionBar: {
     position: 'absolute',
     left: 0,
@@ -285,15 +362,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 18,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(255,255,255,0.96)',
     borderTopWidth: 1,
     borderTopColor: 'rgba(24,58,103,0.06)',
   },
   captionText: {
-    fontSize: 12,
-    color: '#4D4D4D',
+    fontSize: 9,
+    color: '#718096',
     flexShrink: 1,
+  },
+  captionTitle: {
+    fontSize: 11,
+    lineHeight: 15,
+    color: '#17263B',
+    fontWeight: '700',
+  },
+  pieceCountBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#EEF2F7',
+  },
+  pieceCountText: {
+    fontSize: 10,
+    color: '#173A65',
+    fontWeight: '800',
   },
   stamp: {
     position: 'absolute',

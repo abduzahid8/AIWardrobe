@@ -88,7 +88,6 @@ export type RootStackParamList = {
     ClothingDetail: { itemId: string; fullItem?: any };
     WardrobeAnalytics: undefined;
     WeeklyInsights: undefined;
-    FlashSaleEvent: { eventId: string };
     PrivacyPolicy: undefined;
     TermsOfService: undefined;
     AdminPanel: undefined;

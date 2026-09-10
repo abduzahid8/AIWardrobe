@@ -114,14 +114,6 @@ export const QuickActionsFAB: React.FC = () => {
             color: '#FFFFFF',
             bgColor: '#8B5CF6',
         },
-        {
-            id: 'add',
-            icon: 'add-circle',
-            label: t('quickActions.addItem'),
-            route: 'AddOutfit',
-            color: '#FFFFFF',
-            bgColor: '#22C55E',
-        },
     ];
 
     const progress = useSharedValue(0);

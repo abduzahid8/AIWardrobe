@@ -165,24 +165,46 @@ export async function generateOutfitsLocally(
         const requiredSlots: OutfitSlotId[] = ['top', 'bottom', 'shoes'];
         if (layered) requiredSlots.push('outerwear');
 
-        // ── Fetch style-matched shop items for ALL slots ──────────────────
-        // Previously we only fetched shop items for MISSING macro-category
-        // slots. That meant a user with casual sneakers would get those
-        // sneakers in a "business_casual" outfit instead of shop loafers.
-        // Now we fetch style-ranked shop items for every slot so the local
-        // builder can pick the best match regardless of wardrobe contents.
-        let shopPool: ShopFillItem[] = [];
-        try {
-            shopPool = await fetchShopPoolForStyle(requiredSlots, params.stylePreferences, 5);
-        } catch (_) {
-            // Shop catalog unreachable — continue with wardrobe only.
+        let filteredItems = [...items];
+
+        if (params.preferences) {
+            const avoidColors = params.preferences.avoidColors || [];
+            if (avoidColors.length > 0) {
+                const avoid = avoidColors.map((c: string) => c.toLowerCase().trim()).filter(Boolean);
+                filteredItems = filteredItems.filter(item => {
+                    const color = (item.primaryColor || '').toLowerCase();
+                    const name = (item.name || '').toLowerCase();
+                    const desc = (item.subCategory || '').toLowerCase();
+                    return !avoid.some(c => color.includes(c) || name.includes(` ${c} `) || desc.includes(` ${c} `));
+                });
+            }
         }
 
-        // Also fill any slots the shop pool couldn't cover (e.g. no shoes
-        // in shop_catalog at all) via the legacy missing-slot path.
-        const shopMacros = new Set(shopPool.map(sf => sf.macroCategory.toLowerCase()));
-        const wardrobeMacros = new Set(items.map(i => getMacroCategory(i.category, i.subCategory)).map(m => m.toLowerCase()));
-        const stillMissing = requiredSlots.filter(s => !shopMacros.has(s) && !wardrobeMacros.has(s)) as OutfitSlotId[];
+        // Wardrobe-first, with enough catalog supplement for large daily decks.
+        // One owned item per slot can form an outfit, but it cannot produce
+        // 15 visibly different outfits on Home.
+        const wardrobeCountBySlot = new Map<string, number>();
+        filteredItems.forEach((item) => {
+            const slot = getItemMacroCategory(item).toLowerCase();
+            wardrobeCountBySlot.set(slot, (wardrobeCountBySlot.get(slot) ?? 0) + 1);
+        });
+        const isManualSelection = Array.isArray(params.selectedItemIds) && params.selectedItemIds.length > 0;
+        const minimumChoicesPerSlot = isManualSelection
+            ? 1
+            : ((params.limit ?? 3) >= 10 ? 5 : ((params.limit ?? 3) > 1 ? 2 : 1));
+        const missingSlots = requiredSlots.filter(
+            slot => (wardrobeCountBySlot.get(slot) ?? 0) < minimumChoicesPerSlot,
+        ) as OutfitSlotId[];
+
+        let shopPool: ShopFillItem[] = [];
+        try {
+            shopPool = await fetchShopPoolForStyle(missingSlots, params.stylePreferences, minimumChoicesPerSlot);
+        } catch (_) {
+            // Shop catalog unreachable — continue with the usable wardrobe.
+        }
+
+        const coveredShopSlots = new Set(shopPool.map(sf => sf.macroCategory.toLowerCase()));
+        const stillMissing = missingSlots.filter(slot => !coveredShopSlots.has(slot)) as OutfitSlotId[];
         let legacyFills: ShopFillItem[] = [];
         if (stillMissing.length > 0) {
             try {
@@ -191,15 +213,13 @@ export async function generateOutfitsLocally(
         }
 
         const allShopFills = [...shopPool, ...legacyFills];
-
-        // Merge shop items into the wardrobe pool so buildLocalOutfits can
-        // pick them alongside real wardrobe items.
         const shopAsClothing = allShopFills.map(sf => ({
             id: sf.id,
             userId: '',
             imageUrl: sf.image || '',
             category: sf.macroCategory as ClothingCategory,
             subCategory: sf.type || sf.macroCategory,
+            macroCategory: sf.macroCategory,
             primaryColor: sf.color || 'neutral',
             colorHex: '#000000',
             pattern: 'solid' as const,
@@ -211,25 +231,19 @@ export async function generateOutfitsLocally(
             wearCount: 0,
             lastWornAt: null as string | null,
             isFavorite: false,
+            isShopItem: true,
+            price: sf.price,
+            shopUrl: sf.shopUrl,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         }));
 
-        let filteredItems = [...items];
         let filteredShopAsClothing = [...shopAsClothing];
 
         if (params.preferences) {
             const avoidColors = params.preferences.avoidColors || [];
             if (avoidColors.length > 0) {
                 const avoid = avoidColors.map((c: string) => c.toLowerCase().trim()).filter(Boolean);
-                
-                filteredItems = filteredItems.filter(item => {
-                    const color = (item.primaryColor || '').toLowerCase();
-                    const name = (item.name || '').toLowerCase();
-                    const desc = (item.subCategory || '').toLowerCase();
-                    return !avoid.some(c => color.includes(c) || name.includes(` ${c} `) || desc.includes(` ${c} `));
-                });
-                
                 filteredShopAsClothing = filteredShopAsClothing.filter(item => {
                     const color = (item.primaryColor || '').toLowerCase();
                     const name = (item.name || '').toLowerCase();
@@ -238,12 +252,15 @@ export async function generateOutfitsLocally(
             }
         }
 
-        // Style-rank the combined pool so the best-matching items are
-        // picked first by buildLocalOutfits. Shop items that match the
-        // style (e.g. loafers for business_casual) should appear before
-        // wardrobe items that clash (e.g. graphic tees).
+        // Rank within the wardrobe-first pool. Shop candidates exist only for
+        // absent or sparse categories, instead of every category by default.
         const styleKey: StyleId = normalizeStyleId(params.stylePreferences || 'casual');
-        const mergedItems = rankItemsForStyle([...filteredShopAsClothing, ...filteredItems], styleKey);
+        const rankedItems = rankItemsForStyle([...filteredShopAsClothing, ...filteredItems], styleKey);
+        const rankedIds = new Set(rankedItems.map((item) => item.id));
+        const mergedItems = [
+            ...rankedItems,
+            ...filteredItems.filter((item) => !rankedIds.has(item.id)),
+        ] as LocalClothingItem[];
 
         // If wardrobe is completely empty but we have shop items, still proceed.
         if (items.length === 0 && shopAsClothing.length === 0) {
@@ -403,6 +420,12 @@ function getMacroCategory(category: string, type: string): string {
     return canonicalGetMacroCategory(category, type);
 }
 
+function getItemMacroCategory(item: ClothingItem & { macroCategory?: string }): string {
+    const explicit = canonicalizeMacroCategory(item.macroCategory);
+    if (explicit !== 'other') return explicit;
+    return getMacroCategory(item.category, item.subCategory);
+}
+
 // Formal outerwear keywords (blazer, suit jacket, sport coat, overcoat,
 // topcoat, trench, peacoat, tuxedo) — never pair with shorts per styling rule.
 function isFormalLayerItem(item: { name?: string; type?: string; brand?: string; macroCategory?: string } | null | undefined): boolean {
@@ -448,7 +471,7 @@ function getItemStyleScore(item: ClothingItem, style: StyleId): number {
             color: item.primaryColor,
             type: item.subCategory,
             category: item.category,
-            macroCategory: getMacroCategory(item.category, item.subCategory),
+            macroCategory: getItemMacroCategory(item),
         },
         style,
     );
@@ -502,12 +525,15 @@ function filterSlotByStyle(
         if (strictRejectsForStyleSlot(item, style, slot)) return false;
         return getItemStyleScore(item, style) >= minScore;
     });
-    if (tier1.length > 0) return tier1;
-
-    // Tier 2: items that aren't hard-rejected (may have low style score
-    // but are still acceptable — e.g. a plain shirt with no brand info).
+    // Tier 2: items that aren't hard-rejected (may have low style score but
+    // are still acceptable). Keep them behind Tier 1 rather than dropping
+    // them: collapsing a slot to one high-scoring piece caused all 15 daily
+    // outfits to contain the exact same garments.
     const tier2 = items.filter((item) => !strictRejectsForStyleSlot(item, style, slot));
-    if (tier2.length > 0) return tier2;
+    if (tier2.length > 0) {
+        const tier1Ids = new Set(tier1.map((item) => item.id));
+        return [...tier1, ...tier2.filter((item) => !tier1Ids.has(item.id))];
+    }
 
     // Tier 3: last resort — return all items so the outfit builder can
     // always compose something. Better a t-shirt than an empty card.
@@ -604,12 +630,93 @@ function shuffleArray<T>(array: T[]): T[] {
     return arr;
 }
 
-function buildLocalOutfits(items: ClothingItem[], params: GenerateOutfitsParams): GeneratedOutfit[] {
+type LocalClothingItem = ClothingItem & {
+    isShopItem?: boolean;
+    price?: number;
+    shopUrl?: string;
+    macroCategory?: string;
+};
+
+function isShopClothingItem(item: LocalClothingItem | GeneratedOutfitItem | null | undefined): boolean {
+    if (!item) return false;
+    return Boolean(item.isShopItem || String(item.id || '').startsWith('shop_'));
+}
+
+function isOwnedOutfitItem(item: GeneratedOutfitItem | null | undefined): boolean {
+    return Boolean(item && !isShopClothingItem(item) && item.id !== PLACEHOLDER_SHOES.id);
+}
+
+function replaceSlotItem(
+    outfitItems: GeneratedOutfitItem[],
+    replacement: GeneratedOutfitItem,
+    targetItems: number,
+    protectId?: string,
+): void {
+    const replacementSlot = String(replacement.macroCategory || '').toLowerCase();
+    const sameSlotIndex = outfitItems.findIndex((item) => (
+        String(item.macroCategory || '').toLowerCase() === replacementSlot
+        && item.id !== replacement.id
+        && item.id !== protectId
+    ));
+
+    if (sameSlotIndex >= 0) {
+        outfitItems[sameSlotIndex] = replacement;
+        return;
+    }
+
+    if (outfitItems.length < targetItems) {
+        outfitItems.push(replacement);
+        return;
+    }
+
+    const replaceableShopIndex = outfitItems.findIndex((item) => isShopClothingItem(item) && item.id !== protectId);
+    if (replaceableShopIndex >= 0) {
+        outfitItems[replaceableShopIndex] = replacement;
+        return;
+    }
+
+    const replaceableIndex = outfitItems.findIndex((item) => item.id !== protectId);
+    if (replaceableIndex >= 0) {
+        outfitItems[replaceableIndex] = replacement;
+    }
+}
+
+function enforceMixedDailyOutfit(
+    outfitItems: GeneratedOutfitItem[],
+    ownedItems: LocalClothingItem[],
+    shopItems: LocalClothingItem[],
+    index: number,
+    targetItems: number,
+): GeneratedOutfitItem[] {
+    const nextItems = [...outfitItems];
+    let protectedOwnedId: string | undefined;
+
+    if (ownedItems.length > 0 && !nextItems.some(isOwnedOutfitItem)) {
+        const owned = ownedItems[index % ownedItems.length];
+        const ownedDisplay = toDisplayItem(owned, 'From your wardrobe');
+        protectedOwnedId = ownedDisplay.id;
+        replaceSlotItem(nextItems, ownedDisplay, targetItems);
+    } else {
+        protectedOwnedId = nextItems.find(isOwnedOutfitItem)?.id;
+    }
+
+    if (shopItems.length > 0 && !nextItems.some(isShopClothingItem)) {
+        const shop = shopItems[index % shopItems.length];
+        replaceSlotItem(nextItems, toDisplayItem(shop, 'Suggested from shop'), targetItems, protectedOwnedId);
+    }
+
+    if (nextItems.length > targetItems) nextItems.length = targetItems;
+    return nextItems;
+}
+
+function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOutfitsParams): GeneratedOutfit[] {
     const style = params.stylePreferences || 'Casual';
     const occ = params.occasion || 'Everyday';
     const limit = params.limit ?? 3;
     const layered = isLayeredWeather(params.weather, params.prompt);
     const styleKey: StyleId = normalizeStyleId(style);
+    const ownedItems = items.filter((item) => !isShopClothingItem(item));
+    const shopItems = items.filter(isShopClothingItem);
 
     const sortByFavorite = (pool: ClothingItem[]) => {
         if (!params.preferences || !Array.isArray(params.preferences.favoriteColors) || params.preferences.favoriteColors.length === 0) {
@@ -626,10 +733,10 @@ function buildLocalOutfits(items: ClothingItem[], params: GenerateOutfitsParams)
     };
 
     // Shuffle items to ensure variety even with limited wardrobes
-    let rawBaseTops = shuffleArray(items.filter(i => getMacroCategory(i.category, i.subCategory) === 'top'));
-    let rawOuterwear = shuffleArray(items.filter(i => getMacroCategory(i.category, i.subCategory) === 'outerwear'));
-    let rawBottoms = shuffleArray(items.filter(i => getMacroCategory(i.category, i.subCategory) === 'bottom'));
-    let rawShoes = shuffleArray(items.filter(i => getMacroCategory(i.category, i.subCategory) === 'shoes'));
+    let rawBaseTops = shuffleArray(items.filter(i => getItemMacroCategory(i) === 'top'));
+    let rawOuterwear = shuffleArray(items.filter(i => getItemMacroCategory(i) === 'outerwear'));
+    let rawBottoms = shuffleArray(items.filter(i => getItemMacroCategory(i) === 'bottom'));
+    let rawShoes = shuffleArray(items.filter(i => getItemMacroCategory(i) === 'shoes'));
 
     if (params.preferences) {
         rawBaseTops = sortByFavorite(rawBaseTops);
@@ -644,17 +751,17 @@ function buildLocalOutfits(items: ClothingItem[], params: GenerateOutfitsParams)
     const shoes = filterSlotByStyle(rawShoes, styleKey, 'shoes', styleKey === 'casual' ? 0.1 : 0.18);
     const legacyTops = [...outerwear, ...baseTops];
     const nonShortsBottoms = bottoms.filter(b => !isShortsItem({
-        name: b.name, type: b.subCategory, macroCategory: getMacroCategory(b.category, b.subCategory), subCategory: b.subCategory,
+        name: b.name, type: b.subCategory, macroCategory: getItemMacroCategory(b), subCategory: b.subCategory,
     }));
     const casualOuterwear = outerwear.filter(o => !isFormalLayerItem({
-        name: o.name, type: o.subCategory, macroCategory: getMacroCategory(o.category, o.subCategory),
+        name: o.name, type: o.subCategory, macroCategory: getItemMacroCategory(o),
     }));
 
     // For old_money, classic, and business_casual styles, completely exclude shorts
     // when formal outerwear is available. This prevents the illogical coat + shorts combination.
     const isFormalStyle = ['old_money', 'classic', 'business_casual'].includes(styleKey);
     if (isFormalStyle && outerwear.some(o => isFormalLayerItem({
-        name: o.name, type: o.subCategory, macroCategory: getMacroCategory(o.category, o.subCategory),
+        name: o.name, type: o.subCategory, macroCategory: getItemMacroCategory(o),
     }))) {
         // Replace bottoms with only non-shorts options
         bottoms.length = 0;
@@ -663,38 +770,42 @@ function buildLocalOutfits(items: ClothingItem[], params: GenerateOutfitsParams)
 
     const outfits: GeneratedOutfit[] = [];
     const targetItems = layered ? 4 : 3;
+    const slotSize = (pool: ClothingItem[]) => Math.max(pool.length, 1);
 
     for (let i = 0; i < limit; i++) {
         const outfitItems: GeneratedOutfitItem[] = [];
-        
-        // Use random offsets to ensure variety even with small wardrobes
-        const randOffset1 = Math.floor(Math.random() * 100);
-        const randOffset2 = Math.floor(Math.random() * 100);
+
+        // Mixed-radix indexes enumerate a new combination before repeating.
+        // Random offsets frequently produced the same four pieces many times.
+        const topIndex = i;
+        const baseIndex = Math.floor(i / slotSize(outerwear));
+        const bottomIndex = Math.floor(i / (slotSize(outerwear) * slotSize(baseTops)));
+        const shoeIndex = Math.floor(i / (slotSize(outerwear) * slotSize(baseTops) * slotSize(bottoms)));
 
         // Pre-pick bottom to check for shorts / formal-layer conflict.
-        const candidateBottom = bottoms[(i + randOffset1) % Math.max(bottoms.length, 1)] || bottoms[0] || items[0];
+        const candidateBottom = bottoms[(layered ? bottomIndex : Math.floor(i / slotSize(legacyTops))) % slotSize(bottoms)] || bottoms[0] || items[0];
         const candidateBottomIsShorts = !!candidateBottom && isShortsItem({
             name: candidateBottom.name, type: candidateBottom.subCategory,
-            macroCategory: getMacroCategory(candidateBottom.category, candidateBottom.subCategory),
+            macroCategory: getItemMacroCategory(candidateBottom),
             subCategory: candidateBottom.subCategory,
         });
 
         if (layered) {
             // Prefer casual outerwear if the bottom is shorts; else default outerwear rotation.
-            let outer = outerwear[(i + randOffset1) % Math.max(outerwear.length, 1)];
+            let outer = outerwear[topIndex % slotSize(outerwear)];
             const outerIsFormal = !!outer && isFormalLayerItem({
-                name: outer.name, type: outer.subCategory, macroCategory: getMacroCategory(outer.category, outer.subCategory),
+                name: outer.name, type: outer.subCategory, macroCategory: getItemMacroCategory(outer),
             });
             if (candidateBottomIsShorts && outerIsFormal) {
-                outer = casualOuterwear[(i + randOffset1) % Math.max(casualOuterwear.length, 1)] || outer;
+                outer = casualOuterwear[topIndex % slotSize(casualOuterwear)] || outer;
             }
-            const mainTop = outer || legacyTops[(i + randOffset1) % Math.max(legacyTops.length, 1)];
-            const base = baseTops[(i + randOffset2) % Math.max(baseTops.length, 1)] || legacyTops[(i + randOffset2 + 1) % Math.max(legacyTops.length, 1)];
+            const mainTop = outer || legacyTops[topIndex % slotSize(legacyTops)];
+            const base = baseTops[baseIndex % slotSize(baseTops)] || legacyTops[(baseIndex + 1) % slotSize(legacyTops)];
             if (mainTop) outfitItems.push(toDisplayItem(mainTop, 'Main top / outerwear layer'));
             if (base && base.id !== mainTop?.id) outfitItems.push(toDisplayItem(base, 'Base top worn underneath'));
         } else {
             // Non-layered: single top only.
-            const top = legacyTops[(i + randOffset1) % Math.max(legacyTops.length, 1)] || items[0];
+            const top = legacyTops[topIndex % slotSize(legacyTops)] || items[0];
             if (top) outfitItems.push(toDisplayItem(top, 'Key piece for this look'));
         }
 
@@ -703,11 +814,12 @@ function buildLocalOutfits(items: ClothingItem[], params: GenerateOutfitsParams)
         if (layered && candidateBottomIsShorts) {
             const firstPick = outfitItems[0];
             if (firstPick && isFormalLayerItem(firstPick) && nonShortsBottoms.length > 0) {
-                finalBottom = nonShortsBottoms[(i + randOffset1) % nonShortsBottoms.length];
+                finalBottom = nonShortsBottoms[bottomIndex % nonShortsBottoms.length];
             }
         }
 
-        const shoe = shoes[(i + randOffset2) % Math.max(shoes.length, 1)] || shoes[0];
+        const nonLayeredShoeIndex = Math.floor(i / (slotSize(legacyTops) * slotSize(bottoms)));
+        const shoe = shoes[(layered ? shoeIndex : nonLayeredShoeIndex) % slotSize(shoes)] || shoes[0];
 
         if (finalBottom) outfitItems.push(toDisplayItem(finalBottom, 'Pairs well with the top'));
         if (shoe) outfitItems.push(toDisplayItem(shoe, 'Completes the look'));
@@ -730,11 +842,12 @@ function buildLocalOutfits(items: ClothingItem[], params: GenerateOutfitsParams)
 
         if (outfitItems.length === 0) continue;
 
-        const normalizedOutfitItems = normalizeGeneratedOutfitItems(outfitItems, params);
+        const mixedItems = enforceMixedDailyOutfit(outfitItems, ownedItems, shopItems, i, targetItems);
+        const normalizedOutfitItems = normalizeGeneratedOutfitItems(mixedItems, params);
 
         outfits.push({
             id: `local_${i}_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-            description: `A ${style} look built from your wardrobe.`,
+            description: `A ${style} look built around your wardrobe.`,
             style,
             occasion: occ,
             confidence: 0.75 + (Math.random() * 0.1),
@@ -753,21 +866,21 @@ function buildLocalOutfits(items: ClothingItem[], params: GenerateOutfitsParams)
             const candidateBottom = bottoms[0] || items[1] || items[0];
             const candidateBottomIsShorts = !!candidateBottom && isShortsItem({
                 name: candidateBottom.name, type: candidateBottom.subCategory,
-                macroCategory: getMacroCategory(candidateBottom.category, candidateBottom.subCategory),
+                macroCategory: getItemMacroCategory(candidateBottom),
                 subCategory: candidateBottom.subCategory,
             });
             let outer = outerwear[0] || legacyTops[0];
             const outerIsFormal = !!outer && isFormalLayerItem({
-                name: outer?.name, type: outer?.subCategory, macroCategory: outer ? getMacroCategory(outer.category, outer.subCategory) : '',
+                name: outer?.name, type: outer?.subCategory, macroCategory: outer ? getItemMacroCategory(outer) : '',
             });
             if (candidateBottomIsShorts && outerIsFormal) {
                 outer = casualOuterwear[0] || legacyTops.find(t => !isFormalLayerItem({
-                    name: t.name, type: t.subCategory, macroCategory: getMacroCategory(t.category, t.subCategory),
+                    name: t.name, type: t.subCategory, macroCategory: getItemMacroCategory(t),
                 })) || outer;
             }
             const base = baseTops[0] || legacyTops[0] || outer;
             const finalBottom = (candidateBottomIsShorts && outer && isFormalLayerItem({
-                name: outer.name, type: outer.subCategory, macroCategory: getMacroCategory(outer.category, outer.subCategory),
+                name: outer.name, type: outer.subCategory, macroCategory: getItemMacroCategory(outer),
             }) && nonShortsBottoms[0]) ? nonShortsBottoms[0] : candidateBottom;
             const shoe = shoes[0];
             if (outer) outfitItems.push(toDisplayItem(outer, 'Main top / outerwear layer'));
@@ -787,10 +900,11 @@ function buildLocalOutfits(items: ClothingItem[], params: GenerateOutfitsParams)
         }
 
         if (outfitItems.length > 0) {
-            const normalizedOutfitItems = normalizeGeneratedOutfitItems(outfitItems, params);
+            const mixedItems = enforceMixedDailyOutfit(outfitItems, ownedItems, shopItems, 0, targetItems);
+            const normalizedOutfitItems = normalizeGeneratedOutfitItems(mixedItems, params);
             outfits.push({
                 id: `local_0_${Date.now()}`,
-                description: `A ${style} look built from your wardrobe.`,
+                description: `A ${style} look built around your wardrobe.`,
                 style,
                 occasion: occ,
                 confidence: 0.75,
@@ -806,18 +920,25 @@ function buildLocalOutfits(items: ClothingItem[], params: GenerateOutfitsParams)
     return outfits;
 }
 
-function toDisplayItem(item: ClothingItem, recommendation: string): GeneratedOutfitItem {
+function toDisplayItem(
+    item: ClothingItem & { isShopItem?: boolean; price?: number; shopUrl?: string },
+    recommendation: string,
+): GeneratedOutfitItem {
+    const isShopItem = Boolean(item.isShopItem || String(item.id || '').startsWith('shop_'));
+
     return {
         id: item.id,
         type: item.subCategory || item.category,
-        macroCategory: getMacroCategory(item.category, item.subCategory),
+        macroCategory: getItemMacroCategory(item),
         color: item.primaryColor || 'neutral',
         name: item.name || item.subCategory,
         brand: item.brand,
         imageUrl: item.imageUrl,
         image: item.imageUrl,
         recommendation,
-        isShopItem: false,
+        isShopItem,
+        price: item.price,
+        shopUrl: item.shopUrl,
     };
 }
 
