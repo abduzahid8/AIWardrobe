@@ -16,7 +16,7 @@ const ForgotPasswordScreen = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [isSent, setIsSent] = useState(false);
 
-    const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
     const handleResetPassword = async () => {
         if (!isEmailValid) {
@@ -27,7 +27,7 @@ const ForgotPasswordScreen = () => {
         setIsLoading(true);
         try {
             const redirectTo = Linking.createURL('reset-password');
-            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
                 redirectTo,
             });
 

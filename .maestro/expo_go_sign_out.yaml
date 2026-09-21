@@ -1,0 +1,28 @@
+appId: host.exp.Exponent
+name: expo_go_sign_out
+tags:
+  - auth
+  - helper
+  - expo-go
+---
+# Helper: sign out to restore the logged-out state the auth flows require.
+# Run while logged IN (any main tab). Ends on the Sign In screen.
+# Maestro auto-scrolls tapOn targets into view, so the SESSION section at the
+# bottom of Profile needs no manual scroll. Kept short on purpose (see the
+# ~5-hierarchy-queries-per-flow limit in .maestro/README.md).
+- tapOn:
+    point: "74%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*Account.*"
+- tapOn: ".*Sign Out.*"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: ".*Are you sure you want to sign out.*"
+- tapOn:
+    text: ".*Sign Out.*"
+    index: 1
+- waitForAnimationToEnd:
+    timeout: 10000
+- assertVisible: ".*Don't have an account.*"
+- takeScreenshot: expo_go_signed_out

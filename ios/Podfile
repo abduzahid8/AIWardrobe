@@ -61,14 +61,14 @@ target 'AIWardrobe' do
     )
 
     # Some third-party pods pin an IPHONEOS_DEPLOYMENT_TARGET below what this
-    # app already requires (platform :ios above). Newer Xcode SDKs drop
-    # support for those older targets outright, so raise any pod target that
-    # is lower than the app's own minimum to match it.
+    # app already requires (platform :ios above, 16.4 for Expo SDK 57). Newer
+    # Xcode SDKs drop support for those older targets outright, so raise any
+    # pod target that is lower than the app's own minimum to match it.
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |build_config|
         deployment_target = build_config.build_settings['IPHONEOS_DEPLOYMENT_TARGET']
-        if deployment_target && deployment_target.to_f < 15.1
-          build_config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.1'
+        if deployment_target && deployment_target.to_f < 16.4
+          build_config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.4'
         end
       end
     end

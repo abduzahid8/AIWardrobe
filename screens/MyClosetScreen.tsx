@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, TouchableOpacity, StyleSheet, Dimensions, ScrollView, FlatList, ActivityIndicator, Alert, TextInput, StatusBar, Platform, Linking,  } from 'react-native'
+import { View, TouchableOpacity, StyleSheet, Dimensions, ScrollView, FlatList, ActivityIndicator, Alert, TextInput, StatusBar, Platform, Linking, Modal, Pressable,  } from 'react-native'
 import { ScaledText } from '../components/ui/ScaledText';
 import { OutfitCollagePreview } from '../components/ui/OutfitCollagePreview';
 import { Image } from 'expo-image';
@@ -37,7 +37,27 @@ import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 import Config from '../src/config/env';
 import useAuthStore from '../store/auth';
 import useWardrobeStore from '../store/wardrobeStore';
+import useShopCatalogStore from '../store/shopCatalogStore';
+import { resolveOutfitCollageItems, resolvePieceTarget } from '../src/utils/outfitCollage';
 import type { Outfit } from '../src/types/domain';
+
+function humanizePieceLabel(item: { id?: unknown; image?: unknown; category?: unknown; name?: unknown }, index: number) {
+    const macro = typeof item.category === 'string' ? item.category.toLowerCase() : '';
+    const map: Record<string, string> = {
+        top: 'Top',
+        upper_body: 'Top',
+        bottom: 'Bottom',
+        lower_body: 'Bottom',
+        shoes: 'Shoes',
+        outerwear: 'Outerwear',
+        dress: 'Dress',
+        accessory: 'Accessory',
+    };
+    if (macro && map[macro]) return map[macro];
+    const name = typeof item.name === 'string' ? item.name : '';
+    if (name && name.length <= 18) return name;
+    return `Piece ${index + 1}`;
+}
 import { ExternalAIService } from '../src/services/externalAIService';
 import { BASIC_CLOTHING_ITEMS } from '../data/basicClothingItems';
 import { ClosetClothingItem } from '../features/outfit-generator/types';
@@ -351,20 +371,84 @@ const MyClosetScreen = () => {
     // ── Saved outfits for collections view ────────────────────────────────────
     const outfits = useWardrobeStore((state) => state.outfits);
     const savedOutfits = useMemo(() => outfits.filter((o: Outfit) => o.saved), [outfits]);
+    const shopCatalogItems = useShopCatalogStore((state) => state.items);
+
+    // ── Outfit detail (Profile-style Saved Looks preview) ───────────────────
+    // Tapping a collection card opens the full outfit instead of navigating
+    // to the AI generator.
+    const [selectedOutfit, setSelectedOutfit] = useState<Outfit | null>(null);
+
+    const selectedCollage = useMemo(() => {
+        if (!selectedOutfit) return [];
+        return resolveOutfitCollageItems(selectedOutfit, storeItems, shopCatalogItems);
+    }, [selectedOutfit, storeItems, shopCatalogItems]);
+
+    const selectedTargets = useMemo(
+        () => selectedCollage.map((piece) => resolvePieceTarget(piece, storeItems, shopCatalogItems)),
+        [selectedCollage, storeItems, shopCatalogItems],
+    );
+
+    const handleOutfitPress = useCallback((outfit: Outfit) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setSelectedOutfit(outfit);
+    }, []);
+
+    const handleSelectedPiecePress = useCallback((index: number) => {
+        const piece = selectedCollage[index];
+        if (!piece) return;
+        const target = selectedTargets[index];
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        if (target?.kind === 'wardrobe') {
+            const wardrobeId = String(target.item.id);
+            setSelectedOutfit(null);
+            navigation.navigate('ClothingDetail', {
+                itemId: wardrobeId,
+                fullItem: target.item,
+            });
+            return;
+        }
+        const pieceAny = piece as { id?: string | number; name?: unknown };
+        setSelectedOutfit(null);
+        navigation.navigate('Main', {
+            screen: 'Inspo',
+            params: {
+                focusShopItemId: String(pieceAny.id ?? ''),
+                focusShopItemName: typeof pieceAny.name === 'string' ? pieceAny.name : undefined,
+            },
+        });
+    }, [selectedCollage, selectedTargets, navigation]);
+
+    const handleUnsaveSelectedOutfit = useCallback(() => {
+        if (!selectedOutfit) return;
+        useWardrobeStore.getState().unsaveOutfit(selectedOutfit.id);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setSelectedOutfit(null);
+    }, [selectedOutfit]);
 
     // Handler: tap "Generate Outfit" on a card — navigate to AIOutfit with the item as anchor
     const handleGenerateOutfit = useCallback((item: ClothingItem) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        // Resolve the true macro slot from BOTH category and type/subtype.
+        // getMacroCategory checks outerwear keywords (blazer/jacket/coat/...)
+        // before falling back, so a blazer stored under category "top" still
+        // resolves to "outerwear" (main-top/layer) instead of "top".
+        const anchorMacro = getMacroCategory(
+            item.category || '',
+            item.type || item.itemType || '',
+        );
         navigation.navigate('AIOutfit', {
             source: 'wardrobe',
             baseItemId: item.id || item._id,
             baseItem: {
                 id: item.id || item._id || '',
                 imageUrl: item.imageUrl || item.image,
-                name: item.category,
-                type: item.category,
-                macroCategory: item.category,
-            },
+                name: item.type || item.itemType || item.category,
+                type: item.type || item.itemType || item.category,
+                macroCategory: anchorMacro,
+                color: item.color,
+                category: item.category,
+                description: item.description,
+            } as any,
         });
     }, [navigation]);
 
@@ -868,15 +952,21 @@ const MyClosetScreen = () => {
                                 initialNumToRender={8}
                             windowSize={5}
                             renderItem={({ item: outfit }) => {
-                                const outfitItems = outfit.itemIds
-                                    .map(id => storeItems.find(i => i.id === id))
-                                    .filter((i): i is typeof storeItems[number] => !!i?.imageUrl)
-                                    .map(i => ({ id: i.id, image: i.imageUrl, category: i.category }));
+                                // Prefer the frozen snapshot from like-time (full outfit
+                                // incl. shop pieces); fall back to wardrobe + live
+                                // catalog lookups for outfits saved before snapshots.
+                                const outfitItems = resolveOutfitCollageItems(
+                                    outfit,
+                                    storeItems,
+                                    shopCatalogItems,
+                                );
                                 return (
                                     <TouchableOpacity
                                         style={styles.outfitCard}
-                                        onPress={() => navigation.navigate('AIOutfit', { source: 'wardrobe' })}
+                                        onPress={() => handleOutfitPress(outfit)}
                                         activeOpacity={0.85}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={`${outfit.occasion || 'Saved outfit'} outfit, open details`}
                                     >
                                         <OutfitCollagePreview items={outfitItems} backgroundColor="#F9FBFF" footerInset={44} />
                                         <View style={styles.outfitCardOverlay}>
@@ -978,21 +1068,6 @@ const MyClosetScreen = () => {
 
             </SafeAreaView>
 
-            {/* Floating Ask Stylist button — Liquid Glass */}
-                <TouchableOpacity
-                    style={styles.stylistFAB}
-                    onPress={() => navigation.navigate('AIOutfit', { source: 'wardrobe' })}
-                    activeOpacity={0.88}
-                    testID="stylistFAB"
-                    accessibilityLabel={t('myCloset.askAIStylist')}
-                    accessibilityRole="button"
-                >
-                    <View style={styles.stylistFABGlass}>
-                    <Ionicons name="chatbubble-ellipses" size={20} color={colors.text.primary} />
-                    <ScaledText style={styles.stylistFABText}>{t('wardrobe.askStylist')}</ScaledText>
-                </View>
-            </TouchableOpacity>
-
             {isUploadingOverlay && (
                 <Animated.View entering={FadeIn.duration(300)} style={StyleSheet.absoluteFill}>
                     <BlurView intensity={70} tint="light" style={styles.overlayBlur}>
@@ -1006,6 +1081,133 @@ const MyClosetScreen = () => {
                     </BlurView>
                 </Animated.View>
             )}
+
+            {/* ── Outfit detail — Profile-style Saved Looks preview ─────────── */}
+            {selectedOutfit ? (
+                <Modal transparent animationType="fade" visible onRequestClose={() => setSelectedOutfit(null)}>
+                    <View style={styles.previewOverlay}>
+                        <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setSelectedOutfit(null)} />
+
+                        <Animated.View entering={FadeIn.duration(220)} style={styles.previewShell}>
+                            <View style={styles.previewCard}>
+                                <View style={styles.previewHeader}>
+                                    <View style={styles.previewHeaderText}>
+                                        <ScaledText style={styles.previewTitle} numberOfLines={1}>
+                                            {typeof selectedOutfit.occasion === 'string' && selectedOutfit.occasion.length > 0
+                                                ? selectedOutfit.occasion
+                                                : t('wardrobe.collections')}
+                                        </ScaledText>
+                                        {selectedOutfit.createdAt ? (
+                                            <ScaledText style={styles.previewDate} numberOfLines={1}>
+                                                {selectedOutfit.createdAt.split('T')[0]}
+                                            </ScaledText>
+                                        ) : null}
+                                    </View>
+                                    <TouchableOpacity
+                                        style={styles.previewClose}
+                                        onPress={() => setSelectedOutfit(null)}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={t('common.close')}
+                                    >
+                                        <Ionicons name="close" size={16} color="#0A1931" />
+                                    </TouchableOpacity>
+                                </View>
+
+                                <View style={styles.previewCollage}>
+                                    <OutfitCollagePreview
+                                        items={selectedCollage}
+                                        backgroundColor="#F4F6FA"
+                                        placeholderIconColor="rgba(15,23,42,0.22)"
+                                        placeholderIconSize={38}
+                                        footerInset={16}
+                                    />
+                                </View>
+
+                                {selectedCollage.length > 1 ? (
+                                    <View style={styles.previewPiecesWrap}>
+                                        <ScaledText style={styles.previewPiecesTitle}>
+                                            {t('profile.inThisLook')}
+                                        </ScaledText>
+                                        <ScrollView
+                                            horizontal
+                                            showsHorizontalScrollIndicator={false}
+                                            contentContainerStyle={styles.previewPiecesRow}
+                                        >
+                                            {selectedCollage.map((piece, index) => {
+                                                const target = selectedTargets[index];
+                                                const isWardrobe = !!target && target.kind === 'wardrobe';
+                                                const pieceId = String((piece as { id?: unknown }).id ?? '');
+                                                const navigable = pieceId.length > 0;
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={String(piece.id ?? index)}
+                                                        style={styles.previewPiece}
+                                                        activeOpacity={navigable ? 0.7 : 1}
+                                                        disabled={!navigable}
+                                                        onPress={() => handleSelectedPiecePress(index)}
+                                                        accessibilityRole="button"
+                                                        accessibilityLabel={humanizePieceLabel(piece, index)}
+                                                    >
+                                                        <View style={styles.previewPieceThumb}>
+                                                            {typeof piece.image === 'number' ? (
+                                                                <Image
+                                                                    source={piece.image}
+                                                                    style={styles.previewPieceImage}
+                                                                    contentFit="contain"
+                                                                />
+                                                            ) : (
+                                                                <Image
+                                                                    source={{ uri: piece.image as string }}
+                                                                    style={styles.previewPieceImage}
+                                                                    contentFit="contain"
+                                                                />
+                                                            )}
+                                                            {navigable ? (
+                                                                <View style={styles.previewPieceGo}>
+                                                                    <Ionicons
+                                                                        name={isWardrobe ? 'shirt-outline' : 'bag-outline'}
+                                                                        size={10}
+                                                                        color="#FFFFFF"
+                                                                    />
+                                                                </View>
+                                                            ) : null}
+                                                        </View>
+                                                        <ScaledText style={styles.previewPieceLabel} numberOfLines={1}>
+                                                            {humanizePieceLabel(piece, index)}
+                                                        </ScaledText>
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
+                                        </ScrollView>
+                                    </View>
+                                ) : null}
+
+                                <View style={styles.previewActions}>
+                                    <TouchableOpacity
+                                        style={[styles.previewActionButton, styles.previewUnsaveButton]}
+                                        onPress={handleUnsaveSelectedOutfit}
+                                        activeOpacity={0.85}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={t('common.remove')}
+                                    >
+                                        <Ionicons name="heart-dislike-outline" size={15} color="#E05C5C" />
+                                        <ScaledText style={styles.previewUnsaveText}>{t('common.remove')}</ScaledText>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.previewActionButton, styles.previewCloseButton]}
+                                        onPress={() => setSelectedOutfit(null)}
+                                        activeOpacity={0.85}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={t('common.close')}
+                                    >
+                                        <ScaledText style={styles.previewCloseText}>{t('common.close')}</ScaledText>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        </Animated.View>
+                    </View>
+                </Modal>
+            ) : null}
 
             {/* Generation Progress Overlay — removed: now handled by AIOutfit screen */}
 
@@ -1182,28 +1384,38 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
 
-    // Filters
+    // Filters — minHeight + centered content guarantees the 15px label
+    // is never clipped vertically inside the horizontal ScrollView, even
+    // with large Dynamic Type or long translations.
     filterContainer: {
         marginBottom: 18,
     },
     filterContentRaw: {
         paddingHorizontal: 16,
         paddingRight: 8,
+        paddingVertical: 4,
+        alignItems: 'center',
     },
     collectionFilterScroll: {
         flexGrow: 0,
+        flexShrink: 0,
     },
     collectionFilterRaw: {
         paddingHorizontal: 16,
         paddingRight: 8,
+        paddingTop: 4,
         paddingBottom: 12,
         alignItems: 'center',
     },
     filterChip: {
+        minHeight: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
         paddingVertical: 10,
         paddingHorizontal: 20,
-        borderRadius: 18,
+        borderRadius: 20,
         marginRight: 8,
+        flexShrink: 0,
         backgroundColor: 'rgba(255,255,255,0.86)',
         borderWidth: 1,
         borderColor: 'rgba(24,58,103,0.08)',
@@ -1217,7 +1429,11 @@ const styles = StyleSheet.create({
     },
     filterChipText: {
         fontSize: 15,
+        lineHeight: 20,
         fontWeight: '500',
+        textAlign: 'center',
+        textAlignVertical: 'center',
+        includeFontPadding: false,
     },
     filterChipTextSelected: {
         color: '#FFFFFF',
@@ -1433,38 +1649,6 @@ const styles = StyleSheet.create({
         backgroundColor: GLASS.bg,
     },
 
-    // Floating Ask Stylist button — Liquid Glass
-    stylistFAB: {
-        position: 'absolute',
-        bottom: 100,
-        left: '50%',
-        transform: [{ translateX: -58 }],
-        borderRadius: 28,
-        overflow: 'hidden',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.12,
-        shadowRadius: 12,
-        elevation: 8,
-    },
-    stylistFABGlass: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 7,
-        backgroundColor: 'rgba(255,255,255,0.72)',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderRadius: 28,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.5)',
-    },
-    stylistFABText: {
-        color: colors.text.primary,
-        fontSize: 14,
-        fontWeight: '700',
-        letterSpacing: 0.2,
-    },
-
     // Small wardrobe informational banner
     smallWardrobeBanner: {
         flexDirection: 'row',
@@ -1554,6 +1738,153 @@ const styles = StyleSheet.create({
         color: '#1C1C1E',
         fontSize: 15,
         fontWeight: '500',
+    },
+
+    // Outfit detail modal — mirrors ProfileScreen Saved Looks preview
+    previewOverlay: {
+        flex: 1,
+        justifyContent: 'center',
+        paddingHorizontal: 20,
+        backgroundColor: 'rgba(5, 7, 15, 0.58)',
+    },
+    previewShell: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 22 },
+        shadowOpacity: 0.2,
+        shadowRadius: 32,
+        elevation: 18,
+    },
+    previewCard: {
+        borderRadius: 30,
+        overflow: 'hidden',
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: 'rgba(24,58,103,0.08)',
+    },
+    previewHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingHorizontal: 20,
+        paddingTop: 18,
+        paddingBottom: 12,
+    },
+    previewHeaderText: {
+        flex: 1,
+        gap: 4,
+    },
+    previewTitle: {
+        fontSize: 20,
+        lineHeight: 26,
+        fontWeight: '800',
+        color: '#0A1931',
+        letterSpacing: -0.4,
+        textTransform: 'capitalize',
+    },
+    previewDate: {
+        fontSize: 12,
+        lineHeight: 16,
+        color: 'rgba(10,25,49,0.55)',
+    },
+    previewClose: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(10,25,49,0.06)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+    },
+    previewCollage: {
+        width: '100%',
+        height: 390,
+    },
+    previewPiecesWrap: {
+        paddingTop: 14,
+    },
+    previewPiecesTitle: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: 'rgba(10,25,49,0.45)',
+        letterSpacing: 1.2,
+        textTransform: 'uppercase',
+        paddingHorizontal: 20,
+        marginBottom: 10,
+    },
+    previewPiecesRow: {
+        paddingHorizontal: 20,
+        paddingBottom: 4,
+        gap: 12,
+    },
+    previewPiece: {
+        width: 76,
+        alignItems: 'center',
+        gap: 6,
+    },
+    previewPieceThumb: {
+        width: 76,
+        height: 76,
+        borderRadius: 18,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: 'rgba(10,25,49,0.08)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+    },
+    previewPieceGo: {
+        position: 'absolute',
+        right: 5,
+        bottom: 5,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: '#0A1931',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    previewPieceImage: {
+        width: 64,
+        height: 64,
+    },
+    previewPieceLabel: {
+        fontSize: 10.5,
+        fontWeight: '600',
+        color: 'rgba(10,25,49,0.55)',
+        textAlign: 'center',
+    },
+    previewActions: {
+        flexDirection: 'row',
+        gap: 12,
+        padding: 16,
+    },
+    previewActionButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        minHeight: 46,
+        borderRadius: 999,
+        paddingHorizontal: 14,
+    },
+    previewUnsaveButton: {
+        backgroundColor: 'rgba(224,92,92,0.10)',
+        borderWidth: 1,
+        borderColor: 'rgba(224,92,92,0.25)',
+    },
+    previewUnsaveText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#E05C5C',
+    },
+    previewCloseButton: {
+        backgroundColor: 'rgba(10,25,49,0.06)',
+    },
+    previewCloseText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#0A1931',
     },
 });
 

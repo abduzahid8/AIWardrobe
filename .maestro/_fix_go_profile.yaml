@@ -1,0 +1,19 @@
+appId: host.exp.Exponent
+name: fix_go_profile
+---
+# Helper: return to tabs and open Profile. Run while logged in.
+# Never taps the top-left status-bar corner (iOS "back to Safari" lives there
+# and exits Expo Go) — pops a pushed screen via its "Go back" chevron instead.
+- runFlow:
+    when:
+      visible: ".*Go back.*"
+    commands:
+      - tapOn: ".*Go back.*"
+      - waitForAnimationToEnd:
+          timeout: 8000
+- tapOn:
+    point: "74%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*Account.*"
+- takeScreenshot: fix_profile

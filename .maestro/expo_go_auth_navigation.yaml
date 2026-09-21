@@ -1,0 +1,46 @@
+appId: host.exp.Exponent
+name: expo_go_auth_navigation
+tags:
+  - auth
+  - navigation
+  - expo-go
+---
+# Auth link navigation: Sign In -> Forgot Password -> back -> Sign Up.
+# REQUIRES: logged-out state (fresh reload). If the simulator is logged in,
+# run expo_go_sign_out.yaml first (or Profile tab -> Sign Out).
+# Back chevron on ForgotPasswordScreen carries accessibility label
+# resetPassword.goBack = "Go back", so no coordinates are needed.
+# NOTE: do NOT tap near the top-left status-bar corner — the iOS system
+# "back to Safari" affordance lives there and exits Expo Go.
+# NOTE 2: text selectors are regex ANCHORED to the full element text. The
+# Sign In footer is a single "Don't have an account? Sign Up" node, so a bare
+# tapOn "Sign Up" CANNOT match it — it must be wrapped in .*...*.
+- waitForAnimationToEnd:
+    timeout: 10000
+# Fresh install shows the first-run language gate before Sign In —
+# complete it in English so all anchors below stay in English.
+- runFlow:
+    when:
+      visible: "Choose your language"
+    commands:
+      - tapOn: "English"
+      - waitForAnimationToEnd:
+          timeout: 20000
+- assertVisible: ".*Don't have an account.*"
+- tapOn: '.*Forgot Password.*'
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: ".*Reset Password.*"
+- assertVisible: ".*send you a link.*"
+- takeScreenshot: expo_go_forgot_password
+- tapOn: ".*Go back.*"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: ".*Don't have an account.*"
+- tapOn: ".*Sign Up.*"
+- waitForAnimationToEnd:
+    timeout: 5000
+# SignUp footer link (auth.haveAccount) — the password checklist only renders
+# after typing, so it is NOT a valid fresh-screen anchor.
+- assertVisible: ".*Already have an account.*"
+- takeScreenshot: expo_go_signup

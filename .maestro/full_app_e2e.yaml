@@ -35,6 +35,20 @@ appId: com.aiwardrobe
 - waitForAnimationToEnd:
     timeout: 60000
 
+# ---- 0. FIRST-RUN LANGUAGE GATE ----
+# clearState above wipes @app_language, so a clean run always lands on
+# the language-only gate before Sign In (see language_selection.yaml for
+# full gate coverage). No Continue button: tapping a row advances
+# immediately. English is selected here so every downstream assertion
+# stays in English.
+- runFlow:
+    when:
+      visible: "Choose your language"
+    commands:
+      - tapOn: "English"
+      - waitForAnimationToEnd:
+          timeout: 20000
+
 - runFlow:
     when:
       visible: "Sign In"

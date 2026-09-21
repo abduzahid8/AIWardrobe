@@ -27,6 +27,7 @@ const linking = {
       ResetPassword: 'reset-password',
       SignUp: 'sign-up',
       ForgotPassword: 'forgot-password',
+      AuthCallback: 'auth/callback',
     },
   },
 };

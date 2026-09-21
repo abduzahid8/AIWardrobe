@@ -4,12 +4,13 @@
  */
 
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet, Dimensions, ScrollView, FlatList, StatusBar, TextInput, ActivityIndicator, Linking, Platform, InteractionManager,  } from 'react-native'
+import { View, TouchableOpacity, StyleSheet, Dimensions, ScrollView, FlatList, StatusBar, TextInput, ActivityIndicator, Linking, Platform,  } from 'react-native'
 import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useRoute, type RouteProp } from '@react-navigation/native';
 import { useAppNavigation } from '../hooks/useAppNavigation';
+import type { TabParamList } from '../navigation/types';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -24,10 +25,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
-import useWardrobeStore from '../store/wardrobeStore';
 import { CachedImage } from '../components/ui/CachedImage';
-import { generateVarietyOutfits, OCCASION_LABEL } from '../src/services/suggestionEngine';
-import type { ScoredOutfit } from '../src/services/suggestionEngine';
 import type { ShopCatalogItem } from '../features/try-on/types';
 import { INSPO_MENS_SHOP_ITEMS, CLASSIC_MENS_ITEMS } from '../data/inspoMensShopItems';
 import { useShopCatalog } from '../hooks/useShopCatalog';
@@ -120,6 +118,7 @@ const ProductCard = ({
     t,
     spotlight = false,
     plate,
+    highlighted = false,
 }: {
     item: ShopCatalogItem;
     isSaved: boolean;
@@ -128,13 +127,20 @@ const ProductCard = ({
     t: (key: string) => string;
     spotlight?: boolean;
     plate?: number;
+    highlighted?: boolean;
 }) => (
     // Cap the stagger so later pages (index 100+) don't wait many seconds
     // before their entering animation starts — otherwise pressing Load more
     // appears to do nothing because new cards are invisible until the delay elapses.
     <Animated.View entering={FadeInDown.delay(Math.min(150 + (index % 12) * 40, 600)).duration(320)}>
         <View style={[styles.productCard, spotlight && styles.productCardSpotlight]}>
-            <View style={[styles.productImageBox, spotlight && styles.productImageBoxSpotlight]}>
+            <View
+                style={[
+                    styles.productImageBox,
+                    spotlight && styles.productImageBoxSpotlight,
+                    highlighted && styles.productImageBoxHighlighted,
+                ]}
+            >
                 <CachedImage
                     uri={typeof item.imageUrl === 'string' ? item.imageUrl : ''}
                     style={styles.productImage}
@@ -158,13 +164,16 @@ const ProductCard = ({
                         onSave();
                     }}
                     accessibilityLabel={isSaved ? t('inspo.removeFromSaved') : t('inspo.saveItem')}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    accessibilityHint={isSaved ? t('inspo.unsavedToast') : t('inspo.savedToast')}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSaved }}
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 >
                     <View style={styles.saveButtonCircle}>
                         <Ionicons
                             name={isSaved ? 'heart' : 'heart-outline'}
-                            size={spotlight ? 19 : 16}
-                            color={isSaved ? '#FF3B5C' : '#0A1931'}
+                            size={spotlight ? 20 : 18}
+                            color={isSaved ? '#FF3B30' : '#0A1931'}
                         />
                     </View>
                 </TouchableOpacity>
@@ -183,8 +192,9 @@ const ProductCard = ({
                         onPress={() => handleBuyPress(item)}
                         activeOpacity={0.6}
                         accessibilityLabel={t('inspo.buyNow')}
+                        accessibilityHint={`${item.brand} ${item.name}`}
                         accessibilityRole="button"
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                     >
                         <Ionicons name="arrow-forward" size={spotlight ? 16 : 13} color="#0A1931" />
                     </TouchableOpacity>
@@ -262,48 +272,6 @@ const GuideGridCard = ({
     );
 };
 
-// ── Outfit Variation Mini Card ─────────────────────────
-
-interface VariationCardProps {
-    outfit: ScoredOutfit;
-    items: import('../src/types/domain').ClothingItem[];
-    onPress: () => void;
-}
-
-const VariationCard = ({ outfit, items, onPress }: VariationCardProps) => {
-    const cardItems = outfit.outfit.itemIds
-        .map((id) => items.find((i) => i.id === id))
-        .filter(Boolean)
-        .slice(0, 4) as import('../src/types/domain').ClothingItem[];
-
-    return (
-        <TouchableOpacity style={styles.variationCard} onPress={onPress} activeOpacity={0.88}>
-            <View style={styles.variationGrid}>
-                {cardItems.map((item, idx) => (
-                    <View key={item.id} style={styles.variationCell}>
-                        {item.imageUrl ? (
-                            <CachedImage
-                                uri={item.imageUrl}
-                                style={styles.variationImage}
-                                contentFit="contain"
-                                fadeIn={false}
-                            />
-                        ) : (
-                            <Ionicons name="shirt-outline" size={22} color={colors.text.tertiary} />
-                        )}
-                    </View>
-                ))}
-            </View>
-            <View style={styles.variationFooter}>
-                <ScaledText style={styles.variationOccasion} numberOfLines={2}>
-                    {OCCASION_LABEL[outfit.outfit.occasion] ?? outfit.outfit.occasion}
-                </ScaledText>
-                <ScaledText style={styles.variationScore}>{Math.round(outfit.score * 100)}%</ScaledText>
-            </View>
-        </TouchableOpacity>
-    );
-};
-
 type GuideCategory = 'featured' | 'capsules' | 'outfits';
 
 // ── Main Component ──────────────────────────────────────
@@ -313,8 +281,6 @@ type SegmentType = 'guide' | 'shop';
 const InspoScreen = () => {
     const { t } = useTranslation();
     const navigation = useAppNavigation();
-    const items = useWardrobeStore((s) => s.items);
-    const wearLogs = useWardrobeStore((s) => s.wearLogs);
 
     const {
         items: syncedShopItems,
@@ -403,28 +369,60 @@ const InspoScreen = () => {
     const [savedInspo, setSavedInspo] = useState<ShopCatalogItem[]>([]);
     const [segment, setSegment] = useState<SegmentType>('guide');
     const [searchQuery, setSearchQuery] = useState('');
+    const [showSavedOnly, setShowSavedOnly] = useState(false);
+    const [saveToast, setSaveToast] = useState<string | null>(null);
+    const saveToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    // Deep link from an outfit piece ("In this look" → shop): the tapped
+    // product is lifted to the top of the Shop grid and ringed until the
+    // user searches or toggles Saved.
+    const inspoRoute = useRoute<RouteProp<TabParamList, 'Inspo'>>();
+    const [focusedShopItemId, setFocusedShopItemId] = useState<string | null>(null);
 
-    const [computedVarietyOutfits, setComputedVarietyOutfits] = useState<ScoredOutfit[]>([]);
+    const flashSaveToast = useCallback((message: string) => {
+        setSaveToast(message);
+        if (saveToastTimer.current) clearTimeout(saveToastTimer.current);
+        saveToastTimer.current = setTimeout(() => setSaveToast(null), 2600);
+    }, []);
 
-    useEffect(() => {
-        const task = InteractionManager.runAfterInteractions(() => {
-            if (items.length < 3) {
-                setComputedVarietyOutfits([]);
-                return;
-            }
-            const outfits = generateVarietyOutfits(items, wearLogs);
-            // Deduplicate by itemIds combination
-            const seen = new Set<string>();
-            const unique = outfits.filter((o) => {
-                const key = [...o.outfit.itemIds].sort().join(',');
-                if (seen.has(key)) return false;
-                seen.add(key);
-                return true;
-            });
-            setComputedVarietyOutfits(unique.slice(0, 6));
+    useEffect(() => () => {
+        if (saveToastTimer.current) clearTimeout(saveToastTimer.current);
+    }, []);
+
+    const clearShopFocusParams = useCallback(() => {
+        (navigation as unknown as { setParams?: (p: { focusShopItemId?: string; focusShopItemName?: string }) => void }).setParams?.({
+            focusShopItemId: undefined,
+            focusShopItemName: undefined,
         });
-        return () => task.cancel();
-    }, [items, wearLogs]);
+    }, [navigation]);
+
+    // Consume one-shot deep links from outfit pieces. The params are cleared
+    // after applying so plain tab switches never yank the grid around, and
+    // tapping the same piece twice still works (undefined → id transition).
+    // If the id isn't in the loaded catalog (later page / retired item) we
+    // fall back to a name search so the tap still lands on shopping.
+    const focusShopItemId = inspoRoute.params?.focusShopItemId;
+    const focusShopItemName = inspoRoute.params?.focusShopItemName;
+    useFocusEffect(
+        useCallback(() => {
+            if (focusShopItemId) {
+                setSegment('shop');
+                setShowSavedOnly(false);
+                // Mirror the grid pool (live catalog + appended classics);
+                // INSPO-fallback items are covered by the name search below.
+                const found =
+                    syncedShopItems.some((i) => i.id === focusShopItemId) ||
+                    CLASSIC_MENS_ITEMS.some((i) => i.id === focusShopItemId);
+                if (found || !focusShopItemName) {
+                    setSearchQuery('');
+                    setFocusedShopItemId(focusShopItemId);
+                } else {
+                    setFocusedShopItemId(null);
+                    setSearchQuery(focusShopItemName);
+                }
+                clearShopFocusParams();
+            }
+        }, [focusShopItemId, focusShopItemName, syncedShopItems, clearShopFocusParams]),
+    );
 
     const lastFetchRef = useRef<number>(Date.now());
     const INSPO_REFRESH_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -452,13 +450,22 @@ const InspoScreen = () => {
     );
 
     const saveInspo = useCallback(async (item: ShopCatalogItem) => {
-        setSavedInspo((prev) => {
-            const has = prev.some((s) => s.id === item.id);
-            const next = has ? prev.filter((s) => s.id !== item.id) : [...prev, item];
-            AsyncStorage.setItem('savedInspo', JSON.stringify(next));
-            return next;
-        });
-    }, []);
+        const alreadySaved = savedInspo.some((s) => s.id === item.id);
+        const next = alreadySaved
+            ? savedInspo.filter((s) => s.id !== item.id)
+            : [...savedInspo, item];
+        setSavedInspo(next);
+        try {
+            await AsyncStorage.setItem('savedInspo', JSON.stringify(next));
+        } catch (_) { }
+        Haptics.notificationAsync(
+            alreadySaved
+                ? Haptics.NotificationFeedbackType.Warning
+                : Haptics.NotificationFeedbackType.Success,
+        ).catch(() => {});
+        flashSaveToast(t(alreadySaved ? 'inspo.unsavedToast' : 'inspo.savedToast'));
+        if (!alreadySaved) setShowSavedOnly(false);
+    }, [savedInspo, flashSaveToast, t]);
 
     const isShopEmpty = syncedShopItems.length === 0;
     const isInitialShopLoad = isShopEmpty && shopCatalogLoading;
@@ -471,16 +478,31 @@ const InspoScreen = () => {
         // live Zara feed. Dedupe by id in case fallback already includes them.
         const seenIds = new Set(baseItems.map((item) => item.id));
         const classicsToAppend = CLASSIC_MENS_ITEMS.filter((item) => !seenIds.has(item.id));
-        const sourceItems = [...baseItems, ...classicsToAppend];
+        let sourceItems = [...baseItems, ...classicsToAppend];
+
+        if (showSavedOnly) {
+            const savedIds = new Set(savedInspo.map((s) => s.id));
+            sourceItems = sourceItems.filter((item) => savedIds.has(item.id));
+        }
 
         const query = searchQuery.trim().toLowerCase();
-        if (!query) return sourceItems;
+        if (!query) {
+            // Deep-linked piece from an outfit: lift it to the top so the
+            // user lands exactly on what they tapped.
+            if (!showSavedOnly && focusedShopItemId) {
+                const idx = sourceItems.findIndex((item) => item.id === focusedShopItemId);
+                if (idx > 0) {
+                    sourceItems = [sourceItems[idx], ...sourceItems.slice(0, idx), ...sourceItems.slice(idx + 1)];
+                }
+            }
+            return sourceItems;
+        }
 
         return sourceItems.filter((item) => {
             const haystack = `${item.brand} ${item.name} ${item.description ?? ''}`.toLowerCase();
             return haystack.includes(query);
         });
-    }, [searchQuery, showingFallbackCatalog, syncedShopItems]);
+    }, [searchQuery, showingFallbackCatalog, syncedShopItems, showSavedOnly, savedInspo, focusedShopItemId]);
 
     // ── FlatList helpers for the shop grid ────────────────────────────────────
     const savedInspoSet = useMemo(
@@ -525,6 +547,7 @@ const InspoScreen = () => {
                         t={t}
                         spotlight
                         plate={row.plate}
+                        highlighted={focusedShopItemId === row.item.id}
                     />
                 );
             }
@@ -539,6 +562,7 @@ const InspoScreen = () => {
                             onSave={() => saveInspo(left)}
                             index={0}
                             t={t}
+                            highlighted={focusedShopItemId === left.id}
                         />
                     </View>
                     {right ? (
@@ -549,6 +573,7 @@ const InspoScreen = () => {
                                 onSave={() => saveInspo(right)}
                                 index={1}
                                 t={t}
+                                highlighted={focusedShopItemId === right.id}
                             />
                         </View>
                     ) : (
@@ -557,7 +582,7 @@ const InspoScreen = () => {
                 </View>
             );
         },
-        [savedInspoSet, saveInspo, t],
+        [savedInspoSet, saveInspo, t, focusedShopItemId],
     );
 
     const shopListFooter = useCallback(() => {
@@ -641,7 +666,10 @@ const InspoScreen = () => {
                         placeholder={t('inspo.searchPlaceholder')}
                         placeholderTextColor={colors.text.tertiary}
                         value={searchQuery}
-                        onChangeText={setSearchQuery}
+                        onChangeText={(value) => {
+                            setSearchQuery(value);
+                            if (value.trim().length > 0) setFocusedShopItemId(null);
+                        }}
                         style={styles.searchInput}
                         returnKeyType="search"
                         accessibilityLabel={t('inspo.searchForClothingItems')}
@@ -669,10 +697,34 @@ const InspoScreen = () => {
                 <ScaledText style={[styles.sectionTitle, styles.shopHeaderTitle]} accessibilityRole="header">
                     {t('inspo.shop')}
                 </ScaledText>
-                <ScaledText style={styles.shopCountText}>{shopItems.length}</ScaledText>
+                <View style={styles.shopHeaderRight}>
+                    <TouchableOpacity
+                        style={[styles.savedFilterChip, showSavedOnly && styles.savedFilterChipActive]}
+                        onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            setShowSavedOnly((v) => !v);
+                        }}
+                        accessibilityRole="tab"
+                        accessibilityState={{ selected: showSavedOnly }}
+                        accessibilityLabel={`${t('inspo.saved')} (${savedInspo.length})`}
+                        activeOpacity={0.85}
+                    >
+                        <Ionicons
+                            name={showSavedOnly ? 'heart' : 'heart-outline'}
+                            size={14}
+                            color={showSavedOnly ? '#FFFFFF' : '#0A1931'}
+                        />
+                        <ScaledText style={[styles.savedFilterText, showSavedOnly && styles.savedFilterTextActive]}>
+                            {`${t('inspo.saved')} (${savedInspo.length})`}
+                        </ScaledText>
+                    </TouchableOpacity>
+                    <ScaledText style={styles.shopCountText}>
+                        {t('inspo.itemsCount', { count: shopItems.length })}
+                    </ScaledText>
+                </View>
             </View>
         </>
-    ), [searchQuery, setSearchQuery, shopCatalogError, showingFallbackCatalog, refreshShopCatalog, navigation, featuredCapsulesLoading, featuredCapsules, shopItems.length, t, colors.text.primary, colors.text.tertiary]);
+    ), [searchQuery, setSearchQuery, shopCatalogError, showingFallbackCatalog, refreshShopCatalog, navigation, featuredCapsulesLoading, featuredCapsules, shopItems.length, showSavedOnly, savedInspo.length, t, colors.text.primary, colors.text.tertiary]);
 
     // Goal of the Guide tab: see a look, shop it — immediately, not by
     // dropping the user into the unrelated full catalog. A capsule/hero with
@@ -783,32 +835,9 @@ const InspoScreen = () => {
 
     const renderGuideFooter = useCallback(() => (
         <>
-            {/* From Your Closet — variety outfits */}
-            {computedVarietyOutfits.length > 0 && (
-                <Animated.View entering={FadeInDown.delay(300).duration(400)} style={styles.section}>
-                    <ScaledText style={styles.sectionTitle} accessibilityRole="header">{t('inspo.fromYourCloset')}</ScaledText>
-                    <FlatList
-                        data={computedVarietyOutfits}
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        keyExtractor={(o, idx) => `${o.outfit.itemIds.join(',')}_${idx}`}
-                        contentContainerStyle={styles.variationsScroll}
-                        renderItem={({ item: outfit }) => (
-                            <VariationCard
-                                outfit={outfit}
-                                items={items}
-                                onPress={() => {
-                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                    navigation.navigate('Main', { screen: 'Home' });
-                                }}
-                            />
-                        )}
-                    />
-                </Animated.View>
-            )}
             <View style={{ height: 120 }} />
         </>
-    ), [computedVarietyOutfits, items, navigation, t]);
+    ), []);
 
     return (
         <View style={styles.container}>
@@ -839,12 +868,13 @@ const InspoScreen = () => {
                                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                     setSegment(seg);
                                 }}
+                                activeOpacity={1}
                                 accessibilityLabel={seg === 'guide' ? t('inspo.guide') : t('inspo.shop')}
                                 accessibilityRole="tab"
                                 accessibilityState={{ selected: segment === seg }}
                             >
                                 <ScaledText style={[styles.segmentText, segment === seg && styles.segmentTextActive]}>
-                                    {seg === 'guide' ? t('inspo.guide') : t('inspo.shop')}
+                                    {seg === 'guide' ? t('inspo.guide') : `${t('inspo.shop')}${savedInspo.length > 0 ? ` (${savedInspo.length})` : ''}`}
                                 </ScaledText>
                             </TouchableOpacity>
                         ))}
@@ -897,7 +927,14 @@ const InspoScreen = () => {
                             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                                 {renderShopHeader()}
                                 <View style={styles.emptyState}>
-                                    <ScaledText style={styles.emptyStateText}>{t('inspo.noMenswearMatches')}</ScaledText>
+                                    <ScaledText style={styles.emptyStateText}>
+                                        {showSavedOnly ? t('inspo.savedEmpty') : t('inspo.noMenswearMatches')}
+                                    </ScaledText>
+                                    {showSavedOnly && (
+                                        <ScaledText style={styles.emptyStateHint}>
+                                            {t('inspo.savedEmptyHint')}
+                                        </ScaledText>
+                                    )}
                                 </View>
                             </ScrollView>
                         ) : (
@@ -911,13 +948,33 @@ const InspoScreen = () => {
                                 showsVerticalScrollIndicator={false}
                                 initialNumToRender={4}
                                 maxToRenderPerBatch={4}
-                                windowSize={3}
-                                removeClippedSubviews={true}
+                                windowSize={5}
+                                removeClippedSubviews={false}
                             />
                         )}
                     </>
                 )}
             </SafeAreaView>
+            {saveToast && (
+                <View style={styles.saveToast} pointerEvents="box-none" accessibilityLiveRegion="polite">
+                    <Ionicons name="heart" size={16} color="#FFFFFF" />
+                    <ScaledText style={styles.saveToastText} numberOfLines={2}>
+                        {saveToast}
+                    </ScaledText>
+                    {!showSavedOnly && savedInspo.length > 0 && saveToast === t('inspo.savedToast') && (
+                        <TouchableOpacity
+                            onPress={() => {
+                                setShowSavedOnly(true);
+                                setSaveToast(null);
+                            }}
+                            accessibilityRole="button"
+                            accessibilityLabel={t('inspo.viewSaved')}
+                        >
+                            <ScaledText style={styles.saveToastAction}>{t('inspo.viewSaved')}</ScaledText>
+                        </TouchableOpacity>
+                    )}
+                </View>
+            )}
         </View>
     );
 };
@@ -1038,16 +1095,44 @@ const styles = StyleSheet.create({
         paddingHorizontal: 0,
         marginBottom: 0,
     },
+    shopHeaderRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    savedFilterChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.9)',
+        borderWidth: 1,
+        borderColor: 'rgba(10,25,49,0.12)',
+    },
+    savedFilterChipActive: {
+        backgroundColor: '#0A1931',
+        borderColor: '#0A1931',
+    },
+    savedFilterText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#0A1931',
+    },
+    savedFilterTextActive: {
+        color: '#FFFFFF',
+    },
     shopCountText: {
         fontSize: 13,
         fontWeight: '500',
         color: colors.text.tertiary,
     },
 
-    // Scroll
+    // Scroll — 140 clears the 68pt floating tab bar + 34pt iOS home inset.
     scrollContent: {
         paddingTop: spacing.sm,
-        paddingBottom: 100,
+        paddingBottom: 140,
     },
 
     // Search
@@ -1348,6 +1433,11 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 10 },
         elevation: 5,
     },
+    // Deep-link highlight: navy ring marks the product jumped to from an outfit.
+    productImageBoxHighlighted: {
+        borderWidth: 2,
+        borderColor: '#0A1931',
+    },
     productImage: {
         width: '100%',
         height: '100%',
@@ -1369,17 +1459,17 @@ const styles = StyleSheet.create({
         zIndex: 10,
     },
     saveButtonCircle: {
-        width: 30,
-        height: 30,
-        borderRadius: 15,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         backgroundColor: '#FFFFFF',
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
-        borderColor: 'rgba(10,25,49,0.06)',
+        borderColor: 'rgba(10,25,49,0.08)',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
+        shadowOpacity: 0.12,
         shadowRadius: 4,
         elevation: 2,
     },
@@ -1451,6 +1541,42 @@ const styles = StyleSheet.create({
         ...typography.scale.bodyMedium,
         color: colors.text.tertiary,
     },
+    emptyStateHint: {
+        ...typography.scale.bodySmall,
+        color: colors.text.secondary,
+        marginTop: 6,
+    },
+    saveToast: {
+        position: 'absolute',
+        left: spacing.screenPadding,
+        right: spacing.screenPadding,
+        bottom: 110,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: '#0A1931',
+        borderRadius: 16,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        shadowColor: '#0A1931',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.25,
+        shadowRadius: 16,
+        elevation: 8,
+        zIndex: 50,
+    },
+    saveToastText: {
+        flex: 1,
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    saveToastAction: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '700',
+        textDecorationLine: 'underline',
+    },
     catalogStatusBanner: {
         marginHorizontal: spacing.screenPadding,
         marginBottom: spacing.lg,
@@ -1502,61 +1628,6 @@ const styles = StyleSheet.create({
         ...typography.scale.bodyMedium,
         color: '#0A1931',
         fontWeight: '600',
-    },
-
-    // Variation cards — From Your Closet
-    variationsScroll: {
-        paddingHorizontal: spacing.screenPadding,
-        gap: 10,
-    },
-    variationCard: {
-        width: 140,
-        backgroundColor: 'rgba(255,255,255,0.9)',
-        borderRadius: 16,
-        overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.7)',
-        shadowColor: '#173A65',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.06,
-        shadowRadius: 12,
-        elevation: 3,
-    },
-    variationGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        width: 140,
-        height: 140,
-    },
-    variationCell: {
-        width: 70,
-        height: 70,
-        backgroundColor: '#F4F7FD',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    variationImage: {
-        width: '100%',
-        height: '100%',
-    },
-    variationFooter: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 8,
-        paddingVertical: 7,
-    },
-    variationOccasion: {
-        fontSize: 11,
-        fontWeight: '600',
-        color: colors.text.primary,
-        flex: 1,
-        textTransform: 'capitalize',
-    },
-    variationScore: {
-        fontSize: 11,
-        fontWeight: '700',
-        color: colors.text.tertiary,
     },
 
     // Header chat button — Liquid Glass

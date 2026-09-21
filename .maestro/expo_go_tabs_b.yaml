@@ -1,0 +1,25 @@
+appId: host.exp.Exponent
+name: expo_go_tabs_b
+tags:
+  - navigation
+  - expo-go
+---
+# Tabs part B (kept short — see expo_go_tabs_a.yaml note).
+# Start: any main tab. End: Home.
+- tapOn:
+    point: "58%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*Inspiration.*"
+- tapOn:
+    point: "74%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*Account.*"
+- tapOn:
+    point: "26%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible:
+    text: "Good (morning|afternoon|evening|night).*"
+- takeScreenshot: tabs_b_home

@@ -1,0 +1,21 @@
+appId: host.exp.Exponent
+name: expo_go_tabs_a
+tags:
+  - navigation
+  - expo-go
+---
+# Tabs part A (kept short: iOS a11y server degrades after ~5 hierarchy
+# queries per flow — see .maestro/README.md). Assumes app is logged in.
+# Start: any main tab. End: Closet.
+- tapOn:
+    point: "26%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible:
+    text: "Good (morning|afternoon|evening|night).*"
+- tapOn:
+    point: "42%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*Tops.*"
+- takeScreenshot: tabs_a_closet

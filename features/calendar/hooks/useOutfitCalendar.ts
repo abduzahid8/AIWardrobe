@@ -290,6 +290,8 @@ export function useOutfitCalendar() {
         todayStr,
         currentMonth,
         currentYear,
+        setCurrentMonth,
+        setCurrentYear,
         selectedDate,
         showDayModal,
         showLogModal,

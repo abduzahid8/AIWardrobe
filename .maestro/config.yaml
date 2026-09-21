@@ -19,3 +19,11 @@ flows:
   - signup_validation.yaml
   - smoke.yaml
   - tabs_present.yaml
+  # Expo Go flows (appId host.exp.Exponent, no launchApp — pre-load via exp:// URL)
+  - expo_go_smoke.yaml
+  - expo_go_auth_validation.yaml
+  - expo_go_auth_navigation.yaml
+  - expo_go_sign_out.yaml
+  - expo_go_quiz_complete.yaml
+  - expo_go_tabs_a.yaml
+  - expo_go_tabs_b.yaml

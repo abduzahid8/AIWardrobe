@@ -23,11 +23,11 @@ import OutfitCalendarScreen from "../screens/OutfitCalendarScreen";
 import PaywallScreen from "../screens/PaywallScreen";
 import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
 import ResetPasswordScreen from "../screens/ResetPasswordScreen";
+import AuthCallbackScreen from "../screens/AuthCallbackScreen";
 import OutfitAIScreen from "../screens/OutfitAIScreen";
 import OutfitInspoScreen from "../screens/OutfitInspoScreen";
 import CreateAvatarScreen from "../screens/CreateAvatarScreen";
 import MyClosetScreen from "../screens/MyClosetScreen";
-import WardrobeAnalyticsScreen from "../screens/WardrobeAnalyticsScreen";
 import WeeklyInsightsScreen from "../screens/WeeklyInsightsScreen";
 import PrivacyPolicyScreen from "../screens/PrivacyPolicyScreen";
 import TermsOfServiceScreen from "../screens/TermsOfServiceScreen";
@@ -39,6 +39,7 @@ import AdminPanelScreen from "../screens/AdminPanelScreen";
 import GuideScreen from "../screens/GuideScreen";
 import StyleQuizScreen from "../screens/StyleQuizScreen";
 import BodyProfileScreen from "../screens/BodyProfileScreen";
+import LanguageSelectionScreen from "../screens/LanguageSelectionScreen";
 import { addNotificationListeners } from "../src/services/notificationService";
 import { notificationService } from "../src/services/notificationService";
 import { RootStackParamList } from "./types";
@@ -50,6 +51,7 @@ import { colors } from "../src/theme";
 import { LiquidPresets } from "./liquidTransitions";
 import usePromoCodeStore from "../store/promoCodeStore";
 import { useStylePreferenceStore } from "../store/stylePreferenceStore";
+import useLanguageStore from "../store/languageStore";
 import { perfMark, perfMeasure } from "../src/utils/perf";
 
 
@@ -70,6 +72,8 @@ const RootNavigator = () => {
   const hydratePromoCodeStore = usePromoCodeStore((s) => s.hydrate);
   const hasCompletedOnboarding = useStylePreferenceStore((s) => s.hasCompletedOnboarding);
   const onboardingStep = useStylePreferenceStore((s) => s.onboardingStep);
+  const hasSelectedLanguage = useLanguageStore((s) => s.hasSelectedLanguage);
+  const isLanguageInitialized = useLanguageStore((s) => s.isInitialized);
 
   // Memoize gate booleans so RootNavigator only re-renders when the values
   // that actually affect routing change. Without useMemo, every subscription
@@ -105,6 +109,12 @@ const RootNavigator = () => {
     const initialize = async () => {
       try {
       perfMark('app:init');
+      // 0. Language first — local AsyncStorage read only (<50ms). Must
+      // resolve before routing so the first-run language gate is correct.
+      // bootstrapStores() also calls this; the store guards double-hydration.
+      await useLanguageStore.getState().initializeLanguage().catch((err) =>
+        console.warn('[RootNavigator] initializeLanguage failed', err),
+      );
       // 1. Auth must happen first — every other service wants to know who
       // the user is before initializing (for user-scoped analytics, IAP, etc.)
       // Hard 5-second timeout so the app never stays frozen on the splash if
@@ -248,7 +258,7 @@ const RootNavigator = () => {
   // React Navigation unmounts the gate automatically.
 
   useEffect(() => {
-    if (isAppReady && isInitialized) {
+    if (isAppReady && isInitialized && isLanguageInitialized) {
       // Hide the splash screen only after ALL services are initialized and the app is ready to render.
       // Defer slightly to ensure the Navigator has mounted and rendered its first frame.
       const timer = setTimeout(() => {
@@ -256,12 +266,27 @@ const RootNavigator = () => {
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [isAppReady, isInitialized]);
+  }, [isAppReady, isInitialized, isLanguageInitialized]);
 
-  if (!isInitialized || !isAppReady) {
+  if (!isInitialized || !isAppReady || !isLanguageInitialized) {
     // Keep the splash screen visible and render nothing while initializing.
     return null;
   }
+
+  // NOTE: the first-run language gate lives INSIDE the main navigator
+  // (LanguageSelection as a pushable screen of the logged-out branch), NOT
+  // as a separate early-return navigator. A separate navigator would
+  // remount on selection and destroy the back stack — keeping one stable
+  // navigator is what makes iOS edge-swipe / Android back from SignIn
+  // natively return to the language chooser.
+
+  // Logged-out initial route: fresh installs (no saved @app_language)
+  // start on the chooser; everyone else starts on SignIn. Evaluated at
+  // mount — the splash gate above guarantees language hydration ran first.
+  // Logged-in mounts always start on Main (first authed child).
+  const loggedOutInitialRoute: keyof RootStackParamList = hasSelectedLanguage
+    ? 'SignIn'
+    : 'LanguageSelection';
 
   return (
     <Stack.Navigator
@@ -278,6 +303,7 @@ const RootNavigator = () => {
           backgroundColor: '#FFFFFF',
         },
       }}
+      initialRouteName={isAuthenticated ? undefined : loggedOutInitialRoute}
     >
       {isAuthenticated ? (
         showTrialGate ? (
@@ -393,13 +419,6 @@ const RootNavigator = () => {
               }}
             />
             <Stack.Screen
-              name="WardrobeAnalytics"
-              component={WardrobeAnalyticsScreen}
-              options={{
-                ...LiquidPresets.slide,
-              }}
-            />
-            <Stack.Screen
               name="WeeklyInsights"
               component={WeeklyInsightsScreen}
               options={{
@@ -487,10 +506,23 @@ const RootNavigator = () => {
         )
         ) : (
         <>
+          {/*
+            Language chooser — first screen on fresh installs
+            (initialRouteName), otherwise only reachable via native back
+            (iOS edge-swipe / Android back) from SignIn. Gestures are off
+            here: it is a root, there is nothing to pop to.
+          */}
+          <Stack.Screen
+            name="LanguageSelection"
+            component={LanguageSelectionScreen}
+            options={{ ...LiquidPresets.fade, gestureEnabled: false }}
+          />
           <Stack.Screen
             name="SignIn"
             component={SignInScreen}
-            options={{ ...LiquidPresets.fade }}
+            // Fade visuals, but swipe-back must stay ON so the
+            // language chooser underneath remains natively reachable.
+            options={{ ...LiquidPresets.fade, gestureEnabled: true, gestureDirection: 'horizontal' }}
           />
           <Stack.Screen
             name="SignUp"
@@ -506,14 +538,20 @@ const RootNavigator = () => {
       )}
 
       {/*
-        ResetPassword must be registered outside the auth ternary so it survives
-        the isAuthenticated flip triggered by the deep-link session handshake.
-        Without this, the screen unmounts before the user can set a new password.
+        ResetPassword + AuthCallback must be registered outside the auth ternary
+        so they survive the isAuthenticated flip triggered by the deep-link
+        session handshake. Without this, the screen unmounts before the user
+        can set a new password / before the OAuth exchange finishes.
       */}
       <Stack.Screen
         name="ResetPassword"
         component={ResetPasswordScreen}
         options={{ ...LiquidPresets.slide }}
+      />
+      <Stack.Screen
+        name="AuthCallback"
+        component={AuthCallbackScreen}
+        options={{ ...LiquidPresets.fade }}
       />
     </Stack.Navigator>
   );

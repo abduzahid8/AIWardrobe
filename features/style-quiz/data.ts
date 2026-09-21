@@ -29,10 +29,10 @@ export const COLOR_OPTIONS = [
 ] as const;
 
 export const OCCASIONS = [
-    { id: 'work', name: 'Work/Office', icon: 'briefcase-outline', tKey: 'styleQuiz.occasions.work' },
-    { id: 'casual', name: 'Casual/Weekend', icon: 'cafe-outline', tKey: 'styleQuiz.occasions.casual' },
-    { id: 'date', name: 'Date Night', icon: 'heart-outline', tKey: 'styleQuiz.occasions.date' },
-    { id: 'formal', name: 'Formal Events', icon: 'diamond-outline', tKey: 'styleQuiz.occasions.formal' },
+    { id: 'work', name: 'Work', icon: 'briefcase-outline', tKey: 'styleQuiz.occasions.work' },
+    { id: 'casual', name: 'Casual', icon: 'cafe-outline', tKey: 'styleQuiz.occasions.casual' },
+    { id: 'date', name: 'Date', icon: 'heart-outline', tKey: 'styleQuiz.occasions.date' },
+    { id: 'formal', name: 'Formal', icon: 'diamond-outline', tKey: 'styleQuiz.occasions.formal' },
 ] as const;
 
 export const FIT_OPTIONS = [

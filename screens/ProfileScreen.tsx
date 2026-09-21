@@ -3,7 +3,7 @@
  */
 
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, Image, KeyboardAvoidingView, Modal, Platform, Pressable, StatusBar, StyleSheet, TextInput, TouchableOpacity, View, ViewStyle,  } from 'react-native'
+import { ActivityIndicator, Alert, Dimensions, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StatusBar, StyleSheet, TextInput, TouchableOpacity, View, ViewStyle,  } from 'react-native'
 import { ScaledText } from '../components/ui/ScaledText';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -34,6 +34,7 @@ import useTryOnLooksStore from '../store/tryOnLooksStore';
 import useShopCatalogStore from '../store/shopCatalogStore';
 import { CachedImage } from '../components/ui/CachedImage';
 import { OutfitCollagePreview } from '../components/ui/OutfitCollagePreview';
+import { resolveOutfitCollageItems, resolvePieceTarget } from '../src/utils/outfitCollage';
 import { useTheme } from '../src/theme/ThemeContext';
 import { useSubscriptionGate } from '../src/hooks/useSubscriptionGate';
 import { useAdminGuard } from '../hooks/useAdminGuard';
@@ -44,11 +45,14 @@ import { useTranslation } from 'react-i18next';
 import { iapService } from '../src/services/iapService';
 import { analyticsService } from '../src/services/analyticsService';
 import { perfMark, perfMeasure, perfAction, perfScreenReady } from '../src/utils/perf';
+import { OCCASIONS, type OutfitLog } from '../features/calendar/types';
 
-const { width, height } = Dimensions.get('window');
+const { height } = Dimensions.get('window');
 const HERO_HEIGHT = Math.min(height * 0.43, 390);
 const LOOK_CARD_GAP = 14;
-const LOOK_CARD_WIDTH = (width - 40 - LOOK_CARD_GAP) / 2;
+// Horizontal Saved Looks carousel: fixed editorial card so the full
+// 3-4 piece collage is visible without vertical scrolling.
+const LOOK_ROW_CARD_WIDTH = 240;
 
 type IconName = keyof typeof Ionicons.glyphMap;
 type BlurTint = 'light' | 'dark';
@@ -63,6 +67,7 @@ interface SavedOutfit {
   isTryOn?: boolean;
   tryOnGarmentName?: string;
   tryOnGarmentBrand?: string;
+  collageItems?: { id: string | number; image: ImageSrc; category?: string; name?: string }[];
 }
 
 function titleCase(value: string) {
@@ -70,9 +75,70 @@ function titleCase(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
+function humanizePieceLabel(item: { id?: unknown; image?: unknown; category?: unknown; name?: unknown }, index: number) {
+  const macro = typeof item.category === 'string' ? item.category.toLowerCase() : '';
+  const map: Record<string, string> = {
+    top: 'Top',
+    upper_body: 'Top',
+    bottom: 'Bottom',
+    lower_body: 'Bottom',
+    shoes: 'Shoes',
+    outerwear: 'Outerwear',
+    dress: 'Dress',
+    accessory: 'Accessory',
+  };
+  if (macro && map[macro]) return map[macro];
+  const name = typeof item.name === 'string' ? item.name : '';
+  if (name && name.length <= 18) return name;
+  return `Piece ${index + 1}`;
+}
+
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message) return error.message;
   return fallback;
+}
+
+// ── Trip plan (connected to Outfit Calendar logs) ──────────────────────
+// A calendar day saved from the AI generator (Plan Outfit) is an
+// `OutfitLog` under the `outfitLogs` AsyncStorage bucket. The Trips tab
+// reads that same bucket so a saved trip outfit actually shows up here.
+
+interface TripPlanItem {
+  id: string;
+  image: string;
+  name?: string;
+  type?: string;
+}
+
+interface TripPlanDay {
+  date: string;
+  occasion: string;
+  items: TripPlanItem[];
+}
+
+function toTripPlanDay(log: OutfitLog): TripPlanDay {
+  return {
+    date: log.date,
+    occasion: log.occasion,
+    items: [...log.items].map((item) => ({
+      id: String(item.id || item.image),
+      image: String(item.image || ''),
+      name: item.name,
+      type: item.type,
+    })),
+  };
+}
+
+function formatTripDate(dateKey: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+  if (!match) return dateKey;
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+    .toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+function getTripOccasionMeta(occasionId: string) {
+  return OCCASIONS.find((o) => o.id === occasionId)
+    ?? { id: occasionId, label: titleCase(occasionId), icon: '✓', color: '#64748B' };
 }
 
 function useDesignTokens() {
@@ -214,22 +280,9 @@ const ProfileScreen = () => {
       : 'Free Plan';
 
   const localOutfits = useMemo<SavedOutfit[]>(() => {
-    const shopMap = new Map(liveShopCatalog.map((item) => [item.id, item.imageUrl as ImageSrc]));
-    const wardrobeMap = new Map(wardrobeItems.map((item) => [item.id, item.imageUrl]));
     const isValidUri = (value?: string) =>
       typeof value === 'string' &&
       (value.startsWith('http') || value.startsWith('file://') || value.startsWith('data:'));
-
-    const resolveImageSrc = (id: string): ImageSrc | undefined => {
-      const wardrobeUrl = wardrobeMap.get(id); // O(1) instead of O(n)
-      if (wardrobeUrl) return wardrobeUrl;
-
-      const shopItem = shopMap.get(id);
-      if (shopItem !== undefined) return shopItem;
-
-      if (isValidUri(id)) return id;
-      return undefined;
-    };
 
     return storeOutfits
       .filter((outfit) => outfit.saved)
@@ -239,9 +292,10 @@ const ProfileScreen = () => {
             ? outfit.previewImageUrl
             : undefined;
 
-        const itemImages = outfit.itemIds
-          .map(resolveImageSrc)
-          .filter((src): src is ImageSrc => src !== undefined);
+        // Full outfit: frozen snapshot first (wardrobe + shop pieces from
+        // like-time), wardrobe + live catalog fallback for legacy saves.
+        const collage = resolveOutfitCollageItems(outfit, wardrobeItems, liveShopCatalog);
+        const itemImages = collage.map((c) => c.image as ImageSrc);
 
         return {
           _id: outfit.id,
@@ -253,9 +307,15 @@ const ProfileScreen = () => {
           // the itemImages collage below instead of a single garment.
           image: itemImages.length === 0 ? coverImage : undefined,
           itemImages,
+          collageItems: collage.map((c, index) => ({
+            id: c.id ?? index,
+            image: c.image as ImageSrc,
+            category: c.category,
+            name: c.name,
+          })),
         };
       });
-  }, [storeOutfits, wardrobeItems]);
+  }, [storeOutfits, wardrobeItems, liveShopCatalog]);
 
   const fetchOutfits = useCallback(async (mounted?: { current: boolean }) => {
     if (!user?.id) return;
@@ -344,6 +404,134 @@ const ProfileScreen = () => {
 
     return [...tryOnMapped, ...localOutfits, ...cloudOnly];
   }, [localOutfits, cloudOutfits, tryOnLooks]);
+
+  // ── Connected trip plan ─────────────────────────────────────────────
+  // Upcoming calendar days with a saved outfit (today + future). When
+  // there is nothing upcoming, fall back to the 3 most recent past plans
+  // so the tab never looks dead right after a trip.
+  const [tripPlanDays, setTripPlanDays] = useState<TripPlanDay[]>([]);
+  const [tripPlanRecency, setTripPlanRecency] = useState<'upcoming' | 'recent'>('upcoming');
+
+  const loadTripPlans = useCallback(async () => {
+    try {
+      const raw = await AsyncStorage.getItem('outfitLogs');
+      if (!raw) {
+        setTripPlanDays([]);
+        return;
+      }
+      const logs = JSON.parse(raw) as Record<string, OutfitLog>;
+      const entries = Object.values(logs).filter(
+        (log): log is OutfitLog =>
+          !!log && typeof log.date === 'string' && Array.isArray(log.items) && log.items.length > 0
+      );
+      const now = new Date();
+      const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const upcoming = entries
+        .filter((log) => log.date >= todayKey)
+        .sort((a, b) => a.date.localeCompare(b.date));
+      if (upcoming.length > 0) {
+        setTripPlanRecency('upcoming');
+        setTripPlanDays(upcoming.map(toTripPlanDay));
+        return;
+      }
+      const recent = entries
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .slice(0, 3);
+      setTripPlanRecency('recent');
+      setTripPlanDays(recent.map(toTripPlanDay));
+    } catch {
+      setTripPlanDays([]);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadTripPlans();
+    }, [loadTripPlans]),
+  );
+
+  // Packing list aggregated from the visible trip days: unique pieces with
+  // the number of days each piece is worn.
+  const tripPackingList = useMemo(() => {
+    const byId = new Map<string, TripPlanItem & { days: number }>();
+    tripPlanDays.forEach((day) => {
+      const seenInDay = new Set<string>();
+      day.items.forEach((item) => {
+        const key = String(item.id || item.image);
+        if (!key) return;
+        const existing = byId.get(key);
+        if (existing) {
+          if (!seenInDay.has(key)) {
+            existing.days += 1;
+            seenInDay.add(key);
+          }
+        } else {
+          seenInDay.add(key);
+          byId.set(key, { ...item, id: key, days: 1 });
+        }
+      });
+    });
+    return [...byId.values()].sort((a, b) => b.days - a.days);
+  }, [tripPlanDays]);
+
+  const tripPieceCount = useMemo(
+    () => tripPlanDays.reduce((sum, day) => sum + day.items.length, 0),
+    [tripPlanDays]
+  );
+
+  // Pieces for the open preview: full collage meta when available,
+  // plain images otherwise (legacy cloud outfits).
+  const previewPieces = useMemo(() => {
+    if (!previewLook) return [];
+    if (previewLook.collageItems && previewLook.collageItems.length > 0) {
+      return previewLook.collageItems;
+    }
+    return previewLook.itemImages.map((src, index) => ({ id: index, image: src }));
+  }, [previewLook]);
+
+  const previewTitleText = useMemo(() => {
+    if (!previewLook) return '';
+    if (previewLook.isTryOn) {
+      const brand = previewLook.tryOnGarmentBrand ? `${previewLook.tryOnGarmentBrand} · ` : '';
+      return `${brand}${previewLook.tryOnGarmentName || 'AI Look'}`;
+    }
+    return previewLook.occasion || 'Saved Look';
+  }, [previewLook]);
+
+  // Navigation target per piece: wardrobe items open their detail screen,
+  // shop items jump to the Shop tab focused on that product.
+  const previewTargets = useMemo(
+    () => previewPieces.map((piece) => resolvePieceTarget(piece, wardrobeItems, liveShopCatalog)),
+    [previewPieces, wardrobeItems, liveShopCatalog],
+  );
+
+  const handlePiecePress = useCallback((index: number) => {
+    const piece = previewPieces[index];
+    if (!piece) return;
+    const target = previewTargets[index];
+    triggerLightHaptic();
+    if (target?.kind === 'wardrobe') {
+      const wardrobeId = String(target.item.id);
+      setPreviewLook(null);
+      navigation.navigate('ClothingDetail', {
+        itemId: wardrobeId,
+        fullItem: target.item,
+      });
+      return;
+    }
+    // Shop piece — or anything not owned: always land in Shop. If the id
+    // exists in the catalog it gets lifted + ringed; otherwise Inspo falls
+    // back to a name search so the tap is never dead.
+    const pieceAny = piece as { id?: string | number; name?: unknown };
+    setPreviewLook(null);
+    navigation.navigate('Main', {
+      screen: 'Inspo',
+      params: {
+        focusShopItemId: String(pieceAny.id ?? ''),
+        focusShopItemName: typeof pieceAny.name === 'string' ? pieceAny.name : undefined,
+      },
+    });
+  }, [previewPieces, previewTargets, navigation]);
 
   const streak = useMemo(() => {
     if (wearLogs.length === 0) return 0;
@@ -715,35 +903,43 @@ const ProfileScreen = () => {
             />
           ) : (
             <OutfitCollagePreview
-              items={outfit.itemImages.map((src, index) => ({ id: index, image: src }))}
+              items={
+                outfit.collageItems && outfit.collageItems.length > 0
+                  ? outfit.collageItems
+                  : outfit.itemImages.map((src, index) => ({ id: index, image: src }))
+              }
               backgroundColor="#F4F6FA"
               placeholderIconColor="rgba(15,23,42,0.22)"
               placeholderIconSize={30}
-              footerInset={90}
+              footerInset={64}
             />
           )}
 
-          <BlurView
-            intensity={Platform.OS === 'ios' ? 32 : 100}
-            tint="dark"
-            style={styles.lookFooterBlur}
-          />
-          <LinearGradient
-            colors={D.footerGradient}
-            start={{ x: 0.5, y: 0 }}
-            end={{ x: 0.5, y: 1 }}
-            style={styles.lookFooterGradient}
-          />
-
-          <View style={styles.lookFooter}>
-            <ScaledText style={styles.lookTitle} numberOfLines={1}>
-              {cardTitle}
-            </ScaledText>
-            {outfit.date ? (
-              <ScaledText style={styles.lookDate} numberOfLines={1}>
-                {outfit.date}
-              </ScaledText>
-            ) : null}
+          {/* Floating glass info bar — replaces the old full-bleed black
+              gradient. Frosted pill with dark text stays legible over the
+              light collage in both themes; arrow hints the card opens. */}
+          <View style={styles.lookFooterBar}>
+            <BlurView
+              intensity={Platform.OS === 'ios' ? 48 : 100}
+              tint="light"
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.lookFooterScrim} />
+            <View style={styles.lookFooterContent}>
+              <View style={styles.lookFooterText}>
+                <ScaledText style={styles.lookTitle} numberOfLines={1}>
+                  {cardTitle}
+                </ScaledText>
+                {outfit.date ? (
+                  <ScaledText style={styles.lookDate} numberOfLines={1}>
+                    {outfit.date}
+                  </ScaledText>
+                ) : null}
+              </View>
+              <View style={styles.lookFooterAction}>
+                <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
+              </View>
+            </View>
           </View>
 
           {outfit.isTryOn ? (
@@ -798,40 +994,151 @@ const ProfileScreen = () => {
       );
     }
 
-    return <View style={styles.lookGrid}>{outfits.map(renderLookCard)}</View>;
+    return (
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.lookRow}
+      >
+        {outfits.map(renderLookCard)}
+      </ScrollView>
+    );
   };
 
-  const openTripPlanner = () => {
+  const openTripPlanner = (initialDate?: string) => {
     // Pro / Max only — Free users see the paywall.
     if (!requireSubFeature('tripPlanner')) return;
-    navigation.navigate('Calendar');
+    triggerLightHaptic();
+    navigation.navigate('Calendar', initialDate ? { initialDate } : undefined);
   };
 
   const renderTripsContent = () => (
     <GlassPanel style={styles.contentPanel}>
-      <View style={styles.emptyState}>
-        <View style={styles.emptyIconWrap}>
-          <LinearGradient
-            colors={['rgba(255,255,255,0.94)', D.accentSoftStrong]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.emptyIconGradient}
-          >
-            <Ionicons name="airplane-outline" size={28} color={D.accent} />
-          </LinearGradient>
-        </View>
-        <ScaledText style={styles.emptyTitle}>{t('profile.planTripOutfits')}</ScaledText>
-        <ScaledText style={styles.emptySubtitle}>
-          {t('profile.planTripDescription')}
-        </ScaledText>
-        <PrimaryGradientButton
-          label={t('profile.openCalendar')}
-          icon="calendar-outline"
-          onPress={openTripPlanner}
-          style={styles.emptyAction}
-        />
-      </View>
+      {tripPlanDays.length > 0 ? (
+        <View style={styles.tripPlanList}>
+          <View style={styles.tripPlanSummary}>
+            <View style={styles.tripFlowIconWrap}>
+              <Ionicons name="airplane-outline" size={16} color={D.accent} />
+            </View>
+            <View style={styles.tripFlowCopy}>
+              <ScaledText style={styles.tripFlowTitle}>
+                {tripPlanRecency === 'upcoming'
+                  ? t('profile.tripPlanReady', { defaultValue: '{{count}} days planned', count: tripPlanDays.length })
+                  : t('profile.tripRecentPlans', { defaultValue: 'Recent plans' })}
+              </ScaledText>
+              <ScaledText style={styles.tripFlowSubtitle}>
+                {t('profile.tripPackingSummary', {
+                  defaultValue: '{{pieces}} pieces · {{unique}} unique items to pack',
+                  pieces: tripPieceCount,
+                  unique: tripPackingList.length,
+                })}
+              </ScaledText>
+            </View>
+          </View>
 
+          {tripPlanDays.map((day) => {
+            const meta = getTripOccasionMeta(day.occasion);
+            return (
+              <TouchableOpacity
+                key={day.date}
+                style={styles.tripDayCard}
+                activeOpacity={0.8}
+                onPress={() => openTripPlanner(day.date)}
+                accessibilityLabel={`Open trip day ${day.date} in calendar`}
+              >
+                <View style={styles.tripDayHeader}>
+                  <ScaledText style={styles.tripDayDate}>{formatTripDate(day.date)}</ScaledText>
+                  <View style={[styles.tripOccasionPill, { backgroundColor: `${meta.color}1A` }]}>
+                    <ScaledText style={[styles.tripOccasionPillText, { color: meta.color }]}>
+                      {meta.icon} {meta.label}
+                    </ScaledText>
+                  </View>
+                </View>
+                <View style={styles.tripDayThumbs}>
+                  {day.items.slice(0, 4).map((item) => (
+                    <CachedImage
+                      key={`${day.date}-${item.id}`}
+                      uri={item.image}
+                      style={styles.tripDayThumb}
+                      contentFit="cover"
+                      showLoader={false}
+                      fadeIn={false}
+                    />
+                  ))}
+                  {day.items.length > 4 && (
+                    <View style={[styles.tripDayThumb, styles.tripDayMore]}>
+                      <ScaledText style={styles.tripDayMoreText}>+{day.items.length - 4}</ScaledText>
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+
+          {tripPackingList.length > 0 && (
+            <View style={styles.tripPackingCard}>
+              <ScaledText style={styles.packingTitle}>
+                {t('profile.packingList', { defaultValue: 'Packing list' })}
+              </ScaledText>
+              <View style={styles.packingGrid}>
+                {tripPackingList.slice(0, 8).map((item) => (
+                  <View key={item.id} style={styles.packingItem}>
+                    <CachedImage
+                      uri={item.image}
+                      style={styles.packingThumb}
+                      contentFit="cover"
+                      showLoader={false}
+                      fadeIn={false}
+                    />
+                    <ScaledText style={styles.packingName} numberOfLines={1}>
+                      {item.name || item.type || t('profile.packingItem', { defaultValue: 'Item' })}
+                    </ScaledText>
+                    {item.days > 1 && (
+                      <ScaledText style={styles.packingCount}>×{item.days}</ScaledText>
+                    )}
+                  </View>
+                ))}
+              </View>
+              {tripPackingList.length > 8 && (
+                <ScaledText style={styles.packingMore}>
+                  {t('profile.packingMore', {
+                    defaultValue: '+{{count}} more items',
+                    count: tripPackingList.length - 8,
+                  })}
+                </ScaledText>
+              )}
+            </View>
+          )}
+        </View>
+      ) : (
+        <View style={styles.emptyState}>
+          <View style={styles.emptyIconWrap}>
+            <LinearGradient
+              colors={['rgba(255,255,255,0.94)', D.accentSoftStrong]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.emptyIconGradient}
+            >
+              <Ionicons name="airplane-outline" size={28} color={D.accent} />
+            </LinearGradient>
+          </View>
+          <ScaledText style={styles.emptyTitle}>{t('profile.planTripOutfits')}</ScaledText>
+          <ScaledText style={styles.emptySubtitle}>
+            {t('profile.planTripDescription')}
+          </ScaledText>
+          <PrimaryGradientButton
+            label={t('profile.openCalendar')}
+            icon="calendar-outline"
+            onPress={() => openTripPlanner()}
+            style={styles.emptyAction}
+          />
+        </View>
+      )}
+
+      {/* Onboarding steps — only needed until the user has a trip plan.
+          Once tripPlanDays exists (upcoming or recent/past) this is hidden
+          to return vertical space to the actual plans + packing list. */}
+      {tripPlanDays.length === 0 && (
       <View style={styles.tripFlowList}>
         <View style={styles.tripFlowStep}>
           <View style={styles.tripFlowIconWrap}>
@@ -869,6 +1176,7 @@ const ProfileScreen = () => {
           </View>
         </View>
       </View>
+      )}
     </GlassPanel>
   );
 
@@ -1019,7 +1327,7 @@ const ProfileScreen = () => {
               <SecondaryGlassButton
                 label={t('profile.insights')}
                 icon="stats-chart-outline"
-                onPress={() => navigation.navigate('WardrobeAnalytics')}
+                onPress={() => navigation.navigate('WeeklyInsights')}
                 style={styles.heroActionSecondary}
               />
             </View>
@@ -1107,7 +1415,7 @@ const ProfileScreen = () => {
                         colors={[D.accentStart, D.accentEnd]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
-                        style={StyleSheet.absoluteFillObject}
+                        style={styles.segmentedActiveFill}
                       />
                     ) : null}
                     <ScaledText style={[styles.segmentedText, isActive && styles.segmentedTextActive]}>
@@ -1115,7 +1423,7 @@ const ProfileScreen = () => {
                     </ScaledText>
                     <View style={[styles.segmentedBadge, isActive && styles.segmentedBadgeActive]}>
                       <ScaledText style={[styles.segmentedBadgeText, isActive && styles.segmentedBadgeTextActive]}>
-                        {tab === 'looks' ? outfits.length : 0}
+                        {tab === 'looks' ? outfits.length : tripPlanDays.length}
                       </ScaledText>
                     </View>
                   </Pressable>
@@ -1141,7 +1449,7 @@ const ProfileScreen = () => {
               <SecondaryGlassButton
                 label={t('profile.openCalendar')}
                 icon="calendar-outline"
-                onPress={openTripPlanner}
+                onPress={() => openTripPlanner()}
               />
             )}
           </View>
@@ -1426,6 +1734,38 @@ const ProfileScreen = () => {
 
             <Animated.View entering={FadeIn.duration(220)} style={styles.previewShell}>
               <View style={styles.previewCard}>
+                {/* Header: title block + close */}
+                <View style={styles.previewHeader}>
+                  <View style={styles.previewHeaderText}>
+                    {previewLook.isTryOn ? (
+                      <View style={styles.previewBadgeRow}>
+                        <Ionicons name="sparkles" size={15} color="#0A1931" />
+                        <ScaledText style={styles.previewBadgeText}>{t('profile.aiTryOn')}</ScaledText>
+                      </View>
+                    ) : null}
+                    <ScaledText style={styles.previewTitle} numberOfLines={1}>
+                      {previewTitleText}
+                    </ScaledText>
+                    {previewLook.date ? (
+                      <ScaledText style={styles.previewDate} numberOfLines={1}>
+                        {previewLook.date}
+                      </ScaledText>
+                    ) : null}
+                  </View>
+                  <TouchableOpacity
+                    style={styles.previewClose}
+                    onPress={() => {
+                      triggerLightHaptic();
+                      setPreviewLook(null);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('common.close')}
+                  >
+                    <Ionicons name="close" size={16} color="#0A1931" />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Hero: full outfit collage or try-on result */}
                 {previewLook.image !== undefined ? (
                   <Image
                     source={
@@ -1439,43 +1779,80 @@ const ProfileScreen = () => {
                 ) : (
                   <View style={styles.previewCollage}>
                     <OutfitCollagePreview
-                      items={previewLook.itemImages.map((src, index) => ({ id: index, image: src }))}
+                      items={previewPieces}
                       backgroundColor="#F4F6FA"
                       placeholderIconColor="rgba(15,23,42,0.22)"
                       placeholderIconSize={38}
-                      footerInset={190}
+                      footerInset={16}
                     />
                   </View>
                 )}
 
-                <BlurView
-                  intensity={Platform.OS === 'ios' ? 38 : 100}
-                  tint="dark"
-                  style={styles.previewFooterBlur}
-                />
-                <LinearGradient
-                  colors={D.footerGradient}
-                  start={{ x: 0.5, y: 0 }}
-                  end={{ x: 0.5, y: 1 }}
-                  style={styles.previewFooterGradient}
-                />
-
-                <View style={styles.previewInfo}>
-                  {previewLook.isTryOn ? (
-                    <View style={styles.previewBadgeRow}>
-                      <Ionicons name="sparkles" size={13} color={D.white} />
-                      <ScaledText style={styles.previewBadgeText}>{t('profile.aiTryOn')}</ScaledText>
-                    </View>
-                  ) : null}
-                  <ScaledText style={styles.previewTitle} numberOfLines={2}>
-                    {previewLook.isTryOn
-                      ? `${previewLook.tryOnGarmentBrand ? `${previewLook.tryOnGarmentBrand} · ` : ''}${
-                          previewLook.tryOnGarmentName || 'AI Look'
-                        }`
-                      : previewLook.occasion || 'Saved Look'}
-                  </ScaledText>
-                  {previewLook.date ? <ScaledText style={styles.previewDate}>{previewLook.date}</ScaledText> : null}
-                </View>
+                {/* Piece breakdown strip */}
+                {previewLook.image === undefined && previewPieces.length > 1 ? (
+                  <View style={styles.previewPiecesWrap}>
+                    <ScaledText style={styles.previewPiecesTitle}>
+                      {t('profile.inThisLook')}
+                    </ScaledText>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.previewPiecesRow}
+                    >
+                      {previewPieces.map((piece, index) => {
+                        const target = previewTargets[index];
+                        const isWardrobe = !!target && target.kind === 'wardrobe';
+                        const pieceId = String((piece as { id?: unknown }).id ?? '');
+                        const navigable = pieceId.length > 0;
+                        return (
+                          <TouchableOpacity
+                            key={String(piece.id ?? index)}
+                            style={styles.previewPiece}
+                            activeOpacity={navigable ? 0.7 : 1}
+                            disabled={!navigable}
+                            onPress={() => handlePiecePress(index)}
+                            accessibilityRole="button"
+                            accessibilityLabel={humanizePieceLabel(piece, index)}
+                            accessibilityHint={t(
+                              isWardrobe
+                                ? 'profile.openInWardrobe'
+                                : 'profile.openInShop',
+                            )}
+                          >
+                            <View style={styles.previewPieceThumb}>
+                              {typeof piece.image === 'number' ? (
+                                <Image
+                                  source={piece.image}
+                                  style={styles.previewPieceImage}
+                                  resizeMode="contain"
+                                />
+                              ) : (
+                                <CachedImage
+                                  uri={piece.image as string}
+                                  style={styles.previewPieceImage}
+                                  contentFit="contain"
+                                  fadeIn={false}
+                                />
+                              )}
+                              {navigable ? (
+                                <View style={styles.previewPieceGo}>
+                                  <Ionicons
+                                    name={isWardrobe ? 'shirt-outline' : 'bag-outline'}
+                                    size={10}
+                                    color="#FFFFFF"
+                                  />
+                                </View>
+                              ) : null}
+                            </View>
+                            <ScaledText style={styles.previewPieceLabel} numberOfLines={1}>
+                              {humanizePieceLabel(piece, index)}
+                            </ScaledText>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+                ) : null}
 
                 <View style={styles.previewActions}>
                   {previewLook.isTryOn ? (
@@ -1574,8 +1951,6 @@ const createStyles = (D: DTokens) =>
     },
     glassPanel: {
       overflow: 'hidden',
-      padding:10,
-      gap:10,
       borderWidth: 1,
       borderColor: D.glassBorder,
       backgroundColor: D.glass,
@@ -1586,6 +1961,8 @@ const createStyles = (D: DTokens) =>
     },
     glassContent: {
       overflow: 'hidden',
+      padding: 10,
+      justifyContent: 'center',
     },
     stickyHeaderWrap: {
       position: 'absolute',
@@ -1927,6 +2304,7 @@ const createStyles = (D: DTokens) =>
     statCell: {
       flex: 1,
       alignItems: 'center',
+      justifyContent: 'center',
       paddingHorizontal: 6,
     },
     statIconWrap: {
@@ -1965,11 +2343,15 @@ const createStyles = (D: DTokens) =>
     },
     segmentedRow: {
       flexDirection: 'row',
+      alignItems: 'center',
       padding: 6,
       gap: 8,
     },
     segmentedButton: {
       flex: 1,
+      flexBasis: 0,
+      flexGrow: 1,
+      flexShrink: 1,
       minHeight: 48,
       borderRadius: 999,
       alignItems: 'center',
@@ -1979,11 +2361,22 @@ const createStyles = (D: DTokens) =>
       overflow: 'hidden',
     },
     segmentedButtonActive: {
+      // Solid navy under the gradient so the white active label stays
+      // readable even if the gradient layer fails to paint.
+      backgroundColor: D.accentEnd,
       shadowColor: D.accent,
       shadowOffset: { width: 0, height: 10 },
       shadowOpacity: 0.24,
       shadowRadius: 18,
       elevation: 8,
+    },
+    segmentedActiveFill: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
+      borderRadius: 999,
     },
     segmentedText: {
       fontSize: 15,
@@ -2136,13 +2529,132 @@ const createStyles = (D: DTokens) =>
       lineHeight: 19,
       color: D.textSub,
     },
+    // Connected trip plan (planned calendar days + packing list)
+    tripPlanList: {
+      marginTop: 6,
+      gap: 12,
+    },
+    tripPlanSummary: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 12,
+      padding: 14,
+      borderRadius: 20,
+      backgroundColor: D.accentSoft,
+      borderWidth: 1,
+      borderColor: D.glassBorderSoft,
+    },
+    tripDayCard: {
+      padding: 14,
+      borderRadius: 20,
+      gap: 10,
+      backgroundColor: D.isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.46)',
+      borderWidth: 1,
+      borderColor: D.glassBorderSoft,
+    },
+    tripDayHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
+    },
+    tripDayDate: {
+      fontSize: 15,
+      fontWeight: '800',
+      color: D.text,
+      letterSpacing: -0.2,
+    },
+    tripOccasionPill: {
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 14,
+    },
+    tripOccasionPillText: {
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    tripDayThumbs: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    tripDayThumb: {
+      width: 52,
+      height: 52,
+      borderRadius: 14,
+      overflow: 'hidden',
+    },
+    tripDayMore: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: D.accentSoft,
+      borderWidth: 1,
+      borderColor: D.glassBorderSoft,
+    },
+    tripDayMoreText: {
+      fontSize: 13,
+      fontWeight: '800',
+      color: D.accent,
+    },
+    tripPackingCard: {
+      padding: 14,
+      borderRadius: 20,
+      gap: 10,
+      backgroundColor: D.isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.46)',
+      borderWidth: 1,
+      borderColor: D.glassBorderSoft,
+    },
+    packingTitle: {
+      fontSize: 14,
+      fontWeight: '800',
+      color: D.text,
+      letterSpacing: -0.2,
+    },
+    packingGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+    },
+    packingItem: {
+      width: 64,
+      alignItems: 'center',
+      gap: 4,
+    },
+    packingThumb: {
+      width: 56,
+      height: 56,
+      borderRadius: 14,
+      overflow: 'hidden',
+    },
+    packingName: {
+      fontSize: 10,
+      fontWeight: '600',
+      color: D.textSub,
+      textAlign: 'center',
+    },
+    packingCount: {
+      fontSize: 10,
+      fontWeight: '800',
+      color: D.accent,
+    },
+    packingMore: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: D.textSub,
+    },
     lookGrid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: LOOK_CARD_GAP,
     },
+    lookRow: {
+      flexDirection: 'row',
+      gap: LOOK_CARD_GAP,
+      paddingRight: 20,
+      paddingTop: 4,
+      paddingBottom: 12,
+    },
     lookCardShadow: {
-      width: LOOK_CARD_WIDTH,
+      width: LOOK_ROW_CARD_WIDTH,
       borderRadius: 26,
       shadowColor: D.shadow,
       shadowOffset: { width: 0, height: 18 },
@@ -2151,8 +2663,8 @@ const createStyles = (D: DTokens) =>
       elevation: 12,
     },
     lookCard: {
-      width: LOOK_CARD_WIDTH,
-      height: LOOK_CARD_WIDTH * 1.36,
+      width: LOOK_ROW_CARD_WIDTH,
+      height: LOOK_ROW_CARD_WIDTH * 1.36,
       borderRadius: 26,
       overflow: 'hidden',
       backgroundColor: D.glassStrong,
@@ -2164,36 +2676,61 @@ const createStyles = (D: DTokens) =>
       height: '100%',
       resizeMode: 'cover',
     },
-    lookFooterBlur: {
+    lookFooterBar: {
+      position: 'absolute',
+      left: 12,
+      right: 12,
+      bottom: 12,
+      borderRadius: 18,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.7)',
+      shadowColor: '#0A1931',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.12,
+      shadowRadius: 10,
+      elevation: 4,
+    },
+    lookFooterScrim: {
       position: 'absolute',
       left: 0,
       right: 0,
+      top: 0,
       bottom: 0,
-      height: 98,
+      backgroundColor: 'rgba(255,255,255,0.55)',
     },
-    lookFooterGradient: {
-      position: 'absolute',
-      left: 0,
-      right: 0,
-      bottom: 0,
-      height: 112,
+    lookFooterContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
     },
-    lookFooter: {
-      position: 'absolute',
-      left: 14,
-      right: 14,
-      bottom: 14,
+    lookFooterText: {
+      flex: 1,
+      gap: 2,
+    },
+    lookFooterAction: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: '#0A1931',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
     },
     lookTitle: {
-      fontSize: 14,
+      fontSize: 13,
+      lineHeight: 18,
       fontWeight: '700',
-      color: D.white,
+      color: '#0A1931',
       letterSpacing: -0.2,
+      textTransform: 'capitalize',
     },
     lookDate: {
-      marginTop: 4,
-      fontSize: 12,
-      color: 'rgba(255,255,255,0.72)',
+      fontSize: 11,
+      lineHeight: 15,
+      color: 'rgba(10,25,49,0.55)',
     },
     lookBadge: {
       position: 'absolute',
@@ -2480,55 +3017,113 @@ const createStyles = (D: DTokens) =>
       width: '100%',
       height: 390,
     },
-    previewFooterBlur: {
-      position: 'absolute',
-      left: 0,
-      right: 0,
-      bottom: 92,
-      height: 80,
+    previewHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingHorizontal: 20,
+      paddingTop: 18,
+      paddingBottom: 12,
     },
-    previewFooterGradient: {
-      position: 'absolute',
-      left: 0,
-      right: 0,
-      bottom: 92,
-      height: 95,
+    previewHeaderText: {
+      flex: 1,
+      gap: 4,
     },
-    previewInfo: {
+    previewClose: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: 'rgba(10,25,49,0.06)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    previewPiecesWrap: {
+      paddingTop: 14,
+    },
+    previewPiecesTitle: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: 'rgba(10,25,49,0.45)',
+      letterSpacing: 1.2,
+      textTransform: 'uppercase',
+      paddingHorizontal: 20,
+      marginBottom: 10,
+    },
+    previewPiecesRow: {
+      paddingHorizontal: 20,
+      paddingBottom: 4,
+      gap: 12,
+    },
+    previewPiece: {
+      width: 76,
+      alignItems: 'center',
+      gap: 6,
+    },
+    previewPieceThumb: {
+      width: 76,
+      height: 76,
+      borderRadius: 18,
+      backgroundColor: '#FFFFFF',
+      borderWidth: 1,
+      borderColor: 'rgba(10,25,49,0.08)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+    },
+    previewPieceGo: {
       position: 'absolute',
-      left: 18,
-      right: 18,
-      bottom: 108,
+      right: 5,
+      bottom: 5,
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: '#0A1931',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    previewPieceImage: {
+      width: 64,
+      height: 64,
+    },
+    previewPieceLabel: {
+      fontSize: 10.5,
+      fontWeight: '600',
+      color: 'rgba(10,25,49,0.55)',
+      textAlign: 'center',
     },
     previewBadgeRow: {
       alignSelf: 'flex-start',
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
       borderRadius: 999,
-      backgroundColor: 'rgba(255,255,255,0.16)',
+      backgroundColor: 'rgba(10,25,49,0.08)',
       borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.16)',
-      marginBottom: 10,
+      borderColor: 'rgba(10,25,49,0.12)',
+      marginBottom: 8,
     },
     previewBadgeText: {
-      fontSize: 11,
+      fontSize: 12,
+      lineHeight: 16,
       fontWeight: '700',
-      color: D.white,
+      color: '#0A1931',
       letterSpacing: 0.3,
     },
     previewTitle: {
-      fontSize: 22,
+      fontSize: 20,
+      lineHeight: 26,
       fontWeight: '800',
-      color: D.white,
-      letterSpacing: -0.6,
+      color: '#0A1931',
+      letterSpacing: -0.4,
+      textTransform: 'capitalize',
     },
     previewDate: {
-      marginTop: 6,
-      fontSize: 13,
-      color: 'rgba(255,255,255,0.76)',
+      fontSize: 12,
+      lineHeight: 16,
+      color: 'rgba(10,25,49,0.55)',
     },
     previewActions: {
       flexDirection: 'row',

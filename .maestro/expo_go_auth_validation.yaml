@@ -1,0 +1,34 @@
+appId: host.exp.Exponent
+name: expo_go_auth_validation
+tags:
+  - auth
+  - expo-go
+---
+# Empty-submit validation on Sign In (Expo Go, no launchApp).
+# REQUIRES: logged-out state with empty Email/Password fields (fresh reload).
+# SignInScreen shows a NATIVE ALERT (common.error / signIn.emailPasswordRequired),
+# not inline errors: "Error" / "Please enter email and password".
+# The screen has two "Sign In" nodes (title index 0, button index 1).
+- waitForAnimationToEnd:
+    timeout: 10000
+# Fresh install shows the first-run language gate before Sign In —
+# complete it in English so all anchors below stay in English.
+- runFlow:
+    when:
+      visible: "Choose your language"
+    commands:
+      - tapOn: "English"
+      - waitForAnimationToEnd:
+          timeout: 20000
+- assertVisible: ".*Don't have an account.*"
+- tapOn:
+    text: "Sign In"
+    index: 1
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: ".*Please enter email and password.*"
+- takeScreenshot: expo_go_signin_empty_alert
+- tapOn: "OK"
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: ".*Don't have an account.*"

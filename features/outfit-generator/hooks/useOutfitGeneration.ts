@@ -699,7 +699,16 @@ export function useOutfitGeneration({
       previewImageUrl: typeof outfit.mainImage === 'string' ? outfit.mainImage : undefined,
       reasoning: outfit.description,
       style: selectedStyle,
-    });
+      snapshotItems: outfit.items
+        .map((item: any) => ({
+          id: String(item.id || item.image),
+          image: String(item.image || item.imageUrl || ''),
+          category: item.macroCategory || item.category,
+          name: item.name,
+        }))
+        .filter((s: any) => s.image.length > 0)
+        .slice(0, 4),
+    } as any);
     if (newOutfitId) {
       store.saveOutfit(newOutfitId, collectionCategory);
       likeOutfit(newOutfitId, itemIds, occasion);

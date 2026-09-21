@@ -31,7 +31,10 @@ export const PERSISTED_ASYNC_STORAGE_KEYS: readonly string[] = [
 
     // Direct AsyncStorage keys (non-persist stores)
     'daily_usage_v1', // dailyUsageStore (was incorrectly 'daily-usage-storage')
-    '@app_language', // languageStore
+    // NOTE: '@app_language' is intentionally NOT listed here. Language is a
+    // device-level preference chosen on the first-run gate — it must survive
+    // logout / account deletion. Otherwise the user would be forced through
+    // the language screen again on every re-login.
     'offline_queue', // offlineQueue.ts (was incorrectly 'offline_request_queue')
     'upload_queue_v1', // uploadQueue.ts (was incorrectly 'upload_queue')
     '@image_cache_index', // imageCache.ts

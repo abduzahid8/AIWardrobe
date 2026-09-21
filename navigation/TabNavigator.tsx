@@ -70,13 +70,13 @@ const TabIcon = ({ focused, iconName, color, size, label }: TabIconProps) => {
 const TabBarBackground = React.memo(() => (
   <>
     <BlurView
-      intensity={Platform.OS === 'ios' ? 80 : 100}
+      intensity={Platform.OS === 'ios' ? 95 : 100}
       tint="light"
       style={StyleSheet.absoluteFill}
       pointerEvents="none"
     />
     <LinearGradient
-      colors={['rgba(255,255,255,0.94)', 'rgba(240,246,255,0.88)']}
+      colors={['rgba(255,255,255,0.97)', 'rgba(240,246,255,0.94)']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.tabBarGradient}
@@ -126,6 +126,14 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation, isAdmin }: any) 
     ],
   }));
 
+  // Drop accidental multi-taps on the same tab: when a switch stalls users
+  // mash the icon and every press re-emits, re-navigates and restarts perf
+  // marks + focus effects (weather/GPS/rehydrate storms). Time-based, not
+  // isFocused-based, so it can't swallow legit presses the way an isFocused
+  // guard did (see comment in onPress below).
+  const lastPressRef = React.useRef<Record<string, number>>({});
+  const SAME_TAB_DEBOUNCE_MS = 600;
+
   return (
     <View
       style={styles.tabBarContainer}
@@ -148,14 +156,16 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation, isAdmin }: any) 
           const iconColor = isFocused ? activeColor : inactiveColor;
 
           const onPress = () => {
-            console.log('[IPAD-DEBUG] Tab pressed:', route.name);
+            const now = Date.now();
+            const last = lastPressRef.current[route.name] ?? 0;
+            if (now - last < SAME_TAB_DEBOUNCE_MS) return;
+            lastPressRef.current[route.name] = now;
             const event = navigation.emit({
               type: 'tabPress',
               target: route.key,
               canPreventDefault: true,
             });
             if (!event.defaultPrevented) {
-              console.log('[IPAD-DEBUG] Navigating to tab:', route.name);
               // Record the current tab name for perf timing
               const currentRoute = state.routes[state.index]?.name ?? 'Unknown';
               // Only record perf + haptics when actually switching tabs
@@ -336,7 +346,7 @@ const styles = StyleSheet.create({
   },
   glassOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255,255,255,0.42)',
+    backgroundColor: 'rgba(255,255,255,0.6)',
     borderWidth: 1,
     borderColor: 'rgba(24,58,103,0.08)',
     borderRadius: 34,

@@ -7,6 +7,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import Reanimated, { FadeIn, FadeInUp, FadeOut, FadeOutUp } from 'react-native-reanimated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { useShopCatalog } from '../hooks/useShopCatalog';
@@ -19,6 +20,7 @@ import AIThinkingAnimation from '../components/AIThinkingAnimation';
 import { canonicalizeMacroCategory } from '../src/utils/categoryMapper';
 import { scoreItemForStyle, normalizeStyleId } from '../features/outfit-generator/utils/styleInference';
 import useWardrobeStore from '../store/wardrobeStore';
+import { useStylePreferenceStore } from '../store/stylePreferenceStore';
 import { useTranslation } from 'react-i18next';
 import useAuthStore from '../store/auth';
 
@@ -121,7 +123,13 @@ const getSlotImageSource = (item?: OutfitItem) => {
 };
 
 const getOfflineMacroCategory = (type: string, category?: string, name?: string) => {
-  // First honor any canonical macroCategory alias present in either string
+  // Outerwear keywords win over a generic alias. A blazer stored under
+  // category "top"/"tops" must still resolve to "outerwear" (main-top/layer),
+  // otherwise the anchor gets locked into the wrong (second-top) slot.
+  const t = `${type || ''} ${category || ''} ${name || ''}`.toLowerCase();
+  if (t.match(/\b(jacket|coat|blazer|hoodie|cardigan|sweater|pullover|vest|puffer|outerwear|trench|peacoat|bomber)\b/)) return 'outerwear';
+
+  // Then honor any canonical macroCategory alias present in either string
   // (e.g. shop_catalog's `upper_body` / `lower_body`). Falling back to
   // keyword matching afterwards.
   const aliasHit = canonicalizeMacroCategory(type) !== 'other'
@@ -129,21 +137,47 @@ const getOfflineMacroCategory = (type: string, category?: string, name?: string)
     : canonicalizeMacroCategory(category || '');
   if (aliasHit !== 'other') return aliasHit;
 
-  const t = `${type || ''} ${category || ''} ${name || ''}`.toLowerCase();
-  if (t.match(/\b(jacket|coat|blazer|hoodie|cardigan|sweater|pullover|vest|puffer|outerwear|trench|peacoat)\b/)) return 'outerwear';
   if (t.match(/\b(pant|trouser|jeans?|bottom|shorts?|skirt|lower[_\s-]?body)\b/)) return 'bottom';
   if (t.match(/\b(shoe|sneaker|boot|loafer|sandal|footwear)\b/)) return 'shoes';
   if (t.match(/\b(shirt|t-shirt|tee|blouse|polo|top|dress|upper[_\s-]?body)\b/)) return 'top';
   return 'top';
 };
 
+// ── AI styles — aligned 1:1 with Style Quiz personalities ──────────────
+// Quiz ids: classic / semi_classic / minimalist / casual / old_money.
+// `business_casual` is kept as a legacy alias of `classic` so old saved
+// outfits / deep-links keep working.
 const aiStyles = [
-  { id: 'old_money', label: 'Old Money', icon: 'diamond', desc: 'Classic, refined pieces with a subtle focus on pure luxury.' },
-  { id: 'semi_classic', label: 'Semi-Classic', icon: 'umbrella', desc: 'Refined everyday elegance — tailored touches with relaxed comfort.' },
-  { id: 'minimalist', label: 'Minimalist', icon: 'remove', desc: 'Clean lines, neutral colors, and essential wardrobe staples.' },
-  { id: 'casual', label: 'Casual', icon: 'cafe', desc: 'Relaxed, effortless style with well-fitted basics and clean combos.' },
-  { id: 'business_casual', label: 'Modern Professional', icon: 'briefcase', desc: 'Sharp, tailored looks perfect for the modern workplace.' },
+  { id: 'old_money', label: 'Old Money', icon: 'diamond', desc: 'Classic, refined pieces with a subtle focus on pure luxury.', quizId: 'old_money' },
+  { id: 'semi_classic', label: 'Semi-Classic', icon: 'umbrella', desc: 'Refined everyday elegance — tailored touches with relaxed comfort.', quizId: 'semi_classic' },
+  { id: 'minimalist', label: 'Minimalist', icon: 'remove', desc: 'Clean lines, neutral colors, and essential wardrobe staples.', quizId: 'minimalist' },
+  { id: 'casual', label: 'Casual', icon: 'cafe', desc: 'Relaxed, effortless style with well-fitted basics and clean combos.', quizId: 'casual' },
+  { id: 'classic', label: 'Classic', icon: 'briefcase', desc: 'Sharp, tailored looks perfect for the modern workplace.', quizId: 'classic' },
+  { id: 'business_casual', label: 'Modern Professional', icon: 'briefcase', desc: 'Sharp, tailored looks perfect for the modern workplace.', quizId: 'classic' },
 ];
+
+/** Map a Style Quiz personality id to an AI generator style id. */
+function mapQuizStyleToAiStyle(quizId?: string | null): string {
+  if (!quizId) return 'old_money';
+  const key = String(quizId).toLowerCase().replace(/[\s-]+/g, '_');
+  if (key === 'semi-classic' || key === 'semi_classic') return 'semi_classic';
+  if (key === 'old_money' || key === 'oldmoney') return 'old_money';
+  if (key === 'minimalist') return 'minimalist';
+  if (key === 'casual') return 'casual';
+  if (key === 'classic' || key === 'business_casual') return 'classic';
+  return 'old_money';
+}
+
+// ── Occasion presets for the "Where are you going?" step ───────────────
+// ids match COLLECTION_CATEGORIES / calendar occasions.
+const OCCASION_PRESETS = [
+  { id: 'work', label: 'Work', icon: 'briefcase-outline', emoji: '💼' },
+  { id: 'casual', label: 'Casual', icon: 'cafe-outline', emoji: '☕' },
+  { id: 'date', label: 'Date night', icon: 'heart-outline', emoji: '💕' },
+  { id: 'formal', label: 'Formal', icon: 'diamond-outline', emoji: '🤵' },
+  { id: 'sport', label: 'Sport', icon: 'fitness-outline', emoji: '🏃' },
+  { id: 'travel', label: 'Travel', icon: 'airplane-outline', emoji: '✈️' },
+] as const;
 
 function useDesignTokens() {
   const isDark = false;
@@ -747,6 +781,17 @@ const slotStyles = StyleSheet.create({
   },
 });
 
+const parseCalendarDateParam = (value: unknown): Date | null => {
+  if (typeof value !== 'string') return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12, 0, 0);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const formatPlanningDate = (date: Date): string =>
+  date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
 const AIOutfitGenerator = () => {
   const navigation = useNavigation();
   const route = useRoute<any>();
@@ -755,12 +800,60 @@ const AIOutfitGenerator = () => {
   // must include this item locked into its slot.
   const baseItemId: string | undefined = route.params?.baseItemId;
   const baseItem: { id: string; imageUrl?: string; name?: string; type?: string; macroCategory?: string; color?: string; category?: string; brand?: string; description?: string } | undefined = route.params?.baseItem;
+  // Calendar planning context — when navigated from OutfitCalendar's
+  // "Plan Outfit", this holds the target day (YYYY-MM-DD). The AI flow
+  // then acts as a travel/day planner: results default to saving back
+  // to that day.
+  const planningDateKey: string | undefined = typeof route.params?.calendarDate === 'string'
+    ? route.params.calendarDate
+    : undefined;
+  const planningDate = React.useMemo(
+    () => parseCalendarDateParam(planningDateKey),
+    [planningDateKey],
+  );
   const { t } = useTranslation();
-  const [selectedStyle, setSelectedStyle] = useState('old_money');
+  // ── Quiz-oriented defaults ──────────────────────────────────────────
+  // When the user arrives from the Style Quiz, the generator orients on
+  // their quiz personality instead of a hardcoded fallback.
+  const quizPersonality = useStylePreferenceStore((s) => s.preferences.stylePersonality);
+  const quizOccasions = useStylePreferenceStore((s) => s.preferences.primaryOccasions);
+  const quizStyleDefault = useMemo(
+    () => mapQuizStyleToAiStyle(
+      typeof route.params?.initialStyle === 'string' && route.params.initialStyle
+        ? route.params.initialStyle
+        : quizPersonality,
+    ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [quizPersonality],
+  );
+  const [selectedStyle, setSelectedStyle] = useState<string>(
+    typeof route.params?.initialStyle === 'string' && route.params.initialStyle
+      ? normalizeStyleId(route.params.initialStyle) === 'business_casual' ? 'classic' : route.params.initialStyle
+      : quizStyleDefault,
+  );
+  // Keep in sync if the quiz completes while this screen is mounted.
+  useEffect(() => {
+    if (typeof route.params?.initialStyle !== 'string') {
+      setSelectedStyle(quizStyleDefault);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quizStyleDefault]);
   const [loading, setLoading] = useState(false);
   const [outfits, setOutfits] = useState<GeneratedOutfit[]>([]);
   const [error, setError] = useState('');
   const [userPrompt, setUserPrompt] = useState('');
+  // ── New staged Create flow ──────────────────────────────────────────
+  // Step 1 "create": source (wardrobe / new clothing) + style (quiz-oriented).
+  // Step 2 "occasion": small "Where are you going?" input.
+  // On Generate the whole setup block animates out (exit animation) and
+  // the AI thinking view takes over on the SAME page.
+  const [selectedOccasion, setSelectedOccasion] = useState<string | undefined>(
+    Array.isArray(quizOccasions) && quizOccasions.length > 0 ? quizOccasions[0] : undefined,
+  );
+  // Occasion dropdown: 2 chips visible, rest behind a "More" toggle.
+  const [showAllOccasions, setShowAllOccasions] = useState(false);
+  // Style dropdown: same pattern — 2 rows visible, rest behind "More".
+  const [showAllStyles, setShowAllStyles] = useState(false);
   const [collectionPickerVisible, setCollectionPickerVisible] = useState(false);
   const [pendingSaveOutfit, setPendingSaveOutfit] = useState<GeneratedOutfit | null>(null);
   const insets = useSafeAreaInsets();
@@ -772,7 +865,13 @@ const AIOutfitGenerator = () => {
   // ── Calendar Modal State ──────────────────────────────────────────
   const [calendarVisible, setCalendarVisible] = useState(false);
   const [calendarOutfit, setCalendarOutfit] = useState<GeneratedOutfit | null>(null);
-  const [calendarDate, setCalendarDate] = useState<Date>(new Date());
+  const [calendarDate, setCalendarDate] = useState<Date>(() => planningDate ?? new Date());
+
+  // Keep the save-to-calendar picker in sync when arriving from
+  // OutfitCalendar's "Plan Outfit" with a target day.
+  useEffect(() => {
+    if (planningDate) setCalendarDate(planningDate);
+  }, [planningDateKey]);
 
   const D = useDesignTokens();
 
@@ -839,25 +938,65 @@ const AIOutfitGenerator = () => {
       isMounted.current = false;
       if (fallbackTimer.current) clearTimeout(fallbackTimer.current);
     };
-  }, [shopCatalogLoading, liveShopMapped, currentSource]);
+  // baseItemId/baseItem included: anchor must survive source switches
+  // (wardrobe ↔ shop) without losing the lock.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shopCatalogLoading, liveShopMapped, currentSource, baseItemId]);
 
   const loadWardrobeItems = async () => {
     try {
-      // ── Shop mode: use ONLY live Supabase shop catalog items.
+      // ── Shop mode: live Supabase shop catalog items PLUS the locked anchor.
       // Real Supabase UUIDs MUST be preserved so the edge function can enrich
       // items with imageUrl via its itemMap lookup. Do NOT mix in AsyncStorage.
+      // The anchor is always prepended so "New clothing" still builds around it.
       if (currentSource === 'shop') {
         if (!isMounted.current) return;
-        setWardrobeItems(
-          liveShopMapped.map((item: any) => ({
-            ...item,
-            // Preserve the real UUID from shop_catalog — never overwrite with a fake id
-            type: item.type || item.category || 'Clothing Piece',
-            imageUrl: item.imageUrl || (typeof item.image === 'string' ? item.image : '') || '',
-            name: item.name || item.type || t('common.clothingItem'),
-            description: item.description || item.name || '',
-          }))
-        );
+        const shopOnly = liveShopMapped.map((item: any) => ({
+          ...item,
+          // Preserve the real UUID from shop_catalog — never overwrite with a fake id
+          type: item.type || item.category || 'Clothing Piece',
+          imageUrl: item.imageUrl || (typeof item.image === 'string' ? item.image : '') || '',
+          name: item.name || item.type || t('common.clothingItem'),
+          description: item.description || item.name || '',
+        }));
+        if (!shopOnly.some((i: any) => String(i.id) === String(baseItemId)) && baseItemId) {
+          // baseItem params can be dropped on re-render — rebuild from store.
+          let anchorSrc: any = baseItem;
+          if (!anchorSrc) {
+            try {
+              anchorSrc = useWardrobeStore.getState().items?.find((s: any) => String(s.id) === String(baseItemId));
+              if (anchorSrc) {
+                anchorSrc = {
+                  type: anchorSrc.subCategory || anchorSrc.category,
+                  category: anchorSrc.category,
+                  name: anchorSrc.name || anchorSrc.subCategory,
+                  color: anchorSrc.primaryColor,
+                  brand: anchorSrc.brand,
+                  description: (anchorSrc as any).description,
+                  imageUrl: anchorSrc.imageUrl,
+                };
+              }
+            } catch (_) { /* ignore */ }
+          }
+          if (anchorSrc) {
+            const rawType = anchorSrc.type || (anchorSrc as any).category || '';
+            const rawName = anchorSrc.name || anchorSrc.type || '';
+            shopOnly.unshift({
+              id: baseItemId,
+              isWardrobe: true,
+              type: rawType || 'Clothing Piece',
+              category: (anchorSrc as any).category || rawType || 'tops',
+              macroCategory: getBackendMacroCategory(rawType, (anchorSrc as any).category || '', rawName),
+              color: anchorSrc.color || 'neutral',
+              brand: (anchorSrc as any).brand || '',
+              name: rawName || t('common.clothingItem'),
+              description: (anchorSrc as any).description || rawName || '',
+              image: anchorSrc.imageUrl || '',
+              imageUrl: anchorSrc.imageUrl || '',
+            });
+          }
+        }
+        setWardrobeItems(shopOnly);
         return;
       }
 
@@ -997,6 +1136,12 @@ const AIOutfitGenerator = () => {
   // Backend-compatible macroCategory matching the edge function's slot model:
   // 'top' (base layer), 'outerwear' (jacket/blazer/sweater), 'bottom', 'shoes'
   const getBackendMacroCategory = (type: string, category?: string, name?: string) => {
+    // Outerwear keywords take precedence over a generic alias: a blazer
+    // stored as category "top"/"tops" is still a layer (main-top slot),
+    // not a base top. Without this the anchor locks into second-top.
+    const t = `${type || ''} ${category || ''} ${name || ''}`.toLowerCase();
+    if (t.match(/\b(jacket|coat|blazer|hoodie|cardigan|sweater|pullover|vest|puffer|outerwear|trench|peacoat|bomber)\b/)) return 'outerwear';
+
     // Prefer canonical aliases (upper_body / lower_body / tops / footwear / …)
     // so items coming back from shop_catalog are slotted correctly.
     const aliasHit = canonicalizeMacroCategory(type) !== 'other'
@@ -1004,8 +1149,6 @@ const AIOutfitGenerator = () => {
       : canonicalizeMacroCategory(category || '');
     if (aliasHit !== 'other') return aliasHit;
 
-    const t = `${type || ''} ${category || ''} ${name || ''}`.toLowerCase();
-    if (t.match(/\b(jacket|coat|blazer|hoodie|cardigan|sweater|pullover|vest|puffer|outerwear|trench|peacoat)\b/)) return 'outerwear';
     if (t.match(/\b(pant|trouser|jeans?|bottom|shorts?|skirt|lower[_\s-]?body)\b/)) return 'bottom';
     if (t.match(/\b(shoe|sneaker|boot|loafer|sandal|footwear)\b/)) return 'shoes';
     if (t.match(/\b(shirt|t-shirt|tee|blouse|polo|top|dress|upper[_\s-]?body)\b/)) return 'top';
@@ -1041,8 +1184,11 @@ const AIOutfitGenerator = () => {
   }, []);
 
   const candidatePool = useMemo(() => {
+    // In shop mode wardrobeItems already = shop catalog + locked anchor
+    // (see loadWardrobeItems). Using liveShopMapped alone would drop the
+    // anchor from fallback picks and lose the lock.
     const pool = currentSource === 'shop'
-      ? liveShopMapped
+      ? wardrobeItems
       : currentSource === 'wardrobe'
         ? wardrobeItems
         : [...wardrobeItems, ...liveShopMapped];
@@ -1072,39 +1218,69 @@ const AIOutfitGenerator = () => {
   }, [currentSource, liveShopMapped, wardrobeItems]);
 
   const normalizeTo4Slots = (items: OutfitItem[], styleId?: string): OutfitItem[] => {
-    // If an anchor item was passed from MyClosetScreen, inject it into the
-    // incoming items list so it is always picked for its slot.
-    let incomingItems = items;
-    if (baseItem && baseItemId) {
-      const anchorMacro = canonicalizeMacroCategory(
-        baseItem.macroCategory
-        || getBackendMacroCategory(baseItem.type || '', '', baseItem.name || '')
+    // ── Anchor resolution (single source of truth for locking) ──────────
+    // The anchor MUST win its macro slot regardless of AI order. We compute
+    // its true macro with outerwear-keyword priority (blazer stored as "top"
+    // is still a layer), then pick anchor-first per slot + post-enforce.
+    // Fallback: route params can be lost on re-render — if baseItem is gone
+    // but baseItemId survives, rebuild it from pool/store so the lock holds.
+    let effectiveBaseItem = baseItem;
+    if (!effectiveBaseItem && baseItemId) {
+      const found: any = [...(items || []), ...candidatePool].find(
+        (i: any) => String(i?.id) === String(baseItemId),
       );
-      const anchorOutfitItem: OutfitItem = {
+      if (found) {
+        effectiveBaseItem = {
+          id: baseItemId,
+          imageUrl: found.imageUrl || (typeof found.image === 'string' ? found.image : undefined),
+          name: found.name,
+          type: found.type,
+          macroCategory: found.macroCategory,
+          color: found.color,
+          category: found.category,
+          brand: found.brand,
+          description: found.description,
+        } as any;
+      }
+    }
+    let anchorMacro: string | null = null;
+    let anchorOutfitItem: OutfitItem | null = null;
+    if (effectiveBaseItem && baseItemId) {
+      const recomputed = getBackendMacroCategory(
+        effectiveBaseItem.type || '',
+        (effectiveBaseItem as any).category || effectiveBaseItem.macroCategory || '',
+        effectiveBaseItem.name || '',
+      );
+      const stored = canonicalizeMacroCategory(effectiveBaseItem.macroCategory || '');
+      // Outerwear wins on conflict: a blazer mis-tagged as "top" upstream
+      // must lock into the main-top/layer slot, not second-top.
+      anchorMacro = recomputed === 'outerwear' ? 'outerwear' : (stored !== 'other' ? stored : recomputed);
+      anchorOutfitItem = {
         id: baseItemId,
-        name: baseItem.name || baseItem.type || 'Item',
-        image: baseItem.imageUrl || '',
-        imageUrl: baseItem.imageUrl || '',
-        type: baseItem.type || anchorMacro,
+        name: effectiveBaseItem.name || effectiveBaseItem.type || 'Item',
+        image: effectiveBaseItem.imageUrl || '',
+        imageUrl: effectiveBaseItem.imageUrl || '',
+        type: effectiveBaseItem.type || anchorMacro,
         macroCategory: anchorMacro,
-        color: baseItem.color || 'neutral',
+        color: effectiveBaseItem.color || 'neutral',
         isWardrobe: true,
       };
-      // Replace any existing item in the same slot, or prepend
-      const alreadyPresent = incomingItems.some(i => String(i.id) === String(baseItemId));
+      // Pre-inject so AI-order-independent picks still see it first.
+      const alreadyPresent = items.some(i => String(i.id) === String(baseItemId));
       if (!alreadyPresent) {
-        const slotIdx = incomingItems.findIndex(
+        const slotIdx = items.findIndex(
           i => (canonicalizeMacroCategory(i.macroCategory || '') === anchorMacro
             || canonicalizeMacroCategory(getBackendMacroCategory(i.type || '', i.category || '', i.name || '')) === anchorMacro)
         );
         if (slotIdx >= 0) {
-          incomingItems = [...incomingItems];
-          incomingItems[slotIdx] = anchorOutfitItem;
+          items = [...items];
+          (items as OutfitItem[])[slotIdx] = anchorOutfitItem;
         } else {
-          incomingItems = [anchorOutfitItem, ...incomingItems];
+          items = [anchorOutfitItem, ...items];
         }
       }
     }
+    let incomingItems = items;
     // Helper: prefer an item's own macroCategory (canonicalized) over the
     // keyword-based fallback. Keeps items whose type/category are raw
     // garmentType strings (`upper_body`, `lower_body`) from being dropped.
@@ -1121,19 +1297,17 @@ const AIOutfitGenerator = () => {
       image: it.image || it.imageUrl || '',
       macroCategory: resolveMacroCategory(it),
     }));
-    // Align with `needsOuterwear` in OutfitSlotGrid + server defaults: when
-    // weather is unavailable (Location denied) default to layered=TRUE, so
-    // the outfit pipeline always expects a base top + outerwear. This
-    // avoids the "layer shown but no base top" visual bug when weather is
-    // missing.
-    const needsLayer = !weather
+    // A locked outerwear anchor forces layering even in warm weather —
+    // otherwise its slot would never be picked and it would "fall" into top.
+    const anchorForcesLayer = anchorMacro === 'outerwear';
+    const needsLayer = anchorForcesLayer || !weather
       || (weather?.temp != null && weather.temp < 18)
       || /\b(cold|chilly|freezing|snow|rain|drizzle|wind|storm)\b/.test((weather?.condition || '').toLowerCase());
     const usedIds = new Set<string>();
 
     console.log('[normalizeTo4Slots] incoming items:', incoming.map((it: any) => ({ id: it.id, name: it.name, macro: it.macroCategory, image: (it.image || '').substring(0, 40) })));
     console.log('[normalizeTo4Slots] candidatePool size:', candidatePool.length, 'sample:', candidatePool.slice(0, 5).map((it: any) => ({ id: it.id, macro: it.macroCategory })));
-    console.log('[normalizeTo4Slots] needsLayer:', needsLayer, 'weather:', weather);
+    console.log('[normalizeTo4Slots] needsLayer:', needsLayer, 'weather:', weather, 'anchor:', anchorMacro, baseItemId);
 
     const pickCandidate = (predicate: (candidate: any) => boolean) => {
       const found = [...incoming, ...candidatePool].find((candidate: any) => {
@@ -1143,6 +1317,20 @@ const AIOutfitGenerator = () => {
       if (!found) return undefined;
       usedIds.add(String(found.id || ''));
       return { ...found, image: resolveImage(found) || found.image || '' };
+    };
+
+    // Anchor-first pick: when this slot IS the anchor's macro, the locked
+    // item wins over AI order. Marks usedIds so it can't be double-picked.
+    const pickAnchorForSlot = (slotMacro: string) => {
+      if (!anchorOutfitItem || !anchorMacro || anchorMacro !== slotMacro) return undefined;
+      const key = String(anchorOutfitItem.id || '');
+      if (usedIds.has(key)) {
+        // Already placed (e.g. outerwear anchor also matching top fallback) —
+        // return the same object so caller keeps a single instance.
+        return { ...anchorOutfitItem, image: resolveImage(anchorOutfitItem) || anchorOutfitItem.image || '' };
+      }
+      usedIds.add(key);
+      return { ...anchorOutfitItem, image: resolveImage(anchorOutfitItem) || anchorOutfitItem.image || '' };
     };
 
     // Prefer candidates whose image is a real URI (http / file / data / asset
@@ -1160,23 +1348,26 @@ const AIOutfitGenerator = () => {
     // to the pants slot — that was producing the "flowy shirt labeled
     // SHORTS" bug. Fall back to PLACEHOLDER_PANTS when no real pants exist.
     const slotPantsRaw =
-      pickCandidate((candidate: any) => candidate.macroCategory === 'bottom' && hasRealImage(candidate) && !isShortsBottom(candidate))
+      pickAnchorForSlot('bottom')
+      || pickCandidate((candidate: any) => candidate.macroCategory === 'bottom' && hasRealImage(candidate) && !isShortsBottom(candidate))
       || pickCandidate((candidate: any) => candidate.macroCategory === 'bottom' && !isShortsBottom(candidate))
       || { ...PLACEHOLDER_PANTS };
     // Force macroCategory to 'bottom' so OutfitSlotGrid.classifyItem never drops it
     const slotPants = { ...slotPantsRaw, macroCategory: 'bottom' as const };
-    const pantsIsShorts = false;
+    const pantsIsShorts = isShortsBottom(slotPantsRaw);
 
     const slotOuterwearRaw = needsLayer
-      ? (pickCandidate((candidate: any) => candidate.macroCategory === 'outerwear' && hasRealImage(candidate) && !(pantsIsShorts && isFormalLayer(candidate)))
+      ? (pickAnchorForSlot('outerwear')
+        || pickCandidate((candidate: any) => candidate.macroCategory === 'outerwear' && hasRealImage(candidate) && !(pantsIsShorts && isFormalLayer(candidate)))
         || pickCandidate((candidate: any) => candidate.macroCategory === 'outerwear' && !(pantsIsShorts && isFormalLayer(candidate)))
         || (!pantsIsShorts ? pickCandidate((candidate: any) => candidate.macroCategory === 'outerwear') : undefined))
-      : undefined;
+      : (anchorMacro === 'outerwear' ? pickAnchorForSlot('outerwear') : undefined);
     // Force macroCategory to 'outerwear' so OutfitSlotGrid.classifyItem never drops it
     const slotOuterwear = slotOuterwearRaw ? { ...slotOuterwearRaw, macroCategory: 'outerwear' as const } : undefined;
 
     const slotMainTopRaw =
-      pickCandidate((candidate: any) => candidate.macroCategory === 'top' && hasRealImage(candidate))
+      pickAnchorForSlot('top')
+      || pickCandidate((candidate: any) => candidate.macroCategory === 'top' && hasRealImage(candidate))
       || pickCandidate((candidate: any) => candidate.macroCategory === 'top')
       || pickCandidate((candidate: any) => candidate.macroCategory !== 'bottom' && candidate.macroCategory !== 'shoes' && candidate.macroCategory !== 'outerwear' && candidate.macroCategory !== 'other');
     // Force macroCategory to 'top' so OutfitSlotGrid.classifyItem never drops it
@@ -1186,7 +1377,8 @@ const AIOutfitGenerator = () => {
     // accidentally consume a shoes item whose macroCategory resolved
     // to 'other' or an unrecognized alias.
     const slotShoesRaw =
-      pickCandidate((candidate: any) => candidate.macroCategory === 'shoes' && hasRealImage(candidate))
+      pickAnchorForSlot('shoes')
+      || pickCandidate((candidate: any) => candidate.macroCategory === 'shoes' && hasRealImage(candidate))
       || pickCandidate((candidate: any) => candidate.macroCategory === 'shoes')
       || { ...PLACEHOLDER_SHOES };
     // Force macroCategory to 'shoes' so OutfitSlotGrid.classifyItem never drops it
@@ -1214,9 +1406,33 @@ const AIOutfitGenerator = () => {
     // When no outerwear exists, mainTop fills slot 1 and secondTop fills slot 2.
     const slot1 = slotOuterwear || slotMainTop;           // main-top / layer
     const slot2 = slotMainTop && slotOuterwear             // second-top (base shirt)
-      ? (slotMainTop.id !== slotOuterwear.id ? slotMainTop : slotSecondTop)
+      ? (String(slotMainTop.id) !== String(slotOuterwear.id) ? slotMainTop : slotSecondTop)
       : (slotOuterwear ? slotSecondTop : slotSecondTop || slotMainTop);
     const result = [slot1, slot2, slotPants, slotShoes].filter(Boolean) as OutfitItem[];
+    // ── Post-enforce: anchor MUST be in the final outfit ────────────────
+    // First-match picks above can still miss when AI order puts another item
+    // of the same macro first and anchor-first was bypassed (e.g. placeholder
+    // fallback). Replace the same-macro slot so every slot mapping stays
+    // correct: outerwear→slot1(main-top), top→slot2(second-top),
+    // bottom→slot3, shoes→slot4.
+    if (anchorOutfitItem && anchorMacro) {
+      const hasAnchor = result.some(i => String(i.id) === String(anchorOutfitItem.id));
+      if (!hasAnchor) {
+        const targetIdx =
+          anchorMacro === 'outerwear' ? 0
+          : anchorMacro === 'top' ? 1
+          : anchorMacro === 'bottom' ? 2
+          : anchorMacro === 'shoes' ? 3
+          : result.findIndex(i => canonicalizeMacroCategory(i.macroCategory || '') === anchorMacro);
+        if (targetIdx >= 0 && targetIdx < result.length) {
+          result[targetIdx] = { ...anchorOutfitItem, macroCategory: anchorMacro as any };
+        } else {
+          const fallbackIdx = result.findIndex(i => canonicalizeMacroCategory(i.macroCategory || '') === anchorMacro);
+          if (fallbackIdx >= 0) result[fallbackIdx] = { ...anchorOutfitItem, macroCategory: anchorMacro as any };
+          else result.unshift({ ...anchorOutfitItem, macroCategory: anchorMacro as any });
+        }
+      }
+    }
     console.log('[normalizeTo4Slots] RESULT (4 items):', result.map((it: any) => ({ id: it.id, name: it.name, macro: it.macroCategory })));
     return result;
   };
@@ -1259,6 +1475,27 @@ const AIOutfitGenerator = () => {
   ];
 
   // ── Save Outfit to Closet ─────────────────────────────────────────
+  // When launched from the trip/calendar planner (planningDateKey), this
+  // is a *connected* save: the outfit is stored in the closet AND linked
+  // to the trip day (outfitLogs) so the Trips tab / packing list updates
+  // and the user gets a visible confirmation + a way back.
+  const persistOutfitToTripDay = async (outfit: GeneratedOutfit, dateKey: string, occasion: string) => {
+    const mappedItems: CalendarOutfitItem[] = outfit.items.map((it) => ({
+      id: it.id || it.name || `${Date.now()}`,
+      type: it.type || 'top',
+      image: it.image || it.imageUrl || '',
+      color: it.color,
+      name: it.name,
+    }));
+    const log = createOutfitLog(dateKey, mappedItems, occasion);
+    const raw = await AsyncStorage.getItem('outfitLogs');
+    const logs: Record<string, OutfitLog> = raw ? JSON.parse(raw) : {};
+    const updated = Boolean(logs[dateKey]);
+    logs[dateKey] = log;
+    await AsyncStorage.setItem('outfitLogs', JSON.stringify(logs));
+    return { updated };
+  };
+
   const saveOutfitToCloset = async (outfit: GeneratedOutfit, collectionCategory?: string) => {
     const itemIds = outfit.items
       .map((item) => String(item.id || item.image))
@@ -1270,6 +1507,8 @@ const AIOutfitGenerator = () => {
 
     const store = useWardrobeStore.getState();
     const occasion = collectionCategory || getCalendarOccasion(selectedStyle);
+    // Connected save targets the trip day; standalone saves use today.
+    const connectedDateKey = planningDateKey ?? null;
     const newOutfitId = store.addOutfit({
       userId: 'user',
       itemIds,
@@ -1278,7 +1517,16 @@ const AIOutfitGenerator = () => {
       previewImageUrl: typeof outfit.mainImage === 'string' ? outfit.mainImage : undefined,
       reasoning: outfit.description,
       style: selectedStyle,
-    });
+      snapshotItems: outfit.items
+        .map((item: any) => ({
+          id: String(item.id || item.image),
+          image: String(item.imageUrl || item.image || ''),
+          category: item.macroCategory || item.category,
+          name: item.name,
+        }))
+        .filter((s: any) => s.image.length > 0)
+        .slice(0, 4),
+    } as any);
 
     if (newOutfitId) {
       store.saveOutfit(newOutfitId, collectionCategory);
@@ -1298,7 +1546,7 @@ const AIOutfitGenerator = () => {
             imageUrl: item.imageUrl,
             name: item.name,
           })),
-          date: new Date().toISOString().split('T')[0],
+          date: connectedDateKey ?? new Date().toISOString().split('T')[0],
           occasion,
           caption: outfit.description || '',
           visibility: 'Everyone',
@@ -1313,6 +1561,40 @@ const AIOutfitGenerator = () => {
     }
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    // Connected (trip planner) save: also link the outfit to the trip day
+    // so Calendar + Trips packing list update immediately.
+    if (connectedDateKey) {
+      let updated = false;
+      try {
+        ({ updated } = await persistOutfitToTripDay(outfit, connectedDateKey, occasion));
+      } catch (err) {
+        console.warn('[AIOutfitmaker] Failed to link saved outfit to trip day:', err);
+      }
+      const dateLabel = planningDate ? formatPlanningDate(planningDate) : connectedDateKey;
+      const goBackToPlanner = () => {
+        if ((navigation as any)?.goBack) {
+          (navigation as any).goBack();
+        }
+      };
+      Alert.alert(
+        updated
+          ? t('outfitMaker.savedToTripUpdated', { defaultValue: 'Trip outfit updated for {{date}}', date: dateLabel })
+          : t('outfitMaker.savedToTrip', { defaultValue: 'Saved to your trip · {{date}}', date: dateLabel }),
+        t('outfitMaker.savedToTripSubtitle', {
+          defaultValue: 'Saved to your closet and connected to your trip day calendar + packing list.',
+        }),
+        [
+          { text: t('common.done', { defaultValue: 'Done' }), style: 'cancel', onPress: goBackToPlanner },
+          {
+            text: t('outfitMaker.viewTrip', { defaultValue: 'View Trip' }),
+            onPress: goBackToPlanner,
+          },
+        ],
+      );
+      return;
+    }
+
     Alert.alert(t('outfitMaker.saved'), t('outfitMaker.outfitSavedCloset'));
   };
 
@@ -1344,6 +1626,41 @@ const AIOutfitGenerator = () => {
       const raw = await AsyncStorage.getItem('outfitLogs');
       const logs: Record<string, OutfitLog> = raw ? JSON.parse(raw) : {};
 
+      const finishSave = (savedDate: Date) => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setCalendarVisible(false);
+        setCalendarOutfit(null);
+        const dateLabel = formatPlanningDate(savedDate);
+        const goBackToPlanner = () => {
+          // When planning a specific calendar/trip day, return to it so the
+          // user immediately sees the planned outfit.
+          if (planningDateKey && (navigation as any)?.goBack) {
+            (navigation as any).goBack();
+          }
+        };
+        // Visible confirmation — saving was previously silent (modal just
+        // closed), which felt like "nothing happened".
+        Alert.alert(
+          t('outfitMaker.savedToCalendar', { defaultValue: 'Saved to {{date}}', date: dateLabel }),
+          t('outfitMaker.savedToCalendarSubtitle', {
+            defaultValue: 'Your outfit was added to your calendar and trip packing list.',
+          }),
+          [
+            { text: t('common.done', { defaultValue: 'Done' }), style: 'cancel', onPress: goBackToPlanner },
+            {
+              text: t('outfitMaker.viewCalendar', { defaultValue: 'View Calendar' }),
+              onPress: () => {
+                if (planningDateKey && (navigation as any)?.goBack) {
+                  (navigation as any).goBack();
+                } else {
+                  (navigation as any)?.navigate?.('Calendar');
+                }
+              },
+            },
+          ],
+        );
+      };
+
       // Warn before overwriting an existing outfit for this date
       if (logs[dateStr]) {
         Alert.alert(
@@ -1357,9 +1674,7 @@ const AIOutfitGenerator = () => {
               onPress: async () => {
                 logs[dateStr] = log;
                 await AsyncStorage.setItem('outfitLogs', JSON.stringify(logs));
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                setCalendarVisible(false);
-                setCalendarOutfit(null);
+                finishSave(date);
               },
             },
           ]
@@ -1369,16 +1684,76 @@ const AIOutfitGenerator = () => {
 
       logs[dateStr] = log;
       await AsyncStorage.setItem('outfitLogs', JSON.stringify(logs));
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setCalendarVisible(false);
-      setCalendarOutfit(null);
+      finishSave(date);
     } catch (e) {
       console.error('Calendar save error', e);
     }
   };
 
+  const openCalendarForOutfit = (outfit: GeneratedOutfit) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setCalendarOutfit(outfit);
+    // Default to the planned day when arriving from OutfitCalendar.
+    setCalendarDate(planningDate ?? new Date());
+    setCalendarVisible(true);
+  };
+
+  const buildEffectivePrompt = useCallback(() => {
+    const occasionLabel = OCCASION_PRESETS.find((o) => o.id === selectedOccasion)?.label;
+    const trimmed = userPrompt.trim();
+    if (occasionLabel && trimmed) return `${occasionLabel}: ${trimmed}`;
+    if (occasionLabel) return occasionLabel;
+    return trimmed;
+  }, [selectedOccasion, userPrompt]);
+
+  // ── iOS grouped checkmark row (shared by source / occasion / style) ──
+  const renderCheckRow = (
+    key: string,
+    icon: string,
+    label: string,
+    selected: boolean,
+    onPress: () => void,
+    showDivider: boolean,
+  ) => (
+    <View key={key}>
+      {showDivider && <View style={styles.rowDivider} />}
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          onPress();
+        }}
+        style={styles.formRow}
+      >
+        <View style={styles.formRowIcon}>
+          <Ionicons name={icon as any} size={17} color="#173A65" />
+        </View>
+        <ScaledText style={styles.formRowLabel}>{label}</ScaledText>
+        <View style={{ flex: 1 }} />
+        {selected && <Ionicons name="checkmark" size={22} color="#0A1931" />}
+      </TouchableOpacity>
+    </View>
+  );
+
+  // ── Generate (same page: setup animates out → thinking fades in) ──
+  // Generating unmounts setup → thinking with FadeOutUp → FadeIn.
+  const handleGeneratePress = useCallback((styleOverride?: string) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const styleToUse = styleOverride || selectedStyle;
+    if (styleOverride) setSelectedStyle(styleOverride);
+    generateOutfits(styleToUse);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedStyle, selectedOccasion, userPrompt]);
+
   const generateOutfits = async (overrideStyle?: string) => {
     const styleToUse = overrideStyle || selectedStyle;
+    const effectivePrompt = (() => {
+      const occasionLabel = OCCASION_PRESETS.find((o) => o.id === selectedOccasion)?.label;
+      const trimmed = userPrompt.trim();
+      if (occasionLabel && trimmed) return `${occasionLabel}: ${trimmed}`;
+      if (occasionLabel) return occasionLabel;
+      return trimmed;
+    })();
 
     if (!isMounted.current) return;
     setLoading(true);
@@ -1511,12 +1886,12 @@ const AIOutfitGenerator = () => {
       const { data, error: invokeError } = await supabase.functions.invoke('generate-outfits', {
         body: {
           stylePreferences: styleToUse,
-          occasion: userPrompt || 'Any',
+          occasion: effectivePrompt || selectedOccasion || userPrompt || 'Any',
           selectedItemIds: [],
           wardrobeItems: payloadItems,
           weather: resolvedWeather,
           limit: effectiveSource === 'wardrobe' ? 2 : 3, // request fewer if we already have a pure one
-          prompt: userPrompt,
+          prompt: effectivePrompt,
           // Lock the anchor item into every outfit when navigated from MyClosetScreen
           anchorItemId: baseItemId,
           // When source is 'shop', use only the provided shop catalog items
@@ -1574,7 +1949,9 @@ const AIOutfitGenerator = () => {
         }
 
         if (isMounted.current) {
-          let mergedOutfits = pureWardrobeOutfit ? [pureWardrobeOutfit, ...cleanedOutfits] : cleanedOutfits;
+          // NOTE: use finalOutfits (padded) — not cleanedOutfits — so the user
+          // always sees 3 variations.
+          const mergedOutfits = pureWardrobeOutfit ? [pureWardrobeOutfit, ...finalOutfits] : finalOutfits;
           setOutfits(mergedOutfits.slice(0, 3));
           setLoading(false);
         }
@@ -1593,10 +1970,18 @@ const AIOutfitGenerator = () => {
         try {
           const offlineOutfits = await generateOfflineOutfits(wardrobeItems, liveShopMapped, styleToUse, weather, 3, t);
 
+          // Anchor guarantee: the offline builder is anchor-blind, so every
+          // fallback outfit MUST go through normalizeTo4Slots (anchor-first +
+          // post-enforce) — otherwise the lock silently disappears when the
+          // edge function fails. This was the "anchor missing entirely" bug.
+          const normalizedOffline = (offlineOutfits || [])
+            .map((o: GeneratedOutfit) => ({ ...o, items: normalizeTo4Slots(o.items || [], styleToUse) }))
+            .filter((o: GeneratedOutfit) => isCompleteNormalizedOutfit(o.items));
+
           // Ensure first outfit is pure if source is wardrobe
-          let finalOffline = offlineOutfits;
+          let finalOffline = normalizedOffline;
           if (effectiveSource === 'wardrobe' && pureWardrobeOutfit) {
-            finalOffline = [pureWardrobeOutfit, ...offlineOutfits.slice(0, 2)];
+            finalOffline = [pureWardrobeOutfit, ...normalizedOffline.slice(0, 2)];
           }
 
           if (isMounted.current) {
@@ -1625,11 +2010,34 @@ const AIOutfitGenerator = () => {
         <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
           <View style={styles.header}>
             <TouchableOpacity onPress={() => setOutfits([])} style={styles.backButton}>
-              <Ionicons name="chevron-back" size={26} color={D.textPrimary} />
+              <Ionicons name="chevron-back" size={22} color="#0A1931" />
             </TouchableOpacity>
             <ScaledText style={styles.headerTitle}>{t('outfitMaker.yourOutfits')}</ScaledText>
-            <View style={{ width: 40 }} />
+            <View style={{ width: 44 }} />
           </View>
+
+          {planningDate && (
+            <View style={{ paddingHorizontal: 20, paddingBottom: 4 }}>
+              <View style={styles.planningBanner}>
+                <View style={styles.planningIconWrap}>
+                  <Ionicons name="calendar-outline" size={20} color="#173A65" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <ScaledText style={styles.planningTitle} minScale={0.65}>
+                    {t('outfitMaker.planningFor', {
+                      defaultValue: 'Planning for {{date}}',
+                      date: formatPlanningDate(planningDate),
+                    })}
+                  </ScaledText>
+                  <ScaledText style={styles.planningSubtitle} minScale={0.65}>
+                    {t('outfitMaker.planningSubtitle', {
+                      defaultValue: 'Generated looks will be saved back to this day',
+                    })}
+                  </ScaledText>
+                </View>
+              </View>
+            </View>
+          )}
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}>
             {outfits.map((outfit, index) => (
@@ -1665,11 +2073,18 @@ const AIOutfitGenerator = () => {
                   <TouchableOpacity
                     activeOpacity={0.85}
                     style={styles.primaryAction}
-                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setCalendarOutfit(outfit); setCalendarDate(new Date()); setCalendarVisible(true); }}
+                    onPress={() => openCalendarForOutfit(outfit)}
                   >
                     <LinearGradient colors={[D.accent, '#5B7CF9']} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
                     <Ionicons name="calendar-outline" size={18} color="#fff" />
-                    <ScaledText style={styles.primaryActionText} minScale={0.65}>{t('outfitMaker.addToCalendar')}</ScaledText>
+                    <ScaledText style={styles.primaryActionText} minScale={0.65}>
+                      {planningDate
+                        ? t('outfitMaker.planForDate', {
+                            defaultValue: 'Plan for {{date}}',
+                            date: formatPlanningDate(planningDate),
+                          })
+                        : t('outfitMaker.addToCalendar')}
+                    </ScaledText>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -1678,7 +2093,13 @@ const AIOutfitGenerator = () => {
                     onPress={() => handleSaveOutfitPress(outfit)}
                   >
                     <Ionicons name="checkmark-circle-outline" size={18} color={D.textPrimary} />
-                    <ScaledText style={styles.secondaryActionText} minScale={0.65}>{t('outfitMaker.saveOutfit')}</ScaledText>
+                    <ScaledText style={styles.secondaryActionText} minScale={0.65}>
+                      {planningDate
+                        ? t('outfitMaker.saveAndConnectTrip', {
+                            defaultValue: 'Save + Connect to trip',
+                          })
+                        : t('outfitMaker.saveOutfit')}
+                    </ScaledText>
                   </TouchableOpacity>
                 </View>
               </Animated.View>
@@ -1752,9 +2173,14 @@ const AIOutfitGenerator = () => {
     );
   }
 
-  // Show AI thinking animation when loading
+  // ── AI thinking view (same page, after setup animates out) ──────────
+  // Shows HOW the AI is thinking: quiz style → occasion → source scan.
   if (loading) {
     const selectedStyleLabel = aiStyles.find(s => s.id === selectedStyle)?.label || 'AI';
+    const occasionLabel = OCCASION_PRESETS.find((o) => o.id === selectedOccasion)?.label;
+    const sourceLabel = currentSource === 'shop'
+      ? t('outfitMaker.newClothing', { defaultValue: 'new clothing' })
+      : t('outfitMaker.fromWardrobe', { defaultValue: 'your wardrobe' });
     // Map wardrobe items for the animation
     const animationItems = wardrobeItems.slice(0, 24).map((item: any) => ({
       id: item.id || String(Math.random()),
@@ -1763,22 +2189,57 @@ const AIOutfitGenerator = () => {
       type: item.type,
       category: item.category,
     })).filter((item: any) => item.image);
-    
+
     return (
       <View style={styles.container}>
         <LinearGradient
           colors={LiquidGlass2026Theme.colors.gradients.liquidGlass}
           style={StyleSheet.absoluteFill}
         />
-        <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1 }}>
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => { setLoading(false); setOutfits([]); }} style={styles.backButton}>
-              <Ionicons name="chevron-back" size={28} color={LiquidGlass2026Theme.colors.text.primary} />
-            </TouchableOpacity>
-          <ScaledText style={styles.headerTitle} minScale={0.65}>{t('outfitMaker.aiStylist')}</ScaledText>
-            <View style={{ width: 44 }} />
-          </View>
-          <AIThinkingAnimation styleName={selectedStyleLabel} clothingItems={animationItems} />
+        {/* Full-screen: no header — animation bleeds edge-to-edge */}
+        <SafeAreaView edges={['bottom', 'left', 'right']} style={{ flex: 1 }}>
+          <Reanimated.View entering={FadeIn.duration(350)} style={{ flex: 1, overflow: 'hidden' }}>
+            <View style={{ flex: 1, overflow: 'hidden' }}>
+              <AIThinkingAnimation styleName={selectedStyleLabel} clothingItems={animationItems} />
+            </View>
+            {/* Floating cancel — overlays animation, takes no layout space */}
+            <SafeAreaView
+              edges={['top', 'left', 'right']}
+              style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 30 }}
+              pointerEvents="box-none"
+            >
+              <View style={{ paddingHorizontal: 16, paddingTop: 8, alignItems: 'flex-start' }} pointerEvents="box-none">
+                <TouchableOpacity
+                  onPress={() => { setLoading(false); setOutfits([]); }}
+                  style={styles.backButton}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('common.back')}
+                >
+                  <Ionicons name="chevron-back" size={22} color="#0A1931" />
+                </TouchableOpacity>
+              </View>
+            </SafeAreaView>
+            {/* Thought-process context line: style → occasion → source */}
+            <View style={styles.thinkingContextWrap} pointerEvents="none">
+              <View style={styles.thinkingContextPill}>
+                <Ionicons name="person-outline" size={13} color="#173A65" />
+                <ScaledText style={styles.thinkingContextText} numberOfLines={1}>
+                  {selectedStyleLabel}
+                  {occasionLabel ? ` · ${occasionLabel}` : ''}
+                  {` · ${sourceLabel}`}
+                </ScaledText>
+              </View>
+              {(() => {
+                const p = buildEffectivePrompt();
+                return p ? (
+                  <ScaledText style={styles.thinkingPromptText} numberOfLines={2}>
+                    “{p}”
+                  </ScaledText>
+                ) : null;
+              })()}
+            </View>
+          </Reanimated.View>
         </SafeAreaView>
       </View>
     );
@@ -1786,34 +2247,76 @@ const AIOutfitGenerator = () => {
 
   return (
     <View style={styles.container}>
-      {/* Dynamic Background */}
       <LinearGradient
-        colors={LiquidGlass2026Theme.colors.gradients.liquidGlass}
+        colors={['#F6FAFF', '#EEF4FF', '#FFFFFF']}
         style={StyleSheet.absoluteFill}
+        pointerEvents="none"
       />
+      <View pointerEvents="none" style={styles.backgroundOrbTop} />
+      <View pointerEvents="none" style={styles.backgroundOrbBottom} />
 
       <SafeAreaView
         edges={['top', 'left', 'right']}
         style={{ flex: 1 }}
       >
-        {/* Header */}
+        {/* Header — same 3-part centered pattern as main tabs */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="chevron-back" size={28} color={LiquidGlass2026Theme.colors.text.primary} />
+            <Ionicons name="chevron-back" size={22} color="#0A1931" />
           </TouchableOpacity>
           <ScaledText style={styles.headerTitle}>{t('outfitMaker.aiStylist')}</ScaledText>
-          <Ionicons name="sparkles" size={24} color="#F59E0B" />
+          <View style={styles.headerRight}>
+            <Ionicons name="sparkles" size={20} color="#F59E0B" />
+          </View>
         </View>
 
-        {/* Title Area */}
-        <View style={{ paddingHorizontal: 20, paddingTop: 36, paddingBottom: 24 }}>
-          <ScaledText style={styles.sectionTitle} minScale={0.65}>
-            {baseItem ? t('outfitMaker.buildAroundItem', { defaultValue: 'Build an outfit around' }) : t('outfitMaker.discoverVibe')}
+        {/* Hero — live summary of the look being built */}
+        <View style={styles.heroBlock}>
+          <ScaledText style={styles.heroTitle}>
+            {t('outfitMaker.newOutfit', { defaultValue: 'New outfit' })}
           </ScaledText>
-          <ScaledText style={styles.sectionSubtitle} minScale={0.65}>
-            {baseItem ? t('outfitMaker.tapStyleCardAnchor', { defaultValue: 'Choose a style and we\'ll complete the look' }) : t('outfitMaker.tapStyleCard')}
+          <ScaledText style={styles.heroSub} numberOfLines={1}>
+            {aiStyles.find((s) => s.id === selectedStyle)?.label}
+            {' · '}
+            {currentSource === 'shop'
+              ? t('outfitMaker.newShort', { defaultValue: 'New' })
+              : t('outfitMaker.wardrobeShort', { defaultValue: 'Wardrobe' })}
+            {' · '}
+            {selectedOccasion
+              ? OCCASION_PRESETS.find((o) => o.id === selectedOccasion)?.label
+              : t('outfitMaker.pickOccasion', { defaultValue: 'Pick an occasion' })}
           </ScaledText>
         </View>
+
+        {/* Planning context — shown when arriving from OutfitCalendar's Plan Outfit (travel/day planning) */}
+        {planningDate && (
+          <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+            <View style={styles.planningBanner}>
+              <View style={styles.planningIconWrap}>
+                <Ionicons name="calendar-outline" size={20} color="#173A65" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <ScaledText style={styles.planningTitle} minScale={0.65}>
+                  {t('outfitMaker.planningFor', {
+                    defaultValue: 'Planning for {{date}}',
+                    date: formatPlanningDate(planningDate),
+                  })}
+                </ScaledText>
+                <ScaledText style={styles.planningSubtitle} minScale={0.65}>
+                  {t('outfitMaker.planningSubtitle', {
+                    defaultValue: 'Generated looks will be saved back to this day',
+                  })}
+                </ScaledText>
+              </View>
+              <View style={styles.planningBadge}>
+                <Ionicons name="airplane-outline" size={12} color="#173A65" />
+                <ScaledText style={styles.planningBadgeText} minScale={0.65}>
+                  {t('outfitMaker.tripDay', { defaultValue: 'Trip day' })}
+                </ScaledText>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Anchor item preview — shown when navigated from MyClosetScreen */}
         {baseItem && (
@@ -1844,72 +2347,262 @@ const AIOutfitGenerator = () => {
           </View>
         )}
 
-        {/* User Situation/Occasion Prompt */}
-        <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
-          <View style={styles.promptCard}>
-            <View style={styles.promptHeader}>
-              <Ionicons name="chatbubble-outline" size={18} color={D.accent} />
-              <ScaledText style={styles.promptTitle} minScale={0.65}>{t('outfitMaker.whereGoing')}</ScaledText>
+        {/* ── Single-page setup: source + style + occasion ───────────── */}
+        <Reanimated.View
+          key="setup-single"
+          entering={FadeIn.duration(300)}
+          exiting={FadeOutUp.duration(280)}
+          style={{ flex: 1 }}
+        >
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16 }}>
+            {/* Source — compact segmented control */}
+            <View style={styles.sourceSegment}>
+              {(
+                [
+                  {
+                    id: 'wardrobe',
+                    icon: 'shirt-outline',
+                    label: t('outfitMaker.fromWardrobe', { defaultValue: 'From wardrobe' }),
+                  },
+                  {
+                    id: 'shop',
+                    icon: 'bag-handle-outline',
+                    label: t('outfitMaker.newClothing', { defaultValue: 'New clothing' }),
+                  },
+                ] as const
+              ).map((opt) => {
+                const on = currentSource === opt.id;
+                return (
+                  <TouchableOpacity
+                    key={opt.id}
+                    activeOpacity={0.85}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setCurrentSource(opt.id);
+                    }}
+                    style={[styles.sourceSegBtn, on && styles.sourceSegBtnActive]}
+                  >
+                    <Ionicons name={opt.icon as any} size={18} color={on ? '#FFFFFF' : '#0A1931'} />
+                    <ScaledText style={[styles.sourceSegText, on && styles.sourceSegTextActive]}>
+                      {opt.label}
+                    </ScaledText>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
-            <TextInput
-              style={styles.promptInput}
-              placeholder={t('outfitMaker.promptPlaceholder')}
-              placeholderTextColor={D.textSecondary}
-              value={userPrompt}
-              onChangeText={setUserPrompt}
-              multiline
-              numberOfLines={2}
-              textAlignVertical="top"
-            />
+
+              {/* ── Where are you going? — 2 visible, rest in dropdown ─── */}
+              <ScaledText style={[styles.setupSectionLabel, { marginTop: 24 }]}>
+                {t('outfitMaker.whereGoing')}
+              </ScaledText>
+              {(() => {
+                const quizIds = (Array.isArray(quizOccasions) ? quizOccasions : []).filter((id) =>
+                  OCCASION_PRESETS.some((o) => o.id === id),
+                );
+                const fillPool: string[] = [...quizIds];
+                for (const o of OCCASION_PRESETS) {
+                  if (!fillPool.includes(o.id as string)) fillPool.push(o.id as string);
+                }
+                // Selected occasion always stays visible.
+                let visibleIds = fillPool.slice(0, 2);
+                if (selectedOccasion && !visibleIds.includes(selectedOccasion)) {
+                  visibleIds = [selectedOccasion, ...fillPool.filter((id) => id !== selectedOccasion)].slice(0, 2);
+                }
+                const hiddenOnes = OCCASION_PRESETS.filter((o) => !visibleIds.includes(o.id as string));
+                const visibleList = OCCASION_PRESETS.filter((o) => visibleIds.includes(o.id as string));
+                const renderOccTile = (occ: (typeof OCCASION_PRESETS)[number]) => {
+                  const on = selectedOccasion === occ.id;
+                  return (
+                    <TouchableOpacity
+                      key={occ.id}
+                      activeOpacity={0.85}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setSelectedOccasion(on ? undefined : (occ.id as string));
+                      }}
+                      style={[styles.bigTile, on && styles.bigTileSelected]}
+                    >
+                      <View style={[styles.bigTileIcon, on && styles.bigTileIconActive]}>
+                        <Ionicons name={occ.icon as any} size={20} color={on ? '#FFFFFF' : '#173A65'} />
+                      </View>
+                      <ScaledText style={[styles.bigTileLabel, on && styles.bigTileLabelActive]}>
+                        {occ.label}
+                      </ScaledText>
+                      {on && (
+                        <View style={styles.bigTileCheck}>
+                          <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                };
+                return (
+                  <View>
+                    <View style={styles.tileRow}>
+                      {visibleList.map(renderOccTile)}
+                    </View>
+                    <TouchableOpacity
+                      activeOpacity={0.75}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setShowAllOccasions((v) => !v);
+                      }}
+                      style={styles.moreToggle}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('outfitMaker.moreOccasions', { defaultValue: 'More occasions' })}
+                    >
+                      <ScaledText style={styles.moreToggleText}>
+                        {showAllOccasions
+                          ? t('outfitMaker.lessOccasions', { defaultValue: 'Less' })
+                          : t('outfitMaker.moreCount', {
+                              defaultValue: 'More ({{count}})',
+                              count: hiddenOnes.length,
+                            })}
+                      </ScaledText>
+                      <Ionicons
+                        name={showAllOccasions ? 'chevron-up' : 'chevron-down'}
+                        size={16}
+                        color="#173A65"
+                      />
+                    </TouchableOpacity>
+                    {showAllOccasions && (
+                      <Reanimated.View entering={FadeInUp.duration(250)} exiting={FadeOut.duration(200)}>
+                        <View style={styles.tileRow}>
+                          {hiddenOnes.map(renderOccTile)}
+                        </View>
+                      </Reanimated.View>
+                    )}
+                  </View>
+                );
+              })()}
+
+              {/* ── Your style — one featured card ─────────────────────── */}
+              <ScaledText style={[styles.setupSectionLabel, { marginTop: 24 }]}>
+                {t('outfitMaker.yourStyle', { defaultValue: 'Your style' })}
+              </ScaledText>
+              {(() => {
+                const allStyles = aiStyles.filter((s) => s.id !== 'business_casual');
+                // Quiz style first, then list order.
+                const fillPool = [...allStyles].sort((a, b) => {
+                  if (a.id === quizStyleDefault) return -1;
+                  if (b.id === quizStyleDefault) return 1;
+                  return 0;
+                });
+                // Selected style always stays visible.
+                let visibleStyles = fillPool.slice(0, 1);
+                if (selectedStyle && !visibleStyles.some((s) => s.id === selectedStyle)) {
+                  visibleStyles = [
+                    fillPool.find((s) => s.id === selectedStyle) || fillPool[0],
+                    ...fillPool.filter((s) => s.id !== selectedStyle),
+                  ].slice(0, 1);
+                }
+                const hiddenStyles = allStyles.filter((s) => !visibleStyles.some((v) => v.id === s.id));
+                const activeStyle = visibleStyles[0] || fillPool[0];
+                return (
+                  <View>
+                    {/* Featured style card — the one defining your look */}
+                    <View style={styles.featureCard}>
+                      <View style={styles.featureIcon}>
+                        <Ionicons name={activeStyle.icon as any} size={26} color="#FFFFFF" />
+                      </View>
+                      <View style={{ flex: 1, marginLeft: 14 }}>
+                        <ScaledText style={styles.featureName}>{activeStyle.label}</ScaledText>
+                        {quizStyleDefault === activeStyle.id && quizPersonality ? (
+                          <View style={[styles.quizBadge, { alignSelf: 'flex-start', marginTop: 6 }]}>
+                            <Ionicons name="sparkles" size={11} color="#FFFFFF" />
+                            <ScaledText style={styles.quizBadgeText}>
+                              {t('outfitMaker.fromQuiz', { defaultValue: 'From quiz' })}
+                            </ScaledText>
+                          </View>
+                        ) : null}
+                      </View>
+                      <View style={styles.featureRadio}>
+                        <View style={styles.featureRadioDot} />
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      activeOpacity={0.75}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setShowAllStyles((v) => !v);
+                      }}
+                      style={styles.moreToggle}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('outfitMaker.moreStyles', { defaultValue: 'More styles' })}
+                    >
+                      <ScaledText style={styles.moreToggleText}>
+                        {showAllStyles
+                          ? t('outfitMaker.lessOccasions', { defaultValue: 'Less' })
+                          : t('outfitMaker.moreCount', {
+                              defaultValue: 'More ({{count}})',
+                              count: hiddenStyles.length,
+                            })}
+                      </ScaledText>
+                      <Ionicons
+                        name={showAllStyles ? 'chevron-up' : 'chevron-down'}
+                        size={16}
+                        color="#173A65"
+                      />
+                    </TouchableOpacity>
+                    {showAllStyles && (
+                      <Reanimated.View entering={FadeInUp.duration(250)} exiting={FadeOut.duration(200)}>
+                        <View style={styles.formGroup}>
+                          {hiddenStyles.map((styleObj, i) => {
+                            const isSelected = selectedStyle === styleObj.id;
+                            return renderCheckRow(
+                              styleObj.id,
+                              styleObj.icon,
+                              styleObj.label,
+                              isSelected,
+                              () => setSelectedStyle(styleObj.id),
+                              i > 0,
+                            );
+                          })}
+                        </View>
+                      </Reanimated.View>
+                    )}
+                  </View>
+                );
+              })()}
+
+              {/* Details input — grouped text field, no header */}
+              <View style={[styles.formGroup, { marginTop: 24 }]}>
+                <TextInput
+                  style={styles.detailsInput}
+                  placeholder={t('outfitMaker.promptPlaceholderShort', {
+                    defaultValue: 'Add details…',
+                  })}
+                  placeholderTextColor={D.textSecondary}
+                  value={userPrompt}
+                  onChangeText={setUserPrompt}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                  returnKeyType="done"
+                  onSubmitEditing={() => handleGeneratePress()}
+                />
+              </View>
+
+              {error ? (
+                <View style={[styles.errorBox, { marginTop: 16 }]}>
+                  <ScaledText style={styles.errorText}>{error}</ScaledText>
+                </View>
+              ) : null}
+            </ScrollView>
+          </Reanimated.View>
+          {/* Sticky bottom CTA */}
+          <View style={styles.stickyFooter}>
             <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => generateOutfits(selectedStyle)}
-              style={styles.promptSubmitButton}
+              activeOpacity={0.85}
+              onPress={() => handleGeneratePress()}
+              style={styles.generateButton}
             >
-              <LinearGradient colors={[D.accent, '#5B7CF9']} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
-              <Ionicons name="send" size={18} color="#fff" />
-              <ScaledText style={styles.promptSubmitButtonText} minScale={0.65}>{t('outfitMaker.generate')}</ScaledText>
+              <Ionicons name="sparkles" size={17} color="#FFF" />
+              <ScaledText style={styles.generateButtonText}>
+                {t('outfitMaker.generateOutfit', { defaultValue: 'Generate outfit' })}
+              </ScaledText>
             </TouchableOpacity>
           </View>
-        </View>
-
-        {/* Error Message */}
-        {error ? (
-          <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
-            <View style={styles.errorBox}>
-              <ScaledText style={styles.errorText}>{error}</ScaledText>
-            </View>
-          </View>
-        ) : null}
-
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20 }}>
-          {aiStyles.map((styleObj) => {
-            return (
-              <TouchableOpacity
-                key={styleObj.id}
-                activeOpacity={0.8}
-                onPress={() => {
-                  setSelectedStyle(styleObj.id);
-                  generateOutfits(styleObj.id);
-                }}
-                style={styles.vibeCard}
-              >
-                <View style={styles.vibeCardInner}>
-                  <View style={styles.vibeIconWrap}>
-                    <Ionicons name={styleObj.icon as any} size={24} color={'#FFFFFF'} />
-                  </View>
-                  <View style={{ flex: 1, marginLeft: 20 }}>
-                    <ScaledText style={styles.vibeTitle}>{styleObj.label}</ScaledText>
-                    <ScaledText style={styles.vibeDesc}>{styleObj.desc}</ScaledText>
-                  </View>
-                  <View style={{ paddingLeft: 12 }}>
-                    <Ionicons name="chevron-forward" size={24} color={'#4B5563'} />
-                  </View>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
       </SafeAreaView>
 
     </View>
@@ -1919,28 +2612,61 @@ const AIOutfitGenerator = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: LiquidGlass2026Theme.colors.background.primary,
+    backgroundColor: '#FFFFFF',
+  },
+  // Same page background as the 4 main tab screens
+  backgroundOrbTop: {
+    position: 'absolute',
+    top: -100,
+    right: -80,
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: 'rgba(188, 210, 245, 0.42)',
+  },
+  backgroundOrbBottom: {
+    position: 'absolute',
+    left: -120,
+    bottom: 140,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: 'rgba(216, 229, 252, 0.34)',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
   backButton: {
-    marginRight: 16,
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.7)',
+    backgroundColor: 'rgba(255,255,255,0.82)',
     alignItems: 'center',
     justifyContent: 'center',
-    ...SpatialElevation.getShadow(SpatialElevation.levels.raised),
+    borderWidth: 1,
+    borderColor: 'rgba(24,58,103,0.08)',
+    shadowColor: '#173A65',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
   },
   headerTitle: {
-    ...LiquidGlass2026Theme.typography.scale.titleLarge,
-    color: LiquidGlass2026Theme.colors.text.primary,
     flex: 1,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0A1931',
+    letterSpacing: 0.3,
+    textAlign: 'center',
+  },
+  headerRight: {
+    width: 44,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
   },
   sectionTitle: {
     ...LiquidGlass2026Theme.typography.scale.titleMedium,
@@ -1997,6 +2723,51 @@ const styles = StyleSheet.create({
     color: '#007AFF',
   },
 
+  // Planning context banner (shown when arriving from OutfitCalendar Plan Outfit)
+  planningBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.88)',
+    borderWidth: 1,
+    borderColor: 'rgba(24,58,103,0.08)',
+    borderRadius: 16,
+    padding: 12,
+    gap: 12,
+  },
+  planningIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(23,58,101,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  planningTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0A1931',
+  },
+  planningSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#4B5563',
+    marginTop: 2,
+  },
+  planningBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(23,58,101,0.08)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  planningBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#173A65',
+  },
+
   // Toggle Styles (Matching CreateAvatarScreen)
   viewToggleWrap: {
     flexDirection: "row",
@@ -2039,6 +2810,16 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(43, 92, 233, 0.15)',
     padding: 16,
     ...SpatialElevation.getShadow(SpatialElevation.levels.surface),
+  },
+  // Minimal details input — flat fill inside the sheet
+  promptCardMinimal: {
+    borderRadius: 20,
+    backgroundColor: '#F4F7FB',
+    borderWidth: 1,
+    borderColor: 'transparent',
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    marginTop: 0,
   },
   promptHeader: {
     flexDirection: 'row',
@@ -2564,6 +3345,742 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: LiquidGlass2026Theme.colors.text.primary,
+    textAlign: 'center',
+  },
+
+  // ── New staged Create flow ─────────────────────────────────────────
+  stepDotsRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  stepDotWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  stepDot: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(10,25,49,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepDotActive: {
+    backgroundColor: '#0A1931',
+  },
+  stepDotDone: {
+    backgroundColor: '#10B981',
+  },
+  stepDotNum: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  stepDotNumActive: {
+    color: '#FFF',
+  },
+  stepDotLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  stepDotLabelActive: {
+    color: '#0A1931',
+  },
+  stepDotLine: {
+    flex: 1,
+    height: 1.5,
+    backgroundColor: 'rgba(10,25,49,0.1)',
+    marginHorizontal: 8,
+  },
+  setupSectionLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#8E8E93',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+    marginTop: 6,
+  },
+  // Hero header with live look summary
+  heroBlock: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 18,
+  },
+  heroTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#0A1931',
+    letterSpacing: -0.8,
+  },
+  heroSub: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#8E8E93',
+    marginTop: 4,
+  },
+  // Bold occasion tiles (2-up row, wraps to grid when expanded)
+  tileRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  bigTile: {
+    flexGrow: 1,
+    flexBasis: '46%',
+    minHeight: 88,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.7)',
+    padding: 14,
+    justifyContent: 'space-between',
+    gap: 10,
+    shadowColor: '#173A65',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 5,
+  },
+  bigTileSelected: {
+    backgroundColor: '#0A1931',
+    borderColor: '#0A1931',
+    shadowOpacity: 0.22,
+  },
+  bigTileIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(23,58,101,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bigTileIconActive: {
+    backgroundColor: 'rgba(255,255,255,0.16)',
+  },
+  bigTileLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0A1931',
+    letterSpacing: -0.2,
+  },
+  bigTileLabelActive: {
+    color: '#FFFFFF',
+  },
+  bigTileCheck: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Featured style card
+  featureCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0A1931',
+    borderRadius: 24,
+    padding: 16,
+    shadowColor: '#0A1931',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  featureIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  featureName: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
+  },
+  featureRadio: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  featureRadioDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#FFFFFF',
+  },
+  // iOS grouped-list section card
+  formGroup: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(23,58,101,0.1)',
+    overflow: 'hidden',
+    shadowColor: '#173A65',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  formRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minHeight: 54,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  formRowIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    backgroundColor: 'rgba(23,58,101,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  formRowLabel: {
+    fontSize: 16,
+    color: '#0A1931',
+  },
+  rowDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(23,58,101,0.1)',
+    marginLeft: 58,
+  },
+  detailsInput: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    lineHeight: 22,
+    minHeight: 88,
+    color: '#0A1931',
+  },
+  setupSectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 0,
+  },
+  // One floating sheet holds the whole form; hairline dividers split sections
+  sheetCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.7)',
+    padding: 18,
+    shadowColor: '#173A65',
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+    elevation: 8,
+  },
+  sheetDivider: {
+    height: 1,
+    backgroundColor: '#EDF1F6',
+    marginVertical: 20,
+  },
+  // Pinned bottom CTA bar
+  stickyFooter: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 20,
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(23,58,101,0.08)',
+  },
+  sourceRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  sourceCard: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.7)',
+    padding: 16,
+    alignItems: 'flex-start',
+    position: 'relative',
+    shadowColor: '#173A65',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 5,
+  },
+  sourceCardSelected: {
+    borderColor: '#173A65',
+    borderWidth: 2,
+    backgroundColor: '#FFFFFF',
+    shadowOpacity: 0.14,
+  },
+  sourceIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 17,
+    backgroundColor: 'rgba(23,58,101,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  sourceIconWrapSelected: {
+    backgroundColor: '#173A65',
+  },
+  sourceTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0A1931',
+    letterSpacing: -0.2,
+  },
+  sourceTitleSelected: {
+    color: '#0A1931',
+  },
+  sourceCount: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  sourceCheck: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#173A65',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quizBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#0A1931',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 99,
+  },
+  quizBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  vibeCardSelected: {
+    borderColor: '#0A1931',
+    borderWidth: 1.5,
+    backgroundColor: 'rgba(10,25,49,0.04)',
+  },
+  vibeIconWrapSelected: {
+    backgroundColor: '#2B5CE9',
+  },
+  quizDot: {
+    backgroundColor: 'rgba(23,58,101,0.1)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  quizDotText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#173A65',
+    letterSpacing: 0.5,
+  },
+  radioOuter: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  radioOuterSelected: {
+    borderColor: '#0A1931',
+  },
+  radioInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#0A1931',
+  },
+  // Flat style rows: icon + name + radio (single tap, no dropdown)
+  styleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#F4F7FB',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    marginBottom: 10,
+  },
+  styleRowSelected: {
+    borderColor: '#0A1931',
+    backgroundColor: '#0A1931',
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+  },
+  styleRowIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(23,58,101,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  styleRowIconSelected: {
+    backgroundColor: 'rgba(255,255,255,0.16)',
+  },
+  styleRowTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0A1931',
+  },
+  styleRowTitleSelected: {
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  changeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    marginTop: 8,
+    backgroundColor: 'rgba(43,92,233,0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(43,92,233,0.25)',
+  },
+  changeButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#2B5CE9',
+  },
+  styleDropdown: {
+    marginTop: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    overflow: 'hidden',
+    shadowColor: '#0A1931',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  styleDropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  styleDropdownIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#0A1931',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  styleDropdownTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0A1931',
+  },
+  styleDropdownDesc: {
+    fontSize: 12,
+    color: '#64748B',
+    lineHeight: 16,
+    marginTop: 2,
+  },
+  continueButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 20,
+    paddingVertical: 16,
+    borderRadius: 26,
+    overflow: 'hidden',
+  },
+  continueButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  recapPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(16,185,129,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(16,185,129,0.25)',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 18,
+  },
+  recapLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  recapText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#0A1931',
+    flex: 1,
+  },
+  recapEdit: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2B5CE9',
+  },
+  occasionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 16,
+  },
+  occasionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flexGrow: 1,
+    flexBasis: '46%',
+    minHeight: 62,
+    backgroundColor: '#F4F7FB',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  occasionChipSelected: {
+    backgroundColor: '#0A1931',
+    borderColor: '#0A1931',
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+  },
+  occasionTileIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(23,58,101,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  occasionTileIconActive: {
+    backgroundColor: 'rgba(255,255,255,0.16)',
+  },
+  occasionEmoji: {
+    fontSize: 16,
+  },
+  occasionChipText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0A1931',
+    letterSpacing: -0.1,
+  },
+  occasionChipTextSelected: {
+    color: '#FFF',
+  },
+  occasionQuizDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#2B5CE9',
+  },
+  // Centered inline expander row inside a form group
+  moreToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 13,
+  },
+  // Segmented source control (main-tabs pattern)
+  sourceSegment: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5FA',
+    borderRadius: 99,
+    padding: 4,
+    gap: 4,
+  },
+  sourceSegBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 99,
+  },
+  sourceSegBtnActive: {
+    backgroundColor: '#0A1931',
+    shadowColor: '#0A1931',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.22,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  sourceSegText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0A1931',
+  },
+  sourceSegTextActive: {
+    color: '#FFFFFF',
+  },
+  moreToggleText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#173A65',
+  },
+  // Compact occasion dropdown: bold box, 2 quick picks, rest expandable
+  occasionBox: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#0A1931',
+    padding: 12,
+  },
+  occasionQuickRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  occasionQuickBtn: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  occasionDivider: {
+    height: 1,
+    backgroundColor: '#F1F5F9',
+    marginVertical: 10,
+  },
+  occasionMoreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+  },
+  occasionMoreLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  occasionMoreText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2B5CE9',
+  },
+  occasionMoreSelected: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0A1931',
+  },
+  occasionExpandedList: {
+    marginTop: 6,
+    gap: 2,
+  },
+  occasionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 9,
+    paddingHorizontal: 4,
+  },
+  occasionActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  ghostBackButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  generateButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    minHeight: 58,
+    paddingVertical: 16,
+    borderRadius: 29,
+    backgroundColor: '#0A1931',
+    shadowColor: '#0A1931',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  generateButtonText: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#FFF',
+    letterSpacing: -0.2,
+  },
+  thinkingContextWrap: {
+    position: 'absolute',
+    bottom: 62,
+    left: 20,
+    right: 20,
+    alignItems: 'center',
+    gap: 8,
+  },
+  thinkingContextPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderWidth: 1,
+    borderColor: 'rgba(24,58,103,0.12)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    maxWidth: '100%',
+  },
+  thinkingContextText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0A1931',
+    flexShrink: 1,
+  },
+  thinkingPromptText: {
+    fontSize: 13,
+    fontStyle: 'italic',
+    color: '#64748B',
     textAlign: 'center',
   },
 });

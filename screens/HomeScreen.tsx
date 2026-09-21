@@ -274,6 +274,20 @@ const isShoeName      = (name: string) => {
 // Theme shortcuts
 const { colors, spacing, typography, radius } = LiquidGlass2026Theme;
 
+/**
+ * Team Collaboration is always 100% shop — no wardrobe anchor.
+ * Keep in sync with `isShopOnlyDeck` in hooks/useDailyAIOutfit.ts and
+ * src/services/outfitGenerationService.ts.
+ */
+const isShopOnlyDeck = (style?: string | null, occasion?: string | null): boolean => {
+  const s = (style || '').toLowerCase().replace(/[\s-]+/g, '_');
+  if (s === 'business_casual') return true;
+  const o = (occasion || '').toLowerCase();
+  if (o.includes('team') && o.includes('collab')) return true;
+  if (o.trim() === 'team collaboration') return true;
+  return false;
+};
+
 interface WeatherData {
   temp: number;
   description: string;
@@ -543,16 +557,18 @@ const DailyOutfitSection = React.memo(({
     return items.map((item) => ({ ...item, isShopItem: true }));
   }, [catalogEssentials, shopTops, shopBottoms, shopShoes, needsOuterwear]);
 
-  const mapAiOutfitItemsForCollage = useCallback((outfit: any) => {
+  const mapAiOutfitItemsForCollage = useCallback((outfit: any, outfitIndex = 0) => {
     const shopByMacro: Record<string, ShopCatalogItem[]> = {
       top: shopTops.filter(t => !isOuterwear(t.name)),
       bottom: shopBottoms,
       shoes: shopShoes,
       outerwear: shopTops.filter(t => isOuterwear(t.name)),
     };
+    // Team Collaboration is shop-only — every item in every outfit must come
+    // from shopping, and every outfit combination must be unique.
+    const shopOnly = isShopOnlyDeck(style, occasion);
 
-    const filledSlots = new Set<string>();
-    const mapped = (outfit.items || []).map((item: any, index: number) => {
+    const mappedRaw = (outfit.items || []).map((item: any, index: number) => {
       let img = item.imageUrl || item.image_url || item.image || '';
       let finalItem = { ...item };
 
@@ -560,16 +576,26 @@ const DailyOutfitSection = React.memo(({
       const macroNormalized = macro === 'upper_body' ? 'top' : macro === 'lower_body' ? 'bottom' : macro;
       const shopItems = shopByMacro[macroNormalized] || [];
 
-      // Keep real wardrobe pieces intact. The old implementation replaced
+      // Keep real wardrobe pieces intact — except on shop-only decks where
+      // wardrobe pieces are never allowed. The old implementation replaced
       // every AI-selected item with a random catalog product from the same
       // category, which made a wardrobe outfit look like an advert. Only
       // resolve through the catalog when the item is explicitly a shop pick,
       // or use it as a visual fallback when the original item has no image.
       const exactShopItem = shopItems.find((candidate) => String(candidate.id) === String(item.id));
-      const shopItem = exactShopItem || (!img && shopItems.length > 0
-        ? shopItems[Math.floor(Math.random() * shopItems.length)]
-        : undefined);
-      if (shopItem && (item.isShopItem === true || !img)) {
+      const needsShopSwap = shopOnly && item.isShopItem !== true && shopItems.length > 0;
+      // Deterministic rotation (no Math.random): the same batch always maps
+      // to the same visuals, and different outfits rotate onto different shop
+      // picks instead of randomly colliding onto identical combinations.
+      const deterministicPick = shopItems.length > 0
+        ? shopItems[(outfitIndex + index) % shopItems.length]
+        : undefined;
+      const shopItem = exactShopItem || needsShopSwap
+        ? (exactShopItem || deterministicPick)
+        : (!img && shopItems.length > 0
+          ? deterministicPick
+          : undefined);
+      if (shopItem && (item.isShopItem === true || !img || needsShopSwap)) {
         finalItem = {
           ...item,
           id: shopItem.id,
@@ -583,10 +609,6 @@ const DailyOutfitSection = React.memo(({
         img = shopItem.imageUrl;
       }
 
-      if (finalItem.macroCategory) {
-        filledSlots.add(finalItem.macroCategory.toLowerCase());
-      }
-
       return {
         id: finalItem.id || `home_ai_${index}`,
         image: img,
@@ -596,13 +618,27 @@ const DailyOutfitSection = React.memo(({
         isShopItem: finalItem.isShopItem === true,
       };
     });
+    // Shop-only decks must never render a wardrobe tile — drop it here so
+    // the mandatory-slot fill below replaces it with a shop pick.
+    const mapped = mappedRaw.filter((ci: any) => {
+      if (shopOnly && ci.isShopItem !== true) return false;
+      return true;
+    });
+
+    // Recompute filled slots AFTER the shop-only filter — otherwise a dropped
+    // wardrobe tile would still count as "filled" and the slot would never be
+    // replaced with a shop pick, leaving incomplete/duplicated cards.
+    const filledSlots = new Set<string>();
+    mapped.forEach((ci: any) => {
+      if (ci.macroCategory) filledSlots.add(String(ci.macroCategory).toLowerCase());
+    });
 
     const mandatorySlots = ['top', 'bottom', 'shoes'];
-    mandatorySlots.forEach(slot => {
+    mandatorySlots.forEach((slot, slotIdx) => {
       if (!filledSlots.has(slot)) {
         const fallbackItems = shopByMacro[slot] || [];
         if (fallbackItems.length > 0) {
-          const shopItem = fallbackItems[Math.floor(Math.random() * fallbackItems.length)];
+          const shopItem = fallbackItems[(outfitIndex + slotIdx) % fallbackItems.length];
           mapped.push({
             id: shopItem.id,
             image: shopItem.imageUrl,
@@ -611,15 +647,16 @@ const DailyOutfitSection = React.memo(({
             macroCategory: slot,
             isShopItem: true,
           });
+          filledSlots.add(slot);
         }
       }
     });
 
     return mapped;
-  }, [shopTops, shopBottoms, shopShoes]);
+  }, [shopTops, shopBottoms, shopShoes, style, occasion]);
 
   const collageItemsList = useMemo(() => {
-    return dailyAI.outfits.map(o => mapAiOutfitItemsForCollage(o));
+    return dailyAI.outfits.map((o, idx) => mapAiOutfitItemsForCollage(o, idx));
   }, [dailyAI.outfits, mapAiOutfitItemsForCollage]);
 
   // Built once per actual data change rather than on every render — the
@@ -646,7 +683,7 @@ const DailyOutfitSection = React.memo(({
     const collageItemsByCardKey = new Map<string, any[]>();
     data.forEach((d) => {
       const items = d.outfit
-        ? (collageItemsList[d.index] ?? mapAiOutfitItemsForCollage(d.outfit))
+        ? (collageItemsList[d.index] ?? mapAiOutfitItemsForCollage(d.outfit, d.index))
         : mapLegacyOutfitItemsForCollage(d.legacy);
       collageItemsByCardKey.set(d.id, items);
     });
@@ -672,11 +709,23 @@ const DailyOutfitSection = React.memo(({
       }
     });
 
-    const cards: SwipeStackCard[] = data.map((d) => {
+    const cards: SwipeStackCard[] = [];
+    const seenCardSigs = new Set<string>();
+    data.forEach((d) => {
       const collageItems = collageItemsByCardKey.get(d.id) ?? [];
+      // Never show the same combination twice — signature by sorted item ids.
+      const sig = collageItems.map((ci: any) => String(ci.id)).sort().join('|');
+      if (sig && seenCardSigs.has(sig)) return;
+      if (sig) seenCardSigs.add(sig);
       const shopCount = collageItems.filter((ci: any) => ci.isShopItem === true).length;
       const wardrobeCount = collageItems.length - shopCount;
-      return {
+      // Shop-only decks (Team Collaboration) never show "0 yours · N suggested".
+      const caption = wardrobeCount === 0 && shopCount > 0
+        ? `${shopCount} suggested`
+        : shopCount > 0
+          ? t('home.outfitSources', { wardrobeCount, shopCount })
+          : t('home.fromYourWardrobe', { count: wardrobeCount || collageItems.length });
+      cards.push({
         key: d.id,
         items: collageItems.map((ci: any) => ({
           id: ci.id,
@@ -687,10 +736,8 @@ const DailyOutfitSection = React.memo(({
         })),
         wardrobeCount,
         shopCount,
-        caption: shopCount > 0
-          ? t('home.outfitSources', { wardrobeCount, shopCount })
-          : t('home.fromYourWardrobe', { count: wardrobeCount || collageItems.length }),
-      };
+        caption,
+      });
     });
 
     return { cards, collageItemsByCardKey, itemIdsByCardKey };
@@ -754,12 +801,25 @@ const DailyOutfitSection = React.memo(({
   const handleSwipeRight = (card: SwipeStackCard) => {
     const itemIds = itemIdsByCardKey.get(card.key) ?? [];
     if (itemIds.length > 0) {
+      // Freeze the exact pieces shown on the card (wardrobe + shop images)
+      // so Collections / Saved Looks render the full outfit later even if
+      // shop items page out of the live catalog or were never in wardrobe.
+      const collageSnapshot = (collageItemsByCardKey.get(card.key) ?? [])
+        .filter((ci: any) => typeof ci?.image === 'string' && ci.image.length > 0)
+        .slice(0, 4)
+        .map((ci: any) => ({
+          id: String(ci.id ?? ''),
+          image: String(ci.image),
+          category: ci.macroCategory ?? ci.category,
+          name: ci.name,
+        }));
       const outfitId = addOutfit({
         userId: userId ?? '',
         itemIds,
         occasion: deriveOccasion,
         generatedBy: 'ai',
-      });
+        snapshotItems: collageSnapshot,
+      } as any);
       saveOutfit(outfitId);
     }
     setStackIndex((i) => i + 1);

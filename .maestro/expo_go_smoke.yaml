@@ -1,0 +1,26 @@
+appId: host.exp.Exponent
+name: expo_go_smoke
+tags:
+  - smoke
+  - expo-go
+---
+# Smoke test for Expo Go (app pre-loaded via exp:// deep link, NO launchApp).
+# REQUIRES: logged-out state (fresh install / signed out).
+# Anchor is the Google button — NOT the sign-up footer: its muted prefix
+# ("Don't have an account? ") is a nested raw-string Text node that iOS no
+# longer exposes to the AX tree since the Sign In redesign (only the
+# "Sign Up" link surfaces). The "Sign In" title is unusable as an anchor
+# (it also matches the iOS back-button label on pushed screens).
+# On a true fresh install the first-run language gate shows first — the
+# runFlow below handles it conditionally in English.
+- waitForAnimationToEnd:
+    timeout: 10000
+- runFlow:
+    when:
+      visible: "Choose your language"
+    commands:
+      - tapOn: "English"
+      - waitForAnimationToEnd:
+          timeout: 20000
+- assertVisible: ".*Continue with Google.*"
+- takeScreenshot: expo_go_smoke_signin

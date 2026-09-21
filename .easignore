@@ -98,6 +98,11 @@ supabase/functions/
 # Keep the 3D mannequin asset — outfit try-on needs it.
 # (If you drop the 3D try-on feature, re-add: assets/models/*.glb)
 
+# Shop product shots — 1.4GB, served from Supabase Storage (`shop-catalog`
+# bucket) + `shop_catalog` table. NEVER bundle into the app binary.
+# Staged locally only to run scripts/upload-shop-images-to-supabase.js.
+assets/shop/
+
 # Git internals
 .git/
 .github/

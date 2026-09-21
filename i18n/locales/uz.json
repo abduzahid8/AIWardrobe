@@ -2,6 +2,7 @@
   "common": {
     "upgrade": "Yangilash",
     "cancel": "Bekor qilish",
+    "close": "Yopish",
     "save": "Saqlash",
     "delete": "O'chirish",
     "remove": "Olib tashlash",
@@ -472,6 +473,9 @@
     "style": "USLUB",
     "travel": "SAYOHAT",
     "savedLooks": "Saqlangan turlar",
+    "inThisLook": "Bu ko'rinishda",
+    "openInWardrobe": "Shkafda ochish",
+    "openInShop": "Do'konda ochish",
     "tripsAndPacking": "Safarlar va yig'ish",
     "new": "Yangi",
     "openCalendar": "Kalanderni ochish",
@@ -657,6 +661,9 @@
   },
   "language": {
     "selectLanguage": "Tilni tanlang",
+    "chooseTitle": "Tilingizni tanlang",
+    "chooseSubtitle": "Keyinroq uni sozlamalarda o'zgartirishingiz mumkin.",
+    "continue": "Davom etish",
     "english": "Ingliz",
     "russian": "Rus",
     "uzbek": "O'zbek"
@@ -1086,10 +1093,10 @@
     "occasions": {
       "title": "Nima uchun kiyinasiz?",
       "subtitle": "Barcha mos keladiganlarni tanlang",
-      "work": "Ish/Ofis",
-      "casual": "Kundalik/Dam olish",
+      "work": "Ish",
+      "casual": "Kundalik",
       "date": "Uchrashuv",
-      "formal": "Rasmiy tadbirlar"
+      "formal": "Rasmiy"
     },
     "fit": {
       "title": "Kiyimlaringiz qanday o'rnashsin?",
@@ -1278,11 +1285,18 @@
     "loadMoreShopProducts": "Do'kon mahsulotlarini ko'proq yuklash",
     "guide": "Qo'llanma",
     "shop": "Do'kon",
-    "searchPlaceholder": "Jigarrang trikotaj polo, tikilgan shimlar, loferlar...",
+    "searchPlaceholder": "Brend, mahsulot qidirish...",
     "catalogEmpty": "Jonli Zara erkak kiyimlari hozir bo'sh. Hozircha zaxira erkak mahsulotlarini ko'rsatmoqda.",
     "catalogRefreshFailed": "Jonli katalog yangilash amalga oshmadi. Oxirgi sinxronlangan natijalarni ko'rsatmoqda.",
     "removeFromSaved": "Saqlanganlardan o'chirish",
     "saveItem": "Mahsulotni saqlash",
+    "saved": "Saqlangan",
+    "savedToast": "Saqlandi — Shop > Saved bo'limida topasiz",
+    "unsavedToast": "Saqlanganlardan o'chirildi",
+    "savedEmpty": "Hozircha saqlangan narsa yo'q.",
+    "savedEmptyHint": "Mahsulotni shu yerda saqlash uchun yurakchani bosing.",
+    "viewSaved": "Saqlanganlarni ko'rish",
+    "itemsCount": "{{count}} ta",
     "capsule": "kapsula",
     "buy": "Sotib olish",
     "buyNow": "Hozir sotib olish",
@@ -1632,7 +1646,13 @@
     "appleSignInFailed": "Apple orqali kirish xatosi",
     "googleSignInFailed": "Google orqali kirish xatosi",
     "signInWithGoogle": "Google orqali davom eting",
-    "or": "yoki"
+    "or": "yoki",
+    "continue": "Davom etish",
+    "change": "O'zgartirish",
+    "showPassword": "Parolni ko'rsatish",
+    "hidePassword": "Parolni yashirish",
+    "enterEmailSubtitle": "Xush kelibsiz — Google yoki email orqali davom eting",
+    "enterPasswordSubtitle": "Davom etish uchun parolingizni kiriting"
   },
   "auth": {
     "signIn": "Kirish",

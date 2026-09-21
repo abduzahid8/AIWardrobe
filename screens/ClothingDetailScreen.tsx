@@ -234,7 +234,14 @@ const ClothingDetailScreen: React.FC = () => {
         </ScaledText>
 
         <View style={styles.headerActions}>
-          <TouchableOpacity onPress={handleFavorite} style={styles.iconButton}>
+          <TouchableOpacity
+            onPress={handleFavorite}
+            style={styles.iconButton}
+            accessibilityRole="button"
+            accessibilityLabel={isFavorite ? t('inspo.removeFromSaved') : t('inspo.saveItem')}
+            accessibilityState={{ selected: isFavorite }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
             <Ionicons
               name={isFavorite ? 'heart' : 'heart-outline'}
               size={24}

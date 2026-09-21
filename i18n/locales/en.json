@@ -2,6 +2,7 @@
   "common": {
     "upgrade": "Upgrade",
     "cancel": "Cancel",
+    "close": "Close",
     "save": "Save",
     "delete": "Delete",
     "remove": "Remove",
@@ -433,6 +434,9 @@
     "style": "STYLE",
     "travel": "TRAVEL",
     "savedLooks": "Saved Looks",
+    "inThisLook": "In this look",
+    "openInWardrobe": "Open in wardrobe",
+    "openInShop": "Open in shop",
     "tripsAndPacking": "Trips & Packing",
     "new": "New",
     "openCalendar": "Open Calendar",
@@ -620,6 +624,9 @@
   },
   "language": {
     "selectLanguage": "Select Language",
+    "chooseTitle": "Choose your language",
+    "chooseSubtitle": "You can change it later in settings.",
+    "continue": "Continue",
     "english": "English",
     "russian": "Russian",
     "uzbek": "Uzbek"
@@ -995,10 +1002,10 @@
     "occasions": {
       "title": "Where do you dress for?",
       "subtitle": "Pick everything that applies",
-      "work": "Work/Office",
-      "casual": "Casual/Weekend",
-      "date": "Date Night",
-      "formal": "Formal Events"
+      "work": "Work",
+      "casual": "Casual",
+      "date": "Date",
+      "formal": "Formal"
     },
     "fit": {
       "title": "How do you like your fit?",
@@ -1267,11 +1274,18 @@
     "loadMoreShopProducts": "Load more shop products",
     "guide": "Guide",
     "shop": "Shop",
-    "searchPlaceholder": "Brown knit polo, tailored trousers, loafers...",
+    "searchPlaceholder": "Search brands, items...",
     "catalogEmpty": "Live Zara menswear is empty right now. Showing backup men products for now.",
     "catalogRefreshFailed": "Live catalog refresh failed. Showing the latest synced results.",
     "removeFromSaved": "Remove from saved",
     "saveItem": "Save item",
+    "saved": "Saved",
+    "savedToast": "Saved — find it under Shop > Saved",
+    "unsavedToast": "Removed from Saved",
+    "savedEmpty": "No saved items yet.",
+    "savedEmptyHint": "Tap the heart on any product to keep it here.",
+    "viewSaved": "View Saved",
+    "itemsCount": "{{count}} items",
     "capsule": "capsule",
     "buy": "Buy",
     "buyNow": "Buy Now",
@@ -1627,7 +1641,13 @@
     "title": "Sign In",
     "email": "Email",
     "password": "Password",
-    "signIn": "Sign In"
+    "signIn": "Sign In",
+    "continue": "Continue",
+    "change": "Change",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "enterEmailSubtitle": "Welcome back — continue with Google or your email",
+    "enterPasswordSubtitle": "Enter your password to continue"
   },
   "signUp": {
     "missingFields": "Missing Fields",

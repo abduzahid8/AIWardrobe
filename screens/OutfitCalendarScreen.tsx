@@ -6,6 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 import { useAppNavigation } from '../hooks/useAppNavigation';
+import { useRoute } from '@react-navigation/native';
+import type { RootStackParamList } from '../navigation/types';
 import { CachedImage } from '../components/ui/CachedImage';
 import useWardrobeStore from '../store/wardrobeStore';
 import {
@@ -51,8 +53,21 @@ const formatItemName = (item: OutfitItem | null, t: any) => item?.name || item?.
 
 const OutfitCalendarScreen = () => {
     const navigation = useAppNavigation();
+    const route = useRoute<{ key: string; name: string; params?: RootStackParamList['Calendar'] }>();
     const { t } = useTranslation();
     const cal = useOutfitCalendar();
+
+    const parseInitialDate = (value: unknown): { year: number; month: number; day: number } | null => {
+        if (typeof value !== 'string') return null;
+        const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+        if (!match) return null;
+        const year = Number(match[1]);
+        const month = Number(match[2]) - 1;
+        const day = Number(match[3]);
+        if (Number.isNaN(year) || Number.isNaN(month) || Number.isNaN(day)) return null;
+        if (month < 0 || month > 11 || day < 1 || day > 31) return null;
+        return { year, month, day };
+    };
 
     const MONTHS = [
         t('calendar.jan'), t('calendar.feb'), t('calendar.mar'), t('calendar.apr'),
@@ -74,9 +89,22 @@ const OutfitCalendarScreen = () => {
 
     const [shopItems, setShopItems] = useState<Product[]>([]);
     const [selectedDay, setSelectedDay] = useState(() => {
+        const initial = parseInitialDate((route.params as { initialDate?: string } | undefined)?.initialDate);
+        if (initial) return initial.day;
         const now = new Date();
         return now.getDate();
     });
+
+    // Deep-link from Trips: focus the calendar on the tapped trip day so the
+    // tap is never dead / never lands on the wrong month.
+    useEffect(() => {
+        const initial = parseInitialDate((route.params as { initialDate?: string } | undefined)?.initialDate);
+        if (!initial) return;
+        cal.setCurrentMonth(initial.month);
+        cal.setCurrentYear(initial.year);
+        setSelectedDay(initial.day);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [(route.params as { initialDate?: string } | undefined)?.initialDate]);
 
     useEffect(() => {
         let isActive = true;
@@ -204,6 +232,13 @@ const OutfitCalendarScreen = () => {
 
     const openSelectedDay = () => {
         cal.openLogModalForDate(selectedDateKey);
+    };
+
+    const openAIStylistForSelectedDay = () => {
+        navigation.navigate('AIOutfit', {
+            source: 'wardrobe',
+            calendarDate: selectedDateKey,
+        });
     };
 
     const renderMiniSlot = (item: OutfitItem | null | undefined, shortLabel: string, isSelected: boolean, key?: string) => (
@@ -462,20 +497,31 @@ const OutfitCalendarScreen = () => {
                             )}
 
                             <View style={styles.actionRow}>
-                                <TouchableOpacity style={styles.primaryAction} onPress={openSelectedDay}>
-                                    <Ionicons
-                                        name={selectedLog ? 'create-outline' : 'add-circle-outline'}
-                                        size={18}
-                                        color="#FFFFFF"
-                                    />
-                                    <ScaledText style={styles.primaryActionText}>
-                                        {selectedLog
-                                            ? t('calendar.replaceOutfit')
-                                            : isPastDay
-                                            ? t('calendar.logOutfit')
-                                            : t('calendar.planOutfit')}
-                                    </ScaledText>
-                                </TouchableOpacity>
+                                {selectedLog ? (
+                                    <TouchableOpacity style={styles.primaryAction} onPress={openSelectedDay}>
+                                        <Ionicons
+                                            name="create-outline"
+                                            size={18}
+                                            color="#FFFFFF"
+                                        />
+                                        <ScaledText style={styles.primaryActionText}>
+                                            {t('calendar.replaceOutfit')}
+                                        </ScaledText>
+                                    </TouchableOpacity>
+                                ) : (
+                                    <TouchableOpacity style={styles.primaryAction} onPress={openAIStylistForSelectedDay}>
+                                        <Ionicons
+                                            name="sparkles-outline"
+                                            size={18}
+                                            color="#FFFFFF"
+                                        />
+                                        <ScaledText style={styles.primaryActionText}>
+                                            {isPastDay
+                                                ? t('calendar.logOutfit')
+                                                : t('calendar.planOutfit')}
+                                        </ScaledText>
+                                    </TouchableOpacity>
+                                )}
 
                                 {selectedLog ? (
                                     <TouchableOpacity
@@ -488,15 +534,10 @@ const OutfitCalendarScreen = () => {
                                 ) : (
                                     <TouchableOpacity
                                         style={styles.secondaryAction}
-                                        onPress={() =>
-                                            navigation.navigate('AIOutfit', {
-                                                source: 'wardrobe',
-                                                calendarDate: selectedDateKey,
-                                            })
-                                        }
+                                        onPress={openSelectedDay}
                                     >
-                                        <Ionicons name="sparkles-outline" size={18} color="#0F172A" />
-                                        <ScaledText style={styles.secondaryActionText}>{t('calendar.createWithAI')}</ScaledText>
+                                        <Ionicons name="add" size={18} color="#0F172A" />
+                                        <ScaledText style={styles.secondaryActionText}>{t('calendar.openDay')}</ScaledText>
                                     </TouchableOpacity>
                                 )}
                             </View>

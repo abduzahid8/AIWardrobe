@@ -27,17 +27,15 @@ const languageDetector = {
             }
         } catch (error) {
             console.error('Error reading language', error);
-            callback('ru');
+            callback('en');
         }
     },
     init: () => { },
-    cacheUserLanguage: async (language: string) => {
-        try {
-            await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, language);
-        } catch (error) {
-            console.error('Error saving language', error);
-        }
-    },
+    // Intentionally a no-op: languageStore is the single writer of
+    // '@app_language'. If this cached on every i18n.changeLanguage(),
+    // mere previews (first-run gate row taps, init fallbacks) would
+    // persist and silently skip the first-run language gate on relaunch.
+    cacheUserLanguage: async (_language: string) => { },
 };
 
 i18n

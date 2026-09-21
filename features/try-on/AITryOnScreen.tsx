@@ -183,11 +183,16 @@ const AITryOnScreen = () => {
     }, []);
 
     const fallbackShopItems = useMemo(() => {
+        // Remote-URL fallback catalog (Supabase shop_catalog is primary).
+        // The 1.4GB locally bundled catalog (assets/shop/) was removed —
+        // shop images are served from Supabase Storage / brand CDNs.
         if (!TRY_ON_CATEGORY_KEYS.has(mannequinShopFilter)) {
-            return INSPO_MENS_SHOP_ITEMS;
+            return [...INSPO_MENS_SHOP_ITEMS];
         }
 
-        return INSPO_MENS_SHOP_ITEMS.filter((item) => item.garmentType === mannequinShopFilter);
+        return [
+            ...INSPO_MENS_SHOP_ITEMS.filter((item) => item.garmentType === mannequinShopFilter),
+        ];
     }, [mannequinShopFilter]);
 
     const filledSlots = useMemo(
@@ -530,13 +535,20 @@ const AITryOnScreen = () => {
 
         const primary = (slots.top ?? slots.layer ?? slots.pants ?? slots.shoes)!;
         const name = filledSlots.map((k) => slots[k]!.name).join(' + ');
+        // Local bundled assets (require) resolve to a URI synchronously so
+        // saved looks keep a garment thumbnail for local catalog items too.
+        const primaryImageUrl = typeof primary.imageUrl === 'string'
+            ? primary.imageUrl
+            : typeof primary.imageUrl === 'number'
+              ? Asset.fromModule(primary.imageUrl).uri
+              : undefined;
 
         saveLook({
             resultUrl: aiResultImage,
             garmentName: name || primary.name || 'Look',
             garmentBrand: primary.brand,
             garmentType: primary.garmentType ?? 'upper_body',
-            garmentImageUrl: typeof primary.imageUrl === 'string' ? primary.imageUrl : undefined,
+            garmentImageUrl: primaryImageUrl,
         });
 
         setLookSaved(true);

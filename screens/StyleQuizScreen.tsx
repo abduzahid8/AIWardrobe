@@ -80,10 +80,10 @@ const NavRow = ({
     </View>
 );
 const nav = StyleSheet.create({
-    row:      { flexDirection: 'row', gap: 12, paddingTop: 16 },
-    back:     { width: 52, height: 52, borderRadius: 26, borderWidth: 1, borderColor: T.border, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF' },
-    next:     { flex: 1, borderRadius: 26, overflow: 'hidden' },
-    gradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 15, gap: 8 },
+    row:      { flexDirection: 'row', gap: 12, paddingTop: 16, paddingBottom: 8, marginBottom: 4, alignItems: 'center' },
+    back:     { width: 52, height: 52, borderRadius: 26, borderWidth: 1, borderColor: T.border, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF', flexShrink: 0 },
+    next:     { flex: 1, borderRadius: 26, overflow: 'hidden', minHeight: 52, justifyContent: 'center' },
+    gradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 15, paddingHorizontal: 16, gap: 8, minHeight: 52 },
     label:    { fontSize: 16, fontWeight: '600', color: '#FFF', letterSpacing: 0.2 },
     disabled: { opacity: 0.5 },
 });
@@ -146,13 +146,13 @@ const wlc = StyleSheet.create({
     ctaTxt:   { fontSize: 18, fontWeight: '700', color: '#FFF' },
 });
 
-// ── PERSONALITY ──────────────────────────────────────────────────────────────
+// ── PERSONALITY (text-only cards, no stickers) ───────────────────────────────
 const PersonalityStep = ({ selected, onSelect, onNext, onBack, t }: any) => (
     <Animated.View style={s.step} entering={SlideInRight.duration(350).springify()}>
         <ScaledText style={s.title}>{t('styleQuiz.personality.title')}</ScaledText>
         <ScaledText style={s.sub}>{t('styleQuiz.personality.subtitle')}</ScaledText>
-        <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, paddingBottom: 16 }}>
+        <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 8 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, paddingBottom: 16, justifyContent: 'center' }}>
                 {STYLE_PERSONALITIES.map(item => {
                     const on = selected === item.id;
                     return (
@@ -162,24 +162,20 @@ const PersonalityStep = ({ selected, onSelect, onNext, onBack, t }: any) => (
                             activeOpacity={0.8}
                             style={[pc.card, { width: (W - 60) / 2 }, on && pc.sel]}
                         >
-                            <ScaledText style={pc.emoji}>{item.emoji}</ScaledText>
                             <ScaledText style={[pc.name, on && { color: T.accent }]}>{t(item.tKey)}</ScaledText>
-                            <ScaledText style={pc.desc}>{t(item.tDescKey)}</ScaledText>
                             {on && <View style={pc.check}><Ionicons name="checkmark" size={12} color="#FFF" /></View>}
                         </TouchableOpacity>
                     );
                 })}
             </View>
         </ScrollView>
-        <NavRow onBack={onBack} onNext={onNext} disabled={!selected} />
+        <NavRow onBack={onBack} onNext={onNext} disabled={!selected} label={t('styleQuiz.continue')} />
     </Animated.View>
 );
 const pc = StyleSheet.create({
-    card:  { backgroundColor: 'rgba(255, 255, 255, 0.85)', borderRadius: 20, padding: 18, borderWidth: 1, borderColor: T.border, shadowColor: '#173A65', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 2 },
+    card:  { backgroundColor: 'rgba(255, 255, 255, 0.85)', borderRadius: 20, paddingVertical: 28, paddingHorizontal: 12, borderWidth: 1, borderColor: T.border, minHeight: 96, alignItems: 'center', justifyContent: 'center', shadowColor: '#173A65', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 2 },
     sel:   { borderColor: '#0A1931', borderWidth: 1.5, backgroundColor: 'rgba(10, 25, 49, 0.06)' },
-    emoji: { fontSize: 34, marginBottom: 10 },
-    name:  { fontSize: 15, fontWeight: '700', color: T.text, marginBottom: 4 },
-    desc:  { fontSize: 12, color: T.sub, lineHeight: 17 },
+    name:  { fontSize: 15, fontWeight: '700', color: T.text, textAlign: 'center' },
     check: { position: 'absolute', top: 10, right: 10, width: 22, height: 22, borderRadius: 11, backgroundColor: '#0A1931', alignItems: 'center', justifyContent: 'center' },
 });
 
@@ -188,22 +184,24 @@ const ColorsStep = ({ favoriteColors, onToggleColor, onNext, onBack, t }: any) =
     <Animated.View style={s.step} entering={SlideInRight.duration(350).springify()}>
         <ScaledText style={s.title}>{t('styleQuiz.colors.title')}</ScaledText>
         <ScaledText style={s.sub}>{t('styleQuiz.colors.subtitle', { count: favoriteColors.length })}</ScaledText>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16, justifyContent: 'center', flex: 1, alignContent: 'center' }}>
-            {COLOR_OPTIONS.map(c => {
-                const on = favoriteColors.includes(c.id);
-                return (
-                    <TouchableOpacity
-                        key={c.id}
-                        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onToggleColor(c.id); }}
-                        activeOpacity={0.8}
-                        style={[col.swatch, { backgroundColor: c.color }, on && col.ring]}
-                    >
-                        {on && <Ionicons name="checkmark" size={20} color={c.id === 'white' || c.id === 'beige' ? '#000' : '#FFF'} />}
-                    </TouchableOpacity>
-                );
-            })}
-        </View>
-        <NavRow onBack={onBack} onNext={onNext} disabled={favoriteColors.length < 1} />
+        <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 8 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16, justifyContent: 'center', alignContent: 'center' }}>
+                {COLOR_OPTIONS.map(c => {
+                    const on = favoriteColors.includes(c.id);
+                    return (
+                        <TouchableOpacity
+                            key={c.id}
+                            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onToggleColor(c.id); }}
+                            activeOpacity={0.8}
+                            style={[col.swatch, { backgroundColor: c.color }, on && col.ring]}
+                        >
+                            {on && <Ionicons name="checkmark" size={20} color={c.id === 'white' || c.id === 'beige' ? '#000' : '#FFF'} />}
+                        </TouchableOpacity>
+                    );
+                })}
+            </View>
+        </ScrollView>
+        <NavRow onBack={onBack} onNext={onNext} disabled={favoriteColors.length < 1} label={t('styleQuiz.continue')} />
     </Animated.View>
 );
 const col = StyleSheet.create({
@@ -211,38 +209,36 @@ const col = StyleSheet.create({
     ring:   { borderColor: '#0A1931', borderWidth: 3 },
 });
 
-// ── OCCASIONS ─────────────────────────────────────────────────────────────────
+// ── OCCASIONS (text-only, single-line labels) ────────────────────────────────
 const OccasionsStep = ({ selectedOccasions, onToggleOccasion, onNext, onBack, t }: any) => (
     <Animated.View style={s.step} entering={SlideInRight.duration(350).springify()}>
         <ScaledText style={s.title}>{t('styleQuiz.occasions.title')}</ScaledText>
         <ScaledText style={s.sub}>{t('styleQuiz.occasions.subtitle')}</ScaledText>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, flex: 1, alignContent: 'center' }}>
-            {OCCASIONS.map(o => {
-                const on = selectedOccasions.includes(o.id);
-                return (
-                    <TouchableOpacity
-                        key={o.id}
-                        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onToggleOccasion(o.id); }}
-                        activeOpacity={0.8}
-                        style={[occ.card, { width: (W - 60) / 2 }, on && occ.sel]}
-                    >
-                        <View style={[occ.icon, on && occ.iconSel]}>
-                            <Ionicons name={o.icon as any} size={26} color={on ? '#FFF' : T.primary} />
-                        </View>
-                        <ScaledText style={[occ.name, on && { color: T.text, fontWeight: '700' }]}>{t(o.tKey)}</ScaledText>
-                    </TouchableOpacity>
-                );
-            })}
-        </View>
-        <NavRow onBack={onBack} onNext={onNext} disabled={selectedOccasions.length < 1} />
+        <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 8 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+                {OCCASIONS.map(o => {
+                    const on = selectedOccasions.includes(o.id);
+                    return (
+                        <TouchableOpacity
+                            key={o.id}
+                            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onToggleOccasion(o.id); }}
+                            activeOpacity={0.8}
+                            style={[occ.card, { width: (W - 60) / 2 }, on && occ.sel]}
+                        >
+                            <ScaledText style={[occ.name, on && occ.nameSel]} numberOfLines={1}>{t(o.tKey)}</ScaledText>
+                        </TouchableOpacity>
+                    );
+                })}
+            </View>
+        </ScrollView>
+        <NavRow onBack={onBack} onNext={onNext} disabled={selectedOccasions.length < 1} label={t('styleQuiz.continue')} />
     </Animated.View>
 );
 const occ = StyleSheet.create({
-    card:    { backgroundColor: 'rgba(255, 255, 255, 0.85)', borderRadius: 20, padding: 18, alignItems: 'center', borderWidth: 1, borderColor: T.border, shadowColor: '#173A65', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 2 },
+    card:    { backgroundColor: 'rgba(255, 255, 255, 0.85)', borderRadius: 20, paddingVertical: 28, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center', minHeight: 96, borderWidth: 1, borderColor: T.border, shadowColor: '#173A65', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 2 },
     sel:     { borderColor: '#0A1931', borderWidth: 1.5, backgroundColor: 'rgba(10, 25, 49, 0.06)' },
-    icon:    { width: 54, height: 54, borderRadius: 27, backgroundColor: 'rgba(10, 25, 49, 0.05)', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
-    iconSel: { backgroundColor: '#0A1931' },
-    name:    { fontSize: 13, color: T.primary, textAlign: 'center' },
+    name:    { fontSize: 15, fontWeight: '500', color: T.primary, textAlign: 'center' },
+    nameSel: { color: T.text, fontWeight: '700' },
 });
 
 // ── FIT ───────────────────────────────────────────────────────────────────────
@@ -250,27 +246,29 @@ const FitStep = ({ selected, onSelect, onNext, onBack, t }: any) => (
     <Animated.View style={s.step} entering={SlideInRight.duration(350).springify()}>
         <ScaledText style={s.title}>{t('styleQuiz.fit.title')}</ScaledText>
         <ScaledText style={s.sub}>{t('styleQuiz.fit.subtitle')}</ScaledText>
-        <View style={{ gap: 14, flex: 1, justifyContent: 'center' }}>
-            {FIT_OPTIONS.map(f => {
-                const on = selected === f.id;
-                return (
-                    <TouchableOpacity
-                        key={f.id}
-                        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onSelect(f.id); }}
-                        activeOpacity={0.8}
-                        style={[fit.card, on && fit.sel]}
-                    >
-                        <ScaledText style={fit.emoji}>{f.icon}</ScaledText>
-                        <View style={{ flex: 1 }}>
-                            <ScaledText style={[fit.name, on && { color: T.accent }]}>{t(f.tKey)}</ScaledText>
-                            <ScaledText style={fit.desc}>{t(f.tDescKey)}</ScaledText>
-                        </View>
-                        {on && <Ionicons name="checkmark-circle" size={24} color={T.accent} />}
-                    </TouchableOpacity>
-                );
-            })}
-        </View>
-        <NavRow onBack={onBack} onNext={onNext} />
+        <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 8 }}>
+            <View style={{ gap: 14 }}>
+                {FIT_OPTIONS.map(f => {
+                    const on = selected === f.id;
+                    return (
+                        <TouchableOpacity
+                            key={f.id}
+                            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onSelect(f.id); }}
+                            activeOpacity={0.8}
+                            style={[fit.card, on && fit.sel]}
+                        >
+                            <ScaledText style={fit.emoji}>{f.icon}</ScaledText>
+                            <View style={{ flex: 1 }}>
+                                <ScaledText style={[fit.name, on && { color: T.accent }]}>{t(f.tKey)}</ScaledText>
+                                <ScaledText style={fit.desc}>{t(f.tDescKey)}</ScaledText>
+                            </View>
+                            {on && <Ionicons name="checkmark-circle" size={24} color={T.accent} />}
+                        </TouchableOpacity>
+                    );
+                })}
+            </View>
+        </ScrollView>
+        <NavRow onBack={onBack} onNext={onNext} disabled={!selected} label={t('styleQuiz.continue')} />
     </Animated.View>
 );
 const fit = StyleSheet.create({
@@ -286,7 +284,7 @@ const GoalsStep = ({ selectedGoals, onToggleGoal, onNext, onBack, t }: any) => (
     <Animated.View style={s.step} entering={SlideInRight.duration(350).springify()}>
         <ScaledText style={s.title}>{t('styleQuiz.goals.title')}</ScaledText>
         <ScaledText style={s.sub}>{t('styleQuiz.goals.subtitle')}</ScaledText>
-        <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+        <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 8 }}>
             <View style={{ gap: 10, paddingBottom: 16 }}>
                 {STYLE_GOALS.map(g => {
                     const on = selectedGoals.includes(g.id);
@@ -307,7 +305,7 @@ const GoalsStep = ({ selectedGoals, onToggleGoal, onNext, onBack, t }: any) => (
                 })}
             </View>
         </ScrollView>
-        <NavRow onBack={onBack} onNext={onNext} />
+        <NavRow onBack={onBack} onNext={onNext} disabled={selectedGoals.length < 1} label={t('styleQuiz.continue')} />
     </Animated.View>
 );
 const gls = StyleSheet.create({
@@ -374,7 +372,7 @@ const StyleQuizScreen = () => {
     const [stylePersonality, setStylePersonality] = useState<string | undefined>();
     const [favoriteColors, setFavoriteColors] = useState<string[]>([]);
     const [occasions, setOccasions] = useState<string[]>([]);
-    const [fitPreference, setFitPreference] = useState<string>('balanced');
+    const [fitPreference, setFitPreference] = useState<string | undefined>(undefined);
     const [goals, setGoals] = useState<string[]>([]);
 
     const next = () => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setStep(p => p + 1); };
@@ -390,7 +388,7 @@ const StyleQuizScreen = () => {
             stylePersonality: stylePersonality as any,
             favoriteColors,
             primaryOccasions: occasions,
-            fitPreference: fitPreference as any,
+            fitPreference: (fitPreference ?? 'balanced') as any,
             styleGoals: goals,
             prefersSustainable: goals.includes('sustainability'),
         });
@@ -422,7 +420,7 @@ const StyleQuizScreen = () => {
             <View style={s.backgroundOrbTop} pointerEvents="none" />
             <View style={s.backgroundOrbBottom} pointerEvents="none" />
 
-            <SafeAreaView style={s.safe}>
+            <SafeAreaView style={s.safe} edges={['top', 'bottom', 'left', 'right']}>
                 {/* Header */}
                 <View style={s.header}>
                     {step > 0
@@ -440,11 +438,11 @@ const StyleQuizScreen = () => {
 // ── Root styles ───────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
     root:   { flex: 1, backgroundColor: T.bg },
-    safe:   { flex: 1 },
+    safe:   { flex: 1, paddingBottom: 8 },
     backgroundOrbTop: { position: 'absolute', top: -100, right: -80, width: 280, height: 280, borderRadius: 140, backgroundColor: 'rgba(188, 210, 245, 0.42)' },
     backgroundOrbBottom: { position: 'absolute', left: -120, bottom: 140, width: 300, height: 300, borderRadius: 150, backgroundColor: 'rgba(216, 229, 252, 0.34)' },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingTop: 12, paddingBottom: 8, minHeight: 40 },
-    step:   { flex: 1, paddingHorizontal: 24, paddingBottom: 24 },
+    step:   { flex: 1, paddingHorizontal: 24, paddingBottom: 12 },
     title:  { fontSize: 36, fontWeight: '800', color: T.text, letterSpacing: -1.2, lineHeight: 44, marginTop: 24, marginBottom: 10 },
     sub:    { fontSize: 15, color: T.sub, marginBottom: 28, lineHeight: 23 },
 });

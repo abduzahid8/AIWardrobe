@@ -57,6 +57,16 @@ export interface ClothingItem {
 // OUTFIT
 // ============================================
 
+/** Frozen collage piece saved at like-time so Collections / Saved Looks
+ *  can render the full outfit even when some pieces are shop items that
+ *  are not in the wardrobe store (and may page out of the live catalog). */
+export interface OutfitSnapshotItem {
+    id: string;
+    image: string;
+    category?: string;
+    name?: string;
+}
+
 export interface Outfit {
     id: string;
     userId: string;
@@ -64,6 +74,8 @@ export interface Outfit {
     occasion: Occasion | string;
     generatedBy: 'ai' | 'user';
     previewImageUrl?: string;
+    /** Full visual snapshot (wardrobe + shop pieces) captured on save. */
+    snapshotItems?: OutfitSnapshotItem[];
 
     // Engagement
     saved: boolean;

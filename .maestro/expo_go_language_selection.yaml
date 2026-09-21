@@ -1,0 +1,85 @@
+appId: host.exp.Exponent
+name: expo_go_language_selection
+tags:
+  - onboarding
+  - language
+  - expo-go
+---
+# Language-gate flow for Expo Go (app pre-loaded via exp:// deep link,
+# NO launchApp). PRECONDITION: fresh Expo Go install (or cleared app
+# data) so @app_language is unset and the gate shows.
+#
+# No Continue button exists: tapping a language row persists it
+# (@app_language) and advances immediately. English is selected to keep
+# downstream Sign In assertions in English.
+#
+# Fresh installs may also show the iOS tracking-permission dialog on top
+# of the gate — dismissed conditionally whenever it appears.
+
+- waitForAnimationToEnd:
+    timeout: 10000
+
+- runFlow:
+    when:
+      visible: "Ask App Not to Track"
+    commands:
+      - tapOn: "Ask App Not to Track"
+      - waitForAnimationToEnd:
+          timeout: 5000
+
+# First project load in a fresh Expo Go also pops the dev-menu intro
+# card ("This is the developer menu...") over the gate — close it via
+# its X button whenever it appears. (Expo Go harness noise only; the
+# production build has no such popup.)
+- runFlow:
+    when:
+      visible: ".*developer menu.*"
+    commands:
+      - tapOn:
+          point: "860,415"
+      - waitForAnimationToEnd:
+          timeout: 5000
+
+- runFlow:
+    when:
+      visible: "Choose your language"
+    commands:
+      - tapOn: "English"
+      - waitForAnimationToEnd:
+          timeout: 20000
+
+- runFlow:
+    when:
+      visible: ".*developer menu.*"
+    commands:
+      - tapOn:
+          point: "860,415"
+      - waitForAnimationToEnd:
+          timeout: 5000
+
+- runFlow:
+    when:
+      visible: "Ask App Not to Track"
+    commands:
+      - tapOn: "Ask App Not to Track"
+      - waitForAnimationToEnd:
+          timeout: 5000
+
+# Gate completed (or was already completed): Sign In renders in English.
+# Anchor is the Google button: the footer muted prefix
+# ("Don't have an account? ") is a nested raw-string Text node that iOS
+# does not expose to the AX tree (only the "Sign Up" link surfaces), so
+# the historic footer anchor no longer matches the redesigned Sign In.
+- assertVisible: ".*Continue with Google.*"
+- takeScreenshot: expo_go_language_selection_signin
+
+# Native back: swipe right on Sign In edge-pops to the chooser
+# (LanguageSelection stays underneath SignIn in the same stack).
+- swipe:
+    direction: RIGHT
+- assertVisible: "Choose your language"
+
+# And forward again from the chooser: re-tapping advances without
+# stacking a duplicate SignIn.
+- tapOn: "English"
+- assertVisible: ".*Continue with Google.*"

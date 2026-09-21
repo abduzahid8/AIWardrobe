@@ -8,6 +8,8 @@ export const config: WebdriverIO.Config = {
     // ====================
     // WebdriverIO supports running e2e tests as well as unit and component tests.
     runner: 'local',
+    // Canonical E2E for this repo is Maestro (see .maestro/).
+    // WebdriverIO/Appium is kept only for legacy/manual runs.
     tsConfigPath: './test/tsconfig.json',
     
     port: 4723,

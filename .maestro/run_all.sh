@@ -4,8 +4,24 @@
 
 set -e
 DIR="$(cd "$(dirname "$0")" && pwd)"
-export JAVA_HOME=/opt/homebrew/opt/openjdk@17
-export PATH=$JAVA_HOME/bin:$PATH
+# Maestro 2.8.0 works fine with unset JAVA_HOME. Only set it when a Homebrew
+# OpenJDK is actually installed (this machine has openjdk/openjdk@26, not @17).
+if [ -d "/opt/homebrew/opt/openjdk@17" ]; then
+  export JAVA_HOME=/opt/homebrew/opt/openjdk@17
+  export PATH="$JAVA_HOME/bin:$PATH"
+elif [ -d "/opt/homebrew/opt/openjdk" ]; then
+  export JAVA_HOME=/opt/homebrew/opt/openjdk
+  export PATH="$JAVA_HOME/bin:$PATH"
+elif [ -d "/opt/homebrew/opt/openjdk@26" ]; then
+  export JAVA_HOME=/opt/homebrew/opt/openjdk@26
+  export PATH="$JAVA_HOME/bin:$PATH"
+else
+  echo "(info) No Homebrew OpenJDK found — leaving JAVA_HOME unset (Maestro 2.8.0 is fine without it)"
+fi
+if [ -n "${JAVA_HOME:-}" ] && [ ! -x "$JAVA_HOME/bin/java" ]; then
+  echo "(warn) JAVA_HOME=$JAVA_HOME has no bin/java — unsetting"
+  unset JAVA_HOME
+fi
 MAESTRO="$HOME/.maestro/bin/maestro"
 
 echo "=== Ensuring app is running ==="
@@ -21,7 +37,7 @@ xcrun simctl shake booted 2>/dev/null || true
 sleep 5
 
 echo "=== E2E Full Flow (runs first while app is fresh) ==="
-"$MAESTRO" test "$DIR/e2e_full_flow.yaml" --format junit 2>&1
+"$MAESTRO" test "$DIR/full_app_e2e.yaml" --format junit 2>&1
 
 echo ""
 echo "=== Individual Flows ==="

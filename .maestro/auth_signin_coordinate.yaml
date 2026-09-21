@@ -5,6 +5,15 @@ appId: com.aiwardrobe
     stopApp: true
 - waitForAnimationToEnd:
     timeout: 60000
+# clearState wipes @app_language → first-run language gate shows first.
+# Complete it in English so the coordinate taps below land on Sign In.
+- runFlow:
+    when:
+      visible: "Choose your language"
+    commands:
+      - tapOn: "English"
+      - waitForAnimationToEnd:
+          timeout: 20000
 - tapOn:
     point: "50%,26%"
 - inputText: "e2etest@aiwardrobe.club"

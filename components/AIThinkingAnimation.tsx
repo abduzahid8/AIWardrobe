@@ -28,8 +28,10 @@ interface AIThinkingAnimationProps {
   clothingItems?: ClothingItem[];
 }
 
-// Generate helix DNA strand positions
-const generateHelixItems = (count: number, clothingImages: string[]) => {
+// Generate helix DNA strand positions — full-screen spread.
+// W/H are the actual container size (not window), so items fill the
+// available area below the header and stay clear of the bottom UI.
+const generateHelixItems = (count: number, clothingImages: string[], W: number, H: number) => {
   const items = [];
   const strands = 2; // Double helix
   const itemsPerStrand = Math.ceil(count / strands);
@@ -38,8 +40,11 @@ const generateHelixItems = (count: number, clothingImages: string[]) => {
     for (let i = 0; i < itemsPerStrand; i++) {
       const progress = i / itemsPerStrand;
       const angle = progress * Math.PI * 4 + (strand * Math.PI); // 2 full rotations
-      const y = height * 0.85 - progress * height * 0.7; // Start from bottom, go up
-      const radius = 90 + Math.sin(progress * Math.PI) * 40; // Varying radius
+      // Vertical: top 12% → 66% of container (top clears status bar +
+      // floating back button, bottom 34% reserved for pills + progress)
+      const y = H * 0.12 + progress * H * 0.54;
+      // Horizontal: fill width — center ± (30% + bulge 8%) so edge items stay on-screen
+      const radius = W * 0.30 + Math.sin(progress * Math.PI) * W * 0.08;
       
       items.push({
         id: strand * itemsPerStrand + i,
@@ -49,7 +54,7 @@ const generateHelixItems = (count: number, clothingImages: string[]) => {
         radius,
         strand,
         progress,
-        size: 55 + Math.random() * 25,
+        size: 52 + Math.random() * 22,
         delay: i * 100 + strand * 200,
       });
     }
@@ -74,8 +79,10 @@ export const AIThinkingAnimation: React.FC<AIThinkingAnimationProps> = ({
 }) => {
   const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(0);
+  // Real container size — makes the animation truly full-screen inside
+  // the flex area (not window size, which includes header + safe areas).
+  const [layout, setLayout] = useState({ w: width, h: height });
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const rotateAnim = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
   const stepFadeAnim = useRef(new Animated.Value(1)).current;
 
@@ -102,27 +109,20 @@ export const AIThinkingAnimation: React.FC<AIThinkingAnimationProps> = ({
     ];
   }, [clothingItems]);
 
-  // Generate helix DNA strands
-  const helixItems = useMemo(() => generateHelixItems(20, clothingImages), [clothingImages]);
+  // Generate helix DNA strands — recompute when container size is known
+  const helixItems = useMemo(
+    () => generateHelixItems(20, clothingImages, layout.w, layout.h),
+    [clothingImages, layout.w, layout.h],
+  );
   const connections = useMemo(() => generateConnections(12), []);
 
   // Animation refs
-  const helixRotateAnim = useRef(new Animated.Value(0)).current;
   const helixFloatAnim = useRef(new Animated.Value(0)).current;
   const connectionAnims = useRef(connections.map(() => new Animated.Value(0))).current;
 
   useEffect(() => {
-    // Continuous helix rotation
-    Animated.loop(
-      Animated.timing(helixRotateAnim, {
-        toValue: 1,
-        duration: 8000,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    ).start();
-
-    // Floating up/down motion
+    // Gentle floating up/down motion (no rotateY — rotateY without
+    // perspective collapses X to a vertical line mid-rotation).
     Animated.loop(
       Animated.sequence([
         Animated.timing(helixFloatAnim, {
@@ -178,11 +178,11 @@ export const AIThinkingAnimation: React.FC<AIThinkingAnimationProps> = ({
     return () => clearInterval(stepInterval);
   }, []);
 
-  const helixRotate = helixRotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const floatY = helixFloatAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -12] });
   const progressWidth = progressAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
 
   const getHelixStyle = (item: any) => {
-    const baseX = width / 2 + Math.cos(item.angle) * item.radius;
+    const baseX = layout.w / 2 + Math.cos(item.angle) * item.radius;
     const baseY = item.baseY;
     const zScale = (Math.sin(item.angle) + 1) / 2 * 0.4 + 0.6;
     const opacity = (Math.sin(item.angle) + 1) / 2 * 0.5 + 0.5;
@@ -200,11 +200,19 @@ export const AIThinkingAnimation: React.FC<AIThinkingAnimationProps> = ({
   const currentStepData = THINKING_STEPS[currentStep];
 
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      onLayout={(e) => {
+        const { width: w, height: h } = e.nativeEvent.layout;
+        if (Math.abs(w - layout.w) > 1 || Math.abs(h - layout.h) > 1) {
+          setLayout({ w, h });
+        }
+      }}
+    >
       <LinearGradient colors={['rgba(43, 92, 233, 0.08)', 'rgba(236, 72, 153, 0.05)', 'transparent']} style={StyleSheet.absoluteFill} />
 
-      {/* DNA Helix container */}
-      <Animated.View style={[styles.helixContainer, { transform: [{ rotateY: helixRotate }] }]}>
+      {/* DNA Helix container — full-screen background layer, gentle float only */}
+      <Animated.View style={[styles.helixContainer, { transform: [{ translateY: floatY }] }]} pointerEvents="none">
         {helixItems.map((item: any) => (
           <View key={item.id} style={[styles.helixItem, getHelixStyle(item), { width: item.size, height: item.size * 1.2 }]}>
             <Image source={{ uri: clothingImages[item.imageIndex] }} style={styles.clothingImage} resizeMode="cover" />
@@ -212,8 +220,8 @@ export const AIThinkingAnimation: React.FC<AIThinkingAnimationProps> = ({
         ))}
       </Animated.View>
 
-      {/* Energy connection lines */}
-      <Svg width={width} height={height} style={StyleSheet.absoluteFill} pointerEvents="none">
+      {/* Energy connection lines — full-screen background layer */}
+      <Svg width="100%" height="100%" style={StyleSheet.absoluteFill} pointerEvents="none">
         <Defs>
           <SvgGradient id="energyGradient" x1="0%" y1="0%" x2="100%" y2="0%">
             <Stop offset="0%" stopColor="#3B82F6" stopOpacity="0" />
@@ -225,9 +233,9 @@ export const AIThinkingAnimation: React.FC<AIThinkingAnimationProps> = ({
           const startItem = helixItems[conn.startItem % helixItems.length];
           const endItem = helixItems[conn.endItem % helixItems.length];
           if (!startItem || !endItem) return null;
-          const x1 = width / 2 + Math.cos(startItem.angle) * startItem.radius;
+          const x1 = layout.w / 2 + Math.cos(startItem.angle) * startItem.radius;
           const y1 = startItem.baseY;
-          const x2 = width / 2 + Math.cos(endItem.angle) * endItem.radius;
+          const x2 = layout.w / 2 + Math.cos(endItem.angle) * endItem.radius;
           const y2 = endItem.baseY;
           return (
             <AnimatedLine
@@ -292,11 +300,15 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   helixContainer: {
     position: 'absolute',
-    width: width,
-    height: height,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    overflow: 'hidden',
   },
   helixItem: {
     position: 'absolute',
@@ -316,9 +328,9 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   centerBrain: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 124,
+    height: 124,
+    borderRadius: 62,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
@@ -328,7 +340,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.4,
     shadowRadius: 24,
-    elevation: 15,
+    elevation: 20,
+    zIndex: 20,
     backgroundColor: 'rgba(255,255,255,0.95)',
   },
   brainInner: {
@@ -387,15 +400,21 @@ const styles = StyleSheet.create({
   },
   textContainer: {
     position: 'absolute',
-    bottom: height * 0.18,
+    bottom: 138,
+    left: 20,
+    right: 20,
     alignItems: 'center',
+    zIndex: 10,
   },
   stepRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    maxWidth: width - 40,
     backgroundColor: 'rgba(255,255,255,0.95)',
-    paddingHorizontal: 28,
-    paddingVertical: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
     borderRadius: 30,
     borderWidth: 1,
     borderColor: 'rgba(43, 92, 233, 0.25)',
@@ -406,12 +425,13 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   stepIcon: {
-    marginRight: 12,
+    marginRight: 8,
   },
   stepText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: '#1F2937',
+    flexShrink: 1,
   },
   styleTag: {
     fontSize: 14,
@@ -425,10 +445,12 @@ const styles = StyleSheet.create({
   },
   progressContainer: {
     position: 'absolute',
-    bottom: height * 0.08,
-    width: width - 80,
+    bottom: 24,
+    left: 40,
+    right: 40,
     flexDirection: 'row',
     alignItems: 'center',
+    zIndex: 10,
   },
   progressBackground: {
     flex: 1,

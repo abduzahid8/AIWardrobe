@@ -1,0 +1,16 @@
+appId: host.exp.Exponent
+name: quiz_complete_onboarding
+tags:
+  - onboarding
+  - expo-go
+---
+# Complete the style-quiz summary ("Your style plan is ready") to reach the main app.
+# Text tap avoids the fragile tab-bar coordinates used by the legacy nav_* flows.
+- waitForAnimationToEnd:
+    timeout: 15000
+- assertVisible: ".*style plan is ready.*"
+- takeScreenshot: quiz_summary_before
+- tapOn: ".*Unlock my plan.*"
+- waitForAnimationToEnd:
+    timeout: 15000
+- takeScreenshot: quiz_after_unlock

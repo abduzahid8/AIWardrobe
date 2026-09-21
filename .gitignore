@@ -115,6 +115,11 @@ scripts/out/
 *.bin
 !backend/api/blank_mannequin.jpg
 
+# Shop product shots — 1.4GB staging dir, served from Supabase Storage.
+# Never commit, never bundle (see app.json assetBundlePatterns).
+assets/shop/
+data/shopLocalImages.*.ts
+
 # Tool / environment directories
 .codex/
 .kiro/

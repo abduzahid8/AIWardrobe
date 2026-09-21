@@ -99,19 +99,38 @@ function todayKey(d: Date = new Date()): string {
 }
 
 function storageKey(userId: string | null | undefined, style: string): string {
+    // v15 invalidates decks created before Team Collaboration / business_casual
+    // became shop-only. Old v14 decks contain a wardrobe anchor + shop
+    // complements and must not be reused for the shop-only section.
     // v14 invalidates decks created before the rebuild became style-ranked
     // and required all 15 daily combinations to be unique.
     // v13 invalidates any deck created before the Home hook forcibly rebuilt
     // large daily batches as mixed wardrobe+shop outfits.
     // v12 invalidates decks that were unique but shop-only. Daily looks should
     // be mixed when the user has wardrobe items: owned anchor + shop complements.
+    // (Team Collaboration is the exception — see isShopOnlyDeck below.)
     // v11 invalidates daily batches generated before the client local fallback
     // could use the bundled shop catalog when Supabase returned no shop rows.
     // It also keeps rejecting same-combination 15-card decks below.
     // v10 invalidates daily batches generated from too-small wardrobe-only
     // pools. Daily Home decks now require enough unique combinations for the
     // requested 15-card carousel before the cache can short-circuit generation.
-    return `daily_ai_outfit_v14::${userId ?? 'anon'}::${style}`;
+    return `daily_ai_outfit_v15::${userId ?? 'anon'}::${style}`;
+}
+
+/**
+ * Team Collaboration must be 100% shopping — no wardrobe anchor.
+ * Matches by style (`business_casual`) OR by occasion label
+ * (`Team Collaboration`) so an admin rename of one side can't silently
+ * re-enable mixed decks.
+ */
+export function isShopOnlyDeck(style?: string | null, occasion?: string | null): boolean {
+    const s = (style || '').toLowerCase().replace(/[\s-]+/g, '_');
+    if (s === 'business_casual') return true;
+    const o = (occasion || '').toLowerCase();
+    if (o.includes('team') && o.includes('collab')) return true;
+    if (o.trim() === 'team collaboration') return true;
+    return false;
 }
 
 /**
@@ -281,6 +300,124 @@ function pickFrom(pool: DailyOutfitItem[], index: number, usedIds: Set<string>):
     return pool[index % pool.length];
 }
 
+function rebuildShopOnlyDailyDeck(
+    inputOutfits: GeneratedOutfit[],
+    requestedVariants: number,
+    style: string,
+    occasion: string,
+    weather: DailyOutfitWeather | null | undefined,
+    shopCatalogItems: ShopCatalogItem[],
+): GeneratedOutfit[] {
+    const layered = needsDailyLayering(style, weather);
+    const targetSlots: DailySlot[] = layered ? ['outerwear', 'top', 'bottom', 'shoes'] : ['top', 'bottom', 'shoes'];
+    const count = Math.min(requestedVariants, 15);
+
+    const existingShopItems = inputOutfits
+        .flatMap((outfit) => outfit.items || [])
+        .filter((item) => (item as DailyOutfitItem).isShopItem === true);
+    const staticShop = [...SHOP_CATALOG_ITEMS, ...CLASSIC_MENS_ITEMS];
+    const shopOutfitItems = styleRankItems(
+        [...shopCatalogItems, ...staticShop].map(toShopOutfitItem).filter((item) => canonicalMacro(item) !== 'other'),
+        style,
+    );
+
+    const shopBuckets = bucketDailyItems(shopOutfitItems);
+    const existingBuckets = bucketDailyItems(existingShopItems);
+
+    // Require every target slot to have at least one shop candidate —
+    // otherwise we can't build complete shop-only looks.
+    const missingSlot = targetSlots.find(
+        (slot) => shopBuckets[slot].length === 0 && existingBuckets[slot].length === 0,
+    );
+    if (missingSlot) return filterRenderableOutfits(inputOutfits).filter((o) =>
+        (o.items || []).every((i) => (i as DailyOutfitItem).isShopItem === true),
+    );
+
+    const rebuilt: GeneratedOutfit[] = [];
+    const signatures = new Set<string>();
+    const maxOutfits = count * 6;
+
+    for (let i = 0; rebuilt.length < count && i < maxOutfits; i++) {
+        let items: DailyOutfitItem[] = [];
+        let finalSignature = '';
+        const maxAttempts = Math.max(30, count * 4);
+
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            const usedIds = new Set<string>();
+            const itemsBySlot = new Map<DailySlot, DailyOutfitItem>();
+
+            let divisor = 1;
+            let failed = false;
+            targetSlots.forEach((slot, slotIndex) => {
+                const primaryPool = shopBuckets[slot].length > 0 ? shopBuckets[slot] : existingBuckets[slot];
+                const fallbackPool = [...primaryPool, ...existingBuckets[slot]];
+                const pool = fallbackPool.length > 0 ? fallbackPool : primaryPool;
+                const poolIndex = Math.floor((i + attempt) / divisor) + slotIndex * 3;
+                const pick = pickFrom(pool, poolIndex, usedIds);
+                divisor *= Math.max(pool.length, 1);
+                if (!pick) {
+                    failed = true;
+                    return;
+                }
+                usedIds.add(String(pick.id));
+                itemsBySlot.set(slot, {
+                    ...pick,
+                    macroCategory: slot,
+                    recommendation: 'Suggested from shop',
+                    isShopItem: true,
+                });
+            });
+            if (failed) continue;
+
+            const candidateItems = targetSlots
+                .map((slot) => itemsBySlot.get(slot))
+                .filter(Boolean) as DailyOutfitItem[];
+            // Shop-only: every piece must be a shop pick, and the combination
+            // must never repeat (unique by sorted item ids).
+            const allShop = candidateItems.every((item) => item.isShopItem === true);
+            const signature = candidateItems.map((item) => String(item.id)).sort().join('|');
+
+            if (candidateItems.length === targetSlots.length && allShop && signature && !signatures.has(signature)) {
+                items = candidateItems;
+                finalSignature = signature;
+                break;
+            }
+
+            if (candidateItems.length > items.length && signature && !signatures.has(signature)) {
+                items = candidateItems;
+                finalSignature = signature;
+            }
+        }
+
+        if (!items.length || !finalSignature || signatures.has(finalSignature)) continue;
+        // Final guard: never emit a mixed or duplicate outfit from this path.
+        if (!items.every((item) => item.isShopItem === true)) continue;
+        signatures.add(finalSignature);
+
+        const outputIndex = rebuilt.length;
+        rebuilt.push({
+            id: inputOutfits[outputIndex]?.id || `daily_shop_${style}_${outputIndex}_${Date.now()}`,
+            description: `A ${style} look curated from the shop.`,
+            style,
+            occasion: inputOutfits[outputIndex]?.occasion || occasion,
+            confidence: inputOutfits[outputIndex]?.confidence ?? 0.82,
+            matchScore: inputOutfits[outputIndex]?.matchScore ?? 0.82,
+            items: items.sort((a, b) => targetSlots.indexOf(a.macroCategory as DailySlot) - targetSlots.indexOf(b.macroCategory as DailySlot)),
+            stylingTips: inputOutfits[outputIndex]?.stylingTips || ['Shop the full look', 'All pieces available now'],
+        });
+    }
+
+    logger.debug('Rebuilt shop-only daily deck in hook', {
+        style,
+        occasion,
+        count: rebuilt.length,
+        uniqueCombinations: uniqueOutfitCombinationCount(rebuilt),
+        shopItemsByOutfit: rebuilt.map((outfit) => outfit.items.filter((item) => item.isShopItem).length),
+    });
+
+    return rebuilt;
+}
+
 function rebuildMixedDailyDeck(
     inputOutfits: GeneratedOutfit[],
     requestedVariants: number,
@@ -290,6 +427,10 @@ function rebuildMixedDailyDeck(
     wardrobeItems: ClothingItem[],
     shopCatalogItems: ShopCatalogItem[],
 ): GeneratedOutfit[] {
+    // Team Collaboration is always shop-only — never anchor to wardrobe.
+    if (isShopOnlyDeck(style, occasion)) {
+        return rebuildShopOnlyDailyDeck(inputOutfits, requestedVariants, style, occasion, weather, shopCatalogItems);
+    }
     if (requestedVariants < 10 || wardrobeItems.length === 0) return inputOutfits;
 
     const layered = needsDailyLayering(style, weather);
@@ -476,7 +617,12 @@ function errorMessage(err: unknown): string {
     return err instanceof Error ? err.message : 'Failed to generate daily outfit';
 }
 
-function hasUsableDailyDeck(outfits: GeneratedOutfit[], requestedVariants: number): boolean {
+function hasUsableDailyDeck(
+    outfits: GeneratedOutfit[],
+    requestedVariants: number,
+    style?: string,
+    occasion?: string,
+): boolean {
     if (outfits.length === 0) return false;
 
     // Small callers can keep the older "any renderable outfit" behavior.
@@ -487,12 +633,21 @@ function hasUsableDailyDeck(outfits: GeneratedOutfit[], requestedVariants: numbe
     const expectedCount = Math.min(requestedVariants, 15);
     const expectedUnique = expectedCount;
     if (outfits.length < expectedCount) return false;
+    if (uniqueOutfitCombinationCount(outfits) < expectedUnique) return false;
+    // Team Collaboration is shop-only: every piece must be a shop pick and
+    // every combination must be unique — never mixed, never repeated.
+    if (isShopOnlyDeck(style, occasion)) {
+        return outfits.every((outfit) => {
+            const items = outfit.items || [];
+            return items.length > 0 && items.every((item) => (item as DailyOutfitItem).isShopItem === true);
+        });
+    }
     const everyOutfitIsMixed = outfits.every((outfit) => {
         const items = outfit.items || [];
         return items.some((item) => !item.isShopItem && item.id !== 'placeholder_shoes')
             && items.some((item) => item.isShopItem);
     });
-    return everyOutfitIsMixed && uniqueOutfitCombinationCount(outfits) >= expectedUnique;
+    return everyOutfitIsMixed;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -562,7 +717,7 @@ export function useDailyAIOutfit({
                         ), variants, style, occasion, weatherRef.current, wardrobeItemsRef.current, loadedShopItemsRef.current);
                         if (
                             cached.dateKey === dateKey
-                            && hasUsableDailyDeck(cachedRenderable, variants)
+                            && hasUsableDailyDeck(cachedRenderable, variants, style, occasion)
                         ) {
                             logger.debug('Using cached daily outfits', {
                                 style,
@@ -670,7 +825,7 @@ export function useDailyAIOutfit({
                     createdAt: new Date().toISOString(),
                 };
                 try {
-                    if (hasUsableDailyDeck(fresh, variants)) {
+                    if (hasUsableDailyDeck(fresh, variants, style, occasion)) {
                         await AsyncStorage.setItem(key, JSON.stringify(entry));
                     } else {
                         await AsyncStorage.removeItem(key);
@@ -739,7 +894,7 @@ export function useDailyAIOutfit({
                             const cachedRenderable = rebuildMixedDailyDeck(filterRenderableOutfits(
                                 Array.isArray(cached.outfits) ? cached.outfits : [],
                             ), variants, style, occasion, weatherRef.current, wardrobeItemsRef.current, loadedShopItemsRef.current);
-                            if (cached.dateKey === dateKey && hasUsableDailyDeck(cachedRenderable, variants)) {
+                            if (cached.dateKey === dateKey && hasUsableDailyDeck(cachedRenderable, variants, style, occasion)) {
                                 logger.debug('Pre-check: serving cached daily outfits (edge function skipped)', {
                                     style,
                                     count: cachedRenderable.length,

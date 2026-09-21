@@ -38,11 +38,15 @@ export type OutfitItem = {
 };
 
 export type RootStackParamList = {
+    // First-run — language-only gate, shown before anything else
+    LanguageSelection: undefined;
+
     // Auth
     SignIn: undefined;
     SignUp: undefined;
     ForgotPassword: undefined;
     ResetPassword: undefined;
+    AuthCallback: undefined;
 
     // Main (tab container)
     Main: NavigatorScreenParams<TabParamList>;
@@ -81,12 +85,11 @@ export type RootStackParamList = {
     StylistChat: { initialMessage?: string } | undefined;
 
     // Calendar
-    Calendar: undefined;
+    Calendar: { initialDate?: string } | undefined;
 
     // Profile & Settings
     MyCloset: undefined;
     ClothingDetail: { itemId: string; fullItem?: any };
-    WardrobeAnalytics: undefined;
     WeeklyInsights: undefined;
     PrivacyPolicy: undefined;
     TermsOfService: undefined;
@@ -100,6 +103,6 @@ export type TabParamList = {
     Home: undefined;
     Closet: undefined;
     AI: undefined;
-    Inspo: undefined;
+    Inspo: { focusShopItemId?: string; focusShopItemName?: string } | undefined;
     Profile: undefined;
 };

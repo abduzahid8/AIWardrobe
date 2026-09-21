@@ -1,70 +1,107 @@
 /**
  * Auth API Contract Tests
- * Validates critical authentication paths
+ *
+ * Backend truth (backend/api/routes/auth.js mounted at "/" in backend/api/index.js:117):
+ *   - Registration/login are Supabase-direct on the mobile client.
+ *   - Express only exposes GET /me and GET /subscription-status,
+ *     both behind `authenticateToken` (401 NO_TOKEN without a bearer token).
+ *   - POST /api/auth/login and POST /api/auth/register MUST NOT exist (404).
+ *
+ * These tests mock `fetch` to lock that contract so a future server change
+ * can't silently reintroduce password handling or drop auth guards.
+ * Live server checks live in `docs/` runbooks, not in unit CI.
  */
 
-import { describe, it, expect, beforeAll, afterAll, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
-beforeAll(() => {
-  global.fetch = jest.fn((input: RequestInfo | URL, init?: RequestInit) => {
+const mockFetch = jest.fn<typeof fetch>();
+
+beforeEach(() => {
+  mockFetch.mockReset();
+  global.fetch = mockFetch as unknown as typeof fetch;
+
+  mockFetch.mockImplementation((async (input: any, init?: any) => {
     const urlStr = input.toString();
-    
-    if (urlStr.includes('/api/auth/login')) {
-      if (init?.body && Object.keys(JSON.parse(init.body as string)).length === 0) {
-        return Promise.resolve({ status: 400, json: () => Promise.resolve({ error: 'Missing fields' }) } as Response);
+    const method = (init?.method ?? 'GET').toUpperCase();
+    const authHeader =
+      (init?.headers as Record<string, string> | undefined)?.['Authorization'] ?? '';
+
+    // Real backend: no password endpoints — Express returns 404.
+    if (urlStr.includes('/api/auth/login') || urlStr.includes('/api/auth/register')) {
+      return { status: 404, json: async () => ({ error: 'Not Found' }) } as Response;
+    }
+
+    // Real backend: profile endpoints require a bearer token.
+    // Mounted at "/" (see backend/api/index.js) — NOT under /api/auth.
+    if (urlStr === `${API_URL}/me` || urlStr === `${API_URL}/subscription-status`) {
+      if (!authHeader) {
+        return {
+          status: 401,
+          json: async () => ({ error: 'Authentication required', code: 'NO_TOKEN' }),
+        } as Response;
       }
-      return Promise.resolve({ status: 401 } as Response);
+      if (authHeader === 'Bearer invalid-token') {
+        return {
+          status: 401,
+          json: async () => ({ error: 'Invalid or expired token', code: 'INVALID_TOKEN' }),
+        } as Response;
+      }
+      return { status: 200, json: async () => ({ ok: true }) } as Response;
     }
-    
-    if (urlStr.includes('/api/auth/register')) {
-      return Promise.resolve({ status: 400 } as Response);
-    }
-    
+
     if (urlStr.includes('/api/tryon/render')) {
-      const authHeader = (init?.headers as Record<string, string>)?.['Authorization'];
-      if (!authHeader) return Promise.resolve({ status: 401 } as Response);
+      if (!authHeader) return { status: 401 } as Response;
       if (init?.body && Object.keys(JSON.parse(init.body as string)).length === 0) {
-        return Promise.resolve({ status: 400 } as Response);
+        return { status: 400 } as Response;
       }
     }
 
-    return Promise.resolve({ status: 200 } as Response);
-  }) as any;
+    return { status: 200, json: async () => ({}) } as Response;
+  }) as typeof fetch);
 });
 
 describe('Auth API Contract', () => {
-  describe('POST /api/auth/login', () => {
-    it('returns 401 for invalid credentials', async () => {
+  describe('password endpoints must not exist on the backend', () => {
+    it('POST /api/auth/login returns 404 (auth is Supabase-direct)', async () => {
       const res = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: 'test@test.com', password: 'wrong' }),
       });
-      expect(res.status).toBe(401);
+      expect(res.status).toBe(404);
     });
 
-    it('returns 400 for missing fields', async () => {
-      const res = await fetch(`${API_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-      expect(res.status).toBe(400);
-      const data = await res.json();
-      expect(data.error).toBeDefined();
-    });
-  });
-
-  describe('POST /api/auth/register', () => {
-    it('returns 400 for invalid email', async () => {
+    it('POST /api/auth/register returns 404 (auth is Supabase-direct)', async () => {
       const res = await fetch(`${API_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: 'not-an-email', password: '123456' }),
       });
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(404);
+    });
+  });
+
+  describe('GET /me', () => {
+    it('returns 401 NO_TOKEN without a bearer token', async () => {
+      const res = await fetch(`${API_URL}/me`);
+      expect(res.status).toBe(401);
+      expect(await res.json()).toMatchObject({ code: 'NO_TOKEN' });
+    });
+
+    it('returns 401 INVALID_TOKEN for a bad token', async () => {
+      const res = await fetch(`${API_URL}/me`, {
+        headers: { Authorization: 'Bearer invalid-token' },
+      });
+      expect(res.status).toBe(401);
+    });
+  });
+
+  describe('GET /subscription-status', () => {
+    it('returns 401 without a bearer token', async () => {
+      const res = await fetch(`${API_URL}/subscription-status`);
+      expect(res.status).toBe(401);
     });
   });
 });
@@ -81,25 +118,15 @@ describe('Try-On API Contract', () => {
     });
 
     it('returns 400 with missing required fields', async () => {
-      // This would need a valid token in practice
       const res = await fetch(`${API_URL}/api/tryon/render`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer invalid-token',
+          Authorization: 'Bearer valid-token',
         },
         body: JSON.stringify({}),
       });
-      // Will fail auth first, but contract structure is validated
       expect([401, 400]).toContain(res.status);
-    });
-  });
-
-  describe('Rate Limiting', () => {
-    it('returns 429 after excessive requests', async () => {
-      // Note: This test should be run against the actual API
-      // with proper rate limiting enabled
-      console.log('Rate limit test - requires integration environment');
     });
   });
 });

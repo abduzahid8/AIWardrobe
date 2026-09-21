@@ -1,0 +1,42 @@
+appId: com.aiwardrobe
+name: language_selection
+tags:
+  - onboarding
+  - language
+---
+# ============================================================
+# FIRST-RUN LANGUAGE GATE
+# Fresh install MUST land on the language-only screen before
+# anything else (Sign In is NOT visible yet). No Continue button:
+# tapping a row persists it (@app_language) and advances to Sign In.
+#
+# Text selectors are regex, ANCHORED to the full element text
+# (see full_app_e2e.yaml header) — every match below is wrapped
+# in `.*...*` unless it is a full one-line title.
+# ============================================================
+
+- launchApp:
+    clearState: true
+    stopApp: true
+- waitForAnimationToEnd:
+    timeout: 60000
+
+# 1. Gate is first: language chooser visible, Sign In NOT reachable yet.
+- assertVisible: "Choose your language"
+- assertNotVisible: ".*Continue with Google.*"
+
+# 2. Tap-to-advance: tapping Русский persists it and lands on Sign In
+# in Russian. Anchor is the footer link: the muted "Нет аккаунта? "
+# prefix is a nested raw-string Text node that iOS does not expose
+# to the AX tree.
+- tapOn: "Русский"
+- waitForAnimationToEnd:
+    timeout: 20000
+- assertVisible: ".*Регистрация.*"
+- takeScreenshot: language_gate_ru_to_signin
+
+# 3. Native back: swipe right on Sign In edge-pops to the chooser,
+# now rendered in Russian (the selected locale).
+- swipe:
+    direction: RIGHT
+- assertVisible: "Выберите язык"

@@ -86,18 +86,67 @@ export function cleanupAuthSubscription(): void {
 }
 
 /**
- * Parses the access_token and refresh_token from a Supabase auth URL hash.
+ * Parses a Supabase auth redirect URL.
+ *
+ * Supports BOTH flows Supabase may emit:
+ *  - Implicit flow (legacy): tokens in the URL hash
+ *    `...#access_token=...&refresh_token=...&type=recovery`
+ *  - PKCE flow (current default): auth code in the query string
+ *    `...?code=...&type=recovery`
+ *
+ * Returns a discriminated union so callers can either `setSession`
+ * (implicit) or `exchangeCodeForSession` (PKCE).
  */
-function parseSupabaseUrl(url: string) {
+export type ParsedSupabaseAuthUrl =
+    | { kind: 'tokens'; accessToken: string; refreshToken: string; type: string | null }
+    | { kind: 'code'; code: string; type: string | null };
+
+function getQueryParam(url: string, name: string): string | null {
+    try {
+        const qIndex = url.indexOf('?');
+        if (qIndex === -1) return null;
+        const hashIndex = url.indexOf('#');
+        const query = hashIndex === -1 ? url.slice(qIndex + 1) : url.slice(qIndex + 1, hashIndex);
+        return new URLSearchParams(query).get(name);
+    } catch {
+        return null;
+    }
+}
+
+export function parseSupabaseUrl(url: string): ParsedSupabaseAuthUrl | null {
+    // 1. Implicit flow: #access_token=...&refresh_token=...
     const hash = url.split('#')[1];
-    if (!hash) return null;
+    if (hash) {
+        const params = new URLSearchParams(hash);
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        if (accessToken && refreshToken) {
+            return { kind: 'tokens', accessToken, refreshToken, type: params.get('type') };
+        }
+    }
 
-    const params = new URLSearchParams(hash);
-    const accessToken = params.get('access_token');
-    const refreshToken = params.get('refresh_token');
+    // 2. PKCE flow: ?code=...
+    const code = getQueryParam(url, 'code');
+    if (code) {
+        return { kind: 'code', code, type: getQueryParam(url, 'type') };
+    }
 
-    if (!accessToken || !refreshToken) return null;
-    return { accessToken, refreshToken };
+    return null;
+}
+
+/**
+ * @deprecated Use the PKCE-aware `parseSupabaseUrl` above. Kept for
+ * backwards-compat with existing unit tests that mock the old shape.
+ * Prefer asserting on `ParsedSupabaseAuthUrl`.
+ */
+export function parseSupabaseTokensOnly(
+    url: string,
+): { accessToken: string; refreshToken: string } | null {
+    const parsed = parseSupabaseUrl(url);
+    if (parsed?.kind === 'tokens') {
+        return { accessToken: parsed.accessToken, refreshToken: parsed.refreshToken };
+    }
+    return null;
 }
 
 /**
@@ -232,30 +281,57 @@ const useAuthStore = create<AuthStore>((set, get) => ({
 
     handleDeepLink: async (url: string) => {
         log.debug('handleDeepLink called', { url });
-        const tokens = parseSupabaseUrl(url);
-        if (!tokens) return;
 
-        // Check if this is a password-recovery deep link (type=recovery in the hash)
-        const hash = url.split('#')[1];
-        const params = new URLSearchParams(hash || '');
-        const isRecovery = params.get('type') === 'recovery';
+        // Surface OAuth provider errors (e.g. user denied consent) instead of
+        // silently ignoring the deep link.
+        const oauthError = getQueryParam(url, 'error') ?? getQueryParam(url, 'error_code');
+        if (oauthError) {
+            const description =
+                getQueryParam(url, 'error_description') ?? 'Sign-in was not completed. Please try again.';
+            log.warn('OAuth deep link returned an error', { oauthError, description });
+            set({ error: decodeURIComponent(description.replace(/\+/g, ' ')), loading: false });
+            return;
+        }
+
+        const parsed = parseSupabaseUrl(url);
+        if (!parsed) return;
+
+        // Password-recovery links carry type=recovery in either the hash
+        // (implicit) or the query string (PKCE) — never treat them as logins.
+        const isRecovery = parsed.type === 'recovery';
 
         set({ loading: true, error: null });
         try {
-            const { data, error } = await supabase.auth.setSession({
-                access_token: tokens.accessToken,
-                refresh_token: tokens.refreshToken,
-            });
-            if (error) throw error;
-            if (data.session) {
-                if (isRecovery) {
-                    // Password-recovery flow: just set session + auth state without
-                    // triggering login analytics, IAP identity, or trial initialisation.
-                    set({ session: data.session, isAuthenticated: true, loading: false, error: null });
+            if (parsed.kind === 'code') {
+                // PKCE flow (current Supabase default): exchange ?code= for a session.
+                const { data, error } = await supabase.auth.exchangeCodeForSession(parsed.code);
+                if (error) throw error;
+                if (data.session) {
+                    if (isRecovery) {
+                        set({ session: data.session, isAuthenticated: true, loading: false, error: null });
+                    } else {
+                        await onAuthSuccess(set, get, data.session, 'email');
+                    }
+                    log.info('Deep link auth successful (PKCE)', { userId: data.session.user.id, isRecovery });
                 } else {
-                    await onAuthSuccess(set, get, data.session, 'email');
+                    throw new Error('Sign-in link did not return a session. Please try again.');
                 }
-                log.info('Deep link auth successful', { userId: data.session.user.id, isRecovery });
+            } else {
+                const { data, error } = await supabase.auth.setSession({
+                    access_token: parsed.accessToken,
+                    refresh_token: parsed.refreshToken,
+                });
+                if (error) throw error;
+                if (data.session) {
+                    if (isRecovery) {
+                        // Password-recovery flow: just set session + auth state without
+                        // triggering login analytics, IAP identity, or trial initialisation.
+                        set({ session: data.session, isAuthenticated: true, loading: false, error: null });
+                    } else {
+                        await onAuthSuccess(set, get, data.session, 'email');
+                    }
+                    log.info('Deep link auth successful', { userId: data.session.user.id, isRecovery });
+                }
             }
         } catch (err) {
             log.error('Deep link auth failed', err);
@@ -266,14 +342,16 @@ const useAuthStore = create<AuthStore>((set, get) => ({
     },
 
     register: async (email, password, username, gender, profileImage) => {
-        log.debug('Register attempt', { email, username });
+        const normalizedEmail = email.trim().toLowerCase();
+        const normalizedUsername = username.trim();
+        log.debug('Register attempt', { email: normalizedEmail, username: normalizedUsername });
         set({ loading: true, error: null });
         try {
             const { data, error } = await supabase.auth.signUp({
-                email,
+                email: normalizedEmail,
                 password,
                 options: {
-                    data: { username, gender, profile_image: profileImage },
+                    data: { username: normalizedUsername, gender, profile_image: profileImage },
                 },
             });
             if (error) throw error;
@@ -282,23 +360,40 @@ const useAuthStore = create<AuthStore>((set, get) => ({
                 await onAuthSuccess(set, get, data.session, 'email');
                 analyticsService.trackSignup('email');
             } else {
-                set({
-                    loading: false,
-                    error: 'Please check your email for a confirmation link.',
-                });
+                // Email confirmation required (Supabase "Confirm email" ON).
+                // Throw a typed sentinel so the UI can show a check-email
+                // success state instead of silently doing nothing. The store
+                // must NOT stash this informational message in `error`.
+                set({ loading: false, error: null });
+                throw new Error(
+                    'EMAIL_CONFIRMATION_REQUIRED: Please check your email for a confirmation link.',
+                );
             }
         } catch (err) {
+            // Let the confirmation sentinel pass through with loading=false
+            // and no error state — the SignUp screen renders its own UI.
+            if (
+                err instanceof Error &&
+                err.message.startsWith('EMAIL_CONFIRMATION_REQUIRED')
+            ) {
+                throw err;
+            }
             setAuthError(set, err, 'Registration failed');
         }
     },
 
     login: async (email, password) => {
-        log.debug('Login attempt', { email });
+        const normalizedEmail = email.trim().toLowerCase();
+        log.debug('Login attempt', { email: normalizedEmail });
         set({ loading: true, error: null });
         try {
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: normalizedEmail,
+                password,
+            });
             if (error) throw error;
             if (data.session) await onAuthSuccess(set, get, data.session, 'email');
+            else throw new Error('Login failed: no session returned. Please try again.');
         } catch (err) {
             setAuthError(set, err, 'Login failed');
         }
@@ -393,7 +488,7 @@ const useAuthStore = create<AuthStore>((set, get) => ({
     signInWithGoogle: async () => {
       set({ loading: true, error: null });
       try {
-        const redirectUrl = Linking.createURL('/auth/callback');
+        const redirectUrl = Linking.createURL('auth/callback');
 
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
@@ -409,17 +504,40 @@ const useAuthStore = create<AuthStore>((set, get) => ({
         const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
 
         if (result.type === 'success') {
-          const tokens = parseSupabaseUrl(result.url);
-          if (!tokens) throw new Error('Failed to parse auth response');
-
-          const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-            access_token: tokens.accessToken,
-            refresh_token: tokens.refreshToken,
-          });
-          if (sessionError) throw sessionError;
-          if (sessionData.session) {
-            await onAuthSuccess(set, get, sessionData.session, 'google');
+          const parsed = parseSupabaseUrl(result.url);
+          if (!parsed) {
+            // Surface provider denial (error=access_denied) with its message.
+            const providerError =
+              getQueryParam(result.url, 'error_description') ?? getQueryParam(result.url, 'error');
+            throw new Error(
+              providerError
+                ? decodeURIComponent(providerError.replace(/\+/g, ' '))
+                : 'Failed to parse auth response',
+            );
           }
+
+          if (parsed.kind === 'code') {
+            // PKCE flow (current Supabase default): ?code=... must be exchanged.
+            const { data: sessionData, error: sessionError } =
+              await supabase.auth.exchangeCodeForSession(parsed.code);
+            if (sessionError) throw sessionError;
+            if (!sessionData.session) throw new Error('Google sign-in did not return a session.');
+            await onAuthSuccess(set, get, sessionData.session, 'google');
+          } else {
+            const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+              access_token: parsed.accessToken,
+              refresh_token: parsed.refreshToken,
+            });
+            if (sessionError) throw sessionError;
+            if (sessionData.session) {
+              await onAuthSuccess(set, get, sessionData.session, 'google');
+            } else {
+              throw new Error('Google sign-in did not return a session.');
+            }
+          }
+        } else if (result.type === 'cancel' || result.type === 'dismiss') {
+          // User backed out of the browser — not an error, just reset loading.
+          set({ loading: false, error: null });
         } else {
           set({ loading: false });
         }

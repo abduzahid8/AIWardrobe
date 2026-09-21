@@ -3,6 +3,7 @@ import { View, TouchableOpacity, Modal, StyleSheet, Pressable, Animated,  } from
 import { ScaledText } from './ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import useLanguageStore from '../store/languageStore';
 
 export type Language = 'en' | 'ru' | 'uz';
 
@@ -21,6 +22,7 @@ const languages: LanguageOption[] = [
 
 const LanguageSelector = () => {
     const { i18n, t } = useTranslation();
+    const setLanguage = useLanguageStore((s) => s.setLanguage);
     const [modalVisible, setModalVisible] = useState(false);
     const [fadeAnim] = useState(new Animated.Value(0));
 
@@ -46,7 +48,8 @@ const LanguageSelector = () => {
     };
 
     const handleLanguageSelect = (language: Language) => {
-        i18n.changeLanguage(language);
+        // Persist via the store so the first-run gate stays completed.
+        void setLanguage(language);
         closeModal();
     };
 
