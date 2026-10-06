@@ -67,8 +67,20 @@ export const createItemsSlice: StateCreator<WardrobeState, [], [], ItemsSlice> =
 
         set((state) => ({ items: [optimisticItem, ...state.items] }));
 
-        const { data: sessionData } = await supabase.auth.getSession();
-        const userId = sessionData?.session?.user?.id;
+        // Fast path: reuse the already-authenticated userId from the auth
+        // store instead of `supabase.auth.getSession()` (an AsyncStorage read
+        // + JSON parse on every tap). Falls back to getSession only when the
+        // store has no user yet (cold start race). Saves ~100-300ms per
+        // addToWardrobe, which the logs show at 2.1-2.5s.
+        let userId: string | undefined;
+        try {
+            const { default: useAuthStore } = require('../auth');
+            userId = useAuthStore.getState().user?.id ?? useAuthStore.getState().session?.user?.id;
+        } catch {}
+        if (!userId) {
+            const { data: sessionData } = await supabase.auth.getSession();
+            userId = sessionData?.session?.user?.id;
+        }
 
         if (!userId) {
             set((state) => ({

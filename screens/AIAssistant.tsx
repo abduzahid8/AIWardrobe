@@ -13,6 +13,10 @@ import StyleSelector from "../components/StyleSelector";
 import Config from "../src/config/env";
 const API_URL = Config.api.url;
 import { colors, spacing, borderRadius, shadows } from "../src/theme";
+import { useSubscriptionGate } from "../src/hooks/useSubscriptionGate";
+import useWardrobeStore from "../store/wardrobeStore";
+import useShopCatalogStore from "../store/shopCatalogStore";
+import { buildAgentClothingContext } from "../src/utils/outfitBudget";
 
 // Message interface
 interface Message {
@@ -29,6 +33,10 @@ const MAX_HISTORY_MESSAGES = 50;
 const AIAssistant = () => {
   const navigation = useNavigation();
   const { t } = useTranslation();
+  // Soft gate: page stays open — Send redirects to Paywall when trial expired.
+  const { requireFeature } = useSubscriptionGate();
+  const wardrobeItems = useWardrobeStore((s) => s.items);
+  const shopItems = useShopCatalogStore((s) => s.items);
   const scrollViewRef = useRef<ScrollView>(null);
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -156,6 +164,9 @@ const AIAssistant = () => {
 
     if (!textToSend.trim()) return;
 
+    // Post-trial: AI chat is Pro-only → redirect to Paywall, keep page open.
+    if (!requireFeature('aiStylistChat')) return;
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     const userMessage: Message = {
@@ -177,11 +188,17 @@ const AIAssistant = () => {
         content: m.text,
       }));
 
-      // Add style context
+      const clothingContext = buildAgentClothingContext({
+        owned: wardrobeItems,
+        shop: shopItems,
+        userMessage: textToSend,
+      });
       const styleContext = selectedStyleId ? getStylePromptSuffix(selectedStyleId) : '';
-      const enhancedQuery = styleContext
-        ? `${textToSend}\n\n[User's preferred style: ${styleContext}]`
-        : textToSend;
+      const enhancedQuery = [
+        textToSend,
+        styleContext ? `[User's preferred style: ${styleContext}]` : '',
+        clothingContext ? `[Clothing context]\n${clothingContext}` : '',
+      ].filter(Boolean).join('\n\n');
 
       const response = await fetch(`${baseUrl}/ai-chat`, {
         method: "POST",

@@ -1,0 +1,23 @@
+appId: host.exp.Exponent
+name: full_paywall
+tags:
+  - full
+  - expo-go
+  - paywall
+---
+# Paywall renders with live products (no purchase made — read-only).
+# Entry via the trial banner's Pro pill ("Перейти на Pro" — the older
+# "Открыть планы обновления" copy no longer exists).
+# One-way flow — the close X sits under Expo Go's floating gear in this
+# harness, so recovery is terminate+reopen (see run_rugged.sh pattern).
+# Logged IN. Ends on Paywall.
+- tapOn:
+    point: "26%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn: ".*(Перейти на Pro|Open upgrade plans|Yangilash rejalarini ochish).*"
+- waitForAnimationToEnd:
+    timeout: 12000
+- assertVisible: ".*Style more from the.*"
+- assertVisible: ".*\\$9\\.99.*"
+- takeScreenshot: full_paywall

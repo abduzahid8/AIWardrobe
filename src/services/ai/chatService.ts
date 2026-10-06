@@ -32,8 +32,9 @@ export async function sendChatMessage(
 ): Promise<ChatResponse> {
     return withRetry(async () => {
         try {
+            // Backend mounts the chat router under /api (see backend/api/index.js).
             const response = await axios.post(
-                `${API_URL}/ai-chat`,
+                `${API_URL}/api/ai-chat`,
                 {
                     query: message,
                     conversationHistory,
@@ -58,32 +59,10 @@ export async function sendChatMessage(
     });
 }
 
-export function generateLocalChatResponse(message: string): ChatResponse {
-    const lowerMessage = message.toLowerCase();
-
-    if (lowerMessage.includes('date')) {
-        return {
-            text: "For a date night, I'd recommend something that makes you feel confident! A nice blouse with tailored jeans works great. Add a statement accessory and you're set. What's the vibe - casual or fancy?",
-            suggestions: ['Casual date outfit', 'Fancy dinner look', 'Coffee date style'],
-        };
-    }
-    if (lowerMessage.includes('work') || lowerMessage.includes('interview')) {
-        return {
-            text: "For professional settings, stick to classic pieces. A well-fitted blazer, crisp shirt, and tailored pants in neutral colors always work. Would you like specific color recommendations?",
-            suggestions: ['Business casual tips', 'Interview outfit help', 'Work wardrobe basics'],
-        };
-    }
-    if (lowerMessage.includes('party') || lowerMessage.includes('event')) {
-        return {
-            text: "Time to shine! For parties, don't be afraid to go bold with colors or textures. A sequin top, statement earrings, or a fabulous dress can make you stand out. What's the dress code?",
-            suggestions: ['Cocktail party look', 'Birthday outfit', 'Club night style'],
-        };
-    }
-
-    return {
-        text: "I'm here to help with your style! Tell me about the occasion, your preferences, or ask for outfit ideas. I can suggest complete looks based on what you're doing!",
-        suggestions: ['Date night outfit', 'Work attire help', 'Weekend casual look'],
-    };
+export function generateLocalChatResponse(message: string, stylePreference?: string): ChatResponse {
+    // Single voice: stylistPersona is the source of truth (offline-safe).
+    const { personaReply } = require('./stylistPersona') as typeof import('./stylistPersona');
+    return personaReply(message, stylePreference);
 }
 
 export async function chatWithStylist(

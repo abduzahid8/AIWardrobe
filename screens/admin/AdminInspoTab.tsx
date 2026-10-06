@@ -13,7 +13,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { supabase } from '../../lib/supabase';
 import { useTranslation } from 'react-i18next';
 import { INSPO_MENS_SHOP_ITEMS } from '../../data/inspoMensShopItems';
-import type { ShopCatalogItem } from '../../features/try-on/types';
+import type { ShopCatalogItem } from '../../src/types/shop';
 import { createLogger } from '../../src/utils/logger';
 
 const logger = createLogger('AdminInspoTab');

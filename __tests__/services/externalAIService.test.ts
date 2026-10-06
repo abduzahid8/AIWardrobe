@@ -1,7 +1,7 @@
 import { ExternalAIService } from '../../src/services/externalAIService';
-import { supabase } from '../../src/lib/supabase';
+import { supabase } from '../../lib/supabase';
 
-jest.mock('../../src/lib/supabase', () => ({
+jest.mock('../../lib/supabase', () => ({
   supabase: {
     functions: {
       invoke: jest.fn(),

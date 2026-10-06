@@ -3,7 +3,7 @@
  * Minimalist Liquid Glass design with Guide + Shop tabs
  */
 
-import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef, useDeferredValue } from 'react';
 import { View, TouchableOpacity, StyleSheet, Dimensions, ScrollView, FlatList, StatusBar, TextInput, ActivityIndicator, Linking, Platform,  } from 'react-native'
 import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,7 +13,7 @@ import { useAppNavigation } from '../hooks/useAppNavigation';
 import type { TabParamList } from '../navigation/types';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import useSavedShopStore from '../store/savedShopStore';
 import { supabase } from '../lib/supabase';
 import Animated, {
     FadeInDown,
@@ -26,7 +26,7 @@ import Animated, {
 
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 import { CachedImage } from '../components/ui/CachedImage';
-import type { ShopCatalogItem } from '../features/try-on/types';
+import type { ShopCatalogItem } from '../src/types/shop';
 import { INSPO_MENS_SHOP_ITEMS, CLASSIC_MENS_ITEMS } from '../data/inspoMensShopItems';
 import { useShopCatalog } from '../hooks/useShopCatalog';
 import { useFeaturedCapsules, type FeaturedCapsule } from '../hooks/useFeaturedCapsules';
@@ -46,8 +46,8 @@ const PRODUCT_CARD_WIDTH = (SCREEN_WIDTH - spacing.screenPadding * 2 - spacing.s
 
 // ── Sub-Components ──────────────────────────────────────
 
-const FeaturedCapsuleCard = ({ item, index, t }: { item: FeaturedCapsule; index: number; t: (key: string) => string }) => (
-    <Animated.View entering={FadeInDown.delay(100 + index * 80).duration(400)}>
+const FeaturedCapsuleCard = React.memo(({ item, index, t }: { item: FeaturedCapsule; index: number; t: (key: string) => string }) => (
+    <Animated.View entering={index < 8 ? FadeInDown.delay(100 + index * 80).duration(400) : undefined}>
         <TouchableOpacity
             style={styles.capsuleCard}
             activeOpacity={0.9}
@@ -69,7 +69,8 @@ const FeaturedCapsuleCard = ({ item, index, t }: { item: FeaturedCapsule; index:
             </LinearGradient>
         </TouchableOpacity>
     </Animated.View>
-);
+), (prev, next) => prev.item.id === next.item.id && prev.item.imageUrl === next.item.imageUrl && prev.index === next.index);
+FeaturedCapsuleCard.displayName = 'FeaturedCapsuleCard';
 
 const trackBrandClick = async (item: ShopCatalogItem) => {
     try {
@@ -106,11 +107,9 @@ const handleBuyPress = async (item: ShopCatalogItem) => {
     }
 };
 
-// A flat, typographic tile: full-bleed photo, no chrome, price set as a
-// graphic element rather than a labeled control. The spotlight variant is
-// the same component at a different scale — the size shift alone marks it
-// as featured, no ribbon or caption needed to say so.
-const ProductCard = ({
+// Memoized — previously every saveInspoSet change re-rendered ALL cards
+// and re-ran the FadeInDown stagger per row (full grid reconcile on each heart tap).
+const ProductCard = React.memo(({
     item,
     isSaved,
     onSave,
@@ -122,18 +121,36 @@ const ProductCard = ({
 }: {
     item: ShopCatalogItem;
     isSaved: boolean;
-    onSave: () => void;
+    onSave: (item: ShopCatalogItem) => void;
     index: number;
     t: (key: string) => string;
     spotlight?: boolean;
     plate?: number;
     highlighted?: boolean;
-}) => (
+}) => {
+    const handleSave = React.useCallback(() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        onSave(item);
+    }, [onSave, item]);
+    const handleCardPress = React.useCallback(() => {
+        handleBuyPress(item);
+    }, [item]);
+    // Only animate the first screenful — later pages previously waited up to
+    // 600ms invisible (delay cap) making "Load more" look frozen.
+    const entering = index < 8 ? FadeInDown.delay(Math.min(150 + (index % 12) * 40, 600)).duration(320) : undefined;
+    return (
     // Cap the stagger so later pages (index 100+) don't wait many seconds
     // before their entering animation starts — otherwise pressing Load more
     // appears to do nothing because new cards are invisible until the delay elapses.
-    <Animated.View entering={FadeInDown.delay(Math.min(150 + (index % 12) * 40, 600)).duration(320)}>
-        <View style={[styles.productCard, spotlight && styles.productCardSpotlight]}>
+    <Animated.View entering={entering}>
+        <TouchableOpacity
+            style={[styles.productCard, spotlight && styles.productCardSpotlight]}
+            onPress={handleCardPress}
+            activeOpacity={0.9}
+            accessibilityRole="button"
+            accessibilityLabel={`${item.brand} ${item.name} $${item.price.toFixed(0)}`}
+            accessibilityHint={t('inspo.buyNow')}
+        >
             <View
                 style={[
                     styles.productImageBox,
@@ -159,10 +176,7 @@ const ProductCard = ({
 
                 <TouchableOpacity
                     style={styles.saveButton}
-                    onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        onSave();
-                    }}
+                    onPress={handleSave}
                     accessibilityLabel={isSaved ? t('inspo.removeFromSaved') : t('inspo.saveItem')}
                     accessibilityHint={isSaved ? t('inspo.unsavedToast') : t('inspo.savedToast')}
                     accessibilityRole="button"
@@ -183,26 +197,76 @@ const ProductCard = ({
                 <ScaledText style={[styles.captionBrand, spotlight && styles.captionBrandLarge]} numberOfLines={1}>
                     {item.brand}
                 </ScaledText>
-                <View style={styles.captionRow}>
-                    <ScaledText style={[styles.captionPrice, spotlight && styles.captionPriceLarge]}>
-                        ${item.price.toFixed(0)}
-                    </ScaledText>
-                    <TouchableOpacity
-                        style={[styles.captionBuy, spotlight && styles.captionBuyLarge]}
-                        onPress={() => handleBuyPress(item)}
-                        activeOpacity={0.6}
-                        accessibilityLabel={t('inspo.buyNow')}
-                        accessibilityHint={`${item.brand} ${item.name}`}
-                        accessibilityRole="button"
-                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                    >
-                        <Ionicons name="arrow-forward" size={spotlight ? 16 : 13} color="#0A1931" />
-                    </TouchableOpacity>
-                </View>
+                <ScaledText style={[styles.captionPrice, spotlight && styles.captionPriceLarge]}>
+                    ${item.price.toFixed(0)}
+                </ScaledText>
             </View>
-        </View>
+        </TouchableOpacity>
     </Animated.View>
+    );
+}, (prev, next) =>
+    prev.item.id === next.item.id &&
+    prev.isSaved === next.isSaved &&
+    prev.highlighted === next.highlighted &&
+    prev.spotlight === next.spotlight &&
+    prev.plate === next.plate &&
+    prev.index === next.index &&
+    prev.onSave === next.onSave,
 );
+ProductCard.displayName = 'ProductCard';
+
+// Memoized pair-row wrapper — previously renderShopRow built a fresh
+// `<View style={styles.shopRow}>` tree on every data change, so a single
+// heart toggle re-rendered ALL rows' wrappers (plus re-ran every card's
+// entering animation check). With this memo, only rows whose card props
+// actually changed re-render.
+const ShopPairRow = React.memo(({
+    left,
+    right,
+    leftIndex,
+    t,
+    isLeftSaved,
+    isRightSaved,
+    onSave,
+    focusedShopItemId,
+}: {
+    left: ShopCatalogItem;
+    right: ShopCatalogItem | null;
+    leftIndex: number;
+    t: (key: string) => string;
+    isLeftSaved: boolean;
+    isRightSaved: boolean;
+    onSave: (item: ShopCatalogItem) => void;
+    focusedShopItemId: string | null;
+}) => (
+    <View style={styles.shopRow}>
+        <View style={styles.productCardWrap}>
+            <ProductCard
+                item={left}
+                isSaved={isLeftSaved}
+                onSave={onSave}
+                index={leftIndex}
+                t={t}
+                highlighted={focusedShopItemId === String(left.id)}
+            />
+        </View>
+        {right ? (
+            <View style={styles.productCardWrap}>
+                <ProductCard
+                    item={right}
+                    isSaved={isRightSaved}
+                    onSave={onSave}
+                    index={leftIndex + 1}
+                    t={t}
+                    highlighted={focusedShopItemId === String(right.id)}
+                />
+            </View>
+        ) : (
+            <View style={styles.productCardWrap} />
+        )}
+    </View>
+));
+ShopPairRow.displayName = 'ShopPairRow';
 
 // A loading placeholder shaped like the real product tile (price tag +
 // brand strip silhouettes) so the grid doesn't jump when real cards land.
@@ -309,6 +373,14 @@ const InspoScreen = () => {
         let mounted = true;
         const fetchHero = async () => {
             try {
+                // Prefer the idle-prewarmed row so first visit doesn't pay a
+                // cold query mid-tab-switch (see tabPrewarmService).
+                const { getPrewarmedGuideHero } = await import('../src/services/tabPrewarmService');
+                const prewarmed = getPrewarmedGuideHero();
+                if (mounted && prewarmed) {
+                    setGuideHero(prewarmed);
+                    return;
+                }
                 const { data } = await supabase.from('guide_page').select('*').eq('is_active', true).single();
                 if (mounted && data) setGuideHero(data);
             } catch (_) {
@@ -366,7 +438,8 @@ const InspoScreen = () => {
         return results;
     }, [guideHero, featuredCapsules, guideOutfits]);
 
-    const [savedInspo, setSavedInspo] = useState<ShopCatalogItem[]>([]);
+    const savedInspo = useSavedShopStore((s) => s.items);
+    const hydrateSavedShop = useSavedShopStore((s) => s.hydrate);
     const [segment, setSegment] = useState<SegmentType>('guide');
     const [searchQuery, setSearchQuery] = useState('');
     const [showSavedOnly, setShowSavedOnly] = useState(false);
@@ -429,13 +502,8 @@ const InspoScreen = () => {
 
     useFocusEffect(
         useCallback(() => {
-            let mounted = true;
-            const load = async () => {
-                try {
-                    const raw = await AsyncStorage.getItem('savedInspo');
-                    if (raw && mounted) setSavedInspo(JSON.parse(raw));
-                } catch (_) { }
-            };
+            // Shared shop saves (also shown in Profile → Saved Looks).
+            hydrateSavedShop();
 
             const now = Date.now();
             if (now - lastFetchRef.current > INSPO_REFRESH_TTL_MS) {
@@ -443,33 +511,32 @@ const InspoScreen = () => {
                 refreshFeaturedCapsules();
                 refreshShopCatalog();
             }
-
-            load();
-            return () => { mounted = false; };
-        }, [refreshFeaturedCapsules, refreshShopCatalog])
+        }, [refreshFeaturedCapsules, refreshShopCatalog, hydrateSavedShop])
     );
 
     const saveInspo = useCallback(async (item: ShopCatalogItem) => {
-        const alreadySaved = savedInspo.some((s) => s.id === item.id);
-        const next = alreadySaved
-            ? savedInspo.filter((s) => s.id !== item.id)
-            : [...savedInspo, item];
-        setSavedInspo(next);
-        try {
-            await AsyncStorage.setItem('savedInspo', JSON.stringify(next));
-        } catch (_) { }
+        // toggleSave persists + syncs Profile saved outfits via the shared store.
+        const wasSaved = useSavedShopStore.getState().items.some((s) => String(s.id) === String(item.id));
+        const nowSaved = await useSavedShopStore.getState().toggleSave(item);
         Haptics.notificationAsync(
-            alreadySaved
+            wasSaved
                 ? Haptics.NotificationFeedbackType.Warning
                 : Haptics.NotificationFeedbackType.Success,
         ).catch(() => {});
-        flashSaveToast(t(alreadySaved ? 'inspo.unsavedToast' : 'inspo.savedToast'));
-        if (!alreadySaved) setShowSavedOnly(false);
-    }, [savedInspo, flashSaveToast, t]);
+        flashSaveToast(t(wasSaved ? 'inspo.unsavedToast' : 'inspo.savedToast'));
+        if (nowSaved) setShowSavedOnly(false);
+    }, [flashSaveToast, t]);
 
     const isShopEmpty = syncedShopItems.length === 0;
     const isInitialShopLoad = isShopEmpty && shopCatalogLoading;
     const showingFallbackCatalog = isShopEmpty && !shopCatalogLoading;
+
+    // Deferred so typing stays responsive: the TextInput keeps the immediate
+    // value while the 100+ item filter + full grid rebuild runs at a lower
+    // priority. Previously every keystroke synchronously rebuilt shopItems →
+    // shopRows → the whole VirtualizedList, blocking the JS thread (~2s with
+    // images/animations in flight) and dropping keystrokes.
+    const deferredSearchQuery = useDeferredValue(searchQuery);
 
     const shopItems = useMemo(() => {
         const baseItems = showingFallbackCatalog ? INSPO_MENS_SHOP_ITEMS : syncedShopItems;
@@ -481,11 +548,11 @@ const InspoScreen = () => {
         let sourceItems = [...baseItems, ...classicsToAppend];
 
         if (showSavedOnly) {
-            const savedIds = new Set(savedInspo.map((s) => s.id));
-            sourceItems = sourceItems.filter((item) => savedIds.has(item.id));
+            const savedIds = new Set(savedInspo.map((s) => String(s.id)));
+            sourceItems = sourceItems.filter((item) => savedIds.has(String(item.id)));
         }
 
-        const query = searchQuery.trim().toLowerCase();
+        const query = deferredSearchQuery.trim().toLowerCase();
         if (!query) {
             // Deep-linked piece from an outfit: lift it to the top so the
             // user lands exactly on what they tapped.
@@ -502,11 +569,11 @@ const InspoScreen = () => {
             const haystack = `${item.brand} ${item.name} ${item.description ?? ''}`.toLowerCase();
             return haystack.includes(query);
         });
-    }, [searchQuery, showingFallbackCatalog, syncedShopItems, showSavedOnly, savedInspo, focusedShopItemId]);
+    }, [deferredSearchQuery, showingFallbackCatalog, syncedShopItems, showSavedOnly, savedInspo, focusedShopItemId]);
 
     // ── FlatList helpers for the shop grid ────────────────────────────────────
     const savedInspoSet = useMemo(
-        () => new Set(savedInspo.map((s) => s.id)),
+        () => new Set(savedInspo.map((s) => String(s.id))),
         [savedInspo],
     );
 
@@ -514,21 +581,24 @@ const InspoScreen = () => {
     // block as a full-width spotlight before the next pair of small cards,
     // so the shop reads like a curated editorial spread instead of a flat
     // uniform tile wall.
+    // startIndex = the card's global position in shopItems — ProductCard only
+    // animates `index < 8`, so this must be the real position, not a hardcoded
+    // 0/1 (which previously made EVERY card animate on every data change).
     type ShopRow =
-        | { type: 'spotlight'; item: ShopCatalogItem; plate: number }
-        | { type: 'pair'; items: [ShopCatalogItem, ShopCatalogItem | null] };
+        | { type: 'spotlight'; item: ShopCatalogItem; plate: number; startIndex: number }
+        | { type: 'pair'; items: [ShopCatalogItem, ShopCatalogItem | null]; startIndex: number };
 
     const shopRows = useMemo<ShopRow[]>(() => {
         const rows: ShopRow[] = [];
         let i = 0;
         let plate = 1;
         while (i < shopItems.length) {
-            rows.push({ type: 'spotlight', item: shopItems[i], plate: plate++ });
+            rows.push({ type: 'spotlight', item: shopItems[i], plate: plate++, startIndex: i });
             i += 1;
             for (let pairCount = 0; pairCount < 2 && i < shopItems.length; pairCount++) {
                 const left = shopItems[i];
                 const right = shopItems[i + 1] ?? null;
-                rows.push({ type: 'pair', items: [left, right] });
+                rows.push({ type: 'pair', items: [left, right], startIndex: i });
                 i += right ? 2 : 1;
             }
         }
@@ -541,45 +611,29 @@ const InspoScreen = () => {
                 return (
                     <ProductCard
                         item={row.item}
-                        isSaved={savedInspoSet.has(row.item.id)}
-                        onSave={() => saveInspo(row.item)}
-                        index={0}
+                        isSaved={savedInspoSet.has(String(row.item.id))}
+                        onSave={saveInspo}
+                        index={row.startIndex}
                         t={t}
                         spotlight
                         plate={row.plate}
-                        highlighted={focusedShopItemId === row.item.id}
+                        highlighted={focusedShopItemId === String(row.item.id) || focusedShopItemId === (row.item.id as unknown as string)}
                     />
                 );
             }
 
             const [left, right] = row.items;
             return (
-                <View style={styles.shopRow}>
-                    <View style={styles.productCardWrap}>
-                        <ProductCard
-                            item={left}
-                            isSaved={savedInspoSet.has(left.id)}
-                            onSave={() => saveInspo(left)}
-                            index={0}
-                            t={t}
-                            highlighted={focusedShopItemId === left.id}
-                        />
-                    </View>
-                    {right ? (
-                        <View style={styles.productCardWrap}>
-                            <ProductCard
-                                item={right}
-                                isSaved={savedInspoSet.has(right.id)}
-                                onSave={() => saveInspo(right)}
-                                index={1}
-                                t={t}
-                                highlighted={focusedShopItemId === right.id}
-                            />
-                        </View>
-                    ) : (
-                        <View style={styles.productCardWrap} />
-                    )}
-                </View>
+                <ShopPairRow
+                    left={left}
+                    right={right}
+                    leftIndex={row.startIndex}
+                    t={t}
+                    isLeftSaved={savedInspoSet.has(String(left.id))}
+                    isRightSaved={right ? savedInspoSet.has(String(right.id)) : false}
+                    onSave={saveInspo}
+                    focusedShopItemId={focusedShopItemId}
+                />
             );
         },
         [savedInspoSet, saveInspo, t, focusedShopItemId],
@@ -726,6 +780,15 @@ const InspoScreen = () => {
         </>
     ), [searchQuery, setSearchQuery, shopCatalogError, showingFallbackCatalog, refreshShopCatalog, navigation, featuredCapsulesLoading, featuredCapsules, shopItems.length, showSavedOnly, savedInspo.length, t, colors.text.primary, colors.text.tertiary]);
 
+    // Memoized elements — passing `renderShopHeader()` / `shopListFooter()`
+    // inline creates a brand-new header/footer tree on EVERY parent render
+    // (heart toggle, toast, focus refresh), forcing VirtualizedList to
+    // reconcile its entire content (header + all visible rows + images) in
+    // one JS-thread block (~2s, the "large list slow to update" warning).
+    // These keep identity unless the underlying callback changes.
+    const shopHeaderElement = useMemo(() => renderShopHeader(), [renderShopHeader]);
+    const shopFooterElement = useMemo(() => shopListFooter(), [shopListFooter]);
+
     // Goal of the Guide tab: see a look, shop it — immediately, not by
     // dropping the user into the unrelated full catalog. A capsule/hero with
     // an admin-set link goes straight there; an outfit that's a real shop
@@ -852,7 +915,7 @@ const InspoScreen = () => {
             <SafeAreaView style={styles.safeArea} edges={['top']}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <View style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]} pointerEvents="none">
+                    <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]} pointerEvents="none">
                         <ScaledText style={styles.headerTitle} accessibilityRole="header">{t('inspo.title')}</ScaledText>
                     </View>
                 </View>
@@ -914,7 +977,7 @@ const InspoScreen = () => {
                     <>
                         {isInitialShopLoad ? (
                             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                                {renderShopHeader()}
+                                {shopHeaderElement}
                                 <View style={styles.loadingRow}>
                                     {[0, 1, 2, 3].map((idx) => (
                                         <View key={`shop-skeleton-${idx}`} style={styles.productCardWrap}>
@@ -925,7 +988,7 @@ const InspoScreen = () => {
                             </ScrollView>
                         ) : shopItems.length === 0 ? (
                             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                                {renderShopHeader()}
+                                {shopHeaderElement}
                                 <View style={styles.emptyState}>
                                     <ScaledText style={styles.emptyStateText}>
                                         {showSavedOnly ? t('inspo.savedEmpty') : t('inspo.noMenswearMatches')}
@@ -942,14 +1005,16 @@ const InspoScreen = () => {
                                 data={shopRows}
                                 keyExtractor={shopListKeyExtractor}
                                 renderItem={renderShopRow}
-                                ListHeaderComponent={renderShopHeader()}
-                                ListFooterComponent={shopListFooter()}
+                                ListHeaderComponent={shopHeaderElement}
+                                ListFooterComponent={shopFooterElement}
                                 contentContainerStyle={[styles.scrollContent, styles.productsGrid]}
                                 showsVerticalScrollIndicator={false}
+                                keyboardShouldPersistTaps="handled"
                                 initialNumToRender={4}
                                 maxToRenderPerBatch={4}
                                 windowSize={5}
-                                removeClippedSubviews={false}
+                                updateCellsBatchingPeriod={50}
+                                removeClippedSubviews={Platform.OS === 'android'}
                             />
                         )}
                     </>
@@ -1491,11 +1556,6 @@ const styles = StyleSheet.create({
         letterSpacing: 1.3,
         marginBottom: 8,
     },
-    captionRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
     captionPrice: {
         fontSize: 15,
         fontWeight: '700',
@@ -1507,21 +1567,6 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
         letterSpacing: -0.5,
-    },
-    captionBuy: {
-        width: 26,
-        height: 26,
-        borderRadius: 13,
-        borderWidth: 1,
-        borderColor: 'rgba(10,25,49,0.16)',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    captionBuyLarge: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        borderColor: '#0A1931',
     },
     emptyState: {
         paddingHorizontal: spacing.screenPadding,

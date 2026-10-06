@@ -61,32 +61,11 @@ async function withRetry<T>(
 // LOCAL FALLBACKS
 // ============================================
 
-function generateLocalChatResponse(message: string): ChatResponse {
-    const lower = message.toLowerCase();
-
-    if (lower.includes('date')) {
-        return {
-            text: "For a date night, I'd recommend something that makes you feel confident! A nice blouse with tailored jeans works great. Add a statement accessory and you're set. What's the vibe - casual or fancy?",
-            suggestions: ['Casual date outfit', 'Fancy dinner look', 'Coffee date style'],
-        };
-    }
-    if (lower.includes('work') || lower.includes('interview')) {
-        return {
-            text: 'For professional settings, stick to classic pieces. A well-fitted blazer, crisp shirt, and tailored pants in neutral colors always work. Would you like specific color recommendations?',
-            suggestions: ['Business casual tips', 'Interview outfit help', 'Work wardrobe basics'],
-        };
-    }
-    if (lower.includes('party') || lower.includes('event')) {
-        return {
-            text: "Time to shine! For parties, don't be afraid to go bold with colors or textures. A sequin top, statement earrings, or a fabulous dress can make you stand out. What's the dress code?",
-            suggestions: ['Cocktail party look', 'Birthday outfit', 'Club night style'],
-        };
-    }
-
-    return {
-        text: "I'm here to help with your style! Tell me about the occasion, your preferences, or ask for outfit ideas. I can suggest complete looks based on what you're doing!",
-        suggestions: ['Date night outfit', 'Work attire help', 'Weekend casual look'],
-    };
+function generateLocalChatResponse(message: string, style?: string): ChatResponse {
+    // Single voice: stylistPersona is the source of truth (offline-safe).
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { personaReply } = require('./ai/stylistPersona') as typeof import('./ai/stylistPersona');
+    return personaReply(message, style);
 }
 
 // ============================================
@@ -132,7 +111,7 @@ class LLMService {
                 }
                 throw new Error('No response from AI');
             } catch {
-                return generateLocalChatResponse(message);
+                return generateLocalChatResponse(message, stylePreference);
             }
         });
     }

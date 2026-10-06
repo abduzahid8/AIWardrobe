@@ -1,0 +1,23 @@
+appId: host.exp.Exponent
+name: full_trips
+tags:
+  - full
+  - expo-go
+  - profile
+---
+# Profile Trips segment: switch Looks→Trips, assert the trips section
+# renders, switch back. Read-only. Logged IN. Ends on Profile/Looks.
+- tapOn:
+    point: "74%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(Аккаунт|Account).*"
+- tapOn: ".*Trips.*"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(ПОЕЗДКИ|Trips).*"
+- tapOn: ".*Looks.*"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(Аккаунт|Account).*"
+- takeScreenshot: full_trips

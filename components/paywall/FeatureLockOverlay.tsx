@@ -30,6 +30,12 @@ interface FeatureLockOverlayProps {
     icon?: keyof typeof Ionicons.glyphMap;
     /** Whether to show a safe-area top inset (default true). */
     withSafeArea?: boolean;
+    /**
+     * Optional dismiss handler (e.g. navigation.goBack).
+     * When provided, a close button is rendered so the lock never traps
+     * the user — expired-trial users keep full access to the rest of the app.
+     */
+    onClose?: () => void;
 }
 
 const FeatureLockOverlay: React.FC<FeatureLockOverlayProps> = ({
@@ -39,6 +45,7 @@ const FeatureLockOverlay: React.FC<FeatureLockOverlayProps> = ({
     bullets,
     icon = 'sparkles',
     withSafeArea = true,
+    onClose,
 }) => {
     const navigation = useNavigation<any>();
     const { t } = useTranslation();
@@ -46,6 +53,15 @@ const FeatureLockOverlay: React.FC<FeatureLockOverlayProps> = ({
     const handleUpgrade = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         navigation.navigate('Paywall');
+    };
+
+    const handleClose = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        if (onClose) {
+            onClose();
+        } else if (navigation.canGoBack?.()) {
+            navigation.goBack();
+        }
     };
 
     const accent = '#8B5CF6';
@@ -57,6 +73,16 @@ const FeatureLockOverlay: React.FC<FeatureLockOverlayProps> = ({
                 colors={['#0A0A0A', '#1A1A2E', '#16213E']}
                 style={StyleSheet.absoluteFill}
             />
+
+            <TouchableOpacity
+                onPress={handleClose}
+                activeOpacity={0.7}
+                style={styles.closeButton}
+                accessibilityLabel="Close"
+                accessibilityRole="button"
+            >
+                <Ionicons name="close" size={22} color="rgba(255,255,255,0.8)" />
+            </TouchableOpacity>
 
             <View style={styles.inner}>
                 <View style={[styles.iconCircle, { backgroundColor: `${accent}22`, borderColor: `${accent}55` }]}>
@@ -120,6 +146,20 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#050816',
+    },
+    closeButton: {
+        position: 'absolute',
+        top: 12,
+        right: 16,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.15)',
+        zIndex: 10,
     },
     inner: {
         flex: 1,

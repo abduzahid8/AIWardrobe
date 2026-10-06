@@ -89,9 +89,25 @@ describe('subscriptionStore (Free / Pro matrix)', () => {
       expect(useSubscriptionStore.getState().checkFeatureAccess('tryOns')).toBe(false);
     });
 
-    it('free tier: AI outfits are available (daily limited)', () => {
+    it('free tier (trial expired): AI outfits are locked (create outfit blocked)', () => {
       const useSubscriptionStore = getStore();
-      expect(useSubscriptionStore.getState().checkFeatureAccess('aiOutfits')).toBe(true);
+      expect(useSubscriptionStore.getState().checkFeatureAccess('aiOutfits')).toBe(false);
+    });
+
+    it('free tier (trial expired): AI stylist chat is locked', () => {
+      const useSubscriptionStore = getStore();
+      expect(useSubscriptionStore.getState().checkFeatureAccess('aiStylistChat')).toBe(false);
+    });
+
+    it('free tier (trial expired): calendar is locked', () => {
+      const useSubscriptionStore = getStore();
+      expect(useSubscriptionStore.getState().checkFeatureAccess('fullCalendar')).toBe(false);
+    });
+
+    it('free tier (trial expired): home swipes available (3/day)', () => {
+      const useSubscriptionStore = getStore();
+      expect(useSubscriptionStore.getState().checkFeatureAccess('homeSwipes')).toBe(true);
+      expect(useSubscriptionStore.getState().getTriesRemaining('homeSwipes', 1)).toBe(2);
     });
 
     it('Pro (premium): all features are unlocked', async () => {
@@ -100,15 +116,20 @@ describe('subscriptionStore (Free / Pro matrix)', () => {
       expect(useSubscriptionStore.getState().checkFeatureAccess('analytics')).toBe(true);
       expect(useSubscriptionStore.getState().checkFeatureAccess('tripPlanner')).toBe(true);
       expect(useSubscriptionStore.getState().checkFeatureAccess('tryOns')).toBe(true);
+      expect(useSubscriptionStore.getState().checkFeatureAccess('aiOutfits')).toBe(true);
+      expect(useSubscriptionStore.getState().checkFeatureAccess('aiStylistChat')).toBe(true);
+      expect(useSubscriptionStore.getState().checkFeatureAccess('fullCalendar')).toBe(true);
+      expect(useSubscriptionStore.getState().checkFeatureAccess('homeSwipes')).toBe(true);
       expect(useSubscriptionStore.getState().checkFeatureAccess('earlyAccess')).toBe(true);
       expect(useSubscriptionStore.getState().checkFeatureAccess('prioritySupport')).toBe(true);
     });
   });
 
   describe('getTriesRemaining (lifetime shim — daily tracking lives in dailyUsageStore)', () => {
-    it('free tier AI outfits: 10 - used', () => {
+    it('free tier AI outfits: 0 (locked after trial)', () => {
       const useSubscriptionStore = getStore();
-      expect(useSubscriptionStore.getState().getTriesRemaining('aiOutfits', 3)).toBe(7);
+      expect(useSubscriptionStore.getState().getTriesRemaining('aiOutfits', 0)).toBe(0);
+      expect(useSubscriptionStore.getState().getTriesRemaining('aiOutfits', 3)).toBe(0);
     });
 
     it('free tier wardrobe items: 20 - used', () => {

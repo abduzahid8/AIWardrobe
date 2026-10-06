@@ -104,12 +104,20 @@ const useDailyUsageStore = create<DailyUsageState>((set, get) => ({
     const limit = typeof rawLimit === 'number' ? rawLimit : rawLimit ? -1 : 0;
 
     // Try the server RPC first — it is atomic and tamper-proof.
+    // Bound it with a timeout: on slow networks (15s+ Supabase stalls)
+    // awaiting the RPC hangs the Generate button with zero feedback.
+    // On timeout we fall through to the local cache immediately.
+    const RPC_TIMEOUT_MS = 6000;
     try {
-      const { data, error } = await supabase.rpc('check_and_increment_usage', {
+      const rpcPromise = supabase.rpc('check_and_increment_usage', {
         p_feature: feature,
         p_limit: limit,
         p_amount: amount,
       });
+      const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
+        setTimeout(() => resolve({ data: null, error: new Error('usage RPC timed out') }), RPC_TIMEOUT_MS)
+      );
+      const { data, error } = await Promise.race([rpcPromise, timeoutPromise]);
 
       if (!error && Array.isArray(data) && data.length > 0) {
         const row = data[0] as { allowed: boolean; used: number; remaining: number };

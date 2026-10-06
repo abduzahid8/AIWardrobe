@@ -210,7 +210,7 @@ class CrashReportingService {
         }
         if (__DEV__) {
             // eslint-disable-next-line no-console -- avoid circular dep via logger
-            console.log(`[CrashReporting:${level}]`, message);
+            if (__DEV__) console.log(`[CrashReporting:${level}]`, message);
         }
     }
 

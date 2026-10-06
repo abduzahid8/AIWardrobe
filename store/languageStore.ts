@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import i18n from '../i18n';
+import i18n, { ensureLocaleBundle } from '../i18n';
 import { createLogger } from '../src/utils/logger';
 
 const log = createLogger('LanguageStore');
@@ -61,6 +61,11 @@ const useLanguageStore = create<LanguageStore>((set, get) => ({
             // Save to AsyncStorage
             await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, language);
 
+            // Locales other than en load lazily — make sure the bundle is
+            // registered before switching (covers a switch racing the idle
+            // preload timer after cold start).
+            ensureLocaleBundle(language);
+
             // Update i18n
             await i18n.changeLanguage(language);
 
@@ -88,6 +93,7 @@ const useLanguageStore = create<LanguageStore>((set, get) => ({
                 const savedLanguage = await AsyncStorage.getItem(LANGUAGE_STORAGE_KEY);
 
                 if (savedLanguage && SUPPORTED_LANGUAGES.includes(savedLanguage as Language)) {
+                    ensureLocaleBundle(savedLanguage);
                     await i18n.changeLanguage(savedLanguage as Language);
                     set({ currentLanguage: savedLanguage as Language, isLoading: false, hasSelectedLanguage: true, isInitialized: true });
                     log.info('Language restored from storage', { language: savedLanguage });
@@ -103,6 +109,7 @@ const useLanguageStore = create<LanguageStore>((set, get) => ({
                         deviceLanguage.startsWith(lang)
                     ) || 'en';
 
+                    ensureLocaleBundle(supportedLang);
                     await i18n.changeLanguage(supportedLang);
                     set({ currentLanguage: supportedLang, isLoading: false, hasSelectedLanguage: false, isInitialized: true });
                     log.info('Language initialized (no saved choice — awaiting first-run selection)', { language: supportedLang });

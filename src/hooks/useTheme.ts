@@ -27,12 +27,12 @@ export interface Theme {
 
 export const useTheme = (): Theme => {
     const [colorScheme, setColorScheme] = useState<ColorSchemeName>(
-        Appearance.getColorScheme()
+        Appearance.getColorScheme() ?? 'light',
     );
 
     useEffect(() => {
         const subscription = Appearance.addChangeListener(({ colorScheme }) => {
-            setColorScheme(colorScheme);
+            setColorScheme(colorScheme ?? 'light');
         });
 
         return () => subscription.remove();

@@ -46,6 +46,55 @@ describe('styleInference', () => {
   });
 
   describe('scoreItemForStyle', () => {
+    it('scores loafers far above driving moccasins for old_money', () => {
+      const loafer = scoreItemForStyle(
+        { name: 'Leather loafers with penny strap', description: 'calf leather penny loafers', macroCategory: 'shoes' },
+        'old_money',
+      );
+      const driver = scoreItemForStyle(
+        { name: 'Soft leather driving moccasin', description: 'unstructured tie moccasin', macroCategory: 'shoes' },
+        'old_money',
+      );
+      expect(loafer).toBeGreaterThan(0.5);
+      expect(driver).toBeLessThan(0.25);
+      // Rank filter sorts the driver after the loafer (below-minKeep pools
+      // keep everything sorted rather than dropping).
+      const ranked = rankItemsForStyle(
+        [
+          { name: 'Soft leather driving moccasin', description: 'unstructured tie moccasin', macroCategory: 'shoes' },
+          { name: 'Leather loafers with penny strap', description: 'calf leather penny loafers', macroCategory: 'shoes' },
+        ],
+        'old_money',
+        { perCategoryFloor: 0 },
+      );
+      expect(ranked[0].name).toBe('Leather loafers with penny strap');
+      expect(ranked[ranked.length - 1].name).toBe('Soft leather driving moccasin');
+    });
+
+    it('demotes souvenir jackets and floral prints for classic styles', () => {
+      for (const style of ['old_money', 'business_casual', 'classic'] as const) {
+        const jacket = scoreItemForStyle(
+          { name: 'Mustard souvenir jacket with floral prints', description: 'embroidered souvenir jacket' },
+          style,
+        );
+        const shirt = scoreItemForStyle(
+          { name: 'White oxford shirt', description: 'cotton oxford shirt' },
+          style,
+        );
+        expect(jacket).toBeLessThan(shirt);
+        const ranked = rankItemsForStyle(
+          [
+            { name: 'Mustard souvenir jacket with floral prints', description: 'embroidered souvenir jacket', macroCategory: 'outerwear' },
+            { name: 'Navy blazer', description: 'wool blazer', macroCategory: 'outerwear' },
+          ],
+          style,
+          { perCategoryFloor: 0 },
+        );
+        expect(ranked[0].name).toBe('Navy blazer');
+        expect(ranked[ranked.length - 1].name).toBe('Mustard souvenir jacket with floral prints');
+      }
+    });
+
     it('scores a cashmere cardigan higher than a hoodie for old_money', () => {
       const cardigan = scoreItemForStyle(
         { name: 'Cashmere Cardigan', description: 'merino wool cardigan' },

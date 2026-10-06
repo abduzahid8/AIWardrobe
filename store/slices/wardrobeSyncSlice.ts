@@ -32,6 +32,21 @@ const REHYDRATE_TTL_MS = 60_000;
 
 let _realtimeChannel: RealtimeChannel | null = null;
 let activeRehydratePromise: Promise<void> | null = null;
+// Tracks which user the last successful rehydrate belonged to. The TTL guard
+// below must be user-scoped: after delete -> create, the new (empty) account
+// must never skip its initial fetch because the previous user synced recently.
+let _lastRehydrateUserId: string | null = null;
+
+/**
+ * Invalidate any in-flight rehydrate and forget which user last synced.
+ * Called on logout / account deletion / new-session reset so a stale
+ * `activeRehydratePromise` from user A can never block — or resolve into —
+ * user B's store, and the TTL guard never skips user B's first fetch.
+ */
+export function invalidateRehydrateState(): void {
+    activeRehydratePromise = null;
+    _lastRehydrateUserId = null;
+}
 
 export const createSyncSlice: StateCreator<WardrobeState, [], [], SyncSlice> = (set, get, store) => ({
     isSyncing: false,
@@ -77,6 +92,10 @@ export const createSyncSlice: StateCreator<WardrobeState, [], [], SyncSlice> = (
 
     rehydrateFromCloud: async (force = false) => {
         const rehydrateStart = Date.now();
+        // Capture the user this fetch belongs to. If the account changes
+        // mid-flight (delete -> create without restart), the result must be
+        // discarded instead of writing user A's items into user B's store.
+        const startUserId = useAuthStore.getState().user?.id ?? null;
 
         // Wait for Zustand storage hydration to finish if it hasn't already
         const persistStore = store as any;
@@ -88,20 +107,24 @@ export const createSyncSlice: StateCreator<WardrobeState, [], [], SyncSlice> = (
                     resolve();
                 });
             });
-            console.log(`[PERF] 🟡 wardrobe hydration wait: ${Date.now() - hydrationStart}ms`);
+            if (__DEV__) console.log(`[PERF] 🟡 wardrobe hydration wait: ${Date.now() - hydrationStart}ms`);
         }
 
         // TTL guard: skip network round-trip when items are already loaded
         // and the last sync was recent. Upload/delete operations pass force=true
         // to bypass this and immediately reflect the mutation.
+        // User-scoped: a different user must always fetch, even if the
+        // previous user synced seconds ago (delete -> create freeze fix).
         const { items: currentItems, lastSyncedAt } = get();
+        const isSameUserAsLastSync = startUserId !== null && startUserId === _lastRehydrateUserId;
         if (
             !force &&
+            isSameUserAsLastSync &&
             currentItems.length > 0 &&
             lastSyncedAt &&
             Date.now() - new Date(lastSyncedAt).getTime() < REHYDRATE_TTL_MS
         ) {
-            console.log(`[PERF] 🟢 wardrobe rehydrate skipped (TTL ${Math.round((Date.now() - new Date(lastSyncedAt).getTime()) / 1000)}s ago)`);
+            if (__DEV__) console.log(`[PERF] 🟢 wardrobe rehydrate skipped (TTL ${Math.round((Date.now() - new Date(lastSyncedAt).getTime()) / 1000)}s ago)`);
             return;
         }
 
@@ -116,7 +139,7 @@ export const createSyncSlice: StateCreator<WardrobeState, [], [], SyncSlice> = (
                 if (pendingActions.length > 0) {
                     const syncStart = Date.now();
                     await get().syncToServer();
-                    console.log(`[PERF] 🟡 wardrobe syncToServer: ${Date.now() - syncStart}ms`);
+                    if (__DEV__) console.log(`[PERF] 🟡 wardrobe syncToServer: ${Date.now() - syncStart}ms`);
                 }
 
                 // Skip the wear-log fetch when the local store already has persisted
@@ -126,11 +149,31 @@ export const createSyncSlice: StateCreator<WardrobeState, [], [], SyncSlice> = (
                 const hasLocalWearLogs = localWearLogs.length > 0;
 
                 const fetchStart = Date.now();
-                const [apiItems, apiLogs] = await Promise.all([
+                // Bound the custom-backend call: on Render cold start it can hang
+                // for seconds before the catch-path falls back to Supabase
+                // directly (the 2263ms rehydrate in startup logs). 8s is plenty
+                // for a healthy backend; slower means fall back now.
+                const backendListWithTimeout = Promise.race([
                     wardrobeApi.list(),
+                    new Promise<never>((_, reject) =>
+                        setTimeout(() => reject(new Error('wardrobe backend timeout')), 8000),
+                    ),
+                ]);
+                const [apiItems, apiLogs] = await Promise.all([
+                    backendListWithTimeout,
                     hasLocalWearLogs ? Promise.resolve(null) : wearLogApi.list(),
                 ]);
-                console.log(`[PERF] 🟡 wardrobe fetch (${hasLocalWearLogs ? 'items only' : 'items + wearLogs'}): ${Date.now() - fetchStart}ms`);
+                if (__DEV__) console.log(`[PERF] 🟡 wardrobe fetch (${hasLocalWearLogs ? 'items only' : 'items + wearLogs'}): ${Date.now() - fetchStart}ms`);
+
+                // Account-switch guard: if the user changed while the network
+                // was in flight, drop this result instead of writing user A's
+                // wardrobe into user B's store (delete -> create freeze fix).
+                const endUserId = useAuthStore.getState().user?.id ?? null;
+                if (endUserId !== startUserId) {
+                    if (__DEV__) console.log('[WardrobeStore] Rehydrate discarded — account changed mid-fetch');
+                    set({ isLoading: false });
+                    return;
+                }
 
                 const items: ClothingItem[] = apiItems.map(mapApiItem);
 
@@ -158,6 +201,7 @@ export const createSyncSlice: StateCreator<WardrobeState, [], [], SyncSlice> = (
                     isLoading: false,
                     lastSyncedAt: new Date().toISOString(),
                 });
+                _lastRehydrateUserId = endUserId;
             } catch {
                 try {
                     // Single fallback query — items only. Wear logs are less critical
@@ -165,12 +209,19 @@ export const createSyncSlice: StateCreator<WardrobeState, [], [], SyncSlice> = (
                     // rather than issuing a second Supabase round-trip (Defect 4.4 fix).
                     const serverItems = await fetchItemsFromServer();
                     if (serverItems) {
-                        set({
-                            items: serverItems,
-                            wearLogs: get().wearLogs,
-                            isLoading: false,
-                            lastSyncedAt: new Date().toISOString(),
-                        });
+                        const fallbackUserId = useAuthStore.getState().user?.id ?? null;
+                        if (fallbackUserId !== startUserId) {
+                            if (__DEV__) console.log('[WardrobeStore] Rehydrate fallback discarded — account changed mid-fetch');
+                            set({ isLoading: false });
+                        } else {
+                            set({
+                                items: serverItems,
+                                wearLogs: get().wearLogs,
+                                isLoading: false,
+                                lastSyncedAt: new Date().toISOString(),
+                            });
+                            _lastRehydrateUserId = fallbackUserId;
+                        }
                     } else {
                         set({ isLoading: false });
                     }
@@ -181,7 +232,7 @@ export const createSyncSlice: StateCreator<WardrobeState, [], [], SyncSlice> = (
             }
         })().finally(() => {
             activeRehydratePromise = null;
-            console.log(`[PERF] 🟢 wardrobe rehydrateFromCloud total: ${Date.now() - rehydrateStart}ms`);
+            if (__DEV__) console.log(`[PERF] 🟢 wardrobe rehydrateFromCloud total: ${Date.now() - rehydrateStart}ms`);
         });
 
         return activeRehydratePromise;

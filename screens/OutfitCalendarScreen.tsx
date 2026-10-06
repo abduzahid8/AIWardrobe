@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView, Dimensions,  } from 'react-native'
+import { View, StyleSheet, TouchableOpacity, ScrollView, } from 'react-native'
 import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +9,7 @@ import { useAppNavigation } from '../hooks/useAppNavigation';
 import { useRoute } from '@react-navigation/native';
 import type { RootStackParamList } from '../navigation/types';
 import { CachedImage } from '../components/ui/CachedImage';
+import { useSubscriptionGate } from '../src/hooks/useSubscriptionGate';
 import useWardrobeStore from '../store/wardrobeStore';
 import {
     useOutfitCalendar,
@@ -21,10 +22,8 @@ import { type OutfitItem, type WardrobeItem, matchesCategory } from '../features
 import { shoppingService, type Product } from '../src/services/shoppingService';
 import { useTranslation } from 'react-i18next';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PAGE_PADDING = 20;
 const DAY_GAP = 12;
-const DAY_CARD_WIDTH = (SCREEN_WIDTH - PAGE_PADDING * 2 - DAY_GAP * 4) / 5;
 
 // Layer (outerwear) keywords — checked BEFORE the generic top matcher in
 // `matchesCategory` so a blazer/jacket lands in the dedicated Layer slot
@@ -55,6 +54,9 @@ const OutfitCalendarScreen = () => {
     const navigation = useAppNavigation();
     const route = useRoute<{ key: string; name: string; params?: RootStackParamList['Calendar'] }>();
     const { t } = useTranslation();
+    // Soft gate: calendar page stays open — using a function (log day,
+    // AI plan, save, delete) redirects to Paywall when trial expired.
+    const { requireFeature } = useSubscriptionGate();
     const cal = useOutfitCalendar();
 
     const parseInitialDate = (value: unknown): { year: number; month: number; day: number } | null => {
@@ -231,14 +233,28 @@ const OutfitCalendarScreen = () => {
     const isPastDay = selectedDateKey < cal.todayStr;
 
     const openSelectedDay = () => {
+        // Log/edit day is a Pro function → Paywall when trial expired.
+        if (!requireFeature('fullCalendar')) return;
         cal.openLogModalForDate(selectedDateKey);
     };
 
     const openAIStylistForSelectedDay = () => {
+        // AI planning from calendar → Paywall when trial expired.
+        if (!requireFeature('fullCalendar')) return;
         navigation.navigate('AIOutfit', {
             source: 'wardrobe',
             calendarDate: selectedDateKey,
         });
+    };
+
+    const handleConfirmDelete = () => {
+        if (!requireFeature('fullCalendar')) return;
+        cal.confirmDelete(selectedDateKey);
+    };
+
+    const handleSaveOutfit = () => {
+        if (!requireFeature('fullCalendar')) return;
+        cal.saveOutfit();
     };
 
     const renderMiniSlot = (item: OutfitItem | null | undefined, shortLabel: string, isSelected: boolean, key?: string) => (
@@ -295,8 +311,16 @@ const OutfitCalendarScreen = () => {
                 <View style={styles.topBar}>
                     <TouchableOpacity
                         style={styles.iconButton}
-                        onPress={() => navigation.goBack()}
+                        onPress={() => {
+                            // Guarded goBack: a history-less entry (e.g. deep
+                            // link landing straight here) would strand the
+                            // user — fall back to the main tabs.
+                            if (navigation.canGoBack()) navigation.goBack();
+                            else (navigation as any).navigate('Main');
+                        }}
                         accessibilityLabel={t('calendar.closeCalendar')}
+                        accessibilityRole="button"
+                        testID="calendarClose"
                     >
                         <Ionicons name="close" size={20} color="#0F172A" />
                     </TouchableOpacity>
@@ -319,14 +343,6 @@ const OutfitCalendarScreen = () => {
                             <View style={styles.plannerCopy}>
                                 <ScaledText style={styles.plannerTitle}>{t('calendar.planLooks')}</ScaledText>
                             </View>
-
-                            <TouchableOpacity style={styles.openDayButton} onPress={openSelectedDay}>
-                                <Ionicons
-                                    name={selectedLog ? 'create-outline' : 'add-circle-outline'}
-                                    size={18}
-                                    color="#0F172A"
-                                />
-                            </TouchableOpacity>
                         </View>
 
                         <View style={styles.monthBar}>
@@ -429,27 +445,18 @@ const OutfitCalendarScreen = () => {
                                     <ScaledText style={styles.outfitTitle}>{formatReadableDate(selectedDate)}</ScaledText>
                                 </View>
 
-                                <View
-                                    style={[
-                                        styles.statusBadge,
-                                        selectedLog
-                                            ? { backgroundColor: selectedOccasion?.color ?? '#0F172A' }
-                                            : styles.statusBadgeEmpty,
-                                    ]}
-                                >
-                                    <ScaledText
+                                {selectedLog && (
+                                    <View
                                         style={[
-                                            styles.statusBadgeText,
-                                            !selectedLog && styles.statusBadgeTextEmpty,
+                                            styles.statusBadge,
+                                            { backgroundColor: selectedOccasion?.color ?? '#0F172A' },
                                         ]}
                                     >
-                                        {selectedLog
-                                            ? `${selectedOccasion?.icon ?? '✓'} ${selectedOccasion?.label ?? 'Logged'}`
-                                            : isPastDay
-                                            ? t('calendar.emptyDay')
-                                            : t('calendar.openDay')}
-                                    </ScaledText>
-                                </View>
+                                        <ScaledText style={styles.statusBadgeText}>
+                                            {`${selectedOccasion?.icon ?? '✓'} ${selectedOccasion?.label ?? 'Logged'}`}
+                                        </ScaledText>
+                                    </View>
+                                )}
                             </View>
 
                             <View style={styles.boardShell}>
@@ -526,20 +533,12 @@ const OutfitCalendarScreen = () => {
                                 {selectedLog ? (
                                     <TouchableOpacity
                                         style={styles.secondaryAction}
-                                        onPress={() => cal.confirmDelete(selectedDateKey)}
+                                        onPress={handleConfirmDelete}
                                     >
                                         <Ionicons name="trash-outline" size={18} color="#EF4444" />
                                         <ScaledText style={styles.secondaryActionDangerText}>{t('common.delete')}</ScaledText>
                                     </TouchableOpacity>
-                                ) : (
-                                    <TouchableOpacity
-                                        style={styles.secondaryAction}
-                                        onPress={openSelectedDay}
-                                    >
-                                        <Ionicons name="add" size={18} color="#0F172A" />
-                                        <ScaledText style={styles.secondaryActionText}>{t('calendar.openDay')}</ScaledText>
-                                    </TouchableOpacity>
-                                )}
+                                ) : null}
                             </View>
                         </View>
                     </Animated.View>
@@ -554,7 +553,7 @@ const OutfitCalendarScreen = () => {
                     onClose={cal.closeLogModal}
                     onToggleItem={cal.toggleItemSelection}
                     onSelectOccasion={cal.setSelectedOccasion}
-                    onSave={cal.saveOutfit}
+                    onSave={handleSaveOutfit}
                 />
             </SafeAreaView>
         </View>
@@ -678,21 +677,6 @@ const styles = StyleSheet.create({
         lineHeight: 22,
         color: '#64748B',
     },
-    openDayButton: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: 42,
-        height: 42,
-        borderRadius: 21,
-        backgroundColor: '#F8FAFF',
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-    },
-    openDayText: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: '#0F172A',
-    },
     monthBar: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -722,11 +706,11 @@ const styles = StyleSheet.create({
     },
     daysRow: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         gap: DAY_GAP,
     },
     dayCard: {
-        width: DAY_CARD_WIDTH,
+        flex: 1,
+        minWidth: 0,
         borderRadius: 20,
         paddingHorizontal: 6,
         paddingTop: 10,
@@ -889,17 +873,11 @@ const styles = StyleSheet.create({
         paddingVertical: 6,
         borderRadius: 16,
     },
-    statusBadgeEmpty: {
-        backgroundColor: '#E2E8F0',
-    },
     statusBadgeText: {
         fontSize: 11,
         fontWeight: '800',
         color: '#FFFFFF',
         textAlign: 'center',
-    },
-    statusBadgeTextEmpty: {
-        color: '#475569',
     },
     boardShell: {
         backgroundColor: '#F8FAFF',
@@ -1106,11 +1084,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: 6,
         paddingHorizontal: 12,
-    },
-    secondaryActionText: {
-        fontSize: 13,
-        fontWeight: '800',
-        color: '#0F172A',
     },
     secondaryActionDangerText: {
         fontSize: 13,

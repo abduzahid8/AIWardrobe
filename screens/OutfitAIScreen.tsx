@@ -25,6 +25,9 @@ import { useWardrobeItems } from '../src/hooks';
 import Config from '../src/config/env';
 import { createLogger } from '../src/utils/logger';
 import { useTranslation } from 'react-i18next';
+import { useSubscriptionGate } from '../src/hooks/useSubscriptionGate';
+import useShopCatalogStore from '../store/shopCatalogStore';
+import { buildAgentClothingContext } from '../src/utils/outfitBudget';
 
 const logger = createLogger('OutfitAI');
 
@@ -272,6 +275,8 @@ interface ChatMessage {
 const OutfitAIScreen = () => {
     const { t } = useTranslation();
     const navigation = useNavigation();
+    // Soft gate: page stays open — Send redirects to Paywall when trial expired.
+    const { requireFeature } = useSubscriptionGate();
     const scrollViewRef = useRef<ScrollView>(null);
     const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const [message, setMessage] = useState('');
@@ -310,6 +315,7 @@ const OutfitAIScreen = () => {
 
     // Get wardrobe items from hook
     const { items: wardrobeItems, loading: wardrobeLoading } = useWardrobeItems();
+    const shopItems = useShopCatalogStore((s) => s.items);
 
     // Fetch weather on mount
     useEffect(() => {
@@ -332,6 +338,9 @@ const OutfitAIScreen = () => {
 
     const sendMessage = async (text: string) => {
         if (!text.trim()) return;
+
+        // Post-trial: outfit AI is Pro-only → redirect to Paywall, keep page open.
+        if (!requireFeature('aiStylistChat')) return;
 
         setShowSuggestions(false);
         setIsLoading(true);
@@ -404,7 +413,13 @@ const OutfitAIScreen = () => {
                 const fallbackResponse = await fetch(`${API_URL}/ai-chat`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query: text.trim() }),
+                    body: JSON.stringify({
+                        query: `${text.trim()}\n\n[Clothing context]\n${buildAgentClothingContext({
+                            owned: wardrobeItems,
+                            shop: shopItems,
+                            userMessage: text.trim(),
+                        })}`,
+                    }),
                 }).catch(() => null);
 
                 if (fallbackResponse?.ok) {

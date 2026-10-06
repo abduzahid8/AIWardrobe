@@ -1,0 +1,25 @@
+appId: com.aiwardrobe
+name: sim_stylist_press_generate
+---
+- launchApp:
+    stopApp: false
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn:
+    point: "50%,93%"
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 55000
+- takeScreenshot: s1_work_old_money
+- swipe:
+    start: "80%,48%"
+    end: "20%,48%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: s1_card2
+- swipe:
+    start: "80%,48%"
+    end: "20%,48%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: s1_card3

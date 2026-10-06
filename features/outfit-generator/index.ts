@@ -1,8 +1,9 @@
 // Re-exports for the outfit-generator feature
+// NOTE: useOutfitGeneration / useAnchorOutfitGeneration / mixedOutfitService
+// were deleted (2026-10-01) — zero call sites; AIOutfitmaker and Home use
+// their own live paths. Do not re-add parallel generators here.
 export { useItemSelection, getMacroCategory } from './hooks/useItemSelection';
 export { useWardrobeLoader } from './hooks/useWardrobeLoader';
-export { useOutfitGeneration } from './hooks/useOutfitGeneration';
-export { useAnchorOutfitGeneration } from './hooks/useAnchorOutfitGeneration';
 export { default as ModeToggle } from './components/ModeToggle';
 export { default as VibeCard } from './components/VibeCard';
 export { default as PromptInput } from './components/PromptInput';

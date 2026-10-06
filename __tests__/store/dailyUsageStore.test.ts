@@ -26,30 +26,37 @@ function loadStores() {
 }
 
 describe('dailyUsageStore', () => {
-  it('free tier: starts at 10 remaining for aiOutfits', async () => {
+  it('free tier (trial expired): aiOutfits locked at 0', async () => {
     const { useDailyUsageStore } = loadStores();
     await useDailyUsageStore.getState().hydrate();
-    expect(useDailyUsageStore.getState().getRemaining('aiOutfits')).toBe(10);
-    expect(useDailyUsageStore.getState().canUse('aiOutfits')).toBe(true);
-  });
-
-  it('consume decrements remaining', async () => {
-    const { useDailyUsageStore } = loadStores();
-    await useDailyUsageStore.getState().hydrate();
-    await useDailyUsageStore.getState().consume('aiOutfits');
-    await useDailyUsageStore.getState().consume('aiOutfits');
-    expect(useDailyUsageStore.getState().getUsed('aiOutfits')).toBe(2);
-    expect(useDailyUsageStore.getState().getRemaining('aiOutfits')).toBe(8);
-  });
-
-  it('free tier: blocks after 10 AI outfits', async () => {
-    const { useDailyUsageStore } = loadStores();
-    await useDailyUsageStore.getState().hydrate();
-    for (let i = 0; i < 10; i++) {
-      await useDailyUsageStore.getState().consume('aiOutfits');
-    }
     expect(useDailyUsageStore.getState().getRemaining('aiOutfits')).toBe(0);
     expect(useDailyUsageStore.getState().canUse('aiOutfits')).toBe(false);
+  });
+
+  it('free tier (trial expired): starts at 3 remaining for homeSwipes', async () => {
+    const { useDailyUsageStore } = loadStores();
+    await useDailyUsageStore.getState().hydrate();
+    expect(useDailyUsageStore.getState().getRemaining('homeSwipes')).toBe(3);
+    expect(useDailyUsageStore.getState().canUse('homeSwipes')).toBe(true);
+  });
+
+  it('consume decrements remaining (homeSwipes)', async () => {
+    const { useDailyUsageStore } = loadStores();
+    await useDailyUsageStore.getState().hydrate();
+    await useDailyUsageStore.getState().consume('homeSwipes');
+    await useDailyUsageStore.getState().consume('homeSwipes');
+    expect(useDailyUsageStore.getState().getUsed('homeSwipes')).toBe(2);
+    expect(useDailyUsageStore.getState().getRemaining('homeSwipes')).toBe(1);
+  });
+
+  it('free tier: blocks after 3 home swipes', async () => {
+    const { useDailyUsageStore } = loadStores();
+    await useDailyUsageStore.getState().hydrate();
+    for (let i = 0; i < 3; i++) {
+      await useDailyUsageStore.getState().consume('homeSwipes');
+    }
+    expect(useDailyUsageStore.getState().getRemaining('homeSwipes')).toBe(0);
+    expect(useDailyUsageStore.getState().canUse('homeSwipes')).toBe(false);
   });
 
   it('Pro tier: unlimited (-1)', async () => {
@@ -77,20 +84,20 @@ describe('dailyUsageStore', () => {
   it('hydrate rolls over stored snapshot from a previous day', async () => {
     const yesterdaySnapshot = JSON.stringify({
       date: '1999-01-01',
-      counts: { aiOutfits: 9 },
+      counts: { homeSwipes: 2 },
     });
     (AsyncStorage.getItem as jest.Mock).mockResolvedValue(yesterdaySnapshot);
     const { useDailyUsageStore } = loadStores();
     await useDailyUsageStore.getState().hydrate();
-    expect(useDailyUsageStore.getState().getUsed('aiOutfits')).toBe(0);
-    expect(useDailyUsageStore.getState().getRemaining('aiOutfits')).toBe(10);
+    expect(useDailyUsageStore.getState().getUsed('homeSwipes')).toBe(0);
+    expect(useDailyUsageStore.getState().getRemaining('homeSwipes')).toBe(3);
   });
 
   it('resetToday clears counters', async () => {
     const { useDailyUsageStore } = loadStores();
     await useDailyUsageStore.getState().hydrate();
-    await useDailyUsageStore.getState().consume('aiOutfits', 5);
+    await useDailyUsageStore.getState().consume('homeSwipes', 2);
     await useDailyUsageStore.getState().resetToday();
-    expect(useDailyUsageStore.getState().getUsed('aiOutfits')).toBe(0);
+    expect(useDailyUsageStore.getState().getUsed('homeSwipes')).toBe(0);
   });
 });

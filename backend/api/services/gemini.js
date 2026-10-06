@@ -20,9 +20,9 @@ if (!GEMINI_API_KEY) {
 
 const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 
-// Model IDs
-const TEXT_MODEL = "gemini-1.5-flash";
-const VISION_MODEL = "gemini-1.5-flash";
+// Model IDs (1.5-flash is deprecated — 2.0-flash is the current free default)
+const TEXT_MODEL = "gemini-2.0-flash";
+const VISION_MODEL = "gemini-2.0-flash";
 
 // ═══════════════════════════════════════════
 // TEXT GENERATION

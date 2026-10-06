@@ -1,0 +1,15 @@
+appId: host.exp.Exponent
+name: rugged_relaunch
+tags:
+  - rugged
+  - expo-go
+  - persistence
+---
+# Kill + cold reopen (driven from the shell BEFORE this flow runs).
+# Session, language and trial state must survive via persisted stores +
+# cloud rehydrate — proves the whole cold-start chain. Ends on Home.
+- extendedWaitUntil:
+    visible: ".*(Сегодняшний образ|Today).*"
+    timeout: 90000
+- assertVisible: ".*AIWardrobe.*"
+- takeScreenshot: rugged_relaunch

@@ -1,0 +1,17 @@
+appId: com.aiwardrobe
+name: sim_stylist_swipe
+---
+- launchApp:
+    stopApp: false
+- swipe:
+    start: "82%,42%"
+    end: "18%,42%"
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: sim_stylist_slots_2
+- swipe:
+    start: "82%,42%"
+    end: "18%,42%"
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: sim_stylist_slots_3

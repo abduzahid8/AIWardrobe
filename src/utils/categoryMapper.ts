@@ -64,7 +64,7 @@ export function mapDbCategory(category: string): ClothingCategory {
 const OUTERWEAR_RE = /\b(jackets?|coats?|blazers?|hoodies?|cardigans?|sweaters?|pullovers?|vests?|puffers?|zips?|outerwear)\b/;
 const TOP_RE = /\b(shirts?|t-shirts?|tees?|blouses?|polos?|tops?|dresses?)\b/;
 const BOTTOM_RE = /\b(pants?|trousers?|jeans?|bottoms?|shorts?|skirts?)\b/;
-const SHOES_RE = /\b(shoes?|sneakers?|boots?|loafers?|sandals?)\b/;
+const SHOES_RE = /\b(shoes?|sneakers?|boots?|loafers?|sandals?|heels?|trainers?|derbys?|derbies|moccasins?|drivers?|mules?)\b/;
 const ACCESSORY_RE = /\b(hats?|scarfs?|belts?|watches?|bags?|glasses?|sunglasses?|necklaces?|bracelets?|earrings?|rings?|ties?|gloves?)\b/;
 
 /**

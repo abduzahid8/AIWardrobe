@@ -208,7 +208,7 @@ export function selectActiveProfile(state: BodyProfileState): BodyProfile | unde
 
 /**
  * Compatibility shim for the legacy `avatarStore` shape. Used by old
- * CreateAvatarScreen + AITryOnScreen until they migrate. Prefer reading
+ * CreateAvatarScreen until it migrates. Prefer reading
  * from `selectActiveProfile` directly in new code.
  */
 export function getLegacyAvatarSnapshot() {

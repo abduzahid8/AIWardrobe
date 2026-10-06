@@ -12,12 +12,19 @@ const MAX_RETRIES = 3;
 class UploadQueueProcessor {
     private isProcessing = false;
     private analysisHook: any = null;
+    private netUnsub: (() => void) | null = null;
+    private intervalId: ReturnType<typeof setInterval> | null = null;
+    private initialized = false;
 
     initialize() {
+        // Guard against double-init — each previous call leaked a
+        // NetInfo listener + 5-min setInterval (timer storm on remount).
+        if (this.initialized) return;
+        this.initialized = true;
         logger.info('[QueueProcessor] Initializing...');
-        
+
         // Listen for network changes
-        NetInfo.addEventListener(state => {
+        this.netUnsub = NetInfo.addEventListener(state => {
             if (state.isConnected && state.isInternetReachable) {
                 logger.info('[QueueProcessor] Online - checking queue...');
                 this.processQueue();
@@ -25,10 +32,23 @@ class UploadQueueProcessor {
         });
 
         // Periodic check every 5 minutes as a safety net
-        setInterval(() => this.processQueue(), 5 * 60 * 1000);
-        
+        this.intervalId = setInterval(() => this.processQueue(), 5 * 60 * 1000);
+
         // Initial check
         this.processQueue();
+    }
+
+    destroy() {
+        if (this.netUnsub) {
+            try { this.netUnsub(); } catch { /* ignore */ }
+            this.netUnsub = null;
+        }
+        if (this.intervalId) {
+            clearInterval(this.intervalId);
+            this.intervalId = null;
+        }
+        this.initialized = false;
+        this.isProcessing = false;
     }
 
     setAnalysisHook(hook: any) {
@@ -52,13 +72,15 @@ class UploadQueueProcessor {
         for (const upload of toProcess) {
             try {
                 updateStatus(upload.id, 'processing');
-                
-                // We need the hook to actually do the analysis
-                // If not set, we skip for now (it will be set when the app mounts the hook)
+
+                // We need the hook to actually do the analysis.
+                // If not set, leave the item as pending and STOP the loop —
+                // previously every item was reset to pending in a tight loop,
+                // causing a hot spin + repeated store writes on every tick.
                 if (!this.analysisHook) {
                     logger.warn('[QueueProcessor] Analysis hook not yet available, skipping...');
                     updateStatus(upload.id, 'pending');
-                    continue;
+                    break;
                 }
 
                 logger.info(`[QueueProcessor] Analyzing ${upload.type}: ${upload.uri}`);

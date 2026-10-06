@@ -1,0 +1,23 @@
+appId: com.aiwardrobe
+name: sim_chip_classic
+---
+- launchApp:
+    stopApp: false
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000
+# Expand YOUR STYLE more (lower More toggle ~62%)
+- tapOn:
+    point: "50%,62%"
+- waitForAnimationToEnd:
+    timeout: 2500
+- takeScreenshot: styles_open
+- tapOn: ".*Classic.*"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn: ".*Generate outfit.*"
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 55000
+- takeScreenshot: chip_classic

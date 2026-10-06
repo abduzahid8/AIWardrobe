@@ -5,8 +5,9 @@
  * are laid out in a styled flat-lay. No grid cells, no cropped tiles,
  * no circular thumbnails.
  */
-import React, { useState } from 'react';
-import { View, Image, StyleSheet, StyleProp, ImageStyle } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet, StyleProp, ImageStyle } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 
 export type CollageImageSrc = string | number;
@@ -90,19 +91,52 @@ const LOOKBOARD_SLOTS: Record<number, StyleProp<ImageStyle>[]> = {
     ],
 };
 
-const Piece: React.FC<{ src: CollageImageSrc; style: StyleProp<ImageStyle>; zIndex: number }> = ({
-    src,
-    style,
-    zIndex,
-}) => {
+/**
+ * One garment tile.
+ *
+ * Uses expo-image with a memory+disk cache so a tile that was already seen
+ * (or prefetched ahead) renders instantly on remount instead of flashing
+ * blank and reloading over the network — the swipe-deck "pop-in" glitch.
+ * A tile that fails to load keeps a shirt-icon placeholder in its slot
+ * instead of vanishing (which used to read as clothes disappearing).
+ *
+ * `recyclingKey` ties the recycled native view to the current URI so a
+ * reused view can never flash the previous card's photo (the "show, then
+ * disappear, then reappear" glitch when the deck promotes mid -> top).
+ */
+const Piece: React.FC<{
+    src: CollageImageSrc;
+    style: StyleProp<ImageStyle>;
+    zIndex: number;
+    name?: string;
+}> = ({ src, style, zIndex, name }) => {
     const [failed, setFailed] = useState(false);
-    if (failed) return null;
+    // A remount (or a deck remap) hands this instance a new uri — a stale
+    // failure flag must not blank out the new image.
+    // String() normalisation matters: callers sometimes pass the same URL
+    // as a new string instance; comparing by value avoids a redundant reset
+    // (which itself used to cause a visible blink).
+    const srcKey = typeof src === 'string' ? src : String(src ?? '');
+    useEffect(() => {
+        setFailed(false);
+    }, [srcKey]);
+    if (!src || failed) {
+        return (
+            <View style={[styles.piece, styles.pieceFallback, style, { zIndex }]}>
+                <Ionicons name="shirt-outline" size={30} color="rgba(15,23,42,0.22)" />
+            </View>
+        );
+    }
     return (
-        <Image
-            source={typeof src === 'number' ? src : { uri: src }}
+        <ExpoImage
+            source={src}
             style={[styles.piece, style, { zIndex }]}
-            resizeMode="contain"
+            contentFit="contain"
+            cachePolicy="memory-disk"
+            recyclingKey={srcKey}
+            transition={180}
             onError={() => setFailed(true)}
+            accessibilityLabel={name || 'Outfit piece'}
         />
     );
 };
@@ -115,10 +149,13 @@ export const OutfitCollagePreview: React.FC<OutfitCollagePreviewProps> = ({
     footerInset = 0,
     variant = 'cascade',
 }) => {
-    const ordered = orderByWorn(items.filter((i) => i.image !== undefined && i.image !== null && i.image !== '')).slice(
-        0,
-        4
-    );
+    // Keep the slot count stable: NEVER filter out items with a temporarily
+    // empty image. Filtering shrank a 4-piece outfit to 2 slots whenever the
+    // catalog hadn't loaded yet (or a single URL 404'd), then jumped back to
+    // 4 slots once data arrived — the "only two items appear" + "appear,
+    // disappear, reappear" bug. Empty/failed images render as a shirt-icon
+    // placeholder in their own slot via <Piece/>, so the layout never shifts.
+    const ordered = orderByWorn(items.slice(0, 4));
 
     if (ordered.length === 0) {
         return (
@@ -128,8 +165,20 @@ export const OutfitCollagePreview: React.FC<OutfitCollagePreviewProps> = ({
         );
     }
 
+    // De-dupe keys: duplicate ids (small catalog pools can pick the same
+    // garment twice) used to collapse two tiles into one React key, so only
+    // 2-3 pieces rendered for a 4-piece outfit. Suffix repeats with the slot
+    // index to keep every key unique while leaving unique ids stable.
+    const seenIds = new Map<string, number>();
+    const keyFor = (item: OutfitCollageItem, index: number): string => {
+        const base = item.id != null && String(item.id) !== '' ? String(item.id) : `slot-${index}`;
+        const seen = seenIds.get(base) ?? 0;
+        seenIds.set(base, seen + 1);
+        return seen === 0 ? base : `${base}#${seen}`;
+    };
+
     if (variant === 'lookboard') {
-        const slots = LOOKBOARD_SLOTS[ordered.length];
+        const slots = LOOKBOARD_SLOTS[ordered.length] ?? LOOKBOARD_SLOTS[4];
         return (
             <View style={[styles.root, { backgroundColor }]}>
                 <View style={[styles.lookboardArea, { bottom: footerInset }]}>
@@ -137,12 +186,12 @@ export const OutfitCollagePreview: React.FC<OutfitCollagePreviewProps> = ({
                     <View style={styles.lookboardHaloSmall} />
                     <View style={styles.lookboardRule} />
                     {ordered.map((item, index) => (
-                        <Image
-                            key={item.id ?? index}
-                            source={typeof item.image === 'number' ? item.image : { uri: item.image }}
-                            style={[styles.lookboardPiece, slots[index], { zIndex: index + 1 }]}
-                            resizeMode="contain"
-                            accessibilityLabel={item.name || item.category || 'Outfit piece'}
+                        <Piece
+                            key={keyFor(item, index)}
+                            src={item.image}
+                            style={[styles.lookboardPiece, slots[index]]}
+                            zIndex={index + 1}
+                            name={item.name || item.category}
                         />
                     ))}
                 </View>
@@ -150,13 +199,13 @@ export const OutfitCollagePreview: React.FC<OutfitCollagePreviewProps> = ({
         );
     }
 
-    const slots = SLOTS_BY_COUNT[ordered.length];
+    const slots = SLOTS_BY_COUNT[ordered.length] ?? SLOTS_BY_COUNT[4];
 
     return (
         <View style={[styles.root, { backgroundColor }]}>
             <View style={[styles.cascadeArea, { bottom: footerInset }]}>
                 {ordered.map((item, index) => (
-                    <Piece key={item.id ?? index} src={item.image} style={slots[index]} zIndex={index + 1} />
+                    <Piece key={keyFor(item, index)} src={item.image} style={slots[index]} zIndex={index + 1} name={item.name || item.category} />
                 ))}
             </View>
         </View>
@@ -181,6 +230,11 @@ const styles = StyleSheet.create({
     },
     piece: {
         position: 'absolute',
+    },
+    pieceFallback: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(15,23,42,0.04)',
     },
     lookboardArea: {
         position: 'absolute',

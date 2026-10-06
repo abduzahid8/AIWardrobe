@@ -43,6 +43,15 @@ supabase.auth.onAuthStateChange((_event, session) => {
   _cachedToken = session?.access_token ?? null;
 });
 
+/**
+ * Clear the in-memory token cache.
+ * Must be called on logout / account deletion / account switch so the next
+ * user never reuses the previous user's access token for backend calls.
+ */
+export function clearCachedToken(): void {
+  _cachedToken = null;
+}
+
 async function getToken(): Promise<string | null> {
   if (_cachedToken !== null) return _cachedToken;
   // Cold cache — fall back to getSession() once, then cache the result.

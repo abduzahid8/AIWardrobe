@@ -16,10 +16,10 @@ appId: com.aiwardrobe
           timeout: 20000
 - tapOn:
     point: "50%,26%"
-- inputText: "e2etest@aiwardrobe.club"
+- inputText: "e2e.stylist@aiwardrobe.club"
 - tapOn:
     point: "50%,33%"
-- inputText: "E2eTestPass123!"
+- inputText: "E2eStylistVerify2026!"
 - tapOn:
     point: "50%,44%"
 - waitForAnimationToEnd:

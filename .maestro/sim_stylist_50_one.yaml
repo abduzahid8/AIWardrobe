@@ -1,0 +1,55 @@
+appId: host.exp.Exponent
+name: sim_stylist_50_one
+---
+- runFlow:
+    when:
+      visible: ".*(Your Outfits|Ваши образы).*"
+    commands:
+      - tapOn:
+          point: "8%,11%"
+      - waitForAnimationToEnd:
+          timeout: 8000
+- runFlow:
+    when:
+      visible: ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*"
+    commands:
+      - tapOn: ".*(Создать образ|Create outfit).*"
+      - waitForAnimationToEnd:
+          timeout: 10000
+- runFlow:
+    when:
+      visible: ".*(Вдохновение|Inspiration).*"
+    commands:
+      - tapOn: ".*(Магазин|Shop).*"
+      - waitForAnimationToEnd:
+          timeout: 8000
+      - tapOn: ".*(Персональный стилист|Personal stylist).*"
+      - waitForAnimationToEnd:
+          timeout: 10000
+- assertVisible:
+    id: stylistCommentInput
+- runFlow:
+    when:
+      visible: ".*(New clothing|Новая одежда).*"
+    commands:
+      - tapOn: ".*(New clothing|Новая одежда).*"
+      - waitForAnimationToEnd:
+          timeout: 2000
+- tapOn:
+    id: stylistCommentInput
+- eraseText
+- inputText: __COMMENT__
+- tapOn: "Old Money"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: stylistGenerate
+- tapOn:
+    point: "50%,93%"
+- extendedWaitUntil:
+    visible: ".*(Your Outfits|Ваши образы|Создаём).*"
+    timeout: 20000
+- extendedWaitUntil:
+    visible: ".*(Your Outfits|Ваши образы).*"
+    timeout: 55000
+- takeScreenshot: __SHOT__

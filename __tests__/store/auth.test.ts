@@ -291,4 +291,33 @@ describe('auth store', () => {
             expect(mockExchangeCodeForSession).not.toHaveBeenCalled();
         });
     });
+
+    describe('logout hang resistance', () => {
+        afterEach(() => {
+            jest.useRealTimers();
+        });
+
+        it('completes local logout even when signOut hangs forever', async () => {
+            jest.useFakeTimers();
+            // Simulate a stalled network: signOut never settles.
+            mockSignOut.mockReturnValue(new Promise(() => {}));
+            useAuthStore.setState({
+                user: { id: '1', email: 'test@example.com', username: 'test' },
+                session: {} as any,
+                isAuthenticated: true,
+            });
+
+            const done = jest.fn();
+            const p = useAuthStore.getState().logout().then(done);
+            // Flush past all logout timeouts (8s signOut + 8s IAP + 10s wipe).
+            await jest.advanceTimersByTimeAsync(40000);
+            await p;
+
+            expect(done).toHaveBeenCalled();
+            const state = useAuthStore.getState();
+            expect(state.user).toBeNull();
+            expect(state.session).toBeNull();
+            expect(state.isAuthenticated).toBe(false);
+        });
+    });
 });

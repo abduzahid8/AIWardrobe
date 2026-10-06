@@ -2,8 +2,8 @@
  * ProfileScreen — iOS liquid glass rebuild
  */
 
-import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StatusBar, StyleSheet, TextInput, TouchableOpacity, View, ViewStyle,  } from 'react-native'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Dimensions, FlatList, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StatusBar, StyleSheet, TextInput, TouchableOpacity, View, ViewStyle,  } from 'react-native'
 import { ScaledText } from '../components/ui/ScaledText';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,11 +30,12 @@ import { useAppNavigation } from '../hooks/useAppNavigation';
 import { supabase } from '../lib/supabase';
 import useAuthStore from '../store/auth';
 import useWardrobeStore from '../store/wardrobeStore';
-import useTryOnLooksStore from '../store/tryOnLooksStore';
 import useShopCatalogStore from '../store/shopCatalogStore';
+import useSavedShopStore from '../store/savedShopStore';
 import { CachedImage } from '../components/ui/CachedImage';
+import { Image as ExpoImage } from 'expo-image';
 import { OutfitCollagePreview } from '../components/ui/OutfitCollagePreview';
-import { resolveOutfitCollageItems, resolvePieceTarget } from '../src/utils/outfitCollage';
+import { resolveOutfitCollageItemsWithMaps, resolvePieceTarget } from '../src/utils/outfitCollage';
 import { useTheme } from '../src/theme/ThemeContext';
 import { useSubscriptionGate } from '../src/hooks/useSubscriptionGate';
 import { useAdminGuard } from '../hooks/useAdminGuard';
@@ -64,10 +65,19 @@ interface SavedOutfit {
   occasion?: string;
   itemImages: ImageSrc[];
   image?: ImageSrc;
-  isTryOn?: boolean;
-  tryOnGarmentName?: string;
-  tryOnGarmentBrand?: string;
   collageItems?: { id: string | number; image: ImageSrc; category?: string; name?: string }[];
+  /** Liked shop catalog item (Inspo → Shop heart). Rendered as a single-image card. */
+  isShop?: boolean;
+  shopItemId?: string;
+  shopBrand?: string;
+  shopName?: string;
+  shopPrice?: number;
+  shopCurrency?: string;
+  /** Single wardrobe clothing save (Closet → Save new clothing). Rendered as a single-image card. */
+  isWardrobe?: boolean;
+  wardrobeItemId?: string;
+  wardrobeName?: string;
+  wardrobeCategory?: string;
 }
 
 function titleCase(value: string) {
@@ -177,8 +187,14 @@ function useDesignTokens() {
     orbSecondary: isDark ? 'rgba(122, 161, 203, 0.18)' : 'rgba(121, 158, 198, 0.14)',
     orbWarm: isDark ? 'rgba(166, 191, 219, 0.12)' : 'rgba(188, 210, 231, 0.22)',
     shadow: isDark ? '#000000' : '#4C6076',
-    overlay: isDark ? 'rgba(7, 9, 16, 0.74)' : 'rgba(16, 18, 28, 0.34)',
+    overlay: isDark ? 'rgba(3, 5, 10, 0.72)' : 'rgba(10, 20, 38, 0.55)',
     previewOverlay: 'rgba(5, 7, 15, 0.58)',
+    // Solid surfaces for bottom sheets / modals — must stay fully opaque so
+    // the profile content behind never bleeds through (readability fix).
+    sheet: isDark ? '#151B2E' : '#FFFFFF',
+    sheetBorder: isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(10, 25, 49, 0.08)',
+    field: isDark ? '#222A44' : '#F1F4F8',
+    fieldBorder: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(10, 25, 49, 0.08)',
     white: '#FFFFFF',
     fieldText: isDark ? '#FFFFFF' : '#0F172A',
     darkBackdrop: 'rgba(6, 9, 18, 0.86)',
@@ -187,6 +203,273 @@ function useDesignTokens() {
 }
 
 type DTokens = ReturnType<typeof useDesignTokens>;
+
+// ── Module-scope leaf components (stable types) ─────────────────────────
+// These were previously defined INSIDE ProfileScreen, so every parent
+// render created new component TYPES → React unmounted/remounted the entire
+// subtree (BlurView + LinearGradient native views, shadows) on every
+// setState. Hoisted here they reconcile by props instead — the fix for
+// Profile's scroll/tap jank. Each pulls its own tokens/styles via hooks
+// (memoized on isDark) so call sites need zero changes.
+function useLeafAssets() {
+  const D = useDesignTokens();
+  // Parent memoizes on D.isDark only — mirror that here.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const styles = useMemo(() => createStyles(D), [D.isDark]);
+  return { D, styles };
+}
+
+const hapticLight = () => {
+  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+};
+
+const GlassPanel = React.memo(function GlassPanel({
+  children,
+  style,
+  radius = 30,
+  intensity = 42,
+}: {
+  children: React.ReactNode;
+  style?: ViewStyle | ViewStyle[];
+  radius?: number;
+  intensity?: number;
+}) {
+  const { D, styles } = useLeafAssets();
+  return (
+    <View style={[styles.glassShadow, { borderRadius: radius }, style]}>
+      <View style={[styles.glassPanel, { borderRadius: radius }]}>
+        <BlurView
+          intensity={Platform.OS === 'ios' ? intensity : 100}
+          tint={D.tint}
+          style={StyleSheet.absoluteFill}
+        />
+        <LinearGradient
+          colors={D.panelHighlight}
+          start={{ x: 0.08, y: 0 }}
+          end={{ x: 0.92, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={[styles.glassScrim, { borderRadius: radius }]} />
+        <View style={styles.glassContent}>{children}</View>
+      </View>
+    </View>
+  );
+});
+
+const SecondaryGlassButton = React.memo(function SecondaryGlassButton({
+  label,
+  icon,
+  onPress,
+  danger = false,
+  style,
+}: {
+  label: string;
+  icon: IconName;
+  onPress: () => void;
+  danger?: boolean;
+  style?: ViewStyle | ViewStyle[];
+}) {
+  const { D, styles } = useLeafAssets();
+  const handlePress = useCallback(() => {
+    hapticLight();
+    onPress();
+  }, [onPress]);
+  return (
+    <TouchableOpacity activeOpacity={0.85} style={style} onPress={handlePress}>
+      <View style={styles.inlineGlassButton}>
+        <BlurView
+          intensity={Platform.OS === 'ios' ? 34 : 100}
+          tint={D.tint}
+          style={StyleSheet.absoluteFill}
+        />
+        <LinearGradient
+          colors={D.buttonHighlight}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.inlineGlassButtonContent}>
+          <Ionicons name={icon} size={16} color={danger ? D.danger : D.text} />
+          <ScaledText style={[styles.inlineGlassButtonText, danger && { color: D.danger }]}>{label}</ScaledText>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+});
+
+const PrimaryGradientButton = React.memo(function PrimaryGradientButton({
+  label,
+  icon,
+  onPress,
+  style,
+}: {
+  label: string;
+  icon: IconName;
+  onPress: () => void;
+  style?: ViewStyle | ViewStyle[];
+}) {
+  const { D, styles } = useLeafAssets();
+  const handlePress = useCallback(() => {
+    hapticLight();
+    onPress();
+  }, [onPress]);
+  return (
+    <TouchableOpacity activeOpacity={0.85} style={style} onPress={handlePress}>
+      <LinearGradient
+        colors={[D.accentStart, D.accentEnd]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.primaryButton}
+      >
+        <Ionicons name={icon} size={16} color={D.white} />
+        <ScaledText style={styles.primaryButtonText}>{label}</ScaledText>
+      </LinearGradient>
+    </TouchableOpacity>
+  );
+});
+
+const MenuRow = React.memo(function MenuRow({
+  icon,
+  label,
+  onPress,
+  trailing,
+  danger = false,
+}: {
+  icon: IconName;
+  label: string;
+  onPress: () => void;
+  trailing?: string;
+  danger?: boolean;
+}) {
+  const { D, styles } = useLeafAssets();
+  const handlePress = useCallback(() => {
+    hapticLight();
+    onPress();
+  }, [onPress]);
+  const pressStyle = useCallback(
+    ({ pressed }: { pressed: boolean }) => [styles.menuRow, pressed && styles.menuRowPressed],
+    [styles],
+  );
+  return (
+    <Pressable style={pressStyle} onPress={handlePress}>
+      <View style={[styles.menuLeading, trailing ? styles.menuLeadingWithTrailing : styles.menuLeadingCompact]}>
+        <View style={[styles.menuIconWrap, danger && styles.menuIconWrapDanger]}>
+          <Ionicons name={icon} size={17} color={danger ? D.danger : D.textSub} />
+        </View>
+        <View style={styles.menuCopy}>
+          <ScaledText style={[styles.menuTitle, danger && { color: D.danger }]} numberOfLines={1}>
+            {label}
+          </ScaledText>
+        </View>
+      </View>
+      <View style={styles.menuTrailing}>
+        {trailing ? (
+          <ScaledText style={[styles.menuTrailingText, danger && { color: D.danger }]} numberOfLines={1}>
+            {trailing}
+          </ScaledText>
+        ) : null}
+        <Ionicons name="chevron-forward" size={16} color={danger ? D.danger : D.textSub} />
+      </View>
+    </Pressable>
+  );
+});
+
+// ── Memoized look card + virtualized row ──────────────────────────────
+// Previously renderLookCard was an inline closure returning a TouchableOpacity
+// with inline onPress per card, RN <Image> (no disk cache), and the row was a
+// horizontal ScrollView .map — ALL cards (collage = up to 4 images + BlurView
+// footer each) mounted in one commit, and 6→1000 after 600ms released the
+// rest at once (first-visit freeze). Now: stable type, memoized on _id,
+// expo-image memory-disk, FlatList virtualization below.
+const LookCard = React.memo(function LookCard({
+  outfit,
+  onPreview,
+}: {
+  outfit: SavedOutfit;
+  onPreview: (outfit: SavedOutfit) => void;
+}) {
+  const { D, styles } = useLeafAssets();
+  const { t } = useTranslation();
+  const handlePress = useCallback(() => {
+    hapticLight();
+    onPreview(outfit);
+  }, [onPreview, outfit]);
+  const cardTitle = outfit.isShop
+    ? `${outfit.shopBrand ? `${outfit.shopBrand} · ` : ''}${outfit.shopName || 'Saved item'}`
+    : outfit.isWardrobe
+        ? outfit.wardrobeName || outfit.occasion || 'Saved item'
+        : outfit.occasion || 'Saved Look';
+  return (
+    <TouchableOpacity
+      style={[styles.lookCardShadow, { width: LOOK_ROW_CARD_WIDTH }]}
+      activeOpacity={0.88}
+      onPress={handlePress}
+    >
+      <View style={styles.lookCard}>
+        {outfit.image !== undefined ? (
+          <ExpoImage
+            source={typeof outfit.image === 'number' ? outfit.image : { uri: outfit.image as string }}
+            style={styles.lookImage}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            recyclingKey={typeof outfit.image === 'string' ? outfit.image : undefined}
+          />
+        ) : (
+          <OutfitCollagePreview
+            items={
+              outfit.collageItems && outfit.collageItems.length > 0
+                ? outfit.collageItems
+                : outfit.itemImages.map((src, index) => ({ id: index, image: src }))
+            }
+            backgroundColor="#F4F6FA"
+            placeholderIconColor="rgba(15,23,42,0.22)"
+            placeholderIconSize={30}
+            footerInset={64}
+          />
+        )}
+        <View style={styles.lookFooterBar}>
+          <BlurView
+            intensity={Platform.OS === 'ios' ? 48 : 100}
+            tint="light"
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={styles.lookFooterScrim} />
+          <View style={styles.lookFooterContent}>
+            <View style={styles.lookFooterText}>
+              <ScaledText style={styles.lookTitle} numberOfLines={1}>
+                {cardTitle}
+              </ScaledText>
+              {outfit.date ? (
+                <ScaledText style={styles.lookDate} numberOfLines={1}>
+                  {outfit.date}
+                </ScaledText>
+              ) : null}
+            </View>
+            <View style={styles.lookFooterAction}>
+              <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
+            </View>
+          </View>
+        </View>
+        {outfit.isShop ? (
+          <View style={styles.lookBadge}>
+            <Ionicons name="bag-outline" size={10} color={D.white} />
+            <ScaledText style={styles.lookBadgeText}>
+              {t('profile.shopBadge', { defaultValue: 'Shop' })}
+            </ScaledText>
+          </View>
+        ) : null}
+        {outfit.isWardrobe ? (
+          <View style={styles.lookBadge}>
+            <Ionicons name="shirt-outline" size={10} color={D.white} />
+            <ScaledText style={styles.lookBadgeText}>
+              {t('profile.closetBadge', { defaultValue: 'Closet' })}
+            </ScaledText>
+          </View>
+        ) : null}
+      </View>
+    </TouchableOpacity>
+  );
+});
 
 const ProfileScreen = () => {
   const D = useDesignTokens();
@@ -206,23 +489,27 @@ const ProfileScreen = () => {
     perfMeasure('ProfileScreen:mount');
     perfScreenReady('Profile');
     return () => {
-      console.log('[PERF] 👤 ProfileScreen unmounted');
+      if (__DEV__) console.log('[PERF] 👤 ProfileScreen unmounted');
     };
   }, []);
 
-  const { user, logout, deleteAccount, fetchUser } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+  const deleteAccount = useAuthStore((s) => s.deleteAccount);
+  const fetchUser = useAuthStore((s) => s.fetchUser);
   const { items: wardrobeItems, outfits: storeOutfits, wearLogs } = useWardrobeStore(
     useShallow((state) => ({ items: state.items, outfits: state.outfits, wearLogs: state.wearLogs }))
   );
-  const { looks: tryOnLooks, removeLook: removeTryOnLook } = useTryOnLooksStore(
-    useShallow((state) => ({ looks: state.looks, removeLook: state.removeLook }))
-  );
-
-  const { effectiveTier, isTrialActive } = useSubscriptionStore();
+  const effectiveTier = useSubscriptionStore((s) => s.effectiveTier);
+  const isTrialActive = useSubscriptionStore((s) => s.isTrialActive);
   // Read catalog from the shared store populated by HomeScreen — no new
   // Supabase query is fired here (fixes Defect 1.5).
   const liveShopCatalog = useShopCatalogStore((state) => state.items);
-  const { currentLanguage } = useLanguageStore();
+  // Liked shop items (Inspo → Shop heart). Shared with InspoScreen via
+  // savedShopStore so a like instantly appears in Saved Looks.
+  const savedShopItems = useSavedShopStore((state) => state.items);
+  const hydrateSavedShop = useSavedShopStore((state) => state.hydrate);
+  const currentLanguage = useLanguageStore((s) => s.currentLanguage);
 
   const [activeTab, setActiveTab] = useState<'looks' | 'trips'>('looks');
   const [showEditProfile, setShowEditProfile] = useState(false);
@@ -234,6 +521,16 @@ const ProfileScreen = () => {
   const [cloudOutfits, setCloudOutfits] = useState<SavedOutfit[]>([]);
   const [loading, setLoading] = useState(false);
   const [previewLook, setPreviewLook] = useState<SavedOutfit | null>(null);
+  // Progressive looks: the horizontal row mounts a collage (up to 4 images)
+  // + a BlurView per card. Mounting ALL saved looks in the first frame is
+  // the commit storm behind Profile's first-visit freeze — paint the first
+  // few, release more after paint settles, then paginate on scroll
+  // (onEndReached). Previously 6→1000 at 600ms released everything at once.
+  const [visibleLookCount, setVisibleLookCount] = useState(6);
+  useEffect(() => {
+    const timer = setTimeout(() => setVisibleLookCount(14), 600);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Skip re-fetching if the user just switched tabs momentarily (fixes Defect 4.5).
   const OUTFITS_REFRESH_TTL_MS = 60_000; // 60 seconds
@@ -255,7 +552,9 @@ const ProfileScreen = () => {
   useFocusEffect(
     useCallback(() => {
       setAnalyticsEnabled(analyticsService.getEnabled());
-    }, []),
+      // Refresh shop likes — InspoScreen writes here on every heart tap.
+      hydrateSavedShop();
+    }, [hydrateSavedShop]),
   );
 
   const userName = user?.username || 'Your Name';
@@ -284,8 +583,18 @@ const ProfileScreen = () => {
       typeof value === 'string' &&
       (value.startsWith('http') || value.startsWith('file://') || value.startsWith('data:'));
 
+    // Build lookup Maps ONCE — resolving per outfit with the array variant
+    // rebuilds both Maps for every saved outfit (O(outfits × wardrobe)),
+    // the main JS freeze on Profile's first paint.
+    const wardrobeMap = new Map(wardrobeItems.map((i) => [String(i.id), i]));
+    const shopMap = new Map(liveShopCatalog.map((i) => [String(i.id), i]));
+
     return storeOutfits
-      .filter((outfit) => outfit.saved)
+      // Home swipe-likes (savedFrom='home') live in Closet → Collections (Saved),
+      // not here. Profile Saved Looks is for single-clothing saves (wardrobe +
+      // shop) + manual/AI-maker outfits. Legacy saves without savedFrom stay
+      // visible in both for backward compat.
+      .filter((outfit) => outfit.saved && (outfit as { savedFrom?: string }).savedFrom !== 'home')
       .map((outfit) => {
         const coverImage =
           typeof outfit.previewImageUrl === 'string' && isValidUri(outfit.previewImageUrl)
@@ -294,7 +603,7 @@ const ProfileScreen = () => {
 
         // Full outfit: frozen snapshot first (wardrobe + shop pieces from
         // like-time), wardrobe + live catalog fallback for legacy saves.
-        const collage = resolveOutfitCollageItems(outfit, wardrobeItems, liveShopCatalog);
+        const collage = resolveOutfitCollageItemsWithMaps(outfit, wardrobeMap, shopMap);
         const itemImages = collage.map((c) => c.image as ImageSrc);
 
         return {
@@ -387,23 +696,67 @@ const ProfileScreen = () => {
     }, [fetchOutfits])
   );
 
+  // New clothing saves (Closet → Save / ClothingDetailEditor addItem) —
+  // each wardrobe item becomes a single-image Saved Look so "save new
+  // clothing" lands on the Profile page as requested.
+  const wardrobeMapped: SavedOutfit[] = useMemo(
+    () =>
+      [...wardrobeItems]
+        .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+        .map((item) => {
+          const image =
+            typeof item.imageUrl === 'string' && item.imageUrl.length > 0
+              ? item.imageUrl
+              : undefined;
+          const label = (
+            typeof item.name === 'string' && item.name.length > 0
+              ? item.name
+              : item.subCategory || item.category || 'Saved item'
+          ).slice(0, 40);
+          return {
+            _id: `wardrobe-${String(item.id)}`,
+            date: typeof item.createdAt === 'string' ? item.createdAt.split('T')[0] : undefined,
+            occasion: label,
+            itemImages: [],
+            image,
+            isWardrobe: true,
+            wardrobeItemId: String(item.id),
+            wardrobeName: label,
+            wardrobeCategory: typeof item.category === 'string' ? item.category : undefined,
+          };
+        }),
+    [wardrobeItems],
+  );
+
   const outfits = useMemo(() => {
     const localIds = new Set(localOutfits.map((outfit) => outfit._id));
     const cloudOnly = cloudOutfits.filter((outfit) => !localIds.has(outfit._id));
 
-    const tryOnMapped: SavedOutfit[] = tryOnLooks.map((look) => ({
-      _id: look.id,
-      date: look.savedAt.split('T')[0],
-      occasion: 'Virtual Try-On',
-      image: look.resultUrl,
-      itemImages: [],
-      isTryOn: true,
-      tryOnGarmentName: look.garmentName,
-      tryOnGarmentBrand: look.garmentBrand,
-    }));
+    // Liked shop clothing (Shop heart) — each liked product becomes a
+    // single-image Saved Look so it survives even if the product leaves
+    // the live catalog (we keep the like-time snapshot).
+    const shopMapped: SavedOutfit[] = savedShopItems.map((item) => {
+      const image =
+        typeof item.imageUrl === 'string' && item.imageUrl.length > 0 ? item.imageUrl : undefined;
+      const price =
+        typeof item.price === 'number' && Number.isFinite(item.price) ? item.price : undefined;
+      return {
+        _id: `shop-${String(item.id)}`,
+        date: price !== undefined ? `$${price.toFixed(0)}` : undefined,
+        occasion: item.brand || item.name || 'Saved item',
+        itemImages: [],
+        image,
+        isShop: true,
+        shopItemId: String(item.id),
+        shopBrand: item.brand,
+        shopName: item.name,
+        shopPrice: price,
+        shopCurrency: item.currency,
+      };
+    });
 
-    return [...tryOnMapped, ...localOutfits, ...cloudOnly];
-  }, [localOutfits, cloudOutfits, tryOnLooks]);
+    return [...wardrobeMapped, ...localOutfits, ...shopMapped, ...cloudOnly];
+  }, [localOutfits, cloudOutfits, savedShopItems, wardrobeMapped]);
 
   // ── Connected trip plan ─────────────────────────────────────────────
   // Upcoming calendar days with a saved outfit (today + future). When
@@ -411,6 +764,11 @@ const ProfileScreen = () => {
   // so the tab never looks dead right after a trip.
   const [tripPlanDays, setTripPlanDays] = useState<TripPlanDay[]>([]);
   const [tripPlanRecency, setTripPlanRecency] = useState<'upcoming' | 'recent'>('upcoming');
+  // Same 60s TTL policy as outfits above: the calendar JSON parse runs on
+  // the JS thread and re-triggers the whole trip image subtree, so don't
+  // repay it on every momentary tab switch. Outfit logging writes through
+  // AsyncStorage immediately, so worst-case staleness is one minute.
+  const lastTripPlansFetchRef = useRef<number>(0);
 
   const loadTripPlans = useCallback(async () => {
     try {
@@ -446,7 +804,16 @@ const ProfileScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
-      loadTripPlans();
+      const now = Date.now();
+      if (now - lastTripPlansFetchRef.current < OUTFITS_REFRESH_TTL_MS) return;
+      lastTripPlansFetchRef.current = now;
+      // Deferred past the tab-switch animation: JSON.parse + filter/sort/map
+      // runs on the JS thread and would otherwise compete with the focus
+      // transition (jank on the TTL-expired visit).
+      const timer = setTimeout(() => {
+        loadTripPlans();
+      }, 300);
+      return () => clearTimeout(timer);
     }, [loadTripPlans]),
   );
 
@@ -491,12 +858,79 @@ const ProfileScreen = () => {
 
   const previewTitleText = useMemo(() => {
     if (!previewLook) return '';
-    if (previewLook.isTryOn) {
-      const brand = previewLook.tryOnGarmentBrand ? `${previewLook.tryOnGarmentBrand} · ` : '';
-      return `${brand}${previewLook.tryOnGarmentName || 'AI Look'}`;
+    if (previewLook.isShop) {
+      const brand = previewLook.shopBrand ? `${previewLook.shopBrand} · ` : '';
+      return `${brand}${previewLook.shopName || 'Saved item'}`;
+    }
+    if (previewLook.isWardrobe) {
+      return previewLook.wardrobeName || previewLook.occasion || 'Saved item';
     }
     return previewLook.occasion || 'Saved Look';
   }, [previewLook]);
+
+  const openWardrobePreviewInCloset = useCallback(() => {
+    if (!previewLook?.isWardrobe || !previewLook.wardrobeItemId) return;
+    triggerLightHaptic();
+    const target = wardrobeItems.find((i) => String(i.id) === String(previewLook.wardrobeItemId));
+    setPreviewLook(null);
+    if (target) {
+      navigation.navigate('ClothingDetail', {
+        itemId: String(target.id),
+        fullItem: target,
+      });
+    } else {
+      navigation.navigate('Main', { screen: 'Closet' });
+    }
+  }, [previewLook, wardrobeItems, navigation]);
+
+  const openShopPreviewInShop = useCallback(() => {
+    if (!previewLook?.isShop) return;
+    triggerLightHaptic();
+    const id = previewLook.shopItemId ?? '';
+    setPreviewLook(null);
+    navigation.navigate('Main', {
+      screen: 'Inspo',
+      params: {
+        focusShopItemId: id,
+        focusShopItemName: previewLook.shopName,
+      },
+    });
+  }, [previewLook, navigation]);
+
+  const buyShopPreview = useCallback(() => {
+    if (!previewLook?.isShop) return;
+    triggerLightHaptic();
+    const query = encodeURIComponent(
+      `${previewLook.shopBrand ?? ''} ${previewLook.shopName ?? ''}`.trim() || 'shop',
+    );
+    Linking.canOpenURL(`https://www.google.com/search?q=${query}`)
+      .then((canOpen) => {
+        if (canOpen) Linking.openURL(`https://www.google.com/search?q=${query}`);
+      })
+      .catch(() => {});
+  }, [previewLook]);
+
+  const removeShopPreview = useCallback(() => {
+    if (!previewLook?.isShop || !previewLook.shopItemId) return;
+    triggerLightHaptic();
+    Alert.alert(
+      t('profile.removeLook', { defaultValue: 'Remove look?' }),
+      t('profile.removeShopSaved', {
+        defaultValue: 'Remove this saved item from your looks?',
+      }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.remove'),
+          style: 'destructive',
+          onPress: () => {
+            void useSavedShopStore.getState().removeSave(previewLook.shopItemId as string);
+            setPreviewLook(null);
+          },
+        },
+      ],
+    );
+  }, [previewLook, t]);
 
   // Navigation target per piece: wardrobe items open their detail screen,
   // shop items jump to the Shop tab focused on that product.
@@ -733,225 +1167,25 @@ const ProfileScreen = () => {
     ]);
   };
 
-  const GlassPanel = ({
-    children,
-    style,
-    radius = 30,
-    intensity = 42,
-  }: {
-    children: React.ReactNode;
-    style?: ViewStyle | ViewStyle[];
-    radius?: number;
-    intensity?: number;
-  }) => (
-    <View style={[styles.glassShadow, { borderRadius: radius }, style]}>
-      <View style={[styles.glassPanel, { borderRadius: radius }]}>
-        <BlurView
-          intensity={Platform.OS === 'ios' ? intensity : 100}
-          tint={D.tint}
-          style={StyleSheet.absoluteFillObject}
-        />
-        <LinearGradient
-          colors={D.panelHighlight}
-          start={{ x: 0.08, y: 0 }}
-          end={{ x: 0.92, y: 1 }}
-          style={StyleSheet.absoluteFillObject}
-        />
-        <View style={[styles.glassScrim, { borderRadius: radius }]} />
-        <View style={styles.glassContent}>{children}</View>
-      </View>
-    </View>
-  );
+  // Stable preview handler shared by all memoized LookCards.
+  const handlePreviewLook = useCallback((outfit: SavedOutfit) => {
+    triggerLightHaptic();
+    setPreviewLook(outfit);
+  }, []);
 
-  const SecondaryGlassButton = ({
-    label,
-    icon,
-    onPress,
-    danger = false,
-    style,
-  }: {
-    label: string;
-    icon: IconName;
-    onPress: () => void;
-    danger?: boolean;
-    style?: ViewStyle | ViewStyle[];
-  }) => (
-    <TouchableOpacity
-      activeOpacity={0.85}
-      style={style}
-      onPress={() => {
-        triggerLightHaptic();
-        onPress();
-      }}
-    >
-      <View style={styles.inlineGlassButton}>
-        <BlurView
-          intensity={Platform.OS === 'ios' ? 34 : 100}
-          tint={D.tint}
-          style={StyleSheet.absoluteFillObject}
-        />
-        <LinearGradient
-          colors={D.buttonHighlight}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFillObject}
-        />
-        <View style={styles.inlineGlassButtonContent}>
-          <Ionicons name={icon} size={16} color={danger ? D.danger : D.text} />
-          <ScaledText style={[styles.inlineGlassButtonText, danger && { color: D.danger }]}>{label}</ScaledText>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
+  const renderLookItem = useCallback(({ item }: { item: SavedOutfit }) => (
+    <LookCard outfit={item} onPreview={handlePreviewLook} />
+  ), [handlePreviewLook]);
 
-  const PrimaryGradientButton = ({
-    label,
-    icon,
-    onPress,
-    style,
-  }: {
-    label: string;
-    icon: IconName;
-    onPress: () => void;
-    style?: ViewStyle | ViewStyle[];
-  }) => (
-    <TouchableOpacity
-      activeOpacity={0.85}
-      style={style}
-      onPress={() => {
-        triggerLightHaptic();
-        onPress();
-      }}
-    >
-      <LinearGradient
-        colors={[D.accentStart, D.accentEnd]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.primaryButton}
-      >
-        <Ionicons name={icon} size={16} color={D.white} />
-        <ScaledText style={styles.primaryButtonText}>{label}</ScaledText>
-      </LinearGradient>
-    </TouchableOpacity>
-  );
-
-  const MenuRow = ({
-    icon,
-    label,
-    onPress,
-    trailing,
-    danger = false,
-  }: {
-    icon: IconName;
-    label: string;
-    onPress: () => void;
-    trailing?: string;
-    danger?: boolean;
-  }) => (
-    <Pressable
-      style={({ pressed }) => [styles.menuRow, pressed && styles.menuRowPressed]}
-      onPress={() => {
-        triggerLightHaptic();
-        onPress();
-      }}
-    >
-      <View style={[styles.menuLeading, trailing ? styles.menuLeadingWithTrailing : styles.menuLeadingCompact]}>
-        <View style={[styles.menuIconWrap, danger && styles.menuIconWrapDanger]}>
-          <Ionicons name={icon} size={17} color={danger ? D.danger : D.textSub} />
-        </View>
-
-        <View style={styles.menuCopy}>
-          <ScaledText style={[styles.menuTitle, danger && { color: D.danger }]} numberOfLines={1}>
-            {label}
-          </ScaledText>
-        </View>
-      </View>
-
-      <View style={styles.menuTrailing}>
-        {trailing ? (
-          <ScaledText style={[styles.menuTrailingText, danger && { color: D.danger }]} numberOfLines={1}>
-            {trailing}
-          </ScaledText>
-        ) : null}
-        <Ionicons name="chevron-forward" size={16} color={danger ? D.danger : D.textSub} />
-      </View>
-    </Pressable>
-  );
-
-  const renderLookCard = (outfit: SavedOutfit) => {
-    const cardTitle = outfit.isTryOn
-      ? `${outfit.tryOnGarmentBrand ? `${outfit.tryOnGarmentBrand} · ` : ''}${
-          outfit.tryOnGarmentName || 'AI Look'
-        }`
-      : outfit.occasion || 'Saved Look';
-
-    return (
-      <TouchableOpacity
-        key={outfit._id}
-        style={styles.lookCardShadow}
-        activeOpacity={0.88}
-        onPress={() => {
-          triggerLightHaptic();
-          setPreviewLook(outfit);
-        }}
-      >
-        <View style={styles.lookCard}>
-          {outfit.image !== undefined ? (
-            <Image
-              source={typeof outfit.image === 'number' ? outfit.image : { uri: outfit.image as string }}
-              style={styles.lookImage}
-            />
-          ) : (
-            <OutfitCollagePreview
-              items={
-                outfit.collageItems && outfit.collageItems.length > 0
-                  ? outfit.collageItems
-                  : outfit.itemImages.map((src, index) => ({ id: index, image: src }))
-              }
-              backgroundColor="#F4F6FA"
-              placeholderIconColor="rgba(15,23,42,0.22)"
-              placeholderIconSize={30}
-              footerInset={64}
-            />
-          )}
-
-          {/* Floating glass info bar — replaces the old full-bleed black
-              gradient. Frosted pill with dark text stays legible over the
-              light collage in both themes; arrow hints the card opens. */}
-          <View style={styles.lookFooterBar}>
-            <BlurView
-              intensity={Platform.OS === 'ios' ? 48 : 100}
-              tint="light"
-              style={StyleSheet.absoluteFill}
-            />
-            <View style={styles.lookFooterScrim} />
-            <View style={styles.lookFooterContent}>
-              <View style={styles.lookFooterText}>
-                <ScaledText style={styles.lookTitle} numberOfLines={1}>
-                  {cardTitle}
-                </ScaledText>
-                {outfit.date ? (
-                  <ScaledText style={styles.lookDate} numberOfLines={1}>
-                    {outfit.date}
-                  </ScaledText>
-                ) : null}
-              </View>
-              <View style={styles.lookFooterAction}>
-                <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
-              </View>
-            </View>
-          </View>
-
-          {outfit.isTryOn ? (
-            <View style={styles.lookBadge}>
-              <Ionicons name="sparkles" size={10} color={D.white} />
-              <ScaledText style={styles.lookBadgeText}>{t('profile.ai')}</ScaledText>
-            </View>
-          ) : null}
-        </View>
-      </TouchableOpacity>
-    );
-  };
+  const lookKeyExtractor = useCallback((item: SavedOutfit) => item._id, []);
+  const lookGetItemLayout = useCallback((_: ArrayLike<SavedOutfit> | null | undefined, index: number) => ({
+    length: LOOK_ROW_CARD_WIDTH,
+    offset: (LOOK_ROW_CARD_WIDTH + LOOK_CARD_GAP) * index,
+    index,
+  }), []);
+  const handleLookEndReached = useCallback(() => {
+    setVisibleLookCount((c) => (c >= 1000 ? c : Math.min(c + 12, 1000)));
+  }, []);
 
   const renderLooksContent = () => {
     if (loading) {
@@ -995,13 +1229,22 @@ const ProfileScreen = () => {
     }
 
     return (
-      <ScrollView
+      <FlatList
+        data={outfits.slice(0, visibleLookCount)}
+        renderItem={renderLookItem}
+        keyExtractor={lookKeyExtractor}
+        getItemLayout={lookGetItemLayout}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.lookRow}
-      >
-        {outfits.map(renderLookCard)}
-      </ScrollView>
+        initialNumToRender={4}
+        maxToRenderPerBatch={4}
+        windowSize={3}
+        updateCellsBatchingPeriod={50}
+        removeClippedSubviews={Platform.OS === 'android'}
+        onEndReached={handleLookEndReached}
+        onEndReachedThreshold={0.5}
+      />
     );
   };
 
@@ -1203,13 +1446,13 @@ const ProfileScreen = () => {
           <BlurView
             intensity={Platform.OS === 'ios' ? 40 : 100}
             tint={D.tint}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
           />
           <LinearGradient
             colors={D.buttonHighlight}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
           />
           <View style={styles.stickyHeaderContent}>
             <ScaledText style={styles.stickyHeaderTitle}>{userName}</ScaledText>
@@ -1268,13 +1511,13 @@ const ProfileScreen = () => {
                 <BlurView
                   intensity={Platform.OS === 'ios' ? 36 : 100}
                   tint={D.tint}
-                  style={StyleSheet.absoluteFillObject}
+                  style={StyleSheet.absoluteFill}
                 />
                 <LinearGradient
                   colors={[D.accentStart, D.accentEnd]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
-                  style={StyleSheet.absoluteFillObject}
+                  style={StyleSheet.absoluteFill}
                 />
                 <Ionicons name="camera" size={12} color={D.white} />
               </TouchableOpacity>
@@ -1465,12 +1708,6 @@ const ProfileScreen = () => {
               label={t('profile.editProfile')}
               onPress={openEditProfile}
             />
-            <View style={styles.menuSeparator} />
-            <MenuRow
-              icon="stats-chart-outline"
-              label={t('profile.wardrobeAnalytics')}
-              onPress={() => navigation.navigate('WardrobeAnalytics')}
-            />
             {isAdminUser && (
               <>
                 <View style={styles.menuSeparator} />
@@ -1558,7 +1795,7 @@ const ProfileScreen = () => {
           </GlassPanel>
         </Animated.View>
 
-        {__DEV__ && (
+        {__DEV__ && isAdminUser && (
           <Animated.View entering={FadeInDown.delay(190).duration(350)} style={styles.sectionBlock}>
             <ScaledText style={styles.groupHeading}>{t('profile.developerTools')}</ScaledText>
             <GlassPanel radius={28}>
@@ -1620,19 +1857,6 @@ const ProfileScreen = () => {
             style={[styles.sheetOuter, { paddingBottom: insets.bottom + 18 }]}
           >
             <View style={styles.sheetCard}>
-              <BlurView
-                intensity={Platform.OS === 'ios' ? 46 : 100}
-                tint={D.tint}
-                style={StyleSheet.absoluteFillObject}
-              />
-              <LinearGradient
-                colors={D.panelHighlight}
-                start={{ x: 0.1, y: 0 }}
-                end={{ x: 0.9, y: 1 }}
-                style={StyleSheet.absoluteFillObject}
-              />
-              <View style={styles.sheetScrim} />
-
               <View style={styles.sheetHandle} />
               <ScaledText style={styles.sheetTitle}>{t('profile.editAccount')}</ScaledText>
               <ScaledText style={styles.sheetSubtitle}>{t('profile.updateDetails')}</ScaledText>
@@ -1662,7 +1886,7 @@ const ProfileScreen = () => {
                     colors={[D.accentStart, D.accentEnd]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
-                    style={StyleSheet.absoluteFillObject}
+                    style={StyleSheet.absoluteFill}
                   />
                   <Ionicons name="camera" size={13} color={D.white} />
                 </View>
@@ -1670,12 +1894,6 @@ const ProfileScreen = () => {
 
               <ScaledText style={styles.fieldLabel}>{t('profile.name')}</ScaledText>
               <View style={styles.fieldCard}>
-                <BlurView
-                  intensity={Platform.OS === 'ios' ? 30 : 100}
-                  tint={D.tint}
-                  style={StyleSheet.absoluteFillObject}
-                />
-                <View style={styles.fieldScrim} />
                 <TextInput
                   style={styles.fieldInput}
                   value={editName}
@@ -1689,12 +1907,6 @@ const ProfileScreen = () => {
 
               <ScaledText style={styles.fieldLabel}>{t('profile.email')}</ScaledText>
               <View style={styles.fieldCard}>
-                <BlurView
-                  intensity={Platform.OS === 'ios' ? 30 : 100}
-                  tint={D.tint}
-                  style={StyleSheet.absoluteFillObject}
-                />
-                <View style={styles.fieldScrim} />
                 <View style={styles.readonlyRow}>
                   <Ionicons name="mail-outline" size={16} color={D.textSub} />
                   <ScaledText style={styles.readonlyValue}>{userEmail || t('profile.noEmail')}</ScaledText>
@@ -1730,19 +1942,13 @@ const ProfileScreen = () => {
       {previewLook ? (
         <Modal transparent animationType="fade" visible onRequestClose={() => setPreviewLook(null)}>
           <View style={styles.previewOverlay}>
-            <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setPreviewLook(null)} />
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setPreviewLook(null)} />
 
             <Animated.View entering={FadeIn.duration(220)} style={styles.previewShell}>
               <View style={styles.previewCard}>
                 {/* Header: title block + close */}
                 <View style={styles.previewHeader}>
                   <View style={styles.previewHeaderText}>
-                    {previewLook.isTryOn ? (
-                      <View style={styles.previewBadgeRow}>
-                        <Ionicons name="sparkles" size={15} color="#0A1931" />
-                        <ScaledText style={styles.previewBadgeText}>{t('profile.aiTryOn')}</ScaledText>
-                      </View>
-                    ) : null}
                     <ScaledText style={styles.previewTitle} numberOfLines={1}>
                       {previewTitleText}
                     </ScaledText>
@@ -1855,40 +2061,49 @@ const ProfileScreen = () => {
                 ) : null}
 
                 <View style={styles.previewActions}>
-                  {previewLook.isTryOn ? (
+                  {previewLook.isShop ? (
                     <SecondaryGlassButton
-                      label={t('profile.tryAgain')}
-                      icon="sparkles-outline"
-                      onPress={() => {
-                        navigation.navigate('AITryOn');
-                        setPreviewLook(null);
-                      }}
+                      label={t('profile.viewInShop', { defaultValue: 'View in Shop' })}
+                      icon="bag-outline"
+                      onPress={openShopPreviewInShop}
+                      style={styles.previewActionButton}
+                    />
+                  ) : null}
+                  {previewLook.isShop ? (
+                    <PrimaryGradientButton
+                      label={t('inspo.buyNow', { defaultValue: 'Buy' })}
+                      icon="arrow-forward"
+                      onPress={buyShopPreview}
+                      style={styles.previewActionButton}
+                    />
+                  ) : null}
+                  {previewLook.isWardrobe ? (
+                    <SecondaryGlassButton
+                      label={t('profile.openInWardrobe', { defaultValue: 'Open in Wardrobe' })}
+                      icon="shirt-outline"
+                      onPress={openWardrobePreviewInCloset}
                       style={styles.previewActionButton}
                     />
                   ) : null}
 
                   <SecondaryGlassButton
-                    label={previewLook.isTryOn ? t('common.remove') : t('common.cancel')}
-                    icon={previewLook.isTryOn ? 'trash-outline' : 'close-outline'}
+                    label={
+                      previewLook.isShop
+                        ? t('common.remove')
+                        : t('common.cancel')
+                    }
+                    icon={
+                      previewLook.isShop ? 'trash-outline' : 'close-outline'
+                    }
                     onPress={() => {
-                      if (previewLook.isTryOn) {
-                        Alert.alert(t('profile.removeLook'), t('profile.removeTryOnLook'), [
-                          { text: t('common.cancel'), style: 'cancel' },
-                          {
-                            text: t('common.remove'),
-                            style: 'destructive',
-                            onPress: () => {
-                              removeTryOnLook(previewLook._id);
-                              setPreviewLook(null);
-                            },
-                          },
-                        ]);
+                      if (previewLook.isShop) {
+                        removeShopPreview();
                         return;
                       }
 
                       setPreviewLook(null);
                     }}
-                    danger={previewLook.isTryOn}
+                    danger={previewLook.isShop}
                     style={styles.previewActionButton}
                   />
                 </View>
@@ -1913,7 +2128,7 @@ const createStyles = (D: DTokens) =>
       backgroundColor: D.bg,
     },
     backgroundGradient: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
     },
     orbLarge: {
       position: 'absolute',
@@ -1956,7 +2171,7 @@ const createStyles = (D: DTokens) =>
       backgroundColor: D.glass,
     },
     glassScrim: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       backgroundColor: D.glassStrong,
     },
     glassContent: {
@@ -2853,16 +3068,23 @@ const createStyles = (D: DTokens) =>
       overflow: 'hidden',
       borderTopLeftRadius: 34,
       borderTopRightRadius: 34,
+      borderBottomLeftRadius: 28,
+      borderBottomRightRadius: 28,
       borderWidth: 1,
-      borderColor: D.glassBorder,
-      backgroundColor: D.glassStrong,
+      borderColor: D.sheetBorder,
+      backgroundColor: D.sheet,
       paddingHorizontal: 20,
       paddingTop: 12,
       paddingBottom: 6,
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: -8 },
+      shadowOpacity: D.isDark ? 0.4 : 0.16,
+      shadowRadius: 24,
+      elevation: 16,
     },
     sheetScrim: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: D.glassStrong,
+      ...StyleSheet.absoluteFill,
+      backgroundColor: D.sheet,
     },
     sheetHandle: {
       width: 38,
@@ -2940,13 +3162,13 @@ const createStyles = (D: DTokens) =>
       borderRadius: 20,
       overflow: 'hidden',
       borderWidth: 1,
-      borderColor: D.glassBorderSoft,
-      backgroundColor: D.glassMuted,
+      borderColor: D.fieldBorder,
+      backgroundColor: D.field,
       marginBottom: 16,
     },
     fieldScrim: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: D.glassMuted,
+      ...StyleSheet.absoluteFill,
+      backgroundColor: D.field,
     },
     fieldInput: {
       minHeight: 58,

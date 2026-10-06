@@ -55,12 +55,31 @@ function redact(value: unknown): unknown {
     return value;
 }
 
+/**
+ * Verbose routine logs (debug/info) print ONLY when explicitly opted in:
+ *   globalThis.AIWARDROBE_VERBOSE_LOGS = true   // in devtools console
+ * Previously every debug/info printed in any dev build — tab switches and
+ * Home visits spammed the console (and burned JS-thread time serializing
+ * payloads), burying real warnings/errors. warn/error always print.
+ */
+export function isVerboseLoggingEnabled(): boolean {
+    try {
+        return (
+            typeof __DEV__ !== 'undefined' &&
+            __DEV__ &&
+            typeof globalThis !== 'undefined' &&
+            (globalThis as Record<string, unknown>).AIWARDROBE_VERBOSE_LOGS === true
+        );
+    } catch {
+        return false;
+    }
+}
+
 function send(level: LogLevel, scope: string, message: string, data?: unknown, error?: unknown) {
     const tag = `[${scope}]`;
     const payload = data !== undefined ? redact(data) : undefined;
-    const isDev = typeof __DEV__ !== 'undefined' && __DEV__;
 
-    if ((level === 'debug' || level === 'info') && !isDev) return;
+    if ((level === 'debug' || level === 'info') && !isVerboseLoggingEnabled()) return;
 
     if (level === 'error') {
         console.error(tag, message, error ?? '', payload ?? '');

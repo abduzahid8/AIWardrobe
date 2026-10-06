@@ -103,7 +103,7 @@ const MaleSilhouette = () => (
         width={AVATAR_WIDTH}
         height={AVATAR_HEIGHT}
         viewBox={`0 0 100 220`}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
     >
         {/* Head */}
         <Circle cx="50" cy="15" r="11" fill="#D4C5B2" />

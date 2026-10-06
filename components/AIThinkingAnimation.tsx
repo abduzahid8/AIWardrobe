@@ -1,11 +1,10 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { View, Animated, Dimensions, StyleSheet, Easing, Image,  } from 'react-native'
+import { View, Animated, Dimensions, StyleSheet, Easing } from 'react-native'
+import { Image } from 'expo-image';
 import { ScaledText } from './ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import { useTranslation } from 'react-i18next';
-import Svg, { Line, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
 
 const { width, height } = Dimensions.get('window');
 
@@ -28,52 +27,80 @@ interface AIThinkingAnimationProps {
   clothingItems?: ClothingItem[];
 }
 
-// Generate helix DNA strand positions — full-screen spread.
-// W/H are the actual container size (not window), so items fill the
-// available area below the header and stay clear of the bottom UI.
-const generateHelixItems = (count: number, clothingImages: string[], W: number, H: number) => {
-  const items = [];
-  const strands = 2; // Double helix
-  const itemsPerStrand = Math.ceil(count / strands);
-  
-  for (let strand = 0; strand < strands; strand++) {
-    for (let i = 0; i < itemsPerStrand; i++) {
-      const progress = i / itemsPerStrand;
-      const angle = progress * Math.PI * 4 + (strand * Math.PI); // 2 full rotations
-      // Vertical: top 12% → 66% of container (top clears status bar +
-      // floating back button, bottom 34% reserved for pills + progress)
-      const y = H * 0.12 + progress * H * 0.54;
-      // Horizontal: fill width — center ± (30% + bulge 8%) so edge items stay on-screen
-      const radius = W * 0.30 + Math.sin(progress * Math.PI) * W * 0.08;
-      
-      items.push({
-        id: strand * itemsPerStrand + i,
-        imageIndex: (strand * itemsPerStrand + i) % clothingImages.length,
-        angle,
-        baseY: y,
-        radius,
-        strand,
-        progress,
-        size: 52 + Math.random() * 22,
-        delay: i * 100 + strand * 200,
-      });
-    }
+interface OrbitItem {
+  id: number;
+  imageIndex: number;
+  angleDeg: number;
+  size: number;
+  opacity: number;
+}
+
+// Build N evenly-spaced items for one ring. Deterministic sizes so
+// memoization holds across renders.
+const buildRingItems = (
+  count: number,
+  startId: number,
+  imageCount: number,
+  offsetDeg: number,
+): OrbitItem[] => {
+  const items: OrbitItem[] = [];
+  for (let k = 0; k < count; k++) {
+    const id = startId + k;
+    items.push({
+      id,
+      imageIndex: imageCount > 0 ? id % imageCount : 0,
+      angleDeg: (k / count) * 360 + offsetDeg,
+      size: 52 + (id % 4) * 7,
+      opacity: 0.9 + ((id % 3) * 0.05),
+    });
   }
   return items;
 };
 
-// Generate energy nodes that pulse between items
-const generateConnections = (count: number) => {
-  return Array.from({ length: count }, (_, i) => ({
-    id: i,
-    startItem: i,
-    endItem: (i + 1) % count,
-    delay: i * 150,
-    speed: 1200 + Math.random() * 800,
-  }));
-};
+// One clothing thumbnail, absolutely positioned inside its ring square.
+// The parent ring rotates (orbit); this cell counter-rotates with the same
+// shared animated node so the garment stays upright while revolving.
+const OrbitThumb = React.memo(function OrbitThumb({
+  left,
+  top,
+  size,
+  opacity,
+  counterSpin,
+  uri,
+}: {
+  left: number;
+  top: number;
+  size: number;
+  opacity: number;
+  counterSpin: Animated.AnimatedInterpolation<string>;
+  uri: string;
+}) {
+  const h = size * 1.2;
+  return (
+    <Animated.View
+      style={{
+        position: 'absolute',
+        left,
+        top,
+        width: size,
+        height: h,
+        transform: [{ rotate: counterSpin }],
+      }}
+    >
+      <View style={[styles.helixItem, { width: size, height: h, opacity }]}>
+        <Image
+          source={{ uri }}
+          style={styles.clothingImage}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          recyclingKey={`${uri}-${left}-${top}`}
+        />
+      </View>
+    </Animated.View>
+  );
+});
 
-export const AIThinkingAnimation: React.FC<AIThinkingAnimationProps> = ({ 
+export const AIThinkingAnimation: React.FC<AIThinkingAnimationProps> = ({
   styleName,
   clothingItems = [],
 }) => {
@@ -83,8 +110,11 @@ export const AIThinkingAnimation: React.FC<AIThinkingAnimationProps> = ({
   // the flex area (not window size, which includes header + safe areas).
   const [layout, setLayout] = useState({ w: width, h: height });
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const progressAnim = useRef(new Animated.Value(0)).current;
   const stepFadeAnim = useRef(new Animated.Value(1)).current;
+  const floatAnim = useRef(new Animated.Value(0));
+  // One looping timer per orbit ring — shared by all items on that ring.
+  const orbitOuterAnim = useRef(new Animated.Value(0));
+  const orbitInnerAnim = useRef(new Animated.Value(0));
 
   const THINKING_STEPS: ThinkingStep[] = [
     { id: 1, text: t('aiThinking.scanningWardrobe'), icon: 'scan-outline' },
@@ -109,167 +139,222 @@ export const AIThinkingAnimation: React.FC<AIThinkingAnimationProps> = ({
     ];
   }, [clothingItems]);
 
-  // Generate helix DNA strands — recompute when container size is known
-  const helixItems = useMemo(
-    () => generateHelixItems(20, clothingImages, layout.w, layout.h),
-    [clothingImages, layout.w, layout.h],
+  // 12 garments total: 6 outer + 6 inner. All 12 are always rendered —
+  // images cycle when the wardrobe has fewer photos.
+  const outerItems = useMemo(
+    () => buildRingItems(6, 0, clothingImages.length, 0),
+    [clothingImages.length],
   );
-  const connections = useMemo(() => generateConnections(12), []);
+  const innerItems = useMemo(
+    () => buildRingItems(6, 100, clothingImages.length, 30),
+    [clothingImages.length],
+  );
 
-  // Animation refs
-  const helixFloatAnim = useRef(new Animated.Value(0)).current;
-  const connectionAnims = useRef(connections.map(() => new Animated.Value(0))).current;
+  // Orbit geometry — centered exactly on the СТИЛЬ DNA circle.
+  // The brain is the only flex child (everything else is absolute), so it
+  // sits at the container center (w/2, h/2). Rings use the same point as
+  // their rotation pivot, so garments revolve around the circle itself.
+  const centerX = layout.w / 2;
+  const centerY = layout.h / 2;
+  const outerRadius = Math.min(layout.w * 0.36, layout.h * 0.22);
+  const innerRadius = outerRadius * 0.62;
+
+  // Position each item on its ring circle (static layout; rotation animates).
+  const outerLayout = useMemo(
+    () =>
+      outerItems.map(item => {
+        const rad = (item.angleDeg * Math.PI) / 180;
+        return {
+          ...item,
+          left: outerRadius + Math.cos(rad) * outerRadius - item.size / 2,
+          top: outerRadius + Math.sin(rad) * outerRadius - (item.size * 1.2) / 2,
+          uri: clothingImages[item.imageIndex % clothingImages.length] ?? '',
+        };
+      }),
+    [outerItems, clothingImages, outerRadius],
+  );
+  const innerLayout = useMemo(
+    () =>
+      innerItems.map(item => {
+        const rad = (item.angleDeg * Math.PI) / 180;
+        return {
+          ...item,
+          left: innerRadius + Math.cos(rad) * innerRadius - item.size / 2,
+          top: innerRadius + Math.sin(rad) * innerRadius - (item.size * 1.2) / 2,
+          uri: clothingImages[item.imageIndex % clothingImages.length] ?? '',
+        };
+      }),
+    [innerItems, clothingImages, innerRadius],
+  );
+
+  // Shared native-driven rotations. Outer spins clockwise, inner
+  // counter-clockwise. 0deg == 360deg so the loop restart is seamless.
+  const outerSpin = useMemo(
+    () => orbitOuterAnim.current.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  const outerCounter = useMemo(
+    () => orbitOuterAnim.current.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  const innerSpin = useMemo(
+    () => orbitInnerAnim.current.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  const innerCounter = useMemo(
+    () => orbitInnerAnim.current.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
   useEffect(() => {
-    // Gentle floating up/down motion (no rotateY — rotateY without
-    // perspective collapses X to a vertical line mid-rotation).
-    Animated.loop(
+    // Native-driven loops only (float + pulse + 2 orbit rings) — no
+    // per-item JS timers, no per-frame setState.
+    const floatLoop = Animated.loop(
       Animated.sequence([
-        Animated.timing(helixFloatAnim, {
+        Animated.timing(floatAnim.current, {
           toValue: 1,
           duration: 3000,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
-        Animated.timing(helixFloatAnim, {
+        Animated.timing(floatAnim.current, {
           toValue: 0,
           duration: 3000,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
       ])
-    ).start();
+    );
+    floatLoop.start();
 
-    // Pulse center
-    Animated.loop(
+    const pulseLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 1.15, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
         Animated.timing(pulseAnim, { toValue: 1, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ])
-    ).start();
+    );
+    pulseLoop.start();
 
-    // Progress
-    Animated.timing(progressAnim, { toValue: 1, duration: 9000, easing: Easing.linear, useNativeDriver: false }).start();
+    // Clothing orbit — linear 0→1 loops, seamless (0deg == 360deg).
+    // Outer clockwise (24s), inner counter-clockwise (17s) for DNA feel.
+    const outerLoop = Animated.loop(
+      Animated.timing(orbitOuterAnim.current, {
+        toValue: 1,
+        duration: 24000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+    outerLoop.start();
 
-    // Energy connections pulsing
-    connectionAnims.forEach((anim: Animated.Value, index: number) => {
-      const conn = connections[index];
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(conn.delay),
-          Animated.timing(anim, { toValue: 1, duration: conn.speed, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-          Animated.timing(anim, { toValue: 0, duration: 0, useNativeDriver: true }),
-        ])
-      ).start();
-    });
+    const innerLoop = Animated.loop(
+      Animated.timing(orbitInnerAnim.current, {
+        toValue: 1,
+        duration: 17000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+    innerLoop.start();
 
-    // Steps
+    // Steps — state only, no nested Animated.sequence inside setState.
     const stepInterval = setInterval(() => {
-      setCurrentStep((prev) => {
+      setCurrentStep(prev => {
         if (prev >= THINKING_STEPS.length - 1) return prev;
-        Animated.sequence([
-          Animated.timing(stepFadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
-          Animated.timing(stepFadeAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
-        ]).start();
+        stepFadeAnim.setValue(0);
+        Animated.timing(stepFadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
         return prev + 1;
       });
     }, 1800);
 
-    return () => clearInterval(stepInterval);
+    return () => {
+      clearInterval(stepInterval);
+      floatLoop.stop();
+      pulseLoop.stop();
+      outerLoop.stop();
+      innerLoop.stop();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const floatY = helixFloatAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -12] });
-  const progressWidth = progressAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
-
-  const getHelixStyle = (item: any) => {
-    const baseX = layout.w / 2 + Math.cos(item.angle) * item.radius;
-    const baseY = item.baseY;
-    const zScale = (Math.sin(item.angle) + 1) / 2 * 0.4 + 0.6;
-    const opacity = (Math.sin(item.angle) + 1) / 2 * 0.5 + 0.5;
-
-    return {
-      position: 'absolute' as const,
-      left: baseX - item.size / 2,
-      top: baseY - item.size / 2,
-      transform: [{ scale: zScale }],
-      opacity,
-      zIndex: Math.floor(zScale * 10),
-    };
-  };
+  const floatY = floatAnim.current.interpolate({ inputRange: [0, 1], outputRange: [0, -12] });
 
   const currentStepData = THINKING_STEPS[currentStep];
+  const progressPct = Math.round((currentStep / (THINKING_STEPS.length - 1)) * 100);
+
+  const onLayout = useRef(({ nativeEvent }: any) => {
+    const { width: w, height: h } = nativeEvent.layout;
+    setLayout(prev => (Math.abs(w - prev.w) > 1 || Math.abs(h - prev.h) > 1 ? { w, h } : prev));
+  }).current;
 
   return (
-    <View
-      style={styles.container}
-      onLayout={(e) => {
-        const { width: w, height: h } = e.nativeEvent.layout;
-        if (Math.abs(w - layout.w) > 1 || Math.abs(h - layout.h) > 1) {
-          setLayout({ w, h });
-        }
-      }}
-    >
+    <View style={styles.container} onLayout={onLayout}>
       <LinearGradient colors={['rgba(43, 92, 233, 0.08)', 'rgba(236, 72, 153, 0.05)', 'transparent']} style={StyleSheet.absoluteFill} />
 
-      {/* DNA Helix container — full-screen background layer, gentle float only */}
-      <Animated.View style={[styles.helixContainer, { transform: [{ translateY: floatY }] }]} pointerEvents="none">
-        {helixItems.map((item: any) => (
-          <View key={item.id} style={[styles.helixItem, getHelixStyle(item), { width: item.size, height: item.size * 1.2 }]}>
-            <Image source={{ uri: clothingImages[item.imageIndex] }} style={styles.clothingImage} resizeMode="cover" />
-          </View>
-        ))}
-      </Animated.View>
-
-      {/* Energy connection lines — full-screen background layer */}
-      <Svg width="100%" height="100%" style={StyleSheet.absoluteFill} pointerEvents="none">
-        <Defs>
-          <SvgGradient id="energyGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <Stop offset="0%" stopColor="#3B82F6" stopOpacity="0" />
-            <Stop offset="50%" stopColor="#2B5CE9" stopOpacity="0.6" />
-            <Stop offset="100%" stopColor="#8B5CF6" stopOpacity="0" />
-          </SvgGradient>
-        </Defs>
-        {connections.map((conn: any, index: number) => {
-          const startItem = helixItems[conn.startItem % helixItems.length];
-          const endItem = helixItems[conn.endItem % helixItems.length];
-          if (!startItem || !endItem) return null;
-          const x1 = layout.w / 2 + Math.cos(startItem.angle) * startItem.radius;
-          const y1 = startItem.baseY;
-          const x2 = layout.w / 2 + Math.cos(endItem.angle) * endItem.radius;
-          const y2 = endItem.baseY;
-          return (
-            <AnimatedLine
-              key={conn.id}
-              x1={x1} y1={y1} x2={x2} y2={y2}
-              stroke="url(#energyGradient)"
-              strokeWidth={2}
-              opacity={connectionAnims[index]}
+      {/* Orbit layer — 12 garments on 2 rings spinning around the brain */}
+      <Animated.View style={[styles.orbitLayer, { transform: [{ translateY: floatY }] }]} pointerEvents="none">
+        {/* Outer ring — square centered on the brain, rotates as one unit */}
+        <Animated.View
+          style={{
+            position: 'absolute',
+            left: centerX - outerRadius,
+            top: centerY - outerRadius,
+            width: outerRadius * 2,
+            height: outerRadius * 2,
+            transform: [{ rotate: outerSpin }],
+          }}
+        >
+          {outerLayout.map(item => (
+            <OrbitThumb
+              key={`o-${item.id}`}
+              left={item.left}
+              top={item.top}
+              size={item.size}
+              opacity={item.opacity}
+              counterSpin={outerCounter}
+              uri={item.uri}
             />
-          );
-        })}
-      </Svg>
+          ))}
+        </Animated.View>
+
+        {/* Inner ring — opposite direction */}
+        <Animated.View
+          style={{
+            position: 'absolute',
+            left: centerX - innerRadius,
+            top: centerY - innerRadius,
+            width: innerRadius * 2,
+            height: innerRadius * 2,
+            transform: [{ rotate: innerSpin }],
+          }}
+        >
+          {innerLayout.map(item => (
+            <OrbitThumb
+              key={`i-${item.id}`}
+              left={item.left}
+              top={item.top}
+              size={item.size}
+              opacity={item.opacity}
+              counterSpin={innerCounter}
+              uri={item.uri}
+            />
+          ))}
+        </Animated.View>
+      </Animated.View>
 
       {/* Center AI Core */}
       <Animated.View style={[styles.centerBrain, { transform: [{ scale: pulseAnim }] }]}>
-        <BlurView intensity={95} tint="light" style={StyleSheet.absoluteFill}>
-          <LinearGradient colors={['rgba(255,255,255,0.98)', 'rgba(255,255,255,0.9)']} style={StyleSheet.absoluteFill} />
-        </BlurView>
         <View style={styles.brainInner}>
           <View style={styles.aiIconContainer}>
             <Ionicons name="flask" size={32} color="#2B5CE9" />
           </View>
           <ScaledText style={styles.brainText}>{t('aiThinking.styleDna')}</ScaledText>
         </View>
-        <View style={styles.glowRing} />
-        <View style={styles.glowRingOuter} />
       </Animated.View>
-
-      {/* Hexagon pattern background */}
-      <View style={styles.hexPattern} pointerEvents="none">
-        {[...Array(6)].map((_, i) => (
-          <Animated.View key={i} style={[styles.hexagon, { opacity: 0.05 + i * 0.02 }]} />
-        ))}
-      </View>
 
       {/* Thinking text */}
       <View style={styles.textContainer}>
@@ -282,18 +367,16 @@ export const AIThinkingAnimation: React.FC<AIThinkingAnimationProps> = ({
         {styleName && <ScaledText style={styles.styleTag}>{t('aiThinking.synthesizingDna', { style: styleName })}</ScaledText>}
       </View>
 
-      {/* Progress bar */}
+      {/* Progress bar — static step width (5 updates total) */}
       <View style={styles.progressContainer}>
         <View style={styles.progressBackground}>
-          <Animated.View style={[styles.progressFill, { width: progressWidth }]} />
+          <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
         </View>
-        <ScaledText style={styles.progressText}>{Math.round((currentStep / (THINKING_STEPS.length - 1)) * 100)}%</ScaledText>
+        <ScaledText style={styles.progressText}>{progressPct}%</ScaledText>
       </View>
     </View>
   );
 };
-
-const AnimatedLine = Animated.createAnimatedComponent(Line);
 
 const styles = StyleSheet.create({
   container: {
@@ -302,7 +385,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  helixContainer: {
+  orbitLayer: {
     position: 'absolute',
     top: 0,
     left: 0,
@@ -311,16 +394,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   helixItem: {
-    position: 'absolute',
     borderRadius: 14,
     overflow: 'hidden',
     backgroundColor: '#fff',
-    shadowColor: '#2B5CE9',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 10,
-    borderWidth: 3,
+    elevation: 2,
+    borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.9)',
   },
   clothingImage: {
@@ -336,13 +414,9 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: 'rgba(43, 92, 233, 0.4)',
     overflow: 'hidden',
-    shadowColor: '#2B5CE9',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.4,
-    shadowRadius: 24,
-    elevation: 20,
+    elevation: 6,
     zIndex: 20,
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    backgroundColor: '#FFFFFF',
   },
   brainInner: {
     alignItems: 'center',
@@ -365,39 +439,6 @@ const styles = StyleSheet.create({
     color: '#2B5CE9',
     letterSpacing: 1.2,
   },
-  glowRing: {
-    position: 'absolute',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    borderWidth: 2,
-    borderColor: 'rgba(43, 92, 233, 0.15)',
-    zIndex: -1,
-  },
-  glowRingOuter: {
-    position: 'absolute',
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    borderWidth: 1,
-    borderColor: 'rgba(43, 92, 233, 0.08)',
-    zIndex: -2,
-  },
-  hexPattern: {
-    position: 'absolute',
-    width: 400,
-    height: 400,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  hexagon: {
-    position: 'absolute',
-    width: 400,
-    height: 400,
-    borderRadius: 200,
-    borderWidth: 1,
-    borderColor: 'rgba(43, 92, 233, 0.1)',
-  },
   textContainer: {
     position: 'absolute',
     bottom: 138,
@@ -418,11 +459,7 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     borderWidth: 1,
     borderColor: 'rgba(43, 92, 233, 0.25)',
-    shadowColor: '#2B5CE9',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 10,
+    elevation: 3,
   },
   stepIcon: {
     marginRight: 8,
@@ -438,10 +475,6 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 16,
     fontWeight: '500',
-  },
-  styleTagHighlight: {
-    color: '#2B5CE9',
-    fontWeight: '800',
   },
   progressContainer: {
     position: 'absolute',

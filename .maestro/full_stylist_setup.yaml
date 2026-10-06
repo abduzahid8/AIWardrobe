@@ -1,0 +1,30 @@
+appId: host.exp.Exponent
+name: full_stylist_setup
+tags:
+  - full
+  - expo-go
+  - inspo
+---
+# AI stylist setup round trip: Inspo → Personal Stylist banner → outfit
+# setup renders (occasion/style pickers) → back. Read-only: NEVER taps
+# Generate (would spend AI budget). Logged IN. Ends on Inspo.
+- tapOn:
+    point: "58%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(Вдохновение|Inspiration).*"
+# The stylist banner lives on the Shop segment (Guide may be sticky from
+# earlier visits) — select Shop first.
+- tapOn: ".*(Магазин|Shop).*"
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn: ".*(Персональный стилист|Personal stylist).*"
+- waitForAnimationToEnd:
+    timeout: 10000
+- assertVisible: ".*(New outfit|Новый образ).*"
+- assertVisible: ".*Generate outfit.*"
+- tapOn: ".*(Назад|Back|Go back).*"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(Вдохновение|Inspiration).*"
+- takeScreenshot: full_stylist_setup

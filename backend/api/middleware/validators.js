@@ -174,8 +174,8 @@ export const validateAIChat = [
     body('query')
         .notEmpty()
         .withMessage('Query is required')
-        .isLength({ max: 1000 })
-        .withMessage('Query must be less than 1000 characters')
+        .isLength({ max: 4000 })
+        .withMessage('Query must be less than 4000 characters')
         .trim(),
 
     handleValidationErrors

@@ -55,12 +55,30 @@ export function handleAPIError(error: unknown, context: string): never {
 }
 
 /**
- * Build auth headers from stored token.
+ * Build auth headers from the live Supabase session (preferred) with a
+ * fallback to the legacy `userToken` key for older installs.
+ *
+ * The legacy key alone caused every AI call to 401 once Supabase became
+ * the sole auth source — the session JWT is what the backend validates.
  */
 export async function getAuthHeaders(): Promise<Record<string, string>> {
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',
     };
+    try {
+        // Lazy require avoids a hard import cycle (supabase client is tiny,
+        // but shared.ts is imported very early in the boot sequence).
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { supabase } = require('../../../lib/supabase') as typeof import('../../../lib/supabase');
+        const { data } = await supabase.auth.getSession();
+        const sessionToken = data?.session?.access_token;
+        if (sessionToken) {
+            headers['Authorization'] = `Bearer ${sessionToken}`;
+            return headers;
+        }
+    } catch {
+        // Fall through to legacy token below.
+    }
     const token = await AsyncStorage.getItem('userToken');
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;

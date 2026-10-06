@@ -1,0 +1,18 @@
+appId: host.exp.Exponent
+name: rugged_dark_mode
+tags:
+  - rugged
+  - expo-go
+  - theme
+---
+# System appearance toggle (driven from the shell between runs of this
+# flow): theme switch must rebuild memoized styles without crash or blank.
+# Theme-agnostic asserts — valid in both light and dark. Logged IN.
+# Re-anchors Home first (callers may leave any tab active).
+- tapOn:
+    point: "26%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(Сегодняшний образ|Today).*"
+- assertVisible: ".*AIWardrobe.*"
+- takeScreenshot: rugged_appearance

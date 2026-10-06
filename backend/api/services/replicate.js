@@ -1,10 +1,9 @@
 /**
- * Replicate AI Service — Virtual Try-On & Background Removal
+ * Replicate AI Service — Background Removal & Segmentation
  *
  * Uses the existing REPLICATE_API_TOKEN from .env.
  *
  * Exports:
- *   - virtualTryOn(personImageB64, garmentImageB64, options)
  *   - removeBackground(imageBase64)
  */
 import Replicate from "replicate";
@@ -19,77 +18,7 @@ if (!REPLICATE_API_TOKEN) {
 const replicate = REPLICATE_API_TOKEN ? new Replicate({ auth: REPLICATE_API_TOKEN }) : null;
 
 // ── Model IDs ──
-const TRYON_MODEL = "cuuupid/idm-vton:c871bb9b046c1b1f6571f934c750ab1d72e05e27c6f0184093e605e8c09c3dea";
 const REMBG_MODEL = "cjwbw/rembg:fb8af171cfa1616ddcf1242c093f9c46bcada5ad4cf6f2fbe8b81b330ec5c003";
-
-// ═══════════════════════════════════════════
-// VIRTUAL TRY-ON (IDM-VTON)
-// ═══════════════════════════════════════════
-
-/**
- * Run virtual try-on using IDM-VTON on Replicate.
- * @param {string} personImageB64 - Base64 person image
- * @param {string} garmentImageB64 - Base64 garment image
- * @param {object} options
- * @param {string} options.garmentType - "upper_body", "lower_body", or "dresses"
- * @param {string} options.description - Garment description
- * @param {number} options.steps - Denoising steps (default 30)
- * @param {number} options.seed - Random seed (default 42)
- * @returns {Promise<{image: string, elapsed_seconds: number}>}
- */
-export async function virtualTryOn(personImageB64, garmentImageB64, options = {}) {
-    if (!replicate) throw new Error("Replicate API token not configured");
-
-    const {
-        garmentType = "upper_body",
-        description = "A stylish clothing item",
-        steps = 30,
-        seed = 42,
-    } = options;
-
-    logger.info(`👗 Replicate: Starting IDM-VTON try-on (${garmentType})...`);
-
-    const startTime = Date.now();
-
-    // Ensure proper data URI format for Replicate
-    const personUri = personImageB64.startsWith("data:")
-        ? personImageB64
-        : `data:image/jpeg;base64,${personImageB64}`;
-    const garmentUri = garmentImageB64.startsWith("data:")
-        ? garmentImageB64
-        : `data:image/jpeg;base64,${garmentImageB64}`;
-
-    const output = await replicate.run(TRYON_MODEL, {
-        input: {
-            human_img: personUri,
-            garm_img: garmentUri,
-            garment_des: description,
-            category: garmentType,
-            num_inference_steps: steps,
-            seed,
-        },
-    });
-
-    const elapsed = (Date.now() - startTime) / 1000;
-
-    // Output is a URL to the generated image — download and convert to base64
-    if (output) {
-        const resultUrl = typeof output === "string" ? output : output[0] || output;
-        logger.info(`✅ Replicate try-on complete in ${elapsed.toFixed(1)}s`);
-
-        // Fetch the image and convert to base64
-        const response = await fetch(resultUrl);
-        const arrayBuffer = await response.arrayBuffer();
-        const base64 = Buffer.from(arrayBuffer).toString("base64");
-
-        return {
-            image: base64,
-            elapsed_seconds: elapsed,
-        };
-    }
-
-    throw new Error("Replicate returned no output");
-}
 
 // ═══════════════════════════════════════════
 // BACKGROUND REMOVAL & SEGMENTATION
@@ -259,7 +188,6 @@ export function isAvailable() {
 }
 
 export default {
-    virtualTryOn,
     removeBackground,
     isolateItem,
     generateGhostMannequin,

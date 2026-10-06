@@ -5,7 +5,7 @@
  * Handles API calls for admin role management, user management, and audit logs.
  */
 
-import { supabase } from '../lib/supabase';
+import { supabase } from '../../lib/supabase';
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('AdminService');

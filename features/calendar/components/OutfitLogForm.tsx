@@ -376,7 +376,7 @@ export const OutfitLogForm: React.FC<OutfitLogFormProps> = ({
 const styles = StyleSheet.create({
     overlay: { flex: 1, justifyContent: 'flex-end' },
     backdrop: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         backgroundColor: 'rgba(15,23,42,0.6)',
     },
     sheet: {
@@ -628,7 +628,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     pickedOverlay: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         backgroundColor: 'rgba(99,102,241,0.15)',
     },
     pickedCheck: {

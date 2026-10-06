@@ -29,9 +29,10 @@ const tierCache = new Map();
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 /**
- * Tier hierarchy: free < premium < vip
+ * Tier hierarchy: free < lite < premium < vip
+ * (lite sits between free and premium — blocked from premium endpoints)
  */
-const TIER_LEVEL = { free: 0, premium: 1, vip: 2 };
+const TIER_LEVEL = { free: 0, lite: 1, premium: 2, vip: 3 };
 
 /**
  * Look up user's active subscription tier.

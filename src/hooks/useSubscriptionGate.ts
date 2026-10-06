@@ -4,10 +4,15 @@
  *
  * It unifies:
  *   - Tier-based boolean gates (analytics, tripPlanner, tryOns, …)
- *   - Per-day quota gates (aiOutfits 10/day, scans 5/day, …)
+ *   - Per-day quota gates (homeSwipes 3/day for free, scans 5/day, …).
+ *     NOTE: free.aiOutfits is 0 post-trial → Create Outfit always paywalls.
  *   - Automatic navigation to the Paywall when access is denied
  *   - A "consume" helper that both records usage and returns whether
  *     the action was allowed — so screens don't have to duplicate logic.
+ *
+ * Pending fail-open: while trial status is still resolving from
+ * storage/server (isTrialPending), all gates allow through so trial-active
+ * users are never wrongly paywalled on cold start. The window is ~1s.
  *
  * Typical patterns:
  *
@@ -86,43 +91,49 @@ interface SubscriptionGate {
 
 export function useSubscriptionGate(): SubscriptionGate {
     const navigation = useNavigation<Nav>();
-    const {
-        tier,
-        effectiveTier,
-        hasActiveSubscription,
-        isPremium,
-        checkFeatureAccess,
-    } = useSubscriptionStore();
+    // Selective subscriptions — previously `useSubscriptionStore()` with no
+    // selector re-rendered every consumer on ANY store change (loading flags,
+    // last-verified timestamps). This was a top cause of list/screen jank.
+    const tier = useSubscriptionStore((s) => s.tier);
+    const effectiveTier = useSubscriptionStore((s) => s.effectiveTier);
+    const hasActiveSubscription = useSubscriptionStore((s) => s.hasActiveSubscription);
+    const isPremium = useSubscriptionStore((s) => s.isPremium);
+    const checkFeatureAccess = useSubscriptionStore((s) => s.checkFeatureAccess);
+    const isTrialPending = useSubscriptionStore((s) => s.isTrialPending);
 
-    const {
-        getRemaining: dailyRemaining,
-        getUsed: dailyUsed,
-        canUse: dailyCanUse,
-        consume: dailyConsume,
-    } = useDailyUsageStore();
+    const dailyRemaining = useDailyUsageStore((s) => s.getRemaining);
+    const dailyUsed = useDailyUsageStore((s) => s.getUsed);
+    const dailyCanUse = useDailyUsageStore((s) => s.canUse);
+    const dailyConsume = useDailyUsageStore((s) => s.consume);
 
     const openPaywall = useCallback(() => {
         navigation.navigate('Paywall');
     }, [navigation]);
 
     const canAccess = useCallback(
-        (feature: FeatureKey): boolean => checkFeatureAccess(feature),
-        [checkFeatureAccess]
+        (feature: FeatureKey): boolean => {
+            // Fail-open while trial status resolves (cold start) — see header.
+            if (isTrialPending) return true;
+            return checkFeatureAccess(feature);
+        },
+        [checkFeatureAccess, isTrialPending]
     );
 
     const canUseNow = useCallback(
         (feature: FeatureKey): boolean => {
+            if (isTrialPending) return true;
             if (!checkFeatureAccess(feature)) return false;
             if (DAILY_QUOTA_FEATURES.includes(feature)) {
                 return dailyCanUse(feature);
             }
             return true;
         },
-        [checkFeatureAccess, dailyCanUse]
+        [checkFeatureAccess, dailyCanUse, isTrialPending]
     );
 
     const requireFeature = useCallback(
         (feature: FeatureKey): boolean => {
+            if (isTrialPending) return true;
             if (!checkFeatureAccess(feature)) {
                 openPaywall();
                 return false;
@@ -133,7 +144,7 @@ export function useSubscriptionGate(): SubscriptionGate {
             }
             return true;
         },
-        [checkFeatureAccess, dailyCanUse, openPaywall]
+        [checkFeatureAccess, dailyCanUse, openPaywall, isTrialPending]
     );
 
     const consume = useCallback(
@@ -145,6 +156,7 @@ export function useSubscriptionGate(): SubscriptionGate {
 
     const consumeOrPaywall = useCallback(
         async (feature: FeatureKey): Promise<boolean> => {
+            if (isTrialPending) return true;
             if (!checkFeatureAccess(feature)) {
                 openPaywall();
                 return false;
@@ -160,18 +172,21 @@ export function useSubscriptionGate(): SubscriptionGate {
             }
             return true;
         },
-        [checkFeatureAccess, dailyCanUse, dailyConsume, openPaywall]
+        [checkFeatureAccess, dailyConsume, openPaywall, isTrialPending]
     );
 
     const getRemaining = useCallback(
         (feature: FeatureKey): number => {
+            // Fail-open while pending so the UI never flashes a lock/countdown
+            // for trial-active users on cold start.
+            if (isTrialPending) return -1;
             if (!DAILY_QUOTA_FEATURES.includes(feature)) {
                 // Non-daily boolean features: -1 if granted, 0 if locked
                 return checkFeatureAccess(feature) ? -1 : 0;
             }
             return dailyRemaining(feature);
         },
-        [dailyRemaining, checkFeatureAccess]
+        [dailyRemaining, checkFeatureAccess, isTrialPending]
     );
 
     const getUsed = useCallback(

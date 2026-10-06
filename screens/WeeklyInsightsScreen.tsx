@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { ScaledText } from '../components/ui/ScaledText';
 import { ScreenWrapper } from '../components/ui/ScreenWrapper';
 import { LiquidGlassCard } from '../components/ui/LiquidGlassCard';
@@ -11,6 +11,9 @@ import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, typography } from '../src/theme';
 import useWardrobeStore from '../store/wardrobeStore';
+import useSubscriptionStore from '../store/subscriptionStore';
+import { useSubscriptionGate } from '../src/hooks/useSubscriptionGate';
+import FeatureLockOverlay from '../components/paywall/FeatureLockOverlay';
 import {
   calculateStreak,
   getClosetUtilization,
@@ -37,6 +40,11 @@ const UnwornItemCard: React.FC<{ item: ClothingItem; onPress?: () => void }> = (
 
 const WeeklyInsightsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { t } = useTranslation();
+  const { canAccess } = useSubscriptionGate();
+  // Don't flash a lock screen while trial/subscription status is still
+  // resolving (mirrors the old RootNavigator pending guard).
+  const isTrialPending = useSubscriptionStore((s) => s.isTrialPending);
+  const isSubLoading = useSubscriptionStore((s) => s.isLoading);
   const items = useWardrobeStore((state) => state.items);
   const wearLogs = useWardrobeStore((state) => state.wearLogs);
 
@@ -64,6 +72,34 @@ const WeeklyInsightsScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
     return Object.entries(counts).sort((a, b) => b[1] - a[1]);
   }, [items]);
 
+  // Free / expired-trial users see a paywall upsell instead of the dashboard.
+  // The rest of the app stays usable — only this premium feature is locked.
+  // NOTE: placed after all hooks to preserve hooks order. While pending we
+  // render a spinner so trial-active users never flash a lock screen on boot.
+  if (isTrialPending || isSubLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#8B5CF6" />
+      </View>
+    );
+  }
+  if (!canAccess('analytics')) {
+    return (
+      <FeatureLockOverlay
+        requiredTier="Pro"
+        featureName={t('weeklyInsights.title', 'Weekly Insights')}
+        tagline={t('weeklyInsights.lockedTagline', 'Your wardrobe analytics are a Pro feature. Upgrade to unlock insights.')}
+        bullets={[
+          t('weeklyInsights.lockedBullet1', 'Closet utilization & unworn alerts'),
+          t('weeklyInsights.lockedBullet2', 'Style insights personalized to you'),
+          t('weeklyInsights.lockedBullet3', 'Streaks, stats & most-worn tracking'),
+        ]}
+        icon="stats-chart-outline"
+        onClose={() => navigation.goBack()}
+      />
+    );
+  }
+
   return (
     <ScreenWrapper animation="fade">
       <LinearGradient
@@ -80,7 +116,13 @@ const WeeklyInsightsScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+            testID="insightsBack"
+            accessibilityLabel={t('common.back')}
+            accessibilityRole="button"
+          >
             <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
           </TouchableOpacity>
           <ScaledText style={styles.headerTitle}>{t('weeklyInsights.title')}</ScaledText>
@@ -268,6 +310,12 @@ const WeeklyInsightsScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
 };
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
   backgroundOrbTop: {
     position: 'absolute',
     top: -120,

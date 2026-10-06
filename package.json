@@ -1,6 +1,6 @@
 {
   "name": "wardrobe-app",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
@@ -70,7 +70,6 @@
     "expo-video-thumbnails": "~57.0.1",
     "expo-web-browser": "~57.0.2",
     "i18next": "^25.7.1",
-    "jsonwebtoken": "^9.0.3",
     "nativewind": "^4.1.23",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -97,6 +96,7 @@
     "@types/jest": "^29.5.14",
     "@types/node": "^22.10.0",
     "@types/react": "~19.2.4",
+    "jsonwebtoken": "^9.0.3",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
     "@wdio/appium-service": "^9.27.0",

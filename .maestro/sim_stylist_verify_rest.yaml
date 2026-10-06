@@ -1,0 +1,84 @@
+appId: com.aiwardrobe
+name: sim_stylist_verify_rest
+---
+- launchApp:
+    stopApp: false
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow:
+    when:
+      visible: "Your Outfits"
+    commands:
+      - tapOn:
+          id: aiResultsBack
+      - waitForAnimationToEnd:
+          timeout: 8000
+- assertVisible: ".*Generate outfit.*"
+
+# ── Formal + Old Money ──
+- scrollUntilVisible:
+    element:
+      id: stylistOccasion-formal
+    direction: DOWN
+    timeout: 8000
+- tapOn:
+    id: stylistOccasion-formal
+- waitForAnimationToEnd:
+    timeout: 800
+- scrollUntilVisible:
+    element:
+      id: stylistStyle-old_money
+    direction: DOWN
+    timeout: 8000
+- tapOn:
+    id: stylistStyle-old_money
+- waitForAnimationToEnd:
+    timeout: 800
+- tapOn:
+    id: stylistGenerate
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 55000
+- takeScreenshot: verify_formal_old_money_c1
+- swipe:
+    direction: LEFT
+    duration: 400
+- waitForAnimationToEnd:
+    timeout: 2500
+- takeScreenshot: verify_formal_old_money_c2
+- tapOn:
+    id: aiResultsBack
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# ── Travel + Semi-Classic ──
+- scrollUntilVisible:
+    element:
+      id: stylistOccasion-travel
+    direction: DOWN
+    timeout: 8000
+- tapOn:
+    id: stylistOccasion-travel
+- waitForAnimationToEnd:
+    timeout: 800
+- scrollUntilVisible:
+    element:
+      id: stylistStyle-semi_classic
+    direction: DOWN
+    timeout: 8000
+- tapOn:
+    id: stylistStyle-semi_classic
+- waitForAnimationToEnd:
+    timeout: 800
+- tapOn:
+    id: stylistGenerate
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 55000
+- takeScreenshot: verify_travel_semi_c1
+- swipe:
+    direction: LEFT
+    duration: 400
+- waitForAnimationToEnd:
+    timeout: 2500
+- takeScreenshot: verify_travel_semi_c2

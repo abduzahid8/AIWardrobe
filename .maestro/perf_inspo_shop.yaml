@@ -1,0 +1,23 @@
+appId: host.exp.Exponent
+name: perf_inspo_shop
+tags:
+  - perf
+  - expo-go
+  - inspo
+---
+# Inspo Guide↔Shop segment switch renders the shop grid (virtualized rows).
+# Logged IN. Starts on any tab. Ends on Guide.
+- tapOn:
+    point: "58%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(Вдохновение|Inspiration).*"
+- tapOn: ".*(Магазин|Shop).*"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(Магазин|Shop).*"
+- tapOn: ".*(Руководство|Guide).*"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(Summer Outfits|Summer 2026|Руководство|Guide).*"
+- takeScreenshot: perf_inspo_guide

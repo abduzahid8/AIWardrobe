@@ -21,7 +21,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { InteractionManager } from 'react-native';
 
 import useAuthStore from '../store/auth';
 import useWardrobeStore from '../store/wardrobeStore';
@@ -33,10 +32,29 @@ import {
 } from '../src/services/outfitGenerationService';
 import { createLogger } from '../src/utils/logger';
 import type { ClothingItem } from '../src/types/domain';
-import type { ShopCatalogItem } from '../features/try-on/types';
-import { SHOP_CATALOG_ITEMS } from '../data/shopCatalogItems';
-import { CLASSIC_MENS_ITEMS } from '../data/inspoMensShopItems';
+import type { ShopCatalogItem } from '../src/types/shop';
 import { normalizeStyleId, scoreItemForStyle, type StyleId } from '../features/outfit-generator/utils/styleInference';
+import { isFormalLayer, isShortsBottom } from '../src/utils/categoryMapper';
+
+// Static catalogs require()d lazily — ~120KB of data modules must not
+// parse/evaluate on app startup (Home imports this hook eagerly). The
+// rebuild paths below are the only consumers; first rebuild pays the cost,
+// subsequent calls reuse the cached array.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+let staticShopPoolCache: ShopCatalogItem[] | null = null;
+function getStaticShopPool(): ShopCatalogItem[] {
+    if (!staticShopPoolCache) {
+        const data = require('../data/shopCatalogItems') as {
+            SHOP_CATALOG_ITEMS: ShopCatalogItem[];
+        };
+        const inspo = require('../data/inspoMensShopItems') as {
+            CLASSIC_MENS_ITEMS: ShopCatalogItem[];
+        };
+        staticShopPoolCache = [...data.SHOP_CATALOG_ITEMS, ...inspo.CLASSIC_MENS_ITEMS];
+    }
+    return staticShopPoolCache;
+}
+import { buildCatalogSimilarityKey, spreadSimilarCatalogItems } from '../src/utils/shopCatalogOrder';
 
 const logger = createLogger('useDailyAIOutfit');
 
@@ -99,6 +117,16 @@ function todayKey(d: Date = new Date()): string {
 }
 
 function storageKey(userId: string | null | undefined, style: string): string {
+    // v18 invalidates decks built without similarity spreading + per-deck
+    // rotation seeds (lookalike listings clustered at top of ranked pools;
+    // sibling sections opening on the same garments) — visual repeats with
+    // distinct ids.
+    // v17 invalidates decks built without pool dedupe + overlap minimization
+    // (one garment occupying two rotation indices; near-duplicate 3-of-4
+    // shared looks accepted) — the residual ~20% repeats.
+    // v16 invalidates decks built with the frozen-slot enumerator
+    // (floor((i+attempt)/divisor)+slotIndex*3) that left top/bottom/shoes
+    // fixed — 70%+ identical looks with one item repeating every time.
     // v15 invalidates decks created before Team Collaboration / business_casual
     // became shop-only. Old v14 decks contain a wardrobe anchor + shop
     // complements and must not be reused for the shop-only section.
@@ -115,7 +143,7 @@ function storageKey(userId: string | null | undefined, style: string): string {
     // v10 invalidates daily batches generated from too-small wardrobe-only
     // pools. Daily Home decks now require enough unique combinations for the
     // requested 15-card carousel before the cache can short-circuit generation.
-    return `daily_ai_outfit_v15::${userId ?? 'anon'}::${style}`;
+    return `daily_ai_outfit_v18::${userId ?? 'anon'}::${style}`;
 }
 
 /**
@@ -131,6 +159,27 @@ export function isShopOnlyDeck(style?: string | null, occasion?: string | null):
     if (o.includes('team') && o.includes('collab')) return true;
     if (o.trim() === 'team collaboration') return true;
     return false;
+}
+
+/**
+ * Formal decks (business_casual / old_money / classic) never contain shorts —
+ * not even with a casual layer. Casual decks still allow shorts, but NEVER
+ * paired with a formal outerwear piece (blazer, suit jacket, overcoat,
+ * trench, peacoat, tuxedo). Single rule behind every guard below.
+ */
+function isFormalDeckStyle(style?: string | null): boolean {
+    const s = (style || '').toLowerCase().replace(/[\s-]+/g, '_');
+    return s === 'business_casual' || s === 'old_money' || s === 'classic' || s === 'formal';
+}
+
+function outfitHasShortsWithSuit(items: Array<{ name?: string; type?: string; macroCategory?: string }>, style?: string | null): boolean {
+    const bottomIsShorts = items.some((it) => {
+        if (String(it.macroCategory || '').toLowerCase() !== 'bottom') return false;
+        return isShortsBottom(it as unknown as Record<string, unknown>);
+    });
+    if (!bottomIsShorts) return false;
+    if (isFormalDeckStyle(style)) return true;
+    return items.some((it) => isFormalLayer(it as unknown as Record<string, unknown>));
 }
 
 /**
@@ -300,6 +349,99 @@ function pickFrom(pool: DailyOutfitItem[], index: number, usedIds: Set<string>):
     return pool[index % pool.length];
 }
 
+// Diverse round-robin: each slot rotates with the outfit index (i) plus a
+// small per-slot offset (slotIndex*3) so top/bottom/shoes don't freeze on one
+// item. Attempt steps are primes coprime to small pool sizes (3/4/5) so a
+// signature collision perturbs every slot differently and finds a new unique
+// combination instead of repeating the same 70%-identical look.
+const DIVERSE_ATTEMPT_STEPS = [7, 11, 13, 17];
+
+function diversePoolIndex(outfitIndex: number, slotIndex: number, attempt: number, poolLength: number, seed = 0, reverse = false): number {
+    if (poolLength <= 0) return 0;
+    const base = (outfitIndex + seed + slotIndex * 3 + attempt * DIVERSE_ATTEMPT_STEPS[slotIndex % DIVERSE_ATTEMPT_STEPS.length]) % poolLength;
+    // Mirrored lane: sibling decks sharing one catalog traverse opposite ends
+    // so their 15-card windows overlap as little as the pool size allows.
+    return reverse ? (poolLength - 1 - base) : base;
+}
+
+// Merge pools without duplicating the same item id twice. The old
+// [...primary, ...existing] concat let one id occupy two indices, so the
+// modulo rotation could land on the same garment via either copy and repeat
+// it across outfits.
+function dedupePoolById(pool: DailyOutfitItem[]): DailyOutfitItem[] {
+    const seen = new Set<string>();
+    const out: DailyOutfitItem[] = [];
+    for (const item of pool) {
+        const key = String(item.id);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(item);
+    }
+    return out;
+}
+
+// Score a candidate combination: penalize items already used often and pairs
+// sharing several pieces with an already-built outfit. Lower is better.
+function scoreCandidateOverlap(
+    candidateIds: string[],
+    builtIdSets: Set<string>[],
+    usageCounts: Map<string, number>,
+): number {
+    let maxShared = 0;
+    for (const built of builtIdSets) {
+        let shared = 0;
+        for (const id of candidateIds) if (built.has(id)) shared++;
+        if (shared > maxShared) maxShared = shared;
+    }
+    let usage = 0;
+    for (const id of candidateIds) usage += usageCounts.get(id) ?? 0;
+    return maxShared * 100 + usage;
+}
+
+// Product-family key: groups listings that look identical at card size
+// ("Brown Shirt" ×3, eight "penny loafer" variants). Score ties cluster
+// these at the top of a ranked pool, so a plain rotation walks straight
+// through lookalikes — different ids, same look.
+function similarityKeyOf(item: DailyOutfitItem): string {
+    return buildCatalogSimilarityKey({
+        id: String(item.id),
+        name: item.name || 'item',
+        garmentType: String(item.macroCategory || 'item'),
+    });
+}
+
+// Reorder a ranked pool so same-family products are spread apart instead of
+// occupying adjacent rotation indices.
+function spreadBucketBySimilarity(pool: DailyOutfitItem[], slot: DailySlot): DailyOutfitItem[] {
+    if (pool.length <= 2) return pool;
+    const decorated = pool.map((item) => ({ ...item, name: item.name || 'item', garmentType: slot }));
+    const ordered = spreadSimilarCatalogItems(
+        decorated as Array<DailyOutfitItem & { name: string; garmentType: string }>,
+    );
+    return ordered.map((entry) => {
+        const { garmentType: _dropped, ...rest } = entry as DailyOutfitItem & { garmentType?: string };
+        return rest as DailyOutfitItem;
+    });
+}
+
+// Per-deck rotation seed + lane: two sections sharing one catalog (Team
+// Collaboration + Night-Time Dinner rank the same oxfords/loafers at top)
+// must not start at the same pool offset, or card #k in both decks shows
+// the same garments. The lane mirrors traversal so sibling decks sample
+// opposite ends of small pools.
+function deckRotationHash(style: string, occasion: string): number {
+    const key = `${style}::${occasion}`.toLowerCase();
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) hash = (Math.imul(31, hash) + key.charCodeAt(i)) | 0;
+    return Math.abs(hash);
+}
+function deckRotationSeed(style: string, occasion: string): number {
+    return deckRotationHash(style, occasion) % 32;
+}
+function deckReverseLane(style: string, occasion: string): boolean {
+    return ((deckRotationHash(style, occasion) >> 5) & 1) === 1;
+}
+
 function rebuildShopOnlyDailyDeck(
     inputOutfits: GeneratedOutfit[],
     requestedVariants: number,
@@ -315,7 +457,7 @@ function rebuildShopOnlyDailyDeck(
     const existingShopItems = inputOutfits
         .flatMap((outfit) => outfit.items || [])
         .filter((item) => (item as DailyOutfitItem).isShopItem === true);
-    const staticShop = [...SHOP_CATALOG_ITEMS, ...CLASSIC_MENS_ITEMS];
+    const staticShop = getStaticShopPool();
     const shopOutfitItems = styleRankItems(
         [...shopCatalogItems, ...staticShop].map(toShopOutfitItem).filter((item) => canonicalMacro(item) !== 'other'),
         style,
@@ -335,26 +477,51 @@ function rebuildShopOnlyDailyDeck(
 
     const rebuilt: GeneratedOutfit[] = [];
     const signatures = new Set<string>();
-    const maxOutfits = count * 6;
+    const builtIdSets: Set<string>[] = [];
+    const usageCounts = new Map<string, number>();
+    const simUsageCounts = new Map<string, number>();
+    // Bounded search: pools hold 100+ candidates, so count*3 outer tries ×
+    // count*2 inner attempts is plenty for 15 uniques. Was count*6 ×
+    // max(30, count*4) = 5400 iterations worst-case per deck × 2 decks on
+    // Home — the main-thread stall behind slow Home renders.
+    const maxOutfits = count * 3;
+    // Each named deck starts at its own rotation offset so two sections
+    // sharing one catalog don't open on the same garments.
+    const seed = deckRotationSeed(style, occasion);
+    const reverse = deckReverseLane(style, occasion);
+
+    // Per-slot pools: deduped (one garment can't occupy two rotation
+    // indices) then similarity-spread (same-looking listings can't occupy
+    // adjacent rotation indices).
+    // Formal decks never see shorts in the bottom pool — `styleRankItems`
+    // already strips them from fresh shop candidates, but `existingBuckets`
+    // (edge-function output) bypasses that filter, so strip here as well.
+    const poolsBySlot = new Map<DailySlot, DailyOutfitItem[]>();
+    const formalDeck = isFormalDeckStyle(style);
+    for (const slot of targetSlots) {
+        const primaryPool = shopBuckets[slot].length > 0 ? shopBuckets[slot] : existingBuckets[slot];
+        let combined = [...primaryPool, ...existingBuckets[slot]];
+        if (slot === 'bottom' && formalDeck) {
+            combined = combined.filter((item) => !isShortsBottom(item as unknown as Record<string, unknown>));
+        }
+        poolsBySlot.set(slot, spreadBucketBySimilarity(dedupePoolById(combined), slot));
+    }
 
     for (let i = 0; rebuilt.length < count && i < maxOutfits; i++) {
         let items: DailyOutfitItem[] = [];
         let finalSignature = '';
-        const maxAttempts = Math.max(30, count * 4);
+        let bestScore = Number.POSITIVE_INFINITY;
+        const maxAttempts = Math.max(15, count * 2);
 
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
             const usedIds = new Set<string>();
             const itemsBySlot = new Map<DailySlot, DailyOutfitItem>();
 
-            let divisor = 1;
             let failed = false;
             targetSlots.forEach((slot, slotIndex) => {
-                const primaryPool = shopBuckets[slot].length > 0 ? shopBuckets[slot] : existingBuckets[slot];
-                const fallbackPool = [...primaryPool, ...existingBuckets[slot]];
-                const pool = fallbackPool.length > 0 ? fallbackPool : primaryPool;
-                const poolIndex = Math.floor((i + attempt) / divisor) + slotIndex * 3;
+                const pool = poolsBySlot.get(slot) ?? [];
+                const poolIndex = diversePoolIndex(i, slotIndex, attempt, pool.length, seed, reverse);
                 const pick = pickFrom(pool, poolIndex, usedIds);
-                divisor *= Math.max(pool.length, 1);
                 if (!pick) {
                     failed = true;
                     return;
@@ -372,27 +539,47 @@ function rebuildShopOnlyDailyDeck(
             const candidateItems = targetSlots
                 .map((slot) => itemsBySlot.get(slot))
                 .filter(Boolean) as DailyOutfitItem[];
+            // Hard styling rule: never shorts with a suit/formal layer, and
+            // never shorts at all in formal decks. A pooled shorts item that
+            // slipped past the pool filter must not survive as a combination.
+            if (outfitHasShortsWithSuit(candidateItems, style)) continue;
             // Shop-only: every piece must be a shop pick, and the combination
             // must never repeat (unique by sorted item ids).
             const allShop = candidateItems.every((item) => item.isShopItem === true);
             const signature = candidateItems.map((item) => String(item.id)).sort().join('|');
+            if (candidateItems.length !== targetSlots.length || !allShop || !signature || signatures.has(signature)) continue;
 
-            if (candidateItems.length === targetSlots.length && allShop && signature && !signatures.has(signature)) {
+            // Best-of-attempts: keep the unique candidate sharing the fewest
+            // pieces with already-built outfits (then least total reuse).
+            // Same-looking products count extra: different ids, same look.
+            let simReuse = 0;
+            for (const item of candidateItems) simReuse += simUsageCounts.get(similarityKeyOf(item)) ?? 0;
+            const score = scoreCandidateOverlap(
+                candidateItems.map((item) => String(item.id)),
+                builtIdSets,
+                usageCounts,
+            ) + simReuse * 150;
+            if (score < bestScore) {
+                bestScore = score;
                 items = candidateItems;
                 finalSignature = signature;
-                break;
-            }
-
-            if (candidateItems.length > items.length && signature && !signatures.has(signature)) {
-                items = candidateItems;
-                finalSignature = signature;
+                if (score === 0) break;
             }
         }
 
         if (!items.length || !finalSignature || signatures.has(finalSignature)) continue;
-        // Final guard: never emit a mixed or duplicate outfit from this path.
+        // Final guard: never emit a mixed or duplicate outfit from this path —
+        // and never a shorts-with-suit combination that won best-of-attempts.
         if (!items.every((item) => item.isShopItem === true)) continue;
+        if (outfitHasShortsWithSuit(items, style)) continue;
         signatures.add(finalSignature);
+        const idSet = new Set(items.map((item) => String(item.id)));
+        builtIdSets.push(idSet);
+        for (const id of idSet) usageCounts.set(id, (usageCounts.get(id) ?? 0) + 1);
+        for (const item of items) {
+            const key = similarityKeyOf(item);
+            simUsageCounts.set(key, (simUsageCounts.get(key) ?? 0) + 1);
+        }
 
         const outputIndex = rebuilt.length;
         rebuilt.push({
@@ -439,7 +626,7 @@ function rebuildMixedDailyDeck(
 
     const existingItems = inputOutfits.flatMap((outfit) => outfit.items || []);
     const wardrobeOutfitItems = wardrobeItems.map(toWardrobeOutfitItem).filter((item) => canonicalMacro(item) !== 'other');
-    const staticShop = [...SHOP_CATALOG_ITEMS, ...CLASSIC_MENS_ITEMS];
+    const staticShop = getStaticShopPool();
     const shopOutfitItems = styleRankItems(
         [...shopCatalogItems, ...staticShop].map(toShopOutfitItem).filter((item) => canonicalMacro(item) !== 'other'),
         style,
@@ -456,8 +643,28 @@ function rebuildMixedDailyDeck(
 
     const rebuilt: GeneratedOutfit[] = [];
     const signatures = new Set<string>();
+    const builtIdSets: Set<string>[] = [];
+    const usageCounts = new Map<string, number>();
 
-    for (let i = 0; rebuilt.length < count && i < count * 4; i++) {
+    // Same bound as the shop-only path above (was count*4 outers ×
+    // max(30, count*4) attempts).
+    const mixedSeed = deckRotationSeed(style, occasion);
+    const mixedReverse = deckReverseLane(style, occasion);
+    const mixedSimUsage = new Map<string, number>();
+    // Deduped + similarity-spread per-slot pools shared across attempts
+    // (anchor excluded at pick time). Same formal-deck shorts strip as the
+    // shop-only path — existing/wardrobe buckets bypass style ranking.
+    const mixedFormalDeck = isFormalDeckStyle(style);
+    const mixedPoolsBySlot = new Map<DailySlot, DailyOutfitItem[]>();
+    for (const slot of targetSlots) {
+        const primaryPool = shopBuckets[slot].length > 0 ? shopBuckets[slot] : wardrobeBuckets[slot];
+        let combined = [...primaryPool, ...existingBuckets[slot], ...wardrobeBuckets[slot]];
+        if (slot === 'bottom' && mixedFormalDeck) {
+            combined = combined.filter((item) => !isShortsBottom(item as unknown as Record<string, unknown>));
+        }
+        mixedPoolsBySlot.set(slot, spreadBucketBySimilarity(dedupePoolById(combined), slot));
+    }
+    for (let i = 0; rebuilt.length < count && i < count * 3; i++) {
         const anchor = wardrobeAnchors[i % wardrobeAnchors.length];
         const anchorSlot = targetSlots.includes(canonicalMacro(anchor) as DailySlot)
             ? canonicalMacro(anchor) as DailySlot
@@ -465,7 +672,8 @@ function rebuildMixedDailyDeck(
 
         let items: DailyOutfitItem[] = [];
         let finalSignature = '';
-        const maxAttempts = Math.max(30, count * 4);
+        let bestScore = Number.POSITIVE_INFINITY;
+        const maxAttempts = Math.max(15, count * 2);
 
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
             const usedIds = new Set<string>([String(anchor.id)]);
@@ -477,19 +685,11 @@ function rebuildMixedDailyDeck(
                 recommendation: 'From your wardrobe',
             });
 
-            let divisor = 1;
             targetSlots.forEach((slot, slotIndex) => {
                 if (itemsBySlot.has(slot)) return;
-                const primaryPool = shopBuckets[slot].length > 0 ? shopBuckets[slot] : wardrobeBuckets[slot];
-                const fallbackPool = [
-                    ...primaryPool,
-                    ...existingBuckets[slot],
-                    ...wardrobeBuckets[slot],
-                ];
-                const pool = fallbackPool.length > 0 ? fallbackPool : primaryPool;
-                const poolIndex = Math.floor((i + attempt) / divisor) + slotIndex * 3;
+                const pool = mixedPoolsBySlot.get(slot) ?? [];
+                const poolIndex = diversePoolIndex(i, slotIndex, attempt, pool.length, mixedSeed, mixedReverse);
                 const pick = pickFrom(pool, poolIndex, usedIds);
-                divisor *= Math.max(pool.length, 1);
                 if (!pick) return;
                 usedIds.add(String(pick.id));
                 itemsBySlot.set(slot, {
@@ -502,24 +702,38 @@ function rebuildMixedDailyDeck(
             const candidateItems = targetSlots
                 .map((slot) => itemsBySlot.get(slot))
                 .filter(Boolean) as DailyOutfitItem[];
+            // Same hard rule as shop-only: suits never pair with shorts.
+            if (outfitHasShortsWithSuit(candidateItems, style)) continue;
             const isMixed = candidateItems.some((item) => !item.isShopItem)
                 && candidateItems.some((item) => item.isShopItem);
             const signature = candidateItems.map((item) => String(item.id)).sort().join('|');
+            if (candidateItems.length !== targetSlots.length || !isMixed || !signature || signatures.has(signature)) continue;
 
-            if (candidateItems.length === targetSlots.length && isMixed && signature && !signatures.has(signature)) {
+            let simReuse = 0;
+            for (const item of candidateItems) simReuse += mixedSimUsage.get(similarityKeyOf(item)) ?? 0;
+            const score = scoreCandidateOverlap(
+                candidateItems.map((item) => String(item.id)),
+                builtIdSets,
+                usageCounts,
+            ) + simReuse * 150;
+            if (score < bestScore) {
+                bestScore = score;
                 items = candidateItems;
                 finalSignature = signature;
-                break;
-            }
-
-            if (candidateItems.length > items.length) {
-                items = candidateItems;
-                finalSignature = signature;
+                if (score === 0) break;
             }
         }
 
         if (!items.length || !finalSignature || signatures.has(finalSignature)) continue;
+        if (outfitHasShortsWithSuit(items, style)) continue;
         signatures.add(finalSignature);
+        const idSet = new Set(items.map((item) => String(item.id)));
+        builtIdSets.push(idSet);
+        for (const id of idSet) usageCounts.set(id, (usageCounts.get(id) ?? 0) + 1);
+        for (const item of items) {
+            const key = similarityKeyOf(item);
+            mixedSimUsage.set(key, (mixedSimUsage.get(key) ?? 0) + 1);
+        }
 
         const outputIndex = rebuilt.length;
         rebuilt.push({
@@ -703,6 +917,16 @@ export function useDailyAIOutfit({
                 setLoading(false);
                 return;
             }
+            // Never generate for an anonymous/stale session. During delete ->
+            // create there is a window with no userId where the old code built
+            // 'anon'-keyed decks (edge call + 1350-iteration rebuild) that were
+            // immediately thrown away once the real userId arrived — pure
+            // freeze. The Home gate (dailyDecksEnabled) already prevents this,
+            // this is defense-in-depth.
+            if (!userId) {
+                setLoading(false);
+                return;
+            }
 
             const key     = storageKey(userId, style);
             const dateKey = todayKey();
@@ -870,17 +1094,26 @@ export function useDailyAIOutfit({
      */
     useEffect(() => {
         if (!enabled) return;
+        // Same anonymous-session guard as run(): don't even start the
+        // staggered timer when there's no userId yet.
+        if (!userId) return;
 
         let cancelled = false;
+        let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
-        // Defer outfit generation by 1500ms on startup to avoid competing
-        // with app initialization (wardrobe rehydrate, subscription checks,
-        // notification scheduling). This spreads CPU/network load and
-        // eliminates the UI freeze users see right after splash screen.
-        const startupDelayMs = 1500;
+        // Defer outfit generation past app initialization (wardrobe rehydrate,
+        // subscription checks, catalog fetch) to avoid competing for
+        // JS thread / network right after splash. Staggered per style so the
+        // two Home sections (business_casual + old_money) don't fire their
+        // edge-function + fallback queries in the same tick (thundering herd
+        // that stalled cold start). Plain setTimeout — InteractionManager is
+        // deprecated (see startup warning) and runAfterInteractions still
+        // fires during the herd.
+        let hash = 0;
+        for (let i = 0; i < style.length; i++) hash = (Math.imul(31, hash) + style.charCodeAt(i)) | 0;
+        const startupDelayMs = 1500 + (Math.abs(hash) % 1500);
 
-        const task = InteractionManager.runAfterInteractions(() => {
-            const timeoutId = setTimeout(() => {
+        timeoutId = setTimeout(() => {
                 if (cancelled) return;
 
                 (async () => {
@@ -927,15 +1160,11 @@ export function useDailyAIOutfit({
                         setLoading(true);
                     }
                 })();
-            }, startupDelayMs);
-
-            // Return cleanup for the timeout
-            return () => clearTimeout(timeoutId);
-        });
+        }, startupDelayMs);
 
         return () => {
             cancelled = true;
-            task.cancel();
+            if (timeoutId) clearTimeout(timeoutId);
         };
         // Re-run whenever the identity of the cache slot changes.
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -943,6 +1172,7 @@ export function useDailyAIOutfit({
 
     useEffect(() => {
         if (!enabled) return;
+        if (!userId) return;
         // Wait until the pre-check has completed before deciding whether to
         // call the edge function.  If the pre-check already served cached
         // data it will NOT have set loading=true, so this effect is a no-op.

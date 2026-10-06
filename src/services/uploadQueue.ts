@@ -111,6 +111,22 @@ class UploadQueueService {
     }
 
     /**
+     * Drop all queued uploads (including large imageBase64 payloads).
+     * Must be called on logout / account deletion / account switch so the
+     * next user never uploads the previous user's photos under their own
+     * userId via the success handler.
+     */
+    async clearQueue(): Promise<void> {
+        this.isProcessing = false;
+        try {
+            await AsyncStorage.removeItem(UPLOAD_QUEUE_KEY);
+        } catch {
+            // Best-effort — never block auth flows.
+        }
+        this.notify([]);
+    }
+
+    /**
      * Register the callback that handles a successfully processed upload.
      * The handler is responsible for calling wardrobeStore.addItem().
      */

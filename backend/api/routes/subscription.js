@@ -32,11 +32,15 @@ router.get("/status", authenticateToken, async (req, res) => {
                 status: 'none',
                 hasActiveSubscription: false,
                 features: {
-                    maxUses: 5,
-                    aiOutfits: 5,
+                    maxUses: 3,
+                    aiOutfits: 0,
+                    homeSwipes: 3,
                     wardrobeScans: 5,
-                    tryOns: 3,
+                    tryOns: 0,
                     analytics: false,
+                    fullCalendar: false,
+                    aiStylistChat: false,
+                    tripPlanner: false,
                     prioritySupport: false,
                     unlimitedStorage: false,
                 }
@@ -524,40 +528,61 @@ router.post("/webhook/apple", async (req, res) => {
  * Helper: Get features by subscription tier
  */
 function getFeaturesByTier(tier) {
+    // NOTE: kept in sync with store/subscriptionStore.ts TIER_FEATURES.
+    // After the 7-day free trial ends (effectiveTier 'free'):
+    //   - aiOutfits = 0 → Create Outfit locked
+    //   - homeSwipes = 3/day → Home deck limited to 3 swipes
+    //   - fullCalendar / aiStylistChat = false → Calendar + AI Stylist locked
     const features = {
         free: {
-            maxUses: 5,
-            aiOutfits: 5,
+            maxUses: 3,
+            aiOutfits: 0,
+            homeSwipes: 3,
             wardrobeScans: 5,
-            tryOns: 3,
+            tryOns: 0,
             analytics: false,
+            fullCalendar: false,
+            aiStylistChat: false,
+            tripPlanner: false,
             prioritySupport: false,
             unlimitedStorage: false,
         },
         lite: {
             maxUses: -1,
             aiOutfits: -1,
+            homeSwipes: -1,
             wardrobeScans: -1,
             tryOns: 0,
             analytics: true,
+            fullCalendar: true,
+            aiStylistChat: true,
+            tripPlanner: false,
             prioritySupport: false,
             unlimitedStorage: false,
         },
         premium: {
             maxUses: -1,
             aiOutfits: -1,
+            homeSwipes: -1,
             wardrobeScans: -1,
             tryOns: 50,
             analytics: true,
+            fullCalendar: true,
+            aiStylistChat: true,
+            tripPlanner: true,
             prioritySupport: false,
             unlimitedStorage: false,
         },
         vip: {
             maxUses: -1,
             aiOutfits: -1,
+            homeSwipes: -1,
             wardrobeScans: -1,
             tryOns: -1,
             analytics: true,
+            fullCalendar: true,
+            aiStylistChat: true,
+            tripPlanner: true,
             prioritySupport: true,
             unlimitedStorage: true,
         }

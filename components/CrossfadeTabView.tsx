@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   lightRay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 999,
     overflow: 'hidden',
     backgroundColor: 'rgba(255,255,255,0.7)',

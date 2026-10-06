@@ -20,14 +20,91 @@ interface LanguageSwitcherProps {
   onClose: () => void;
 }
 
+const LanguageOptionMemo = React.memo(function LanguageOptionMemo({
+  lang,
+  isSelected,
+  isLoadingLang,
+  onSelect,
+  optionBg,
+  optionBorder,
+  text,
+  textSub,
+  accent,
+  accentStart,
+  accentEnd,
+  loadingLabel,
+}: {
+  lang: Language;
+  isSelected: boolean;
+  isLoadingLang: boolean;
+  onSelect: (lang: Language) => void;
+  optionBg: string;
+  optionBorder: string;
+  text: string;
+  textSub: string;
+  accent: string;
+  accentStart: string;
+  accentEnd: string;
+  loadingLabel: string;
+}) {
+  return (
+    <Pressable
+      onPress={() => onSelect(lang)}
+      style={({ pressed }) => [
+        styles.languageOption,
+        { backgroundColor: isSelected ? 'transparent' : optionBg },
+        { borderColor: isSelected ? accent : optionBorder },
+        isSelected && styles.languageOptionSelected,
+        pressed && styles.languageOptionPressed,
+      ]}
+    >
+      {isSelected && (
+        <LinearGradient
+          colors={[accentStart, accentEnd]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+      )}
+      <View style={styles.languageOptionContent}>
+        <View style={styles.languageInfo}>
+          <ScaledText style={[styles.languageName, { color: isSelected ? '#FFFFFF' : text }]}>
+            {LANGUAGE_NAMES[lang]}
+          </ScaledText>
+          <ScaledText style={[styles.languageCode, { color: isSelected ? 'rgba(255,255,255,0.8)' : textSub }]}>
+            {lang.toUpperCase()}
+          </ScaledText>
+        </View>
+        {isLoadingLang ? (
+          <View style={styles.loadingContainer}>
+            <ScaledText style={[styles.loadingText, { color: isSelected ? '#FFFFFF' : accent }]}>
+              {loadingLabel}
+            </ScaledText>
+          </View>
+        ) : isSelected ? (
+          <View style={styles.checkContainer}>
+            <View style={styles.checkBackground}>
+              <Ionicons name="checkmark-circle" size={24} color="#FFFFFF" />
+            </View>
+          </View>
+        ) : (
+          <Ionicons name="chevron-forward" size={20} color={textSub} />
+        )}
+      </View>
+    </Pressable>
+  );
+});
+
 const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ visible, onClose }) => {
   const { t } = useTranslation();
-  const { currentLanguage, setLanguage } = useLanguageStore();
+  // Selective subscriptions — avoid re-rendering on unrelated store churn.
+  const currentLanguage = useLanguageStore((s) => s.currentLanguage);
+  const setLanguage = useLanguageStore((s) => s.setLanguage);
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState<Language | null>(null);
 
-  const handleLanguageSelect = async (lang: Language) => {
+  const handleLanguageSelect = React.useCallback(async (lang: Language) => {
     if (lang === currentLanguage) {
       onClose();
       return;
@@ -45,7 +122,7 @@ const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ visible, onClose })
     } finally {
       setLoading(null);
     }
-  };
+  }, [currentLanguage, onClose, setLanguage]);
 
   // Solid, opaque surfaces so the profile list can never bleed through.
   const sheetBg = isDark ? '#171D30' : '#FFFFFF';
@@ -57,70 +134,11 @@ const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ visible, onClose })
   const accent = isDark ? '#A8C0DA' : '#12385F';
   const accentStart = isDark ? '#446B95' : '#2A537F';
   const accentEnd = isDark ? '#1C3654' : '#0D2743';
+  const loadingLabel = t('common.loading');
 
-  const LanguageOption: React.FC<{ lang: Language }> = ({ lang }) => {
-    const isSelected = lang === currentLanguage;
-    const isLoadingLang = loading === lang;
-
-    return (
-      <Pressable
-        onPress={() => handleLanguageSelect(lang)}
-        style={({ pressed }) => [
-          styles.languageOption,
-          { backgroundColor: isSelected ? 'transparent' : optionBg },
-          { borderColor: isSelected ? accent : optionBorder },
-          isSelected && styles.languageOptionSelected,
-          pressed && styles.languageOptionPressed,
-        ]}
-      >
-        {isSelected && (
-          <LinearGradient
-            colors={[accentStart, accentEnd]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFillObject}
-          />
-        )}
-
-        <View style={styles.languageOptionContent}>
-          <View style={styles.languageInfo}>
-            <ScaledText
-              style={[
-                styles.languageName,
-                { color: isSelected ? '#FFFFFF' : text },
-              ]}
-            >
-              {LANGUAGE_NAMES[lang]}
-            </ScaledText>
-            <ScaledText
-              style={[
-                styles.languageCode,
-                { color: isSelected ? 'rgba(255,255,255,0.8)' : textSub },
-              ]}
-            >
-              {lang.toUpperCase()}
-            </ScaledText>
-          </View>
-
-          {isLoadingLang ? (
-            <View style={styles.loadingContainer}>
-              <ScaledText style={[styles.loadingText, { color: isSelected ? '#FFFFFF' : accent }]}>
-                {t('common.loading')}
-              </ScaledText>
-            </View>
-          ) : isSelected ? (
-            <View style={styles.checkContainer}>
-              <View style={styles.checkBackground}>
-                <Ionicons name="checkmark-circle" size={24} color="#FFFFFF" />
-              </View>
-            </View>
-          ) : (
-            <Ionicons name="chevron-forward" size={20} color={textSub} />
-          )}
-        </View>
-      </Pressable>
-    );
-  };
+  // Don't mount Animated modal tree when closed — saves JS thread on every
+  // Profile render (Modal + Reanimated entering/exiting nodes are expensive).
+  if (!visible) return null;
 
   return (
     <Modal
@@ -160,7 +178,21 @@ const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ visible, onClose })
 
             <View style={styles.languageList}>
               {SUPPORTED_LANGUAGES.map((lang) => (
-                <LanguageOption key={lang} lang={lang} />
+                <LanguageOptionMemo
+                  key={lang}
+                  lang={lang}
+                  isSelected={lang === currentLanguage}
+                  isLoadingLang={loading === lang}
+                  onSelect={handleLanguageSelect}
+                  optionBg={optionBg}
+                  optionBorder={optionBorder}
+                  text={text}
+                  textSub={textSub}
+                  accent={accent}
+                  accentStart={accentStart}
+                  accentEnd={accentEnd}
+                  loadingLabel={loadingLabel}
+                />
               ))}
             </View>
 

@@ -83,6 +83,14 @@ export interface Outfit {
     lastWornAt: string | null;
     rating?: 1 | 2 | 3 | 4 | 5;
     collectionCategory?: string;   // MyWardrobe collection group (e.g. 'casual', 'work', 'travel')
+    /**
+     * Where the save originated — used to route saves to the right surface:
+     * - 'home'     → Home swipe-like → Closet → Collections (Saved)
+     * - 'ai-maker' → AI Outfit maker / generator → Closet + Profile
+     * - 'manual'   → manual / other saves
+     * Undefined = legacy saves (shown in both for backward compat).
+     */
+    savedFrom?: 'home' | 'ai-maker' | 'manual';
 
     // AI metadata
     reasoning?: string;           // Why AI suggested this

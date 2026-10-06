@@ -1,0 +1,134 @@
+appId: com.aiwardrobe
+name: sim_stylist_chips
+---
+- launchApp:
+    stopApp: false
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow:
+    when:
+      visible: "Your Outfits"
+    commands:
+      - tapOn:
+          point: "8%,11%"
+      - waitForAnimationToEnd:
+          timeout: 8000
+- runFlow:
+    when:
+      visible: ".*(Good morning|Good afternoon|Good evening|Create outfit).*"
+    commands:
+      - tapOn:
+          point: "58%,92%"
+      - waitForAnimationToEnd:
+          timeout: 8000
+      - tapOn: ".*(Магазин|Shop).*"
+      - waitForAnimationToEnd:
+          timeout: 8000
+      - tapOn: ".*(Персональный стилист|Personal stylist).*"
+      - waitForAnimationToEnd:
+          timeout: 10000
+- tapOn: ".*(New clothing).*"
+- waitForAnimationToEnd:
+    timeout: 2500
+
+# Casual occasion + Casual style
+- tapOn: ".*Casual.*"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn: ".*More \\(4\\).*"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn: ".*Casual.*"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn: ".*Generate outfit.*"
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 55000
+- takeScreenshot: chip_casual
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# Date night + Classic
+- tapOn: ".*More \\(4\\).*"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn: ".*Date night.*"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn: ".*More \\(4\\).*"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn: ".*Classic.*"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn: ".*Generate outfit.*"
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 55000
+- takeScreenshot: chip_date_classic
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# Formal + Old Money
+- tapOn: ".*More \\(4\\).*"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn: ".*Formal.*"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn: ".*Old Money.*"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn: ".*Generate outfit.*"
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 55000
+- takeScreenshot: chip_formal_old_money
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# Work + Minimalist
+- tapOn: ".*Work.*"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn: ".*More \\(4\\).*"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn: ".*Minimalist.*"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn: ".*Generate outfit.*"
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 55000
+- takeScreenshot: chip_work_minimalist
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# Travel + Semi-Classic
+- tapOn: ".*More \\(4\\).*"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn: ".*Travel.*"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn: ".*More \\(4\\).*"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn: ".*Semi-Classic.*"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn: ".*Generate outfit.*"
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 55000
+- takeScreenshot: chip_travel_semi

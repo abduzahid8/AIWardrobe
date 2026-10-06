@@ -76,7 +76,9 @@ async function callNvidiaVision(
       Accept: 'application/json',
     },
     body: JSON.stringify({
-      model: 'nvidia/llama-3.1-nemotron-nano-vl-8b-v1',
+      // NOTE: nvidia/llama-3.1-nemotron-nano-vl-8b-v1 was retired (410 Gone).
+      // meta/llama-3.2-11b-vision-instruct is the current free vision model.
+      model: 'meta/llama-3.2-11b-vision-instruct',
       messages: [
         {
           role: 'user',
@@ -86,7 +88,10 @@ async function callNvidiaVision(
           ],
         },
       ],
-      max_tokens: 1024,
+      // 6 items x ~150 tokens needs headroom — a tight cap truncates
+      // mid-array (parseJsonArrayFromContent salvages, but complete output
+      // needs the budget).
+      max_tokens: 2000,
       temperature: 0.2,
     }),
   })
@@ -123,12 +128,27 @@ function extractContentFromResponse(responseText: string): string {
 }
 
 function parseJsonArrayFromContent(content: string): any[] {
-  try {
-    const arrayMatch = content.match(/\[[\s\S]*\]/)
-    if (arrayMatch) {
-      return JSON.parse(arrayMatch[0])
+  const tryParse = (s: string): any[] | null => {
+    try {
+      const v = JSON.parse(s)
+      return Array.isArray(v) ? v : null
+    } catch {
+      return null
     }
-  } catch {}
+  }
+  // Greedy full-array match (works when the model completes output).
+  const arrayMatch = content.match(/\[[\s\S]*\]/)
+  if (arrayMatch) {
+    const ok = tryParse(arrayMatch[0])
+    if (ok) return ok
+    // Truncated output (hit max_tokens mid-array): drop the trailing
+    // incomplete element and keep the complete ones.
+    const cut = arrayMatch[0].lastIndexOf('},')
+    if (cut > 1) {
+      const ok2 = tryParse(arrayMatch[0].slice(0, cut + 1) + ']')
+      if (ok2) return ok2
+    }
+  }
   return []
 }
 
@@ -271,13 +291,16 @@ serve(async (req: Request) => {
     let shopItems: any[] = []
 
     if (userId) {
-      // Fetch user's wardrobe items
-      const { data: wData } = await supabase
-        .from('wardrobe_items')
-        .select('id, category, type, item_type, color, primary_color, style, pattern, material, image_url, description, sub_category')
+      // NOTE: the wardrobe table is `clothing_items` (see 001_full_rebuild.sql)
+      // — there is no `wardrobe_items` table. Columns mirror the canonical
+      // select used by generate-outfits (no singular `occasion`).
+      const { data: wData, error: wError } = await supabase
+        .from('clothing_items')
+        .select('id, category, type, color, primary_color, style, pattern, material, image_url, description, sub_category, name, brand')
         .eq('user_id', userId)
         .limit(200)
 
+      if (wError) console.error('analyze-outfit wardrobe fetch failed:', wError.message)
       wardrobeItems = wData || []
     }
 

@@ -1,0 +1,31 @@
+appId: host.exp.Exponent
+name: perf_home_content
+tags:
+  - perf
+  - expo-go
+  - home
+---
+# Home must render real content (never a blank white screen) and survive
+# a full scroll down + back up. Logged IN. Starts on any tab (re-anchors Home).
+# Markers are RU/EN tolerant (session language varies).
+- tapOn:
+    point: "26%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+# Hero block proves non-blank render (greeting is time-of-day dependent,
+# so the always-rendered hero title is the stable anchor).
+- assertVisible: ".*(Сегодняшний образ|Today).*"
+- assertVisible: ".*AIWardrobe.*"
+- swipe:
+    direction: UP
+    duration: 600
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: ".*(Командная работа|Team Collaboration|business_casual).*"
+- swipe:
+    direction: DOWN
+    duration: 600
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: ".*(Сегодняшний образ|Today).*"
+- takeScreenshot: perf_home_content

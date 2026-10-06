@@ -1,0 +1,10 @@
+appId: com.aiwardrobe
+name: sim_stylist_reload
+---
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- launchApp:
+    stopApp: true
+- waitForAnimationToEnd:
+    timeout: 12000

@@ -9,7 +9,7 @@ import { fetchWardrobeDisplayItems } from '../../../src/services/outfitGeneratio
 import { useShopCatalog } from '../../../hooks/useShopCatalog';
 import { getMacroCategory } from './useItemSelection';
 import type { WardrobeDisplayItem } from '../types';
-import type { ShopCatalogItem } from '../../try-on/types';
+import type { ShopCatalogItem } from '../../../src/types/shop';
 
 const LIVE_SHOP_SOURCE = 'apify-zara-men';
 

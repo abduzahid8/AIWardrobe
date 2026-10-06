@@ -1,0 +1,205 @@
+appId: com.aiwardrobe
+name: sim_stylist_full
+---
+# Full AI Stylist simulator matrix. Each generate is a real user path:
+# comments set occasion/style/budget, then we assert a 4-slot look.
+- launchApp:
+    stopApp: false
+- waitForAnimationToEnd:
+    timeout: 20000
+- runFlow:
+    when:
+      visible: "Choose your language"
+    commands:
+      - tapOn: "English"
+      - waitForAnimationToEnd:
+          timeout: 15000
+- runFlow:
+    when:
+      visible: ".*Sign In.*"
+    commands:
+      - tapOn:
+          point: "50%,26%"
+      - inputText: "e2e.stylist@aiwardrobe.club"
+      - tapOn:
+          point: "50%,33%"
+      - inputText: "E2eStylistVerify2026!"
+      - tapOn:
+          point: "50%,44%"
+      - waitForAnimationToEnd:
+          timeout: 25000
+- runFlow:
+    when:
+      visible: ".*style plan is ready.*"
+    commands:
+      - tapOn: ".*Unlock my plan.*"
+      - waitForAnimationToEnd:
+          timeout: 15000
+
+# Already on results from a prior generate?
+- runFlow:
+    when:
+      visible: "Your Outfits"
+    commands:
+      - tapOn:
+          point: "8%,11%"
+      - waitForAnimationToEnd:
+          timeout: 8000
+
+# From Home, open Inspo → Shop → Personal Stylist
+- runFlow:
+    when:
+      visible: ".*(Good morning|Good afternoon|Good evening|Create outfit).*"
+    commands:
+      - tapOn:
+          point: "58%,92%"
+      - waitForAnimationToEnd:
+          timeout: 8000
+      - tapOn: ".*(Магазин|Shop).*"
+      - waitForAnimationToEnd:
+          timeout: 8000
+      - tapOn: ".*(Персональный стилист|Personal stylist).*"
+      - waitForAnimationToEnd:
+          timeout: 10000
+
+- runFlow:
+    when:
+      visible: ".*(Вдохновение|Inspiration).*"
+    commands:
+      - tapOn: ".*(Магазин|Shop).*"
+      - waitForAnimationToEnd:
+          timeout: 8000
+      - tapOn: ".*(Персональный стилист|Personal stylist).*"
+      - waitForAnimationToEnd:
+          timeout: 10000
+
+- assertVisible: ".*Generate outfit.*"
+- tapOn: ".*(New clothing|Новая одежда).*"
+- waitForAnimationToEnd:
+    timeout: 4000
+
+# ── 1. Work + Old Money + $250 (the reported bug path) ──
+- tapOn: ".*(Add details|Where you're going|work, old money).*"
+- eraseText
+- inputText: "work, old money, $250"
+- hideKeyboard
+- tapOn: ".*Generate outfit.*"
+- waitForAnimationToEnd:
+    timeout: 50000
+- takeScreenshot: s1_work_old_money_250
+- assertVisible: ".*(Pants|PANTS).*"
+- assertVisible: ".*(Shoes|SHOES).*"
+- assertVisible: ".*(Top|TOP|Layer|LAYER).*"
+- swipe:
+    start: "82%,42%"
+    end: "18%,42%"
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: s1b_work_old_money_card2
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# ── 2. Date night + classic ──
+- assertVisible: ".*Generate outfit.*"
+- tapOn: ".*(Add details|Where you're going|work, old money).*"
+- eraseText
+- inputText: "date night, classic"
+- hideKeyboard
+- tapOn: ".*Generate outfit.*"
+- waitForAnimationToEnd:
+    timeout: 50000
+- takeScreenshot: s2_date_classic
+- assertVisible: ".*(Pants|PANTS).*"
+- assertVisible: ".*(Shoes|SHOES).*"
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# ── 3. Weekend casual ──
+- assertVisible: ".*Generate outfit.*"
+- tapOn: ".*(Add details|Where you're going|date night).*"
+- eraseText
+- inputText: "weekend casual brunch"
+- hideKeyboard
+- tapOn: ".*Generate outfit.*"
+- waitForAnimationToEnd:
+    timeout: 50000
+- takeScreenshot: s3_casual_brunch
+- assertVisible: ".*(Pants|PANTS).*"
+- assertVisible: ".*(Shoes|SHOES).*"
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# ── 4. Formal old money ──
+- assertVisible: ".*Generate outfit.*"
+- tapOn: ".*(Add details|Where you're going|weekend).*"
+- eraseText
+- inputText: "formal wedding, old money"
+- hideKeyboard
+- tapOn: ".*Generate outfit.*"
+- waitForAnimationToEnd:
+    timeout: 50000
+- takeScreenshot: s4_formal_old_money
+- assertVisible: ".*(Pants|PANTS).*"
+- assertVisible: ".*(Shoes|SHOES).*"
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# ── 5. Minimalist work under $100 ──
+- assertVisible: ".*Generate outfit.*"
+- tapOn: ".*(Add details|Where you're going|formal).*"
+- eraseText
+- inputText: "work, minimalist, under $100"
+- hideKeyboard
+- tapOn: ".*Generate outfit.*"
+- waitForAnimationToEnd:
+    timeout: 50000
+- takeScreenshot: s5_minimalist_work_100
+- assertVisible: ".*(Pants|PANTS).*"
+- assertVisible: ".*(Shoes|SHOES).*"
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# ── 6. Travel + semi-classic ──
+- assertVisible: ".*Generate outfit.*"
+- tapOn: ".*(Add details|Where you're going|minimalist).*"
+- eraseText
+- inputText: "travel airport, semi-classic"
+- hideKeyboard
+- tapOn: ".*Generate outfit.*"
+- waitForAnimationToEnd:
+    timeout: 50000
+- takeScreenshot: s6_travel_semi_classic
+- assertVisible: ".*(Pants|PANTS).*"
+- assertVisible: ".*(Shoes|SHOES).*"
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# ── 7. Wardrobe source (may show add-items if closet is thin) ──
+- assertVisible: ".*Generate outfit.*"
+- tapOn: ".*(From wardrobe|Из гардероба).*"
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn: ".*(Add details|Where you're going|travel).*"
+- eraseText
+- inputText: "work, classic"
+- hideKeyboard
+- tapOn: ".*Generate outfit.*"
+- waitForAnimationToEnd:
+    timeout: 50000
+- takeScreenshot: s7_wardrobe_classic_work
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000

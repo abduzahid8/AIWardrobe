@@ -1,0 +1,23 @@
+appId: host.exp.Exponent
+name: full_calendar
+tags:
+  - full
+  - expo-go
+  - calendar
+---
+# Outfit calendar round trip: Home buzzer → month view renders (header,
+# month strip, today highlighted, day slots) → close back to Home.
+# Read-only (never taps day + buttons that mutate plans). Logged IN.
+- tapOn:
+    point: "26%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn: ".*(Открыть календарь|Open calendar|Kalanderni ochish).*"
+- waitForAnimationToEnd:
+    timeout: 10000
+- assertVisible: ".*(Планировать образы|Plan outfits|Schedule outfits).*"
+- tapOn: ".*(Закрыть календарь|Close Calendar|Kalanderni yopish).*"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(Сегодняшний образ|Today).*"
+- takeScreenshot: full_calendar

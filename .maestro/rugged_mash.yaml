@@ -1,0 +1,29 @@
+appId: host.exp.Exponent
+name: rugged_mash
+tags:
+  - rugged
+  - expo-go
+  - regression
+---
+# Same-tab mash: triple-tap Home then Closet. The tab bar debounces
+# same-tab presses — content must stay stable, no dup pushes, no blank.
+# Logged IN. Ends on Closet.
+- tapOn:
+    point: "26%,92%"
+- tapOn:
+    point: "26%,92%"
+- tapOn:
+    point: "26%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(Сегодняшний образ|Today).*"
+- tapOn:
+    point: "42%,92%"
+- tapOn:
+    point: "42%,92%"
+- tapOn:
+    point: "42%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(Мой гардероб|My Wardrobe|Wardrobe|Closet).*"
+- takeScreenshot: rugged_mash

@@ -26,6 +26,31 @@ const TIMEOUT_MS = 60000;
 const outfitCache = new Map<string, { data: AIOutfitSuggestion[]; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+/**
+ * Stable identity hash for a wardrobe snapshot. The old key used only
+ * `wardrobeItems.length` — two different 10-item wardrobes (or the same
+ * wardrobe after swapping pieces) collided and returned the identical
+ * cached looks, i.e. "the clothing doesn't change". Sorted ids make the
+ * key order-independent; djb2 keeps it short.
+ */
+export function buildOutfitCacheKey(
+    occasion: string,
+    stylePreferences?: string,
+    wardrobeItems?: Array<any>,
+    weather?: { temp: number; condition: string },
+): string {
+    const ids = (wardrobeItems || [])
+        .map((i: any) => String(i?.id ?? i?.cutoutImage?.slice(0, 20) ?? ''))
+        .filter(Boolean)
+        .sort();
+    let hash = 0;
+    const str = ids.join(',');
+    for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+    }
+    return `${occasion}-${stylePreferences || ''}-${ids.length}-${hash}-${weather?.condition || ''}-${weather?.temp ?? ''}`;
+}
+
 // ── Public API ──
 
 export async function generateOutfitSuggestions(
@@ -34,7 +59,7 @@ export async function generateOutfitSuggestions(
     wardrobeItems?: Array<any>,
     weather?: { temp: number; condition: string }
 ): Promise<AIOutfitSuggestion[]> {
-    const cacheKey = `${occasion}-${stylePreferences || ''}-${wardrobeItems?.length || 0}-${weather?.condition || ''}`;
+    const cacheKey = buildOutfitCacheKey(occasion, stylePreferences, wardrobeItems, weather);
     const cached = outfitCache.get(cacheKey);
 
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {

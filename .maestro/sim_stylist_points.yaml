@@ -1,0 +1,95 @@
+appId: com.aiwardrobe
+name: sim_stylist_points
+---
+# Coordinate taps — ScaledText chips are not always in Maestro's text tree.
+- launchApp:
+    stopApp: false
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow:
+    when:
+      visible: "Your Outfits"
+    commands:
+      - tapOn:
+          point: "8%,11%"
+      - waitForAnimationToEnd:
+          timeout: 8000
+- runFlow:
+    when:
+      visible: ".*(Good morning|Good afternoon|Good evening|Create outfit).*"
+    commands:
+      - tapOn:
+          point: "58%,92%"
+      - waitForAnimationToEnd:
+          timeout: 8000
+      - tapOn: ".*(Магазин|Shop).*"
+      - waitForAnimationToEnd:
+          timeout: 8000
+      - tapOn: ".*(Персональный стилист|Personal stylist).*"
+      - waitForAnimationToEnd:
+          timeout: 10000
+- assertVisible: ".*Generate outfit.*"
+- tapOn:
+    point: "50%,12%"
+- waitForAnimationToEnd:
+    timeout: 1500
+
+# 1. Casual occasion (right tile) + Minimalist (style list)
+- tapOn:
+    point: "74%,41%"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    point: "50%,62%"
+- waitForAnimationToEnd:
+    timeout: 2500
+- tapOn: "Minimalist"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    point: "50%,93%"
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 55000
+- takeScreenshot: scen_casual_minimalist
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# 2. Formal (occasion more → first extra tile) + Old Money
+- tapOn:
+    point: "50%,48%"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn: "Formal"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn: "Old Money"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    point: "50%,93%"
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 55000
+- takeScreenshot: scen_formal_old_money
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# 3. Travel
+- tapOn:
+    point: "50%,48%"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn: "Travel"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    point: "50%,93%"
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 55000
+- takeScreenshot: scen_travel

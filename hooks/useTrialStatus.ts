@@ -17,8 +17,10 @@ export interface TrialStatus {
     /** Hours remaining — useful for "last 24h" display. */
     hoursRemaining: number;
     /**
-     * True when the app should show the TrialExpiredScreen gate:
-     * user is authenticated, trial is over, and no paid subscription is active.
+     * @deprecated Expired trials no longer block the whole app.
+     * Always false — kept for backwards compat. Use `isTrialExpired` to
+     * show a non-blocking upsell banner and gate individual premium
+     * features via `useSubscriptionGate` (which redirects to Paywall).
      */
     shouldShowTrialGate: boolean;
     /** 0.0 → 1.0 progress through the trial (0 = day 1, 1 = last moment). */
@@ -65,7 +67,6 @@ function buildStatus(snap: StoreSnap): TrialStatus {
         isTrialExpired,
         trialDaysRemaining,
         trialStartedAt,
-        hasActiveSubscription,
     } = snap;
 
     // Hours remaining for last-day granularity
@@ -89,7 +90,9 @@ function buildStatus(snap: StoreSnap): TrialStatus {
         isTrialExpired,
         daysRemaining: trialDaysRemaining,
         hoursRemaining,
-        shouldShowTrialGate: isTrialExpired && !hasActiveSubscription,
+        // Never block the app on trial expiry — premium features gate
+        // individually via useSubscriptionGate → Paywall.
+        shouldShowTrialGate: false,
         trialProgress: Math.min(1, Math.max(0, trialProgress)),
     };
 }

@@ -1,0 +1,38 @@
+appId: host.exp.Exponent
+name: rugged_detail_push
+tags:
+  - rugged
+  - expo-go
+  - closet
+---
+# Stack push + explicit back: open the first Closet grid item into the
+# native detail screen, assert it renders, then go back via the header
+# chevron (accessibility label, RU/EN tolerant). Ends on Closet. Logged IN.
+- tapOn:
+    point: "42%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(Мой гардероб|My Wardrobe|Wardrobe|Closet).*"
+- tapOn:
+    point: "26%,44%"
+- waitForAnimationToEnd:
+    timeout: 10000
+# Self-healing tap: if the grid was still loading images when the first tap
+# landed (no navigation happened), the Closet title is still visible — tap
+# the cell once more now that data is in. Otherwise this block is skipped.
+- runFlow:
+    when:
+      visible: ".*(Мой гардероб|My Wardrobe|Wardrobe|Closet).*"
+    commands:
+      - tapOn:
+          point: "26%,44%"
+      - waitForAnimationToEnd:
+          timeout: 10000
+- assertVisible: ".*(Тип|Type).*"
+- assertVisible: ".*(Цвет|Color).*"
+- assertVisible: ".*Update Item.*"
+- tapOn: ".*(Назад|Back|Go back).*"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(Мой гардероб|My Wardrobe|Wardrobe|Closet).*"
+- takeScreenshot: rugged_detail_push

@@ -5,7 +5,6 @@ import { OutfitCollagePreview } from '../components/ui/OutfitCollagePreview';
 import { Image } from 'expo-image';
 import { TrialCountdownBanner } from '../components/TrialCountdownBanner';
 import GenerateOutfitButton from '../features/outfit-generator/components/GenerateOutfitButton';
-import useSubscriptionStore from '../store/subscriptionStore';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,7 +37,8 @@ import Config from '../src/config/env';
 import useAuthStore from '../store/auth';
 import useWardrobeStore from '../store/wardrobeStore';
 import useShopCatalogStore from '../store/shopCatalogStore';
-import { resolveOutfitCollageItems, resolvePieceTarget } from '../src/utils/outfitCollage';
+import { resolveOutfitCollageItemsWithMaps, resolvePieceTarget } from '../src/utils/outfitCollage';
+import type { OutfitCollageItem } from '../components/ui/OutfitCollagePreview';
 import type { Outfit } from '../src/types/domain';
 
 function humanizePieceLabel(item: { id?: unknown; image?: unknown; category?: unknown; name?: unknown }, index: number) {
@@ -145,6 +145,41 @@ const CATEGORY_REGEXES = {
 // ClothingItem is now exported as ClosetClothingItem from features/outfit-generator/types.ts
 // This alias preserves backward compatibility within this file.
 type ClothingItem = ClosetClothingItem;
+
+// ── Memoized collection card — resolves collage OUTSIDE the cell ─────────
+// Previously renderItem called resolveOutfitCollageItems(outfit, storeItems,
+// shopCatalogItems) per card, rebuilding 2× Map(W+S) per card → O(N×(W+S))
+// on the JS thread mid-scroll (freeze). Now the parent pre-resolves all
+// collages once per data change (maps built once) and passes the 4-item
+// array down; the cell is memoized on outfit.id + items identity.
+const MemoCollectionCard = React.memo(function MemoCollectionCard({
+    outfit,
+    items,
+    onPress,
+}: {
+    outfit: Outfit;
+    items: OutfitCollageItem[];
+    onPress: (outfit: Outfit) => void;
+}) {
+    const handlePress = React.useCallback(() => onPress(outfit), [onPress, outfit]);
+    return (
+        <TouchableOpacity
+            style={styles.outfitCard}
+            onPress={handlePress}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={`${outfit.occasion || 'Saved outfit'} outfit, open details`}
+        >
+            <OutfitCollagePreview items={items} backgroundColor="#F9FBFF" footerInset={44} />
+            <View style={styles.outfitCardOverlay}>
+                <ScaledText style={styles.outfitCardOccasion} numberOfLines={1}>
+                    {outfit.occasion}
+                </ScaledText>
+                <Ionicons name="heart" size={14} color="#E05C5C" />
+            </View>
+        </TouchableOpacity>
+    );
+});
 
 // Category Chip from Design
 const FilterChip = ({
@@ -282,7 +317,6 @@ const ClosetVideoPlayer = React.memo(() => {
         <VideoView
             style={styles.video}
             player={player}
-            allowsFullscreen={false}
             allowsPictureInPicture={false}
             contentFit="contain"
         />
@@ -297,7 +331,7 @@ const MyClosetScreen = () => {
     React.useEffect(() => {
         perfMark('MyClosetScreen:mount');
         return () => {
-            console.log('[PERF] 👗 MyClosetScreen unmounted');
+            if (__DEV__) console.log('[PERF] 👗 MyClosetScreen unmounted');
         };
     }, []);
     const [items, setItems] = useState<ClothingItem[]>([]);
@@ -306,19 +340,24 @@ const MyClosetScreen = () => {
     // Sync local items state with Zustand store items reactively
     useEffect(() => {
         if (storeItems && storeItems.length > 0) {
-            const mappedFromStore: ClothingItem[] = storeItems.map(item => ({
-                _id: item.id,
-                id: item.id,
-                type: normalizeCategory(item.subCategory || item.category || ''),
-                itemType: normalizeCategory(item.subCategory || item.category || ''),
-                color: item.primaryColor || 'various',
-                imageUrl: item.imageUrl,
-                image: item.imageUrl,
-                category: normalizeCategory(item.category || ''),
-                wearCount: item.wearCount,
-                createdAt: item.createdAt,
-                isFavorite: item.isFavorite ?? false,
-            }));
+            const mappedFromStore: ClothingItem[] = storeItems.map(item => {
+                // Normalize once here — the filter effect below used to
+                // re-lowercase category/type per item per keystroke.
+                const normalizedSub = normalizeCategory(item.subCategory || item.category || '');
+                return {
+                    _id: item.id,
+                    id: item.id,
+                    type: normalizedSub,
+                    itemType: normalizedSub,
+                    color: item.primaryColor || 'various',
+                    imageUrl: item.imageUrl,
+                    image: item.imageUrl,
+                    category: normalizeCategory(item.category || ''),
+                    wearCount: item.wearCount,
+                    createdAt: item.createdAt,
+                    isFavorite: item.isFavorite ?? false,
+                };
+            });
             setItems(mappedFromStore);
             hasItemsRef.current = mappedFromStore.length > 0;
             setLoading(false);
@@ -331,7 +370,10 @@ const MyClosetScreen = () => {
     // Skip re-fetching if the user just switched tabs momentarily.
     // Upload/delete operations call loadItems() directly, bypassing this TTL.
     const CLOSET_REFRESH_TTL_MS = 60_000; // 60 seconds
-    const lastClosetFetchRef = React.useRef<number>(Date.now());
+    // Start at 0 so the FIRST focus always fetches — initializing to
+    // Date.now() left `loading=true` forever on cold start when the store
+    // was still empty (spinner stuck, page never loads).
+    const lastClosetFetchRef = React.useRef<number>(0);
     // Track whether we have items already visible so silent=true can be passed
     // without reading items.length inside useFocusEffect (which would recreate
     // the callback on every load and defeat the TTL guard).
@@ -357,6 +399,12 @@ const MyClosetScreen = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
     const [isSearching, setIsSearching] = useState(false);
+    // Ref for explicit keyboard dismissal — without it the keyboard covers
+    // the tab bar with no escape (submit did nothing, drag didn't dismiss).
+    const searchInputRef = React.useRef<TextInput>(null);
+    const dismissSearchKeyboard = React.useCallback(() => {
+        searchInputRef.current?.blur();
+    }, []);
     const [filterCategory, setFilterCategory] = useState('All');
     const [selectedCollectionFilter, setSelectedCollectionFilter] = useState('all');
 
@@ -365,13 +413,46 @@ const MyClosetScreen = () => {
     const [isUploadingOverlay, setIsUploadingOverlay] = useState(false);
     const [uploadStatusMsg, setUploadStatusMsg] = useState('');
 
-    // ── Subscription store (for trial banner) ─────────────────────────────────
-    const isTrialActive = useSubscriptionStore((state) => state.isTrialActive);
+    // Trial banners (countdown + expired upsell) render themselves —
+    // no gating here; expired users keep full access to this screen.
 
     // ── Saved outfits for collections view ────────────────────────────────────
+    // Home swipe-likes (savedFrom='home', collectionCategory='saved') land here.
+    // Single-clothing saves go to Profile → Saved Looks instead.
     const outfits = useWardrobeStore((state) => state.outfits);
     const savedOutfits = useMemo(() => outfits.filter((o: Outfit) => o.saved), [outfits]);
+    // "Saved" collection = Home likes. Occasion filters still work via o.occasion.
+    const visibleSavedOutfits = useMemo(() => {
+        if (selectedCollectionFilter === 'all') return savedOutfits;
+        if (selectedCollectionFilter === 'saved') {
+            return savedOutfits.filter(
+                (o) => (o as Outfit).collectionCategory === 'saved' || (o as Outfit).savedFrom === 'home',
+            );
+        }
+        return savedOutfits.filter((o) => o.occasion === selectedCollectionFilter);
+    }, [savedOutfits, selectedCollectionFilter]);
     const shopCatalogItems = useShopCatalogStore((state) => state.items);
+
+    // Lookup Maps built ONCE per data change and shared by every card.
+    // (Same pattern as ProfileScreen — fixes O(N×(W+S)) scroll freeze.)
+    const wardrobeMap = useMemo(
+        () => new Map(storeItems.map((i) => [String((i as { id?: unknown }).id), i])),
+        [storeItems],
+    );
+    const shopMap = useMemo(
+        () => new Map(shopCatalogItems.map((i) => [String((i as { id?: unknown }).id), i])),
+        [shopCatalogItems],
+    );
+
+    // Pre-resolve all visible collages once per data change — renderItem
+    // becomes a pure memoized cell lookup (no Map rebuilds mid-scroll).
+    const collageByOutfitId = useMemo(() => {
+        const m = new Map<string, OutfitCollageItem[]>();
+        for (const o of visibleSavedOutfits) {
+            m.set(o.id, resolveOutfitCollageItemsWithMaps(o, wardrobeMap, shopMap));
+        }
+        return m;
+    }, [visibleSavedOutfits, wardrobeMap, shopMap]);
 
     // ── Outfit detail (Profile-style Saved Looks preview) ───────────────────
     // Tapping a collection card opens the full outfit instead of navigating
@@ -380,8 +461,10 @@ const MyClosetScreen = () => {
 
     const selectedCollage = useMemo(() => {
         if (!selectedOutfit) return [];
-        return resolveOutfitCollageItems(selectedOutfit, storeItems, shopCatalogItems);
-    }, [selectedOutfit, storeItems, shopCatalogItems]);
+        const cached = collageByOutfitId.get(selectedOutfit.id);
+        if (cached) return cached;
+        return resolveOutfitCollageItemsWithMaps(selectedOutfit, wardrobeMap, shopMap);
+    }, [selectedOutfit, collageByOutfitId, wardrobeMap, shopMap]);
 
     const selectedTargets = useMemo(
         () => selectedCollage.map((piece) => resolvePieceTarget(piece, storeItems, shopCatalogItems)),
@@ -452,6 +535,59 @@ const MyClosetScreen = () => {
         });
     }, [navigation]);
 
+    // ── Grid perf: O(1) lookup + stable renderItem + getItemLayout ──────────
+    // Previously renderItem was an inline closure calling
+    // storeItems.find(...) per tap (O(n) scan) — every setFilteredItems
+    // recreated all closures and defeated ClothingGridItem's memo compare.
+    const gridItemById = useMemo(() => {
+        const m = new Map<string, (typeof storeItems)[number]>();
+        for (const s of storeItems) {
+            const key = String((s as { id?: unknown }).id ?? (s as unknown as { _id?: unknown })._id ?? '');
+            if (key) m.set(key, s);
+        }
+        return m;
+    }, [storeItems]);
+
+    const handleGridPress = useCallback((gridItem: ClothingItem) => {
+        Haptics.selectionAsync();
+        const key = String(gridItem.id ?? (gridItem as unknown as { _id?: unknown })._id ?? '');
+        const domainItem = gridItemById.get(key);
+        if (domainItem) {
+            navigation.navigate('ClothingDetailEditor', {
+                imageUri: domainItem.imageUrl,
+                detectedType: domainItem.subCategory || domainItem.category,
+                detectedColor: mapColorToId(domainItem.primaryColor),
+                detectedMaterial: domainItem.material,
+                detectedDescription: domainItem.name,
+                existingItem: domainItem,
+            });
+        } else {
+            navigation.navigate('ClothingDetail', {
+                itemId: String(gridItem.id ?? (gridItem as unknown as { _id?: string })._id ?? ''),
+                fullItem: gridItem,
+            });
+        }
+    }, [gridItemById, navigation]);
+
+    const renderGridItem = useCallback(({ item }: { item: ClothingItem }) => (
+        <ClothingGridItem
+            item={item}
+            onPress={() => handleGridPress(item)}
+            onGenerateOutfit={handleGenerateOutfit}
+            isAnchorSelected={false}
+            t={t}
+        />
+    ), [handleGridPress, handleGenerateOutfit, t]);
+
+    // 2-col grid: cell width = (screen - 32 padding - 12 gutter) / 2,
+    // image is 3:4 portrait → row height is deterministic for virtualization.
+    const gridGetItemLayout = useCallback((_data: unknown, index: number) => {
+        const cellWidth = (width - 32 - 12) / 2;
+        const cellHeight = Math.ceil((cellWidth * 4) / 3 + 12);
+        const row = Math.floor(index / 2);
+        return { length: cellHeight, offset: cellHeight * row, index };
+    }, []);
+
     // AI Studio Upload & Auto-Generate Logic (Serverless - External AI)
     const pickImage = async (useCamera = false) => {
         try {
@@ -519,12 +655,12 @@ const MyClosetScreen = () => {
         setUploadStatusMsg(t('myCloset.identifyingType'));
 
         try {
-            console.log('[MyCloset] Starting AI Studio photo processing...');
+            if (__DEV__) console.log('[MyCloset] Starting AI Studio photo processing...');
 
             // AI Studio should preserve the garment and only remove the background.
             const result = await ExternalAIService.processStudioPhoto(imageData);
 
-            console.log('[MyCloset] AI Studio result:', {
+            if (__DEV__) console.log('[MyCloset] AI Studio result:', {
                 success: result.success,
                 hasImageUrl: !!result.imageUrl,
                 hasCutoutUrl: !!result.cutoutUrl,
@@ -684,15 +820,32 @@ const MyClosetScreen = () => {
         perfMark('MyClosetScreen:load'); // Reset per-load mark for accurate tab-switch timing
         if (!silent) setLoading(true);
 
+        // Safety: never leave the spinner up forever — if the network hangs,
+        // fall back to whatever is in the store / local storage.
+        const safetyTimer = setTimeout(() => {
+            setLoading((prev) => {
+                if (prev) {
+                    const fallback = useWardrobeStore.getState().items;
+                    if (fallback.length > 0 && !hasItemsRef.current) {
+                        // Store filled while we waited — the sync effect will
+                        // paint it; just drop the spinner.
+                    }
+                }
+                return false;
+            });
+        }, 12000);
+
         // Rehydrate/Fetch wardrobe items in background so navigation transitions are instant (<0.05s)
         useWardrobeStore.getState().rehydrateFromCloud(force)
             .then(() => {
+                clearTimeout(safetyTimer);
                 donePerf();
                 perfMeasure('MyClosetScreen:load');
                 perfScreenReady('Closet');
                 setLoading(false);
             })
             .catch(async (error) => {
+                clearTimeout(safetyTimer);
                 donePerf();
                 console.error('Failed to load wardrobe:', error);
                 // local storage fallback
@@ -707,6 +860,18 @@ const MyClosetScreen = () => {
                 setLoading(false);
             });
     }, [user]);
+
+    // First-mount fallback: if the store is still empty (cold start before
+    // RootNavigator's rehydrate finishes), trigger a load even if the focus
+    // effect above was skipped. Without this + the TTL fix, `loading` stayed
+    // true forever and the page showed only a spinner.
+    useEffect(() => {
+        if (useWardrobeStore.getState().items.length === 0) {
+            lastClosetFetchRef.current = Date.now();
+            loadItems(false, false);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     useFocusEffect(
         useCallback(() => {
@@ -733,50 +898,62 @@ const MyClosetScreen = () => {
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
-    // Filter items
+    // Filter items — single pass over the wardrobe. Previously this copied
+    // the array, ran a full category-filter pass, then a full search pass
+    // (each with per-item toLowerCase/regex), doubling first-mount work.
     useEffect(() => {
-        let result = [...items];
+        const query = debouncedSearchQuery.trim().toLowerCase();
+        const hasQuery = query.length > 0;
+        const activeCategory = viewMode === 'clothes' ? selectedCategory : 'all';
 
-        if (viewMode === 'clothes') {
-            if (selectedCategory !== 'all') {
-                if (selectedCategory === 'favorite') {
-                    result = result.filter(item => item.isFavorite);
-                } else {
-                    result = result.filter(item => {
-                        const cat = (item.category || '').toLowerCase();
-                        const type = (item.type || item.itemType || '').toLowerCase();
-
-                        switch (selectedCategory) {
-                            case 'tops':
-                                if (cat === 'tops' || cat === 'top') return true;
-                                return CATEGORY_REGEXES.tops.test(cat) || CATEGORY_REGEXES.tops.test(type);
-                            case 'bottoms':
-                                if (cat === 'bottoms' || cat === 'bottom') return true;
-                                return CATEGORY_REGEXES.bottoms.test(cat) || CATEGORY_REGEXES.bottoms.test(type);
-                            case 'shoes':
-                                if (cat === 'shoes' || cat === 'shoe') return true;
-                                return CATEGORY_REGEXES.shoes.test(cat) || CATEGORY_REGEXES.shoes.test(type);
-                            case 'accessories':
-                                if (cat === 'accessories' || cat === 'accessory') return true;
-                                return CATEGORY_REGEXES.accessories.test(cat) || CATEGORY_REGEXES.accessories.test(type);
-                            default:
-                                return cat === selectedCategory || type === selectedCategory;
-                        }
-                    });
-                }
-            }
+        if (activeCategory === 'all' && !hasQuery) {
+            // Fast path: no filtering needed — reuse the reference so FlatList
+            // doesn't re-render rows on unrelated state changes.
+            setFilteredItems(items);
+            return;
         }
 
-        // Text Search
-        if (debouncedSearchQuery.trim().length > 0) {
-            const query = debouncedSearchQuery.toLowerCase();
-            result = result.filter(item => {
+        const result = items.filter((item) => {
+            if (activeCategory !== 'all') {
+                if (activeCategory === 'favorite') {
+                    if (!item.isFavorite) return false;
+                } else {
+                    const cat = (item.category || '').toLowerCase();
+                    const type = (item.type || item.itemType || '').toLowerCase();
+
+                    switch (activeCategory) {
+                        case 'tops':
+                            if (cat !== 'tops' && cat !== 'top' &&
+                                !CATEGORY_REGEXES.tops.test(cat) && !CATEGORY_REGEXES.tops.test(type)) return false;
+                            break;
+                        case 'bottoms':
+                            if (cat !== 'bottoms' && cat !== 'bottom' &&
+                                !CATEGORY_REGEXES.bottoms.test(cat) && !CATEGORY_REGEXES.bottoms.test(type)) return false;
+                            break;
+                        case 'shoes':
+                            if (cat !== 'shoes' && cat !== 'shoe' &&
+                                !CATEGORY_REGEXES.shoes.test(cat) && !CATEGORY_REGEXES.shoes.test(type)) return false;
+                            break;
+                        case 'accessories':
+                            if (cat !== 'accessories' && cat !== 'accessory' &&
+                                !CATEGORY_REGEXES.accessories.test(cat) && !CATEGORY_REGEXES.accessories.test(type)) return false;
+                            break;
+                        default:
+                            if (cat !== activeCategory && type !== activeCategory) return false;
+                            break;
+                    }
+                }
+            }
+
+            if (hasQuery) {
                 const nameMatch = (item.type || item.itemType || item.category || '').toLowerCase().includes(query);
                 const colorMatch = (item.color || '').toLowerCase().includes(query);
                 const descMatch = (item.description || '').toLowerCase().includes(query);
-                return nameMatch || colorMatch || descMatch;
-            });
-        }
+                if (!nameMatch && !colorMatch && !descMatch) return false;
+            }
+
+            return true;
+        });
 
         setFilteredItems(result);
     }, [items, selectedCategory, viewMode, debouncedSearchQuery]);
@@ -798,6 +975,7 @@ const MyClosetScreen = () => {
                         <View style={styles.searchBarContainer}>
                             <Ionicons name="search" size={20} color={colors.text.secondary} />
                             <TextInput
+                                ref={searchInputRef}
                                 style={styles.searchBarInput}
                                 placeholder={t('myCloset.searchCloset')}
                                 value={searchQuery}
@@ -805,8 +983,11 @@ const MyClosetScreen = () => {
                                 autoFocus
                                 returnKeyType="search"
                                 testID="searchInput"
+                                // Keyboard search button dismisses — previously a
+                                // no-op, trapping users behind the keyboard.
+                                onSubmitEditing={dismissSearchKeyboard}
                             />
-                            <TouchableOpacity onPress={() => { setIsSearching(false); setSearchQuery(''); }}>
+                            <TouchableOpacity onPress={() => { dismissSearchKeyboard(); setIsSearching(false); setSearchQuery(''); }}>
                                 <Ionicons name="close-circle" size={18} color={colors.text.tertiary} />
                             </TouchableOpacity>
                         </View>
@@ -848,8 +1029,8 @@ const MyClosetScreen = () => {
                     )}
                 </View>
 
-                {/* Trial Countdown Banner — shown below header when trial is active */}
-                {isTrialActive && <TrialCountdownBanner />}
+                {/* Trial banner — countdown during trial, non-blocking upsell after expiry */}
+                <TrialCountdownBanner />
 
                 {/* Small wardrobe informational banner */}
                 {items.length > 0 && items.length < 2 && (
@@ -930,6 +1111,12 @@ const MyClosetScreen = () => {
                                     isSelected={selectedCollectionFilter === 'all'}
                                     onPress={() => setSelectedCollectionFilter('all')}
                                 />
+                                <FilterChip
+                                    label={t('inspo.saved', 'Saved')}
+                                    enText="Saved"
+                                    isSelected={selectedCollectionFilter === 'saved'}
+                                    onPress={() => setSelectedCollectionFilter('saved')}
+                                />
                                 {['casual', 'work', 'formal', 'sport', 'date', 'travel'].map((cat) => (
                                     <FilterChip
                                         key={cat}
@@ -941,43 +1128,26 @@ const MyClosetScreen = () => {
                                 ))}
                             </ScrollView>
                             <FlatList
-                                data={selectedCollectionFilter === 'all' ? savedOutfits : savedOutfits.filter((o) => o.occasion === selectedCollectionFilter)}
+                                data={visibleSavedOutfits}
                                 keyExtractor={(item) => item.id}
                                 numColumns={2}
                                 contentContainerStyle={styles.scrollContent}
                                 showsVerticalScrollIndicator={false}
-                                removeClippedSubviews={true}
+                                // Dragging the grid dismisses the search keyboard
+                                // (iOS standard behavior — previously trapped).
+                                keyboardDismissMode="on-drag"
+                                removeClippedSubviews={Platform.OS === 'android'}
                                 maxToRenderPerBatch={10}
                                 updateCellsBatchingPeriod={50}
                                 initialNumToRender={8}
                             windowSize={5}
-                            renderItem={({ item: outfit }) => {
-                                // Prefer the frozen snapshot from like-time (full outfit
-                                // incl. shop pieces); fall back to wardrobe + live
-                                // catalog lookups for outfits saved before snapshots.
-                                const outfitItems = resolveOutfitCollageItems(
-                                    outfit,
-                                    storeItems,
-                                    shopCatalogItems,
-                                );
-                                return (
-                                    <TouchableOpacity
-                                        style={styles.outfitCard}
-                                        onPress={() => handleOutfitPress(outfit)}
-                                        activeOpacity={0.85}
-                                        accessibilityRole="button"
-                                        accessibilityLabel={`${outfit.occasion || 'Saved outfit'} outfit, open details`}
-                                    >
-                                        <OutfitCollagePreview items={outfitItems} backgroundColor="#F9FBFF" footerInset={44} />
-                                        <View style={styles.outfitCardOverlay}>
-                                            <ScaledText style={styles.outfitCardOccasion} numberOfLines={1}>
-                                                {outfit.occasion}
-                                            </ScaledText>
-                                            <Ionicons name="heart" size={14} color="#E05C5C" />
-                                        </View>
-                                    </TouchableOpacity>
-                                );
-                            }}
+                            renderItem={({ item: outfit }) => (
+                                <MemoCollectionCard
+                                    outfit={outfit}
+                                    items={collageByOutfitId.get(outfit.id) ?? []}
+                                    onPress={handleOutfitPress}
+                                />
+                            )}
                             ListFooterComponent={<View style={{ height: 100 }} />}
                         />
                         </>
@@ -1030,38 +1200,18 @@ const MyClosetScreen = () => {
                         numColumns={2}
                         contentContainerStyle={styles.scrollContent}
                         showsVerticalScrollIndicator={false}
-                        removeClippedSubviews={true}
+                        // Dragging the grid dismisses the search keyboard
+                        // (iOS standard behavior — previously trapped).
+                        keyboardDismissMode="on-drag"
+                        // removeClippedSubviews on iOS unmounts cells during
+                        // fast scroll → blank flashes. Android-only.
+                        removeClippedSubviews={Platform.OS === 'android'}
                         maxToRenderPerBatch={10}
                         updateCellsBatchingPeriod={50}
                         initialNumToRender={8}
                         windowSize={5}
-                        renderItem={({ item }) => (
-                            <ClothingGridItem
-                                item={item}
-                                onPress={() => {
-                                    Haptics.selectionAsync();
-                                    const domainItem = storeItems.find(i => i.id === item.id || i.id === (item as any)._id);
-                                    if (domainItem) {
-                                        navigation.navigate('ClothingDetailEditor', {
-                                            imageUri: domainItem.imageUrl,
-                                            detectedType: domainItem.subCategory || domainItem.category,
-                                            detectedColor: mapColorToId(domainItem.primaryColor),
-                                            detectedMaterial: domainItem.material,
-                                            detectedDescription: domainItem.name,
-                                            existingItem: domainItem,
-                                        });
-                                    } else {
-                                        navigation.navigate('ClothingDetail', {
-                                            itemId: item.id || (item as any)._id,
-                                            fullItem: item,
-                                        });
-                                    }
-                                }}
-                                onGenerateOutfit={handleGenerateOutfit}
-                                isAnchorSelected={false}
-                                t={t}
-                            />
-                        )}
+                        getItemLayout={gridGetItemLayout}
+                        renderItem={renderGridItem}
                         ListFooterComponent={<View style={{ height: 100 }} />}
                     />
                 )}
@@ -1086,7 +1236,7 @@ const MyClosetScreen = () => {
             {selectedOutfit ? (
                 <Modal transparent animationType="fade" visible onRequestClose={() => setSelectedOutfit(null)}>
                     <View style={styles.previewOverlay}>
-                        <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setSelectedOutfit(null)} />
+                        <Pressable style={StyleSheet.absoluteFill} onPress={() => setSelectedOutfit(null)} />
 
                         <Animated.View entering={FadeIn.duration(220)} style={styles.previewShell}>
                             <View style={styles.previewCard}>
@@ -1154,12 +1304,15 @@ const MyClosetScreen = () => {
                                                                     source={piece.image}
                                                                     style={styles.previewPieceImage}
                                                                     contentFit="contain"
+                                                                    cachePolicy="memory-disk"
                                                                 />
                                                             ) : (
                                                                 <Image
                                                                     source={{ uri: piece.image as string }}
                                                                     style={styles.previewPieceImage}
                                                                     contentFit="contain"
+                                                                    cachePolicy="memory-disk"
+                                                                    recyclingKey={typeof piece.image === 'string' ? piece.image : undefined}
                                                                 />
                                                             )}
                                                             {navigable ? (
@@ -1672,7 +1825,7 @@ const styles = StyleSheet.create({
 
     // Error overlay
     errorOverlay: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         backgroundColor: 'rgba(0, 0, 0, 0.55)',
         alignItems: 'center',
         justifyContent: 'center',

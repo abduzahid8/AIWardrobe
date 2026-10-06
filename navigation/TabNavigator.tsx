@@ -1,4 +1,4 @@
-import { LayoutChangeEvent, Platform, Pressable, StyleSheet, View, useWindowDimensions, Alert, InteractionManager } from "react-native";
+import { LayoutChangeEvent, Platform, Pressable, StyleSheet, View, useWindowDimensions, Alert } from "react-native";
 import React from "react";
 import { BottomTabNavigationOptions, createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
@@ -55,24 +55,88 @@ interface TabIconProps {
   label: string;
 }
 
-const TabIcon = ({ focused, iconName, color, size, label }: TabIconProps) => {
+// Memoized — previously re-rendered all 4 icons on every tab press.
+const TabIcon = React.memo(({ iconName, color }: TabIconProps) => {
   return (
     <View style={styles.tabItemContainer}>
       <Ionicons name={iconName as any} size={26} color={color} />
     </View>
   );
-};
+});
+TabIcon.displayName = 'TabIcon';
+
+// Memoized tab button — previously `onPress` + `style` closures were
+// re-created for every route on every LiquidParallaxTabBar render,
+// forcing all Pressables + icons to reconcile on each tab switch.
+interface TabButtonProps {
+  routeKey: string;
+  routeName: string;
+  isFocused: boolean;
+  activeColor: string;
+  inactiveColor: string;
+  accessibilityLabel?: string;
+  testID?: string;
+  onPress: (routeName: string, routeKey: string, isFocused: boolean) => void;
+}
+
+const TabButton = React.memo(({
+  routeKey,
+  routeName,
+  isFocused,
+  activeColor,
+  inactiveColor,
+  accessibilityLabel,
+  testID,
+  onPress,
+}: TabButtonProps) => {
+  const handlePress = React.useCallback(() => {
+    onPress(routeName, routeKey, isFocused);
+  }, [onPress, routeName, routeKey, isFocused]);
+
+  const styleCb = React.useCallback(
+    ({ pressed }: { pressed: boolean }) => [
+      styles.tabButton,
+      pressed && { opacity: 0.7 },
+    ],
+    [],
+  );
+
+  const iconColor = isFocused ? activeColor : inactiveColor;
+
+  return (
+    <Pressable
+      key={routeKey}
+      accessibilityRole="button"
+      accessibilityState={isFocused ? { selected: true } : {}}
+      accessibilityLabel={accessibilityLabel}
+      testID={testID}
+      onPress={handlePress}
+      style={styleCb}
+    >
+      <TabIcon
+        focused={isFocused}
+        iconName={getIconName(routeName, isFocused)}
+        color={iconColor}
+        size={24}
+        label={routeName}
+      />
+    </Pressable>
+  );
+});
+TabButton.displayName = 'TabButton';
 
 // ── Memoized tab bar background — BlurView + gradient + glass overlay ────────
 // Extracted into a separate React.memo component so the expensive BlurView
 // GPU pass is paid at most once per mount, not on every tab-press re-render
 // of LiquidParallaxTabBar (fixes Defect 1.6).
+// NOTE: intensity kept low (30/40) — 95/100 forces a full-screen GPU blur
+// re-composite on every tab press / scroll under the bar.
 const TabBarBackground = React.memo(() => (
   <>
     <BlurView
-      intensity={Platform.OS === 'ios' ? 95 : 100}
+      intensity={Platform.OS === 'ios' ? 30 : 40}
       tint="light"
-      style={StyleSheet.absoluteFill}
+      style={[StyleSheet.absoluteFill, { borderRadius: 34 }]}
       pointerEvents="none"
     />
     <LinearGradient
@@ -126,13 +190,40 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation, isAdmin }: any) 
     ],
   }));
 
-  // Drop accidental multi-taps on the same tab: when a switch stalls users
-  // mash the icon and every press re-emits, re-navigates and restarts perf
-  // marks + focus effects (weather/GPS/rehydrate storms). Time-based, not
-  // isFocused-based, so it can't swallow legit presses the way an isFocused
-  // guard did (see comment in onPress below).
+  // Drop accidental multi-taps on the same tab: time-based debounce so it
+  // can't swallow legit presses the way an isFocused guard did.
   const lastPressRef = React.useRef<Record<string, number>>({});
   const SAME_TAB_DEBOUNCE_MS = 600;
+  const stateRef = React.useRef(state);
+  stateRef.current = state;
+
+  // Stable press handler shared by all memoized TabButtons — previously an
+  // inline closure per route per render forced full tab-bar reconciliation.
+  const handleTabPress = React.useCallback((routeName: string, routeKey: string, isFocused: boolean) => {
+    const now = Date.now();
+    const last = lastPressRef.current[routeName] ?? 0;
+    if (now - last < SAME_TAB_DEBOUNCE_MS) return;
+    lastPressRef.current[routeName] = now;
+    const cur = stateRef.current;
+    if (!isFocused) {
+      import('../src/services/tabPrewarmService').then(({ prewarmTab }) => {
+        prewarmTab(routeName);
+      }).catch(() => {});
+    }
+    const event = navigation.emit({
+      type: 'tabPress',
+      target: routeKey,
+      canPreventDefault: true,
+    });
+    if (!event.defaultPrevented) {
+      const currentRoute = cur.routes[cur.index]?.name ?? 'Unknown';
+      if (!isFocused) {
+        perfTabSwitch(currentRoute, routeName);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+      navigation.navigate(routeName);
+    }
+  }, [navigation]);
 
   return (
     <View
@@ -146,64 +237,23 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation, isAdmin }: any) 
         <View style={styles.liquidBlob} />
       </Animated.View>
 
-      {/* Tab Buttons */}
+      {/* Tab Buttons — memoized, stable handler */}
       <View style={styles.tabBarContent}>
         {state.routes.map((route: any, index: number) => {
           const { options } = descriptors[route.key];
           const isFocused = state.index === index;
-          const activeColor = colors.text.primary;
-          const inactiveColor = colors.text.tertiary;
-          const iconColor = isFocused ? activeColor : inactiveColor;
-
-          const onPress = () => {
-            const now = Date.now();
-            const last = lastPressRef.current[route.name] ?? 0;
-            if (now - last < SAME_TAB_DEBOUNCE_MS) return;
-            lastPressRef.current[route.name] = now;
-            const event = navigation.emit({
-              type: 'tabPress',
-              target: route.key,
-              canPreventDefault: true,
-            });
-            if (!event.defaultPrevented) {
-              // Record the current tab name for perf timing
-              const currentRoute = state.routes[state.index]?.name ?? 'Unknown';
-              // Only record perf + haptics when actually switching tabs
-              if (!isFocused) {
-                perfTabSwitch(currentRoute, route.name);
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              }
-              // Always call navigate — React Navigation deduplicates same-screen
-              // navigations, so this is safe even when already focused.
-              // Using isFocused as a guard caused a double-tap bug: on rapid
-              // taps the stale state.index made isFocused=true even when the
-              // tab wasn't actually active yet, silently swallowing the press.
-              navigation.navigate(route.name);
-            }
-          };
-
           return (
-            <Pressable
+            <TabButton
               key={route.key}
-              accessibilityRole="button"
-              accessibilityState={isFocused ? { selected: true } : {}}
+              routeKey={route.key}
+              routeName={route.name}
+              isFocused={isFocused}
+              activeColor={colors.text.primary}
+              inactiveColor={colors.text.tertiary}
               accessibilityLabel={options.tabBarAccessibilityLabel}
               testID={options.tabBarTestID}
-              onPress={onPress}
-              style={({ pressed }) => [
-                styles.tabButton,
-                pressed && { opacity: 0.7 }
-              ]}
-            >
-              <TabIcon
-                focused={isFocused}
-                iconName={getIconName(route.name, isFocused)}
-                color={iconColor}
-                size={24}
-                label={route.name}
-                
-              />
-            </Pressable>
+              onPress={handleTabPress}
+            />
           );
         })}
       </View>
@@ -217,10 +267,14 @@ const createAnimatedTabScreen = (Screen: React.ComponentType<any>, tabIndex: num
     const [isReady, setIsReady] = React.useState(false);
 
     React.useEffect(() => {
-      const task = InteractionManager.runAfterInteractions(() => {
+      // Defer heavy tab-screen mount past the tab-switch animation so the
+      // transition stays at 60fps. Plain setTimeout — InteractionManager is
+      // deprecated (startup warning) and runAfterInteractions fires at
+      // roughly the same point for this use case.
+      const timer = setTimeout(() => {
         setIsReady(true);
-      });
-      return () => task.cancel();
+      }, 50);
+      return () => clearTimeout(timer);
     }, []);
 
     // Wrap in a View with the app background color so the placeholder shown
@@ -271,14 +325,28 @@ const TabNavigator = () => {
   const screenOptions = React.useCallback(({ route }: any): BottomTabNavigationOptions => ({
     headerShown: false,
     tabBarShowLabel: false,
+    // Kill the default bottom-tab hairline (borderTopWidth) + Android
+    // elevation so no stray line can render behind/above the custom
+    // floating pill — e.g. during lazy-mount fallback frames.
+    tabBarStyle: {
+      borderTopWidth: 0,
+      borderWidth: 0,
+      elevation: 0,
+      shadowOpacity: 0,
+      backgroundColor: 'transparent',
+    },
     // 'none' eliminates the brief animation window where the white
     // sceneContainerStyle background flashes through during fast tab switches.
     // The blob indicator animation already provides visual feedback.
     animation: 'none',
     // Keep lazy: true (default) so screens mount only when first visited —
     // this keeps startup fast and the JS thread unblocked.
-    // The white flash on first visit is handled by sceneContainerStyle below
-    // (matching the app background color) so there's nothing white to show.
+    // NOTE: freezeOnBlur was removed — it suspends blurred screens via
+    // react-freeze and under rapid tab switches a screen could stay stuck
+    // in the suspended (blank white) state. Background-tab re-renders are
+    // already contained by memoized cells + selective zustand subscriptions.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    lazy: true as any,
   }), []);
 
   // Fire perfTabSwitchComplete on every tab focus — this is the moment the
@@ -299,6 +367,8 @@ const TabNavigator = () => {
       screenListeners={screenListeners}
       // @ts-ignore - sceneContainerStyle is supported at runtime but fails typecheck in this React Navigation version
       sceneContainerStyle={{ backgroundColor: '#FFFFFF' }}
+      // @ts-ignore - supported at runtime in this version, detaches background tabs natively
+      detachInactiveScreens
     >
       <Tab.Screen
         name="Home"
@@ -333,22 +403,37 @@ const styles = StyleSheet.create({
     height: 68,
     borderRadius: 34,
     overflow: 'hidden',
+    // No border — the 1px glassOverlay border used to render as a stray
+    // hairline along the top edge of the pill (clipped by overflow:hidden).
+    borderWidth: 0,
+    borderTopWidth: 0,
     shadowColor: "#173A65",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
     shadowRadius: 16,
-    elevation: 8,
+    // elevation on a transparent + overflow:hidden rounded view draws a
+    // rectangular shadow that leaks out as a straight line above the pill
+    // on Android — keep it at 0 and rely on the iOS shadow props.
+    elevation: 0,
     backgroundColor: 'transparent',
     alignSelf: 'center',
   },
   tabBarGradient: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    borderRadius: 34,
   },
   glassOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
     backgroundColor: 'rgba(255,255,255,0.6)',
-    borderWidth: 1,
-    borderColor: 'rgba(24,58,103,0.08)',
+    borderWidth: 0,
     borderRadius: 34,
   },
   tabBarContent: {

@@ -11,9 +11,25 @@ import {
     normalizeStyleId,
     type StyleId,
 } from '../../features/outfit-generator/utils/styleInference';
-import { SHOP_CATALOG_ITEMS } from '../../data/shopCatalogItems';
-import { CLASSIC_MENS_ITEMS } from '../../data/inspoMensShopItems';
-import type { ShopCatalogItem } from '../../features/try-on/types';
+import type { ShopCatalogItem } from '../types/shop';
+
+// Static catalogs require()d lazily — ~120KB of data modules must not
+// parse/evaluate on app startup (this service is reachable from eager
+// components). Only localCatalogRowsForSlot consumes them.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+let staticSlotPoolCache: ShopCatalogItem[] | null = null;
+function getStaticSlotPool(): ShopCatalogItem[] {
+    if (!staticSlotPoolCache) {
+        const data = require('../../data/shopCatalogItems') as {
+            SHOP_CATALOG_ITEMS: ShopCatalogItem[];
+        };
+        const inspo = require('../../data/inspoMensShopItems') as {
+            CLASSIC_MENS_ITEMS: ShopCatalogItem[];
+        };
+        staticSlotPoolCache = [...data.SHOP_CATALOG_ITEMS, ...inspo.CLASSIC_MENS_ITEMS];
+    }
+    return staticSlotPoolCache;
+}
 
 const logger = createLogger('Shopping');
 
@@ -461,9 +477,18 @@ interface ShopCatalogRow {
     garment_type?: string | null;
     category?: string | null;
     description?: string | null;
-    primary_color?: string | null;
     source?: string | null;
     source_url?: string | null;
+}
+
+const SHOP_COLOR_WORDS = ['black','white','offwhite','ecru','cream','beige','stone','sand','taupe','camel','khaki','olive','green','sage','mint','blue','navy','indigo','brown','chocolate','grey','gray','silver','charcoal','red','burgundy','maroon','pink','purple','lilac','yellow','mustard','orange','rust','tan','forest'];
+
+function inferShopColor(row: Pick<ShopCatalogRow, 'name' | 'description'>): string {
+    const blob = `${row?.name || ''} ${row?.description || ''}`.toLowerCase();
+    for (const c of SHOP_COLOR_WORDS) {
+        if (new RegExp(`\\b${c}\\b`).test(blob)) return c;
+    }
+    return 'neutral';
 }
 
 /**
@@ -472,9 +497,11 @@ interface ShopCatalogRow {
  * because the two columns evolved independently across ingestion scripts.
  */
 function buildShopQueryForSlot(slot: OutfitSlotId, limit: number) {
+    // NOTE: shop_catalog has no primary_color column — selecting it makes
+    // PostgREST fail the query. Color is inferred via inferShopColor().
     const base = supabase
         .from('shop_catalog')
-        .select('id, brand, name, price, currency, image_url, garment_type, category, description, primary_color, source, source_url')
+        .select('id, brand, name, price, currency, image_url, garment_type, category, description, source, source_url')
         .eq('is_active', true)
         .limit(limit);
 
@@ -500,7 +527,7 @@ function rowToShopFillItem(row: ShopCatalogRow, slot: OutfitSlotId): ShopFillIte
         image: row.image_url,
         type: row.garment_type || row.category || slot,
         macroCategory: slot,
-        color: row.primary_color || 'neutral',
+        color: inferShopColor(row),
         brand: row.brand || undefined,
         price: typeof row.price === 'number' ? row.price : undefined,
         shopUrl: row.source_url || undefined,
@@ -519,7 +546,7 @@ function localCatalogRowsForSlot(slot: OutfitSlotId): ShopCatalogRow[] {
     const seen = new Set<string>();
     const rows: ShopCatalogRow[] = [];
 
-    const allItems = [...SHOP_CATALOG_ITEMS, ...CLASSIC_MENS_ITEMS];
+    const allItems = getStaticSlotPool();
     for (const item of allItems) {
         if (!item?.id || !item?.imageUrl) continue;
         if (seen.has(item.id)) continue;
@@ -543,7 +570,6 @@ function localCatalogRowsForSlot(slot: OutfitSlotId): ShopCatalogRow[] {
             garment_type: item.garmentType,
             category: slot === 'top' ? 'tops' : slot === 'bottom' ? 'bottoms' : slot,
             description: item.description,
-            primary_color: undefined,
             source: 'local_catalog',
             source_url: item.sourceUrl,
         });
@@ -568,48 +594,51 @@ export async function fetchShopPoolForStyle(
 ): Promise<ShopFillItem[]> {
     if (!slots || slots.length === 0) return [];
     const normalizedStyle: StyleId = normalizeStyleId(style || 'casual');
-    const pool: ShopFillItem[] = [];
 
-    for (const slot of slots) {
-        try {
-            const { data, error } = await buildShopQueryForSlot(slot, 30);
-            const sourceRows = (!error && data && data.length > 0)
-                ? (data as ShopCatalogRow[])
-                : localCatalogRowsForSlot(slot);
-            if (sourceRows.length === 0) continue;
+    // Parallelize per-slot queries — the old sequential for-await loop issued
+    // up to 4 Supabase round-trips back-to-back (~4x latency). Promise.all
+    // collapses them into a single network flight.
+    const perSlotResults = await Promise.all(
+        slots.map(async (slot): Promise<ShopFillItem[]> => {
+            try {
+                const { data, error } = await buildShopQueryForSlot(slot, 30);
+                const sourceRows = (!error && data && data.length > 0)
+                    ? (data as ShopCatalogRow[])
+                    : localCatalogRowsForSlot(slot);
+                if (sourceRows.length === 0) return [];
 
-            const scored = sourceRows
-                .map((row) => ({
-                    row,
-                    score: scoreItemForStyle(
-                        {
-                            name: row.name || undefined,
-                            description: row.description || undefined,
-                            brand: row.brand || undefined,
-                            color: row.primary_color || undefined,
-                            type: row.garment_type || undefined,
-                            category: row.category || undefined,
-                            macroCategory: slot,
-                        },
-                        normalizedStyle,
-                    ),
-                }))
-                .sort((a, b) => b.score - a.score);
+                const scored = sourceRows
+                    .map((row) => ({
+                        row,
+                        score: scoreItemForStyle(
+                            {
+                                name: row.name || undefined,
+                                description: row.description || undefined,
+                                brand: row.brand || undefined,
+                                color: inferShopColor(row),
+                                type: row.garment_type || undefined,
+                                category: row.category || undefined,
+                                macroCategory: slot,
+                            },
+                            normalizedStyle,
+                        ),
+                    }))
+                    .sort((a, b) => b.score - a.score);
 
-            let added = 0;
-            for (const candidate of scored) {
-                if (added >= perSlot) break;
-                const fill = rowToShopFillItem(candidate.row, slot);
-                if (fill) {
-                    pool.push(fill);
-                    added++;
+                const fills: ShopFillItem[] = [];
+                for (const candidate of scored) {
+                    if (fills.length >= perSlot) break;
+                    const fill = rowToShopFillItem(candidate.row, slot);
+                    if (fill) fills.push(fill);
                 }
+                return fills;
+            } catch (err) {
+                logger.warn(`fetchShopPoolForStyle failed for slot=${slot}: ${String(err)}`);
+                return [];
             }
-        } catch (err) {
-            logger.warn(`fetchShopPoolForStyle failed for slot=${slot}: ${String(err)}`);
-        }
-    }
-    return pool;
+        }),
+    );
+    return perSlotResults.flat();
 }
 
 /**
@@ -623,44 +652,45 @@ export async function fillMissingSlots(
 ): Promise<ShopFillItem[]> {
     if (!missingSlots || missingSlots.length === 0) return [];
     const normalizedStyle: StyleId = normalizeStyleId(style || 'casual');
-    const picks: ShopFillItem[] = [];
 
-    for (const slot of missingSlots) {
-        try {
-            const { data, error } = await buildShopQueryForSlot(slot, 30);
-            const sourceRows = (!error && data && data.length > 0)
-                ? (data as ShopCatalogRow[])
-                : localCatalogRowsForSlot(slot);
-            if (sourceRows.length === 0) continue;
+    // Parallelize — same reasoning as fetchShopPoolForStyle above.
+    const perSlotPicks = await Promise.all(
+        missingSlots.map(async (slot): Promise<ShopFillItem | null> => {
+            try {
+                const { data, error } = await buildShopQueryForSlot(slot, 30);
+                const sourceRows = (!error && data && data.length > 0)
+                    ? (data as ShopCatalogRow[])
+                    : localCatalogRowsForSlot(slot);
+                if (sourceRows.length === 0) return null;
 
-            const scored = sourceRows
-                .map((row) => ({
-                    row,
-                    score: scoreItemForStyle(
-                        {
-                            name: row.name || undefined,
-                            description: row.description || undefined,
-                            brand: row.brand || undefined,
-                            color: row.primary_color || undefined,
-                            type: row.garment_type || undefined,
-                            category: row.category || undefined,
-                            macroCategory: slot,
-                        },
-                        normalizedStyle,
-                    ),
-                }))
-                .sort((a, b) => b.score - a.score);
+                const scored = sourceRows
+                    .map((row) => ({
+                        row,
+                        score: scoreItemForStyle(
+                            {
+                                name: row.name || undefined,
+                                description: row.description || undefined,
+                                brand: row.brand || undefined,
+                                color: inferShopColor(row),
+                                type: row.garment_type || undefined,
+                                category: row.category || undefined,
+                                macroCategory: slot,
+                            },
+                            normalizedStyle,
+                        ),
+                    }))
+                    .sort((a, b) => b.score - a.score);
 
-            for (const candidate of scored) {
-                const fill = rowToShopFillItem(candidate.row, slot);
-                if (fill) {
-                    picks.push(fill);
-                    break;
+                for (const candidate of scored) {
+                    const fill = rowToShopFillItem(candidate.row, slot);
+                    if (fill) return fill;
                 }
+                return null;
+            } catch (err) {
+                logger.warn(`fillMissingSlots failed for slot=${slot}: ${String(err)}`);
+                return null;
             }
-        } catch (err) {
-            logger.warn(`fillMissingSlots failed for slot=${slot}: ${String(err)}`);
-        }
-    }
-    return picks;
+        }),
+    );
+    return perSlotPicks.filter((p): p is ShopFillItem => p !== null);
 }

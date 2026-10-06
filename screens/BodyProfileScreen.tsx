@@ -9,7 +9,7 @@
  * Sections:
  *   1. Height (with source choice: Apple Measure vs manual)
  *   2. Weight (optional)
- *   3. Body Type (chips, from existing mannequin3D.ts BODY_TYPES)
+ *   3. Body Type (chips, from shared src/types/bodyTypes.ts BODY_TYPES)
  *   4. Gender (4 options)
  *   5. Optional measurements (chest, waist, hips, shoulders, arm, inseam, foot)
  *   6. Privacy toggles (retain source photo, retain mesh)
@@ -36,10 +36,10 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
-import type { StackNavigationProp } from '@react-navigation/stack';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useBodyProfileStore, selectActiveProfile } from '../store/bodyProfileStore';
-import { BODY_TYPES, BodyTypeId } from '../features/try-on/utils/mannequin3D';
+import { BODY_TYPES, BodyTypeId } from '../src/types/bodyTypes';
 import type { BodyProfile, GenderOption, BodyProfileSource } from '../src/types/bodyProfile';
 import type { RootStackParamList } from '../navigation/types';
 import useAuthStore from '../store/auth';
@@ -65,7 +65,7 @@ type MeasurementKey = (typeof MEASUREMENT_FIELDS)[number]['key'];
 
 const BodyProfileScreen: React.FC = () => {
   const { t } = useTranslation();
-  const nav = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const user = useAuthStore((s: ReturnType<typeof useAuthStore.getState>) => s.user);
 
   const activeProfile = useBodyProfileStore(selectActiveProfile);
@@ -154,24 +154,22 @@ const BodyProfileScreen: React.FC = () => {
       });
 
       // Mirror to the server (best-effort, don't block the user).
+      // Served by the `body-profiles` Edge Function (replaces Express
+      // POST /body-profiles); session JWT is attached automatically.
       try {
-        const apiBase = (process.env.EXPO_PUBLIC_API_URL || '').replace(/\/$/, '');
-        if (apiBase) {
-          await fetch(`${apiBase}/body-profiles`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${useAuthStore.getState().session?.access_token ?? ''}`,
-            },
-            body: JSON.stringify({
+        const { supabase } = require('../lib/supabase') as typeof import('../lib/supabase');
+        await supabase.functions.invoke('body-profiles', {
+          body: {
+            action: 'create',
+            profile: {
               height: { valueCm: h, source: heightSource },
               weightKg: w,
               bodyType,
               gender,
               privacy: { retainSourcePhoto: retainPhoto, retainMesh },
-            }),
-          });
-        }
+            },
+          },
+        });
       } catch (serverErr) {
         // Local save already succeeded; don't fail the user on a network blip.
         console.warn('[BodyProfile] server sync failed:', serverErr);

@@ -29,14 +29,9 @@ import subscriptionRoutes from "./routes/subscription.js";
 import geminiRoutes from "./routes/gemini.js";
 import analyticsRoutes from "./routes/analytics.js";
 import accountRoutes from "./routes/account.js";
-import tryonRenderRoutes from "./routes/tryon.js";
-import tryonGeminiRoutes from "./routes/tryon-gemini.js";
 import adminRoutes from "./routes/admin.js";
 import bodyProfileRoutes from "./routes/bodyProfiles.js";
 import fitRoutes from "./routes/fit.js";
-// Legacy try-on routes (tryon-v1/v2/v3) are intentionally NOT mounted.
-// Try-on is admin-only; only the canonical /api/tryon/render is exposed.
-
 // Import middleware
 import { apiLimiter, aiLimiter } from "./middleware/rateLimit.js";
 import { auditLogger } from "./middleware/security.js";
@@ -133,7 +128,6 @@ app.use("/stats", statsRoutes);
 app.use("/api", aiLimiter, analyzeRouter);      // /api/analyze-frames
 app.use("/api", aiLimiter, clothingRouter);      // /api/openai/analyze-clothing, /api/openai/generate-image, etc.
 app.use("/api", aiLimiter, productPhotoRouter);  // /api/product-photo/process, /api/v2/product-photo/process-multi
-// (legacy /api/try-on route removed — all try-on now uses mannequin-locked FLUX.1-Kontext-dev at /api/tryon/render)
 app.use("/api", aiLimiter, wardrobeRouter);       // /api/scan-wardrobe
 app.use("/api", aiLimiter, chatRouter);           // /api/smart-search, /api/ai-chat
 app.use("/api", aiLimiter, outfitsRouter);        // /api/generate-outfits
@@ -163,14 +157,6 @@ app.use("/api/analytics", analyticsRoutes);
 
 // Account management (deletion, GDPR)
 app.use("/api/account", accountRoutes);
-
-// Gemini 2.0 Flash try-on — cheaper alternative to FLUX (~6-12x cheaper)
-// Must be mounted BEFORE generic /api/tryon to avoid being shadowed
-// Quota is enforced client-side via useSubscriptionGate; any authenticated user may call this.
-app.use("/api/tryon/gemini", authenticateToken, aiLimiter, tryonGeminiRoutes);
-
-// Deterministic mannequin try-on renderer (FLUX). Any authenticated user may call this.
-app.use("/api/tryon", authenticateToken, aiLimiter, tryonRenderRoutes);
 
 // Admin management routes (requires admin authentication)
 app.use("/api/admin", authenticateToken, adminRoutes);
@@ -226,9 +212,7 @@ const server = app.listen(port, "0.0.0.0", () => {
 // requestTimeout: total time a single request may take.
 // headersTimeout:  must be > requestTimeout per Node docs.
 // keepAliveTimeout: > LB idle timeout to avoid 502s from Render's proxy.
-// NOTE: Mobile-VTON /tryon can take 60-120s for GPU inference (cold-start
-// download + inference). 250s gives headroom for mobileVtonClient's 240s
-// timeout + one retry pass. Always keep requestTimeout > client timeout.
+// NOTE: keep requestTimeout comfortably above the slowest upstream call.
 server.requestTimeout = 250_000;
 server.headersTimeout = 255_000;
 server.keepAliveTimeout = 65_000;

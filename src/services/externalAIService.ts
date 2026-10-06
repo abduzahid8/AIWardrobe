@@ -3,7 +3,7 @@
  * API keys are stored in Supabase, never exposed to mobile app
  */
 
-import { supabase } from '../lib/supabase';
+import { supabase } from '../../lib/supabase';
 
 export interface ProcessingResult {
   success: boolean;
@@ -38,7 +38,7 @@ async function invokeProcessingOperation(
   const startTime = Date.now();
   const operationName = operation === 'studio_photo' ? 'AI Studio Photo' : operation;
 
-  console.log(`[ExternalAI] Starting ${operationName}...`);
+  if (__DEV__) console.log(`[ExternalAI] Starting ${operationName}...`);
 
   try {
     const { data, error } = await supabase.functions.invoke('ai-process', {
@@ -53,7 +53,7 @@ async function invokeProcessingOperation(
       throw error;
     }
 
-    console.log(`[ExternalAI] ${operationName} response:`, {
+    if (__DEV__) console.log(`[ExternalAI] ${operationName} response:`, {
       success: data?.success,
       hasCutoutUrl: !!data?.cutoutUrl,
       hasClassification: !!data?.classification,

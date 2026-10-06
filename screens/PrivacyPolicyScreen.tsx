@@ -52,7 +52,19 @@ export default function PrivacyPolicyScreen({ navigation }: any) {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                <TouchableOpacity
+                    // Guarded goBack: a deep link can land here with no
+                    // history behind it — plain goBack() would strand the
+                    // user, so fall back to the main tabs.
+                    onPress={() => {
+                        if (navigation.canGoBack()) navigation.goBack();
+                        else (navigation as any).navigate('Main');
+                    }}
+                    style={styles.backButton}
+                    testID="privacyBack"
+                    accessibilityLabel={t('common.back')}
+                    accessibilityRole="button"
+                >
                     <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
                 </TouchableOpacity>
                 <ScaledText style={styles.headerTitle}>{t('privacyPolicy.title')}</ScaledText>

@@ -11,7 +11,7 @@ import { crashReporting } from '../src/services/crashReporting';
 import { iapService } from '../src/services/iapService';
 import useSubscriptionStore from './subscriptionStore';
 import { createLogger } from '../src/utils/logger';
-import { clearAllPersistedUserData } from '../src/lib/persistence';
+import { clearAllPersistedUserData, resetInMemoryUserState } from '../src/lib/persistence';
 import { authEvents } from './authEvents';
 import { uploadQueue } from '../src/services/uploadQueue';
 
@@ -160,6 +160,19 @@ async function onAuthSuccess(
     session: Session,
     method: AuthMethod,
 ): Promise<void> {
+    // Account-switch isolation: drop the previous user's in-memory state
+    // BEFORE publishing the new session. Otherwise Home renders user A's
+    // wardrobe under user B's id, then thrashes (essentials -> AI decks ->
+    // essentials) as the real fetch lands — the delete -> create freeze.
+    // Disk is left untouched here (logout/delete already wiped it); this is
+    // a memory-only reset so the new user's fresh data is never deleted.
+    const previousUserId = get().user?.id ?? get().session?.user?.id ?? null;
+    if (!previousUserId || previousUserId !== session.user.id) {
+        try {
+            resetInMemoryUserState();
+        } catch {}
+    }
+
     set({ session, isAuthenticated: true, loading: false, error: null });
 
     await get().fetchUser();
@@ -179,7 +192,44 @@ async function onAuthSuccess(
     // Automatically initialize 7-day free trial on signup/login
     await useSubscriptionStore.getState().initializeTrial(session.user.id).catch(() => {});
 
+    // Kick off the new user's wardrobe fetch in the background — never block
+    // login on it (it takes 1-2s on marginal networks). force=true bypasses
+    // the TTL guard, which is user-scoped but the in-memory reset above
+    // cleared lastSyncedAt anyway. Lazy-require avoids an import cycle
+    // (wardrobeSyncSlice imports this auth store).
+    try {
+        const useWardrobeStore = require('./wardrobeStore').default;
+        void useWardrobeStore
+            .getState()
+            .rehydrateFromCloud(true)
+            .catch(() => undefined);
+    } catch {}
+
     log.info('Authentication succeeded', { method, userId: session.user.id });
+}
+
+/**
+ * Race a cleanup promise against a timeout so logout/delete can NEVER hang
+ * forever on a stalled network call (signOut / IAP / storage). Local state
+ * clearing is what actually protects shared devices — a hung remote call
+ * must not block it. Resolves undefined on timeout; the underlying promise
+ * keeps running in the background.
+ */
+function withLogoutTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T | undefined> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<undefined>((resolve) => {
+        timer = setTimeout(() => {
+            timer = undefined;
+            log.warn(`${label} timed out after ${ms}ms — continuing local cleanup`);
+            resolve(undefined);
+        }, ms);
+    });
+    // Clear the timer as soon as either branch wins so a fast success never
+    // fires a spurious "timed out" warning seconds later (and leaves no
+    // stray timer behind in tests).
+    return Promise.race([promise, timeout]).finally(() => {
+        if (timer !== undefined) clearTimeout(timer);
+    });
 }
 
 function setAuthError(
@@ -557,7 +607,7 @@ const useAuthStore = create<AuthStore>((set, get) => ({
         authEvents.emitLogout();
 
         try {
-            await supabase.auth.signOut();
+            await withLogoutTimeout(supabase.auth.signOut(), 8000, 'supabase.auth.signOut');
         } catch (err) {
             log.warn('supabase.auth.signOut failed — continuing local cleanup', err);
         }
@@ -565,11 +615,15 @@ const useAuthStore = create<AuthStore>((set, get) => ({
         analyticsService.trackEvent('logout');
         analyticsService.clearUserId();
         crashReporting.clearUser();
-        await iapService.logout().catch(() => undefined);
+        await withLogoutTimeout(
+            iapService.logout().catch(() => undefined),
+            8000,
+            'iapService.logout',
+        );
 
         // Wipe per-user local state so subsequent logins on shared
         // devices never inherit the previous user's data.
-        await clearAllPersistedUserData();
+        await withLogoutTimeout(clearAllPersistedUserData(), 10000, 'clearAllPersistedUserData');
 
         set({ user: null, session: null, isAuthenticated: false });
         log.info('User logged out');
@@ -593,16 +647,31 @@ const useAuthStore = create<AuthStore>((set, get) => ({
                 _authSubscription.unsubscribe();
                 _authSubscription = null;
             }
+            // Parity with logout: remove the AppState listener registered by
+            // uploadQueue.init() (clearAllPersistedUserData also does this via
+            // resetInMemoryUserState, but keep it explicit so the two paths
+            // can never drift again).
+            try {
+                uploadQueue.destroy();
+            } catch {}
             authEvents.emitLogout();
 
             // The auth user may already be deleted server-side; ignore failures.
-            await supabase.auth.signOut().catch(() => undefined);
+            await withLogoutTimeout(
+                supabase.auth.signOut().catch(() => undefined),
+                8000,
+                'supabase.auth.signOut (delete)',
+            );
 
             analyticsService.clearUserId();
             crashReporting.clearUser();
-            await iapService.logout().catch(() => undefined);
+            await withLogoutTimeout(
+                iapService.logout().catch(() => undefined),
+                8000,
+                'iapService.logout (delete)',
+            );
 
-            await clearAllPersistedUserData();
+            await withLogoutTimeout(clearAllPersistedUserData(), 10000, 'clearAllPersistedUserData (delete)');
 
             set({ user: null, session: null, isAuthenticated: false, loading: false });
             log.info('Account deleted and local data cleared');

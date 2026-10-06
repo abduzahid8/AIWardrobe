@@ -19,7 +19,7 @@ import { assessFit, recommendSize } from '../lib/fit/fitEngine';
 import type { BodyProfile } from '../types/bodyProfile';
 import type { GarmentPhysicalProfile } from '../types/garment';
 import type { FitAssessment } from '../types/fitAssessment';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../../lib/supabase';
 
 const API_TIMEOUT_MS = 8_000;
 

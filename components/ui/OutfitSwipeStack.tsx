@@ -6,7 +6,8 @@
  * icon buttons can trigger the identical motion as a real swipe.
  */
 import React, { forwardRef, useImperativeHandle, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { View, StyleSheet, Dimensions, Image } from 'react-native';
+import { View, StyleSheet, Dimensions } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
@@ -28,7 +29,17 @@ const ROTATION_DEG = 10;
 const CAPTION_BAR_HEIGHT = 52;
 // Current card + the two peeking behind it, plus one more so the card that's
 // about to become "back" is already warm before it's ever rendered.
+// The back card mounts immediately but was historically never prefetched
+// (lookahead covered top+mid only), so every swipe revealed a mid card on
+// top of a back card whose full-res photos were still downloading — the
+// perpetual "wait 2-4s until everything loads". The old 4-ahead storm is
+// gone now that `cards` is a stable memo (the effect below also depends on
+// a content signature, not the array identity), and the dedupe set bounds
+// each run to only genuinely new URIs — at most one card's worth per swipe.
 const PREFETCH_LOOKAHEAD = 4;
+// Bound the dedupe set so it can't grow unbounded across account switches
+// (delete -> create reuses the same component instance in some navigations).
+const MAX_PREFETCHED_URIS = 200;
 
 const SPRING_BACK = { damping: 20, stiffness: 260, mass: 0.9 };
 const SPRING_BACK_REDUCED = { damping: 1000, stiffness: 1000, mass: 1 };
@@ -49,8 +60,14 @@ export interface OutfitSwipeStackHandle {
 interface OutfitSwipeStackProps {
   cards: SwipeStackCard[];
   activeIndex: number;
-  onSwipeRight: (card: SwipeStackCard) => void;
-  onSwipeLeft: (card: SwipeStackCard) => void;
+  /**
+   * Return `false` when the swipe is rejected (e.g. paywall gate) so the
+   * card springs back instead of staying flown off-screen. A rejected swipe
+   * without rollback desyncs the visual deck from `activeIndex` — the next
+   * card shows through while Buy/share still read the old top card.
+   */
+  onSwipeRight: (card: SwipeStackCard) => boolean | void;
+  onSwipeLeft: (card: SwipeStackCard) => boolean | void;
   reducedMotion?: boolean;
   height?: number;
   emptyState?: React.ReactNode;
@@ -114,19 +131,43 @@ export const OutfitSwipeStack = forwardRef<OutfitSwipeStackHandle, OutfitSwipeSt
     // make that already-loaded piece flicker — visible, then blank while the
     // redundant fetch redecodes, then visible again.
     const prefetchedRef = useRef<Set<string>>(new Set());
+    // Content signature, not the array identity: the parent memoizes `cards`,
+    // but any unrelated re-render with a fresh array must not re-fire network
+    // work — and any real content swap must. One string compare decides.
+    const cardsSignature = cards
+      .map((card) => `${card.key}:${card.items.map((item) => String(item.image ?? '')).join(',')}`)
+      .join('|');
     useEffect(() => {
-      cards.slice(activeIndex, activeIndex + PREFETCH_LOOKAHEAD).forEach((card) => {
+      // Evict the dedupe set if it grew huge (e.g. across account switches)
+      // so it never holds hundreds of stale URIs from a previous user.
+      if (prefetchedRef.current.size > MAX_PREFETCHED_URIS) {
+        prefetchedRef.current.clear();
+      }
+      const upcoming: string[] = [];
+      // Prefetch AHEAD of the visible card only. Including `activeIndex`
+      // itself re-requested URIs that <ExpoImage> was already decoding on
+      // screen, which raced the on-screen decode and made the current piece
+      // blink blank mid-load ("shows up, disappears, reappears"). The top
+      // card's tiles are already mounted — warm only mid/back + one extra.
+      cards.slice(activeIndex + 1, activeIndex + 1 + PREFETCH_LOOKAHEAD).forEach((card) => {
         card.items.forEach((item) => {
           if (typeof item.image !== 'string' || !item.image) return;
           const uri = item.image;
           if (prefetchedRef.current.has(uri)) return;
           prefetchedRef.current.add(uri);
-          Image.prefetch(uri).catch(() => {
-            prefetchedRef.current.delete(uri);
-          });
+          upcoming.push(uri);
         });
       });
-    }, [cards, activeIndex]);
+      if (upcoming.length > 0) {
+        // Same memory-disk store the tiles read from, so a prefetched photo
+        // renders instantly on mount (and survives remounts) instead of
+        // flashing blank and reloading over the network.
+        ExpoImage.prefetch(upcoming, 'memory-disk').catch(() => {
+          upcoming.forEach((uri) => prefetchedRef.current.delete(uri));
+        });
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [cardsSignature, activeIndex]);
 
     const springConfig = reducedMotion ? SPRING_BACK_REDUCED : SPRING_BACK;
     const flyDuration = reducedMotion ? 0 : 240;
@@ -138,8 +179,15 @@ export const OutfitSwipeStack = forwardRef<OutfitSwipeStackHandle, OutfitSwipeSt
       Haptics.impactAsync(
         direction === 'right' ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light,
       );
-      if (direction === 'right') onSwipeRight(card);
-      else onSwipeLeft(card);
+      const accepted = direction === 'right' ? onSwipeRight(card) : onSwipeLeft(card);
+      if (accepted === false) {
+        // Swipe was rejected (e.g. swipe quota exhausted → paywall opened).
+        // The fly-off animation already completed, but `activeIndex` didn't
+        // advance — spring the card back so the visual deck stays in sync
+        // with the logical top card (Buy/share read from `activeIndex`).
+        translateX.value = withSpring(0, springConfig);
+        translateY.value = withSpring(0, springConfig);
+      }
     };
 
     const triggerSwipe = (direction: 'left' | 'right') => {

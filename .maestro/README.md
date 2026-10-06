@@ -87,6 +87,30 @@ Approximately **5 hierarchy queries per flow** before the accessibility
 server degrades. A 20-step sweep failed on its last tap, while the same steps
 split into halves (`expo_go_tabs_a` ~14s, `expo_go_tabs_b` ~9s) pass
 reliably. Keep flows short; prefer two small flows over one long sweep.
+After ~20 runs the driver degrades globally (even visible text stops
+matching) — `xcrun simctl shutdown + boot` restores it.
+
+### Direction swipes don't scroll (harness limit, not app bug)
+
+`swipe: {direction, duration}` COMPLETES but never moves `ScrollView` /
+`FlatList` content on this stack (verified on Home + Profile, all durations
+200–1500ms, including after a sim reboot with a fresh driver). Taps,
+`inputText` and text assertions work fine. Consequences for flow design:
+- Never assert post-swipe positions; use swipes only as no-crash smoke.
+- Reach below-fold screens via deep links instead (see `run_full.sh` +
+  `privacy`/`terms` linking map entries in `App.tsx`), or via visible
+  entry points (banners, menu buttons).
+- text `tapOn` finds on-screen elements reliably; offscreen rows in long
+  lists may be absent from the tree — prefer labeled back chevrons
+  (`common.back` = "Назад"/"Back") for returns.
+
+### Disk space
+
+A full macOS disk breaks the harness first (`No space left on device`
+in driver extraction) and degrades the sim second. Before a session,
+clear your own footprint: old `~/.maestro/tests/*` runs and `/tmp` shots.
+Never touch other projects' `DerivedData`. This repo's Xcode
+`DerivedData/AIWardrobe-*` + `ModuleCache.noindex` are regenerable.
 
 ### Tab coordinates (legacy coordinate flows only)
 

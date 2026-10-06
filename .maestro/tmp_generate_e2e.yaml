@@ -1,0 +1,23 @@
+appId: host.exp.Exponent
+name: tmp_generate_e2e
+---
+- tapOn:
+    point: "58%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn: ".*(Магазин|Shop).*"
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn: ".*(Персональный стилист|Personal stylist).*"
+- waitForAnimationToEnd:
+    timeout: 10000
+- assertVisible: ".*Generate outfit.*"
+- tapOn: ".*Generate outfit.*"
+- waitForAnimationToEnd:
+    timeout: 90000
+- takeScreenshot: tmp_deck_1
+- swipe:
+    direction: DOWN
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: tmp_deck_2

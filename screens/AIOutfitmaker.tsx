@@ -6,23 +6,33 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from 'expo-linear-gradient';
+import { Image as ExpoImage } from 'expo-image';
 import { BlurView } from 'expo-blur';
 import Reanimated, { FadeIn, FadeInUp, FadeOut, FadeOutUp } from 'react-native-reanimated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { useShopCatalog } from '../hooks/useShopCatalog';
 import { fillMissingSlots, type OutfitSlotId } from '../src/services/shoppingService';
+import { mergeShopSlices, collapseSimilarByName, collapseDuplicateProductImages, isTrustedProductImage, isBrandCatalogImage, productImageKey, preferMappedMacro, hasUsableProductName, inferCatalogColor, normalizeCatalogNameKey, classicCatalogOffset, garmentVarietyFamily, inferShopRowMacro } from '../src/utils/shopCatalogOrder';
+import { passesStyleJudge, rejectForStyleOccasion, rejectForClimate, inferSeasonalWeather, humanizeProductName, SHORT_SLEEVE_RE, STRIP_SHORT_SLEEVE_RE } from '../features/outfit-generator/utils/occasionRules';
 import LiquidGlass2026Theme, { SpatialElevation } from '../constants/LiquidGlass2026Theme';
 import * as Location from 'expo-location';
 import Config from '../src/config/env';
 import { createOutfitLog, type OutfitItem as CalendarOutfitItem, type OutfitLog } from '../features/calendar/types';
 import AIThinkingAnimation from '../components/AIThinkingAnimation';
 import { canonicalizeMacroCategory } from '../src/utils/categoryMapper';
+import { createDeckDedupe, prioritizeUnseen } from '../features/outfit-generator/utils/deckDedupe';
+import { isShortsBottom, isFormalLayer, fabricFamily, isSameLayerBaseCategory, PLACEHOLDER_PANTS, PLACEHOLDER_SHOES, getBackendMacroCategory, isCompleteNormalizedOutfit, isFourSlotLook, REAL_IMAGE_RE, repairEdgeItems, createSlotNormalizer, ensureSlotFloors } from '../features/outfit-generator/utils/normalizeSlots';
+import { parseBudgetFromText, outfitShopSpend, formatMoney } from '../src/utils/outfitBudget';
+import { parseStylistIntent } from '../features/outfit-generator/utils/stylistIntent';
 import { scoreItemForStyle, normalizeStyleId } from '../features/outfit-generator/utils/styleInference';
 import useWardrobeStore from '../store/wardrobeStore';
 import { useStylePreferenceStore } from '../store/stylePreferenceStore';
 import { useTranslation } from 'react-i18next';
 import useAuthStore from '../store/auth';
+import { SHOP_CATALOG_ITEMS } from '../data/shopCatalogItems';
+import { CLASSIC_MENS_ITEMS } from '../data/inspoMensShopItems';
+import { useSubscriptionGate } from '../src/hooks/useSubscriptionGate';
 
 const { width, height } = Dimensions.get('window');
 
@@ -39,6 +49,8 @@ interface OutfitItem {
   isWardrobe?: boolean;
   isShopItem?: boolean;
   shopUrl?: string;
+  price?: number;
+  currency?: string;
 }
 
 interface GeneratedOutfit {
@@ -51,46 +63,118 @@ interface GeneratedOutfit {
   weather?: { temp: number; condition: string; city?: string };
 }
 
-// ── Shared helpers: formal-layer + shorts rule ─────────────────────────
-function isFormalLayer(item: { type?: string; name?: string; brand?: string; macroCategory?: string } | null | undefined): boolean {
-  if (!item) return false;
-  const blob = `${item.type || ''} ${item.name || ''} ${item.brand || ''}`.toLowerCase();
-  const macro = (item.macroCategory || '').toLowerCase();
-  const isOuter = macro === 'outerwear' || /jacket|coat|blazer|vest|outerwear/.test(blob);
-  if (!isOuter) return false;
-  return /\b(blazer|suit\s*jacket|sport\s*coat|sports\s*coat|overcoat|top\s*coat|topcoat|trench|peacoat|pea\s*coat|tuxedo)\b/.test(blob);
+// ── Static catalog fallback, normalized ONCE ────────────────────────────
+// candidatePool re-ran toMacro regexes over ~2k bundled items on every
+// wardrobe change. Static data never changes — normalize once at module
+// scope and reuse. Each entry carries its macro + precomputed image flag.
+// Stylist rule-set version — printed on every Generate tap log so a pasted
+// log proves exactly which vetoes/picks were live in that build.
+export const STYLIST_RULES_VERSION = '2026-10-06A';
+interface StaticPoolItem {
+  id: string;
+  name: string;
+  image: string;
+  imageUrl: string;
+  type: string;
+  macroCategory: string;
+  color: string;
+  brand: string;
+  isWardrobe: boolean;
+  isShopItem: boolean;
+  shopUrl?: string;
+  price?: number;
+  currency?: string;
+  _hasImage: boolean;
+}
+let staticPoolCache: StaticPoolItem[] | null = null;
+// Slot mapping for every shop_catalog row. See inferShopRowMacro.
+function shopRowMacro(garmentType: string, name: string, desc: string): string {
+  return inferShopRowMacro(garmentType, name, desc);
 }
 
-function isShortsBottom(item: { type?: string; name?: string; macroCategory?: string; subCategory?: string } | null | undefined): boolean {
-  if (!item) return false;
-  const blob = `${item.type || ''} ${item.name || ''} ${item.subCategory || ''}`.toLowerCase();
-  const macro = (item.macroCategory || '').toLowerCase();
-  const isBottom = macro === 'bottom' || /pant|trouser|jeans|bottom|shorts?|skirt/.test(blob);
-  if (!isBottom) return false;
-  return /\b(shorts?|bermudas?)\b/.test(blob);
+function mapShopCatalogRow(item: {
+  id: string;
+  name?: string;
+  brand?: string;
+  description?: string;
+  imageUrl?: string;
+  garmentType?: string;
+  sourceUrl?: string;
+  price?: number;
+  currency?: string;
+}): {
+  id: string;
+  image: string;
+  imageUrl: string;
+  type: string;
+  category: string;
+  macroCategory: string;
+  name: string;
+  brand: string;
+  description: string;
+  shopUrl?: string;
+  isShopItem: boolean;
+  price?: number;
+  currency?: string;
+  color?: string;
+} {
+  const macroCategory = shopRowMacro(item.garmentType || '', item.name || '', item.description || '');
+  // Humanize feed captions once here ("Front view of a ... - Image 0" never
+  // reaches cards or the edge prompt). Keywords survive (only boilerplate is
+  // stripped), so scoring is unaffected.
+  const displayName = humanizeProductName(item.name) || item.name || 'Clothing Piece';
+  return {
+    id: item.id,
+    image: item.imageUrl || '',
+    imageUrl: item.imageUrl || '',
+    // 'other' (accessories) keeps non-clothing type/category so downstream
+    // keyword fallbacks can never re-derive it as shoes/tops.
+    type: macroCategory === 'other' ? 'accessories' : macroCategory === 'outerwear' ? 'outerwear' : item.garmentType === 'upper_body' ? 'tops' : item.garmentType === 'lower_body' ? 'bottoms' : 'shoes',
+    category: macroCategory === 'other' ? 'accessories' : macroCategory === 'outerwear' ? 'outerwear' : item.garmentType === 'upper_body' ? 'tops' : item.garmentType === 'lower_body' ? 'bottoms' : 'shoes',
+    macroCategory,
+    name: displayName,
+    brand: item.brand || '',
+    description: item.description || (item.name ? `${item.name} by ${item.brand || ''}` : ''),
+    shopUrl: item.sourceUrl,
+    isShopItem: true,
+    // Infer from name/description (the table has no color column) so
+    // color-aware rules don't judge blind. Mirrors edge inferShopColor.
+    color: inferCatalogColor(item.name, item.description),
+    price: typeof item.price === 'number' ? item.price : undefined,
+    currency: item.currency,
+  };
 }
 
-const PLACEHOLDER_SHOES: OutfitItem = {
-  id: 'placeholder_shoes',
-  type: 'shoes',
-  macroCategory: 'shoes',
-  name: 'Shoes',
-  image: 'placeholder_shoes',
-  imageUrl: 'placeholder_shoes',
-  color: 'neutral',
-  brand: '',
-};
-
-const PLACEHOLDER_PANTS: OutfitItem = {
-  id: 'placeholder_pants',
-  type: 'pants',
-  macroCategory: 'bottom',
-  name: 'Pants',
-  image: 'placeholder_pants',
-  imageUrl: 'placeholder_pants',
-  color: 'neutral',
-  brand: '',
-};
+function getStaticPoolItems(): StaticPoolItem[] {
+  if (staticPoolCache) return staticPoolCache;
+  const out: StaticPoolItem[] = [];
+  for (const s of [...(SHOP_CATALOG_ITEMS as any[]), ...(CLASSIC_MENS_ITEMS as any[])]) {
+    const id = String((s as any)?.id || '');
+    if (!id) continue;
+    const macro = shopRowMacro((s as any).garmentType, (s as any).name || '', (s as any).description || '');
+    const imageUrl = (s as any).imageUrl || '';
+    out.push({
+      id,
+      name: (s as any).name || 'Shop item',
+      image: imageUrl,
+      imageUrl,
+      type: macro,
+      macroCategory: macro,
+      color: inferCatalogColor((s as any).name, (s as any).description),
+      brand: (s as any).brand || '',
+      isWardrobe: false,
+      isShopItem: true,
+      shopUrl: (s as any).sourceUrl || undefined,
+      price: typeof (s as any).price === 'number' ? (s as any).price : undefined,
+      currency: (s as any).currency || undefined,
+      _hasImage: REAL_IMAGE_RE.test(imageUrl),
+    });
+  }
+  // Collapse same-name ingestions (classic-m shoe-16 vs shoe-17) so one
+  // product can't occupy several elite slots.
+  staticPoolCache = collapseSimilarByName(out);
+  return staticPoolCache;
+}
 
 const PLACEHOLDER_SHOES_IMAGE = require('../assets/images/basic_brown_loafers.png');
 const PLACEHOLDER_PANTS_IMAGE = require('../assets/images/basic_brown_pants.png');
@@ -127,6 +211,7 @@ const getOfflineMacroCategory = (type: string, category?: string, name?: string)
   // category "top"/"tops" must still resolve to "outerwear" (main-top/layer),
   // otherwise the anchor gets locked into the wrong (second-top) slot.
   const t = `${type || ''} ${category || ''} ${name || ''}`.toLowerCase();
+  if (SHORT_SLEEVE_RE.test(t)) return 'top';
   if (t.match(/\b(jacket|coat|blazer|hoodie|cardigan|sweater|pullover|vest|puffer|outerwear|trench|peacoat|bomber)\b/)) return 'outerwear';
 
   // Then honor any canonical macroCategory alias present in either string
@@ -137,8 +222,8 @@ const getOfflineMacroCategory = (type: string, category?: string, name?: string)
     : canonicalizeMacroCategory(category || '');
   if (aliasHit !== 'other') return aliasHit;
 
-  if (t.match(/\b(pant|trouser|jeans?|bottom|shorts?|skirt|lower[_\s-]?body)\b/)) return 'bottom';
-  if (t.match(/\b(shoe|sneaker|boot|loafer|sandal|footwear)\b/)) return 'shoes';
+  if (t.match(/\b(pant|trouser|jeans?|bottom|shorts?|skirt|lower[_\s-]?body)\b/) && !SHORT_SLEEVE_RE.test(t)) return 'bottom';
+  if (t.match(/\b(shoe|sneaker|boot|loafer|sandal|footwear|trainer|derby|derbies|moccasin|driver|mule)\b/)) return 'shoes';
   if (t.match(/\b(shirt|t-shirt|tee|blouse|polo|top|dress|upper[_\s-]?body)\b/)) return 'top';
   return 'top';
 };
@@ -155,6 +240,22 @@ const aiStyles = [
   { id: 'classic', label: 'Classic', icon: 'briefcase', desc: 'Sharp, tailored looks perfect for the modern workplace.', quizId: 'classic' },
   { id: 'business_casual', label: 'Modern Professional', icon: 'briefcase', desc: 'Sharp, tailored looks perfect for the modern workplace.', quizId: 'classic' },
 ];
+
+/** Human-readable style name for user-facing copy ("old_money" -> "Old Money"). */
+function styleLabelFor(styleId: string): string {
+  const known = aiStyles.find((s) => s.id === styleId)?.label;
+  if (known) return known;
+  return String(styleId || 'casual')
+    .split('_')
+    .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : w))
+    .join(' ');
+}
+
+/** "An Old Money" / "A Casual" — description lead-in with correct article. */
+function stylePhraseFor(styleId: string): string {
+  const label = styleLabelFor(styleId);
+  return `${/^[aeiou]/i.test(label) ? 'An' : 'A'} ${label}`;
+}
 
 /** Map a Style Quiz personality id to an AI generator style id. */
 function mapQuizStyleToAiStyle(quizId?: string | null): string {
@@ -211,6 +312,73 @@ interface OutfitSlotGridProps {
   weather?: { temp: number; condition: string };
 }
 
+// Memoized slot cell with expo-image memory-disk caching. Previously each
+// cell used RN <Image> (re-decoded on every slotConfig change) with an
+// inline onPress closure — re-rendering + re-decoding all 4 tiles whenever
+// any slot changed (flicker + dropped frames during generation streaming).
+const SlotCell = React.memo(function SlotCell({
+  slotKey,
+  label,
+  name,
+  imageSource,
+  imageUri,
+  itemId,
+  shopUrl,
+  buyLabel,
+  textSecondary,
+  textPrimary,
+  onBuy,
+}: {
+  slotKey: string;
+  label: string;
+  name: string;
+  imageSource: number | { uri: string };
+  imageUri?: string;
+  itemId?: string;
+  shopUrl?: string;
+  buyLabel: string;
+  textSecondary: string;
+  textPrimary: string;
+  onBuy: (url?: string) => void;
+}) {
+  const handleBuy = React.useCallback(() => onBuy(shopUrl), [onBuy, shopUrl]);
+  const [imgFailed, setImgFailed] = React.useState(false);
+  React.useEffect(() => { setImgFailed(false); }, [imageUri, slotKey]);
+  const fallbackSource =
+    slotKey === 'shoes' ? PLACEHOLDER_SHOES_IMAGE
+      : slotKey === 'pants' ? PLACEHOLDER_PANTS_IMAGE
+        : slotKey === 'main-top' ? PLACEHOLDER_LAYER_IMAGE
+          : PLACEHOLDER_TOP_IMAGE;
+  return (
+    <View key={slotKey} style={slotStyles.cell}>
+      <ExpoImage
+        source={imgFailed ? fallbackSource : imageSource}
+        placeholder={fallbackSource}
+        placeholderContentFit="contain"
+        style={[slotStyles.image, { backgroundColor: '#EEF3F8' }]}
+        contentFit="cover"
+        cachePolicy="memory-disk"
+        recyclingKey={`${slotKey}-${itemId ?? ''}-${imageUri ?? ''}-${imgFailed ? 'fb' : 'src'}`}
+        onError={() => setImgFailed(true)}
+      />
+      <View style={slotStyles.labelWrap}>
+        <ScaledText style={[slotStyles.label, { color: textSecondary }]}>{label}</ScaledText>
+        <ScaledText style={[slotStyles.name, { color: textPrimary }]} numberOfLines={1}>{name}</ScaledText>
+        {shopUrl ? (
+          <TouchableOpacity
+            style={slotStyles.buyButton}
+            onPress={handleBuy}
+            activeOpacity={0.75}
+          >
+            <Ionicons name="cart-outline" size={11} color="#FFFFFF" />
+            <ScaledText style={slotStyles.buyButtonText}>{buyLabel}</ScaledText>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    </View>
+  );
+});
+
 function OutfitSlotGrid({ items, weather }: OutfitSlotGridProps) {
   const D = useDesignTokens();
   const { t } = useTranslation();
@@ -237,34 +405,47 @@ function OutfitSlotGrid({ items, weather }: OutfitSlotGridProps) {
       const type = (item.type || '').toLowerCase();
       const cat = (item.category || '').toLowerCase();
       const name = (item.name || '').toLowerCase();
-
-      // 1. Canonical macroCategory (incl. aliases). Most trustworthy signal.
+      const nameSansSleeves = name.replace(STRIP_SHORT_SLEEVE_RE, ' ');
       const canonical = canonicalizeMacroCategory(item.macroCategory || '');
-      if (canonical === 'outerwear') return 'layer';
-      if (canonical === 'bottom') return 'pants';
-      if (canonical === 'shoes') return 'shoes';
-      if (canonical === 'top') return 'top';
+      const storedBottom = type === 'bottoms' || type === 'bottom' || cat === 'bottoms' || cat === 'bottom' || canonical === 'bottom';
 
-      // 2. Fall back to the category field (may itself be an alias like
-      //    "tops" / "upper_body").
+      if (/\bboxers?|briefs?|underwears?|panties?|thongs?|lingerie|sunglasses?|ties?|neckties?|wallets?|card[\s-]?holders?\b/.test(name)) return null;
+      // Trousers photo + stolen blazer title: never render as LAYER.
+      if (storedBottom && /\b(jacket|coat|blazer)\b/.test(name) && !/\b(pants?|trousers?|jeans?|chinos?)\b/.test(nameSansSleeves)) return null;
+      if (storedBottom && /\b(pants?|trousers?|jeans?|shorts\b|skirt|chinos?)\b/.test(nameSansSleeves)) return 'pants';
+      if (SHORT_SLEEVE_RE.test(name) && !/\b(pants?|trousers?|jeans?|shorts)\b/.test(nameSansSleeves)) return 'top';
+      if (/\b(jacket|coat|blazer|cardigan|sweater|hoodie|puffer|bomber|vest|outerwear|trench|peacoat|overshirt|shacket|zip[\s-]?up)\b/.test(name)
+        && !/\b(t-?shirts?|tees?|polos?)\b/.test(name)
+        && !storedBottom) return 'layer';
+      // NAME beats stored type: an Oxford shirt tagged "shoes" must stay a top.
+      if (/\bt-?shirts?\b|\btees?\b|\bpolos?\b|\bblouses?\b|\btanks?\b|\bhenleys?\b|\bshirts?\b|\boxfords?\b|\bbutton[\s-]?downs?\b/.test(name)
+        && !/\b(shoes?|loafers?|boots?|sneakers?|overshirts?)\b/.test(name)) return 'top';
+      if (/\b(pants?|trousers?|jeans?|shorts\b|skirt)\b/.test(nameSansSleeves)) return 'pants';
+      if (/\b(shoes?|sneakers?|boots?|loafers?|sandals?|heels?|footwear|trainers?|derbys?|derbies|moccasins?|drivers?|mules?|espadrilles?)\b/.test(name)) return 'shoes';
+
+      const canonicalAlias = canonicalizeMacroCategory(item.macroCategory || '');
+      if (canonicalAlias === 'outerwear') return 'layer';
+      if (canonicalAlias === 'bottom') return 'pants';
+      if (canonicalAlias === 'shoes') return 'shoes';
+      if (canonicalAlias === 'top') return 'top';
+
       const catCanonical = canonicalizeMacroCategory(cat);
       if (catCanonical === 'outerwear') return 'layer';
       if (catCanonical === 'bottom') return 'pants';
       if (catCanonical === 'shoes') return 'shoes';
       if (catCanonical === 'top') return 'top';
 
-      // 3. Last resort: keyword matching across type / category / name.
       const blob = `${type} ${cat} ${name}`;
       if (/\b(jacket|coat|blazer|cardigan|sweater|hoodie|puffer|bomber|vest|outerwear)\b/.test(blob)) return 'layer';
-      if (/\b(pants?|trousers?|jeans?|shorts?|bottom|skirt|lower[_\s-]?body)\b/.test(blob)) return 'pants';
-      if (/\b(shoes?|sneakers?|boots?|loafers?|sandals?|heels?|footwear)\b/.test(blob)) return 'shoes';
+      if (/\b(pants?|trousers?|jeans?|shorts\b|bottom|skirt|lower[_\s-]?body)\b/.test(blob.replace(STRIP_SHORT_SLEEVE_RE, ' '))) return 'pants';
+      if (/\b(shoes?|sneakers?|boots?|loafers?|sandals?|heels?|footwear|trainers?|derbys?|derbies|moccasins?|drivers?|mules?)\b/.test(blob)) return 'shoes';
       if (/\b(t-?shirt|shirt|polo|blouse|top|tee|dress|upper[_\s-]?body)\b/.test(blob)) return 'top';
       return null;
     };
 
     const classified = items.map(item => ({ item, type: classifyItem(item) }));
-    console.log('[OutfitSlotGrid] items received:', items.length, 'classified:', classified.map(c => ({ id: c.item.id, name: c.item.name, macro: c.item.macroCategory, type: c.type })));
-    console.log('[OutfitSlotGrid] needsOuterwear:', needsOuterwear, 'weather:', weather);
+    if (__DEV__) console.log('[OutfitSlotGrid] items received:', items.length, 'classified:', classified.map(c => ({ id: c.item.id, name: c.item.name, macro: c.item.macroCategory, type: c.type })));
+    if (__DEV__) console.log('[OutfitSlotGrid] needsOuterwear:', needsOuterwear, 'weather:', weather);
 
     const layerItems = classified.filter(c => c.type === 'layer').map(c => c.item);
     const topItems = classified.filter(c => c.type === 'top').map(c => c.item);
@@ -289,8 +470,7 @@ function OutfitSlotGrid({ items, weather }: OutfitSlotGridProps) {
     // non-layered), we demote that single outerwear piece into the Top slot
     // so the card never renders an empty "Top" tile next to a filled
     // "Layer" tile (the exact bug in the user's screenshot).
-    const canSplitLayerAndTop = needsOuterwear
-      && !!layerItem
+    const canSplitLayerAndTop = !!layerItem
       && topItems.length > 0
       && !(pantsIsShorts && layerIsFormal);
 
@@ -302,28 +482,43 @@ function OutfitSlotGrid({ items, weather }: OutfitSlotGridProps) {
     // 3. Pants
     // 4. Shoes
 
-    // Slot 1: Main-Top (Layer)
+    // Slot 1: Layer (outerwear) — distinct category from the base top.
     const mainTopItem = canSplitLayerAndTop
       ? layerItem
       : (topItems[0] || layerItem);
-    slots.push({ key: 'main-top', label: 'Main Top', item: mainTopItem });
+    slots.push({ key: 'main-top', label: canSplitLayerAndTop ? 'Layer' : 'Top', item: mainTopItem });
 
-    // Slot 2: Second-Top (base shirt/tee)
-    const secondTopItem = canSplitLayerAndTop
-      ? (topItems[0] || topItems[1])
-      : (topItems[1] || topItems[0]);
-    // Clone if same as mainTop to avoid duplicate id
-    const resolvedSecondTop = secondTopItem && secondTopItem.id !== mainTopItem?.id
+    // Slot 2: Base top (shirt/tee underneath the layer) — never the same
+    // fabric family as the layer.
+    let secondTopItem = canSplitLayerAndTop
+      ? (topItems.find((t) => t.id !== layerItem?.id && !/\b(jacket|coat|blazer)\b/i.test(`${t.name || ''} ${t.type || ''}`)) || topItems[0] || topItems[1])
+      : (topItems.find((t) => t.id !== (topItems[0] || layerItem)?.id) || topItems[1] || topItems[0]);
+    if (canSplitLayerAndTop && secondTopItem && isSameLayerBaseCategory(mainTopItem, secondTopItem)) {
+      const alt = topItems.find((t) => t.id !== mainTopItem?.id && t.id !== secondTopItem?.id && !isSameLayerBaseCategory(mainTopItem, t))
+        || topItems.find((t) => t.id !== mainTopItem?.id && !isSameLayerBaseCategory(mainTopItem, t));
+      if (alt) secondTopItem = alt;
+    }
+    // Never clone a jacket/layer into the base-top tile (screenshot: two
+    // identical "Cool wool suit jacket" tiles both labeled TOP).
+    const layerLike = (it?: OutfitItem) =>
+      !!it && (/\b(jacket|coat|blazer|hoodie|puffer|bomber|trench|peacoat)\b/i.test(`${it.name || ''} ${it.type || ''}`)
+        || canonicalizeMacroCategory(it.macroCategory || '') === 'outerwear');
+    const distinctTop = secondTopItem
+      && secondTopItem.id !== mainTopItem?.id
+      && !layerLike(secondTopItem)
       ? secondTopItem
-      : (mainTopItem ? { ...mainTopItem, id: `${mainTopItem.id || mainTopItem.name}_second_top` } : undefined);
-    slots.push({ key: 'second-top', label: 'Second Top', item: resolvedSecondTop });
+      : topItems.find((t) => t.id !== mainTopItem?.id && !layerLike(t));
+    const resolvedSecondTop = distinctTop;
+    if (resolvedSecondTop) {
+      slots.push({ key: 'second-top', label: 'Top', item: resolvedSecondTop });
+    }
 
     // Slot 3: Pants — always show pants, never shorts. Prefer a real
     // non-shorts bottom; if only shorts exist or nothing matches, fall
     // back to the PLACEHOLDER_PANTS tile so the user always sees pants.
     const nonShortsPantsItem = pantsItems.find(p => !isShortsBottom(p));
     const resolvedPants = nonShortsPantsItem
-      || classified.find(c => c.type === null && /\b(pant|trouser|jeans|skirt|bottom)\b/i.test(`${c.item.name} ${c.item.type} ${c.item.category}`) && !/\bshorts?\b/i.test(`${c.item.name} ${c.item.type} ${c.item.category}`))?.item
+      || classified.find(c => c.type === null && /\b(pant|trouser|jeans|skirt|bottom)\b/i.test(`${c.item.name} ${c.item.type} ${c.item.category}`) && !/\b(shorts?|bermudas?|trunks?|swim\w*|board\s*shorts?|bathing)\b/i.test(`${c.item.name} ${c.item.type} ${c.item.category}`))?.item
       || PLACEHOLDER_PANTS;
     slots.push({ key: 'pants', label: 'Pants', item: resolvedPants });
 
@@ -332,7 +527,7 @@ function OutfitSlotGrid({ items, weather }: OutfitSlotGridProps) {
     const resolvedShoes = shoesItem || PLACEHOLDER_SHOES;
     slots.push({ key: 'shoes', label: 'Shoes', item: resolvedShoes });
 
-    console.log('[OutfitSlotGrid] FINAL SLOTS:', slots.map(s => ({ key: s.key, label: s.label, itemId: s.item?.id, itemName: s.item?.name, itemMacro: s.item?.macroCategory })));
+    if (__DEV__) console.log('[OutfitSlotGrid] FINAL SLOTS:', slots.map(s => ({ key: s.key, label: s.label, itemId: s.item?.id, itemName: s.item?.name, itemMacro: s.item?.macroCategory })));
     return slots;
   }, [items, needsOuterwear]);
 
@@ -342,31 +537,28 @@ function OutfitSlotGrid({ items, weather }: OutfitSlotGridProps) {
     }
   }, []);
 
+  const buyLabel = t('outfitMaker.buy', 'Buy');
   return (
     <View style={slotStyles.grid}>
-      {slotConfig.map((slot, idx) => (
-        <View key={slot.key} style={slotStyles.cell}>
-          <Image
-            source={getSlotImageSource(slot.item)}
-            style={slotStyles.image}
-            resizeMode="cover"
+      {slotConfig.filter((slot) => !!slot.item?.id && !!slot.item?.name).map((slot) => {
+        const src = getSlotImageSource(slot.item);
+        return (
+          <SlotCell
+            key={slot.key}
+            slotKey={slot.key}
+            label={slot.label}
+            name={slot.item?.name || ''}
+            imageSource={src}
+            imageUri={typeof src === 'object' ? src.uri : undefined}
+            itemId={slot.item?.id ? String(slot.item.id) : undefined}
+            shopUrl={slot.item?.shopUrl}
+            buyLabel={buyLabel}
+            textSecondary={D.textSecondary}
+            textPrimary={D.textPrimary}
+            onBuy={handleBuy}
           />
-          <View style={slotStyles.labelWrap}>
-            <ScaledText style={[slotStyles.label, { color: D.textSecondary }]}>{slot.label}</ScaledText>
-            <ScaledText style={[slotStyles.name, { color: D.textPrimary }]} numberOfLines={1}>{slot.item?.name || 'Item'}</ScaledText>
-            {slot.item?.shopUrl ? (
-              <TouchableOpacity
-                style={slotStyles.buyButton}
-                onPress={() => handleBuy(slot.item?.shopUrl)}
-                activeOpacity={0.75}
-              >
-                <Ionicons name="cart-outline" size={11} color="#FFFFFF" />
-                <ScaledText style={slotStyles.buyButtonText}>{t('outfitMaker.buy', 'Buy')}</ScaledText>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        </View>
-      ))}
+        );
+      })}
     </View>
   );
 }
@@ -380,6 +572,10 @@ function shuffleArray<T>(array: T[]): T[] {
   }
   return arr;
 }
+
+// Seeded shuffle lives in features/outfit-generator/utils/deckDedupe.ts
+// (shuffleWithSeed — shared + unit-tested). Slot ordering below goes
+// through orderSlotCandidates from the same module.
 
 const OFFLINE_MOCK_SHOP_CATALOG = [
   {
@@ -476,8 +672,12 @@ async function generateOfflineOutfits(
   weather: any,
   limit: number,
   t: any,
-  forceWardrobeOnly: boolean = false
+  forceWardrobeOnly: boolean = false,
+  seedOffset = 0
 ): Promise<GeneratedOutfit[]> {
+  // A non-positive limit means "no outfits" — bail before the last-resort
+  // single-outfit block below, which otherwise emits 1 look for limit 0.
+  if ((limit ?? 3) <= 0) return [];
   // ── Fill missing macro-category slots from shop_catalog ──────────────
   // If the wardrobe has no shoes (or no outerwear/top/bottom), pull
   // matching items from the shop catalog so the outfit builder can
@@ -498,7 +698,11 @@ async function generateOfflineOutfits(
     missingSlots.push('top');
   }
   let shopFills: any[] = [];
-  if (missingSlots.length > 0) {
+  // Wardrobe-only (Supabase clothing) requests must never be padded with
+  // shop_catalog or mock items — return what the wardrobe can build.
+  if (forceWardrobeOnly) {
+    if (missingSlots.length > 0) return [];
+  } else if (missingSlots.length > 0) {
     try {
       const fills = await fillMissingSlots(missingSlots, style);
       shopFills = fills.map(sf => ({
@@ -526,30 +730,84 @@ async function generateOfflineOutfits(
       }
     }
   }
-  const allItems = [...availableItems, ...shopFills];
+  let allItems = [...availableItems, ...shopFills];
+  // Sparse-slot supplement (shop mode only): pad each slot to ≥limit
+  // choices from the bundled static catalog. Wardrobe-only requests skip
+  // this — static classic-m-* items must never leak into Supabase outfits.
+  const countMacro = (m: string) =>
+    allItems.filter((it: any) => {
+      const c = canonicalizeMacroCategory(it.macroCategory || '');
+      const macro = c !== 'other' ? c : getOfflineMacroCategory(it.type || '', it.category || '', it.name || '');
+      return String(macro).toLowerCase() === m;
+    }).length;
+  if (!forceWardrobeOnly && (countMacro('top') < limit || countMacro('bottom') < limit || countMacro('shoes') < limit || countMacro('outerwear') < Math.min(3, limit))) {
+    const seenIds = new Set(allItems.map((it: any) => String(it.id || it.imageUrl || it.name)));
+    // Same shared rule: explicit clothing types are trusted, so "belt loops"
+    // can never demote real trousers to 'other' here either.
+    const toMacro = (g: string, name: string, desc: string): string => shopRowMacro(g, name, desc);
+    for (const s of [...(SHOP_CATALOG_ITEMS as any[]), ...(CLASSIC_MENS_ITEMS as any[])]) {
+      const id = String((s as any)?.id || '');
+      if (!id || seenIds.has(id)) continue;
+      const macro = toMacro((s as any).garmentType, (s as any).name || '', (s as any).description || '');
+      if (macro === 'other') continue;
+      if (macro === 'top' && countMacro('top') >= limit) continue;
+      if (macro === 'bottom' && countMacro('bottom') >= limit) continue;
+      if (macro === 'shoes' && countMacro('shoes') >= limit) continue;
+      if (macro === 'outerwear' && countMacro('outerwear') >= Math.min(3, limit)) continue;
+      seenIds.add(id);
+      allItems.push({
+        id,
+        name: (s as any).name || 'Shop item',
+        brand: (s as any).brand || '',
+        type: macro,
+        category: macro === 'top' ? 'tops' : macro === 'bottom' ? 'bottoms' : macro,
+        macroCategory: macro,
+        color: 'neutral',
+        image: (s as any).imageUrl || '',
+        imageUrl: (s as any).imageUrl || '',
+        description: (s as any).description || '',
+        isShopItem: true,
+      });
+      if (countMacro('top') >= limit && countMacro('bottom') >= limit && countMacro('shoes') >= limit) break;
+    }
+  }
 
   const classified = allItems.map(item => {
     const type = (item.type || '').toLowerCase();
     const cat = (item.category || '').toLowerCase();
     const name = (item.name || '').toLowerCase();
+    const blobAll = `${type} ${cat} ${name}`;
+    // Underwear never enters any slot (live bug: boxers rendered as TOP).
+    if (/\bboxers?|briefs?|underwears?|panties?|thongs?|lingerie\b/.test(blobAll)) {
+      return { item, category: null };
+    }
     // Canonicalize macroCategory / category so aliases like upper_body /
     // lower_body / tops / footwear route to the correct slot instead of
     // falling through and being dropped.
     const canonical = canonicalizeMacroCategory(item.macroCategory || '');
     const catCanonical = canonical !== 'other' ? canonical : canonicalizeMacroCategory(cat);
 
+    // Name-first overrides: feed mistags T-shirts as bottoms and short-sleeve
+    // knits as outerwear. Trust distinctive names over stored macros.
+    const isShoeName = /\b(shoes?|sneakers?|boots?|loafers?|sandals?|heels?|footwear|trainers?|derbys?|derbies|moccasins?|drivers?|mules?)\b/.test(blobAll);
+    const isTopName = /\b(t-?shirts?|shirts?|polos?|blouses?|tees?|tanks?|henleys?|oxfords?|button[\s-]?downs?|overshirts?)\b/.test(blobAll);
+    const isShortSleeveName = SHORT_SLEEVE_RE.test(blobAll);
     let category: string | null = null;
-    if (catCanonical === 'outerwear' || /\b(jacket|coat|blazer|cardigan|sweater|hoodie|puffer|bomber|vest|outerwear)\b/.test(`${type} ${cat} ${name}`)) {
-      category = 'layer';
-    } else if (catCanonical === 'bottom' || /\b(pants?|trousers?|jeans?|shorts?|skirt|lower[_\s-]?body|bottom)\b/.test(`${type} ${cat} ${name}`)) {
-      category = 'pants';
-    } else if (catCanonical === 'shoes' || /\b(shoes?|sneakers?|boots?|loafers?|sandals?|heels?|footwear)\b/.test(`${type} ${cat} ${name}`)) {
+    if (isShoeName) {
       category = 'shoes';
-    } else if (catCanonical === 'top' || /\b(t-?shirt|shirt|polo|blouse|tee|top|dress|upper[_\s-]?body)\b/.test(`${type} ${cat} ${name}`)) {
+    } else if (isShortSleeveName || isTopName) {
+      category = 'top';
+    } else if (catCanonical === 'outerwear' || /\b(jacket|coat|blazer|cardigan|sweater|hoodie|puffer|bomber|vest|outerwear)\b/.test(blobAll)) {
+      category = 'layer';
+    } else if (catCanonical === 'bottom' || /\b(pants?|trousers?|jeans?|shorts\b|skirt|lower[_\s-]?body|bottom)\b/.test(blobAll.replace(STRIP_SHORT_SLEEVE_RE, ' '))) {
+      category = 'pants';
+    } else if (catCanonical === 'shoes' || /\b(shoes?|sneakers?|boots?|loafers?|sandals?|heels?|footwear|trainers?|derbys?|derbies|moccasins?|drivers?|mules?)\b/.test(blobAll)) {
+      category = 'shoes';
+    } else if (catCanonical === 'top' || /\b(t-?shirt|shirt|polo|blouse|tee|top|dress|upper[_\s-]?body)\b/.test(blobAll)) {
       category = 'top';
     }
     return { item, category };
-  });
+  }).filter(c => c.category !== null);
 
   // Shuffle each category to ensure variety even with limited items
   const layers = shuffleArray(classified.filter(c => c.category === 'layer').map(c => c.item));
@@ -572,7 +830,7 @@ async function generateOfflineOutfits(
     pants.push(...nonShortsPants);
   }
 
-  const styleName = style.replace(/_/g, ' ');
+  const styleName = styleLabelFor(style);
   const descriptions = [
     t('outfitMaker.description1', { style: styleName }),
     t('outfitMaker.description2', { style: styleName }),
@@ -586,37 +844,46 @@ async function generateOfflineOutfits(
 
   const outfits: GeneratedOutfit[] = [];
   const targetItems = 4;
+  const seenSigs = new Set<string>();
+  const builtSets: Array<Set<string>> = [];
+  // Deterministic diverse round-robin: every slot advances with i plus a
+  // per-slot offset so 3 outfits never freeze on the same pieces.
+  // Random offsets were causing collisions (same index twice) — the exact
+  // "3 similar outfits" bug. seedOffset shifts every tap so re-taps differ.
+  // `attempt` perturbs every slot rotation so a rejected combination is
+  // never rebuilt identically on retry (previously the loop gave up after
+  // limit*4 tries with a fixed rotation — thin pools collapsed to 1-2).
+  const divIdx = (outfitIdx: number, slotOffset: number, len: number, attempt = 0): number => {
+    if (len <= 0) return 0;
+    return (outfitIdx + slotOffset + seedOffset * 5 + attempt * 7) % len;
+  };
 
-  for (let i = 0; i < limit; i++) {
+  const buildOfflineCandidate = (i: number, attempt: number): any[] | null => {
     const outfitItems: any[] = [];
-    
-    // Use random offsets to ensure variety even with small wardrobes
-    const randOffset1 = Math.floor(Math.random() * 100);
-    const randOffset2 = Math.floor(Math.random() * 100);
 
-    const candidatePant = pants[(i + randOffset1) % Math.max(pants.length, 1)] || pants[0];
+    const candidatePant = pants[divIdx(i, 6, pants.length, attempt)] || pants[0];
     const pantIsShorts = !!candidatePant && isShortsBottom(candidatePant);
 
     // 4-slot model: [outerwear/layer, baseTop, pants, shoes]
-    // Slot 1: outerwear (main-top / layer)
+    // Slot 1: outerwear (main-top / layer) — offset 0 rotates fastest
     if (needsLayer && layers.length > 0) {
-      let layer = layers[(i + randOffset1) % layers.length];
+      let layer = layers[divIdx(i, 0, layers.length, attempt)];
       if (pantIsShorts && isFormalLayer(layer)) {
-        layer = casualLayers[(i + randOffset1) % Math.max(casualLayers.length, 1)] || layer;
+        layer = casualLayers[divIdx(i, 0, casualLayers.length, attempt)] || layer;
       }
       outfitItems.push({ ...layer, macroCategory: 'outerwear' });
     }
 
-    // Slot 2: base top (second-top / shirt / tee)
+    // Slot 2: base top — offset 3 so it rotates independently from outerwear
     if (tops.length > 0) {
-      const top = tops[(i + randOffset2) % tops.length];
+      const top = tops[divIdx(i, 3, tops.length, attempt)];
       outfitItems.push({ ...top, macroCategory: 'top' });
     }
     // When layering, ensure we have a second base top (clone if only 1 top)
     if (needsLayer && outfitItems.some(item => item.macroCategory === 'outerwear')) {
       const existingTop = outfitItems.find(item => item.macroCategory === 'top');
-      const secondTop = tops.find((top) => top && top.id !== existingTop?.id)
-        || tops[(i + randOffset2 + 1) % Math.max(tops.length, 1)];
+      const secondTop = tops[divIdx(i + 1, 3, tops.length, attempt)]
+        || tops[divIdx(i, 3, tops.length, attempt)];
       if (secondTop && secondTop.id !== existingTop?.id) {
         // Replace the single top with a different second top
         const topIdx = outfitItems.findIndex(item => item.macroCategory === 'top');
@@ -629,16 +896,29 @@ async function generateOfflineOutfits(
       }
     }
 
+    // Layer-vs-base repair: never pair two same-fabric tops.
+    const _layer0 = outfitItems.find(item => item.macroCategory === 'outerwear');
+    const _top0 = outfitItems.find(item => item.macroCategory === 'top');
+    if (_layer0 && _top0 && isSameLayerBaseCategory(_layer0, _top0)) {
+      const layerFam = fabricFamily(_layer0);
+      const altTop = tops.filter((t: any) => t && String(t.id) !== String(_top0.id) && fabricFamily(t) !== layerFam)[divIdx(i, 3, Math.max(tops.filter((t: any, attempt) => t && fabricFamily(t) !== layerFam).length, 1))]
+        || tops.find((t: any) => t && String(t.id) !== String(_top0.id) && fabricFamily(t) !== layerFam);
+      if (altTop) {
+        const topIdx = outfitItems.findIndex(item => item.macroCategory === 'top');
+        if (topIdx >= 0) outfitItems[topIdx] = { ...altTop, macroCategory: 'top' };
+      }
+    }
+
     let finalPant = candidatePant;
     if (needsLayer && pantIsShorts && outfitItems[0] && isFormalLayer(outfitItems[0]) && nonShortsPants.length > 0) {
-      finalPant = nonShortsPants[(i + randOffset1) % nonShortsPants.length];
+      finalPant = nonShortsPants[divIdx(i, 6, nonShortsPants.length, attempt)];
     }
     if (finalPant) {
       outfitItems.push({ ...finalPant, macroCategory: 'bottom' });
     }
 
     if (shoes.length > 0) {
-      const shoe = shoes[(i + randOffset2) % shoes.length];
+      const shoe = shoes[divIdx(i, 9, shoes.length, attempt)];
       outfitItems.push({ ...shoe, macroCategory: 'shoes' });
     } else {
       outfitItems.push({ ...PLACEHOLDER_SHOES });
@@ -665,17 +945,60 @@ async function generateOfflineOutfits(
     const hasShoes = outfitItems.some(item => item.macroCategory === 'shoes');
     const hasLayer = !needsLayer || outfitItems.some(item => item.macroCategory === 'outerwear');
     const hasRequiredTopCount = needsLayer ? topCount >= 1 : topCount >= 1;
-    if (!hasRequiredTopCount || !hasBottom || !hasShoes || !hasLayer) continue;
+    if (!hasRequiredTopCount || !hasBottom || !hasShoes || !hasLayer) return null;
+    return outfitItems;
+  };
+
+  const keepOfflineCandidate = (outfitItems: any[], tag: number, relaxed: boolean): boolean => {
+    // Reject exact + near-duplicates: 4-item looks must differ by ≥2 items.
+    const sig = outfitItems.map((p: any) => String(p.id)).sort().join('|');
+    if (!sig || seenSigs.has(sig)) return false;
+    if (!relaxed) {
+      const ids = outfitItems.map((p: any) => String(p.id));
+      let maxShared = 0;
+      for (const built of builtSets) {
+        let shared = 0;
+        for (const id of ids) if (built.has(id)) shared++;
+        if (shared > maxShared) maxShared = shared;
+      }
+      if (builtSets.length > 0 && maxShared >= 3) return false;
+    }
+    seenSigs.add(sig);
+    builtSets.push(new Set(outfitItems.map((p: any) => String(p.id))));
 
     outfits.push({
-      id: `offline_${Date.now()}_${i}_${Math.floor(Math.random() * 1000)}`,
+      id: `offline_${Date.now()}_${tag}_${Math.floor(Math.random() * 1000)}`,
       mainImage: outfitItems[0]?.image || outfitItems[0]?.imageUrl || '',
       matchScore: 0.85 + (Math.random() * 0.1), // Random variation in match score
-      description: descriptions[i % 3],
+      description: descriptions[outfits.length % 3],
       items: outfitItems,
-      stylingTips: tips[i % 3].join(' · '),
+      stylingTips: tips[outfits.length % 3].join(' · '),
       weather,
     });
+    return true;
+  };
+
+  // Strict pass: decks must differ by ≥2 items. Rejections perturb the
+  // attempt so retries explore new slot combinations.
+  let offlineAttempt = 0;
+  for (let i = 0, tag = 0; outfits.length < limit && i < limit * 8; i++, tag++) {
+    const candidate = buildOfflineCandidate(i, offlineAttempt);
+    if (!candidate) { offlineAttempt++; continue; }
+    if (keepOfflineCandidate(candidate, tag, false)) offlineAttempt = 0;
+    else offlineAttempt++;
+  }
+
+  // Relaxed pass: thin pools (a single shoes/bottom/outerwear choice) can
+  // NEVER satisfy the strict rule — every second look shares 3 of 4 by
+  // construction. Fill the remaining slots with exact-dupe-only rejection
+  // so the user gets 3 looks instead of 1.
+  if (outfits.length < limit) {
+    for (let i = 0, tag = 1000; outfits.length < limit && i < limit * 8; i++, tag++) {
+      const candidate = buildOfflineCandidate(i + limit * 8, offlineAttempt);
+      if (!candidate) { offlineAttempt++; continue; }
+      if (keepOfflineCandidate(candidate, tag, true)) offlineAttempt = 0;
+      else offlineAttempt++;
+    }
   }
 
   if (outfits.length === 0 && allItems.length >= 3) {
@@ -709,7 +1032,9 @@ async function generateOfflineOutfits(
       id: `offline_${Date.now()}_0`,
       mainImage: fallbackItems[0]?.image || fallbackItems[0]?.imageUrl || allItems[0]?.image || allItems[0]?.imageUrl || '',
       matchScore: 0.8,
-      description: `A ${styleName} look from your wardrobe.`,
+      description: forceWardrobeOnly
+        ? `${stylePhraseFor(style)} look from your wardrobe.`
+        : `${stylePhraseFor(style)} look curated from the shop.`,
       items: fallbackItems,
       stylingTips: 'Mix and match to find your perfect style.',
       weather,
@@ -793,8 +1118,12 @@ const formatPlanningDate = (date: Date): string =>
   date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
 const AIOutfitGenerator = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  // ── Post-trial soft gate: page stays open, Generate → Paywall ──
+  // free.aiOutfits = 0 → consumeOrPaywall denies + navigates to Paywall.
+  // Trial-active (effectiveTier premium) and paid users pass through.
+  const { consumeOrPaywall } = useSubscriptionGate();
   const [currentSource, setCurrentSource] = useState(route.params?.source || 'wardrobe');
   // Anchor item passed from MyClosetScreen — when set, every generated outfit
   // must include this item locked into its slot.
@@ -842,6 +1171,15 @@ const AIOutfitGenerator = () => {
   const [outfits, setOutfits] = useState<GeneratedOutfit[]>([]);
   const [error, setError] = useState('');
   const [userPrompt, setUserPrompt] = useState('');
+  const promptRef = React.useRef(userPrompt);
+  // Chip taps are the live dress-code. Stale comment text ("date night, old
+  // money") must not override a later Casual/Formal chip — Maestro and
+  // humans both hit this after a previous generate.
+  const commentEditedRef = React.useRef(false);
+  // Per-tap nonce so every Generate press rotates pool picks differently.
+  // Without this, deterministic (i+offset)%len returns the SAME 3 outfits
+  // on every tap — the "every time the same outfit" bug.
+  const generationNonce = React.useRef(0);
   // ── New staged Create flow ──────────────────────────────────────────
   // Step 1 "create": source (wardrobe / new clothing) + style (quiz-oriented).
   // Step 2 "occasion": small "Where are you going?" input.
@@ -851,8 +1189,8 @@ const AIOutfitGenerator = () => {
     Array.isArray(quizOccasions) && quizOccasions.length > 0 ? quizOccasions[0] : undefined,
   );
   // Occasion dropdown: 2 chips visible, rest behind a "More" toggle.
+  // Collapsed by default — user expands explicitly via "More".
   const [showAllOccasions, setShowAllOccasions] = useState(false);
-  // Style dropdown: same pattern — 2 rows visible, rest behind "More".
   const [showAllStyles, setShowAllStyles] = useState(false);
   const [collectionPickerVisible, setCollectionPickerVisible] = useState(false);
   const [pendingSaveOutfit, setPendingSaveOutfit] = useState<GeneratedOutfit | null>(null);
@@ -879,52 +1217,163 @@ const AIOutfitGenerator = () => {
   const [wardrobeItems, setWardrobeItems] = useState<any[]>([]);
 
   // Use the live catalog from Supabase (all sources: Zara + Massimo Dutti)
-  const { items: liveShopCatalog, loading: shopCatalogLoading } = useShopCatalog({
+  const { items: liveShopCatalog, loading: shopCatalogLoading, error: shopCatalogError, refresh: refreshShopCatalog } = useShopCatalog({
     enabled: true,
     source: 'all',
   });
 
+  // Surface catalog fetch failures in dev logs — an empty live catalog with
+  // a hidden error is what silently degrades outfits to static items.
+  useEffect(() => {
+    if (__DEV__ && shopCatalogError) console.log('[AIOutfitmaker] shop_catalog fetch error:', shopCatalogError);
+  }, [shopCatalogError]);
+
   // Map the new catalog format into what the outfit generator expects
-  // Key fix: use the item name to distinguish outerwear (blazer, coat, jacket)
-  // from base tops (shirt, t-shirt, polo) even though they share garmentType 'upper_body'.
-  // Without this, ALL upper_body items become 'top' and the 4-slot layering pipeline
-  // can never find an outerwear piece → outfits collapse to 3 slots.
-  const liveShopMapped = React.useMemo(() => liveShopCatalog.map((item) => {
-    const nameStr = (item.name || '').toLowerCase();
-    const descStr = (item.description || '').toLowerCase();
-    const blob = `${nameStr} ${descStr}`;
-
-    // Determine macroCategory from name/description keywords FIRST,
-    // then fall back to garmentType.
-    let macroCategory: string;
-    if (/\b(jacket|coat|blazer|cardigan|sweater|hoodie|puffer|bomber|vest|outerwear|trench|peacoat)\b/.test(blob)) {
-      macroCategory = 'outerwear';
-    } else if (item.garmentType === 'upper_body') {
-      macroCategory = 'top';
-    } else if (item.garmentType === 'lower_body') {
-      macroCategory = 'bottom';
-    } else {
-      macroCategory = 'shoes';
-    }
-
-    return {
-      id: item.id,
-      image: item.imageUrl,
-      imageUrl: item.imageUrl,
-      type: macroCategory === 'outerwear' ? 'outerwear' : item.garmentType === 'upper_body' ? 'tops' : item.garmentType === 'lower_body' ? 'bottoms' : 'shoes',
-      category: macroCategory === 'outerwear' ? 'outerwear' : item.garmentType === 'upper_body' ? 'tops' : item.garmentType === 'lower_body' ? 'bottoms' : 'shoes',
-      macroCategory,
-      name: item.name,
-      brand: item.brand,
-      description: item.description || `${item.name} by ${item.brand}`,
-      shopUrl: item.sourceUrl,
-      isShopItem: true,
-    };
-  }), [liveShopCatalog]);
+  // Key fix: use the shared shopRowMacro so a blazer stays a layer even
+  // though it shares garmentType 'upper_body' with shirts — and so explicit
+  // lower_body/shoes rows are never demoted by description keywords
+  // ("belt loops" must not erase suit pants). Without the shared rule, ALL
+  // upper_body items become 'top' and layering collapses to 3 slots.
+  const liveShopMapped = React.useMemo(
+    // Nameless feed rows render as raw ids on cards — drop them at the pool
+    // root (wardrobe items are never filtered: user naming is sacred).
+    () => liveShopCatalog
+      .map((item) => mapShopCatalogRow(item as any))
+      .filter((it: any) => hasUsableProductName(it.name, it.id)),
+    [liveShopCatalog],
+  );
 
   // Prevent setState after unmount
   const isMounted = React.useRef(true);
   const fallbackTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Cross-tap recency memory ──────────────────────────────────────
+  // Item ids shown in recent decks. The next shop payload sorts these last
+  // (prioritizeUnseen) so the edge's top-N trim drops them first — this is
+  // what breaks the "same linen pants + penny loafers every tap" loop.
+  // In-memory ref = instant effect on the very next tap; AsyncStorage = the
+  // memory survives app restarts. Capped so the pool can never starve.
+  const RECENT_SHOWN_KEY = 'aiRecentShownItemIds';
+  const RECENT_SHOWN_CAP = 240;
+  const recentShownIds = React.useRef<Set<string>>(new Set());
+  const rememberShownIds = React.useCallback((outfits: Array<{ items?: Array<{ id?: string; name?: string; image?: string; imageUrl?: string }> }>) => {
+    try {
+      for (const o of outfits || []) {
+        for (const it of o.items || []) {
+          if (it?.id) recentShownIds.current.add(String(it.id));
+          const nk = normalizeCatalogNameKey(it?.name);
+          if (nk) recentShownIds.current.add(`__n:${nk}`);
+          const img = productImageKey(it);
+          if (img) recentShownIds.current.add(`__img:${img}`);
+          const fam = garmentVarietyFamily(it);
+          if (fam) recentShownIds.current.add(`__fam:${fam}`);
+        }
+      }
+      while (recentShownIds.current.size > RECENT_SHOWN_CAP) {
+        const oldest = recentShownIds.current.values().next().value;
+        if (oldest === undefined) break;
+        recentShownIds.current.delete(oldest);
+      }
+      AsyncStorage.setItem(RECENT_SHOWN_KEY, JSON.stringify([...recentShownIds.current])).catch(() => {});
+    } catch (_) {
+      // Recency is best-effort — never break generation.
+    }
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.getItem(RECENT_SHOWN_KEY)
+      .then((raw) => {
+        if (!raw || !isMounted.current) return;
+        try {
+          const ids = JSON.parse(raw);
+          if (Array.isArray(ids)) recentShownIds.current = new Set(ids.map(String).slice(0, RECENT_SHOWN_CAP));
+        } catch (_) {
+          // Corrupt cache — start fresh.
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // ── Per-tap catalog variety ───────────────────────────────────────
+  // The catalog hook only holds page 1 (first 100 rows by sort_order), so
+  // without this every tap/style draws from the same 100 ids and the same
+  // elite bottoms win forever. Each shop generation fetches one RANDOM
+  // window from the full table and merges it into the pool (dedupe by id).
+  // Bounded + silent-fallback: on timeout we proceed with the live page.
+  const catalogTotalRef = React.useRef<number | null>(null);
+  const RANDOM_SLICE_SIZE = 120;
+  const withTimeout = <T,>(promise: PromiseLike<T>, ms: number, label: string): Promise<T> =>
+    Promise.race([
+      Promise.resolve(promise),
+      new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`${label} timed out`)), ms)),
+    ]);
+
+  const fetchRandomShopSlice = async (opts?: {
+    preferClassicBand?: boolean;
+    salt?: number;
+  }): Promise<Array<ReturnType<typeof mapShopCatalogRow>>> => {
+    try {
+      if (catalogTotalRef.current == null) {
+        const { count } = await withTimeout(
+          supabase.from('shop_catalog').select('id', { count: 'exact', head: true }).eq('is_active', true),
+          4000,
+          'shop count',
+        ) as { count: number | null };
+        catalogTotalRef.current = count && count > 0 ? count : 2308;
+      }
+      const total = catalogTotalRef.current;
+      const mapRows = (data: any[] | null) =>
+        (data ?? [])
+          .map((row: any) =>
+            mapShopCatalogRow({
+              id: String(row.id),
+              name: row.name,
+              brand: row.brand,
+              description: row.description,
+              imageUrl: row.image_url,
+              garmentType: row.garment_type,
+              sourceUrl: row.source_url,
+            }),
+          )
+          .filter((it: any) => hasUsableProductName(it.name, it.id));
+      const fetchRange = async (start: number, size: number) => {
+        const { data } = await withTimeout(
+          supabase
+            .from('shop_catalog')
+            .select('id,brand,name,price,currency,image_url,garment_type,description,source_url')
+            .eq('is_active', true)
+            .order('sort_order', { ascending: true })
+            .range(start, start + size - 1),
+          6000,
+          'shop slice',
+        ) as { data: any[] | null };
+        return mapRows(data);
+      };
+      // Classic / work / date must stay in the curated MD band (random Zara
+      // windows around offset 1100 left no shirts). Rotate INSIDE that band
+      // so taps are not frozen on the same 38 collapsed names at offset 0.
+      if (opts?.preferClassicBand) {
+        const salt = opts.salt ?? Date.now();
+        const startA = classicCatalogOffset(total, RANDOM_SLICE_SIZE, salt);
+        const startB = classicCatalogOffset(total, RANDOM_SLICE_SIZE, salt * 17 + 91);
+        const [head, sliceA, sliceB] = await Promise.all([
+          fetchRange(0, 80),
+          fetchRange(startA, RANDOM_SLICE_SIZE),
+          startB !== startA ? fetchRange(startB, RANDOM_SLICE_SIZE) : Promise.resolve([]),
+        ]);
+        const rows = mergeShopSlices(mergeShopSlices(head, sliceA), sliceB);
+        if (__DEV__) console.log(`[AIOutfitmaker] random slice: offset=${startA}+${startB} head=80 rows=${rows.length} total=${total}`);
+        return rows;
+      }
+      const start = Math.floor(Math.random() * Math.max(1, total - RANDOM_SLICE_SIZE));
+      const rows = await fetchRange(start, RANDOM_SLICE_SIZE);
+      if (__DEV__) console.log(`[AIOutfitmaker] random slice: offset=${start} rows=${rows.length} total=${total}`);
+      return rows;
+    } catch (err) {
+      if (__DEV__) console.log('[AIOutfitmaker] random slice failed, using live page only:', (err as Error)?.message);
+      return [];
+    }
+  };
 
   useEffect(() => {
     isMounted.current = true;
@@ -945,10 +1394,12 @@ const AIOutfitGenerator = () => {
 
   const loadWardrobeItems = async () => {
     try {
-      // ── Shop mode: live Supabase shop catalog items PLUS the locked anchor.
+      // ── Shop mode: live Supabase shop catalog items ONLY.
       // Real Supabase UUIDs MUST be preserved so the edge function can enrich
       // items with imageUrl via its itemMap lookup. Do NOT mix in AsyncStorage.
-      // The anchor is always prepended so "New clothing" still builds around it.
+      // "New clothing" means 100% new (Supabase shop_catalog) — a wardrobe
+      // anchor must NEVER be injected here, otherwise every outfit gets built
+      // around the user's own piece even though the UI shows New clothing.
       if (currentSource === 'shop') {
         if (!isMounted.current) return;
         const shopOnly = liveShopMapped.map((item: any) => ({
@@ -959,43 +1410,6 @@ const AIOutfitGenerator = () => {
           name: item.name || item.type || t('common.clothingItem'),
           description: item.description || item.name || '',
         }));
-        if (!shopOnly.some((i: any) => String(i.id) === String(baseItemId)) && baseItemId) {
-          // baseItem params can be dropped on re-render — rebuild from store.
-          let anchorSrc: any = baseItem;
-          if (!anchorSrc) {
-            try {
-              anchorSrc = useWardrobeStore.getState().items?.find((s: any) => String(s.id) === String(baseItemId));
-              if (anchorSrc) {
-                anchorSrc = {
-                  type: anchorSrc.subCategory || anchorSrc.category,
-                  category: anchorSrc.category,
-                  name: anchorSrc.name || anchorSrc.subCategory,
-                  color: anchorSrc.primaryColor,
-                  brand: anchorSrc.brand,
-                  description: (anchorSrc as any).description,
-                  imageUrl: anchorSrc.imageUrl,
-                };
-              }
-            } catch (_) { /* ignore */ }
-          }
-          if (anchorSrc) {
-            const rawType = anchorSrc.type || (anchorSrc as any).category || '';
-            const rawName = anchorSrc.name || anchorSrc.type || '';
-            shopOnly.unshift({
-              id: baseItemId,
-              isWardrobe: true,
-              type: rawType || 'Clothing Piece',
-              category: (anchorSrc as any).category || rawType || 'tops',
-              macroCategory: getBackendMacroCategory(rawType, (anchorSrc as any).category || '', rawName),
-              color: anchorSrc.color || 'neutral',
-              brand: (anchorSrc as any).brand || '',
-              name: rawName || t('common.clothingItem'),
-              description: (anchorSrc as any).description || rawName || '',
-              image: anchorSrc.imageUrl || '',
-              imageUrl: anchorSrc.imageUrl || '',
-            });
-          }
-        }
         setWardrobeItems(shopOnly);
         return;
       }
@@ -1090,7 +1504,7 @@ const AIOutfitGenerator = () => {
       // This guarantees that "build around this item" always has the selected item,
       // even if the user has no other saved items or sync is lagging!
       if (baseItem && baseItemId && !items.some(i => i.id === baseItemId)) {
-        console.log('[AIOutfitmaker] Injected baseItem into wardrobe pool:', baseItemId);
+        if (__DEV__) console.log('[AIOutfitmaker] Injected baseItem into wardrobe pool:', baseItemId);
         const rawType = baseItem.type || baseItem.category || '';
         const rawName = baseItem.name || baseItem.type || '';
         const computedMacro = getBackendMacroCategory(rawType, baseItem.category || '', rawName);
@@ -1110,11 +1524,10 @@ const AIOutfitGenerator = () => {
         });
       }
 
-      // Always inject shop items but mark them.
-      // When source is 'wardrobe', outfits will be a mix of owned and shop items.
-      const existingIds = new Set(items.map((i: any) => i.id));
-      const newShopItems = liveShopMapped.filter(s => !existingIds.has(s.id));
-      items = [...items, ...newShopItems.map(it => ({ ...it, isWardrobe: false }))];
+      // Wardrobe mode = Supabase clothing only. Do NOT merge shop catalog
+      // here — mixing shop items is what produced classic-m-*/shop_*
+      // outfits when the user asked for wardrobe outfits. Shop mode has
+      // its own branch above and never reaches this code.
 
       if (!isMounted.current) return;
       setWardrobeItems(items.map((item: any, index: number) => ({
@@ -1133,33 +1546,15 @@ const AIOutfitGenerator = () => {
     }
   };
 
-  // Backend-compatible macroCategory matching the edge function's slot model:
-  // 'top' (base layer), 'outerwear' (jacket/blazer/sweater), 'bottom', 'shoes'
-  const getBackendMacroCategory = (type: string, category?: string, name?: string) => {
-    // Outerwear keywords take precedence over a generic alias: a blazer
-    // stored as category "top"/"tops" is still a layer (main-top slot),
-    // not a base top. Without this the anchor locks into second-top.
-    const t = `${type || ''} ${category || ''} ${name || ''}`.toLowerCase();
-    if (t.match(/\b(jacket|coat|blazer|hoodie|cardigan|sweater|pullover|vest|puffer|outerwear|trench|peacoat|bomber)\b/)) return 'outerwear';
-
-    // Prefer canonical aliases (upper_body / lower_body / tops / footwear / …)
-    // so items coming back from shop_catalog are slotted correctly.
-    const aliasHit = canonicalizeMacroCategory(type) !== 'other'
-      ? canonicalizeMacroCategory(type)
-      : canonicalizeMacroCategory(category || '');
-    if (aliasHit !== 'other') return aliasHit;
-
-    if (t.match(/\b(pant|trouser|jeans?|bottom|shorts?|skirt|lower[_\s-]?body)\b/)) return 'bottom';
-    if (t.match(/\b(shoe|sneaker|boot|loafer|sandal|footwear)\b/)) return 'shoes';
-    if (t.match(/\b(shirt|t-shirt|tee|blouse|polo|top|dress|upper[_\s-]?body)\b/)) return 'top';
-    return 'top'; // fallback keeps the backend happy
-  };
 
   // ── Weather Fetch ────────────────────────────────────────────────
   const fetchWeather = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') return;
+      if (status !== 'granted') {
+        setWeather(inferSeasonalWeather());
+        return;
+      }
       const loc = await Location.getCurrentPositionAsync({});
       const { latitude, longitude } = loc.coords;
       const response = await fetch(
@@ -1173,10 +1568,12 @@ const AIOutfitGenerator = () => {
           icon: data.weather[0].icon,
           city: data.name,
         });
+        return;
       }
     } catch (e) {
       console.warn('Weather fetch error', e);
     }
+    setWeather(inferSeasonalWeather());
   };
 
   useEffect(() => {
@@ -1184,14 +1581,21 @@ const AIOutfitGenerator = () => {
   }, []);
 
   const candidatePool = useMemo(() => {
-    // In shop mode wardrobeItems already = shop catalog + locked anchor
-    // (see loadWardrobeItems). Using liveShopMapped alone would drop the
-    // anchor from fallback picks and lose the lock.
-    const pool = currentSource === 'shop'
-      ? wardrobeItems
-      : currentSource === 'wardrobe'
-        ? wardrobeItems
-        : [...wardrobeItems, ...liveShopMapped];
+    // Wardrobe mode = Supabase clothing only (isWardrobe === true).
+    // Shop mode merges live catalog. Mixing shop into the wardrobe pool is
+    // what produced classic-m-*/shop_* outfits for wardrobe requests.
+    const sourcePool =
+      currentSource === 'wardrobe'
+        ? (wardrobeItems || []).filter((it: any) => it?.isWardrobe !== false)
+        : [...(wardrobeItems || []), ...(liveShopMapped || [])];
+    const seen = new Set<string>();
+    const pool: any[] = [];
+    for (const it of sourcePool) {
+      const key = String((it as any)?.id || (it as any)?.imageUrl || (it as any)?.name || '');
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      pool.push(it);
+    }
 
     // Helper: prefer an item's own macroCategory (canonicalized) over the
     // keyword-based fallback. Keeps items whose type/category are raw
@@ -1202,252 +1606,51 @@ const AIOutfitGenerator = () => {
       return getBackendMacroCategory(it?.type || '', it?.category || '', it?.name || '');
     };
 
-    return pool.map((it: any) => ({
-      id: it.id || it.imageUrl || it.name,
-      name: it.name || it.type || 'Item',
-      image: (typeof it.image === 'string' ? it.image : undefined) || it.imageUrl || '',
-      imageUrl: it.imageUrl || (typeof it.image === 'string' ? it.image : ''),
-      type: it.type || it.category || 'top',
-      macroCategory: resolveMacroCategory(it),
-      color: it.color || 'neutral',
-      brand: it.brand || '',
-      isWardrobe: it.isWardrobe ?? false,
-      isShopItem: it.isShopItem ?? false,
-      shopUrl: it.shopUrl || undefined,
-    })).sort((a, b) => (b.isWardrobe ? 1 : 0) - (a.isWardrobe ? 1 : 0));
-  }, [currentSource, liveShopMapped, wardrobeItems]);
-
-  const normalizeTo4Slots = (items: OutfitItem[], styleId?: string): OutfitItem[] => {
-    // ── Anchor resolution (single source of truth for locking) ──────────
-    // The anchor MUST win its macro slot regardless of AI order. We compute
-    // its true macro with outerwear-keyword priority (blazer stored as "top"
-    // is still a layer), then pick anchor-first per slot + post-enforce.
-    // Fallback: route params can be lost on re-render — if baseItem is gone
-    // but baseItemId survives, rebuild it from pool/store so the lock holds.
-    let effectiveBaseItem = baseItem;
-    if (!effectiveBaseItem && baseItemId) {
-      const found: any = [...(items || []), ...candidatePool].find(
-        (i: any) => String(i?.id) === String(baseItemId),
-      );
-      if (found) {
-        effectiveBaseItem = {
-          id: baseItemId,
-          imageUrl: found.imageUrl || (typeof found.image === 'string' ? found.image : undefined),
-          name: found.name,
-          type: found.type,
-          macroCategory: found.macroCategory,
-          color: found.color,
-          category: found.category,
-          brand: found.brand,
-          description: found.description,
-        } as any;
-      }
-    }
-    let anchorMacro: string | null = null;
-    let anchorOutfitItem: OutfitItem | null = null;
-    if (effectiveBaseItem && baseItemId) {
-      const recomputed = getBackendMacroCategory(
-        effectiveBaseItem.type || '',
-        (effectiveBaseItem as any).category || effectiveBaseItem.macroCategory || '',
-        effectiveBaseItem.name || '',
-      );
-      const stored = canonicalizeMacroCategory(effectiveBaseItem.macroCategory || '');
-      // Outerwear wins on conflict: a blazer mis-tagged as "top" upstream
-      // must lock into the main-top/layer slot, not second-top.
-      anchorMacro = recomputed === 'outerwear' ? 'outerwear' : (stored !== 'other' ? stored : recomputed);
-      anchorOutfitItem = {
-        id: baseItemId,
-        name: effectiveBaseItem.name || effectiveBaseItem.type || 'Item',
-        image: effectiveBaseItem.imageUrl || '',
-        imageUrl: effectiveBaseItem.imageUrl || '',
-        type: effectiveBaseItem.type || anchorMacro,
-        macroCategory: anchorMacro,
-        color: effectiveBaseItem.color || 'neutral',
-        isWardrobe: true,
+    const mapped = pool.map((it: any) => {
+      const image = (typeof it.image === 'string' ? it.image : undefined) || it.imageUrl || '';
+      const imageUrl = it.imageUrl || (typeof it.image === 'string' ? it.image : '');
+      return {
+        id: it.id || it.imageUrl || it.name,
+        name: it.name || it.type || 'Item',
+        image,
+        imageUrl,
+        type: it.type || it.category || 'top',
+        macroCategory: resolveMacroCategory(it),
+        color: it.color || 'neutral',
+        brand: it.brand || '',
+        isWardrobe: it.isWardrobe ?? false,
+        isShopItem: it.isShopItem ?? false,
+        shopUrl: it.shopUrl || undefined,
+        price: typeof it.price === 'number' ? it.price : undefined,
+        currency: it.currency,
+        // Precomputed once here — pickCandidate scanned this regex per
+        // candidate per slot (~10 full-pool regex sweeps per outfit).
+        _hasImage: REAL_IMAGE_RE.test(image || imageUrl),
       };
-      // Pre-inject so AI-order-independent picks still see it first.
-      const alreadyPresent = items.some(i => String(i.id) === String(baseItemId));
-      if (!alreadyPresent) {
-        const slotIdx = items.findIndex(
-          i => (canonicalizeMacroCategory(i.macroCategory || '') === anchorMacro
-            || canonicalizeMacroCategory(getBackendMacroCategory(i.type || '', i.category || '', i.name || '')) === anchorMacro)
-        );
-        if (slotIdx >= 0) {
-          items = [...items];
-          (items as OutfitItem[])[slotIdx] = anchorOutfitItem;
-        } else {
-          items = [anchorOutfitItem, ...items];
+    }).sort((a, b) => (b.isWardrobe ? 1 : 0) - (a.isWardrobe ? 1 : 0));
+    // Static fallback: shop mode only. Wardrobe mode must stay pure
+    // Supabase clothing — padding with classic-m-* static items is what
+    // produced non-wardrobe outfits. In wardrobe mode an empty pool stays
+    // empty so the UI can ask the user to add items instead.
+    if (currentSource !== 'wardrobe') {
+      const macroCounts = new Map<string, number>();
+      for (const x of mapped) {
+        macroCounts.set(x.macroCategory, (macroCounts.get(x.macroCategory) ?? 0) + 1);
+      }
+      const countByMacro = (m: string) => macroCounts.get(m) ?? 0;
+      if (countByMacro('top') < 6 || countByMacro('bottom') < 6 || countByMacro('shoes') < 6 || countByMacro('outerwear') < 3) {
+        const seenStatic = new Set(mapped.map((x: any) => String(x.id)));
+        for (const s of getStaticPoolItems()) {
+          if (seenStatic.has(s.id)) continue;
+          if (countByMacro(s.macroCategory) >= 8) continue;
+          seenStatic.add(s.id);
+          macroCounts.set(s.macroCategory, countByMacro(s.macroCategory) + 1);
+          mapped.push({ ...s } as any);
         }
       }
     }
-    let incomingItems = items;
-    // Helper: prefer an item's own macroCategory (canonicalized) over the
-    // keyword-based fallback. Keeps items whose type/category are raw
-    // garmentType strings (`upper_body`, `lower_body`) from being dropped.
-    const resolveMacroCategory = (it: any): string => {
-      const ownCanonical = canonicalizeMacroCategory(it?.macroCategory || '');
-      if (ownCanonical !== 'other') return ownCanonical;
-      return getBackendMacroCategory(it?.type || '', it?.category || '', it?.name || '');
-    };
-
-    const resolveImage = (it: any) => (typeof it.image === 'string' ? it.image : undefined) || it.imageUrl || '';
-
-    const incoming = (incomingItems || []).map((it) => ({
-      ...it,
-      image: it.image || it.imageUrl || '',
-      macroCategory: resolveMacroCategory(it),
-    }));
-    // A locked outerwear anchor forces layering even in warm weather —
-    // otherwise its slot would never be picked and it would "fall" into top.
-    const anchorForcesLayer = anchorMacro === 'outerwear';
-    const needsLayer = anchorForcesLayer || !weather
-      || (weather?.temp != null && weather.temp < 18)
-      || /\b(cold|chilly|freezing|snow|rain|drizzle|wind|storm)\b/.test((weather?.condition || '').toLowerCase());
-    const usedIds = new Set<string>();
-
-    console.log('[normalizeTo4Slots] incoming items:', incoming.map((it: any) => ({ id: it.id, name: it.name, macro: it.macroCategory, image: (it.image || '').substring(0, 40) })));
-    console.log('[normalizeTo4Slots] candidatePool size:', candidatePool.length, 'sample:', candidatePool.slice(0, 5).map((it: any) => ({ id: it.id, macro: it.macroCategory })));
-    console.log('[normalizeTo4Slots] needsLayer:', needsLayer, 'weather:', weather, 'anchor:', anchorMacro, baseItemId);
-
-    const pickCandidate = (predicate: (candidate: any) => boolean) => {
-      const found = [...incoming, ...candidatePool].find((candidate: any) => {
-        const key = String(candidate.id || '');
-        return !usedIds.has(key) && predicate(candidate);
-      });
-      if (!found) return undefined;
-      usedIds.add(String(found.id || ''));
-      return { ...found, image: resolveImage(found) || found.image || '' };
-    };
-
-    // Anchor-first pick: when this slot IS the anchor's macro, the locked
-    // item wins over AI order. Marks usedIds so it can't be double-picked.
-    const pickAnchorForSlot = (slotMacro: string) => {
-      if (!anchorOutfitItem || !anchorMacro || anchorMacro !== slotMacro) return undefined;
-      const key = String(anchorOutfitItem.id || '');
-      if (usedIds.has(key)) {
-        // Already placed (e.g. outerwear anchor also matching top fallback) —
-        // return the same object so caller keeps a single instance.
-        return { ...anchorOutfitItem, image: resolveImage(anchorOutfitItem) || anchorOutfitItem.image || '' };
-      }
-      usedIds.add(key);
-      return { ...anchorOutfitItem, image: resolveImage(anchorOutfitItem) || anchorOutfitItem.image || '' };
-    };
-
-    // Prefer candidates whose image is a real URI (http / file / data / asset
-    // / content). This lets a real wardrobe or shop_catalog item override
-    // any server-side placeholder item that shares the same macroCategory
-    // but only carries a legacy `basic_clothing_*` / empty string.
-    const hasRealImage = (candidate: any): boolean => {
-      const raw = typeof candidate?.image === 'string' && candidate.image
-        ? candidate.image
-        : candidate?.imageUrl;
-      return typeof raw === 'string' && /^(https?:|file:|data:|asset:|content:)/i.test(raw);
-    };
-
-    // Prefer NON-shorts bottoms. Never promote a random non-shoe/top item
-    // to the pants slot — that was producing the "flowy shirt labeled
-    // SHORTS" bug. Fall back to PLACEHOLDER_PANTS when no real pants exist.
-    const slotPantsRaw =
-      pickAnchorForSlot('bottom')
-      || pickCandidate((candidate: any) => candidate.macroCategory === 'bottom' && hasRealImage(candidate) && !isShortsBottom(candidate))
-      || pickCandidate((candidate: any) => candidate.macroCategory === 'bottom' && !isShortsBottom(candidate))
-      || { ...PLACEHOLDER_PANTS };
-    // Force macroCategory to 'bottom' so OutfitSlotGrid.classifyItem never drops it
-    const slotPants = { ...slotPantsRaw, macroCategory: 'bottom' as const };
-    const pantsIsShorts = isShortsBottom(slotPantsRaw);
-
-    const slotOuterwearRaw = needsLayer
-      ? (pickAnchorForSlot('outerwear')
-        || pickCandidate((candidate: any) => candidate.macroCategory === 'outerwear' && hasRealImage(candidate) && !(pantsIsShorts && isFormalLayer(candidate)))
-        || pickCandidate((candidate: any) => candidate.macroCategory === 'outerwear' && !(pantsIsShorts && isFormalLayer(candidate)))
-        || (!pantsIsShorts ? pickCandidate((candidate: any) => candidate.macroCategory === 'outerwear') : undefined))
-      : (anchorMacro === 'outerwear' ? pickAnchorForSlot('outerwear') : undefined);
-    // Force macroCategory to 'outerwear' so OutfitSlotGrid.classifyItem never drops it
-    const slotOuterwear = slotOuterwearRaw ? { ...slotOuterwearRaw, macroCategory: 'outerwear' as const } : undefined;
-
-    const slotMainTopRaw =
-      pickAnchorForSlot('top')
-      || pickCandidate((candidate: any) => candidate.macroCategory === 'top' && hasRealImage(candidate))
-      || pickCandidate((candidate: any) => candidate.macroCategory === 'top')
-      || pickCandidate((candidate: any) => candidate.macroCategory !== 'bottom' && candidate.macroCategory !== 'shoes' && candidate.macroCategory !== 'outerwear' && candidate.macroCategory !== 'other');
-    // Force macroCategory to 'top' so OutfitSlotGrid.classifyItem never drops it
-    const slotMainTop = slotMainTopRaw ? { ...slotMainTopRaw, macroCategory: 'top' as const } : undefined;
-
-    // Pick shoes BEFORE second-top so the second-top fallback can't
-    // accidentally consume a shoes item whose macroCategory resolved
-    // to 'other' or an unrecognized alias.
-    const slotShoesRaw =
-      pickAnchorForSlot('shoes')
-      || pickCandidate((candidate: any) => candidate.macroCategory === 'shoes' && hasRealImage(candidate))
-      || pickCandidate((candidate: any) => candidate.macroCategory === 'shoes')
-      || { ...PLACEHOLDER_SHOES };
-    // Force macroCategory to 'shoes' so OutfitSlotGrid.classifyItem never drops it
-    const slotShoes = { ...slotShoesRaw, macroCategory: 'shoes' as const };
-
-    const slotSecondTopRaw = needsLayer && slotOuterwear
-      ? (pickCandidate((candidate: any) => candidate.macroCategory === 'top' && candidate.id !== slotMainTop?.id && hasRealImage(candidate))
-        || pickCandidate((candidate: any) => candidate.macroCategory === 'top' && candidate.id !== slotMainTop?.id)
-        || (slotMainTop ? { ...slotMainTop, id: `${slotMainTop.id || slotMainTop.name}_layered_copy` } : undefined))
-      : undefined;
-    // Force macroCategory to 'top' so OutfitSlotGrid.classifyItem never drops it
-    const slotSecondTop = slotSecondTopRaw ? { ...slotSecondTopRaw, macroCategory: 'top' as const } : undefined;
-
-    console.log('[normalizeTo4Slots] PICKS:', {
-      slotOuterwear: slotOuterwear ? { id: slotOuterwear.id, name: slotOuterwear.name, macro: slotOuterwear.macroCategory, image: (slotOuterwear.image || '').substring(0, 40) } : null,
-      slotMainTop: slotMainTop ? { id: slotMainTop.id, name: slotMainTop.name, macro: slotMainTop.macroCategory, image: (slotMainTop.image || '').substring(0, 40) } : null,
-      slotSecondTop: slotSecondTop ? { id: slotSecondTop.id, name: slotSecondTop.name, macro: slotSecondTop.macroCategory, image: (slotSecondTop.image || '').substring(0, 40) } : null,
-      slotPants: slotPants ? { id: slotPants.id, name: slotPants.name, macro: slotPants.macroCategory, image: (slotPants.image || '').substring(0, 40) } : null,
-      slotShoes: slotShoes ? { id: slotShoes.id, name: slotShoes.name, macro: slotShoes.macroCategory, image: (slotShoes.image || '').substring(0, 40) } : null,
-    });
-
-    // Exactly 4 items for the 2x2 grid:
-    // 1. outerwear = main-top (layer)   2. baseTop = second-top (shirt/tee)
-    // 3. pants                        4. shoes
-    // When no outerwear exists, mainTop fills slot 1 and secondTop fills slot 2.
-    const slot1 = slotOuterwear || slotMainTop;           // main-top / layer
-    const slot2 = slotMainTop && slotOuterwear             // second-top (base shirt)
-      ? (String(slotMainTop.id) !== String(slotOuterwear.id) ? slotMainTop : slotSecondTop)
-      : (slotOuterwear ? slotSecondTop : slotSecondTop || slotMainTop);
-    const result = [slot1, slot2, slotPants, slotShoes].filter(Boolean) as OutfitItem[];
-    // ── Post-enforce: anchor MUST be in the final outfit ────────────────
-    // First-match picks above can still miss when AI order puts another item
-    // of the same macro first and anchor-first was bypassed (e.g. placeholder
-    // fallback). Replace the same-macro slot so every slot mapping stays
-    // correct: outerwear→slot1(main-top), top→slot2(second-top),
-    // bottom→slot3, shoes→slot4.
-    if (anchorOutfitItem && anchorMacro) {
-      const hasAnchor = result.some(i => String(i.id) === String(anchorOutfitItem.id));
-      if (!hasAnchor) {
-        const targetIdx =
-          anchorMacro === 'outerwear' ? 0
-          : anchorMacro === 'top' ? 1
-          : anchorMacro === 'bottom' ? 2
-          : anchorMacro === 'shoes' ? 3
-          : result.findIndex(i => canonicalizeMacroCategory(i.macroCategory || '') === anchorMacro);
-        if (targetIdx >= 0 && targetIdx < result.length) {
-          result[targetIdx] = { ...anchorOutfitItem, macroCategory: anchorMacro as any };
-        } else {
-          const fallbackIdx = result.findIndex(i => canonicalizeMacroCategory(i.macroCategory || '') === anchorMacro);
-          if (fallbackIdx >= 0) result[fallbackIdx] = { ...anchorOutfitItem, macroCategory: anchorMacro as any };
-          else result.unshift({ ...anchorOutfitItem, macroCategory: anchorMacro as any });
-        }
-      }
-    }
-    console.log('[normalizeTo4Slots] RESULT (4 items):', result.map((it: any) => ({ id: it.id, name: it.name, macro: it.macroCategory })));
-    return result;
-  };
-
-  const isCompleteNormalizedOutfit = (items: OutfitItem[]) => {
-    const macros = items.map((item) => canonicalizeMacroCategory(item.macroCategory || ''));
-    const topCount = macros.filter((macro) => macro === 'top').length;
-    const hasBottom = macros.includes('bottom');
-    const hasShoes = macros.includes('shoes');
-    const hasOuterwear = macros.includes('outerwear');
-    // A complete 4-slot outfit needs: top-like (top or outerwear), bottom, shoes.
-    // With the new 4-item model: [outerwear|top, top, bottom, shoes]
-    const hasTopLike = topCount >= 1 || hasOuterwear;
-    return hasTopLike && hasBottom && hasShoes;
-  };
+    return mapped;
+  }, [currentSource, liveShopMapped, wardrobeItems]);
 
   const getCalendarOccasion = (styleId?: string) => {
     switch (styleId) {
@@ -1517,6 +1720,7 @@ const AIOutfitGenerator = () => {
       previewImageUrl: typeof outfit.mainImage === 'string' ? outfit.mainImage : undefined,
       reasoning: outfit.description,
       style: selectedStyle,
+      savedFrom: 'ai-maker',
       snapshotItems: outfit.items
         .map((item: any) => ({
           id: String(item.id || item.image),
@@ -1529,13 +1733,25 @@ const AIOutfitGenerator = () => {
     } as any);
 
     if (newOutfitId) {
-      store.saveOutfit(newOutfitId, collectionCategory);
+      store.saveOutfit(newOutfitId, collectionCategory, 'ai-maker');
     }
 
     // Also save to Supabase saved_outfits table
     try {
       const { data: sessionData } = await supabase.auth.getSession();
-      const userId = sessionData?.session?.user?.id;
+      let session = sessionData?.session ?? null;
+      if (!session) {
+        // The UI can still show signed-in (Zustand) while the Supabase
+        // session lapsed (expired/rotated refresh token). Refresh once
+        // before giving up so the cloud sync isn't silently skipped.
+        try {
+          const { data: refreshed } = await supabase.auth.refreshSession();
+          session = refreshed?.session ?? null;
+        } catch {
+          // ignore — handled as missing session below
+        }
+      }
+      const userId = session?.user?.id;
       if (userId) {
         const { error: saveError } = await supabase.from('saved_outfits').insert({
           user_id: userId,
@@ -1554,7 +1770,14 @@ const AIOutfitGenerator = () => {
         });
         if (saveError) {
           console.warn('[AIOutfitmaker] Failed to sync saved outfit to Supabase:', saveError);
+        } else if (__DEV__) {
+          console.log('[AIOutfitmaker] Saved outfit synced to Supabase', { userId, itemCount: outfit.items.length });
         }
+      } else {
+        // Never silently skip: without a session the outfit exists only
+        // locally while the UI reports success. Loud warn so Metro +
+        // crash breadcrumbs capture the auth-state divergence.
+        console.warn('[AIOutfitmaker] Skipping saved_outfits sync — no Supabase session (UI still signed-in). Sign out/in to restore cloud sync.');
       }
     } catch (err) {
       console.warn('[AIOutfitmaker] Error syncing saved outfit:', err);
@@ -1718,6 +1941,7 @@ const AIOutfitGenerator = () => {
     <View key={key}>
       {showDivider && <View style={styles.rowDivider} />}
       <TouchableOpacity
+        testID={`stylistStyle-${key}`}
         activeOpacity={0.7}
         onPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -1737,25 +1961,68 @@ const AIOutfitGenerator = () => {
 
   // ── Generate (same page: setup animates out → thinking fades in) ──
   // Generating unmounts setup → thinking with FadeOutUp → FadeIn.
-  const handleGeneratePress = useCallback((styleOverride?: string) => {
+  // Post-trial gate: consumeOrPaywall auto-redirects to Paywall when the
+  // free quota is hit (free aiOutfits = 0 → always locked after trial).
+  // NOTE: intentionally NOT useCallback-memoized. A memoized handler
+  // closed over the first render's `currentSource`/`wardrobeItems`/`liveShopMapped`
+  // (deps were [selectedStyle, selectedOccasion, userPrompt]), so toggling
+  // "New clothing" still ran the wardrobe branch with an empty pool —
+  // the "Wardrobe insufficient" logs while the UI showed New. A fresh
+  // closure every render always sees the latest source + pools.
+  const handleGeneratePress = async (styleOverride?: string) => {
+    // Instant feedback: the quota RPC can stall 15s+ on bad networks.
+    // Show thinking immediately so the tap never looks dead; clear it
+    // if the gate denies.
+    if (isMounted.current) {
+      setLoading(true);
+      setError('');
+    }
+    let ok = false;
+    try {
+      ok = await consumeOrPaywall('aiOutfits');
+    } catch {
+      ok = false;
+    }
+    if (!ok) {
+      if (isMounted.current) setLoading(false);
+      return;
+    }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    const styleToUse = styleOverride || selectedStyle;
     if (styleOverride) setSelectedStyle(styleOverride);
-    generateOutfits(styleToUse);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStyle, selectedOccasion, userPrompt]);
+    // Do not pass the chip style as an override — comments must win
+    // ("weekend casual" should not stay Old Money because the quiz chip is on).
+    generateOutfits(styleOverride);
+  };
 
   const generateOutfits = async (overrideStyle?: string) => {
-    const styleToUse = overrideStyle || selectedStyle;
+    const promptText = String(promptRef.current || userPrompt || '');
+    const commentIntent = parseStylistIntent(promptText);
+    const useCommentIntent = commentEditedRef.current;
+    const occasionToUse = (useCommentIntent && commentIntent.occasion) || selectedOccasion;
+    const styleToUse = overrideStyle || (useCommentIntent && commentIntent.style) || selectedStyle;
+    if (useCommentIntent && commentIntent.style && commentIntent.style !== selectedStyle && !overrideStyle) {
+      setSelectedStyle(commentIntent.style);
+    }
+    if (useCommentIntent && commentIntent.occasion && commentIntent.occasion !== selectedOccasion) {
+      setSelectedOccasion(commentIntent.occasion);
+    }
     const effectivePrompt = (() => {
-      const occasionLabel = OCCASION_PRESETS.find((o) => o.id === selectedOccasion)?.label;
-      const trimmed = userPrompt.trim();
+      const occasionLabel = OCCASION_PRESETS.find((o) => o.id === occasionToUse)?.label;
+      const trimmed = promptText.trim();
       if (occasionLabel && trimmed) return `${occasionLabel}: ${trimmed}`;
       if (occasionLabel) return occasionLabel;
       return trimmed;
     })();
+    const shopBudget = commentIntent.budget || parseBudgetFromText(promptText);
+    const fitsCap = (items: any[]) => !shopBudget || outfitShopSpend(items as any[]) <= shopBudget.amount + 0.009;
+    const resolvedWeather = weather ?? inferSeasonalWeather();
 
     if (!isMounted.current) return;
+    generationNonce.current += 1;
+    // Snapshot the tap's nonce — concurrent double-taps must NOT share one
+    // live ref (both runs would read the final value and pick identically).
+    // Every normalize/offline call below takes tapNonce explicitly.
+    const tapNonce = generationNonce.current;
     setLoading(true);
     setError('');
     setOutfits([]);
@@ -1763,6 +2030,12 @@ const AIOutfitGenerator = () => {
     const selectedClothing: any[] = [];
 
     let effectiveSource = currentSource;
+    if (__DEV__) {
+      const liveCount = (liveShopMapped || []).length;
+      const wardrobeInPool = (wardrobeItems || []).filter((i: any) => i.isWardrobe === true).length;
+      console.log(`[AIOutfitmaker] generate tap: rules=${STYLIST_RULES_VERSION} source=${effectiveSource} wardrobeItems=${(wardrobeItems || []).length} (owned=${wardrobeInPool}) liveShop=${liveCount} pool=${candidatePool.length} style=${styleToUse} occasion=${occasionToUse} weather=${JSON.stringify(resolvedWeather)} budget=${JSON.stringify(shopBudget)}`);
+      if (effectiveSource === 'shop' && wardrobeInPool > 0) console.log('[AIOutfitmaker] VIOLATION: wardrobe items inside shop pool!');
+    }
 
     if (currentSource === 'wardrobe') {
       const userOwnedItems = wardrobeItems.filter(i => i.isWardrobe === true);
@@ -1804,19 +2077,118 @@ const AIOutfitGenerator = () => {
 
       const isUnsuitable = suitableTops.length < MIN_REQUIRED || suitablePants.length < MIN_REQUIRED || suitableShoes.length < MIN_REQUIRED;
 
+      // Wardrobe mode = Supabase clothing only. Never silently switch to
+      // shop/static — that produced classic-m-*/shop_* outfits for wardrobe
+      // requests. Insufficient wardrobes surface "add items" below instead.
       if (countTops < MIN_REQUIRED || countPants < MIN_REQUIRED || countShoes < MIN_REQUIRED || isUnsuitable) {
-        console.log(`[AIOutfitmaker] Wardrobe items are insufficient/unsuitable. Transitioning to shop mode.`);
-        effectiveSource = 'shop';
-        setCurrentSource('shop');
+        if (__DEV__) console.log(`[AIOutfitmaker] Wardrobe insufficient (tops=${countTops} pants=${countPants} shoes=${countShoes}). Staying in wardrobe mode — Supabase clothing only.`);
       }
     }
 
     // Build a clean payload for the backend — strip non-serialisable fields
     // (require() numbers) and ensure every item has macroCategory + imageUrl.
     let payloadItems = [];
+    // Per-tap normalize pool: memoized first page + random slice, collapsed.
+    // normalizeTo4Slots MUST draw from this (not the frozen memo), otherwise
+    // the random slice only reaches the edge while finals keep recycling the
+    // same 100 pool items. Wardrobe taps keep the memoized pool (purity).
+    let genPool: any[] = candidatePool;
     if (effectiveSource === 'shop') {
+      const toPayload = (item: any) => ({
+        id: item.id,
+        name: item.name || item.type || t('common.clothingItem'),
+        type: item.type || 'top',
+        category: item.category || item.type || 'tops',
+        color: item.color || 'neutral',
+        brand: item.brand || '',
+        description: item.description || item.name || '',
+        imageUrl: item.imageUrl || (typeof item.image === 'string' ? item.image : '') || '',
+        isShopItem: true,
+        price: typeof item.price === 'number' ? item.price : undefined,
+        currency: item.currency,
+        // Trust the identity-first mapped macro: recomputing from
+        // type/category aliases would flip mistagged tees (type "bottoms")
+        // back to 'bottom' on the way out.
+        macroCategory: preferMappedMacro(
+          item.macroCategory,
+          getBackendMacroCategory(item.type || '', item.category || '', item.name || ''),
+        ),
+      });
+      // A fresh random window per tap: without this the pool is always page
+      // 1 (same 100 ids → same elite bottoms win every style). Merged with
+      // dedupe-by-id, so overlap with the live page is free.
+      const classicOrWork = /old_money|classic|business_casual/.test(String(styleToUse || ''))
+        || occasionToUse === 'work' || occasionToUse === 'date' || occasionToUse === 'formal';
+      const randomSlice = await fetchRandomShopSlice({ preferClassicBand: classicOrWork, salt: tapNonce });
+      const poolBase = collapseSimilarByName(mergeShopSlices(
+        wardrobeItems.filter((item: any) => item.isWardrobe !== true),
+        randomSlice,
+      ));
+      // Keep SKU variants in the pick pool so cards can rotate; name-collapse
+      // is only for the edge payload (LLM trim). Family skip handles clones.
+      genPool = collapseDuplicateProductImages(mergeShopSlices(candidatePool, randomSlice))
+        .filter((it: any) => isTrustedProductImage(it.imageUrl || it.image));
+      if (__DEV__) console.log(`[AIOutfitmaker] shop pool: live=${wardrobeItems.length} slice=${randomSlice.length} merged=${poolBase.length} genPool=${genPool.length}`);
+      payloadItems = poolBase
+        .map(toPayload)
+        // Accessories can never fill a slot — drop them so they don't eat
+        // the edge's top-N trim budget (the first catalog page is 28% dead
+        // weight otherwise).
+        .filter((item: any) => {
+          const m = canonicalizeMacroCategory(item.macroCategory);
+          if (!(m === 'top' || m === 'bottom' || m === 'shoes' || m === 'outerwear')) return false;
+          return rejectForStyleOccasion({ ...item, macroCategory: m }, styleToUse, occasionToUse) === null
+            && rejectForClimate({ ...item, macroCategory: m }, resolvedWeather) === null
+            && isTrustedProductImage(item.imageUrl || item.image);
+        });
+      const tasteKept = payloadItems.length;
+      const staticTaste = getStaticPoolItems().map((s: any) => toPayload({ ...s, image: s.imageUrl }));
+      const rotatedStatic = staticTaste.map((_, i, arr) => arr[(i + tapNonce * 7) % arr.length]);
+      payloadItems = ensureSlotFloors(payloadItems, rotatedStatic, styleToUse, occasionToUse, undefined, resolvedWeather);
+      payloadItems = collapseDuplicateProductImages(payloadItems);
+      genPool = collapseDuplicateProductImages(mergeShopSlices(
+        mergeShopSlices(rotatedStatic, payloadItems),
+        genPool,
+      )).filter((it: any) => isBrandCatalogImage(it.imageUrl || it.image) || isTrustedProductImage(it.imageUrl || it.image));
+      if (__DEV__) console.log(`[AIOutfitmaker] taste-filtered shop payload: ${tasteKept} items for ${styleToUse}/${occasionToUse}; floored=${payloadItems.length}`);
+      // Cross-tap recency: recently shown items sort last, so the edge trim
+      // prefers fresh pieces. Deprioritized, never deleted (no starvation).
+      if (recentShownIds.current.size > 0) {
+        const recencyKeys = (p: any) => {
+          const keys = [String(p.id)];
+          const nk = normalizeCatalogNameKey(p?.name);
+          if (nk) keys.push(`__n:${nk}`);
+          const img = productImageKey(p);
+          if (img) keys.push(`__img:${img}`);
+          const fam = garmentVarietyFamily(p);
+          if (fam) keys.push(`__fam:${fam}`);
+          return keys;
+        };
+        const before = payloadItems.map((p: any) => String(p.id));
+        payloadItems = prioritizeUnseen(payloadItems, recentShownIds.current, recencyKeys);
+        genPool = prioritizeUnseen(genPool, recentShownIds.current, recencyKeys);
+        if (__DEV__) {
+          const moved = before.filter((id) => recentShownIds.current.has(id)).length;
+          console.log(`[AIOutfitmaker] recency: deprioritized ${moved} recently-shown item(s) in shop payload`);
+        }
+      }
+      // Shop mode ("New clothing"): live Supabase catalog first. When it is
+      // empty (query returned 0 rows, RLS/network error wiped the seed, or
+      // catalog still loading), fall back to the bundled static pool so
+      // Generate still works instead of hard-erroring. Static items carry
+      // classic-m-* ids — expected here, unlike wardrobe mode.
+      // NOTE: the fallback is 100% shop/static — a wardrobe anchor is never
+      // re-added here. "New clothing" must never contain the user's own pieces.
+      if (payloadItems.length === 0) {
+        const staticPool = getStaticPoolItems();
+        if (__DEV__) console.log('[AIOutfitmaker] live shop catalog empty — falling back to static pool:', staticPool.length);
+        payloadItems = staticPool.map((s: any) => toPayload({ ...s, image: s.imageUrl }));
+      }
+    } else {
+      // Wardrobe mode: Supabase clothing only — drop anything not owned,
+      // so shop/static items can never leak into the edge candidate pool.
       payloadItems = wardrobeItems
-        .filter((item: any) => !item.isWardrobe || (baseItemId && String(item.id) === String(baseItemId)))
+        .filter((item: any) => item.isWardrobe !== false)
         .map((item: any) => ({
           id: item.id,
           name: item.name || item.type || t('common.clothingItem'),
@@ -1826,177 +2198,224 @@ const AIOutfitGenerator = () => {
           brand: item.brand || '',
           description: item.description || item.name || '',
           imageUrl: item.imageUrl || (typeof item.image === 'string' ? item.image : '') || '',
-          macroCategory: getBackendMacroCategory(item.type || '', item.category || '', item.name || ''),
+          // Same rule as shop mode: a mapped clothing slot is authoritative.
+          macroCategory: preferMappedMacro(
+            item.macroCategory,
+            getBackendMacroCategory(item.type || '', item.category || '', item.name || ''),
+          ),
         }));
-    } else {
-      payloadItems = wardrobeItems.map((item: any) => ({
-        id: item.id,
-        name: item.name || item.type || t('common.clothingItem'),
-        type: item.type || 'top',
-        category: item.category || item.type || 'tops',
-        color: item.color || 'neutral',
-        brand: item.brand || '',
-        description: item.description || item.name || '',
-        imageUrl: item.imageUrl || (typeof item.image === 'string' ? item.image : '') || '',
-        macroCategory: getBackendMacroCategory(item.type || '', item.category || '', item.name || ''),
-      }));
+      // Fail fast with a clear message instead of letting the edge fall
+      // back to shop/static and showing non-wardrobe outfits.
+      if (payloadItems.length === 0) {
+        if (isMounted.current) {
+          setError(t('outfitMaker.noOutfitsError', { defaultValue: 'No clothing items found in your wardrobe. Add items first!' }));
+          setLoading(false);
+        }
+        return;
+      }
     }
 
-    let pureWardrobeOutfit: GeneratedOutfit | null = null;
-
     try {
-      // Generate outfits with selected items and style preferences.
-      // NOTE: do NOT set useProvidedWardrobeOnly:true — the edge function's
-      // enrichment step (step 8) needs to match item ids against itemMap to
-      // attach real imageUrls. When wardrobeItems is provided the edge fn
-      // already uses it as the candidate pool (step 3), so this is safe.
-      // Fall back to a "cool" weather default when Location is denied /
-      // unavailable. The server's `needsLayering()` returns FALSE when
-      // weather is undefined, which makes it build 3-item non-layered
-      // outfits. That's what produced the "layer + pants + shoes with no
-      // base top" card in the user screenshot. Sending a cool default keeps
-      // the server in layered mode so every outfit has base top + layer
-      // + bottom + shoes.
-      const resolvedWeather = weather ?? { temp: 15, condition: 'cool' };
-
-      // ── Special Logic for My Wardrobe page ──
-      // Requirement: first outfit must be pure wardrobe, others mixed.
-      if (effectiveSource === 'wardrobe') {
-        try {
-          const offlinePure = await generateOfflineOutfits(
-            wardrobeItems,
-            liveShopMapped,
-            styleToUse,
-            resolvedWeather,
-            1,
-            t,
-            true
-          );
-          if (offlinePure.length > 0) {
-            pureWardrobeOutfit = {
-              ...offlinePure[0],
-              items: normalizeTo4Slots(offlinePure[0].items || [], styleToUse)
-            };
-          }
-        } catch (pureErr) {
-          console.warn('[AIOutfitmaker] Pure wardrobe generation failed', pureErr);
-        }
-      }
-
-      const { data, error: invokeError } = await supabase.functions.invoke('generate-outfits', {
-        body: {
-          stylePreferences: styleToUse,
-          occasion: effectivePrompt || selectedOccasion || userPrompt || 'Any',
-          selectedItemIds: [],
-          wardrobeItems: payloadItems,
+      try {
+        const { data: sess } = await supabase.auth.getSession();
+        if (__DEV__) console.log('[AIOutfitmaker] edge payload:', {
+          effectiveSource,
+          wardrobeState: (wardrobeItems || []).length,
+          owned: (wardrobeItems || []).filter((i: any) => i.isWardrobe !== false).length,
+          liveShopMapped: (liveShopMapped || []).length,
+          payloadItems: (payloadItems || []).length,
           weather: resolvedWeather,
-          limit: effectiveSource === 'wardrobe' ? 2 : 3, // request fewer if we already have a pure one
-          prompt: effectivePrompt,
-          // Lock the anchor item into every outfit when navigated from MyClosetScreen
-          anchorItemId: baseItemId,
-          // When source is 'shop', use only the provided shop catalog items
-          // (Massimo Dutti etc.) and do NOT mix in user's own wardrobe items
+          hasSession: !!sess?.session,
           useProvidedWardrobeOnly: effectiveSource === 'shop',
-        },
-      });
-
-      if (invokeError) throw invokeError;
-
-      if (data && data.success && data.outfits && data.outfits.length > 0) {
-        const cleanedOutfits = data.outfits.map((outfit: any, index: number) => {
-          const normalized = normalizeTo4Slots(outfit.items || [], styleToUse);
-          return {
-            ...outfit,
-            items: normalized,
-            mainImage: normalized[0]?.image || outfit.mainImage || '',
-            matchScore: outfit.confidence ?? outfit.matchScore ?? 0.9,
-            stylingTips: Array.isArray(outfit.stylingTips)
-              ? outfit.stylingTips.join(' · ')
-              : (outfit.stylingTips || ''),
-            weather,
-          };
-        }).filter((outfit: GeneratedOutfit) => isCompleteNormalizedOutfit(outfit.items));
-
-        if (cleanedOutfits.length === 0) {
-          throw new Error('No complete outfits returned from AI');
-        }
-
-        // Pad to 3 outfits when the backend returned fewer complete ones.
-        // Use the offline builder to fill the remaining slots so the user
-        // always sees three outfit variations.
-        let finalOutfits = cleanedOutfits;
-        if (finalOutfits.length < 3) {
-          try {
-            const offlinePad = await generateOfflineOutfits(
-              wardrobeItems,
-              liveShopMapped,
-              styleToUse,
-              resolvedWeather,
-              3,
-              t
-            );
-            const existingIds = new Set(finalOutfits.map((o: GeneratedOutfit) => o.id));
-            for (const o of offlinePad) {
-              if (finalOutfits.length >= 3) break;
-              if (!existingIds.has(o.id)) {
-                finalOutfits = [...finalOutfits, { ...o, items: normalizeTo4Slots(o.items || [], styleToUse) }]
-                  .filter((out: GeneratedOutfit) => isCompleteNormalizedOutfit(out.items));
-              }
-            }
-          } catch (padErr) {
-            console.warn('[generateOutfits] offline pad failed', padErr);
-          }
-        }
-
+        });
+      } catch (_) {}
+      if (effectiveSource !== 'shop' && (payloadItems || []).length === 0) {
         if (isMounted.current) {
-          // NOTE: use finalOutfits (padded) — not cleanedOutfits — so the user
-          // always sees 3 variations.
-          const mergedOutfits = pureWardrobeOutfit ? [pureWardrobeOutfit, ...finalOutfits] : finalOutfits;
-          setOutfits(mergedOutfits.slice(0, 3));
+          setError(t('outfitMaker.noOutfitsError', { defaultValue: 'No clothing items found in your wardrobe. Add items first!' }));
           setLoading(false);
         }
         return;
       }
 
-      // Backend returned success=false or empty outfits — fall through to local fallback
-      throw new Error(data?.error || 'No outfits returned from AI');
-    } catch (err: any) {
-      console.warn('[AIOutfitmaker] Edge function failed, using offline generator:', err);
+      const EDGE_TIMEOUT_MS = 45000;
+      const invokePromise = supabase.functions.invoke('generate-outfits', {
+        body: {
+          stylePreferences: styleToUse,
+          occasion: effectivePrompt || occasionToUse || promptText || 'Any',
+          selectedItemIds: [],
+          wardrobeItems: payloadItems,
+          weather: resolvedWeather,
+          limit: 5,
+          prompt: effectivePrompt,
+          // Lock the anchor item into every outfit when navigated from MyClosetScreen.
+          // Wardrobe mode only: in shop ("New clothing") mode the anchor is a
+          // wardrobe piece and must NOT be sent — otherwise the edge builds
+          // every outfit around the user's own clothing.
+          anchorItemId: effectiveSource === 'wardrobe' ? baseItemId : undefined,
+          // When source is 'shop', use only the provided shop catalog items
+          // (Massimo Dutti etc.) and do NOT mix in user's own wardrobe items
+          useProvidedWardrobeOnly: effectiveSource === 'shop',
+          // Wardrobe mode: tell the edge to build ONLY from Supabase
+          // clothing_items + provided wardrobe items — no shop_catalog
+          // supplement, no static fill.
+          wardrobeOnly: effectiveSource === 'wardrobe',
+          // Per-tap salt: the edge fallback rotation is otherwise a pure
+          // function of style+occasion, rebuilding identical decks.
+          deckSalt: tapNonce,
+        },
+      });
+      const { data, error: invokeError } = await Promise.race([
+        invokePromise,
+        new Promise<{ data: null; error: Error }>((resolve) =>
+          setTimeout(() => resolve({ data: null, error: new Error('generate-outfits timed out') }), EDGE_TIMEOUT_MS)
+        ),
+      ]);
 
-      // ENHANCED OFFLINE GENERATOR — Works 100% without internet/edge function
-      if (fallbackTimer.current) clearTimeout(fallbackTimer.current);
-      fallbackTimer.current = setTimeout(async () => {
-        if (!isMounted.current) return;
-        try {
-          const offlineOutfits = await generateOfflineOutfits(wardrobeItems, liveShopMapped, styleToUse, weather, 3, t);
+      if (invokeError) throw invokeError;
 
-          // Anchor guarantee: the offline builder is anchor-blind, so every
-          // fallback outfit MUST go through normalizeTo4Slots (anchor-first +
-          // post-enforce) — otherwise the lock silently disappears when the
-          // edge function fails. This was the "anchor missing entirely" bug.
-          const normalizedOffline = (offlineOutfits || [])
-            .map((o: GeneratedOutfit) => ({ ...o, items: normalizeTo4Slots(o.items || [], styleToUse) }))
-            .filter((o: GeneratedOutfit) => isCompleteNormalizedOutfit(o.items));
+      if (data && data.success && data.outfits && data.outfits.length > 0) {
+        const normalize = createSlotNormalizer({
+          weather: resolvedWeather,
+          currentSource: effectiveSource,
+          selectedOccasion: occasionToUse,
+          generationNonceRef: generationNonce,
+          poolFallback: genPool,
+          budgetText: effectivePrompt || promptText,
+          maxShopBudget: shopBudget,
+          avoidIds: recentShownIds.current,
+        });
+        const slotDeckUsed = new Set<string>();
+        const wrapLook = (outfit: any, items: any[], idx: number): GeneratedOutfit => {
+          const description =
+            effectiveSource === 'shop'
+              ? `${stylePhraseFor(styleToUse)} look curated from the shop.`
+              : outfit.description;
+          const judgeOk = passesStyleJudge(items as any[], styleToUse, occasionToUse, resolvedWeather);
+          const baseScore: number = outfit.confidence ?? outfit.matchScore ?? 0.9;
+          return {
+            ...outfit,
+            id: outfit.id || `look_${tapNonce}_${idx}`,
+            description,
+            items,
+            mainImage: items[0]?.image || items[0]?.imageUrl || outfit.mainImage || '',
+            matchScore: judgeOk ? baseScore : Math.min(baseScore, 0.69),
+            stylingTips: Array.isArray(outfit.stylingTips)
+              ? outfit.stylingTips.join(' · ')
+              : (outfit.stylingTips || ''),
+            weather: resolvedWeather,
+          };
+        };
+        const cleanedOutfits = data.outfits.map((outfit: any, i: number) => {
+          const repaired = repairEdgeItems(outfit.items || []);
+          const filled = normalize(repaired, styleToUse, i, tapNonce, genPool, slotDeckUsed);
+          return wrapLook(outfit, filled, i);
+        }).filter((outfit: GeneratedOutfit) =>
+          isFourSlotLook(outfit.items) || isCompleteNormalizedOutfit(outfit.items),
+        );
 
-          // Ensure first outfit is pure if source is wardrobe
-          let finalOffline = normalizedOffline;
-          if (effectiveSource === 'wardrobe' && pureWardrobeOutfit) {
-            finalOffline = [pureWardrobeOutfit, ...normalizedOffline.slice(0, 2)];
-          }
-
-          if (isMounted.current) {
-            setOutfits(finalOffline.length > 0 ? finalOffline : (pureWardrobeOutfit ? [pureWardrobeOutfit] : []));
-            setLoading(false);
-            setError(finalOffline.length === 0 && !pureWardrobeOutfit ? t('outfitMaker.noOutfitsError', { defaultValue: 'Could not generate outfits. Please add more items to your wardrobe.' }) : '');
-          }
-        } catch (offlineErr: any) {
-          console.error('[AIOutfitmaker] Offline generator also failed:', offlineErr);
-          if (isMounted.current) {
-            setLoading(false);
-            setError(t('outfitMaker.noOutfitsError', { defaultValue: 'Could not generate outfits. Please try again.' }));
-          }
+        // Taste judge: drop cards carrying pieces rejected for this style ×
+        // occasion. Never restore rejected looks to pad the deck — fill
+        // missing cards from the pool instead.
+        const judged = cleanedOutfits.filter((outfit: GeneratedOutfit) =>
+          passesStyleJudge(outfit.items as any[], styleToUse, occasionToUse, resolvedWeather),
+        );
+        if (__DEV__ && judged.length !== cleanedOutfits.length) {
+          console.log(`[AIOutfitmaker] style judge: kept ${judged.length}/${cleanedOutfits.length} for ${styleToUse}/${occasionToUse}`);
         }
-      }, 600);
+        const judgedOutfits = judged.slice(0, 3);
+
+        const withinBudget = shopBudget
+          ? judgedOutfits.filter((outfit: GeneratedOutfit) => fitsCap(outfit.items as any[]))
+          : judgedOutfits;
+        if (__DEV__ && shopBudget) {
+          console.log('[AIOutfitmaker] budget', shopBudget, 'spends', judgedOutfits.map((o: GeneratedOutfit) => outfitShopSpend(o.items as any[])), 'kept', withinBudget.length);
+        }
+        const budgetedOutfits = withinBudget;
+
+        // Two cards that share shoes AND pants look like the same outfit.
+        // Sharing one hero piece is allowed; sharing two is a clone.
+        const dedupe = createDeckDedupe();
+        const anchorSkip = baseItemId ? new Set([String(baseItemId)]) : undefined;
+        const idsOf = (items: OutfitItem[]): string[] =>
+          items.map((x: any) => {
+            const nk = normalizeCatalogNameKey(x?.name);
+            return nk ? `n:${nk}` : String(x.id);
+          });
+        const isNearDupe = (items: OutfitItem[]): boolean => dedupe.isDupe(idsOf(items), anchorSkip);
+        const trackDeck = (items: OutfitItem[]): void => {
+            dedupe.track(idsOf(items));
+        };
+        let finalOutfits: GeneratedOutfit[] = [];
+        for (const o of budgetedOutfits) {
+          if (isNearDupe(o.items as any) && finalOutfits.length > 0) continue;
+          trackDeck(o.items as any);
+          finalOutfits.push(o);
+          if (finalOutfits.length >= 3) break;
+        }
+        let fillAttempts = 0;
+        while (finalOutfits.length < 3 && fillAttempts < 12) {
+          fillAttempts += 1;
+          const extraItems = normalize(
+            [],
+            styleToUse,
+            finalOutfits.length + fillAttempts,
+            tapNonce,
+            genPool,
+            slotDeckUsed,
+          );
+          if (!(isFourSlotLook(extraItems) || isCompleteNormalizedOutfit(extraItems))) break;
+          if (!passesStyleJudge(extraItems as any[], styleToUse, occasionToUse, resolvedWeather)) continue;
+          if (isNearDupe(extraItems as any) && finalOutfits.length > 0) continue;
+          trackDeck(extraItems as any);
+          finalOutfits.push(wrapLook(
+            { id: `catalog_${tapNonce}_${finalOutfits.length}` },
+            extraItems,
+            finalOutfits.length,
+          ));
+        }
+        if (__DEV__) console.log(`[AIOutfitmaker] nonce=${generationNonce.current} edge=${cleanedOutfits.length} shown=${finalOutfits.length}`);
+
+        if (finalOutfits.length === 0) {
+          throw new Error('No complete outfits returned from AI');
+        }
+
+        if (tapNonce !== generationNonce.current) return;
+        if (isMounted.current) {
+          setOutfits(
+            finalOutfits
+              .filter((o) => fitsCap(o.items as any[]))
+              .slice(0, 3)
+              .map((o) => {
+                let out = shopBudget
+                  ? { ...o, description: `${o.description} · ${formatMoney(outfitShopSpend(o.items as any[]), shopBudget.currency)} / ${formatMoney(shopBudget.amount, shopBudget.currency)}` }
+                  : o;
+                if (effectiveSource === 'shop') {
+                  out = { ...out, description: `${stylePhraseFor(styleToUse)} look curated from the shop.` };
+                }
+                return out;
+              }),
+          );
+          rememberShownIds(finalOutfits.slice(0, 3));
+          setLoading(false);
+        }
+        return;
+      }
+
+      if (__DEV__ && data?.debug) console.log('[AIOutfitmaker] edge debug:', data.debug);
+      const edgeErr: any = new Error(data?.error || 'No outfits returned from AI');
+      if (data?.debug) edgeErr.debug = data.debug;
+      throw edgeErr;
+    } catch (err: any) {
+      console.warn('[AIOutfitmaker] Edge function failed:', err, err?.debug ? JSON.stringify(err.debug) : '');
+      if (fallbackTimer.current) clearTimeout(fallbackTimer.current);
+      if (tapNonce !== generationNonce.current) return;
+      if (isMounted.current) {
+        setOutfits([]);
+        setLoading(false);
+        setError(t('outfitMaker.generateFailed', {
+          defaultValue: 'Could not reach the stylist. Check your connection and try again.',
+        }));
+      }
     }
   };
 
@@ -2009,11 +2428,17 @@ const AIOutfitGenerator = () => {
 
         <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => setOutfits([])} style={styles.backButton}>
+            <TouchableOpacity
+              onPress={() => setOutfits([])}
+              style={styles.backButton}
+              testID="aiResultsBack"
+              accessibilityLabel={t('common.back')}
+              accessibilityRole="button"
+            >
               <Ionicons name="chevron-back" size={22} color="#0A1931" />
             </TouchableOpacity>
             <ScaledText style={styles.headerTitle}>{t('outfitMaker.yourOutfits')}</ScaledText>
-            <View style={{ width: 44 }} />
+            <View style={styles.headerRight} />
           </View>
 
           {planningDate && (
@@ -2041,7 +2466,7 @@ const AIOutfitGenerator = () => {
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}>
             {outfits.map((outfit, index) => (
-              <Animated.View key={outfit.id} style={[styles.glassCard, { marginTop: index === 0 ? 8 : 24 }]}>
+              <Animated.View key={outfit.id} testID={`stylistResult-${index}`} style={[styles.glassCard, { marginTop: index === 0 ? 8 : 24 }]}>
                 <BlurView intensity={Platform.OS === 'ios' ? 48 : 90} tint="light" style={StyleSheet.absoluteFill} />
                 <LinearGradient colors={['rgba(255,255,255,0.45)', 'rgba(255,255,255,0.15)']} style={StyleSheet.absoluteFill} />
 
@@ -2261,7 +2686,13 @@ const AIOutfitGenerator = () => {
       >
         {/* Header — same 3-part centered pattern as main tabs */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+            testID="aiSetupBack"
+            accessibilityLabel={t('common.back')}
+            accessibilityRole="button"
+          >
             <Ionicons name="chevron-back" size={22} color="#0A1931" />
           </TouchableOpacity>
           <ScaledText style={styles.headerTitle}>{t('outfitMaker.aiStylist')}</ScaledText>
@@ -2285,6 +2716,8 @@ const AIOutfitGenerator = () => {
             {selectedOccasion
               ? OCCASION_PRESETS.find((o) => o.id === selectedOccasion)?.label
               : t('outfitMaker.pickOccasion', { defaultValue: 'Pick an occasion' })}
+            {' · '}
+            {(weather ?? inferSeasonalWeather()).temp}°C
           </ScaledText>
         </View>
 
@@ -2415,10 +2848,12 @@ const AIOutfitGenerator = () => {
                   return (
                     <TouchableOpacity
                       key={occ.id}
+                      testID={`stylistOccasion-${occ.id}`}
                       activeOpacity={0.85}
                       onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                         setSelectedOccasion(on ? undefined : (occ.id as string));
+                        commentEditedRef.current = false;
                       }}
                       style={[styles.bigTile, on && styles.bigTileSelected]}
                     >
@@ -2448,6 +2883,7 @@ const AIOutfitGenerator = () => {
                         setShowAllOccasions((v) => !v);
                       }}
                       style={styles.moreToggle}
+                      testID="stylistMoreOccasions"
                       accessibilityRole="button"
                       accessibilityLabel={t('outfitMaker.moreOccasions', { defaultValue: 'More occasions' })}
                     >
@@ -2501,7 +2937,16 @@ const AIOutfitGenerator = () => {
                 return (
                   <View>
                     {/* Featured style card — the one defining your look */}
-                    <View style={styles.featureCard}>
+                    <TouchableOpacity
+                      testID={`stylistStyle-${activeStyle.id}`}
+                      activeOpacity={0.9}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setSelectedStyle(activeStyle.id);
+                        commentEditedRef.current = false;
+                      }}
+                      style={styles.featureCard}
+                    >
                       <View style={styles.featureIcon}>
                         <Ionicons name={activeStyle.icon as any} size={26} color="#FFFFFF" />
                       </View>
@@ -2519,7 +2964,7 @@ const AIOutfitGenerator = () => {
                       <View style={styles.featureRadio}>
                         <View style={styles.featureRadioDot} />
                       </View>
-                    </View>
+                    </TouchableOpacity>
                     <TouchableOpacity
                       activeOpacity={0.75}
                       onPress={() => {
@@ -2527,8 +2972,8 @@ const AIOutfitGenerator = () => {
                         setShowAllStyles((v) => !v);
                       }}
                       style={styles.moreToggle}
+                      testID="stylistMoreStyles"
                       accessibilityRole="button"
-                      accessibilityLabel={t('outfitMaker.moreStyles', { defaultValue: 'More styles' })}
                     >
                       <ScaledText style={styles.moreToggleText}>
                         {showAllStyles
@@ -2554,7 +2999,10 @@ const AIOutfitGenerator = () => {
                               styleObj.icon,
                               styleObj.label,
                               isSelected,
-                              () => setSelectedStyle(styleObj.id),
+                              () => {
+                                setSelectedStyle(styleObj.id);
+                                commentEditedRef.current = false;
+                              },
                               i > 0,
                             );
                           })}
@@ -2568,13 +3016,22 @@ const AIOutfitGenerator = () => {
               {/* Details input — grouped text field, no header */}
               <View style={[styles.formGroup, { marginTop: 24 }]}>
                 <TextInput
+                  testID="stylistCommentInput"
                   style={styles.detailsInput}
                   placeholder={t('outfitMaker.promptPlaceholderShort', {
-                    defaultValue: 'Add details…',
+                    defaultValue: "Where you're going, style, budget ($150)…",
                   })}
                   placeholderTextColor={D.textSecondary}
                   value={userPrompt}
-                  onChangeText={setUserPrompt}
+                  onChangeText={(text) => {
+                    commentEditedRef.current = true;
+                    promptRef.current = text;
+                    setUserPrompt(text);
+                  }}
+                  onChange={(e) => {
+                    const nativeText = (e as any)?.nativeEvent?.text;
+                    if (typeof nativeText === 'string') promptRef.current = nativeText;
+                  }}
                   multiline
                   numberOfLines={3}
                   textAlignVertical="top"
@@ -2588,11 +3045,28 @@ const AIOutfitGenerator = () => {
                   <ScaledText style={styles.errorText}>{error}</ScaledText>
                 </View>
               ) : null}
+              {currentSource === 'shop' && !shopCatalogLoading && liveShopMapped.length === 0 ? (
+                <View style={[styles.errorBox, { marginTop: 12 }]}>
+                  <ScaledText style={styles.errorText}>
+                    {shopCatalogError
+                      ? `Live catalog failed: ${shopCatalogError}. Showing bundled items instead.`
+                      : 'Live catalog returned 0 items. Showing bundled items instead.'}
+                  </ScaledText>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => refreshShopCatalog()}
+                    style={{ marginTop: 8, alignSelf: 'flex-start', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, backgroundColor: '#0A1931' }}
+                  >
+                    <ScaledText style={{ color: '#FFF', fontWeight: '700', fontSize: 13 }}>Retry live catalog</ScaledText>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
             </ScrollView>
           </Reanimated.View>
           {/* Sticky bottom CTA */}
           <View style={styles.stickyFooter}>
             <TouchableOpacity
+              testID="stylistGenerate"
               activeOpacity={0.85}
               onPress={() => handleGeneratePress()}
               style={styles.generateButton}

@@ -33,8 +33,14 @@ class AnalyticsService {
     private sessionId: string;
     private flushTimer: ReturnType<typeof setInterval> | null = null;
     private isFlushing = false;
-    private pendingCount = 0;
     private enabled = true;
+    // In-memory queue — avoids AsyncStorage getItem/setItem + JSON
+    // parse/stringify of up to 200 events on EVERY trackEvent call
+    // (that was running on the JS thread per screen_view/tap).
+    private memoryQueue: AnalyticsEvent[] = [];
+    private persistTimer: ReturnType<typeof setTimeout> | null = null;
+    private appStateSub: { remove: () => void } | null = null;
+    private queueLoaded = false;
 
     constructor() {
         this.sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
@@ -45,8 +51,14 @@ class AnalyticsService {
      * Call once in App.tsx.
      */
     initialize(): void {
+        // Guard against double-init (RootNavigator remounts would previously
+        // leak an extra setInterval + AppState listener per mount).
+        if (this.flushTimer || this.appStateSub) {
+            return;
+        }
         // Best-effort: load persisted preference. Defaults to enabled.
         void this.loadEnabledPreference();
+        void this.loadPersistedQueue();
 
         // Auto-flush on interval
         this.flushTimer = setInterval(() => {
@@ -54,7 +66,7 @@ class AnalyticsService {
         }, FLUSH_INTERVAL_MS);
 
         // Flush when app goes to background
-        AppState.addEventListener('change', (state: AppStateStatus) => {
+        this.appStateSub = AppState.addEventListener('change', (state: AppStateStatus) => {
             if (state === 'background') {
                 this.flush();
             }
@@ -75,8 +87,8 @@ class AnalyticsService {
         if (!this.enabled) {
             // Optional: clear queued events when user opts out.
             try {
+                this.memoryQueue = [];
                 await AsyncStorage.removeItem(ANALYTICS_QUEUE_KEY);
-                this.pendingCount = 0;
             } catch {
                 // ignore
             }
@@ -119,9 +131,12 @@ class AnalyticsService {
     }
 
     /**
-     * Track an event.
+     * Track an event — fire-and-forget, never blocks the caller.
+     * Appends to the in-memory queue synchronously and persists
+     * debounced (500ms) so rapid screen_view/tap storms don't
+     * serialize JSON on the JS thread per event.
      */
-    async trackEvent(name: string, properties?: Record<string, unknown>): Promise<void> {
+    trackEvent(name: string, properties?: Record<string, unknown>): void {
         if (!this.enabled) return;
 
         const event: AnalyticsEvent = {
@@ -137,22 +152,44 @@ class AnalyticsService {
         }
 
         try {
-            const existing = await AsyncStorage.getItem(ANALYTICS_QUEUE_KEY);
-            const queue: AnalyticsEvent[] = existing ? JSON.parse(existing) : [];
-            queue.push(event);
-
-            // Trim queue to max size
-            const trimmed = queue.slice(-MAX_QUEUE_SIZE);
-            await AsyncStorage.setItem(ANALYTICS_QUEUE_KEY, JSON.stringify(trimmed));
-
-            this.pendingCount = trimmed.length;
+            this.memoryQueue.push(event);
+            // Trim queue to max size (O(1) amortized, no JSON serde)
+            if (this.memoryQueue.length > MAX_QUEUE_SIZE) {
+                this.memoryQueue.splice(0, this.memoryQueue.length - MAX_QUEUE_SIZE);
+            }
+            this.schedulePersist();
 
             // Auto-flush when threshold is reached
-            if (this.pendingCount >= FLUSH_THRESHOLD) {
-                this.flush();
+            if (this.memoryQueue.length >= FLUSH_THRESHOLD) {
+                void this.flush();
             }
         } catch {
             // Don't let analytics errors affect the app
+        }
+    }
+
+    private schedulePersist(): void {
+        if (this.persistTimer) return;
+        this.persistTimer = setTimeout(() => {
+            this.persistTimer = null;
+            // Fire-and-forget background write — never awaited by UI code.
+            AsyncStorage.setItem(ANALYTICS_QUEUE_KEY, JSON.stringify(this.memoryQueue)).catch(() => {});
+        }, 500);
+    }
+
+    private async loadPersistedQueue(): Promise<void> {
+        if (this.queueLoaded) return;
+        this.queueLoaded = true;
+        try {
+            const raw = await AsyncStorage.getItem(ANALYTICS_QUEUE_KEY);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) {
+                    this.memoryQueue = parsed.slice(-MAX_QUEUE_SIZE);
+                }
+            }
+        } catch {
+            // ignore — start with empty queue
         }
     }
 
@@ -160,6 +197,10 @@ class AnalyticsService {
      * Get all queued events (for sending to a backend or debugging).
      */
     async getQueue(): Promise<AnalyticsEvent[]> {
+        // Serve from memory when available — avoids a disk read per flush.
+        if (this.queueLoaded || this.memoryQueue.length > 0) {
+            return [...this.memoryQueue];
+        }
         try {
             const data = await AsyncStorage.getItem(ANALYTICS_QUEUE_KEY);
             return data ? JSON.parse(data) : [];
@@ -176,6 +217,8 @@ class AnalyticsService {
     async flush(): Promise<void> {
         if (!this.enabled) return;
         if (this.isFlushing) return;
+        // Nothing to send — skip the AsyncStorage read entirely.
+        if (this.queueLoaded && this.memoryQueue.length === 0) return;
         this.isFlushing = true;
 
         try {
@@ -185,13 +228,15 @@ class AnalyticsService {
                 return;
             }
 
-            // Try to send to backend
+            // Try to send to backend (Edge `analytics` function replaces
+            // Express POST /api/analytics/events; same body contract).
             try {
-                // Dynamic require to avoid circular dependency with apiClient
-                const apiClient = require('./apiClient').default;
-                await apiClient.post('/api/analytics/events', {
-                    events: queue,
-                    sessionId: this.sessionId,
+                const { supabase } = require('../../lib/supabase') as typeof import('../../lib/supabase');
+                await supabase.functions.invoke('analytics', {
+                    body: {
+                        events: queue,
+                        sessionId: this.sessionId,
+                    },
                 });
             } catch {
                 // Backend unavailable — events are kept locally for next flush.
@@ -203,8 +248,8 @@ class AnalyticsService {
             }
 
             // Clear the queue after successful send (or if too large)
+            this.memoryQueue = [];
             await AsyncStorage.removeItem(ANALYTICS_QUEUE_KEY);
-            this.pendingCount = 0;
         } catch {
             // Fail silently
         } finally {
@@ -219,6 +264,18 @@ class AnalyticsService {
         if (this.flushTimer) {
             clearInterval(this.flushTimer);
             this.flushTimer = null;
+        }
+        if (this.persistTimer) {
+            clearTimeout(this.persistTimer);
+            this.persistTimer = null;
+        }
+        if (this.appStateSub) {
+            try {
+                this.appStateSub.remove();
+            } catch {
+                // ignore
+            }
+            this.appStateSub = null;
         }
     }
 

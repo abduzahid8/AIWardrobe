@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 import { StyleSheet, View, Text } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import * as Linking from 'expo-linking';
 import "./global.css";
 import "./i18n";
@@ -15,6 +15,7 @@ import { ThemeProvider, useTheme } from "./src/theme/ThemeContext";
 import { ErrorBoundary } from "./src/components/ErrorBoundary";
 import crashReporting from "./src/services/crashReporting";
 import { bootstrapStores } from "./store/bootstrap";
+import { queryClient } from "./src/lib/queryClient";
 import { validateConfig } from "./src/config/env";
 import useAuthStore from "./store/auth";
 import useTrackingPermission from "./src/hooks/useTrackingPermission";
@@ -28,6 +29,10 @@ const linking = {
       SignUp: 'sign-up',
       ForgotPassword: 'forgot-password',
       AuthCallback: 'auth/callback',
+      // Legal screens are deep-linkable (support flows, App Store review)
+      // and it makes them directly e2e-coverable without scrolling.
+      PrivacyPolicy: 'privacy',
+      TermsOfService: 'terms',
     },
   },
 };
@@ -43,16 +48,19 @@ try {
 } catch (_e) {
   // Must not crash before React renders
 }
+// Native screens: use platform UIViewController/Activity views instead of
+// JS-composited views for every route (less GPU memory, native transitions).
+// NOTE: enableFreeze is intentionally NOT called — freezing suspends blurred
+// screens and under rapid tab switches a tab could stay stuck blank white.
+// enableScreens alone is safe and keeps the native-view benefits.
+try {
+  const { enableScreens } = require('react-native-screens');
+  enableScreens(true);
+} catch (_e) {
+  // Web / test env — safe to ignore.
+}
 bootstrapStores();
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      retry: 2,
-    },
-  },
-});
 
 const ThemedStatusBar = () => {
   const { isDark } = useTheme();

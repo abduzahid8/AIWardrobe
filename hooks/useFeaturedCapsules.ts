@@ -33,6 +33,44 @@ function rowToCapsule(row: Record<string, any>): FeaturedCapsule {
     };
 }
 
+// ── Shared load + in-flight dedup ────────────────────────────────────────
+// The hook and idle prewarming share one flight so a first-time Inspo visit
+// after prewarm finds a warm cache instead of firing a cold query mid-tab-switch.
+let capsulesInflight: Promise<FeaturedCapsule[]> | null = null;
+
+async function loadFeaturedCapsules(): Promise<FeaturedCapsule[]> {
+    if (capsulesInflight) return capsulesInflight;
+    capsulesInflight = (async () => {
+        const { data, error: fetchError } = await supabase
+            .from('featured_capsules')
+            .select('id, title, subtitle, image_url, link_url, sort_order')
+            .eq('is_active', true)
+            .order('sort_order', { ascending: true });
+        if (fetchError) throw new Error(fetchError.message);
+        const mapped = (data ?? []).map(rowToCapsule);
+        capsulesCache = { items: mapped, fetchedAt: Date.now() };
+        return mapped;
+    })();
+    try {
+        return await capsulesInflight;
+    } finally {
+        capsulesInflight = null;
+    }
+}
+
+/**
+ * Idle prewarm entry point — warms the capsules cache without touching any
+ * component state. No-op when fresh. Never throws.
+ */
+export async function prefetchFeaturedCapsules(): Promise<void> {
+    try {
+        if (capsulesCache && Date.now() - capsulesCache.fetchedAt <= CAPSULES_CACHE_TTL_MS) return;
+        await loadFeaturedCapsules();
+    } catch {
+        // Non-critical — the screen will fetch on mount as before.
+    }
+}
+
 /**
  * Fetches active Featured Capsules from Supabase ordered by `sort_order`.
  * The `featured_capsules` table is admin-editable from the Supabase dashboard.
@@ -48,18 +86,11 @@ export function useFeaturedCapsules(): UseFeaturedCapsulesResult {
         if (!silent) setLoading(true);
         setError(null);
 
-        const { data, error: fetchError } = await supabase
-            .from('featured_capsules')
-            .select('id, title, subtitle, image_url, link_url, sort_order')
-            .eq('is_active', true)
-            .order('sort_order', { ascending: true });
-
-        if (fetchError) {
-            setError(fetchError.message);
-        } else {
-            const mapped = (data ?? []).map(rowToCapsule);
+        try {
+            const mapped = await loadFeaturedCapsules();
             setItems(mapped);
-            capsulesCache = { items: mapped, fetchedAt: Date.now() };
+        } catch (err: any) {
+            setError(err?.message ?? 'Failed to load capsules');
         }
 
         setLoading(false);

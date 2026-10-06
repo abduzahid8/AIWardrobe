@@ -1,6 +1,6 @@
 {
   "common": {
-    "upgrade": "Обновить",
+    "upgrade": "Перейти на Pro",
     "cancel": "Отмена",
     "close": "Закрыть",
     "save": "Сохранить",
@@ -33,7 +33,15 @@
     "databaseError": "Ошибка базы данных",
     "networkRequestFailed": "Сетевой запрос не удался",
     "goodMorning": "Доброе утро",
-    "skip": "Пропустить"
+    "skip": "Пропустить",
+    "clothing": "Clothing",
+    "goBack": "Go back",
+    "gotIt": "Got it",
+    "info": "Info",
+    "item": "Item",
+    "ok": "OK",
+    "retry": "Retry",
+    "tapToDismiss": "Tap to dismiss"
   },
   "confirmations": {
     "thisItem": "этот предмет",
@@ -71,7 +79,7 @@
   },
   "tryOn": {
     "readyToGenerate": "Готов к генерации",
-    "piecesSelected": "{{count}} предмет{{plural}} выбрано: {{names}}. Нажмите \"Примерка с ИИ\", чтобы наложить их на манекен.",
+    "piecesSelected": "{{count}} предмет(ов) выбрано: {{names}}. Нажмите \"Примерка с ИИ\", чтобы наложить их на манекен.",
     "piecesSelected_one": "{{count}} предмет выбран: {{names}}. Нажмите \"Примерка с ИИ\", чтобы наложить его на манекен.",
     "piecesSelected_other": "{{count}} предметов выбрано: {{names}}. Нажмите \"Примерка с ИИ\", чтобы наложить их на манекен.",
     "pickYourPieces": "Выберите предметы",
@@ -136,7 +144,7 @@
     "essentialsCurated": "Базовая подборка",
     "essentialsSubtitle": "Соберите универсальный гардероб из вещей, которые легко сочетать.",
     "essentialsAddedCount": "Добавлено: {{count}}",
-    "addToCloset": "В гардероб",
+    "addToCloset": "Добавить в гардероб",
     "addingToWardrobe": "Добавление…",
     "addEssentialFailed": "Не удалось добавить",
     "addEssentialFailedMessage": "Проверьте подключение и попробуйте снова.",
@@ -149,6 +157,11 @@
     "businessCasualArrow": "Деловой стиль ›",
     "tryAgain": "Попробовать снова",
     "tryOn": "Примерка",
+    "buy": "Купить",
+    "shopThisLook": "Купить этот образ",
+    "shopSheetHint": "Выберите вещь, затем — где её купить.",
+    "fromWardrobe": "Из вашего гардероба",
+    "buyItem": "Купить {{name}}",
     "swipeHint": "Смахните, чтобы пропустить или сохранить",
     "fromYourWardrobe": "Из вашего гардероба: {{count}}",
     "outfitSources": "Ваши: {{wardrobeCount}} · предложено: {{shopCount}}",
@@ -158,7 +171,8 @@
     "useLayers": "Используйте слои",
     "dressWarm": "Одевайтесь тепло",
     "itemAddedToWardrobe": "{{itemName}} добавлен в гардероб",
-    "addItemToWardrobe": "Добавить {{itemName}} в гардероб"
+    "addItemToWardrobe": "Добавить {{itemName}} в гардероб",
+    "createOutfitFromWardrobe": "Create outfit from wardrobe"
   },
   "weeklyPlanner": {
     "days": [
@@ -262,13 +276,13 @@
     "itemAddedToWardrobe": "Вещь добавлена в ваш гардероб.",
     "ok": "ОК",
     "wardrobeFull": "Гардероб полон",
-    "freePlanLimit": "Бесплатный план хранит {{limit}} вещей. Обновитесь до Pro для неограниченного гардероба.",
+    "freePlanLimit": "Бесплатный план хранит {{limit}} вещей. Перейдите на Pro для неограниченного гардероба.",
     "maybeLater": "Позже",
-    "upgrade": "Обновить",
+    "upgrade": "Перейти на Pro",
     "error": "Ошибка",
     "failedToSaveItem": "Не удалось сохранить вещь. Попробуйте еще раз.",
     "types": {
-      "tops": "Верхняя одежда",
+      "tops": "Топы",
       "bottoms": "Нижняя одежда",
       "shoes": "Обувь",
       "accessories": "Аксессуары",
@@ -305,7 +319,9 @@
       "wearLight": "Носить легкое",
       "useLayers": "Используйте слои",
       "dressWarm": "Одевайтесь тепло"
-    }
+    },
+    "high": "High",
+    "low": "Low"
   },
   "dailySuggestion": {
     "loading": "Находим идеальный образ...",
@@ -319,7 +335,9 @@
     "wearToday": "Носить сегодня",
     "scanWardrobeForSuggestions": "Отсканируйте свой гардероб, чтобы получить персонализированные рекомендации по образам",
     "addMoreItemsForSuggestions": "Добавьте больше вещей в свой шкаф для лучших рекомендаций",
-    "title": "Ваш образ на сегодня"
+    "title": "Ваш образ на сегодня",
+    "addItemToCloset": "Add item to closet",
+    "noSuggestionYet": "No suggestion yet"
   },
   "quickActions": {
     "menu": "Меню",
@@ -349,7 +367,8 @@
     "pickItems": "Выбрать вещи",
     "selectItemsToLog": "Выберите вещи для записи",
     "iWoreThisToday": "Я сегодня это носил",
-    "logItems": "Записать {{count}} вещ{{plural}}"
+    "logItems": "Записать {{count}} вещ{{plural}}",
+    "wearingToday": "Wearing today"
   },
   "network": {
     "noInternetConnection": "Нет подключения к интернету"
@@ -392,13 +411,13 @@
   },
   "onboarding": {
     "personalizedLooksUnlocked": "✨ Персонализированные образы разблокированы!",
-    "addItemsToUnlock": "Добавьте {{count}} вещ{{suffix}}{{suffix ? 'и' : 'ь'}}, чтобы разблокировать ежедневные персонализированные образы",
+    "addItemsToUnlock": "Добавьте ещё {{count}} вещей, чтобы разблокировать ежедневные персональные образы",
     "itemsCounter": "{{current}}/{{target}} вещей"
   },
   "quota": {
     "unlimited": "Безлимитно {{label}}",
     "unlock": "Разблокировать {{label}}",
-    "outOfLabel": "{{label}} закончилось — нажмите для обновления",
+    "outOfLabel": "{{label}} закончилось — нажмите, чтобы перейти на Pro",
     "remainingToday": "{{remaining}} из {{limit}} {{label}} осталось сегодня"
   },
   "theme": {
@@ -460,7 +479,7 @@
     },
     "categories": {
       "all": "Все",
-      "tops": "Верхняя одежда",
+      "tops": "Топы",
       "bottoms": "Нижняя одежда",
       "shoes": "Обувь",
       "outerwear": "Верхняя одежда"
@@ -516,11 +535,12 @@
     "analyticsSharing": "Передача аналитики",
     "analyticsOn": "Вкл",
     "analyticsOff": "Выкл",
-    "pro": "ПРО",
+    "pro": "PRO",
     "from": "от",
     "developerTools": "Инструменты разработчика",
     "proBadge": "PRO",
-    "priceFrom": "от"
+    "priceFrom": "от",
+    "goProSubtitle": "Upgrade for unlimited outfits and premium features"
   },
   "addOutfit": {
     "title": "Добавить образ",
@@ -549,8 +569,8 @@
   "aiTryOn": {
     "title": "Примерка",
     "premiumFeature": "Премиум функция",
-    "premiumFeatureBody": "Виртуальная примерка доступна только подписчикам Pro и Max. Обновитесь, чтобы начать примерку!",
-    "upgradeToAccess": "Обновить для доступа",
+    "premiumFeatureBody": "Виртуальная примерка доступна только подписчикам Pro и Max. Перейдите на Pro, чтобы начать примерку!",
+    "upgradeToAccess": "Перейти на Pro",
     "comingSoon": "Скоро",
     "comingSoonBody": "Виртуальная примерка обновляется. Мы скоро её вернем!",
     "featureName": "AI Виртуальная примерка",
@@ -634,7 +654,7 @@
     "upgradeToPro": "Перейти на Pro",
     "errors": {
       "missingPhotos": "Добавьте фото в полный рост и одежду для примерки.",
-      "tryOnFailed": "Примерка не удалась. Проверьте консоль сервера."
+      "tryOnFailed": "Примерка не удалась. Попробуйте ещё раз."
     }
   },
   "features": {
@@ -696,7 +716,8 @@
     "travel": "Путешествие",
     "discoverVibe": "Откройте свой стиль",
     "tapStyleCard": "Нажмите на карточку стиля ниже, и ИИ мгновенно создаст полный образ из вашего гардероба.",
-    "promptPlaceholder": "напр., Свидание, собеседование, обычный бранч, пляжный отпуск...",
+    "promptPlaceholder": "Куда идёте, стиль (old money, классика…), бюджет ($150)…",
+    "promptPlaceholderShort": "Куда идёте, стиль, бюджет ($150)…",
     "generate": "Сгенерировать",
     "description1": "Подобранный {{style}} образ из вашего гардероба.",
     "description2": "Элегантный {{style}} ансамбль с сбалансированными пропорциями.",
@@ -707,7 +728,8 @@
     "tip2_2": "Носите верхнюю одежду слоями для глубины",
     "tip3_1": "Выберите минималистичные украшения",
     "tip3_2": "Подберите обувь под цвет ремня",
-    "noOutfitsError": "Не удалось создать образы. Добавьте больше вещей в гардероб для лучших предложений."
+    "noOutfitsError": "Не удалось создать образы. Добавьте больше вещей в гардероб для лучших предложений.",
+    "generateFailed": "Не удалось связаться со стилистом. Проверьте соединение и попробуйте снова."
   },
   "paywall": {
     "heroTitle": "Ваш стиль, разблокирован.",
@@ -735,11 +757,11 @@
     "monthly": "Месяц",
     "yearly": "Год",
     "yearlyPlan": "Pro на год",
-    "yearlySubtitle": "$79.99 / год",
+    "yearlySubtitle": "$99.99 / год",
     "perYear": "/год",
-    "yearlySave": "Экономия 33% vs ежемесячно",
+    "yearlySave": "Экономия 17% по сравнению с месячным",
     "notIncluded": "Не входит:",
-    "liteMissing": "Виртуальная примерка, планировщик поездок, приоритетная поддержка",
+    "liteMissing": "Планировщик поездок, приоритетная поддержка",
     "liteFeature1": "Безлимитные AI образы",
     "liteFeature2": "До 100 предметов гардероба",
     "liteFeature3": "Аналитика гардероба",
@@ -749,13 +771,28 @@
     "proFeature3": "Аналитика гардероба",
     "proFeature4": "AI планировщик поездок",
     "proFeature5": "Полный календарь образов",
-    "proFeature6": "Виртуальная примерка",
-    "proFeature7": "Приоритетная AI модель · без рекламы",
-    "proFeature8": "Ранний доступ и приоритетная поддержка",
     "subscribe": "Подписаться",
     "getStarted": "Начать с",
     "activateCode": "Активировать код",
-    "activateCodeHeader": "У вас есть промокод?"
+    "activateCodeHeader": "У вас есть промокод?",
+    "perMonth": "/мес.",
+    "liteWeekly": "$0.69 / неделю",
+    "proWeekly": "$2.31 / неделю",
+    "yearlyWeekly": "$1.92 / неделю",
+    "liteBestFor": "Больше места в гардеробе, умное планирование образов и простая аналитика.",
+    "proBestFor": "Лучшее для ежедневных образов, поездок, безлимитного гардероба и приоритетного ИИ.",
+    "yearlyBestFor": "Всё из Pro по самой выгодной долгосрочной цене.",
+    "yearlyFeature1": "Все функции Pro",
+    "yearlyFeature2": "Годовая экономия",
+    "yearlyFeature3": "Сезонные коллекции",
+    "yearlyFeature4": "Ранний доступ к новинкам",
+    "yearlyBadge": "ЭКОНОМИЯ 17%",
+    "unavailable": "НЕДОСТУПНО",
+    "selectedPlan": "Выбранный план",
+    "continue": "Продолжить",
+    "productUnavailableBody": "Этот план сейчас недоступен в магазине. Попробуйте позже.",
+    "proFeature6": "Приоритетная AI модель · без рекламы",
+    "proFeature7": "Ранний доступ и приоритетная поддержка"
   },
   "featureLock": {
     "feature": "ФУНКЦИЯ",
@@ -764,10 +801,10 @@
   },
   "trialCountdown": {
     "lessThanOneHour": "Менее 1 часа осталось в вашем бесплатном пробном периоде",
-    "hoursLeft": "{{hours}}ч осталось в вашем бесплатном пробном периоде — Обновите сейчас",
+    "hoursLeft": "{{hours}}ч осталось в вашем бесплатном пробном периоде — Перейдите на Pro сейчас",
     "daysLeft": "{{days}} день{{suffix}} осталось в вашем бесплатном пробном периоде",
-    "openUpgradePlans": "Открыть планы обновления",
-    "upgrade": "Обновить"
+    "openUpgradePlans": "Открыть Pro-тарифы",
+    "upgrade": "Перейти на Pro"
   },
   "promo": {
     "apply": "Применить",
@@ -778,7 +815,7 @@
     "activateTrial": "Активировать пробный период",
     "iHavePromoCode": "У меня есть промокод",
     "or": "ИЛИ",
-    "goPro": "Обновить до Pro",
+    "goPro": "Перейти на Pro",
     "goProSubtitle": "Получите мгновенный безлимитный доступ",
     "skip": "Пропустить",
     "enterCode": "Пожалуйста, введите промокод",
@@ -813,7 +850,7 @@
     "colorPalette": "Ваша цветовая палитра",
     "categoryBreakdown": "Разбивка по категориям",
     "noDataYet": "Данных пока нет",
-    "emojiStreak": "🔥 {{streak}}",
+    "emojiStreak": "🔥 {{count}}",
     "rankNumber": "№{{rank}}"
   },
   "tripPlanner": {
@@ -902,6 +939,11 @@
     ]
   },
   "calendar": {
+    "title": "Календарь образов",
+    "lockedTagline": "Планируйте каждый день стильно. Полный календарь — Pro-функция.",
+    "lockedBullet1": "Планируйте образы на любой прошлый или будущий день",
+    "lockedBullet2": "Списки вещей для поездок и планирование под события",
+    "lockedBullet3": "Ежедневные напоминания и синхронизация календаря",
     "deleteOutfit": "Удалить образ",
     "deleteOutfitConfirm": "Вы уверены?",
     "notAdded": "Не добавлено",
@@ -941,7 +983,11 @@
     "loggedDays": "{{logged}}/{{total}} дней записано"
   },
   "weeklyInsights": {
-    "title": "Стильные инсайты",
+    "title": "Анализ стиля",
+    "lockedTagline": "Аналитика гардероба — Pro-функция. Перейдите на Pro, чтобы открыть инсайты.",
+    "lockedBullet1": "Использование гардероба и напоминания о неношеных вещах",
+    "lockedBullet2": "Персональные рекомендации по стилю",
+    "lockedBullet3": "Серии, статистика и учёт самых носимых вещей",
     "totalItems": "Всего вещей",
     "dayStreak": "Серия дней",
     "totalWears": "Всего носок",
@@ -1066,8 +1112,8 @@
     "unlockPlan": "Открыть мой план",
     "continue": "Продолжить",
     "welcome": {
-      "title": "Какой у вас стиль души?",
-      "subtitle": "Выберите то, что вам больше всего подходит",
+      "title": "Ваш стиль, расшифрован.",
+      "subtitle": "60-секундный тест, который создаст ваш персональный гардеробный интеллект.",
       "aiPlans": "AI планы образов",
       "colorProfiling": "Цветовой профиль",
       "gapAnalysis": "Анализ пробелов"
@@ -1088,7 +1134,7 @@
     },
     "colors": {
       "title": "Ваша цветовая палитра",
-      "subtitle": "Выберите все, что вам нравится"
+      "subtitle": "Выберите все, что вам нравится — выбрано: {{count}}"
     },
     "occasions": {
       "title": "Для чего вы одеваетесь?",
@@ -1121,8 +1167,8 @@
     "complete": {
       "title": "Ваш план готов!",
       "subtitle": "Мы настроили AI под ваш стиль",
-      "occasionPaths": "Предпочтения по поводам учтены",
-      "goalsPrioritized": "Цели расставлены по приоритету",
+      "occasionPaths": "Поводов учтено: {{count}}",
+      "goalsPrioritized": "Целей расставлено по приоритету: {{count}}",
       "aiCalibrated": "AI откалиброван под ваш стиль",
       "unlockPlan": "Открыть мой план"
     }
@@ -1270,9 +1316,12 @@
   },
   "trialExpired": {
     "title": "Пробный период истёк",
-    "body": "Ваш 7-дневный бесплатный пробный период закончился. Обновите до платного плана, чтобы продолжить использовать AI-образы, неограниченное сканирование гардероба и все премиум-функции.",
-    "upgradeToPro": "Обновить до Pro",
-    "havePromoCode": "У меня есть промокод"
+    "body": "Ваш 7-дневный бесплатный пробный период закончился. Вы на бесплатном тарифе — гардероб и ежедневные AI-образы остаются доступны. Премиум-функции (примерка, планировщик поездок, аналитика, полный календарь) предложат перейти на Pro при использовании.",
+    "upgradeToPro": "Перейти на Pro",
+    "havePromoCode": "У меня есть промокод",
+    "banner": "Пробный период закончился — Перейти на Pro",
+    "continueWithFree": "Продолжить бесплатно",
+    "restore": "Уже Pro? Восстановить"
   },
   "inspo": {
     "title": "Вдохновение",
@@ -1712,7 +1761,9 @@
     "discover": "Обзор",
     "add": "Добавить",
     "design": "Дизайн",
-    "profile": "Профиль"
+    "profile": "Профиль",
+    "closet": "Closet",
+    "inspo": "Inspo"
   },
   "styles": {
     "selectStyle": "Выбрать стиль",
@@ -1973,5 +2024,15 @@
     "selectSize": "Выберите размер",
     "fitPanelTitle": "Посадка",
     "fitPanelEmpty": "Выберите размер, чтобы увидеть оценку посадки."
+  },
+  "homeHeader": {
+    "openCalendar": "Open calendar"
+  },
+  "weatherWidget": {
+    "suggestions": {
+      "dressWarm": "Dress warm",
+      "useLayers": "Use layers",
+      "wearLight": "Wear light"
+    }
   }
 }

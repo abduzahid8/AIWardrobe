@@ -12,7 +12,7 @@
  */
 
 import { create } from 'zustand';
-import type { ShopCatalogItem } from '../features/try-on/types';
+import type { ShopCatalogItem } from '../src/types/shop';
 
 interface ShopCatalogState {
   /** All catalog items loaded so far (may grow as HomeScreen paginates). */

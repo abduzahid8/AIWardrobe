@@ -19,6 +19,8 @@ interface PromoCodeState {
 
     // Actions
     hydrate: () => Promise<void>;
+    /** Background server reconciliation — never blocks app-ready. Call after first frame. */
+    syncWithServer: () => Promise<void>;
     redeemPromoCode: (code: string) => Promise<{ success: boolean; trialDays?: number; error?: string }>;
     skipPromo: () => Promise<void>;
     /** Check if the user should see the promo code screen. */
@@ -31,11 +33,13 @@ const usePromoCodeStore = create<PromoCodeState>((set, get) => ({
     isHydrated: false,
 
     hydrate: async () => {
+        // FAST PATH — local AsyncStorage only (<50ms). Must never block
+        // app-ready: the old implementation awaited getSession() + a
+        // promo_redemptions Supabase round-trip here, which pushed cold
+        // start past the 1500ms init budget and forced the
+        // "Initialization timeout — forcing app ready" fallback.
+        // Server reconciliation happens in syncWithServer() after first frame.
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const userId = session?.user?.id;
-
-            // Check local cache first
             const [localRedeemed, localSkipped] = await Promise.all([
                 AsyncStorage.getItem(PROMO_REDEEMED_KEY),
                 AsyncStorage.getItem(PROMO_SKIPPED_KEY),
@@ -48,28 +52,36 @@ const usePromoCodeStore = create<PromoCodeState>((set, get) => ({
 
             if (localSkipped === 'true') {
                 set({ hasSkippedPromo: true, isHydrated: true });
-                // Still check server — maybe they redeemed on another device
+            } else {
+                set({ isHydrated: true });
             }
-
-            // Check server for existing redemption
-            if (userId) {
-                const { data: redemption } = await supabase
-                    .from('promo_redemptions')
-                    .select('id, trial_days, redeemed_at')
-                    .eq('user_id', userId)
-                    .maybeSingle();
-
-                if (redemption) {
-                    await AsyncStorage.setItem(PROMO_REDEEMED_KEY, 'true');
-                    set({ hasRedeemedPromo: true, isHydrated: true });
-                    return;
-                }
-            }
-
-            set({ isHydrated: true });
         } catch (error) {
             log.error('Failed to hydrate promo code store', error);
             set({ isHydrated: true });
+        }
+    },
+
+    syncWithServer: async () => {
+        // Background reconciliation — safe to take seconds, never awaited
+        // on the startup critical path.
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const userId = session?.user?.id;
+            if (!userId) return;
+            if (get().hasRedeemedPromo) return;
+
+            const { data: redemption } = await supabase
+                .from('promo_redemptions')
+                .select('id, trial_days, redeemed_at')
+                .eq('user_id', userId)
+                .maybeSingle();
+
+            if (redemption) {
+                await AsyncStorage.setItem(PROMO_REDEEMED_KEY, 'true');
+                set({ hasRedeemedPromo: true });
+            }
+        } catch (error) {
+            log.warn('Promo server sync failed (non-critical)', error);
         }
     },
 

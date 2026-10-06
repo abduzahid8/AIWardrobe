@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(10,25,49,0.04)',
     },
     loaderContainer: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: colors.surfaceHighlight,
@@ -161,10 +161,10 @@ const styles = StyleSheet.create({
         backgroundColor: colors.surfaceHighlight,
     },
     placeholder: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
     },
     optimizedImage: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         width: '100%',
         height: '100%',
     },

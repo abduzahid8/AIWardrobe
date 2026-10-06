@@ -5,7 +5,7 @@
  * Stores corrections in Supabase for model retraining.
  */
 
-import { supabase } from '../lib/supabase';
+import { supabase } from '../../lib/supabase';
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('Feedback');

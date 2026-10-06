@@ -31,12 +31,14 @@ interface RouteParams {
 }
 
 const AIStylistScreen = () => {
-    const navigation = useNavigation();
+    const navigation = useNavigation<any>();
     const { t } = useTranslation();
     const route = useRoute();
     const params = (route.params as RouteParams) || {};
     const [activeTab, setActiveTab] = useState<TabMode>(params.initialTab || 'chat');
 
+    // Soft gate: page stays open — Send in AIAssistant / OutfitAIScreen
+    // redirects to Paywall via requireFeature('aiStylistChat') when locked.
     const switchTab = (tab: TabMode) => {
         if (tab !== activeTab) {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -59,6 +61,9 @@ const AIStylistScreen = () => {
                     <TouchableOpacity
                         style={styles.backButton}
                         onPress={() => navigation.goBack()}
+                        testID="stylistBack"
+                        accessibilityLabel={t('common.back')}
+                        accessibilityRole="button"
                     >
                         <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
                     </TouchableOpacity>

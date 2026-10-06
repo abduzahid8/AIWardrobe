@@ -1,0 +1,27 @@
+appId: host.exp.Exponent
+name: perf_tab_stress_a
+tags:
+  - perf
+  - expo-go
+  - regression
+---
+# Blank-tab regression (freezeOnBlur removal): rapid Home→Closet→Inspo,
+# asserting real content on EVERY landing. A stuck frozen/detached view
+# shows blank white and fails the assert. Logged IN. Run together with
+# perf_tab_stress_b for a full double cycle.
+- tapOn:
+    point: "26%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(Сегодняшний образ|Today).*"
+- tapOn:
+    point: "42%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(Мой гардероб|My Wardrobe|Wardrobe|Closet).*"
+- tapOn:
+    point: "58%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(Вдохновение|Inspiration).*"
+- takeScreenshot: perf_tab_stress_a

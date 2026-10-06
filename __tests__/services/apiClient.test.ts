@@ -6,10 +6,10 @@
 
 import axios from 'axios';
 
-// Mock dependencies before imports
-jest.mock('react-native', () => ({
-    Alert: { alert: jest.fn() },
-}));
+// Mock dependencies before imports. NOTE: do NOT jest.mock('react-native')
+// here — both a partial mock ({ Alert } only) and requireActual break
+// expo-modules-core's Platform import during jest-expo preset setup.
+// Alert is spied on below instead.
 jest.mock('../../lib/supabase', () => ({
     supabase: {
         auth: {
@@ -52,17 +52,21 @@ import crashReporting from '../../src/services/crashReporting';
 describe('apiClient', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        jest.restoreAllMocks();
     });
 
     describe('auto-auth interceptor', () => {
         it('should attach Authorization header from Supabase session', async () => {
-            // Re-require to get fresh instance with mocks applied
-            jest.resetModules();
-
-            // We can't easily test interceptors directly without making actual requests,
-            // so we verify that getSession is called to retrieve the token
-            const { supabase: sup } = require('../../lib/supabase');
-            expect(sup.auth.getSession).toBeDefined();
+            // NOTE: do NOT jest.resetModules() + re-require here — re-executing
+            // lib/supabase pulls react-native-url-polyfill → expo-modules-core,
+            // which crashes in this jest env. The module mock below is enough.
+            expect(supabase.auth.getSession).toBeDefined();
+            const { data } = await (supabase.auth.getSession as jest.Mock)();
+            expect(data.session.access_token).toBe('mock-token-123');
         });
     });
 

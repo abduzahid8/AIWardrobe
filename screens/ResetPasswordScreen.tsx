@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, TextInput, TouchableOpacity, Alert, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScaledText } from '../components/ui/ScaledText';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -119,21 +120,39 @@ const ResetPasswordScreen = () => {
                 colors={['#0A0A0A', '#1A1C29', '#16213E']}
                 style={styles.gradient}
             >
+                {/* SafeArea keeps the header clear of the status bar — without
+                    it the back chevron sat under the clock where the system
+                    status bar swallows all touches (looked fine, never fired). */}
+                <SafeAreaView style={styles.safeArea} edges={['top']}>
                 <ScrollView
                     contentContainerStyle={styles.formContainer}
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
                     accessible={false}
                 >
-                    {/* Back Button */}
-                    <TouchableOpacity
-                        onPress={() => navigation.goBack()}
-                        style={styles.backButton}
-                        accessibilityLabel={t('resetPassword.goBack')}
-                        accessibilityRole="button"
-                    >
-                        <Ionicons name="arrow-back" size={24} color="#FFF" />
-                    </TouchableOpacity>
+                    {/* Back Button — in normal flow (the old absolute
+                        top:-60 placement rendered under the status bar area
+                        and was invisible/untappable, leaving gesture-only
+                        exit with no affordance). */}
+                    <View style={styles.headerRow}>
+                        <TouchableOpacity
+                            // Deep links can land here with no history behind
+                            // (linking replaces root state) — plain goBack()
+                            // would no-op and strand the user. Fall back to
+                            // the main tabs in that case.
+                            onPress={() => {
+                                if (navigation.canGoBack()) navigation.goBack();
+                                else navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+                            }}
+                            style={styles.backButton}
+                            testID="resetBackButton"
+                            accessibilityLabel={t('resetPassword.goBack')}
+                            accessibilityRole="button"
+                            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                        >
+                            <Ionicons name="chevron-back" size={26} color="#FFF" />
+                        </TouchableOpacity>
+                    </View>
 
                     <View style={styles.iconContainer}>
                         <Ionicons name="lock-closed-outline" size={40} color="#FFD700" />
@@ -207,6 +226,7 @@ const ResetPasswordScreen = () => {
                         </ScaledText>
                     </TouchableOpacity>
                 </ScrollView>
+                </SafeAreaView>
             </LinearGradient>
         </KeyboardAvoidingView>
     );
@@ -217,16 +237,25 @@ export default ResetPasswordScreen;
 const styles = StyleSheet.create({
     container: { flex: 1 },
     gradient: { flex: 1, justifyContent: 'center' },
+    safeArea: { flex: 1 },
     formContainer: {
         paddingHorizontal: 24,
         width: '100%',
         maxWidth: 400,
         alignSelf: 'center',
     },
+    headerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
     backButton: {
-        position: 'absolute',
-        top: -60,
-        left: 24,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     iconContainer: {
         width: 72,

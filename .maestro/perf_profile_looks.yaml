@@ -1,0 +1,27 @@
+appId: host.exp.Exponent
+name: perf_profile_looks
+tags:
+  - perf
+  - expo-go
+  - profile
+---
+# Profile Saved Looks row (virtualized FlatList) renders and the page
+# scrolls without jank/blank. Logged IN. Starts on any tab.
+- tapOn:
+    point: "74%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(Аккаунт|Account).*"
+- assertVisible: ".*Looks.*"
+- swipe:
+    direction: UP
+    duration: 600
+- waitForAnimationToEnd:
+    timeout: 5000
+- swipe:
+    direction: DOWN
+    duration: 600
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: ".*(Аккаунт|Account).*"
+- takeScreenshot: perf_profile_looks

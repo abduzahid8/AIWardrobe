@@ -31,12 +31,24 @@ export const TIER_DISPLAY_NAMES: Record<SubscriptionTier, string> = {
 // ─────────────────────────────────────────────────────────────
 // Feature matrix
 // ─────────────────────────────────────────────────────────────
+export const FREE_HOME_SWIPES_PER_DAY = 3;
+
 export const TIER_FEATURES = {
     free: {
-        /** AI outfit generations per day (resets at local midnight) */
-        aiOutfits: 10,
+        /**
+         * AI outfit generations per day (resets at local midnight).
+         * 0 after the 7-day trial ends → "Create Outfit" is fully locked
+         * and redirects to Paywall via useSubscriptionGate.
+         * During trial effectiveTier is 'premium' so trial users get unlimited.
+         */
+        aiOutfits: 0,
         /** AI Try-On renders per day */
         tryOns: 0,
+        /**
+         * Home swipe-deck swipes per day. Expired-trial users get 3 swipes,
+         * then the deck locks and redirects to Paywall.
+         */
+        homeSwipes: FREE_HOME_SWIPES_PER_DAY,
         /** Max clothing items the user can store in their closet */
         wardrobeItems: 20,
         /** Wardrobe scans per day (camera → AI detection) */
@@ -47,6 +59,8 @@ export const TIER_FEATURES = {
         tripPlanner: false,
         /** Full outfit calendar (past + future planning) */
         fullCalendar: false,
+        /** AI stylist chat (AIAssistant + OutfitAI) */
+        aiStylistChat: false,
         /** Priority high-end AI model */
         priorityModel: false,
         /** No ads anywhere in the app */
@@ -59,11 +73,13 @@ export const TIER_FEATURES = {
     lite: {
         aiOutfits: -1,
         tryOns: 0,
+        homeSwipes: -1,
         wardrobeItems: 100,
         wardrobeScans: 30,
         analytics: true,
         tripPlanner: false,
         fullCalendar: true,
+        aiStylistChat: true,
         priorityModel: false,
         adFree: false,
         earlyAccess: false,
@@ -72,11 +88,13 @@ export const TIER_FEATURES = {
     premium: {
         aiOutfits: -1,
         tryOns: -1,
+        homeSwipes: -1,
         wardrobeItems: -1,
         wardrobeScans: -1,
         analytics: true,
         tripPlanner: true,
         fullCalendar: true,
+        aiStylistChat: true,
         priorityModel: true,
         adFree: true,
         earlyAccess: true,
@@ -85,19 +103,19 @@ export const TIER_FEATURES = {
     vip: {
         aiOutfits: -1,
         tryOns: -1,
+        homeSwipes: -1,
         wardrobeItems: -1,
         wardrobeScans: -1,
         analytics: true,
         tripPlanner: true,
         fullCalendar: true,
+        aiStylistChat: true,
         priorityModel: true,
         adFree: true,
         earlyAccess: true,
         prioritySupport: true,
         /** VIP-exclusive: seasonal style collections curated by stylists */
         exclusiveCollections: true,
-        /** VIP-exclusive: AI stylist chat with personalized recommendations */
-        aiStylistChat: true,
     },
 } as const;
 
@@ -108,6 +126,7 @@ export const DAILY_QUOTA_FEATURES: FeatureKey[] = [
     'aiOutfits',
     'tryOns',
     'wardrobeScans',
+    'homeSwipes',
 ];
 
 // ─────────────────────────────────────────────────────────────
@@ -155,7 +174,9 @@ interface SubscriptionState {
     isTrialActive: boolean;
     /**
      * True when the user is on the free tier AND the 7-day trial has ended
-     * (or was never started for legacy users). This gates the TrialExpiredScreen.
+     * (or was never started for legacy users). This does NOT block the app —
+     * the user keeps free-tier access and individual premium features
+     * redirect to Paywall via useSubscriptionGate.
      */
     isTrialExpired: boolean;
     /**
@@ -315,7 +336,7 @@ const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
                         const currentState = get();
                         resolvedTier = currentState.tier !== 'free' ? currentState.tier : profileTier;
                         resolvedExpiry = currentState.expiryDate;
-                        console.log('[subscriptionStore] Profile shows paid tier with no expiry — holding current state to avoid race condition', { profileTier, currentTier: currentState.tier });
+                        if (__DEV__) console.log('[subscriptionStore] Profile shows paid tier with no expiry — holding current state to avoid race condition', { profileTier, currentTier: currentState.tier });
                     } else if (profileTier !== 'free' && profileExpiry && new Date(profileExpiry) <= new Date()) {
                         // Paid tier but genuinely expired — safe to downgrade.
                         await supabase
@@ -378,7 +399,7 @@ const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
                         return;
                     }
 
-                    console.log(
+                    if (__DEV__) console.log(
                         '[subscriptionStore] verifySubscriptionFromServer: local expiry is within 24-hour ' +
                         'grace window — allowing server free-tier response to downgrade.',
                         { localTier: currentState.tier, localExpiry }

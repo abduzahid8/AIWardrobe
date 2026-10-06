@@ -1,0 +1,51 @@
+appId: host.exp.Exponent
+name: full_ai_modes
+tags:
+  - full
+  - expo-go
+  - ai
+---
+# AI stylist source-mode round trip: Inspo → Personal Stylist → setup
+# renders → toggle wardrobe ↔ new-clothing both ways (hero subtitle must
+# flip Wardrobe ↔ New) → occasion + style visible → back to Inspo.
+# Read-only: NEVER taps Generate (would spend AI budget). Logged IN.
+- tapOn:
+    point: "58%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(Вдохновение|Inspiration).*"
+# The stylist banner lives on the Shop segment — select Shop first.
+- tapOn: ".*(Магазин|Shop).*"
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn: ".*(Персональный стилист|Personal stylist).*"
+- waitForAnimationToEnd:
+    timeout: 10000
+- assertVisible: ".*(New outfit|Новый образ).*"
+- assertVisible: ".*(From wardrobe|New clothing).*"
+- assertVisible: ".*Generate outfit.*"
+# Wardrobe mode: hero must read Wardrobe.
+- tapOn: ".*(From wardrobe).*"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: ".*Wardrobe.*"
+# New-clothing mode: hero must flip to New.
+- tapOn: ".*(New clothing).*"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: ".*New.*"
+# Occasion + style pickers render; switching occasion keeps setup stable.
+- assertVisible: ".*(Work|Casual).*"
+- tapOn: ".*Casual.*"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: ".*(New outfit|Новый образ).*"
+- tapOn: ".*Work.*"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: ".*Old Money.*"
+- takeScreenshot: full_ai_modes
+- tapOn: ".*(Назад|Back|Go back).*"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(Вдохновение|Inspiration).*"

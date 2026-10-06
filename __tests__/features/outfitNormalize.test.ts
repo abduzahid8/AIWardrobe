@@ -26,7 +26,9 @@ function isFormalLayerItem(item: { type?: string; name?: string; brand?: string;
 
 function isShortsItem(item: { type?: string; name?: string; macroCategory?: string; subCategory?: string } | null | undefined): boolean {
   if (!item) return false;
-  const blob = `${item.type || ''} ${item.name || ''} ${item.subCategory || ''}`.toLowerCase();
+  // 'short-sleeved' describes SLEEVES on tops — strip it first, otherwise
+  // every short-sleeve tee mislabeled as bottoms reads as shorts.
+  const blob = `${item.type || ''} ${item.name || ''} ${item.subCategory || ''}`.toLowerCase().replace(/\bshort[\s-]?sleeve(?:s|d)?\b/g, '');
   const macro = (item.macroCategory || '').toLowerCase();
   const isBottom = macro === 'bottom' || /pant|trouser|jeans|bottom|shorts?|skirt/.test(blob);
   if (!isBottom) return false;
@@ -111,6 +113,12 @@ describe('isShortsItem', () => {
 
   it('does NOT flag trousers as shorts', () => {
     expect(isShortsItem({ name: 'Wide Leg Trousers', macroCategory: 'bottom' })).toBe(false);
+  });
+
+  it('does NOT flag short-sleeved tees mislabeled as bottoms', () => {
+    // Feed rows mistag tops as bottoms; 'short-sleeved' describes sleeves.
+    expect(isShortsItem({ name: 'Front view of a light beige short-sleeved ecru T-shirt', macroCategory: 'bottom' })).toBe(false);
+    expect(isShortsItem({ name: 'Navy blue short sleeve shirt', macroCategory: 'bottom' })).toBe(false);
   });
 
   it('returns false for null/undefined', () => {

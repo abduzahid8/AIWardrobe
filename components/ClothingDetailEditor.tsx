@@ -341,8 +341,15 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
     const handleClose = () => {
         if (onCancel) {
             onCancel();
-        } else {
+            return;
+        }
+        // Guarded goBack: if this screen was opened with no history behind
+        // it (e.g. a deep link that replaced root state), plain goBack()
+        // no-ops and strands the user — fall back to the main tabs.
+        if (navigation.canGoBack()) {
             navigation.goBack();
+        } else {
+            (navigation as any).navigate('Main');
         }
     };
 
@@ -352,9 +359,29 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
         <View style={styles.container}>
             <StatusBar barStyle="dark-content" />
             <SafeAreaView style={styles.safeArea}>
-                {/* Header */}
+                {/* Header — explicit back chevron (left) + close (right).
+                    Previously only a right-aligned X that could end up under
+                    the status bar/overlay area, leaving gesture-only exit
+                    (undiscoverable on Android). Both buttons go back. */}
                 <View style={styles.header}>
-                    <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+                    <TouchableOpacity
+                        onPress={handleClose}
+                        style={styles.backButton}
+                        testID="clothingEditorBack"
+                        accessibilityLabel={t('common.back')}
+                        accessibilityRole="button"
+                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                    >
+                        <Ionicons name="chevron-back" size={26} color="#1C1C1E" />
+                    </TouchableOpacity>
+                    <View style={styles.headerSpacer} />
+                    <TouchableOpacity
+                        onPress={handleClose}
+                        style={styles.closeButton}
+                        accessibilityLabel={t('common.close')}
+                        accessibilityRole="button"
+                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                    >
                         <Ionicons name="close" size={24} color="#1C1C1E" />
                     </TouchableOpacity>
                 </View>
@@ -570,10 +597,21 @@ const styles = StyleSheet.create({
     },
     header: {
         flexDirection: 'row',
-        justifyContent: 'flex-end',
+        alignItems: 'center',
         paddingHorizontal: 16,
         paddingTop: 8,
         paddingBottom: 8,
+    },
+    backButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#F2F2F7',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    headerSpacer: {
+        flex: 1,
     },
     closeButton: {
         width: 40,

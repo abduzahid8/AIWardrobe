@@ -1,7 +1,5 @@
 import type { Outfit } from '../types/domain';
 import type { OutfitCollageItem } from '../../components/ui/OutfitCollagePreview';
-import { SHOP_CATALOG_ITEMS, SHOP_OUTFITS } from '../../data/shopCatalogItems';
-import { CLASSIC_MENS_ITEMS, INSPO_MENS_SHOP_ITEMS } from '../../data/inspoMensShopItems';
 
 type ImageItem = { id?: string; imageUrl?: string; category?: string; name?: string };
 type ShopItem = { id: string; imageUrl?: string; name?: string };
@@ -12,13 +10,33 @@ const isValidImage = (v: unknown): v is string =>
 
 // Static fallback catalogs for legacy outfits whose shop IDs paged out of
 // the live (non-persisted) shop store or came from a backup catalog.
-const STATIC_FALLBACK_MAP = (() => {
-  const map = new Map<string, ShopItem>();
-  for (const item of [...SHOP_CATALOG_ITEMS, ...SHOP_OUTFITS, ...CLASSIC_MENS_ITEMS, ...INSPO_MENS_SHOP_ITEMS]) {
-    if (!map.has(item.id)) map.set(item.id, item);
+// Lazily built on first miss — the previous IIFE merged ~2k bundled items
+// at module import (startup parse + Map build on the critical path even
+// when every outfit resolves from snapshots/live maps and never touches it).
+let staticFallbackMap: Map<string, ShopItem> | null = null;
+function getStaticFallbackMap(): Map<string, ShopItem> {
+  if (!staticFallbackMap) {
+    // require()d lazily — the ~120KB data modules must not parse/evaluate
+    // on app startup (this util is imported by the eager Closet/Profile
+    // tabs). First cache miss pays the cost, off the critical path.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const data = require('../../data/shopCatalogItems') as {
+      SHOP_CATALOG_ITEMS: ShopItem[];
+      SHOP_OUTFITS: ShopItem[];
+    };
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const inspo = require('../../data/inspoMensShopItems') as {
+      CLASSIC_MENS_ITEMS: ShopItem[];
+      INSPO_MENS_SHOP_ITEMS: ShopItem[];
+    };
+    const map = new Map<string, ShopItem>();
+    for (const item of [...data.SHOP_CATALOG_ITEMS, ...data.SHOP_OUTFITS, ...inspo.CLASSIC_MENS_ITEMS, ...inspo.INSPO_MENS_SHOP_ITEMS]) {
+      if (!map.has(item.id)) map.set(item.id, item);
+    }
+    staticFallbackMap = map;
   }
-  return map;
-})();
+  return staticFallbackMap;
+}
 
 /**
  * Resolve up to 4 collage pieces for a saved outfit.
@@ -38,8 +56,30 @@ export function resolveOutfitCollageItems(
       .map((s) => ({ id: s.id, image: s.image, category: s.category, name: s.name }));
   }
 
-  const wardrobeMap = new Map(wardrobeItems.map((i) => [String(i.id), i]));
-  const shopMap = new Map(shopItems.map((i) => [String(i.id), i]));
+  return resolveOutfitCollageItemsWithMaps(
+    outfit,
+    new Map(wardrobeItems.map((i) => [String(i.id), i])),
+    new Map(shopItems.map((i) => [String(i.id), i])),
+  );
+}
+
+/**
+ * Map-taking variant for list rendering: build the lookup Maps ONCE per
+ * data change and reuse across all outfits. Calling the array variant in a
+ * `.map` over N outfits rebuilds both Maps per outfit — O(N × (W + S)) —
+ * the main JS freeze behind Profile's first paint with a large wardrobe.
+ */
+export function resolveOutfitCollageItemsWithMaps(
+  outfit: Outfit,
+  wardrobeMap: Map<string, ImageItem>,
+  shopMap: Map<string, ShopItem>,
+): OutfitCollageItem[] {
+  if (Array.isArray(outfit.snapshotItems) && outfit.snapshotItems.length > 0) {
+    return outfit.snapshotItems
+      .filter((s) => isValidImage(s.image))
+      .slice(0, 4)
+      .map((s) => ({ id: s.id, image: s.image, category: s.category, name: s.name }));
+  }
 
   const resolved: OutfitCollageItem[] = [];
   for (const rawId of outfit.itemIds) {
@@ -49,7 +89,7 @@ export function resolveOutfitCollageItems(
       resolved.push({ id, image: w.imageUrl, category: w.category, name: w.name });
       continue;
     }
-    const s = shopMap.get(id) ?? STATIC_FALLBACK_MAP.get(id);
+    const s = shopMap.get(id) ?? getStaticFallbackMap().get(id);
     if (s?.imageUrl && isValidImage(s.imageUrl)) {
       resolved.push({ id, image: s.imageUrl, category: undefined, name: s.name });
       continue;
@@ -86,7 +126,7 @@ export function resolvePieceTarget(
   const live = shopItems.find((i) => String(i.id) === id);
   if (live) return { kind: 'shop', item: live };
 
-  const fallback = STATIC_FALLBACK_MAP.get(id);
+  const fallback = getStaticFallbackMap().get(id);
   if (fallback) return { kind: 'shop', item: fallback };
 
   return { kind: 'unknown' };

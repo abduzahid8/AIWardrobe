@@ -51,13 +51,6 @@ beforeEach(() => {
       return { status: 200, json: async () => ({ ok: true }) } as Response;
     }
 
-    if (urlStr.includes('/api/tryon/render')) {
-      if (!authHeader) return { status: 401 } as Response;
-      if (init?.body && Object.keys(JSON.parse(init.body as string)).length === 0) {
-        return { status: 400 } as Response;
-      }
-    }
-
     return { status: 200, json: async () => ({}) } as Response;
   }) as typeof fetch);
 });
@@ -102,31 +95,6 @@ describe('Auth API Contract', () => {
     it('returns 401 without a bearer token', async () => {
       const res = await fetch(`${API_URL}/subscription-status`);
       expect(res.status).toBe(401);
-    });
-  });
-});
-
-describe('Try-On API Contract', () => {
-  describe('POST /api/tryon/render', () => {
-    it('returns 401 without authentication', async () => {
-      const res = await fetch(`${API_URL}/api/tryon/render`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mannequin_image: 'test', garment_image: 'test' }),
-      });
-      expect(res.status).toBe(401);
-    });
-
-    it('returns 400 with missing required fields', async () => {
-      const res = await fetch(`${API_URL}/api/tryon/render`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer valid-token',
-        },
-        body: JSON.stringify({}),
-      });
-      expect([401, 400]).toContain(res.status);
     });
   });
 });

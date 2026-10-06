@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get("window");
 
-import { BODY_TYPES, BodyTypeId } from "../features/try-on/utils/mannequin3D";
+import { BODY_TYPES, BodyTypeId } from "../src/types/bodyTypes";
 import useAvatarStore from "../store/avatarStore";
 
 const MANNEQUIN_IMAGE = require('../assets/images/mannequin_front.png');
@@ -23,19 +23,24 @@ export default function CreateAvatarScreen() {
     const { t } = useTranslation();
     const navigation = useAppNavigation();
     
-    // Read from persistent store
-    const storedAvatar = useAvatarStore();
+    // Selective subscriptions — whole-store sub re-rendered on every keystroke save.
+    const storedHeight = useAvatarStore((s) => s.heightCm);
+    const storedWeight = useAvatarStore((s) => s.weightKg);
+    const storedBodyType = useAvatarStore((s) => s.bodyType);
+    const storedGender = useAvatarStore((s) => s.gender);
+    const setMeasurements = useAvatarStore((s) => s.setMeasurements);
+    const setStoreGender = useAvatarStore((s) => s.setGender);
 
     // Local State for real measurements
-    const [heightCm, setHeightCm] = useState(storedAvatar.heightCm || "175");
-    const [weightKg, setWeightKg] = useState(storedAvatar.weightKg || "70");
-    const [bodyType, setBodyType] = useState<BodyTypeId>(storedAvatar.bodyType || "average");
-    const [gender, setGender] = useState<"male" | "female">(storedAvatar.gender || "male");
+    const [heightCm, setHeightCm] = useState(storedHeight || "175");
+    const [weightKg, setWeightKg] = useState(storedWeight || "70");
+    const [bodyType, setBodyType] = useState<BodyTypeId>(storedBodyType || "average");
+    const [gender, setGender] = useState<"male" | "female">(storedGender || "male");
 
     const handleContinue = () => {
         // Save back to store
-        storedAvatar.setMeasurements(heightCm, weightKg, bodyType);
-        storedAvatar.setGender(gender);
+        setMeasurements(heightCm, weightKg, bodyType);
+        setStoreGender(gender);
         
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         
@@ -50,7 +55,7 @@ export default function CreateAvatarScreen() {
         const clean = text.replace(/[^0-9]/g, '');
         if (clean.length <= 3) {
             setHeightCm(clean);
-            storedAvatar.setMeasurements(clean, weightKg, bodyType);
+            setMeasurements(clean, weightKg, bodyType);
         }
     };
 
@@ -58,13 +63,13 @@ export default function CreateAvatarScreen() {
         const clean = text.replace(/[^0-9]/g, '');
         if (clean.length <= 3) {
             setWeightKg(clean);
-            storedAvatar.setMeasurements(heightCm, clean, bodyType);
+            setMeasurements(heightCm, clean, bodyType);
         }
     };
 
     const handleBodyTypeChange = (bt: BodyTypeId) => {
         setBodyType(bt);
-        storedAvatar.setMeasurements(heightCm, weightKg, bt);
+        setMeasurements(heightCm, weightKg, bt);
     };
 
     return (

@@ -125,11 +125,18 @@ const STYLE_SIGNALS: Record<StyleId, Signal[]> = {
     kw('neon', -4), kw('sequin', -4), kw('rhinestone', -4),
     kw('square-toe', -4), kw('square toe', -4), kw('low-rise', -3), kw('low rise', -3),
     kw('skinny', -2), kw('backpack', -2),
-    // Footwear to AVOID for old_money
+    // Footwear to AVOID for old_money. Driving moccasins sit a tier below
+    // loafers (soft sole, tie laces) — Riviera-casual, never with tailoring.
+    kw('moccasin', -3), kw('moccasins', -3), kw('driving', -2),
+    kw('gommino', -3), kw('mule', -2), kw('mules', -2),
     kw('chunky sneaker', -4), kw('chunky sneakers', -4), kw('basketball', -5),
     kw('skate sneaker', -4), kw('skate sneakers', -4), kw('thick-soled', -3),
     kw('thick soled', -3), kw('retro sneaker', -2), kw('retro sneakers', -2),
     kw('rope lace', -2),
+    // Street prints have no place in quiet luxury — souvenir graphics,
+    // florals and lettering read as loud as logos.
+    kw('souvenir', -4), kw('souvenirs', -4), kw('floral', -3), kw('florals', -3),
+    kw('print', -2), kw('prints', -2), kw('printed', -2), kw('paisley', -3),
     // IMPORTANT: plain "sneaker" is mildly negative (clean whites are ok) and
     // "chunky" alone is bad regardless of what it qualifies.
     kw('sneaker', -1), kw('sneakers', -1), kw('chunky', -3),
@@ -176,6 +183,8 @@ const STYLE_SIGNALS: Record<StyleId, Signal[]> = {
     kw('sequin', -5), kw('rhinestone', -5), kw('floral', -3),
     kw('colorblock', -3), kw('color-block', -3),
     kw('chunky', -3), kw('basketball', -4), kw('retro sneaker', -2),
+    // Minimalism takes no pleats (DNA).
+    kw('pleated', -3), kw('pleats', -3),
   ],
   business_casual: [
     kw('blazer', 4), kw('chino', 4), kw('chinos', 4), kw('trouser', 4),
@@ -202,6 +211,12 @@ const STYLE_SIGNALS: Record<StyleId, Signal[]> = {
     kw('shorts', -5), kw('short', -5), kw('bermuda', -5), kw('bermudas', -5),
     // Jeans read as casual, not business casual
     kw('jeans', -3), kw('denim', -2), kw('jean', -3),
+    // Driving moccasins never pair with tailoring; souvenir/print layers
+    // underdress the office.
+    kw('moccasin', -3), kw('moccasins', -3), kw('driving', -2),
+    kw('gommino', -3), kw('mule', -2), kw('mules', -2),
+    kw('souvenir', -4), kw('souvenirs', -4), kw('floral', -3),
+    kw('print', -2), kw('prints', -2), kw('printed', -2),
   ],
   casual: [
     kw('t-shirt', 2), kw('tee', 2), kw('jeans', 2), kw('jean', 1),
@@ -210,6 +225,12 @@ const STYLE_SIGNALS: Record<StyleId, Signal[]> = {
     kw('knit', 2), kw('slack', 2), kw('slacks', 2), kw('loafer', 2), kw('loafers', 2),
     kw('chino', 2), kw('chinos', 2), kw('canvas', 1), kw('suede', 2),
     kw('basketball', -3), kw('graphic hoodie', -3), kw('sweatpants', -2),
+    // Refined Casual DNA: knit polos standard; hoodies and athletic
+    // sneakers belong to the gym. (Precise phrases only — bare 'chunky'
+    // would demote chunky-knit sweaters, which are fine.)
+    kw('hoodie', -2), kw('hoodies', -2), kw('hooded', -2),
+    kw('chunky sneaker', -3), kw('chunky sneakers', -3),
+    kw('athletic', -2), kw('running shoe', -2), kw('running shoes', -2),
   ],
   classic: [
     // Core tailored pieces
@@ -248,6 +269,12 @@ const STYLE_SIGNALS: Record<StyleId, Signal[]> = {
     kw('backpack', -2),
     // Jeans read as casual, not classic tailoring
     kw('jeans', -3), kw('denim', -2), kw('jean', -3),
+    // Driving moccasins never pair with tailoring; souvenir/print layers
+    // break Savile-Row discipline.
+    kw('moccasin', -3), kw('moccasins', -3), kw('driving', -2),
+    kw('gommino', -3), kw('mule', -2), kw('mules', -2),
+    kw('souvenir', -4), kw('souvenirs', -4), kw('floral', -3),
+    kw('print', -2), kw('prints', -2), kw('printed', -2),
   ],
 };
 
@@ -462,7 +489,9 @@ export function needsLayering(
  */
 export function normalizeStyleId(raw: string | null | undefined): StyleId {
   if (!raw) return 'casual';
-  const key = raw.toLowerCase().replace(/[\s-]+/g, '_').trim();
+  // Trim FIRST so padded input ("  old_money  ") folds correctly instead of
+  // becoming "__old_money__" after the space-to-underscore replacement.
+  const key = raw.trim().toLowerCase().replace(/[\s-]+/g, '_');
   if (
     key === 'old_money' ||
     key === 'semi_classic' ||

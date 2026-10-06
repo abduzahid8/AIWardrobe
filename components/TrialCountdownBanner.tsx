@@ -1,11 +1,13 @@
 /**
- * TrialCountdownBanner
+ * TrialCountdownBanner (+ expired-trial upsell)
  *
- * A slim, animated amber-gradient banner shown at the top of key screens
- * while the user's 7-day free trial is active. Tapping it navigates to
- * the Paywall so users can upgrade.
+ * - During the 7-day trial: slim amber/red countdown → Paywall.
+ * - After the trial ends: non-blocking purple "Trial ended — Upgrade"
+ *   banner → Paywall. The app itself stays fully usable on the free tier;
+ *   only individual premium features redirect to Paywall via
+ *   useSubscriptionGate.
  *
- * Returns null for paid users or when the trial has already ended.
+ * Returns null for paid users.
  */
 
 import React, { useEffect } from 'react';
@@ -28,7 +30,7 @@ import { useTrialStatus } from '../hooks/useTrialStatus';
 
 export const TrialCountdownBanner: React.FC = () => {
     const navigation = useNavigation<any>();
-    const { isTrialActive, daysRemaining, hoursRemaining } = useTrialStatus();
+    const { isTrialActive, isTrialExpired, daysRemaining, hoursRemaining } = useTrialStatus();
     const { t } = useTranslation();
 
     // Pulse animation — draws the eye without being obnoxious
@@ -51,16 +53,23 @@ export const TrialCountdownBanner: React.FC = () => {
         }
     }, [isTrialActive, daysRemaining]);
 
-    if (isTrialActive || !isTrialActive) return null;
+    // Paid / undetermined users: no banner. Expired trials get a
+    // non-blocking upsell banner below (app stays usable).
+    if (!isTrialActive && !isTrialExpired) return null;
 
-    const isLastDay = daysRemaining <= 1;
-    const label = isLastDay
+    const isExpired = !isTrialActive && isTrialExpired;
+    const isLastDay = !isExpired && daysRemaining <= 1;
+    const label = isExpired
+        ? t('trialExpired.banner', 'Your free trial ended — Upgrade to Pro')
+        : isLastDay
         ? hoursRemaining <= 1
             ? t('trialCountdown.lessThanOneHour')
             : t('trialCountdown.hoursLeft', { hours: hoursRemaining })
         : t('trialCountdown.daysLeft', { days: daysRemaining, suffix: daysRemaining !== 1 ? 's' : '' });
 
-    const gradientColors: [string, string] = isLastDay
+    const gradientColors: [string, string] = isExpired
+        ? ['#6D28D9', '#8B5CF6']   // purple upsell after expiry (non-blocking)
+        : isLastDay
         ? ['#C0392B', '#E74C3C']   // urgent red on last day
         : ['#E67E22', '#F39C12'];   // amber during trial
 
@@ -88,7 +97,7 @@ export const TrialCountdownBanner: React.FC = () => {
                 >
                     <View style={styles.inner}>
                         <Ionicons
-                            name={isLastDay ? 'alert-circle' : 'time-outline'}
+                            name={isExpired ? 'diamond-outline' : isLastDay ? 'alert-circle' : 'time-outline'}
                             size={15}
                             color="#FFF"
                             style={styles.icon}

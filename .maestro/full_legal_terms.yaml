@@ -1,0 +1,18 @@
+appId: host.exp.Exponent
+name: full_legal_terms
+tags:
+  - full
+  - expo-go
+  - legal
+---
+# Terms of Service via deep link (opened from the shell BEFORE this flow:
+# exp://<host>:8081/--/terms). Validates the linking map entry +
+# guarded back chevron. Ends on tabs. Logged IN.
+- extendedWaitUntil:
+    visible: ".*(Условия использования|Terms of Service).*"
+    timeout: 30000
+- tapOn: ".*(Назад|Back|Go back).*"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(Сегодняшний образ|Today|Мой гардероб|My Wardrobe|Вдохновение|Inspiration|Аккаунт|Account).*"
+- takeScreenshot: full_legal_terms

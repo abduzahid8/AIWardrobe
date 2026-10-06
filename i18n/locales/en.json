@@ -33,7 +33,15 @@
     "databaseError": "Database error",
     "networkRequestFailed": "Network request failed",
     "goodMorning": "Good morning",
-    "skip": "Skip"
+    "skip": "Skip",
+    "clothing": "Clothing",
+    "goBack": "Go back",
+    "gotIt": "Got it",
+    "info": "Info",
+    "item": "Item",
+    "ok": "OK",
+    "retry": "Retry",
+    "tapToDismiss": "Tap to dismiss"
   },
   "confirmations": {
     "thisItem": "this item",
@@ -138,6 +146,11 @@
     "businessCasualArrow": "Business casual ›",
     "tryAgain": "Try again",
     "tryOn": "Try On",
+    "buy": "Buy",
+    "shopThisLook": "Shop this look",
+    "shopSheetHint": "Pick an item, then choose where to buy it.",
+    "fromWardrobe": "From your wardrobe",
+    "buyItem": "Buy {{name}}",
     "swipeHint": "Swipe to skip or save",
     "fromYourWardrobe": "{{count}} pieces from your wardrobe",
     "outfitSources": "{{wardrobeCount}} yours · {{shopCount}} suggested",
@@ -158,7 +171,8 @@
     "businessCasual": "Business casual",
     "dinner": "Dinner",
     "itemAddedToWardrobe": "{{itemName}} added to wardrobe",
-    "addItemToWardrobe": "Add {{itemName}} to wardrobe"
+    "addItemToWardrobe": "Add {{itemName}} to wardrobe",
+    "createOutfitFromWardrobe": "Create outfit from wardrobe"
   },
   "weeklyPlanner": {
     "days": [
@@ -305,7 +319,9 @@
       "wearLight": "Wear light",
       "useLayers": "Use layers",
       "dressWarm": "Dress warm"
-    }
+    },
+    "high": "High",
+    "low": "Low"
   },
   "dailySuggestion": {
     "loading": "Finding your perfect outfit...",
@@ -319,13 +335,15 @@
     "wearToday": "Wear this today",
     "scanWardrobeForSuggestions": "Scan your wardrobe to get personalized outfit suggestions",
     "addMoreItemsForSuggestions": "Add more items to your closet for better suggestions",
-    "title": "Your outfit for today"
+    "title": "Your outfit for today",
+    "addItemToCloset": "Add item to closet",
+    "noSuggestionYet": "No suggestion yet"
   },
   "quickActions": {
     "scanWardrobe": "Scan Wardrobe",
     "aiStylist": "AI Stylist",
     "addItem": "Add Item",
-    "menu": "Menyu",
+    "menu": "Menu",
     "profile": "Profile"
   },
   "styleInsights": {
@@ -349,7 +367,8 @@
     "selectItemsToLog": "Select items to log",
     "iWoreThisToday": "I wore this today",
     "logItems": "Log {{count}} item{{plural}}",
-    "dayStreak": "{{count}} kunlik seriya"
+    "dayStreak": "{{count}} day streak",
+    "wearingToday": "Wearing today"
   },
   "network": {
     "noInternetConnection": "No Internet Connection"
@@ -393,7 +412,7 @@
   "onboarding": {
     "personalizedLooksUnlocked": "✨ Personalized looks unlocked!",
     "addItemsToUnlock": "Add {{count}} items to unlock daily personalized outfits",
-    "itemsCounter": "{{current}}/{{target}} narsa"
+    "itemsCounter": "{{current}}/{{target}} items"
   },
   "quota": {
     "unlimited": "Unlimited {{label}}",
@@ -414,7 +433,7 @@
     "base": "Base",
     "accessories": "Accessories",
     "noItems": "No items in this outfit",
-    "noLayerItems": "{{layer}} narsalari yo'q"
+    "noLayerItems": "No {{layer}} items"
   },
   "aiThinking": {
     "scanningWardrobe": "Scanning your wardrobe...",
@@ -423,7 +442,7 @@
     "optimizingOutfits": "Optimizing outfits...",
     "finalizingLooks": "Finalizing your looks...",
     "styleDna": "STYLE DNA",
-    "synthesizingDna": "{{style}} DNA sintezi"
+    "synthesizingDna": "{{style}} DNA synthesis"
   },
   "profile": {
     "editProfile": "Edit Profile",
@@ -505,7 +524,8 @@
     "priceFrom": "from",
     "developerTools": "Developer Tools",
     "pro": "PRO",
-    "from": "from"
+    "from": "from",
+    "goProSubtitle": "Upgrade for unlimited outfits and premium features"
   },
   "addOutfit": {
     "title": "Add outfit",
@@ -664,7 +684,8 @@
     "whereGoing": "Where are you going?",
     "discoverVibe": "Discover Your Vibe",
     "tapStyleCard": "Tap a style card below and AI will instantly build a complete look from your wardrobe.",
-    "promptPlaceholder": "e.g., Date night, job interview, casual brunch, beach vacation...",
+    "promptPlaceholder": "Where you're going, style (old money, classic…), budget ($150)…",
+    "promptPlaceholderShort": "Where you're going, style, budget ($150)…",
     "generate": "Generate",
     "description1": "A curated {{style}} look styled from your wardrobe.",
     "description2": "An elegant {{style}} ensemble with balanced proportions.",
@@ -676,6 +697,7 @@
     "tip3_1": "Choose minimal jewelry",
     "tip3_2": "Match shoes to belt color",
     "noOutfitsError": "Could not generate outfits. Add more items to your wardrobe for better suggestions.",
+    "generateFailed": "Could not reach the stylist. Check your connection and try again.",
     "styleChat": "Style chat",
     "outfitAI": "Outfit AI",
     "cannotSave": "Can't save",
@@ -720,11 +742,11 @@
     "monthly": "Monthly",
     "yearly": "Yearly",
     "yearlyPlan": "Pro Yearly",
-    "yearlySubtitle": "$79.99 / year",
+    "yearlySubtitle": "$99.99 / year",
     "perYear": "/year",
-    "yearlySave": "Save 33% vs monthly",
+    "yearlySave": "Save 17% vs monthly",
     "notIncluded": "Not included:",
-    "liteMissing": "Virtual try-on, trip planner, priority support",
+    "liteMissing": "Trip planner, priority support",
     "liteFeature1": "Unlimited AI outfits",
     "liteFeature2": "Up to 100 wardrobe items",
     "liteFeature3": "Wardrobe insights & stats",
@@ -734,13 +756,28 @@
     "proFeature3": "Wardrobe insights & stats",
     "proFeature4": "AI trip planner",
     "proFeature5": "Full outfit calendar",
-    "proFeature6": "Virtual try-on",
-    "proFeature7": "Priority AI model · no ads",
-    "proFeature8": "Early access & priority support",
     "subscribe": "Subscribe",
     "getStarted": "Get Started with",
     "activateCode": "Activate code",
-    "activateCodeHeader": "Do you have a promo code?"
+    "activateCodeHeader": "Do you have a promo code?",
+    "perMonth": "/month",
+    "liteWeekly": "$0.69 / week",
+    "proWeekly": "$2.31 / week",
+    "yearlyWeekly": "$1.92 / week",
+    "liteBestFor": "More closet space, smarter outfit planning, and simple wardrobe analytics.",
+    "proBestFor": "Best for daily styling, travel looks, unlimited closet growth, and priority AI.",
+    "yearlyBestFor": "Everything in Pro with the lowest long-term price.",
+    "yearlyFeature1": "All Pro features",
+    "yearlyFeature2": "Annual savings",
+    "yearlyFeature3": "Seasonal collections",
+    "yearlyFeature4": "Early feature access",
+    "yearlyBadge": "SAVE 17%",
+    "unavailable": "UNAVAILABLE",
+    "selectedPlan": "Selected plan",
+    "continue": "Continue",
+    "productUnavailableBody": "This plan is not available in the store right now. Please try again later.",
+    "proFeature6": "Priority AI model · no ads",
+    "proFeature7": "Early access & priority support"
   },
   "featureLock": {
     "feature": "FEATURE",
@@ -1080,6 +1117,11 @@
     "shopNow": "Shop Now"
   },
   "calendar": {
+    "title": "Outfit Calendar",
+    "lockedTagline": "Plan every day in style. The full calendar is a Pro feature.",
+    "lockedBullet1": "Plan outfits for any past or future day",
+    "lockedBullet2": "Trip packing lists & occasion planning",
+    "lockedBullet3": "Daily reminders & calendar sync",
     "deleteOutfit": "Delete Outfit",
     "deleteOutfitConfirm": "Are you sure?",
     "notAdded": "Not Added",
@@ -1120,6 +1162,10 @@
   },
   "weeklyInsights": {
     "title": "Style Insights",
+    "lockedTagline": "Your wardrobe analytics are a Pro feature. Upgrade to unlock insights.",
+    "lockedBullet1": "Closet utilization & unworn alerts",
+    "lockedBullet2": "Style insights personalized to you",
+    "lockedBullet3": "Streaks, stats & most-worn tracking",
     "totalItems": "Total Items",
     "dayStreak": "Day Streak",
     "totalWears": "Total Wears",
@@ -1259,9 +1305,12 @@
   },
   "trialExpired": {
     "title": "Trial Expired",
-    "body": "Your 7-day free trial has ended. Upgrade to a paid plan to continue using AI outfits, unlimited wardrobe scans, and all premium features.",
+    "body": "Your 7-day free trial has ended. You're now on the Free plan — keep using your wardrobe and daily AI outfits. Premium features like Try-On, Trip Planner, Analytics and the full Calendar will ask you to upgrade when you try them.",
     "upgradeToPro": "Upgrade to Pro",
-    "havePromoCode": "I have a promo code"
+    "havePromoCode": "I have a promo code",
+    "banner": "Your free trial ended — Upgrade to Pro",
+    "continueWithFree": "Continue with Free",
+    "restore": "Already a pro? Restore"
   },
   "inspo": {
     "title": "Inspiration",
@@ -1362,11 +1411,11 @@
     "failedScanReceipts": "Failed to scan receipts",
     "viewWardrobe": "View Wardrobe",
     "failedImportItems": "Failed to import items",
-    "scanCompleteMessage": "{{receiptsFound}} chekdan {{itemsDetected}} ta kiyim narsasi topildi.",
-    "gmailConnected": "Gmail muvaffaqiyatli ulandi (Simulyatsiya)",
-    "failedConnectEmail": "Emailni ulab bo'lmadi. Qaytadan urinib ko'ring.",
-    "notConnected": "Ulanmagan",
-    "connectEmailFirst": "Iltimos, avval emailingizni ulang."
+    "scanCompleteMessage": "Found {{itemsDetected}} clothing items from {{receiptsFound}} receipts.",
+    "gmailConnected": "Gmail connected successfully (Simulation)",
+    "failedConnectEmail": "Could not connect email. Please try again.",
+    "notConnected": "Not connected",
+    "connectEmailFirst": "Please connect your email first."
   },
   "flashSaleEvent": {
     "unableOpenLink": "Unable to open link",
@@ -1733,7 +1782,9 @@
     "profile": "Profile",
     "discover": "Discover",
     "add": "Add",
-    "design": "Design"
+    "design": "Design",
+    "closet": "Closet",
+    "inspo": "Inspo"
   },
   "styles": {
     "selectStyle": "Select Style",
@@ -1849,7 +1900,7 @@
       "fetchFailed": "Failed to fetch guide content",
       "uploadError": "Upload Error",
       "failedToSave": "Failed to save guide content",
-      "saveFailed": "Qo'llanma mazmunini saqlab bo'lmadi",
+      "saveFailed": "Failed to save guide content",
       "uploadFailed": "Upload failed",
       "exceptionOccurred": "Exception occurred"
     },
@@ -1973,5 +2024,15 @@
     "selectSize": "Select size",
     "fitPanelTitle": "Fit",
     "fitPanelEmpty": "Pick a size to see the fit verdict."
+  },
+  "homeHeader": {
+    "openCalendar": "Open calendar"
+  },
+  "weatherWidget": {
+    "suggestions": {
+      "dressWarm": "Dress warm",
+      "useLayers": "Use layers",
+      "wearLight": "Wear light"
+    }
   }
 }

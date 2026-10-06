@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
-import type { StackNavigationProp } from '@react-navigation/stack';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import useLanguageStore, { SUPPORTED_LANGUAGES, type Language } from '../store/languageStore';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -24,7 +24,7 @@ const LANGUAGE_OPTIONS: { code: Language; flag: string; nativeName: string }[] =
  */
 const LanguageSelectionScreen = () => {
   const { t } = useTranslation();
-  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const currentLanguage = useLanguageStore((s) => s.currentLanguage);
   const setLanguage = useLanguageStore((s) => s.setLanguage);
   const isSaving = useLanguageStore((s) => s.isLoading);

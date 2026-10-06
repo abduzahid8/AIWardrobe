@@ -1,0 +1,19 @@
+appId: host.exp.Exponent
+name: sim_stylist_capture_current
+---
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 8000
+- takeScreenshot: s50_live_c1
+- swipe:
+    start: "82%,42%"
+    end: "18%,42%"
+- waitForAnimationToEnd:
+    timeout: 2500
+- takeScreenshot: s50_live_c2
+- swipe:
+    start: "82%,42%"
+    end: "18%,42%"
+- waitForAnimationToEnd:
+    timeout: 2500
+- takeScreenshot: s50_live_c3

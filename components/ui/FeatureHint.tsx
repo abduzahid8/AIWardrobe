@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     overlayPress: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
     },
     hintCard: {
         width: width * 0.85,

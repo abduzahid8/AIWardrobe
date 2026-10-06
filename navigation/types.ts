@@ -1,6 +1,5 @@
 
 import { NavigatorScreenParams } from '@react-navigation/native';
-import type { ShopCatalogItem } from '../features/try-on/types';
 
 export type ScannedItem = {
     id?: string;
@@ -63,7 +62,6 @@ export type RootStackParamList = {
     ClothingDetailEditor: { imageUri?: string; detectedType?: string; detectedColor?: string; detectedItem?: any; detectedStyle?: string; detectedMaterial?: string; aiConfidence?: number; detectedDescription?: string; existingItem?: any };
 
     // AI Features — names match registered Stack.Screen names exactly
-    AIChat: { initialTab?: 'chat' | 'outfit' } | undefined;
     AIOutfit: {
         source?: 'wardrobe' | 'shop';
         calendarDate?: string;
@@ -73,16 +71,8 @@ export type RootStackParamList = {
         /** Optional preview of the anchor item shown immediately while the AI loads. */
         baseItem?: { id: string; imageUrl?: string; name?: string; type?: string; macroCategory?: string; color?: string };
     } | undefined;
-    AITryOn: {
-        asTab?: boolean;
-        /** Pre-fill try-on slots with an outfit surfaced elsewhere (e.g. Home's daily outfit card). */
-        initialSlots?: Partial<Record<'layer' | 'top' | 'pants' | 'shoes', ShopCatalogItem>>;
-    } | undefined;
     OutfitInspo: undefined;
-    OutfitAI: { initialTab?: 'chat' | 'outfit' } | undefined;
     CreateAvatar: undefined;
-    /** Gemini AI Stylist chat — accessible from any outfit/clothing context */
-    StylistChat: { initialMessage?: string } | undefined;
 
     // Calendar
     Calendar: { initialDate?: string } | undefined;

@@ -4,7 +4,7 @@
  */
 
 import { useMemo } from 'react';
-import type { ShopCatalogItem } from '../../../features/try-on/types';
+import type { ShopCatalogItem } from '../../../src/types/shop';
 
 type EssentialSlot = 'outerwear' | 'shirts' | 'knitwear' | 'tees' | 'bottoms' | 'shoes';
 

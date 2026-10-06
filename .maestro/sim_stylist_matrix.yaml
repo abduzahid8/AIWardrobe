@@ -1,0 +1,139 @@
+appId: com.aiwardrobe
+name: sim_stylist_matrix
+---
+# Distinct style × occasion paths (NOT the work+$250 path).
+- launchApp:
+    stopApp: false
+- waitForAnimationToEnd:
+    timeout: 20000
+- runFlow:
+    when:
+      visible: "Your Outfits"
+    commands:
+      - tapOn:
+          point: "8%,11%"
+      - waitForAnimationToEnd:
+          timeout: 8000
+- runFlow:
+    when:
+      visible: ".*(Good morning|Good afternoon|Good evening|Create outfit).*"
+    commands:
+      - tapOn:
+          point: "58%,92%"
+      - waitForAnimationToEnd:
+          timeout: 8000
+      - tapOn: ".*(Магазин|Shop).*"
+      - waitForAnimationToEnd:
+          timeout: 8000
+      - tapOn: ".*(Персональный стилист|Personal stylist).*"
+      - waitForAnimationToEnd:
+          timeout: 10000
+- runFlow:
+    when:
+      visible: ".*(Вдохновение|Inspiration).*"
+    commands:
+      - tapOn: ".*(Магазин|Shop).*"
+      - waitForAnimationToEnd:
+          timeout: 8000
+      - tapOn: ".*(Персональный стилист|Personal stylist).*"
+      - waitForAnimationToEnd:
+          timeout: 10000
+- assertVisible: ".*Generate outfit.*"
+- tapOn: ".*(New clothing|Новая одежда).*"
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# 1. Date night + old money
+- tapOn: ".*(Add details|Where you're going).*"
+- eraseText
+- inputText: "date night, old money"
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    point: "50%,93%"
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 55000
+- takeScreenshot: matrix_date_old_money
+- swipe:
+    start: "82%,42%"
+    end: "18%,42%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: matrix_date_old_money_card2
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# 2. Weekend casual brunch
+- assertVisible: ".*Generate outfit.*"
+- tapOn: ".*(Add details|Where you're going|date night).*"
+- eraseText
+- inputText: "weekend casual brunch"
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    point: "50%,93%"
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 55000
+- takeScreenshot: matrix_casual_brunch
+- swipe:
+    start: "82%,42%"
+    end: "18%,42%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: matrix_casual_brunch_card2
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# 3. Formal wedding
+- assertVisible: ".*Generate outfit.*"
+- tapOn: ".*(Add details|Where you're going|weekend).*"
+- eraseText
+- inputText: "formal wedding guest"
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    point: "50%,93%"
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 55000
+- takeScreenshot: matrix_formal_wedding
+- swipe:
+    start: "82%,42%"
+    end: "18%,42%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: matrix_formal_wedding_card2
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# 4. Travel airport
+- assertVisible: ".*Generate outfit.*"
+- tapOn: ".*(Add details|Where you're going|formal|wedding).*"
+- eraseText
+- inputText: "travel airport, casual"
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    point: "50%,93%"
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 55000
+- takeScreenshot: matrix_travel_casual
+- swipe:
+    start: "82%,42%"
+    end: "18%,42%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: matrix_travel_casual_card2

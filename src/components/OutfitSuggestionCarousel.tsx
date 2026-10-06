@@ -64,7 +64,7 @@ export interface OutfitSuggestionCarouselProps {
  * Navigation arrows let users browse without swiping.
  * Dot pagination reflects current card position.
  */
-const OutfitSuggestionCarousel = ({
+const OutfitSuggestionCarousel = React.memo(({
   outfits,
   allItems,
   onSave,
@@ -97,7 +97,12 @@ const OutfitSuggestionCarousel = ({
         []
     );
 
-    const viewabilityConfig = { itemVisiblePercentThreshold: 60 };
+    const viewabilityConfig = React.useMemo(() => ({ itemVisiblePercentThreshold: 60 }), []);
+    const viewabilityConfigCallbackPairs = React.useMemo(
+      () => [{ viewabilityConfig, onViewableItemsChanged: handleViewableItemsChanged }],
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [handleViewableItemsChanged],
+    );
 
     const handleDislike = useCallback((itemIds: string[]) => {
         onDislike(itemIds);
@@ -147,14 +152,18 @@ const OutfitSuggestionCarousel = ({
                 snapToInterval={SCREEN_WIDTH}
                 snapToAlignment="start"
                 decelerationRate="fast"
-                onViewableItemsChanged={handleViewableItemsChanged}
-                viewabilityConfig={viewabilityConfig}
+                viewabilityConfigCallbackPairs={viewabilityConfigCallbackPairs}
                 contentContainerStyle={styles.listContent}
                 getItemLayout={(_, index) => ({
                     length: SCREEN_WIDTH,
                     offset: SCREEN_WIDTH * index,
                     index,
                 })}
+                initialNumToRender={1}
+                maxToRenderPerBatch={2}
+                windowSize={3}
+                removeClippedSubviews={true}
+                updateCellsBatchingPeriod={50}
             />
 
             {/* Navigation arrows */}
@@ -195,7 +204,8 @@ const OutfitSuggestionCarousel = ({
             )}
         </View>
     );
-};
+});
+OutfitSuggestionCarousel.displayName = 'OutfitSuggestionCarousel';
 
 export default OutfitSuggestionCarousel;
 

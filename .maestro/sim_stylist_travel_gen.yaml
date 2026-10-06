@@ -1,0 +1,12 @@
+appId: com.aiwardrobe
+name: sim_stylist_travel_gen
+---
+- launchApp:
+    stopApp: false
+- assertVisible: ".*Generate outfit.*"
+- tapOn:
+    point: "50%,93%"
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 55000
+- takeScreenshot: scen_travel

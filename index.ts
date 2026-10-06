@@ -12,6 +12,13 @@ const SUPPRESSED_WARNING_PATTERNS = [
     'Android Push notifications (remote notifications) functionality',
     'The native store is not available when running inside Expo Go',
     'Error fetching offering',
+    // RN-internal Fusebox notice ("Open debugger to view warnings."): LogBox
+    // shows this EMPTY toast (no warning text) on the first console.warn of
+    // every dev session and swallows the actual warning into the Fusebox
+    // debugger. It floats over the tab bar / CTAs until dismissed. Real
+    // warnings still reach the Metro terminal, so hiding this pointer loses
+    // nothing. Dev-only: LogBox does not exist in release builds.
+    'Open debugger to view warnings',
 ];
 
 function shouldSuppress(...args: unknown[]): boolean {
@@ -51,7 +58,8 @@ try {
     // initialised in any odd environments.
     const { LogBox } = require('react-native');
     LogBox?.ignoreLogs?.(SUPPRESSED_WARNING_PATTERNS);
-    LogBox?.ignoreAllLogs?.(true);
+    // Do NOT ignoreAllLogs — that hid RN perf warnings (list virtualization,
+    // useNativeDriver, getSnapshot) that signal real 4/10 freezes.
 } catch {
     // Non-fatal: if LogBox is unavailable for any reason, the console
     // interceptors above still filter the messages.

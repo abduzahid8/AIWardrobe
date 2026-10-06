@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Appearance, ColorSchemeName, useColorScheme, View, ActivityIndicator, StyleSheet as RNStyleSheet } from 'react-native';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
+import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { lightColors, darkColors, getThemeColors } from './index';
+import { lightColors, getThemeColors } from './index';
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('Theme');
@@ -23,23 +23,27 @@ const THEME_STORAGE_KEY = '@aiwardrobe_theme_mode';
 export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const systemColorScheme = useColorScheme();
     const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
-    const [isInitialized, setIsInitialized] = useState(false);
 
-    // Load saved theme preference
+    // Load saved theme preference in background — do NOT block first render.
+    // Previously this gated the whole app behind AsyncStorage + ActivityIndicator,
+    // adding a second splash gate on top of RootNavigator's gate (freeze on cold start).
+    // Now we render immediately with system default and hydrate silently.
     useEffect(() => {
+        let cancelled = false;
         const loadTheme = async () => {
             try {
                 const savedMode = await AsyncStorage.getItem(THEME_STORAGE_KEY);
-                if (savedMode && ['light', 'dark', 'system'].includes(savedMode)) {
+                if (!cancelled && savedMode && ['light', 'dark', 'system'].includes(savedMode)) {
                     setThemeModeState(savedMode as ThemeMode);
                 }
             } catch (error) {
                 logger.error('Error loading theme', error);
-            } finally {
-                setIsInitialized(true);
             }
         };
         loadTheme();
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     // Calculate actual dark mode state
@@ -47,56 +51,45 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         ? systemColorScheme === 'dark'
         : themeMode === 'dark';
 
-    // Get colors based on current theme
+    // getThemeColors returns a stable palette reference (light/dark object),
+    // so no per-render allocation here.
     const colors = getThemeColors(isDark);
 
-    // Set theme mode and persist
-    const setThemeMode = async (mode: ThemeMode) => {
+    // Stable callbacks — previously re-created every render, invalidating
+    // the provider value and re-rendering every useTheme() consumer.
+    const setThemeMode = useCallback(async (mode: ThemeMode) => {
         setThemeModeState(mode);
         try {
             await AsyncStorage.setItem(THEME_STORAGE_KEY, mode);
         } catch (error) {
             logger.error('Error saving theme', error);
         }
-    };
+    }, []);
 
     // Toggle between light and dark (skips system)
-    const toggleTheme = () => {
-        const newMode = isDark ? 'light' : 'dark';
-        setThemeMode(newMode);
-    };
-
-    // Listen to system theme changes
-    useEffect(() => {
-        const subscription = Appearance.addChangeListener(({ colorScheme }) => {
-            // Only update if using system theme
-            if (themeMode === 'system') {
-                // Force re-render
-                setThemeModeState('system');
-            }
+    const toggleTheme = useCallback(() => {
+        setThemeModeState((prev) => {
+            const currentlyDark = prev === 'system'
+                ? systemColorScheme === 'dark'
+                : prev === 'dark';
+            const newMode = currentlyDark ? 'light' : 'dark';
+            AsyncStorage.setItem(THEME_STORAGE_KEY, newMode).catch((error) =>
+                logger.error('Error saving theme', error),
+            );
+            return newMode;
         });
+    }, [systemColorScheme]);
 
-        return () => subscription.remove();
-    }, [themeMode]);
+    // No Appearance listener needed — useColorScheme() already re-renders
+    // on system changes. The old listener forced an extra setState cycle.
 
-    if (!isInitialized) {
-        return (
-            <View style={splashStyles.container}>
-                <ActivityIndicator size="small" color="#0A1931" />
-            </View>
-        );
-    }
+    const value = useMemo(
+        () => ({ isDark, themeMode, colors, setThemeMode, toggleTheme }),
+        [isDark, themeMode, colors, setThemeMode, toggleTheme],
+    );
 
     return (
-        <ThemeContext.Provider
-            value={{
-                isDark,
-                themeMode,
-                colors,
-                setThemeMode,
-                toggleTheme,
-            }}
-        >
+        <ThemeContext.Provider value={value}>
             {children}
         </ThemeContext.Provider>
     );
@@ -116,14 +109,5 @@ export const useThemeColors = () => {
     const { colors } = useTheme();
     return colors;
 };
-
-const splashStyles = RNStyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#FFFFFF',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-});
 
 export default ThemeContext;

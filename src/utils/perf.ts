@@ -20,11 +20,17 @@
  */
 
 const marks: Record<string, number> = {};
+// Perf logging is strictly opt-in (devtools:
+// `globalThis.AIWARDROBE_VERBOSE_LOGS = true`). Unconditional logging on
+// every tab switch / screen mount spammed the console and cost JS-thread
+// time serializing payloads; production strips console.* via babel anyway.
+import { isVerboseLoggingEnabled } from './logger';
 
 /** Record a named timestamp. */
 export function perfMark(name: string): void {
+  if (!isVerboseLoggingEnabled()) return;
   marks[name] = Date.now();
-  console.log(`[PERF] ⏱  mark  "${name}"`);
+  console.log(`[PERF] mark "${name}"`);
 }
 
 /**
@@ -32,9 +38,9 @@ export function perfMark(name: string): void {
  * Logs the result and returns the elapsed ms.
  */
 export function perfMeasure(startMark: string, endMark?: string): number {
+  if (!isVerboseLoggingEnabled()) return -1;
   const start = marks[startMark];
   if (start === undefined) {
-    console.warn(`[PERF] ⚠️  measure: start mark "${startMark}" not found`);
     return -1;
   }
   const end = endMark ? (marks[endMark] ?? Date.now()) : Date.now();
@@ -55,8 +61,9 @@ export function perfMeasure(startMark: string, endMark?: string): number {
  *   done();
  */
 export function perfAction(actionName: string): () => number {
+  if (!isVerboseLoggingEnabled()) return () => -1;
   const start = Date.now();
-  console.log(`[PERF] ▶️  action "${actionName}" started`);
+  console.log(`[PERF] action "${actionName}" started`);
   return () => {
     const elapsed = Date.now() - start;
     const emoji = elapsed < 100 ? '🟢' : elapsed < 500 ? '🟡' : '🔴';
@@ -73,8 +80,9 @@ export async function perfAsync<T>(
   label: string,
   fn: () => Promise<T>,
 ): Promise<T> {
+  if (!isVerboseLoggingEnabled()) return fn();
   const start = Date.now();
-  console.log(`[PERF] ▶️  async "${label}" started`);
+  console.log(`[PERF] async "${label}" started`);
   try {
     const result = await fn();
     const elapsed = Date.now() - start;
@@ -83,7 +91,7 @@ export async function perfAsync<T>(
     return result;
   } catch (err) {
     const elapsed = Date.now() - start;
-    console.log(`[PERF] 🔴 async "${label}" FAILED after ${elapsed}ms`, err);
+    console.log(`[PERF] async "${label}" FAILED after ${elapsed}ms`, err);
     throw err;
   }
 }
@@ -92,10 +100,15 @@ export async function perfAsync<T>(
  * Log tab switch timing. Call from the tab bar's onPress handler.
  * Automatically pairs with the screen's own perfMark to give end-to-end timing.
  */
+// Single pending-switch record — the old code ran
+// Object.keys(marks).filter().sort() on EVERY tab switch + focus + ready
+// (O(marks) with string ops on the press path). O(1) now.
+let pendingSwitch: { from: string; to: string; at: number } | null = null;
+
 export function perfTabSwitch(fromTab: string, toTab: string): void {
-  const key = `tabSwitch:${fromTab}→${toTab}`;
-  marks[key] = Date.now();
-  console.log(`[PERF] 🔀 tab switch "${fromTab}" → "${toTab}" initiated`);
+  if (!isVerboseLoggingEnabled()) return;
+  pendingSwitch = { from: fromTab, to: toTab, at: Date.now() };
+  console.log(`[PERF] tab switch "${fromTab}" → "${toTab}" initiated`);
 }
 
 /**
@@ -104,17 +117,12 @@ export function perfTabSwitch(fromTab: string, toTab: string): void {
  * Use in the Tab.Navigator's `screenListeners` → `focus` event.
  */
 export function perfTabSwitchComplete(toTab: string): void {
-  // Find the most recent tab switch that targeted this screen
-  const matchKey = Object.keys(marks)
-    .filter((k) => k.startsWith('tabSwitch:') && k.endsWith(`→${toTab}`))
-    .sort((a, b) => marks[b] - marks[a])[0];
-
-  if (matchKey) {
-    const elapsed = Date.now() - marks[matchKey];
+  if (!isVerboseLoggingEnabled()) return;
+  if (pendingSwitch && pendingSwitch.to === toTab) {
+    const elapsed = Date.now() - pendingSwitch.at;
     const emoji = elapsed < 150 ? '🟢' : elapsed < 400 ? '🟡' : '🔴';
     console.log(`[PERF] ${emoji} TAB SWITCH COMPLETE "${toTab}": ${elapsed}ms (press → screen visible)`);
-    // Clean up the mark so it doesn't match future switches to the same tab
-    delete marks[matchKey];
+    pendingSwitch = null;
   }
 }
 
@@ -123,17 +131,13 @@ export function perfTabSwitchComplete(toTab: string): void {
  * Pairs with the most recent perfTabSwitch that targeted this screen.
  */
 export function perfScreenReady(screenName: string): void {
-  // Find the most recent tab switch that targeted this screen
-  const matchKey = Object.keys(marks)
-    .filter((k) => k.startsWith('tabSwitch:') && k.endsWith(`→${screenName}`))
-    .sort((a, b) => marks[b] - marks[a])[0];
-
-  if (matchKey) {
-    const elapsed = Date.now() - marks[matchKey];
+  if (!isVerboseLoggingEnabled()) return;
+  if (pendingSwitch && pendingSwitch.to === screenName) {
+    const elapsed = Date.now() - pendingSwitch.at;
     const emoji = elapsed < 200 ? '🟢' : elapsed < 600 ? '🟡' : '🔴';
     console.log(`[PERF] ${emoji} screen "${screenName}" ready after tab switch: ${elapsed}ms`);
   } else {
     // No tab switch recorded — just log the screen ready event
-    console.log(`[PERF] ✅ screen "${screenName}" ready`);
+    console.log(`[PERF] screen "${screenName}" ready`);
   }
 }

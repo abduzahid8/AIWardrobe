@@ -60,11 +60,15 @@ export async function fetchItemsFromServer(): Promise<ClothingItem[] | null> {
     const { data: session } = await supabase.auth.getSession();
     if (!session?.session?.user) return null;
 
+    // Explicit column list — select * pulled every column (including large
+    // nullable blobs) on every cold start. These are the only columns
+    // mapRowToItem reads.
     const { data, error } = await supabase
         .from('clothing_items')
-        .select('*')
+        .select('id, user_id, image_url, thumbnail_url, category, sub_category, primary_color, color_hex, pattern, material, brand, name, seasons, occasions, wear_count, last_worn_at, is_favorite, created_at, updated_at, detection_confidence')
         .eq('user_id', session.session.user.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
     if (error) {
         console.error('[WardrobeSyncService] Fetch error:', error);

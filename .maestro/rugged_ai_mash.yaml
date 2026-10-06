@@ -1,0 +1,42 @@
+appId: host.exp.Exponent
+name: rugged_ai_mash
+tags:
+  - rugged
+  - expo-go
+  - ai
+---
+# Setup-screen mash: rapid source-toggle flips + occasion switches.
+# Guards the stale-closure class of bugs (UI shows New while generation
+# still runs wardrobe): after every mash the hero subtitle must match the
+# last tapped mode, setup must never blank/crash. Read-only: NEVER taps
+# Generate (AI budget), never taps the details input (keyboard trap).
+# Logged IN. Ends on setup (runner reopens after).
+- tapOn:
+    point: "58%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn: ".*(Магазин|Shop).*"
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn: ".*(Персональный стилист|Personal stylist).*"
+- waitForAnimationToEnd:
+    timeout: 10000
+- assertVisible: ".*(New outfit|Новый образ).*"
+# Mash the source toggle: wardrobe → new → wardrobe → new.
+- tapOn: ".*(From wardrobe).*"
+- tapOn: ".*(New clothing).*"
+- tapOn: ".*(From wardrobe).*"
+- tapOn: ".*(New clothing).*"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: ".*New.*"
+- assertVisible: ".*Generate outfit.*"
+# Mash occasions back and forth; setup must stay rendered.
+- tapOn: ".*Casual.*"
+- tapOn: ".*Work.*"
+- tapOn: ".*Casual.*"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: ".*(New outfit|Новый образ).*"
+- assertVisible: ".*Generate outfit.*"
+- takeScreenshot: rugged_ai_mash

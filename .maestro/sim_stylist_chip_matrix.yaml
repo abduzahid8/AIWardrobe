@@ -1,0 +1,102 @@
+appId: com.aiwardrobe
+name: sim_stylist_chip_matrix
+---
+- launchApp:
+    stopApp: false
+- waitForAnimationToEnd:
+    timeout: 15000
+- runFlow:
+    when:
+      visible: "Your Outfits"
+    commands:
+      - tapOn:
+          point: "8%,11%"
+      - waitForAnimationToEnd:
+          timeout: 8000
+- runFlow:
+    when:
+      visible: ".*(Good morning|Good afternoon|Good evening|Create outfit).*"
+    commands:
+      - tapOn:
+          point: "58%,92%"
+      - waitForAnimationToEnd:
+          timeout: 8000
+      - tapOn: ".*(Магазин|Shop).*"
+      - waitForAnimationToEnd:
+          timeout: 8000
+      - tapOn: ".*(Персональный стилист|Personal stylist).*"
+      - waitForAnimationToEnd:
+          timeout: 10000
+- assertVisible: ".*Generate outfit.*"
+- tapOn: ".*(New clothing|Новая одежда).*"
+- waitForAnimationToEnd:
+    timeout: 2500
+- tapOn:
+    id: stylistCommentInput
+    optional: true
+- eraseText
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 2000
+
+# 1. Casual occasion + Minimalist style (unique labels)
+- tapOn: "Casual"
+- waitForAnimationToEnd:
+    timeout: 1200
+- tapOn: "More styles"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn: "Minimalist"
+- waitForAnimationToEnd:
+    timeout: 1200
+- tapOn:
+    point: "50%,93%"
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 55000
+- takeScreenshot: scen_casual_minimalist
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# 2. Formal + Old Money
+- tapOn: "More occasions"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn: "Formal"
+- waitForAnimationToEnd:
+    timeout: 1200
+- tapOn: "Old Money"
+- waitForAnimationToEnd:
+    timeout: 1200
+- tapOn:
+    point: "50%,93%"
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 55000
+- takeScreenshot: scen_formal_old_money
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# 3. Travel + Semi-Classic
+- tapOn: "More occasions"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn: "Travel"
+- waitForAnimationToEnd:
+    timeout: 1200
+- tapOn: "More styles"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn: "Semi-Classic"
+- waitForAnimationToEnd:
+    timeout: 1200
+- tapOn:
+    point: "50%,93%"
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 55000
+- takeScreenshot: scen_travel_semi_classic

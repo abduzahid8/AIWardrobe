@@ -1,0 +1,30 @@
+appId: host.exp.Exponent
+name: perf_closet_scroll
+tags:
+  - perf
+  - expo-go
+  - closet
+---
+# Closet grid must scroll without blanking (removeClippedSubviews +
+# memoized cells) and the Clothes/Collections segment must switch.
+# Logged IN. Starts on any tab.
+- tapOn:
+    point: "42%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(Мой гардероб|My Wardrobe|Wardrobe|Closet).*"
+- swipe:
+    direction: UP
+    duration: 600
+- waitForAnimationToEnd:
+    timeout: 5000
+- swipe:
+    direction: DOWN
+    duration: 600
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn: ".*(Коллекции|Collections).*"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(Коллекции|Collections).*"
+- takeScreenshot: perf_closet_collections

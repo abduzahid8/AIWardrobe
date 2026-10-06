@@ -27,3 +27,28 @@ flows:
   - expo_go_quiz_complete.yaml
   - expo_go_tabs_a.yaml
   - expo_go_tabs_b.yaml
+  # Perf / regression flows (logged IN, RU/EN tolerant, short for a11y-server stability)
+  - perf_home_content.yaml
+  - perf_tab_stress_a.yaml
+  - perf_tab_stress_b.yaml
+  - perf_closet_scroll.yaml
+  - perf_profile_looks.yaml
+  - perf_inspo_shop.yaml
+  # Full-app flows (see run_full.sh for deep-link/orchestrated entries)
+  - full_calendar.yaml
+  - full_insights.yaml
+  - full_legal_privacy.yaml
+  - full_legal_terms.yaml
+  - full_stylist_setup.yaml
+  - full_ai_modes.yaml
+  - full_paywall.yaml
+  - full_trips.yaml
+  - full_edit_sheet.yaml
+  # Rugged / outside-the-box flows (system-level steps live in run_rugged.sh)
+  - rugged_detail_push.yaml
+  - rugged_search.yaml
+  - rugged_mash.yaml
+  - rugged_ai_mash.yaml
+  - rugged_dark_mode.yaml
+  - rugged_deeplink.yaml
+  - rugged_relaunch.yaml

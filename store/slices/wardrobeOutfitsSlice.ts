@@ -13,7 +13,7 @@ export interface OutfitsSlice {
     dislikedOutfitKeys: string[];
 
     addOutfit: (outfit: Omit<Outfit, 'id' | 'createdAt' | 'wornCount' | 'lastWornAt' | 'saved'>) => string;
-    saveOutfit: (id: string, collectionCategory?: string) => void;
+    saveOutfit: (id: string, collectionCategory?: string, savedFrom?: Outfit['savedFrom']) => void;
     unsaveOutfit: (id: string) => void;
     rateOutfit: (id: string, rating: 1 | 2 | 3 | 4 | 5) => void;
     dislikeOutfit: (itemIds: string[]) => void;
@@ -50,6 +50,42 @@ export const createOutfitsSlice: StateCreator<WardrobeState, [], [], OutfitsSlic
                 return true;
             });
 
+            // Dedup: the daily-deck fallback is deterministic and can serve
+            // the exact same 15 combinations day after day — re-liking one
+            // must NOT append a duplicate outfit. Without this, `outfits`
+            // (persisted + re-scanned by Profile memos and every persist
+            // write) grew by one full object per swipe, forever: the
+            // slow-burn freeze behind "every page gets slower over time".
+            const comboKey = [...validItemIds].sort().join('|');
+            const existing = state.outfits.find(
+                (o) =>
+                    [...o.itemIds].sort().join('|') === comboKey &&
+                    (o.occasion ?? '') === (outfitInput.occasion ?? ''),
+            );
+            if (existing) {
+                newId = existing.id;
+                // Refresh the frozen snapshot when the old save predates
+                // snapshots — keeps Profile collages rendering without
+                // growing the array.
+                const existingAny = existing as Outfit & { snapshotItems?: unknown };
+                const inputAny = outfitInput as { snapshotItems?: unknown };
+                if (
+                    (!Array.isArray(existingAny.snapshotItems) ||
+                        existingAny.snapshotItems.length === 0) &&
+                    Array.isArray(inputAny.snapshotItems) &&
+                    inputAny.snapshotItems.length > 0
+                ) {
+                    return {
+                        outfits: state.outfits.map((o) =>
+                            o.id === existing.id
+                                ? { ...o, snapshotItems: inputAny.snapshotItems }
+                                : o,
+                        ),
+                    } as Partial<WardrobeState>;
+                }
+                return {};
+            }
+
             const id = generateId();
             newId = id;
             const newOutfit: Outfit = {
@@ -67,10 +103,10 @@ export const createOutfitsSlice: StateCreator<WardrobeState, [], [], OutfitsSlic
         return newId;
     },
 
-    saveOutfit: (id, collectionCategory?: string) => {
+    saveOutfit: (id, collectionCategory?: string, savedFrom?: Outfit['savedFrom']) => {
         set((state) => ({
             outfits: state.outfits.map((outfit) =>
-                outfit.id === id ? { ...outfit, saved: true, ...(collectionCategory ? { collectionCategory } : {}) } : outfit
+                outfit.id === id ? { ...outfit, saved: true, ...(collectionCategory ? { collectionCategory } : {}), ...(savedFrom ? { savedFrom } : {}) } : outfit
             ),
         }));
     },
@@ -93,11 +129,17 @@ export const createOutfitsSlice: StateCreator<WardrobeState, [], [], OutfitsSlic
 
     dislikeOutfit: (itemIds) => {
         const key = [...itemIds].sort().join(',');
-        set((state) => ({
-            dislikedOutfitKeys: state.dislikedOutfitKeys.includes(key)
-                ? state.dislikedOutfitKeys
-                : [...state.dislikedOutfitKeys, key],
-        }));
+        set((state) => {
+            if (state.dislikedOutfitKeys.includes(key)) return {};
+            // Bounded: dislikes are only surfaced via getDislikedSummaries
+            // (first 10) and persisted on every write — an unbounded list
+            // made each persist payload (and each swipe) heavier forever.
+            const next = [...state.dislikedOutfitKeys, key];
+            return {
+                dislikedOutfitKeys:
+                    next.length > 500 ? next.slice(next.length - 500) : next,
+            };
+        });
     },
 
     undislikeOutfit: (itemIds) => {

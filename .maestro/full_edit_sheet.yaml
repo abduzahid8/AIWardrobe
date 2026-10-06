@@ -1,0 +1,24 @@
+appId: host.exp.Exponent
+name: full_edit_sheet
+tags:
+  - full
+  - expo-go
+  - profile
+---
+# Edit-account sheet: open via Редактировать, assert fields render, close
+# via Отмена (discards — never Сохранить, no mutation). Logged IN.
+# Ends on Profile.
+- tapOn:
+    point: "74%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn: ".*(Редактировать|Edit).*"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(Редактировать аккаунт|Edit account).*"
+- assertVisible: ".*(Отмена|Cancel).*"
+- tapOn: ".*(Отмена|Cancel).*"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(Аккаунт|Account).*"
+- takeScreenshot: full_edit_sheet

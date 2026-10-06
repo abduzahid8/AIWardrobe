@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
     },
     shimmer: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         width: SCREEN_WIDTH * 2,
     },
     cardSkeleton: {

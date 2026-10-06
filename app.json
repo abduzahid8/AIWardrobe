@@ -2,7 +2,7 @@
   "expo": {
     "name": "AIWardrobe",
     "slug": "wardrobe-app",
-    "version": "1.4.2",
+    "version": "1.4.3",
     "assetBundlePatterns": [
       "assets/icon.png",
       "assets/splash-icon.png",
@@ -22,7 +22,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "runtimeVersion": "1.4.2",
+    "runtimeVersion": "1.4.3",
     "updates": {
       "enabled": false,
       "checkAutomatically": "NEVER",
@@ -36,7 +36,7 @@
       "backgroundColor": "#ADD8E6"
     },
     "ios": {
-      "buildNumber": "55",
+      "buildNumber": "56",
       "supportsTablet": true,
       "bundleIdentifier": "com.aiwardrobe",
       "infoPlist": {

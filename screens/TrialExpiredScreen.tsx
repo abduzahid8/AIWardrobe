@@ -23,17 +23,28 @@ const TrialExpiredScreen: React.FC = () => {
       const result = await iapService.restorePurchases();
       if (result.success) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        // The RootNavigator will automatically react to the state change
-        // and remove the TrialExpired screen.
+        // Subscription store updates → premium features unlock.
+        // User can Continue with Free / go back to keep browsing.
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        alert(result.error || 'No previous purchases found.');
+        alert(result.error || t('paywall.noPreviousPurchases'));
       }
     } catch (error) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      alert('Failed to restore purchases. Please try again.');
+      alert(t('paywall.somethingWrongRestore'));
     } finally {
       setIsRestoring(false);
+    }
+  };
+
+  const handleContinueFree = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // This screen is an optional upsell — never a block. Expired users keep
+    // free-tier access; premium features redirect to Paywall individually.
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      (navigation as any).navigate('Main');
     }
   };
 
@@ -49,13 +60,20 @@ const TrialExpiredScreen: React.FC = () => {
           <ScaledText style={styles.primaryButtonText}>{t('trialExpired.upgradeToPro')}</ScaledText>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.secondaryButton} 
+        <TouchableOpacity
+          style={styles.freeButton}
+          onPress={handleContinueFree}
+        >
+          <ScaledText style={styles.freeButtonText}>{t('trialExpired.continueWithFree', 'Continue with Free')}</ScaledText>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.secondaryButton}
           onPress={handleRestore}
           disabled={isRestoring}
         >
           <ScaledText style={styles.secondaryButtonText}>
-            {isRestoring ? 'Restoring...' : 'Already a pro? Restore'}
+            {isRestoring ? 'Restoring...' : t('trialExpired.restore', 'Already a pro? Restore')}
           </ScaledText>
         </TouchableOpacity>
       </View>
@@ -109,6 +127,22 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  freeButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    marginBottom: 4,
+    width: '100%',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(124, 58, 237, 0.4)',
+    backgroundColor: 'rgba(124, 58, 237, 0.08)',
+  },
+  freeButtonText: {
+    color: '#DDD6FE',
     fontWeight: '600',
     fontSize: 15,
   },

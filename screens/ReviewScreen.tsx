@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, FlatList, TouchableOpacity, Alert, ActivityIndicator, Image } from 'react-native';
 import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,6 +7,37 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import useAuthStore from '../store/auth';
 import { supabase } from '../lib/supabase';
 import { useTranslation } from 'react-i18next';
+
+const ReviewRow = React.memo(function ReviewRow({
+    item,
+    index,
+    onRemove,
+}: {
+    item: { itemType?: string; color?: string; style?: string; season?: string; description?: string };
+    index: number;
+    onRemove: (index: number) => void;
+}) {
+    const handleRemove = React.useCallback(() => onRemove(index), [onRemove, index]);
+    return (
+        <View className="flex-row bg-gray-50 p-4 rounded-xl mb-3 items-center border border-gray-100">
+            <View className="w-12 h-12 bg-blue-100 rounded-full items-center justify-center mr-4">
+                <Ionicons name="shirt-outline" size={24} color="#3b82f6" />
+            </View>
+            <View className="flex-1">
+                <ScaledText className="text-lg font-semibold text-gray-800">{item.itemType}</ScaledText>
+                <ScaledText className="text-sm text-gray-500 capitalize">
+                    {item.color} • {item.style} • {item.season}
+                </ScaledText>
+                <ScaledText className="text-xs text-gray-400 mt-1" numberOfLines={1}>
+                    {item.description}
+                </ScaledText>
+            </View>
+            <TouchableOpacity onPress={handleRemove} className="p-2">
+                <Ionicons name="trash-outline" size={20} color="#ef4444" />
+            </TouchableOpacity>
+        </View>
+    );
+});
 
 export default function ReviewScanScreen() {
     const { t } = useTranslation();
@@ -54,7 +85,7 @@ export default function ReviewScanScreen() {
     };
 
     // Удаление лишней вещи из списка (если ИИ ошибся)
-    const removeItem = (index: number) => {
+    const removeItem = useCallback((index: number) => {
         Alert.alert(
             t('review.removeItem'),
             t('review.confirmRemove'),
@@ -64,14 +95,20 @@ export default function ReviewScanScreen() {
                     text: t('common.remove'),
                     style: 'destructive',
                     onPress: () => {
-                        const newItems = [...reviewedItems];
-                        newItems.splice(index, 1);
-                        setReviewedItems(newItems);
+                        setReviewedItems((prev: unknown[]) => prev.filter((_, i) => i !== index));
                     },
                 },
             ]
         );
-    };
+    }, [t]);
+
+    const keyExtractor = useCallback((item: { id?: string; itemType?: string }, index: number) =>
+        // Stable keys — index keys forced full re-mount on every delete.
+        String(item?.id ?? `${item?.itemType ?? 'item'}_${index}`), []);
+
+    const renderItem = useCallback(({ item, index }: { item: { itemType?: string; color?: string; style?: string; season?: string; description?: string }; index: number }) => (
+        <ReviewRow item={item} index={index} onRemove={removeItem} />
+    ), [removeItem]);
 
     if (isSaving) {
         return (
@@ -96,34 +133,14 @@ export default function ReviewScanScreen() {
             {/* Список найденного */}
             <FlatList
                 data={reviewedItems}
-                keyExtractor={(item, index) => index.toString()}
+                keyExtractor={keyExtractor}
                 contentContainerStyle={{ padding: 16 }}
                 initialNumToRender={6}
                 maxToRenderPerBatch={6}
                 windowSize={5}
                 removeClippedSubviews={true}
-                renderItem={({ item, index }) => (
-                    <View className="flex-row bg-gray-50 p-4 rounded-xl mb-3 items-center border border-gray-100">
-                        {/* Иконка типа вещи */}
-                        <View className="w-12 h-12 bg-blue-100 rounded-full items-center justify-center mr-4">
-                            <Ionicons name="shirt-outline" size={24} color="#3b82f6" />
-                        </View>
-
-                        <View className="flex-1">
-                            <ScaledText className="text-lg font-semibold text-gray-800">{item.itemType}</ScaledText>
-                            <ScaledText className="text-sm text-gray-500 capitalize">
-                                {item.color} • {item.style} • {item.season}
-                            </ScaledText>
-                            <ScaledText className="text-xs text-gray-400 mt-1" numberOfLines={1}>
-                                {item.description}
-                            </ScaledText>
-                        </View>
-
-                        <TouchableOpacity onPress={() => removeItem(index)} className="p-2">
-                            <Ionicons name="trash-outline" size={20} color="#ef4444" />
-                        </TouchableOpacity>
-                    </View>
-                )}
+                updateCellsBatchingPeriod={50}
+                renderItem={renderItem}
             />
 
             {/* Кнопка действия */}

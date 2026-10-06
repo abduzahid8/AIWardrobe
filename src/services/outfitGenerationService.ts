@@ -17,6 +17,9 @@ import { fillMissingSlots, fetchShopPoolForStyle, type OutfitSlotId, type ShopFi
 import type { ClothingItem, ClothingCategory, Season, Occasion } from '../types/domain';
 import { mapDbCategory as canonicalMapDbCategory, getMacroCategory as canonicalGetMacroCategory, canonicalizeMacroCategory } from '../utils/categoryMapper';
 import { rankItemsForStyle, scoreItemForStyle, normalizeStyleId, type StyleId } from '../../features/outfit-generator/utils/styleInference';
+import { AI_STYLES } from '../../features/outfit-generator/types';
+import { buildCatalogSimilarityKey, spreadSimilarCatalogItems } from '../utils/shopCatalogOrder';
+import { parseBudgetFromText, outfitShopSpend, itemShopPrice, isShopPricedItem } from '../utils/outfitBudget';
 import useWardrobeStore from '../../store/wardrobeStore';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -115,7 +118,9 @@ export function isShopOnlyDeck(style?: string | null, occasion?: string | null):
 export async function generateOutfitsFromDB(
     params: GenerateOutfitsParams
 ): Promise<GenerateOutfitsResult> {
-    const TIMEOUT_MS = 45_000;
+    // Bounded wait: the local rule-based fallback is good enough for daily
+    // decks, so never leave the UI spinning 45s on a hung edge function.
+    const TIMEOUT_MS = 25_000;
     try {
         // Shop-only decks (Team Collaboration) never accept a wardrobe anchor —
         // every item in every outfit must come from shopping.
@@ -212,7 +217,7 @@ export async function generateOutfitsLocally(
         const isManualSelection = Array.isArray(params.selectedItemIds) && params.selectedItemIds.length > 0;
         const minimumChoicesPerSlot = isManualSelection
             ? 1
-            : ((params.limit ?? 3) >= 10 ? 5 : ((params.limit ?? 3) > 1 ? 2 : 1));
+            : ((params.limit ?? 3) >= 10 ? 10 : ((params.limit ?? 3) > 1 ? 2 : 1));
         const missingSlots = shopOnly
             ? [...requiredSlots] as OutfitSlotId[]
             : requiredSlots.filter(
@@ -473,7 +478,9 @@ function isFormalLayerItem(item: { name?: string; type?: string; brand?: string;
 
 function isShortsItem(item: { name?: string; type?: string; brand?: string; macroCategory?: string; subCategory?: string } | null | undefined): boolean {
     if (!item) return false;
-    const blob = `${item.type || ''} ${item.name || ''} ${item.subCategory || ''}`.toLowerCase();
+    // 'short-sleeved' describes SLEEVES on tops — strip it first, otherwise
+    // every short-sleeve tee mislabeled as bottoms reads as shorts.
+    const blob = `${item.type || ''} ${item.name || ''} ${item.subCategory || ''}`.toLowerCase().replace(/\bshort[\s-]?sleeve(?:s|d)?\b/g, '');
     const macro = (item.macroCategory || '').toLowerCase();
     const isBottom = macro === 'bottom' || /pant|trouser|jeans|bottom|shorts?|skirt/.test(blob);
     if (!isBottom) return false;
@@ -530,7 +537,7 @@ function strictRejectsForStyleSlot(item: ClothingItem, style: StyleId, slot: 'to
         if (slot === 'top' && /\b(t-?shirt|tee|graphic|tank|sleeveless|mesh)\b/.test(blob)) return true;
 
         // Reject non-dress shoes
-        if (slot === 'shoes' && /\b(chunky|basketball|skate|running|trainer|retro sneaker|retro sneakers|athletic)\b/.test(blob)) return true;
+        if (slot === 'shoes' && /\b(chunky|basketball|skate|running|trainer|retro sneaker|retro sneakers|athletic|moccasins?|drivers?|driving|gommino|loafer[s]?\s+with\s+(?:tie|laces?))\b/.test(blob)) return true;
         if (style === 'old_money') {
             if (slot === 'shoes' && /\b(sneaker|sneakers)\b/.test(blob)) return true;
         } else {
@@ -591,6 +598,7 @@ const PLACEHOLDER_SHOES: GeneratedOutfitItem = {
 function normalizeGeneratedOutfitItems(
     items: GeneratedOutfitItem[],
     params: GenerateOutfitsParams,
+    shopOnlyDeckOverride?: boolean,
 ): GeneratedOutfitItem[] {
     const normalizedItems = items.map((item, index) => {
         // Canonicalize macroCategory so downstream pick() / classifier calls
@@ -635,10 +643,18 @@ function normalizeGeneratedOutfitItems(
             || (!bottomIsShorts ? pick((item) => item.macroCategory === 'outerwear') : undefined))
         : undefined;
 
+    // Non-layered rotation picks the "top" from legacyTops (outerwear + tops),
+    // so the pick can land on an outerwear piece. That must NOT be dropped —
+    // a jacket-as-top is a valid 3-item summer look (mirrors the edge
+    // validator, which accepts hasBaseTop || hasOuter when not layered).
+    // Dropping it used to emit broken 2-item cards (bottom + shoes, no top).
+    // Layered mode keeps excluding outerwear here: the layer slot above
+    // already claimed it, and baseTop must be a true base layer.
     const baseTop =
         pick((item) => item.macroCategory === 'top')
+        || (!layered ? pick((item) => item.macroCategory === 'outerwear') : undefined)
         || pick((item) => item.macroCategory === 'accessory' || item.macroCategory === 'other')
-        || pick((item) => item.macroCategory !== 'bottom' && item.macroCategory !== 'shoes' && item.macroCategory !== 'outerwear');
+        || pick((item) => item.macroCategory !== 'bottom' && item.macroCategory !== 'shoes' && (layered ? item.macroCategory !== 'outerwear' : true));
 
     // Only pick a second top when layered (outerwear present). A 3-item look
     // has exactly one top, no extras.
@@ -647,7 +663,7 @@ function normalizeGeneratedOutfitItems(
             || pick((item) => item.macroCategory === 'accessory' || item.macroCategory === 'other'))
         : undefined;
 
-    const shopOnlyDeck = isShopOnlyDeck(params.stylePreferences, params.occasion);
+    const shopOnlyDeck = shopOnlyDeckOverride ?? isShopOnlyDeck(params.stylePreferences, params.occasion);
     const shoes =
         pick((item) => item.macroCategory === 'shoes')
         || (shopOnlyDeck ? undefined : { ...PLACEHOLDER_SHOES });
@@ -665,7 +681,48 @@ function shuffleArray<T>(array: T[]): T[] {
     return arr;
 }
 
-type LocalClothingItem = ClothingItem & {
+// Diverse round-robin — every slot rotates with the outfit index so a 15-card
+// deck doesn't freeze bottom/shoes on one item (the old mixed-radix
+// floor(i / hugeDivisor) stayed 0 for all i < poolSize, leaving 70%+ of each
+// outfit identical). Attempt steps are primes coprime to 3/4/5 so collisions
+// perturb every slot differently.
+const DIVERSE_ATTEMPT_STEPS = [7, 11, 13, 17];
+
+function diverseIndex(outfitIndex: number, slotOffset: number, attempt: number, attemptStep: number, poolLength: number, seed = 0, reverse = false): number {
+    if (poolLength <= 0) return 0;
+    const base = (outfitIndex + seed + slotOffset + attempt * attemptStep) % poolLength;
+    return reverse ? (poolLength - 1 - base) : base;
+}
+
+function deckHashFor(style: string, occasion: string): number {
+    const key = `${style}::${occasion}`.toLowerCase();
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) hash = (Math.imul(31, hash) + key.charCodeAt(i)) | 0;
+    return Math.abs(hash);
+}
+
+function deckSeedFor(style: string, occasion: string): number {
+    return deckHashFor(style, occasion) % 32;
+}
+
+function deckReverseFor(style: string, occasion: string): boolean {
+    return ((deckHashFor(style, occasion) >> 5) & 1) === 1;
+}
+
+// Spread same-looking listings apart so the rotation window covers varied
+// products instead of adjacent score-tied lookalikes.
+function spreadSlotPool(pool: LocalClothingItem[], slot: string): LocalClothingItem[] {
+    if (pool.length <= 2) return pool;
+    const decorated = pool.map((item) => ({ ...item, name: item.name || 'item', garmentType: slot }));
+    return spreadSimilarCatalogItems(
+        decorated as Array<LocalClothingItem & { name: string; garmentType: string }>,
+    ).map((entry) => {
+        const { garmentType: _dropped, ...rest } = entry as LocalClothingItem & { garmentType?: string };
+        return rest as LocalClothingItem;
+    });
+}
+
+export type LocalClothingItem = ClothingItem & {
     isShopItem?: boolean;
     price?: number;
     shopUrl?: string;
@@ -675,6 +732,45 @@ type LocalClothingItem = ClothingItem & {
 function isShopClothingItem(item: LocalClothingItem | GeneratedOutfitItem | null | undefined): boolean {
     if (!item) return false;
     return Boolean(item.isShopItem || String(item.id || '').startsWith('shop_'));
+}
+
+function fitGeneratedOutfitToBudget(
+    items: GeneratedOutfitItem[],
+    pool: LocalClothingItem[],
+    budgetAmount: number,
+): GeneratedOutfitItem[] {
+    const slotOf = (p: { macroCategory?: string }) => String(p.macroCategory || '').toLowerCase();
+    const next = [...items];
+    for (let guard = 0; guard < 8 && outfitShopSpend(next) > budgetAmount; guard++) {
+        let worstIdx = -1;
+        let worstPrice = -1;
+        next.forEach((p, i) => {
+            const pr = itemShopPrice(p);
+            if (pr > worstPrice) {
+                worstPrice = pr;
+                worstIdx = i;
+            }
+        });
+        if (worstIdx < 0) break;
+        const used = new Set(next.map((p) => String(p.id)));
+        const room = budgetAmount - (outfitShopSpend(next) - itemShopPrice(next[worstIdx]));
+        const slot = slotOf(next[worstIdx]);
+        const repl = pool
+            .filter((p) => isShopPricedItem(p) && slotOf(p) === slot && !used.has(String(p.id)))
+            .filter((p) => {
+                const pr = itemShopPrice(p);
+                return pr > 0 && pr <= room;
+            })
+            .sort((a, b) => itemShopPrice(a) - itemShopPrice(b))[0];
+        if (repl) {
+            next[worstIdx] = toDisplayItem(repl, next[worstIdx].recommendation || 'Suggested from shop');
+        } else if (slot === 'outerwear' && next.length > 3) {
+            next.splice(worstIdx, 1);
+        } else {
+            break;
+        }
+    }
+    return next;
 }
 
 function isOwnedOutfitItem(item: GeneratedOutfitItem | null | undefined): boolean {
@@ -774,16 +870,39 @@ function enforceShopOnlyDailyOutfit(
     return nextItems.filter((item) => isShopClothingItem(item));
 }
 
-function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOutfitsParams): GeneratedOutfit[] {
+export function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOutfitsParams): GeneratedOutfit[] {
+    const limit = params.limit ?? 3;
+    // A non-positive limit means "no outfits" — bail before the last-resort
+    // single-outfit block below, which otherwise emits 1 look for limit 0.
+    if (limit <= 0) return [];
     const style = params.stylePreferences || 'Casual';
     const occ = params.occasion || 'Everyday';
-    const limit = params.limit ?? 3;
     const layered = isLayeredWeather(params.weather, params.prompt);
     const styleKey: StyleId = normalizeStyleId(style);
+    // Human-readable style name for user-facing copy ("old_money" -> "Old Money").
+    const styleLabel = AI_STYLES.find((s) => s.id === styleKey)?.label
+        ?? styleKey.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    const styleArticle = /^[aeiou]/i.test(styleLabel) ? 'An' : 'A';
     const shopOnly = isShopOnlyDeck(style, occ);
-    // Shop-only decks ignore wardrobe pieces entirely.
-    const effectiveItems = shopOnly ? items.filter(isShopClothingItem) : items;
-    const ownedItems = shopOnly ? [] : effectiveItems.filter((item) => !isShopClothingItem(item));
+    const shopCandidates = items.filter(isShopClothingItem);
+    const budget = parseBudgetFromText(`${params.prompt || ''} ${occ}`);
+    const affordableShop = budget
+        ? shopCandidates.filter((item) => {
+            const p = itemShopPrice(item);
+            return p <= 0 || p <= budget.amount;
+        })
+        : shopCandidates;
+    const shopPoolForDeck = affordableShop.length > 0 ? affordableShop : shopCandidates;
+    // Shop-only decks ignore wardrobe pieces entirely — unless the shop pool
+    // is empty, in which case owned items fill in rather than emitting 0
+    // looks (a business_casual wardrobe request must not hard-fail offline).
+    const deckShopOnly = shopOnly && shopPoolForDeck.length > 0;
+    const effectiveItems = deckShopOnly
+        ? shopPoolForDeck
+        : budget
+            ? items.filter((item) => !isShopClothingItem(item) || shopPoolForDeck.includes(item))
+            : items;
+    const ownedItems = deckShopOnly ? [] : effectiveItems.filter((item) => !isShopClothingItem(item));
     const shopItems = effectiveItems.filter(isShopClothingItem);
 
     const sortByFavorite = (pool: ClothingItem[]) => {
@@ -814,10 +933,10 @@ function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOutfitsPa
         rawShoes = sortByFavorite(rawShoes);
     }
 
-    const baseTops = filterSlotByStyle(rawBaseTops, styleKey, 'top', styleKey === 'casual' ? 0.1 : 0.18);
-    const outerwear = filterSlotByStyle(rawOuterwear, styleKey, 'outerwear', styleKey === 'casual' ? 0.1 : 0.18);
-    const bottoms = filterSlotByStyle(rawBottoms, styleKey, 'bottom', styleKey === 'casual' ? 0.1 : 0.18);
-    const shoes = filterSlotByStyle(rawShoes, styleKey, 'shoes', styleKey === 'casual' ? 0.1 : 0.18);
+    const baseTops = spreadSlotPool(filterSlotByStyle(rawBaseTops, styleKey, 'top', styleKey === 'casual' ? 0.1 : 0.18), 'top');
+    const outerwear = spreadSlotPool(filterSlotByStyle(rawOuterwear, styleKey, 'outerwear', styleKey === 'casual' ? 0.1 : 0.18), 'outerwear');
+    const bottoms = spreadSlotPool(filterSlotByStyle(rawBottoms, styleKey, 'bottom', styleKey === 'casual' ? 0.1 : 0.18), 'bottom');
+    const shoes = spreadSlotPool(filterSlotByStyle(rawShoes, styleKey, 'shoes', styleKey === 'casual' ? 0.1 : 0.18), 'shoes');
     const legacyTops = [...outerwear, ...baseTops];
     const nonShortsBottoms = bottoms.filter(b => !isShortsItem({
         name: b.name, type: b.subCategory, macroCategory: getItemMacroCategory(b), subCategory: b.subCategory,
@@ -826,12 +945,11 @@ function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOutfitsPa
         name: o.name, type: o.subCategory, macroCategory: getItemMacroCategory(o),
     }));
 
-    // For old_money, classic, and business_casual styles, completely exclude shorts
-    // when formal outerwear is available. This prevents the illogical coat + shorts combination.
+    // Formal decks (old_money, classic, business_casual) never contain
+    // shorts — unconditionally, not just when a formal layer happens to be
+    // in the pool. A suit + shorts card must be impossible by construction.
     const isFormalStyle = ['old_money', 'classic', 'business_casual'].includes(styleKey);
-    if (isFormalStyle && outerwear.some(o => isFormalLayerItem({
-        name: o.name, type: o.subCategory, macroCategory: getItemMacroCategory(o),
-    }))) {
+    if (isFormalStyle && nonShortsBottoms.length > 0) {
         // Replace bottoms with only non-shorts options
         bottoms.length = 0;
         bottoms.push(...nonShortsBottoms);
@@ -841,21 +959,43 @@ function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOutfitsPa
     const targetItems = layered ? 4 : 3;
     const slotSize = (pool: ClothingItem[]) => Math.max(pool.length, 1);
     const seenSignatures = new Set<string>();
+    const builtIdSets: Set<string>[] = [];
     const outfitSignatureFor = (list: GeneratedOutfitItem[]) =>
         list.map((it) => String(it.id)).sort().join('|');
+    const maxSharedWithBuilt = (ids: string[]): number => {
+        let max = 0;
+        for (const built of builtIdSets) {
+            let shared = 0;
+            for (const id of ids) if (built.has(id)) shared++;
+            if (shared > max) max = shared;
+        }
+        return max;
+    };
 
-    for (let i = 0; i < limit; i++) {
+    const deckSeed = deckSeedFor(style, occ);
+    const deckReverse = deckReverseFor(style, occ);
+
+    // Build one candidate deck entry. Returns normalized items, or null when
+    // the pool cannot complete an outfit for this (i, attempt). `attempt`
+    // perturbs every slot rotation so a rejected combination is never
+    // rebuilt identically on retry (previously attempt was hard-coded 0 and
+    // the loop gave up after limit*3 tries — thin pools collapsed to 1-2).
+    const buildCandidateItems = (i: number, attemptForPick: number): GeneratedOutfitItem[] | null => {
         const outfitItems: GeneratedOutfitItem[] = [];
 
-        // Mixed-radix indexes enumerate a new combination before repeating.
-        // Random offsets frequently produced the same four pieces many times.
-        const topIndex = i;
-        const baseIndex = Math.floor(i / slotSize(outerwear));
-        const bottomIndex = Math.floor(i / (slotSize(outerwear) * slotSize(baseTops)));
-        const shoeIndex = Math.floor(i / (slotSize(outerwear) * slotSize(baseTops) * slotSize(bottoms)));
+        // Diverse round-robin: every slot advances with i (plus a small
+        // per-slot offset) so all 15 looks differ in more than one piece.
+        // The old mixed-radix floor(i / hugeDivisor) stayed 0 for every
+        // i < poolSize, freezing base/bottom/shoes on a single item.
+        const topIndex = diverseIndex(i, 0, attemptForPick, DIVERSE_ATTEMPT_STEPS[0], slotSize(outerwear), deckSeed, deckReverse);
+        const baseIndex = diverseIndex(i, 3, attemptForPick, DIVERSE_ATTEMPT_STEPS[1], slotSize(baseTops), deckSeed, deckReverse);
+        const bottomIndex = diverseIndex(i, 6, attemptForPick, DIVERSE_ATTEMPT_STEPS[2], slotSize(bottoms), deckSeed, deckReverse);
+        const shoeIndex = diverseIndex(i, 9, attemptForPick, DIVERSE_ATTEMPT_STEPS[3], slotSize(shoes), deckSeed, deckReverse);
+        const legacyTopIndex = diverseIndex(i, 0, attemptForPick, DIVERSE_ATTEMPT_STEPS[0], slotSize(legacyTops), deckSeed, deckReverse);
+        const legacyBottomIndex = diverseIndex(i, 3, attemptForPick, DIVERSE_ATTEMPT_STEPS[1], slotSize(bottoms), deckSeed, deckReverse);
 
         // Pre-pick bottom to check for shorts / formal-layer conflict.
-        const candidateBottom = bottoms[(layered ? bottomIndex : Math.floor(i / slotSize(legacyTops))) % slotSize(bottoms)] || bottoms[0] || effectiveItems[0];
+        const candidateBottom = bottoms[(layered ? bottomIndex : legacyBottomIndex) % slotSize(bottoms)] || bottoms[0] || effectiveItems[0];
         const candidateBottomIsShorts = !!candidateBottom && isShortsItem({
             name: candidateBottom.name, type: candidateBottom.subCategory,
             macroCategory: getItemMacroCategory(candidateBottom),
@@ -871,31 +1011,33 @@ function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOutfitsPa
             if (candidateBottomIsShorts && outerIsFormal) {
                 outer = casualOuterwear[topIndex % slotSize(casualOuterwear)] || outer;
             }
-            const mainTop = outer || legacyTops[topIndex % slotSize(legacyTops)];
-            const base = baseTops[baseIndex % slotSize(baseTops)] || legacyTops[(baseIndex + 1) % slotSize(legacyTops)];
-            if (mainTop) outfitItems.push(toDisplayItem(mainTop, shopOnly ? 'Suggested from shop' : 'Main top / outerwear layer'));
-            if (base && base.id !== mainTop?.id) outfitItems.push(toDisplayItem(base, shopOnly ? 'Suggested from shop' : 'Base top worn underneath'));
+            const mainTop = outer || legacyTops[legacyTopIndex % slotSize(legacyTops)];
+            const base = baseTops[baseIndex % slotSize(baseTops)] || legacyTops[(baseIndex + 1) % Math.max(slotSize(legacyTops), 1)];
+            if (mainTop) outfitItems.push(toDisplayItem(mainTop, deckShopOnly ? 'Suggested from shop' : 'Main top / outerwear layer'));
+            if (base && base.id !== mainTop?.id) outfitItems.push(toDisplayItem(base, deckShopOnly ? 'Suggested from shop' : 'Base top worn underneath'));
         } else {
             // Non-layered: single top only.
-            const top = legacyTops[topIndex % slotSize(legacyTops)] || effectiveItems[0];
-            if (top) outfitItems.push(toDisplayItem(top, shopOnly ? 'Suggested from shop' : 'Key piece for this look'));
+            const top = legacyTops[legacyTopIndex % slotSize(legacyTops)] || effectiveItems[0];
+            if (top) outfitItems.push(toDisplayItem(top, deckShopOnly ? 'Suggested from shop' : 'Key piece for this look'));
         }
 
         // If we still have a formal-layer + shorts conflict, swap bottom for a non-shorts option.
+        // Formal decks swap unconditionally — shorts never appear there.
         let finalBottom = candidateBottom;
-        if (layered && candidateBottomIsShorts) {
+        if (candidateBottomIsShorts && nonShortsBottoms.length > 0) {
             const firstPick = outfitItems[0];
-            if (firstPick && isFormalLayerItem(firstPick) && nonShortsBottoms.length > 0) {
-                finalBottom = nonShortsBottoms[bottomIndex % nonShortsBottoms.length];
+            const firstIsFormal = !!firstPick && isFormalLayerItem(firstPick);
+            if (isFormalStyle || (layered && firstIsFormal)) {
+                finalBottom = nonShortsBottoms[bottomIndex % Math.max(nonShortsBottoms.length, 1)];
             }
         }
 
-        const nonLayeredShoeIndex = Math.floor(i / (slotSize(legacyTops) * slotSize(bottoms)));
+        const nonLayeredShoeIndex = diverseIndex(i, 6, attemptForPick, DIVERSE_ATTEMPT_STEPS[2], slotSize(shoes), deckSeed, deckReverse);
         const shoe = shoes[(layered ? shoeIndex : nonLayeredShoeIndex) % slotSize(shoes)] || shoes[0];
 
-        if (finalBottom) outfitItems.push(toDisplayItem(finalBottom, shopOnly ? 'Suggested from shop' : 'Pairs well with the top'));
-        if (shoe) outfitItems.push(toDisplayItem(shoe, shopOnly ? 'Suggested from shop' : 'Completes the look'));
-        else if (!shopOnly) outfitItems.push({ ...PLACEHOLDER_SHOES });
+        if (finalBottom) outfitItems.push(toDisplayItem(finalBottom, deckShopOnly ? 'Suggested from shop' : 'Pairs well with the top'));
+        if (shoe) outfitItems.push(toDisplayItem(shoe, deckShopOnly ? 'Suggested from shop' : 'Completes the look'));
+        else if (!deckShopOnly) outfitItems.push({ ...PLACEHOLDER_SHOES });
 
         // Pad only when layered and we still have fewer than 4 items.
         if (layered && outfitItems.length < targetItems && effectiveItems.length > 0) {
@@ -912,34 +1054,119 @@ function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOutfitsPa
         // Trim accidental extras down to the contract size.
         if (outfitItems.length > targetItems) outfitItems.length = targetItems;
 
-        if (outfitItems.length === 0) continue;
+        if (outfitItems.length === 0) return null;
 
-        const enforcedItems = shopOnly
+        const enforcedItems = deckShopOnly
             ? enforceShopOnlyDailyOutfit(outfitItems, shopItems, i, targetItems)
             : enforceMixedDailyOutfit(outfitItems, ownedItems, shopItems, i, targetItems);
         // Shop-only: drop incomplete looks instead of padding with wardrobe/placeholder.
-        if (shopOnly && enforcedItems.length < targetItems) continue;
-        if (shopOnly && !enforcedItems.every(isShopClothingItem)) continue;
-        const normalizedOutfitItems = normalizeGeneratedOutfitItems(enforcedItems, params);
-        // Never emit the same combination twice — uniqueness is required,
-        // especially for the 15-card shop-only carousel.
-        const signature = outfitSignatureFor(normalizedOutfitItems);
-        if (!signature || seenSignatures.has(signature)) continue;
-        seenSignatures.add(signature);
+        if (deckShopOnly && enforcedItems.length < targetItems) return null;
+        if (deckShopOnly && !enforcedItems.every(isShopClothingItem)) return null;
+        let normalizedOutfitItems = normalizeGeneratedOutfitItems(enforcedItems, params, deckShopOnly);
+        if (budget) {
+            normalizedOutfitItems = fitGeneratedOutfitToBudget(normalizedOutfitItems, shopItems, budget.amount);
+            if (outfitShopSpend(normalizedOutfitItems) > budget.amount + 0.009) return null;
+        }
+        // Hard rule: never emit shorts with a suit, never shorts in formal decks.
+        {
+            const hasShorts = normalizedOutfitItems.some((it) => it.macroCategory === 'bottom' && isShortsItem({
+                name: it.name, type: it.type, macroCategory: it.macroCategory,
+            }));
+            const hasFormal = normalizedOutfitItems.some((it) => isFormalLayerItem({
+                name: it.name, type: it.type, macroCategory: it.macroCategory,
+            }));
+            if (hasShorts && (isFormalStyle || hasFormal)) return null;
+        }
+        return normalizedOutfitItems;
+    };
 
+    // Rotating styling tips (transcript doctrine): socks match trousers,
+    // bottom button undone, cuff shows, three colors max. Mirrors the edge
+    // pickStylingTips pool so local + server cards teach the same rules.
+    const pickStylingTips = (isLayered: boolean): string[] => {
+        const pool = isLayered
+            ? [
+                'Layer the base top under the outerwear for depth',
+                'Keep the palette tonal for a refined finish',
+                'Match your socks to your trousers, not your shoes',
+                'Leave the bottom jacket button undone',
+                'Show 1-2cm of shirt cuff beyond the jacket sleeve',
+                'Texture elevates: linen, flannel or suede over flat cotton',
+            ]
+            : [
+                'Add accessories to personalize',
+                'Roll sleeves or cuffs for a lived-in feel',
+                'Match your socks to your trousers, not your shoes',
+                "Keep it to three colors — white doesn't count",
+                'Dark top + light bottom (or the reverse) reads most masculine',
+                'Trousers sit at mid-rise; low-rise breaks the proportions',
+            ];
+        const a = Math.floor(Math.random() * pool.length);
+        let b = Math.floor(Math.random() * pool.length);
+        if (b === a) b = (b + 1) % pool.length;
+        return [pool[a], pool[b]];
+    };
+
+    const pushOutfit = (normalizedOutfitItems: GeneratedOutfitItem[], tag: number): void => {
         outfits.push({
-            id: `local_${i}_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-            description: shopOnly ? `A ${style} look curated from the shop.` : `A ${style} look built around your wardrobe.`,
+            id: `local_${tag}_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+            description: deckShopOnly ? `${styleArticle} ${styleLabel} look curated from the shop.` : `${styleArticle} ${styleLabel} look built around your wardrobe.`,
             style,
             occasion: occ,
             confidence: 0.75 + (Math.random() * 0.1),
             matchScore: 0.75 + (Math.random() * 0.1),
             items: normalizedOutfitItems,
-            stylingTips: layered
-                ? ['Layer the base top under the outerwear for depth', 'Keep the palette tonal for a refined finish']
-                : ['Add accessories to personalize', 'Roll sleeves or cuffs for a lived-in feel'],
+            stylingTips: pickStylingTips(layered),
         });
+    };
+
+    const tryKeepCandidate = (normalizedOutfitItems: GeneratedOutfitItem[], relaxed: boolean): boolean => {
+        // Never emit the same combination twice — uniqueness is required,
+        // especially for the 15-card shop-only carousel.
+        const signature = outfitSignatureFor(normalizedOutfitItems);
+        if (!signature || seenSignatures.has(signature)) return false;
+        if (!relaxed) {
+            // Skip near-duplicates sharing all-but-one piece while rotation
+            // tries remain.
+            const ids = normalizedOutfitItems.map((it) => String(it.id));
+            if (builtIdSets.length > 0 && maxSharedWithBuilt(ids) >= targetItems - 1) return false;
+        }
+        seenSignatures.add(signature);
+        builtIdSets.push(new Set(normalizedOutfitItems.map((it) => String(it.id))));
+        return true;
+    };
+
+    // Strict pass: decks must differ by >= 2 items. Rejections perturb the
+    // attempt so retries explore new slot combinations.
+    let attempt = 0;
+    for (let i = 0, tag = 0; outfits.length < limit && i < limit * 12; i++, tag++) {
+        const candidate = buildCandidateItems(i, attempt);
+        if (!candidate) { attempt++; continue; }
+        if (tryKeepCandidate(candidate, false)) {
+            pushOutfit(candidate, tag);
+            attempt = 0;
+        } else {
+            attempt++;
+        }
     }
+
+    // Relaxed pass: thin pools (a single shoes/bottom/outerwear choice) can
+    // NEVER satisfy the strict rule — every second look shares 3 of 4 by
+    // construction. Fill the remaining slots with exact-dupe-only rejection
+    // so the user gets 3 looks varying the pieces that DO exist instead of 1.
+    if (outfits.length < limit) {
+        for (let i = 0, tag = 1000; outfits.length < limit && i < limit * 12; i++, tag++) {
+            const candidate = buildCandidateItems(i + limit * 12, attempt);
+            if (!candidate) { attempt++; continue; }
+            if (tryKeepCandidate(candidate, true)) {
+                pushOutfit(candidate, tag);
+                attempt = 0;
+            } else {
+                attempt++;
+            }
+        }
+    }
+
 
     // If no outfits were created but we have items, create at least one outfit
     if (outfits.length === 0 && effectiveItems.length > 0) {
@@ -965,41 +1192,39 @@ function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOutfitsPa
                 name: outer.name, type: outer.subCategory, macroCategory: getItemMacroCategory(outer),
             }) && nonShortsBottoms[0]) ? nonShortsBottoms[0] : candidateBottom;
             const shoe = shoes[0];
-            if (outer) outfitItems.push(toDisplayItem(outer, shopOnly ? 'Suggested from shop' : 'Main top / outerwear layer'));
-            if (base && base.id !== outer?.id) outfitItems.push(toDisplayItem(base, shopOnly ? 'Suggested from shop' : 'Base top worn underneath'));
-            if (finalBottom && finalBottom.id !== base?.id) outfitItems.push(toDisplayItem(finalBottom, shopOnly ? 'Suggested from shop' : 'Pairs well with the top'));
-            if (shoe && shoe.id !== finalBottom?.id) outfitItems.push(toDisplayItem(shoe, shopOnly ? 'Suggested from shop' : 'Completes the look'));
-            else if (!shopOnly) outfitItems.push({ ...PLACEHOLDER_SHOES });
+            if (outer) outfitItems.push(toDisplayItem(outer, deckShopOnly ? 'Suggested from shop' : 'Main top / outerwear layer'));
+            if (base && base.id !== outer?.id) outfitItems.push(toDisplayItem(base, deckShopOnly ? 'Suggested from shop' : 'Base top worn underneath'));
+            if (finalBottom && finalBottom.id !== base?.id) outfitItems.push(toDisplayItem(finalBottom, deckShopOnly ? 'Suggested from shop' : 'Pairs well with the top'));
+            if (shoe && shoe.id !== finalBottom?.id) outfitItems.push(toDisplayItem(shoe, deckShopOnly ? 'Suggested from shop' : 'Completes the look'));
+            else if (!deckShopOnly) outfitItems.push({ ...PLACEHOLDER_SHOES });
         } else {
             const top = legacyTops[0] || effectiveItems[0];
             const bottom = bottoms[0] || effectiveItems[1] || effectiveItems[0];
             const shoe = shoes[0];
-            if (top) outfitItems.push(toDisplayItem(top, shopOnly ? 'Suggested from shop' : 'Key piece for this look'));
-            if (bottom && bottom.id !== top?.id) outfitItems.push(toDisplayItem(bottom, shopOnly ? 'Suggested from shop' : 'Pairs well with the top'));
-            if (shoe && shoe.id !== bottom?.id) outfitItems.push(toDisplayItem(shoe, shopOnly ? 'Suggested from shop' : 'Completes the look'));
-            else if (!shopOnly) outfitItems.push({ ...PLACEHOLDER_SHOES });
+            if (top) outfitItems.push(toDisplayItem(top, deckShopOnly ? 'Suggested from shop' : 'Key piece for this look'));
+            if (bottom && bottom.id !== top?.id) outfitItems.push(toDisplayItem(bottom, deckShopOnly ? 'Suggested from shop' : 'Pairs well with the top'));
+            if (shoe && shoe.id !== bottom?.id) outfitItems.push(toDisplayItem(shoe, deckShopOnly ? 'Suggested from shop' : 'Completes the look'));
+            else if (!deckShopOnly) outfitItems.push({ ...PLACEHOLDER_SHOES });
             if (outfitItems.length > 3) outfitItems.length = 3;
         }
 
         if (outfitItems.length > 0) {
-            const enforcedItems = shopOnly
+            const enforcedItems = deckShopOnly
                 ? enforceShopOnlyDailyOutfit(outfitItems, shopItems, 0, targetItems)
                 : enforceMixedDailyOutfit(outfitItems, ownedItems, shopItems, 0, targetItems);
-            if (shopOnly && (enforcedItems.length < targetItems || !enforcedItems.every(isShopClothingItem))) {
+            if (deckShopOnly && (enforcedItems.length < targetItems || !enforcedItems.every(isShopClothingItem))) {
                 return outfits;
             }
             const normalizedOutfitItems = normalizeGeneratedOutfitItems(enforcedItems, params);
             outfits.push({
                 id: `local_0_${Date.now()}`,
-                description: shopOnly ? `A ${style} look curated from the shop.` : `A ${style} look built around your wardrobe.`,
+                description: deckShopOnly ? `${styleArticle} ${styleLabel} look curated from the shop.` : `${styleArticle} ${styleLabel} look built around your wardrobe.`,
                 style,
                 occasion: occ,
                 confidence: 0.75,
                 matchScore: 0.75,
                 items: normalizedOutfitItems,
-                stylingTips: layered
-                    ? ['Layer the base top under the outerwear for depth', 'Keep the palette tonal for a refined finish']
-                    : ['Add accessories to personalize', 'Roll sleeves or cuffs for a lived-in feel'],
+                stylingTips: pickStylingTips(layered),
             });
         }
     }
@@ -1035,7 +1260,7 @@ function mapRawOutfit(o: any, params: GenerateOutfitsParams): GeneratedOutfit {
         const resolvedMacroCategory = item.macroCategory || item.macro_category || item.category || item.garmentType || item.garment_type || '';
 
         if (__DEV__) {
-            console.log('[mapRawOutfit] item:', {
+            if (__DEV__) console.log('[mapRawOutfit] item:', {
                 id: String(item.id || '').slice(0, 8),
                 hasImageUrl: Boolean(item.imageUrl),
                 hasImage_url: Boolean(item.image_url),

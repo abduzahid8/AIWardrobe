@@ -1,0 +1,10 @@
+appId: com.aiwardrobe
+name: sim_chip_casual_om
+---
+- launchApp:
+    stopApp: false
+- tapOn: ".*Generate outfit.*"
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 55000
+- takeScreenshot: chip_casual_oldmoney

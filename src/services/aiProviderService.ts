@@ -10,6 +10,19 @@
  */
 
 import Config from '../config/env';
+import { supabase } from '../../lib/supabase';
+
+async function buildAuthHeaders(): Promise<Record<string, string>> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    try {
+        const { data } = await supabase.auth.getSession();
+        const token = data?.session?.access_token;
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+    } catch {
+        // Unauthenticated — backend will 401 and callers use fallbacks.
+    }
+    return headers;
+}
 
 // ============================================
 // TYPES
@@ -140,11 +153,13 @@ class AIProviderService {
 
         try {
             const response = await this.fetchWithRetry(
-                `${Config.api.url}/api/analyze-clothing`,
+                // Backend route is POST /api/openai/analyze-clothing and
+                // validates { imageBase64 } (see validators.validateImageData).
+                `${Config.api.url}/api/openai/analyze-clothing`,
                 {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image: imageBase64 }),
+                    headers: await buildAuthHeaders(),
+                    body: JSON.stringify({ imageBase64 }),
                 }
             );
 
@@ -192,15 +207,19 @@ class AIProviderService {
         const start = Date.now();
 
         try {
+            // Backend route is POST /api/generate-outfits and expects
+            // { occasion, stylePreferences, limit }. Wardrobe-item targeting
+            // is handled server-side via the Supabase JWT (preferred) or the
+            // canonical generateOutfitsFromDB() edge-function path.
             const response = await this.fetchWithRetry(
-                `${Config.api.url}/api/outfit-recommendation`,
+                `${Config.api.url}/api/generate-outfits`,
                 {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: await buildAuthHeaders(),
                     body: JSON.stringify({
-                        itemIds: wardrobeItemIds,
                         occasion,
-                        weather,
+                        stylePreferences: 'casual',
+                        limit: Math.max(1, Math.min(wardrobeItemIds.length || 3, 5)),
                     }),
                 }
             );
@@ -209,13 +228,18 @@ class AIProviderService {
             const latency = Date.now() - start;
             this.tracker.record(latency, true);
 
+            const outfits = Array.isArray(data.outfits) ? data.outfits : [];
+            const first = outfits[0] || {};
+            const ids: string[] = Array.isArray(first.items)
+                ? first.items.map((i: any) => String(i.id || i)).filter(Boolean)
+                : (data.itemIds || []);
             return {
-                items: data.itemIds || [],
-                reasoning: data.reasoning || '',
-                occasion: data.occasion || occasion,
-                style: data.style || '',
+                items: ids.length > 0 ? ids : wardrobeItemIds.slice(0, 4),
+                reasoning: first.description || data.reasoning || '',
+                occasion: first.occasion || data.occasion || occasion,
+                style: first.style || data.style || '',
                 colorHarmony: data.colorHarmony || '',
-                confidence: data.confidence || 0.5,
+                confidence: first.matchScore ?? data.confidence ?? 0.5,
             };
         } catch (error: unknown) {
             const latency = Date.now() - start;
@@ -230,24 +254,37 @@ class AIProviderService {
 
     /**
      * Chat with AI stylist.
+     *
+     * Served by the `ai-chat` Supabase Edge Function (replaces Express POST
+     * /api/ai-chat). Same canonical body { query, conversationHistory,
+     * stylePreference }; the session JWT is attached automatically and the
+     * function routes paid tiers to Gemini, free to NVIDIA→Gemini.
      */
     async chat(
         message: string,
-        context?: { wardrobeSize?: number; occasion?: string }
+        context?: {
+            wardrobeSize?: number;
+            occasion?: string;
+            stylePreference?: string;
+            conversationHistory?: Array<{ role: string; content: string }>;
+            wardrobeSummary?: string;
+        }
     ): Promise<ChatResult> {
         const start = Date.now();
 
         try {
-            const response = await this.fetchWithRetry(
-                `${Config.api.url}/ai-chat`,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message, context }),
-                }
-            );
+            const enrichedQuery = context?.wardrobeSummary
+                ? `${message}\n\n[Wardrobe context: ${context.wardrobeSummary}]`
+                : message;
+            const { data, error } = await supabase.functions.invoke('ai-chat', {
+                body: {
+                    query: enrichedQuery,
+                    conversationHistory: context?.conversationHistory ?? [],
+                    stylePreference: context?.stylePreference ?? context?.occasion,
+                },
+            });
+            if (error || !data?.text) throw error || new Error('Empty AI response');
 
-            const data = await response.json();
             const latency = Date.now() - start;
             this.tracker.record(latency, true);
 
@@ -260,10 +297,18 @@ class AIProviderService {
             const errorMsg = error instanceof Error ? error.message : 'Unknown error';
             this.tracker.record(latency, false, errorMsg);
 
-            return {
-                response: "I'm currently offline. Please check your connection and try again.",
-                suggestions: ['Try checking your internet connection', 'Retry in a moment'],
-            };
+            // Offline-safe fallback in Ava's voice (single source of truth).
+            try {
+                // eslint-disable-next-line @typescript-eslint/no-var-requires
+                const { personaReply } = require('./ai/stylistPersona') as typeof import('./ai/stylistPersona');
+                const local = personaReply(message, context?.stylePreference);
+                return { response: local.text, suggestions: local.suggestions };
+            } catch {
+                return {
+                    response: "I'm currently offline. Please check your connection and try again.",
+                    suggestions: ['Try checking your internet connection', 'Retry in a moment'],
+                };
+            }
         }
     }
 
@@ -281,7 +326,7 @@ class AIProviderService {
                 `${Config.api.url}/api/process-upload`,
                 {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: await buildAuthHeaders(),
                     body: JSON.stringify({
                         imageBase64: imageBase64.replace(/^data:image\/\w+;base64,/, ''),
                         generateDescription: true,

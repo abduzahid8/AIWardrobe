@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Image } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 
 const CACHE_INDEX_KEY = '@image_cache_index';
 const MAX_CACHE_ENTRIES = 200;
@@ -17,7 +17,8 @@ interface CacheIndex {
 class ImageCacheManager {
     private index: CacheIndex = { entries: {} };
     private initialized = false;
-    private prefetchQueue: string[] = [];
+    private saveTimer: ReturnType<typeof setTimeout> | null = null;
+    private savePending = false;
 
     async initialize(): Promise<void> {
         if (this.initialized) return;
@@ -38,11 +39,24 @@ class ImageCacheManager {
         }
     }
 
-    private async saveIndex(): Promise<void> {
+    private async saveIndex(immediate = false): Promise<void> {
+        // Debounced writes — getCachedImage is called per cell during scroll;
+        // awaiting AsyncStorage on every cell blocked the JS thread (freeze).
+        if (!immediate) {
+            this.savePending = true;
+            if (this.saveTimer) return;
+            this.saveTimer = setTimeout(() => {
+                this.saveTimer = null;
+                if (!this.savePending) return;
+                this.savePending = false;
+                AsyncStorage.setItem(CACHE_INDEX_KEY, JSON.stringify(this.index)).catch(() => {});
+            }, 2000);
+            return;
+        }
         try {
             await AsyncStorage.setItem(CACHE_INDEX_KEY, JSON.stringify(this.index));
-        } catch (error) {
-            console.error('Error saving cache index:', error);
+        } catch {
+            // Best-effort — never block image rendering on index persistence.
         }
     }
 
@@ -63,15 +77,15 @@ class ImageCacheManager {
         const entry = this.index.entries[cacheKey];
 
         if (entry) {
-            // Update timestamp for LRU
+            // Update timestamp for LRU — debounced, never awaited on scroll.
             entry.timestamp = Date.now();
-            await this.saveIndex();
+            void this.saveIndex();
         } else {
             // Add to index and prefetch
             await this.addToCache(uri, cacheKey);
         }
 
-        // Return original URI - React Native Image component handles caching
+        // Return original URI - expo-image handles memory-disk caching
         return uri;
     }
 
@@ -79,8 +93,9 @@ class ImageCacheManager {
         try {
             await this.ensureSpace();
 
-            // Prefetch the image
-            await this.prefetchImage(uri);
+            // Prefetch via expo-image disk cache (RN Image.prefetch bypassed it).
+            // Fire-and-forget with timeout so scroll never awaits network.
+            void this.prefetchImage(uri);
 
             this.index.entries[cacheKey] = {
                 uri,
@@ -88,18 +103,21 @@ class ImageCacheManager {
                 prefetched: true,
             };
 
-            await this.saveIndex();
-        } catch (error) {
-            console.error('Error adding to cache:', error);
+            void this.saveIndex();
+        } catch {
+            // Best-effort.
         }
     }
 
     private async prefetchImage(uri: string): Promise<void> {
-        return new Promise((resolve) => {
-            Image.prefetch(uri)
-                .then(() => resolve())
-                .catch(() => resolve()); // Ignore errors
-        });
+        try {
+            await Promise.race([
+                ExpoImage.prefetch(uri),
+                new Promise((resolve) => setTimeout(resolve, 5000)),
+            ]);
+        } catch {
+            // Ignore errors — image will load on demand via expo-image.
+        }
     }
 
     private async ensureSpace(): Promise<void> {
@@ -144,12 +162,25 @@ class ImageCacheManager {
         };
     }
 
-    // Prefetch multiple images
+    // Prefetch multiple images — concurrency-limited so a grid mount
+    // doesn't fire 50 parallel prefetches and freeze the JS thread.
     async prefetch(uris: string[]): Promise<void> {
         await this.initialize();
 
-        const promises = uris.map(uri => this.getCachedImage(uri).catch(() => null));
-        await Promise.all(promises);
+        const CONCURRENCY = 6;
+        const queue = [...new Set(uris.filter(Boolean))];
+        const workers = Array.from({ length: Math.min(CONCURRENCY, queue.length) }, async () => {
+            while (queue.length > 0) {
+                const uri = queue.shift();
+                if (!uri) break;
+                try {
+                    await this.getCachedImage(uri);
+                } catch {
+                    // Ignore per-image failures.
+                }
+            }
+        });
+        await Promise.all(workers);
     }
 }
 

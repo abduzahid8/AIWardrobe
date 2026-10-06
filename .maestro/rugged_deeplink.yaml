@@ -1,0 +1,21 @@
+appId: host.exp.Exponent
+name: rugged_deeplink
+tags:
+  - rugged
+  - expo-go
+  - deeplink
+---
+# Password-reset deep link (opened from the shell BEFORE this flow runs)
+# must land on the ResetPassword screen with working inputs — validates
+# the App.tsx linking config + native-stack registration outside the auth
+# ternary. Then goes back via the header chevron. Ends on tabs. Logged IN.
+- extendedWaitUntil:
+    visible: ".*(Сброс пароля|Reset Password|Reset password).*"
+    timeout: 30000
+- assertVisible: ".*(Новый пароль|New password).*"
+- assertVisible: ".*(Сбросить пароль|Reset password|Update password).*"
+- tapOn: ".*(Назад|Back|Go back).*"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(Сегодняшний образ|Today|Мой гардероб|My Wardrobe|Вдохновение|Inspiration|Аккаунт|Account).*"
+- takeScreenshot: rugged_deeplink

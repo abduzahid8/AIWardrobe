@@ -2,7 +2,7 @@
  * API Health Check - Quick diagnostic for testing API connectivity
  */
 
-import { supabase } from '../lib/supabase';
+import { supabase } from '../../lib/supabase';
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('ApiHealth');

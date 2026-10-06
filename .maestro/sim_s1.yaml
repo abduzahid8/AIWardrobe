@@ -1,0 +1,35 @@
+appId: com.aiwardrobe
+name: sim_s1
+---
+- launchApp:
+    stopApp: false
+- waitForAnimationToEnd:
+    timeout: 20000
+- tapOn:
+    point: "58%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn: ".*(Магазин|Shop).*"
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn: ".*(Персональный стилист|Personal stylist).*"
+- waitForAnimationToEnd:
+    timeout: 10000
+- assertVisible: ".*Generate outfit.*"
+- tapOn: ".*(New clothing).*"
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn: ".*Work.*"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    point: "50%,72%"
+- inputText: "work old money budget $250"
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn: ".*Generate outfit.*"
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 55000
+- takeScreenshot: s1_work_old_money

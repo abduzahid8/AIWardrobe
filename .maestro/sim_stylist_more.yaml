@@ -1,0 +1,134 @@
+appId: com.aiwardrobe
+name: sim_stylist_more
+---
+# Continue from Your Outfits of scenario 1.
+- launchApp:
+    stopApp: false
+- swipe:
+    start: "80%,45%"
+    end: "18%,45%"
+- waitForAnimationToEnd:
+    timeout: 3500
+- takeScreenshot: s1_card2
+- swipe:
+    start: "80%,45%"
+    end: "18%,45%"
+- waitForAnimationToEnd:
+    timeout: 3500
+- takeScreenshot: s1_card3
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# 2 date night classic
+- tapOn:
+    point: "50%,72%"
+- eraseText
+- inputText: "date night classic"
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn: ".*Generate outfit.*"
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 55000
+- takeScreenshot: s2_date_classic
+- swipe:
+    start: "80%,45%"
+    end: "18%,45%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: s2_card2
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# 3 weekend casual
+- tapOn:
+    point: "50%,72%"
+- eraseText
+- inputText: "weekend casual brunch"
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn: ".*Generate outfit.*"
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 55000
+- takeScreenshot: s3_casual_brunch
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# 4 formal old money
+- tapOn:
+    point: "50%,72%"
+- eraseText
+- inputText: "formal wedding old money"
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn: ".*Generate outfit.*"
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 55000
+- takeScreenshot: s4_formal_old_money
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# 5 minimalist work $100
+- tapOn:
+    point: "50%,72%"
+- eraseText
+- inputText: "work minimalist under $100"
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn: ".*Generate outfit.*"
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 55000
+- takeScreenshot: s5_minimalist_100
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# 6 travel semi-classic
+- tapOn:
+    point: "50%,72%"
+- eraseText
+- inputText: "travel airport semi-classic"
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn: ".*Generate outfit.*"
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 55000
+- takeScreenshot: s6_travel_semi
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# 7 wardrobe classic work
+- tapOn: ".*(From wardrobe).*"
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    point: "50%,72%"
+- eraseText
+- inputText: "work classic"
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn: ".*Generate outfit.*"
+- waitForAnimationToEnd:
+    timeout: 55000
+- takeScreenshot: s7_wardrobe

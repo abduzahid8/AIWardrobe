@@ -1,0 +1,25 @@
+appId: host.exp.Exponent
+name: perf_tab_stress_b
+tags:
+  - perf
+  - expo-go
+  - regression
+---
+# Second half of the blank-tab regression cycle: Inspo→Profile→Home→Closet.
+# Ends on Closet (pairs with stress_a ending on Inspo). Logged IN.
+- tapOn:
+    point: "74%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(Аккаунт|Account).*"
+- tapOn:
+    point: "26%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(Сегодняшний образ|Today).*"
+- tapOn:
+    point: "42%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(Мой гардероб|My Wardrobe|Wardrobe|Closet).*"
+- takeScreenshot: perf_tab_stress_b

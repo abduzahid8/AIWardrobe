@@ -1,0 +1,62 @@
+appId: com.aiwardrobe
+name: sim_stylist_slots
+---
+# Live simulator: Personal Stylist must emit layer+top+pants+shoes
+# (never two jackets as TOP, never a shirt as PANTS). Comments drive
+# occasion/style/budget.
+- launchApp:
+    stopApp: false
+- waitForAnimationToEnd:
+    timeout: 20000
+- runFlow:
+    when:
+      visible: "Choose your language"
+    commands:
+      - tapOn: "English"
+      - waitForAnimationToEnd:
+          timeout: 15000
+- runFlow:
+    when:
+      visible: ".*Sign In.*"
+    commands:
+      - tapOn:
+          point: "50%,26%"
+      - inputText: "e2e.stylist@aiwardrobe.club"
+      - tapOn:
+          point: "50%,33%"
+      - inputText: "E2eStylistVerify2026!"
+      - tapOn:
+          point: "50%,44%"
+      - waitForAnimationToEnd:
+          timeout: 25000
+- runFlow:
+    when:
+      visible: ".*style plan is ready.*"
+    commands:
+      - tapOn: ".*Unlock my plan.*"
+      - waitForAnimationToEnd:
+          timeout: 15000
+- tapOn:
+    point: "58%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn: ".*(Магазин|Shop).*"
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn: ".*(Персональный стилист|Personal stylist).*"
+- waitForAnimationToEnd:
+    timeout: 10000
+- assertVisible: ".*Generate outfit.*"
+- tapOn: ".*(New clothing|Новая одежда).*"
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn: ".*(Add details|Add details…|Where you're going).*"
+- inputText: "work, old money, $250"
+- hideKeyboard
+- tapOn: ".*Generate outfit.*"
+- waitForAnimationToEnd:
+    timeout: 45000
+- takeScreenshot: sim_stylist_slots
+- assertVisible: ".*(Pants|PANTS|Брюки).*"
+- assertVisible: ".*(Shoes|SHOES|Обувь).*"
+- assertVisible: ".*(Top|TOP|Layer|LAYER).*"

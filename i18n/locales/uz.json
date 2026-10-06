@@ -1,6 +1,6 @@
 {
   "common": {
-    "upgrade": "Yangilash",
+    "upgrade": "Pro'ga o'tish",
     "cancel": "Bekor qilish",
     "close": "Yopish",
     "save": "Saqlash",
@@ -13,7 +13,7 @@
     "error": "Xatolik",
     "success": "Muvaffaqiyat",
     "items": "Narsalar",
-    "looks": "Ko'rinishlar",
+    "looks": "Obrazlar",
     "streak": "Seriya",
     "wears": "Kiyishlar",
     "add": "Qo'shish",
@@ -33,7 +33,15 @@
     "databaseError": "Ma'lumotlar bazasi xatosi",
     "networkRequestFailed": "Tarmoq so'rovi muvaffaqiyatsiz",
     "goodMorning": "Xayrli tong",
-    "skip": "O'tkazib yuborish"
+    "skip": "O'tkazib yuborish",
+    "clothing": "Clothing",
+    "goBack": "Go back",
+    "gotIt": "Got it",
+    "info": "Info",
+    "item": "Item",
+    "ok": "OK",
+    "retry": "Retry",
+    "tapToDismiss": "Tap to dismiss"
   },
   "confirmations": {
     "thisItem": "bu narsa",
@@ -113,16 +121,16 @@
     "noValidItems": "Bu libosda saqlash uchun haqiqiy narsalar yo'q.",
     "saved": "Saqlandi",
     "savedToCloset": "Libos gardirobiga saqlandi.",
-    "addedToCalendar": "Kalanderga qo'shildi",
+    "addedToCalendar": "Kalenderga qo'shildi",
     "outfitLoggedFor": "Libos {{dateKey}} uchun yozildi.",
-    "couldNotSaveToCalendar": "Libosni kalanderga saqlab bo'lmadi."
+    "couldNotSaveToCalendar": "Libosni kalenderga saqlab bo'lmadi."
   },
   "home": {
-    "title": "Ko'rinishlar",
+    "title": "Obrazlar",
     "dailyBrief": "Kunlik ma'lumot",
-    "todaysLook": "Bugungi ko'rinish",
+    "todaysLook": "Bugungi obraz",
     "stylistInsight": "Stilist maslahati",
-    "openCalendar": "Kalanderni ochish",
+    "openCalendar": "Kalendarni ochish",
     "askStylist": "Stilistdan so'rang",
     "todaysSuggestion": "Bugungi taklif",
     "askAI": "AI dan so'rang",
@@ -148,7 +156,12 @@
     "createOutfit": "Libos yaratish",
     "businessCasualArrow": "Biznes stil ›",
     "tryAgain": "Qaytadan urinib ko'ring",
-    "tryOn": "Namoyish",
+    "tryOn": "Kiyib ko'rish",
+    "buy": "Sotib olish",
+    "shopThisLook": "Bu obrazni sotib olish",
+    "shopSheetHint": "Kiyimni tanlang, keyin qayerdan sotib olishni tanlang.",
+    "fromWardrobe": "Shkafingizdan",
+    "buyItem": "{{name}} ni sotib olish",
     "swipeHint": "O'tkazib yuborish yoki saqlash uchun suring",
     "fromYourWardrobe": "Shkafingizdan {{count}} ta kiyim",
     "outfitSources": "Sizniki: {{wardrobeCount}} · taklif: {{shopCount}}",
@@ -158,7 +171,8 @@
     "useLayers": "Qatlamlardan foydalaning",
     "dressWarm": "Iliq kiyiling",
     "itemAddedToWardrobe": "{{itemName}} shkafga qo'shildi",
-    "addItemToWardrobe": "{{itemName}} ni shkafga qo'shish"
+    "addItemToWardrobe": "{{itemName}} ni shkafga qo'shish",
+    "createOutfitFromWardrobe": "Create outfit from wardrobe"
   },
   "weeklyPlanner": {
     "days": [
@@ -216,14 +230,14 @@
   },
   "completeYourLook": {
     "findingMatchingItems": "Mos narsalar qidirilmoqda...",
-    "title": "Ko'rinishni to'ldiring",
+    "title": "Obrazni to'ldiring",
     "seeAll": "Hammasini ko'rish",
     "addCategory": "{{category}} qo'shish",
     "shopNow": "Hozir xarid qilish",
     "shopSimilar": "O'xshash mahsulotlar"
   },
   "aiOutfitCreator": {
-    "title": "AI Ko'rinish Yaratuvchisi",
+    "title": "AI Obraz Yaratuvchisi",
     "subtitle": "Tadbirni tanlang va AI sizni kiyintirsin",
     "chooseEvent": "Tadbirni tanlang",
     "selectEvent": "{{event}} tadbirini tanlash",
@@ -262,9 +276,9 @@
     "itemAddedToWardrobe": "Narsa shkafingizga qo'shildi.",
     "ok": "OK",
     "wardrobeFull": "Shkaf to'la",
-    "freePlanLimit": "Bepul plan shkafni {{limit}} ta narsaga cheklaydi. Cheksiz shkaf uchun Pro'ga yangilang.",
+    "freePlanLimit": "Bepul plan shkafni {{limit}} ta narsaga cheklaydi. Cheksiz shkaf uchun Pro'ga o'ting.",
     "maybeLater": "Keyinroq",
-    "upgrade": "Yangilash",
+    "upgrade": "Pro'ga o'tish",
     "error": "Xatolik",
     "failedToSaveItem": "Narsani saqlab bo'lmadi. Iltimos, qayta urinib ko'ring.",
     "types": {
@@ -305,7 +319,9 @@
       "wearLight": "Yengin kiyim kiying",
       "useLayers": "Qatlamlardan foydalaning",
       "dressWarm": "Issiq kiyim kiying"
-    }
+    },
+    "high": "High",
+    "low": "Low"
   },
   "dailySuggestion": {
     "loading": "Mukammal libosni qidiryapmiz...",
@@ -319,7 +335,9 @@
     "wearToday": "Bugun kiyish",
     "scanWardrobeForSuggestions": "Shkafingizni skanering qiling va shaxsiy libos takliflari oling",
     "addMoreItemsForSuggestions": "Yaxshi takliflar uchun shkafingizga ko'proq narsa qo'shing",
-    "title": "Bugungi libosingiz"
+    "title": "Bugungi libosingiz",
+    "addItemToCloset": "Add item to closet",
+    "noSuggestionYet": "No suggestion yet"
   },
   "quickActions": {
     "menu": "Menyu",
@@ -349,7 +367,8 @@
     "pickItems": "Narsalarni tanlash",
     "selectItemsToLog": "Yozish uchun narsalarni tanlang",
     "iWoreThisToday": "Men bugun buni kiydim",
-    "logItems": "{{count}} ta narsani yozish"
+    "logItems": "{{count}} ta narsani yozish",
+    "wearingToday": "Wearing today"
   },
   "network": {
     "noInternetConnection": "Internet aloqasi yo'q"
@@ -398,7 +417,7 @@
   "quota": {
     "unlimited": "Cheksiz {{label}}",
     "unlock": "{{label}}ni ochish",
-    "outOfLabel": "{{label}} tugadi — yangilash uchun bosing",
+    "outOfLabel": "{{label}} tugadi — Pro'ga o'tish uchun bosing",
     "remainingToday": "Bugun {{remaining}} ta {{limit}} {{label}} qoldi"
   },
   "theme": {
@@ -478,8 +497,8 @@
     "openInShop": "Do'konda ochish",
     "tripsAndPacking": "Safarlar va yig'ish",
     "new": "Yangi",
-    "openCalendar": "Kalanderni ochish",
-    "planTripDescription": "Kalanderni safar sanasini tanlash, AI bilan libos yaratish va uni o'sha kunga saqlash uchun ishlating.",
+    "openCalendar": "Kalendarni ochish",
+    "planTripDescription": "Kalendarni safar sanasini tanlash, AI bilan libos yaratish va uni o'sha kunga saqlash uchun ishlating.",
     "tryAgain": "Qayta urinib ko'ring",
     "wardrobeAnalytics": "Shkaf tahlili",
     "subscription": "Obuna",
@@ -511,7 +530,7 @@
     "tripFlowStep2": "2. AI bilan libos yarating",
     "tripFlowStep2Desc": "Kun ichida `AI bilan libos yaratish` tugmasini bosing va sanani biriktirgan holda generatorni oching.",
     "tripFlowStep3": "3. Rejangizga saqlang",
-    "tripFlowStep3Desc": "Libos kalanderingizga saqlanadi va yig'ish ro'yxatiga qo'shiladi.",
+    "tripFlowStep3Desc": "Libos kalendaringizga saqlanadi va yig'ish ro'yxatiga qo'shiladi.",
     "aiTryOn": "AI Sinovi",
     "analyticsSharing": "Analitika ulashish",
     "analyticsOn": "Yoq",
@@ -520,7 +539,8 @@
     "from": "dan",
     "developerTools": "Dasturchi vositalari",
     "proBadge": "PRO",
-    "priceFrom": "dan"
+    "priceFrom": "dan",
+    "goProSubtitle": "Upgrade for unlimited outfits and premium features"
   },
   "addOutfit": {
     "title": "Libos qo'shish",
@@ -549,8 +569,8 @@
   "aiTryOn": {
     "title": "Kiyib Ko'rish",
     "premiumFeature": "Premium funksiya",
-    "premiumFeatureBody": "Virtual kiyib ko'rish faqat Pro va Max obunachilar uchun mavjud. Sinab ko'rishni boshlash uchun yangilang!",
-    "upgradeToAccess": "Kirish uchun yangilang",
+    "premiumFeatureBody": "Virtual kiyib ko'rish faqat Pro va Max obunachilar uchun mavjud. Sinab ko'rishni boshlash uchun Pro'ga o'ting!",
+    "upgradeToAccess": "Pro'ga o'tish",
     "comingSoon": "Yaqinda",
     "comingSoonBody": "Virtual kiyib ko'rish yangilanmoqda. Tez orada uni qaytaramiz!",
     "featureName": "AI Virtual Kiyib Ko'rish",
@@ -634,7 +654,7 @@
     "upgradeToPro": "Pro ga o'tish",
     "errors": {
       "missingPhotos": "To'liq bo'yli rasm va kiyib ko'riladigan kiyimni qo'shing.",
-      "tryOnFailed": "Kiyib ko'rish muvaffaqiyatsiz. Server konsolini tekshiring."
+      "tryOnFailed": "Kiyib ko'rish muvaffaqiyatsiz. Qaytadan urinib ko'ring."
     }
   },
   "features": {
@@ -671,9 +691,9 @@
   "outfitMaker": {
     "buy": "Sotib olish",
     "yourOutfits": "Sizning liboslaringiz",
-    "saveToCalendar": "Kalanderga saqlash",
+    "saveToCalendar": "Kalenderga saqlash",
     "pickDate": "Bu libos uchun sanani tanlang",
-    "addToCalendar": "Kalanderga qo'shish",
+    "addToCalendar": "Kalenderga qo'shish",
     "saveOutfit": "Libosni saqlash",
     "aiStylist": "AI stilist",
     "whereGoing": "Qayera ketayapsiz?",
@@ -696,7 +716,8 @@
     "travel": "Sayohat",
     "discoverVibe": "Stilingizni kashf qiling",
     "tapStyleCard": "Quyidagi stil kartasini bosing va AI shkafingizdan to'liq libos yaratadi.",
-    "promptPlaceholder": "masalan, Uchrashuv, intervyu, oddiy brunch, plyaj ta'tili...",
+    "promptPlaceholder": "Qayerga ketayapsiz, stil (old money, classic…), byudjet ($150)…",
+    "promptPlaceholderShort": "Qayerga ketayapsiz, stil, byudjet ($150)…",
     "generate": "Yaratish",
     "description1": "Shkafingizdan tanlangan {{style}} libosi.",
     "description2": "Muvozanatli nisbatlarga ega elegan {{style}} ansambli.",
@@ -707,7 +728,8 @@
     "tip2_2": "Chuqurlik uchun tashqi kiyimni qatlamlang",
     "tip3_1": "Minimal zargarlik tanlang",
     "tip3_2": "Oyoq kiyimini kamar rangiga moslang",
-    "noOutfitsError": "Liboslar yaratib bo'lmadi. Yaxshi takliflar uchun shkafingizga ko'proq narsa qo'shing."
+    "noOutfitsError": "Liboslar yaratib bo'lmadi. Yaxshi takliflar uchun shkafingizga ko'proq narsa qo'shing.",
+    "generateFailed": "Stilistga ulanib bo'lmadi. Internetni tekshirib, qayta urinib ko'ring."
   },
   "paywall": {
     "heroTitle": "Sizning stilingiz ochilgan.",
@@ -715,7 +737,7 @@
     "restorePurchases": "Xaridlarni tiklash",
     "manageSubscription": "Obunani boshqarish",
     "current": "JORIY",
-    "mostPopular": "ENG OMADLI",
+    "mostPopular": "ENG MASHHUR",
     "getPro": "Pro olish",
     "privacyPolicy": "Maxfiylik siyosati",
     "termsOfUse": "Foydalanish shartlari",
@@ -735,11 +757,11 @@
     "monthly": "Oylik",
     "yearly": "Yillik",
     "yearlyPlan": "Pro yillik",
-    "yearlySubtitle": "$79.99 / yil",
+    "yearlySubtitle": "$99.99 / yil",
     "perYear": "/yil",
-    "yearlySave": "Oylikka nisbatan 33% tejang",
+    "yearlySave": "Oylikka nisbatan 17% tejang",
     "notIncluded": "Kirmaydi:",
-    "liteMissing": "Virtual kiyib ko'rish, sayohat rejalashtiruvchi, ustuvor qo'llab-quvvatlash",
+    "liteMissing": "Sayohat rejalashtiruvchi, ustuvor qo'llab-quvvatlash",
     "liteFeature1": "Cheksiz AI liboslar",
     "liteFeature2": "100 tagacha shkaf buyumlari",
     "liteFeature3": "Shkaf tahlili va statistikasi",
@@ -749,13 +771,28 @@
     "proFeature3": "Shkaf tahlili va statistikasi",
     "proFeature4": "AI sayohat rejalashtiruvchi",
     "proFeature5": "To'liq libos taqvimi",
-    "proFeature6": "Virtual kiyib ko'rish",
-    "proFeature7": "Ustuvor AI model · reklamasiz",
-    "proFeature8": "Erta kirish va ustuvor qo'llab-quvvatlash",
     "subscribe": "Obuna bo'lish",
     "getStarted": "Boshlash",
     "activateCode": "Kodni faollashtirish",
-    "activateCodeHeader": "Sizda promokod bormi?"
+    "activateCodeHeader": "Sizda promokod bormi?",
+    "perMonth": "/oy",
+    "liteWeekly": "$0.69 / hafta",
+    "proWeekly": "$2.31 / hafta",
+    "yearlyWeekly": "$1.92 / hafta",
+    "liteBestFor": "Ko'proq shkaf joyi, aqlli libos rejalashtirish va oddiy tahlil.",
+    "proBestFor": "Kundalik uslub, safar liboslari, cheksiz shkaf va ustuvor AI uchun eng yaxshisi.",
+    "yearlyBestFor": "Pro dagi hamma narsa eng arzon uzoq muddatli narxda.",
+    "yearlyFeature1": "Barcha Pro funksiyalari",
+    "yearlyFeature2": "Yillik tejash",
+    "yearlyFeature3": "Mavsumiy to'plamlar",
+    "yearlyFeature4": "Yangi funksiyalarga erta kirish",
+    "yearlyBadge": "17% TEJASH",
+    "unavailable": "MAVCUD EMAS",
+    "selectedPlan": "Tanlangan reja",
+    "continue": "Davom etish",
+    "productUnavailableBody": "Bu reja hozir do'konda mavjud emas. Keyinroq urinib ko'ring.",
+    "proFeature6": "Ustuvor AI model · reklamasiz",
+    "proFeature7": "Erta kirish va ustuvor qo'llab-quvvatlash"
   },
   "featureLock": {
     "feature": "FUNKSIYA",
@@ -764,10 +801,10 @@
   },
   "trialCountdown": {
     "lessThanOneHour": "Bepul sinov muddatingizda 1 soatdan kam qoldi",
-    "hoursLeft": "Bepul sinov muddatingizda {{hours}} soat qoldi — Hozir yangilang",
+    "hoursLeft": "Bepul sinov muddatingizda {{hours}} soat qoldi — Hozir Pro'ga o'ting",
     "daysLeft": "Bepul sinov muddatingizda {{days}} kun{{suffix}} qoldi",
-    "openUpgradePlans": "Yangilash rejalarini ochish",
-    "upgrade": "Yangilash"
+    "openUpgradePlans": "Pro rejalarini ochish",
+    "upgrade": "Pro'ga o'tish"
   },
   "promo": {
     "apply": "Kiritish",
@@ -778,7 +815,7 @@
     "activateTrial": "Sinov muddatini faollashtirish",
     "iHavePromoCode": "Menda promokod bor",
     "or": "YOKI",
-    "goPro": "Pro'ga yangilash",
+    "goPro": "Pro'ga o'tish",
     "goProSubtitle": "Darhol cheksiz kirish oling",
     "skip": "Hozircha o'tkazib yuborish",
     "enterCode": "Iltimos, promokodni kiriting",
@@ -813,7 +850,7 @@
     "colorPalette": "Sizning rang palitrangiz",
     "categoryBreakdown": "Kategoriya bo'yicha",
     "noDataYet": "Hali ma'lumot yo'q",
-    "emojiStreak": "🔥 {{streak}}",
+    "emojiStreak": "🔥 {{count}}",
     "rankNumber": "#{{rank}}"
   },
   "tripPlanner": {
@@ -902,13 +939,18 @@
     ]
   },
   "calendar": {
+    "title": "Liboslar kalendari",
+    "lockedTagline": "Har kunni uslub bilan rejalashtiring. To'liq kalendar — Pro funksiyasi.",
+    "lockedBullet1": "Istalgan o'tgan yoki kelajakdagi kun uchun libos rejalashtiring",
+    "lockedBullet2": "Safar yig'ish ro'yxatlari va tadbir rejalashtirish",
+    "lockedBullet3": "Kunlik eslatmalar va kalendar sinxronizatsiyasi",
     "deleteOutfit": "Libosni o'chirish",
     "deleteOutfitConfirm": "Ishonchingiz komilmi?",
     "notAdded": "Qo'shilmagan",
     "planLooks": "Liboslarni rejalashtirish",
     "extras": "Qo'shimchalar",
     "createWithAI": "AI bilan yaratish",
-    "closeCalendar": "Kalanderni yopish",
+    "closeCalendar": "Kalendarni yopish",
     "emptyDay": "Bo'sh kun",
     "openDay": "Ochiq kun",
     "replaceOutfit": "Libosni almashtirish",
@@ -942,6 +984,10 @@
   },
   "weeklyInsights": {
     "title": "Stil tahlillari",
+    "lockedTagline": "Shkaf tahlili — Pro funksiyasi. Tahlillarni ochish uchun Pro'ga o'ting.",
+    "lockedBullet1": "Shkafdan foydalanish va kiyilmagan narsalar haqida ogohlantirishlar",
+    "lockedBullet2": "Sizga mos shaxsiy stil tavsiyalari",
+    "lockedBullet3": "Seriyalar, statistika va eng ko'p kiyilganlar kuzatuvi",
     "totalItems": "Jami narsalar",
     "dayStreak": "Kun seriyasi",
     "totalWears": "Jami kiyishlar",
@@ -1066,8 +1112,8 @@
     "unlockPlan": "Rejamni ochish",
     "continue": "Davom etish",
     "welcome": {
-      "title": "Stil ruhingiz qanday?",
-      "subtitle": "Sizga eng mos keladiganini tanlang",
+      "title": "Stilingiz, dekodlangan.",
+      "subtitle": "Shaxsiy garderob intellektingizni yaratadigan 60 soniyalik test.",
       "aiPlans": "AI libos rejalari",
       "colorProfiling": "Rang profili",
       "gapAnalysis": "Bo'shliq tahlili"
@@ -1088,7 +1134,7 @@
     },
     "colors": {
       "title": "Rang palitrangiz",
-      "subtitle": "O'zingizga yoqqanlarini tanlang"
+      "subtitle": "O'zingizga yoqqanlarini tanlang — {{count}} ta tanlandi"
     },
     "occasions": {
       "title": "Nima uchun kiyinasiz?",
@@ -1121,8 +1167,8 @@
     "complete": {
       "title": "Rejangiz tayyor!",
       "subtitle": "AI ni stilingizga mosladik",
-      "occasionPaths": "Tadbir afzalliklari hisobga olindi",
-      "goalsPrioritized": "Maqsadlar prioritet bo'yicha",
+      "occasionPaths": "{{count}} ta tadbir yo'nalishi aniqlandi",
+      "goalsPrioritized": "{{count}} ta maqsad prioritet bo'yicha",
       "aiCalibrated": "AI stilingizga moslandi",
       "unlockPlan": "Rejamni ochish"
     }
@@ -1270,9 +1316,12 @@
   },
   "trialExpired": {
     "title": "Sinov muddati tugadi",
-    "body": "Sizning 7 kunlik bepul sinov muddatingiz tugadi. AI liboslar, cheksiz shkaf skanlashi va barcha premium funksiyalardan foydalanish uchun pullik rejamizga yangilang.",
-    "upgradeToPro": "Pro'ga yangilang",
-    "havePromoCode": "Menda promokod bor"
+    "body": "Sizning 7 kunlik bepul sinov muddatingiz tugadi. Siz Bepul tarifdasiz — shkaf va kunlik AI liboslar ochiq qoladi. Premium funksiyalar (sinab ko'rish, sayohat rejalashtiruvchi, analitika, to'liq kalendar) ulardan foydalanganda Pro'ga o'tishni taklif qiladi.",
+    "upgradeToPro": "Pro'ga o'ting",
+    "havePromoCode": "Menda promokod bor",
+    "banner": "Bepul sinov tugadi — Pro'ga o'ting",
+    "continueWithFree": "Bepul davom etish",
+    "restore": "Allaqachon Pro? Qayta tiklash"
   },
   "inspo": {
     "title": "I'lhom",
@@ -1301,9 +1350,9 @@
     "buy": "Sotib olish",
     "buyNow": "Hozir sotib olish",
     "shopThisLook": "Do'kon",
-    "noGuideMatches": "Hozircha ko'rinish yo'q — keyinroq tekshiring.",
-    "guideTagline": "Ko'rinishni bosing va uni xarid qiling.",
-    "featuredLook": "Tavsiya etilgan ko'rinish"
+    "noGuideMatches": "Hozircha obraz yo'q — keyinroq tekshiring.",
+    "guideTagline": "Obrazni bosing va uni darhol xarid qiling.",
+    "featuredLook": "Tavsiya etilgan obraz"
   },
   "camera": {
     "permissionNeeded": "Kamera ruxsat kerak",
@@ -1704,7 +1753,9 @@
     "discover": "Kashf etish",
     "add": "Qo'shish",
     "design": "Dizayn",
-    "profile": "Profil"
+    "profile": "Profil",
+    "closet": "Closet",
+    "inspo": "Inspo"
   },
   "styles": {
     "selectStyle": "Stilni tanlang",
@@ -1973,5 +2024,15 @@
     "selectSize": "O‘lchamni tanlang",
     "fitPanelTitle": "O‘tirish",
     "fitPanelEmpty": "O‘lcham bahosini ko‘rish uchun o‘lchamni tanlang."
+  },
+  "homeHeader": {
+    "openCalendar": "Open calendar"
+  },
+  "weatherWidget": {
+    "suggestions": {
+      "dressWarm": "Dress warm",
+      "useLayers": "Use layers",
+      "wearLight": "Wear light"
+    }
   }
 }

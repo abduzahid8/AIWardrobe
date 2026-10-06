@@ -86,7 +86,8 @@ describe('AI domain services', () => {
     it('returns local response for work-related message when backend unavailable', async () => {
       mockedAxios.post = jest.fn().mockRejectedValue(new Error('Network Error'));
       const response = await sendChatMessage('Help me dress for a job interview');
-      expect(response.text).toContain('professional');
+      // stylistPersona is the offline voice (chatService delegates to it).
+      expect(response.text).toContain('sharp');
     });
 
     it('returns generic fallback for unrecognized message', async () => {

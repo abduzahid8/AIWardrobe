@@ -126,8 +126,24 @@ class NotificationService {
                 this.settings = { ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) };
             }
 
+            // Fast bail-outs first — these avoid ALL native/network work on
+            // simulators and in Expo Go, where expo-notifications either
+            // no-ops or throws (the "Failed to initialize notifications"
+            // ERROR in startup logs). Previously we still called
+            // requestPermissions() → getExpoPushTokenAsync() here, which
+            // stalls startup on a network round-trip that always fails.
+            if (!Device.isDevice) {
+                logger.info('📱 Skipping notification setup (not a physical device)');
+                return;
+            }
+            if (!this.settings.enabled) {
+                logger.info('📱 Notifications disabled — skipping setup');
+                return;
+            }
+
             // Request permissions (fast, required every init)
-            await this.requestPermissions();
+            const granted = await this.requestPermissions();
+            if (!granted) return;
 
             // Skip the heavy cancelAll+reschedule cycle if we already scheduled
             // today. This cuts ~200-500ms off every cold start.
@@ -135,17 +151,19 @@ class NotificationService {
             const today = new Date().toISOString().split('T')[0];
             const alreadyScheduledToday = lastScheduled === today;
 
-            if (this.settings.enabled && !alreadyScheduledToday) {
+            if (!alreadyScheduledToday) {
                 await this.scheduleRecurringNotifications();
                 await AsyncStorage.setItem(NOTIFICATION_LAST_SCHEDULED_KEY, today);
                 logger.info('📱 Notifications scheduled for', today);
-            } else if (alreadyScheduledToday) {
+            } else {
                 logger.info('📱 Notifications already scheduled today — skipping reschedule');
             }
 
             logger.info('📱 Notification service initialized');
         } catch (error) {
-            console.error('Failed to initialize notifications:', error);
+            // Downgraded to warn: notification setup must never surface as a
+            // red ERROR box on startup (Expo Go / simulator).
+            logger.warn('Notification setup skipped', error);
         }
     }
 
@@ -168,15 +186,26 @@ class NotificationService {
             return false;
         }
 
-        // Get push token for server notifications
+        // Get push token for server notifications — bounded by a timeout so
+        // a hanging Expo Push service can never stall app startup.
+        // Skipped when no projectId is configured (Expo Go).
         try {
-            const token = await Notifications.getExpoPushTokenAsync({
-                projectId: process.env.EXPO_PUBLIC_PROJECT_ID,
-            });
-            this.expoPushToken = token.data;
-            logger.info('📱 Push token', this.expoPushToken);
+            if (!process.env.EXPO_PUBLIC_PROJECT_ID) {
+                logger.info('📱 No Expo project ID — skipping push token fetch');
+            } else {
+                const token = await Promise.race([
+                    Notifications.getExpoPushTokenAsync({
+                        projectId: process.env.EXPO_PUBLIC_PROJECT_ID,
+                    }),
+                    new Promise<never>((_, reject) =>
+                        setTimeout(() => reject(new Error('push token timeout')), 8000),
+                    ),
+                ]);
+                this.expoPushToken = token.data;
+                logger.info('📱 Push token', this.expoPushToken);
+            }
         } catch (error) {
-            console.error('Failed to get push token:', error);
+            logger.warn('Push token fetch skipped', error);
         }
 
         // iOS specific setup
@@ -339,7 +368,7 @@ class NotificationService {
             content: {
                 title: `Outfit for tomorrow 👔`,
                 body: `You have "${event.title}" tomorrow. Pick your outfit now!`,
-                data: { type: 'event_reminder', event: event.title, screen: 'OutfitAI' },
+                data: { type: 'event_reminder', event: event.title, screen: 'AIOutfit' },
             },
             trigger: {
                 type: Notifications.SchedulableTriggerInputTypes.DATE,

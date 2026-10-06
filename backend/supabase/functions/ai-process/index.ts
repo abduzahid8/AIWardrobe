@@ -127,7 +127,8 @@ function buildClothingClassificationPrompt(): string {
 Ignore price tags, sale badges, screenshot UI, text overlays, icons, mannequins, hangers, hands, and background props.
 If multiple objects are visible, describe only the main garment.
 Return ONLY a valid JSON object with these exact fields:
-{"category":"t-shirt|shirt|blouse|sweater|hoodie|jacket|coat|cardigan|dress|skirt|pants|jeans|shorts|sneakers|boots|sandals|bag|hat|scarf|belt|clothing","section":"tops|bottoms|dresses|outerwear|shoes|accessories|other","style":"casual|formal|sport|semi_classic|elegant|minimalist|other","color":"MUST be exactly one of: black|white|grey|beige|cream|brown|red|pink|orange|yellow|green|teal|blue|navy|purple|multicolor","material":"fabric or null","description":"1-2 sentence description of the garment only"}
+{"category":"t-shirt|shirt|blouse|sweater|hoodie|jacket|coat|cardigan|dress|skirt|pants|jeans|shorts|sneakers|boots|sandals|bag|hat|scarf|belt|clothing","section":"tops|bottoms|dresses|outerwear|shoes|accessories|other","style":"casual|formal|sport|semi_classic|elegant|minimalist|other","color":"MUST be exactly one of: black|white|grey|beige|cream|brown|red|pink|orange|yellow|green|teal|blue|navy|purple|multicolor","material":"fabric or null","description":"1-2 sentence description of the garment only","shoeType":"ONLY for shoes, else null: penny_loafer|bit_loafer|tassel_loafer|driving_moccasin|boat_shoe|oxford|derby|sneaker|sandal|boot|other"}
+Footwear rule: a soft unstructured slip-on with tie laces and a pebbled sole is a driving_moccasin, NOT a loafer. Structured slip-ons with a saddle/strap (penny), metal bit, or tassels are loafers — name the subtype. Drivers sit a full formality tier below loafers and never pair with tailoring.
 For the color field: choose the single best match from the allowed list. Use 'navy' for dark blue, 'teal' for blue-green, 'pink' for light red/coral/rose, 'multicolor' for patterns/prints.
 Return valid JSON only.`
 }
@@ -248,7 +249,9 @@ async function classifyClothingWithNvidia(
       Accept: 'application/json',
     },
     body: JSON.stringify({
-      model: 'nvidia/llama-3.1-nemotron-nano-vl-8b-v1',
+      // NOTE: nvidia/llama-3.1-nemotron-nano-vl-8b-v1 was retired (410 Gone).
+      // meta/llama-3.2-11b-vision-instruct is the current free vision model.
+      model: 'meta/llama-3.2-11b-vision-instruct',
       messages: [
         {
           role: 'user',

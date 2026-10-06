@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Linking, Platform, StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, BackHandler, Image, Linking, Platform, StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -48,7 +48,36 @@ const PaywallScreen = () => {
     const [availableProductIds, setAvailableProductIds] = useState<string[]>([]);
 
     const wardrobeItemCount = useWardrobeStore((s) => s.items.length);
-    const canGoBack = navigation.canGoBack();
+
+    // Exit handler — must work in every context Paywall is shown in:
+    //  - Global paywall pushed over Main (canGoBack === true → goBack)
+    //  - Onboarding paywall as the sole route (canGoBack === false → complete onboarding to reach Main)
+    // canGoBack is read at press time (not render time) so it never goes stale.
+    const closePaywall = useCallback(() => {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        try {
+            if (navigation.canGoBack?.()) {
+                navigation.goBack();
+                return;
+            }
+        } catch { /* fall through to ref / onboarding fallback */ }
+        try {
+            if (navigationRef.isReady() && (navigationRef.canGoBack?.() ?? false)) {
+                navigationRef.goBack();
+                return;
+            }
+        } catch { /* fall through */ }
+        completeOnboarding();
+    }, [navigation, completeOnboarding]);
+
+    // Android hardware back must also exit — never trap the user.
+    useEffect(() => {
+        const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+            closePaywall();
+            return true;
+        });
+        return () => sub.remove();
+    }, [closePaywall]);
 
     useEffect(() => {
         let cancelled = false;
@@ -78,33 +107,33 @@ const PaywallScreen = () => {
             id: 'lite',
             title: t('paywall.lite', 'Lite'),
             price: litePrice,
-            period: '/ month',
-            footer: '$0.69 / week',
-            bestFor: 'More closet space, smarter outfit planning, and simple wardrobe analytics.',
-            features: ['Unlimited AI outfit ideas', '100 wardrobe items', 'Wardrobe insights', 'Full outfit calendar'],
+            period: t('paywall.perMonth', '/month'),
+            footer: t('paywall.liteWeekly', '$0.69 / week'),
+            bestFor: t('paywall.liteBestFor'),
+            features: [t('paywall.liteFeature1'), t('paywall.liteFeature2'), t('paywall.liteFeature3'), t('paywall.liteFeature4')],
             accent: ['#73E2A7', '#64B5F6'],
         },
         {
             id: 'premium',
             title: t('paywall.pro', 'Pro'),
             price: proPrice,
-            period: '/ month',
+            period: t('paywall.perMonth', '/month'),
             badge: t('paywall.mostPopular', 'MOST POPULAR'),
-            footer: '$2.31 / week',
-            bestFor: 'Best for daily styling, travel looks, unlimited closet growth, and priority AI.',
-            features: ['Unlimited AI outfit ideas', 'Unlimited wardrobe', 'AI trip planner', 'Priority model and no ads'],
+            footer: t('paywall.proWeekly', '$2.31 / week'),
+            bestFor: t('paywall.proBestFor'),
+            features: [t('paywall.proFeature1'), t('paywall.proFeature2'), t('paywall.proFeature3'), t('paywall.proFeature4'), t('paywall.proFeature5'), t('paywall.proFeature6'), t('paywall.proFeature7')],
             accent: ['#FFFFFF', '#A7F3FF'],
         },
         {
             id: 'yearly',
-            title: t('paywall.yearlyPlan', 'Max Yearly'),
+            title: t('paywall.yearlyPlan', 'Pro Yearly'),
             price: yearlyPrice,
-            period: '/ year',
-            badge: 'SAVE 17%',
+            period: t('paywall.perYear', '/year'),
+            badge: t('paywall.yearlyBadge', 'SAVE 17%'),
             oldPrice: '$119.88',
-            footer: '$1.92 / week',
-            bestFor: 'Everything in Pro with the lowest long-term price.',
-            features: ['All Pro features', 'Annual savings', 'Seasonal collections', 'Early feature access'],
+            footer: t('paywall.yearlyWeekly', '$1.92 / week'),
+            bestFor: t('paywall.yearlyBestFor'),
+            features: [t('paywall.yearlyFeature1'), t('paywall.yearlyFeature2'), t('paywall.yearlyFeature3'), t('paywall.yearlyFeature4')],
             accent: ['#FFD36A', '#FF7A90'],
         },
     ], [litePrice, proPrice, yearlyPrice, t]);
@@ -128,8 +157,10 @@ const PaywallScreen = () => {
         setTimeout(() => {
             if (navigationRef.isReady()) {
                 navigation.reset({ index: 1, routes: [{ name: 'Main' }, target] });
-            } else if (canGoBack) {
-                navigation.goBack();
+            } else {
+                try {
+                    if (navigation.canGoBack?.()) navigation.goBack();
+                } catch { /* no-op */ }
             }
         }, 300);
     };
@@ -140,7 +171,7 @@ const PaywallScreen = () => {
         if (!isAvailable) {
             Alert.alert(
                 t('paywall.subscriptionUnavailable'),
-                `App Store is not returning ${productId}. Check that this product exists in App Store Connect, is Ready to Submit, is attached to the current app version, and is added to the RevenueCat offering.`
+                t('paywall.productUnavailableBody')
             );
             return;
         }
@@ -185,24 +216,36 @@ const PaywallScreen = () => {
         }
     };
 
-    const closePaywall = () => {
-        if (canGoBack) navigation.goBack();
-        else completeOnboarding();
-    };
-
     return (
         <View style={styles.screen}>
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-            {/* TEMP: paywall_hero.png was never committed to the repo (pre-existing, unrelated to reorg) — swapped to an existing asset so bundling succeeds. Revert to paywall_hero.png once the real asset is added. */}
-            <Image source={require('../assets/images/basic_outfit_1.png')} style={styles.backgroundImage} resizeMode="cover" />
+            {/* PERF: basic_outfit_1.png is 2.8MB — decode scaled, no fade (avoids
+                full-res GPU upload jank on Paywall open). TODO: compress to
+                WebP <300KB via expo-optimize/sharp. */}
+            <Image
+              source={require('../assets/images/basic_outfit_1.png')}
+              style={styles.backgroundImage}
+              resizeMode="cover"
+              resizeMethod="scale"
+              fadeDuration={0}
+            />
             <LinearGradient
                 colors={['rgba(5,10,22,0.15)', 'rgba(5,10,22,0.72)', '#050A16', '#050A16']}
                 locations={[0, 0.42, 0.68, 1]}
-                style={StyleSheet.absoluteFillObject}
+                style={StyleSheet.absoluteFill}
             />
 
-            <TouchableOpacity style={[styles.closeButton, { top: insets.top + 10 }]} onPress={closePaywall} activeOpacity={0.75}>
-                <Ionicons name="close" size={22} color="#FFFFFF" />
+            <TouchableOpacity
+                style={[styles.closeButton, { top: insets.top + 10 }]}
+                onPress={closePaywall}
+                activeOpacity={0.75}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                testID="paywall-close-button"
+                accessibilityLabel={t('common.close', { defaultValue: 'Close' })}
+                accessibilityRole="button"
+                accessibilityHint={t('paywall.closeHint', { defaultValue: 'Dismiss paywall and continue with the free version' })}
+            >
+                <Ionicons name="close" size={24} color="#FFFFFF" />
             </TouchableOpacity>
 
             <Animated.ScrollView
@@ -210,9 +253,9 @@ const PaywallScreen = () => {
                 showsVerticalScrollIndicator={false}
             >
                 <Animated.View entering={FadeIn.duration(500)} style={styles.hero}>
-                    <ScaledText style={styles.title}>Style more from the closet you already own</ScaledText>
+                    <ScaledText style={styles.title}>{t('paywall.heroTitle')}</ScaledText>
                     <ScaledText style={styles.subtitle}>
-                        Pick the plan that matches how you use AIWardrobe. Lite is simple organization power; Pro unlocks deeper planning and priority AI.
+                        {t('paywall.heroSubtitle')}
                     </ScaledText>
                 </Animated.View>
 
@@ -244,7 +287,7 @@ const PaywallScreen = () => {
                                 )}
                                 {!isAvailable && (
                                     <View style={styles.inlineBadge}>
-                                        <ScaledText style={styles.inlineBadgeText}>UNAVAILABLE</ScaledText>
+                                        <ScaledText style={styles.inlineBadgeText}>{t('paywall.unavailable', 'UNAVAILABLE')}</ScaledText>
                                     </View>
                                 )}
 
@@ -285,7 +328,7 @@ const PaywallScreen = () => {
 
                 <Animated.View entering={FadeInUp.delay(220).duration(560)} style={styles.ctaPanel}>
                     <View>
-                        <ScaledText style={styles.ctaEyebrow}>Selected plan</ScaledText>
+                        <ScaledText style={styles.ctaEyebrow}>{t('paywall.selectedPlan')}</ScaledText>
                         <ScaledText style={styles.ctaPlan}>{selected.title} · {selected.price}</ScaledText>
                     </View>
                     <TouchableOpacity activeOpacity={0.88} disabled={isLoading !== null} onPress={purchase}>
@@ -294,7 +337,7 @@ const PaywallScreen = () => {
                                 <ActivityIndicator color="#050A16" size="small" />
                             ) : (
                                 <>
-                                    <ScaledText style={styles.continueButtonText}>Continue</ScaledText>
+                                    <ScaledText style={styles.continueButtonText}>{t('paywall.continue', 'Continue')}</ScaledText>
                                     <Ionicons name="arrow-forward" size={18} color="#050A16" />
                                 </>
                             )}
@@ -309,6 +352,18 @@ const PaywallScreen = () => {
                         ) : (
                             <ScaledText style={styles.footerActionLinkText}>{t('paywall.restorePurchases')}</ScaledText>
                         )}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.footerLinkTouch}
+                        onPress={closePaywall}
+                        activeOpacity={0.7}
+                        testID="paywall-continue-free-button"
+                        accessibilityLabel={t('paywall.continueFree', { defaultValue: 'Continue with Free' })}
+                        accessibilityRole="button"
+                    >
+                        <ScaledText style={styles.continueFreeText}>
+                            {t('paywall.continueFree', { defaultValue: 'Continue with Free' })}
+                        </ScaledText>
                     </TouchableOpacity>
                 </View>
 
@@ -343,15 +398,16 @@ const styles = StyleSheet.create({
     closeButton: {
         position: 'absolute',
         right: 18,
-        width: 38,
-        height: 38,
-        borderRadius: 19,
-        backgroundColor: 'rgba(255,255,255,0.14)',
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(5,10,22,0.55)',
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 10,
+        elevation: 6,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.18)',
+        borderColor: 'rgba(255,255,255,0.32)',
     },
     scrollContent: {
         paddingHorizontal: 16,
@@ -554,6 +610,12 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#FFFFFF',
         fontWeight: '800',
+    },
+    continueFreeText: {
+        fontSize: 13,
+        color: 'rgba(255,255,255,0.72)',
+        fontWeight: '700',
+        textDecorationLine: 'underline',
     },
     legalNotesText: {
         fontSize: 10,

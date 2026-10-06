@@ -57,8 +57,9 @@ export const useAccessibility = (): UseAccessibilityReturn => {
     const [isHighContrastEnabled, setHighContrast] = useState(false);
     const [dynamicTypeScale, setDynamicTypeScale] = useState(1.0);
 
-    // Color scheme from system
-    const colorScheme = useColorScheme() ?? 'light';
+    // Color scheme from system ('unspecified'/null fall back to light,
+    // matching the 'light' | 'dark' contract of AccessibilityState)
+    const colorScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
 
     // Derived: Reduced transparency (maps from high contrast on iOS)
     const prefersReducedTransparency = isHighContrastEnabled;
