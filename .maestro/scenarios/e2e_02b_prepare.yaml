@@ -1,0 +1,18 @@
+appId: host.exp.Exponent
+---
+# Test 02 (part 2a) · clear overlays + land on clean Sign In step 1.
+# Split from e2e_02b_reject_login so the runner's pbcopy happens immediately
+# before the paste step — the host pasteboard is user-actively-contended and
+# a long dialogs preamble let a stray host copy win the race (pasted an
+# article excerpt instead of the address).
+- runFlow: _e2e_dialogs.yaml
+- extendedWaitUntil:
+    visible: "Continue with Google"
+    timeout: 20000
+- runFlow:
+    when:
+      visible: "Close"
+    commands:
+      - tapOn: "Close"
+      - waitForAnimationToEnd:
+          timeout: 2000

@@ -18,6 +18,6 @@ tags:
 - tapOn: ".*(Перейти на Pro|Open upgrade plans|Yangilash rejalarini ochish).*"
 - waitForAnimationToEnd:
     timeout: 12000
-- assertVisible: ".*Style more from the.*"
+- assertVisible: ".*Your style, unlocked.*"
 - assertVisible: ".*\\$9\\.99.*"
 - takeScreenshot: full_paywall

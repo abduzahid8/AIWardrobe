@@ -36,6 +36,9 @@ tags:
 - assertVisible: ".*New.*"
 # Occasion + style pickers render; switching occasion keeps setup stable.
 - assertVisible: ".*(Work|Casual).*"
+- tapOn: ".*More occasions.*"
+- waitForAnimationToEnd:
+    timeout: 4000
 - tapOn: ".*Casual.*"
 - waitForAnimationToEnd:
     timeout: 5000

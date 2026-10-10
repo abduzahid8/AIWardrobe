@@ -1,0 +1,19 @@
+appId: host.exp.Exponent
+---
+# Dismiss Expo Go's developer menu if a reboot left it open (fresh Expo Go
+# first launch shows an intro tooltip over the app; both are no-ops when
+# absent — conditional runFlows skip and the flow exits 0).
+- runFlow:
+    when:
+      visible: "This is the developer menu"
+    commands:
+      - tapOn: "Continue"
+      - waitForAnimationToEnd:
+          timeout: 2000
+- runFlow:
+    when:
+      visible: "dev-tools"
+    commands:
+      - tapOn: "Close"
+      - waitForAnimationToEnd:
+          timeout: 3000

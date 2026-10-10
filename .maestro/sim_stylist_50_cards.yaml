@@ -1,0 +1,80 @@
+appId: host.exp.Exponent
+name: sim_stylist_50_cards
+---
+- runFlow:
+    when:
+      visible: ".*(Your Outfits|Ваши образы).*"
+    commands:
+      - tapOn:
+          point: "8%,11%"
+      - waitForAnimationToEnd:
+          timeout: 8000
+- runFlow:
+    when:
+      visible: ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*"
+    commands:
+      - tapOn: ".*(Создать образ|Create outfit).*"
+      - waitForAnimationToEnd:
+          timeout: 10000
+- runFlow:
+    when:
+      visible: ".*(Вдохновение|Inspiration).*"
+    commands:
+      - tapOn: ".*(Магазин|Shop).*"
+      - waitForAnimationToEnd:
+          timeout: 8000
+      - tapOn: ".*(Персональный стилист|Personal stylist).*"
+      - waitForAnimationToEnd:
+          timeout: 10000
+- assertVisible:
+    id: stylistCommentInput
+- runFlow:
+    when:
+      visible: ".*(New clothing|Новая одежда).*"
+    commands:
+      - tapOn: ".*(New clothing|Новая одежда).*"
+      - waitForAnimationToEnd:
+          timeout: 2000
+- tapOn:
+    id: stylistCommentInput
+- eraseText
+- inputText: ${COMMENT}
+# Do NOT tap a style chip here: tapping a chip clears commentEditedRef, so the
+# typed comment (which carries style + occasion) would be ignored and every
+# scenario would collapse to the chip's style. Comments must win.
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: stylistGenerate
+- extendedWaitUntil:
+    visible: ".*(Your Outfits|Ваши образы).*"
+    timeout: 75000
+# Deep capture: every card in the deck (7 overlapping scroll shots so each
+# card's header labels (LAYER/TOP), tiles, tips, and the deck tail are all
+# on screen in at least one shot — fixed-distance swipes had momentum
+# overshoot/undershoot and never captured card 2's header row).
+- takeScreenshot: ${SHOT}
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2500
+- takeScreenshot: ${SHOT}_c2
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2500
+- takeScreenshot: ${SHOT}_c3
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2500
+- takeScreenshot: ${SHOT}_c4
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2500
+- takeScreenshot: ${SHOT}_c5
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2500
+- takeScreenshot: ${SHOT}_c6
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2500
+- takeScreenshot: ${SHOT}_c7

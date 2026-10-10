@@ -1,0 +1,16 @@
+appId: host.exp.Exponent
+---
+# Fill the Sign Up form and submit.
+# PRECONDITION: Sign In screen (run e2e_prepare_signin first).
+# Email is NOT typed — iOS email-keyboard domain suggestion mangles keystrokes.
+# The runner `simctl pbcopy`s the unique address before this flow; the form
+# pastes it. Password/username are typed (verified clean in AX dumps).
+# Ends right after submit; e2e_quiz_a picks up at the welcome screen.
+- runFlow: _e2e_dialogs.yaml
+- tapOn:
+    id: "signUpLink"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: ".*Already have an account.*"
+- runFlow: _e2e_signup_fill.yaml
+- takeScreenshot: e2e_signup_submitted

@@ -1,0 +1,42 @@
+appId: host.exp.Exponent
+---
+# Resume quiz from the personality step (welcome already passed in a prior
+# interrupted run). Mirrors e2e_quiz_a steps 1b→3.
+- assertVisible: ".*Pick the one that feels most like you.*"
+- tapOn: "Old Money"
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn: "Continue.*"
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# Colors — unlabeled 62px swatch grid; 3 well-separated centres (see e2e_quiz_a)
+- assertVisible: ".*speak to you.*"
+- tapOn:
+    point: "40%,46%"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    point: "60%,55%"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    point: "20%,64%"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible: ".*[1-9][0-9]* chosen.*"
+- tapOn: "Continue.*"
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# Occasions
+- assertVisible: ".*Pick everything that applies.*"
+- tapOn: "Work"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn: "Date"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn: "Continue.*"
+- waitForAnimationToEnd:
+    timeout: 5000

@@ -1566,13 +1566,6 @@ const ProfileScreen = () => {
                   style={styles.heroActionPrimary}
                 />
               )}
-
-              <SecondaryGlassButton
-                label={t('profile.insights')}
-                icon="stats-chart-outline"
-                onPress={() => navigation.navigate('WeeklyInsights')}
-                style={styles.heroActionSecondary}
-              />
             </View>
           </GlassPanel>
         </Animated.View>
@@ -2367,9 +2360,6 @@ const createStyles = (D: DTokens) =>
     },
     heroActionPrimary: {
       flex: 1.05,
-    },
-    heroActionSecondary: {
-      flex: 0.85,
     },
     primaryButton: {
       minHeight: 46,

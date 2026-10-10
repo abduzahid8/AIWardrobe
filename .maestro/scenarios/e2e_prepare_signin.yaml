@@ -1,0 +1,36 @@
+appId: host.exp.Exponent
+---
+# Prep for sign-up: clear overlays, land on a clean Sign In screen.
+# Used twice per chain (before test 01 and before test 03). ≈9 queries.
+- runFlow: _e2e_dialogs.yaml
+
+# Escape a leftover Sign Up form (e.g. a previous attempt).
+# A focused email field puts the keyboard over the footer, so the signInLink
+# tap would land on the keyboard. hideKeyboard is nondeterministic on this
+# build — tap the static "or" divider instead (standard outside-tap resign).
+- runFlow:
+    when:
+      visible: ".*Already have an account.*"
+    commands:
+      - tapOn: "or"
+      - waitForAnimationToEnd:
+          timeout: 2000
+      - tapOn:
+          id: "signInLink"
+      - waitForAnimationToEnd:
+          timeout: 5000
+
+# 02b ends on sign-in step 2 (email → password) after the rejected-login
+# alert — step back so the assert below holds from either step.
+- runFlow:
+    when:
+      visible: ".*Forgot Password.*"
+    commands:
+      - tapOn: "Back"
+      - waitForAnimationToEnd:
+          timeout: 3000
+
+- extendedWaitUntil:
+    visible: "Continue with Google"
+    timeout: 20000
+- takeScreenshot: e2e_prepared_signin

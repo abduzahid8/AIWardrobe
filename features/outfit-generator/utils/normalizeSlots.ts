@@ -8,9 +8,9 @@
  * so all call sites behave byte-identically to before.
  */
 import { canonicalizeMacroCategory } from '../../../src/utils/categoryMapper';
-import { occasionFormality, rejectForStyleOccasion, rejectForClimate, rejectOutfitClimate, rejectOutfitIncoherence, matchesOccasionSilhouette, detectSlotMismatch, isUnderwearItem, isAccessoryPropItem, SHORT_SLEEVE_RE, STRIP_SHORT_SLEEVE_RE, humanizeProductName } from './occasionRules';
+import { occasionFormality, rejectForStyleOccasion, rejectForClimate, rejectOutfitClimate, rejectOutfitIncoherence, matchesOccasionSilhouette, detectSlotMismatch, isUnderwearItem, isAccessoryPropItem, ACCESSORY_PROP_RE, SHORT_SLEEVE_RE, STRIP_SHORT_SLEEVE_RE, humanizeProductName } from './occasionRules';
 import { orderSlotCandidates, selectSlotPick } from './deckDedupe';
-import { parseBudgetFromText, resolveShopPrice, outfitShopSpend, type ParsedBudget } from '../../../src/utils/outfitBudget';
+import { parseBudgetFromText, resolveShopPrice, outfitShopSpend, budgetInCurrency, catalogCurrencyOf, type ParsedBudget } from '../../../src/utils/outfitBudget';
 import { parseStylistIntent } from './stylistIntent';
 import { normalizeCatalogNameKey, isTrustedProductImage, isBrandCatalogImage, collapseDuplicateProductImages, productImageKey, garmentVarietyFamily } from '../../../src/utils/shopCatalogOrder';
 
@@ -47,7 +47,7 @@ export function fabricFamily(item: { type?: string; name?: string; brand?: strin
   const blob = `${item.type || ''} ${item.name || ''} ${item.brand || ''} ${(item as any).description || ''}`.toLowerCase();
   if (/\b(knit|cardigan|sweater|pullover|jumper|fleece|hoodie)\b/.test(blob)) return 'knit';
   if (/\b(denim|jean|chambray)\b/.test(blob)) return 'denim';
-  if (/\b(blazer|suit|coat|jacket|trench|overcoat|peacoat|bomber|puffer|vest|outerwear)\b/.test(blob)) return 'tailored-outer';
+  if (/\b(blazer|suit|coat|jacket|trench|overcoat|peacoat|bomber|puffer|vest|outerwear|parka|anorak|gilet|windbreaker)\b/.test(blob)) return 'tailored-outer';
   if (/\b(linen|poplin|oxford|flannel|twill|broadcloth)\b/.test(blob)) return 'woven';
   if (/\b(t-shirt|tshirt|\btee\b|jersey|tank|sleeveless)\b/.test(blob)) return 'tee';
   if (/\b(polo|pique)\b/.test(blob)) return 'polo';
@@ -165,14 +165,40 @@ export const PLACEHOLDER_PANTS = {
     // stored as category "top"/"tops" is still a layer (main-top slot),
     // not a base top. Without this the anchor locks into second-top.
     const t = `${type || ''} ${category || ''} ${name || ''}`.toLowerCase();
+    // Accessory names beat alias types: a watch row ships as upper_body/tops.
+    // Clothing words still win so "belt-waist pants" stays a bottom.
+    const nameBlob = `${name || ''}`.toLowerCase();
+    const nameHasClothing = /\b(pant|trouser|jeans?|shorts?|skirt|shirt|t-?shirts?|tees?|polos?|blouses?|jackets?|coats?|blazers?|hoodies?|cardigans?|sweaters?|pullovers?|vest|puffers?|trench|shoes?|sneakers?|boots?|loafers?|sandals?|dresses?|sweatshirts?|overshirts?|knitwear|jumpers?|fleece|activewear|athletic)\b/.test(nameBlob);
+    if (!nameHasClothing && ACCESSORY_PROP_RE.test(nameBlob)) return 'other';
+    const aliasHit = canonicalizeMacroCategory(type) !== 'other'
+      ? canonicalizeMacroCategory(type)
+      : canonicalizeMacroCategory(category || '');
+    // Explicit non-clothing alias on BOTH slots means the row was
+    // DELIBERATELY dropped upstream (mapShopCatalogRow writes
+    // type=category='accessories' for macroCategory 'other' so keyword
+    // fallbacks can never re-derive it — md-uz-62899803: lower_body zone +
+    // trousers photo + stolen "suit blazer" name came back as outerwear
+    // through this name fallback). Keep 'other'. Rows with an absent slot
+    // (edge items ship empty type/category) still classify from the name.
+    if (
+      (aliasHit === 'other' || aliasHit === 'accessory')
+      && String(type || '').trim() !== ''
+      && String(category || '').trim() !== ''
+    ) return 'other';
+    // Structured zone beats a CONFLICTING name: shop row md-uz-62899803 is
+    // garment_type=lower_body with a trousers photo but a corrupted name
+    // ("100% cool wool suit blazer") — name-first put pants in the LAYER
+    // tile. Blazer-stored-as-"tops" rows keep working: upper-zone names only
+    // REFINE the upper zone, they never conflict with it.
+    const nameImpliesUpperZone = /\b(jacket|coat|blazer|hoodie|cardigan|sweater|pullover|vest|puffer|outerwear|trench|peacoat|bomber|shirt|t-?shirt|tee|polo|blouse|knit)\b/.test(nameBlob);
+    const nameImpliesLowerZone = /\b(pant|trouser|jeans?|shorts?|skirt)\b/.test(nameBlob);
+    if (aliasHit === 'bottom' && nameImpliesUpperZone && !nameImpliesLowerZone) return 'bottom';
+    if (aliasHit === 'shoes' && nameImpliesUpperZone && !/\b(shoe|sneaker|boot|loafer|sandal|trainer|derby|moccasin)\b/.test(nameBlob)) return 'shoes';
     if (SHORT_SLEEVE_RE.test(t) && !/\b(pant|trouser|jeans?|shorts?|skirt)\b/.test(t.replace(STRIP_SHORT_SLEEVE_RE, ' '))) return 'top';
     if (t.match(/\b(jacket|coat|blazer|hoodie|cardigan|sweater|pullover|vest|puffer|outerwear|trench|peacoat|bomber)\b/)) return 'outerwear';
 
     // Prefer canonical aliases (upper_body / lower_body / tops / footwear / …)
     // so items coming back from shop_catalog are slotted correctly.
-    const aliasHit = canonicalizeMacroCategory(type) !== 'other'
-      ? canonicalizeMacroCategory(type)
-      : canonicalizeMacroCategory(category || '');
     if (aliasHit !== 'other') return aliasHit;
 
     if (t.match(/\b(pant|trouser|jeans?|bottom|shorts?|skirt|lower[_\s-]?body)\b/) && !SHORT_SLEEVE_RE.test(t) && !/\b(shirt|tee|polo|blouse|overshirt|jacket|coat|blazer)\b/.test(t)) return 'bottom';
@@ -365,19 +391,118 @@ export function createSlotNormalizer(ctx: SlotNormalizerContext) {
     );
     const pickPoolCdn = pickPoolMapped.filter((it: any) => isBrandCatalogImage(it.imageUrl || it.image));
     const pickPoolTrusted = pickPoolMapped.filter((it: any) => isTrustedProductImage(it.imageUrl || it.image));
+    // Image quality is a PREFERENCE, not a hard filter. The CDN subset can be
+    // dominated by a single macro (observed: 99 trousers / 1 outerwear / 0
+    // shoes / 0 tops), which made every shoe pick miss and forced placeholder
+    // "Shoes" tiles and missing top cards. Union keeps CDN-first order while
+    // guaranteeing every slot macro stays reachable.
     const pickPoolFixed: any[] = ctx.currentSource === 'shop'
-      ? (pickPoolCdn.length >= 8 ? pickPoolCdn : (pickPoolTrusted.length > 0 ? pickPoolTrusted : pickPoolMapped))
+      ? collapseDuplicateProductImages([...pickPoolCdn, ...pickPoolTrusted, ...pickPoolMapped])
       : pickPoolMapped;
-    const budget: ParsedBudget | null =
+    // Zone-vs-name conflict rows: upstream inferShopRowMacro already decided
+    // these must never fill a clothing slot (macroCategory 'other' with no
+    // accessory-prop name — md-uz-62899803: lower_body zone + trousers photo +
+    // stolen "suit blazer" name). The pool keeps them dropped, but the EDGE
+    // re-derives macros from the name alone and returns macro 'outerwear'.
+    // Cross-check incoming items against this set BEFORE repairItemMacro so a
+    // corrupt row can never occupy the LAYER tile (matched by id, bare id —
+    // edge prefixes some ids with `shop_` — and normalized name key).
+    const poolConflictIds = new Set<string>();
+    const poolConflictNames = new Set<string>();
+    {
+      const nameTotals = new Map<string, number>();
+      const nameConflicts = new Map<string, number>();
+      for (const r of pickPoolFixed) {
+        const nk = normalizeCatalogNameKey(r?.name || '');
+        const conflict = canonicalizeMacroCategory(r?.macroCategory || '') === 'other'
+          && !isAccessoryPropItem(r);
+        if (!conflict) continue;
+        const id = String(r?.id || '');
+        if (id) poolConflictIds.add(id);
+        if (nk) {
+          nameConflicts.set(nk, (nameConflicts.get(nk) || 0) + 1);
+        }
+      }
+      for (const r of pickPoolFixed) {
+        const nk = normalizeCatalogNameKey(r?.name || '');
+        if (nk) nameTotals.set(nk, (nameTotals.get(nk) || 0) + 1);
+      }
+      // Name keys only when the name is conflict-ONLY: the corrupted
+      // trousers row shares "100% cool wool suit blazer" with 6 legit blazer
+      // rows — keying on that name would drop every real blazer too.
+      for (const [nk, conf] of nameConflicts) {
+        if (conf === nameTotals.get(nk)) poolConflictNames.add(nk);
+      }
+    }
+    const rawBudget: ParsedBudget | null =
       ctx.maxShopBudget
       || parseBudgetFromText(ctx.budgetText || '')
       || null;
+    // shop_catalog is priced in UZS while a parsed "$250" is USD: compare the
+    // cap in the pool's currency or fitsBudget rejects EVERY priced candidate
+    // and the card falls back to placeholder "Pants"/"Shoes" tiles.
+    const budget: ParsedBudget | null =
+      budgetInCurrency(rawBudget, catalogCurrencyOf([...(pickPoolFixed || []), ...(pickPool || [])]));
     const priceOf = (it: any) => resolveShopPrice(it, pickPoolFixed);
     const withListedPrice = (it: any) => {
       if (!it) return it;
       const listed = priceOf(it);
       if (listed <= 0) return it;
       return { ...it, price: listed, isShopItem: it.isShopItem ?? (ctx.currentSource === 'shop') };
+    };
+    // Image repair: edge/AI items frequently arrive with a legacy placeholder
+    // string (`placeholder_pants`, `basic_clothing_shoes`) or an empty image
+    // while the pool row for the SAME product carries a real photo. Without
+    // this, the tile renders the bundled fallback asset — a real name over
+    // the wrong garment photo. Resolve by id first, then by exact name.
+    const isRenderableImage = (raw: any): raw is string =>
+      typeof raw === 'string' && REAL_IMAGE_RE.test(raw);
+    const poolImageById = new Map<string, string>();
+    const poolImageByName = new Map<string, string>();
+    for (const r of pickPoolFixed) {
+      const raw = typeof r?.image === 'string' && r.image ? r.image : r?.imageUrl;
+      if (!isRenderableImage(raw) || String(r?.id || '').startsWith('placeholder_')) continue;
+      const id = String(r.id || '');
+      if (id && !poolImageById.has(id)) poolImageById.set(id, raw);
+      const nk = normalizeCatalogNameKey(r?.name || '');
+      if (nk && !poolImageByName.has(nk)) poolImageByName.set(nk, raw);
+    }
+    const repairImage = (it: any) => {
+      if (!it || String(it?.id || '').startsWith('placeholder_')) return it;
+      const raw = typeof it.image === 'string' && it.image ? it.image : it.imageUrl;
+      if (isRenderableImage(raw)) return it;
+      const id = String(it?.id || '');
+      const bare = id.replace(/^shop_/i, '');
+      const byId = poolImageById.get(id)
+        || (bare ? (poolImageById.get(bare) || poolImageById.get(`shop_${bare}`)) : undefined);
+      const nk = normalizeCatalogNameKey(it?.name || '');
+      const found = byId || (nk ? poolImageByName.get(nk) : undefined);
+      if (!found) return it;
+      return { ...it, image: found, imageUrl: found, _hasImage: true };
+    };
+    // Buy URL repair: edge items never carry sourceUrl and only price/image
+    // were merged from the pool — tiles with a repaired price but no shopUrl
+    // rendered without a Buy button. Reattach the pool row's URL by id/name.
+    const poolShopUrlById = new Map<string, string>();
+    const poolShopUrlByName = new Map<string, string>();
+    for (const r of pickPoolFixed) {
+      const url = r?.shopUrl || r?.sourceUrl;
+      if (typeof url !== 'string' || !url) continue;
+      const id = String(r.id || '');
+      if (id && !poolShopUrlById.has(id)) poolShopUrlById.set(id, url);
+      const nk = normalizeCatalogNameKey(r?.name || '');
+      if (nk && !poolShopUrlByName.has(nk)) poolShopUrlByName.set(nk, url);
+    }
+    const repairShopUrl = (it: any) => {
+      if (!it || it.shopUrl) return it;
+      const id = String(it?.id || '');
+      const bare = id.replace(/^shop_/i, '');
+      const nk = normalizeCatalogNameKey(it?.name || '');
+      const found = poolShopUrlById.get(id)
+        || (bare ? (poolShopUrlById.get(bare) || poolShopUrlById.get(`shop_${bare}`)) : undefined)
+        || (nk ? poolShopUrlByName.get(nk) : undefined);
+      if (!found) return it;
+      return { ...it, shopUrl: found };
     };
     let incomingItems = items;
     // Helper: prefer an item's own macroCategory (canonicalized) over the
@@ -392,15 +517,30 @@ export function createSlotNormalizer(ctx: SlotNormalizerContext) {
     const resolveImage = (it: any) => (typeof it.image === 'string' ? it.image : undefined) || it.imageUrl || '';
 
     const incomingMapped = (incomingItems || []).map((raw) => {
+      // Edge re-derives macros from names alone and will happily return a
+      // pool-dropped conflict row as macro 'outerwear' (md-uz-62899803).
+      // Drop it here — BEFORE repairItemMacro, which would otherwise
+      // "repair" a zone-typed copy straight into the LAYER slot.
+      {
+        const rawId = String(raw?.id || '');
+        const bareId = rawId.replace(/^shop_/i, '');
+        const rawKey = normalizeCatalogNameKey(raw?.name || '');
+        if ((rawId && poolConflictIds.has(rawId))
+          || (bareId && poolConflictIds.has(bareId))
+          || (rawKey && poolConflictNames.has(rawKey))) {
+          if (__DEV__) console.log('[normalizeTo4Slots] drop zone-name conflict:', { id: rawId, name: String(raw?.name || '').slice(0, 60) });
+          return null;
+        }
+      }
       const it = repairItemMacro(raw);
       if (isUnderwearItem(it) || isAccessoryPropItem(it)) return null;
       const image = it.image || it.imageUrl || '';
-      return withListedPrice({
+      return repairImage(withListedPrice(repairShopUrl({
         ...it,
         image,
         macroCategory: resolveMacroCategory(it),
         _hasImage: (it as any)._hasImage ?? isTrustedProductImage(image || (it as any).imageUrl || ''),
-      });
+      })));
     }).filter(Boolean);
     const incomingDeduped = collapseDuplicateProductImages(incomingMapped as any[]);
     const incomingTrusted = ctx.currentSource === 'shop'
@@ -576,20 +716,36 @@ export function createSlotNormalizer(ctx: SlotNormalizerContext) {
       || (formalOccasion ? pickCandidate((candidate: any) => isWearableBottom(candidate) && hasRealImage(candidate) && occasionOk(candidate) && styleOk(candidate), 6) : undefined)
       || pickCandidate((candidate: any) => isWearableBottom(candidate) && hasRealImage(candidate) && styleOk(candidate), 6)
       || pickCandidate((candidate: any) => isWearableBottom(candidate) && styleOk(candidate), 6)
+      // Real bottom before placeholder (4-item rule): budget relaxes first,
+      // style next — same priority order as the other slots.
+      || pickCandidate((candidate: any) => isWearableBottom(candidate) && hasRealImage(candidate) && styleOk(candidate), 6, true)
+      || pickCandidate((candidate: any) => isWearableBottom(candidate) && styleOk(candidate), 6, true)
+      || pickCandidate((candidate: any) => isWearableBottom(candidate) && hasRealImage(candidate), 6, true)
+      || pickCandidate((candidate: any) => isWearableBottom(candidate), 6, true)
       || { ...PLACEHOLDER_PANTS };
     // Force macroCategory to 'bottom' so OutfitSlotGrid.classifyItem never drops it
     let slotPants = { ...slotPantsRaw, macroCategory: 'bottom' as const };
     const pantsIsShorts = isShortsBottom(slotPantsRaw);
 
-    const slotOuterwearRaw = needsLayer
-      ? (pickAnchorForSlot('outerwear')
-        || (formalOccasion ? pickCandidate((candidate: any) => candidate.macroCategory === 'outerwear' && isFormalLayer(candidate) && !isShortSleeve(candidate) && hasRealImage(candidate) && styleOk(candidate) && silhouetteOk(candidate), 0, climateNeedsLayer) : undefined)
-        || pickCandidate((candidate: any) => candidate.macroCategory === 'outerwear' && !isShortSleeve(candidate) && hasRealImage(candidate) && !(pantsIsShorts && isFormalLayer(candidate)) && styleOk(candidate) && silhouetteOk(candidate), 0, climateNeedsLayer)
-        || (formalOccasion ? pickCandidate((candidate: any) => candidate.macroCategory === 'outerwear' && !isShortSleeve(candidate) && hasRealImage(candidate) && !(pantsIsShorts && isFormalLayer(candidate)) && occasionOk(candidate) && styleOk(candidate), 0, climateNeedsLayer) : undefined)
-        || pickCandidate((candidate: any) => candidate.macroCategory === 'outerwear' && !isShortSleeve(candidate) && hasRealImage(candidate) && !(pantsIsShorts && isFormalLayer(candidate)) && styleOk(candidate), 0, climateNeedsLayer)
-        || pickCandidate((candidate: any) => candidate.macroCategory === 'outerwear' && !isShortSleeve(candidate) && !(pantsIsShorts && isFormalLayer(candidate)) && styleOk(candidate) && silhouetteOk(candidate), 0, climateNeedsLayer)
-        || (!pantsIsShorts ? pickCandidate((candidate: any) => candidate.macroCategory === 'outerwear' && !isShortSleeve(candidate) && silhouetteOk(candidate), 0, climateNeedsLayer) : undefined))
-      : (anchorMacro === 'outerwear' ? pickAnchorForSlot('outerwear') : undefined);
+    // 4-item rule: every card is top-layer + top + pants + shoes. The layer
+    // is picked unconditionally (it used to be gated behind needsLayer, which
+    // silently produced 3-tile cards). Strict style tiers first, then
+    // progressively looser ones — a real layer always beats a missing tile.
+    // Budget is the FIRST thing relaxed (never style): an over-cap layer
+    // still shows, while a style violation judge-drops the whole card. It
+    // must NOT be ignored up front — an expensive layer here made the
+    // remaining budget negative and cascaded into placeholder shoes.
+    const slotOuterwearRaw =
+      pickAnchorForSlot('outerwear')
+      || (formalOccasion ? pickCandidate((candidate: any) => candidate.macroCategory === 'outerwear' && isFormalLayer(candidate) && !isShortSleeve(candidate) && hasRealImage(candidate) && styleOk(candidate) && silhouetteOk(candidate), 0) : undefined)
+      || pickCandidate((candidate: any) => candidate.macroCategory === 'outerwear' && !isShortSleeve(candidate) && hasRealImage(candidate) && !(pantsIsShorts && isFormalLayer(candidate)) && styleOk(candidate) && silhouetteOk(candidate), 0)
+      || (formalOccasion ? pickCandidate((candidate: any) => candidate.macroCategory === 'outerwear' && !isShortSleeve(candidate) && hasRealImage(candidate) && !(pantsIsShorts && isFormalLayer(candidate)) && occasionOk(candidate) && styleOk(candidate), 0) : undefined)
+      || pickCandidate((candidate: any) => candidate.macroCategory === 'outerwear' && !isShortSleeve(candidate) && hasRealImage(candidate) && !(pantsIsShorts && isFormalLayer(candidate)) && styleOk(candidate), 0)
+      || pickCandidate((candidate: any) => candidate.macroCategory === 'outerwear' && !isShortSleeve(candidate) && !(pantsIsShorts && isFormalLayer(candidate)) && styleOk(candidate) && silhouetteOk(candidate), 0)
+      || pickCandidate((candidate: any) => candidate.macroCategory === 'outerwear' && !isShortSleeve(candidate) && !(pantsIsShorts && isFormalLayer(candidate)) && styleOk(candidate), 0, true)
+      || pickCandidate((candidate: any) => candidate.macroCategory === 'outerwear' && !isShortSleeve(candidate) && silhouetteOk(candidate), 0, true)
+      || pickCandidate((candidate: any) => candidate.macroCategory === 'outerwear' && !isShortSleeve(candidate), 0, true)
+      || pickCandidate((candidate: any) => candidate.macroCategory === 'outerwear', 0, true);
     // Force macroCategory to 'outerwear' so OutfitSlotGrid.classifyItem never drops it
     let slotOuterwear = slotOuterwearRaw ? { ...slotOuterwearRaw, macroCategory: 'outerwear' as const } : undefined;
 
@@ -607,8 +763,18 @@ export function createSlotNormalizer(ctx: SlotNormalizerContext) {
         if (__DEV__) console.log('[normalizeTo4Slots] formal+shorts repair: pants', slotPantsRaw.name, '->', replacement.name);
         slotPants = { ...replacement, macroCategory: 'bottom' as const };
       } else {
-        if (__DEV__) console.log('[normalizeTo4Slots] formal+shorts repair: dropping formal layer', slotOuterwear.name);
-        slotOuterwear = undefined;
+        // 4-item rule: never drop the layer — swap the formal one for a
+        // casual layer that survives with shorts, keep the original if the
+        // pool has no alternative (an odd pairing beats a missing tile).
+        const casualLayer =
+          pickCandidate((c: any) => c.macroCategory === 'outerwear' && !isFormalLayer(c) && !isShortSleeve(c) && hasRealImage(c) && styleOk(c), 0)
+          || pickCandidate((c: any) => c.macroCategory === 'outerwear' && !isFormalLayer(c) && !isShortSleeve(c), 0, true);
+        if (casualLayer) {
+          if (__DEV__) console.log('[normalizeTo4Slots] formal+shorts repair: layer', slotOuterwear.name, '->', casualLayer.name);
+          slotOuterwear = { ...casualLayer, macroCategory: 'outerwear' as const };
+        } else if (__DEV__) {
+          console.log('[normalizeTo4Slots] formal+shorts repair: keeping formal layer with shorts', slotOuterwear.name);
+        }
       }
     }
 
@@ -621,7 +787,20 @@ export function createSlotNormalizer(ctx: SlotNormalizerContext) {
       || (formalOccasion ? pickCandidate((candidate: any) => looksLikeRealTop(candidate) && candidate.macroCategory === 'top' && hasRealImage(candidate) && occasionOk(candidate) && styleOk(candidate) && comboOk(candidate, [slotOuterwear, slotPants]), 3) : undefined)
       || pickCandidate((candidate: any) => looksLikeRealTop(candidate) && candidate.macroCategory === 'top' && hasRealImage(candidate) && styleOk(candidate) && comboOk(candidate, [slotOuterwear, slotPants]), 3)
       || pickCandidate((candidate: any) => looksLikeRealTop(candidate) && candidate.macroCategory === 'top' && styleOk(candidate) && comboOk(candidate, [slotOuterwear, slotPants]), 3)
-      || pickCandidate((candidate: any) => looksLikeRealTop(candidate) && candidate.macroCategory !== 'bottom' && candidate.macroCategory !== 'shoes' && candidate.macroCategory !== 'outerwear' && candidate.macroCategory !== 'other' && candidate.macroCategory !== 'accessory' && !looksLikeLayerGarment(candidate) && styleOk(candidate) && comboOk(candidate, [slotOuterwear, slotPants]), 3);
+      || pickCandidate((candidate: any) => looksLikeRealTop(candidate) && candidate.macroCategory !== 'bottom' && candidate.macroCategory !== 'shoes' && candidate.macroCategory !== 'outerwear' && candidate.macroCategory !== 'other' && candidate.macroCategory !== 'accessory' && !looksLikeLayerGarment(candidate) && styleOk(candidate) && comboOk(candidate, [slotOuterwear, slotPants]), 3)
+      // Backstops relax the BUDGET first — style AND coherence stay intact.
+      // A coherence break here (basic tee under a suit blazer) makes EVERY
+      // shoe fail comboOk (placeholder-shoes cascade), and a style break
+      // judge-drops the card. Only when neither can be honored do the
+      // constraints loosen, style first (product rule: style > budget).
+      || pickCandidate((candidate: any) => looksLikeRealTop(candidate) && candidate.macroCategory === 'top' && hasRealImage(candidate) && styleOk(candidate) && comboOk(candidate, [slotOuterwear, slotPants]), 3, true)
+      || pickCandidate((candidate: any) => candidate.macroCategory === 'top' && styleOk(candidate) && comboOk(candidate, [slotOuterwear, slotPants]), 3, true)
+      || pickCandidate((candidate: any) => candidate.macroCategory === 'top' && hasRealImage(candidate) && styleOk(candidate), 3, true)
+      || pickCandidate((candidate: any) => candidate.macroCategory === 'top' && styleOk(candidate), 3, true)
+      || pickCandidate((candidate: any) => candidate.macroCategory === 'top' && hasRealImage(candidate) && comboOk(candidate, [slotOuterwear, slotPants]), 3, true)
+      || pickCandidate((candidate: any) => candidate.macroCategory === 'top' && comboOk(candidate, [slotOuterwear, slotPants]), 3, true)
+      || pickCandidate((candidate: any) => candidate.macroCategory === 'top' && hasRealImage(candidate), 3, true)
+      || pickCandidate((candidate: any) => candidate.macroCategory === 'top', 3, true);
     // Force macroCategory to 'top' so OutfitSlotGrid.classifyItem never drops it
     const slotMainTop = slotMainTopRaw ? { ...slotMainTopRaw, macroCategory: 'top' as const } : undefined;
 
@@ -630,15 +809,48 @@ export function createSlotNormalizer(ctx: SlotNormalizerContext) {
     // to 'other' or an unrecognized alias.
     const slotShoesRaw =
       pickAnchorForSlot('shoes')
+      // Sport occasions prefer trainers when the pool has a coherent one;
+      // falls through to the generic tiers when it does not.
+      || (occasionId === 'sport'
+        ? pickCandidate((candidate: any) => candidate.macroCategory === 'shoes' && hasRealImage(candidate) && styleOk(candidate) && silhouetteOk(candidate) && comboOk(candidate, [slotOuterwear, slotMainTop, slotPants]), 9)
+        : undefined)
       || (formalOccasion ? pickCandidate((candidate: any) => candidate.macroCategory === 'shoes' && hasRealImage(candidate) && occasionOk(candidate) && styleOk(candidate) && comboOk(candidate, [slotOuterwear, slotMainTop, slotPants]), 9) : undefined)
       || pickCandidate((candidate: any) => candidate.macroCategory === 'shoes' && hasRealImage(candidate) && styleOk(candidate) && comboOk(candidate, [slotOuterwear, slotMainTop, slotPants]), 9)
       || pickCandidate((candidate: any) => candidate.macroCategory === 'shoes' && hasRealImage(candidate) && styleOk(candidate) && comboOk(candidate, [slotOuterwear, slotMainTop, slotPants]), 9, true)
-      || pickCandidate((candidate: any) => candidate.macroCategory === 'shoes' && styleOk(candidate) && comboOk(candidate, [slotOuterwear, slotMainTop, slotPants]), 9)
+      || pickCandidate((candidate: any) => candidate.macroCategory === 'shoes' && styleOk(candidate) && comboOk(candidate, [slotOuterwear, slotMainTop, slotPants]), 9, true)
+      // Budget/style backstops — a REAL shoe always beats the placeholder
+      // (4-item rule). The placeholder is only reachable when the pool has
+      // no shoe at all: even a judge-dropped real shoe is no worse than a
+      // placeholder tile, and a coherent style-clean shoe survives.
+      || pickCandidate((candidate: any) => candidate.macroCategory === 'shoes' && hasRealImage(candidate) && comboOk(candidate, [slotOuterwear, slotMainTop, slotPants]), 9, true)
+      || pickCandidate((candidate: any) => candidate.macroCategory === 'shoes' && comboOk(candidate, [slotOuterwear, slotMainTop, slotPants]), 9, true)
+      || pickCandidate((candidate: any) => candidate.macroCategory === 'shoes' && hasRealImage(candidate) && styleOk(candidate), 9, true)
+      || pickCandidate((candidate: any) => candidate.macroCategory === 'shoes' && styleOk(candidate), 9, true)
+      || pickCandidate((candidate: any) => candidate.macroCategory === 'shoes' && hasRealImage(candidate), 9, true)
+      || pickCandidate((candidate: any) => candidate.macroCategory === 'shoes', 9, true)
       || { ...PLACEHOLDER_SHOES };
     // Force macroCategory to 'shoes' so OutfitSlotGrid.classifyItem never drops it
     const slotShoes = { ...slotShoesRaw, macroCategory: 'shoes' as const };
+    if (__DEV__ && slotShoes.id === 'placeholder_shoes') {
+      const shoesPool = pickPoolFixed.filter((c: any) => c.macroCategory === 'shoes');
+      const combo = (c: any) => comboOk(c, [slotOuterwear, slotMainTop, slotPants]);
+      console.log('[normalizeTo4Slots] SHOES PLACEHOLDER', {
+        poolShoes: shoesPool.length,
+        withImage: shoesPool.filter(hasRealImage).length,
+        styleOk: shoesPool.filter(styleOk).length,
+        comboOk: shoesPool.filter(combo).length,
+        styleAndCombo: shoesPool.filter((c: any) => styleOk(c) && combo(c)).length,
+        reason: rejectOutfitIncoherence(
+          [slotOuterwear, slotMainTop, slotPants, shoesPool[0]].filter(Boolean),
+          styleId,
+          occasionId,
+        ),
+        outfit: [slotOuterwear, slotMainTop, slotPants].map((c: any) => String(c?.name || '?').slice(0, 40)),
+        sample: shoesPool.slice(0, 8).map((c: any) => `${String(c.name).slice(0, 26)}|img=${hasRealImage(c)}|st=${styleOk(c)}|combo=${combo(c)}`),
+      });
+    }
 
-    const slotSecondTopRaw = needsLayer && slotOuterwear && !(slotMainTop && !looksLikeLayerGarment(slotMainTop))
+    const slotSecondTopRaw = slotOuterwear && !(slotMainTop && !looksLikeLayerGarment(slotMainTop))
       ? (pickCandidate((candidate: any) => looksLikeRealTop(candidate) && candidate.macroCategory === 'top' && candidate.id !== slotMainTop?.id && hasRealImage(candidate) && styleOk(candidate) && silhouetteOk(candidate) && !looksLikeLayerGarment(candidate))
         || (formalOccasion ? pickCandidate((candidate: any) => looksLikeRealTop(candidate) && candidate.macroCategory === 'top' && candidate.id !== slotMainTop?.id && hasRealImage(candidate) && occasionOk(candidate) && styleOk(candidate) && !looksLikeLayerGarment(candidate)) : undefined)
         || pickCandidate((candidate: any) => looksLikeRealTop(candidate) && candidate.macroCategory === 'top' && candidate.id !== slotMainTop?.id && hasRealImage(candidate) && styleOk(candidate) && !looksLikeLayerGarment(candidate))
@@ -693,9 +905,15 @@ export function createSlotNormalizer(ctx: SlotNormalizerContext) {
           ? slotSecondTop
           : repairedMainTop && String(repairedMainTop.id) !== String(result[0].id) && !looksLikeLayerGarment(repairedMainTop)
             ? repairedMainTop
-            : undefined;
-        if (altTop) result[1] = { ...altTop, macroCategory: 'top' as const };
-        else result = [result[0], slotPants, slotShoes].filter(Boolean) as any[];
+            : pickCandidate((c: any) => c.macroCategory === 'top' && String(c.id) !== String(result[0].id) && !looksLikeLayerGarment(c) && hasRealImage(c), 3)
+              || pickCandidate((c: any) => c.macroCategory === 'top' && String(c.id) !== String(result[0].id), 3, true);
+        if (altTop) {
+          result[1] = { ...altTop, macroCategory: 'top' as const };
+        } else if (samePiece) {
+          // The SAME item twice is invalid — drop it rather than render it
+          // in two tiles. Two different layers stay: the 4-item rule wins.
+          result = [result[0], slotPants, slotShoes].filter(Boolean) as any[];
+        }
       }
     }
     // ── Post-enforce: anchor MUST be in the final outfit ────────────────
@@ -724,46 +942,65 @@ export function createSlotNormalizer(ctx: SlotNormalizerContext) {
     }
     if (__DEV__) console.log('[normalizeTo4Slots] RESULT (4 items):', result.map((it: any) => ({ id: it.id, name: it.name, macro: it.macroCategory, price: it.price })));
     if (budget && outfitShopSpend(result, pickPoolFixed) > budget.amount + 0.009) {
+      // 4-item rule: never drop a slot to fit the cap. Cascade swaps of the
+      // most expensive piece for a strictly cheaper same-slot item (style-clean
+      // first, any cheaper one as last resort) until under the cap or no swap
+      // helps. If the catalog genuinely cannot fit the cap, keep all 4 items —
+      // the card reports the honest spend.
       const clamped = result.map(withListedPrice);
-      for (let guard = 0; guard < 6 && outfitShopSpend(clamped, pickPoolFixed) > budget.amount + 0.009; guard++) {
-        let worstIdx = -1;
-        let worst = -1;
-        clamped.forEach((p: any, i: number) => {
-          const pr = priceOf(p);
-          if (pr > worst) { worst = pr; worstIdx = i; }
-        });
-        if (worstIdx < 0) break;
-        const slot = String(clamped[worstIdx]?.macroCategory || '').toLowerCase();
+      const spendOf = () => outfitShopSpend(clamped, pickPoolFixed);
+      for (let guard = 0; guard < 12 && spendOf() > budget.amount + 0.009; guard++) {
         const used = new Set(clamped.map((p: any) => String(p.id)));
-        const room = budget.amount - (outfitShopSpend(clamped, pickPoolFixed) - priceOf(clamped[worstIdx]));
-        const repl = pickPoolFixed
-          .filter((c: any) => canonicalizeMacroCategory(c.macroCategory || '') === slot && !used.has(String(c.id)))
-          .map(withListedPrice)
-          .filter((c: any) => {
-            const pr = priceOf(c);
-            return pr > 0 && pr <= room && styleOk(c);
-          })
-          .sort((a: any, b: any) => priceOf(a) - priceOf(b))[0];
-        if (!repl) {
-          if (slot === 'outerwear' && clamped.length > 3 && !climateNeedsLayer) {
-            clamped.splice(worstIdx, 1);
-            continue;
-          }
+        const byPrice = clamped
+          .map((p: any, i: number) => ({ i, pr: priceOf(p) }))
+          .sort((a: any, b: any) => b.pr - a.pr);
+        let swapped = false;
+        for (const { i, pr } of byPrice) {
+          if (spendOf() <= budget.amount + 0.009) break;
+          const slot = canonicalizeMacroCategory(clamped[i]?.macroCategory || '');
+          const cheaperAll = pickPoolFixed
+            .filter((c: any) => canonicalizeMacroCategory(c.macroCategory || '') === slot && !used.has(String(c.id)))
+            .map(withListedPrice)
+            .filter((c: any) => {
+              const p = priceOf(c);
+              return p > 0 && p < pr;
+            });
+          // Prefer cheaper pieces NOT already shown in this deck: without
+          // this the greedy cheapest-swap converges every card (and every
+          // fill attempt) to the SAME lowest-price set, making the whole
+          // deck exact duplicates of card #1.
+          const deckFresh = (c: any) => {
+            if (!deckUsedIds || deckUsedIds.size === 0) return true;
+            if (deckUsedIds.has(String(c.id || ''))) return false;
+            const nk = nameKeyOf(c);
+            if (nk && deckUsedIds.has(`__n:${nk}`)) return false;
+            const img = productImageKey(c);
+            if (img && deckUsedIds.has(`__img:${img}`)) return false;
+            return true;
+          };
+          const freshCheaper = cheaperAll.filter(deckFresh);
+          const cheaper = freshCheaper.length > 0 ? freshCheaper : cheaperAll;
+          if (cheaper.length === 0) continue;
+          // Style beats budget: a single style-violating piece makes the
+          // style judge drop the WHOLE deck (kept 0/5 → error screen), which
+          // is strictly worse than an over-cap card. Only swap in style-clean
+          // candidates; if a slot has none, leave it and try the next slot.
+          const styleClean = cheaper.filter((c: any) => hasRealImage(c) && styleOk(c));
+          const choicePool = styleClean.length > 0 ? styleClean : cheaper.filter((c: any) => styleOk(c));
+          if (choicePool.length === 0) continue;
+          choicePool.sort((a: any, b: any) => priceOf(a) - priceOf(b));
+          clamped[i] = { ...choicePool[0], macroCategory: String(clamped[i]?.macroCategory || slot) };
+          used.add(String(choicePool[0].id));
+          swapped = true;
           break;
         }
-        clamped[worstIdx] = { ...repl, macroCategory: slot };
-      }
-      if (outfitShopSpend(clamped, pickPoolFixed) > budget.amount + 0.009) {
-        const withoutLayer = clamped.filter((p: any) => canonicalizeMacroCategory(p.macroCategory || '') !== 'outerwear');
-        if (!climateNeedsLayer && withoutLayer.length >= 3 && outfitShopSpend(withoutLayer, pickPoolFixed) <= budget.amount + 0.009) {
-          if (__DEV__) console.log('[normalizeTo4Slots] budget: dropped outerwear to fit cap', budget.amount);
-          return withoutLayer.map(withListedPrice);
-        }
+        if (!swapped) break;
       }
       if (__DEV__) console.log('[normalizeTo4Slots] budget clamp', {
         cap: budget.amount,
         before: outfitShopSpend(result, pickPoolFixed),
-        after: outfitShopSpend(clamped, pickPoolFixed),
+        after: spendOf(),
+        items: clamped.length,
       });
       return clamped;
     }

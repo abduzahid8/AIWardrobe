@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, TouchableOpacity, ScrollView, Image, Dimensions, StyleSheet, Animated, Platform, Modal, TextInput, Alert, Linking } from 'react-native';
+import { View, TouchableOpacity, ScrollView, Image, Dimensions, StyleSheet, Animated, Platform, Modal, TextInput, Alert, Linking, KeyboardAvoidingView } from 'react-native';
 import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,17 +13,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { useShopCatalog } from '../hooks/useShopCatalog';
 import { fillMissingSlots, type OutfitSlotId } from '../src/services/shoppingService';
+import { getRecentShownIds, recordShownOutfits } from '../src/services/recentOutfitIds';
 import { mergeShopSlices, collapseSimilarByName, collapseDuplicateProductImages, isTrustedProductImage, isBrandCatalogImage, productImageKey, preferMappedMacro, hasUsableProductName, inferCatalogColor, normalizeCatalogNameKey, classicCatalogOffset, garmentVarietyFamily, inferShopRowMacro } from '../src/utils/shopCatalogOrder';
-import { passesStyleJudge, rejectForStyleOccasion, rejectForClimate, inferSeasonalWeather, humanizeProductName, SHORT_SLEEVE_RE, STRIP_SHORT_SLEEVE_RE } from '../features/outfit-generator/utils/occasionRules';
+import { passesStyleJudge, styleJudgeReason, rejectForStyleOccasion, rejectForClimate, inferSeasonalWeather, humanizeProductName, SHORT_SLEEVE_RE, STRIP_SHORT_SLEEVE_RE } from '../features/outfit-generator/utils/occasionRules';
 import LiquidGlass2026Theme, { SpatialElevation } from '../constants/LiquidGlass2026Theme';
 import * as Location from 'expo-location';
 import Config from '../src/config/env';
 import { createOutfitLog, type OutfitItem as CalendarOutfitItem, type OutfitLog } from '../features/calendar/types';
 import AIThinkingAnimation from '../components/AIThinkingAnimation';
 import { canonicalizeMacroCategory } from '../src/utils/categoryMapper';
-import { createDeckDedupe, prioritizeUnseen } from '../features/outfit-generator/utils/deckDedupe';
+import { createDeckDedupe, deckSignature, prioritizeUnseen } from '../features/outfit-generator/utils/deckDedupe';
 import { isShortsBottom, isFormalLayer, fabricFamily, isSameLayerBaseCategory, PLACEHOLDER_PANTS, PLACEHOLDER_SHOES, getBackendMacroCategory, isCompleteNormalizedOutfit, isFourSlotLook, REAL_IMAGE_RE, repairEdgeItems, createSlotNormalizer, ensureSlotFloors } from '../features/outfit-generator/utils/normalizeSlots';
-import { parseBudgetFromText, outfitShopSpend, formatMoney } from '../src/utils/outfitBudget';
+import { parseBudgetFromText, stripBudgetFromText, outfitShopSpend, formatMoney, budgetInCurrency, catalogCurrencyOf, resolveShopPrice } from '../src/utils/outfitBudget';
 import { parseStylistIntent } from '../features/outfit-generator/utils/stylistIntent';
 import { scoreItemForStyle, normalizeStyleId } from '../features/outfit-generator/utils/styleInference';
 import useWardrobeStore from '../store/wardrobeStore';
@@ -223,7 +224,7 @@ const getOfflineMacroCategory = (type: string, category?: string, name?: string)
   if (aliasHit !== 'other') return aliasHit;
 
   if (t.match(/\b(pant|trouser|jeans?|bottom|shorts?|skirt|lower[_\s-]?body)\b/) && !SHORT_SLEEVE_RE.test(t)) return 'bottom';
-  if (t.match(/\b(shoe|sneaker|boot|loafer|sandal|footwear|trainer|derby|derbies|moccasin|driver|mule)\b/)) return 'shoes';
+  if (t.match(/\b(shoe|sneaker|boot|loafer|sandal|footwear|trainer|derby|derbies|moccasin|driver|mule|clog)\b/)) return 'shoes';
   if (t.match(/\b(shirt|t-shirt|tee|blouse|polo|top|dress|upper[_\s-]?body)\b/)) return 'top';
   return 'top';
 };
@@ -310,6 +311,8 @@ const getAiStyleDesc = (id: string, t: (key: string) => string) => {
 interface OutfitSlotGridProps {
   items: OutfitItem[];
   weather?: { temp: number; condition: string };
+  /** Shop catalog rows (with price/currency) so tiles can show listed prices. */
+  priceCatalog?: any[];
 }
 
 // Memoized slot cell with expo-image memory-disk caching. Previously each
@@ -320,6 +323,8 @@ const SlotCell = React.memo(function SlotCell({
   slotKey,
   label,
   name,
+  price,
+  priceCurrency,
   imageSource,
   imageUri,
   itemId,
@@ -332,6 +337,8 @@ const SlotCell = React.memo(function SlotCell({
   slotKey: string;
   label: string;
   name: string;
+  price?: number;
+  priceCurrency?: string;
   imageSource: number | { uri: string };
   imageUri?: string;
   itemId?: string;
@@ -364,6 +371,11 @@ const SlotCell = React.memo(function SlotCell({
       <View style={slotStyles.labelWrap}>
         <ScaledText style={[slotStyles.label, { color: textSecondary }]}>{label}</ScaledText>
         <ScaledText style={[slotStyles.name, { color: textPrimary }]} numberOfLines={1}>{name}</ScaledText>
+        {typeof price === 'number' && price > 0 ? (
+          <ScaledText style={slotStyles.price} numberOfLines={1}>
+            {formatMoney(price, priceCurrency || 'USD')}
+          </ScaledText>
+        ) : null}
         {shopUrl ? (
           <TouchableOpacity
             style={slotStyles.buyButton}
@@ -379,7 +391,7 @@ const SlotCell = React.memo(function SlotCell({
   );
 });
 
-function OutfitSlotGrid({ items, weather }: OutfitSlotGridProps) {
+function OutfitSlotGrid({ items, weather, priceCatalog }: OutfitSlotGridProps) {
   const D = useDesignTokens();
   const { t } = useTranslation();
 
@@ -421,7 +433,7 @@ function OutfitSlotGrid({ items, weather }: OutfitSlotGridProps) {
       if (/\bt-?shirts?\b|\btees?\b|\bpolos?\b|\bblouses?\b|\btanks?\b|\bhenleys?\b|\bshirts?\b|\boxfords?\b|\bbutton[\s-]?downs?\b/.test(name)
         && !/\b(shoes?|loafers?|boots?|sneakers?|overshirts?)\b/.test(name)) return 'top';
       if (/\b(pants?|trousers?|jeans?|shorts\b|skirt)\b/.test(nameSansSleeves)) return 'pants';
-      if (/\b(shoes?|sneakers?|boots?|loafers?|sandals?|heels?|footwear|trainers?|derbys?|derbies|moccasins?|drivers?|mules?|espadrilles?)\b/.test(name)) return 'shoes';
+      if (/\b(shoes?|sneakers?|boots?|loafers?|sandals?|heels?|footwear|trainers?|derbys?|derbies|moccasins?|drivers?|mules?|clogs?|espadrilles?)\b/.test(name)) return 'shoes';
 
       const canonicalAlias = canonicalizeMacroCategory(item.macroCategory || '');
       if (canonicalAlias === 'outerwear') return 'layer';
@@ -438,7 +450,7 @@ function OutfitSlotGrid({ items, weather }: OutfitSlotGridProps) {
       const blob = `${type} ${cat} ${name}`;
       if (/\b(jacket|coat|blazer|cardigan|sweater|hoodie|puffer|bomber|vest|outerwear)\b/.test(blob)) return 'layer';
       if (/\b(pants?|trousers?|jeans?|shorts\b|bottom|skirt|lower[_\s-]?body)\b/.test(blob.replace(STRIP_SHORT_SLEEVE_RE, ' '))) return 'pants';
-      if (/\b(shoes?|sneakers?|boots?|loafers?|sandals?|heels?|footwear|trainers?|derbys?|derbies|moccasins?|drivers?|mules?)\b/.test(blob)) return 'shoes';
+      if (/\b(shoes?|sneakers?|boots?|loafers?|sandals?|heels?|footwear|trainers?|derbys?|derbies|moccasins?|drivers?|mules?|clogs?)\b/.test(blob)) return 'shoes';
       if (/\b(t-?shirt|shirt|polo|blouse|top|tee|dress|upper[_\s-]?body)\b/.test(blob)) return 'top';
       return null;
     };
@@ -486,7 +498,6 @@ function OutfitSlotGrid({ items, weather }: OutfitSlotGridProps) {
     const mainTopItem = canSplitLayerAndTop
       ? layerItem
       : (topItems[0] || layerItem);
-    slots.push({ key: 'main-top', label: canSplitLayerAndTop ? 'Layer' : 'Top', item: mainTopItem });
 
     // Slot 2: Base top (shirt/tee underneath the layer) — never the same
     // fabric family as the layer.
@@ -509,6 +520,12 @@ function OutfitSlotGrid({ items, weather }: OutfitSlotGridProps) {
       ? secondTopItem
       : topItems.find((t) => t.id !== mainTopItem?.id && !layerLike(t));
     const resolvedSecondTop = distinctTop;
+    // 4-item rule: slot 1 is the top-layer POSITION. It reads "Layer"
+    // whenever a second distinct top fills slot 2 — including outfits whose
+    // outer piece is a knit polo/sweater (classifyItem routes polos to
+    // 'top', which used to render TOP/TOP). Only a single-top card keeps
+    // "Top" in slot 1 (the no-base-top demotion case above).
+    slots.push({ key: 'main-top', label: (canSplitLayerAndTop || resolvedSecondTop) ? 'Layer' : 'Top', item: mainTopItem });
     if (resolvedSecondTop) {
       slots.push({ key: 'second-top', label: 'Top', item: resolvedSecondTop });
     }
@@ -548,6 +565,8 @@ function OutfitSlotGrid({ items, weather }: OutfitSlotGridProps) {
             slotKey={slot.key}
             label={slot.label}
             name={slot.item?.name || ''}
+            price={resolveShopPrice(slot.item as any, priceCatalog)}
+            priceCurrency={(slot.item as any)?.currency || priceCatalog?.find((c: any) => c && c.currency)?.currency}
             imageSource={src}
             imageUri={typeof src === 'object' ? src.uri : undefined}
             itemId={slot.item?.id ? String(slot.item.id) : undefined}
@@ -789,7 +808,7 @@ async function generateOfflineOutfits(
 
     // Name-first overrides: feed mistags T-shirts as bottoms and short-sleeve
     // knits as outerwear. Trust distinctive names over stored macros.
-    const isShoeName = /\b(shoes?|sneakers?|boots?|loafers?|sandals?|heels?|footwear|trainers?|derbys?|derbies|moccasins?|drivers?|mules?)\b/.test(blobAll);
+    const isShoeName = /\b(shoes?|sneakers?|boots?|loafers?|sandals?|heels?|footwear|trainers?|derbys?|derbies|moccasins?|drivers?|mules?|clogs?)\b/.test(blobAll);
     const isTopName = /\b(t-?shirts?|shirts?|polos?|blouses?|tees?|tanks?|henleys?|oxfords?|button[\s-]?downs?|overshirts?)\b/.test(blobAll);
     const isShortSleeveName = SHORT_SLEEVE_RE.test(blobAll);
     let category: string | null = null;
@@ -801,7 +820,7 @@ async function generateOfflineOutfits(
       category = 'layer';
     } else if (catCanonical === 'bottom' || /\b(pants?|trousers?|jeans?|shorts\b|skirt|lower[_\s-]?body|bottom)\b/.test(blobAll.replace(STRIP_SHORT_SLEEVE_RE, ' '))) {
       category = 'pants';
-    } else if (catCanonical === 'shoes' || /\b(shoes?|sneakers?|boots?|loafers?|sandals?|heels?|footwear|trainers?|derbys?|derbies|moccasins?|drivers?|mules?)\b/.test(blobAll)) {
+    } else if (catCanonical === 'shoes' || /\b(shoes?|sneakers?|boots?|loafers?|sandals?|heels?|footwear|trainers?|derbys?|derbies|moccasins?|drivers?|mules?|clogs?)\b/.test(blobAll)) {
       category = 'shoes';
     } else if (catCanonical === 'top' || /\b(t-?shirt|shirt|polo|blouse|tee|top|dress|upper[_\s-]?body)\b/.test(blobAll)) {
       category = 'top';
@@ -1087,6 +1106,13 @@ const slotStyles = StyleSheet.create({
     marginTop: 1,
     fontSize: 11,
   },
+  price: {
+    ...LiquidGlass2026Theme.typography.scale.bodySmall,
+    marginTop: 2,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#1F6FEB',
+  },
   buyButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1333,6 +1359,12 @@ const AIOutfitGenerator = () => {
               imageUrl: row.image_url,
               garmentType: row.garment_type,
               sourceUrl: row.source_url,
+              // price/currency MUST survive this mapping: the random slice is
+              // the generation pool, and without them budget caps compare
+              // against 0 (every candidate is rejected -> placeholder
+              // "Pants"/"Shoes" tiles) and tiles can never show a price.
+              price: typeof row.price === 'number' ? row.price : undefined,
+              currency: row.currency || undefined,
             }),
           )
           .filter((it: any) => hasUsableProductName(it.name, it.id));
@@ -1603,6 +1635,12 @@ const AIOutfitGenerator = () => {
     const resolveMacroCategory = (it: any): string => {
       const ownCanonical = canonicalizeMacroCategory(it?.macroCategory || '');
       if (ownCanonical !== 'other') return ownCanonical;
+      // Shop rows were classified upstream WITH the structured zone
+      // (inferShopRowMacro): macroCategory 'other' = accessory or a
+      // zone-vs-name conflict (md-uz-62899803 — lower_body zone + trousers
+      // photo + stolen "suit blazer" name). Name-only resurrection here is
+      // what put that trousers into the LAYER tile — keep shop 'other' dropped.
+      if (it?.isShopItem) return 'other';
       return getBackendMacroCategory(it?.type || '', it?.category || '', it?.name || '');
     };
 
@@ -2013,8 +2051,19 @@ const AIOutfitGenerator = () => {
       if (occasionLabel) return occasionLabel;
       return trimmed;
     })();
-    const shopBudget = commentIntent.budget || parseBudgetFromText(promptText);
-    const fitsCap = (items: any[]) => !shopBudget || outfitShopSpend(items as any[]) <= shopBudget.amount + 0.009;
+    const rawShopBudget = commentIntent.budget || parseBudgetFromText(promptText);
+    // The deployed edge parses a budget from the prompt and drops every
+    // UZS-priced shop item (no currency conversion server-side), failing the
+    // whole generation. Never send budget tokens to the edge — the cap is
+    // enforced client-side by fitsCap + the normalizer's clamp.
+    const edgePrompt = stripBudgetFromText(effectivePrompt);
+    // shop_catalog lists UZS prices (median ~1.2M so'm). A parsed "$250" cap
+    // must be expressed in the catalog currency first — otherwise every priced
+    // item fails fitsCap/fitsBudget and budget scenarios degrade to
+    // placeholder Pants/Shoes tiles with no shop pieces at all.
+    const shopBudget = budgetInCurrency(rawShopBudget, catalogCurrencyOf(liveShopMapped));
+    const fitsCap = (items: any[]) =>
+      !shopBudget || outfitShopSpend(items as any[], liveShopMapped) <= shopBudget.amount + 0.009;
     const resolvedWeather = weather ?? inferSeasonalWeather();
 
     if (!isMounted.current) return;
@@ -2241,12 +2290,12 @@ const AIOutfitGenerator = () => {
       const invokePromise = supabase.functions.invoke('generate-outfits', {
         body: {
           stylePreferences: styleToUse,
-          occasion: effectivePrompt || occasionToUse || promptText || 'Any',
+          occasion: edgePrompt || occasionToUse || 'Any',
           selectedItemIds: [],
           wardrobeItems: payloadItems,
           weather: resolvedWeather,
           limit: 5,
-          prompt: effectivePrompt,
+          prompt: edgePrompt,
           // Lock the anchor item into every outfit when navigated from MyClosetScreen.
           // Wardrobe mode only: in shop ("New clothing") mode the anchor is a
           // wardrobe piece and must NOT be sent — otherwise the edge builds
@@ -2262,6 +2311,9 @@ const AIOutfitGenerator = () => {
           // Per-tap salt: the edge fallback rotation is otherwise a pure
           // function of style+occasion, rebuilding identical decks.
           deckSalt: tapNonce,
+          // Recently-shown window → edge builds the candidate pool without
+          // pieces the user just saw, so each tap surfaces new clothing.
+          excludeItemIds: await getRecentShownIds(),
         },
       });
       const { data, error: invokeError } = await Promise.race([
@@ -2274,6 +2326,9 @@ const AIOutfitGenerator = () => {
       if (invokeError) throw invokeError;
 
       if (data && data.success && data.outfits && data.outfits.length > 0) {
+        // Feed the rotation window BEFORE normalizing — the next tap must
+        // exclude these exact ids even if the deck is edited downstream.
+        recordShownOutfits(data.outfits);
         const normalize = createSlotNormalizer({
           weather: resolvedWeather,
           currentSource: effectiveSource,
@@ -2299,9 +2354,21 @@ const AIOutfitGenerator = () => {
             items,
             mainImage: items[0]?.image || items[0]?.imageUrl || outfit.mainImage || '',
             matchScore: judgeOk ? baseScore : Math.min(baseScore, 0.69),
-            stylingTips: Array.isArray(outfit.stylingTips)
-              ? outfit.stylingTips.join(' · ')
-              : (outfit.stylingTips || ''),
+            stylingTips: (() => {
+              const raw = Array.isArray(outfit.stylingTips)
+                ? outfit.stylingTips.join(' · ')
+                : (outfit.stylingTips || '');
+              if (raw.trim()) return raw;
+              // Edge sometimes returns stylingTips: [] — an empty tip box on
+              // the card. Fall back to the same i18n tip sets the offline
+              // builder uses, cycled per card index.
+              const fallbackSets = [
+                ['outfitMaker.tip1_1', 'outfitMaker.tip1_2'],
+                ['outfitMaker.tip2_1', 'outfitMaker.tip2_2'],
+                ['outfitMaker.tip3_1', 'outfitMaker.tip3_2'],
+              ];
+              return fallbackSets[idx % fallbackSets.length].map((k) => t(k)).join(' · ');
+            })(),
             weather: resolvedWeather,
           };
         };
@@ -2321,12 +2388,28 @@ const AIOutfitGenerator = () => {
         );
         if (__DEV__ && judged.length !== cleanedOutfits.length) {
           console.log(`[AIOutfitmaker] style judge: kept ${judged.length}/${cleanedOutfits.length} for ${styleToUse}/${occasionToUse}`);
+          cleanedOutfits.forEach((o: GeneratedOutfit, i: number) => {
+            if (!judged.includes(o)) {
+              console.log(`[AIOutfitmaker] style judge: drop edge #${i} reason="${styleJudgeReason(o.items as any[], styleToUse, occasionToUse, resolvedWeather) || '?'}" items (${(o.items as any[]).map((x: any) => String(x.name || '?').slice(0, 24)).join(' | ')})`);
+            }
+          });
         }
         const judgedOutfits = judged.slice(0, 3);
 
-        const withinBudget = shopBudget
+        let withinBudget = shopBudget
           ? judgedOutfits.filter((outfit: GeneratedOutfit) => fitsCap(outfit.items as any[]))
           : judgedOutfits;
+        // A hard cap that filters out EVERY card must degrade to the judged
+        // deck, never to a "failed to contact the stylist" error screen.
+        if (withinBudget.length === 0 && judgedOutfits.length > 0) {
+          if (__DEV__ && shopBudget) {
+            console.log('[AIOutfitmaker] budget wiped the deck — keeping judged outfits', {
+              budget: shopBudget,
+              spends: judgedOutfits.map((o: GeneratedOutfit) => outfitShopSpend(o.items as any[], liveShopMapped)),
+            });
+          }
+          withinBudget = judgedOutfits;
+        }
         if (__DEV__ && shopBudget) {
           console.log('[AIOutfitmaker] budget', shopBudget, 'spends', judgedOutfits.map((o: GeneratedOutfit) => outfitShopSpend(o.items as any[])), 'kept', withinBudget.length);
         }
@@ -2334,45 +2417,94 @@ const AIOutfitGenerator = () => {
 
         // Two cards that share shoes AND pants look like the same outfit.
         // Sharing one hero piece is allowed; sharing two is a clone.
-        const dedupe = createDeckDedupe();
         const anchorSkip = baseItemId ? new Set([String(baseItemId)]) : undefined;
         const idsOf = (items: OutfitItem[]): string[] =>
           items.map((x: any) => {
             const nk = normalizeCatalogNameKey(x?.name);
             return nk ? `n:${nk}` : String(x.id);
           });
-        const isNearDupe = (items: OutfitItem[]): boolean => dedupe.isDupe(idsOf(items), anchorSkip);
-        const trackDeck = (items: OutfitItem[]): void => {
-            dedupe.track(idsOf(items));
-        };
-        let finalOutfits: GeneratedOutfit[] = [];
-        for (const o of budgetedOutfits) {
-          if (isNearDupe(o.items as any) && finalOutfits.length > 0) continue;
-          trackDeck(o.items as any);
-          finalOutfits.push(o);
-          if (finalOutfits.length >= 3) break;
-        }
         let fillAttempts = 0;
-        while (finalOutfits.length < 3 && fillAttempts < 12) {
-          fillAttempts += 1;
-          const extraItems = normalize(
-            [],
-            styleToUse,
-            finalOutfits.length + fillAttempts,
-            tapNonce,
-            genPool,
-            slotDeckUsed,
-          );
-          if (!(isFourSlotLook(extraItems) || isCompleteNormalizedOutfit(extraItems))) break;
-          if (!passesStyleJudge(extraItems as any[], styleToUse, occasionToUse, resolvedWeather)) continue;
-          if (isNearDupe(extraItems as any) && finalOutfits.length > 0) continue;
-          trackDeck(extraItems as any);
-          finalOutfits.push(wrapLook(
-            { id: `catalog_${tapNonce}_${finalOutfits.length}` },
-            extraItems,
-            finalOutfits.length,
-          ));
+        const strictDedupe = createDeckDedupe();
+        const keptSigs = new Set<string>();
+        const deck: GeneratedOutfit[] = [];
+        // Strict near-dupe rejection first. When the style-clean pool cannot
+        // produce 3 visually distinct cards (thin pool × style × budget), relax
+        // to exact-duplicate-only: a deck of 3 similar cards beats a deck of 1.
+        const tryPush = (o: GeneratedOutfit, relaxed: boolean): boolean => {
+          const ids = idsOf(o.items as any[]);
+          // Exact-identity uses product ids: name-keys collapse distinct
+          // catalog rows that share a (common) name and made relaxed fills
+          // look like exact dupes of a kept card.
+          const sig = deckSignature((o.items as any[]).map((x: any) => String(x.id)));
+          if (keptSigs.has(sig)) {
+            if (__DEV__) console.log(`[AIOutfitmaker] tryPush: exact-sig already kept (relaxed=${relaxed}) sig=${sig}`);
+            return false;
+          }
+          if (!relaxed && strictDedupe.isDupe(ids, anchorSkip)) {
+            if (__DEV__) console.log(`[AIOutfitmaker] tryPush: near-dupe (strict) ids=${ids.join(',')}`);
+            return false;
+          }
+          keptSigs.add(sig);
+          strictDedupe.track(ids);
+          deck.push(o);
+          return true;
+        };
+        const runFills = (relaxed: boolean): void => {
+          // Each phase gets its own attempt budget: the strict pass may burn
+          // 12 tries without landing a card, and the relaxed pass must still
+          // get a full run to reach a 3-card deck.
+          const maxFills = relaxed ? 24 : 12;
+          while (deck.length < 3 && fillAttempts < maxFills) {
+            fillAttempts += 1;
+            const extraItems = normalize(
+              [],
+              styleToUse,
+              deck.length + fillAttempts,
+              tapNonce,
+              genPool,
+              slotDeckUsed,
+            );
+            if (!(isFourSlotLook(extraItems) || isCompleteNormalizedOutfit(extraItems))) {
+              if (__DEV__) console.log(`[AIOutfitmaker] fill #${fillAttempts}: incomplete look`);
+              break;
+            }
+            if (!passesStyleJudge(extraItems as any[], styleToUse, occasionToUse, resolvedWeather)) {
+              if (__DEV__) console.log(`[AIOutfitmaker] fill #${fillAttempts}: judge rejected reason="${styleJudgeReason(extraItems as any[], styleToUse, occasionToUse, resolvedWeather) || '?'}" items (${(extraItems as any[]).map((x: any) => `${x.slot || x.macro || '?'}=${String(x.name || '').slice(0, 24)}`).join(' | ')})`);
+              continue;
+            }
+            if (tryPush(
+              wrapLook(
+                { id: `catalog_${tapNonce}_${deck.length}` },
+                extraItems,
+                deck.length,
+              ),
+              relaxed,
+            )) {
+              if (__DEV__ && relaxed) console.log(`[AIOutfitmaker] fill #${fillAttempts}: accepted (relaxed dedupe)`);
+            } else if (__DEV__) {
+              console.log(`[AIOutfitmaker] fill #${fillAttempts}: near-dupe rejected`);
+            }
+          }
+        };
+        if (__DEV__) console.log(`[AIOutfitmaker] fill start: judged=${judgedOutfits.length} budgeted=${budgetedOutfits.length}`);
+        for (const o of budgetedOutfits) {
+          if (deck.length >= 3) break;
+          if (!tryPush(o, false) && __DEV__) {
+            console.log(`[AIOutfitmaker] dedupe dropped main card (${(o.items as any[]).map((x: any) => String(x.name || x.slot || '?').slice(0, 20)).join(' | ')})`);
+          }
         }
+        runFills(false);
+        if (deck.length < 3 && __DEV__) {
+          console.log(`[AIOutfitmaker] strict dedupe left ${deck.length}/3 — relaxing to exact-dupe-only`);
+        }
+        if (deck.length < 3) {
+          for (const o of budgetedOutfits) {
+            if (deck.length >= 3) break;
+            tryPush(o, true);
+          }
+          runFills(true);
+        }
+        const finalOutfits = deck;
         if (__DEV__) console.log(`[AIOutfitmaker] nonce=${generationNonce.current} edge=${cleanedOutfits.length} shown=${finalOutfits.length}`);
 
         if (finalOutfits.length === 0) {
@@ -2381,18 +2513,26 @@ const AIOutfitGenerator = () => {
 
         if (tapNonce !== generationNonce.current) return;
         if (isMounted.current) {
+          // A cap the catalog cannot satisfy must degrade to the over-cap
+          // deck, never to an empty results screen (4-item rule stays intact).
+          // Cap filter PREFERS in-cap cards but never shrinks the deck —
+          // over-cap cards fill the remaining slots (style/budget data limits
+          // must not cost the user visible cards).
+          const inCap = finalOutfits.filter((o) => fitsCap(o.items as any[]));
+          const overCap = finalOutfits.filter((o) => !fitsCap(o.items as any[]));
+          const shownOutfits = [...inCap, ...overCap].slice(0, 3);
           setOutfits(
-            finalOutfits
-              .filter((o) => fitsCap(o.items as any[]))
-              .slice(0, 3)
+            shownOutfits
               .map((o) => {
-                let out = shopBudget
-                  ? { ...o, description: `${o.description} · ${formatMoney(outfitShopSpend(o.items as any[]), shopBudget.currency)} / ${formatMoney(shopBudget.amount, shopBudget.currency)}` }
-                  : o;
-                if (effectiveSource === 'shop') {
-                  out = { ...out, description: `${stylePhraseFor(styleToUse)} look curated from the shop.` };
-                }
-                return out;
+                // Base description first (shop source always rewrites it),
+                // THEN the budget line — overwriting after the append is what
+                // silently dropped "· 2 400 000 UZS / 3 150 000 UZS".
+                const baseDescription = effectiveSource === 'shop'
+                  ? `${stylePhraseFor(styleToUse)} look curated from the shop.`
+                  : o.description;
+                return shopBudget
+                  ? { ...o, description: `${baseDescription} · ${formatMoney(outfitShopSpend(o.items as any[]), shopBudget.currency)} / ${formatMoney(shopBudget.amount, shopBudget.currency)}` }
+                  : { ...o, description: baseDescription };
               }),
           );
           rememberShownIds(finalOutfits.slice(0, 3));
@@ -2482,7 +2622,7 @@ const AIOutfitGenerator = () => {
                   </LinearGradient>
                 </View>
 
-                <OutfitSlotGrid items={outfit.items} weather={outfit.weather} />
+                <OutfitSlotGrid items={outfit.items} weather={outfit.weather} priceCatalog={liveShopMapped} />
 
                 <ScaledText style={styles.outfitDesc} minScale={0.65}>{outfit.description}</ScaledText>
 
@@ -2680,6 +2820,10 @@ const AIOutfitGenerator = () => {
       <View pointerEvents="none" style={styles.backgroundOrbTop} />
       <View pointerEvents="none" style={styles.backgroundOrbBottom} />
 
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
       <SafeAreaView
         edges={['top', 'left', 'right']}
         style={{ flex: 1 }}
@@ -3078,6 +3222,7 @@ const AIOutfitGenerator = () => {
             </TouchableOpacity>
           </View>
       </SafeAreaView>
+      </KeyboardAvoidingView>
 
     </View>
   );

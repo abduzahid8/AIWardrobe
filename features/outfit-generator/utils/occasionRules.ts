@@ -24,7 +24,9 @@ export function occasionFormality(occasionId: string | null | undefined): Occasi
     return 'casual';
 }
 
-const FORMAL_SHOE_RE = /\b(sneakers?|trainers?|athletic|basketball|skate|sandals?|slides?|flip[\s-]?flops?|espadrilles?|boat\b|slippers?|clogs?|runners?|joggers?|mules?)\b/;
+// Cyrillic alternatives must sit OUTSIDE \b groups: \b is ASCII-only, so a
+// boundary before 'к' never matches (same trap as the é note at Piqué).
+const FORMAL_SHOE_RE = /\b(sneakers?|trainers?|athletic|basketball|skate|sandals?|slides?|flip[\s-]?flops?|espadrilles?|boat\b|slippers?|clogs?|runners?|joggers?|mules?)\b|кроссовки|кеды|сандалии|шлёпанцы|шлепанцы|эспадрильи/;
 // Driving moccasins sit a full formality tier below loafers: unstructured
 // soft sole, tie laces, pebbled nubs. Riviera-casual, never evening wear —
 // and never with tailoring. (A loafer by contrast is structured:
@@ -47,7 +49,10 @@ const ZIP_CASUAL_LAYER_RE = /\b(zip[\s-]?up|zipped|total[\s-]?look|overshirt|sha
 const RELAXED_FIT_RE = /\brelaxed[\s-]?fit\b/;
 const PLAID_TOP_RE = /\bplaid\b/;
 const CASUAL_LOAFER_RE = /\b(split[\s-]?leather|jute|cupsole|cup[\s-]?sole|crepe[\s-]?sole|gum[\s-]?sole|white[\s-]?sole|caramel[\s-]?sole|moc[\s-]?toe)\b/;
-const SLOPPY_BOTTOM_RE = /\b(cargo|ripped|distressed|sweatpants?|joggers?|basketball|board\s*shorts?|drawstrings?|elasticated|\belastic(?:ated)?[\s-]?waist(?:band)?|co-?ords?)\b/;
+// 'jogging' (e.g. "Basic Jogging Trousers") must match alongside 'joggers':
+// the judge only rejects what the regex sees, and a jogger pants named by
+// fabric/action slipped old-money decks while 'joggers?' never matched it.
+const SLOPPY_BOTTOM_RE = /\b(cargo|ripped|distressed|sweatpants?|joggers?|jogging|basketball|board\s*shorts?|drawstrings?|elasticated|\belastic(?:ated)?[\s-]?waist(?:band)?|co-?ords?|tracksuits?|track[\s-]?(?:pants?|trousers?|suits?)|balloon[\s-]?fit)\b/;
 const FASHION_WORK_BOTTOM_RE = /\b(washed[\s-]?effect|bell[\s-]?bottoms?|splatter|uneven[\s-]?hem|twisted[\s-]?seams?|barrel[\s-]?fit)\b/;
 const FASHION_WORK_LAYER_RE = /\b(washed[\s-]?effect)\b/;
 const PIQUE_POLO_RE = /\bpiqu[eé]/i;
@@ -276,7 +281,7 @@ export function rejectForStyleOccasion(
             return 'casual outerwear breaks classic discipline';
         }
         if (isTopOrLayer && RELAXED_FIT_RE.test(blob)) return 'relaxed-fit fashion tops break classic proportions';
-        if (isBottom && /\b(ripped|distressed|sweatpants?|joggers?|track|velour|baggy|cargo)\b/.test(blob)) {
+        if (isBottom && /\b(ripped|distressed|sweatpants?|joggers?|jogging|track|tracksuits?|velour|baggy|cargo|balloon[\s-]?fit)\b/.test(blob)) {
             return 'sloppy/track bottoms break classic discipline';
         }
         if (isBottom && FASHION_WORK_BOTTOM_RE.test(blob) && formal) {
@@ -303,14 +308,24 @@ export function rejectForStyleOccasion(
     if (style === 'minimalist' && /\bpleats?\b|\bpleated\b/.test(blob)) {
         return 'minimalism takes no pleats';
     }
-    if (style === 'minimalist' && isBottom && /\b(ripped|distressed|baggy)\b/.test(blob)) {
+    if (style === 'minimalist' && isBottom && /\b(ripped|distressed|joggers?|jogging|baggy|track|tracksuits?|balloon[\s-]?fit)\b/.test(blob)) {
         return 'ripped/baggy bottoms break minimalist discipline';
+    }
+    // Semi-classic DNA: the scorer penalises track/baggy/cargo/oversized
+    // bottoms and chunky footwear, but the judge had no branch — so those
+    // pieces survived into rendered cards (verified: "Balloon Fit Trousers",
+    // "Technical Tracksuit" bottoms, "Chunky Moc Toe Shoes").
+    if (style === 'semi_classic') {
+        if (isShoeish(item, blob) && /\bchunky\b/.test(blob)) return 'chunky soles break semi-classic polish';
+        if (isBottom && /\b(ripped|distressed|sweatpants?|joggers?|jogging|tracksuits?|track[\s-]?(?:pants?|trousers?)|baggy|cargo|oversized|balloon[\s-]?fit)\b/.test(blob)) {
+            return 'sloppy/track bottoms break semi-classic discipline';
+        }
     }
     // Refined Casual DNA: knit polos are the standard; the only allowed
     // athletic shoe is the minimal white leather sneaker — chunky/athletic
     // pairs, hoodies, and basic (non-knit) cotton tees belong to the gym.
     if (style === 'casual') {
-        if (/\b(chunky|athletic|basketball|running|skate)\b/.test(blob) && /\bsneakers?\b|\btrainers?\b/.test(blob)) {
+        if (/\b(chunky|athletic|basketball|running|skate|fabric|mesh)\b/.test(blob) && SNEAKER_RE.test(blob)) {
             return 'refined casual takes only minimal leather sneakers';
         }
         if (/\bhoodies?|hooded\b/.test(blob)) return 'refined casual never wears hoodies';
@@ -375,10 +390,17 @@ export function matchesOccasionSilhouette(
         if ((slot === 'outerwear' || slot === '') && /\b(tuxedos?|suit\s*jackets?)\b/.test(blob)) return false;
         return true;
     }
+    if (occasion === 'sport') {
+        // Sport wants trainers; loafers/derbies/Chelsea fail the silhouette
+        // (the shoes pick tiers then prefer an athletic shoe when the pool
+        // has one, and fall back to the old behaviour when it does not).
+        if (slot === 'shoes') return SPORT_SHOE_RE.test(blob);
+        return true;
+    }
     return true;
 }
 const DRESS_SHIRT_RE = /\b(oxford|button[\s-]?downs?|dress\s*shirts?)\b/;
-const SNEAKER_RE = /\bsneakers?|trainers?\b/;
+const SNEAKER_RE = /\b(?:sneakers?|trainers?)\b|кроссовки|кеды|кеда/;
 const BLACK_RE = /\bblack\b/;
 const WHITE_RE = /\bwhite\b/;
 const STRIPED_LAYER_RE = /\bstripes?|pinstripes?\b/;
@@ -400,21 +422,80 @@ function isShoeish(item: JudgeableItem, blob: string): boolean {
     return /\b(loafers?|shoes?|moccasins?|derb(?:y|ies)|oxfords?|sneakers?|trainers?|boots?)\b/.test(blob);
 }
 
+/** Tailored trousers: marked by formality/fabric words, never by shape
+ * alone — "wool straight-leg pants" and "wool jogger fit pants" stay
+ * casual, "Wool Striped Suit Trousers" and "flannel pants" do not. */
+const TAILORED_PANTS_RE =
+    /\b(?:suit|tailored|pinstriped?|flannel|total[\s-]?look)\b[\w\s-]{0,30}\b(?:trousers?|pants?|slacks?)\b|\b(?:trousers?|pants?|slacks?)\b[\w\s-]{0,30}\b(?:suit|tailored|pinstriped?|flannel|total[\s-]?look)\b/;
+/** Outer-coat class: blazer, overcoat, puffer, parka, vest… (EN+RU). */
+const OUTER_LAYER_CLASS_RE =
+    /\b(?:blazers?|suit\s*jackets?|sport\s*coats?|overcoats?|top\s*coats?|trench(?:es)?|peacoats?|puffers?|parkas?|bombers?|gilets?|vests?|windbreakers?|coats?|jackets?|outerwears?)\b|пальто|куртк|жилет|жакет|парк/i;
+/** Pullover-knit class: sweater, cardigan, knit polo, mock neck… (EN+RU). */
+const PULLOVER_KNIT_CLASS_RE =
+    /\b(?:sweaters?|pullovers?|jumpers?|cardigans?|knit(?:ted)?|mock[\s-]?necks?|polos?)\b|свитт?ер|пуловер|кардиган|водолазк/i;
+/** Athletic-sole footwear: real sneakers plus hybrid cupsole dress shoes. */
+const ATHLETIC_SOLE_RE = /\b(?:sneakers?|trainers?|hybrids?)\b|кроссовки|кеды|кеда/;
+/** Sport-occasion shoe silhouette: trainers only. */
+const SPORT_SHOE_RE = /\b(?:sneakers?|trainers?|running|training|athletic|gym|workout)s?\b|кроссовки|кеды/;
+
 /**
  * Outfit-level coherence vetoes — rules that only make sense across pieces
  * (a blazer is fine, sneakers are fine, TOGETHER they are not). Returns a
  * reason or null. Scoped to formal occasions + classic styles, where the
- * transcripts are absolute; streetwear stays free.
+ * transcripts are absolute; streetwear stays free. The first block of
+ * universal vetoes runs for EVERY style × occasion — formality-tier clashes
+ * and duplicate-layer nonsense are not aesthetic preferences.
  */
 export function rejectOutfitIncoherence(
     items: JudgeableItem[] | null | undefined,
     styleId: string | null | undefined,
-    occasionId: string | null | undefined,
+    occasionId: string | undefined | null,
 ): string | null {
     if (!items || items.length === 0) return null;
     const style = String(styleId || '').toLowerCase().replace(/[\s-]+/g, '_');
     const formal = occasionFormality(occasionId) === 'formal';
     const classic = CLASSIC_STYLES.has(style);
+
+    // ── Universal vetoes (all styles, all occasions) ───────────────────
+    // Athletic-sole footwear (sneakers, hybrid cupsole derbies) never pairs
+    // with tailored trousers — "no sneakers with suits" is universal.
+    const hasAthleticSole = items.some(
+        (it) => (macroOf(it) === 'shoes' || macroOf(it) === '') && ATHLETIC_SOLE_RE.test(blobOf(it)),
+    );
+    const hasTailoredPants = items.some(
+        (it) => (macroOf(it) === 'bottom' || macroOf(it) === '') && TAILORED_PANTS_RE.test(blobOf(it)),
+    );
+    if (hasAthleticSole && hasTailoredPants) {
+        return 'sneakers never pair with tailored trousers';
+    }
+    // Two outer coats or two pullover knits are duplicates, not layering.
+    // (Blazer + sweater passes: different classes.)
+    const tops = items.filter((it) => {
+        const m = macroOf(it);
+        return m === 'top' || m === 'outerwear' || m === '';
+    });
+    for (let i = 0; i < tops.length; i++) {
+        for (let j = i + 1; j < tops.length; j++) {
+            const a = blobOf(tops[i]);
+            const b = blobOf(tops[j]);
+            if (OUTER_LAYER_CLASS_RE.test(a) && OUTER_LAYER_CLASS_RE.test(b)) {
+                return 'two outer coats never layer together';
+            }
+            if (PULLOVER_KNIT_CLASS_RE.test(a) && PULLOVER_KNIT_CLASS_RE.test(b)) {
+                return 'two pullover knits never layer together';
+            }
+        }
+    }
+
+    // Accessory props (towels, key rings, bags…) never occupy a garment slot.
+    if (
+        items.some(
+            (it) => (macroOf(it) === 'top' || macroOf(it) === 'bottom' || macroOf(it) === 'outerwear') && isAccessoryPropItem(it as JudgeableItem),
+        )
+    ) {
+        return 'accessory prop never fills a garment slot';
+    }
+
     if (!formal && !classic) return null;
 
     const hasFormalLayer = items.some(
@@ -536,11 +617,11 @@ export type SlotMacro = 'top' | 'outerwear' | 'bottom' | 'shoes';
 
 const TOP_WORDS_RE = /\bt-?shirts?\b|\btees?\b|\bpolos?\b|\bblouses?\b|\btanks?\b|\bhenleys?\b|\bshirts?\b|\boxfords?\b|\bbutton[\s-]?downs?\b/;
 const OUTER_WORDS_RE = /\bjackets?|coats?|blazers?|hoodies?|cardigans?|sweaters?|pullovers?|puffers?|bombers?|vests?|outerwears?|trenchs?|peacoats?|sweatshirts?|knitwears?|jumpers?|fleece|overshirts?|shackets?|total[\s-]?look\b/;
-const BOTTOM_WORDS_RE = /\bpants?|trousers?|jeans?|bottoms?|shorts|bermudas?|skirts?|chinos?|slacks?|joggers?|trunks?|swim/;
-const SHOE_WORDS_RE = /\bshoes?|sneakers?|boots?|loafers?|sandals?|heels?|trainers?|derbys?|derbies|moccasins?|drivers?|mules?\b/;
+const BOTTOM_WORDS_RE = /\bpants?|trousers?|jeans?|bottoms?|shorts|bermudas?|skirts?|chinos?|slacks?|joggers?|jogging|trunks?|swim/;
+const SHOE_WORDS_RE = /\bshoes?|sneakers?|boots?|loafers?|sandals?|heels?|trainers?|derbys?|derbies|moccasins?|drivers?|mules?|clogs?|espadrilles?\b|кроссовки|кеды|туфли|ботинки|лоферы|сапоги|мокасины|сандалии/;
 // Underwear must never surface as visible daywear in any slot.
 export const UNDERWEAR_RE = /\bboxers?|briefs?|underwears?|panties?|thongs?|lingerie|boxer[\s-]?shorts?|nightwear|pyjamas?|pajamas?\b/;
-export const ACCESSORY_PROP_RE = /\b(sunglasses?|eyewear|glasses|card[\s-]?holders?|wallets?|belts?|bags?|totes?|scar(?:f|ves)|hats?|caps?|beanies?|watches?|jewelry|earrings?|necklaces?|ties?|neckties?)\b/;
+export const ACCESSORY_PROP_RE = /\b(sunglasses?|eyewear|glasses|card[\s-]?holders?|wallets?|belts?|bags?|totes?|scar(?:f|ves)|hats?|caps?|beanies?|watch(?:es)?|jewelry|earrings?|necklaces?|ties?|neckties?|key[\s-]?rings?|keyrings?|towels?)\b|брелок|полотен/;
 // Adjective form is "short-sleeved" — `sleeves?` does not match it.
 export const SHORT_SLEEVE_RE = /\bshort[\s-]?sleeve(?:s|d)?\b/;
 export const STRIP_SHORT_SLEEVE_RE = /\bshort[\s-]?sleeve(?:s|d)?\b/gi;
@@ -627,6 +708,29 @@ export function detectSlotMismatch(
     return null;
 }
 
+/** First judge failure reason (item-level style/occasion, climate, or
+ * outfit coherence), or null when the outfit passes. Diagnostic twin of
+ * passesStyleJudge — keep the two in sync. */
+export function styleJudgeReason(
+    items: JudgeableItem[],
+    styleId: string | null | undefined,
+    occasionId: string | null | undefined,
+    weather?: ClimateWeather | null,
+): string | null {
+    if (!items || items.length === 0) return 'empty outfit';
+    for (const it of items) {
+        const r = rejectForStyleOccasion(it, styleId, occasionId);
+        if (r !== null) return `item "${String((it as any)?.name || '?').slice(0, 40)}": ${r}`;
+    }
+    for (const it of items) {
+        const r = rejectForClimate(it, weather);
+        if (r !== null) return `climate "${String((it as any)?.name || '?').slice(0, 40)}": ${r}`;
+    }
+    const oc = rejectOutfitClimate(items, weather);
+    if (oc !== null) return `outfit climate: ${oc}`;
+    return rejectOutfitIncoherence(items, styleId, occasionId);
+}
+
 /** True when the outfit survives the judge (every item unrejected). */
 export function passesStyleJudge(
     items: JudgeableItem[],
@@ -634,11 +738,7 @@ export function passesStyleJudge(
     occasionId: string | null | undefined,
     weather?: ClimateWeather | null,
 ): boolean {
-    if (!items || items.length === 0) return false;
-    if (!items.every((it) => rejectForStyleOccasion(it, styleId, occasionId) === null)) return false;
-    if (!items.every((it) => rejectForClimate(it, weather) === null)) return false;
-    if (rejectOutfitClimate(items, weather) !== null) return false;
-    return rejectOutfitIncoherence(items, styleId, occasionId) === null;
+    return styleJudgeReason(items, styleId, occasionId, weather) === null;
 }
 
 const VIEW_PREFIX_RE = /^(front|side|back|close[\s-]?up|detail)\s+view\s+of\s+(?:(a|an|the)\s+)?/i;

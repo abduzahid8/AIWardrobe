@@ -292,7 +292,7 @@ export function collapseSimilarByName<
 }
 
 const ACCESSORY_TYPE_RE =
-    /\b(sunglasses?|eyewear|glasses|watch|belt|handbag|backpack|wallet|scarf|hat|cap|beanie|gloves?|jewel|bracelet|necklace|tie\b|cufflinks?)\b/;
+    /\b(sunglasses?|eyewear|glasses|watch(?:es)?|belts?|handbags?|backpacks?|wallets?|scar(?:f|ves)|hats?|caps?|beanies?|gloves?|jewel\w*|bracelets?|necklaces?|ties?|cufflinks?)\b/;
 const TECH_ACCESSORY_RE = /\b(iphone|phone[\s-]?cases?|airpods?)\b/;
 const OUTERWEAR_NAME_RE =
     /\b(jacket|coat|blazer|hoodie|cardigan|sweater|pullover|puffer|bomber|vest|outerwear|trench|peacoat|sweatshirt|knitwear|jumper|fleece)\b/;
@@ -301,7 +301,7 @@ const TOP_NAME_RE =
 const BOTTOM_NAME_RE =
     /\bpants?\b|\btrousers?\b|\bjeans?\b|\bshorts\b|\bskirts?\b|\bchinos?\b|\bbermudas?\b|\btrunks\b/;
 const SHOES_NAME_RE =
-    /\bshoes?\b|\bsneakers?\b|\bloafers?\b|\bboots?\b|\bsandals?\b|\bboat\b|\bderb\w*\b|\boxfords?\b|\bmules?\b|\bespadrilles?\b/;
+    /\bshoes?\b|\bsneakers?\b|\bloafers?\b|\bboots?\b|\bsandals?\b|\bboat\b|\bderb\w*\b|\boxfords?\b|\bmules?\b|\bespadrilles?\b|кроссовки|кеды|туфли|ботинки|лоферы|сапоги|мокасины|сандалии/;
 const SHORT_SLEEVE_NAME_RE = /\bshort[\s-]?sleeve(?:s|d)?\b/;
 
 /**
@@ -326,6 +326,11 @@ export function inferShopRowMacro(garmentType: string, name: string, _descriptio
     if (garmentType === 'lower_body' && nameIsOuter && !nameIsBottom) return 'other';
     if (garmentType === 'shoes' && nameIsOuter && !nameIsShoes && !nameIsTop) return 'other';
 
+    // Accessory names beat the stored garment_type: a "43Mm Silicone Strap
+    // Sport Watch" row ships with garment_type=upper_body and would otherwise
+    // slot as a TOP. Clothing words still win (belt-waist pants stay pants).
+    if (ACCESSORY_TYPE_RE.test(nameBlob) && !nameIsTop && !nameIsBottom && !nameIsOuter && !nameIsShoes) return 'other';
+
     if (nameIsBottom && !nameIsOuter) return 'bottom';
     if (nameIsOuter && !nameIsBottom) return 'outerwear';
     if (nameIsTop && !nameIsOuter) return 'top';
@@ -336,7 +341,6 @@ export function inferShopRowMacro(garmentType: string, name: string, _descriptio
     if (garmentType === 'lower_body') return 'bottom';
     if (garmentType === 'shoes') return 'shoes';
     if (garmentType === 'outerwear') return 'outerwear';
-    if (ACCESSORY_TYPE_RE.test(nameBlob)) return 'other';
     return 'top';
 }
 

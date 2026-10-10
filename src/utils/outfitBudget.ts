@@ -74,9 +74,91 @@ export function parseBudgetFromText(text?: string | null): ParsedBudget | null {
     return found.reduce((best, cur) => (cur.amount < best.amount ? cur : best));
 }
 
+/**
+ * Remove budget tokens from free text while keeping style/occasion words:
+ * "Work: work, old money, $250" -> "Work: work, old money".
+ *
+ * The deployed generate-outfits edge parses a budget from the prompt and
+ * compares it against raw UZS prices with no currency conversion, so a
+ * "$250" token makes it drop the whole shop pool and fail with
+ * "No clothing items found". Budgets are enforced client-side (fitsCap +
+ * the normalizer's clamp), so the edge must simply never see one.
+ */
+export function stripBudgetFromText(text?: string | null): string {
+    if (!text) return '';
+    let out = String(text);
+    // Keyword forms first — they own their own optional currency + amount
+    // ("under $250", "budget of 250 euros", "up to 300").
+    out = out.replace(
+        /\b(?:budget(?:\s*(?:of|is|:))?|under|below|within|up\s+to|at\s+most|no\s+more\s+than|less\s+than|max(?:imum)?(?:\s+of)?)\s*([$€£]|usd|eur|gbp)?\s*\d+(?:[.,]\d{1,2})?(?:\s*(?:usd|eur|gbp|dollars?|euros?|pounds?))?/gi,
+        ' ',
+    );
+    // Standalone prefix forms: "$250", "€30".
+    out = out.replace(/([$€£])\s*\d+(?:[.,]\d{1,2})?/g, ' ');
+    // Suffix forms: "250$", "250 USD", "250 dollars".
+    out = out.replace(/\d+(?:[.,]\d{1,2})?\s*([$€£]|usd|eur|gbp|dollars?|euros?|pounds?)/gi, ' ');
+    return out
+        .replace(/\s{2,}/g, ' ')
+        .replace(/\s+([,.;:!?])/g, '$1')
+        .replace(/^[,.;:\s]+/, '')
+        .trim();
+}
+
 export function isCatalogShopId(id?: string | null): boolean {
     const s = String(id || '');
     return /^(shop_|md-|zara-|classic-m-)/i.test(s);
+}
+
+/**
+ * Units per 1 USD — used ONLY to express a text budget in the currency the
+ * catalog actually lists. shop_catalog rows are UZS (median ~1.2M so'm), so
+ * comparing a parsed "$250" against a UZS price rejected EVERY item: budget
+ * scenarios fell back to placeholder Pants/Shoes tiles and dropped every
+ * shop look. Override with EXPO_PUBLIC_BUDGET_USD_UZS when rates drift.
+ */
+const UNITS_PER_USD: Record<string, number> = {
+    USD: 1,
+    EUR: 1.08,
+    GBP: 0.79,
+    UZS: (() => {
+        const v = Number(process.env.EXPO_PUBLIC_BUDGET_USD_UZS);
+        return Number.isFinite(v) && v > 0 ? v : 12600;
+    })(),
+};
+
+/** First non-empty item currency, upper-cased (e.g. 'UZS'). */
+export function catalogCurrencyOf(
+    items: Array<{ currency?: string | null } | null | undefined> | null | undefined,
+): string | null {
+    for (const it of items || []) {
+        const c = String(it?.currency || '').trim().toUpperCase();
+        if (c) return c;
+    }
+    return null;
+}
+
+/**
+ * Express `budget` in `targetCurrency` so a cap can be compared with catalog
+ * prices. Same-currency / unknown-currency pairs are returned untouched, so
+ * calling it again with an already-converted budget is a no-op (clients and
+ * the edge both call it — no double conversion).
+ */
+export function budgetInCurrency(
+    budget: ParsedBudget | null | undefined,
+    targetCurrency?: string | null,
+): ParsedBudget | null {
+    if (!budget) return null;
+    const to = String(targetCurrency || '').trim().toUpperCase();
+    const from = String(budget.currency || 'USD').trim().toUpperCase();
+    if (!to || to === from) return { ...budget, currency: from };
+    const toPerUsd = UNITS_PER_USD[to];
+    const fromPerUsd = UNITS_PER_USD[from];
+    if (!toPerUsd || !fromPerUsd) return { ...budget, currency: from };
+    const converted = (budget.amount * toPerUsd) / fromPerUsd;
+    return {
+        amount: to === 'UZS' ? Math.round(converted) : Math.round(converted * 100) / 100,
+        currency: to,
+    };
 }
 
 export function isShopPricedItem(item: { isShopItem?: boolean; isWardrobe?: boolean; id?: string } | null | undefined): boolean {
@@ -126,6 +208,10 @@ export function formatMoney(amount: number, currency = 'USD'): string {
     if (currency === 'EUR') return `€${rounded}`;
     if (currency === 'GBP') return `£${rounded}`;
     if (currency === 'USD') return `$${rounded}`;
+    if (currency === 'UZS') {
+        // Full so'm figures need grouping to be readable on a tile.
+        return `${rounded.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} UZS`;
+    }
     return `${rounded} ${currency}`;
 }
 
@@ -157,11 +243,14 @@ export function buildAgentClothingContext(opts: {
     maxOwned?: number;
     maxShop?: number;
 }): string {
-    const budget = parseBudgetFromText(opts.userMessage);
+    const pricedShop = (opts.shop || []).filter((i) => typeof i?.price === 'number' && i.price > 0);
+    // Compare the parsed cap in the catalog's own currency (UZS rows vs a
+    // "$250" prompt) so cheap pieces are actually promoted.
+    const budget = budgetInCurrency(parseBudgetFromText(opts.userMessage), catalogCurrencyOf(pricedShop));
     const maxOwned = opts.maxOwned ?? 12;
     const maxShop = opts.maxShop ?? 20;
     const owned = (opts.owned || []).slice(0, maxOwned);
-    let shop = (opts.shop || []).filter((i) => typeof i?.price === 'number' && i.price > 0);
+    let shop = pricedShop;
     if (budget) {
         const under = shop.filter((i) => Number(i.price) <= budget.amount);
         shop = (under.length > 0 ? under : shop).slice().sort((a, b) => Number(a.price) - Number(b.price));

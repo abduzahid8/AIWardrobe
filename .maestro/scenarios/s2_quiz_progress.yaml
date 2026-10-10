@@ -1,0 +1,55 @@
+appId: host.exp.Exponent
+name: s2_quiz_progress
+tags: [e2e, scenario2, onboarding]
+---
+# ─────────────────────────────────────────────────────────────────────────────
+# SCENARIO 2 · Onboarding (1/2) — style quiz, steps 0→3.
+# PRECONDITION: signed in AND not yet onboarded (the runner wipes local
+# storage before the suite, which clears `style-preferences` — the quiz is
+# local-only state, so a wiped install always replays it after sign-in).
+# Keep this short: the iOS accessibility server degrades after ~5 hierarchy
+# queries (see .maestro/README.md).
+# ─────────────────────────────────────────────────────────────────────────────
+- runFlow: _language_gate.yaml
+- runFlow: _sign_in.yaml
+- extendedWaitUntil:
+    visible: "Your Style, Decoded."
+    timeout: 30000
+- takeScreenshot: s2_01_welcome
+
+# ── Step 1 · style soul (single select) ──
+- tapOn: "Continue.*"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: ".*Pick the one that feels most like you.*"
+- tapOn: "Old Money"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: s2_02_personality
+- tapOn: "Continue.*"
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# ── Step 2 · color palette (swatches are colour circles — no text label,
+#    so this uses a calibrated point inside the swatch grid) ──
+- assertVisible: ".*speak to you.*"
+- tapOn:
+    point: "50%,50%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn: "Continue.*"
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# ── Step 3 · occasions (multi select) ──
+- assertVisible: ".*Pick everything that applies.*"
+- tapOn: "Work"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn: "Date"
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: s2_03_occasions
+- tapOn: "Continue.*"
+- waitForAnimationToEnd:
+    timeout: 5000

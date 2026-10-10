@@ -1,0 +1,51 @@
+appId: host.exp.Exponent
+name: s1_auth_validation
+tags: [e2e, scenario1, auth]
+---
+# ─────────────────────────────────────────────────────────────────────────────
+# SCENARIO 1 · Auth (1/3) — Sign In validation.
+# PRECONDITION: logged OUT with empty fields (the runner wipes local storage
+# before the suite, which also restores the first-run language gate).
+# Sign In is a 2-step screen: Email → Continue → Password → Sign In.
+# Validation is a NATIVE ALERT (not inline): common.error / signIn.emailPasswordRequired.
+# ─────────────────────────────────────────────────────────────────────────────
+- waitForAnimationToEnd:
+    timeout: 15000
+- runFlow: _language_gate.yaml
+- extendedWaitUntil:
+    visible: "Continue with Google"
+    timeout: 30000
+- takeScreenshot: s1_01_signin
+
+# ── Empty submit on step 1 → "Please enter email and password" ──
+- tapOn:
+    id: "continueEmailButton"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: ".*Please enter email and password.*"
+- takeScreenshot: s1_02_empty_alert
+- tapOn: "OK"
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# ── Malformed email → "Please enter a valid email address" ──
+- tapOn:
+    id: "emailInputNative"
+- inputText: "not-an-email"
+- tapOn:
+    id: "continueEmailButton"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: ".*Please enter a valid email address.*"
+- takeScreenshot: s1_03_invalid_email
+- tapOn: "OK"
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# Clear the field via its clear button (accessibilityLabel = common.close)
+# so the next scenario starts from a clean email step.
+- tapOn: "Close"
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: "Continue with Google"
+- takeScreenshot: s1_04_clean

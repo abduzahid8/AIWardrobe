@@ -1,0 +1,73 @@
+appId: host.exp.Exponent
+name: s1_auth_links
+tags: [e2e, scenario1, auth]
+---
+# ─────────────────────────────────────────────────────────────────────────────
+# SCENARIO 1 · Auth (2/3) — auth link round trip.
+# Sign In (email step) → Continue → Forgot Password → back → Sign Up →
+# back to Sign In → Back to the email step.
+# PRECONDITION: logged OUT, sitting on the Sign In email step.
+# NOTE: `Forgot Password?` only renders on the PASSWORD step, so an email has
+# to be entered first (it is not submitted — Continue is a local transition).
+# Back chevron on ForgotPasswordScreen carries accessibility label
+# resetPassword.goBack = "Go back". Do NOT tap the top-left status-bar
+# corner — the iOS "back to Safari" affordance exits Expo Go.
+# ─────────────────────────────────────────────────────────────────────────────
+- extendedWaitUntil:
+    visible: "Continue with Google"
+    timeout: 30000
+
+# ── Step 1 → password step (local transition, nothing is sent) ──
+- tapOn:
+    id: "emailInputNative"
+- inputText: "e2e.stylist@aiwardrobe.club"
+- tapOn:
+    id: "continueEmailButton"
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# ── Forgot Password round trip ──
+- assertVisible:
+    id: "forgotPasswordButton"
+- tapOn:
+    id: "forgotPasswordButton"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: ".*Reset Password.*"
+- assertVisible: ".*send you a link.*"
+- takeScreenshot: s1_05_forgot_password
+- tapOn: ".*Go back.*"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: "forgotPasswordButton"
+
+# ── Sign Up screen and back ──
+- tapOn:
+    id: "signUpLink"
+- waitForAnimationToEnd:
+    timeout: 5000
+# auth.haveAccount + auth.signIn footer — the password checklist only renders
+# after typing, so it is NOT a valid fresh-screen anchor.
+- assertVisible: ".*Already have an account.*"
+- takeScreenshot: s1_06_signup
+- tapOn:
+    id: "signInLink"
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# ── Return to the email step so the next flow starts from a clean state ──
+- assertVisible:
+    id: "signInBackButton"
+- tapOn:
+    id: "signInBackButton"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: "Continue with Google"
+# inputText appends, so the email typed above must be cleared or the next
+# flow would submit a doubled address. The clear button only renders when the
+# field has content (accessibilityLabel = common.close).
+- tapOn: "Close"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: s1_07_back_to_signin

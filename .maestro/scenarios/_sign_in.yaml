@@ -1,0 +1,44 @@
+appId: host.exp.Exponent
+---
+# Shared helper — conditional sign-in for the e2e account.
+# No-op unless the Sign In screen is showing, so it is safe to prepend to
+# any scenario (signed-in runs skip straight through).
+# Anchor: the Google button's accessibility label — the Sign In title also
+# matches the iOS back-button label and the footer is not exposed to iOS.
+- runFlow:
+    when:
+      visible: "Continue with Google"
+    commands:
+      # inputText appends — clear a leftover address from an earlier flow first.
+      - runFlow:
+          when:
+            visible: "Close"
+          commands:
+            - tapOn: "Close"
+      - tapOn:
+          id: "emailInputNative"
+      - inputText: "e2e.stylist@aiwardrobe.club"
+      - tapOn:
+          id: "continueEmailButton"
+      - waitForAnimationToEnd:
+          timeout: 5000
+      - tapOn:
+          id: "passwordInputNative"
+      - inputText: "E2eStylistVerify2026!"
+      - tapOn:
+          id: "signInButton"
+      - waitForAnimationToEnd:
+          timeout: 20000
+      - runFlow:
+          when:
+            visible: "Save Password?"
+          commands:
+            - tapOn: "Not Now"
+      # Real success signal — the password step is only gone once the session
+      # is established (the Google button vanishing is not: it is email-step
+      # only).
+      - extendedWaitUntil:
+          notVisible: ".*Forgot Password.*"
+          timeout: 40000
+      - waitForAnimationToEnd:
+          timeout: 5000

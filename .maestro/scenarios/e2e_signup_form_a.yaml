@@ -1,0 +1,14 @@
+appId: host.exp.Exponent
+---
+# Sign-up part A — open the form, fill username (typed; typing is reliable
+# only BEFORE any paste) and password (pasted; inputText into the secure
+# field intermittently delivers 1-6 chars — never type it).
+# PRECONDITION: Sign In screen (e2e_prepare_signin ran).
+# Runner pbcopies PASSWORD for this flow.
+- runFlow: _e2e_dialogs.yaml
+- tapOn:
+    id: "signUpLink"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: ".*Already have an account.*"
+- runFlow: _e2e_signup_fill_a.yaml

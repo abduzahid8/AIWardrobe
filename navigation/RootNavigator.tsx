@@ -38,7 +38,6 @@ const PaywallScreen = lazyScreen(() => import("../screens/PaywallScreen"));
 const OutfitInspoScreen = lazyScreen(() => import("../screens/OutfitInspoScreen"));
 const CreateAvatarScreen = lazyScreen(() => import("../screens/CreateAvatarScreen"));
 const MyClosetScreen = lazyScreen(() => import("../screens/MyClosetScreen"));
-const WeeklyInsightsScreen = lazyScreen(() => import("../screens/WeeklyInsightsScreen"));
 const PrivacyPolicyScreen = lazyScreen(() => import("../screens/PrivacyPolicyScreen"));
 const TermsOfServiceScreen = lazyScreen(() => import("../screens/TermsOfServiceScreen"));
 const ClothingDetailEditor = lazyScreen(() => import("../components/ClothingDetailEditor"));
@@ -417,13 +416,6 @@ const RootNavigator = () => {
             <Stack.Screen
               name="MyCloset"
               component={MyClosetScreen}
-              options={{
-                ...LiquidPresets.slide,
-              }}
-            />
-            <Stack.Screen
-              name="WeeklyInsights"
-              component={WeeklyInsightsScreen}
               options={{
                 ...LiquidPresets.slide,
               }}

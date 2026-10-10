@@ -1,0 +1,36 @@
+appId: host.exp.Exponent
+---
+# Test 02 (part 2b) · the deleted account must NOT be able to sign in.
+# PRECONDITION: e2e_02b_prepare green (step 1 clean). Runner pbcopy'd the
+# unique address immediately before launching this flow — paste it (never
+# type into email fields) and VERIFY what landed: the host pasteboard is
+# contended, and a stray host copy mid-paste must fail fast, not proceed.
+- tapOn:
+    id: "emailInputNative"
+- longPressOn:
+    id: "emailInputNative"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn: "Paste"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "continueEmailButton"
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: "passwordInputNative"
+- inputText: "Abcdef123!"
+- tapOn:
+    id: "signInButton"
+
+# SignInScreen maps INVALID_CREDENTIALS → Alert("Login Failed", …)
+- extendedWaitUntil:
+    visible: "Login Failed"
+    timeout: 30000
+- takeScreenshot: e2e_02_rejected
+- tapOn:
+    point: "50%,55%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: "Continue with Google|Forgot Password\\?"

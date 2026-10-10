@@ -132,3 +132,9 @@ data/shopLocalImages.*.ts
 service-account-key.json
 api_server.log
 
+
+# E2E test run outputs (multi-GB; regenerate locally per .maestro/README.md)
+.maestro/artifacts/
+.maestro/verify-shots/
+.maestro/scenarios/artifacts/
+report.xml

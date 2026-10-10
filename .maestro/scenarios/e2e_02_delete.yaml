@@ -1,0 +1,48 @@
+appId: host.exp.Exponent
+---
+# Test 02 · Delete account, then prove the old credentials are dead.
+# PRECONDITION: signed in + onboarding complete (test 01 finished green).
+# Alert buttons come from ProfileScreen.handleDeleteAccount:
+#   Alert 1: title "Delete Account"  → [Cancel | Delete]
+#   Alert 2: title "Confirm Delete"  → [Keep Account | Delete Everything]
+# Regexes are full-match, so "Delete" only ever matches the Alert-1 button.
+- runFlow: _e2e_dialogs.yaml
+
+# Profile tab (coordinate proven in expo_go_sign_out)
+- tapOn:
+    point: "74%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*Account.*"
+
+# Below-fold reach: two coordinate swipes (same recipe as _e2e_signout —
+# direction swipes don't move this ScrollView, coordinate ones do).
+- swipe:
+    start: "50%,85%"
+    end: "50%,25%"
+    duration: 600
+- waitForAnimationToEnd:
+    timeout: 2000
+- swipe:
+    start: "50%,85%"
+    end: "50%,30%"
+    duration: 600
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn: ".*Delete Account.*"
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: ".*Permanently delete your account.*"
+- tapOn: "Delete"
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: ".*Confirm Delete.*"
+- tapOn: "Delete Everything"
+
+# deleteAccount() → auth listener → signed out. Storage wipe may also bring
+# the language gate back, so accept either landing screen here (e2e_02b
+# clears the gate before asserting Sign In).
+- extendedWaitUntil:
+    visible: "Continue with Google|Choose your language"
+    timeout: 90000
+- takeScreenshot: e2e_02_deleted

@@ -80,7 +80,6 @@ export type RootStackParamList = {
     // Profile & Settings
     MyCloset: undefined;
     ClothingDetail: { itemId: string; fullItem?: any };
-    WeeklyInsights: undefined;
     PrivacyPolicy: undefined;
     TermsOfService: undefined;
     AdminPanel: undefined;

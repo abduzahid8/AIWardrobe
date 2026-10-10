@@ -172,3 +172,35 @@ If the app layout changes (e.g., different device, tab bar redesign), re-verify 
 1. Take a screenshot: `xcrun simctl io booted screenshot screenshot.png`
 2. Open in Preview, measure the tab bar area
 3. Update coordinates in the flows
+
+## Session learnings (2026-10-09)
+
+- **iOS "Save Password?" sheet hides the app AX tree entirely** — its text
+  never appears in the hierarchy, so `when visible "Save Password"` can
+  never fire while it blocks. Dismiss with a blind coordinate tap
+  (`32%,63%` = "Not Now" on iPhone 16 Pro) while the quiz is not visible —
+  see the dismiss rounds in `_e2e_signup_fill_b.template.yaml`.
+- **Never type the password and never trust a runner-side `pbcopy`** — the
+  user's host pasteboard syncs into the simulator and wins races (observed:
+  user-copied prose pasted into the email field). Both fills use the in-flow
+  `setClipboard` command (`copyTextToClipboard` does not exist in 2.8.0)
+  immediately before the long-press, and the runner retries `signup_b` once.
+- **Casual occasion is collapsed** behind "More occasions" (testID
+  `stylistMoreOccasions`, label flips to "Less" when expanded) — expand
+  once before tapping Casual (`full_ai_modes.yaml`, `rugged_ai_mash.yaml`).
+- **Every `maestro test` invocation leaks a ~190 MB
+  `$TMPDIR/maestro_xctestrunner_*` dir** (47 GB accumulated over a day).
+  The stylist-50 runner purges stale ones per iteration; purge manually if
+  disk fills: `find "$TMPDIR" -maxdepth 1 -name 'maestro_xctestrunner_*' -mmin +3 -exec rm -rf {} +`
+- **Fresh accounts have an empty closet** — `rugged_detail_push` /
+  `rugged_search` detect "Your closet is empty" and assert the empty state
+  instead of pushing/searching; full data coverage needs seeded items.
+- **Reboots can land Expo Go on the developer menu** (intro tooltip) which
+  blanks the app hierarchy — `run_e2e_3.sh` runs `_e2e_devmenu.yaml` after
+  each reboot.
+- **Treat "0 steps completed" as a failure** — Maestro output without a
+  `FAILED` line usually means the driver/device was gone, not a pass
+  (`run_full.sh`, `run_rugged.sh`).
+- Weekly Insights screen ("Style Insights") was **removed** on 2026-10-09
+  (screen, route, Profile button, notification payloads). `full_insights.yaml`
+  is gone; the full suite is 8 flows.

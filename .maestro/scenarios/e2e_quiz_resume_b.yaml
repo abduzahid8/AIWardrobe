@@ -1,0 +1,8 @@
+appId: host.exp.Exponent
+---
+# Resume quiz from the fit step → Today's Look (s2_quiz_finish).
+- runFlow: s2_quiz_finish.yaml
+- extendedWaitUntil:
+    visible: "Today's Look"
+    timeout: 30000
+- takeScreenshot: e2e_resume_home

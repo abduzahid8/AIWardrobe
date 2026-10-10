@@ -64,6 +64,38 @@ function outfitShopSpend(items: any[], itemMap?: Map<string, any>): number {
     }, 0)
 }
 
+/**
+ * Units per 1 USD — edge copy of src/utils/outfitBudget.ts#budgetInCurrency.
+ * shop_catalog lists UZS prices; a parsed "$250" cap must be expressed in
+ * the catalog currency or every priced item fails the budget filter/prompt
+ * rule and the deck collapses to placeholder pieces. Idempotent: converting
+ * an already-UZS budget again is a no-op (client sends it pre-converted).
+ */
+const EDGE_UNITS_PER_USD: Record<string, number> = {
+    USD: 1,
+    EUR: 1.08,
+    GBP: 0.79,
+    UZS: (() => {
+        const v = Number(Deno.env.get('BUDGET_USD_UZS'))
+        return Number.isFinite(v) && v > 0 ? v : 12600
+    })(),
+}
+
+function budgetInCurrencyEdge(
+    budget: { amount: number; currency: string } | null | undefined,
+    targetCurrency?: string | null,
+): { amount: number; currency: string } | null {
+    if (!budget) return null
+    const to = String(targetCurrency || '').trim().toUpperCase()
+    const from = String(budget.currency || 'USD').trim().toUpperCase()
+    if (!to || to === from) return { ...budget, currency: from }
+    const toPerUsd = EDGE_UNITS_PER_USD[to]
+    const fromPerUsd = EDGE_UNITS_PER_USD[from]
+    if (!toPerUsd || !fromPerUsd) return { ...budget, currency: from }
+    const converted = (budget.amount * toPerUsd) / fromPerUsd
+    return { amount: to === 'UZS' ? Math.round(converted) : Math.round(converted * 100) / 100, currency: to }
+}
+
 function fitOutfitToBudget(parts: any[], pool: any[], budget: { amount: number } | null | undefined): any[] {
     if (!budget || !Array.isArray(parts) || parts.length === 0) return parts
     const cap = budget.amount
@@ -266,7 +298,7 @@ const STYLE_SIGNALS_EDGE: Record<string, Array<[RegExp, number]>> = {
         [/\bsneaker(s)?\b/i, 1], [/\bjeans\b/i, 1], [/\bdenim\b/i, 1],
         [/\bsweater\b/i, 2], [/\bpullover\b/i, 1], [/\bvest\b/i, 1],
         [/\bhoodie\b/i, -2], [/\bgraphic\b/i, -2], [/\bcargo\b/i, -3],
-        [/\bsweatpants\b/i, -3], [/\bjoggers\b/i, -3], [/\btrack\b/i, -2],
+        [/\bsweatpants\b/i, -3], [/\bjogger(?:s|ing)\b/i, -3], [/\btrack\b/i, -2],
         [/\bneon\b/i, -4], [/\bsequin\b/i, -4], [/\brhinestone\b/i, -4],
         [/\boversized\b/i, -2], [/\bbaggy\b/i, -3], [/\bripped\b/i, -2],
     ],
@@ -330,7 +362,7 @@ const STYLE_SIGNALS_EDGE: Record<string, Array<[RegExp, number]>> = {
         [/\btie\b/i, 3], [/\bpocket square\b/i, 3], [/\bscarf\b/i, 2],
         // Negatives
         [/\bhoodie\b/i, -4], [/\bgraphic\b/i, -3], [/\blogo\b/i, -2],
-        [/\bcargo\b/i, -4], [/\bsweatpants\b/i, -4], [/\bjoggers\b/i, -4],
+        [/\bcargo\b/i, -4], [/\bsweatpants\b/i, -4], [/\bjogger(?:s|ing)\b/i, -4],
         [/\btrack pants\b/i, -4], [/\bshorts\b/i, -3], [/\bbermuda\b/i, -3],
         [/\bpuffer\b/i, -3], [/\bbomber\b/i, -3], [/\bdenim jacket\b/i, -2],
         [/\bchunky sneaker(s)?\b/i, -4], [/\bsneaker(s)?\b/i, -3], [/\bt-shirt\b/i, -2], [/\btee\b/i, -2],
@@ -563,7 +595,7 @@ const STYLE_CONTEXT: Record<string, { vibe: string; must: string[]; reject: stri
         reject: [
             'NEVER include: graphic, logo, print, printed, patterned, floral, paisley, camo, tie-dye, pattern, patterns, souvenir jackets, pajama, pyjama, sleepwear, loungewear, t-shirt.',
             'NEVER include: hoodie, hoodies, hooded, windbreaker, windbreakers, puffer, puffers, zip-up, zip-ups, bomber, bombers, track jacket, track jackets, graphic sweatshirts.',
-            'NEVER include: cargo shorts, cargo pants, athletic shorts, basketball shorts, track pants, sweatpants, joggers, shorts/bermudas, drawstring pants, elastic-waist trousers.',
+            'NEVER include: cargo shorts, cargo pants, athletic shorts, basketball shorts, track pants, sweatpants, joggers, jogging trousers, shorts/bermudas, drawstring pants, elastic-waist trousers.',
             'NEVER include: washed-effect jackets, bell-bottom or splatter pants, fashion denim, twisted-seam jeans, piqué polos for work.',
             'NEVER include: driving moccasins, loafers with tie laces, chunky sneakers, high-tops, platform shoes, athletic trainers, running shoes, basketball shoes, square-toe shoes.',
             'NEVER include: black as a primary color — replace with navy, charcoal, or dark brown. Black only for formal eveningwear.',
@@ -1177,6 +1209,7 @@ async function fetchShopItemsForAllSlotsEdge(
     requiredSlots: string[],
     style: string,
     perSlot = 4,
+    excludeSet?: Set<string>,
 ): Promise<any[]> {
     const picks: any[] = []
     const styleKey = style.toLowerCase().replace(/[\s-]+/g, '_')
@@ -1191,7 +1224,7 @@ async function fetchShopItemsForAllSlotsEdge(
             // from name/description via inferShopColor() below.
             let q = supabaseClient
                 .from('shop_catalog')
-                .select('id, brand, name, price, image_url, garment_type, category, description, source')
+                .select('id, brand, name, price, currency, image_url, garment_type, category, description, source')
                 .eq('is_active', true)
                 .limit(100)
             if (slot === 'shoes') q = q.or('category.eq.shoes,garment_type.eq.shoes')
@@ -1241,11 +1274,9 @@ async function fetchShopItemsForAllSlotsEdge(
             // Best-scored id per similarity key wins (rank is score-sorted).
             const seenProducts = new Set<string>()
             let added = 0
-            for (const { row } of scored) {
-                if (added >= perSlot) break
-                if (!row || !row.image_url) continue
+            const pushRow = (row: any) => {
                 const pkey = simKeyEdge(row.name || row.type || '', slot)
-                if (seenProducts.has(pkey)) continue
+                if (seenProducts.has(pkey)) return
                 seenProducts.add(pkey)
                 picks.push({
                     id: `shop_${row.id}`,
@@ -1264,6 +1295,25 @@ async function fetchShopItemsForAllSlotsEdge(
                     recommendation: `Suggested from shop to complete your ${slot}`,
                 })
                 added++
+            }
+            const excluded = (row: any) =>
+                excludeSet && excludeSet.size > 0
+                && (excludeSet.has(String(row.id)) || excludeSet.has(`shop_${row.id}`))
+            // Pass 1: skip items the user already saw (rotation window).
+            for (const { row } of scored) {
+                if (added >= perSlot) break
+                if (!row || !row.image_url) continue
+                if (excluded(row)) continue
+                pushRow(row)
+            }
+            // Pass 2: the exclusion window ate this slot (thin category /
+            // long session) — re-run without it so the slot never starves.
+            if (added < perSlot && excludeSet && excludeSet.size > 0) {
+                for (const { row } of scored) {
+                    if (added >= perSlot) break
+                    if (!row || !row.image_url) continue
+                    pushRow(row)
+                }
             }
         } catch (_) {
             // Shop catalog unreachable — skip.
@@ -1312,7 +1362,7 @@ async function fillMissingSlotsEdge(
         try {
             let q = supabaseClient
                 .from('shop_catalog')
-                .select('id, brand, name, price, image_url, garment_type, category, description, source')
+                .select('id, brand, name, price, currency, image_url, garment_type, category, description, source')
                 .eq('is_active', true)
                 .limit(30)
             if (slot === 'shoes') q = q.or('category.eq.shoes,garment_type.eq.shoes')
@@ -2084,9 +2134,23 @@ serve(async (req) => {
         // repeat taps rebuild byte-identical decks. Absent (other callers) →
         // random salt: variety by default, determinism only when requested.
         deckSalt = -1,
+        // Item ids the user ALREADY SAW in recent decks (rolling window,
+        // maintained client-side). Excluded from the candidate pool so
+        // regenerate taps bring NEW pieces instead of recombining the same
+        // ~40 items forever. Manual selection (selectedItemIds) ignores this.
+        excludeItemIds = [],
     } = body
 
-    const parsedBudget = parseBudgetFromText(`${prompt} ${occasion}`)
+    // Cap the window: 200 ids ≈ 15+ decks. Unbounded arrays would bloat
+    // the request body and risk excluding so much that a slot starves.
+    const excludeSet: Set<string> = new Set(
+        (Array.isArray(excludeItemIds) ? excludeItemIds : [])
+            .slice(0, 200)
+            .map((v: unknown) => String(v ?? '').trim())
+            .filter(Boolean),
+    )
+
+    let parsedBudget = parseBudgetFromText(`${prompt} ${occasion}`)
     const preferences = parsedBudget
         ? { ...(body.preferences || {}), maxShopBudget: parsedBudget }
         : body.preferences
@@ -2194,6 +2258,47 @@ serve(async (req) => {
             console.log(`[preferences] Filtered out avoided colors: ${beforeAvoid} -> ${wardrobeItems.length} items`)
         }
 
+        // ── 3a2. Rotation: drop items the user already saw recently ────────
+        // Runs BEFORE the shop supplement so a slot weakened here is refilled
+        // with fresh shop picks (the supplement skips excluded ids too).
+        // Guards: manual selection wins (user picked those items on purpose),
+        // the locked anchor is always exempt, and pools too small to build a
+        // deck fall back to the unfiltered list — repetition beats nothing.
+        if (excludeSet.size > 0 && (!selectedItemIds || selectedItemIds.length === 0)) {
+            const beforeCount = wardrobeItems.length
+            const anchorKey = anchorItemId ? String(anchorItemId) : ''
+            const slotOfRotate = (it: any) => String(it.macroCategory || 'other')
+            const kept = wardrobeItems.filter((it: any) => String(it.id) === anchorKey || !excludeSet.has(String(it.id)))
+            if (kept.length < beforeCount) {
+                const keptKeys = new Set(kept.map((it: any) => String(it.id)))
+                const keptBySlot = new Map<string, number>()
+                for (const it of kept) keptBySlot.set(slotOfRotate(it), (keptBySlot.get(slotOfRotate(it)) || 0) + 1)
+                const droppedBySlot = new Map<string, any[]>()
+                for (const it of wardrobeItems) {
+                    const key = String(it.id)
+                    if (keptKeys.has(key) || key === anchorKey) continue
+                    const slot = slotOfRotate(it)
+                    if (!droppedBySlot.has(slot)) droppedBySlot.set(slot, [])
+                    droppedBySlot.get(slot)!.push(it)
+                }
+                // Per-slot restore: a slot that lost EVERY candidate would
+                // starve the deck (placeholder shoes / failed validation).
+                // Put that slot back (first 6 dropped) so it stays buildable.
+                let next = kept
+                for (const [slot, dropped] of droppedBySlot) {
+                    if ((keptBySlot.get(slot) || 0) === 0 && dropped.length > 0) {
+                        next = [...next, ...dropped.slice(0, 6)]
+                    }
+                }
+                // Tiny-pool floor: when exclusion guts the pool (small
+                // wardrobe, long session), ignore it entirely.
+                if (next.length < 8) next = wardrobeItems
+                wardrobeItems = next
+                const removed = beforeCount - next.length
+                console.log(`[rotate] excluded ${removed}/${beforeCount} recently-shown items (window=${excludeSet.size})${removed === 0 ? ' — pool too small, skipped' : ''}`)
+            }
+        }
+
         // ── 3c. Supplement sparse wardrobe slots from the shop ─────────────
         // Wardrobe pieces remain in the pool, but a 15-card daily deck needs
         // several choices per slot. If the user owns only a few garments, add
@@ -2214,7 +2319,7 @@ serve(async (req) => {
                 )
             try {
                 const svcClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-                const fetchedShopItems = await fetchShopItemsForAllSlotsEdge(svcClient, missingSlots, stylePreferences, targetChoicesPerSlot)
+                const fetchedShopItems = await fetchShopItemsForAllSlotsEdge(svcClient, missingSlots, stylePreferences, targetChoicesPerSlot, excludeSet)
                 // Shop candidates must respect color/pattern prefs too — the
                 // wardrobe-side filter above ran before they were appended.
                 const shopItems = filterShopByPrefs(fetchedShopItems, preferences)
@@ -2229,15 +2334,29 @@ serve(async (req) => {
             console.log(`[wardrobeOnly] Skipping shop supplement — ${wardrobeItems.length} Supabase wardrobe item(s) only`)
         }
 
+        // Catalog rows are priced in UZS while "$250" parses as USD — express
+        // the cap in the catalog currency BEFORE filtering or the whole shop
+        // pool is dropped (every item looks over budget).
+        const poolCurrency = (() => {
+            for (const it of wardrobeItems || []) {
+                const c = String(it?.currency || '').trim().toUpperCase()
+                if (c) return c
+            }
+            return null
+        })()
+        if (preferences && preferences.maxShopBudget) {
+            preferences.maxShopBudget = budgetInCurrencyEdge(preferences.maxShopBudget, poolCurrency) as any
+        }
         if (parsedBudget) {
+            parsedBudget = budgetInCurrencyEdge(parsedBudget, poolCurrency)
             const beforeBudget = wardrobeItems.length
             wardrobeItems = wardrobeItems.filter((item: any) => {
                 if (!isShopPricedItem(item)) return true
                 const p = shopPriceOf(item)
                 if (p <= 0) return true
-                return p <= parsedBudget.amount
+                return p <= (parsedBudget?.amount ?? Number.POSITIVE_INFINITY)
             })
-            console.log(`[budget] shop items over ${parsedBudget.amount} ${parsedBudget.currency} dropped: ${beforeBudget} -> ${wardrobeItems.length}`)
+            console.log(`[budget] shop items over ${parsedBudget?.amount} ${parsedBudget?.currency} dropped: ${beforeBudget} -> ${wardrobeItems.length}`)
         }
 
         // ── 3d. Rank + trim the pool for the requested style so the LLM only
@@ -2537,7 +2656,7 @@ serve(async (req) => {
             ? { data: [], error: null }
             : await svcClient
                 .from('shop_catalog')
-                .select('id, brand, name, price, image_url, garment_type, category, description')
+                .select('id, brand, name, price, currency, image_url, garment_type, category, description')
                 .eq('is_active', true)
                 .limit(50)
         
@@ -2618,6 +2737,7 @@ serve(async (req) => {
                             name: shopItem.name,
                             brand: shopItem.brand,
                             isShopItem: true,
+                            price: typeof shopItem.price === 'number' && shopItem.price > 0 ? shopItem.price : item.price,
                         }
                     }
                 }
@@ -2627,6 +2747,9 @@ serve(async (req) => {
                 const rawMacro = (src.macroCategory || item.macroCategory || '').toLowerCase()
                 const itemName = finalItem.name || src.name || item.name || ''
                 const canonicalMacro = macroCategory(rawMacro, '', itemName) || rawMacro
+                const price = (typeof finalItem.price === 'number' && finalItem.price > 0)
+                    ? finalItem.price
+                    : (typeof src.price === 'number' && src.price > 0 ? src.price : undefined)
                 return {
                     ...finalItem,
                     color: item.color || src.color || 'neutral',
@@ -2634,6 +2757,7 @@ serve(async (req) => {
                     name: finalItem.name || src.name || item.name || src.type || src.category || 'Item',
                     brand: finalItem.brand || item.brand || src.brand || '',
                     macroCategory: canonicalMacro || rawMacro || '',
+                    price,
                 }
             }),
         }))

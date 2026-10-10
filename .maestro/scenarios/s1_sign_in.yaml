@@ -1,0 +1,55 @@
+appId: host.exp.Exponent
+name: s1_sign_in
+tags: [e2e, scenario1, auth]
+---
+# ─────────────────────────────────────────────────────────────────────────────
+# SCENARIO 1 · Auth (3/3) — real sign-in with the e2e account.
+# Email → Continue → Password → Sign In → dismiss the iOS "Save Password?"
+# sheet. After a storage wipe the fresh session lands on the style-quiz intro
+# (Scenario 2 picks it up from there); on an already-onboarded install it
+# lands straight on Home.
+# ─────────────────────────────────────────────────────────────────────────────
+- extendedWaitUntil:
+    visible: "Continue with Google"
+    timeout: 30000
+- tapOn:
+    id: "emailInputNative"
+- inputText: "e2e.stylist@aiwardrobe.club"
+- tapOn:
+    id: "continueEmailButton"
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: "passwordInputNative"
+- inputText: "E2eStylistVerify2026!"
+- takeScreenshot: s1_08_password_filled
+- tapOn:
+    id: "signInButton"
+- waitForAnimationToEnd:
+    timeout: 20000
+- runFlow:
+    when:
+      visible: "Save Password?"
+    commands:
+      - tapOn: "Not Now"
+
+# The password step must be gone — that is the real success signal.
+# "Continue with Google" is a BAD anchor: it only renders on the email step,
+# so it disappears the moment Continue is tapped, before any network call.
+- extendedWaitUntil:
+    notVisible: ".*Forgot Password.*"
+    timeout: 40000
+- assertNotVisible:
+    id: "signInButton"
+
+# Landing screen differs by onboarding state; record whichever one we hit.
+- runFlow:
+    when:
+      visible: "Your Style, Decoded."
+    commands:
+      - takeScreenshot: s1_09_landed_on_quiz
+- runFlow:
+    when:
+      visible: "Today's Look"
+    commands:
+      - takeScreenshot: s1_09_landed_on_home

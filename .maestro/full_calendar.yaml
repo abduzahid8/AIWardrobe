@@ -15,7 +15,7 @@ tags:
 - tapOn: ".*(Открыть календарь|Open calendar|Kalanderni ochish).*"
 - waitForAnimationToEnd:
     timeout: 10000
-- assertVisible: ".*(Планировать образы|Plan outfits|Schedule outfits).*"
+- assertVisible: ".*(Планировать образы|Plan outfits|Schedule outfits|Plan Looks).*"
 - tapOn: ".*(Закрыть календарь|Close Calendar|Kalanderni yopish).*"
 - waitForAnimationToEnd:
     timeout: 8000

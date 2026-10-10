@@ -1,0 +1,23 @@
+appId: host.exp.Exponent
+---
+# Shared helper — first-run language gate.
+# Picks English so every assertion in this suite stays in EN.
+# No-op when the gate is not on screen. Included via runFlow from other flows.
+- runFlow:
+    when:
+      visible: "Choose your language"
+    commands:
+      - tapOn:
+          id: "languageOption-en"
+      - waitForAnimationToEnd:
+          timeout: 20000
+
+# Gate copy in Russian (only reachable if a previous run chose RU).
+- runFlow:
+    when:
+      visible: "Выберите язык"
+    commands:
+      - tapOn:
+          id: "languageOption-en"
+      - waitForAnimationToEnd:
+          timeout: 20000

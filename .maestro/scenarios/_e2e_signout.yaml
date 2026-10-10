@@ -1,0 +1,43 @@
+appId: host.exp.Exponent
+---
+# Shared helper — sign out from any main tab. Ends on the signed-out screen.
+# Requires: signed in AND onboarding complete (Today's Look reachable).
+# tapOn auto-scrolls targets into view; direction swipes do not work on this
+# stack (see .maestro/README.md), so nothing here scrolls manually.
+- runFlow: _e2e_dialogs.yaml
+- tapOn:
+    point: "74%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*Account.*"
+# Coordinate swipes DO move this ScrollView (direction swipes do not —
+# README "harness limit" applies to swipe: {direction} only). Sign Out sits
+# in the SESSION block below Membership/Preferences: two drags reach it.
+- swipe:
+    start: "50%,85%"
+    end: "50%,25%"
+    duration: 600
+- waitForAnimationToEnd:
+    timeout: 2000
+- swipe:
+    start: "50%,85%"
+    end: "50%,30%"
+    duration: 600
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn: ".*Sign Out.*"
+- waitForAnimationToEnd:
+    timeout: 5000
+# Matches in the tree: 0 = menu row, 1 = alert title, 2 = confirm button.
+# (The row is still mounted, so index shifts by 1 vs title-only alerts.)
+- tapOn:
+    text: ".*Sign Out.*"
+    index: 2
+- waitForAnimationToEnd:
+    timeout: 10000
+# Logout re-opens the first-run language gate before SignIn.
+- runFlow: _language_gate.yaml
+- extendedWaitUntil:
+    visible: ".*Continue with Google.*"
+    timeout: 30000
+- takeScreenshot: e2e_signed_out

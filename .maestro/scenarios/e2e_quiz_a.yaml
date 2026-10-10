@@ -1,0 +1,64 @@
+appId: host.exp.Exponent
+---
+# Style quiz steps 0→3 (no sign-in preamble — signup_form just completed
+# registration, so the welcome screen is the post-submit destination).
+# Steps 4→6 live in e2e_quiz_b. Keep this short: hierarchy-query budget.
+# The iOS Save Password alert lands AFTER the signup flow's own conditional
+# check — while any system alert is up the whole app tree is hidden from AX,
+# so dismiss dialogs BEFORE waiting for the welcome text.
+- runFlow: _e2e_dialogs.yaml
+- extendedWaitUntil:
+    visible: "Your Style, Decoded."
+    timeout: 90000
+- takeScreenshot: e2e_quiz_00_welcome
+
+# LogBox notifications queue from console.errors and sit exactly over this
+# Continue button (a stray tap expands LogBox instead of advancing) —
+# sweep again right before tapping.
+- runFlow: _e2e_dialogs.yaml
+
+# Step 1 · style soul
+- tapOn: "Continue.*"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: ".*Pick the one that feels most like you.*"
+- tapOn: "Old Money"
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn: "Continue.*"
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# Step 2 · colour palette (swatches are unlabeled circles — geometry:
+# 4×62px grid, centered; row centres ≈ 46%/55%/64% of 874pt height.
+# Tap 3 well-separated swatch centres; ≥1 selection enables Continue).
+- assertVisible: ".*speak to you.*"
+- tapOn:
+    point: "40%,46%"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    point: "60%,55%"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    point: "20%,64%"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible: ".*[1-9][0-9]* chosen.*"
+- tapOn: "Continue.*"
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# Step 3 · occasions
+- assertVisible: ".*Pick everything that applies.*"
+- tapOn: "Work"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn: "Date"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn: "Continue.*"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: e2e_quiz_03_occasions

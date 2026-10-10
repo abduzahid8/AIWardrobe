@@ -7,28 +7,41 @@ tags:
 ---
 # Closet search: open the field, type a latin query, debounced filter must
 # not crash/blank the grid; clear and return Home. Logged IN. Ends on Home.
+# Fresh accounts have an EMPTY closet (no search affordance) — the search
+# steps are skipped and the empty state asserted instead.
 - tapOn:
     point: "42%,92%"
 - waitForAnimationToEnd:
     timeout: 8000
 - assertVisible: ".*(Мой гардероб|My Wardrobe|Wardrobe|Closet).*"
-- tapOn:
-    point: "8%,7%"
-- waitForAnimationToEnd:
-    timeout: 5000
-- tapOn:
-    point: "40%,7%"
-- inputText: "поло"
-- waitForAnimationToEnd:
-    timeout: 8000
-# Grid filters live without crash/blank (empty result is valid data, not
-# a failure). Then dismiss via the keyboard's own search button — this is
-# the regression step for the keyboard trap (onSubmitEditing → blur).
-- assertVisible: ".*(Одежда|Clothes).*"
-- tapOn:
-    point: "86%,91%"
-- waitForAnimationToEnd:
-    timeout: 5000
+- runFlow:
+    when:
+      visible: "Your closet is empty"
+    commands:
+      - assertVisible: ".*Scan Wardrobe.*"
+      - takeScreenshot: rugged_search_empty
+- runFlow:
+    when:
+      notVisible: "Your closet is empty"
+    commands:
+      - tapOn:
+          point: "8%,7%"
+      - waitForAnimationToEnd:
+          timeout: 5000
+      - tapOn:
+          point: "40%,7%"
+      - inputText: "поло"
+      - waitForAnimationToEnd:
+          timeout: 8000
+      # Grid filters live without crash/blank (empty result is valid data,
+      # not a failure). Then dismiss via the keyboard's own search button —
+      # this is the regression step for the keyboard trap
+      # (onSubmitEditing → blur).
+      - assertVisible: ".*(Одежда|Clothes).*"
+      - tapOn:
+          point: "86%,91%"
+      - waitForAnimationToEnd:
+          timeout: 5000
 - tapOn:
     point: "26%,92%"
 - waitForAnimationToEnd:

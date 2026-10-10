@@ -1,0 +1,7 @@
+appId: host.exp.Exponent
+---
+# Sign-up part B — paste the unique address (runner pbcopies EMAIL between
+# A and B: one clipboard, two values), submit, handle validation alerts,
+# gate on navigation to the style quiz. Ends there; e2e_quiz_a continues.
+- runFlow: _e2e_signup_fill_b.yaml
+- takeScreenshot: e2e_signup_submitted

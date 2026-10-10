@@ -20,6 +20,7 @@ import { rankItemsForStyle, scoreItemForStyle, normalizeStyleId, type StyleId } 
 import { AI_STYLES } from '../../features/outfit-generator/types';
 import { buildCatalogSimilarityKey, spreadSimilarCatalogItems } from '../utils/shopCatalogOrder';
 import { parseBudgetFromText, outfitShopSpend, itemShopPrice, isShopPricedItem } from '../utils/outfitBudget';
+import { getRecentShownIds, recordShownOutfits } from './recentOutfitIds';
 import useWardrobeStore from '../../store/wardrobeStore';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -135,6 +136,9 @@ export async function generateOutfitsFromDB(
                 selectedItemIds: params.selectedItemIds ?? [],
                 anchorItemId: shopOnlyRequest ? undefined : params.anchorItemId,
                 preferences: params.preferences,
+                // Recently-shown window → edge skips these when building the
+                // candidate pool, so regenerates surface new pieces.
+                excludeItemIds: await getRecentShownIds(),
             },
         });
 
@@ -162,6 +166,7 @@ export async function generateOutfitsFromDB(
         }
 
         const outfits: GeneratedOutfit[] = data.outfits.map((o: any) => mapRawOutfit(o, params));
+        recordShownOutfits(data.outfits);
         return { success: true, outfits, source: data.source ?? 'ai', layered: Boolean(data.layered) };
 
     } catch (err: any) {
@@ -321,6 +326,10 @@ export async function generateOutfitsLocally(
                 }
             }
         }
+
+        // Record what the user will see so the next edge call rotates away
+        // from it (the local path uses shuffle, so exclusion is belt-and-braces).
+        recordShownOutfits(outfits);
 
         return { success: true, outfits, source: 'local' };
     } catch (err: any) {

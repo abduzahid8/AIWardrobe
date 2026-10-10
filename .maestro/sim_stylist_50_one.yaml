@@ -38,18 +38,19 @@ name: sim_stylist_50_one
 - tapOn:
     id: stylistCommentInput
 - eraseText
-- inputText: __COMMENT__
-- tapOn: "Old Money"
+- inputText: ${COMMENT}
+# Do NOT tap a style chip here: tapping a chip clears commentEditedRef, so the
+# typed comment (which carries style + occasion) would be ignored and every
+# scenario would collapse to the chip's style. Comments must win.
+# KeyboardAvoidingView lifts the Generate bar above the keyboard, so no manual
+# dismiss is needed (the multiline input's return key only inserts a newline).
 - waitForAnimationToEnd:
     timeout: 2000
 - tapOn:
     id: stylistGenerate
-- tapOn:
-    point: "50%,93%"
-- extendedWaitUntil:
-    visible: ".*(Your Outfits|Ваши образы|Создаём).*"
-    timeout: 20000
+# Live Supabase generation can exceed 20s, so a short pre-assert aborts the flow
+# before results land. Wait once, generously, for the results header.
 - extendedWaitUntil:
     visible: ".*(Your Outfits|Ваши образы).*"
-    timeout: 55000
-- takeScreenshot: __SHOT__
+    timeout: 75000
+- takeScreenshot: ${SHOT}

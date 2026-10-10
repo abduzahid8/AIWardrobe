@@ -68,38 +68,47 @@ SCENARIOS=(
 pass=0
 fail=0
 n=0
+# START_FROM=NN resumes a partial run (skips scenarios with a smaller id).
+START_FROM="${START_FROM:-1}"
 for row in "${SCENARIOS[@]}"; do
   n=$((n + 1))
   id="${row%%|*}"
   comment="${row#*|}"
+  if (( id < START_FROM )); then continue; fi
   shot="s50_${id}"
   echo "=== ${id}/50 ${comment} ===" | tee -a "$LOG"
-  if (( n > 1 && n % 8 == 1 )); then
-    echo "  a11y rest: shutdown+boot" | tee -a "$LOG"
-    xcrun simctl shutdown booted >/dev/null 2>&1 || true
-    sleep 2
-    xcrun simctl boot 3776E6DF-F93F-40F4-AA8B-739E4B67AF42 >/dev/null 2>&1 || true
-    sleep 8
-    xcrun simctl openurl booted "exp://127.0.0.1:8081" >/dev/null 2>&1 || true
-    sleep 18
-  fi
-  out="$($M test ".maestro/sim_stylist_50_one.yaml" --no-reinstall-driver \
-    --test-output-dir "$OUT" \
-    -e "COMMENT=${comment}" -e "SHOT=${shot}" 2>&1)" || true
-  echo "$out" >> "$LOG"
-  if echo "$out" | grep -qE "FAILED|Could not|Timed out|Assertion"; then
+  ok=0
+  for attempt in 1 2; do
+    out="$($M test ".maestro/sim_stylist_50_one.yaml" --no-reinstall-driver \
+      --test-output-dir "$OUT" \
+      -e "COMMENT=${comment}" -e "SHOT=${shot}" 2>&1)" || true
+    echo "$out" >> "$LOG"
+    if echo "$out" | grep -qE "FAILED|Could not|Timed out|Assertion|Debug output"; then
+      echo "  attempt ${attempt} failed" | tee -a "$LOG"
+      sleep 5
+    else
+      ok=1
+      break
+    fi
+  done
+  if (( ok )); then
+    pass=$((pass + 1))
+    echo "  PASS" | tee -a "$LOG"
+  else
     fail=$((fail + 1))
     echo "  FAIL" | tee -a "$LOG"
     xcrun simctl io booted screenshot "$OUT/${shot}_fail.png" >/dev/null 2>&1 || true
-  else
-    pass=$((pass + 1))
-    echo "  PASS" | tee -a "$LOG"
   fi
-  # Copy maestro screenshots if they landed in ~/.maestro/tests
-  latest=$(ls -td "$HOME/.maestro/tests/"* 2>/dev/null | head -1)
-  if [ -n "${latest:-}" ]; then
-    find "$latest" -name "*${shot}*" -type f -exec cp {} "$OUT/" \; 2>/dev/null || true
-  fi
+  # Consolidate the newest named screenshot to the top level (macOS find: -mmin).
+  f=$(find "$OUT" -name "${shot}.png" -mmin -10 2>/dev/null | xargs ls -t 2>/dev/null | head -1)
+  if [ -n "${f:-}" ]; then cp "$f" "$OUT/${shot}.png" 2>/dev/null || true; fi
+  # Per-run dumps (screen recordings + hierarchies) run hundreds of MB and
+  # filled the disk mid-suite once — the consolidated PNG is all we keep.
+  find "$OUT" -maxdepth 1 -type d -name "20*" -exec rm -rf {} + 2>/dev/null || true
+  # Every maestro invocation also leaks a ~190 MB xcodebuild log dir into
+  # $TMPDIR (47 GB accumulated over a day of runs) — purge stale ones.
+  find "${TMPDIR:-/tmp}" -maxdepth 1 -name "maestro_xctestrunner_*" -mmin +3 \
+    -exec rm -rf {} + 2>/dev/null || true
 done
 
 echo "=== done pass=${pass} fail=${fail} ===" | tee -a "$LOG"

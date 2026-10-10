@@ -1,0 +1,39 @@
+appId: host.exp.Exponent
+name: s2_quiz_finish
+tags: [e2e, scenario2, onboarding]
+---
+# ─────────────────────────────────────────────────────────────────────────────
+# SCENARIO 2 · Onboarding (2/2) — style quiz, steps 4→6 → main app.
+# Ends on Home. The quiz screen keeps its step in component state, so these
+# two flows must run back-to-back without reloading the app (the runner does
+# exactly that — separate `maestro test` invocations never restart the app).
+# ─────────────────────────────────────────────────────────────────────────────
+- extendedWaitUntil:
+    visible: ".*shapes every suggestion.*"
+    timeout: 30000
+- tapOn: ".*Balanced.*"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: s2_04_fit
+- tapOn: "Continue.*"
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# ── Step 5 · style mission (multi select, at least one required) ──
+- assertVisible: ".*Select all that matter to you.*"
+- tapOn: ".*Get AI Outfit Ideas.*"
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: s2_05_goals
+- tapOn: "Continue.*"
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# ── Step 6 · summary → unlock → main app ──
+- assertVisible: ".*style plan is ready.*"
+- takeScreenshot: s2_06_summary
+- tapOn: ".*Unlock my plan.*"
+- extendedWaitUntil:
+    visible: "Today's Look"
+    timeout: 30000
+- takeScreenshot: s2_07_home

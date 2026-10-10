@@ -31,7 +31,12 @@ tags:
     timeout: 5000
 - assertVisible: ".*New.*"
 - assertVisible: ".*Generate outfit.*"
-# Mash occasions back and forth; setup must stay rendered.
+# Mash occasions back and forth; setup must stay rendered. Casual sits in
+# the collapsed list — expand once (the toggle reads "Less" afterwards, so
+# it must not be tapped twice).
+- tapOn: ".*More occasions.*"
+- waitForAnimationToEnd:
+    timeout: 4000
 - tapOn: ".*Casual.*"
 - tapOn: ".*Work.*"
 - tapOn: ".*Casual.*"

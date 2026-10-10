@@ -9,7 +9,7 @@
 set -u
 DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$DIR/.."
-DEV=3776E6DF-F93F-40F4-AA8B-739E4B67AF42
+DEV=$(cat /tmp/e2e_probe/new_udid.txt 2>/dev/null || echo 3776E6DF-F93F-40F4-AA8B-739E4B67AF42)
 M="$HOME/.maestro/bin/maestro"
 shot() { sleep 2; xcrun simctl io "$DEV" screenshot "/tmp/rugged_$1.png"; }
 reopen() {
@@ -18,14 +18,22 @@ reopen() {
   xcrun simctl openurl "$DEV" "exp://127.0.0.1:8081" >/dev/null 2>&1 || true
   sleep 22
 }
+FAILS=()
 run() {
-  local out
+  local out n
   out="$($M test ".maestro/$1" --no-reinstall-driver 2>&1)"
-  echo "$out" | grep -cE "COMPLETED" | xargs echo "  steps completed:"
-  echo "$out" | grep -E "FAILED|Invalid" | head -5
-  echo "$out" | grep -qE "FAILED|Invalid" || echo "  $1: PASS"
+  n=$(printf '%s\n' "$out" | grep -cE "COMPLETED")
+  echo "  steps completed: $n"
+  printf '%s\n' "$out" | grep -E "FAILED|Invalid" | head -5
+  if printf '%s\n' "$out" | grep -qE "FAILED|Invalid" || [ "$n" -eq 0 ]; then
+    FAILS+=("$1")
+    [ "$n" -eq 0 ] && printf '%s\n' "$out" | tail -8 | sed 's/^/      /'
+  else
+    echo "  $1: PASS"
+  fi
 }
 echo "=== 1/7 detail_push (push + header-chevron back, ends on Closet) ==="
+reopen
 run rugged_detail_push.yaml
 shot detail_pushed
 echo "=== 2/7 recover + search (ends with keyboard up) ==="
@@ -58,3 +66,9 @@ reopen
 run rugged_ai_mash.yaml
 shot ai_mashed
 echo "=== rugged suite finished ==="
+if [ ${#FAILS[@]} -eq 0 ]; then
+  echo "ALL 7 PASS"
+else
+  echo "FAILED (${#FAILS[@]}): ${FAILS[*]}"
+  exit 1
+fi

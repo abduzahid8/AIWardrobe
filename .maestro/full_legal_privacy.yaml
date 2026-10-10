@@ -14,5 +14,5 @@ tags:
 - tapOn: ".*(Назад|Back|Go back).*"
 - waitForAnimationToEnd:
     timeout: 8000
-- assertVisible: ".*(Сегодняшний образ|Today|Мой гардероб|My Wardrobe|Вдохновение|Inspiration|Аккаунт|Account).*"
+- assertVisible: ".*(Сегодняшний образ|Today|Мой гардероб|My Wardrobe|Вдохновение|Inspo|Inspiration|Аккаунт|Account|Home|Closet|Profile).*"
 - takeScreenshot: full_legal_privacy

@@ -1,0 +1,66 @@
+appId: host.exp.Exponent
+---
+# Shared helper — system/app overlays, safe to prepend anywhere.
+# Every step is conditional; the whole file is a no-op on a clean screen.
+# Query budget ≈ 6 — call it at most once per flow.
+
+# iOS App Tracking Transparency (first run on a fresh install)
+- runFlow:
+    when:
+      visible: ".*track your activity.*"
+    commands:
+      - tapOn: "Ask App Not to Track"
+      - waitForAnimationToEnd:
+          timeout: 3000
+
+# Expo Go asset/log notice overlay ("Log 1 of N" + Dismiss)
+# Collapsed RN LogBox notification ("2, [CrashReporting] …") sits above the
+# footer and silently swallows taps aimed at Continue/Sign Up — expand it
+# first (single-quoted: regex needs literal \[ brackets) …
+- runFlow:
+    when:
+      visible: '[0-9]+, .*'
+    commands:
+      - tapOn: '[0-9]+, .*'
+      - waitForAnimationToEnd:
+          timeout: 3000
+
+# … then dismiss the expanded LogBox ("Log 2 of 2" + Dismiss/Minimize/Copy).
+- runFlow:
+    when:
+      visible: "Log [0-9]+ of.*"
+    commands:
+      - tapOn: "Dismiss"
+      - waitForAnimationToEnd:
+          timeout: 3000
+
+# Expo Go first-run developer-menu tip sheet
+- runFlow:
+    when:
+      visible: "This is the developer menu"
+    commands:
+      - tapOn: "Continue"
+      - waitForAnimationToEnd:
+          timeout: 3000
+
+# Dev menu opened (blue gear) — X at top-right of the sheet
+- runFlow:
+    when:
+      visible: "Go home"
+    commands:
+      - tapOn:
+          point: "90%,49%"
+      - waitForAnimationToEnd:
+          timeout: 3000
+
+# iOS "Save Password?" prompt after credentials are used
+- runFlow:
+    when:
+      visible: ".*Save Password.*"
+    commands:
+      - tapOn: "Not Now"
+      - waitForAnimationToEnd:
+          timeout: 3000
+
+# First-run language gate (also reappears after Delete Account wipes storage)
+- runFlow: _language_gate.yaml

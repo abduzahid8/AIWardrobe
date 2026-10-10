@@ -1,0 +1,10 @@
+appId: host.exp.Exponent
+---
+# Driver health probe. Pass = the accessibility server still matches text.
+# Accepts BOTH session states the chain runs in: signed-out auth screens
+# (test 01/03 start) and signed-in home (mid-chain after test 01, before
+# test 02). The runner reboots the simulator and relaunches Expo Go when
+# this fails (~20-run global degradation, see .maestro/README.md).
+- extendedWaitUntil:
+    visible: "Continue with Google|Choose your language|.*Already have an account.*|Today's Look|Good morning.*"
+    timeout: 15000

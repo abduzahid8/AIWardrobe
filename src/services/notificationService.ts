@@ -98,11 +98,6 @@ const EVENING_WEARLOG_MESSAGES = [
     { title: "End of day check-in ✨", body: "How was today's outfit? Log it now to unlock better suggestions." },
 ];
 
-const WEEKLY_INSIGHTS_MESSAGES = [
-    { title: "Your week in style 📊", body: "See your closet utilization, top colors, and style patterns!" },
-    { title: "Weekly style report 🏆", body: "Check out your wardrobe stats and discover forgotten items." },
-];
-
 const STYLE_TIPS = [
     { title: "Style Tip 💡", body: "Try tucking your shirt in for a more polished look!" },
     { title: "Color Combo 🎨", body: "Navy and white is always a winning combination." },
@@ -258,9 +253,6 @@ class NotificationService {
             await this.scheduleEveningWearLogNotification();
         }
 
-        // Schedule weekly insights (Sunday)
-        await this.scheduleWeeklyInsightsNotification();
-
         // Schedule weekly unused items reminder
         if (this.settings.unusedItems) {
             await this.scheduleWeeklyUnusedItemsReminder();
@@ -323,31 +315,6 @@ class NotificationService {
     }
 
     /**
-     * Schedule weekly insights notification (Sunday 10 AM)
-     */
-    async scheduleWeeklyInsightsNotification() {
-        const randomMessage = WEEKLY_INSIGHTS_MESSAGES[
-            Math.floor(Math.random() * WEEKLY_INSIGHTS_MESSAGES.length)
-        ];
-
-        await Notifications.scheduleNotificationAsync({
-            content: {
-                title: randomMessage.title,
-                body: randomMessage.body,
-                data: { type: 'weekly_insights', screen: 'WeeklyInsights' },
-            },
-            trigger: {
-                type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-                weekday: 1, // Sunday
-                hour: 10,
-                minute: 0,
-            },
-        });
-
-        logger.info('📱 Weekly insights notification scheduled for Sunday 10:00');
-    }
-
-    /**
      * Schedule notification for upcoming calendar event
      */
     async scheduleEventReminder(event: {
@@ -405,7 +372,7 @@ class NotificationService {
             content: {
                 title: "📦 Wardrobe Check",
                 body: "Some items haven't been worn lately. Give them a chance!",
-                data: { type: 'unused_items', screen: 'WeeklyInsights' },
+                data: { type: 'unused_items' },
             },
             trigger: {
                 type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
