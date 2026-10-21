@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Linking, ActivityIndicator,  } from 'react-native'
+import { View, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Linking, ActivityIndicator } from 'react-native';
 import { ScaledText } from './ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -10,6 +10,8 @@ import {
     CompleteYourLookSuggestion,
     Product
 } from '../src/services/shoppingService';
+import { Image } from '../src/components/MediaImage';
+
 
 const { width } = Dimensions.get('window');
 

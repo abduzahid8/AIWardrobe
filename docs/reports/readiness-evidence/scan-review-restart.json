@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "firstRestartExactImages": true,
+  "stableItemIDs": true,
+  "partialAcknowledgement": true,
+  "corruptRecordIsolatedAndRetained": true,
+  "duplicateIDsCannotAcknowledge": true,
+  "secondRestartOnlyUnsavedItem": true,
+  "completedSourceRememberedWithoutAI": true,
+  "otherOwnerRejected": true,
+  "accountCleanup": true,
+  "containerRebased": true,
+  "imageBytes": 666026,
+  "imageHash": "2d47a0ac74bd074352bb446576e38d54ca5339ca3b8687cbc78812ca1f80a717",
+  "scope": "Actual production review storage through OS filesystem adapter and two fresh processes; no native/UI/provider accuracy claim"
+}

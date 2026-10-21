@@ -1,0 +1,37 @@
+{
+  "measuredAt": "2026-10-18T18:53:11.587Z",
+  "scope": "Public-catalog read and deployed style validator; no model call or customer data writes",
+  "candidateCount": 24,
+  "counts": {
+    "top": 8,
+    "bottom": 8,
+    "shoes": 8
+  },
+  "combinationsTested": 512,
+  "validCombinations": 512,
+  "capUzs": 3150000,
+  "withinBudgetCombinationExists": true,
+  "cheapest": {
+    "spendUzs": 3034400,
+    "items": [
+      {
+        "id": "shop_md-uz-62246011",
+        "name": "100% cotton V-neck knit polo shirt",
+        "price": 800000,
+        "currency": "UZS"
+      },
+      {
+        "id": "shop_zara-uz-545490391",
+        "name": "100% LINEN SUIT TROUSERS",
+        "price": 849900,
+        "currency": "UZS"
+      },
+      {
+        "id": "shop_fr-tommy-152421",
+        "name": "Лоферы HILFIGER STITCHDOWN SUEDE LOAFER",
+        "price": 1384500,
+        "currency": "UZS"
+      }
+    ]
+  }
+}

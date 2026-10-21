@@ -1,3 +1,10 @@
+import { budgetFxContext, fitsBudgetAmount, type BudgetFxContext } from '../../backend/supabase/functions/_shared/budgetFx';
+import { strictestOutfitBudget } from '../../backend/supabase/functions/_shared/outfitBudgetSelection';
+import { validateOutfitGenerationRequest } from '../../backend/supabase/functions/_shared/outfitGenerationRequest';
+import { getBudgetRates } from './budgetRates';
+import { outfitGenerationFailure, type OutfitGenerationFailure } from './outfitGenerationFailure';
+import readinessLogger from '../utils/logger';
+import { outfitStructureReason } from '../../backend/supabase/functions/_shared/outfitStructure';
 /**
  * outfitGenerationService.ts
  *
@@ -8,10 +15,10 @@
  *   3. Calls NVIDIA / Gemini to build outfits from the real wardrobe
  *   4. Returns enriched outfits with image URLs
  *
- * Falls back to a local Supabase query + rule-based matching if the
- * edge function is unavailable.
+ * Never substitutes a local outfit when the edge function fails.
  */
 
+import { passesStyleJudge } from '../../features/outfit-generator/utils/occasionRules';
 import { supabase } from '../../lib/supabase';
 import { fillMissingSlots, fetchShopPoolForStyle, type OutfitSlotId, type ShopFillItem } from './shoppingService';
 import type { ClothingItem, ClothingCategory, Season, Occasion } from '../types/domain';
@@ -19,7 +26,7 @@ import { mapDbCategory as canonicalMapDbCategory, getMacroCategory as canonicalG
 import { rankItemsForStyle, scoreItemForStyle, normalizeStyleId, type StyleId } from '../../features/outfit-generator/utils/styleInference';
 import { AI_STYLES } from '../../features/outfit-generator/types';
 import { buildCatalogSimilarityKey, spreadSimilarCatalogItems } from '../utils/shopCatalogOrder';
-import { parseBudgetFromText, outfitShopSpend, itemShopPrice, isShopPricedItem } from '../utils/outfitBudget';
+import { parseBudgetFromText, budgetCandidatesFromText, budgetInCurrency, outfitShopSpend, itemShopPrice, isShopPricedItem, type ParsedBudget } from '../utils/outfitBudget';
 import { getRecentShownIds, recordShownOutfits } from './recentOutfitIds';
 import useWardrobeStore from '../../store/wardrobeStore';
 
@@ -28,8 +35,12 @@ import useWardrobeStore from '../../store/wardrobeStore';
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface GenerateOutfitsParams {
+    budgetFx?: BudgetFxContext;
     /** Free-text user prompt, e.g. "beach trip" or "important meeting tomorrow" */
     prompt?: string;
+    conversationContext?: string;
+    /** Set false when the caller records only after committing a visible result. */
+    recordShown?: boolean;
     /** Style preset, e.g. 'old_money' | 'semi_classic' | 'minimalist' | 'casual' */
     stylePreferences?: string;
     /** Occasion label, e.g. 'Casual' | 'Formal' | 'Sport' */
@@ -44,6 +55,8 @@ export interface GenerateOutfitsParams {
     anchorItemId?: string;
     /** User's style quiz preferences to customize recommendations */
     preferences?: {
+        maxShopBudget?: ParsedBudget;
+        budgetRatesId?: string;
         favoriteColors?: string[];
         avoidColors?: string[];
         fitPreference?: 'loose' | 'fitted' | 'balanced';
@@ -69,6 +82,7 @@ export interface GeneratedOutfitItem {
     recommendation: string;
     isShopItem: boolean;
     price?: number;
+    currency?: string;
     shopUrl?: string;
 }
 
@@ -87,6 +101,7 @@ export interface GenerateOutfitsResult {
     success: boolean;
     outfits: GeneratedOutfit[];
     error?: string;
+    errorTranslationKey?: OutfitGenerationFailure['translationKey'];
     source?: 'ai' | 'local';
     /** Whether the backend applied the 4-slot layered schema. */
     layered?: boolean;
@@ -114,68 +129,108 @@ export function isShopOnlyDeck(style?: string | null, occasion?: string | null):
 /**
  * Generate outfits via the Supabase Edge Function.
  * The edge function handles DB fetch + AI call server-side.
- * Falls back to local DB fetch + rule-based matching on failure.
+ * Returns an explicit failure when generation or validation fails.
  */
 export async function generateOutfitsFromDB(
     params: GenerateOutfitsParams
 ): Promise<GenerateOutfitsResult> {
-    // Bounded wait: the local rule-based fallback is good enough for daily
-    // decks, so never leave the UI spinning 45s on a hung edge function.
-    const TIMEOUT_MS = 25_000;
+    // Covers one provider attempt plus one quality correction and DB work.
+    const TIMEOUT_MS = 120_000;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    const controller = new AbortController();
+    let subscription: { unsubscribe: () => void } | undefined;
+    let rejectCancelled!: (reason: Error) => void;
+    let cancelled = false;
+    const cancellation = new Promise<never>((_, reject) => { rejectCancelled = reject; });
+    const cancel = (reason: string) => {
+        if (cancelled) return;
+        cancelled = true;
+        rejectCancelled(new Error(reason));
+        controller.abort();
+    };
+    const wait = <T,>(operation: PromiseLike<T>) => Promise.race([operation, cancellation]);
+    timeout = setTimeout(() => cancel('outfit_generation_timeout'), TIMEOUT_MS);
     try {
         // Shop-only decks (Team Collaboration) never accept a wardrobe anchor —
         // every item in every outfit must come from shopping.
         const shopOnlyRequest = isShopOnlyDeck(params.stylePreferences, params.occasion);
+        const { data: sessionData, error: sessionError } = await wait(supabase.auth.getSession());
+        const session = sessionData.session;
+        if (sessionError || !session?.user.id || !session.access_token) {
+            return { success: false, outfits: [], error: 'authentication_required' };
+        }
+        const recencyScope = session.user.id;
+        subscription = supabase.auth.onAuthStateChange((_event, nextSession) => {
+            // Keep this callback synchronous: Supabase auth events hold an auth lock.
+            if (nextSession?.user.id !== recencyScope) cancel('generation_account_changed');
+        }).data.subscription;
+        // Recheck after subscribing so a change during the first session read
+        // cannot fall between the captured session and event registration.
+        const current = await wait(supabase.auth.getSession());
+        if (current.error || current.data.session?.user.id !== recencyScope) {
+            cancel('generation_account_changed');
+            throw new Error('generation_account_changed');
+        }
+        const excludeItemIds = await wait(getRecentShownIds(recencyScope));
+        if (cancelled) throw new Error('generation_account_changed');
+        const body = {
+            prompt: params.prompt || '',
+            conversationContext: params.conversationContext,
+            stylePreferences: params.stylePreferences || 'Casual',
+            occasion: params.occasion || 'Everyday',
+            weather: params.weather,
+            limit: params.limit ?? 3,
+            selectedItemIds: params.selectedItemIds ?? [],
+            anchorItemId: shopOnlyRequest ? undefined : params.anchorItemId,
+            preferences: params.preferences,
+            // Recently-shown window → edge skips these when building the
+            // candidate pool, so regenerates surface new pieces.
+            excludeItemIds,
+        };
+        try { validateOutfitGenerationRequest(body); }
+        catch {
+            return { success: false, outfits: [], error: 'invalid_generation_request', errorTranslationKey: 'outfitMaker.invalidRequest' };
+        }
         const invokePromise = supabase.functions.invoke('generate-outfits', {
-            body: {
-                prompt: params.prompt || '',
-                stylePreferences: params.stylePreferences || 'Casual',
-                occasion: params.occasion || 'Everyday',
-                weather: params.weather,
-                limit: params.limit ?? 3,
-                selectedItemIds: params.selectedItemIds ?? [],
-                anchorItemId: shopOnlyRequest ? undefined : params.anchorItemId,
-                preferences: params.preferences,
-                // Recently-shown window → edge skips these when building the
-                // candidate pool, so regenerates surface new pieces.
-                excludeItemIds: await getRecentShownIds(),
-            },
+            signal: controller.signal,
+            headers: { Authorization: `Bearer ${session.access_token}` },
+            body,
         });
 
-        const timeoutPromise = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('outfit_generation_timeout')), TIMEOUT_MS)
-        );
-
-        const { data, error } = await Promise.race([invokePromise, timeoutPromise]) as Awaited<typeof invokePromise>;
+        const { data, error } = await wait(invokePromise);
+        if (cancelled) throw new Error('generation_account_changed');
 
         if (error) {
-            console.warn('[outfitGenerationService] Edge function error, using local fallback:', error);
-            return generateOutfitsLocally(params);
+            console.warn('[outfitGenerationService] Edge function error, generation rejected:', error);
+            return { success: false, outfits: [], error: 'stylist_generation_failed', errorTranslationKey: (await outfitGenerationFailure(data, error)).translationKey };
         }
 
-        if (!data?.success || !Array.isArray(data?.outfits) || data.outfits.length === 0) {
-            console.warn('[outfitGenerationService] Empty AI response, using local fallback');
-            return generateOutfitsLocally(params);
+        if ((data?.source && data.source !== 'ai') || !data?.success || !Array.isArray(data?.outfits) || data.outfits.length === 0) {
+            console.warn('[outfitGenerationService] Empty AI response, generation rejected');
+            return { success: false, outfits: [], error: 'stylist_generation_failed', errorTranslationKey: (await outfitGenerationFailure(data, error)).translationKey };
         }
 
-        // Check that outfits actually contain items — edge function may return outfits with 0 items
-        const hasItems = data.outfits.some((o: any) => Array.isArray(o.items) && o.items.length > 0);
-        if (!hasItems) {
-            console.warn('[outfitGenerationService] AI returned outfits with no items, using local fallback');
-            return generateOutfitsLocally(params);
-        }
-
-        const outfits: GeneratedOutfit[] = data.outfits.map((o: any) => mapRawOutfit(o, params));
-        recordShownOutfits(data.outfits);
+        const outfits: GeneratedOutfit[] = data.outfits
+            .filter((o: any) => o && !outfitStructureReason(o.items, Boolean(data.layered)))
+            .map((o: any) => mapRawOutfit(o, params))
+            .filter((o: GeneratedOutfit) => passesStyleJudge(o.items, params.stylePreferences, `${params.occasion || ''} ${params.prompt || ''}`, params.weather));
+        if (!outfits.length) return { success: false, outfits: [], error: 'no_valid_outfits_for_request' };
+        if (params.recordShown !== false) recordShownOutfits(outfits, recencyScope);
         return { success: true, outfits, source: data.source ?? 'ai', layered: Boolean(data.layered) };
 
     } catch (err: any) {
+        if (err?.message === 'generation_account_changed') {
+            return { success: false, outfits: [], error: 'generation_account_changed' };
+        }
         if (err?.message === 'outfit_generation_timeout') {
-            console.warn('[outfitGenerationService] Edge function timed out, using local fallback');
-            return generateOutfitsLocally(params);
+            console.warn('[outfitGenerationService] Edge function timed out, generation rejected');
+            return { success: false, outfits: [], error: 'outfit_generation_timeout' };
         }
         console.error('[outfitGenerationService] Unexpected error:', err);
-        return generateOutfitsLocally(params);
+        return { success: false, outfits: [], error: 'stylist_generation_failed' };
+    } finally {
+        if (timeout) clearTimeout(timeout);
+        subscription?.unsubscribe();
     }
 }
 
@@ -266,6 +321,7 @@ export async function generateOutfitsLocally(
             isFavorite: false,
             isShopItem: true,
             price: sf.price,
+            currency: sf.currency,
             shopUrl: sf.shopUrl,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -311,7 +367,12 @@ export async function generateOutfitsLocally(
             return { success: false, outfits: [], error: 'No shop items found for this style.', source: 'local' };
         }
 
-        const outfits = buildLocalOutfits(mergedItems, params);
+        const candidates = budgetCandidatesFromText(`${params.prompt || ''} ${params.occasion || ''}`);
+        const cap = params.preferences?.maxShopBudget || parseBudgetFromText(`${params.prompt || ''} ${params.occasion || ''}`);
+        const needsRates = new Set([...candidates.map(value => value.currency), ...(cap ? [cap.currency] : [])]).size > 1 ||
+            (cap && mergedItems.some(item => isShopPricedItem(item) && Number(item.price) > 0 && item.currency && item.currency !== cap.currency));
+        const fx = params.budgetFx || (needsRates ? budgetFxContext(await getBudgetRates()) : undefined);
+        const outfits = buildLocalOutfits(mergedItems, {...params, budgetFx: fx});
 
         // Tag shop items so the UI can display a price / shop badge.
         for (const outfit of outfits) {
@@ -665,19 +726,18 @@ function normalizeGeneratedOutfitItems(
         || pick((item) => item.macroCategory === 'accessory' || item.macroCategory === 'other')
         || pick((item) => item.macroCategory !== 'bottom' && item.macroCategory !== 'shoes' && (layered ? item.macroCategory !== 'outerwear' : true));
 
-    // Only pick a second top when layered (outerwear present). A 3-item look
-    // has exactly one top, no extras.
-    const secondTop = layered && outerwear
-        ? (pick((item) => item.macroCategory === 'top')
-            || pick((item) => item.macroCategory === 'accessory' || item.macroCategory === 'other'))
-        : undefined;
-
+    // Contract is Layer -> Top -> Pants -> Shoes: exactly one base top per
+    // outfit. A second top would emit a 5-item look (or duplicate the top
+    // slot), so it is never picked — extra tops from AI responses are dropped.
     const shopOnlyDeck = shopOnlyDeckOverride ?? isShopOnlyDeck(params.stylePreferences, params.occasion);
     const shoes =
         pick((item) => item.macroCategory === 'shoes')
         || (shopOnlyDeck ? undefined : { ...PLACEHOLDER_SHOES });
 
-    return [outerwear, baseTop, secondTop, bottom, shoes].filter(Boolean) as GeneratedOutfitItem[];
+    // Exactly-one-per-slot: [layer, top, pants, shoes]. Extra items sharing
+    // a slot (e.g. two pants) are dropped by construction — pick() takes the
+    // first unused item per slot and never revisits it.
+    return [outerwear, baseTop, bottom, shoes].filter(Boolean) as GeneratedOutfitItem[];
 }
 
 // Shuffle array for outfit variety
@@ -734,6 +794,7 @@ function spreadSlotPool(pool: LocalClothingItem[], slot: string): LocalClothingI
 export type LocalClothingItem = ClothingItem & {
     isShopItem?: boolean;
     price?: number;
+    currency?: string;
     shopUrl?: string;
     macroCategory?: string;
 };
@@ -746,15 +807,15 @@ function isShopClothingItem(item: LocalClothingItem | GeneratedOutfitItem | null
 function fitGeneratedOutfitToBudget(
     items: GeneratedOutfitItem[],
     pool: LocalClothingItem[],
-    budgetAmount: number,
+    budget: ParsedBudget,
 ): GeneratedOutfitItem[] {
     const slotOf = (p: { macroCategory?: string }) => String(p.macroCategory || '').toLowerCase();
     const next = [...items];
-    for (let guard = 0; guard < 8 && outfitShopSpend(next) > budgetAmount; guard++) {
+    for (let guard = 0; guard < 8 && !fitsBudgetAmount(outfitShopSpend(next, undefined, budget.currency, budget.fx), budget.amount); guard++) {
         let worstIdx = -1;
         let worstPrice = -1;
         next.forEach((p, i) => {
-            const pr = itemShopPrice(p);
+            const pr = itemShopPrice(p, budget.currency, budget.fx);
             if (pr > worstPrice) {
                 worstPrice = pr;
                 worstIdx = i;
@@ -762,15 +823,15 @@ function fitGeneratedOutfitToBudget(
         });
         if (worstIdx < 0) break;
         const used = new Set(next.map((p) => String(p.id)));
-        const room = budgetAmount - (outfitShopSpend(next) - itemShopPrice(next[worstIdx]));
+        const room = budget.amount - (outfitShopSpend(next, undefined, budget.currency, budget.fx) - itemShopPrice(next[worstIdx], budget.currency, budget.fx));
         const slot = slotOf(next[worstIdx]);
         const repl = pool
             .filter((p) => isShopPricedItem(p) && slotOf(p) === slot && !used.has(String(p.id)))
             .filter((p) => {
-                const pr = itemShopPrice(p);
+                const pr = itemShopPrice(p, budget.currency, budget.fx);
                 return pr > 0 && pr <= room;
             })
-            .sort((a, b) => itemShopPrice(a) - itemShopPrice(b))[0];
+            .sort((a, b) => itemShopPrice(a, budget.currency, budget.fx) - itemShopPrice(b, budget.currency, budget.fx))[0];
         if (repl) {
             next[worstIdx] = toDisplayItem(repl, next[worstIdx].recommendation || 'Suggested from shop');
         } else if (slot === 'outerwear' && next.length > 3) {
@@ -894,24 +955,34 @@ export function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOu
     const styleArticle = /^[aeiou]/i.test(styleLabel) ? 'An' : 'A';
     const shopOnly = isShopOnlyDeck(style, occ);
     const shopCandidates = items.filter(isShopClothingItem);
-    const budget = parseBudgetFromText(`${params.prompt || ''} ${occ}`);
+    const budgetText = `${params.prompt || ''} ${occ}`;
+    const fx = params.budgetFx || params.preferences?.maxShopBudget?.fx;
+    const textBudget = parseBudgetFromText(budgetText, fx);
+    if (budgetCandidatesFromText(budgetText).length && !textBudget) return [];
+    let budget: ParsedBudget | null;
+    try {
+        const selected = strictestOutfitBudget(params.preferences?.maxShopBudget, textBudget,
+            (value, currency) => budgetInCurrency({...value, fx}, currency));
+        budget = selected ? {...selected, fx} : null;
+    } catch { return []; }
     const affordableShop = budget
         ? shopCandidates.filter((item) => {
-            const p = itemShopPrice(item);
-            return p <= 0 || p <= budget.amount;
+            const p = itemShopPrice(item, budget.currency, budget.fx);
+            return p <= 0 || fitsBudgetAmount(p, budget.amount);
         })
         : shopCandidates;
-    const shopPoolForDeck = affordableShop.length > 0 ? affordableShop : shopCandidates;
-    // Shop-only decks ignore wardrobe pieces entirely — unless the shop pool
-    // is empty, in which case owned items fill in rather than emitting 0
-    // looks (a business_casual wardrobe request must not hard-fail offline).
-    const deckShopOnly = shopOnly && shopPoolForDeck.length > 0;
-    const effectiveItems = deckShopOnly
+    const shopPoolForDeck = affordableShop;
+    // STRICT shop-only (Team Collaboration / business_casual): new clothing
+    // must come ONLY from new clothing (shop). Never fall back to wardrobe
+    // when the shop pool is empty — emit 0 looks / error instead of mixing.
+    const deckShopOnly = shopOnly;
+    const effectiveItems = shopOnly
         ? shopPoolForDeck
         : budget
             ? items.filter((item) => !isShopClothingItem(item) || shopPoolForDeck.includes(item))
             : items;
-    const ownedItems = deckShopOnly ? [] : effectiveItems.filter((item) => !isShopClothingItem(item));
+    if (effectiveItems.length === 0) return [];
+    const ownedItems = shopOnly ? [] : effectiveItems.filter((item) => !isShopClothingItem(item));
     const shopItems = effectiveItems.filter(isShopClothingItem);
 
     const sortByFavorite = (pool: ClothingItem[]) => {
@@ -1049,13 +1120,18 @@ export function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOu
         else if (!deckShopOnly) outfitItems.push({ ...PLACEHOLDER_SHOES });
 
         // Pad only when layered and we still have fewer than 4 items.
+        // Slot-aware: only fill slots that are actually missing — never add
+        // a second bottom/top to reach the count (the "2 pants" bug).
         if (layered && outfitItems.length < targetItems && effectiveItems.length > 0) {
+            const presentMacros = new Set(outfitItems.map(oi => String(oi.macroCategory || '').toLowerCase()));
             let fillIndex = 0;
             while (outfitItems.length < targetItems && fillIndex < effectiveItems.length) {
                 const fillItem = effectiveItems[(fillIndex + i) % effectiveItems.length];
                 const alreadyAdded = outfitItems.some(oi => oi.id === fillItem.id);
-                if (!alreadyAdded) {
+                const fillMacro = getItemMacroCategory(fillItem).toLowerCase();
+                if (!alreadyAdded && !presentMacros.has(fillMacro)) {
                     outfitItems.push(toDisplayItem(fillItem, 'Complementary piece'));
+                    presentMacros.add(fillMacro);
                 }
                 fillIndex++;
             }
@@ -1073,8 +1149,8 @@ export function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOu
         if (deckShopOnly && !enforcedItems.every(isShopClothingItem)) return null;
         let normalizedOutfitItems = normalizeGeneratedOutfitItems(enforcedItems, params, deckShopOnly);
         if (budget) {
-            normalizedOutfitItems = fitGeneratedOutfitToBudget(normalizedOutfitItems, shopItems, budget.amount);
-            if (outfitShopSpend(normalizedOutfitItems) > budget.amount + 0.009) return null;
+            normalizedOutfitItems = fitGeneratedOutfitToBudget(normalizedOutfitItems, shopItems, budget);
+            if (!fitsBudgetAmount(outfitShopSpend(normalizedOutfitItems, undefined, budget.currency, budget.fx), budget.amount)) return null;
         }
         // Hard rule: never emit shorts with a suit, never shorts in formal decks.
         {
@@ -1203,7 +1279,10 @@ export function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOu
             const shoe = shoes[0];
             if (outer) outfitItems.push(toDisplayItem(outer, deckShopOnly ? 'Suggested from shop' : 'Main top / outerwear layer'));
             if (base && base.id !== outer?.id) outfitItems.push(toDisplayItem(base, deckShopOnly ? 'Suggested from shop' : 'Base top worn underneath'));
-            if (finalBottom && finalBottom.id !== base?.id) outfitItems.push(toDisplayItem(finalBottom, deckShopOnly ? 'Suggested from shop' : 'Pairs well with the top'));
+            // Never let the pants slot reuse the layer/base ids, and never let
+            // a non-bottom macro occupy it — both produced "2 pants" cards.
+            if (finalBottom && finalBottom.id !== base?.id && finalBottom.id !== outer?.id
+                && getItemMacroCategory(finalBottom).toLowerCase() === 'bottom') outfitItems.push(toDisplayItem(finalBottom, deckShopOnly ? 'Suggested from shop' : 'Pairs well with the top'));
             if (shoe && shoe.id !== finalBottom?.id) outfitItems.push(toDisplayItem(shoe, deckShopOnly ? 'Suggested from shop' : 'Completes the look'));
             else if (!deckShopOnly) outfitItems.push({ ...PLACEHOLDER_SHOES });
         } else {
@@ -1224,7 +1303,11 @@ export function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOu
             if (deckShopOnly && (enforcedItems.length < targetItems || !enforcedItems.every(isShopClothingItem))) {
                 return outfits;
             }
-            const normalizedOutfitItems = normalizeGeneratedOutfitItems(enforcedItems, params);
+            let normalizedOutfitItems = normalizeGeneratedOutfitItems(enforcedItems, params);
+            if (budget) {
+                normalizedOutfitItems = fitGeneratedOutfitToBudget(normalizedOutfitItems, shopItems, budget);
+                if (!fitsBudgetAmount(outfitShopSpend(normalizedOutfitItems, undefined, budget.currency, budget.fx), budget.amount)) return outfits;
+            }
             outfits.push({
                 id: `local_0_${Date.now()}`,
                 description: deckShopOnly ? `${styleArticle} ${styleLabel} look curated from the shop.` : `${styleArticle} ${styleLabel} look built around your wardrobe.`,
@@ -1242,7 +1325,7 @@ export function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOu
 }
 
 function toDisplayItem(
-    item: ClothingItem & { isShopItem?: boolean; price?: number; shopUrl?: string },
+    item: ClothingItem & { isShopItem?: boolean; price?: number; currency?: string; shopUrl?: string },
     recommendation: string,
 ): GeneratedOutfitItem {
     const isShopItem = Boolean(item.isShopItem || String(item.id || '').startsWith('shop_'));
@@ -1259,6 +1342,7 @@ function toDisplayItem(
         recommendation,
         isShopItem,
         price: item.price,
+        currency: item.currency,
         shopUrl: item.shopUrl,
     };
 }
@@ -1269,7 +1353,7 @@ function mapRawOutfit(o: any, params: GenerateOutfitsParams): GeneratedOutfit {
         const resolvedMacroCategory = item.macroCategory || item.macro_category || item.category || item.garmentType || item.garment_type || '';
 
         if (__DEV__) {
-            if (__DEV__) console.log('[mapRawOutfit] item:', {
+            if (__DEV__) readinessLogger.debug(String('[mapRawOutfit] item:'), [{
                 id: String(item.id || '').slice(0, 8),
                 hasImageUrl: Boolean(item.imageUrl),
                 hasImage_url: Boolean(item.image_url),
@@ -1278,7 +1362,7 @@ function mapRawOutfit(o: any, params: GenerateOutfitsParams): GeneratedOutfit {
                 macro: resolvedMacroCategory,
                 type: item.type,
                 name: item.name,
-            });
+            }]);
         }
 
         return {
@@ -1293,7 +1377,8 @@ function mapRawOutfit(o: any, params: GenerateOutfitsParams): GeneratedOutfit {
             recommendation: item.recommendation || 'Selected for this outfit',
             isShopItem: item.isShopItem ?? item.is_shop_item ?? false,
             price: item.price,
-            shopUrl: item.shopUrl || item.shop_url,
+            currency: item.currency,
+            shopUrl: item.shopUrl || item.shop_url || item.sourceUrl || item.source_url,
         };
     });
 
@@ -1307,7 +1392,7 @@ function mapRawOutfit(o: any, params: GenerateOutfitsParams): GeneratedOutfit {
         return true;
     });
 
-    const normalizedItems = normalizeGeneratedOutfitItems(dedupedItems, params);
+    const normalizedItems = dedupedItems;
 
     return {
         id: o.id || `outfit_${Date.now()}_${Math.random()}`,

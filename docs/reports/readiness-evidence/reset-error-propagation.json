@@ -1,0 +1,51 @@
+{
+  "scope": "Known reset-persistence failure propagation and session clearing; incomplete general cleanup/durability audit",
+  "reproduction": {
+    "newMemoryResetFailureCaseFailed": 1,
+    "existingPersistenceCasesPassed": 10
+  },
+  "verification": {
+    "tests": 1358,
+    "suites": 119,
+    "failures": 0,
+    "typescript": "passed",
+    "eslintErrors": 0,
+    "eslintWarnings": 69,
+    "actualSdkStoreDiagnostic": "passed",
+    "newRegressionCases": 5,
+    "localizedFeedback": [
+      "en",
+      "ru",
+      "uz"
+    ]
+  },
+  "behaviors": [
+    "Upload-service deletion rejects on disk failure while notifying empty visible queue",
+    "Memory reset drains known writes before reporting failures",
+    "Secure deletion still attempted after reset failure",
+    "Logout clears displayed session while reporting local failure",
+    "Confirmed server deletion cannot leave displayed session after cleanup failure"
+  ],
+  "normalAndroidBuild": {
+    "exitCode": 0,
+    "seconds": 21,
+    "apkSha256": "a3dff967de12c6495bc2f0d2f903690502112f7004d9c9e9b91566e4fc6e0206",
+    "bundleSha256": "271f210cc15d6f4d8078a00af63d1b0182efc79743b6eeed2aebc405c831c9ae",
+    "packagedSourceMatches": {
+      "src/lib/persistence.ts": "76927c4e01b14bbff5d8be527b6db233107928d3f1d206b46de9ad3abfddcbbb",
+      "src/services/uploadQueue.ts": "4f564ba1583b898a5c7d920afef49a57df06db8cf5f50eec0c2f9cc0e1d8f7d2",
+      "store/auth.ts": "5731133a0f186d830ee809cb9cf8d091a5ed78adba3874a57efc390f8b700f06",
+      "screens/ProfileScreen.tsx": "dde3c6561e2ee159d622603924eda3d6db2fcbd626e194db83cdf83a8163f68d"
+    },
+    "auditMarkerAbsent": true,
+    "nativeUiVerified": false
+  },
+  "productionChanged": false,
+  "remaining": [
+    "Registry bulk deletion/prefix scan and secure deletion still suppress some failures",
+    "Some raw persist writers remain unaudited",
+    "Durable failure marker/retry behavior across app restart unverified",
+    "Actual rendered Profile cleanup-failure flow/native lifecycle unverified",
+    "Capacity/media/security/store/deferred-provider gates remain open"
+  ]
+}

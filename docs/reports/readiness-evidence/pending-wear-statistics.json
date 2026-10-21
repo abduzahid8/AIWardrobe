@@ -1,0 +1,9 @@
+{
+  "date": "2026-10-16",
+  "originalFailure": "Reconciliation replaced local count 3/latest wear October 16 with cloud count 2/October 15 while the corresponding log remained queued.",
+  "fix": "For garments referenced by pending wear logs, preserve the greater local/cloud count and latest valid timestamp; do not add another increment. Other remote fields continue to refresh. Once no pending log exists, accept cloud statistics.",
+  "regressions": ["Pending optimistic statistics survive refresh", "Other remote garment fields update", "Lost acknowledgement does not double-increment", "Higher/newer remote statistics retained", "Deleted garment not resurrected", "Acknowledged queue accepts cloud state"],
+  "verification": {"jestTests": 1114, "jestSuites": 95, "typecheck": "pass", "targetedLint": "pass, no warnings", "whitespace": "pass"},
+  "limits": ["Optimistic statistics are provisional until successful sync; cannot establish exact cross-device totals while offline", "Client source only, requires native rebuild/release", "No production mutations or provider calls this turn"],
+  "androidAttempt": {"avd": "AIWardrobe_readiness_20261016", "bootCompleted": true, "cuaWindow": "Not present in app inventory; getApp by executable path rejected", "appLaunched": false, "visualPass": false, "cleanup": "Stopped dedicated emulator"}
+}

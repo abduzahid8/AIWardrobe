@@ -1,0 +1,76 @@
+{
+  "localDate": "2026-10-21",
+  "scope": "Native iOS 26.5 component probe using actual MediaImage and ExpoImage; not full app/authentication or release compatibility",
+  "simulator": "AIWardrobe-Media-Render-20261021",
+  "simulatorId": "97BD8504-6E4D-4F45-9C45-2E097E407BAA",
+  "fixtureBytes": 2915128,
+  "phases": [
+    {
+      "phase": "initial owner",
+      "native": "loaded 1062 x 1416",
+      "expo": "loaded 1125 x 1500",
+      "visual": "both images visible"
+    },
+    {
+      "phase": "different identity",
+      "native": "failed",
+      "expo": "pending",
+      "visual": "both image areas empty"
+    },
+    {
+      "phase": "owner restored",
+      "native": "loaded 1062 x 1416",
+      "expo": "loaded 1125 x 1500",
+      "visual": "both images visible"
+    },
+    {
+      "phase": "signed out",
+      "native": "failed",
+      "expo": "pending",
+      "visual": "both image areas empty"
+    },
+    {
+      "phase": "fresh process",
+      "native": "loaded 1062 x 1416",
+      "expo": "loaded 1125 x 1500",
+      "visual": "load events verified through accessibility"
+    }
+  ],
+  "measurement": "CUA accessibility observations and screenshots; actual native image load callbacks",
+  "identitySetup": "Harness populates actual auth store/event identity from disposable fixture; different-identity phase retains prior token to test stale-session rendering guards",
+  "sourceMaps": {
+    "probe": {
+      "src/components/MediaImage.tsx": "c1b00653705c9f82995e2828ce09e84f76b3bee66ca25d2e2b920effd1a66816",
+      "src/utils/mediaImageSource.ts": "886c691eb9b1aa4dde952a169cc3daaaeeaaee201bc6c0ef28558e15abc8d3be",
+      "src/services/wardrobeMedia.ts": "3c63bcfc3c250dfe348d228b4e7cc98f1bfbae366c74aeb895ecaee8b5f30b26",
+      "store/auth.ts": "74529ee2bb8fdc73eb08227dae71aba0fe9b5d76dbf73227baf95d17cad8b8a3",
+      "store/authEvents.ts": "4a276d38e09fc9b2fe577b0dcb8361ab450eadda454ba36cc8f299a1bbbb30c3"
+    },
+    "productionClient": {
+      "src/components/MediaImage.tsx": "c1b00653705c9f82995e2828ce09e84f76b3bee66ca25d2e2b920effd1a66816",
+      "src/utils/mediaImageSource.ts": "886c691eb9b1aa4dde952a169cc3daaaeeaaee201bc6c0ef28558e15abc8d3be",
+      "src/services/wardrobeMedia.ts": "3c63bcfc3c250dfe348d228b4e7cc98f1bfbae366c74aeb895ecaee8b5f30b26",
+      "store/auth.ts": "74529ee2bb8fdc73eb08227dae71aba0fe9b5d76dbf73227baf95d17cad8b8a3",
+      "store/authEvents.ts": "4a276d38e09fc9b2fe577b0dcb8361ab450eadda454ba36cc8f299a1bbbb30c3"
+    }
+  },
+  "typeScript": "passed",
+  "probeHermesExport": "passed",
+  "cleanup": {
+    "sessionRevoked": true,
+    "accountAndObjectRemoved": true,
+    "localPrivateFilesRemoved": true,
+    "probeUninstalled": true,
+    "auditSimulatorShutDown": true,
+    "originalLoginSimulatorUntouched": true
+  },
+  "limits": [
+    "Not full native login or wardrobe navigation",
+    "Harness restores fixture identity at process start; not auth persistence verification",
+    "Image cache may participate in the fresh-process result",
+    "No native token-refresh, Android or released-client coverage",
+    "Reported renderer dimensions differ; no pixel-identity claim",
+    "No existing customer image records migrated",
+    "No provider reliability or 10000-DAU capacity certification"
+  ]
+}

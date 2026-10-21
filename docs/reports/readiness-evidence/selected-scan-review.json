@@ -1,0 +1,31 @@
+{
+  "change": "Every detected result card opens its selected garment in the detail editor; footer retains first-item default. Invalid indices do not navigate.",
+  "focusedTests": {
+    "passed": 8,
+    "scope": "actual production handler and extracted production result-card callback; service boundaries not exercised"
+  },
+  "limitations": [
+    "No new live provider sample",
+    "No new native multi-item UI run",
+    "Video still classifies first extracted frame only",
+    "Provider shirt-versus-jacket accuracy failure unresolved"
+  ],
+  "sourceMaps": {
+    "ios": {
+      "screenExactMatch": true
+    },
+    "android": {
+      "screenExactMatch": true
+    }
+  },
+  "verification": {
+    "fullJest": {
+      "tests": 1783,
+      "suites": 148,
+      "result": "pass"
+    },
+    "typeScript": "pass",
+    "iosHermes": "pass",
+    "androidArm64Release": "pass"
+  }
+}

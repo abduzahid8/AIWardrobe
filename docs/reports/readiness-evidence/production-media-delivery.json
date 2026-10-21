@@ -1,0 +1,116 @@
+{
+  "startedAt": "2026-10-17T06:13:19.568Z",
+  "scope": "Bounded authenticated production Storage diagnostic, not complete 10000 DAU certification",
+  "originalBytes": 2915128,
+  "previewBytes": 472270,
+  "stages": [
+    {
+      "targetRps": 2,
+      "seconds": 10,
+      "planned": 20,
+      "completed": 20,
+      "dropped": 0,
+      "failures": 0,
+      "elapsedMs": 12600.162082999996,
+      "p95Ms": 3200.5051660000026,
+      "p99Ms": 3382.853624999996,
+      "bytes": 9445400,
+      "errors": []
+    },
+    {
+      "targetRps": 5,
+      "seconds": 10,
+      "planned": 50,
+      "completed": 32,
+      "dropped": 18,
+      "failures": 6,
+      "elapsedMs": 20282.774542,
+      "p95Ms": 15001.519958000004,
+      "p99Ms": 15002.543167000003,
+      "bytes": 12279020,
+      "errors": [
+        {
+          "ok": false,
+          "error": "TimeoutError",
+          "ms": 15002.543167000003,
+          "bytes": 0
+        },
+        {
+          "ok": false,
+          "error": "TimeoutError",
+          "ms": 15001.382208999996,
+          "bytes": 0
+        },
+        {
+          "ok": false,
+          "error": "TimeoutError",
+          "ms": 15001.033582999997,
+          "bytes": 0
+        },
+        {
+          "ok": false,
+          "error": "TimeoutError",
+          "ms": 15000.141874999994,
+          "bytes": 0
+        },
+        {
+          "ok": false,
+          "error": "TimeoutError",
+          "ms": 15001.519958000004,
+          "bytes": 0
+        },
+        {
+          "ok": false,
+          "error": "TimeoutError",
+          "ms": 15000.929209000009,
+          "bytes": 0
+        }
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "name": "foreign_owner_read_rejected",
+      "passed": true
+    },
+    {
+      "name": "anonymous_read_rejected",
+      "passed": true
+    },
+    {
+      "name": "all_original_bytes_match",
+      "passed": true
+    },
+    {
+      "name": "all_planned_preview_stages_completed",
+      "passed": false
+    }
+  ],
+  "cleanup": [
+    {
+      "objectsRemoved": true
+    },
+    {
+      "userId": "44fd2d2a-4742-4bcb-9836-20cef5b1938a",
+      "accountDeleted": true
+    },
+    {
+      "userId": "6aea74d7-5f6c-45d2-abdb-357331a27aee",
+      "accountDeleted": true
+    }
+  ],
+  "fixtureUserIds": [
+    "44fd2d2a-4742-4bcb-9836-20cef5b1938a",
+    "6aea74d7-5f6c-45d2-abdb-357331a27aee"
+  ],
+  "status": "finished",
+  "originalReads": {
+    "count": 6,
+    "failures": 0,
+    "p95Ms": 8356.010041999998,
+    "bytes": 17490768
+  },
+  "failure": "Error",
+  "finishedAt": "2026-10-17T06:14:45.111Z",
+  "passed": false
+}

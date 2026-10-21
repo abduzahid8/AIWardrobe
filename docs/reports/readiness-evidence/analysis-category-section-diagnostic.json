@@ -1,0 +1,14 @@
+{
+  "runId": "a0e73377-0cc3-4776-be29-5e6e55b0c6b1",
+  "requestId": "01a15419-e8a8-7626-a814-b7c8c63c16be",
+  "status": 503,
+  "latencyMs": 38372,
+  "reason": "invalid_item_fields",
+  "fields": [
+    "category",
+    "section"
+  ],
+  "providerStatus": null,
+  "remainingTaggedAccountsIndependentSql": 0,
+  "interpretation": "Model output reached validation, but at least one item was outside the current category/section contract. Exact category value was not recorded, so do not attribute it to a specific garment yet."
+}

@@ -1,0 +1,24 @@
+{
+  "measuredAt": "2026-10-19T02:30:43.694Z",
+  "scope": "One real hosted gym catalog budget feasibility check,20C,empty disposable wardrobe. No model call: early minimum-spend response. Not generation or capacity certification.",
+  "checks": [
+    {
+      "name": "live_gym_catalog_cannot_meet_cap",
+      "status": 422,
+      "latencyMs": 3447,
+      "code": "no_outfit_within_budget",
+      "error": "No complete outfit in the selected clothing pool fits this budget.",
+      "budget": {
+        "amount": 3150000,
+        "currency": "UZS"
+      },
+      "minimumShopSpend": 4043000,
+      "passed": true
+    }
+  ],
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  },
+  "independentRemainingFixturesInRunWindow": 0
+}

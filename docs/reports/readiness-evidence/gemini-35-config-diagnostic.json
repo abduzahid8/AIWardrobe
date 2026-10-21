@@ -1,0 +1,26 @@
+[
+  {
+    "name": "plain",
+    "status": 200,
+    "latencyMs": 12175,
+    "text": "```json\n{\n  \"outfits\": [\n    {\n      \"id\": \"outfit_001\",\n      \"style\": \"casual\",\n      \"items\": [\n        {\n          \"id\": \"item_001\",\n          \"name\": \"Navy shirt\"\n        },\n        {\n          \"id\": \"item_002\",\n          \"name\": \"Beige trousers\"\n        },\n        {\n          \"id\": \"item_003\",\n          \"name\": \"White sneakers\"\n        }\n      ]\n    }\n  ]\n}\n```",
+    "finishReason": "STOP"
+  },
+  {
+    "name": "production_json",
+    "status": 200,
+    "latencyMs": 3827,
+    "text": "{\n  \"outfits\": [\n    {\n      \"id\": \"outfit-casual-1\",\n      \"name\": \"Casual Navy & Beige Look\",\n      \"style\": \"Casual\",\n      \"items\": [\n        {\n          \"id\": \"item-1\",\n          \"name\": \"Navy shirt\"\n        },\n        {\n          \"id\": \"item-2\",\n          \"name\": \"Beige trousers\"\n        },\n        {\n          \"id\": \"item-3\",\n          \"name\": \"White sneakers\"\n        }\n      ]\n    }\n  ]\n}",
+    "finishReason": "STOP"
+  },
+  {
+    "name": "json_default_temperature",
+    "status": 503,
+    "latencyMs": 13145,
+    "error": {
+      "code": 503,
+      "message": "This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.",
+      "status": "UNAVAILABLE"
+    }
+  }
+]

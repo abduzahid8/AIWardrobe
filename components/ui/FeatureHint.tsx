@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Dimensions, Modal, Pressable,  } from 'react-native'
-import { ScaledText } from '../ui/ScaledText';;
+import { ScaledText } from '../ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';

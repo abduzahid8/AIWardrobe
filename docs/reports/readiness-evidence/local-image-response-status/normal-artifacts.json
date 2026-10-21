@@ -1,0 +1,22 @@
+{
+  "ios": {
+    "sourceMatches": {
+      "src/services/wardrobeMedia.ts": "3c63bcfc3c250dfe348d228b4e7cc98f1bfbae366c74aeb895ecaee8b5f30b26",
+      "src/services/pendingWardrobeMedia.ts": "c02b09118a82079f26c78cc8d6e5ba39627d9963adf13851d91f9f45eaa59d58",
+      "screens/ForgotPasswordScreen.tsx": "626ca7cb5e3f70a2ac193f59f395955c985c93085d463cce8941345f9314bd5b"
+    },
+    "auditEntriesAbsent": true
+  },
+  "android": {
+    "sourceMatches": {
+      "src/services/wardrobeMedia.ts": "3c63bcfc3c250dfe348d228b4e7cc98f1bfbae366c74aeb895ecaee8b5f30b26",
+      "src/services/pendingWardrobeMedia.ts": "c02b09118a82079f26c78cc8d6e5ba39627d9963adf13851d91f9f45eaa59d58",
+      "screens/ForgotPasswordScreen.tsx": "626ca7cb5e3f70a2ac193f59f395955c985c93085d463cce8941345f9314bd5b"
+    },
+    "auditEntriesAbsent": true
+  },
+  "iosBundleSha256": "a92b7ea9373d6a2614401ceb9c257d73064bb88dc3c2396a0209a581fb9a8530",
+  "androidApkSha256": "66e132647bfdf6473ee27a4d6797fff790a9a0b8439b8e46d92a917994454430",
+  "iosMethod": "Normal-entry Hermes export using unchanged compiled native runtime; not new native compilation",
+  "androidNativeBuildSucceeded": true
+}

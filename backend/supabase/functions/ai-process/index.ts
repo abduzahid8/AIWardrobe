@@ -1,3 +1,4 @@
+import { enforceRateLimit } from '../_shared/rateLimit.ts'
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { PNG } from 'npm:pngjs@7.0.0'
@@ -125,7 +126,10 @@ function sleep(ms: number): Promise<void> {
 function buildClothingClassificationPrompt(): string {
   return `Analyze only the primary clothing item in this image.
 Ignore price tags, sale badges, screenshot UI, text overlays, icons, mannequins, hangers, hands, and background props.
-If multiple objects are visible, describe only the main garment.
+If multiple objects are visible, select ONE garment and keep ALL attributes tied to that same garment.
+For a person wearing layers, select the garment actually worn over the torso and arms. Ignore a separate knit garment or scarf merely draped over the shoulders.
+Never combine the color of a draped garment with the pockets, lining, shape, or category of the torso garment.
+Report material as null when fabric cannot be identified from the image; do not invent a fabric name.
 Return ONLY a valid JSON object with these exact fields:
 {"category":"t-shirt|shirt|blouse|sweater|hoodie|jacket|coat|cardigan|dress|skirt|pants|jeans|shorts|sneakers|boots|sandals|bag|hat|scarf|belt|clothing","section":"tops|bottoms|dresses|outerwear|shoes|accessories|other","style":"casual|formal|sport|semi_classic|elegant|minimalist|other","color":"MUST be exactly one of: black|white|grey|beige|cream|brown|red|pink|orange|yellow|green|teal|blue|navy|purple|multicolor","material":"fabric or null","description":"1-2 sentence description of the garment only","shoeType":"ONLY for shoes, else null: penny_loafer|bit_loafer|tassel_loafer|driving_moccasin|boat_shoe|oxford|derby|sneaker|sandal|boot|other"}
 Footwear rule: a soft unstructured slip-on with tie laces and a pebbled sole is a driving_moccasin, NOT a loafer. Structured slip-ons with a saddle/strap (penny), metal bit, or tassels are loafers — name the subtype. Drivers sit a full formality tier below loafers and never pair with tailoring.
@@ -161,34 +165,9 @@ function parseNvidiaResponseText(responseText: string): any {
 
 function parseClassificationContent(content: string): any {
   try {
-    const jsonMatch = content.match(/\{[\s\S]*\}/)
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0])
-    }
-  } catch {
-    // fall through to line parsing
-  }
-
-  const parsedData: any = {}
-  const lines = content.split('\n')
-  for (const line of lines) {
-    if (line.toLowerCase().includes('category')) {
-      parsedData.category = line.split(':')[1]?.trim().replace(/["',]/g, '') || 'clothing'
-    }
-    if (line.toLowerCase().includes('section')) {
-      parsedData.section = line.split(':')[1]?.trim().replace(/["',]/g, '') || 'other'
-    }
-    if (line.toLowerCase().includes('style')) {
-      parsedData.style = line.split(':')[1]?.trim().replace(/["',]/g, '') || 'casual'
-    }
-    if (line.toLowerCase().includes('color')) {
-      parsedData.color = line.split(':')[1]?.trim().replace(/["',]/g, '') || 'various'
-    }
-    if (line.toLowerCase().includes('material')) {
-      parsedData.material = line.split(':')[1]?.trim().replace(/["',]/g, '') || null
-    }
-  }
-  return parsedData
+    const match = content.match(/\{[\s\S]*\}/)
+    return match ? JSON.parse(match[0]) : null
+  } catch { return null }
 }
 
 function mapCategoryToSection(rawCategory: string, rawSection?: string): string {
@@ -224,94 +203,68 @@ function mapCategoryToSection(rawCategory: string, rawSection?: string): string 
   return labelToSection[String(rawCategory || '').toLowerCase()] || 'other'
 }
 
-async function classifyClothingWithNvidia(
-  nvidiaToken: string,
-  imageDataUrl: string,
-): Promise<{
-  classification: {
-    category: string
-    section: string
-    confidence: number
-    attributes: {
-      style: string
-      color?: string
-      material?: string | null
-    }
-  }
-  description: string
-  errorInfo?: { status: number; body: string }
-}> {
-  const nvidiaResponse = await fetch(NVIDIA_API_URL, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${nvidiaToken}`,
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify({
-      // NOTE: nvidia/llama-3.1-nemotron-nano-vl-8b-v1 was retired (410 Gone).
-      // meta/llama-3.2-11b-vision-instruct is the current free vision model.
-      model: 'meta/llama-3.2-11b-vision-instruct',
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'image_url',
-              image_url: { url: imageDataUrl },
-            },
-            {
-              type: 'text',
-              text: buildClothingClassificationPrompt(),
-            },
-          ],
-        },
-      ],
-      max_tokens: 300,
-      temperature: 0.1,
-    }),
-  })
+class ClassificationUnavailableError extends Error {
+  constructor() { super('ai_classification_unavailable'); this.name = 'ClassificationUnavailableError' }
+}
 
-  if (!nvidiaResponse.ok) {
-    const errorText = await nvidiaResponse.text()
-    console.error('NVIDIA API error:', nvidiaResponse.status, errorText.slice(0, 500))
+async function classifyClothingWithNvidia(nvidiaToken: string, imageDataUrl: string): Promise<{
+  classification: { category: string; section: string; confidence: number; attributes: { style: string; color: string; material: string | null } }
+  description: string
+}> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 45000)
+  try {
+    const response = await fetch(NVIDIA_API_URL, {
+      method: 'POST', signal: controller.signal,
+      headers: { Authorization: `Bearer ${nvidiaToken}`, 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        model: 'meta/llama-3.2-11b-vision-instruct',
+        messages: [
+          { role: 'user', content: 'Classify a black casual leather belt. Return only the garment JSON object, without prose or Markdown.' },
+          { role: 'assistant', content: '{"category":"belt","section":"accessories","style":"casual","color":"black","material":"leather","description":"A black leather belt."}' },
+          { role: 'user', content: [
+          { type: 'image_url', image_url: { url: imageDataUrl } },
+          { type: 'text', text: buildClothingClassificationPrompt() },
+        ] }], max_tokens: 300, temperature: 0,
+      }),
+    })
+    if (!response.ok) {
+      console.error('NVIDIA classification request failed:', response.status)
+      throw new ClassificationUnavailableError()
+    }
+    const envelope = parseNvidiaResponseText(await response.text())
+    const content = envelope?.choices?.[0]?.message?.content
+    if (typeof content !== 'string') throw new ClassificationUnavailableError()
+    const parsed = parseClassificationContent(content)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new ClassificationUnavailableError()
+    const normalized = (value: unknown) => typeof value === 'string' ? value.trim().toLowerCase() : ''
+    const category = normalized(parsed.category)
+    const style = normalized(parsed.style)
+    const color = normalized(parsed.color)
+    const categories = ['t-shirt', 'shirt', 'blouse', 'sweater', 'hoodie', 'jacket', 'coat', 'cardigan', 'dress', 'skirt', 'pants', 'trousers', 'jeans', 'shorts', 'sneakers', 'boots', 'sandals', 'bag', 'hat', 'scarf', 'belt', 'clothing']
+    const styles = ['casual', 'formal', 'sport', 'semi_classic', 'elegant', 'minimalist', 'other']
+    const colors = ['black', 'white', 'grey', 'beige', 'cream', 'brown', 'red', 'pink', 'orange', 'yellow', 'green', 'teal', 'blue', 'navy', 'purple', 'multicolor']
+    if (!categories.includes(category) || !styles.includes(style) || !colors.includes(color) ||
+        typeof parsed.description !== 'string' || !parsed.description.trim() ||
+        (parsed.material != null && typeof parsed.material !== 'string') ||
+        (parsed.confidence != null && (typeof parsed.confidence !== 'number' || !Number.isFinite(parsed.confidence) || parsed.confidence < 0 || parsed.confidence > 1))) {
+      throw new ClassificationUnavailableError()
+    }
+    const material = parsed.material?.trim() || null
+    const knownMaterial = material && !['null', 'none', 'unknown', 'unspecified', 'fabric'].includes(material.toLowerCase()) ? material : null
     return {
       classification: {
-        category: 'clothing',
-        section: 'other',
-        confidence: 0.5,
-        attributes: {
-          style: 'casual',
-          color: 'various',
-          material: null,
-        },
+        category, section: mapCategoryToSection(category),
+        // Zero denotes unknown confidence when the provider does not report it.
+        confidence: parsed.confidence ?? 0,
+        attributes: { style, color, material: knownMaterial },
       },
-      description: 'Clothing item (AI classification unavailable)',
-      errorInfo: { status: nvidiaResponse.status, body: errorText.slice(0, 200) },
+      description: parsed.description.trim(),
     }
-  }
-
-  const responseText = await nvidiaResponse.text()
-  console.log('NVIDIA raw response (first 500 chars):', responseText.slice(0, 500))
-
-  const nvidiaData = parseNvidiaResponseText(responseText)
-  const content = nvidiaData.choices?.[0]?.message?.content || ''
-  const parsedData = parseClassificationContent(content)
-  const category = String(parsedData.category || 'clothing')
-  const section = mapCategoryToSection(category, parsedData.section)
-
-  return {
-    classification: {
-      category,
-      section,
-      confidence: 0.88,
-      attributes: {
-        style: parsedData.style || 'casual',
-        color: parsedData.color || 'various',
-        material: parsedData.material || null,
-      },
-    },
-    description: parsedData.description || `${parsedData.color || 'Various'} ${category}`,
+  } catch {
+    throw new ClassificationUnavailableError()
+  } finally {
+    clearTimeout(timer)
   }
 }
 
@@ -1044,12 +997,54 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
+
+
   try {
+    let body: any
+    try { body = await req.json() } catch {
+      return new Response(JSON.stringify({ error: 'Invalid JSON' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+    const { operation } = body || {}
+    const frames = body?.frames
+    const isVideoBatch = operation === 'classify_frames'
+    if (isVideoBatch && (!Array.isArray(frames) || frames.length < 1 || frames.length > 3 ||
+        frames.some((frame: unknown) => typeof frame !== 'string' || !frame.trim()))) {
+      return new Response(JSON.stringify({ error: 'Provide one to three video frames' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+    const image = isVideoBatch ? frames[0] : body?.image
+
+    if (typeof image !== 'string' || !image.trim()) {
+      return new Response(
+        JSON.stringify({ error: 'Image is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // FIX 6: Validate image size (max 10MB base64 = ~7.5MB raw)
+    // Strip data URI prefix before calculating size
+    const base64Data = stripDataUri(image)
+    const imageSizeBytes = isVideoBatch
+      ? frames.reduce((total: number, frame: string) => total + stripDataUri(frame).length * 3 / 4, 0)
+      : (base64Data.length * 3) / 4
+    if (imageSizeBytes > 10 * 1024 * 1024) {
+      return new Response(
+        JSON.stringify({ error: 'Image too large. Max 10MB.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!['classify', 'classify_frames', 'describe', 'all', 'studio_photo', 'remove_bg'].includes(operation)) {
+      return new Response(JSON.stringify({ error: 'Invalid operation' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    const rateLimitResponse = await enforceRateLimit(req, { feature: 'ai-process', limit: 20, headers: corsHeaders })
+    if (rateLimitResponse) return rateLimitResponse
+
     // Create Supabase client with service role (admin access)
     // Using SB_URL and SB_SERVICE_KEY instead of SUPABASE_ prefix (reserved by Supabase)
     const supabaseAdmin = createClient(
-      Deno.env.get('SB_URL') ?? '',
-      Deno.env.get('SB_SERVICE_KEY') ?? ''
+      Deno.env.get('SB_URL') ?? Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SB_SERVICE_KEY') ?? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
     // Get API keys from secure config table
@@ -1059,7 +1054,7 @@ serve(async (req) => {
       .eq('key', 'nvidia_token')
       .single()
     
-    console.log('NVIDIA config query result:', { nvidiaConfig, nvidiaError, hasValue: !!nvidiaConfig?.value })
+    console.log('NVIDIA config loaded:', { hasValue: !!nvidiaConfig?.value, hasError: !!nvidiaError })
     
     const { data: replicateConfig } = await supabaseAdmin
       .from('app_config')
@@ -1080,24 +1075,19 @@ serve(async (req) => {
       )
     }
 
-    const { image, operation } = await req.json()
-
-    if (!image) {
-      return new Response(
-        JSON.stringify({ error: 'Image is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // FIX 6: Validate image size (max 10MB base64 = ~7.5MB raw)
-    // Strip data URI prefix before calculating size
-    const base64Data = stripDataUri(image)
-    const imageSizeBytes = (base64Data.length * 3) / 4
-    if (imageSizeBytes > 10 * 1024 * 1024) {
-      return new Response(
-        JSON.stringify({ error: 'Image too large. Max 10MB.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+    // One admitted video scan, bounded provider work. Never expose a partial
+    // batch as complete when a later frame fails classification.
+    if (isVideoBatch) {
+      const frameResults = []
+      for (let frameIndex = 0; frameIndex < frames.length; frameIndex++) {
+        const frame = frames[frameIndex]
+        const imageUrl = frame.startsWith('data:') ? frame : `data:image/jpeg;base64,${frame}`
+        const classified = await classifyClothingWithNvidia(NVIDIA_TOKEN, imageUrl)
+        frameResults.push({ frameIndex, ...classified })
+      }
+      return new Response(JSON.stringify({ success: true, frames: frameResults }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     const imageDataUrl = image.startsWith('data:') ? image : `data:image/jpeg;base64,${image}`
@@ -1120,16 +1110,12 @@ serve(async (req) => {
     // studio_photo: no pre-detection crop needed — we only classify, not cut out.
     // Keeping the block intentionally empty so the full image reaches the classifier.
 
-    // Classification + Description - NVIDIA Granite Vision (FREE TIER - 10,000 requests/month)
+    // Classification and description through NVIDIA.
     if (shouldClassify) {
       const classificationResult = await classifyClothingWithNvidia(
         NVIDIA_TOKEN,
         classificationImageDataUrl,
       )
-
-      if (classificationResult.errorInfo) {
-        result._nvidiaError = classificationResult.errorInfo
-      }
 
       result.classification = classificationResult.classification
       result.description = classificationResult.description
@@ -1381,6 +1367,11 @@ serve(async (req) => {
     )
 
   } catch (error) {
+    if (error instanceof ClassificationUnavailableError) {
+      return new Response(JSON.stringify({ success: false, classification: null, error: 'ai_classification_unavailable' }), {
+        status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
     // FIX 5: TypeScript safe error handling (error is 'unknown' type)
     const message = error instanceof Error ? error.message : 'Internal server error'
     return new Response(

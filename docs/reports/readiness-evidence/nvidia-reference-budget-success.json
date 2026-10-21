@@ -1,0 +1,66 @@
+{
+  "measuredAt": "2026-10-20T16:39:06.564Z",
+  "scope": "Live authenticated supplied-catalog path; not exhaustive accuracy or capacity certification",
+  "checks": [
+    {
+      "name": "casual_250_usd",
+      "status": 200,
+      "latencyMs": 7345,
+      "passed": true,
+      "reasons": [],
+      "spendUzs": 2549800,
+      "capUzs": 3011180,
+      "provider": "nvidia:meta/llama-3.2-11b-vision-instruct",
+      "source": "ai",
+      "items": [
+        {
+          "id": "shop_zara-uz-557829873",
+          "name": "100% WOOL PINSTRIPE REGULAR FIT SUIT TROUSERS",
+          "macroCategory": "bottom",
+          "price": 1099900,
+          "currency": "UZS",
+          "shopUrl": "https://www.zara.com/uz/en/100-wool-pinstripe-regular-fit-suit-trousers-p01564771.html?v1=557829873"
+        },
+        {
+          "id": "shop_md-uz-62246011",
+          "name": "100% cotton V-neck knit polo shirt",
+          "macroCategory": "top",
+          "price": 800000,
+          "currency": "UZS",
+          "shopUrl": "https://www.massimodutti.com/uz/en/100-cotton-vneck-knit-polo-l00837175?pelement=62246011"
+        },
+        {
+          "id": "shop_zara-uz-545409746",
+          "name": "CASUAL LEATHER LOAFERS WITH TASSELS",
+          "macroCategory": "shoes",
+          "price": 649900,
+          "currency": "UZS",
+          "shopUrl": "https://www.zara.com/uz/en/casual-leather-loafers-with-tassels-p12651720.html?v1=545409746"
+        }
+      ],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "meta/llama-3.2-11b-vision-instruct",
+          "status": "ok"
+        }
+      ]
+    }
+  ],
+  "reference": {
+    "id": "CBU:2026-10-20:12044.72:13525.02:16062.84",
+    "source": "CBU",
+    "asOf": "2026-10-20",
+    "fetchedAt": "2026-10-20T16:32:51.275Z",
+    "uzsPerUnit": {
+      "USD": 12044.72,
+      "EUR": 13525.02,
+      "GBP": 16062.84,
+      "UZS": 1
+    }
+  },
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

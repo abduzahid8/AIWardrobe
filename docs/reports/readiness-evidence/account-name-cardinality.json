@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-20",
+  "scope": "Local PostgreSQL synthetic Auth-trigger transaction, rolled back; not hosted signup throughput or 10000 DAU certification",
+  "addedProfiles": 10000,
+  "totalProfiles": 10005,
+  "distinctValidHandles": 10005,
+  "insertStatementMs": 229.514,
+  "lookupPlan": "Index Only Scan using profiles_handle_key",
+  "lookupExecutionMs": 0.008,
+  "buffersSharedHit": 2,
+  "heapFetches": 0,
+  "passed": true
+}

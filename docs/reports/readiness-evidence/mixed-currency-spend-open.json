@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-20",
+  "passed": false,
+  "scope": "Actual production monetary helpers with synthetic mixed-currency items; existing default conversion rate, not verified market FX or hosted admission",
+  "items": [
+    {
+      "id": "shop_local",
+      "price": 100000,
+      "currency": "UZS",
+      "isShopItem": true
+    },
+    {
+      "id": "shop_import",
+      "price": 20,
+      "currency": "USD",
+      "isShopItem": true
+    }
+  ],
+  "assumedUnitsPerUSD": 12600,
+  "capUZS": 200000,
+  "expectedUZS": 352000,
+  "observed": {
+    "client": 100020,
+    "edge": 100020
+  },
+  "incorrectlyPassesCap": {
+    "client": true,
+    "edge": true
+  },
+  "status": "OPEN: raw mixed-currency sums are not currency-safe"
+}

@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-20",
+  "sourceChange": "Profile trip plan reloads on each focus after300ms; private data owner-tagged; account/request/focus lifetime guarded",
+  "coverage": [
+    "Refocus within formerTTL reloads",
+    "Own upcoming days publish",
+    "Account change blocks old result",
+    "Old-account error cannot clear new account data",
+    "Blur/unmount ignores pending data",
+    "Newer request wins",
+    "Render ownership mismatch hides plans"
+  ],
+  "focusedTests": 7,
+  "fullRegression": {
+    "tests": 1882,
+    "suites": 154,
+    "typescript": "pass",
+    "iosHermes": "pass",
+    "androidArm64Release": "pass",
+    "changedScreenMatchesBothSourceMaps": true
+  },
+  "endpointTrace": "No app invocation of create-trip-plan found; connected trip UI uses Calendar",
+  "limits": [
+    "Extracted production-expression tests with controlled services; no native authenticated trip UI claim",
+    "create-trip-plan endpoint remains undeployed/unverified",
+    "Calendar cache error UX and complete cross-device travel persistence remain to verify",
+    "Installed Google audit simulator retained at previous artifact awaiting user login"
+  ],
+  "goal": "active; not certified for10000DAU"
+}

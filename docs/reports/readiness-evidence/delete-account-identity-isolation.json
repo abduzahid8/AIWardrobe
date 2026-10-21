@@ -1,0 +1,37 @@
+{
+  "date": "2026-10-17",
+  "scope": "Account deletion request identity and stale completion isolation",
+  "newAuthTests": 8,
+  "actualSdkHeaderTests": 2,
+  "appTests": 1316,
+  "appSuites": 116,
+  "typecheck": "passed",
+  "targetedLint": {
+    "errors": 0,
+    "warnings": 43
+  },
+  "whitespace": "passed",
+  "verificationBoundary": "Actual auth store with mocked SDK; separate installed Supabase SDK invoke/auth-fetch chain with mocked network boundary",
+  "invariants": [
+    "Selected account must match SDK session user before invoking deletion",
+    "Explicit initiating-user bearer token survives asynchronous SDK token lookup",
+    "Old success/failure cannot sign out or publish errors into a new account",
+    "Cleanup continuation stops after account change during signOut, IAP logout or local persistence cleanup",
+    "Profile delegates token removal to the guarded persistence helper instead of independent asynchronous deletion"
+  ],
+  "productionDeletionCalls": false,
+  "newNativeBuild": false,
+  "sourceSha256": {
+    "store/auth.ts": "76cf672d0c39c18980ef004d73ce01cd56a2c19aa5b3b244358bc90170458e4d",
+    "screens/ProfileScreen.tsx": "a1b8b6a9bd3ec5fd5d84279b2a60705f30e74c998298eb98012585aeb43e83dc",
+    "__tests__/store/auth.test.ts": "4343e51867f968067365ed202ddb3c0f4c82d919f967319f300923c400f2dcea",
+    "__tests__/services/functionAuthorization.test.ts": "920f94e1861065602a032146e47332011d7e44c24202e6e4b61855a9728889e8"
+  },
+  "remaining": [
+    "Already-issued SDK signOut/IAP/storage cleanup can still affect shared underlying state",
+    "Auth entry/cleanup serialization not complete",
+    "Rendered Profile and native deletion lifecycle verification",
+    "New native binary required for these source changes",
+    "Native transport rerun and all other readiness gates"
+  ]
+}

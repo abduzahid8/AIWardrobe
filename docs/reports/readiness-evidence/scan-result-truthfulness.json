@@ -1,0 +1,50 @@
+{
+  "verifiedAt": "2026-10-19T12:59:16.127409+00:00",
+  "changes": [
+    "AI failure or absent classification no longer becomes a fabricated detected garment",
+    "Video frame extraction failure does not generate a fake manual detection",
+    "Provider color and known material preserved; unknown material stays undefined",
+    "Backend section names mapped to supported display positions; unknown section rejects",
+    "Review passes detected material, style, confidence and description; jacket opens outerwear editor"
+  ],
+  "checks": {
+    "hookRegressions": 11,
+    "reviewRouteRegressions": 3,
+    "jestTests": 1719,
+    "jestSuites": 143,
+    "typescript": true,
+    "sourceMapMatches": {
+      "ios": {
+        "src/features/wardrobe/useVideoAnalysis.ts": true,
+        "screens/WardrobeVideoScreen.tsx": true
+      },
+      "android": {
+        "src/features/wardrobe/useVideoAnalysis.ts": true,
+        "screens/WardrobeVideoScreen.tsx": true
+      }
+    }
+  },
+  "artifacts": {
+    "ios": {
+      "path": "/tmp/aiwardrobe-budget-release-00nhnjcc/AIWardrobe.app/main.jsbundle",
+      "bytes": 6976416,
+      "sha256": "163ca4a943c9278be0fb1db61a749a0ff04f4e27dcf53c307c596bd984dd7158"
+    },
+    "android": {
+      "path": "/Users/v.zahid/AIWardrobe/android/app/build/outputs/apk/release/app-release.apk",
+      "bytes": 66072834,
+      "sha256": "93463ff1c4879e42fe164d43ee9bdbafa1b333841499cd1f7d17889fe664b288"
+    }
+  },
+  "sourceHashes": {
+    "src/features/wardrobe/useVideoAnalysis.ts": "a4a2396da03e3fe2d416da29d95987ed12c433283fcc32a12197763c26ebc23b",
+    "screens/WardrobeVideoScreen.tsx": "2bc4c4eadbd7e888812c6b50b1afd03e8fa6764e8d74c8f97cfacc7fb0e20ae1"
+  },
+  "scope": "Actual React hook tests with mocked provider and actual extracted review handler; release exports/builds. No new production provider request or full installed-device/10k DAU certification.",
+  "remaining": [
+    "Video uses first extracted frame rather than aggregating all garments",
+    "Review opens first detected item; full multi-item review remains incomplete",
+    "Editor persistence still requires full attribute audit; pattern defaults and unknown-color handling remain review items",
+    "Provider concurrency failure remains open"
+  ]
+}

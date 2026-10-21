@@ -1,0 +1,82 @@
+{
+  "measuredAt": "2026-10-21T02:58:09.515Z",
+  "scope": "Actual client readers and owner SDK against501garments/1001wear logs; fixture metadata only, not native rendering or capacity",
+  "checks": [
+    {
+      "name": "complete_owned_wardrobe",
+      "count": 501,
+      "latencyMs": 1978,
+      "passed": true
+    },
+    {
+      "name": "complete_owned_wear_history",
+      "count": 1001,
+      "latencyMs": 2482,
+      "passed": true
+    },
+    {
+      "name": "actual_cursor_page_counts",
+      "passed": true
+    }
+  ],
+  "sourceHashes": {
+    "store/authEvents.ts": "4a276d38e09fc9b2fe577b0dcb8361ab450eadda454ba36cc8f299a1bbbb30c3",
+    "src/lib/requestDeadline.ts": "158dfcfcd498674fcca78f8b5357aa1dcbf49ce75aff2f571500e46b408d295b",
+    "src/services/wardrobeMedia.ts": "e7e00901e1647317a67e663d18ead2e27e3784546d5a3fd781f22e1a82ee5332",
+    "src/services/pendingWardrobeMedia.ts": "c02b09118a82079f26c78cc8d6e5ba39627d9963adf13851d91f9f45eaa59d58",
+    "src/services/wardrobeItemMedia.ts": "637679a4cfa10574642b2a9e08884514ec8598833ff348ac75241ed44a808f6d",
+    "store/wardrobeSyncService.ts": "ff433edf6cd40e4b2d221ffa09159deed288ba1aadfa56559914a751488ff4c8"
+  },
+  "requests": [
+    {
+      "route": "clothing_items",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "route": "clothing_items",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "route": "clothing_items",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "route": "wear_logs",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "route": "wear_logs",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "route": "wear_logs",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "route": "wear_logs",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "route": "wear_logs",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "route": "other",
+      "status": 204,
+      "method": "POST"
+    }
+  ],
+  "cleanup": {
+    "refreshSessionsRevoked": true,
+    "userDeleted": true
+  },
+  "passed": true
+}

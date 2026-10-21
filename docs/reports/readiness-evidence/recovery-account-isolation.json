@@ -1,0 +1,34 @@
+{
+  "scope": "Recovery-session account isolation, app store subscriber boundary; mocked SDK and cache-reset implementation, no live recovery UI claim",
+  "reproducedBefore": {
+    "failed": 2,
+    "passed": 45,
+    "failure": "Both PKCE and implicit recovery exposed old profile/cache identity under the new session"
+  },
+  "targetedAfter": {
+    "passed": 47,
+    "failed": 0
+  },
+  "fullSuite": {
+    "suites": 116,
+    "passed": 1319,
+    "failed": 0
+  },
+  "typescript": "passed",
+  "sources": {
+    "store/auth.ts": "e40817ca3343925f9eee469b11fa2d02e64f4e2027d7b437effaa40557525dfa",
+    "__tests__/store/auth.test.ts": "2d4e2194a6468e40b457c51546acd40869e8e56eb21580da770fb2a232e3cff5"
+  },
+  "normalAndroidBuild": {
+    "exitCode": 0,
+    "authSourceMatches": true,
+    "apkSha256": "bf890a2600b5667baa61e8c94c67f567080b7935c07764cf420e986697dfbe24",
+    "bundleSha256": "bf45c1cdd3e6c2709c0fe3a604a2fbceb7e2155eeae35e729a925244be52ee79",
+    "auditMarkerAbsent": true
+  },
+  "remaining": [
+    "Already-issued storage/SDK/IAP cleanup overlap with later login",
+    "Recovery UI and real email-link lifecycle",
+    "All other readiness gates remain open"
+  ]
+}

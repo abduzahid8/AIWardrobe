@@ -2,7 +2,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useRef } from "react";
-import { StyleSheet, View, Text } from "react-native";
+import { AppState, StyleSheet, View, Text } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -13,15 +13,20 @@ import RootNavigator from "./navigation/RootNavigator";
 import { navigationRef } from "./navigation/navigationRef";
 import { ThemeProvider, useTheme } from "./src/theme/ThemeContext";
 import { ErrorBoundary } from "./src/components/ErrorBoundary";
+import SplashTransition from "./src/components/SplashTransition";
 import crashReporting from "./src/services/crashReporting";
+import { flushWardrobePersistence } from "./store/wardrobeStore";
 import { bootstrapStores } from "./store/bootstrap";
 import { queryClient } from "./src/lib/queryClient";
 import { validateConfig } from "./src/config/env";
 import useAuthStore from "./store/auth";
+import { createAuthLinking } from "./src/lib/authLinking";
+import { useSubscriptionClock } from './src/hooks/useSubscriptionClock';
 import useTrackingPermission from "./src/hooks/useTrackingPermission";
 
 // Deep linking configuration
 const linking = {
+  ...createAuthLinking(Linking, url => useAuthStore.getState().handleDeepLink(url)),
   prefixes: [Linking.createURL('/')],
   config: {
     screens: {
@@ -86,6 +91,7 @@ const AppContent = () => {
 
   // Initialize App Tracking Transparency
   useTrackingPermission();
+  useSubscriptionClock();
 
   // Hide the splash once the first frame renders. We hide it even on the
   // MissingConfigScreen path so the user can see the actionable error
@@ -96,24 +102,14 @@ const AppContent = () => {
     }
   }, [missingVars.length]);
 
-  const updatesChecked = useRef(false);
-
   useEffect(() => {
-    const handleDeepLink = async (event: { url: string }) => {
-      const { handleDeepLink: processLink } = useAuthStore.getState();
-      await processLink(event.url);
-    };
-
-    const subscription = Linking.addEventListener('url', handleDeepLink);
-
-    Linking.getInitialURL().then((url) => {
-      if (url) handleDeepLink({ url });
+    const subscription = AppState.addEventListener('change', state => {
+      if (state !== 'active') void flushWardrobePersistence().catch(() => undefined);
     });
-
-    return () => {
-      subscription.remove();
-    };
+    return () => subscription.remove();
   }, []);
+
+  const updatesChecked = useRef(false);
 
   useEffect(() => {
     if (updatesChecked.current) return;
@@ -131,6 +127,9 @@ const AppContent = () => {
           <ThemedStatusBar />
           <RootNavigator />
         </NavigationContainer>
+        {/* Branded open/close handoff — sits above the navigator, never
+            intercepts touches, unmounts itself once invisible. */}
+        <SplashTransition />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

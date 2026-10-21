@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-17",
+  "scope": "Saved-shop initial hydration and mutation ordering",
+  "newTests": 7,
+  "updatedRaceTest": 1,
+  "storeTests": 22,
+  "cleanupIntegrationTests": 4,
+  "fullAppTests": 1286,
+  "fullAppSuites": 114,
+  "typecheck": "passed",
+  "targetedLint": {
+    "errors": 0,
+    "warnings": 21
+  },
+  "translationJson": "en, ru, uz parse and contain savedItemsUnavailable",
+  "whitespace": "passed",
+  "sourceSha256": {
+    "store/savedShopStore.ts": "02608960dfede60dc7d068b923976bf0b224891ecb7751c1a1f23daca2e3d66b",
+    "screens/InspoScreen.tsx": "062e696cc05c5bd1011df75a8db8dcfcb6665fb011f281a3f7c4b908e9a7a60b",
+    "screens/ProfileScreen.tsx": "9473cc48122a622bae34176a26b3d18c54a361c1664e5b460dc8a9fb709253da",
+    "__tests__/store/savedShopIsolation.test.ts": "6453accbd5aff2cde1b0328a849768361f1115c94b9c1752de244db1215b20b0"
+  },
+  "checks": [
+    "Concurrent first saves preserve earlier persisted likes and each other",
+    "First toggle derives saved/unsaved from loaded state",
+    "First removal preserves unrelated likes",
+    "Read failures leave disk intact and permit retry",
+    "Malformed JSON cannot be overwritten by initial removal",
+    "Account switch cancels waiting old-owner mutation",
+    "Explicit replacement supersedes pending hydration"
+  ],
+  "verificationBoundary": "Actual store under Jest AsyncStorage mock; screen callback changes checked by TypeScript/lint and source review, not rendered or native UI",
+  "productionRequests": false,
+  "newNativeBuild": false,
+  "remaining": [
+    "Best-effort write durability after storage write failure",
+    "Native restart and process-death lifecycle",
+    "Broader account cache ownership and global cleanup races",
+    "Production media performance and deferred provider/store configuration"
+  ]
+}

@@ -1,0 +1,25 @@
+appId: host.exp.Exponent
+name: verify_saved_outfit
+tags:
+  - save-checks
+  - expo-go
+  - outfit
+---
+# Closet → Collections → "Saved" filter → assert the outfit saved by
+# save_outfit_home is listed. Card a11y label: "{occasion} outfit, open details".
+- tapOn:
+    point: "42%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*(Мой гардероб|My Wardrobe|Wardrobe|Closet).*"
+- tapOn: ".*(Коллекции|Collections).*"
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn: ".*Saved.*filter.*"
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible: ".*outfit, open details.*"
+    timeout: 15000
+- assertVisible: ".*outfit, open details.*"
+- takeScreenshot: verify_saved_outfit

@@ -1,0 +1,20 @@
+import React from 'react';
+import {render} from '@testing-library/react-native';
+import ClothingCard from '../../components/ui/ClothingCard';
+import {toClosetItem} from '../../src/utils/closetItem';
+import type {ClothingItem} from '../../src/types/domain';
+const mockCachedImage=jest.fn();
+jest.mock('../../components/ui/CachedImage',()=>({CachedImage:(props:object)=>{mockCachedImage(props);return null;}}));
+jest.mock('../../components/ui/ScaledText',()=>({ScaledText:jest.requireActual<typeof import('react-native')>('react-native').Text}));
+jest.mock('react-i18next',()=>({useTranslation:()=>({t:(key:string)=>key})}));
+jest.mock('react-native-reanimated',()=>({__esModule:true,default:{View:jest.requireActual<typeof import('react-native')>('react-native').View},useAnimatedStyle:()=>({}),interpolate:()=>0}));
+const original='https://storage.test/original.png',thumbnail='https://storage.test/thumbnail.png';
+const garment={id:'garment',imageUrl:original,thumbnailUrl:thumbnail,category:'top',subCategory:'t-shirt',primaryColor:'Blue',wearCount:3,isFavorite:true,createdAt:'2026-10-17T00:00:00Z'} as ClothingItem;
+beforeEach(()=>jest.clearAllMocks());
+it.each([thumbnail,undefined,''])('compact card uses supplied thumbnail %s while retaining the original',thumb=>{
+ const item=toClosetItem({...garment,thumbnailUrl:thumb});
+ render(<ClothingCard item={item} index={0} scrollX={{value:0} as never} itemWidth={180}/>);
+ expect(mockCachedImage).toHaveBeenCalledWith(expect.objectContaining({uri:thumb||original}));
+ expect(item.imageUrl).toBe(original);expect(item.image).toBe(original);
+ expect(item).toMatchObject({_id:garment.id,isFavorite:true,wearCount:3});
+});

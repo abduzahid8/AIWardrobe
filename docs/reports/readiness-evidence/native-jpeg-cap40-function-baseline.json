@@ -1,0 +1,83 @@
+{
+  "project": "fyqpifmrsftsfqibhwhy",
+  "functions": [
+    {
+      "id": "58608719-a437-41c4-a386-adffd5ff17ac",
+      "slug": "ai-chat",
+      "version": 2,
+      "verify_jwt": true
+    },
+    {
+      "id": "abc61931-5d8d-4620-9382-d8cde59e5a8a",
+      "slug": "ai-process",
+      "version": 41,
+      "verify_jwt": true
+    },
+    {
+      "id": "f7b34623-974e-466f-ad84-5e455732e8c7",
+      "slug": "analytics",
+      "version": 3,
+      "verify_jwt": false
+    },
+    {
+      "id": "b75aaa71-2ae0-49c8-ab03-09d62eb827c8",
+      "slug": "analyze-outfit",
+      "version": 6,
+      "verify_jwt": true
+    },
+    {
+      "id": "e8e3891d-bc7b-4220-ad29-27ff1d8bbf1c",
+      "slug": "body-profiles",
+      "version": 2,
+      "verify_jwt": true
+    },
+    {
+      "id": "c9a405e9-2bcc-4829-b6c3-88f798c645e2",
+      "slug": "delete-account",
+      "version": 11,
+      "verify_jwt": true
+    },
+    {
+      "id": "f4624f3a-c8b9-4ce2-8bf1-b03916e7d78a",
+      "slug": "generate-outfits",
+      "version": 74,
+      "verify_jwt": true
+    },
+    {
+      "id": "9a0da091-ab60-4b44-80fa-464572f00308",
+      "slug": "mannequin-tryon",
+      "version": 103,
+      "verify_jwt": true
+    },
+    {
+      "id": "e6a90d33-c9a4-44ab-9610-02d021dceae7",
+      "slug": "redeem-promo",
+      "version": 8,
+      "verify_jwt": true
+    },
+    {
+      "id": "d6343573-2faf-42fc-a0d1-2070e9637754",
+      "slug": "revenuecat-webhook",
+      "version": 13,
+      "verify_jwt": false
+    },
+    {
+      "id": "85cba145-e645-401c-a1f0-4e195231e9d3",
+      "slug": "try-on",
+      "version": 33,
+      "verify_jwt": true
+    },
+    {
+      "id": "fd05ac83-3655-416a-81bb-7a4efc2b3b61",
+      "slug": "upgrade-photo-quality",
+      "version": 16,
+      "verify_jwt": true
+    },
+    {
+      "id": "79119f04-28ef-44e7-8cd2-2f759c61587d",
+      "slug": "yandex-reviews",
+      "version": 3,
+      "verify_jwt": false
+    }
+  ]
+}

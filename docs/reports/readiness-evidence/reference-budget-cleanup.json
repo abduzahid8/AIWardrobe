@@ -1,0 +1,10 @@
+{
+  "date": "2026-10-20",
+  "source": "Independent production SQL after both final live fixture runs",
+  "readinessFixtureUsersRemaining": 0,
+  "temporaryRateRowsRemaining": 0,
+  "authCount": 111,
+  "profileCount": 111,
+  "productionReferenceCacheRowsRetained": 1,
+  "passed": true
+}

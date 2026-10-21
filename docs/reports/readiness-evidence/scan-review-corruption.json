@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-20",
+  "regression": {
+    "tests": 1861,
+    "suites": 153,
+    "typescript": "pass",
+    "iosHermes": "pass",
+    "androidArm64Release": "pass"
+  },
+  "scope": "Malformed records isolated during listing; files retained and unavailable count shown while valid review restores",
+  "coverage": [
+    "Malformed JSON",
+    "Null record",
+    "Null detected item in otherwise valid envelope",
+    "Transient filesystem error propagates",
+    "Screen restore reports unavailable count alongside valid content"
+  ],
+  "runtimeSourceMaps": "Both changed runtime files match both release maps",
+  "translations": "Exact Android locale sources; EN/RU/UZ warning bytes present in iOS Hermes artifact",
+  "freshOSProcessRestart": "pass",
+  "limits": [
+    "No native visual UI assertion",
+    "Corrupt source-queue reconciliation remains conservative",
+    "Cannot reconstruct corrupted content",
+    "Web durability and full authenticated native flow remain incomplete"
+  ],
+  "goal": "active; 10000 DAU readiness not certified"
+}

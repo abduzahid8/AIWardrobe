@@ -1,0 +1,40 @@
+{
+  "verifiedAt": "2026-10-19T13:05:35.558292+00:00",
+  "changes": [
+    "Use supported Expo legacy file read instead of deprecated module API",
+    "Retain direct-photo classification metadata for save",
+    "Show localized failure notice rather than silently discarding unsuccessful analysis",
+    "Ignore late file/provider completions after cleanup or auth revision change",
+    "Disable and guard Save while analysis is active"
+  ],
+  "checks": {
+    "analysisHandlerAndResolutionRegressions": 7,
+    "renderedEditorSuiteCases": 8,
+    "newRenderedDirectPhotoCases": 3,
+    "fullJestTests": 1743,
+    "fullJestSuites": 145,
+    "typescript": true,
+    "sourceMapMatches": {
+      "ios": true,
+      "android": true
+    }
+  },
+  "sourceSha256": "400332fb6cb46c15b4432a2dc6267735b15da337f94ca51d403b5e19d5fe51e8",
+  "artifacts": {
+    "ios": {
+      "path": "/tmp/aiwardrobe-budget-release-00nhnjcc/AIWardrobe.app/main.jsbundle",
+      "bytes": 6937616,
+      "sha256": "4cc7d7cf9b7206529296770d0f0c57ea83c633956b54166858e94c7f92a16969"
+    },
+    "android": {
+      "path": "/Users/v.zahid/AIWardrobe/android/app/build/outputs/apk/release/app-release.apk",
+      "bytes": 66041586,
+      "sha256": "f7145cc12f5560a0846ee1be960b68632dab981a0730e523832c3df0cbdc8707"
+    }
+  },
+  "limitations": [
+    "Tests render actual editor with mocked file/provider/store boundaries; no physical device/photo or new live model request",
+    "Unknown color/season defaults and full multi-item video review remain open",
+    "No 10000 DAU capacity certification"
+  ]
+}

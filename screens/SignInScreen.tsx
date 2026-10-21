@@ -42,6 +42,7 @@ const SignInScreen = () => {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const { login, signInWithApple, signInWithGoogle } = useAuthStore();
   const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
+  const authRequestInFlight = useRef(false);
   const passwordRef = useRef<TextInput>(null);
 
   const normalizedEmail = email.trim().toLowerCase();
@@ -58,7 +59,8 @@ const SignInScreen = () => {
   }, []);
 
   const handleAppleSignIn = async () => {
-    if (isLoading || isGoogleLoading) return;
+    if (authRequestInFlight.current || isLoading || isGoogleLoading) return;
+    authRequestInFlight.current = true;
     setIsLoading(true);
     try {
       await signInWithApple();
@@ -67,12 +69,14 @@ const SignInScreen = () => {
         Alert.alert(t('signIn.loginFailed'), error.message || t('signIn.appleSignInFailed'));
       }
     } finally {
+      authRequestInFlight.current = false;
       setIsLoading(false);
     }
   };
 
   const handleGoogleSignIn = async () => {
-    if (isLoading || isGoogleLoading) return;
+    if (authRequestInFlight.current || isLoading || isGoogleLoading) return;
+    authRequestInFlight.current = true;
     setIsGoogleLoading(true);
     try {
       await signInWithGoogle();
@@ -81,16 +85,15 @@ const SignInScreen = () => {
         Alert.alert(t('signIn.loginFailed'), error.message || t('signIn.googleSignInFailed'));
       }
     } finally {
+      authRequestInFlight.current = false;
       setIsGoogleLoading(false);
     }
   };
 
   const handleEmailContinue = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    // Preserve legacy empty-submit guard (common.error / signIn.emailPasswordRequired)
-    // asserted by expo_go_auth_validation.
     if (!email.trim()) {
-      Alert.alert(t('common.error'), t('signIn.emailPasswordRequired'));
+      Alert.alert(t('common.error'), t('signIn.emailRequired'));
       return;
     }
     if (!isEmailValid) {
@@ -111,14 +114,17 @@ const SignInScreen = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setStep('email');
     setPassword('');
+    setShowPassword(false);
   };
 
   const handleSignIn = async () => {
+    if (authRequestInFlight.current) return;
     if (!normalizedEmail || !password) {
       Alert.alert(t('common.error'), t('signIn.emailPasswordRequired'));
       return;
     }
-    if (isLoading) return;
+    if (isLoading || isGoogleLoading) return;
+    authRequestInFlight.current = true;
     setIsLoading(true);
     try {
       await login(normalizedEmail, password);
@@ -137,6 +143,7 @@ const SignInScreen = () => {
         Alert.alert(t('signIn.loginFailed'), errorMessage);
       }
     } finally {
+      authRequestInFlight.current = false;
       setIsLoading(false);
     }
   };
@@ -228,8 +235,10 @@ const SignInScreen = () => {
                         style={styles.inputIcon}
                       />
                       <TextInput
+                        key="sign-in-email"
                         style={styles.input}
                         value={email}
+                        secureTextEntry={false}
                         onChangeText={setEmail}
                         placeholder={t('auth.email')}
                         placeholderTextColor="rgba(10,25,49,0.4)"
@@ -306,6 +315,7 @@ const SignInScreen = () => {
                     <View style={styles.inputCard} testID="passwordField">
                       <Ionicons name="lock-closed-outline" size={20} color={colors.text.tertiary} style={styles.inputIcon} />
                       <TextInput
+                        key="sign-in-password"
                         ref={passwordRef}
                         style={styles.input}
                         value={password}

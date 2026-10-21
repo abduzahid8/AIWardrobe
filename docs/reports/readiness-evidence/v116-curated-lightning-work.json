@@ -1,0 +1,173 @@
+{
+  "measuredAt": "2026-10-21T17:39:41.565Z",
+  "scope": "One real hosted Old Money/Work shopping request, no weather or entered budget, limit five. Controlled catalog pool; not exact screenshot account or capacity proof.",
+  "checks": [
+    {
+      "name": "all_three_catalog_slots_available",
+      "passed": true
+    },
+    {
+      "name": "usable_outfits_returned",
+      "passed": true
+    },
+    {
+      "name": "every_outfit_passes_structure_and_style",
+      "passed": true
+    },
+    {
+      "name": "every_item_matches_provided_live_catalog",
+      "passed": false
+    }
+  ],
+  "fixtureUserId": "c2aedd48-ccd6-45b7-b5db-ac7c7fe55a35",
+  "candidateCount": 40,
+  "response": {
+    "status": 200,
+    "latencyMs": 7393,
+    "code": null,
+    "error": null,
+    "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+    "providerAttempts": [
+      {
+        "provider": "nvidia",
+        "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+        "status": "ok"
+      }
+    ],
+    "outfitCount": 3
+  },
+  "outfits": [
+    {
+      "items": [
+        {
+          "id": "shop_boss-uz-140333",
+          "name": "Salbo",
+          "price": 1488000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61729868",
+          "name": "100% cool wool suit blazer",
+          "price": 7000000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61729804",
+          "name": "Cold wool suit trousers",
+          "price": 2200000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-93412",
+          "name": "Gary_Slon_SDWV_204",
+          "price": 4407000,
+          "currency": "UZS"
+        }
+      ],
+      "structureReason": null,
+      "styleReason": null
+    },
+    {
+      "items": [
+        {
+          "id": "shop_fr-tommy-111152-official",
+          "name": "Regular Fit Striped Rugby Polo",
+          "price": 1584500,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61729868",
+          "name": "100% cool wool suit blazer",
+          "price": 7000000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61729804",
+          "name": "Cold wool suit trousers",
+          "price": 2200000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-104096",
+          "name": "Gary_tenn_sdbbe",
+          "price": 4841000,
+          "currency": "UZS"
+        }
+      ],
+      "structureReason": null,
+      "styleReason": null
+    },
+    {
+      "items": [
+        {
+          "id": "shop_fr-tommy-111152-official",
+          "name": "Regular Fit Striped Rugby Polo",
+          "price": 1584500,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-62899832",
+          "name": "100% tropical wool suit blazer",
+          "price": 4500000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61729804",
+          "name": "Cold wool suit trousers",
+          "price": 2200000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-90479",
+          "name": "Gary_Tenn_ltgr",
+          "price": 5916000,
+          "currency": "UZS"
+        }
+      ],
+      "structureReason": null,
+      "styleReason": null
+    }
+  ],
+  "failure": "Audit assertion failed",
+  "cleanup": {
+    "sessionsRevoked": true,
+    "ownerDeleted": true
+  },
+  "passed": false,
+  "providerObservations": [
+    {
+      "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+      "requestCharacters": 6395,
+      "maxTokens": 700,
+      "status": 200,
+      "latencyMs": 3804,
+      "finishReason": "stop",
+      "contentCharacters": 959,
+      "usage": {
+        "promptTokens": 2831,
+        "completionTokens": 209
+      }
+    }
+  ],
+  "execution": {
+    "runtime": "Local Node with actual current handler modules; real Supabase Auth/catalog/rate guards and hosted NVIDIA",
+    "candidateModel": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "sourceHashes": {
+      "generate-outfits/index.ts": "df5dd12b806b98302d8e1e65caede4f1641818d16b8c17ee16d78c80ba46965a",
+      "_shared/outfitChoices.ts": "c3793c17d724c262a61888140230c37f53786bd0eda335e18ed272e600bad0cf",
+      "_shared/outfitGenerationRequest.ts": "30412ecc9a1fc0695dff2563bf98bb33a25289ffb19cedb0d08ef339bf724f03",
+      "_shared/occasionRules.ts": "178339bcc8b6962280a695027bff1afa06edfb34c38054d49bc25abafd31ea5d",
+      "_shared/outfitBudgetText.ts": "bb2942b93c782908b4389f39c04ba6b6cca0c014f82a83b34ecafdb8d58bfc1f",
+      "_shared/budgetFx.ts": "e1aa62bb1d5f06d5fa484e9e9033991a9218d1bde42657514c010f8ecf7c526a",
+      "_shared/budgetFxCache.ts": "2060d666cb044ce6e20ad12f37a874aa7ede57c0018faf7d0da5ad96a6f02425",
+      "_shared/rateLimit.ts": "de9201c135537983a3c84ccd7e25bf9880c37a3c85fea64e6862f9372f48fa54",
+      "_shared/outfitBudgetFeasibility.ts": "70040dc0b5779813aa2fc80cd0c3b5310308ee00c0a4928f5aa72a9d80e9c57e",
+      "_shared/outfitStructure.ts": "62de820735f065d7a7bac6baace20243d9dbcb1435f88d4fa6a927b5d895f523",
+      "_shared/outfitBudgetSelection.ts": "7be1bb224da400e8fc3328cece5b911f1f7a580433eea2ad2c2f28b6ebc9fe3e",
+      "_shared/outfitBudgetFeedback.ts": "ffb3373f563dbb2642253ae10166c98d6e4e3ccc4da1fcc54b3e291ae2ecc548",
+      "_shared/modelOutfitResponse.ts": "ed0fab20006ac6a91559450a6860b2bdadd998c970ab9b40c51e627d5f56d52c"
+    },
+    "productionConfigurationChanged": false,
+    "limits": "Not hosted Edge runtime or native UI; this comparison does not establish production model throughput."
+  }
+}

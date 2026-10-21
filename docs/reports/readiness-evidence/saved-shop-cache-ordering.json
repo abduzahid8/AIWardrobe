@@ -1,0 +1,22 @@
+{
+  "date": "2026-10-17",
+  "focusedStoreCases": 7,
+  "lateWriteLogoutIntegrationCases": 1,
+  "appTests": 1271,
+  "appSuites": 114,
+  "typecheck": "passed",
+  "whitespace": "passed",
+  "targetedLint": {
+    "errors": 0,
+    "warnings": 18
+  },
+  "storageBoundary": "Jest AsyncStorage mock; real application store and cleanup helper",
+  "newNativeBuild": false,
+  "productionRequests": false,
+  "remaining": [
+    "Durable owner metadata and interrupted cleanup across process restart",
+    "Broader SDK-switch and stale global cleanup coordination",
+    "Existing best-effort save durability"
+  ],
+  "scope": "In-process saved-shop writes, resets and hydration"
+}

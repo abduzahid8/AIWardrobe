@@ -1,0 +1,17 @@
+{
+  "date": "2026-10-16",
+  "checkedPrivateEnvValues": 0,
+  "bundles": [
+    {
+      "path": "/tmp/aiwardrobe-dependency-ios-20261016/_expo/static/js/ios/index-c195597098923f7325ee44ce11887366.hbc",
+      "sha256": "1db3332063020f3998427aab3757239caa9e5ccbaa139c4e5bed95f0a6fc561f",
+      "privateEnvMatches": []
+    },
+    {
+      "path": "/tmp/aiwardrobe-dependency-android-20261016/_expo/static/js/android/index-487c81b315ee585398fbcf28eb8f8949.hbc",
+      "sha256": "a65e7a90eb58a32a84f4317e164ef2108589f18066c97c9b258aa58dae1167a6",
+      "privateEnvMatches": []
+    }
+  ],
+  "limits": "Exact bytes of nonempty private .env values with key/token/secret/password names; excludes public keys and unprovided secrets. Not a general secret absence proof."
+}

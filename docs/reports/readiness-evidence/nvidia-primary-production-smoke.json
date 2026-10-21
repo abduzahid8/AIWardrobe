@@ -1,0 +1,64 @@
+{
+  "measuredAt": "2026-10-18T14:18:44.129Z",
+  "scope": "Three representative production AI requests; not provider capacity or universal output accuracy",
+  "checks": [
+    {
+      "name": "chat_returns_text",
+      "status": 200,
+      "latencyMs": 15992,
+      "passed": true,
+      "provider": "nvidia"
+    },
+    {
+      "name": "generate_outfit_has_items",
+      "status": 503,
+      "latencyMs": 34525,
+      "passed": false,
+      "outfitCount": null,
+      "itemCounts": [],
+      "source": null,
+      "provider": null,
+      "items": []
+    },
+    {
+      "name": "primary_ai_outfit_generation",
+      "status": 503,
+      "passed": false,
+      "observedSource": null
+    },
+    {
+      "name": "catalog_garment_classification",
+      "status": 200,
+      "latencyMs": 10535,
+      "passed": true,
+      "expectedCatalogCategory": "bottoms",
+      "classification": {
+        "category": "pants",
+        "section": "bottoms",
+        "confidence": 0.88,
+        "attributes": {
+          "style": "casual",
+          "color": "black",
+          "material": "fabric"
+        }
+      },
+      "providerReportedError": false
+    }
+  ],
+  "providerAttempts": [
+    {
+      "provider": "nvidia",
+      "model": "meta/llama-3.2-11b-vision-instruct",
+      "status": "ok"
+    },
+    {
+      "provider": "nvidia",
+      "model": "meta/llama-3.2-11b-vision-instruct",
+      "status": "ok"
+    }
+  ],
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

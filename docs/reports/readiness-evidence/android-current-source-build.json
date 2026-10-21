@@ -1,0 +1,47 @@
+{
+  "date": "2026-10-16",
+  "result": "BUILD SUCCESSFUL",
+  "durationSeconds": 307,
+  "tasks": {
+    "total": 956,
+    "executed": 294,
+    "upToDate": 662
+  },
+  "apk": "/Users/v.zahid/AIWardrobe/android/app/build/outputs/apk/release/app-release.apk",
+  "apkBytes": 147268207,
+  "apkSha256": "d3ab205dc63a6e0480e64e91ada282e5b6d7f177a57c3beb4629566cc68f0d43",
+  "bundleBytes": 7004948,
+  "bundleSha256": "93561cacb31f788642ad59f8dac838ba2b5ed28aaa7716d4ca925057d7968169",
+  "abis": [
+    "arm64-v8a",
+    "armeabi-v7a",
+    "x86",
+    "x86_64"
+  ],
+  "sourceSha256": {
+    "store/auth.ts": "4cdc13627875c84e80ea3cb8c84aa94bb27c6afd4b72c6c6024f4329f9cafd9a",
+    "store/wardrobeSyncService.ts": "6666d3aa430d052e6e204d8770848db2ce3c3c977761dc024619fc723d2d137d",
+    "store/slices/wardrobeItemsSlice.ts": "6e1a60a2f629f5310a49d9c37123194d88ad74328eb6117db4f7bda93cadc6ae",
+    "store/slices/wardrobeSyncSlice.ts": "a3311b4d9a20663988c1e91acca7945e4835078ac75375f8e550bf53b027d7dc",
+    "store/slices/wardrobeWearLogSlice.ts": "2d42ee55b32010230ba46de7e743e3c0fa5049cbb84bbb4c629a87105e9f77bc",
+    "package-lock.json": "3d6a39cb6be8cd94ab5505dfd971f051f4a679e67aa4d7a9f0b4c66d325cb9b7",
+    "android/app/build.gradle": "aa4b5e2d90953ab8eef1ef2f3f16de2ce619f5a58d1e56d0c503a0b105a2f7ac",
+    "android/app/src/main/AndroidManifest.xml": "d346440e6dc7079628e3e10d40deb162747d0d94195f2121c176c5fb51224c3c"
+  },
+  "checks": {
+    "apkSignature": "pass, v2; Android Debug certificate",
+    "compiledManifestLinks": "pass",
+    "separateNodeChecks": 26,
+    "previousFullJestTests": 1119,
+    "previousFullJestSuites": 95,
+    "previousTypecheck": "pass"
+  },
+  "limitations": [
+    "Not production upload signing",
+    "New APK not installed or visually exercised",
+    "Android emulator surface unavailable to supported UI tool",
+    "iOS current-source native rebuild remains pending",
+    "AI work deferred",
+    "Overall 10,000-DAU readiness not certified"
+  ]
+}

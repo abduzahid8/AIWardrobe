@@ -59,7 +59,7 @@ export type RootStackParamList = {
     ReviewScan: { items: ScannedItem[] };
     WardrobeVideo: { videoUri?: string; imageUri?: string };
     Camera: undefined;
-    ClothingDetailEditor: { imageUri?: string; detectedType?: string; detectedColor?: string; detectedItem?: any; detectedStyle?: string; detectedMaterial?: string; aiConfidence?: number; detectedDescription?: string; existingItem?: any };
+    ClothingDetailEditor: { scanReviewId?: string; scanReviewItemId?: string; imageUri?: string; detectedType?: string; detectedColor?: string; detectedItem?: any; detectedStyle?: string; detectedMaterial?: string; aiConfidence?: number; detectedDescription?: string; existingItem?: any };
 
     // AI Features — names match registered Stack.Screen names exactly
     AIOutfit: {

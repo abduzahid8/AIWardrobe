@@ -1,0 +1,16 @@
+{
+  "date": "2026-10-17",
+  "auditSimulator": "2F806F52-7020-4FD3-9B68-3E0CA8B69D76",
+  "nativeHarnessCasesPassed": 10,
+  "independentJpegPixelCasesPassed": 8,
+  "harnessReleaseBuild": "passed after fixture relocation",
+  "normalReleaseBuild": "passed",
+  "normalAppInstalledAndLaunched": true,
+  "auditAppSyntheticDataRemoved": true,
+  "auditSimulatorShutdown": true,
+  "originalUserSimulatorStillBooted": true,
+  "uiInspection": "Blocked: Mac locked; no screen pass claimed",
+  "typecheck": "passed",
+  "harnessLint": "passed",
+  "productionRequests": false
+}

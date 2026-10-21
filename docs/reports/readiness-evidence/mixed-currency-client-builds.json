@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-20",
+  "jest": {
+    "tests": 1913,
+    "suites": 158
+  },
+  "typeScript": true,
+  "iosHermes": true,
+  "androidArm64Release": true,
+  "sourceMaps": {
+    "ios": {
+      "src/utils/outfitBudget.ts": true,
+      "src/services/outfitGenerationService.ts": true,
+      "src/services/shoppingService.ts": true,
+      "features/outfit-generator/utils/normalizeSlots.ts": true,
+      "screens/AIOutfitmaker.tsx": true
+    },
+    "android": {
+      "src/utils/outfitBudget.ts": true,
+      "src/services/outfitGenerationService.ts": true,
+      "src/services/shoppingService.ts": true,
+      "features/outfit-generator/utils/normalizeSlots.ts": true,
+      "screens/AIOutfitmaker.tsx": true
+    }
+  },
+  "independentDatabaseCleanup": {
+    "readinessFixtureUsersRemaining": 0
+  },
+  "limitations": [
+    "Not installed over the pending Google login simulator",
+    "Not full native budget UI or market exchange-rate verification",
+    "Not 10000 DAU capacity certification"
+  ]
+}

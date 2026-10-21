@@ -1,0 +1,44 @@
+{
+  "measuredAt": "2026-10-21T17:17:46.051805+00:00",
+  "scope": "Installed iOS26.5 simulator Generate/Back/Retry against live backend/NVIDIA. Not Android/physical-device or generation-success/capacity proof.",
+  "simulator": "AIWardrobe-Login-Audit-20261020",
+  "installation": {
+    "uninstalled": false,
+    "sessionPreserved": true,
+    "installedBundleMatchesBuilt": true,
+    "bundleSha256": "4525d300abded3fc30da672204b4bdad61c436e50427ec9e2b81bca5869adcec",
+    "signatureVerified": true
+  },
+  "observations": [
+    "Existing authenticated Home opened after update without sign-in",
+    "Opened creator, selected New clothing with Old Money and Work",
+    "Generate displayed thinking screen",
+    "Back immediately restored setup",
+    "Retry displayed thinking screen",
+    "Retry eventually restored setup with The AI couldn\u2019t finish your outfit. Please try again shortly.",
+    "Subsequent observation after provider deadline showed no late result replacing setup"
+  ],
+  "providerEvidence": {
+    "queryWindowUtc": [
+      "2026-10-21T17:10:00Z",
+      "2026-10-21T17:17:00Z"
+    ],
+    "correlation": "Timing/prompt/style, not uniquely joined execution IDs",
+    "matchingWorkRequests": [
+      {
+        "started": "17:14:35.063",
+        "timeout": "17:15:20.067"
+      },
+      {
+        "started": "17:14:48.646",
+        "timeout": "17:15:33.648"
+      }
+    ],
+    "importantLimit": "Cancelled client request continued server-side until provider timeout. No claim that Back cancels accepted provider work."
+  },
+  "evidence": [
+    "generation-cancel-ios-installed-error.png",
+    "generation-cancel-ios-installed-error.txt"
+  ],
+  "goalAchieved": false
+}

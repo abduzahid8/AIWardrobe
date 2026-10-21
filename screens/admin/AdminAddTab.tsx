@@ -3,7 +3,7 @@
  * AI auto-analyzes the image and populates fields
  */
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View } from 'react-native';
 import { ScaledText } from '../../components/ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -11,6 +11,8 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { supabase } from '../../lib/supabase';
 import { useTranslation } from 'react-i18next';
 import { createLogger } from '../../src/utils/logger';
+import { Image } from '../../src/components/MediaImage';
+
 
 const logger = createLogger('AdminAddTab');
 

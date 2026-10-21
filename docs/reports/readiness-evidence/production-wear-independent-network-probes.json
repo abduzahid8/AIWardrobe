@@ -1,0 +1,95 @@
+{
+  "scope": "Ten public catalog GET probes using independent curl processes during write-test setup/run; same Mac/network, not an external load generator",
+  "probes": [
+    {
+      "at": "2026-10-16T23:57:55.025Z",
+      "status": 200,
+      "dnsSec": 0.002556,
+      "connectSec": 0.107156,
+      "tlsSec": 0.223038,
+      "firstByteSec": 0.615794,
+      "totalSec": 0.616049
+    },
+    {
+      "at": "2026-10-16T23:57:56.667Z",
+      "status": 200,
+      "dnsSec": 0.004123,
+      "connectSec": 0.099642,
+      "tlsSec": 0.209291,
+      "firstByteSec": 0.577387,
+      "totalSec": 0.577715
+    },
+    {
+      "at": "2026-10-16T23:57:58.264Z",
+      "status": 200,
+      "dnsSec": 0.004631,
+      "connectSec": 0.089117,
+      "tlsSec": 0.203056,
+      "firstByteSec": 0.591493,
+      "totalSec": 0.5955
+    },
+    {
+      "at": "2026-10-16T23:57:59.884Z",
+      "status": 200,
+      "dnsSec": 0.004315,
+      "connectSec": 0.091503,
+      "tlsSec": 0.201872,
+      "firstByteSec": 0.579032,
+      "totalSec": 0.579449
+    },
+    {
+      "at": "2026-10-16T23:58:01.488Z",
+      "status": 200,
+      "dnsSec": 0.002644,
+      "connectSec": 0.089796,
+      "tlsSec": 0.203231,
+      "firstByteSec": 0.590965,
+      "totalSec": 0.591297
+    },
+    {
+      "at": "2026-10-16T23:58:03.101Z",
+      "status": 200,
+      "dnsSec": 0.003767,
+      "connectSec": 0.105378,
+      "tlsSec": 0.215532,
+      "firstByteSec": 0.612394,
+      "totalSec": 0.612704
+    },
+    {
+      "at": "2026-10-16T23:58:04.739Z",
+      "status": 200,
+      "dnsSec": 0.003826,
+      "connectSec": 0.096008,
+      "tlsSec": 0.211851,
+      "firstByteSec": 0.59417,
+      "totalSec": 0.594339
+    },
+    {
+      "at": "2026-10-16T23:58:06.350Z",
+      "status": 200,
+      "dnsSec": 0.004076,
+      "connectSec": 0.092313,
+      "tlsSec": 0.201923,
+      "firstByteSec": 0.56452,
+      "totalSec": 0.564686
+    },
+    {
+      "at": "2026-10-16T23:58:07.938Z",
+      "status": 200,
+      "dnsSec": 0.004549,
+      "connectSec": 0.090786,
+      "tlsSec": 0.189757,
+      "firstByteSec": 0.564292,
+      "totalSec": 0.572835
+    },
+    {
+      "at": "2026-10-16T23:58:09.534Z",
+      "status": 200,
+      "dnsSec": 0.004185,
+      "connectSec": 0.099456,
+      "tlsSec": 0.236092,
+      "firstByteSec": 0.606323,
+      "totalSec": 0.61048
+    }
+  ]
+}

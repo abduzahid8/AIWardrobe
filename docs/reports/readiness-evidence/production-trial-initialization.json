@@ -1,0 +1,47 @@
+{
+  "measuredAt": "2026-10-21T07:40:40.769Z",
+  "scope": "One disposable admin-confirmed user; actual subscription store owner initialization, repeat/session restoration and server authority. Excludes native signup, provider consent and email delivery.",
+  "checks": [
+    {
+      "name": "new_fixture_has_no_trial",
+      "passed": true
+    },
+    {
+      "name": "owner_initializer_confirms_server_date_and_trial_access",
+      "passed": true
+    },
+    {
+      "name": "repeated_initialization_and_fresh_store_do_not_restart_trial",
+      "passed": true
+    },
+    {
+      "name": "owner_cannot_clear_trial",
+      "passed": true
+    },
+    {
+      "name": "owner_cannot_extend_trial",
+      "passed": true
+    },
+    {
+      "name": "rejected_resets_leave_original_date_unchanged",
+      "passed": true
+    },
+    {
+      "name": "expired_fixture_reconciles_to_free_without_restarting",
+      "passed": true
+    },
+    {
+      "name": "expired_free_allowances_are_preserved",
+      "passed": true
+    }
+  ],
+  "sourceHashes": {
+    "store/authEvents.ts": "4a276d38e09fc9b2fe577b0dcb8361ab450eadda454ba36cc8f299a1bbbb30c3",
+    "store/subscriptionStore.ts": "1d0cc281a20e1fdbd60682316fc761bfc598e8e9495c6bc5a8ac7a4490f2d249"
+  },
+  "cleanup": {
+    "refreshSessionsRevoked": true,
+    "userDeleted": true
+  },
+  "passed": true
+}

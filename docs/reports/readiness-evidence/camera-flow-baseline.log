@@ -1,0 +1,189 @@
+  console.error
+    Error taking photo: Error: disk full
+        at Object.<anonymous> (/Users/v.zahid/AIWardrobe/__tests__/features/cameraCaptureFlow.test.js:18:89)
+        at Generator.next (<anonymous>)
+        at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+        at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+        at /Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+        at new Promise (<anonymous>)
+        at Object.<anonymous> (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+        at /Users/v.zahid/AIWardrobe/node_modules/jest-mock/build/index.js:397:39
+        at Object.<anonymous> (/Users/v.zahid/AIWardrobe/node_modules/jest-mock/build/index.js:404:13)
+        at Object.mockConstructor [as saveToLibraryAsync] (/Users/v.zahid/AIWardrobe/node_modules/jest-mock/build/index.js:148:19)
+        at Object.handler (eval at harness (/Users/v.zahid/AIWardrobe/__tests__/features/cameraCaptureFlow.test.js:26:19), <anonymous>:14:32)
+
+      at Object.handler (eval at harness (__tests__/features/cameraCaptureFlow.test.js:26:19), <anonymous>:21:17)
+
+  console.error
+    Error recording video: Error: disk full
+        at Object.<anonymous> (/Users/v.zahid/AIWardrobe/__tests__/features/cameraCaptureFlow.test.js:18:89)
+        at Generator.next (<anonymous>)
+        at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+        at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+        at /Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+        at new Promise (<anonymous>)
+        at Object.<anonymous> (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+        at /Users/v.zahid/AIWardrobe/node_modules/jest-mock/build/index.js:397:39
+        at Object.<anonymous> (/Users/v.zahid/AIWardrobe/node_modules/jest-mock/build/index.js:404:13)
+        at Object.mockConstructor [as saveToLibraryAsync] (/Users/v.zahid/AIWardrobe/node_modules/jest-mock/build/index.js:148:19)
+        at Object.handler (eval at harness (/Users/v.zahid/AIWardrobe/__tests__/features/cameraCaptureFlow.test.js:26:19), <anonymous>:24:32)
+
+      at Object.handler (eval at harness (__tests__/features/cameraCaptureFlow.test.js:26:19), <anonymous>:31:17)
+
+FAIL __tests__/features/cameraCaptureFlow.test.js
+  ✕ photo reaches analysis with gallery setting {"gallery":false,"saveFails":false} (15 ms)
+  ✓ photo reaches analysis with gallery setting {"gallery":true,"saveFails":false} (2 ms)
+  ✕ photo reaches analysis with gallery setting {"gallery":true,"saveFails":true} (5 ms)
+  ✓ photo with no captured file does not open analysis (2 ms)
+  ✕ video reaches analysis with gallery setting {"gallery":false,"saveFails":false} (2 ms)
+  ✓ video reaches analysis with gallery setting {"gallery":true,"saveFails":false} (2 ms)
+  ✕ video reaches analysis with gallery setting {"gallery":true,"saveFails":true} (6 ms)
+  ✓ video with no captured file does not open analysis (2 ms)
+  ✓ microphone denial stops video capture and resets recording state (5 ms)
+  ✕ post-paywall activation with 0 garments opens the current feature (9 ms)
+  ✕ post-paywall activation with 2 garments opens the current feature (5 ms)
+  ✓ post-paywall activation with 3 garments opens the current feature (4 ms)
+
+  ● photo reaches analysis with gallery setting {"gallery":false,"saveFails":false}
+
+    expect(jest.fn()).toHaveBeenCalledTimes(expected)
+
+    Expected number of calls: 1
+    Received number of calls: 0
+
+      35 |     const app = harness(kind, options);
+      36 |     await app.handler();
+    > 37 |     expect(app.navigation.navigate).toHaveBeenCalledTimes(1);
+         |                                     ^
+      38 |     expect(app.navigation.navigate).toHaveBeenCalledWith('WardrobeVideo', { [kind === 'photo' ? 'imageUri' : 'videoUri']: 'file:///capture.jpg' });
+      39 |     expect(app.MediaLibrary.saveToLibraryAsync).toHaveBeenCalledTimes(options.gallery ? 1 : 0);
+      40 |     if (kind === 'video') expect(app.setIsRecording).toHaveBeenLastCalledWith(false);
+
+      at toHaveBeenCalledTimes (__tests__/features/cameraCaptureFlow.test.js:37:37)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● photo reaches analysis with gallery setting {"gallery":true,"saveFails":true}
+
+    expect(jest.fn()).toHaveBeenCalledTimes(expected)
+
+    Expected number of calls: 1
+    Received number of calls: 0
+
+      35 |     const app = harness(kind, options);
+      36 |     await app.handler();
+    > 37 |     expect(app.navigation.navigate).toHaveBeenCalledTimes(1);
+         |                                     ^
+      38 |     expect(app.navigation.navigate).toHaveBeenCalledWith('WardrobeVideo', { [kind === 'photo' ? 'imageUri' : 'videoUri']: 'file:///capture.jpg' });
+      39 |     expect(app.MediaLibrary.saveToLibraryAsync).toHaveBeenCalledTimes(options.gallery ? 1 : 0);
+      40 |     if (kind === 'video') expect(app.setIsRecording).toHaveBeenLastCalledWith(false);
+
+      at toHaveBeenCalledTimes (__tests__/features/cameraCaptureFlow.test.js:37:37)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● video reaches analysis with gallery setting {"gallery":false,"saveFails":false}
+
+    expect(jest.fn()).toHaveBeenCalledTimes(expected)
+
+    Expected number of calls: 1
+    Received number of calls: 0
+
+      35 |     const app = harness(kind, options);
+      36 |     await app.handler();
+    > 37 |     expect(app.navigation.navigate).toHaveBeenCalledTimes(1);
+         |                                     ^
+      38 |     expect(app.navigation.navigate).toHaveBeenCalledWith('WardrobeVideo', { [kind === 'photo' ? 'imageUri' : 'videoUri']: 'file:///capture.jpg' });
+      39 |     expect(app.MediaLibrary.saveToLibraryAsync).toHaveBeenCalledTimes(options.gallery ? 1 : 0);
+      40 |     if (kind === 'video') expect(app.setIsRecording).toHaveBeenLastCalledWith(false);
+
+      at toHaveBeenCalledTimes (__tests__/features/cameraCaptureFlow.test.js:37:37)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● video reaches analysis with gallery setting {"gallery":true,"saveFails":true}
+
+    expect(jest.fn()).toHaveBeenCalledTimes(expected)
+
+    Expected number of calls: 1
+    Received number of calls: 0
+
+      35 |     const app = harness(kind, options);
+      36 |     await app.handler();
+    > 37 |     expect(app.navigation.navigate).toHaveBeenCalledTimes(1);
+         |                                     ^
+      38 |     expect(app.navigation.navigate).toHaveBeenCalledWith('WardrobeVideo', { [kind === 'photo' ? 'imageUri' : 'videoUri']: 'file:///capture.jpg' });
+      39 |     expect(app.MediaLibrary.saveToLibraryAsync).toHaveBeenCalledTimes(options.gallery ? 1 : 0);
+      40 |     if (kind === 'video') expect(app.setIsRecording).toHaveBeenLastCalledWith(false);
+
+      at toHaveBeenCalledTimes (__tests__/features/cameraCaptureFlow.test.js:37:37)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● post-paywall activation with 0 garments opens the current feature
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    - Expected
+    + Received
+
+    @@ -3,9 +3,9 @@
+        "routes": Array [
+          Object {
+            "name": "Main",
+          },
+          Object {
+    -       "name": "Camera",
+    +       "name": "ScanWardrobe",
+          },
+        ],
+      },
+
+    Number of calls: 1
+
+      72 |       callback => callback, count, { isReady: () => true }, navigation, callback => callback(),
+      73 |     );
+    > 74 |     expect(navigation.reset).toHaveBeenCalledWith({ index: 1, routes: [
+         |                              ^
+      75 |       { name: 'Main' }, count >= 3 ? { name: 'AIOutfit', params: { source: 'wardrobe' } } : { name: 'Camera' },
+      76 |     ] });
+      77 |   });
+
+      at Object.toHaveBeenCalledWith (__tests__/features/cameraCaptureFlow.test.js:74:30)
+
+  ● post-paywall activation with 2 garments opens the current feature
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    - Expected
+    + Received
+
+    @@ -3,9 +3,9 @@
+        "routes": Array [
+          Object {
+            "name": "Main",
+          },
+          Object {
+    -       "name": "Camera",
+    +       "name": "ScanWardrobe",
+          },
+        ],
+      },
+
+    Number of calls: 1
+
+      72 |       callback => callback, count, { isReady: () => true }, navigation, callback => callback(),
+      73 |     );
+    > 74 |     expect(navigation.reset).toHaveBeenCalledWith({ index: 1, routes: [
+         |                              ^
+      75 |       { name: 'Main' }, count >= 3 ? { name: 'AIOutfit', params: { source: 'wardrobe' } } : { name: 'Camera' },
+      76 |     ] });
+      77 |   });
+
+      at Object.toHaveBeenCalledWith (__tests__/features/cameraCaptureFlow.test.js:74:30)
+
+Test Suites: 1 failed, 1 total
+Tests:       6 failed, 6 passed, 12 total
+Snapshots:   0 total
+Time:        0.479 s, estimated 1 s
+Ran all test suites matching /__tests__\/features\/cameraCaptureFlow.test.js/i.

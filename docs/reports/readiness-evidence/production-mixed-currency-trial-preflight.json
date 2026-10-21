@@ -1,0 +1,128 @@
+{
+  "measuredAt": "2026-10-20T11:03:05.383Z",
+  "scope": "Production budget preflight: input and empty-pool decisions, not generation or capacity certification",
+  "checks": [
+    {
+      "name": "mixed_currency_minimum_exceeds_cap",
+      "status": 422,
+      "latencyMs": 2398,
+      "code": "no_outfit_within_budget",
+      "error": "No complete outfit in the selected clothing pool fits this budget.",
+      "budget": {
+        "amount": 400000,
+        "currency": "UZS"
+      },
+      "minimumShopSpend": 604000,
+      "passed": true
+    },
+    {
+      "name": "live_gym_catalog_cannot_meet_cap",
+      "status": 422,
+      "latencyMs": 5176,
+      "code": "no_outfit_within_budget",
+      "error": "No complete outfit in the selected clothing pool fits this budget.",
+      "budget": {
+        "amount": 3150000,
+        "currency": "UZS"
+      },
+      "minimumShopSpend": 4043000,
+      "passed": true
+    },
+    {
+      "name": "complete_outfit_minimum_exceeds_cap",
+      "status": 422,
+      "latencyMs": 1429,
+      "code": "no_outfit_within_budget",
+      "error": "No complete outfit in the selected clothing pool fits this budget.",
+      "budget": {
+        "amount": 250,
+        "currency": "USD"
+      },
+      "minimumShopSpend": 300,
+      "passed": true
+    },
+    {
+      "name": "mixed_currency_usd_stricter",
+      "status": 422,
+      "latencyMs": 1992,
+      "code": "no_matching_clothing",
+      "error": "No clothing items match your selections. Add suitable items or adjust your preferences.",
+      "budget": {
+        "amount": 100,
+        "currency": "USD"
+      },
+      "passed": true
+    },
+    {
+      "name": "mixed_currency_eur_stricter",
+      "status": 422,
+      "latencyMs": 1865,
+      "code": "no_matching_clothing",
+      "error": "No clothing items match your selections. Add suitable items or adjust your preferences.",
+      "budget": {
+        "amount": 105,
+        "currency": "EUR"
+      },
+      "passed": true
+    },
+    {
+      "name": "selected_cap_cannot_be_raised",
+      "status": 422,
+      "latencyMs": 1305,
+      "code": "no_matching_clothing",
+      "error": "No clothing items match your selections. Add suitable items or adjust your preferences.",
+      "budget": {
+        "amount": 250,
+        "currency": "USD"
+      },
+      "passed": true
+    },
+    {
+      "name": "prompt_can_lower_cap",
+      "status": 422,
+      "latencyMs": 1784,
+      "code": "no_matching_clothing",
+      "error": "No clothing items match your selections. Add suitable items or adjust your preferences.",
+      "budget": {
+        "amount": 100,
+        "currency": "USD"
+      },
+      "passed": true
+    },
+    {
+      "name": "invalid_budget_rejected",
+      "status": 400,
+      "latencyMs": 1037,
+      "error": "invalid_outfit_budget",
+      "passed": true
+    },
+    {
+      "name": "impossible_budget_distinguished",
+      "status": 422,
+      "latencyMs": 1287,
+      "code": "no_items_within_budget",
+      "error": "No clothing items fit this budget. Increase the budget or use owned clothing.",
+      "budget": {
+        "amount": 12600,
+        "currency": "UZS"
+      },
+      "passed": true
+    },
+    {
+      "name": "zero_text_budget_preserved",
+      "status": 422,
+      "latencyMs": 1848,
+      "code": "no_items_within_budget",
+      "error": "No clothing items fit this budget. Increase the budget or use owned clothing.",
+      "budget": {
+        "amount": 0,
+        "currency": "UZS"
+      },
+      "passed": true
+    }
+  ],
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

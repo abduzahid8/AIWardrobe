@@ -1,0 +1,12 @@
+{
+  "providerModel": "nvidia/nemotron-nano-12b-v2-vl",
+  "mode": "single",
+  "measuredAt": "2026-10-19T12:42:05.195Z",
+  "scope": "One direct NVIDIA call through actual source request/parser/validator; no hosted admission or visual-accuracy claim",
+  "observation": {
+    "providerHttpStatus": 410,
+    "providerFailure": true
+  },
+  "failure": "Error",
+  "latencyMs": 1079
+}

@@ -1,0 +1,13 @@
+{
+  "phase": 3,
+  "platform": "android",
+  "passed": true,
+  "checks": [
+    "clean fixture state survives a second force-stop",
+    "completed marker remains absent after restart",
+    "clean startup gate does not repeat bulk deletion",
+    "audit phase fixture removed",
+    "no fetch requests attempted"
+  ],
+  "networkAttempts": 0
+}

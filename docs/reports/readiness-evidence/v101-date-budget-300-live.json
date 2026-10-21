@@ -1,0 +1,71 @@
+{
+  "measuredAt": "2026-10-21T02:03:21.495Z",
+  "scope": "Live NVIDIA category/budget scenarios; not exhaustive accuracy or capacity certification",
+  "checks": [
+    {
+      "name": "date_old_money_300_usd",
+      "status": 200,
+      "latencyMs": 10586,
+      "passed": true,
+      "reasons": [],
+      "spendUzs": 2429800,
+      "capUzs": 3603690,
+      "provider": "nvidia:meta/llama-3.2-11b-vision-instruct",
+      "source": "ai",
+      "items": [
+        {
+          "id": "shop_md-uz-62246011",
+          "name": "100% cotton V-neck knit polo shirt",
+          "macroCategory": "top",
+          "price": 800000,
+          "currency": "UZS",
+          "shopUrl": "https://www.massimodutti.com/uz/en/100-cotton-vneck-knit-polo-l00837175?pelement=62246011"
+        },
+        {
+          "id": "shop_zara-uz-545490391",
+          "name": "100% LINEN SUIT TROUSERS",
+          "macroCategory": "bottom",
+          "price": 849900,
+          "currency": "UZS",
+          "shopUrl": "https://www.zara.com/uz/en/100-linen-suit-trousers-p04410411.html?v1=545490391"
+        },
+        {
+          "id": "shop_zara-uz-545423041",
+          "name": "DRESS PENNY LOAFERS",
+          "macroCategory": "shoes",
+          "price": 779900,
+          "currency": "UZS",
+          "shopUrl": "https://www.zara.com/uz/en/penny-dress-loafers-p12685720.html?v1=545423041"
+        }
+      ],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "meta/llama-3.2-11b-vision-instruct",
+          "status": "ok"
+        },
+        {
+          "provider": "nvidia",
+          "model": "meta/llama-3.2-11b-vision-instruct",
+          "status": "ok"
+        }
+      ]
+    }
+  ],
+  "reference": {
+    "id": "CBU:2026-10-21:12012.3:13466.99:16026.81",
+    "source": "CBU",
+    "asOf": "2026-10-21",
+    "fetchedAt": "2026-10-21T01:51:20.012Z",
+    "uzsPerUnit": {
+      "USD": 12012.3,
+      "EUR": 13466.99,
+      "GBP": 16026.81,
+      "UZS": 1
+    }
+  },
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

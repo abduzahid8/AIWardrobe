@@ -1,0 +1,47 @@
+{
+  "projectRef": "fyqpifmrsftsfqibhwhy",
+  "function": "ai-process",
+  "deployed": true,
+  "sourceSha256": "98f8d6d362a5cbdfae2051647eb716bbf5cf6ff961e0ea87d31e11533af85ed4",
+  "changes": [
+    "Provider errors/malformed or invalid classification return503 successfalse with null classification",
+    "No generic fabricated clothing/color/style fallback",
+    "Recognized category determines section",
+    "Provider confidence preserved if reported; zero denotes unknown and is hidden in editor",
+    "45-second deadline includes response-body consumption",
+    "Layer instructions keep all attributes tied to one garment"
+  ],
+  "controlledTests": {
+    "beforeFailed": 12,
+    "classificationCasesAfterPassed": 14,
+    "admissionCasesAfterPassed": 8,
+    "stagedAndLocalDeno": "passed"
+  },
+  "live": {
+    "invalidImageFailureContract": "passed twice",
+    "initialSchemaPhoto": "200 but VISUAL FAILURE: mixed green draped knit with beige jacket",
+    "layerInstructionRetest": "503 for legitimate layered image; accuracy/reliability FAILED",
+    "fixturesDeleted": 2,
+    "independentRemainingUsers": 0
+  },
+  "client": {
+    "iosNormalHermesExport": "passed",
+    "androidArm64Release": "passed",
+    "editorSourceMaps": "exact match",
+    "nativeConfidenceBadgeRendering": "not exercised"
+  },
+  "limitations": [
+    "Not a successful scan accuracy certification: the valid layered-photo retest fails.",
+    "Validated JSON does not prove visual accuracy.",
+    "Material inference and ambiguous multi-garment images remain unverified.",
+    "Reported confidence is model output, not calibrated probability.",
+    "Provider failures after admission still consume an attempt.",
+    "Customer app installation and full 10000DAU capacity remain unproven."
+  ],
+  "fullAppTests": {
+    "passed": 1598,
+    "suites": 140,
+    "typescript": "passed"
+  },
+  "laterFormatFixEvidence": "scan-classification-format-fix.json"
+}

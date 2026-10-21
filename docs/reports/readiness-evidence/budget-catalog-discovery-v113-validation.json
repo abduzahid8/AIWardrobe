@@ -1,0 +1,93 @@
+{
+  "measuredAt": "2026-10-21T14:05:32.536498+00:00",
+  "scope": "Budget-aware catalog candidate discovery. Full10000DAU readiness remains unproven.",
+  "deployment": {
+    "version": 113,
+    "verifyJwt": true,
+    "exactFiles": 12,
+    "sharedFilesUnchanged": 11,
+    "entrySha256": "71d55df45afd390346bd1aa951a8a64bde47bd9531b4e5cb6f9e418f5b513996"
+  },
+  "database": {
+    "migration": "backend/supabase/migrations/20261021131227_budget_catalog_candidates.sql",
+    "sha256": "411e5cea9ac5903ea459b6de1c673876c8054ff3c53f09ec9cac26b96403d749",
+    "appliedUsing": "execute_sql; migration history reconciliation not performed",
+    "securityInvoker": true,
+    "searchPathEmpty": true,
+    "executeGrants": {
+      "anon": false,
+      "authenticated": false,
+      "service_role": true
+    },
+    "securityAdvisorMentionsNewFunction": false,
+    "otherAdvisorWarningsRemain": true,
+    "single100RowQueryExecutionMs": 7.506
+  },
+  "databaseChecks": [
+    "mixed currency normalized cost order",
+    "equal cost ID cursor",
+    "null/unpriced rows sort last and remain pageable",
+    "invalid rates rejected",
+    "backend-only grants confirmed",
+    "transaction fixtures fully rolled back"
+  ],
+  "regressions": {
+    "idOrderedExpensivePageHidAffordableLaterBottom": {
+      "before": 422,
+      "after": 200
+    },
+    "sixProvidedShopChoicesSuppressedAffordableCatalogLookup": {
+      "before": 422,
+      "after": 200
+    },
+    "exactCostTextCursor": "pass",
+    "cheapCandidateSurvivesHigherStyleScore": "pass",
+    "malformedCostRejected": "pass"
+  },
+  "validation": {
+    "stagedFocusedTests": 88,
+    "stagedFocusedSuites": 2,
+    "fullTests": 2226,
+    "fullSuites": 175,
+    "typescript": "pass",
+    "stagedDeno": "pass"
+  },
+  "realReadEvidence": "budget-catalog-discovery-real-read-v113.json",
+  "initialReadHarnessFailure": "budget-catalog-discovery-expired-reference-attempt.json; cache snapshot expired; harness corrected to use real production cache refresh rather than stale-only validation",
+  "loadEvidence": "budget-catalog-rpc-load-v113.json",
+  "loadSummary": {
+    "requests": 2620,
+    "failed": 0,
+    "dropped": 0,
+    "peakRps": 40,
+    "peakScheduledSeconds": 60,
+    "peakRequests": 2400,
+    "clientObservedPeakP95Ms": 1438,
+    "clientObservedPeakP99Ms": 2259
+  },
+  "hostedTightBudgetEvidence": "v113-tight-budget-hosted-smoke-20261021.json",
+  "hostedResult": {
+    "status": 503,
+    "latencyMs": 50484,
+    "provider": "NVIDIA meta/llama-3.2-11b-vision-instruct",
+    "providerStatus": "timeout",
+    "passed": false
+  },
+  "cleanupIndependent": {
+    "auditUsers": 0,
+    "fixtureGarments": 0,
+    "catalogFixtures": 0,
+    "authUsers": 111,
+    "profiles": 111,
+    "garments": 109
+  },
+  "limitations": [
+    "A global minimum per slot does not prove all category combinations are coherent or provider output is valid.",
+    "Real-catalog exhaustive comparison used casual/Everyday20C and three slots in Node; not every occasion, budget or installed UI.",
+    "The new RPC sorts matching catalog rows in Postgres; future larger catalogs need query-plan and capacity review.",
+    "Pagination does not freeze catalog inventory across requests.",
+    "RPC load is direct backend reads, not full generation/auth/media/billing or10000-owner cardinality.",
+    "NVIDIA hosted tight-budget test timed out; no hosted successful tight-budget claim.",
+    "Retailer current prices/stock, native provider sessions, purchases and operational gaps remain in the full readiness report."
+  ]
+}

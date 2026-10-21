@@ -1,0 +1,128 @@
+FAIL __tests__/backend/analyzeOutfitOwnership.test.js
+  ✓ payload userId cannot select another owner through the service role (3 ms)
+  ✓ authentication failure stops before provider work or wardrobe reads (1 ms)
+  ✓ rejects invalid image shape or size before external work (1 ms)
+  ✓ rejects invalid image shape or size before external work
+  ✓ rejects invalid image shape or size before external work
+  ✓ rejects invalid image shape or size before external work (41 ms)
+  ✓ analysis admission denial 403 prevents wardrobe and provider access
+  ✓ analysis admission denial 429 prevents wardrobe and provider access (1 ms)
+  ✓ analysis admission denial 503 prevents wardrobe and provider access
+  ✓ the actual outfit image stays in the final user message after the JSON-array example (1 ms)
+  ✕ matching color, style and pattern never makes trousers similar to a jacket (2 ms)
+  ✕ missing clothing types never earn an empty-string category match
+  ✕ t-shirt is not a substring match for shirt; typed broad categories use their specific garment type (1 ms)
+  ✕ primary_color participates in ranking and legitimate trouser aliases match
+
+  ● matching color, style and pattern never makes trousers similar to a jacket
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  -  1
+    + Received  + 10
+
+    - Array []
+    + Array [
+    +   Object {
+    +     "category": "pants",
+    +     "color": "beige",
+    +     "id": "wrong-slot",
+    +     "matchScore": 90,
+    +     "pattern": "solid",
+    +     "style": "casual",
+    +   },
+    + ]
+
+      78 | test('matching color, style and pattern never makes trousers similar to a jacket',async()=>{
+      79 |  const result=await recommendations({detected:[{category:'jacket',primaryColor:'beige',style:'casual',pattern:'solid'}],wardrobe:[{id:'wrong-slot',category:'pants',color:'beige',style:'casual',pattern:'solid'}],shop:[{id:'wrong-shop-slot',garment_type:'pants',name:'beige casual pants'}]});
+    > 80 |  expect(result.similarFromWardrobe).toEqual([]);expect(result.similarFromShop).toEqual([]);
+         |                                     ^
+      81 | });
+      82 | test('missing clothing types never earn an empty-string category match',async()=>{
+      83 |  const result=await recommendations({detected:[{category:'shirt',primaryColor:'white'}],wardrobe:[{id:'unknown',color:'white'}],shop:[{id:'unknown-shop',name:'white shirt'}]});
+
+      at Object.toEqual (__tests__/backend/analyzeOutfitOwnership.test.js:80:37)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● missing clothing types never earn an empty-string category match
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 7
+
+    - Array []
+    + Array [
+    +   Object {
+    +     "color": "white",
+    +     "id": "unknown",
+    +     "matchScore": 75,
+    +   },
+    + ]
+
+      82 | test('missing clothing types never earn an empty-string category match',async()=>{
+      83 |  const result=await recommendations({detected:[{category:'shirt',primaryColor:'white'}],wardrobe:[{id:'unknown',color:'white'}],shop:[{id:'unknown-shop',name:'white shirt'}]});
+    > 84 |  expect(result.similarFromWardrobe).toEqual([]);expect(result.similarFromShop).toEqual([]);
+         |                                     ^
+      85 | });
+      86 | test('t-shirt is not a substring match for shirt; typed broad categories use their specific garment type',async()=>{
+      87 |  const result=await recommendations({wardrobe:[{id:'tshirt',category:'t-shirt',color:'white'},{id:'shirt',category:'tops',type:'shirt',primary_color:'white'}],shop:[{id:'shop-tshirt',garment_type:'t-shirt',name:'white tshirt'},{id:'shop-shirt',category:'tops',garment_type:'shirt',name:'white shirt'}]});
+
+      at Object.toEqual (__tests__/backend/analyzeOutfitOwnership.test.js:84:37)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● t-shirt is not a substring match for shirt; typed broad categories use their specific garment type
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 0
+    + Received  + 1
+
+      Array [
+    +   "tshirt",
+        "shirt",
+      ]
+
+      86 | test('t-shirt is not a substring match for shirt; typed broad categories use their specific garment type',async()=>{
+      87 |  const result=await recommendations({wardrobe:[{id:'tshirt',category:'t-shirt',color:'white'},{id:'shirt',category:'tops',type:'shirt',primary_color:'white'}],shop:[{id:'shop-tshirt',garment_type:'t-shirt',name:'white tshirt'},{id:'shop-shirt',category:'tops',garment_type:'shirt',name:'white shirt'}]});
+    > 88 |  expect(result.similarFromWardrobe.map(i=>i.id)).toEqual(['shirt']);expect(result.similarFromShop.map(i=>i.id)).toEqual(['shop-shirt']);
+         |                                                  ^
+      89 | });
+      90 | test('primary_color participates in ranking and legitimate trouser aliases match',async()=>{
+      91 |  const result=await recommendations({detected:[{category:'pants',primaryColor:'green'}],wardrobe:[{id:'wrong-color',category:'pants',primary_color:'red'},{id:'same-color',category:'trousers',primary_color:'green'}]});
+
+      at Object.toEqual (__tests__/backend/analyzeOutfitOwnership.test.js:88:50)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● primary_color participates in ranking and legitimate trouser aliases match
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Array [
+    -   "same-color",
+        "wrong-color",
+    +   "same-color",
+      ]
+
+      90 | test('primary_color participates in ranking and legitimate trouser aliases match',async()=>{
+      91 |  const result=await recommendations({detected:[{category:'pants',primaryColor:'green'}],wardrobe:[{id:'wrong-color',category:'pants',primary_color:'red'},{id:'same-color',category:'trousers',primary_color:'green'}]});
+    > 92 |  expect(result.similarFromWardrobe.map(i=>i.id)).toEqual(['same-color','wrong-color']);
+         |                                                  ^
+      93 | });
+      94 |
+
+      at Object.toEqual (__tests__/backend/analyzeOutfitOwnership.test.js:92:50)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+Test Suites: 1 failed, 1 total
+Tests:       4 failed, 10 passed, 14 total
+Snapshots:   0 total
+Time:        0.67 s, estimated 1 s
+Ran all test suites matching /__tests__\/backend\/analyzeOutfitOwnership.test.js/i.

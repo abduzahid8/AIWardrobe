@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-16",
+  "scope": "Root npm production dependency graph including build tooling",
+  "before": {
+    "info": 0,
+    "low": 0,
+    "moderate": 14,
+    "high": 23,
+    "critical": 1,
+    "total": 38
+  },
+  "after": {
+    "info": 0,
+    "low": 0,
+    "moderate": 14,
+    "high": 23,
+    "critical": 0,
+    "total": 37
+  },
+  "change": "Exact shell-quote 1.11.0 override; root resolution changed from 1.10.0; no lifecycle scripts",
+  "advisory": "https://github.com/advisories/GHSA-pqg4-j6r4-53mv",
+  "verification": {
+    "line_terminators_rejected": 4,
+    "ordinary_quote_parse_roundtrip": "passed",
+    "shell_execution": "none",
+    "npm_ls_problems": [],
+    "jest_tests": 1098,
+    "jest_suites": 93,
+    "typescript": "passed",
+    "ios_hermes_export": "passed",
+    "android_hermes_export": "passed",
+    "whitespace": "passed"
+  },
+  "lockfile_note": "npm also synchronized preexisting direct devDependency jsonwebtoken 9.0.3 and dev flags of its dependencies; those versions did not change",
+  "limitations": [
+    "37 audit findings remain; severity is dependency graph evidence, not exploit reachability",
+    "No backend dependency audit in this run",
+    "Private env exact-byte bundle scan had zero nonempty candidate secrets and cannot establish absence of secrets",
+    "No native release build or deployment"
+  ]
+}

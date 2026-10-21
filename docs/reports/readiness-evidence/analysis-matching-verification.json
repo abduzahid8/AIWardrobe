@@ -1,0 +1,31 @@
+{
+  "measuredAt": "2026-10-19T11:55:39.734285+00:00",
+  "regressionsBefore": {
+    "failed": 4,
+    "passed": 10
+  },
+  "latestFullSuite": {
+    "passed": 1632,
+    "suites": 141
+  },
+  "denoCheck": "pass",
+  "liveChecks": {
+    "passed": 6,
+    "requestLatencyMs": 36301,
+    "jacketRecommendations": 1,
+    "crossCategoryRecommendations": 0,
+    "remainingTaggedAccounts": 0,
+    "boundary": "Live check preceded final catalog-title parser; final title cases covered offline only"
+  },
+  "catalogInventory": {
+    "upper_body_tops": 1119,
+    "lower_body_bottoms": 308,
+    "shoes": 102
+  },
+  "limitations": [
+    "Unknown/ambiguous product titles withheld; no catalog-wide type certification",
+    "Existing wardrobe200/catalog500 selection caps",
+    "Unvalidated provider fields/parser completeness and actual visual accuracy",
+    "Provider latency and realistic mixed capacity"
+  ]
+}

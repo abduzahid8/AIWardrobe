@@ -1,0 +1,401 @@
+{
+  "columns": [
+    {
+      "column_name": "id",
+      "data_type": "uuid",
+      "table_name": "payments"
+    },
+    {
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "table_name": "payments"
+    },
+    {
+      "column_name": "subscription_id",
+      "data_type": "uuid",
+      "table_name": "payments"
+    },
+    {
+      "column_name": "amount",
+      "data_type": "numeric",
+      "table_name": "payments"
+    },
+    {
+      "column_name": "currency",
+      "data_type": "text",
+      "table_name": "payments"
+    },
+    {
+      "column_name": "status",
+      "data_type": "text",
+      "table_name": "payments"
+    },
+    {
+      "column_name": "product_id",
+      "data_type": "text",
+      "table_name": "payments"
+    },
+    {
+      "column_name": "transaction_id",
+      "data_type": "text",
+      "table_name": "payments"
+    },
+    {
+      "column_name": "platform",
+      "data_type": "text",
+      "table_name": "payments"
+    },
+    {
+      "column_name": "receipt_data",
+      "data_type": "text",
+      "table_name": "payments"
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "table_name": "payments"
+    },
+    {
+      "column_name": "source",
+      "data_type": "text",
+      "table_name": "processed_webhooks"
+    },
+    {
+      "column_name": "event_id",
+      "data_type": "text",
+      "table_name": "processed_webhooks"
+    },
+    {
+      "column_name": "processed_at",
+      "data_type": "timestamp with time zone",
+      "table_name": "processed_webhooks"
+    },
+    {
+      "column_name": "id",
+      "data_type": "uuid",
+      "table_name": "profiles"
+    },
+    {
+      "column_name": "email",
+      "data_type": "text",
+      "table_name": "profiles"
+    },
+    {
+      "column_name": "username",
+      "data_type": "text",
+      "table_name": "profiles"
+    },
+    {
+      "column_name": "gender",
+      "data_type": "text",
+      "table_name": "profiles"
+    },
+    {
+      "column_name": "profile_image",
+      "data_type": "text",
+      "table_name": "profiles"
+    },
+    {
+      "column_name": "subscription_tier",
+      "data_type": "text",
+      "table_name": "profiles"
+    },
+    {
+      "column_name": "subscription_expires_at",
+      "data_type": "timestamp with time zone",
+      "table_name": "profiles"
+    },
+    {
+      "column_name": "failed_login_attempts",
+      "data_type": "integer",
+      "table_name": "profiles"
+    },
+    {
+      "column_name": "locked_until",
+      "data_type": "timestamp with time zone",
+      "table_name": "profiles"
+    },
+    {
+      "column_name": "last_failed_login",
+      "data_type": "timestamp with time zone",
+      "table_name": "profiles"
+    },
+    {
+      "column_name": "last_login_at",
+      "data_type": "timestamp with time zone",
+      "table_name": "profiles"
+    },
+    {
+      "column_name": "last_login_ip",
+      "data_type": "text",
+      "table_name": "profiles"
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "table_name": "profiles"
+    },
+    {
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "table_name": "profiles"
+    },
+    {
+      "column_name": "is_admin",
+      "data_type": "boolean",
+      "table_name": "profiles"
+    },
+    {
+      "column_name": "trial_started_at",
+      "data_type": "timestamp with time zone",
+      "table_name": "profiles"
+    },
+    {
+      "column_name": "admin_role",
+      "data_type": "text",
+      "table_name": "profiles"
+    },
+    {
+      "column_name": "admin_assigned_at",
+      "data_type": "timestamp with time zone",
+      "table_name": "profiles"
+    },
+    {
+      "column_name": "admin_assigned_by",
+      "data_type": "uuid",
+      "table_name": "profiles"
+    },
+    {
+      "column_name": "id",
+      "data_type": "uuid",
+      "table_name": "subscriptions"
+    },
+    {
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "table_name": "subscriptions"
+    },
+    {
+      "column_name": "tier",
+      "data_type": "text",
+      "table_name": "subscriptions"
+    },
+    {
+      "column_name": "status",
+      "data_type": "text",
+      "table_name": "subscriptions"
+    },
+    {
+      "column_name": "start_date",
+      "data_type": "timestamp with time zone",
+      "table_name": "subscriptions"
+    },
+    {
+      "column_name": "end_date",
+      "data_type": "timestamp with time zone",
+      "table_name": "subscriptions"
+    },
+    {
+      "column_name": "product_id",
+      "data_type": "text",
+      "table_name": "subscriptions"
+    },
+    {
+      "column_name": "platform",
+      "data_type": "text",
+      "table_name": "subscriptions"
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "table_name": "subscriptions"
+    },
+    {
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "table_name": "subscriptions"
+    },
+    {
+      "column_name": "trial_end_date",
+      "data_type": "timestamp with time zone",
+      "table_name": "subscriptions"
+    },
+    {
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "table_name": "usage_counters"
+    },
+    {
+      "column_name": "feature",
+      "data_type": "text",
+      "table_name": "usage_counters"
+    },
+    {
+      "column_name": "day",
+      "data_type": "date",
+      "table_name": "usage_counters"
+    },
+    {
+      "column_name": "used",
+      "data_type": "integer",
+      "table_name": "usage_counters"
+    },
+    {
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "table_name": "usage_counters"
+    }
+  ],
+  "constraints": [
+    {
+      "conname": "profiles_admin_assigned_by_fkey",
+      "definition": "FOREIGN KEY (admin_assigned_by) REFERENCES profiles(id) ON DELETE SET NULL",
+      "table_name": "profiles"
+    },
+    {
+      "conname": "profiles_admin_role_check",
+      "definition": "CHECK ((admin_role = ANY (ARRAY['super_admin'::text, 'admin'::text, 'moderator'::text])))",
+      "table_name": "profiles"
+    },
+    {
+      "conname": "profiles_email_key",
+      "definition": "UNIQUE (email)",
+      "table_name": "profiles"
+    },
+    {
+      "conname": "profiles_gender_check",
+      "definition": "CHECK ((gender = ANY (ARRAY['male'::text, 'female'::text, 'other'::text, 'prefer_not_to_say'::text])))",
+      "table_name": "profiles"
+    },
+    {
+      "conname": "profiles_id_fkey",
+      "definition": "FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE",
+      "table_name": "profiles"
+    },
+    {
+      "conname": "profiles_pkey",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "profiles"
+    },
+    {
+      "conname": "profiles_subscription_tier_check",
+      "definition": "CHECK ((subscription_tier = ANY (ARRAY['free'::text, 'lite'::text, 'premium'::text, 'vip'::text])))",
+      "table_name": "profiles"
+    },
+    {
+      "conname": "subscriptions_pkey",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "subscriptions"
+    },
+    {
+      "conname": "subscriptions_status_check",
+      "definition": "CHECK ((status = ANY (ARRAY['active'::text, 'trial'::text, 'cancelled'::text, 'expired'::text])))",
+      "table_name": "subscriptions"
+    },
+    {
+      "conname": "subscriptions_tier_check",
+      "definition": "CHECK ((tier = ANY (ARRAY['free'::text, 'lite'::text, 'premium'::text, 'vip'::text])))",
+      "table_name": "subscriptions"
+    },
+    {
+      "conname": "subscriptions_user_id_fkey",
+      "definition": "FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE",
+      "table_name": "subscriptions"
+    },
+    {
+      "conname": "payments_pkey",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "payments"
+    },
+    {
+      "conname": "payments_subscription_id_fkey",
+      "definition": "FOREIGN KEY (subscription_id) REFERENCES subscriptions(id) ON DELETE SET NULL",
+      "table_name": "payments"
+    },
+    {
+      "conname": "payments_user_id_fkey",
+      "definition": "FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE",
+      "table_name": "payments"
+    }
+  ],
+  "functions": [
+    {
+      "arguments": "p_feature text, p_limit integer, p_amount integer",
+      "proname": "check_and_increment_usage"
+    },
+    {
+      "arguments": "",
+      "proname": "is_admin"
+    }
+  ],
+  "policies": [
+    {
+      "cmd": "INSERT",
+      "policyname": "Users can insert own profile",
+      "qual": null,
+      "tablename": "profiles",
+      "with_check": "(auth.uid() = id)"
+    },
+    {
+      "cmd": "UPDATE",
+      "policyname": "Users can update own profile",
+      "qual": "(auth.uid() = id)",
+      "tablename": "profiles",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "policyname": "Users can view own profile",
+      "qual": "(auth.uid() = id)",
+      "tablename": "profiles",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "policyname": "Users can insert own subscriptions",
+      "qual": null,
+      "tablename": "subscriptions",
+      "with_check": "(auth.uid() = user_id)"
+    },
+    {
+      "cmd": "UPDATE",
+      "policyname": "Users can update own subscriptions",
+      "qual": "(auth.uid() = user_id)",
+      "tablename": "subscriptions",
+      "with_check": "(auth.uid() = user_id)"
+    },
+    {
+      "cmd": "SELECT",
+      "policyname": "Users can view own subscriptions",
+      "qual": "(auth.uid() = user_id)",
+      "tablename": "subscriptions",
+      "with_check": null
+    }
+  ],
+  "profile_tiers": [
+    {
+      "count": 1,
+      "tier": "vip"
+    },
+    {
+      "count": 101,
+      "tier": "free"
+    },
+    {
+      "count": 9,
+      "tier": "premium"
+    }
+  ],
+  "profile_triggers": [
+    {
+      "definition": "CREATE TRIGGER set_profiles_updated_at BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION set_updated_at()",
+      "tgname": "set_profiles_updated_at"
+    }
+  ],
+  "subscription_statuses": [
+    {
+      "count": 3,
+      "status": "active"
+    }
+  ]
+}

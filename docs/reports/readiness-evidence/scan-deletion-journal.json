@@ -1,0 +1,35 @@
+{
+  "change": "Persist explicit managed-media deletion intents before durable queue removal; reconcile intents and interrupted temporary copies after queue hydration/flush, even offline. Active transactions and current-owner references are protected. Unqueued cancelled copies are removed without touching originals, and failed automatic queue writes restore recoverable records.",
+  "verification": {
+    "fullJest": {
+      "tests": 1835,
+      "suites": 151,
+      "result": "pass"
+    },
+    "focusedQueueCases": 30,
+    "typeScript": "pass",
+    "iosHermes": "pass",
+    "androidArm64Release": "pass",
+    "sourceMaps": {
+      "ios": {
+        "src/services/pendingScanMedia.ts": true,
+        "src/services/uploadQueueProcessor.ts": true,
+        "src/features/wardrobe/useVideoAnalysis.ts": true
+      },
+      "android": {
+        "src/services/pendingScanMedia.ts": true,
+        "src/services/uploadQueueProcessor.ts": true,
+        "src/features/wardrobe/useVideoAnalysis.ts": true
+      }
+    }
+  },
+  "osEvidence": "pending-scan-reconciliation.json",
+  "durabilityEvidence": "pending-scan-durability.json",
+  "scope": "Actual production module through OS-file adapter and child-process restart plus hook/worker tests; not full installed-app crash/power-loss testing",
+  "remaining": [
+    "Committed unmarked captures are retained; recovery/enqueue or review UX remains unfinished",
+    "Completed analysis results still live in hook memory; queue entries/media are removed before the user finishes review/save, so result durability across an app crash remains unfinished",
+    "Native Expo process-kill/storage-failure and power-loss matrix remains unverified",
+    "All provider accuracy/capacity, purchase/authentication/operations readiness gaps remain open"
+  ]
+}

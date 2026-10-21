@@ -8,14 +8,14 @@
  * <TouchableOpacity onPress={() => confirmRemoveItem(item.id, item.name)}>
  */
 import { Alert } from 'react-native';
-import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n';
 import useWardrobeStore from '../../store/wardrobeStore';
 
 /**
  * Show confirmation dialog before removing a clothing item.
  */
 export const confirmRemoveItem = (itemId: string, itemName?: string): void => {
-    const { t } = useTranslation();
+    const t = i18n.t.bind(i18n);
     const label = itemName || t('confirmations.thisItem');
     Alert.alert(
         t('confirmations.removeItem'),
@@ -35,7 +35,7 @@ export const confirmRemoveItem = (itemId: string, itemName?: string): void => {
  * Show confirmation dialog before deleting an outfit.
  */
 export const confirmDeleteOutfit = (outfitId: string, outfitName?: string): void => {
-    const { t } = useTranslation();
+    const t = i18n.t.bind(i18n);
     const label = outfitName || t('confirmations.thisOutfit');
     Alert.alert(
         t('confirmations.deleteOutfit'),
@@ -66,7 +66,7 @@ export const confirmDestructive = (
     onConfirm: () => void,
     confirmLabel?: string,
 ): void => {
-    const { t } = useTranslation();
+    const t = i18n.t.bind(i18n);
     const label = confirmLabel || t('common.delete');
     Alert.alert(title, message, [
         { text: t('common.cancel'), style: 'cancel' },

@@ -1,0 +1,15 @@
+{
+  "date": "2026-10-20",
+  "project": "fyqpifmrsftsfqibhwhy",
+  "function": "generate-outfits",
+  "beforeVersion": 94,
+  "afterVersion": 95,
+  "verifyJwtRetained": true,
+  "modifiedFiles": [
+    "functions/generate-outfits/index.ts"
+  ],
+  "otherDeployedModulesUnchanged": true,
+  "stagedDenoCheck": true,
+  "stagedHandlerTests": 25,
+  "scope": "Unknown-price budget guard edits staged against downloaded live source; unrelated working-copy changes excluded. No provider success or 10000 DAU capacity certification."
+}

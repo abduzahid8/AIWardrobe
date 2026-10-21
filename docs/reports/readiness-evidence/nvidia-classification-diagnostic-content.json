@@ -1,0 +1,17 @@
+{
+  "measuredAt": "2026-10-19T06:56:11.603Z",
+  "scope": "One direct NVIDIA diagnostic using actual staged handler with controlled Auth/config; no production admission claim",
+  "providerResponses": [
+    {
+      "status": 200,
+      "finishReason": "stop",
+      "contentLength": 426,
+      "fixtureContentPreview": "The primary clothing item in this image is a jacket. The jacket is a casual, beige-colored garment with a green scarf draped over the shoulders. It has a relaxed fit and appears to be made of a lightweight material, possibly cotton or linen. The jacket is worn over a black shirt and blue jeans, and is paired with brown shoes. The overall style of the outfit is casual and laid-back, with a focus on comfort and practicality.",
+      "parsed": null
+    }
+  ],
+  "handlerStatus": 503,
+  "latencyMs": 5047,
+  "acceptedClassification": null,
+  "error": "ai_classification_unavailable"
+}

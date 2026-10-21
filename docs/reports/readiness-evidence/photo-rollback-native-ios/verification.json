@@ -1,0 +1,36 @@
+{
+  "before": {
+    "tests": 10,
+    "failed": 3,
+    "passed": 7,
+    "scope": "Preview rejection, supplied-preview rejection and post-staging cap rejection leave files without rollback"
+  },
+  "after": {
+    "focusedTests": 33,
+    "focusedSuites": 2,
+    "fullTests": 1390,
+    "fullSuites": 120,
+    "typecheckPassed": true,
+    "eslintErrors": 0,
+    "eslintWarnings": 8
+  },
+  "native": {
+    "platform": "ios",
+    "processPid": 2992,
+    "checks": 14,
+    "fileReads": 6,
+    "externalFetchAttempts": 0,
+    "ownerFixtureDirectoryAbsentAfterAuditCleanup": true
+  },
+  "sourceSha256": {
+    "store/slices/wardrobeItemsSlice.ts": "477e7adeefd8459776452164f241d1758014146d22117998148087cfd02c2827",
+    "__tests__/store/wardrobePhotoStaging.test.ts": "9766a6a5e9197dcb7346bac929cb36a7e262a100613c3e2b506e20a1a8625292",
+    "scripts/validation/photo-rollback-native-entry.tsx": "0d7a31e7ec7b81e331d09756ad6858d106b05b136295dd388e4f3bd2abcd555f"
+  },
+  "limitations": [
+    "Native audit overrides preview production to exercise failure/retention branches; codec itself verified separately",
+    "Sync rejection uses an in-memory fixture store and throwing sync function, not a cloud/offline durability test",
+    "Android rollback protocol not yet run natively",
+    "Filesystem refusal of rollback deletion is reported; no durable per-save orphan retry journal added"
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "measuredAt": "2026-10-21T17:07:21.138676+00:00",
+  "classification": "progress",
+  "localChanges": [
+    "Pass layered flag on primary NVIDIA request",
+    "Remove constant reassignment after format correction"
+  ],
+  "tests": {
+    "localFull": {
+      "tests": 2264,
+      "suites": 175,
+      "passed": true
+    },
+    "hostedFullHandlerFocused": {
+      "tests": 81,
+      "passed": true
+    }
+  },
+  "providerInvestigations": [
+    "v115-old-money-provider-diagnostic.json",
+    "nvidia-minimal-control-20261021-evening.json"
+  ],
+  "productionRoutingChanged": false,
+  "auditUsersRemaining": 0,
+  "goalAchieved": false
+}

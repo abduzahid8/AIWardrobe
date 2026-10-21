@@ -12,7 +12,7 @@
  * deckDedupe assembly gate (same rule as AIOutfitmaker).
  */
 
-import { SHOP_CATALOG_ITEMS } from '../../data/shopCatalogItems';
+import { TEST_SHOP_CATALOG as SHOP_CATALOG_ITEMS } from '../fixtures/shopCatalog';
 import { CLASSIC_MENS_ITEMS } from '../../data/inspoMensShopItems';
 import {
   canonicalizeMacroCategory,

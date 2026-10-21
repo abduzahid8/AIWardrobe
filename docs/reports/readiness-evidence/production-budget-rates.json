@@ -1,0 +1,68 @@
+{
+  "measuredAt": "2026-10-20T11:42:07.510Z",
+  "scope": "Dated reference-rate service and cache permissions; not outfit integration, checkout FX or 10000 DAU certification",
+  "checks": [
+    {
+      "name": "anonymous_cannot_use_rate_endpoint",
+      "status": 401,
+      "latencyMs": 1198,
+      "passed": true
+    },
+    {
+      "name": "free_authenticated_account_receives_valid_reference_snapshot",
+      "status": 200,
+      "latencyMs": 4767,
+      "passed": true
+    },
+    {
+      "name": "fresh_cache_snapshot_reused",
+      "status": 200,
+      "latencyMs": 1639,
+      "passed": true
+    },
+    {
+      "name": "anonymous_table_read_denied",
+      "status": 401,
+      "latencyMs": 409,
+      "passed": true
+    },
+    {
+      "name": "client_cannot_replace_reference_values",
+      "status": 403,
+      "latencyMs": 417,
+      "passed": true
+    },
+    {
+      "name": "client_cannot_insert_reference_values",
+      "status": 403,
+      "latencyMs": 525,
+      "passed": true
+    },
+    {
+      "name": "endpoint_has_no_client_write_method",
+      "status": 405,
+      "latencyMs": 198,
+      "passed": true
+    }
+  ],
+  "snapshot": {
+    "id": "CBU:2026-10-20:12044.72:13525.02:16062.84",
+    "source": "CBU",
+    "asOf": "2026-10-20",
+    "fetchedAt": "2026-10-20T11:42:13.352Z",
+    "uzsPerUnit": {
+      "USD": 12044.72,
+      "EUR": 13525.02,
+      "GBP": 16062.84,
+      "UZS": 1
+    }
+  },
+  "referenceExample": {
+    "EUR100InUSD": 112.29003247896175,
+    "asOf": "2026-10-20"
+  },
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

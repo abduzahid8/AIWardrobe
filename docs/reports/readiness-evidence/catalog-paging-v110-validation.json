@@ -1,0 +1,68 @@
+{
+  "scope": "Bounded ordered catalog paging and truthful lookup failure; no full-app capacity certification",
+  "version": 110,
+  "baseline": 109,
+  "verify_jwt": true,
+  "package": {
+    "only_entrypoint_changed": true,
+    "all_files_match": 12,
+    "shared_unchanged": 11,
+    "entry_sha256": "1062ad2debf3b8f3bf3633eee207494580e60372776266a23a022fc23138f693"
+  },
+  "regression_before": {
+    "first_page_gap_failed": 1,
+    "existing_tests_passed": 3
+  },
+  "after": {
+    "focused_staged_tests": 76,
+    "full_tests": 2214,
+    "full_suites": 175,
+    "typescript": "pass",
+    "staged_deno": "pass"
+  },
+  "behavior": [
+    "Fetch100-row pages ordered by unique ID, advancing with a greater-than cursor",
+    "Continue until enough distinct eligible non-excluded products are found or the query is exhausted",
+    "Excluded products are reused only after no sufficient fresh products remain in the examined/exhausted search",
+    "One15second deadline covers every slot/page and aborts transport; uncooperative requests still settle",
+    "Failed or timed-out catalog searches return503/catalog_lookup_unavailable rather than using partial search to claim no matching clothes"
+  ],
+  "public_read_proof": {
+    "report": "catalog-keyset-public-read-v110.json",
+    "helper_requests": 2,
+    "latencyMs": 1793,
+    "passed": true,
+    "scope": "Actual public data/SDK/helper; target-ID predicate artificially requires a record beyond first100rows, no catalog mutation or AI"
+  },
+  "hosted_generation_smoke": {
+    "report": "v110-owned-wardrobe-smoke-20261021.json",
+    "passed": false,
+    "status": 503,
+    "latencyMs": 50670,
+    "error": "ai_generation_unavailable",
+    "providerAttempts": [
+      {
+        "provider": "nvidia",
+        "model": "meta/llama-3.2-11b-vision-instruct",
+        "status": "timeout"
+      }
+    ],
+    "interpretation": "Reached provider; catalog lookup did not return its new failure. NVIDIA timeout means end-to-end generation is not verified successful."
+  },
+  "independent_cleanup": {
+    "remaining_audit_users": 0,
+    "remaining_fixture_garments": 0,
+    "auth_users": 111,
+    "profiles": 111,
+    "garments": 109
+  },
+  "test_fixture_update": "Four currency/URL tests needed their SDK mocks to implement order/gt/abortSignal; assertions unchanged, final full suite passes.",
+  "limits": [
+    "Early stopping guarantees enough candidates under the supplied eligibility predicate, not globally optimal styles/prices across all rows",
+    "Budget/preference-aware search still needs broader coverage; cheaper feasible products outside the selected pool can be missed",
+    "HTTP keyset pages do not create a transactionally frozen inventory snapshot",
+    "Full endpoint deadline including body/catalog/provider and 10000DAUquery/provider load remain unverified",
+    "Production provider remains Meta Llama3.2 11B Vision; no model routing change",
+    "Backend-only change, no client rebuild"
+  ]
+}

@@ -98,7 +98,7 @@ describe('processPendingActions — batch add_item upsert', () => {
     });
 
     it('issues a single batch upsert for multiple add_item actions', async () => {
-        const item1 = makeItem('item-1');
+        const item1 = { ...makeItem('item-1'), detectionConfidence: 0.92 };
         const item2 = makeItem('item-2');
         const item3 = makeItem('item-3');
 
@@ -132,6 +132,7 @@ describe('processPendingActions — batch add_item upsert', () => {
         const upsertArg = mockUpsert.mock.calls[0][0];
         expect(Array.isArray(upsertArg)).toBe(true);
         expect(upsertArg).toHaveLength(3);
+        expect(upsertArg[0]).toMatchObject({ type: item1.subCategory, sub_category: item1.subCategory, detection_confidence: 0.92 });
         expect(upsertArg.map((r: any) => r.id)).toEqual(
             expect.arrayContaining(['item-1', 'item-2', 'item-3'])
         );
@@ -252,9 +253,9 @@ describe('processPendingActions — batch add_item upsert', () => {
             createdAt: '2024-01-01T00:00:00Z',
         };
 
-        // delete().eq() chain
+        // delete().eq(id).eq(user_id) chain
         mockDelete.mockReturnValue({
-            eq: jest.fn().mockResolvedValue({ data: null, error: null }),
+            eq: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ data: null, error: null }) }),
         });
 
         // upsert for wear_log
@@ -290,9 +291,9 @@ describe('processPendingActions — batch add_item upsert', () => {
         // Batch upsert succeeds
         mockUpsert.mockResolvedValue({ data: null, error: null });
 
-        // delete().eq() chain
+        // delete().eq(id).eq(user_id) chain
         mockDelete.mockReturnValue({
-            eq: jest.fn().mockResolvedValue({ data: null, error: null }),
+            eq: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ data: null, error: null }) }),
         });
 
         const result = await processPendingActions(

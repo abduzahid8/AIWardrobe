@@ -4,7 +4,7 @@
  * Outside-the-box vs the existing unit tests: instead of tapping buttons on a
  * device (flaky, spends AI budget, needs network + Supabase + LLM keys), this
  * suite drives the exact production code path the app uses to turn catalog
- * rows into outfits — over the REAL bundled catalog data:
+ * rows into outfits — over synthetic live-catalog row fixtures:
  *
  *   shopCatalogItems / inspoMensShopItems
  *     → getMacroCategory (real slot mapping)
@@ -16,7 +16,8 @@
  * Generate button. No network. No AI spend. Deterministic.
  */
 
-import { SHOP_CATALOG_ITEMS, SHOP_OUTFITS } from '../../data/shopCatalogItems';
+import { TEST_SHOP_CATALOG as SHOP_CATALOG_ITEMS } from '../fixtures/shopCatalog';
+import { SHOP_OUTFITS } from '../../data/shopCatalogItems';
 import { CLASSIC_MENS_ITEMS } from '../../data/inspoMensShopItems';
 import {
   canonicalizeMacroCategory,
@@ -237,8 +238,9 @@ describe('AI pipeline e2e — real catalog → real code', () => {
     }
   });
 
-  it('shop outfits seed is non-empty (Inspo guide first paint)', () => {
-    expect(SHOP_OUTFITS.length).toBeGreaterThan(0);
+  it('production does not ship an obsolete outfit seed', () => {
+    // Production uses live inventory; offline fixtures must not reintroduce bundled products.
+    expect(SHOP_OUTFITS).toEqual([]);
   });
 
   it('explicit clothing types survive hostile description words (belt-loops regression)', () => {

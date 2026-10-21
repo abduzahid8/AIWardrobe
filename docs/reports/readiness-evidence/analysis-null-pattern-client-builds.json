@@ -1,0 +1,19 @@
+{
+  "verifiedAt": "2026-10-19T12:39:43.235973+00:00",
+  "screenSourceSha256": "7fef96e386d564faa0e0c5b035eaf3d5607d781b586551cfead5f4e7cd27165e",
+  "platforms": {
+    "ios": {
+      "sourceMapMatchesScreen": true,
+      "artifactPath": "/private/tmp/aiwardrobe-budget-release-00nhnjcc/AIWardrobe.app/main.jsbundle",
+      "artifactBytes": 7078432,
+      "artifactSha256": "8e76692f965f873f5c74735d24b5b85ea4f362e32dfaf60707822570bf3f0842"
+    },
+    "android": {
+      "sourceMapMatchesScreen": true,
+      "artifactPath": "/Users/v.zahid/AIWardrobe/android/app/build/outputs/apk/release/app-release.apk",
+      "artifactBytes": 66182326,
+      "artifactSha256": "7be92964e5f365b7fcbbfa73891b4ba3e7f7359777f004c434802ba654bcdef6"
+    }
+  },
+  "boundary": "iOS Hermes export in existing unsigned simulator app and Android arm64 Release APK build; no store/installed-device/UI certification"
+}

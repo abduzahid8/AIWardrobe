@@ -1,0 +1,428 @@
+--- /tmp/aiwardrobe-analysis-audit/supabase/functions/analyze-outfit/index.ts	2026-10-19 12:27:16
++++ /tmp/aiwardrobe-analysis-deploy/supabase/functions/analyze-outfit/index.ts	2026-10-19 17:46:25
+@@ -1,7 +1,9 @@
++import { enforceRateLimit } from '../_shared/rateLimit.ts'
+ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+ 
+ const corsHeaders = {
++  'X-Analysis-Contract': '20261019-patterns-v4',
+   'Access-Control-Allow-Origin': '*',
+   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+ }
+@@ -14,8 +16,8 @@
+ 
+ // ── Outfit Analysis Prompt ──────────────────────────────────────────────────
+ 
+-function buildOutfitAnalysisPrompt(): string {
+-  return `Analyze the outfit in this image. Identify each distinct clothing item the person is wearing.
++function buildOutfitAnalysisPrompt(mode: 'outfit' | 'single' = 'outfit'): string {
++  return `${mode === 'single' ? 'Analyze exactly one main clothing item in this image. Ignore other garments.' : 'Analyze the outfit in this image. Identify each distinct clothing item the person is wearing.'}
+ Ignore the person's body, background, and any non-clothing objects.
+ Return ONLY a valid JSON array where each element describes one clothing item:
+ [
+@@ -27,12 +29,13 @@
+     "colorHex": "hex code like #1A1A2E",
+     "style": "casual|formal|sport|semi_classic|elegant|minimalist|other",
+     "material": "fabric type or null",
+-    "pattern": "solid|striped|plaid|graphic|other",
+-    "fit": "slim|regular|oversized|fitted|loose",
++    "pattern": "solid|striped|plaid|graphic|other or null when unknown",
++    "fit": "slim|regular|oversized|fitted|loose or null when unknown or not applicable",
+     "description": "1-2 sentence description of the item"
+   }
+ ]
+-Return valid JSON only. Identify ALL visible clothing items (typically 3-6 items).`
++Sections must follow category: t-shirt/shirt/blouse/sweater/hoodie => tops; jacket/coat/cardigan => outerwear; dress => dresses; skirt/pants/jeans/shorts => bottoms; sneakers/boots/sandals => shoes; bag/hat/scarf/belt => accessories; clothing => other. Include every field shown; use JSON null for unknown material, pattern or fit, never the quoted string \"null\".
++${mode === 'single' ? 'Return valid JSON only. The array must contain exactly one main garment.' : 'Return valid JSON only. Identify ALL visible clothing items (typically 3-6 items).'}`
+ }
+ 
+ // ── Similar Item Search Prompt ──────────────────────────────────────────────
+@@ -69,6 +72,7 @@
+   prompt: string,
+ ): Promise<string> {
+   const response = await fetch(NVIDIA_API_URL, {
++    signal: AbortSignal.timeout(45000),
+     method: 'POST',
+     headers: {
+       Authorization: `Bearer ${nvidiaToken}`,
+@@ -80,6 +84,8 @@
+       // meta/llama-3.2-11b-vision-instruct is the current free vision model.
+       model: 'meta/llama-3.2-11b-vision-instruct',
+       messages: [
++        { role: 'user', content: 'Analyze an outfit containing one black leather belt. Return only a JSON array of clothing items, without prose or Markdown.' },
++        { role: 'assistant', content: '[{"category":"belt","section":"accessories","specificType":"black leather belt","primaryColor":"black","colorHex":"#000000","style":"casual","material":"leather","pattern":"solid","fit":null,"description":"A black leather belt."}]' },
+         {
+           role: 'user',
+           content: [
+@@ -89,16 +95,15 @@
+         },
+       ],
+       // 6 items x ~150 tokens needs headroom — a tight cap truncates
+-      // mid-array (parseJsonArrayFromContent salvages, but complete output
+-      // needs the budget).
++      // mid-array; incomplete output is rejected rather than salvaged.
+       max_tokens: 2000,
+-      temperature: 0.2,
++      temperature: 0,
+     }),
+   })
+ 
+   if (!response.ok) {
+     const errorText = await response.text()
+-    console.error('NVIDIA API error:', response.status, errorText.slice(0, 500))
++    console.error('NVIDIA API error:', response.status)
+     throw new Error(`NVIDIA API error: ${response.status}`)
+   }
+ 
+@@ -127,47 +132,130 @@
+   return nvidiaData.choices?.[0]?.message?.content || ''
+ }
+ 
+-function parseJsonArrayFromContent(content: string): any[] {
+-  const tryParse = (s: string): any[] | null => {
+-    try {
+-      const v = JSON.parse(s)
+-      return Array.isArray(v) ? v : null
+-    } catch {
+-      return null
+-    }
+-  }
+-  // Greedy full-array match (works when the model completes output).
++function parseJsonArrayFromContent(content: string): any[] | null {
++  if (typeof content !== 'string') return null
+   const arrayMatch = content.match(/\[[\s\S]*\]/)
+-  if (arrayMatch) {
+-    const ok = tryParse(arrayMatch[0])
+-    if (ok) return ok
+-    // Truncated output (hit max_tokens mid-array): drop the trailing
+-    // incomplete element and keep the complete ones.
+-    const cut = arrayMatch[0].lastIndexOf('},')
+-    if (cut > 1) {
+-      const ok2 = tryParse(arrayMatch[0].slice(0, cut + 1) + ']')
+-      if (ok2) return ok2
+-    }
++  if (!arrayMatch) return null
++  try {
++    const value = JSON.parse(arrayMatch[0])
++    return Array.isArray(value) && value.length <= 20 ? value : null
++  } catch { return null }
++}
++
++function detectedSection(category: string | null): string | null {
++  const sections: Record<string, string> = {
++    't-shirt':'tops',shirt:'tops',blouse:'tops',sweater:'tops',hoodie:'tops',
++    jacket:'outerwear',coat:'outerwear',cardigan:'outerwear',dress:'dresses',
++    skirt:'bottoms',pants:'bottoms',jeans:'bottoms',shorts:'bottoms',
++    sneakers:'shoes',boots:'shoes',sandals:'shoes',loafer:'shoes',oxfords:'shoes',derbies:'shoes',
++    bag:'accessories',hat:'accessories',scarf:'accessories',belt:'accessories',
+   }
+-  return []
++  return category ? sections[category] || null : null
+ }
+ 
++function normalizePattern(value: unknown): unknown {
++  if (typeof value !== 'string') return value
++  const key=value.trim().toLowerCase().replace(/[_-]+/g,' ').replace(/\s+/g,' ')
++  const aliases: Record<string,string|null> = {
++    solid:'solid',plain:'solid',unpatterned:'solid','no pattern':'solid',none:'solid',
++    'solid color':'solid','solid colored':'solid','solid coloured':'solid',
++    striped:'striped',stripe:'striped',stripes:'striped',pinstriped:'striped',
++    plaid:'plaid',checked:'plaid',checkered:'plaid',tartan:'plaid',gingham:'plaid',
++    graphic:'graphic','graphic print':'graphic',other:'other',
++    floral:'other','polka dot':'other','polka dots':'other','animal print':'other',
++    geometric:'other',abstract:'other',textured:'other',ribbed:'other','cable knit':'other',houndstooth:'other',
++    'null':null,unknown:null,'n/a':null,'not applicable':null,'not specified':null,
++  }
++  return Object.hasOwn(aliases,key)?aliases[key]:value
++}
++
++function normalizeDetectedItem(item: any): any {
++  if (!item || typeof item !== 'object' || Array.isArray(item)) return item
++  const token=(value:unknown)=>typeof value==='string'?value.trim().toLowerCase():value
++  const normalized={...item,category:token(item.category),section:token(item.section),style:token(item.style),fit:token(item.fit),pattern:normalizePattern(item.pattern)}
++  // Broad labels resolve only through an explicit noun, never color/style.
++  if (!['tops','outerwear','bottoms','dresses','shoes','accessories'].includes(normalized.category) || normalized.section !== normalized.category) return normalized
++  const category = namedGarmentCategory(normalized.specificType)
++  const section = detectedSection(category)
++  if (!section || (section !== normalized.section && !(normalized.section === 'tops' && section === 'outerwear'))) return normalized
++  return {...normalized, category, section}
++}
++
++function detectedItemIssues(item: any): string[] {
++  if (!item || typeof item !== 'object' || Array.isArray(item)) return ['item_shape']
++  const category = garmentCategory(item.category)
++  const expectedSection = detectedSection(category) || (item.category === 'clothing' ? 'other' : null)
++  const text = (value: unknown, max = 2000) => typeof value === 'string' && value.trim().length > 0 && value.length <= max
++  const checks: Record<string, boolean> = {
++    category: !!expectedSection, section: !!expectedSection && item.section === expectedSection,
++    specificType: text(item.specificType, 300), primaryColor: text(item.primaryColor, 80),
++    colorHex: typeof item.colorHex === 'string' && /^#[0-9a-f]{6}$/i.test(item.colorHex),
++    style: ['casual','formal','sport','semi_classic','elegant','minimalist','other'].includes(item.style),
++    material: item.material === null || text(item.material, 100),
++    pattern: item.pattern === null || ['solid','striped','plaid','graphic','other'].includes(item.pattern),
++    fit: item.fit === null || ['slim','regular','oversized','fitted','loose'].includes(item.fit), description: text(item.description),
++  }
++  return Object.keys(checks).filter(field => !checks[field])
++}
++
++function validDetectedItem(item: any): boolean {
++  return detectedItemIssues(item).length === 0
++}
++
++function patternFailureForm(value: unknown): string {
++  if (value === undefined) return 'missing'
++  if (value === null) return 'null'
++  if (Array.isArray(value)) return 'array'
++  if (typeof value !== 'string') return typeof value
++  const token=value.trim().toLowerCase()
++  if (!token) return 'empty_string'
++  if (token === 'null') return 'quoted_null'
++  if (token.includes('|')) return 'copied_option_list'
++  if (/^[{[]/.test(token)) return 'stringified_structure'
++  return 'unrecognized_string'
++}
++
++const analysisUnavailable = (reason: string, details: Record<string, unknown> = {}) => {
++  // Only static reason/field names and counts; never log images or model text.
++  console.warn('analysis_rejected', JSON.stringify({ reason, ...details }))
++  const fields = Array.isArray(details.items) ? [...new Set(details.items.flatMap((item:any)=>Array.isArray(item.fields)?item.fields:[]))].filter(field=>typeof field==='string'&&/^[a-zA-Z_]+$/.test(field)).join(',') : ''
++  return new Response(JSON.stringify({success:false,error:'ai_analysis_unavailable',detectedItems:[],recommendations:[]}), {status:503,headers:{...corsHeaders,'Content-Type':'application/json','X-Analysis-Rejection':reason,'X-Analysis-Fields':fields,'X-Analysis-Pattern-Form':Array.isArray(details.patternForms)?details.patternForms.join(','):'',...(typeof details.providerStatus==='number'?{'X-Analysis-Provider-Status':String(details.providerStatus)}:{})}})
++}
++
+ // ── Wardrobe Similarity Search ──────────────────────────────────────────────
+ 
+-function itemSimilarityScore(detected: any, wardrobe: any): number {
+-  let score = 0
+-  const dCat = (detected.category || '').toLowerCase()
+-  const wCat = (wardrobe.category || wardrobe.type || wardrobe.itemType || '').toLowerCase()
+-  const dSection = (detected.section || '').toLowerCase()
+-  const wSection = (wardrobe.section || '').toLowerCase()
++// A shared color/style cannot establish that two products are the same kind.
++// Unknown/generic sections carry no type authority; inspect specific type fields.
++function garmentCategory(...values: unknown[]): string | null {
++  const aliases: Record<string, string> = {
++    'tshirt': 't-shirt', 'tshirts': 't-shirt', 't-shirts': 't-shirt', 'tee': 't-shirt',
++    shirts: 'shirt', blouses: 'blouse', sweaters: 'sweater', hoodies: 'hoodie',
++    jackets: 'jacket', coats: 'coat', cardigans: 'cardigan', dresses: 'dress', skirts: 'skirt',
++    trousers: 'pants', trouser: 'pants', pant: 'pants', jean: 'jeans', short: 'shorts',
++    sneaker: 'sneakers', boot: 'boots', sandal: 'sandals', bags: 'bag', hats: 'hat',
++    scarves: 'scarf', belts: 'belt', loafers: 'loafer', oxford: 'oxfords', derby: 'derbies',
++  }
++  const known = new Set(['t-shirt','shirt','blouse','sweater','hoodie','jacket','coat','cardigan',
++    'dress','skirt','pants','jeans','shorts','sneakers','boots','sandals','bag','hat','scarf','belt',
++    'loafer','oxfords','derbies'])
++  for (const value of values) {
++    if (typeof value !== 'string') continue
++    const key = value.trim().toLowerCase().replace(/[ _]+/g, '-')
++    const category = aliases[key] || key
++    if (known.has(category)) return category
++  }
++  return null
++}
+ 
+-  // Category match (most important)
+-  if (dCat === wCat || dSection === wSection) score += 40
+-  else if (dCat.includes(wCat) || wCat.includes(dCat)) score += 25
++function itemSimilarityScore(detected: any, wardrobe: any): number {
++  const dCat = garmentCategory(detected.category)
++  const wCat = garmentCategory(wardrobe.type, wardrobe.sub_category, wardrobe.category, wardrobe.itemType)
++  if (!dCat || dCat !== wCat) return 0
++  let score = 40
+ 
+   // Color similarity
+   const dColor = (detected.primaryColor || '').toLowerCase()
+-  const wColor = (wardrobe.color || wardrobe.primaryColor || '').toLowerCase()
++  const wColor = (wardrobe.primary_color || wardrobe.primaryColor || wardrobe.color || '').toLowerCase()
+   if (dColor && wColor) {
+     if (dColor === wColor) score += 25
+     else {
+@@ -184,9 +272,9 @@
+   if (dStyle && wStyle && dStyle === wStyle) score += 15
+ 
+   // Pattern match
+-  const dPattern = (detected.pattern || 'solid').toLowerCase()
+-  const wPattern = (wardrobe.pattern || 'solid').toLowerCase()
+-  if (dPattern === wPattern) score += 10
++  const dPattern = (detected.pattern || '').toLowerCase()
++  const wPattern = (wardrobe.pattern || '').toLowerCase()
++  if (dPattern && dPattern === wPattern) score += 10
+ 
+   // Material match
+   const dMaterial = (detected.material || '').toLowerCase()
+@@ -196,16 +284,37 @@
+   return score
+ }
+ 
++function namedGarmentCategory(value: unknown): string | null {
++  if (typeof value !== 'string') return null
++  const name = value.toLowerCase().replace(/\bt[ -]*shirts?\b/g, 'tshirt')
++    .replace(/\bdress (?=shirts?|pants?|trousers?|shoes?|boots?)/g, '')
++  const rules: Array<[string, RegExp]> = [
++    ['t-shirt', /\b(?:tshirts?|tees?)\b|футболк/], ['shirt', /\bshirts?\b|рубаш/],
++    ['blouse', /\bblouses?\b|блуз/], ['sweater', /\b(?:sweaters?|jumpers?|pullovers?)\b|свитер|джемпер|пуловер/],
++    ['hoodie', /\bhoodies?\b|худи/], ['jacket', /\bjackets?\b|куртк/],
++    ['coat', /\bcoats?\b|пальто/], ['cardigan', /\bcardigans?\b|кардиган/],
++    ['dress', /\bdress(?:es)?\b|плать/], ['skirt', /\bskirts?\b|юбк/],
++    ['pants', /\b(?:pants?|trousers?)\b|брюк/], ['jeans', /\bjeans?\b|джинс/],
++    ['shorts', /\bshorts\b|шорт/], ['sneakers', /\b(?:sneakers?|trainers?)\b|кроссов|кеды/],
++    ['boots', /\bboots?\b|ботин|сапог/], ['sandals', /\bsandals?\b|сандал/],
++    ['loafer', /\b(?:loafers?|moccasins?)\b|лофер|мокасин/],
++    ['bag', /\bbags?\b|сумк/], ['hat', /\bhats?\b|шляп/],
++    ['scarf', /\bscar(?:f|ves)\b|шарф/], ['belt', /\bbelts?\b|ремень|ремни/],
++  ]
++  const found = rules.filter(([, pattern]) => pattern.test(name)).map(([category]) => category)
++  // Ambiguous titles do not establish a product's type.
++  return found.length === 1 ? found[0] : null
++}
++
+ function shopItemSimilarityScore(detected: any, shop: any): number {
+-  let score = 0
+-  const dCat = (detected.category || '').toLowerCase()
+-  const sGarmentType = (shop.garment_type || '').toLowerCase()
+-  const sCategory = (shop.category || '').toLowerCase()
++  const dCat = garmentCategory(detected.category)
++  const structured = garmentCategory(shop.garment_type, shop.category)
++  const named = namedGarmentCategory(shop.name)
++  if (structured && named && structured !== named) return 0
++  const sCat = structured || named
++  if (!dCat || dCat !== sCat) return 0
++  let score = 40
+ 
+-  // Category match
+-  if (dCat === sGarmentType || dCat === sCategory) score += 40
+-  else if (sGarmentType.includes(dCat) || dCat.includes(sGarmentType)) score += 25
+-
+   // Color
+   const dColor = (detected.primaryColor || '').toLowerCase()
+   const sName = (shop.name || shop.description || '').toLowerCase()
+@@ -216,7 +325,7 @@
+   if (dStyle && sName.includes(dStyle)) score += 15
+ 
+   // Description overlap
+-  const dDesc = (detected.specificType || '').toLowerCase()
++  const dDesc = String(detected.specificType || '').toLowerCase()
+   if (dDesc) {
+     const words = dDesc.split(/\s+/).filter(w => w.length > 3)
+     for (const word of words) {
+@@ -234,12 +343,19 @@
+     return new Response('ok', { headers: corsHeaders })
+   }
+ 
++    const rateLimitResponse = await enforceRateLimit(req, { feature: 'analyze-outfit', limit: 10, headers: corsHeaders })
++    if (rateLimitResponse) return rateLimitResponse
++
++
+   try {
+-    const { image, mode, userId } = await req.json()
++    const { image, mode = 'outfit' } = await req.json()
++    if (mode !== 'outfit' && mode !== 'single') {
++      return new Response(JSON.stringify({success:false,error:'Invalid analysis mode'}), {status:400,headers:{...corsHeaders,'Content-Type':'application/json'}})
++    }
+ 
+-    if (!image) {
++    if (typeof image !== 'string' || !image.trim() || image.length > 14 * 1024 * 1024) {
+       return new Response(
+-        JSON.stringify({ success: false, error: 'Image is required' }),
++        JSON.stringify({ success: false, error: 'A nonempty image within the size limit is required' }),
+         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+       )
+     }
+@@ -249,6 +365,18 @@
+     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+     const supabase = createClient(supabaseUrl, supabaseServiceKey)
+ 
++    // Never accept an owner ID from the payload for a service-role query.
++    const caller = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
++      global: { headers: { Authorization: req.headers.get('Authorization') || '' } },
++    })
++    const { data: identity, error: identityError } = await caller.auth.getUser()
++    if (identityError || !identity?.user) {
++      return new Response(JSON.stringify({ success: false, error: 'Unauthorized' }), {
++        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
++      })
++    }
++    const userId = identity.user.id
++
+     const { data: configData } = await supabase
+       .from('app_config')
+       .select('value')
+@@ -266,13 +394,24 @@
+     const imageDataUrl = image.startsWith('data:') ? image : `data:image/jpeg;base64,${image}`
+ 
+     // ── Step 1: Analyze the outfit photo ──
+-    const analysisResponseText = await callNvidiaVision(
+-      nvidiaToken,
+-      imageDataUrl,
+-      buildOutfitAnalysisPrompt(),
+-    )
++    let analysisResponseText: string
++    try {
++      analysisResponseText = await callNvidiaVision(nvidiaToken, imageDataUrl, buildOutfitAnalysisPrompt(mode))
++    } catch (error) {
++      const status = error instanceof Error ? /^NVIDIA API error: (\d{3})$/.exec(error.message)?.[1] : undefined
++      return analysisUnavailable('provider_failure', {kind:error instanceof Error&&['AbortError','TimeoutError'].includes(error.name)?error.name:'Error',...(status?{providerStatus:Number(status)}:{})})
++    }
++    const envelope = parseNvidiaResponseText(analysisResponseText)
++    if (envelope.choices?.[0]?.finish_reason === 'length') return analysisUnavailable('truncated_completion')
+     const analysisContent = extractContentFromResponse(analysisResponseText)
+-    const detectedItems = parseJsonArrayFromContent(analysisContent)
++    const detectedItems = parseJsonArrayFromContent(analysisContent)?.map(normalizeDetectedItem)
++    if (!detectedItems) return analysisUnavailable('invalid_json_array')
++    const invalidItems = detectedItems.map((item,index)=>({index,fields:detectedItemIssues(item)})).filter(item=>item.fields.length)
++    if (invalidItems.length) {
++      const patternForms=invalidItems.filter(item=>item.fields.includes('pattern')).map(item=>patternFailureForm(detectedItems[item.index].pattern))
++      return analysisUnavailable('invalid_item_fields',{items:invalidItems,...(patternForms.length?{patternForms}:{})})
++    }
++    if (mode === 'single' && detectedItems.length > 1) return analysisUnavailable('single_mode_multiple_items',{count:detectedItems.length})
+ 
+     if (detectedItems.length === 0) {
+       return new Response(
+@@ -294,7 +433,7 @@
+       // NOTE: the wardrobe table is `clothing_items` (see 001_full_rebuild.sql)
+       // — there is no `wardrobe_items` table. Columns mirror the canonical
+       // select used by generate-outfits (no singular `occasion`).
+-      const { data: wData, error: wError } = await supabase
++      const { data: wData, error: wError } = await caller
+         .from('clothing_items')
+         .select('id, category, type, color, primary_color, style, pattern, material, image_url, description, sub_category, name, brand')
+         .eq('user_id', userId)
+@@ -340,16 +479,16 @@
+ 
+       return {
+         detectedItem: {
+-          category: detected.category || 'clothing',
+-          section: detected.section || 'other',
+-          specificType: detected.specificType || detected.category,
+-          primaryColor: detected.primaryColor || 'unknown',
+-          colorHex: detected.colorHex || '#808080',
+-          style: detected.style || 'casual',
+-          material: detected.material || null,
+-          pattern: detected.pattern || 'solid',
+-          fit: detected.fit || 'regular',
+-          description: detected.description || '',
++          category: garmentCategory(detected.category) || detected.category,
++          section: detected.section,
++          specificType: detected.specificType,
++          primaryColor: detected.primaryColor,
++          colorHex: detected.colorHex,
++          style: detected.style,
++          material: detected.material,
++          pattern: detected.pattern,
++          fit: detected.fit,
++          description: detected.description,
+         },
+         similarFromWardrobe: wardrobeMatches,
+         similarFromShop: shopMatches,
+@@ -376,9 +515,9 @@
+     return new Response(
+       JSON.stringify({
+         success: false,
+-        error: error instanceof Error ? error.message : 'Unknown error',
++        error: error instanceof SyntaxError ? 'Invalid JSON request' : 'Outfit analysis failed',
+       }),
+-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
++      { status: error instanceof SyntaxError ? 400 : 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+     )
+   }
+ })

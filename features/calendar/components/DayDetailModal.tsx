@@ -3,17 +3,12 @@
  */
 
 import React from 'react';
-import {
-    View,
-    Text,
-    Modal,
-    TouchableOpacity,
-    Image,
-    StyleSheet,
-} from 'react-native';
+import { View, Text, Modal, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius } from '../../../src/theme';
 import { OCCASIONS, type OutfitLog, getOccasionColor } from '../hooks/useOutfitCalendar';
+import { Image } from '../../../src/components/MediaImage';
+
 
 interface DayDetailModalProps {
     visible: boolean;

@@ -10,6 +10,8 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { authEvents } from '../../store/authEvents';
+import { drainCalendarWrites, CALENDAR_STORAGE_PREFIX } from '../services/calendarStorage';
 
 import { deleteSecureItem } from '../utils/secureStorage';
 import { useStylePreferenceStore } from '../../store/stylePreferenceStore';
@@ -20,6 +22,7 @@ import useAvatarStore from '../../store/avatarStore';
  * Keep this list in sync with every `persist({ name: '...' })` block.
  */
 export const PERSISTED_ASYNC_STORAGE_KEYS: readonly string[] = [
+    'private_cache_owner_v1', // verified owner of the private persisted caches
     // Zustand persist stores
     'wardrobe-storage',
     'avatar-storage',
@@ -35,6 +38,7 @@ export const PERSISTED_ASYNC_STORAGE_KEYS: readonly string[] = [
     // the language screen again on every re-login.
     'offline_queue', // offlineQueue.ts (was incorrectly 'offline_request_queue')
     'upload_queue_v1', // uploadQueue.ts (was incorrectly 'upload_queue')
+    'wardrobe-upload-queue', // photo/video analysis queue (separate Zustand store)
     '@image_cache_index', // imageCache.ts
     'aiwardrobe_hints_seen', // useFeatureHints.ts
 
@@ -62,6 +66,14 @@ export const PERSISTED_ASYNC_STORAGE_KEYS: readonly string[] = [
     'pending_corrections', // feedbackService
     'notificationSettings', // notificationService
     'lastWardrobeVideo', // HomeScreen saved video — per-user content
+    'outfitLogs', // legacy unowned calendar plans; owner keys cleared by prefix
+    '@outfit_logs', // legacy calendar hook
+    '@ai_chat_history',
+    '@selected_style',
+    'savedInspo', // savedShopStore
+    'aiRecentShownItemIds',
+    'aiExcludeShownItemIds',
+    'notificationLastScheduled',
 ] as const;
 
 /**
@@ -71,7 +83,10 @@ export const PERSISTED_ASYNC_STORAGE_KEYS: readonly string[] = [
  * `clearAllPersistedUserData()`.
  */
 const PERSISTED_KEY_PREFIXES: readonly string[] = [
+    CALENDAR_STORAGE_PREFIX,
     'daily_ai_outfit_',
+    'aiExcludeShownItemIds::',
+    'daily_usage_v2::', // dailyUsageStore owner-scoped counters
 ] as const;
 
 /**
@@ -97,8 +112,20 @@ export const PERSISTED_SECURE_KEYS: readonly string[] = [
  * Uses lazy `require()` (like bodyProfileStore below) so this module never
  * creates an import cycle: wardrobe/subscription stores import auth, auth
  * imports this file.
+ * Saved shop state additionally queues ordered cleanup of its shared disk key;
+ * clearAllPersistedUserData awaits that queue before returning.
  */
-export function resetInMemoryUserState(): void {
+export function resetInMemoryUserState(): Promise<void> {
+    const pendingPersistence: Promise<unknown>[] = [];
+    let persistenceFailed = false;
+    const retain = (work: Promise<unknown>) => {
+        pendingPersistence.push(work.catch(() => { persistenceFailed = true; }));
+    };
+    try {
+        const { resetUploadQueueState } = require('../store/uploadQueueStore');
+        resetUploadQueueState();
+    } catch {}
+
     // Wardrobe — the biggest leak: items/outfits/wearLogs/lastSyncedAt.
     // Also drops any in-flight rehydrate so user A's fetch can neither block
     // nor resolve into user B's store, and unsubscribes the realtime channel
@@ -122,6 +149,8 @@ export function resetInMemoryUserState(): void {
             lastWearDate: null,
             lastSyncedAt: null,
             pendingActions: [],
+            wardrobeCapacityIssue: null,
+            pendingReviewAcknowledgements: [],
             dislikedOutfitKeys: [],
             isLoading: false,
             isSyncing: false,
@@ -178,6 +207,13 @@ export function resetInMemoryUserState(): void {
         useShopCatalogStore.setState({ items: [], loading: true });
     } catch {}
 
+    // Saved shop likes are held outside persist middleware as well as on disk.
+    // Invalidate pending hydration before another account can see its result.
+    try {
+        const savedShop = require('../../store/savedShopStore');
+        savedShop.resetSavedShopState();
+    } catch {}
+
     // Style / avatar / body-profile (same resets as before, centralized).
     try { useStylePreferenceStore.getState().clearAll(); } catch {}
     try { useAvatarStore.setState({ heightCm: '175', weightKg: '70', bodyType: 'average', gender: 'male' }); } catch {}
@@ -195,10 +231,10 @@ export function resetInMemoryUserState(): void {
         try {
             const maybePromise = uploadQueue.clearQueue?.();
             if (maybePromise && typeof (maybePromise as Promise<void>).catch === 'function') {
-                (maybePromise as Promise<void>).catch(() => undefined);
+                retain(maybePromise as Promise<void>);
             }
-        } catch {}
-    } catch {}
+        } catch { persistenceFailed = true; }
+    } catch { persistenceFailed = true; }
 
     // API token cache + React Query cache — never serve user A's authed
     // responses to user B.
@@ -210,44 +246,108 @@ export function resetInMemoryUserState(): void {
         const { clearQueryCache } = require('./queryClient');
         clearQueryCache?.();
     } catch {}
+
+    // Store resets above can schedule new debounced writes after the earlier
+    // registry removal. Drain them as part of cleanup, rather than allowing
+    // the authentication queue to release the next account prematurely.
+    for (const flush of [
+        () => require('../../store/wardrobeStore').flushWardrobePersistence?.(),
+        () => require('../store/uploadQueueStore').flushUploadQueuePersistence?.(),
+        () => require('../../store/savedShopStore').flushSavedShopPersistence?.(),
+    ]) {
+        try {
+            const work = flush();
+            if (work) retain(Promise.resolve(work));
+        } catch { persistenceFailed = true; }
+    }
+    return Promise.all(pendingPersistence).then(() => {
+        if (persistenceFailed) throw new Error('Local account cleanup failed');
+    });
 }
 
-/**
- * Wipe every piece of per-user state on this device.
- * Called from auth.logout() and auth.deleteAccount().
- *
- * Swallows individual errors — we still want to clear as much as
- * possible even if one key fails.
- */
-export async function clearAllPersistedUserData(): Promise<void> {
-    try {
-        const keys: string[] = [...PERSISTED_ASYNC_STORAGE_KEYS];
-        try {
-            const allKeys = await AsyncStorage.getAllKeys();
-            for (const prefix of PERSISTED_KEY_PREFIXES) {
-                for (const key of allKeys) {
-                    if (key.startsWith(prefix) && !keys.includes(key)) {
-                        keys.push(key);
-                    }
-                }
+/** Marker is intentionally outside the registry: only confirmed cleanup removes it. */
+export const ACCOUNT_CLEANUP_PENDING_KEY = 'account_cleanup_pending_v1';
+let cleanupRequired = false;
+let cleanupTail: Promise<void> = Promise.resolve();
+
+/** Retry incomplete cleanup, including a marker restored after process restart. */
+export async function ensurePreviousAccountCleanup(): Promise<void> {
+    // A failed read must not be treated as an absent marker.
+    const marker = await AsyncStorage.getItem(ACCOUNT_CLEANUP_PENDING_KEY);
+    if (cleanupRequired || marker !== null) await clearAllPersistedUserData();
+}
+
+/** Serialized cleanup drains each available stage and reports incomplete removal. */
+export function clearAllPersistedUserData(expectedRevision = authEvents.getRevision()): Promise<void> {
+    const work = cleanupTail.then(() => performAccountCleanup(expectedRevision));
+    cleanupTail = work.catch(() => undefined);
+    return work;
+}
+
+async function performAccountCleanup(expectedRevision: number): Promise<void> {
+    const stillCurrent = () => expectedRevision === authEvents.getRevision();
+    if (!stillCurrent()) return;
+    cleanupRequired = true;
+    let failed = false;
+    const attempt = async (operation: () => Promise<unknown>) => {
+        try { await operation(); } catch { failed = true; }
+    };
+    await attempt(() => AsyncStorage.setItem(ACCOUNT_CLEANUP_PENDING_KEY, '1'));
+    await attempt(drainCalendarWrites);
+    await attempt(async () => {
+        const { drainDailyUsageWrites } = require('../../store/dailyUsageStore');
+        await drainDailyUsageWrites?.();
+    });
+    if (!stillCurrent()) return;
+    await attempt(async () => {
+        const { clearUploadQueuePersistence } = require('../store/uploadQueueStore');
+        await clearUploadQueuePersistence();
+    });
+    if (!stillCurrent()) return;
+    await attempt(async () => {
+        const wardrobe = require('../../store/wardrobeStore');
+        await wardrobe.clearWardrobePersistence?.();
+    });
+    if (!stillCurrent()) return;
+    const keys: string[] = [...PERSISTED_ASYNC_STORAGE_KEYS];
+    await attempt(async () => {
+        const allKeys = await AsyncStorage.getAllKeys();
+        for (const prefix of PERSISTED_KEY_PREFIXES) {
+            for (const key of allKeys) {
+                if (key.startsWith(prefix) && !keys.includes(key)) keys.push(key);
             }
-        } catch {
-            // Prefix scan is best-effort; static keys above still clear.
         }
-        await AsyncStorage.multiRemove(keys);
-    } catch {
-        // Best-effort: keep going to secure store + memory reset
-    }
-
-    // Reset in-memory state of every persisted Zustand store so the
-    // next login does not inherit the previous user's data from memory.
-    // AsyncStorage.multiRemove only clears the on-disk cache; the
-    // Zustand singleton holds state in memory until explicitly reset.
-    resetInMemoryUserState();
-
-    await Promise.all(
-        PERSISTED_SECURE_KEYS.map((key) =>
-            deleteSecureItem(key).catch(() => undefined),
-        ),
-    );
+    });
+    if (!stillCurrent()) return;
+    await attempt(() => AsyncStorage.multiRemove(keys));
+    if (!stillCurrent()) return;
+    await attempt(resetInMemoryUserState);
+    if (!stillCurrent()) return;
+    await attempt(async () => {
+        // Native-only and lazy to avoid initializing media dependencies at startup.
+        const { Platform } = require('react-native');
+        if (Platform.OS === 'web') return;
+        const { clearAllPendingWardrobeImages } = require('../services/pendingWardrobeMedia');
+        await clearAllPendingWardrobeImages(expectedRevision);
+    });
+    if (!stillCurrent()) return;
+    await attempt(async () => {
+        const { Platform } = require('react-native');
+        if (Platform.OS === 'web') return;
+        const { clearAllPendingScanMedia } = require('../services/pendingScanMedia');
+        await clearAllPendingScanMedia(expectedRevision);
+    });
+    if (!stillCurrent()) return;
+    await attempt(async () => {
+        const { Platform } = require('react-native');
+        if (Platform.OS === 'web') return;
+        const { clearAllScanReviews } = require('../services/scanReviews');
+        await clearAllScanReviews(expectedRevision);
+    });
+    if (!stillCurrent()) return;
+    await Promise.all(PERSISTED_SECURE_KEYS.map(key => attempt(() => deleteSecureItem(key))));
+    if (!stillCurrent()) return;
+    if (!failed) await attempt(() => AsyncStorage.removeItem(ACCOUNT_CLEANUP_PENDING_KEY));
+    if (failed) throw new Error('Local account cleanup failed');
+    cleanupRequired = false;
 }

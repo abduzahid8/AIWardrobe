@@ -1,0 +1,28 @@
+{
+  "measuredAt": "2026-10-20T11:39:35.400Z",
+  "source": "https://cbu.uz/uz/arkhiv-kursov-valyut/json/all/2026-10-20/",
+  "documentation": "https://www.cbu.uz/en/arkhiv-kursov-valyut/veb-masteram/",
+  "snapshot": {
+    "id": "CBU:2026-10-20:12044.72:13525.02:16062.84",
+    "source": "CBU",
+    "asOf": "2026-10-20",
+    "fetchedAt": "2026-10-20T11:39:35.400Z",
+    "uzsPerUnit": {
+      "USD": 12044.72,
+      "EUR": 13525.02,
+      "GBP": 16062.84,
+      "UZS": 1
+    }
+  },
+  "example": {
+    "listedPrice": 100,
+    "listedCurrency": "EUR",
+    "budgetUSD": 100,
+    "configuredCostUSD": 92.59259259259258,
+    "referenceCostUSD": 112.29003247896175,
+    "currentHelperPassesBudget": true,
+    "referencePassesBudget": false
+  },
+  "status": "OPEN: dated reference core implemented, production monetary helpers still use configured constants; client/server integration required",
+  "scope": "CBU published reference values, not retailer checkout conversion, bank fees, generation success or capacity evidence"
+}

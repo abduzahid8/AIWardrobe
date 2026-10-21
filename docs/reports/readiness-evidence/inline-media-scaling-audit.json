@@ -1,0 +1,44 @@
+{
+  "localDate": "2026-10-21",
+  "scope": "Inline-media scaling audit and fixture-only migration validation",
+  "databaseSnapshot": {
+    "connections": 18,
+    "maxConnections": 60,
+    "activeConnections": 1,
+    "lockWaits": 0,
+    "limitation": "Point-in-time after the load, not evidence of resource levels during the failure"
+  },
+  "storedData": {
+    "garments": 109,
+    "inlineImageRows": 18,
+    "allImageUriBytes": 15896398,
+    "largestImageUriBytes": 4047638,
+    "largestFullRowBytes": 4048309
+  },
+  "maintenanceChecks": {
+    "unitTestsPassed": 6,
+    "liveFixtureChecksPassed": 8,
+    "sourceDecoder": "src/services/wardrobeMedia.ts readWardrobeImageInput",
+    "checks": [
+      "Upload unchanged bytes to owner-specific content-addressed private object",
+      "SHA256 and byte-length readback before metadata update",
+      "CAS by row ID, owner and updated_at",
+      "Competing edits retained",
+      "Owner access allowed; foreign/public denied",
+      "Reference/garment metadata retained"
+    ]
+  },
+  "fixtureResult": {
+    "originalBytes": 2915128,
+    "inlineUriBytes": 3886862,
+    "privateReferenceBytes": 247
+  },
+  "existingCustomerRowsMigrated": 0,
+  "limits": [
+    "Historical pg_stat_statements aggregates span prior deployments; cannot attribute them to latest failure",
+    "The failed mixed-load fixtures used short image URLs; inline images do not explain those measured failures",
+    "Installed-client compatibility and bulk rollout/rollback procedure remain required before migrating existing customer rows",
+    "Migration utility operates on explicitly supplied rows and has no implicit bulk apply",
+    "No 10000-DAU readiness certification"
+  ]
+}

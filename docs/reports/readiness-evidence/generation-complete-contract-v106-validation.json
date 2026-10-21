@@ -1,0 +1,67 @@
+{
+  "scope": "NVIDIA final request-example consistency and three bounded live USD300 scenarios",
+  "deployed_version": 106,
+  "verify_jwt": true,
+  "baseline_version": 105,
+  "deployment": "Fresh105 package; only entrypoint changed; all12 hosted files match prepared package, previous11 shared files unchanged",
+  "entry_sha256": "aa32950e0af0cbd797820a2768b628ae8768022c35bf98fa3e4cd67b119876c6",
+  "change": "Final ID-only JSON example enumerates top/bottom/shoes or base-top/outerwear/bottom/shoes; all four primary/correction call sites pass layering context. Selected additional compatible pieces remain allowed; no new fallback or validator relaxation.",
+  "regression_before": {
+    "failed": 2,
+    "passed": 14
+  },
+  "after": {
+    "local_request_tests": 16,
+    "staged_request_tests": 16,
+    "full_tests": 2197,
+    "full_suites": 174,
+    "typescript": "pass",
+    "staged_deno": "pass"
+  },
+  "live_scenarios": [
+    {
+      "name": "date_old_money_300_usd",
+      "status": 200,
+      "latencyMs": 16079,
+      "passed": true,
+      "spendUzs": 3299800,
+      "capUzs": 3603690
+    },
+    {
+      "name": "formal_semi_classic_300_usd",
+      "status": 503,
+      "latencyMs": 49208,
+      "passed": false,
+      "spendUzs": 0,
+      "capUzs": 3603690
+    },
+    {
+      "name": "travel_minimalist_300_usd",
+      "status": 200,
+      "latencyMs": 12760,
+      "passed": true,
+      "spendUzs": 3034400,
+      "capUzs": 3603690
+    }
+  ],
+  "live_report": "v106-category-budget-300-reliability-20261021.json",
+  "cleanup": {
+    "refreshSessionsRevoked": true,
+    "temporaryUserDeleted": true,
+    "status": 200
+  },
+  "independent_cleanup": {
+    "remaining_audit_users": 0,
+    "auth_users": 111,
+    "profiles": 111,
+    "garments": 109
+  },
+  "limits": [
+    "Two successful requests out of three are not a reliability estimate or proof of improvement caused by this prompt change",
+    "Formal scenario still failed with NVIDIA timeout; travel used two parsed attempts",
+    "No measured AI throughput suitable for 10000 DAU",
+    "Current retailer stock/price and visual compatibility not verified",
+    "Hard per-item style-invalid candidates can still survive ranking floors; candidate eligibility requires further work",
+    "No new native builds: this is a backend-only request construction change, with unchanged client sources"
+  ]
+}

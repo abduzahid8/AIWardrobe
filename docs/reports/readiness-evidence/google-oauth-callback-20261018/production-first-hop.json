@@ -1,0 +1,13 @@
+{
+  "settingsStatus": 200,
+  "googleEnabled": true,
+  "appleEnabled": true,
+  "authorizeStatus": 302,
+  "destinationOrigin": "https://accounts.google.com",
+  "destinationPath": "/o/oauth2/v2/auth",
+  "callback": "https://fyqpifmrsftsfqibhwhy.supabase.co/auth/v1/callback",
+  "clientIdSha256": "ca2f48a980d0faccb5a8c3989a3a6196d23cbc19578e041bb26cb44452244b38",
+  "responseType": "code",
+  "scope": "email profile",
+  "limit": "No account selected or token exchange; does not establish completed Google sign-in/signup"
+}

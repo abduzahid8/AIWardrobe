@@ -34,6 +34,7 @@ export interface ClosetClothingItem {
   style?: string;
   description?: string;
   imageUrl?: string;
+  thumbnailUrl?: string;
   image?: string;
   category?: string;
   wearCount?: number;

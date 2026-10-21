@@ -1,0 +1,16 @@
+{
+  "date": "2026-10-20",
+  "project": "fyqpifmrsftsfqibhwhy",
+  "function": "generate-outfits",
+  "beforeVersion": 93,
+  "afterVersion": 94,
+  "verifyJwtRetained": true,
+  "modifiedFiles": [
+    "functions/generate-outfits/index.ts",
+    "functions/_shared/outfitBudgetFeedback.ts"
+  ],
+  "otherDeployedFilesUnchanged": true,
+  "stagedDenoCheck": true,
+  "stagedHandlerTests": 19,
+  "scope": "Budget-only edits staged against downloaded live source; unrelated working-copy changes excluded. Deployment metadata and read-back verified; provider success, market FX and capacity not certified."
+}

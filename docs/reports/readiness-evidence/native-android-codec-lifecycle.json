@@ -1,0 +1,22 @@
+{
+  "date": "2026-10-17",
+  "emulator": "AIWardrobe_readiness_20261016",
+  "api": 34,
+  "abi": "arm64-v8a",
+  "nativeCorrectnessCasesPassed": 10,
+  "independentJpegOrientationCasesPassed": 8,
+  "nativeAlphaPreserved": true,
+  "fixtureSetupFailuresPreserved": true,
+  "normalAppInstalledAndLaunchedBeforeShutdown": true,
+  "syntheticAppDataRemovedByUninstall": true,
+  "emulatorProcessTerminated": true,
+  "subsequentSuccessfulDeviceInventory": "no attached devices",
+  "latestRedundantInventory": "automatic approval review timeout; no new result",
+  "temporaryNativeImageCopiesStillAvailable": false,
+  "realPickerTested": false,
+  "productionWrites": false,
+  "visualUiPassClaimed": false,
+  "capacityCertification": false,
+  "adbdUnrootCommandIssued": true,
+  "adbdRootStateSeparatelyVerified": false
+}

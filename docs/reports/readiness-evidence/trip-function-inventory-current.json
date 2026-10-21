@@ -1,0 +1,8 @@
+{
+  "measuredAt": "2026-10-19T12:47:43.998659+00:00",
+  "createTripPlanDeployed": false,
+  "downloadResult": "404 Function not found",
+  "inventoryConfirmedAbsent": true,
+  "exactClientReferenceSearch": "No exact create-trip-plan references found outside backend/migrations/validation/tests in focused source search; dynamic/alternate routing not excluded",
+  "action": "Do not deploy unused prepared function until actual feature caller and requirements are identified"
+}

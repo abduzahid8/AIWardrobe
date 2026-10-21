@@ -1,0 +1,22 @@
+{
+  "scope": "Primary Supabase wardrobe reads, pagination and local refresh reconciliation",
+  "fullSuite": {
+    "passed": true,
+    "tests": 1052,
+    "suites": 86
+  },
+  "newRegressions": 6,
+  "typecheck": "pass",
+  "targetedLint": {
+    "errors": 0,
+    "warnings": 5
+  },
+  "liveChecksPassed": 8,
+  "liveRowsReturned": 501,
+  "liveDurationMs": 1719,
+  "fixtureAccountsDeleted": 2,
+  "liveEvidence": "production-wardrobe-pagination.json",
+  "nativeVerified": false,
+  "mobileReleased": false,
+  "capacityCertified": false
+}

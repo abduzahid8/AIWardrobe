@@ -1,0 +1,26 @@
+pgbench (16.15 (Homebrew))
+starting vacuum...pgbench: error: ERROR:  relation "pgbench_branches" does not exist
+pgbench: detail: (ignoring this error and continuing anyway)
+pgbench: error: ERROR:  relation "pgbench_tellers" does not exist
+pgbench: detail: (ignoring this error and continuing anyway)
+pgbench: error: ERROR:  relation "pgbench_history" does not exist
+pgbench: detail: (ignoring this error and continuing anyway)
+end.
+transaction type: scripts/validation/quota-concurrency.pgbench
+scaling factor: 1
+query mode: simple
+number of clients: 40
+number of threads: 4
+maximum number of tries: 1
+number of transactions per client: 20
+number of transactions actually processed: 800/800
+number of failed transactions: 0 (0.000%)
+latency average = 10.655 ms
+initial connection time = 27.728 ms
+tps = 3754.176521 (without initial connection time)
+DO
+ users | wardrobe_items | saved_outfits | distinct_users_exercised 
+-------+----------------+---------------+--------------------------
+ 10000 |         500000 |         50000 |                     6972
+(1 row)
+

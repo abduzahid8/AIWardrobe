@@ -1,0 +1,19 @@
+{
+  "measuredAt": "2026-10-19T11:58:15Z",
+  "method": "RevenueCat dashboard Send Test Event and Response tab",
+  "projectId": "ab415511",
+  "webhookId": "whintgrad7d5a9693",
+  "eventId": "7B1386C9-885C-471D-A388-26AC6BB7E826",
+  "type": "TEST",
+  "status": 200,
+  "responseBody": {
+    "success": true,
+    "test": true
+  },
+  "supabaseProject": "fyqpifmrsftsfqibhwhy",
+  "requestId": "01a15406-cf95-728d-8833-6d171d54ce65",
+  "region": "us-east-1",
+  "testEventLedgerRows": 0,
+  "boundary": "Delivery/authentication verified, no purchase or subscription reconciliation performed by TEST handler",
+  "screenshot": "revenuecat-delivery-200.jpg"
+}

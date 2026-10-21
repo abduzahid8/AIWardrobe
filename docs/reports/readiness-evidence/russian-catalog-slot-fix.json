@@ -1,0 +1,8 @@
+{
+  "verifiedAt": "2026-10-19T01:48:55.672963+00:00",
+  "defect": "Explicit Russian catalog sneaker and vest names were not recognized; feed labels could assign them to top slots",
+  "regression": "Five actual-name category cases failed before and pass after; local and staged request/slot suite8/8; full1504 tests/131 suites; staged Deno pass",
+  "deployed": true,
+  "scope": "generate-outfits macro classifier and shop candidate exclusion; not a full catalog repair or client classification migration",
+  "feasibility": "Current read-only diagnostic finds5 strict-valid casual combinations under3150000UZS and0 gym combinations. All36 gym combinations exceed the cap. Not an exact captured hosted pool or exhaustive catalog search."
+}

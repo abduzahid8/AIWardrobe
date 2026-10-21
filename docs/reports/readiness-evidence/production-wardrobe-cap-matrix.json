@@ -1,0 +1,69 @@
+{
+  "measuredAt": "2026-10-21T07:52:44.132Z",
+  "scope": "One disposable free user with expired trial; direct owner SDK inserts, 111 simultaneous fixture garments maximum; six-request concurrency; no load/capacity certification",
+  "checks": [
+    {
+      "name": "server_rejects_twenty_first_free_garment",
+      "passed": true
+    },
+    {
+      "name": "existing_row_upsert_remains_usable_at_capacity",
+      "passed": true
+    },
+    {
+      "name": "six_concurrent_free_inserts_admit_exactly_one_remaining_slot",
+      "passed": true
+    },
+    {
+      "name": "oversized_free_batch_rolls_back_all_rows",
+      "passed": true
+    },
+    {
+      "name": "verified_lite_accepts_one_hundred_garments",
+      "passed": true
+    },
+    {
+      "name": "verified_lite_rejects_one_hundred_first_garment",
+      "passed": true
+    },
+    {
+      "name": "downgrade_retains_editable_existing_rows_but_blocks_new_capacity",
+      "passed": true
+    },
+    {
+      "name": "active_original_trial_grants_premium_capacity_above_lite_cap",
+      "passed": true
+    },
+    {
+      "name": "expired_trial_rejects_new_garments",
+      "passed": true
+    },
+    {
+      "name": "verified_vip_grants_capacity_above_lite_cap",
+      "passed": true
+    },
+    {
+      "name": "owner_cannot_insert_for_another_identity",
+      "passed": true
+    },
+    {
+      "name": "anonymous_cannot_insert_for_owner",
+      "passed": true
+    }
+  ],
+  "observed": {
+    "extraInsertStatus": 400,
+    "extraInsertErrorCode": "P0001",
+    "ownedItemCount": 20
+  },
+  "concurrent": {
+    "requests": 6,
+    "accepted": 1,
+    "rejected": 5
+  },
+  "cleanup": {
+    "refreshSessionsRevoked": true,
+    "userDeleted": true
+  },
+  "passed": true
+}

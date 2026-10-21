@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-17",
+  "changedLockedVersions": {
+    "node_modules/proxy-addr": {
+      "before": "2.0.7",
+      "after": "2.0.8"
+    }
+  },
+  "diagnostic": {
+    "passed": 7,
+    "failed": 2,
+    "remainingFailureCopies": [
+      "appium-xcuitest-driver/node_modules/proxy-addr",
+      "appium-xcuitest-driver/node_modules/shell-quote"
+    ]
+  },
+  "appTests": 1240,
+  "appSuites": 110,
+  "typecheck": "passed",
+  "appiumVersion": "3.7.0",
+  "xcuitestImport": "passed",
+  "loopbackStatus": {
+    "httpStatus": 200,
+    "ready": true,
+    "uiSessionCreated": false
+  },
+  "completeRemediation": false
+}

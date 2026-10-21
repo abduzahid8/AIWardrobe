@@ -1,0 +1,172 @@
+{
+  "runId": "803538b7-468a-473f-9038-27bf4a2189fd",
+  "scope": "Fresh private URLs containing exact Android native JPEG preview; fixed regional comparison, not 10000 DAU certification",
+  "fixtureBytes": 85077,
+  "fixtureSha256": "69bfad1fe13b19cbf5671f7325ec38e36f96a92232d14362c6dfd92448606d72",
+  "fixtureContentType": "image/jpeg",
+  "controls": [
+    {
+      "region": "ap-northeast-1",
+      "name": "anonymous",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "region": "ap-northeast-1",
+      "name": "other_owner",
+      "status": 403,
+      "passed": true
+    },
+    {
+      "region": "eu-central-1",
+      "name": "anonymous",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "region": "eu-central-1",
+      "name": "other_owner",
+      "status": 403,
+      "passed": true
+    }
+  ],
+  "regions": [
+    {
+      "requestedRegion": "ap-northeast-1",
+      "runtimeRegion": "ap-northeast-1",
+      "responseRegion": "ap-northeast-1",
+      "passed": true,
+      "distinctIssuedObjects": 170,
+      "stages": [
+        {
+          "targetRps": 2,
+          "completed": 20,
+          "planned": 20,
+          "failures": 0,
+          "dropped": 0,
+          "p95Ms": 587.9044279999998,
+          "p95HeadersMs": 556.5893240000005,
+          "p95BodyMs": 43.816919000000325,
+          "bytes": 1701540
+        },
+        {
+          "targetRps": 5,
+          "completed": 50,
+          "planned": 50,
+          "failures": 0,
+          "dropped": 0,
+          "p95Ms": 652.3871550000003,
+          "p95HeadersMs": 587.6993260000017,
+          "p95BodyMs": 81.34199300000182,
+          "bytes": 4253850
+        },
+        {
+          "targetRps": 10,
+          "completed": 100,
+          "planned": 100,
+          "failures": 0,
+          "dropped": 0,
+          "p95Ms": 538.3384380000025,
+          "p95HeadersMs": 527.6181770000003,
+          "p95BodyMs": 69.53677999999854,
+          "bytes": 8507700
+        }
+      ]
+    },
+    {
+      "requestedRegion": "eu-central-1",
+      "runtimeRegion": "eu-central-1",
+      "responseRegion": "eu-central-1",
+      "passed": false,
+      "distinctIssuedObjects": 167,
+      "stages": [
+        {
+          "targetRps": 2,
+          "completed": 20,
+          "planned": 20,
+          "failures": 0,
+          "dropped": 0,
+          "p95Ms": 2304.533236,
+          "p95HeadersMs": 1839.3564700000002,
+          "p95BodyMs": 491.6995910000005,
+          "bytes": 1701540
+        },
+        {
+          "targetRps": 5,
+          "completed": 50,
+          "planned": 50,
+          "failures": 0,
+          "dropped": 0,
+          "p95Ms": 2207.4260319999994,
+          "p95HeadersMs": 1928.6162579999982,
+          "p95BodyMs": 474.9983630000024,
+          "bytes": 4253850
+        },
+        {
+          "targetRps": 10,
+          "completed": 97,
+          "planned": 100,
+          "failures": 0,
+          "dropped": 3,
+          "p95Ms": 2214.335090999997,
+          "p95HeadersMs": 1959.9021769999963,
+          "p95BodyMs": 478.376443000001,
+          "bytes": 8252469
+        }
+      ]
+    }
+  ],
+  "issuedResponses": 337,
+  "verifiedBytes": 28670949,
+  "cacheStatuses": {
+    "MISS": 337
+  },
+  "noDropAcceptancePassed": false,
+  "runnerExitCode": 2,
+  "cleanup": {
+    "checks": [
+      {
+        "functionSlug": "readiness-distinct-media-803538b7-tokyo",
+        "functionDeleted": true
+      },
+      {
+        "functionSlug": "readiness-distinct-media-803538b7-frankfurt",
+        "functionDeleted": true
+      },
+      {
+        "objectsRemoved": true,
+        "objectsAbsent": true
+      },
+      {
+        "userId": "e0857798-42d7-42bc-83ad-28cf26c8d890",
+        "deleteSucceeded": true,
+        "userAbsent": true
+      },
+      {
+        "userId": "7978bb03-5b4c-4fbe-abeb-06333e98d3de",
+        "deleteSucceeded": true,
+        "userAbsent": true
+      }
+    ],
+    "passed": true
+  },
+  "privateConfigsAbsent": {
+    "/tmp/aiwardrobe-distinct-media-544193f1-5fd8-4dd8-a839-97cd068dad2a.json": true,
+    "/tmp/aiwardrobe-distinct-media-544193f1-5fd8-4dd8-a839-97cd068dad2a.json.tmp": true,
+    "/tmp/aiwardrobe-distinct-media-803538b7-468a-473f-9038-27bf4a2189fd.json": true,
+    "/tmp/aiwardrobe-distinct-media-803538b7-468a-473f-9038-27bf4a2189fd.json.tmp": true
+  },
+  "sourceSha256": {
+    "scripts/load/remote-media-probe.mjs": "ad8343d6f17d7ff833af52f0a69c7838524df4f22329ff307e70a83eb61fbcd0",
+    "scripts/load/distinct-media-diagnostic.mjs": "aa8c6bb669634a650aa17946f4389b007773e78fd17fecf814731dce4c76731e",
+    "scripts/load/diagnostic-error.mjs": "ddce75b78e199c5313931aa2f07d4207acc97865a918e6954ce2836f8dfcf9e1"
+  },
+  "limitations": [
+    "Single repository-derived photo and owner; only ten-second stages",
+    "Tokyo then Frankfurt, separate cohorts uploaded in fixed order",
+    "Comparison with earlier PNG run is across different times, not randomized simultaneous trial",
+    "Client-cap drops do not establish backend hard capacity",
+    "Earlier 334-upload preparation failure remains unexplained",
+    "Not native device rendering or AI-provider load"
+  ]
+}

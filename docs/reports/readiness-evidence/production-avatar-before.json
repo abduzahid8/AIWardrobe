@@ -1,0 +1,24 @@
+{
+  "measuredAt": "2026-10-15T16:30:19.162Z",
+  "scope": "Production avatar HTTP lifecycle using disposable accounts only; excludes native image-picker UI",
+  "checks": [
+    {
+      "name": "owner_upload",
+      "status": 400,
+      "passed": false
+    }
+  ],
+  "cleanup": [
+    {
+      "kind": "temporary_account",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "kind": "temporary_account",
+      "status": 200,
+      "passed": true
+    }
+  ],
+  "failure": "Avatar upload failed: HTTP 400"
+}

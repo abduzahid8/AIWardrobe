@@ -1,0 +1,16 @@
+{
+  "scope": "Wardrobe favorites/deletion primary persistence and stable insert identity",
+  "fullSuite": {
+    "passed": true,
+    "tests": 1046,
+    "suites": 85
+  },
+  "newRegressions": 5,
+  "typecheck": "pass",
+  "liveChecksPassed": 12,
+  "fixtureAccountsDeleted": 2,
+  "liveEvidence": "production-wardrobe-mutations.json",
+  "nativeVerified": false,
+  "mobileReleased": false,
+  "nativeOfflineRecoveryVerified": false
+}

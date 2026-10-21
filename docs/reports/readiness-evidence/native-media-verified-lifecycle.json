@@ -1,0 +1,26 @@
+{
+  "runId": "56bba184-9cb1-44dc-b3be-20b95fabcda4",
+  "productionCleanup": {
+    "ownershipConfirmed": true,
+    "removeSucceeded": true,
+    "objectsAbsent": true,
+    "deleteSucceeded": true,
+    "userAbsent": true,
+    "passed": true,
+    "independentSqlCounts": {
+      "users": 0,
+      "sessions": 0,
+      "identities": 0,
+      "profiles": 0,
+      "objects": 0
+    }
+  },
+  "privateConfigAbsent": true,
+  "auditAppUninstalled": true,
+  "adbUidBeforeShutdown": 2000,
+  "emulatorExitCode": 0,
+  "avdDeleted": "AIWardrobe_media_verified_20261017",
+  "deviceInventoryEmpty": true,
+  "measurementPassed": false,
+  "normalBuild": "passed_and_source_verified"
+}

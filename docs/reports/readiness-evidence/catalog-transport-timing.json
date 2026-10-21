@@ -1,0 +1,36 @@
+{
+  "startedAt": "2026-10-20T17:39:44.562Z",
+  "scope": "120 public catalog reads at 4 RPS; transport calibration only, no fixtures/AI/writes or 10000-DAU claim",
+  "statuses": {
+    "200": 120
+  },
+  "failures": [],
+  "timingMs": {
+    "total": {
+      "samples": 120,
+      "p50": 512.9180420000012,
+      "p95": 795.8517919999999,
+      "p99": 1639.6056249999997
+    },
+    "headers": {
+      "samples": 120,
+      "p50": 509.12045899999976,
+      "p95": 793.8308750000001,
+      "p99": 1638.0424170000001
+    },
+    "bodyIncludingValidation": {
+      "samples": 120,
+      "p50": 1.1857920000002196,
+      "p95": 6.108499999999822,
+      "p99": 12.98791700000038
+    },
+    "reportedUpstream": {
+      "samples": 120,
+      "p50": 3,
+      "p95": 79,
+      "p99": 596
+    }
+  },
+  "completedAt": "2026-10-20T17:40:14.746Z",
+  "requests": 120
+}

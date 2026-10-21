@@ -1,0 +1,14 @@
+{
+  "ios": {
+    "authSourceMatches": true,
+    "auditEntriesAbsent": true
+  },
+  "android": {
+    "authSourceMatches": true,
+    "auditEntriesAbsent": true
+  },
+  "androidBuildSucceeded": true,
+  "androidApkSha256": "3d65fc421efbb7a609c77d418c55ed47e7b299cb35d45a7288ca4e1fad0ce528",
+  "iosBundleSha256": "129bca1b3c6d6e800182a90a06a41942de7df7a2877f029b93385f543e991647",
+  "iosScope": "Normal-entry Hermes export with unchanged compiled native runtime"
+}

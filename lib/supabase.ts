@@ -2,6 +2,7 @@ import 'react-native-url-polyfill/auto';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Config from '../src/config/env';
+import { createAuthDeadlineFetch, createStorageUploadDeadlineFetch } from '../src/lib/authFetch';
 
 // Use AsyncStorage for Supabase session persistence.
 // SecureStore has a 2048-byte limit which Supabase JWTs exceed, causing
@@ -21,6 +22,7 @@ function createSupabaseClient(): SupabaseClient {
     const key = Config.supabase.anonKey || 'placeholder';
 
     return createClient(url, key, {
+        global: { fetch: createAuthDeadlineFetch(url, createStorageUploadDeadlineFetch(url, (...args) => fetch(...args))) },
         auth: {
             storage: AsyncStorageAdapter,
             autoRefreshToken: true,

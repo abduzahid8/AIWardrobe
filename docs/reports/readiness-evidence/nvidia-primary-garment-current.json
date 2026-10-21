@@ -1,0 +1,82 @@
+{
+  "measuredAt": "2026-10-20T04:49:53.855Z",
+  "sourceHash": "5324009b906c206621b710d8efe09a720710e476c5f71151658c9de047b0c425",
+  "scope": "Three sequential direct NVIDIA calls through exact current production classifier; no hosted auth/quota/capacity claim",
+  "cases": [
+    {
+      "name": "original1",
+      "fixture": "scripts/validation/fixtures/opaque-photo/photo-1.jpg",
+      "imageBytes": 666026,
+      "imageHash": "2d47a0ac74bd074352bb446576e38d54ca5339ca3b8687cbc78812ca1f80a717",
+      "latencyMs": 5202,
+      "provider": [
+        {
+          "status": 200,
+          "finishReason": "stop",
+          "content": "{\"category\":\"jacket\",\"section\":\"outerwear\",\"style\":\"casual\",\"color\":\"beige\",\"material\":\"null\",\"description\":\"A beige jacket with a green scarf.\", \"shoeType\":null}"
+        }
+      ],
+      "accepted": {
+        "classification": {
+          "category": "jacket",
+          "section": "outerwear",
+          "confidence": 0,
+          "attributes": {
+            "style": "casual",
+            "color": "beige",
+            "material": null
+          }
+        },
+        "description": "A beige jacket with a green scarf."
+      },
+      "error": null,
+      "expected": "Beige/cream torso shirt or jacket; not jeans or draped green layer",
+      "primaryMatches": true
+    },
+    {
+      "name": "original2",
+      "fixture": "scripts/validation/fixtures/opaque-photo/photo-1.jpg",
+      "imageBytes": 666026,
+      "imageHash": "2d47a0ac74bd074352bb446576e38d54ca5339ca3b8687cbc78812ca1f80a717",
+      "latencyMs": 44595,
+      "provider": [
+        {
+          "status": 200,
+          "finishReason": "stop",
+          "content": "{\"category\":\"jacket\",\"section\":\"outerwear\",\"style\":\"casual\",\"color\":\"beige\",\"material\":\"null\",\"description\":\"A beige jacket with a green scarf.\", \"shoeType\":null}"
+        }
+      ],
+      "accepted": {
+        "classification": {
+          "category": "jacket",
+          "section": "outerwear",
+          "confidence": 0,
+          "attributes": {
+            "style": "casual",
+            "color": "beige",
+            "material": null
+          }
+        },
+        "description": "A beige jacket with a green scarf."
+      },
+      "error": null,
+      "expected": "Beige/cream torso shirt or jacket; not jeans or draped green layer",
+      "primaryMatches": true
+    },
+    {
+      "name": "nativeThumbnail",
+      "fixture": "docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/02-originalPath.jpg",
+      "imageBytes": 666026,
+      "imageHash": "2d47a0ac74bd074352bb446576e38d54ca5339ca3b8687cbc78812ca1f80a717",
+      "latencyMs": 45006,
+      "provider": [],
+      "accepted": null,
+      "error": "ai_classification_unavailable",
+      "expected": "Beige/cream torso shirt or jacket; not jeans or draped green layer",
+      "primaryMatches": false
+    }
+  ],
+  "allPrimaryMatches": false,
+  "identicalInputBytes": true,
+  "finding": "Two correct primary category/color responses and one 45-second timeout on byte-identical JPEG; does not resolve prior wrong-category failure or establish reliability."
+}

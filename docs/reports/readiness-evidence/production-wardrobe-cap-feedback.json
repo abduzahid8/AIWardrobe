@@ -1,0 +1,44 @@
+{
+  "measuredAt": "2026-10-21T08:12:38.840Z",
+  "scope": "One disposable free user with expired trial; direct owner SDK inserts, actual sync service retained-item/retry verification; no load/capacity certification",
+  "checks": [
+    {
+      "name": "server_rejects_twenty_first_free_garment",
+      "passed": true
+    },
+    {
+      "name": "existing_row_upsert_remains_usable_at_capacity",
+      "passed": true
+    },
+    {
+      "name": "actual_service_reports_cap_and_retains_unconfirmed_item",
+      "passed": true
+    },
+    {
+      "name": "same_queued_action_confirms_after_capacity_is_freed",
+      "passed": true
+    },
+    {
+      "name": "retry_creates_one_row_at_original_id_and_respects_cap",
+      "passed": true
+    }
+  ],
+  "observed": {
+    "extraInsertStatus": 400,
+    "extraInsertErrorCode": "P0001",
+    "ownedItemCount": 20
+  },
+  "sourceHashes": {
+    "store/authEvents.ts": "4a276d38e09fc9b2fe577b0dcb8361ab450eadda454ba36cc8f299a1bbbb30c3",
+    "src/lib/requestDeadline.ts": "158dfcfcd498674fcca78f8b5357aa1dcbf49ce75aff2f571500e46b408d295b",
+    "src/services/wardrobeMedia.ts": "e7e00901e1647317a67e663d18ead2e27e3784546d5a3fd781f22e1a82ee5332",
+    "src/services/pendingWardrobeMedia.ts": "c02b09118a82079f26c78cc8d6e5ba39627d9963adf13851d91f9f45eaa59d58",
+    "src/services/wardrobeItemMedia.ts": "637679a4cfa10574642b2a9e08884514ec8598833ff348ac75241ed44a808f6d",
+    "store/wardrobeSyncService.ts": "14c41dbc6c5efd6faf81d4cd87608d2d9d1bd418945cdcb10b7e0b003fc0efb9"
+  },
+  "cleanup": {
+    "refreshSessionsRevoked": true,
+    "userDeleted": true
+  },
+  "passed": true
+}

@@ -16,20 +16,13 @@
  */
 
 import React, { useCallback } from 'react';
-import {
-    View,
-    Text,
-    TouchableOpacity,
-    Image,
-    StyleSheet,
-    Dimensions,
-    Share,
-    Alert,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Share, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LiquidGlass2026Theme } from '../../constants/LiquidGlass2026Theme';
 import type { ScoredOutfit, ShoppingSuggestion } from '../services/suggestionEngine';
 import type { ClothingItem } from '../types/domain';
+import { Image } from './MediaImage';
+
 
 const { colors, spacing, radius, typography } = LiquidGlass2026Theme;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');

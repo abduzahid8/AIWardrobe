@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Pressable, View } from 'react-native'
-import { ScaledText } from '../ui/ScaledText';;
+import { ScaledText } from '../ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../src/theme/ThemeContext';
 import Animated, {

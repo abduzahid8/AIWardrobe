@@ -1,0 +1,42 @@
+{
+  "projectRef": "fyqpifmrsftsfqibhwhy",
+  "migration": "authoritative_usage_quotas",
+  "migrationFile": "backend/supabase/migrations/027_authoritative_usage.sql",
+  "sha256": "0b075a7e8b5f57533abed428736c8ab0037650b2d5c8e1cef85e13308933e2d2",
+  "deploymentSucceeded": true,
+  "liveChecks": {
+    "passed": 12,
+    "total": 12,
+    "evidence": "production-quota-after.json",
+    "independentCleanupRemainingTaggedUsers": 0
+  },
+  "baseline": "production-quota-before.json: HTTP400 PostgreSQL42702 ambiguous used; no successful live unlimited bypass claimed",
+  "localValidation": {
+    "cleanReplayPassed": true,
+    "database": "aiwardrobe_readiness_1792378434922271000",
+    "seed": {
+      "users": 10000,
+      "garments": 500000,
+      "outfits": 50000
+    },
+    "quotaConcurrencyTransactions": 800,
+    "securityAndRevenueCatAssertionsPassed": true
+  },
+  "targetedRateHelperTests": {
+    "passed": 19,
+    "total": 19,
+    "transport": "mock Auth/database; not hosted capacity"
+  },
+  "limitations": [
+    "Hosted generation paid quota enforcement is not connected yet; free Home policy decision pending.",
+    "No production AI capacity certification.",
+    "prune_usage_counters exists but scheduling is not established."
+  ],
+  "fullAppTests": {
+    "passed": 1561,
+    "suitesPassed": 137,
+    "afterMigration": true
+  },
+  "laterIntegrationEvidence": "paid-generation-policy.json",
+  "laterRetentionEvidence": "usage-retention-deployment.json"
+}

@@ -17,7 +17,7 @@
 
 -- 1. Table ───────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.body_profiles (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
 
     -- Display
@@ -71,7 +71,7 @@ DROP TRIGGER IF EXISTS update_body_profiles_updated_at ON public.body_profiles;
 CREATE TRIGGER update_body_profiles_updated_at
     BEFORE UPDATE ON public.body_profiles
     FOR EACH ROW
-    EXECUTE FUNCTION public.handle_updated_at();
+    EXECUTE FUNCTION public.set_updated_at();
 
 -- 5. RLS ─────────────────────────────────────────────────────────────────────
 ALTER TABLE public.body_profiles ENABLE ROW LEVEL SECURITY;

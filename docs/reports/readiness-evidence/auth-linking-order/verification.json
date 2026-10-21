@@ -1,0 +1,14 @@
+{
+  "fullJest": {
+    "testsPassed": 1430,
+    "suitesPassed": 124
+  },
+  "newLinkOrderingTests": 8,
+  "typescriptPassed": true,
+  "lint": {
+    "errors": 0,
+    "warnings": 1,
+    "warning": "Existing App.tsx native-screens require statement"
+  },
+  "scope": "Deterministic deferred-session and rendered-form tests; no live recovery delivery or native deep-link claim"
+}

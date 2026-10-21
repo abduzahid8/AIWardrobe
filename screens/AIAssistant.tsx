@@ -1,3 +1,5 @@
+import { getBudgetRates } from '../src/services/budgetRates';
+import { budgetFxContext } from '../backend/supabase/functions/_shared/budgetFx';
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Alert, KeyboardAvoidingView, Platform,  } from 'react-native'
 import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -16,7 +18,7 @@ import { colors, spacing, borderRadius, shadows } from "../src/theme";
 import { useSubscriptionGate } from "../src/hooks/useSubscriptionGate";
 import useWardrobeStore from "../store/wardrobeStore";
 import useShopCatalogStore from "../store/shopCatalogStore";
-import { buildAgentClothingContext } from "../src/utils/outfitBudget";
+import { buildAgentClothingContext, budgetCandidatesFromText } from "../src/utils/outfitBudget";
 
 // Message interface
 interface Message {
@@ -188,7 +190,9 @@ const AIAssistant = () => {
         content: m.text,
       }));
 
+      const budgetFx = budgetCandidatesFromText(textToSend).length ? budgetFxContext(await getBudgetRates()) : undefined;
       const clothingContext = buildAgentClothingContext({
+        budgetFx,
         owned: wardrobeItems,
         shop: shopItems,
         userMessage: textToSend,

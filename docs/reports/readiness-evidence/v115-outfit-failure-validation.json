@@ -1,0 +1,45 @@
+{
+  "measuredAt": "2026-10-21T16:26:12.851701+00:00",
+  "hostedVersion": 115,
+  "deployment": {
+    "files": 12,
+    "changedFiles": [
+      "functions/generate-outfits/index.ts",
+      "functions/_shared/outfitStructure.ts"
+    ],
+    "exactReadbackVerified": true,
+    "jwtRequired": true
+  },
+  "verification": {
+    "jestTestsPassed": 2263,
+    "jestSuitesPassed": 175,
+    "typescript": true,
+    "deno": true,
+    "iosBundle": true,
+    "androidReleaseBuild": true,
+    "nativeSourceMatches": true
+  },
+  "diagnosis": {
+    "reportedFailure": "Recent production request matching Work/Old Money returned unparseable NVIDIA content. Timing correlation, not a uniquely identified user execution.",
+    "newLiveCheck": "HTTP503 after48150ms; NVIDIA timeout, no outfit. See separate live report.",
+    "resolved": false
+  },
+  "changes": [
+    "One format correction on same NVIDIA model; at most two total provider calls including quality correction",
+    "Specific AI-unavailable copy in English/Russian/Uzbek",
+    "Exclude catalog non-garments;9existing accessories relabelled; future writes normalized by trigger"
+  ],
+  "triggerVerification": {
+    "role": "service_role in rolled-back SQL transaction",
+    "accessoryInsert": true,
+    "reimportUpdate": true,
+    "watchPrintDressPreserved": true,
+    "towelKnitShirtPreserved": true,
+    "remainingFixtures": 0
+  },
+  "limits": [
+    "Frontend copy built but not installed or published to user device",
+    "Provider timeout persists; reliable generation not established",
+    "Not a10,000DAU certification"
+  ]
+}

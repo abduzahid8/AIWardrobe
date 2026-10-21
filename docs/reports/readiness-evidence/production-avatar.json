@@ -1,0 +1,108 @@
+{
+  "measuredAt": "2026-10-16T04:17:52.857Z",
+  "scope": "Production avatar HTTP lifecycle using disposable accounts only; excludes native image-picker UI",
+  "checks": [
+    {
+      "name": "owner_upload",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "avatar_not_publicly_readable",
+      "status": 400,
+      "passed": true
+    },
+    {
+      "name": "other_cannot_read_private_avatar",
+      "status": 400,
+      "passed": true
+    },
+    {
+      "name": "avatar_image_downloads",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "profile_photo_saved",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "profile_photo_persists",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "owner_can_replace_avatar",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "other_cannot_upload_to_owner_folder",
+      "status": 400,
+      "passed": true
+    },
+    {
+      "name": "other_cannot_overwrite_avatar",
+      "status": 400,
+      "passed": true
+    },
+    {
+      "name": "other_cannot_delete_avatar",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "other_cannot_list_owner_files",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "non_image_upload_denied",
+      "status": 400,
+      "passed": true
+    },
+    {
+      "name": "anonymous_upload_denied",
+      "status": 400,
+      "passed": true
+    },
+    {
+      "name": "oversized_upload_denied",
+      "status": 400,
+      "passed": true
+    },
+    {
+      "name": "account_deletion_success",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "deleted_account_avatar_removed",
+      "status": 400,
+      "passed": true
+    },
+    {
+      "name": "other_account_preserved",
+      "status": 200,
+      "passed": true
+    }
+  ],
+  "cleanup": [
+    {
+      "kind": "fixture_files",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "kind": "temporary_account",
+      "status": 404,
+      "passed": true
+    },
+    {
+      "kind": "temporary_account",
+      "status": 200,
+      "passed": true
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "phase": 2,
+  "platform": "android",
+  "checks": [
+    "fresh process has no identity or visible likes",
+    "owner A disk survives restart and owner B rejects it",
+    "owner B writes confirmed independent likes"
+  ],
+  "passed": true,
+  "observedProcessId": 7187
+}

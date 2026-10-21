@@ -1,0 +1,194 @@
+{
+  "measuredAt": "2026-10-21T12:19:32.466Z",
+  "scope": "Live NVIDIA category/budget scenarios; not exhaustive accuracy or capacity certification",
+  "checks": [
+    {
+      "name": "date_old_money_300_usd",
+      "status": 503,
+      "error": "ai_generation_unavailable",
+      "latencyMs": 12712,
+      "passed": false,
+      "reasons": [
+        "generation_http_503"
+      ],
+      "spendUzs": 0,
+      "capUzs": 3603690,
+      "items": [],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "status": "ok"
+        },
+        {
+          "provider": "nvidia",
+          "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "name": "formal_semi_classic_300_usd",
+      "status": 200,
+      "latencyMs": 11648,
+      "passed": true,
+      "reasons": [],
+      "spendUzs": 2949800,
+      "capUzs": 3603690,
+      "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+      "source": "ai",
+      "items": [
+        {
+          "id": "shop_md-uz-61729268",
+          "name": "100% linen regular fit stand collar shirt",
+          "macroCategory": "top",
+          "price": 1100000,
+          "currency": "UZS",
+          "shopUrl": "https://www.massimodutti.com/uz/en/100-linen-regular-fit-stand-collar-shirt-l01972283?pelement=61729268"
+        },
+        {
+          "id": "shop_zara-uz-555174282",
+          "name": "AARON LEVINE X ZARA REGULAR FIT CHINO TROUSERS",
+          "macroCategory": "bottom",
+          "price": 849900,
+          "currency": "UZS",
+          "shopUrl": "https://www.zara.com/uz/en/aaron-levine-x-zara-regular-fit-chinos-p04025158.html?v1=555174282"
+        },
+        {
+          "id": "shop_zara-uz-545465814",
+          "name": "LEATHER PENNY LOAFERS",
+          "macroCategory": "shoes",
+          "price": 999900,
+          "currency": "UZS",
+          "shopUrl": "https://www.zara.com/uz/en/leather-penny-loafers-p12686820.html?v1=545465814"
+        }
+      ],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "status": "ok"
+        },
+        {
+          "provider": "nvidia",
+          "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "name": "travel_minimalist_300_usd",
+      "status": 200,
+      "latencyMs": 13526,
+      "passed": false,
+      "reasons": [
+        "generation_http_200",
+        "over_budget"
+      ],
+      "spendUzs": 6418800,
+      "capUzs": 3603690,
+      "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+      "source": "ai",
+      "items": [
+        {
+          "id": "shop_md-uz-62246011",
+          "name": "100% cotton V-neck knit polo shirt",
+          "macroCategory": "top",
+          "price": 800000,
+          "currency": "UZS",
+          "shopUrl": "https://www.massimodutti.com/uz/en/100-cotton-vneck-knit-polo-l00837175?pelement=62246011"
+        },
+        {
+          "id": "shop_zara-uz-545490391",
+          "name": "100% LINEN SUIT TROUSERS",
+          "macroCategory": "bottom",
+          "price": 849900,
+          "currency": "UZS",
+          "shopUrl": "https://www.zara.com/uz/en/100-linen-suit-trousers-p04410411.html?v1=545490391"
+        },
+        {
+          "id": "shop_fr-tommy-152421",
+          "name": "Лоферы HILFIGER STITCHDOWN SUEDE LOAFER",
+          "macroCategory": "shoes",
+          "price": 1384500,
+          "currency": "UZS",
+          "shopUrl": "https://frgroup.uz/ru/store/lofery-hilfiger-stitchdown-suede-loafer-tommy-hilfiger-fm0fm05782-bezhevyj"
+        },
+        {
+          "id": "shop_md-uz-62286483",
+          "name": "100% cotton V-neck knit polo",
+          "macroCategory": "top",
+          "price": 900000,
+          "currency": "UZS",
+          "shopUrl": "https://www.massimodutti.com/uz/en/100-cotton-vneck-knit-polo-l01367201?pelement=62286483"
+        },
+        {
+          "id": "shop_zara-uz-574423509",
+          "name": "100% WOOL REGULAR FIT SUIT TROUSERS",
+          "macroCategory": "bottom",
+          "price": 1099900,
+          "currency": "UZS",
+          "shopUrl": "https://www.zara.com/uz/en/100-wool-regular-fit-suit-trousers-p04071639.html?v1=574423509"
+        },
+        {
+          "id": "shop_fr-tommy-152421",
+          "name": "Лоферы HILFIGER STITCHDOWN SUEDE LOAFER",
+          "macroCategory": "shoes",
+          "price": 1384500,
+          "currency": "UZS",
+          "shopUrl": "https://frgroup.uz/ru/store/lofery-hilfiger-stitchdown-suede-loafer-tommy-hilfiger-fm0fm05782-bezhevyj"
+        }
+      ],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "status": "ok"
+        },
+        {
+          "provider": "nvidia",
+          "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "status": "ok"
+        }
+      ]
+    }
+  ],
+  "fixtureUserId": "cb415a30-91aa-4dbf-af44-a3347e3ed219",
+  "reference": {
+    "id": "CBU:2026-10-21:12012.3:13466.99:16026.81",
+    "source": "CBU",
+    "asOf": "2026-10-21",
+    "fetchedAt": "2026-10-21T12:08:51.805Z",
+    "uzsPerUnit": {
+      "USD": 12012.3,
+      "EUR": 13466.99,
+      "GBP": 16026.81,
+      "UZS": 1
+    }
+  },
+  "cleanup": {
+    "refreshSessionsRevoked": true,
+    "temporaryUserDeleted": true,
+    "status": 200
+  },
+  "execution": {
+    "runtime": "Local Node with actual current handler modules; real Supabase Auth/catalog/rate guards and hosted NVIDIA",
+    "candidateModel": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "sourceHashes": {
+      "generate-outfits/index.ts": "3b24a4a74ddc79eab78d75f2b8d70f6d455d946e8e591c5b89f627936cc09e0a",
+      "_shared/outfitGenerationRequest.ts": "30412ecc9a1fc0695dff2563bf98bb33a25289ffb19cedb0d08ef339bf724f03",
+      "_shared/occasionRules.ts": "178339bcc8b6962280a695027bff1afa06edfb34c38054d49bc25abafd31ea5d",
+      "_shared/outfitBudgetText.ts": "bb2942b93c782908b4389f39c04ba6b6cca0c014f82a83b34ecafdb8d58bfc1f",
+      "_shared/budgetFx.ts": "e1aa62bb1d5f06d5fa484e9e9033991a9218d1bde42657514c010f8ecf7c526a",
+      "_shared/budgetFxCache.ts": "2060d666cb044ce6e20ad12f37a874aa7ede57c0018faf7d0da5ad96a6f02425",
+      "_shared/rateLimit.ts": "de9201c135537983a3c84ccd7e25bf9880c37a3c85fea64e6862f9372f48fa54",
+      "_shared/outfitBudgetFeasibility.ts": "70040dc0b5779813aa2fc80cd0c3b5310308ee00c0a4928f5aa72a9d80e9c57e",
+      "_shared/outfitStructure.ts": "6665b5a7e66f43408d73af0ed27753bb02f296e97550ef1ede823a09239a8ab6",
+      "_shared/outfitBudgetSelection.ts": "7be1bb224da400e8fc3328cece5b911f1f7a580433eea2ad2c2f28b6ebc9fe3e",
+      "_shared/outfitBudgetFeedback.ts": "ffb3373f563dbb2642253ae10166c98d6e4e3ccc4da1fcc54b3e291ae2ecc548",
+      "_shared/modelOutfitResponse.ts": "ed0fab20006ac6a91559450a6860b2bdadd998c970ab9b40c51e627d5f56d52c"
+    },
+    "productionConfigurationChanged": false,
+    "limits": "Not hosted Edge runtime or native UI; this comparison does not establish production model throughput."
+  }
+}

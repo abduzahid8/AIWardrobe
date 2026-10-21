@@ -1,0 +1,14 @@
+{
+  "runId": "106082fe-c9f5-4083-98b2-6d7a480908fc",
+  "contract": "20261019-patterns-v4",
+  "status": 200,
+  "passedChecks": 6,
+  "latencyMs": 8195,
+  "detectedItems": 1,
+  "ownJacketSeen": true,
+  "foreignFixtureSeen": false,
+  "crossCategoryRecommendations": 0,
+  "remainingTaggedAccountsIndependentSql": 0,
+  "causeEvidence": "Previous hosted v3 run reported invalid pattern as quoted_null; unit preservation cases cover JSON null and quoted null variants.",
+  "boundary": "Single controlled-photo request; does not establish broad visual accuracy, production reliability or10,000DAUcapacity"
+}

@@ -1,0 +1,12 @@
+{
+  "phase": 1,
+  "platform": "android",
+  "passed": true,
+  "checks": [
+    "injected registry rejection is reported",
+    "native cleanup marker acknowledged on disk",
+    "failed registry leaves fixture chat for restart recovery",
+    "no fetch requests attempted"
+  ],
+  "networkAttempts": 0
+}

@@ -1,0 +1,13 @@
+{
+  "jest": {
+    "passedTests": 1438,
+    "passedSuites": 124
+  },
+  "addedCases": 8,
+  "typescriptPassed": true,
+  "targetedLint": {
+    "errors": 0,
+    "warnings": 43
+  },
+  "scope": "Mocked SDK recovery authority and rendered screen cases; does not prove live email delivery or token exchange"
+}

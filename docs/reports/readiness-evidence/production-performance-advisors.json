@@ -1,0 +1,1156 @@
+{
+  "lints": [
+    {
+      "name": "unindexed_foreign_keys",
+      "title": "Unindexed foreign keys",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Identifies foreign key constraints without a covering index, which can impact database performance.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys",
+      "count": 5,
+      "findings": [
+        {
+          "detail": "Table \\`public.admin_permissions\\` has a foreign key \\`admin_permissions_granted_by_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+          "metadata": {
+            "name": "admin_permissions",
+            "type": "table",
+            "schema": "public",
+            "fkey_name": "admin_permissions_granted_by_fkey",
+            "fkey_columns": [
+              5
+            ]
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.influencer_referrals\\` has a foreign key \\`influencer_referrals_user_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+          "metadata": {
+            "name": "influencer_referrals",
+            "type": "table",
+            "schema": "public",
+            "fkey_name": "influencer_referrals_user_id_fkey",
+            "fkey_columns": [
+              1
+            ]
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.payments\\` has a foreign key \\`payments_subscription_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+          "metadata": {
+            "name": "payments",
+            "type": "table",
+            "schema": "public",
+            "fkey_name": "payments_subscription_id_fkey",
+            "fkey_columns": [
+              3
+            ]
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.profiles\\` has a foreign key \\`profiles_admin_assigned_by_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+          "metadata": {
+            "name": "profiles",
+            "type": "table",
+            "schema": "public",
+            "fkey_name": "profiles_admin_assigned_by_fkey",
+            "fkey_columns": [
+              19
+            ]
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.promo_redemptions\\` has a foreign key \\`promo_redemptions_promo_code_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+          "metadata": {
+            "name": "promo_redemptions",
+            "type": "table",
+            "schema": "public",
+            "fkey_name": "promo_redemptions_promo_code_id_fkey",
+            "fkey_columns": [
+              3
+            ]
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        }
+      ]
+    },
+    {
+      "name": "auth_rls_initplan",
+      "title": "Auth RLS Initialization Plan",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if calls to \\`current_setting()\\` and \\`auth.<function>()\\` in RLS policies are being unnecessarily re-evaluated for each row",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+      "count": 34,
+      "findings": [
+        {
+          "detail": "Table \\`public.guide_page\\` has a row level security policy \\`Service role can manage guide content\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "guide_page",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.home_occasions\\` has a row level security policy \\`home_occasions_admin_write\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "home_occasions",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.profiles\\` has a row level security policy \\`Users can view own profile\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "profiles",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.profiles\\` has a row level security policy \\`Users can update own profile\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "profiles",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.profiles\\` has a row level security policy \\`Users can insert own profile\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "profiles",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.clothing_items\\` has a row level security policy \\`Users can view own items\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "clothing_items",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.clothing_items\\` has a row level security policy \\`Users can insert own items\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "clothing_items",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.clothing_items\\` has a row level security policy \\`Users can update own items\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "clothing_items",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.clothing_items\\` has a row level security policy \\`Users can delete own items\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "clothing_items",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.saved_outfits\\` has a row level security policy \\`Users can view own outfits\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "saved_outfits",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.saved_outfits\\` has a row level security policy \\`Users can insert own outfits\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "saved_outfits",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.saved_outfits\\` has a row level security policy \\`Users can update own outfits\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "saved_outfits",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.saved_outfits\\` has a row level security policy \\`Users can delete own outfits\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "saved_outfits",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.wear_logs\\` has a row level security policy \\`Users can view own wear logs\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "wear_logs",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.wear_logs\\` has a row level security policy \\`Users can insert own wear logs\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "wear_logs",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.payments\\` has a row level security policy \\`Users can insert own payments\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "payments",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.wear_logs\\` has a row level security policy \\`Users can update own wear logs\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "wear_logs",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.wear_logs\\` has a row level security policy \\`Users can delete own wear logs\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "wear_logs",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.subscriptions\\` has a row level security policy \\`Users can view own subscriptions\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "subscriptions",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.payments\\` has a row level security policy \\`Users can view own payments\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "payments",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.body_profiles\\` has a row level security policy \\`Users can view own body profiles\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "body_profiles",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.body_profiles\\` has a row level security policy \\`Users can insert own body profiles\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "body_profiles",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.body_profiles\\` has a row level security policy \\`Users can update own body profiles\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "body_profiles",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.guide_page\\` has a row level security policy \\`Admin users can manage guide content\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "guide_page",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.body_profiles\\` has a row level security policy \\`Users can delete own body profiles\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "body_profiles",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.promo_codes\\` has a row level security policy \\`Service role full access promo_codes\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "promo_codes",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.promo_redemptions\\` has a row level security policy \\`Users can view own redemptions\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "promo_redemptions",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.promo_redemptions\\` has a row level security policy \\`Service role full access promo_redemptions\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "promo_redemptions",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.featured_capsules\\` has a row level security policy \\`featured_capsules_admin_write\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "featured_capsules",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.usage_counters\\` has a row level security policy \\`usage_counters_select_self\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "usage_counters",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.shop_catalog\\` has a row level security policy \\`shop_catalog_admin_write\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "shop_catalog",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.brand_clicks\\` has a row level security policy \\`brand_clicks_user_read_own\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "brand_clicks",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.brand_clicks\\` has a row level security policy \\`brand_clicks_user_insert\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "brand_clicks",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.brand_clicks\\` has a row level security policy \\`brand_clicks_service_all\\` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing \\`auth.<function>()\\` with \\`(select auth.<function>())\\`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+          "metadata": {
+            "name": "brand_clicks",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        }
+      ]
+    },
+    {
+      "name": "no_primary_key",
+      "title": "No Primary Key",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if a table does not have a primary key. Tables without a primary key can be inefficient to interact with at scale.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0004_no_primary_key",
+      "count": 1,
+      "findings": [
+        {
+          "detail": "Table \\`public.influencer_referrals\\` does not have a primary key",
+          "metadata": {
+            "name": "influencer_referrals",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        }
+      ]
+    },
+    {
+      "name": "unused_index",
+      "title": "Unused Index",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if an index has never been used and may be a candidate for removal.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+      "count": 12,
+      "findings": [
+        {
+          "detail": "Index \\`body_profiles_user_id_idx\\` on table \\`public.body_profiles\\` has not been used",
+          "metadata": {
+            "name": "body_profiles",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Index \\`brand_clicks_brand_idx\\` on table \\`public.brand_clicks\\` has not been used",
+          "metadata": {
+            "name": "brand_clicks",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Index \\`brand_clicks_item_id_idx\\` on table \\`public.brand_clicks\\` has not been used",
+          "metadata": {
+            "name": "brand_clicks",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Index \\`brand_clicks_clicked_at_idx\\` on table \\`public.brand_clicks\\` has not been used",
+          "metadata": {
+            "name": "brand_clicks",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Index \\`brand_clicks_brand_date_idx\\` on table \\`public.brand_clicks\\` has not been used",
+          "metadata": {
+            "name": "brand_clicks",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Index \\`idx_wear_logs_user\\` on table \\`public.wear_logs\\` has not been used",
+          "metadata": {
+            "name": "wear_logs",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Index \\`idx_subscriptions_user\\` on table \\`public.subscriptions\\` has not been used",
+          "metadata": {
+            "name": "subscriptions",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Index \\`idx_profiles_is_admin\\` on table \\`public.profiles\\` has not been used",
+          "metadata": {
+            "name": "profiles",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Index \\`idx_profiles_admin_role\\` on table \\`public.profiles\\` has not been used",
+          "metadata": {
+            "name": "profiles",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Index \\`idx_admin_logs_created_at\\` on table \\`public.admin_logs\\` has not been used",
+          "metadata": {
+            "name": "admin_logs",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Index \\`idx_promo_codes_active\\` on table \\`public.promo_codes\\` has not been used",
+          "metadata": {
+            "name": "promo_codes",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Index \\`profiles_is_admin_idx\\` on table \\`public.profiles\\` has not been used",
+          "metadata": {
+            "name": "profiles",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        }
+      ]
+    },
+    {
+      "name": "multiple_permissive_policies",
+      "title": "Multiple Permissive Policies",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "PERFORMANCE"
+      ],
+      "description": "Detects if multiple permissive row level security policies are present on a table for the same \\`role\\` and \\`action\\` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+      "count": 66,
+      "findings": [
+        {
+          "detail": "Table \\`public.brand_clicks\\` has multiple permissive policies for role \\`anon\\` for action \\`INSERT\\`. Policies include \\`{brand_clicks_service_all,brand_clicks_user_insert}\\`",
+          "metadata": {
+            "name": "brand_clicks",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.brand_clicks\\` has multiple permissive policies for role \\`anon\\` for action \\`SELECT\\`. Policies include \\`{brand_clicks_service_all,brand_clicks_user_read_own}\\`",
+          "metadata": {
+            "name": "brand_clicks",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.brand_clicks\\` has multiple permissive policies for role \\`authenticated\\` for action \\`INSERT\\`. Policies include \\`{brand_clicks_service_all,brand_clicks_user_insert}\\`",
+          "metadata": {
+            "name": "brand_clicks",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.brand_clicks\\` has multiple permissive policies for role \\`authenticated\\` for action \\`SELECT\\`. Policies include \\`{brand_clicks_service_all,brand_clicks_user_read_own}\\`",
+          "metadata": {
+            "name": "brand_clicks",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.brand_clicks\\` has multiple permissive policies for role \\`authenticator\\` for action \\`INSERT\\`. Policies include \\`{brand_clicks_service_all,brand_clicks_user_insert}\\`",
+          "metadata": {
+            "name": "brand_clicks",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.brand_clicks\\` has multiple permissive policies for role \\`authenticator\\` for action \\`SELECT\\`. Policies include \\`{brand_clicks_service_all,brand_clicks_user_read_own}\\`",
+          "metadata": {
+            "name": "brand_clicks",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.brand_clicks\\` has multiple permissive policies for role \\`cli_login_postgres\\` for action \\`INSERT\\`. Policies include \\`{brand_clicks_service_all,brand_clicks_user_insert}\\`",
+          "metadata": {
+            "name": "brand_clicks",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.brand_clicks\\` has multiple permissive policies for role \\`cli_login_postgres\\` for action \\`SELECT\\`. Policies include \\`{brand_clicks_service_all,brand_clicks_user_read_own}\\`",
+          "metadata": {
+            "name": "brand_clicks",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.brand_clicks\\` has multiple permissive policies for role \\`dashboard_user\\` for action \\`INSERT\\`. Policies include \\`{brand_clicks_service_all,brand_clicks_user_insert}\\`",
+          "metadata": {
+            "name": "brand_clicks",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.brand_clicks\\` has multiple permissive policies for role \\`dashboard_user\\` for action \\`SELECT\\`. Policies include \\`{brand_clicks_service_all,brand_clicks_user_read_own}\\`",
+          "metadata": {
+            "name": "brand_clicks",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.brand_clicks\\` has multiple permissive policies for role \\`supabase_privileged_role\\` for action \\`INSERT\\`. Policies include \\`{brand_clicks_service_all,brand_clicks_user_insert}\\`",
+          "metadata": {
+            "name": "brand_clicks",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.brand_clicks\\` has multiple permissive policies for role \\`supabase_privileged_role\\` for action \\`SELECT\\`. Policies include \\`{brand_clicks_service_all,brand_clicks_user_read_own}\\`",
+          "metadata": {
+            "name": "brand_clicks",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.featured_capsules\\` has multiple permissive policies for role \\`anon\\` for action \\`SELECT\\`. Policies include \\`{featured_capsules_admin_write,featured_capsules_public_read}\\`",
+          "metadata": {
+            "name": "featured_capsules",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.featured_capsules\\` has multiple permissive policies for role \\`authenticated\\` for action \\`SELECT\\`. Policies include \\`{featured_capsules_admin_write,featured_capsules_public_read}\\`",
+          "metadata": {
+            "name": "featured_capsules",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.featured_capsules\\` has multiple permissive policies for role \\`authenticator\\` for action \\`SELECT\\`. Policies include \\`{featured_capsules_admin_write,featured_capsules_public_read}\\`",
+          "metadata": {
+            "name": "featured_capsules",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.featured_capsules\\` has multiple permissive policies for role \\`cli_login_postgres\\` for action \\`SELECT\\`. Policies include \\`{featured_capsules_admin_write,featured_capsules_public_read}\\`",
+          "metadata": {
+            "name": "featured_capsules",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.featured_capsules\\` has multiple permissive policies for role \\`dashboard_user\\` for action \\`SELECT\\`. Policies include \\`{featured_capsules_admin_write,featured_capsules_public_read}\\`",
+          "metadata": {
+            "name": "featured_capsules",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.featured_capsules\\` has multiple permissive policies for role \\`supabase_privileged_role\\` for action \\`SELECT\\`. Policies include \\`{featured_capsules_admin_write,featured_capsules_public_read}\\`",
+          "metadata": {
+            "name": "featured_capsules",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.guide_page\\` has multiple permissive policies for role \\`anon\\` for action \\`DELETE\\`. Policies include \\`{\"Admin users can manage guide content\",\"Service role can manage guide content\"}\\`",
+          "metadata": {
+            "name": "guide_page",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.guide_page\\` has multiple permissive policies for role \\`anon\\` for action \\`INSERT\\`. Policies include \\`{\"Admin users can manage guide content\",\"Service role can manage guide content\"}\\`",
+          "metadata": {
+            "name": "guide_page",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.guide_page\\` has multiple permissive policies for role \\`anon\\` for action \\`SELECT\\`. Policies include \\`{\"Admin users can manage guide content\",\"Anyone can read active guide content\",\"Service role can manage guide content\"}\\`",
+          "metadata": {
+            "name": "guide_page",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.guide_page\\` has multiple permissive policies for role \\`anon\\` for action \\`UPDATE\\`. Policies include \\`{\"Admin users can manage guide content\",\"Service role can manage guide content\"}\\`",
+          "metadata": {
+            "name": "guide_page",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.guide_page\\` has multiple permissive policies for role \\`authenticated\\` for action \\`DELETE\\`. Policies include \\`{\"Admin users can manage guide content\",\"Service role can manage guide content\"}\\`",
+          "metadata": {
+            "name": "guide_page",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.guide_page\\` has multiple permissive policies for role \\`authenticated\\` for action \\`INSERT\\`. Policies include \\`{\"Admin users can manage guide content\",\"Service role can manage guide content\"}\\`",
+          "metadata": {
+            "name": "guide_page",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.guide_page\\` has multiple permissive policies for role \\`authenticated\\` for action \\`SELECT\\`. Policies include \\`{\"Admin users can manage guide content\",\"Anyone can read active guide content\",\"Service role can manage guide content\"}\\`",
+          "metadata": {
+            "name": "guide_page",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.guide_page\\` has multiple permissive policies for role \\`authenticated\\` for action \\`UPDATE\\`. Policies include \\`{\"Admin users can manage guide content\",\"Service role can manage guide content\"}\\`",
+          "metadata": {
+            "name": "guide_page",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.guide_page\\` has multiple permissive policies for role \\`authenticator\\` for action \\`DELETE\\`. Policies include \\`{\"Admin users can manage guide content\",\"Service role can manage guide content\"}\\`",
+          "metadata": {
+            "name": "guide_page",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.guide_page\\` has multiple permissive policies for role \\`authenticator\\` for action \\`INSERT\\`. Policies include \\`{\"Admin users can manage guide content\",\"Service role can manage guide content\"}\\`",
+          "metadata": {
+            "name": "guide_page",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.guide_page\\` has multiple permissive policies for role \\`authenticator\\` for action \\`SELECT\\`. Policies include \\`{\"Admin users can manage guide content\",\"Anyone can read active guide content\",\"Service role can manage guide content\"}\\`",
+          "metadata": {
+            "name": "guide_page",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.guide_page\\` has multiple permissive policies for role \\`authenticator\\` for action \\`UPDATE\\`. Policies include \\`{\"Admin users can manage guide content\",\"Service role can manage guide content\"}\\`",
+          "metadata": {
+            "name": "guide_page",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.guide_page\\` has multiple permissive policies for role \\`cli_login_postgres\\` for action \\`DELETE\\`. Policies include \\`{\"Admin users can manage guide content\",\"Service role can manage guide content\"}\\`",
+          "metadata": {
+            "name": "guide_page",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.guide_page\\` has multiple permissive policies for role \\`cli_login_postgres\\` for action \\`INSERT\\`. Policies include \\`{\"Admin users can manage guide content\",\"Service role can manage guide content\"}\\`",
+          "metadata": {
+            "name": "guide_page",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.guide_page\\` has multiple permissive policies for role \\`cli_login_postgres\\` for action \\`SELECT\\`. Policies include \\`{\"Admin users can manage guide content\",\"Anyone can read active guide content\",\"Service role can manage guide content\"}\\`",
+          "metadata": {
+            "name": "guide_page",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.guide_page\\` has multiple permissive policies for role \\`cli_login_postgres\\` for action \\`UPDATE\\`. Policies include \\`{\"Admin users can manage guide content\",\"Service role can manage guide content\"}\\`",
+          "metadata": {
+            "name": "guide_page",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.guide_page\\` has multiple permissive policies for role \\`dashboard_user\\` for action \\`DELETE\\`. Policies include \\`{\"Admin users can manage guide content\",\"Service role can manage guide content\"}\\`",
+          "metadata": {
+            "name": "guide_page",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.guide_page\\` has multiple permissive policies for role \\`dashboard_user\\` for action \\`INSERT\\`. Policies include \\`{\"Admin users can manage guide content\",\"Service role can manage guide content\"}\\`",
+          "metadata": {
+            "name": "guide_page",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.guide_page\\` has multiple permissive policies for role \\`dashboard_user\\` for action \\`SELECT\\`. Policies include \\`{\"Admin users can manage guide content\",\"Anyone can read active guide content\",\"Service role can manage guide content\"}\\`",
+          "metadata": {
+            "name": "guide_page",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.guide_page\\` has multiple permissive policies for role \\`dashboard_user\\` for action \\`UPDATE\\`. Policies include \\`{\"Admin users can manage guide content\",\"Service role can manage guide content\"}\\`",
+          "metadata": {
+            "name": "guide_page",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.guide_page\\` has multiple permissive policies for role \\`supabase_privileged_role\\` for action \\`DELETE\\`. Policies include \\`{\"Admin users can manage guide content\",\"Service role can manage guide content\"}\\`",
+          "metadata": {
+            "name": "guide_page",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.guide_page\\` has multiple permissive policies for role \\`supabase_privileged_role\\` for action \\`INSERT\\`. Policies include \\`{\"Admin users can manage guide content\",\"Service role can manage guide content\"}\\`",
+          "metadata": {
+            "name": "guide_page",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.guide_page\\` has multiple permissive policies for role \\`supabase_privileged_role\\` for action \\`SELECT\\`. Policies include \\`{\"Admin users can manage guide content\",\"Anyone can read active guide content\",\"Service role can manage guide content\"}\\`",
+          "metadata": {
+            "name": "guide_page",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.guide_page\\` has multiple permissive policies for role \\`supabase_privileged_role\\` for action \\`UPDATE\\`. Policies include \\`{\"Admin users can manage guide content\",\"Service role can manage guide content\"}\\`",
+          "metadata": {
+            "name": "guide_page",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.home_occasions\\` has multiple permissive policies for role \\`anon\\` for action \\`SELECT\\`. Policies include \\`{home_occasions_admin_write,home_occasions_public_read}\\`",
+          "metadata": {
+            "name": "home_occasions",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.home_occasions\\` has multiple permissive policies for role \\`authenticated\\` for action \\`SELECT\\`. Policies include \\`{home_occasions_admin_write,home_occasions_public_read}\\`",
+          "metadata": {
+            "name": "home_occasions",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.home_occasions\\` has multiple permissive policies for role \\`authenticator\\` for action \\`SELECT\\`. Policies include \\`{home_occasions_admin_write,home_occasions_public_read}\\`",
+          "metadata": {
+            "name": "home_occasions",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.home_occasions\\` has multiple permissive policies for role \\`cli_login_postgres\\` for action \\`SELECT\\`. Policies include \\`{home_occasions_admin_write,home_occasions_public_read}\\`",
+          "metadata": {
+            "name": "home_occasions",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.home_occasions\\` has multiple permissive policies for role \\`dashboard_user\\` for action \\`SELECT\\`. Policies include \\`{home_occasions_admin_write,home_occasions_public_read}\\`",
+          "metadata": {
+            "name": "home_occasions",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.home_occasions\\` has multiple permissive policies for role \\`supabase_privileged_role\\` for action \\`SELECT\\`. Policies include \\`{home_occasions_admin_write,home_occasions_public_read}\\`",
+          "metadata": {
+            "name": "home_occasions",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.promo_codes\\` has multiple permissive policies for role \\`anon\\` for action \\`SELECT\\`. Policies include \\`{\"Service role full access promo_codes\",\"Users can read active promo codes\"}\\`",
+          "metadata": {
+            "name": "promo_codes",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.promo_codes\\` has multiple permissive policies for role \\`authenticated\\` for action \\`SELECT\\`. Policies include \\`{\"Service role full access promo_codes\",\"Users can read active promo codes\"}\\`",
+          "metadata": {
+            "name": "promo_codes",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.promo_codes\\` has multiple permissive policies for role \\`authenticator\\` for action \\`SELECT\\`. Policies include \\`{\"Service role full access promo_codes\",\"Users can read active promo codes\"}\\`",
+          "metadata": {
+            "name": "promo_codes",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.promo_codes\\` has multiple permissive policies for role \\`cli_login_postgres\\` for action \\`SELECT\\`. Policies include \\`{\"Service role full access promo_codes\",\"Users can read active promo codes\"}\\`",
+          "metadata": {
+            "name": "promo_codes",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.promo_codes\\` has multiple permissive policies for role \\`dashboard_user\\` for action \\`SELECT\\`. Policies include \\`{\"Service role full access promo_codes\",\"Users can read active promo codes\"}\\`",
+          "metadata": {
+            "name": "promo_codes",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.promo_codes\\` has multiple permissive policies for role \\`supabase_privileged_role\\` for action \\`SELECT\\`. Policies include \\`{\"Service role full access promo_codes\",\"Users can read active promo codes\"}\\`",
+          "metadata": {
+            "name": "promo_codes",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.promo_redemptions\\` has multiple permissive policies for role \\`anon\\` for action \\`SELECT\\`. Policies include \\`{\"Service role full access promo_redemptions\",\"Users can view own redemptions\"}\\`",
+          "metadata": {
+            "name": "promo_redemptions",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.promo_redemptions\\` has multiple permissive policies for role \\`authenticated\\` for action \\`SELECT\\`. Policies include \\`{\"Service role full access promo_redemptions\",\"Users can view own redemptions\"}\\`",
+          "metadata": {
+            "name": "promo_redemptions",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.promo_redemptions\\` has multiple permissive policies for role \\`authenticator\\` for action \\`SELECT\\`. Policies include \\`{\"Service role full access promo_redemptions\",\"Users can view own redemptions\"}\\`",
+          "metadata": {
+            "name": "promo_redemptions",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.promo_redemptions\\` has multiple permissive policies for role \\`cli_login_postgres\\` for action \\`SELECT\\`. Policies include \\`{\"Service role full access promo_redemptions\",\"Users can view own redemptions\"}\\`",
+          "metadata": {
+            "name": "promo_redemptions",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.promo_redemptions\\` has multiple permissive policies for role \\`dashboard_user\\` for action \\`SELECT\\`. Policies include \\`{\"Service role full access promo_redemptions\",\"Users can view own redemptions\"}\\`",
+          "metadata": {
+            "name": "promo_redemptions",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.promo_redemptions\\` has multiple permissive policies for role \\`supabase_privileged_role\\` for action \\`SELECT\\`. Policies include \\`{\"Service role full access promo_redemptions\",\"Users can view own redemptions\"}\\`",
+          "metadata": {
+            "name": "promo_redemptions",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.shop_catalog\\` has multiple permissive policies for role \\`anon\\` for action \\`SELECT\\`. Policies include \\`{shop_catalog_admin_write,shop_catalog_public_read}\\`",
+          "metadata": {
+            "name": "shop_catalog",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.shop_catalog\\` has multiple permissive policies for role \\`authenticated\\` for action \\`SELECT\\`. Policies include \\`{shop_catalog_admin_write,shop_catalog_public_read}\\`",
+          "metadata": {
+            "name": "shop_catalog",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.shop_catalog\\` has multiple permissive policies for role \\`authenticator\\` for action \\`SELECT\\`. Policies include \\`{shop_catalog_admin_write,shop_catalog_public_read}\\`",
+          "metadata": {
+            "name": "shop_catalog",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.shop_catalog\\` has multiple permissive policies for role \\`cli_login_postgres\\` for action \\`SELECT\\`. Policies include \\`{shop_catalog_admin_write,shop_catalog_public_read}\\`",
+          "metadata": {
+            "name": "shop_catalog",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.shop_catalog\\` has multiple permissive policies for role \\`dashboard_user\\` for action \\`SELECT\\`. Policies include \\`{shop_catalog_admin_write,shop_catalog_public_read}\\`",
+          "metadata": {
+            "name": "shop_catalog",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        },
+        {
+          "detail": "Table \\`public.shop_catalog\\` has multiple permissive policies for role \\`supabase_privileged_role\\` for action \\`SELECT\\`. Policies include \\`{shop_catalog_admin_write,shop_catalog_public_read}\\`",
+          "metadata": {
+            "name": "shop_catalog",
+            "type": "table",
+            "schema": "public"
+          },
+          "observed_at": "2026-10-15T10:25:53.604Z"
+        }
+      ]
+    }
+  ]
+}

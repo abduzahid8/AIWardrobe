@@ -1,0 +1,22 @@
+{
+  "measuredAt": "2026-10-19T11:50:17.833Z",
+  "scope": "Synthetic TEST events only; no subscription or payment writes",
+  "checks": [
+    {
+      "name": "missing",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "name": "wrong",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "name": "dedicated_test",
+      "status": 200,
+      "passed": true
+    }
+  ]
+}
+

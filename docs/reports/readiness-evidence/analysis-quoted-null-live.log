@@ -1,0 +1,63 @@
+{
+  "measuredAt": "2026-10-19T12:47:51.696Z",
+  "runId": "106082fe-c9f5-4083-98b2-6d7a480908fc",
+  "scope": "Caller/victim disposable fixtures only; one sequential real analysis request(s), no customer data",
+  "checks": [
+    {
+      "name": "public_anon_denied",
+      "passed": true,
+      "status": 401
+    },
+    {
+      "name": "free_access_denied",
+      "passed": true,
+      "status": 403
+    },
+    {
+      "name": "invalid_shape_denied_before_provider",
+      "passed": true,
+      "status": 400
+    },
+    {
+      "name": "caller_cannot_read_victim_fixture_via_rls",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "single_mode_returns_exactly_one_private_response",
+      "passed": true,
+      "status": 200,
+      "diagnostic": {
+        "patternForm": null,
+        "contract": "20261019-patterns-v4",
+        "reason": null,
+        "fields": null,
+        "providerStatus": null,
+        "requestId": "01a15434-658e-7e12-a424-1c906ac0a147"
+      },
+      "latencyMs": 8195,
+      "success": true,
+      "ownFixtureSeen": true,
+      "foreignFixtureSeen": false,
+      "detectedItemCount": 1,
+      "wardrobeRecommendationCount": 1,
+      "error": null
+    },
+    {
+      "name": "jacket_fixture_never_recommended_for_other_categories",
+      "passed": true,
+      "crossCategoryCount": 0
+    }
+  ],
+  "cleanup": [
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    }
+  ],
+  "mode": "single"
+}

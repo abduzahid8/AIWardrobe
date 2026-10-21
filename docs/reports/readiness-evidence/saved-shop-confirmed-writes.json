@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-17",
+  "scope": "Confirm saved-shop mutations after AsyncStorage write completion",
+  "newTests": 5,
+  "updatedFailureTest": 1,
+  "storeTests": 27,
+  "cleanupIntegrationTests": 4,
+  "appTests": 1291,
+  "appSuites": 114,
+  "typecheck": "passed",
+  "targetedLint": {
+    "errors": 0,
+    "warnings": 3,
+    "kind": "lazy require in fresh-module test"
+  },
+  "whitespace": "passed",
+  "translationJson": "en, ru, uz parsed; retry wording covers update failures",
+  "sourceSha256": {
+    "store/savedShopStore.ts": "e2fce8ac43a35503ee9e61752e22a8643d56e82759ceb0e15952d60698b37477",
+    "__tests__/store/savedShopIsolation.test.ts": "d49ae175d9c21801c2cf0b897843cb52c754ef1e106a3dbe28e882423b37a483",
+    "i18n/locales/en.json": "55bf5479a19d330f6d8f6dfa9bce8dc3dc4a10e01e38fd1710d762706cadf92c",
+    "i18n/locales/ru.json": "8277a101b7067ed4c102d3d8d5b1bf2b14b971581553a84f7c64da359c2909d6",
+    "i18n/locales/uz.json": "0d69a0a8d3b2ba5d4bb113e7fe5d91ca1aeb0cca9dc357a210fa01931fd440e2"
+  },
+  "checks": [
+    "Pending disk write does not prematurely publish visible save",
+    "Write failure rejects and retains last confirmed state",
+    "Failed removal does not hide persisted like",
+    "Next queued mutation after failure uses last confirmed list",
+    "Overlapping same-item toggles preserve unrelated likes",
+    "Failed replacement/clear retain confirmed state"
+  ],
+  "productionRequests": false,
+  "newNativeBuild": false,
+  "verificationBoundary": "Actual Zustand store with Jest AsyncStorage mock; callers reviewed for awaiting/catching promises",
+  "remaining": [
+    "Native filesystem restart/process-death and ambiguous platform write failures",
+    "Broader account cleanup coordination and other cache ownership",
+    "Production image delivery performance",
+    "Deferred AI-provider configuration and store integration",
+    "Remaining dependency findings"
+  ]
+}

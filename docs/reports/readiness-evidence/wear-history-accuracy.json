@@ -1,0 +1,23 @@
+{
+  "scope": "Local wear statistics and log construction; no production mutations",
+  "fullSuite": {
+    "passed": true,
+    "tests": 1033,
+    "suites": 82
+  },
+  "newRegressions": 7,
+  "fixedClock": "2026-10-15T20:30:00Z",
+  "timezoneCases": [
+    "Asia/Tashkent",
+    "America/Los_Angeles",
+    "Pacific/Kiritimati"
+  ],
+  "typecheck": "pass",
+  "targetedLint": {
+    "errors": 0,
+    "warnings": 5
+  },
+  "nativeVerified": false,
+  "mobileReleased": false,
+  "historicalDatesRewritten": false
+}

@@ -23,12 +23,48 @@ export interface UseFeaturedCapsulesResult {
     refresh: () => void;
 }
 
+// ── Deleted-object repair shim (Oct 2026) ────────────────────────────────────
+// The three capsule rows below were still pointing at `shop-catalog/admin/`
+// storage objects that no longer exist (verified 404 NoSuchKey — the whole
+// `admin/` prefix is empty), so every phone showed blank placeholder cards.
+// Each entry maps a known-deleted object path to a verified-good image that
+// actually exists in the bucket (all return 200).
+//
+// This is self-retiring: as soon as the DB rows are repaired (see migration
+// 025_repair_featured_capsule_images.sql), the stored URLs no longer match
+// these keys and the map below becomes a no-op. Safe to delete afterwards.
+const DELETED_OBJECT_REPAIRS: Record<string, string> = {
+    'admin/capsule-1781186443576.jpg': 'items/shop-inspo-1.png', // Summer Outfits
+    'admin/capsule-1781186470011.jpg': 'items/shop-inspo-3.png', // Summer 2026
+    'admin/capsule-1781186613082.png': 'items/shop-inspo-5.png', // Massimo Dutti
+};
+
+export function repairDeletedCapsuleUrl(rawUrl: string): string {
+    if (typeof rawUrl !== 'string' || !rawUrl) return rawUrl;
+    const marker = '/shop-catalog/';
+    const bucketIdx = rawUrl.indexOf(marker);
+    if (bucketIdx === -1) return rawUrl;
+    for (const [deletedPath, goodPath] of Object.entries(DELETED_OBJECT_REPAIRS)) {
+        if (rawUrl.includes(deletedPath)) {
+            return `${rawUrl.slice(0, bucketIdx + marker.length)}${goodPath}`;
+        }
+    }
+    return rawUrl;
+}
+
 function rowToCapsule(row: Record<string, any>): FeaturedCapsule {
+    // A row whose storage object was deleted (or never uploaded) resolves to
+    // a 404 at render time and shows as a blank placeholder card. Warn loudly
+    // in dev so broken admin content is caught before it ships to phones —
+    // production users only see the silent shirt icon.
+    if (!row.image_url && __DEV__) {
+        console.warn(`[useFeaturedCapsules] capsule "${row.title ?? row.id}" has no image_url — it will render as a placeholder.`);
+    }
     return {
         id:       row.id,
         title:    row.title,
         subtitle: row.subtitle ?? undefined,
-        imageUrl: getMediumImageUrl(row.image_url),
+        imageUrl: getMediumImageUrl(repairDeletedCapsuleUrl(row.image_url)),
         linkUrl:  row.link_url ?? undefined,
     };
 }

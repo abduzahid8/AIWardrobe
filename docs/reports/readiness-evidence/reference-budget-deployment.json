@@ -1,0 +1,16 @@
+{
+  "date": "2026-10-20",
+  "project": "fyqpifmrsftsfqibhwhy",
+  "beforeVersion": 95,
+  "afterVersion": 96,
+  "verifyJwtRetained": true,
+  "existingSharedModulesUnchanged": true,
+  "newModules": [
+    "functions/_shared/outfitBudgetText.ts",
+    "functions/_shared/budgetFx.ts",
+    "functions/_shared/budgetFxCache.ts"
+  ],
+  "stagedHandlerTests": 36,
+  "stagedDenoCheck": true,
+  "scope": "Scoped reference-budget, parser, numeric comparison and POST-only edits staged against freshly downloaded live source; unrelated working-copy changes excluded"
+}

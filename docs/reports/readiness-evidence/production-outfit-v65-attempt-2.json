@@ -1,0 +1,62 @@
+{
+  "measuredAt": "2026-10-15T10:32:49.369Z",
+  "scope": "Three representative production AI requests; not provider capacity or universal output accuracy",
+  "checks": [
+    {
+      "name": "generate_outfit_has_items",
+      "status": 200,
+      "latencyMs": 13244,
+      "passed": true,
+      "outfitCount": 1,
+      "itemCounts": [
+        3
+      ],
+      "source": "local",
+      "provider": null,
+      "items": [
+        {
+          "category": "tops",
+          "type": "upper_body",
+          "name": "100% cotton intarsia knit polo shirt"
+        },
+        {
+          "category": "bottoms",
+          "type": "lower_body",
+          "name": "Джинсы SLIM"
+        },
+        {
+          "category": "shoes",
+          "type": "shoes",
+          "name": "Leather loafers with penny strap"
+        }
+      ]
+    },
+    {
+      "name": "primary_ai_outfit_generation",
+      "status": 200,
+      "passed": false,
+      "observedSource": "local"
+    }
+  ],
+  "providerAttempts": [
+    {
+      "provider": "nvidia",
+      "model": "meta/llama-3.2-11b-vision-instruct",
+      "status": "unparseable"
+    },
+    {
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "status": "403"
+    },
+    {
+      "provider": "gemini",
+      "model": "gemini-2.0-flash",
+      "status": "403"
+    }
+  ],
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

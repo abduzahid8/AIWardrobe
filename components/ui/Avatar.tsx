@@ -2,7 +2,7 @@
 // Features: 3D floating animation, glow effect, personalization
 
 import React, { useEffect } from 'react';
-import { View, Image, StyleSheet, ViewStyle } from 'react-native';
+import { View, StyleSheet, ViewStyle } from 'react-native';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -14,6 +14,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../src/hooks/useTheme';
+import { Image } from '../../src/components/MediaImage';
+
 
 interface AvatarProps {
     /** Avatar image URI */

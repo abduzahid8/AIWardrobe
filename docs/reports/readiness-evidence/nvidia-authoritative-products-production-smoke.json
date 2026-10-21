@@ -1,0 +1,59 @@
+{
+  "measuredAt": "2026-10-19T02:27:17.240Z",
+  "scope": "One live hosted business outfit after authoritative metadata and final-response patches; not exhaustive accuracy or capacity certification",
+  "checks": [
+    {
+      "name": "business_250_usd",
+      "status": 200,
+      "latencyMs": 7874,
+      "passed": true,
+      "reasons": [],
+      "spendUzs": 2949800,
+      "capUzs": 3150000,
+      "provider": "nvidia:meta/llama-3.2-11b-vision-instruct",
+      "source": "ai",
+      "items": [
+        {
+          "id": "shop_zara-uz-584711337",
+          "name": "100% WOOL REGULAR FIT SUIT TROUSERS",
+          "macroCategory": "bottom",
+          "price": 1499900,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-62246011",
+          "name": "100% cotton V-neck knit polo shirt",
+          "macroCategory": "top",
+          "price": 800000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_zara-uz-545409746",
+          "name": "CASUAL LEATHER LOAFERS WITH TASSELS",
+          "macroCategory": "shoes",
+          "price": 649900,
+          "currency": "UZS"
+        }
+      ],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "meta/llama-3.2-11b-vision-instruct",
+          "status": "ok"
+        }
+      ]
+    }
+  ],
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  },
+  "independentRemainingFixtures": 0,
+  "metadataChecks": [
+    "id",
+    "name",
+    "brand",
+    "price",
+    "currency"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "phase": 3,
+  "platform": "android",
+  "checks": [
+    "fresh process has no identity or visible likes",
+    "same-owner restart and first mutation preserve earlier likes",
+    "logout, anonymous action denial and fixture key cleanup"
+  ],
+  "passed": true,
+  "observedProcessId": 7287
+}

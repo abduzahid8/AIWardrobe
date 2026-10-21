@@ -1,0 +1,15 @@
+{
+  "date": "2026-10-20",
+  "scope": "Two concurrent local PostgreSQL Auth-trigger transactions request the same case-insensitive handle",
+  "results": [
+    {
+      "code": 0,
+      "uniqueViolation": false
+    },
+    {
+      "code": 3,
+      "uniqueViolation": true
+    }
+  ],
+  "passed": true
+}

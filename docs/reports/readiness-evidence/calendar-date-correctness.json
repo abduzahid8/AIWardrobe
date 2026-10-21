@@ -1,0 +1,22 @@
+{
+  "scope": "Calendar local civil-date parsing/comparison/navigation; offline code verification",
+  "timezones": [
+    "America/Los_Angeles",
+    "Europe/Berlin",
+    "Asia/Tashkent",
+    "Pacific/Kiritimati"
+  ],
+  "fullSuite": {
+    "tests": 1019,
+    "suites": 79,
+    "passed": true
+  },
+  "newRegressions": 12,
+  "typecheck": "pass",
+  "targetedLint": {
+    "errors": 0,
+    "warnings": 206
+  },
+  "nativeVerified": false,
+  "mobileReleased": false
+}

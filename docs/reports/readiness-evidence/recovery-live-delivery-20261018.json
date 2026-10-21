@@ -1,0 +1,32 @@
+{
+  "runId": "21346a1a-97ab-49ad-9e34-ce84a9829116",
+  "userId": "f366d972-70bf-432d-80b3-b4fd2f624219",
+  "recipientSha256": "c225197cdcd15ce23200d39fa512c5d90123eb8c20bf63e1be40902f2dcbbba4",
+  "platform": "iOS 26.5 simulator, normal current-source Hermes bundle; unchanged native runtime",
+  "requestCount": 1,
+  "requestVia": "CUA normal ForgotPassword screen",
+  "observedUI": "Error sending recovery email",
+  "authLog": {
+    "timestamp": "2026-10-18T09:09:00.000000",
+    "method": "POST",
+    "path": "/recover",
+    "status": 500,
+    "error_code": "unexpected_failure",
+    "smtpStatus": 550,
+    "reason": "The aiwardrobe.club domain is not verified",
+    "provider": "Resend"
+  },
+  "emailDeliveryVerified": false,
+  "recoveryDeepLinkVerified": false,
+  "cleanup": {
+    "adminLookupStatus": 404,
+    "independentSql": {
+      "users": 0,
+      "sessions": 0,
+      "identities": 0,
+      "profiles": 0
+    },
+    "dedicatedSimulatorDeleted": true
+  },
+  "scope": "One disposable confirmed account; no retry or pre-existing customer-account modification; failure does not establish provider throughput."
+}

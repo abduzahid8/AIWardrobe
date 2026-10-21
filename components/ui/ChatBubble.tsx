@@ -2,11 +2,13 @@
 // Features: User/AI variants, typing indicator, image previews, outfit cards
 
 import React from 'react';
-import { View, StyleSheet, Image, ViewStyle } from 'react-native'
-import { ScaledText } from '../ui/ScaledText';;
+import { View, StyleSheet, ViewStyle } from 'react-native';
+import { ScaledText } from '../ui/ScaledText';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../src/hooks/useTheme';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from '../../src/components/MediaImage';
+
 
 interface ChatBubbleProps {
     /** Message text */

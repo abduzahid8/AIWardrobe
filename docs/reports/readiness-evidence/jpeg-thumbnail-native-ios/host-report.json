@@ -1,0 +1,252 @@
+{
+  "scope": "Actual app staging/thumbnail source with installed native Expo codec; no cloud session or provider",
+  "platform": "ios",
+  "cases": [
+    {
+      "name": "Repository photo",
+      "originalPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/00-originalPath.png",
+      "thumbnailPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/00-thumbnailPath.png",
+      "originalBytes": 2915128,
+      "thumbnailBytes": 472270,
+      "elapsedMs": 229,
+      "dimensions": {
+        "width": 384,
+        "height": 512
+      },
+      "smallerThanOriginal": true,
+      "encodedFormat": "png",
+      "pngColorType": 6,
+      "originalUnchanged": true,
+      "alphaChannel": true,
+      "passed": true
+    },
+    {
+      "name": "Transparent app icon",
+      "originalPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/01-originalPath.png",
+      "thumbnailPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/01-thumbnailPath.png",
+      "originalBytes": 41271,
+      "thumbnailBytes": 23256,
+      "elapsedMs": 19,
+      "dimensions": {
+        "width": 512,
+        "height": 512
+      },
+      "smallerThanOriginal": true,
+      "encodedFormat": "png",
+      "pngColorType": 6,
+      "originalUnchanged": true,
+      "alphaChannel": true,
+      "passed": true
+    },
+    {
+      "name": "Opaque photo 1",
+      "originalPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/02-originalPath.jpg",
+      "thumbnailPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/02-thumbnailPath.jpg",
+      "originalBytes": 666026,
+      "thumbnailBytes": 82977,
+      "elapsedMs": 42,
+      "dimensions": {
+        "width": 384,
+        "height": 512
+      },
+      "smallerThanOriginal": true,
+      "baselinePngPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/02-baselinePngPath.png",
+      "baselinePngBytes": 456323,
+      "encodedFormat": "jpeg",
+      "pngColorType": null,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    },
+    {
+      "name": "Opaque photo 2",
+      "originalPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/03-originalPath.jpg",
+      "thumbnailPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/03-thumbnailPath.jpg",
+      "originalBytes": 96374,
+      "thumbnailBytes": 32995,
+      "elapsedMs": 19,
+      "dimensions": {
+        "width": 384,
+        "height": 512
+      },
+      "smallerThanOriginal": true,
+      "baselinePngPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/03-baselinePngPath.png",
+      "baselinePngBytes": 164674,
+      "encodedFormat": "jpeg",
+      "pngColorType": null,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 1",
+      "originalPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/04-originalPath.jpg",
+      "thumbnailPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/04-thumbnailPath.jpg",
+      "originalBytes": 62854,
+      "thumbnailBytes": 18369,
+      "elapsedMs": 13,
+      "dimensions": {
+        "width": 512,
+        "height": 342
+      },
+      "smallerThanOriginal": true,
+      "baselinePngPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/04-baselinePngPath.png",
+      "baselinePngBytes": 13169,
+      "encodedFormat": "jpeg",
+      "pngColorType": null,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 2",
+      "originalPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/05-originalPath.jpg",
+      "thumbnailPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/05-thumbnailPath.jpg",
+      "originalBytes": 62854,
+      "thumbnailBytes": 18140,
+      "elapsedMs": 19,
+      "dimensions": {
+        "width": 512,
+        "height": 342
+      },
+      "smallerThanOriginal": true,
+      "baselinePngPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/05-baselinePngPath.png",
+      "baselinePngBytes": 13385,
+      "encodedFormat": "jpeg",
+      "pngColorType": null,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 3",
+      "originalPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/06-originalPath.jpg",
+      "thumbnailPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/06-thumbnailPath.jpg",
+      "originalBytes": 62854,
+      "thumbnailBytes": 17927,
+      "elapsedMs": 18,
+      "dimensions": {
+        "width": 512,
+        "height": 342
+      },
+      "smallerThanOriginal": true,
+      "baselinePngPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/06-baselinePngPath.png",
+      "baselinePngBytes": 13481,
+      "encodedFormat": "jpeg",
+      "pngColorType": null,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 4",
+      "originalPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/07-originalPath.jpg",
+      "thumbnailPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/07-thumbnailPath.jpg",
+      "originalBytes": 62854,
+      "thumbnailBytes": 17899,
+      "elapsedMs": 17,
+      "dimensions": {
+        "width": 512,
+        "height": 342
+      },
+      "smallerThanOriginal": true,
+      "baselinePngPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/07-baselinePngPath.png",
+      "baselinePngBytes": 13336,
+      "encodedFormat": "jpeg",
+      "pngColorType": null,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 5",
+      "originalPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/08-originalPath.jpg",
+      "thumbnailPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/08-thumbnailPath.jpg",
+      "originalBytes": 62854,
+      "thumbnailBytes": 17282,
+      "elapsedMs": 22,
+      "dimensions": {
+        "width": 342,
+        "height": 512
+      },
+      "smallerThanOriginal": true,
+      "baselinePngPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/08-baselinePngPath.png",
+      "baselinePngBytes": 17889,
+      "encodedFormat": "jpeg",
+      "pngColorType": null,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 6",
+      "originalPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/09-originalPath.jpg",
+      "thumbnailPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/09-thumbnailPath.jpg",
+      "originalBytes": 62854,
+      "thumbnailBytes": 17218,
+      "elapsedMs": 22,
+      "dimensions": {
+        "width": 342,
+        "height": 512
+      },
+      "smallerThanOriginal": true,
+      "baselinePngPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/09-baselinePngPath.png",
+      "baselinePngBytes": 18298,
+      "encodedFormat": "jpeg",
+      "pngColorType": null,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 7",
+      "originalPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/10-originalPath.jpg",
+      "thumbnailPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/10-thumbnailPath.jpg",
+      "originalBytes": 62854,
+      "thumbnailBytes": 17201,
+      "elapsedMs": 22,
+      "dimensions": {
+        "width": 342,
+        "height": 512
+      },
+      "smallerThanOriginal": true,
+      "baselinePngPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/10-baselinePngPath.png",
+      "baselinePngBytes": 18096,
+      "encodedFormat": "jpeg",
+      "pngColorType": null,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 8",
+      "originalPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/11-originalPath.jpg",
+      "thumbnailPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/11-thumbnailPath.jpg",
+      "originalBytes": 62854,
+      "thumbnailBytes": 17284,
+      "elapsedMs": 24,
+      "dimensions": {
+        "width": 342,
+        "height": 512
+      },
+      "smallerThanOriginal": true,
+      "baselinePngPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/11-baselinePngPath.png",
+      "baselinePngBytes": 17705,
+      "encodedFormat": "jpeg",
+      "pngColorType": null,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    }
+  ],
+  "currentStep": "EXIF orientation 8: generate thumbnail",
+  "sourceUri": "file:///Users/v.zahid/Library/Developer/CoreSimulator/Devices/750853AA-63BC-4E36-A2D7-79CD75D8DF38/data/Containers/Bundle/Application/CD01774A-B54F-4F29-8723-CA57A1B26136/AIWardrobe.app/assets/scripts/validation/fixtures/photo-orientation/orientation-8.jpg",
+  "sourceInfo": {
+    "size": 62854,
+    "modificationTime": 1792293627.6529446,
+    "isDirectory": false,
+    "exists": true,
+    "uri": "file:///Users/v.zahid/Library/Developer/CoreSimulator/Devices/750853AA-63BC-4E36-A2D7-79CD75D8DF38/data/Containers/Bundle/Application/CD01774A-B54F-4F29-8723-CA57A1B26136/AIWardrobe.app/assets/scripts/validation/fixtures/photo-orientation/orientation-8.jpg"
+  },
+  "passed": true
+}

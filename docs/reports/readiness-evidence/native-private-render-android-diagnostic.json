@@ -1,0 +1,30 @@
+{
+  "localDate": "2026-10-21",
+  "platform": "Android 14 API34 arm64 emulator",
+  "scope": "Native component callback instrumentation; no pixel assertion",
+  "passed": false,
+  "reason": "native_callback_timeout",
+  "phases": [],
+  "diagnostics": {
+    "layout": {
+      "x": 0,
+      "y": 0,
+      "width": 411.4285583496094,
+      "height": 914.2857055664062
+    },
+    "source": {
+      "privateReferenceDetected": true,
+      "authorizationAttached": true
+    },
+    "lastState": {
+      "phase": "owner",
+      "native": "failed",
+      "expo": "loaded 403 x 538"
+    },
+    "nativeError": "unclassified",
+    "fetch": {
+      "status": 200,
+      "bytes": 2915128
+    }
+  }
+}

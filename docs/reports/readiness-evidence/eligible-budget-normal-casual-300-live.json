@@ -1,0 +1,66 @@
+{
+  "measuredAt": "2026-10-21T01:52:00.836Z",
+  "scope": "Live NVIDIA category/budget scenarios; not exhaustive accuracy or capacity certification",
+  "checks": [
+    {
+      "name": "casual_300_usd",
+      "status": 200,
+      "latencyMs": 42242,
+      "passed": true,
+      "reasons": [],
+      "spendUzs": 3584500,
+      "capUzs": 3603690,
+      "provider": "nvidia:meta/llama-3.2-11b-vision-instruct",
+      "source": "ai",
+      "items": [
+        {
+          "id": "shop_md-uz-62246011",
+          "name": "100% cotton V-neck knit polo shirt",
+          "macroCategory": "top",
+          "price": 800000,
+          "currency": "UZS",
+          "shopUrl": "https://www.massimodutti.com/uz/en/100-cotton-vneck-knit-polo-l00837175?pelement=62246011"
+        },
+        {
+          "id": "shop_md-uz-62899807",
+          "name": "Slim fit jeans",
+          "macroCategory": "bottom",
+          "price": 1400000,
+          "currency": "UZS",
+          "shopUrl": "https://www.massimodutti.com/uz/en/slim-fit-jeans-l00400106?pelement=62899807"
+        },
+        {
+          "id": "shop_fr-tommy-152421",
+          "name": "Лоферы HILFIGER STITCHDOWN SUEDE LOAFER",
+          "macroCategory": "shoes",
+          "price": 1384500,
+          "currency": "UZS",
+          "shopUrl": "https://frgroup.uz/ru/store/lofery-hilfiger-stitchdown-suede-loafer-tommy-hilfiger-fm0fm05782-bezhevyj"
+        }
+      ],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "meta/llama-3.2-11b-vision-instruct",
+          "status": "ok"
+        }
+      ]
+    }
+  ],
+  "reference": {
+    "id": "CBU:2026-10-21:12012.3:13466.99:16026.81",
+    "source": "CBU",
+    "asOf": "2026-10-21",
+    "fetchedAt": "2026-10-21T01:51:20.012Z",
+    "uzsPerUnit": {
+      "USD": 12012.3,
+      "EUR": 13466.99,
+      "GBP": 16026.81,
+      "UZS": 1
+    }
+  },
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

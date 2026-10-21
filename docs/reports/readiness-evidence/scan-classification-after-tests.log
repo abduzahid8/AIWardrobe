@@ -1,0 +1,8 @@
+PASS __tests__/backend/scanClassification.test.js
+PASS __tests__/backend/scanAdmission.test.js
+
+Test Suites: 2 passed, 2 total
+Tests:       22 passed, 22 total
+Snapshots:   0 total
+Time:        0.971 s, estimated 1 s
+Ran all test suites matching /__tests__\/backend\/scanClassification.test.js|__tests__\/backend\/scanAdmission.test.js/i.

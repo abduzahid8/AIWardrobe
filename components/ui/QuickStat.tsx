@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native'
-import { ScaledText } from '../ui/ScaledText';;
+import { ScaledText } from '../ui/ScaledText';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
     FadeInRight,

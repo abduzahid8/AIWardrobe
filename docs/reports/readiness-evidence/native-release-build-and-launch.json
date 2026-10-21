@@ -1,0 +1,47 @@
+{
+  "date": "2026-10-16",
+  "ios": {
+    "build": "SUCCEEDED",
+    "configuration": "Release",
+    "sdk": "iphonesimulator26.5",
+    "architectures": [
+      "x86_64",
+      "arm64"
+    ],
+    "signing": "CODE_SIGNING_ALLOWED=NO",
+    "artifact": "/tmp/aiwardrobe-native-release-derived/Build/Products/Release-iphonesimulator/AIWardrobe.app",
+    "bundle_sha256": "b0ba17f1d4c6fa9ad7de1cc1f12acadeffbce47d92d3056a029ecbc4b6c562aa",
+    "executable_sha256": "afba8fb1100798e5adddaca25f63136e86283d101cfdd6e329e71bb748547456",
+    "installed_device": "2F806F52-7020-4FD3-9B68-3E0CA8B69D76",
+    "observed": [
+      "Cold launch of compiled com.aiwardrobe app",
+      "Advertising tracking declined",
+      "Language gate rendered",
+      "English selected -> Sign In",
+      "Native Apple sign-in button visible",
+      "Sign Up route rendered"
+    ],
+    "auth_requests_submitted": false,
+    "screenshot": "native-release-signin.png"
+  },
+  "android": {
+    "jdk": "Temurin 17.0.20.1+1",
+    "archive": "/tmp/aiwardrobe-temurin17.tar.gz",
+    "archive_sha256": "196d13ba5f10414bef7f6a05a9b3f00edacb18ebacef2b99485db9e2ee18f0e8",
+    "checksum_matches_official_api": true,
+    "temporary_java_home": "/tmp/aiwardrobe-jdk17/jdk-17.0.20.1+1/Contents/Home",
+    "system_java_changed": false,
+    "configuration": "in progress; Gradle plugin compilation observed",
+    "session_id": 21723,
+    "log": "/tmp/aiwardrobe-gradle-jdk17-config.log",
+    "jdk17_configuration_status": "BUILD SUCCESSFUL (6m14s; 33 executed tasks)",
+    "release_build_session": 34532,
+    "release_build_status": "running"
+  },
+  "limitations": [
+    "Simulator Release only; no physical device signing or App Store archive",
+    "No authenticated flows or Apple purchase/sign-in validation",
+    "Android configuration job remains live; poll existing handle before restart",
+    "Full 10000 DAU objective remains incomplete"
+  ]
+}

@@ -1,0 +1,73 @@
+/** Disposable native diagnostic fixture. Token goes only into a mode-0600 temporary file. */
+import 'dotenv/config';
+import {createClient} from '@supabase/supabase-js';
+import {execFileSync,spawn} from 'node:child_process';
+import {readFile,writeFile,mkdtemp,rm} from 'node:fs/promises';
+import {randomUUID,createHash} from 'node:crypto';
+import {performance} from 'node:perf_hooks';
+const project='fyqpifmrsftsfqibhwhy',base=`https://${project}.supabase.co`,cli=process.env.SUPABASE_CLI_BIN;
+const plan={scope:'React Native Android fetch transport diagnostic; not capacity certification',rps:5,seconds:10,planned:50,concurrencyCap:20,requestTimeoutMs:15000,fixtureUsers:1,fixtureObjects:1};
+if(process.argv[2]==='--plan'){console.log(JSON.stringify(plan));process.exit(0);}
+if(!['--prepare','--cleanup'].includes(process.argv[2])||!cli||process.env.EXPO_PUBLIC_SUPABASE_URL?.replace(/\/$/,'')!==base)throw new Error('Explicit diagnostic configuration required');
+function command(args){try{return execFileSync(cli,args,{encoding:'utf8',stdio:['ignore','pipe','pipe'],timeout:30000});}catch{throw new Error('ManagementCommandFailed');}}
+let key;try{const data=JSON.parse(command(['projects','api-keys','--project-ref',project,'--reveal','--output','json','--agent','yes']));
+ const visit=v=>{if(!v||typeof v!=='object')return;if(typeof v.api_key==='string'){try{const c=JSON.parse(Buffer.from(v.api_key.split('.')[1],'base64url'));if(c.ref===project&&c.role==='service_role')key=v.api_key;}catch{}}for(const x of Object.values(v))if(x&&typeof x==='object')visit(x);};visit(data);
+}catch{throw new Error('FixtureCredentialUnavailable');}if(!key)throw new Error('FixtureCredentialUnavailable');
+const options={auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},global:{fetch:(input,init)=>fetch(input,{...init,signal:AbortSignal.timeout(20000)})}};
+const admin=createClient(base,key,options);key=undefined;
+const sum=bytes=>createHash('sha256').update(bytes).digest('hex');
+let report,output;
+if(process.argv[2]==='--cleanup'){
+ if(!/^[a-f0-9-]{36}$/.test(process.argv[3]||''))throw new Error('Run ID required');
+ output=new URL(`../../docs/reports/readiness-evidence/native-media-transport-${process.argv[3]}.json`,import.meta.url);
+ report=JSON.parse(await readFile(output,'utf8'));
+ if(report.project!==project||report.runId!==process.argv[3])throw new Error('Invalid fixture ledger');
+}else{
+ const runId=randomUUID(),owner=randomUUID(),objectId=randomUUID();
+ report={...plan,project,runId,owner,objectId,email:`readiness-${runId}@aiwardrobe.club`,startedAt:new Date().toISOString(),status:'preparing',stages:[]};
+ output=new URL(`../../docs/reports/readiness-evidence/native-media-transport-${runId}.json`,import.meta.url);
+ await writeFile(output,JSON.stringify(report,null,2)+'\n',{flag:'wx'});
+}
+const save=()=>writeFile(output,JSON.stringify(report,null,2)+'\n');
+const objectPath=`${report.owner}/${report.objectId}/thumbnail.png`;
+async function cleanup(){
+ const found=await admin.auth.admin.getUserById(report.owner);
+ if(found.error?.status===404){report.cleanup={userAbsent:true,objectsAbsent:false};
+  const list=await admin.storage.from('wardrobe-images').list(`${report.owner}/${report.objectId}`);report.cleanup.objectsAbsent=!list.error&&!list.data.length;
+ }else if(found.error||found.data.user?.email!==report.email||found.data.user?.app_metadata?.readiness_audit!==report.runId){report.cleanup={ownershipConfirmed:false};}
+ else{
+  const removed=await admin.storage.from('wardrobe-images').remove([objectPath]);
+  const objects=await admin.storage.from('wardrobe-images').list(`${report.owner}/${report.objectId}`);
+  const deleted=await admin.auth.admin.deleteUser(report.owner);
+  const absent=await admin.auth.admin.getUserById(report.owner);
+  report.cleanup={ownershipConfirmed:true,removeSucceeded:!removed.error,objectsAbsent:!objects.error&&!objects.data.length,deleteSucceeded:!deleted.error,userAbsent:absent.error?.status===404};
+ }
+ report.cleanup.passed=Object.values(report.cleanup).every(Boolean);await save();
+}
+const privatePath=`/tmp/aiwardrobe-native-media-${report.runId}.json`;
+let temp,prepared=false;
+try{
+ if(process.argv[2]==='--prepare'){
+  temp=await mkdtemp('/tmp/aiwardrobe-transport-');const imagePath=temp+'/fixture.png';
+  execFileSync('python3',['-c',"from PIL import Image\nimport sys\nImage.open('assets/images/basic_outfit_1.png').convert('RGBA').resize((384,512),Image.Resampling.LANCZOS).save(sys.argv[1],compress_level=0)",imagePath],{stdio:['ignore','pipe','pipe']});
+  const image=await readFile(imagePath);report.fixtureBytes=image.length;report.fixtureSha256=sum(image);report.nodeVersion=process.version;report.curlVersion=execFileSync('/usr/bin/curl',['--version'],{encoding:'utf8'}).split('\n')[0];await save();
+  const password=randomUUID()+'Aa!9';
+  const created=await admin.auth.admin.createUser({id:report.owner,email:report.email,password,email_confirm:true,user_metadata:{readiness_test:true},app_metadata:{readiness_audit:report.runId}});
+  if(created.error||created.data.user?.id!==report.owner)throw new Error('FixtureCreateFailed');
+  const client=createClient(base,process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,options),login=await client.auth.signInWithPassword({email:report.email,password});
+  if(login.error||!login.data.session)throw new Error('FixtureLoginFailed');const token=login.data.session.access_token;
+  const upload=await client.storage.from('wardrobe-images').upload(objectPath,image,{contentType:'image/png'});if(upload.error)throw new Error('FixtureUploadFailed');
+  const url=`${base}/storage/v1/object/authenticated/wardrobe-images/${objectPath}`;
+  await writeFile(privatePath,JSON.stringify({runId:report.runId,url,token,bytes:report.fixtureBytes,sha256:report.fixtureSha256,expiresAt:Date.now()+300000}),{mode:0o600,flag:'wx'});
+  report.status='awaiting_native_measurement';prepared=true;await save();
+ }
+}catch(error){report.failure=error.name;report.status='failed';process.exitCode=1;}
+finally{
+ if(!prepared){
+  try{await cleanup();}catch{report.cleanup={passed:false,error:'CleanupFailed'};process.exitCode=1;}
+  if(report.cleanup?.passed)await rm(privatePath,{force:true});
+ }
+ if(temp)await rm(temp,{recursive:true,force:true});report.updatedAt=new Date().toISOString();await save();
+ console.log(JSON.stringify({runId:report.runId,status:report.status,cleanup:report.cleanup,failure:report.failure}));
+ if(!prepared&&!report.cleanup?.passed)process.exitCode=1;
+}

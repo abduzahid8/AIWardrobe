@@ -1,0 +1,16 @@
+{
+  "simulator": "750853AA-63BC-4E36-A2D7-79CD75D8DF38",
+  "runtime": "iOS 26.5",
+  "auditProcessPid": 96954,
+  "bundleSha256": "74c0db89e43aaf3868add2c4e2b2b3e87756e99429ff17bdbd6990f228e2fb1c",
+  "auditMarkerPresent": true,
+  "jpegFixturePresent": true,
+  "sourceUnchangedDuringBuild": {
+    "scripts/validation/thumbnail-native-entry.tsx": true,
+    "src/services/wardrobeThumbnail.ts": true,
+    "src/services/pendingWardrobeMedia.ts": true,
+    "store/authEvents.ts": true
+  },
+  "unsignedSimulatorBuild": true,
+  "nativeBuildSucceeded": true
+}

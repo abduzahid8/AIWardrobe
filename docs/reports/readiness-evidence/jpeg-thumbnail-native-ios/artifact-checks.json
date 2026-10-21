@@ -1,0 +1,153 @@
+{
+  "cases": [
+    {
+      "name": "Repository photo",
+      "originalSha256": "7c1728bfad35066ad916f46dd5c2f2411e24787021a891d5ed4671780ec297f3",
+      "thumbnailSha256": "a44c11240a6b0c7ab0030f5235c84bec16a6fa7c49603e293fa70f28066ff3d8",
+      "originalUnchanged": true,
+      "dimensions": [
+        384,
+        512
+      ],
+      "format": "PNG",
+      "passed": true
+    },
+    {
+      "name": "Transparent app icon",
+      "originalSha256": "0cd56699996553a65cd2c5e8eb5bf895f2a05e62e874a53950d842ea413b6a28",
+      "thumbnailSha256": "1657c1a4eff1f96bcc00819e22cfa0bea53b9d5367d9c9ab63f5c44a76b4cd8a",
+      "originalUnchanged": true,
+      "dimensions": [
+        512,
+        512
+      ],
+      "format": "PNG",
+      "passed": true,
+      "alphaRange": [
+        244,
+        255
+      ]
+    },
+    {
+      "name": "Opaque photo 1",
+      "originalSha256": "2d47a0ac74bd074352bb446576e38d54ca5339ca3b8687cbc78812ca1f80a717",
+      "thumbnailSha256": "8b1044f132d95fa51ee914f7410d1a915e77073ddc0df6a8746cb2b3470e2434",
+      "originalUnchanged": true,
+      "dimensions": [
+        384,
+        512
+      ],
+      "format": "JPEG",
+      "passed": true
+    },
+    {
+      "name": "Opaque photo 2",
+      "originalSha256": "661a2b576bf4fd2798cca61e8b2a2649369583412a55da016d8d9cb3ba3c2824",
+      "thumbnailSha256": "f1e4be46b4ae80e6a7e93da38de92e57a7174230325933a3ba5d49bd9c68759d",
+      "originalUnchanged": true,
+      "dimensions": [
+        384,
+        512
+      ],
+      "format": "JPEG",
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 1",
+      "originalSha256": "ca6f26456448933d5095d8f6572bd063ad32918a899db92e0c6b14f39c0d84b5",
+      "thumbnailSha256": "af9c04be158745944b0b93670fa3730d8f296cdd8aa9013159baa37cf7d72779",
+      "originalUnchanged": true,
+      "dimensions": [
+        512,
+        342
+      ],
+      "format": "JPEG",
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 2",
+      "originalSha256": "4eeb007229d8c2c5b057b80fa8ceed353ce230fd0f3a0fd14c67c5d63d44c5d3",
+      "thumbnailSha256": "cae025ca135a82afdf82a60db03eb7d590e341922ec5f4430a55daccd13ba00a",
+      "originalUnchanged": true,
+      "dimensions": [
+        512,
+        342
+      ],
+      "format": "JPEG",
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 3",
+      "originalSha256": "a11b67a93e32dbfdddc96e864f35021436a485094afd3a60c977a1b8d2091324",
+      "thumbnailSha256": "66ef10ea14734100cf59f11ba322bf148cecc5b2eddb05bfdfa943e862d54407",
+      "originalUnchanged": true,
+      "dimensions": [
+        512,
+        342
+      ],
+      "format": "JPEG",
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 4",
+      "originalSha256": "8f3b87052558dfebacbb5ad619cdc03603bcba51714592f2d46125851badef33",
+      "thumbnailSha256": "a168cda643b9c6012c33d36f612d097df738e8b87bee9fa620786a7b92270519",
+      "originalUnchanged": true,
+      "dimensions": [
+        512,
+        342
+      ],
+      "format": "JPEG",
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 5",
+      "originalSha256": "4be9e4f50383f0d5bb87ed2ec1edb6e765c4927b27c9188e36b52a8620d8d0e1",
+      "thumbnailSha256": "203fd84baf340d1098b51c690bfbefe5f838660cda8c5a29bc35ac6f28e71f04",
+      "originalUnchanged": true,
+      "dimensions": [
+        342,
+        512
+      ],
+      "format": "JPEG",
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 6",
+      "originalSha256": "23b63d99963a28b67546993bab8baada119a327c5d843878933b89f998ac29d8",
+      "thumbnailSha256": "55e8a4bf2d8c2bf6fe4eb6d37f9417b27fe183c4b6e2af284f9f488d3b7d318a",
+      "originalUnchanged": true,
+      "dimensions": [
+        342,
+        512
+      ],
+      "format": "JPEG",
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 7",
+      "originalSha256": "f0acbd98e8f72db745948db79de5c43a53c916ed5388590f437163d76601d0ff",
+      "thumbnailSha256": "06ef3a16e18c703d121c6a7f4ccd4a561e00de2f1f4d1fa7ea89ea174029967c",
+      "originalUnchanged": true,
+      "dimensions": [
+        342,
+        512
+      ],
+      "format": "JPEG",
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 8",
+      "originalSha256": "5aa3f709675e8e5e27facc782e2fba53aed16fd3566bfca2c414b6f556359984",
+      "thumbnailSha256": "ee7b0363edb8594571c728521ca99b790d54420a0f21c9a463d73d20138861df",
+      "originalUnchanged": true,
+      "dimensions": [
+        342,
+        512
+      ],
+      "format": "JPEG",
+      "passed": true
+    }
+  ],
+  "passed": true
+}

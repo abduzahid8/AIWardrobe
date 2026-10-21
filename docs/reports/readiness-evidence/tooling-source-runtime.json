@@ -1,0 +1,12 @@
+{
+  "appiumVersion": "3.8.0",
+  "driverVersion": "12.18.1",
+  "driverRegistered": true,
+  "httpStatus": 200,
+  "ready": true,
+  "uiSessionCreated": false,
+  "serverTermination": {
+    "code": 0,
+    "signal": null
+  }
+}

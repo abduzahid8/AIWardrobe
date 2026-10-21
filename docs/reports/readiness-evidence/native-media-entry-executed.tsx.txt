@@ -1,0 +1,51 @@
+/** Explicit-entry audit: native RN fetch, private temporary configuration, no embedded token. */
+import React, {useEffect,useState} from 'react';
+import {Text,Platform} from 'react-native';
+import {registerRootComponent} from 'expo';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Crypto from 'expo-crypto';
+const configPath=FileSystem.documentDirectory+'native-media-transport-config.json';
+const outputPath=FileSystem.documentDirectory+'native-media-transport-report.json';
+const sleep=(ms:number)=>new Promise<void>(resolve=>setTimeout(resolve,ms));
+const percentile=(values:number[])=>values.length?[...values].sort((a,b)=>a-b)[Math.ceil(values.length*.95)-1]:null;
+let started=false;
+function Audit(){
+ const [status,setStatus]=useState('Native media transport audit waiting for configuration');
+ useEffect(()=>{if(started)return;started=true;void(async()=>{
+  const report:Record<string,unknown>={platform:Platform.OS,scope:'Native React Native fetch, repeated private fixture; not Expo Image rendering or capacity certification',planned:50,targetRps:5,concurrencyCap:20,requestTimeoutMs:15000,passed:false};
+  try{
+   let raw:string|undefined;
+   const waitUntil=Date.now()+180000;
+   while(Date.now()<waitUntil){try{raw=await FileSystem.readAsStringAsync(configPath);break;}catch{await sleep(1000);}}
+   if(!raw)throw new Error('ConfigurationMissing');
+   await FileSystem.deleteAsync(configPath,{idempotent:true});
+   const config=JSON.parse(raw);raw=undefined;
+   if(!/^[a-f0-9-]{36}$/.test(config.runId)||!/^https:\/\/fyqpifmrsftsfqibhwhy\.supabase\.co\/storage\/v1\/object\/authenticated\/wardrobe-images\/[a-f0-9-]{36}\/[a-f0-9-]{36}\/thumbnail\.png$/.test(config.url)
+    ||typeof config.token!=='string'||!/^[-\w]+\.[-\w]+\.[-\w]+$/.test(config.token)||!Number.isInteger(config.bytes)||config.bytes<1||config.bytes>2097152||!/^[a-f0-9]{64}$/.test(config.sha256)||config.expiresAt<=Date.now()||config.expiresAt>Date.now()+600000)throw new Error('InvalidConfiguration');
+   report.runId=config.runId;report.fixtureBytes=config.bytes;report.fixtureSha256=config.sha256;
+   type Result={ok:boolean;status:number|null;fetchResolvedMs:number|null;ms:number;bodyMs?:number;bytes?:number;error?:string};
+   const results:Result[]=[],active=new Set<Promise<void>>();let dropped=0;
+   const read=async ():Promise<Result>=>{const start=performance.now();let fetchResolvedMs:number|null=null,status:number|null=null;const controller=new AbortController();let timedOut=false;
+    const timer=setTimeout(()=>{timedOut=true;controller.abort();},Math.max(1,Math.min(15000,config.expiresAt-Date.now())));
+    try{const response=await fetch(config.url,{headers:{Authorization:`Bearer ${config.token}`},signal:controller.signal});fetchResolvedMs=performance.now()-start;status=response.status;
+     const bytes=await response.arrayBuffer();const digest=await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256,bytes);
+     const sha=[...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,'0')).join('');
+     return {ok:response.ok&&bytes.byteLength===config.bytes&&sha===config.sha256,status,fetchResolvedMs,bodyMs:performance.now()-start-fetchResolvedMs,ms:performance.now()-start,bytes:bytes.byteLength};
+    }catch(error){return {ok:false,status,fetchResolvedMs,ms:performance.now()-start,error:timedOut?'TimeoutError':error instanceof Error?error.name:'UnknownError'};}
+    finally{clearTimeout(timer);}
+   };
+   const begin=performance.now();
+   for(let index=0;index<50;index++){const delay=begin+index*200-performance.now();if(delay>0)await sleep(delay);if(Date.now()>=config.expiresAt)break;if(active.size>=20){dropped++;continue;}
+    const job=read().then(result=>{results.push(result);});active.add(job);void job.finally(()=>active.delete(job));}
+   await Promise.all(active);const errors:Record<string,number>={};for(const result of results)if(!result.ok){const name=result.error||'HttpOrIntegrityFailure';errors[name]=(errors[name]||0)+1;}
+   Object.assign(report,{completed:results.length,successful:results.filter(x=>x.ok).length,failures:results.filter(x=>!x.ok).length,dropped,errors,elapsedMs:performance.now()-begin,p95Ms:percentile(results.map(x=>x.ms)),p95FetchResolvedMs:percentile(results.map(x=>x.fetchResolvedMs).filter((x):x is number=>x!==null)),p95SuccessfulBodyMs:percentile(results.filter(x=>x.ok).map(x=>x.bodyMs!)),results});
+   report.passed=results.length===50&&!dropped&&results.every(x=>x.ok);
+  }catch{report.failure='NativeDiagnosticFailed';}
+  finally{await FileSystem.deleteAsync(configPath,{idempotent:true}).catch(()=>undefined);}
+  await FileSystem.writeAsStringAsync(outputPath,JSON.stringify(report));
+  console.warn('NATIVE_MEDIA_TRANSPORT_AUDIT '+JSON.stringify({...report,results:undefined}));
+  setStatus('Native media transport audit '+(report.passed?'passed':'failed'));
+ })();},[]);
+ return <Text style={{padding:40,paddingTop:80}}>{status}</Text>;
+}
+registerRootComponent(Audit);

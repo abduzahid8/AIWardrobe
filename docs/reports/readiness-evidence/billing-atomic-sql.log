@@ -1,0 +1,28 @@
+BEGIN
+psql:backend/supabase/migrations/028_atomic_revenuecat_sync.sql:3: NOTICE:  column "revenuecat_managed" of relation "subscriptions" already exists, skipping
+ALTER TABLE
+UPDATE 1
+psql:backend/supabase/migrations/028_atomic_revenuecat_sync.sql:10: NOTICE:  relation "revenuecat_sync_state" already exists, skipping
+CREATE TABLE
+ALTER TABLE
+REVOKE
+CREATE FUNCTION
+REVOKE
+GRANT
+COMMIT
+BEGIN
+SET
+  set_config  
+--------------
+ service_role
+(1 row)
+
+DO
+SET
+  set_config   
+---------------
+ authenticated
+(1 row)
+
+DO
+ROLLBACK

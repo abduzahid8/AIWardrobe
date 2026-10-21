@@ -1,0 +1,297 @@
+{
+  "measuredAt": "2026-10-19T07:04:55.219Z",
+  "runId": "c5ed4471-d328-4cc1-823d-935679e64465",
+  "scope": "Bounded live scan concurrency; same known photo, ordinary free users, expected primary category/color only",
+  "plannedStages": [
+    2,
+    5,
+    10
+  ],
+  "maxRequests": 17,
+  "stages": [
+    {
+      "concurrency": 2,
+      "maxActive": 2,
+      "elapsedMs": 11027,
+      "outcomes": [
+        {
+          "userIndex": 0,
+          "status": 200,
+          "latencyMs": 5832,
+          "responseContractPassed": true,
+          "expectedPrimaryCategoryColorPassed": true,
+          "category": "jacket",
+          "color": "beige",
+          "error": null
+        },
+        {
+          "userIndex": 1,
+          "status": 200,
+          "latencyMs": 11023,
+          "responseContractPassed": true,
+          "expectedPrimaryCategoryColorPassed": true,
+          "category": "jacket",
+          "color": "beige",
+          "error": null
+        }
+      ],
+      "responsePasses": 2,
+      "expectedCategoryColorPasses": 2,
+      "medianMs": 8427.5,
+      "maxMs": 11023,
+      "passed": true
+    },
+    {
+      "concurrency": 5,
+      "maxActive": 5,
+      "elapsedMs": 6675,
+      "outcomes": [
+        {
+          "userIndex": 0,
+          "status": 200,
+          "latencyMs": 5914,
+          "responseContractPassed": true,
+          "expectedPrimaryCategoryColorPassed": true,
+          "category": "jacket",
+          "color": "beige",
+          "error": null
+        },
+        {
+          "userIndex": 1,
+          "status": 200,
+          "latencyMs": 6672,
+          "responseContractPassed": true,
+          "expectedPrimaryCategoryColorPassed": true,
+          "category": "jacket",
+          "color": "beige",
+          "error": null
+        },
+        {
+          "userIndex": 2,
+          "status": 200,
+          "latencyMs": 5904,
+          "responseContractPassed": true,
+          "expectedPrimaryCategoryColorPassed": true,
+          "category": "jacket",
+          "color": "beige",
+          "error": null
+        },
+        {
+          "userIndex": 3,
+          "status": 200,
+          "latencyMs": 5897,
+          "responseContractPassed": true,
+          "expectedPrimaryCategoryColorPassed": true,
+          "category": "jacket",
+          "color": "beige",
+          "error": null
+        },
+        {
+          "userIndex": 4,
+          "status": 200,
+          "latencyMs": 6305,
+          "responseContractPassed": true,
+          "expectedPrimaryCategoryColorPassed": true,
+          "category": "jacket",
+          "color": "beige",
+          "error": null
+        }
+      ],
+      "responsePasses": 5,
+      "expectedCategoryColorPasses": 5,
+      "medianMs": 5914,
+      "maxMs": 6672,
+      "passed": true
+    },
+    {
+      "concurrency": 10,
+      "maxActive": 10,
+      "elapsedMs": 24378,
+      "outcomes": [
+        {
+          "userIndex": 0,
+          "status": 200,
+          "latencyMs": 5713,
+          "responseContractPassed": true,
+          "expectedPrimaryCategoryColorPassed": true,
+          "category": "jacket",
+          "color": "beige",
+          "error": null
+        },
+        {
+          "userIndex": 1,
+          "status": 200,
+          "latencyMs": 4825,
+          "responseContractPassed": true,
+          "expectedPrimaryCategoryColorPassed": true,
+          "category": "jacket",
+          "color": "beige",
+          "error": null
+        },
+        {
+          "userIndex": 2,
+          "status": 200,
+          "latencyMs": 4681,
+          "responseContractPassed": true,
+          "expectedPrimaryCategoryColorPassed": true,
+          "category": "jacket",
+          "color": "beige",
+          "error": null
+        },
+        {
+          "userIndex": 3,
+          "status": 200,
+          "latencyMs": 5401,
+          "responseContractPassed": true,
+          "expectedPrimaryCategoryColorPassed": true,
+          "category": "jacket",
+          "color": "beige",
+          "error": null
+        },
+        {
+          "userIndex": 4,
+          "status": 503,
+          "latencyMs": 3675,
+          "responseContractPassed": false,
+          "expectedPrimaryCategoryColorPassed": false,
+          "category": null,
+          "color": null,
+          "error": "ai_classification_unavailable"
+        },
+        {
+          "userIndex": 5,
+          "status": 200,
+          "latencyMs": 5553,
+          "responseContractPassed": true,
+          "expectedPrimaryCategoryColorPassed": true,
+          "category": "jacket",
+          "color": "beige",
+          "error": null
+        },
+        {
+          "userIndex": 6,
+          "status": 200,
+          "latencyMs": 23530,
+          "responseContractPassed": true,
+          "expectedPrimaryCategoryColorPassed": true,
+          "category": "jacket",
+          "color": "beige",
+          "error": null
+        },
+        {
+          "userIndex": 7,
+          "status": 200,
+          "latencyMs": 23723,
+          "responseContractPassed": true,
+          "expectedPrimaryCategoryColorPassed": true,
+          "category": "jacket",
+          "color": "beige",
+          "error": null
+        },
+        {
+          "userIndex": 8,
+          "status": 200,
+          "latencyMs": 7988,
+          "responseContractPassed": true,
+          "expectedPrimaryCategoryColorPassed": false,
+          "category": "jeans",
+          "color": "blue",
+          "error": null
+        },
+        {
+          "userIndex": 9,
+          "status": 200,
+          "latencyMs": 24355,
+          "responseContractPassed": true,
+          "expectedPrimaryCategoryColorPassed": true,
+          "category": "shirt",
+          "color": "beige",
+          "error": null
+        }
+      ],
+      "responsePasses": 9,
+      "expectedCategoryColorPasses": 8,
+      "medianMs": 5633.0,
+      "maxMs": 24355,
+      "passed": false
+    }
+  ],
+  "cleanup": [
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    }
+  ],
+  "fixture": {
+    "bytes": 666026,
+    "sha256": "2d47a0ac74bd074352bb446576e38d54ca5339ca3b8687cbc78812ca1f80a717",
+    "selection": "beige/cream torso shirt or jacket; exclude separate green draped layer"
+  },
+  "createdUsers": 10,
+  "stoppedEscalation": "A bounded stage failed; no higher stage started",
+  "completedAt": "2026-10-19T07:05:52.490Z",
+  "metricCorrections": [
+    {
+      "concurrency": 2,
+      "previousUpperMiddleValue": 11023,
+      "correctMedianMs": 8427.5
+    },
+    {
+      "concurrency": 10,
+      "previousUpperMiddleValue": 5713,
+      "correctMedianMs": 5633.0
+    }
+  ],
+  "rawReport": "production-scan-concurrency-raw.json",
+  "independentRemainingTaggedUsers": 0,
+  "providerLogEvidence": {
+    "observedAtUtc": "2026-10-19T07:05:27.548Z",
+    "httpStatus": 429,
+    "scope": "Same bounded test window; individual request correlation unavailable in this first harness version",
+    "exactProviderLimitKnown": false
+  },
+  "limitations": [
+    "Short stages, not sustained throughput or 10000DAU certification",
+    "Same photo in every request; unique-photo/cache diversity not tested",
+    "Measured overlapping client HTTP requests, not GPU execution concurrency",
+    "Expected primary category/color only; descriptions/material/full visual truth not independently verified",
+    "10-request stage failed both response availability and expected-garment selection",
+    "No global maximum concurrency or specific RPM/TPM quota inferred"
+  ]
+}

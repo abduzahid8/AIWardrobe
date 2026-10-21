@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-20",
+  "behavior": [
+    "Localized read-failure warning plus Retry in Calendar and Profile Trips",
+    "Retain loaded same-owner plans on read failure",
+    "Successful empty read clears error and plans",
+    "Read lifecycle/request/account guards",
+    "Successful mutations invalidate old reads; late mutation UI checks account/lifecycle"
+  ],
+  "tests": {
+    "fullJest": 1887,
+    "suites": 154,
+    "typescript": "pass",
+    "iosHermes": "pass",
+    "androidArm64Release": "pass",
+    "runtimeSourceMaps": {
+      "ios": {
+        "features/calendar/hooks/useOutfitCalendar.ts": true,
+        "features/calendar/components/CalendarReadNotice.tsx": true,
+        "screens/ProfileScreen.tsx": true,
+        "screens/OutfitCalendarScreen.tsx": true
+      },
+      "android": {
+        "features/calendar/hooks/useOutfitCalendar.ts": true,
+        "features/calendar/components/CalendarReadNotice.tsx": true,
+        "screens/ProfileScreen.tsx": true,
+        "screens/OutfitCalendarScreen.tsx": true
+      }
+    },
+    "iosWarningStrings": {
+      "en": true,
+      "ru": true,
+      "uz": true
+    }
+  },
+  "newRegressionCases": 5,
+  "existingDiskFullSaveTest": "passes: draft remains and no success haptic",
+  "limits": [
+    "Controlled hook/storage and extracted production-expression coverage",
+    "No native visual/physical-device storage-failure claim",
+    "No full cross-device synchronization claim",
+    "No provider capacity inference"
+  ],
+  "goal": "active; not certified"
+}

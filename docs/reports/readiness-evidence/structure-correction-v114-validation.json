@@ -1,0 +1,75 @@
+{
+  "measuredAt": "2026-10-21T15:44:17.426637+00:00",
+  "scope": "Consistent outfit structure validation, dress identity and four observed non-garment catalog exclusions. Not full catalog accuracy or10000DAU readiness.",
+  "deployment": {
+    "version": 114,
+    "verifyJwt": true,
+    "exactFiles": 12,
+    "changedFiles": [
+      "generate-outfits/index.ts",
+      "_shared/outfitStructure.ts"
+    ],
+    "otherSharedUnchanged": 10,
+    "entrySha256": "f63b28f381b729db1a35fee0cb168227b21aa928656b64e4d63b3df006788118",
+    "sharedSha256": "e02fdf14c12f01ff5b02675aa4b36d5e88827296021dd8ef368e5c5fa698acf1"
+  },
+  "regressions": {
+    "initialDressStructureBaseline": {
+      "failed": 6,
+      "passed": 86
+    },
+    "nonGarmentBaseline": {
+      "failed": 8,
+      "passed": 32
+    },
+    "fixed": "An invalid bottom+two-shoes proposal now fails the shared structure contract before pass-rate calculation, receives correction, and may only return a complete valid outfit. Repeated invalid proposals return503 with no outfits. Dress penny loafers cannot replace a dress; real shirt/polo dresses remain valid. Four observed watch/carrier/towel products cannot fill clothing slots."
+  },
+  "validation": {
+    "stagedFocusedTests": 120,
+    "stagedFocusedSuites": 4,
+    "fullTests": 2246,
+    "fullSuites": 175,
+    "typescript": "pass",
+    "stagedDeno": "pass"
+  },
+  "localBranchRepair": "An existing local-only no_valid_outfits throw also returned500; aligned that branch with the hosted503 unavailable response. No unrelated local changes deployed.",
+  "native": {
+    "iosHermesBuild": "pass",
+    "androidArm64ReleaseBuild": "pass",
+    "iosSourceMap": "/tmp/aiwardrobe-structure-correction-ios.map",
+    "androidSourceMap": "android/app/build/intermediates/sourcemaps/react/release/index.android.bundle.packager.map",
+    "sharedModuleExactlyMatchesLocalInBothSourceMaps": true,
+    "sharedLocalSha256": "b16b4892fefc833ae4bbc95ae150b1933385e1028c77bd008038ec24106e7e77",
+    "localAndHostedOnlyDifferByTerminalNewline": true,
+    "iosApp": "/tmp/aiwardrobe-budget-release-00nhnjcc/AIWardrobe.app",
+    "androidApk": "android/app/build/outputs/apk/release/app-release.apk",
+    "limits": "Not installed device/store distribution. Android release still uses debug signing."
+  },
+  "hostedEvidence": "v114-tight-budget-hosted-smoke-20261021.json",
+  "hostedResult": {
+    "passedChecks": 6,
+    "totalChecks": 6,
+    "status": 200,
+    "latencyMs": 29732,
+    "shopSpendUzs": 429900,
+    "capUzs": 600615,
+    "provider": "nvidia:meta/llama-3.2-11b-vision-instruct"
+  },
+  "catalogEvidence": "budget-catalog-discovery-real-read-v114.json",
+  "correctionEvidence": "catalog-nongarment-minimum-correction.json",
+  "cleanupIndependent": {
+    "auditUsers": 0,
+    "fixtureGarments": 0,
+    "authUsers": 111,
+    "profiles": 111,
+    "garments": 109
+  },
+  "limitations": [
+    "The detailed v114 catalog audit still contains a key ring; its passed flag only reflects the incomplete code predicate, not actual garment accuracy.",
+    "Two metal key rings and three bags remain incorrectly labelled tops/upper_body in the database. Catalog classification must be corrected at the ingestion boundary; accessory exclusions remain incomplete.",
+    "The prior105900UZS top floor was a suit carrier; this claim is explicitly corrected and historical evidence retained.",
+    "The current349900UZS floor has real shirt rows at that price, but not every bounded candidate is valid clothing.",
+    "NVIDIA alternatives did not pass; production model unchanged. A single hosted success does not erase timeout/invalid-output history.",
+    "All other current readiness-table gaps remain open."
+  ]
+}

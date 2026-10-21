@@ -1,13 +1,5 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  ActivityIndicator,
-  StyleSheet,
-} from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import LiquidGlass2026Theme, { SpatialElevation } from '../../../constants/LiquidGlass2026Theme';
@@ -16,6 +8,8 @@ import { BASIC_CLOTHING_ITEMS } from '../../../data/basicClothingItems';
 import OutfitCollageDisplay from './OutfitCollageDisplay';
 import type { GeneratedOutfit, OutfitItem, OutfitVisual } from '../types';
 import { getOutfitItemMacroCategory } from '../utils/outfitPreview';
+import { Image } from '../../../src/components/MediaImage';
+
 
 function resolveClothingImage(src: string | number | undefined | null): string | number | null {
   if (src === null || src === undefined) return null;

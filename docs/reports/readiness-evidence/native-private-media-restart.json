@@ -1,0 +1,131 @@
+{
+  "date": "2026-10-17",
+  "scope": "Actual iOS Release simulator auth and authenticated private image rendering/restoration; server-seeded garment, not picker save",
+  "device": {
+    "udid": "2F806F52-7020-4FD3-9B68-3E0CA8B69D76",
+    "name": "AIWardrobe avatar audit",
+    "runtime": "iOS 26.5",
+    "architecture": "arm64",
+    "original_user_simulator_untouched": "024D2F87-FEF6-42C9-81AC-32DD8678FB5F"
+  },
+  "native_build": {
+    "configuration": "Release",
+    "signing": "CODE_SIGNING_ALLOWED=NO",
+    "status": "BUILD SUCCEEDED",
+    "log": "/tmp/aiwardrobe-native-auth-deadline-build.log",
+    "artifacts": [
+      {
+        "path": "/tmp/aiwardrobe-native-release-derived/Build/Products/Release-iphonesimulator/AIWardrobe.app/main.jsbundle",
+        "bytes": 8375809,
+        "sha256": "23829f294f2edbba5ebb58a8765a827ebc84e2a3c7bd683dbb635d02a58ea093"
+      },
+      {
+        "path": "/tmp/aiwardrobe-native-release-derived/Build/Products/Release-iphonesimulator/AIWardrobe.app/AIWardrobe",
+        "bytes": 35773768,
+        "sha256": "f52c7949d05cc287def54823557f030ff56a78223aef3299bcc6d900b4faf42e"
+      }
+    ]
+  },
+  "first_attempt_preserved": {
+    "result": "native sign-in failed with fetch failed / network connection was lost",
+    "active_server_sessions_after_attempt": 0,
+    "os_error_domain": "NSURLErrorDomain",
+    "os_error_code": -1005,
+    "observed_connection_duration_seconds": 81.892,
+    "sanitized_os_log_event_counts": {
+      "quic": 36,
+      "timed out": 10,
+      "network connection was lost": 2,
+      "fetch failed": 1
+    },
+    "cause_status": "Native transport timeout observed; exact root cause not resolved"
+  },
+  "fix": {
+    "auth_request_deadline_ms": 15000,
+    "scope": "This Supabase origin auth HTTP requests, including response body completion",
+    "no_automatic_mutation_retry": true,
+    "incoming_cancellation_preserved": true,
+    "late_fetch_results_ignored": true,
+    "non_auth_transport_unchanged": true
+  },
+  "native_observations": [
+    {
+      "name": "normal UI password login with deadline-enabled build",
+      "passed": true
+    },
+    {
+      "name": "onboarding completed through actual UI",
+      "passed": true
+    },
+    {
+      "name": "private repository photo eventually visible in closet",
+      "passed": true
+    },
+    {
+      "name": "session restored after process termination and launch",
+      "passed": true
+    },
+    {
+      "name": "same private image visible after process restart",
+      "passed": true
+    },
+    {
+      "name": "UI sign-out returns to unauthenticated language gate",
+      "passed": true
+    },
+    {
+      "name": "cold restart after cleanup remains signed out",
+      "passed": true
+    }
+  ],
+  "native_test_latency_limits": [
+    "Second login was observed at onboarding 18754 ms after click; this is an observation upper bound including tool round trips, not a measured login latency",
+    "Photo initially appeared blank and subsequently loaded; no accurate image latency was measured",
+    "Successful second attempt does not establish that the original native networking failure is fixed",
+    "Auth timeout behavior covered by fake-timer and installed-SDK tests, not induced failure in the final simulator build"
+  ],
+  "local_validation": {
+    "jest_suites": 106,
+    "jest_tests": 1210,
+    "failed": 0,
+    "auth_transport_tests": 9,
+    "typescript": "pass",
+    "targeted_lint_errors": 0,
+    "targeted_lint_warnings": 0,
+    "diff_check": "pass"
+  },
+  "fixture": {
+    "server_seeded": true,
+    "image": "assets/images/basic_outfit_1.png",
+    "image_bytes": 2915128,
+    "user_photos_used": false,
+    "explicit_ai_generation_or_purchase_invoked": false
+  },
+  "cleanup": {
+    "private_file_removed": true,
+    "temporary_account_removed": true,
+    "local_manifest_removed": true,
+    "independent_final_counts": {
+      "disposable_accounts": 0,
+      "garments": 109,
+      "saved_outfits": 13,
+      "wardrobe_objects": 0
+    }
+  },
+  "additional_findings": [
+    {
+      "status": "open",
+      "finding": "Onboarding color swatches have no spoken accessibility labels"
+    },
+    {
+      "status": "not_a_confirmed_defect",
+      "finding": "Profile Saved Looks intentionally includes wardrobe garments and liked shop products; one look with zero saved_outfits rows follows current gallery design and was preserved"
+    }
+  ],
+  "limitations": [
+    "New picker photo staging/upload/restart not exercised: active upload routes invoke deferred AI classification; manual QuickAddItem is currently unused",
+    "No physical-device or Android runtime pass",
+    "Complete auth initialization/SDK locks and post-login enrichment are not globally bounded by this request wrapper",
+    "Global staged-file cleanup, browser staging, provider work and full 10000 DAU capacity remain open"
+  ]
+}

@@ -1,0 +1,108 @@
+{
+  "date": "2026-10-20",
+  "deployment": {
+    "migration": "20261020085928_cover_remaining_foreign_keys.sql",
+    "remoteHistory": [
+      {
+        "version": "20261020085928",
+        "name": "cover_remaining_foreign_keys"
+      }
+    ],
+    "lockTimeout": "3s",
+    "statementTimeout": "30s",
+    "status": "applied"
+  },
+  "beforeTables": [
+    {
+      "child_table": "admin_permissions",
+      "conname": "admin_permissions_granted_by_fkey",
+      "definition": "FOREIGN KEY (granted_by) REFERENCES profiles(id) ON DELETE SET NULL",
+      "table_size": "0 bytes",
+      "estimated_rows": -1
+    },
+    {
+      "child_table": "influencer_referrals",
+      "conname": "influencer_referrals_user_id_fkey",
+      "definition": "FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE",
+      "table_size": "0 bytes",
+      "estimated_rows": -1
+    },
+    {
+      "child_table": "payments",
+      "conname": "payments_subscription_id_fkey",
+      "definition": "FOREIGN KEY (subscription_id) REFERENCES subscriptions(id) ON DELETE SET NULL",
+      "table_size": "0 bytes",
+      "estimated_rows": -1
+    },
+    {
+      "child_table": "profiles",
+      "conname": "profiles_admin_assigned_by_fkey",
+      "definition": "FOREIGN KEY (admin_assigned_by) REFERENCES profiles(id) ON DELETE SET NULL",
+      "table_size": "24 kB",
+      "estimated_rows": 111
+    },
+    {
+      "child_table": "promo_redemptions",
+      "conname": "promo_redemptions_promo_code_id_fkey",
+      "definition": "FOREIGN KEY (promo_code_id) REFERENCES promo_codes(id) ON DELETE CASCADE",
+      "table_size": "8192 bytes",
+      "estimated_rows": -1
+    }
+  ],
+  "afterConstraints": [
+    {
+      "conname": "admin_permissions_granted_by_fkey",
+      "child_table": "admin_permissions",
+      "definition": "FOREIGN KEY (granted_by) REFERENCES profiles(id) ON DELETE SET NULL",
+      "valid_covering_index": true
+    },
+    {
+      "conname": "influencer_referrals_user_id_fkey",
+      "child_table": "influencer_referrals",
+      "definition": "FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE",
+      "valid_covering_index": true
+    },
+    {
+      "conname": "payments_subscription_id_fkey",
+      "child_table": "payments",
+      "definition": "FOREIGN KEY (subscription_id) REFERENCES subscriptions(id) ON DELETE SET NULL",
+      "valid_covering_index": true
+    },
+    {
+      "conname": "profiles_admin_assigned_by_fkey",
+      "child_table": "profiles",
+      "definition": "FOREIGN KEY (admin_assigned_by) REFERENCES profiles(id) ON DELETE SET NULL",
+      "valid_covering_index": true
+    },
+    {
+      "conname": "promo_redemptions_promo_code_id_fkey",
+      "child_table": "promo_redemptions",
+      "definition": "FOREIGN KEY (promo_code_id) REFERENCES promo_codes(id) ON DELETE CASCADE",
+      "valid_covering_index": true
+    }
+  ],
+  "constraintSemanticsUnchanged": true,
+  "performanceAdvisorsAfter": [
+    {
+      "name": "auth_rls_initplan",
+      "count": 19
+    },
+    {
+      "name": "no_primary_key",
+      "count": 1
+    },
+    {
+      "name": "unused_index",
+      "count": 16
+    },
+    {
+      "name": "multiple_permissive_policies",
+      "count": 66
+    }
+  ],
+  "missingForeignKeyWarnings": 0,
+  "note": "New indexes count as unused until traffic exercises them; no pruning based on fresh stats.",
+  "scope": "Five covering indexes on small live tables, metadata verified. No user data changed; no throughput or latency benchmark claim.",
+  "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys",
+  "goal": "active; 10000 DAU readiness remains unverified"
+}

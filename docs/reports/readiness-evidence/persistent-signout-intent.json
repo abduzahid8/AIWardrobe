@@ -1,0 +1,41 @@
+{
+  "scope": "Persistent local sign-out intent and pre-auth recovery gate; not remote revocation or physical-storage durability certification",
+  "verification": {
+    "tests": 1376,
+    "suites": 120,
+    "failures": 0,
+    "typescript": "passed",
+    "eslintErrors": 0,
+    "eslintWarnings": 42,
+    "sdkFailureReplay": "passed after failing baseline",
+    "normalSdkStoreControl": "passed",
+    "newUnitRegressions": 9
+  },
+  "behaviors": [
+    "Write non-sensitive intent before explicit SDK sign-out",
+    "Confirm SDK getSession is empty and local cleanup completed before intent removal",
+    "Startup/new sign-in retries pending sign-out before new authentication",
+    "Unremoved local SDK session causes logout rejection with displayed session cleared",
+    "Confirmed server deletion retains intent if local session removal fails",
+    "Recovery failures keep startup anonymous but initialized for retry"
+  ],
+  "normalAndroidBuild": {
+    "exitCode": 0,
+    "sourceMapMatches": {
+      "store/auth.ts": "11b66b2cde7d192471f8def21fe1c474dfbedfb6e9798826f8278507e493cc0a",
+      "src/lib/signOutIntent.ts": "7c25e10efec8a2f528c932138a1c29e9ef9f386cc85c1951f93d50280dc7488d"
+    },
+    "apkSha256": "ea2ee0771421c8939fc908bd32dba8935700042336fb09d039c31589368fd152",
+    "bundleSha256": "7f90a94d88227230a8467947f1294ac73c71f3493cfad985f25634573962c825",
+    "auditMarkersAbsent": true,
+    "nativeUiVerified": false
+  },
+  "productionChanged": false,
+  "remaining": [
+    "Native process-kill verification for the new sign-out marker",
+    "If intent cannot be written, in-process state cannot prove durability after a crash",
+    "Physical disk/power-loss behavior and remote revocation under network failure unverified",
+    "Automatic SDK startup/background services before app gate require wider lifecycle audit",
+    "All broader capacity/media/security/store/deferred-provider gates remain open"
+  ]
+}

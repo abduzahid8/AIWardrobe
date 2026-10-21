@@ -1,0 +1,25 @@
+{
+  "measuredAt": "2026-10-21T02:10:17.752Z",
+  "scope": "Initial strict JSON parser capability probe; output parse was inconclusive; raw content was not recorded",
+  "checks": [
+    {
+      "mode": "json_schema",
+      "status": 200,
+      "latencyMs": 1717,
+      "exactRequiredSlots": false,
+      "returnedKeys": [],
+      "finishReason": "stop",
+      "errorCode": null
+    },
+    {
+      "mode": "json_object",
+      "status": 200,
+      "latencyMs": 1985,
+      "exactRequiredSlots": false,
+      "returnedKeys": [],
+      "finishReason": "stop",
+      "errorCode": null
+    }
+  ],
+  "interpretation": "No proof of schema enforcement or lack thereof; decoder diagnostic required"
+}

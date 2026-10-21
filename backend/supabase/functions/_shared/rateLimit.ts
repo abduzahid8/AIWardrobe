@@ -17,6 +17,10 @@ export interface RateLimitOptions {
   limit: number;
   /** Window in seconds. Defaults to 60. */
   windowSec?: number;
+  /** CORS headers from the calling endpoint, including on denied requests. */
+  headers?: Record<string, string>;
+  /** Authentication-only endpoints (e.g. receipt sync) do not require a paid tier. */
+  meterPaidWork?: boolean;
 }
 
 /**
@@ -28,64 +32,63 @@ export async function enforceRateLimit(
   opts: RateLimitOptions,
 ): Promise<Response | null> {
   const windowSec = opts.windowSec ?? 60;
+  const reply = (error: string, status: number, retryAfter?: number) =>
+    new Response(JSON.stringify({ error, ...(retryAfter ? { retry_after_sec: retryAfter } : {}) }), {
+      status,
+      headers: {
+        ...opts.headers,
+        'content-type': 'application/json',
+        ...(retryAfter ? { 'retry-after': String(retryAfter) } : {}),
+      },
+    });
+  if (!Number.isSafeInteger(opts.limit) || opts.limit < 1 ||
+      !Number.isSafeInteger(windowSec) || windowSec < 1 || !opts.feature) {
+    return reply('rate_limit_unavailable', 503);
+  }
 
   const authHeader = req.headers.get('authorization') ?? '';
-  const jwt = authHeader.replace(/^Bearer\s+/i, '').trim();
-  if (!jwt) {
-    return new Response(JSON.stringify({ error: 'unauthorized' }), {
-      status: 401,
-      headers: { 'content-type': 'application/json' },
+  const match = /^Bearer\s+(\S+)$/i.exec(authHeader.trim());
+  if (!match) return reply('unauthorized', 401);
+
+  const url = Deno.env.get('SUPABASE_URL') || Deno.env.get('SB_URL');
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SB_SERVICE_KEY');
+  if (!url || !serviceKey) return reply('rate_limit_unavailable', 503);
+
+  try {
+    const admin = createClient(url, serviceKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
     });
-  }
+    const { data: userRes, error: authError } = await admin.auth.getUser(match[1]);
+    if (authError) {
+      // Auth outages are temporary failures; invalid credentials remain 401.
+      return reply('unauthorized', Number(authError.status) >= 500 ? 503 : 401);
+    }
+    const userId = userRes?.user?.id;
+    if (!userId) return reply('unauthorized', 401);
 
-  const url = Deno.env.get('SUPABASE_URL');
-  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  if (!url || !serviceKey) {
-    // Fail open so a misconfigured env doesn't DoS production, but log it.
-    console.warn('[rateLimit] missing SUPABASE env — allowing');
-    return null;
-  }
-
-  // Resolve user id from the JWT via the anon-compatible endpoint.
-  const anon = createClient(url, serviceKey);
-  const { data: userRes } = await anon.auth.getUser(jwt);
-  const userId = userRes?.user?.id;
-  if (!userId) {
-    return new Response(JSON.stringify({ error: 'unauthorized' }), {
-      status: 401,
-      headers: { 'content-type': 'application/json' },
+    const nowMs = Date.now();
+    const bucketMs = Math.floor(nowMs / (windowSec * 1000)) * windowSec * 1000;
+    const { data, error } = await admin.rpc('increment_rate_bucket', {
+      p_user: userId,
+      p_feature: `rl:${opts.feature}:${bucketMs}`,
     });
-  }
-
-  // Fixed-window counter keyed by minute bucket encoded into `feature`.
-  const now = new Date();
-  const bucketMs = Math.floor(now.getTime() / (windowSec * 1000)) * windowSec * 1000;
-  const bucketKey = `rl:${opts.feature}:${bucketMs}`;
-
-  const { data, error } = await anon.rpc('increment_rate_bucket', {
-    p_user: userId,
-    p_feature: bucketKey,
-  });
-
-  if (error) {
-    console.warn('[rateLimit] db error — failing open', error.message);
+    // Paid work must never bypass admission control when storage is unavailable.
+    if (error || !Number.isSafeInteger(data) || data < 1) {
+      return reply('rate_limit_unavailable', 503);
+    }
+    if (data > opts.limit) {
+      const retryAfter = Math.max(1, Math.ceil((bucketMs + windowSec * 1000 - nowMs) / 1000));
+      return reply('rate_limited', 429, retryAfter);
+    }
+    if (opts.meterPaidWork === false) return null;
+    const { data: admitted, error: quotaError } = await admin.rpc('consume_edge_quota', {
+      p_user: userId,
+      p_endpoint: opts.feature,
+    });
+    if (quotaError || typeof admitted !== 'boolean') return reply('rate_limit_unavailable', 503);
+    if (!admitted) return reply('feature_limit_reached', 403);
     return null;
+  } catch {
+    return reply('rate_limit_unavailable', 503);
   }
-
-  const used: number = typeof data === 'number' ? data : 1;
-
-  if (used > opts.limit) {
-    return new Response(
-      JSON.stringify({ error: 'rate_limited', retry_after_sec: windowSec }),
-      {
-        status: 429,
-        headers: {
-          'content-type': 'application/json',
-          'retry-after': String(windowSec),
-        },
-      },
-    );
-  }
-
-  return null;
 }

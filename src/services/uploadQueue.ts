@@ -120,10 +120,11 @@ class UploadQueueService {
         this.isProcessing = false;
         try {
             await AsyncStorage.removeItem(UPLOAD_QUEUE_KEY);
-        } catch {
-            // Best-effort — never block auth flows.
+        } finally {
+            // Hide old payloads even on storage failure, but let the caller
+            // know deletion was not confirmed before admitting a new account.
+            this.notify([]);
         }
-        this.notify([]);
     }
 
     /**

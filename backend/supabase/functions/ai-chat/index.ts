@@ -1,3 +1,4 @@
+import { enforceRateLimit } from '../_shared/rateLimit.ts'
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
@@ -137,6 +138,10 @@ serve(async (req) => {
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }
+
+    const rateLimitResponse = await enforceRateLimit(req, { feature: 'ai-chat', limit: 20, headers: corsHeaders })
+    if (rateLimitResponse) return rateLimitResponse
+
     const json = (body: unknown, status = 200) =>
         new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
@@ -174,18 +179,19 @@ serve(async (req) => {
 
     // ── Keys ──
     const openaiKey = Deno.env.get('OPENAI_API_KEY') || ''
-    const nvidiaKey = Deno.env.get('NVIDIA_API_KEY') || ''
+    let nvidiaKey = Deno.env.get('NVIDIA_API_KEY') || ''
     const nvidiaModel = (Deno.env.get('NVIDIA_TEXT_MODEL') || Deno.env.get('NVIDIA_MODEL') || '').trim()
         || 'meta/llama-3.2-11b-vision-instruct'
-    const geminiKey = Deno.env.get('GEMINI_API_KEY') || ''
+    let geminiKey = Deno.env.get('GEMINI_API_KEY') || ''
     const geminiModelPrimary = (Deno.env.get('GEMINI_MODEL') || '').trim() || 'gemini-3.5-flash-lite'
     let hfKey = Deno.env.get('HF_TOKEN') || ''
-    if (SUPABASE_SERVICE_ROLE_KEY && (!geminiKey || !hfKey)) {
+    if (SUPABASE_SERVICE_ROLE_KEY && (!nvidiaKey || !geminiKey || !hfKey)) {
         try {
             const svc = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
             const { data: cfg } = await svc.from('app_config').select('key, value')
-                .in('key', ['gemini_token', 'gemini_model', 'hf_token'])
+                .in('key', ['nvidia_token', 'gemini_token', 'gemini_model', 'hf_token'])
             for (const row of cfg || []) {
+                if (row.key === 'nvidia_token' && !nvidiaKey) nvidiaKey = row.value
                 if (row.key === 'gemini_token' && !geminiKey) geminiKey = row.value
                 if (row.key === 'hf_token' && !hfKey) hfKey = row.value
             }
@@ -227,34 +233,9 @@ serve(async (req) => {
         return null
     }
 
-    let result: { text: string; provider: string } | null = null
-    if (paidTier) {
-        // Paid (lite/premium/vip): Gemini first, then OpenAI/NVIDIA fallbacks.
-        result = await tryGemini()
-        if (!result && openaiKey) {
-            const text = await callOpenAI(openaiKey, messages, 500)
-            if (text) result = { text, provider: 'openai' }
-        }
-        if (!result && nvidiaKey) {
-            const text = await callNvidia(nvidiaKey, nvidiaModel, messages, 500)
-            if (text) result = { text, provider: 'nvidia' }
-        }
-    } else {
-        // Free/anonymous: NVIDIA first, Gemini covers quota failures.
-        if (openaiKey) {
-            const text = await callOpenAI(openaiKey, messages, 500)
-            if (text) result = { text, provider: 'openai' }
-        }
-        if (!result && nvidiaKey) {
-            const text = await callNvidia(nvidiaKey, nvidiaModel, messages, 500)
-            if (text) result = { text, provider: 'nvidia' }
-        }
-        if (!result) result = await tryGemini()
-    }
-    if (!result && hfKey) {
-        const text = await callHuggingFace(hfKey, `${sys}\n\nUser: ${query}`, 500)
-        if (text) result = { text, provider: 'huggingface' }
-    }
+    // NVIDIA is the configured provider for every subscription tier.
+    const text = nvidiaKey ? await callNvidia(nvidiaKey, nvidiaModel, messages, 500) : null
+    const result = text ? { text, provider: 'nvidia' } : null
 
     if (!result) {
         return json({ error: 'AI model is busy, try again later.' }, 503)

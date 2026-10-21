@@ -1,0 +1,11 @@
+{
+  "original_report": "nvidia-lightning-v108-real-services-20261021.json",
+  "scope": "Correction to audit interpretation; original recorded output retained",
+  "travel_http_status": 200,
+  "travel_request_contract_failed": "Requested one outfit but multiple validated outfits were returned",
+  "withdrawn_claim": "The original over_budget flag was based on the sum across returned outfits and does not prove any individual outfit exceeded its budget.",
+  "fix": "Server limits validated output count; harness records outfitCount and outfitSpendsUzs, and tests budget per outfit.",
+  "original_pass_count_unchanged": 1,
+  "original_total_scenarios": 3,
+  "production_model_changed": false
+}

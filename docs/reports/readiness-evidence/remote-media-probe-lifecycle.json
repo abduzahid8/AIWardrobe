@@ -1,0 +1,56 @@
+{
+  "startedAt": "2026-10-17T11:32:26.850Z",
+  "project": "fyqpifmrsftsfqibhwhy",
+  "slug": "readiness-media-probe-mvcbhfjk-1fujua",
+  "status": "cleanup_independently_verified",
+  "customerDataAccess": false,
+  "placeholderCleanupVerified": true,
+  "runId": "f9ecf7ac-62d7-465f-b6bd-5fbedea65ce4",
+  "fixtureUserIds": [
+    "38ebdb2a-7475-44e3-a8dc-c9e9ed696241",
+    "78a0ec65-0551-4d90-b22a-f8704bb2d658"
+  ],
+  "probeConfig": {
+    "projectUrl": "https://fyqpifmrsftsfqibhwhy.supabase.co",
+    "owner": "38ebdb2a-7475-44e3-a8dc-c9e9ed696241",
+    "objectId": "912e2a6f-2936-4cf6-8c85-640e32eaf11a",
+    "bytes": 788309,
+    "sha256": "39b14e9041fca06639a34a1c04420d57cc57776bec23c524f21cd88f1a4a3bd7",
+    "expiresAt": 1792237591534
+  },
+  "mediaJavaScriptHashes": {
+    "wardrobeMedia": "d64b05e070a343d38bc10b2a821de799f3a8e36e1942429d3620e8efc676d682",
+    "pendingWardrobeMedia": "5a1001c028096fad91ee708e7b0f6866936202c7d44450a20ccb7c92f66eee03",
+    "wardrobeItemMedia": "32776cae4606ff801c80a37c5da7d5b36c787c302c0f62ff854eb16ae3269695"
+  },
+  "fixtureDescription": "Pillow RGBA 384x512 PNG, compression=0; matched network control, not native codec output",
+  "activeProbeDeploymentAttempted": true,
+  "deploymentWindowStartedAt": "2026-10-17T11:41:31.534Z",
+  "cleanup": [
+    {
+      "functionDeleteCommandSucceeded": true
+    },
+    {
+      "objectsRemoved": true
+    },
+    {
+      "userId": "38ebdb2a-7475-44e3-a8dc-c9e9ed696241",
+      "accountDeleted": true
+    },
+    {
+      "userId": "78a0ec65-0551-4d90-b22a-f8704bb2d658",
+      "accountDeleted": true
+    }
+  ],
+  "cleanupIndependentVerification": {
+    "functionAbsent": true,
+    "usersRemaining": 0,
+    "sessionsRemaining": 0,
+    "identitiesRemaining": 0,
+    "profilesRemaining": 0,
+    "objectsRemaining": 0,
+    "privateManifestRemoved": true,
+    "temporaryImageRemoved": true
+  },
+  "executedHandlerSha256": "d94fe3fdf855270560956cfb98f6df6c4014cd286c60a579ab9f037dd20921fb"
+}

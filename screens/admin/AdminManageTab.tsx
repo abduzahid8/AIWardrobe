@@ -2,13 +2,15 @@
  * AdminManageTab — List / edit / delete shop catalog items
  */
 import React, { useState, useCallback, useEffect } from 'react';
-import { ActivityIndicator, Alert, FlatList, Image, Modal, ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View,  } from 'react-native'
+import { ActivityIndicator, Alert, FlatList, Modal, ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View } from 'react-native';
 import { ScaledText } from '../../components/ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { useTranslation } from 'react-i18next';
 import { createLogger } from '../../src/utils/logger';
+import { Image } from '../../src/components/MediaImage';
+
 
 const logger = createLogger('AdminManageTab');
 

@@ -1,0 +1,9 @@
+{
+  "runId": "9b79ea7a-30e6-4b44-b2e4-6591d6ce4a7a",
+  "positiveLiveResult": "FAILED503 ai_analysis_unavailable",
+  "latencyMs": 20236,
+  "admissionAndRlsChecksPassed": 4,
+  "fixturesDeleted": 2,
+  "remainingTaggedAccountsIndependentSql": 0,
+  "limitation": "No raw provider fields or schema rejection reason retained, so exact invalid field or provider failure cannot be attributed from this run."
+}

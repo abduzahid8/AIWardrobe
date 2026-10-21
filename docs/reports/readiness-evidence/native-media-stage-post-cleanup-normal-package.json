@@ -1,0 +1,8 @@
+{
+  "normalEntry": true,
+  "auditEntryIncluded": false,
+  "apkBytes": 66153342,
+  "apkSha256": "2aa8c88ae03907d7e77b07d28c35ed3833725961e2ae68fe6877477f485eaff9",
+  "bundleSha256": "2a7f49a71544a2184e8a07b81e2533f9d8f91399c0b13f6aaeeb14c36e3e6f15",
+  "correctedHarnessBuilt": false
+}

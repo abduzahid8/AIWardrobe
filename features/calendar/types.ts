@@ -5,6 +5,7 @@
  * Re-exports canonical domain types where possible to avoid duplication.
  */
 
+import { parseCalendarDate } from '../../src/utils/calendarDate';
 import type { ClothingCategory as DomainClothingCategory } from '../../src/types/domain';
 import { getMacroCategory } from '../../src/utils/categoryMapper';
 
@@ -123,6 +124,7 @@ export const createOutfitLog = (
     note?: string,
     rating?: number,
 ): OutfitLog => {
+    if (!parseCalendarDate(date)) throw new Error('Invalid calendar date');
     if (items.length === 0) {
         throw new Error('OutfitLog requires at least one item');
     }

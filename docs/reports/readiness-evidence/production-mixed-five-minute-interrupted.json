@@ -1,0 +1,291 @@
+{
+  "measuredAt": "2026-10-20T17:25:42.463Z",
+  "runId": "c12c6f8a-51cb-45c8-89c1-692ffb48153b",
+  "assumptions": {
+    "dau": 10000,
+    "sessionsPerDay": 2,
+    "requestsPerSession": 12,
+    "peakHourFraction": 0.2,
+    "headroom": 3,
+    "dailyRequests": 240000,
+    "peakRps": 13.333333333333334,
+    "targetRps": 40
+  },
+  "scope": "Production concurrent 32 app read RPS + 8 wear-log upsert RPS for 300 seconds; 20 temporary owners, 50 garments/5 outfits each; excludes AI, image delivery, uploads, subscriptions and native",
+  "fixtureUsers": 20,
+  "wardrobeItemsPerUser": 50,
+  "savedOutfitsPerUser": 5,
+  "cleanup": [
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    }
+  ],
+  "preflight": {
+    "completed": 4,
+    "failedRequests": 0,
+    "statuses": {
+      "200": 4
+    },
+    "failures": {},
+    "passed": true
+  },
+  "reads": {
+    "scope": "read-only HTTP paths; excludes paid AI, uploads, writes, and native rendering",
+    "workload": "app",
+    "aborted": true,
+    "requestedRps": 32,
+    "durationSec": 300,
+    "elapsedSec": 0.0008488329999963753,
+    "scheduled": 9600,
+    "completed": 0,
+    "dropped": 0,
+    "achievedRps": 0,
+    "distinctAuthenticatedUsers": 0,
+    "statuses": {},
+    "failures": {},
+    "failureDetails": [],
+    "failedRequests": 0,
+    "errorRate": 0,
+    "latencyMs": {
+      "p50": null,
+      "p95": null,
+      "p99": null
+    },
+    "passed": false
+  },
+  "writes": {
+    "planned": 2400,
+    "completed": 0,
+    "failed": 0,
+    "dropped": 0,
+    "elapsedSec": 0.00032533300000068264,
+    "achievedRps": 0,
+    "statuses": {},
+    "failures": {},
+    "failureDetails": [],
+    "latencyMs": {
+      "p50": null,
+      "p95": null,
+      "p99": null
+    },
+    "aborted": true,
+    "diagnostics": {
+      "errorTypes": {},
+      "tenSecondWindows": {},
+      "maxScheduleLagMs": 0,
+      "wallElapsedMs": 0,
+      "eventLoopDelayMs": {
+        "mean": null,
+        "max": 0
+      },
+      "upstreamHeaderSamples": 0,
+      "upstreamHeaderMaxMs": null,
+      "runtime": {
+        "node": "v22.23.2",
+        "platform": "darwin",
+        "arch": "arm64"
+      }
+    },
+    "passed": false
+  },
+  "verification": [
+    {
+      "expectedDistinctLogs": 24,
+      "actualLogs": 0,
+      "actualWearCount": 0,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 24,
+      "actualLogs": 0,
+      "actualWearCount": 0,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 24,
+      "actualLogs": 0,
+      "actualWearCount": 0,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 24,
+      "actualLogs": 0,
+      "actualWearCount": 0,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 24,
+      "actualLogs": 0,
+      "actualWearCount": 0,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 24,
+      "actualLogs": 0,
+      "actualWearCount": 0,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 24,
+      "actualLogs": 0,
+      "actualWearCount": 0,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 24,
+      "actualLogs": 0,
+      "actualWearCount": 0,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 24,
+      "actualLogs": 0,
+      "actualWearCount": 0,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 24,
+      "actualLogs": 0,
+      "actualWearCount": 0,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 24,
+      "actualLogs": 0,
+      "actualWearCount": 0,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 24,
+      "actualLogs": 0,
+      "actualWearCount": 0,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 24,
+      "actualLogs": 0,
+      "actualWearCount": 0,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 24,
+      "actualLogs": 0,
+      "actualWearCount": 0,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 24,
+      "actualLogs": 0,
+      "actualWearCount": 0,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 24,
+      "actualLogs": 0,
+      "actualWearCount": 0,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 24,
+      "actualLogs": 0,
+      "actualWearCount": 0,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 24,
+      "actualLogs": 0,
+      "actualWearCount": 0,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 24,
+      "actualLogs": 0,
+      "actualWearCount": 0,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 24,
+      "actualLogs": 0,
+      "actualWearCount": 0,
+      "passed": false
+    }
+  ],
+  "passed": false
+}

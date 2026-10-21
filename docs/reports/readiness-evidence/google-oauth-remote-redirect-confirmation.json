@@ -1,0 +1,32 @@
+{
+  "project": "fyqpifmrsftsfqibhwhy",
+  "dryRun": true,
+  "wrote": false,
+  "checkedAt": "2026-10-18T13:36:22.735Z",
+  "entries": [
+    {
+      "path": "auth.additional_redirect_urls",
+      "remote": [
+        "com.aiwardrobe://reset-password",
+        "com.aiwardrobe://auth/callback"
+      ]
+    },
+    {
+      "path": "auth.external.apple.enabled",
+      "remote": true
+    },
+    {
+      "path": "auth.external.google.client_id",
+      "remote": "858235524894-6sdk2tkvjmle2r6to63hp1egsh3srl2b.apps.googleusercontent.com"
+    },
+    {
+      "path": "auth.external.google.enabled",
+      "remote": true
+    },
+    {
+      "path": "auth.site_url",
+      "remote": "com.aiwardrobe://reset-password"
+    }
+  ],
+  "scope": "Read-only CLI remote configuration preview in deleted isolated workspace; credentials excluded"
+}

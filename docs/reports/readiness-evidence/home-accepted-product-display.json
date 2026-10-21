@@ -1,0 +1,88 @@
+{
+  "verifiedAt": "2026-10-19T02:41:58.480868+00:00",
+  "changes": [
+    "Home no longer substitutes catalog products or fills outfit slots while mapping accepted outfits",
+    "Empty AI response no longer displays locally assembled combinations",
+    "Displayed/saved/disliked identifiers refer to the same accepted products",
+    "Daily cache version20 invalidates older entries that may lack currencies",
+    "Shop sheet no longer rounds USD/EUR cents or assumes USD for missing/malformed currencies"
+  ],
+  "tests": {
+    "full": 1556,
+    "suites": 137,
+    "actualHomeDeckSelectionTests": 2,
+    "acceptedProductMappingTests": 3,
+    "priceLabelTests": 11,
+    "typecheck": "pass",
+    "targetedLint": "0 errors;47 existing warnings"
+  },
+  "packaging": {
+    "iosHermesExport": "pass",
+    "androidArm64Release": "pass",
+    "sourceMapChecks": [
+      {
+        "platform": "ios",
+        "source": "screens/HomeScreen.tsx",
+        "exactSourceMatch": true
+      },
+      {
+        "platform": "ios",
+        "source": "components/OutfitShopSheet.tsx",
+        "exactSourceMatch": true
+      },
+      {
+        "platform": "ios",
+        "source": "src/services/dailyOutfitDisplay.ts",
+        "exactSourceMatch": true
+      },
+      {
+        "platform": "ios",
+        "source": "src/services/dailyOutfitCache.ts",
+        "exactSourceMatch": true
+      },
+      {
+        "platform": "ios",
+        "source": "src/utils/shopPriceLabel.ts",
+        "exactSourceMatch": true
+      },
+      {
+        "platform": "android",
+        "source": "screens/HomeScreen.tsx",
+        "exactSourceMatch": true
+      },
+      {
+        "platform": "android",
+        "source": "components/OutfitShopSheet.tsx",
+        "exactSourceMatch": true
+      },
+      {
+        "platform": "android",
+        "source": "src/services/dailyOutfitDisplay.ts",
+        "exactSourceMatch": true
+      },
+      {
+        "platform": "android",
+        "source": "src/services/dailyOutfitCache.ts",
+        "exactSourceMatch": true
+      },
+      {
+        "platform": "android",
+        "source": "src/utils/shopPriceLabel.ts",
+        "exactSourceMatch": true
+      }
+    ]
+  },
+  "scope": "Actual Home deck source expression and mapping/price helpers plus rendered status tests. Not full native Home or shop-sheet visual verification. Retailer URLs not yet audited in this change.",
+  "userDeviceInstalled": false,
+  "serverDeploymentNeeded": false,
+  "artifacts": [
+    {
+      "path": "/private/tmp/aiwardrobe-budget-release-00nhnjcc/AIWardrobe.app/main.jsbundle",
+      "sha256": "f74e3194f061678e7dae924292d705e86ea2898c457c16e40681f02ba53a39c7"
+    },
+    {
+      "path": "/Users/v.zahid/AIWardrobe/android/app/build/outputs/apk/release/app-release.apk",
+      "sha256": "a549e11a88885fe9dc9162bb961727024ee65fa73e5d0764e8b5c1e195f04d89"
+    }
+  ]
+}

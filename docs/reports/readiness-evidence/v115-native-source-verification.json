@@ -1,0 +1,22 @@
+[
+  {
+    "platform": "ios",
+    "source": "backend/supabase/functions/_shared/outfitStructure.ts",
+    "exact": true
+  },
+  {
+    "platform": "ios",
+    "source": "src/services/outfitGenerationFailure.ts",
+    "exact": true
+  },
+  {
+    "platform": "android",
+    "source": "backend/supabase/functions/_shared/outfitStructure.ts",
+    "exact": true
+  },
+  {
+    "platform": "android",
+    "source": "src/services/outfitGenerationFailure.ts",
+    "exact": true
+  }
+]

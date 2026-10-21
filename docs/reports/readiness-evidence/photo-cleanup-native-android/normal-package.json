@@ -1,0 +1,25 @@
+{
+  "nativeBuildSucceeded": true,
+  "apkSha256": "2b0da5540481f6d9e3161e2cecc1c3484eacdd393a3b47c9b992b3043c8a20ec",
+  "bundleSha256": "c262ae5b8745e1f7bc99045dc547ed83a77345a4dd3b46c837ae5d982ed4b816",
+  "sourceChecks": {
+    "src/lib/persistence.ts": true,
+    "src/services/pendingWardrobeMedia.ts": true,
+    "src/services/wardrobeThumbnail.ts": true,
+    "auditEntryAbsent": true,
+    "auditMarkerAbsent": true
+  },
+  "passed": true,
+  "cleanup": {
+    "auditAppUninstalled": true,
+    "adbUidAfterUnroot": 2000,
+    "emulatorExitCode": 0,
+    "dedicatedAvdDeleted": true,
+    "androidDeviceInventoryEmpty": true
+  },
+  "limitations": [
+    "Debug signing certificate",
+    "No full normal-app UI certification",
+    "iOS cleanup recovery not yet verified"
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "verifiedAt": "2026-10-19T02:45:37.340449+00:00",
+  "defect": "All1529 active rows have web source_url but generation omitted it from queries and candidate mapping",
+  "fix": "Both shop candidate query/mapping paths carry source_url as shopUrl; immutable enrichment and shared client mapping preserve it",
+  "tests": {
+    "before": "Exact candidate URL test failed",
+    "stagedCandidateTests": 4,
+    "fullTests": 1557,
+    "suites": 137,
+    "typecheck": "pass",
+    "stagedDeno": "pass"
+  },
+  "deployed": true,
+  "liveSmoke": "PASS: business outfit200 in9.7s;3 exact catalog URLs retained; spend2549800UZS under3150000UZS; fixture deleted and independently absent",
+  "catalogAudit": "1529 public active URLs parsed;0 malformed,0 credentials;4 retailer hosts",
+  "retailerHttpSamples": "Three bounded HEAD requests returned200 before browser-access rejection; not product-page content verification",
+  "webpageBoundary": "User explicitly approved both retailer sites and later confirmed permissions updated. Browser still rejects Massimo Dutti due to saved permission or managed policy; separately approved Zara was also denied by its origin gate. No alternate transport/surface used after browser rejections. Full product-page content remains blocked by browser permission state.",
+  "builds": {
+    "iosHermes": "pass",
+    "androidArm64Release": "pass",
+    "sourceMapChecks": [
+      {
+        "platform": "ios",
+        "source": "src/services/outfitGenerationService.ts",
+        "exactSourceMatch": true
+      },
+      {
+        "platform": "android",
+        "source": "src/services/outfitGenerationService.ts",
+        "exactSourceMatch": true
+      }
+    ]
+  },
+  "userDeviceInstalled": false,
+  "artifacts": [
+    {
+      "path": "/private/tmp/aiwardrobe-budget-release-00nhnjcc/AIWardrobe.app/main.jsbundle",
+      "sha256": "b30efc0cd0518a1e1f24d759ed2668af81f4987b847f56a9712bcb16d7949534"
+    },
+    {
+      "path": "/Users/v.zahid/AIWardrobe/android/app/build/outputs/apk/release/app-release.apk",
+      "sha256": "c0dc929931419212c9f049ae55b1366f499a02c62b4e76bddb91bec748e3de99"
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "scope": "Debounced storage flush acknowledgment; no complete account-cleanup failure recovery claim",
+  "reproduction": {
+    "newCasesFailed": 3,
+    "existingCasesPassed": 7
+  },
+  "verification": {
+    "fullTests": 1353,
+    "suites": 118,
+    "failures": 0,
+    "typescript": "passed",
+    "eslintErrors": 0,
+    "eslintWarnings": 0
+  },
+  "invariants": [
+    "Background write failure remains visible to a later flush",
+    "Flush observes failure of a write already in progress",
+    "Flush waits for every captured outstanding key before rejecting",
+    "Successful write/removal for the same key clears its failure without poisoning other work"
+  ],
+  "sourceSha256": {
+    "src/lib/debouncedStorage.ts": "716dc204680a04e1702235082e27645a96dea6e8ca6cf03ccf8c519788d65000",
+    "__tests__/lib/debouncedStorage.test.ts": "e5822d5b8e5e0b2f646cf8fcac09d111b8375852b7e527cb22f6424b3a67c700"
+  },
+  "normalAndroidBuild": {
+    "exitCode": 0,
+    "packagedSourceMatches": true,
+    "apkSha256": "498a7423ddfb3ace93079784c48d5a668d6698f950dbb1a00e56e5b2ce99828d",
+    "bundleSha256": "34dca84f65709c5993233c0051abcf8803aba7f30fd8d05f31c996936faaf740",
+    "auditMarkerAbsent": true,
+    "nativeUiVerified": false
+  },
+  "productionChanged": false,
+  "remaining": [
+    "Persistence reset and registry cleanup still catch some errors",
+    "Legacy upload-service removal still swallows failures",
+    "Durable account-boundary recovery and raw store writer audit",
+    "Native lifecycle/capacity/media/security/store/deferred-provider acceptance"
+  ]
+}

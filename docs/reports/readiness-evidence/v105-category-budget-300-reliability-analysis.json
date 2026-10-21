@@ -1,0 +1,78 @@
+{
+  "scope": "Three sequential normal-catalog production requests at USD300; not a reliability population estimate or 10000 DAU load test",
+  "deployed_version": 105,
+  "provider_model": "meta/llama-3.2-11b-vision-instruct",
+  "scenarios": [
+    {
+      "name": "date_old_money_300_usd",
+      "status": 503,
+      "latencyMs": 13651,
+      "passed": false,
+      "spendUzs": 0,
+      "capUzs": 3603690
+    },
+    {
+      "name": "formal_semi_classic_300_usd",
+      "status": 503,
+      "latencyMs": 20171,
+      "passed": false,
+      "spendUzs": 0,
+      "capUzs": 3603690
+    },
+    {
+      "name": "travel_minimalist_300_usd",
+      "status": 200,
+      "latencyMs": 10576,
+      "passed": true,
+      "spendUzs": 3034400,
+      "capUzs": 3603690
+    }
+  ],
+  "validator_source_verification": {
+    "occasionRules": "matches hosted source ignoring final newline",
+    "outfitStructure": "matches hosted source ignoring final newline"
+  },
+  "diagnostic_window_utc": {
+    "start": "2026-10-21T08:33:00Z",
+    "end": "2026-10-21T08:35:00Z"
+  },
+  "timestamp_aligned_log_findings": [
+    {
+      "at": "2026-10-21T08:33:21.461000Z",
+      "reason": "missing bottom slot (macros: top,shoes)"
+    },
+    {
+      "at": "2026-10-21T08:33:24.296000Z",
+      "reason": "two pullover knits never layer together"
+    },
+    {
+      "at": "2026-10-21T08:33:37.813000Z",
+      "reason": "suede stays in smart casual — suits take leather"
+    },
+    {
+      "at": "2026-10-21T08:33:44.471000Z",
+      "reason": "100% LINEN RELAXED FIT TROUSERS: relaxed-fit trousers underdress a polished look"
+    }
+  ],
+  "interpretation": "Both failed scenarios received parseable provider responses on two attempts; output validation rejected choices. Timing aligns with the sequential fixture requests; logs were not correlated by an execution ID. No production fix deployed from these observations.",
+  "cleanup": {
+    "refreshSessionsRevoked": true,
+    "temporaryUserDeleted": true,
+    "status": 200
+  },
+  "independent_cleanup": {
+    "remaining_audit_users": 0,
+    "auth_users": 111,
+    "profiles": 111,
+    "garments": 109
+  },
+  "harness_changes": "Bounded handle metadata, global refresh-session revocation before account deletion, cleanup error recording. No provider-routing or client change.",
+  "limits": [
+    "One travel success does not establish dependable category generation",
+    "Catalog exactness does not verify current retailer stock/price or visual compatibility",
+    "Date and formal remain unavailable in this measured window",
+    "Earlier outfit successes and failures retained; this audit does not erase them",
+    "Workouts still lack verified eligible catalog bottoms/shoes",
+    "No AI throughput/capacity certification"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "runId": "921cd46d-6719-4eb5-9817-446070e433bd",
+  "measuredAt": "2026-10-19T13:09:18.165Z",
+  "passed": true,
+  "reads": 3840,
+  "writes": 960,
+  "readP95Ms": 499.5718749999942,
+  "writeP95Ms": 510.2515829999902,
+  "readP99Ms": 1104.761249999996,
+  "writeP99Ms": 1084.3900420000136,
+  "harnessRegressionChecks": 18,
+  "scriptSha256": "648b57d85f6897507f06ac26fc010d27784be686eccae314437e85a3505bebc7",
+  "scope": "120seconds concurrent32read/8writeRPS,20temporaryowners,50garments/5outfits perowner;24distinctwearlogs/owner eachwritten twice; service credential used only for temporary Auth account lifecycle",
+  "remaining": [
+    "10k-owner hosted data cardinality",
+    "Longer mixed soak, multiple regions/load generators and production telemetry validation of peak assumptions",
+    "AI provider capacity (earlier NVIDIA concurrent stage failed), media/upload/Realtime/auth/subscription mixed traffic",
+    "Earlier standalone transport failures remain unexplained",
+    "Signed installed-device/store and operations/restore verification"
+  ]
+}

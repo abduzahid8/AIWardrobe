@@ -1,0 +1,8 @@
+{
+  "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+  "status": 200,
+  "latencyMs": 41582,
+  "content": "{\n  \"outfits\": [\n    {\n      \"items\": [\n        {\n          \"id\": \"white-shirt\"\n        },\n        {\n          \"id\": \"blue-jeans\"\n        },\n        {\n          \"id\": \"brown-loafers\"\n        }\n      ]\n    }\n  ]\n}",
+  "finishReason": "stop",
+  "reasoningLength": 0
+}

@@ -1,0 +1,23 @@
+{
+  "scope": "Paginated owner saved-outfit read beyond 1,000 rows",
+  "fullSuite": {
+    "passed": true,
+    "tests": 1061,
+    "suites": 89
+  },
+  "newRegressions": 3,
+  "typecheck": "pass",
+  "targetedLint": {
+    "errors": 0,
+    "warnings": 3
+  },
+  "liveChecksPassed": 8,
+  "expectedUniqueRows": 1001,
+  "liveDurationMs": 2448,
+  "fixtureAccountsDeletedAcrossTwoRuns": 4,
+  "liveEvidence": "production-saved-outfit-pagination.json",
+  "nativeVerified": false,
+  "nativeBlocker": "Mac locked",
+  "mobileReleased": false,
+  "capacityCertified": false
+}

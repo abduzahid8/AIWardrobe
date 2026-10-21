@@ -1,0 +1,26 @@
+{
+  "date": "2026-10-20",
+  "fixed": "Atomic matched price/currency quote for outfit tiles; no fabricated USD label",
+  "focusedCases": 11,
+  "regression": {
+    "tests": 1898,
+    "suites": 156,
+    "typescript": "pass",
+    "iosHermes": "pass",
+    "androidArm64Release": "pass",
+    "sourceMaps": {
+      "ios": {
+        "screens/AIOutfitmaker.tsx": true,
+        "src/utils/outfitBudget.ts": true
+      },
+      "android": {
+        "screens/AIOutfitmaker.tsx": true,
+        "src/utils/outfitBudget.ts": true
+      }
+    }
+  },
+  "deployment": "Local client source/build artifacts only",
+  "blockingBudgetFailure": "mixed-currency-spend-open.json; standalone audit exits1",
+  "scope": "Helper and actual extracted grid/cell tests; no native visual, current retailer price or live FX claim",
+  "goal": "active; budget correctness and10000DAU readiness not certified"
+}

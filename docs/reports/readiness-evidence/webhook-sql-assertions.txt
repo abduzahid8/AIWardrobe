@@ -1,0 +1,16 @@
+BEGIN
+SET
+  set_config  
+--------------
+ service_role
+(1 row)
+
+DO
+SET
+  set_config   
+---------------
+ authenticated
+(1 row)
+
+DO
+ROLLBACK

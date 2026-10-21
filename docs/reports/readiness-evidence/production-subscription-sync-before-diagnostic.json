@@ -1,0 +1,65 @@
+{
+  "measuredAt": "2026-10-19T11:46:19.987Z",
+  "runId": "3023737a-84c2-40ee-a3ef-fa956ee5f7c3",
+  "scope": "One disposable free account; no store purchase or paid access",
+  "checks": [
+    {
+      "name": "anonymous_denied",
+      "passed": true,
+      "status": 401
+    },
+    {
+      "name": "verified_free_cannot_self_grant",
+      "passed": false,
+      "status": 503,
+      "latencyMs": 3568,
+      "verified": false,
+      "tier": null
+    },
+    {
+      "name": "profile_remains_free",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "server_snapshot_records_only_owner",
+      "passed": false,
+      "status": 200
+    },
+    {
+      "name": "client_cannot_call_authoritative_writer",
+      "passed": true,
+      "status": 403
+    },
+    {
+      "name": "ios_offering_contains_three_approved_products",
+      "passed": true,
+      "status": 200,
+      "products": [
+        "2.99",
+        "com.aiwardrobe.premium.monthly",
+        "com.aiwardrobe.premium.yearly"
+      ],
+      "currentOffering": "default"
+    }
+  ],
+  "cleanup": [
+    {
+      "system": "revenuecat",
+      "deletionRequested": true,
+      "status": 200,
+      "note": "RevenueCat deletion is asynchronous; no GET used because it creates missing customers."
+    },
+    {
+      "system": "sync_ledger",
+      "deleted": true,
+      "status": 204
+    },
+    {
+      "system": "supabase_user",
+      "deleted": true,
+      "status": 200
+    }
+  ],
+  "fixtureOwner": "493cfbc8-eaa7-4057-b1c7-acba320178c0"
+}

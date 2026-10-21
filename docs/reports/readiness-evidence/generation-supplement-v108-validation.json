@@ -1,0 +1,93 @@
+{
+  "scope": "Server supplement admission counts and shop eligibility before per-slot truncation; independent live regression results retained",
+  "deployed_version": 108,
+  "baseline": 107,
+  "verify_jwt": true,
+  "deployment": {
+    "all_files_match": 12,
+    "shared_files_unchanged": 11,
+    "entry_sha256": "3b24a4a74ddc79eab78d75f2b8d70f6d455d946e8e591c5b89f627936cc09e0a"
+  },
+  "regressions_before": {
+    "helper_failures": 2,
+    "actual_handler_failure": 1
+  },
+  "checks_after": {
+    "staged_handler_request_tests": 85,
+    "full_tests": 2207,
+    "full_suites": 175,
+    "typescript": "pass",
+    "staged_deno": "pass"
+  },
+  "targeted_live": {
+    "passed_checks": 6,
+    "status": 200,
+    "latencyMs": 12093,
+    "spendUzs": 1499900,
+    "capUzs": 3603690,
+    "report": "v108-owned-wardrobe-supplement-live.json"
+  },
+  "broad_live_retry": {
+    "passed": 0,
+    "total": 3,
+    "report": "v108-category-budget-300-regression-retry-20261021.json",
+    "results": [
+      {
+        "name": "date_old_money_300_usd",
+        "status": 503,
+        "latencyMs": 20068,
+        "passed": false
+      },
+      {
+        "name": "formal_semi_classic_300_usd",
+        "status": 503,
+        "latencyMs": 50909,
+        "passed": false
+      },
+      {
+        "name": "travel_minimalist_300_usd",
+        "status": 503,
+        "latencyMs": 51016,
+        "passed": false
+      }
+    ]
+  },
+  "timestamp_aligned_log_findings": [
+    {
+      "timestamp": "2026-10-21T12:09:10.168000Z",
+      "reason": "two pullover knits never layer together"
+    },
+    {
+      "timestamp": "2026-10-21T12:09:13.541000Z",
+      "reason": "two pullover knits never layer together"
+    },
+    {
+      "timestamp": "2026-10-21T12:10:04.457000Z",
+      "reason": "nvidia_request_timeout"
+    },
+    {
+      "timestamp": "2026-10-21T12:10:55.351000Z",
+      "reason": "nvidia_request_timeout"
+    }
+  ],
+  "interrupted_run": {
+    "report": "v108-category-budget-300-regression-interrupted-20261021.json",
+    "cause": "TypeError only, root cause and backend execution unknown",
+    "cleanup_recovery": "v108-regression-interrupted-cleanup.json"
+  },
+  "independent_cleanup": {
+    "remaining_audit_users": 0,
+    "remaining_supplement_garments": 0,
+    "auth_users": 111,
+    "profiles": 111,
+    "garments": 109
+  },
+  "limits": [
+    "Targeted supplementation is verified; all-catalog generation reliability is not solved",
+    "No causal inference that predicate changes caused or fixed stochastic generation failures",
+    "Query still caps each catalog slot at100 upstream rows; eligible candidates beyond that window can remain unseen",
+    "Preference filtering and pairwise coherence still need broader coverage",
+    "No 10000-DAU AI throughput or native UI certification",
+    "Backend-only fix; no client rebuild needed for these changes"
+  ]
+}

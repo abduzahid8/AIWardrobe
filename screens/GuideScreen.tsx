@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Linking, ActivityIndicator, Platform,  } from 'react-native'
+import { View, StyleSheet, ScrollView, TouchableOpacity, Linking, ActivityIndicator, Platform } from 'react-native';
 import { ScaledText } from '../components/ui/ScaledText';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabase';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CachedImage } from '../components/ui/CachedImage';
+import { Image } from '../src/components/MediaImage';
+
 
 interface GuideContent {
   title: string;
@@ -95,7 +97,7 @@ export default function GuideScreen() {
               <View style={styles.mannequinContainer}>
                 {/* Placeholder for mannequin/drawing illustration */}
                 <Image
-                  source={require('../assets/images/mannequin_front.png')}
+                  source={require('../assets/images/mannequin_front.jpg')}
                   style={styles.mannequinImage}
                   resizeMode="contain"
                 />

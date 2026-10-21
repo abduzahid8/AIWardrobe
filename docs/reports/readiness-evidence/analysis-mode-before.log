@@ -1,0 +1,134 @@
+  console.error
+    NVIDIA API error: 429
+
+      at callNvidiaVision (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:95:17)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:326:36)
+
+  console.error
+    NVIDIA API error: 503
+
+      at callNvidiaVision (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:95:17)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:326:36)
+
+FAIL __tests__/backend/analyzeOutfitOwnership.test.js
+  ✓ payload userId cannot select another owner through the service role (3 ms)
+  ✓ authentication failure stops before provider work or wardrobe reads (1 ms)
+  ✓ rejects invalid image shape or size before external work (1 ms)
+  ✓ rejects invalid image shape or size before external work
+  ✓ rejects invalid image shape or size before external work (1 ms)
+  ✓ rejects invalid image shape or size before external work (43 ms)
+  ✓ analysis admission denial 403 prevents wardrobe and provider access
+  ✓ analysis admission denial 429 prevents wardrobe and provider access (1 ms)
+  ✓ analysis admission denial 503 prevents wardrobe and provider access
+  ✓ the actual outfit image stays in the final user message after the JSON-array example (1 ms)
+  ✓ matching color, style and pattern never makes trousers similar to a jacket (1 ms)
+  ✓ missing clothing types never earn an empty-string category match (1 ms)
+  ✓ t-shirt is not a substring match for shirt; typed broad categories use their specific garment type
+  ✓ primary_color participates in ranking and legitimate trouser aliases match
+  ✓ broad catalog labels use explicit English/Russian garment names, never shared color alone (1 ms)
+  ✓ dress shirts remain shirts and contradictory specific catalog types are withheld
+  ✓ broad dress catalog title is recognized: Linen dress (4 ms)
+  ✓ broad dress catalog title is recognized: Summer dresses (1 ms)
+  ✓ broad dress catalog title is recognized: Белое платье
+  ✓ invalid or incomplete provider output is an explicit retryable failure: not JSON
+  ✓ invalid or incomplete provider output is an explicit retryable failure: [{"category":"shirt"},] (1 ms)
+  ✓ invalid or incomplete provider output is an explicit retryable failure: [{"category":"shirt"}, {"category":
+  ✓ invalid or incomplete provider output is an explicit retryable failure: [null]
+  ✓ invalid or incomplete provider output is an explicit retryable failure: [1]
+  ✓ invalid or incomplete provider output is an explicit retryable failure: [{}]
+  ✓ invalid or incomplete provider output is an explicit retryable failure: [{"category":"shirt","primaryColor":"white"}] (1 ms)
+  ✓ a genuine empty JSON array remains distinct from invalid provider output
+  ✓ truncated completion is not presented as a complete outfit even if it contains parseable JSON
+  ✓ provider HTTP 429 is a retryable analysis failure (7 ms)
+  ✓ provider HTTP 503 is a retryable analysis failure
+  ✓ invalid structured garment field is rejected: {"section":"bottoms"}
+  ✓ invalid structured garment field is rejected: {"primaryColor":{}}
+  ✓ invalid structured garment field is rejected: {"colorHex":"beige"} (1 ms)
+  ✓ invalid structured garment field is rejected: {"style":"invented"}
+  ✓ invalid structured garment field is rejected: {"material":{}}
+  ✓ invalid structured garment field is rejected: {"pattern":[]}
+  ✓ invalid structured garment field is rejected: {"fit":"unknown"}
+  ✓ invalid structured garment field is rejected: {"description":""}
+  ✕ single-garment mode actually requests one item instead of a full outfit (1 ms)
+  ✕ unknown analysis modes are rejected before provider work (1 ms)
+  ✕ multiple detected items cannot masquerade as a successful single-garment analysis
+
+  ● single-garment mode actually requests one item instead of a full outfit
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "exactly one"
+    Received string:    "Analyze the outfit in this image. Identify each distinct clothing item the person is wearing.
+    Ignore the person's body, background, and any non-clothing objects.
+    Return ONLY a valid JSON array where each element describes one clothing item:
+    [
+      {
+        \"category\": \"t-shirt|shirt|blouse|sweater|hoodie|jacket|coat|cardigan|dress|skirt|pants|jeans|shorts|sneakers|boots|sandals|bag|hat|scarf|belt|clothing\",
+        \"section\": \"tops|bottoms|dresses|outerwear|shoes|accessories|other\",
+        \"specificType\": \"brief description like 'oversized white t-shirt' or 'slim black jeans'\",
+        \"primaryColor\": \"main color name\",
+        \"colorHex\": \"hex code like #1A1A2E\",
+        \"style\": \"casual|formal|sport|semi_classic|elegant|minimalist|other\",
+        \"material\": \"fabric type or null\",
+        \"pattern\": \"solid|striped|plaid|graphic|other\",
+        \"fit\": \"slim|regular|oversized|fitted|loose\",
+        \"description\": \"1-2 sentence description of the item\"
+      }
+    ]
+    Sections must follow category: t-shirt/shirt/blouse/sweater/hoodie => tops; jacket/coat/cardigan => outerwear; dress => dresses; skirt/pants/jeans/shorts => bottoms; sneakers/boots/sandals => shoes; bag/hat/scarf/belt => accessories; clothing => other. Include every field shown; use material null when unknown.
+    Return valid JSON only. Identify ALL visible clothing items (typically 3-6 items)."
+
+      126 |
+      127 | test('single-garment mode actually requests one item instead of a full outfit',async()=>{
+    > 128 |  const {handler,fetchMock}=load();expect((await handler(request({image:'photo',mode:'single'}))).status).toBe(200);const prompt=JSON.parse(fetchMock.mock.calls[0][1].body).messages.at(-1).content.find(v=>v.type==='text').text;expect(prompt).toContain('exactly one');expect(prompt).not.toContain('Identify ALL visible clothing items');
+          |                                                                                                                                                                                                                                                  ^
+      129 | });
+      130 | test('unknown analysis modes are rejected before provider work',async()=>{
+      131 |  const {handler,fetchMock}=load();expect((await handler(request({image:'photo',mode:'unsupported'}))).status).toBe(400);expect(fetchMock).not.toHaveBeenCalled();
+
+      at Object.toContain (__tests__/backend/analyzeOutfitOwnership.test.js:128:242)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● unknown analysis modes are rejected before provider work
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 200
+
+      129 | });
+      130 | test('unknown analysis modes are rejected before provider work',async()=>{
+    > 131 |  const {handler,fetchMock}=load();expect((await handler(request({image:'photo',mode:'unsupported'}))).status).toBe(400);expect(fetchMock).not.toHaveBeenCalled();
+          |                                                                                                               ^
+      132 | });
+      133 | test('multiple detected items cannot masquerade as a successful single-garment analysis',async()=>{
+      134 |  const {handler}=load({detected:[{category:'shirt'},{category:'pants'}]});expect((await handler(request({image:'photo',mode:'single'}))).status).toBe(503);
+
+      at Object.toBe (__tests__/backend/analyzeOutfitOwnership.test.js:131:111)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● multiple detected items cannot masquerade as a successful single-garment analysis
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 503
+    Received: 200
+
+      132 | });
+      133 | test('multiple detected items cannot masquerade as a successful single-garment analysis',async()=>{
+    > 134 |  const {handler}=load({detected:[{category:'shirt'},{category:'pants'}]});expect((await handler(request({image:'photo',mode:'single'}))).status).toBe(503);
+          |                                                                                                                                                  ^
+      135 | });
+      136 |
+
+      at Object.toBe (__tests__/backend/analyzeOutfitOwnership.test.js:134:146)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+Test Suites: 1 failed, 1 total
+Tests:       3 failed, 38 passed, 41 total
+Snapshots:   0 total
+Time:        0.713 s, estimated 1 s
+Ran all test suites matching /__tests__\/backend\/analyzeOutfitOwnership.test.js/i.

@@ -17,6 +17,7 @@ import {
     getDaysInMonth,
     OCCASIONS,
 } from '../features/calendar/hooks/useOutfitCalendar';
+import { CalendarReadNotice } from '../features/calendar/components/CalendarReadNotice';
 import { OutfitLogForm } from '../features/calendar/components/OutfitLogForm';
 import { type OutfitItem, type WardrobeItem, matchesCategory } from '../features/calendar/types';
 import { shoppingService, type Product } from '../src/services/shoppingService';
@@ -338,6 +339,7 @@ const OutfitCalendarScreen = () => {
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
                 >
+                    {cal.logsLoadFailed && <CalendarReadNotice onRetry={() => { void cal.reloadOutfitLogs(); }} />}
                     <Animated.View entering={FadeIn.duration(220)} style={styles.plannerCard}>
                         <View style={styles.plannerHeader}>
                             <View style={styles.plannerCopy}>

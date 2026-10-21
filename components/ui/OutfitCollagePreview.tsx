@@ -7,8 +7,10 @@
  */
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, StyleProp, ImageStyle } from 'react-native';
-import { Image as ExpoImage } from 'expo-image';
+
 import { Ionicons } from '@expo/vector-icons';
+import { ExpoImage } from '../../src/components/MediaImage';
+
 
 export type CollageImageSrc = string | number;
 

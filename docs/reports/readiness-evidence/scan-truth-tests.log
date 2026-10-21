@@ -1,0 +1,98 @@
+  console.warn
+    react-i18next:: useTranslation: You will need to pass in an i18next instance by using initReactI18next { code: 'NO_I18NEXT_INSTANCE' }
+
+      50 |
+      51 | export const useVideoAnalysis = (): UseVideoAnalysisReturn => {
+    > 52 |   const { t } = useTranslation();
+         |                               ^
+      53 |   const [analyzing, setAnalyzing] = useState(false);
+      54 |   const [progress, setProgress] = useState('');
+      55 |   const [results, setResults] = useState<AnalysisResult | null>(null);
+
+      at warn (node_modules/react-i18next/dist/commonjs/utils.js:19:13)
+      at warnOnce (node_modules/react-i18next/dist/commonjs/utils.js:27:3)
+      at useTranslation (node_modules/react-i18next/dist/commonjs/useTranslation.js:37:25)
+      at useVideoAnalysis (src/features/wardrobe/useVideoAnalysis.ts:52:31)
+      at __tests__/hooks/useVideoAnalysisImages.test.ts:25:55
+      at hookToRender (node_modules/@testing-library/react-native/src/render-hook.tsx:46:26)
+      at Object.react_stack_bottom_frame (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:15670:20)
+      at renderWithHooks (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4863:22)
+      at updateFunctionComponent (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:7018:19)
+      at beginWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:8499:18)
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at performUnitOfWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13224:22)
+      at workLoopSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13068:41)
+      at renderRootSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13049:11)
+      at performWorkOnRoot (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12181:11)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2908:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at Object.<anonymous>.process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at actImplementation (node_modules/@testing-library/react-native/src/act.ts:30:25)
+      at renderWithAct (node_modules/@testing-library/react-native/src/render-act.ts:13:11)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:69:33)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:44:10)
+      at renderHook (node_modules/@testing-library/react-native/src/render-hook.tsx:55:58)
+      at __tests__/hooks/useVideoAnalysisImages.test.ts:25:32
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12
+      at apply (__tests__/hooks/useVideoAnalysisImages.test.ts:29:2)
+
+  console.warn
+    [useVideoAnalysis] Web: Video frame extraction not fully implemented
+
+      88 |     }
+      89 |     if (level === 'warn') {
+    > 90 |         console.warn(tag, message, payload ?? '');
+         |                 ^
+      91 |         void breadcrumb(scope, `WARN: ${message}`);
+      92 |         return;
+      93 |     }
+
+      at warn (src/utils/logger.ts:90:17)
+      at Object.send (src/utils/logger.ts:132:34)
+      at warn (src/features/wardrobe/useVideoAnalysis.ts:68:14)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12
+      at apply (src/features/wardrobe/useVideoAnalysis.ts:64:22)
+      at Object.extractFrames (src/features/wardrobe/useVideoAnalysis.ts:130:28)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+      at Object.apply [as analyzeVideo] (src/features/wardrobe/useVideoAnalysis.ts:123:21)
+      at analyzeVideo (__tests__/hooks/useVideoAnalysisImages.test.ts:54:48)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12
+      at callback (node_modules/@testing-library/react-native/src/act.ts:31:24)
+      at Object.<anonymous>.process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:814:22)
+      at actImplementation (node_modules/@testing-library/react-native/src/act.ts:30:25)
+      at Object.<anonymous> (__tests__/hooks/useVideoAnalysisImages.test.ts:54:12)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+PASS __tests__/hooks/useVideoAnalysisImages.test.ts
+  ✓ reports failure without fabricated garments when analysis is unavailable (19 ms)
+  ✓ reports failure without fabricated garments when analysis is exception (1 ms)
+  ✓ preserves provider attributes and maps tops to the display position (2 ms)
+  ✓ preserves provider attributes and maps outerwear to the display position
+  ✓ preserves provider attributes and maps bottoms to the display position (1 ms)
+  ✓ preserves provider attributes and maps dresses to the display position
+  ✓ preserves provider attributes and maps shoes to the display position (1 ms)
+  ✓ preserves provider attributes and maps accessories to the display position
+  ✓ video with no extracted frames reports the problem without a fake manual detection (5 ms)
+  ✓ handles unknown attributes without inventing detected values: {"section":"outerwear","material":null,"accepted":true}
+  ✓ handles unknown attributes without inventing detected values: {"section":"invalid-section","material":"cotton","accepted":false} (1 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       11 passed, 11 total
+Snapshots:   0 total
+Time:        0.429 s, estimated 1 s
+Ran all test suites matching /__tests__\/hooks\/useVideoAnalysisImages.test.ts/i.

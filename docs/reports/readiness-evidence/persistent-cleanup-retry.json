@@ -1,0 +1,44 @@
+{
+  "scope": "Serialized registry/reset/secure cleanup with persistent incomplete-cleanup marker and publication retry gate",
+  "verification": {
+    "tests": 1367,
+    "suites": 119,
+    "failures": 0,
+    "typescript": "passed",
+    "eslintErrors": 0,
+    "eslintWarnings": 68,
+    "actualSdkStoreDiagnosticPassed": true,
+    "newRegressionCases": 9
+  },
+  "regressions": [
+    "Registry failure retains private data and marker until successful retry",
+    "Prefix scan failure still attempts static and secure cleanup",
+    "Secure deletion failure reports after both keys attempted",
+    "Fresh persistence-module state honors an existing marker",
+    "Marker read failure blocks publication",
+    "Marker removal failure keeps cleanup pending",
+    "Marker write failure forces in-process retry",
+    "Failed SDK sign-out reset does not poison future retry",
+    "Callback retry regression reproduced before its correction"
+  ],
+  "normalAndroidBuild": {
+    "exitCode": 0,
+    "seconds": 20,
+    "sourceMapMatches": {
+      "src/lib/persistence.ts": "2df68bb96996cc1f9b4c174360104683d77a81f3b1eda165430b3e84c9d92656",
+      "store/auth.ts": "b8fec9d5d6dda28999b4ffb514db6eb8ab8a4b41f4538076aae9284059096ce2"
+    },
+    "apkSha256": "ea4ca771e8f20fe4ea003ae9c04941c7307ed198d24c246871bc5781744ff13a",
+    "bundleSha256": "0b88f08e17118cbbfd63b2f79deb23218609f61b19aca0d2263d7136e1ffaeae",
+    "auditMarkerAbsent": true,
+    "nativeUiVerified": false
+  },
+  "productionChanged": false,
+  "remaining": [
+    "Fresh module test is not an OS process kill or physical-device persistence proof",
+    "If the marker cannot be written, its in-memory flag cannot survive a crash",
+    "SDK sign-out intent/session durability under local storage failure remains unproven",
+    "Raw persist writers/native lifecycle/stall recovery still under audit",
+    "Full capacity/media/security/store/deferred-provider acceptance open"
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "scope": "Local persistence regression checks and current iOS/Android Expo Hermes exports; no production mutations",
+  "tests": {
+    "passed": 1068,
+    "suites": 90,
+    "newRegressions": 7
+  },
+  "typecheck": "pass",
+  "targetedLint": {
+    "errors": 0,
+    "warnings": 14
+  },
+  "bundles": [
+    {
+      "platform": "ios",
+      "path": "/tmp/aiwardrobe-readiness-ios-20261016/_expo/static/js/ios/index-a71a03a3ddaaf323a3c28fa492b282ae.hbc",
+      "bytes": 8334686,
+      "sha256": "a6c00552eeaf02afaed8f47d01edb2d415abf397c4dec9653b1c784db74a48fa",
+      "exportPassed": true
+    },
+    {
+      "platform": "android",
+      "path": "/tmp/aiwardrobe-readiness-android-20261016/_expo/static/js/android/index-0db373112d54c309982b4573e1b95050.hbc",
+      "bytes": 8350746,
+      "sha256": "a840362cede42e0ea4d08b52a0a176e8bcdb0113b93df3663a35bb8b91031213",
+      "exportPassed": true
+    }
+  ],
+  "sourceHashes": {
+    "App.tsx": "bfd0f14a4cc3941771d6ba0247ee6196c3ba3eb49df0b3d0aeb10db4de972534",
+    "store/wardrobeStore.ts": "f56a4ac58e29d63b16eb45525c5c87aeabd9feba182442de65dd501bdb603385",
+    "src/lib/debouncedStorage.ts": "842e90dca46393c0a3af77c261c92aca6bafe5c5d2ab3f3d0bdf9aaec8dc48d2",
+    "src/lib/persistence.ts": "4ab477eec863ec2475b388a13067d068ef1ab6779edb817bf42127cc9df07b31"
+  },
+  "nativeRuntimeVerified": false,
+  "signedBuildVerified": false,
+  "mobileReleased": false
+}

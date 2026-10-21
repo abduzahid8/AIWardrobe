@@ -1,0 +1,15 @@
+{
+  "exitCode": 0,
+  "apkSha256": "9eec34048f4607a365ab71337bdb51af3caa684eaffd19315c0aeaca7ad31fd2",
+  "bundleSha256": "0b88f08e17118cbbfd63b2f79deb23218609f61b19aca0d2263d7136e1ffaeae",
+  "sourceMapMatches": {
+    "src/lib/persistence.ts": "2df68bb96996cc1f9b4c174360104683d77a81f3b1eda165430b3e84c9d92656",
+    "store/auth.ts": "b8fec9d5d6dda28999b4ffb514db6eb8ab8a4b41f4538076aae9284059096ce2"
+  },
+  "auditMarkersAbsent": [
+    "CLEANUP_RESTART_NATIVE_AUDIT",
+    "readiness_cleanup_restart_phase",
+    "NATIVE_MEDIA_TRANSPORT_AUDIT"
+  ],
+  "normalUiVerified": false
+}

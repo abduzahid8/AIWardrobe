@@ -1,0 +1,32 @@
+{
+  "projectRef": "fyqpifmrsftsfqibhwhy",
+  "function": "ai-chat",
+  "deployed": true,
+  "sourceSha256": "26d3f07db17b0698bbe659f0882609494562dda110f581c3762c91145fbf5348",
+  "baselineFreshDownloadMatched": true,
+  "patch": "ai-chat-paid-admission.patch",
+  "changes": [
+    "Real-user Auth, server paid/trial entitlement and 20/minute admission before provider work",
+    "Removed duplicate staged Auth lookup; shared helper is authoritative",
+    "Free chat disabled after trial; features remain visible in client policy"
+  ],
+  "checks": {
+    "beforeNewCasesFailed": 3,
+    "afterStagedHandlerHelperCasesPassed": 27,
+    "liveCasesPassed": 8,
+    "liveProviderCalls": 0,
+    "fullAppTests": 1606,
+    "suites": 140,
+    "stagedDeno": "passed"
+  },
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "independentRemainingTaggedUsers": 0
+  },
+  "limitations": [
+    "No new actual provider chat-response or native chat UI test.",
+    "Local repository ai-chat still has pending routing differences; do not blanket-deploy local functions.",
+    "Legacy offline persona fallback is present in aiProviderService source; current navigator reachability not established in this check.",
+    "NVIDIA scan concurrency test failed at the ten-request stage; endpoint admission does not solve provider capacity."
+  ]
+}

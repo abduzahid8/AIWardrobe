@@ -1,0 +1,25 @@
+{
+  "date": "2026-10-20",
+  "tests": 1960,
+  "suites": 161,
+  "typeScript": true,
+  "iosHermes": true,
+  "androidArm64Release": true,
+  "sourceMaps": {
+    "ios": {
+      "src/utils/outfitBudget.ts": true,
+      "src/services/outfitGenerationFailure.ts": true,
+      "screens/AIOutfitmaker.tsx": true
+    },
+    "android": {
+      "src/utils/outfitBudget.ts": true,
+      "src/services/outfitGenerationFailure.ts": true,
+      "screens/AIOutfitmaker.tsx": true
+    }
+  },
+  "limitations": [
+    "Code-level and build evidence; no store distribution or installed budget UI certification",
+    "Configured FX values still require market-rate verification",
+    "Not 10000 DAU capacity certification"
+  ]
+}

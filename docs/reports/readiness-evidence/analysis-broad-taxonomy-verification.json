@@ -1,0 +1,25 @@
+{
+  "wholeOutfit": {
+    "runId": "fd8627d2-eaa0-45fa-92f9-c40dac38b1e4",
+    "passed": 6,
+    "status": 200,
+    "latencyMs": 17433,
+    "detectedItems": 4,
+    "ownJacketRecommendations": 1,
+    "crossCategoryRecommendations": 0,
+    "foreignFixtureSeen": false,
+    "remainingTaggedAccounts": 0
+  },
+  "singleItem": {
+    "runId": "487c7c27-07c1-4749-a189-b5e11c76e2d1",
+    "status": 503,
+    "latencyMs": 5761,
+    "reason": "invalid_item_fields",
+    "fields": [
+      "pattern"
+    ],
+    "admissionRlsPassed": 4,
+    "remainingTaggedAccounts": 0
+  },
+  "boundary": "Two individual functional checks, no visual/category-wide accuracy or capacity certification"
+}

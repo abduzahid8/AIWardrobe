@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, Dimensions, ViewStyle,  } from 'react-native'
-import { ScaledText } from '../ui/ScaledText';;
+import { ScaledText } from '../ui/ScaledText';
 import Animated, {
     useAnimatedStyle,
     interpolate,
@@ -9,6 +9,7 @@ import Animated, {
 import { useTranslation } from 'react-i18next';
 import { ClosetlyTheme } from '../../constants/ClosetlyTheme';
 import { CachedImage } from './CachedImage';
+import { compactClothingImage } from '../../src/utils/closetItem';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -21,6 +22,7 @@ interface ClothingItem {
     color?: string;
     colorHex?: string;
     imageUrl?: string;
+    thumbnailUrl?: string;
     image?: string;
 }
 
@@ -53,7 +55,7 @@ const ClothingCard: React.FC<ClothingCardProps> = ({
     style,
 }) => {
     const { t } = useTranslation();
-    const imageUrl = item.imageUrl || item.image;
+    const imageUrl = compactClothingImage(item);
     const itemLabel = item.type || item.itemType || item.category || t('common.item');
 
     // Parallax animation - image moves faster than card

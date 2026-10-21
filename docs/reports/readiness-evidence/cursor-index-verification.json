@@ -1,0 +1,88 @@
+{
+  "date": "2026-10-16",
+  "migration": "20261016152500_wardrobe_cursor_indexes.sql",
+  "production": {
+    "deployed": true,
+    "validAndReadyIndexes": [
+      "clothing_items_owner_cursor_idx",
+      "wear_logs_owner_cursor_idx"
+    ],
+    "rowsBeforeDeployment": {
+      "garments": 109,
+      "wearLogs": 0
+    },
+    "securityAdvisors": "Existing findings unchanged"
+  },
+  "localDataset": {
+    "owners": 10000,
+    "garments": 510000,
+    "wearLogs": 110000,
+    "savedOutfits": 50000,
+    "largestOwner": {
+      "garments": 10050,
+      "wearLogs": 10010
+    }
+  },
+  "plans": {
+    "before": {
+      "clothing_items_first": {
+        "executionMs": 7.982,
+        "sharedHitBlocks": 12652
+      },
+      "clothing_items_later": {
+        "executionMs": 7.222,
+        "sharedHitBlocks": 11747
+      },
+      "wear_logs_first": {
+        "executionMs": 1.351,
+        "sharedHitBlocks": 3065
+      },
+      "wear_logs_later": {
+        "executionMs": 1.247,
+        "sharedHitBlocks": 2834
+      }
+    },
+    "after": {
+      "clothing_items_first": {
+        "executionMs": 0.321,
+        "sharedHitBlocks": 249
+      },
+      "clothing_items_later": {
+        "executionMs": 0.303,
+        "sharedHitBlocks": 249
+      },
+      "wear_logs_first": {
+        "executionMs": 0.168,
+        "sharedHitBlocks": 250
+      },
+      "wear_logs_later": {
+        "executionMs": 0.138,
+        "sharedHitBlocks": 247
+      }
+    }
+  },
+  "localConcurrency": {
+    "durationSeconds": 30,
+    "clients": 40,
+    "threads": 4,
+    "offeredTransactionsPerSecond": 200,
+    "completedTransactions": 6117,
+    "failedTransactions": 0,
+    "achievedTransactionsPerSecond": 204.064803,
+    "meanLatencyMs": 3.621,
+    "latencyStddevMs": 2.322,
+    "meanScheduleLagMs": 1.921,
+    "maxScheduleLagMs": 20.739,
+    "debugLogging": "Enabled by installed pgbench; overhead included",
+    "transaction": "Authenticated RLS owner setting and two later-page reads, each limit 250"
+  },
+  "freshMigrationReplay": 35,
+  "limits": [
+    "Single-run local query timings, not hosted HTTP latency",
+    "Local Auth interfaces substitute for real Auth verification",
+    "No provider/upload/write capacity certification",
+    "Index build timing on small production tables does not prove future large-table deployment behavior",
+    "Current native artifacts predate cursor source changes",
+    "Overall 10,000-DAU readiness not certified"
+  ]
+}

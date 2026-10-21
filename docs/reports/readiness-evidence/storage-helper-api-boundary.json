@@ -1,0 +1,6 @@
+{
+  "scope": "Anonymous non-mutating private-helper Data API exposure check",
+  "status": 406,
+  "code": "PGRST106",
+  "passed": true
+}

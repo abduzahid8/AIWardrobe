@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-20",
+  "tests": 1936,
+  "suites": 161,
+  "typeScript": true,
+  "iosHermes": true,
+  "androidArm64Release": true,
+  "sourceMaps": {
+    "ios": {
+      "src/services/accountNames.ts": true,
+      "store/auth.ts": true,
+      "screens/ProfileScreen.tsx": true,
+      "screens/HomeScreen.tsx": true,
+      "screens/SignUpScreen.tsx": true
+    },
+    "android": {
+      "src/services/accountNames.ts": true,
+      "store/auth.ts": true,
+      "screens/ProfileScreen.tsx": true,
+      "screens/HomeScreen.tsx": true,
+      "screens/SignUpScreen.tsx": true
+    }
+  },
+  "cleanup": {
+    "readinessFixtureUsersRemaining": 0,
+    "namesFixtureUsersRemaining": 0
+  },
+  "scope": "Builds and code-level handler tests; pending Google simulator not replaced; no installed-profile UI certification or store distribution"
+}

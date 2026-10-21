@@ -1,0 +1,25 @@
+{
+  "normalApkSha256": "c3332c224caca261d62e01796658a4552f009483f591c74970f969464c531ae6",
+  "bundleSha256": "3bad85f143ab3768ea98c9c8c4eec27045cef2f1a95b6de8b54a54f2b23a6441",
+  "auditApkSha256": "89a8881a987a8e69e8f7f715954fc229658ae9514a92d520b59f8192582bec37",
+  "normalSourceChecks": {
+    "src/services/wardrobeThumbnail.ts": true,
+    "src/services/pendingWardrobeMedia.ts": true,
+    "store/authEvents.ts": true,
+    "auditEntryAbsent": true,
+    "auditMarkerAbsent": true
+  },
+  "passed": true,
+  "fullTests": {
+    "suites": 120,
+    "tests": 1381,
+    "passed": true
+  },
+  "cleanup": {
+    "auditAppUninstalled": true,
+    "adbUidAfterUnroot": 2000,
+    "emulatorExitCode": 0,
+    "dedicatedAvdDeleted": true,
+    "deviceInventoryEmpty": true
+  }
+}

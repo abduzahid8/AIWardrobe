@@ -1,0 +1,21 @@
+{
+  "scope": "local PostgreSQL 16; synthetic data; excludes Supabase HTTP/Auth, CDN and AI providers",
+  "usersSeeded": 10000,
+  "wardrobeItems": 500000,
+  "savedOutfits": 50000,
+  "distinctUsersExercised": 6972,
+  "clients": 40,
+  "threads": 4,
+  "durationSeconds": 60,
+  "targetTransactionsPerSecond": 200,
+  "completedTransactions": 11878,
+  "failedTransactions": 0,
+  "transactionsPerSecond": 198.062896,
+  "latencyMs": {
+    "average": 4.361,
+    "p50": 4.002,
+    "p95": 7.873,
+    "p99": 8.886
+  },
+  "note": "pgbench debug logging was enabled during this run; results include that overhead."
+}

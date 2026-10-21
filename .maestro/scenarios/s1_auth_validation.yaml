@@ -7,7 +7,7 @@ tags: [e2e, scenario1, auth]
 # PRECONDITION: logged OUT with empty fields (the runner wipes local storage
 # before the suite, which also restores the first-run language gate).
 # Sign In is a 2-step screen: Email → Continue → Password → Sign In.
-# Validation is a NATIVE ALERT (not inline): common.error / signIn.emailPasswordRequired.
+# Validation is a NATIVE ALERT (not inline): common.error / signIn.emailRequired.
 # ─────────────────────────────────────────────────────────────────────────────
 - waitForAnimationToEnd:
     timeout: 15000
@@ -17,12 +17,12 @@ tags: [e2e, scenario1, auth]
     timeout: 30000
 - takeScreenshot: s1_01_signin
 
-# ── Empty submit on step 1 → "Please enter email and password" ──
+# ── Empty submit on step 1 → "Please enter your email address" ──
 - tapOn:
     id: "continueEmailButton"
 - waitForAnimationToEnd:
     timeout: 5000
-- assertVisible: ".*Please enter email and password.*"
+- assertVisible: ".*Please enter your email address.*"
 - takeScreenshot: s1_02_empty_alert
 - tapOn: "OK"
 - waitForAnimationToEnd:

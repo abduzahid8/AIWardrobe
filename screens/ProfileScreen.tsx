@@ -1,9 +1,11 @@
+import { AccountNameError, assertHandleAvailable, displayNameOf, profileNameUpdates } from '../src/services/accountNames';
+import readinessLogger from '../src/utils/logger';
 /**
  * ProfileScreen — iOS liquid glass rebuild
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, FlatList, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StatusBar, StyleSheet, TextInput, TouchableOpacity, View, ViewStyle,  } from 'react-native'
+import { ActivityIndicator, Alert, Dimensions, FlatList, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StatusBar, StyleSheet, TextInput, TouchableOpacity, View, ViewStyle } from 'react-native';
 import { ScaledText } from '../components/ui/ScaledText';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,12 +30,13 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useAppNavigation } from '../hooks/useAppNavigation';
 import { supabase } from '../lib/supabase';
+import { AvatarUploadError, avatarRequestHeaders, uploadProfileAvatar } from '../src/services/profileAvatar';
 import useAuthStore from '../store/auth';
 import useWardrobeStore from '../store/wardrobeStore';
 import useShopCatalogStore from '../store/shopCatalogStore';
 import useSavedShopStore from '../store/savedShopStore';
 import { CachedImage } from '../components/ui/CachedImage';
-import { Image as ExpoImage } from 'expo-image';
+
 import { OutfitCollagePreview } from '../components/ui/OutfitCollagePreview';
 import { resolveOutfitCollageItemsWithMaps, resolvePieceTarget } from '../src/utils/outfitCollage';
 import { useTheme } from '../src/theme/ThemeContext';
@@ -46,7 +49,14 @@ import { useTranslation } from 'react-i18next';
 import { iapService } from '../src/services/iapService';
 import { analyticsService } from '../src/services/analyticsService';
 import { perfMark, perfMeasure, perfAction, perfScreenReady } from '../src/utils/perf';
+import { listCloudOutfits } from '../src/services/savedOutfitService';
+import { authEvents } from '../store/authEvents';
+import { calculateStreak } from '../store/slices/helpers';
+import { CalendarReadNotice } from '../features/calendar/components/CalendarReadNotice';
+import { readCalendarLogs } from '../src/services/calendarStorage';
 import { OCCASIONS, type OutfitLog } from '../features/calendar/types';
+import { Image, ExpoImage } from '../src/components/MediaImage';
+
 
 const { height } = Dimensions.get('window');
 const HERO_HEIGHT = Math.min(height * 0.43, 390);
@@ -110,7 +120,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 // ── Trip plan (connected to Outfit Calendar logs) ──────────────────────
 // A calendar day saved from the AI generator (Plan Outfit) is an
-// `OutfitLog` under the `outfitLogs` AsyncStorage bucket. The Trips tab
+// `OutfitLog` under an owner-scoped `outfitLogs::` AsyncStorage key. The Trips tab
 // reads that same bucket so a saved trip outfit actually shows up here.
 
 interface TripPlanItem {
@@ -125,6 +135,8 @@ interface TripPlanDay {
   occasion: string;
   items: TripPlanItem[];
 }
+
+const EMPTY_TRIP_PLAN_DAYS: TripPlanDay[] = [];
 
 function toTripPlanDay(log: OutfitLog): TripPlanDay {
   return {
@@ -489,7 +501,7 @@ const ProfileScreen = () => {
     perfMeasure('ProfileScreen:mount');
     perfScreenReady('Profile');
     return () => {
-      if (__DEV__) console.log('[PERF] 👤 ProfileScreen unmounted');
+      if (__DEV__) readinessLogger.debug(String('[PERF] 👤 ProfileScreen unmounted'), []);
     };
   }, []);
 
@@ -516,7 +528,12 @@ const ProfileScreen = () => {
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [analyticsEnabled, setAnalyticsEnabled] = useState(true);
   const [editName, setEditName] = useState('');
+  const [editHandle, setEditHandle] = useState('');
+  const profileEditMounted = useRef(true);
+  useEffect(() => { profileEditMounted.current = true; return () => { profileEditMounted.current = false; }; }, []);
+  useEffect(() => { setSaving(false); setShowEditProfile(false); }, [user?.id]);
   const [editAvatar, setEditAvatar] = useState<string | null>(null);
+  const [editAvatarMimeType, setEditAvatarMimeType] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [cloudOutfits, setCloudOutfits] = useState<SavedOutfit[]>([]);
   const [loading, setLoading] = useState(false);
@@ -557,11 +574,13 @@ const ProfileScreen = () => {
     }, [hydrateSavedShop]),
   );
 
-  const userName = user?.username || 'Your Name';
+  const userName = displayNameOf(user) || t('profile.name');
   const userAvatar: string | undefined =
     typeof user?.profile_image === 'string' && user.profile_image.length > 0
       ? user.profile_image
       : undefined;
+  const avatarAccessToken = useAuthStore((s) => s.session?.access_token);
+  const privateAvatarHeaders = useMemo(() => avatarRequestHeaders(userAvatar, avatarAccessToken), [userAvatar, avatarAccessToken]);
   const userEmail = user?.email || '';
   
   // Use effectiveTier for logic (trial counts as Pro access)
@@ -629,43 +648,30 @@ const ProfileScreen = () => {
   const fetchOutfits = useCallback(async (mounted?: { current: boolean }) => {
     if (!user?.id) return;
 
-    // Fast path: if the wardrobe store already has saved outfits (populated by
-    // rehydrateFromCloud on app start), skip the Supabase round-trip entirely.
-    // localOutfits (derived from storeOutfits) will already be shown via the
-    // useMemo below. The cloud fetch is only needed when the store is empty.
-    const savedInStore = useWardrobeStore.getState().outfits.filter((o) => o.saved);
-    if (savedInStore.length > 0) {
-      return;
-    }
-
+    const revision = authEvents.getRevision();
     const donePerf = perfAction('Profile:fetchOutfits');
     if (!mounted?.current) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('saved_outfits')
-        .select('id, date, occasion, items, created_at')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      const data = await listCloudOutfits();
 
-      if (!mounted?.current) { donePerf(); return; }
-
-      if (error) { donePerf(); return; }
+      if (!mounted?.current || revision !== authEvents.getRevision()) { donePerf(); return; }
 
       if (data) {
         setCloudOutfits(
           data.map((outfit) => {
             const rawItems = Array.isArray(outfit.items)
-              ? (outfit.items as Array<{ image?: unknown }>)
+              ? (outfit.items as Array<{ image?: unknown; imageUrl?: unknown }>)
               : [];
-            const itemImages: ImageSrc[] = rawItems.flatMap((item) =>
-              typeof item?.image === 'string' && item.image.startsWith('http') ? [item.image] : []
-            );
+            const itemImages: ImageSrc[] = rawItems.flatMap(item => {
+              const image = item?.imageUrl || item?.image;
+              return typeof image === 'string' && image.startsWith('http') ? [image] : [];
+            });
 
             return {
               _id: outfit.id,
               date: outfit.date || outfit.created_at?.split('T')[0],
-              occasion: outfit.occasion,
+              occasion: outfit.occasion ?? undefined,
               itemImages,
               // Only set a single cover image when there's just one item to
               // show — outfits with multiple items render the itemImages
@@ -680,7 +686,7 @@ const ProfileScreen = () => {
       donePerf();
       // Keep local data visible if the cloud fetch fails.
     } finally {
-      if (mounted?.current) setLoading(false);
+      if (mounted?.current && revision === authEvents.getRevision()) setLoading(false);
     }
   }, [user?.id]);
 
@@ -762,22 +768,30 @@ const ProfileScreen = () => {
   // Upcoming calendar days with a saved outfit (today + future). When
   // there is nothing upcoming, fall back to the 3 most recent past plans
   // so the tab never looks dead right after a trip.
-  const [tripPlanDays, setTripPlanDays] = useState<TripPlanDay[]>([]);
+  const [storedTripPlanDays, setTripPlanDays] = useState<TripPlanDay[]>([]);
+  const [tripPlanOwner, setTripPlanOwner] = useState<string | null>(null);
+  const tripPlanDays = tripPlanOwner === user?.id && user?.id === authEvents.getUserId()
+    ? storedTripPlanDays : EMPTY_TRIP_PLAN_DAYS;
+  const tripPlanRequest = useRef(0);
+  const [tripPlanErrorOwner, setTripPlanErrorOwner] = useState<string | null>(null);
   const [tripPlanRecency, setTripPlanRecency] = useState<'upcoming' | 'recent'>('upcoming');
-  // Same 60s TTL policy as outfits above: the calendar JSON parse runs on
-  // the JS thread and re-triggers the whole trip image subtree, so don't
-  // repay it on every momentary tab switch. Outfit logging writes through
-  // AsyncStorage immediately, so worst-case staleness is one minute.
-  const lastTripPlansFetchRef = useRef<number>(0);
-
-  const loadTripPlans = useCallback(async () => {
+  // Re-read local calendar data on focus so a just-saved plan is visible.
+  // Guard both the account and this focus lifetime before publishing private data.
+  const loadTripPlans = useCallback(async (isActive: () => boolean) => {
+    const owner = user?.id, revision = authEvents.getRevision();
+    const request = ++tripPlanRequest.current;
+    const current = () => isActive() && request === tripPlanRequest.current &&
+      !!owner && owner === authEvents.getUserId() && revision === authEvents.getRevision();
+    if (!current()) return;
     try {
-      const raw = await AsyncStorage.getItem('outfitLogs');
-      if (!raw) {
+      const logs = await readCalendarLogs();
+      if (!current()) return;
+      setTripPlanOwner(owner!);
+      setTripPlanErrorOwner(null);
+      if (!Object.keys(logs).length) {
         setTripPlanDays([]);
         return;
       }
-      const logs = JSON.parse(raw) as Record<string, OutfitLog>;
       const entries = Object.values(logs).filter(
         (log): log is OutfitLog =>
           !!log && typeof log.date === 'string' && Array.isArray(log.items) && log.items.length > 0
@@ -798,22 +812,15 @@ const ProfileScreen = () => {
       setTripPlanRecency('recent');
       setTripPlanDays(recent.map(toTripPlanDay));
     } catch {
-      setTripPlanDays([]);
+      if (current()) setTripPlanErrorOwner(owner!);
     }
-  }, []);
+  }, [user?.id]);
 
   useFocusEffect(
     useCallback(() => {
-      const now = Date.now();
-      if (now - lastTripPlansFetchRef.current < OUTFITS_REFRESH_TTL_MS) return;
-      lastTripPlansFetchRef.current = now;
-      // Deferred past the tab-switch animation: JSON.parse + filter/sort/map
-      // runs on the JS thread and would otherwise compete with the focus
-      // transition (jank on the TTL-expired visit).
-      const timer = setTimeout(() => {
-        loadTripPlans();
-      }, 300);
-      return () => clearTimeout(timer);
+      let active = true;
+      const timer = setTimeout(() => { void loadTripPlans(() => active); }, 300);
+      return () => { active = false; clearTimeout(timer); };
     }, [loadTripPlans]),
   );
 
@@ -923,9 +930,16 @@ const ProfileScreen = () => {
         {
           text: t('common.remove'),
           style: 'destructive',
-          onPress: () => {
-            void useSavedShopStore.getState().removeSave(previewLook.shopItemId as string);
-            setPreviewLook(null);
+          onPress: async () => {
+            const revision = authEvents.getRevision();
+            try {
+              await useSavedShopStore.getState().removeSave(previewLook.shopItemId as string);
+              if (revision === authEvents.getRevision()) setPreviewLook(null);
+            } catch {
+              if (revision === authEvents.getRevision()) {
+                Alert.alert(t('common.error'), t('inspo.savedItemsUnavailable'));
+              }
+            }
           },
         },
       ],
@@ -967,29 +981,7 @@ const ProfileScreen = () => {
     });
   }, [previewPieces, previewTargets, navigation]);
 
-  const streak = useMemo(() => {
-    if (wearLogs.length === 0) return 0;
-
-    const dates = [...new Set(wearLogs.map((log) => log.date))].sort().reverse();
-    const today = new Date().toISOString().split('T')[0];
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-
-    if (dates[0] !== today && dates[0] !== yesterday) return 0;
-
-    let nextStreak = 1;
-    for (let index = 1; index < dates.length; index += 1) {
-      const diff =
-        (new Date(dates[index - 1]).getTime() - new Date(dates[index]).getTime()) / 86400000;
-
-      if (Math.round(diff) === 1) {
-        nextStreak += 1;
-      } else {
-        break;
-      }
-    }
-
-    return nextStreak;
-  }, [wearLogs]);
+  const streak = useMemo(() => calculateStreak(wearLogs), [wearLogs]);
 
   const stats = useMemo(
     () => [
@@ -1028,11 +1020,13 @@ const ProfileScreen = () => {
   }));
 
   const openEditProfile = useCallback(() => {
-    setEditName(userName);
+    setEditName(displayNameOf(user));
+    setEditHandle(user?.handle || '');
     setEditAvatar(null);
+    setEditAvatarMimeType(null);
     setShowEditProfile(true);
     triggerLightHaptic();
-  }, [userName]);
+  }, [user]);
 
   const pickAvatar = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -1050,47 +1044,59 @@ const ProfileScreen = () => {
 
     if (!result.canceled && result.assets[0]) {
       setEditAvatar(result.assets[0].uri);
+      setEditAvatarMimeType(result.assets[0].mimeType || null);
     }
   };
 
   const handleSaveProfile = async () => {
-    if (!user?.id) return;
-
+    if (!user?.id || saving || user.id !== authEvents.getUserId()) return;
+    const owner = user.id, revision = authEvents.getRevision();
+    const stillCurrent = () => profileEditMounted.current && owner === authEvents.getUserId() && revision === authEvents.getRevision();
     setSaving(true);
+    let uploadedAvatarPath: string | null = null;
+    let profileSaved = false;
     try {
+      const nameUpdates = profileNameUpdates(user, editName, editHandle);
+      if (nameUpdates.handle) await assertHandleAvailable(nameUpdates.handle);
+      if (!stillCurrent()) return;
       let avatarUrl = user.profile_image;
 
       if (editAvatar) {
-        const ext = editAvatar.split('.').pop() || 'jpg';
-        const fileName = `${user.id}/avatar_${Date.now()}.${ext}`;
-        const blob = await (await fetch(editAvatar)).blob();
-        const { error: uploadError } = await supabase.storage
-          .from('avatars')
-          .upload(fileName, blob, { contentType: `image/${ext}`, upsert: true });
-
-        if (!uploadError) {
-          const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
-          avatarUrl = data.publicUrl;
-        }
+        const uploaded = await uploadProfileAvatar(user.id, editAvatar, editAvatarMimeType);
+        uploadedAvatarPath = uploaded.path;
+        avatarUrl = uploaded.url;
+        if (!stillCurrent()) { await supabase.storage.from('avatars').remove([uploaded.path]).catch(() => undefined); return; }
       }
 
-      const updates: Record<string, unknown> = {};
-      if (editName.trim() && editName.trim() !== userName) updates.username = editName.trim();
+      const updates: Record<string, unknown> = { ...nameUpdates };
       if (avatarUrl !== user.profile_image) updates.profile_image = avatarUrl;
 
       if (Object.keys(updates).length > 0) {
-        const { error } = await supabase.from('profiles').update(updates).eq('id', user.id);
+        const { error } = await supabase.from('profiles').update(updates).eq('id', user.id).select('id').single();
         if (error) throw error;
+        profileSaved = true;
 
         await fetchUser();
+        if (!stillCurrent()) return;
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
 
-      setShowEditProfile(false);
+      if (stillCurrent()) setShowEditProfile(false);
     } catch (error: unknown) {
-      Alert.alert(t('common.error'), getErrorMessage(error, t('profile.failedUpdateProfile')));
+      if (uploadedAvatarPath && !profileSaved) {
+        await supabase.storage.from('avatars').remove([uploadedAvatarPath]).catch(() => undefined);
+      }
+      if (!stillCurrent()) return;
+      const message = error instanceof AccountNameError
+        ? t(error.code === 'username_exists' ? 'signUp.usernameAlreadyUse' : error.code === 'invalid_handle' ? 'signUp.usernameRequirements' : error.code === 'invalid_display_name' ? 'profile.displayNameRequirements' : 'profile.failedUpdateProfile')
+        : (error as { code?: string })?.code === '23505'
+          ? t('signUp.usernameAlreadyUse')
+        : error instanceof AvatarUploadError
+        ? t(error.code === 'invalid_size' ? 'profile.avatarInvalidSize' : 'profile.avatarUnsupportedFormat')
+        : getErrorMessage(error, t('profile.failedUpdateProfile'));
+      Alert.alert(t('common.error'), message);
     } finally {
-      setSaving(false);
+      if (stillCurrent()) setSaving(false);
     }
   };
 
@@ -1133,9 +1139,9 @@ const ProfileScreen = () => {
         style: 'destructive',
         onPress: async () => {
           const donePerf = perfAction('Profile:logout');
-          await AsyncStorage.removeItem('userToken');
-          logout();
-          donePerf();
+          try { await logout(); }
+          catch { Alert.alert(t('common.error'), t('common.localDataCleanupFailed')); }
+          finally { donePerf(); }
         },
       },
     ]);
@@ -1154,10 +1160,11 @@ const ProfileScreen = () => {
               text: t('profile.deleteEverything'),
               style: 'destructive',
               onPress: async () => {
+                const revision = authEvents.getRevision();
                 try {
                   await deleteAccount();
-                  await AsyncStorage.removeItem('userToken');
                 } catch (error: unknown) {
+                  if (revision !== authEvents.getRevision()) return;
                   Alert.alert(t('common.error'), getErrorMessage(error, t('profile.failedDeleteAccount')));
                 }
               },
@@ -1257,6 +1264,7 @@ const ProfileScreen = () => {
 
   const renderTripsContent = () => (
     <GlassPanel style={styles.contentPanel}>
+      {tripPlanErrorOwner === user?.id && user?.id === authEvents.getUserId() && <CalendarReadNotice onRetry={() => { void loadTripPlans(() => navigation.isFocused()); }} />}
       {tripPlanDays.length > 0 ? (
         <View style={styles.tripPlanList}>
           <View style={styles.tripPlanSummary}>
@@ -1498,7 +1506,7 @@ const ProfileScreen = () => {
                   style={styles.avatarRing}
                 >
                   {userAvatar ? (
-                    <CachedImage uri={userAvatar} style={styles.avatarImage} contentFit="cover" fadeIn={false} />
+                    <CachedImage uri={userAvatar} requestHeaders={privateAvatarHeaders} cachePolicy="memory" style={styles.avatarImage} contentFit="cover" fadeIn={false} />
                   ) : (
                     <View style={[styles.avatarImage, styles.avatarPlaceholder]}>
                       <Ionicons name="person" size={46} color={D.white} />
@@ -1525,6 +1533,7 @@ const ProfileScreen = () => {
 
             <View style={styles.identityBlock}>
               <ScaledText style={styles.heroName}>{userName}</ScaledText>
+              {!!user?.handle && <ScaledText style={styles.heroEmail}>@{user.handle}</ScaledText>}
               {userEmail ? <ScaledText style={styles.heroEmail}>{userEmail}</ScaledText> : null}
 
               <View style={styles.membershipBadge}>
@@ -1864,6 +1873,8 @@ const ProfileScreen = () => {
                   {editAvatar || userAvatar ? (
                     <CachedImage
                       uri={(editAvatar || userAvatar) as string}
+                      requestHeaders={editAvatar ? undefined : privateAvatarHeaders}
+                      cachePolicy="memory"
                       style={styles.sheetAvatar}
                       contentFit="cover"
                       fadeIn={false}
@@ -1891,10 +1902,27 @@ const ProfileScreen = () => {
                   style={styles.fieldInput}
                   value={editName}
                   onChangeText={setEditName}
-                  placeholder={t('profile.enterUsername')}
+                  placeholder={t('profile.displayName')}
+                  maxLength={200}
+                  accessibilityLabel={t('profile.displayName')}
                   placeholderTextColor={D.textMute}
                   autoCapitalize="none"
                   autoCorrect={false}
+                />
+              </View>
+
+              <ScaledText style={styles.fieldLabel}>{t('profile.handle')}</ScaledText>
+              <View style={styles.fieldCard}>
+                <TextInput
+                  style={styles.fieldInput}
+                  value={editHandle}
+                  onChangeText={setEditHandle}
+                  placeholder={t('auth.username')}
+                  placeholderTextColor={D.textMute}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  maxLength={30}
+                  accessibilityLabel={t('profile.handle')}
                 />
               </View>
 

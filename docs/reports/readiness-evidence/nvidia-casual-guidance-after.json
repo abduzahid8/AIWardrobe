@@ -1,0 +1,47 @@
+{
+  "measuredAt": "2026-10-20T17:09:43.338Z",
+  "scope": "Live NVIDIA category/budget scenarios; not exhaustive accuracy or capacity certification",
+  "checks": [
+    {
+      "name": "casual_250_usd",
+      "status": 503,
+      "error": "ai_generation_unavailable",
+      "latencyMs": 53598,
+      "passed": false,
+      "reasons": [
+        "generation_http_503"
+      ],
+      "spendUzs": 0,
+      "capUzs": 3011180,
+      "items": [],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "meta/llama-3.2-11b-vision-instruct",
+          "status": "ok"
+        },
+        {
+          "provider": "nvidia",
+          "model": "meta/llama-3.2-11b-vision-instruct",
+          "status": "timeout"
+        }
+      ]
+    }
+  ],
+  "reference": {
+    "id": "CBU:2026-10-20:12044.72:13525.02:16062.84",
+    "source": "CBU",
+    "asOf": "2026-10-20",
+    "fetchedAt": "2026-10-20T16:32:51.275Z",
+    "uzsPerUnit": {
+      "USD": 12044.72,
+      "EUR": 13525.02,
+      "GBP": 16062.84,
+      "UZS": 1
+    }
+  },
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

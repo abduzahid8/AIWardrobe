@@ -1,0 +1,26 @@
+{
+  "date": "2026-10-16",
+  "scope": "Unreleased daily usage display/cache integrity",
+  "checks": [
+    "Reject previous-account hydration and RPC completion",
+    "Reject prior UTC-day RPC completion",
+    "Retain maximum observed current-day usage for out-of-order responses",
+    "Discard null/malformed/negative/noninteger cached counters",
+    "Clean deadline timer after fast RPC completion"
+  ],
+  "verification": {
+    "targeted_tests": 18,
+    "jest_tests": 1095,
+    "jest_suites": 93,
+    "typescript": "passed",
+    "lint_errors": 0,
+    "lint_warnings": 8,
+    "whitespace": "passed"
+  },
+  "test_setup_correction": "Reacquire current AsyncStorage mock after jest.resetModules; handle CommonJS module shape",
+  "limitations": [
+    "Existing offline fallback retained",
+    "RPC deadline settles caller but does not guarantee server cancellation or exactly-once quota accounting",
+    "No native test or production deployment; full readiness unproven"
+  ]
+}

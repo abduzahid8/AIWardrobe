@@ -56,14 +56,17 @@ const dot = StyleSheet.create({
 
 // ── Shared button row ────────────────────────────────────────────────────────
 const NavRow = ({
-    onBack, onNext, disabled, label, isLast,
-}: { onBack: () => void; onNext: () => void; disabled?: boolean; label?: string; isLast?: boolean }) => (
+    onBack, onNext, disabled, label, isLast, backLabel,
+}: { onBack: () => void; onNext: () => void; disabled?: boolean; label?: string; isLast?: boolean; backLabel: string }) => (
     <View style={nav.row}>
-        <TouchableOpacity onPress={onBack} style={nav.back} activeOpacity={0.7}>
+        <TouchableOpacity onPress={onBack} accessibilityRole="button" accessibilityLabel={backLabel} style={nav.back} activeOpacity={0.7}>
             <Ionicons name="chevron-back" size={22} color={T.primary} />
         </TouchableOpacity>
         <TouchableOpacity
             onPress={onNext}
+            accessibilityRole="button"
+            accessibilityLabel={label ?? 'Continue'}
+            accessibilityState={{ disabled: !!disabled }}
             disabled={disabled}
             activeOpacity={0.85}
             style={[nav.next, disabled && nav.disabled]}
@@ -122,7 +125,7 @@ const WelcomeStep = ({ onNext, t }: { onNext: () => void; t: any }) => (
         </View>
 
         <Animated.View entering={FadeInUp.delay(600).duration(700)}>
-            <TouchableOpacity onPress={onNext} activeOpacity={0.85}>
+            <TouchableOpacity onPress={onNext} accessibilityRole="button" accessibilityLabel={t('styleQuiz.continue')} activeOpacity={0.85}>
                 <LinearGradient
                     colors={['#0A1931','#1a3a5c']}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
@@ -158,6 +161,9 @@ const PersonalityStep = ({ selected, onSelect, onNext, onBack, t }: any) => (
                     return (
                         <TouchableOpacity
                             key={item.id}
+                            accessibilityRole="radio"
+                            accessibilityLabel={t(item.tKey)}
+                            accessibilityState={{ checked: on }}
                             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onSelect(item.id); }}
                             activeOpacity={0.8}
                             style={[pc.card, { width: (W - 60) / 2 }, on && pc.sel]}
@@ -169,7 +175,7 @@ const PersonalityStep = ({ selected, onSelect, onNext, onBack, t }: any) => (
                 })}
             </View>
         </ScrollView>
-        <NavRow onBack={onBack} onNext={onNext} disabled={!selected} label={t('styleQuiz.continue')} />
+        <NavRow backLabel={t('common.back')} onBack={onBack} onNext={onNext} disabled={!selected} label={t('styleQuiz.continue')} />
     </Animated.View>
 );
 const pc = StyleSheet.create({
@@ -191,6 +197,9 @@ const ColorsStep = ({ favoriteColors, onToggleColor, onNext, onBack, t }: any) =
                     return (
                         <TouchableOpacity
                             key={c.id}
+                            accessibilityRole="checkbox"
+                            accessibilityLabel={t(c.tKey)}
+                            accessibilityState={{ checked: on }}
                             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onToggleColor(c.id); }}
                             activeOpacity={0.8}
                             style={[col.swatch, { backgroundColor: c.color }, on && col.ring]}
@@ -201,7 +210,7 @@ const ColorsStep = ({ favoriteColors, onToggleColor, onNext, onBack, t }: any) =
                 })}
             </View>
         </ScrollView>
-        <NavRow onBack={onBack} onNext={onNext} disabled={favoriteColors.length < 1} label={t('styleQuiz.continue')} />
+        <NavRow backLabel={t('common.back')} onBack={onBack} onNext={onNext} disabled={favoriteColors.length < 1} label={t('styleQuiz.continue')} />
     </Animated.View>
 );
 const col = StyleSheet.create({
@@ -221,6 +230,9 @@ const OccasionsStep = ({ selectedOccasions, onToggleOccasion, onNext, onBack, t 
                     return (
                         <TouchableOpacity
                             key={o.id}
+                            accessibilityRole="checkbox"
+                            accessibilityLabel={t(o.tKey)}
+                            accessibilityState={{ checked: on }}
                             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onToggleOccasion(o.id); }}
                             activeOpacity={0.8}
                             style={[occ.card, { width: (W - 60) / 2 }, on && occ.sel]}
@@ -231,7 +243,7 @@ const OccasionsStep = ({ selectedOccasions, onToggleOccasion, onNext, onBack, t 
                 })}
             </View>
         </ScrollView>
-        <NavRow onBack={onBack} onNext={onNext} disabled={selectedOccasions.length < 1} label={t('styleQuiz.continue')} />
+        <NavRow backLabel={t('common.back')} onBack={onBack} onNext={onNext} disabled={selectedOccasions.length < 1} label={t('styleQuiz.continue')} />
     </Animated.View>
 );
 const occ = StyleSheet.create({
@@ -253,6 +265,9 @@ const FitStep = ({ selected, onSelect, onNext, onBack, t }: any) => (
                     return (
                         <TouchableOpacity
                             key={f.id}
+                            accessibilityRole="radio"
+                            accessibilityLabel={`${t(f.tKey)}. ${t(f.tDescKey)}`}
+                            accessibilityState={{ checked: on }}
                             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onSelect(f.id); }}
                             activeOpacity={0.8}
                             style={[fit.card, on && fit.sel]}
@@ -268,7 +283,7 @@ const FitStep = ({ selected, onSelect, onNext, onBack, t }: any) => (
                 })}
             </View>
         </ScrollView>
-        <NavRow onBack={onBack} onNext={onNext} disabled={!selected} label={t('styleQuiz.continue')} />
+        <NavRow backLabel={t('common.back')} onBack={onBack} onNext={onNext} disabled={!selected} label={t('styleQuiz.continue')} />
     </Animated.View>
 );
 const fit = StyleSheet.create({
@@ -291,6 +306,9 @@ const GoalsStep = ({ selectedGoals, onToggleGoal, onNext, onBack, t }: any) => (
                     return (
                         <TouchableOpacity
                             key={g.id}
+                            accessibilityRole="checkbox"
+                            accessibilityLabel={t(g.tKey)}
+                            accessibilityState={{ checked: on }}
                             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onToggleGoal(g.id); }}
                             activeOpacity={0.8}
                             style={[gls.card, on && gls.sel]}
@@ -305,7 +323,7 @@ const GoalsStep = ({ selectedGoals, onToggleGoal, onNext, onBack, t }: any) => (
                 })}
             </View>
         </ScrollView>
-        <NavRow onBack={onBack} onNext={onNext} disabled={selectedGoals.length < 1} label={t('styleQuiz.continue')} />
+        <NavRow backLabel={t('common.back')} onBack={onBack} onNext={onNext} disabled={selectedGoals.length < 1} label={t('styleQuiz.continue')} />
     </Animated.View>
 );
 const gls = StyleSheet.create({
@@ -347,7 +365,7 @@ const CompleteStep = ({ selectedGoals, selectedOccasions, onComplete, onBack, t 
             </Animated.View>
         </View>
 
-        <NavRow onBack={onBack} onNext={onComplete} label={t('styleQuiz.complete.unlockPlan')} isLast />
+        <NavRow backLabel={t('common.back')} onBack={onBack} onNext={onComplete} label={t('styleQuiz.complete.unlockPlan')} isLast />
     </Animated.View>
 );
 const cmp = StyleSheet.create({

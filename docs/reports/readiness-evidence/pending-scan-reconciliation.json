@@ -1,0 +1,18 @@
+{
+  "passed": true,
+  "moduleSha256": "1d3cb34ac5ff9b6c7ce5bd440e43120b63552acee91497fa05cf6846a24412ad",
+  "activeTransactionsProtected": true,
+  "sharedReferenceRetainedDuringFinalRemoval": true,
+  "missingFolderRemovalSafe": true,
+  "freshProcess": true,
+  "containerRebase": true,
+  "referencedFileRetained": true,
+  "unreferencedDeletionIntentCompleted": true,
+  "partialCopyRemoved": true,
+  "unmarkedCaptureRetained": true,
+  "otherOwnerAndUnrelatedFilesRetained": true,
+  "idempotent": true,
+  "failedDeletionIntentRetainedAndRetried": true,
+  "accountChangeStopsDeletion": true,
+  "scope": "Real OS files and fresh Node process through actual production reconciliation module; not native Expo/device or complete app crash recovery"
+}

@@ -1,0 +1,193 @@
+{
+  "runId": "40fec01a-cb48-4f63-ad6a-1c7aa7c53dc8",
+  "scope": "Same-project regional contrast on disjoint private URL cohorts; not end-user image delivery or 10000 DAU certification",
+  "projectRegion": "ap-northeast-1",
+  "fixtureBytes": 371583,
+  "fixtureSha256": "84a7028aa534aac67d4b77c64c64ee062054172edee6e1c44e4031c7715d5256",
+  "verifiedReads": 325,
+  "verifiedReadBytes": 120764475,
+  "results": [
+    {
+      "region": "ap-northeast-1",
+      "responseRegion": "ap-northeast-1",
+      "cohort": "remoteIds",
+      "passed": true,
+      "distinctIssuedObjects": 170,
+      "stages": [
+        {
+          "targetRps": 2,
+          "seconds": 10,
+          "planned": 20,
+          "completed": 20,
+          "dropped": 0,
+          "failures": 0,
+          "elapsedMs": 10011.413373000001,
+          "p95Ms": 710.115953,
+          "p95HeadersMs": 580.988848,
+          "p95BodyMs": 126.67439399999967,
+          "bytes": 7431660,
+          "cacheMisses": 20
+        },
+        {
+          "targetRps": 5,
+          "seconds": 10,
+          "planned": 50,
+          "completed": 50,
+          "dropped": 0,
+          "failures": 0,
+          "elapsedMs": 10210.965810000002,
+          "p95Ms": 632.5152739999994,
+          "p95HeadersMs": 562.371997000002,
+          "p95BodyMs": 133.7720709999994,
+          "bytes": 18579150,
+          "cacheMisses": 50
+        },
+        {
+          "targetRps": 10,
+          "seconds": 10,
+          "planned": 100,
+          "completed": 100,
+          "dropped": 0,
+          "failures": 0,
+          "elapsedMs": 10777.722902000001,
+          "p95Ms": 717.6260589999983,
+          "p95HeadersMs": 564.3693699999967,
+          "p95BodyMs": 148.77654099999927,
+          "bytes": 37158300,
+          "cacheMisses": 100
+        }
+      ]
+    },
+    {
+      "region": "eu-central-1",
+      "responseRegion": "eu-central-1",
+      "cohort": "localIds",
+      "passed": false,
+      "distinctIssuedObjects": 155,
+      "stages": [
+        {
+          "targetRps": 2,
+          "seconds": 10,
+          "planned": 20,
+          "completed": 20,
+          "dropped": 0,
+          "failures": 0,
+          "elapsedMs": 11819.714844,
+          "p95Ms": 2818.9790059999996,
+          "p95HeadersMs": 2022.1646739999996,
+          "p95BodyMs": 990.0983620000002,
+          "bytes": 7431660,
+          "cacheMisses": 20
+        },
+        {
+          "targetRps": 5,
+          "seconds": 10,
+          "planned": 50,
+          "completed": 50,
+          "dropped": 0,
+          "failures": 0,
+          "elapsedMs": 12623.440654,
+          "p95Ms": 2773.1411860000007,
+          "p95HeadersMs": 1918.285482000003,
+          "p95BodyMs": 1014.2256960000013,
+          "bytes": 18579150,
+          "cacheMisses": 50
+        },
+        {
+          "targetRps": 10,
+          "seconds": 10,
+          "planned": 100,
+          "completed": 85,
+          "dropped": 15,
+          "failures": 0,
+          "elapsedMs": 12580.473109999999,
+          "p95Ms": 2768.044267999998,
+          "p95HeadersMs": 1885.5610760000018,
+          "p95BodyMs": 997.8283080000001,
+          "bytes": 31584555,
+          "cacheMisses": 85
+        }
+      ]
+    }
+  ],
+  "controls": [
+    {
+      "region": "ap-northeast-1",
+      "name": "anonymous",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "region": "ap-northeast-1",
+      "name": "other_owner",
+      "status": 403,
+      "passed": true
+    },
+    {
+      "region": "eu-central-1",
+      "name": "anonymous",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "region": "eu-central-1",
+      "name": "other_owner",
+      "status": 403,
+      "passed": true
+    }
+  ],
+  "overallAcceptancePassed": false,
+  "processExitCode": 2,
+  "cleanup": {
+    "checks": [
+      {
+        "functionSlug": "readiness-distinct-media-40fec01a-tokyo",
+        "functionDeleted": true
+      },
+      {
+        "functionSlug": "readiness-distinct-media-40fec01a-frankfurt",
+        "functionDeleted": true
+      },
+      {
+        "objectsRemoved": true,
+        "objectsAbsent": true
+      },
+      {
+        "userId": "1e6097d6-7203-4a64-959a-866650c90003",
+        "deleteSucceeded": true,
+        "userAbsent": true
+      },
+      {
+        "userId": "07d5c494-d672-45a5-917e-166339358b71",
+        "deleteSucceeded": true,
+        "userAbsent": true
+      }
+    ],
+    "passed": true,
+    "independentSqlCounts": {
+      "users": 0,
+      "sessions": 0,
+      "identities": 0,
+      "profiles": 0,
+      "objects": 0
+    },
+    "temporaryFunctionsAbsenceVerified": true,
+    "originalFunctionVersionsUnchanged": true,
+    "originalFunctionCount": 13,
+    "privateConfigAbsent": true,
+    "privateTemporaryConfigAbsent": true
+  },
+  "validation": {
+    "loadHarnessTests": 31,
+    "failures": 0,
+    "lint": "passed"
+  },
+  "limitations": [
+    "Tokyo ran first and Frankfurt second; order and upload-age effects are not randomized",
+    "Same asset bytes across all objects; one object owner plus one denial-test owner",
+    "Only short 2/5/10 RPS stages and a 20-request client cap",
+    "Headers are fetch-resolution timing and body time includes hash verification",
+    "Regional Edge placement does not establish the latency of direct image fetches on user devices",
+    "No existing application routing, region, bucket policy or customer data changed"
+  ]
+}

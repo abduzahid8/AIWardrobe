@@ -5,10 +5,12 @@ import {
     ImageStyle,
     StyleProp,
 } from 'react-native';
-import { Image, ImageProps } from 'expo-image';
+import { ImageProps } from 'expo-image';
 import Animated from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../src/theme';
+import { ExpoImage as Image } from '../../src/components/MediaImage';
+
 
 interface CachedImageProps extends Omit<ImageProps, 'source'> {
     uri: string;
@@ -23,6 +25,7 @@ interface CachedImageProps extends Omit<ImageProps, 'source'> {
     /** Icon shown when `uri` is missing or fails to load. */
     fallbackIconSize?: number;
     fallbackIconColor?: string;
+    requestHeaders?: Record<string, string>;
 }
 
 export const CachedImage: React.FC<CachedImageProps> = React.memo(({
@@ -33,9 +36,17 @@ export const CachedImage: React.FC<CachedImageProps> = React.memo(({
     contentFit = 'cover',
     fallbackIconSize = 28,
     fallbackIconColor = 'rgba(10,25,49,0.2)',
+    requestHeaders,
+    cachePolicy = 'memory-disk',
     ...props
 }) => {
     const [error, setError] = useState(false);
+    // Phones on flaky mobile data often fail the first attempt with a
+    // transient timeout while the same URL loads fine on retry (simulators
+    // on stable Wi-Fi rarely hit this). Retry once after a short delay
+    // before settling on the placeholder — without this a single blip
+    // permanently blanks the card until the row is recycled.
+    const [retried, setRetried] = useState(false);
 
     // A list reuses this component instance across items as `uri` changes
     // (e.g. FlatList row recycling); without this the failed-load flag from
@@ -43,9 +54,23 @@ export const CachedImage: React.FC<CachedImageProps> = React.memo(({
     // item's perfectly good one.
     useEffect(() => {
         setError(false);
-    }, [uri]);
+        setRetried(false);
+    }, [uri, requestHeaders]);
 
-    if (!uri || error) {
+    useEffect(() => {
+        if (!error || retried || !uri) return;
+        // Clear the error when the timer fires so the retry <Image> below
+        // actually remounts (key change) and re-requests the URL. Without
+        // this, `error && retried` renders the fallback without ever
+        // attempting the second fetch.
+        const t = setTimeout(() => {
+            setError(false);
+            setRetried(true);
+        }, 2500);
+        return () => clearTimeout(t);
+    }, [error, retried, uri]);
+
+    if (!uri || (error && retried)) {
         return (
             <View style={[styles.container, styles.fallback, style as any]}>
                 <Ionicons name="shirt-outline" size={fallbackIconSize} color={fallbackIconColor} />
@@ -57,16 +82,19 @@ export const CachedImage: React.FC<CachedImageProps> = React.memo(({
         <View style={[styles.container, style as any]}>
             <Image
                 {...props}
-                source={uri}
+                source={requestHeaders ? { uri, headers: requestHeaders } : uri}
+                key={retried ? `${uri}#retry` : uri}
                 style={[styles.image, style]}
                 contentFit={contentFit}
-                cachePolicy="memory-disk"
+                cachePolicy={cachePolicy}
+                recyclingKey={uri}
                 transition={fadeIn ? 200 : undefined}
                 onError={() => setError(true)}
             />
         </View>
     );
-}, (prev, next) => prev.uri === next.uri && prev.style === next.style && prev.contentFit === next.contentFit);
+}, (prev, next) => prev.uri === next.uri && prev.style === next.style && prev.contentFit === next.contentFit
+    && prev.requestHeaders === next.requestHeaders && prev.cachePolicy === next.cachePolicy);
 
 // Optimized image for lists with placeholder
 interface OptimizedImageProps extends CachedImageProps {

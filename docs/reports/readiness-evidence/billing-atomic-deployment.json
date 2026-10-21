@@ -1,0 +1,49 @@
+{
+  "measuredAt": "2026-10-19T11:50:43.006744+00:00",
+  "project": "fyqpifmrsftsfqibhwhy",
+  "migrations": [
+    "atomic_revenuecat_sync",
+    "subscription_renewal_metadata"
+  ],
+  "functions": {
+    "sync-subscription": "6d65fea11fd431cbbb32481cb081c29eca3bb6edfd4052fcbf9adbe348f004c0",
+    "revenuecat-webhook": "adf52245781cdb495d96eccc5d300b5deddbced2b85d5f15729d1584ac23ea07"
+  },
+  "verifyJwt": {
+    "sync-subscription": true,
+    "revenuecat-webhook": false
+  },
+  "liveFreeSyncChecks": "6/6 pass; no store purchase",
+  "webhookAuthChecks": "3/3 hosted auth checks pass; RevenueCat-originated TEST event delivered200 with success:true,test:true",
+  "cleanup": {
+    "supabaseAccountsRemaining": 0,
+    "syncSnapshotsRemaining": 0,
+    "testLedgersRemaining": 0,
+    "revenueCat": "All three fixture DELETE requests accepted200; deletion asynchronous; no GET recreation"
+  },
+  "knownRemaining": [
+    "Actual sandbox/store purchase, renewal, cancellation, refund",
+    "Google Play configuration absent",
+    "10,000 DAU mixed capacity unverified"
+  ],
+  "hostedFunctionInventory": [
+    {
+      "name": "sync-subscription",
+      "status": "ACTIVE",
+      "version": 2,
+      "verify_jwt": true
+    },
+    {
+      "name": "revenuecat-webhook",
+      "status": "ACTIVE",
+      "version": 17,
+      "verify_jwt": false
+    }
+  ],
+  "postDeployAdvisors": {
+    "newWriterSecurityWarnings": 0,
+    "otherExistingWarningsRemain": true,
+    "syncStateNoPolicyInfo": "Intentional service-only table with client privileges revoked"
+  },
+  "revenueCatHeaderSavedByUser": true
+}

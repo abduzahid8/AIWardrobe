@@ -1,0 +1,17 @@
+{
+  "scope": "Anonymous read-only routing probes; no private data",
+  "results": [
+    {
+      "path": "/health",
+      "error": "TimeoutError"
+    },
+    {
+      "path": "/api/v1/wardrobe",
+      "error": "TimeoutError"
+    },
+    {
+      "path": "/wardrobe",
+      "error": "TimeoutError"
+    }
+  ]
+}

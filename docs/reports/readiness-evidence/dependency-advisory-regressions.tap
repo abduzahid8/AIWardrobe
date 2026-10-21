@@ -1,0 +1,121 @@
+TAP version 13
+# Subtest: node_modules/appium-xcuitest-driver/node_modules/proxy-addr: malformed mapped subnet cannot trust a public spoofing client
+not ok 1 - node_modules/appium-xcuitest-driver/node_modules/proxy-addr: malformed mapped subnet cannot trust a public spoofing client
+  ---
+  duration_ms: 4.273916
+  type: 'test'
+  location: '/Users/v.zahid/AIWardrobe/scripts/validation/dependency-security.test.mjs:15:2'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    + actual - expected
+    
+    + '10.9.9.9'
+    - '203.0.113.8'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: '203.0.113.8'
+  actual: '10.9.9.9'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///Users/v.zahid/AIWardrobe/scripts/validation/dependency-security.test.mjs:18:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.start (node:internal/test_runner/test:944:17)
+    startSubtestAfterBootstrap (node:internal/test_runner/harness:296:17)
+  ...
+# Subtest: node_modules/proxy-addr: malformed mapped subnet cannot trust a public spoofing client
+not ok 2 - node_modules/proxy-addr: malformed mapped subnet cannot trust a public spoofing client
+  ---
+  duration_ms: 2.115334
+  type: 'test'
+  location: '/Users/v.zahid/AIWardrobe/scripts/validation/dependency-security.test.mjs:15:2'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    + actual - expected
+    
+    + '10.9.9.9'
+    - '203.0.113.8'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: '203.0.113.8'
+  actual: '10.9.9.9'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///Users/v.zahid/AIWardrobe/scripts/validation/dependency-security.test.mjs:18:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+# Subtest: node_modules/appium-xcuitest-driver/node_modules/shell-quote: newline operators and post-comment tokens reject without execution
+not ok 3 - node_modules/appium-xcuitest-driver/node_modules/shell-quote: newline operators and post-comment tokens reject without execution
+  ---
+  duration_ms: 1.818458
+  type: 'test'
+  location: '/Users/v.zahid/AIWardrobe/scripts/validation/dependency-security.test.mjs:24:2'
+  failureType: 'testCodeFailure'
+  error: 'Missing expected exception.'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  operator: 'throws'
+  stack: |-
+    TestContext.<anonymous> (file:///Users/v.zahid/AIWardrobe/scripts/validation/dependency-security.test.mjs:26:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: node_modules/shell-quote: newline operators and post-comment tokens reject without execution
+ok 4 - node_modules/shell-quote: newline operators and post-comment tokens reject without execution
+  ---
+  duration_ms: 1.865417
+  type: 'test'
+  ...
+# Subtest: node_modules/@appium/support: ZIP symlinks cannot escape extraction root
+ok 5 - node_modules/@appium/support: ZIP symlinks cannot escape extraction root
+  ---
+  duration_ms: 210.431875
+  type: 'test'
+  ...
+# Subtest: node_modules/@appium/support: ordinary ZIP extraction still works
+ok 6 - node_modules/@appium/support: ordinary ZIP extraction still works
+  ---
+  duration_ms: 32.154667
+  type: 'test'
+  ...
+# Subtest: node_modules/appium-xcuitest-driver/node_modules/@appium/support: ZIP symlinks cannot escape extraction root
+ok 7 - node_modules/appium-xcuitest-driver/node_modules/@appium/support: ZIP symlinks cannot escape extraction root
+  ---
+  duration_ms: 204.691291
+  type: 'test'
+  ...
+# Subtest: node_modules/appium-xcuitest-driver/node_modules/@appium/support: ordinary ZIP extraction still works
+ok 8 - node_modules/appium-xcuitest-driver/node_modules/@appium/support: ordinary ZIP extraction still works
+  ---
+  duration_ms: 25.578959
+  type: 'test'
+  ...
+# Subtest: advisory checks found the expected dependency families
+ok 9 - advisory checks found the expected dependency families
+  ---
+  duration_ms: 0.633167
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 6
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 526.36525

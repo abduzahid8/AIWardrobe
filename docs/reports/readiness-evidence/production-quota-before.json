@@ -1,0 +1,17 @@
+{
+  "measuredAt": "2026-10-19T02:55:42.382Z",
+  "scope": "Disposable-user quota RPC and role checks; no AI/provider calls or customer data changes",
+  "mode": "before",
+  "checks": [],
+  "observed": {
+    "code": "42702",
+    "details": "It could refer to either a PL/pgSQL variable or a table column.",
+    "hint": null,
+    "message": "column reference \"used\" is ambiguous"
+  },
+  "status": 400,
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "projectRef": "fyqpifmrsftsfqibhwhy",
+  "function": "ai-process",
+  "deployed": true,
+  "sourceSha256": "948a13ab54058686ee4bf51d18770452eccefcbef410699414d54d56ea3cd715",
+  "rootCauseEvidence": [
+    "nvidia-classification-diagnostic.json",
+    "nvidia-classification-diagnostic-schema.json",
+    "nvidia-classification-diagnostic-content.json"
+  ],
+  "rootCause": "Provider HTTP200 returned prose rather than JSON; hosted schema probe did not constrain output. Prose identified beige jacket correctly.",
+  "changes": [
+    "Valid JSON demonstration before actual final-user image/prompt",
+    "Zero-temperature sampling",
+    "Unknown material strings normalized to JSON null",
+    "Existing strict schema validation/deadline/failure protocol retained"
+  ],
+  "checks": {
+    "stagedHandlerCases": 27,
+    "fullAppTests": 1603,
+    "suites": 140,
+    "stagedAndLocalDeno": "passed",
+    "finalLiveChecks": 7,
+    "finalExpectedPrimaryCategoryColor": "3 of 3 repetitions passed",
+    "liveLatenciesMs": [
+      29616,
+      4504,
+      5417
+    ],
+    "invalidImage": "503, successfalse, classificationnull",
+    "cleanupRemainingTaggedUsers": 0
+  },
+  "history": [
+    "Schema-valid first output mixed green knit with beige jacket; failed visual inspection.",
+    "Layer instructions alone produced503 for valid photo.",
+    "JSON example at temperature0.1 produced3valid JSON responses but only2of3selected expected torso garment; other selected jeans.",
+    "Latest zero-temperature run selected jacket/beige3of3; earlier failures preserved."
+  ],
+  "limitations": [
+    "One known layered-photo fixture only; not broad visual accuracy or full field correctness.",
+    "Fabric and green-scarf description are not independently verified.",
+    "One response took29.616seconds; no provider latency/capacity certification.",
+    "Zero temperature does not guarantee determinism.",
+    "No new native full scan UI or real-device test.",
+    "Client source unchanged this turn; previous release artifacts remain local."
+  ],
+  "sources": [
+    "https://docs.nvidia.com/nim/vision-language-models/1.1.1/structured-generation.html",
+    "https://docs.api.nvidia.com/nim/reference/meta-llama-3_2-11b-vision-instruct-infer"
+  ]
+}

@@ -1,11 +1,13 @@
 import React from 'react';
-import { View, Image, ActivityIndicator, StyleSheet } from 'react-native'
-import { ScaledText } from '../ui/ScaledText';;
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { ScaledText } from '../ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { FrostedGlassCard } from '../ui';
 import { LiquidGlass2026Theme } from '../../constants/LiquidGlass2026Theme';
+import { Image } from '../../src/components/MediaImage';
+
 
 const { colors, spacing, typography, radius } = LiquidGlass2026Theme;
 

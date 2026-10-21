@@ -1,9 +1,11 @@
 import React from 'react';
-import { View, StyleSheet, ViewStyle, Image, ImageSourcePropType,  } from 'react-native'
-import { ScaledText } from '../ui/ScaledText';;
+import { View, StyleSheet, ViewStyle, ImageSourcePropType } from 'react-native';
+import { ScaledText } from '../ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing } from '../../src/theme';
 import { AnimatedButton } from '../AnimatedButton';
+import { Image } from '../../src/components/MediaImage';
+
 
 type EmptyStateVariant = 'default' | 'search' | 'error' | 'wardrobe' | 'outfit';
 

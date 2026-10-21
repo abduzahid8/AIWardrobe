@@ -1,3 +1,4 @@
+import readinessLogger from '../utils/logger';
 /**
  * IAP Service — In-App Purchase integration via RevenueCat.
  *
@@ -23,6 +24,8 @@ import analyticsService from './analyticsService';
 import crashReporting from './crashReporting';
 import Config from '../config/env';
 import { supabase } from '../../lib/supabase';
+import { authEvents } from '../../store/authEvents';
+import { withRequestDeadline } from '../lib/requestDeadline';
 
 export type ProductId = string;
 
@@ -108,6 +111,7 @@ interface PurchaseResult {
     transactionId?: string;
     receipt?: string;
     error?: string;
+    verificationPending?: boolean;
 }
 
 class IAPService {
@@ -115,6 +119,8 @@ class IAPService {
     private isRevenueCatAvailable = false;
     /** Supabase user ID passed to RevenueCat via identify(). null = not yet identified. */
     private identifiedUserId: string | null = null;
+    private serverSyncPromise: Promise<boolean> | null = null;
+    private accountRevision = 0;
 
     /**
      * Initialize IAP connection. Call once on app start.
@@ -132,10 +138,10 @@ class IAPService {
                     : apiKey.startsWith('test_')
                         ? 'test-store'
                         : 'unknown';
-        console.log('[IAP] initialize', { keyKind, platform: Platform.OS });
+        readinessLogger.debug(String('[IAP] initialize'), [{ keyKind, platform: Platform.OS }]);
 
         if (!apiKey || apiKey === 'your-revenuecat-api-key') {
-            console.warn('[IAP] RevenueCat API key not configured — using mock mode');
+            console.warn('[IAP] Purchases unavailable: no RevenueCat API key configured for this platform');
             this.isInitialized = true;
             return;
         }
@@ -148,7 +154,7 @@ class IAPService {
             if (Platform.OS === 'ios' || Platform.OS === 'android') {
                 await Purchases.configure({ apiKey });
                 this.isRevenueCatAvailable = true;
-                console.log('[IAP] RevenueCat configured successfully');
+                readinessLogger.debug(String('[IAP] RevenueCat configured successfully'), []);
 
                 // Listen for customer info changes (renewal, cancellation, etc.)
                 Purchases.addCustomerInfoUpdateListener((info: any) => {
@@ -177,11 +183,11 @@ class IAPService {
             const offerings = await Purchases.getOfferings();
             const currentPackages = offerings.current?.availablePackages || [];
             const allOfferingsCount = Object.keys(offerings.all || {}).length;
-            console.log('[IAP] offerings fetched', {
+            readinessLogger.debug(String('[IAP] offerings fetched'), [{
                 currentId: offerings.current?.identifier || null,
                 currentPackagesCount: currentPackages.length,
                 allOfferingsCount,
-            });
+            }]);
             if (currentPackages.length > 0) {
                 return currentPackages;
             }
@@ -256,7 +262,7 @@ class IAPService {
 
             // Fallback: fetch products directly by known IDs so the paywall
             // still shows real store prices even if no Offering is configured.
-            console.log('[IAP] Offerings empty — falling back to getProducts by ID');
+            readinessLogger.debug(String('[IAP] Offerings empty — falling back to getProducts by ID'), []);
             const storeProducts = await Purchases.getProducts(KNOWN_PRODUCT_IDS);
             if (Array.isArray(storeProducts) && storeProducts.length) {
                 return storeProducts.map((p: any) => {
@@ -295,39 +301,14 @@ class IAPService {
 
             crashReporting.logBreadcrumb(`IAP purchase started: ${productId}`);
 
-            // CRITICAL: Ensure the user is identified with RevenueCat before
-            // purchasing. If we proceed with an anonymous RC user ID, the
-            // webhook won't be able to map the purchase back to a Supabase user.
-            if (!this.identifiedUserId) {
-                const { data: { session } } = await supabase.auth.getSession();
-                const userId = session?.user?.id;
-                if (userId) {
-                    console.warn('[IAP] User not identified before purchase — calling identify() now');
-                    await this.identify(userId);
-                } else {
-                    return {
-                        success: false,
-                        error: 'You must be logged in to purchase a subscription.',
-                    };
-                }
-            }
-
             if (!this.isRevenueCatAvailable) {
-                // Mock mode — for development/simulator only.
-                // IMPORTANT: never sync mock purchases to the server.
-                if (__DEV__) {
-                    analyticsService.trackSubscriptionPurchased('premium', 9.99);
-                    return {
-                        success: true,
-                        productId,
-                        transactionId: `mock_dev_${Date.now()}`,
-                    };
-                }
-                return {
-                    success: false,
-                    error: 'In-app purchases are not configured. Please contact support.',
-                };
+                return { success: false, error: 'In-app purchases are not configured. Please contact support.' };
             }
+            const { data: { session } } = await supabase.auth.getSession();
+            const userId = session?.user?.id;
+            if (!userId) return { success: false, error: 'You must be logged in to purchase a subscription.' };
+            if (this.identifiedUserId !== userId) await this.identify(userId);
+            if (this.identifiedUserId !== userId) return { success: false, error: 'Purchase identity could not be verified. No payment was started.' };
 
             // Safety guard: detect test-store key in a production build. Apple's
             // sandbox will not return products through a test-store SDK key.
@@ -342,28 +323,38 @@ class IAPService {
                 };
             }
 
+            // Confirm the verification path works even for an account that is
+            // currently free. Do not start a payment against a known-broken sync.
+            const checkoutRevision = this.accountRevision;
+            const checkoutAuthRevision = authEvents.getRevision();
+            const ownerIsCurrent = () => this.accountRevision === checkoutRevision &&
+                authEvents.getRevision() === checkoutAuthRevision &&
+                this.identifiedUserId === userId && authEvents.canApplyToUser(userId);
+            if (!await this.isCheckoutVerificationReady(userId) || !ownerIsCurrent()) {
+                return { success: false, error: 'Subscriptions are temporarily unavailable. No payment was started.' };
+            }
+
             // Preferred path: find a RevenueCat offering package.
             const packages = await this.getAvailablePackages();
             const exactPackage = packages.find((pkg: any) => pkg.product.identifier === productId);
             const targetPackage = exactPackage || null;
 
-            let customerInfo: any;
             let resolvedProductId: string;
 
-            console.log('[IAP] purchase resolution', {
+            readinessLogger.debug(String('[IAP] purchase resolution'), [{
                 requested: productId,
                 availablePackages: packages.length,
                 matchedExact: !!exactPackage,
                 availableProductIds: packages.map((pkg: any) => pkg?.product?.identifier).filter(Boolean),
-            });
+            }]);
 
             if (targetPackage) {
                 resolvedProductId = targetPackage.product.identifier as string;
-                const result = await Purchases.purchasePackage(targetPackage);
-                customerInfo = result.customerInfo;
+                if (!ownerIsCurrent()) return { success: false, error: 'Account changed. No payment was started.' };
+                await Purchases.purchasePackage(targetPackage);
             } else {
                 // Fallback: buy the product directly from the store without an offering.
-                console.log('[IAP] No offering package found — falling back to purchaseStoreProduct');
+                readinessLogger.debug(String('[IAP] No offering package found — falling back to purchaseStoreProduct'), []);
                 const uniqueIds = productId ? [productId] : KNOWN_PRODUCT_IDS;
                 let storeProducts: any[] = [];
                 try {
@@ -371,11 +362,11 @@ class IAPService {
                 } catch (fetchErr: any) {
                     console.warn('[IAP] getProducts by ID failed', fetchErr?.message || fetchErr);
                 }
-                console.log('[IAP] store products fetched', {
+                readinessLogger.debug(String('[IAP] store products fetched'), [{
                     requestedIds: uniqueIds,
                     returnedCount: storeProducts?.length || 0,
                     returnedIds: storeProducts?.map((p: any) => p.identifier) || [],
-                });
+                }]);
 
                 const storeProduct = storeProducts?.find((p: any) => p.identifier === productId);
 
@@ -390,57 +381,20 @@ class IAPService {
                 }
 
                 resolvedProductId = storeProduct.identifier;
-                const result = await Purchases.purchaseStoreProduct(storeProduct);
-                customerInfo = result.customerInfo;
+                if (!ownerIsCurrent()) return { success: false, error: 'Account changed. No payment was started.' };
+                await Purchases.purchaseStoreProduct(storeProduct);
             }
 
-            // Sync subscription status from RevenueCat customer info first.
-            // This picks up the entitlement keys RC assigned to this product.
-            await this.syncSubscriptionStatus(customerInfo);
-
-            let tier = this.getTierByProductId(resolvedProductId);
-
-            // Safety net: the purchase itself succeeded (Apple has charged the
-            // user and RevenueCat has validated the receipt), so we MUST grant
-            // access even if entitlement detection in syncSubscriptionStatus
-            // didn't match anything.
-            if (tier === 'free') {
-                console.warn(`[IAP] Paid product ID '${resolvedProductId}' did not match any tier strings, forcing premium tier to prevent taking user's money without granting access.`);
-                tier = 'premium';
-            }
-
-            // ALWAYS call setSubscription after a successful purchase.
-            // We do NOT gate this on currentTier === 'free' because:
-            //   1. syncSubscriptionStatus may have silently failed to detect the entitlement.
-            //   2. The user could be upgrading from premium → vip.
-            //   3. Skipping this leaves a window where the local store shows free
-            //      until the RevenueCat webhook fires (which can take minutes).
-            const expiry =
-                customerInfo?.allExpirationDatesByProduct?.[resolvedProductId] ??
-                customerInfo?.allExpirationDates?.[resolvedProductId] ??
-                undefined;
-            const { setSubscription, verifySubscriptionFromServer } = useSubscriptionStore.getState();
-            console.log('[IAP] Granting subscription after successful purchase', { tier, resolvedProductId, expiry });
-            await setSubscription(tier, expiry, resolvedProductId);
-
-            // Fire-and-forget server verification to pull the freshly inserted DB row.
-            // Delayed 5 s to give Supabase time to commit+replicate the subscription row
-            // written by setSubscription() above. Without the delay, the read can race
-            // the write and return 'free', triggering an incorrect downgrade.
-            // The race-condition guard in verifySubscriptionFromServer is the primary
-            // defense; this delay is defense-in-depth.
-            setTimeout(() => {
-                verifySubscriptionFromServer().catch((err) =>
-                    console.warn('[IAP] post-purchase server verification failed (non-critical):', err)
-                );
-            }, 5000);
-
-            analyticsService.trackSubscriptionPurchased(tier, ANALYTICS_PRICE_BY_TIER[tier]);
+            // Confirm the receipt server-side before activating paid features.
+            // A completed payment stays a completed payment if synchronization is pending.
+            const verified = await this.verifyServerSubscription();
+            const tier = this.getTierByProductId(resolvedProductId);
+            if (verified && tier !== 'free') analyticsService.trackSubscriptionPurchased(tier, ANALYTICS_PRICE_BY_TIER[tier]);
 
             return {
                 success: true,
                 productId: resolvedProductId,
-                transactionId: customerInfo.originalAppUserId,
+                verificationPending: !verified,
             };
         } catch (error: any) {
             const rawMessage = error.message || 'Purchase failed';
@@ -454,8 +408,7 @@ class IAPService {
             }
             if (rawMessage.includes('PRODUCT_ALREADY_PURCHASED')) {
                 // Restore the existing purchase
-                await this.restorePurchases();
-                return { success: true, productId };
+                return { ...await this.restorePurchases(), productId };
             }
 
             crashReporting.reportCrash(
@@ -476,21 +429,22 @@ class IAPService {
                 await this.initialize();
             }
 
+            const { data: { session } } = await supabase.auth.getSession();
+            const userId = session?.user?.id;
+            if (!userId) return { success: false, error: 'Sign in before restoring purchases.' };
             if (!this.isRevenueCatAvailable) {
-                // Fallback: check server
-                const { verifySubscriptionFromServer } = useSubscriptionStore.getState();
-                await verifySubscriptionFromServer();
-                const { tier } = useSubscriptionStore.getState();
-                return tier !== 'free'
-                    ? { success: true }
-                    : { success: false, error: 'No previous purchases found.' };
+                return await this.verifyServerSubscription() ? { success: true } : { success: false, error: 'No verified subscription found.' };
             }
+            if (this.identifiedUserId !== userId) await this.identify(userId);
+            if (this.identifiedUserId !== userId) return { success: false, error: 'Purchase identity could not be verified.' };
 
             const customerInfo = await Purchases.restorePurchases();
-            await this.syncSubscriptionStatus(customerInfo);
+            const verified = await this.verifyServerSubscription();
+            if (!verified && (Object.keys(customerInfo.entitlements?.active || {}).length > 0 || customerInfo.activeSubscriptions?.length > 0)) {
+                return { success: true, verificationPending: true };
+            }
 
-            const { tier } = useSubscriptionStore.getState();
-            if (tier !== 'free') {
+            if (verified) {
                 return { success: true };
             }
 
@@ -514,75 +468,46 @@ class IAPService {
      * Sync subscription state from RevenueCat customer info.
      * Called on purchase, restore, and customer info updates.
      */
-    private async syncSubscriptionStatus(customerInfo: any): Promise<void> {
+    private async syncSubscriptionStatus(_customerInfo: any): Promise<void> {
+        await this.verifyServerSubscription();
+    }
+
+    private async isCheckoutVerificationReady(owner: string): Promise<boolean> {
         try {
-            const { setSubscription, clearSubscription } = useSubscriptionStore.getState();
-
-            // Check active entitlements from RevenueCat
-            const activeEntitlements = customerInfo.entitlements?.active || {};
-            const entitlementEntries = Object.entries(activeEntitlements) as Array<[string, any]>;
-
-            const findEntitlement = (aliases: string[]) => {
-                const normalizedAliases = aliases.map((alias) => alias.toLowerCase());
-                return entitlementEntries.find(([entitlementKey]) =>
-                    normalizedAliases.includes(entitlementKey.toLowerCase())
-                )?.[1];
-            };
-
-            // Fallback to active subscriptions by product ID in case
-            // entitlement keys differ across environments.
-            const activeProductIds = new Set<string>(customerInfo.activeSubscriptions || []);
-            const findProductForTier = (tier: SubscriptionTier): string | null => {
-                for (const productId of Array.from(activeProductIds)) {
-                    if (getDynamicTier(productId) === tier) return productId;
-                }
-                return null;
-            };
-
-            const getExpiryForProduct = (productId: string | null): string | undefined => {
-                if (!productId) return undefined;
-                const byProduct = customerInfo.allExpirationDatesByProduct || customerInfo.allExpirationDates || {};
-                return byProduct[productId] || undefined;
-            };
-
-            // Check VIP first (higher tier), then premium, then lite
-            const vipEntitlement = findEntitlement(['vip', 'max', 'aiwardrobe_pro_yearly', 'com.aiwardrobe.premium.yearly']);
-            const vipProductId = findProductForTier('vip');
-
-            const premiumEntitlement = findEntitlement(['premium', 'pro', 'aiwardrobe pro', 'com.aiwardrobe.premium.monthly']);
-            const premiumProductId = findProductForTier('premium');
-
-            const liteEntitlement = findEntitlement(['lite', 'aiwardrobe_lite', '2.99', 'com.aiwardrobe.lite.monthly']);
-            const liteProductId = findProductForTier('lite');
-
-            if (vipEntitlement || vipProductId) {
-                const expiry = vipEntitlement?.expirationDate || getExpiryForProduct(vipProductId);
-                await setSubscription('vip', expiry, vipProductId || undefined);
-            } else if (premiumEntitlement || premiumProductId) {
-                const expiry = premiumEntitlement?.expirationDate || getExpiryForProduct(premiumProductId);
-                await setSubscription('premium', expiry, premiumProductId || undefined);
-            } else if (liteEntitlement || liteProductId) {
-                const expiry = liteEntitlement?.expirationDate || getExpiryForProduct(liteProductId);
-                await setSubscription('lite', expiry, liteProductId || undefined);
-            } else if (entitlementEntries.length === 0 && activeProductIds.size === 0) {
-                // Truly no active entitlements or subscriptions — safe to downgrade.
-                await clearSubscription();
-            } else {
-                // RevenueCat reports active entitlements / subscriptions but none
-                // matched our known aliases / product IDs. Do NOT clear the tier —
-                // this would incorrectly downgrade a paying user. Log so we can
-                // catch the mismatch in diagnostics.
-                console.warn('[IAP] Active RevenueCat state did not match known tiers — keeping current subscription', {
-                    entitlementKeys: Object.keys(activeEntitlements),
-                    activeProductIds: Array.from(activeProductIds),
-                });
-            }
-        } catch (error) {
-            crashReporting.reportCrash(
-                error instanceof Error ? error : new Error('Subscription sync failed'),
-                { source: 'iapService.syncSubscriptionStatus' }
+            const { data, error } = await withRequestDeadline(
+                signal => supabase.functions.invoke('sync-subscription', { body: {}, signal }), 20_000,
             );
-        }
+            const { data: identity } = await supabase.auth.getSession();
+            return !error && data?.verified === true &&
+                ['free', 'lite', 'premium', 'vip'].includes(data.tier) &&
+                identity.session?.user?.id === owner;
+        } catch { return false; }
+    }
+
+    async verifyServerSubscription(): Promise<boolean> {
+        if (this.serverSyncPromise) return this.serverSyncPromise;
+        const revision = this.accountRevision;
+        const authRevision = authEvents.getRevision();
+        this.serverSyncPromise = (async () => {
+            try {
+                const { data: before } = await supabase.auth.getSession();
+                const owner = before.session?.user?.id;
+                if (!owner || !authEvents.canApplyToUser(owner)) return false;
+                const { data, error } = await withRequestDeadline(
+                    signal => supabase.functions.invoke('sync-subscription', { body: {}, signal }), 20_000,
+                );
+                const { data: after } = await supabase.auth.getSession();
+                if (after.session?.user?.id !== owner || revision !== this.accountRevision || authRevision !== authEvents.getRevision()) return false;
+                if (error || !data?.verified || !['free', 'lite', 'premium', 'vip'].includes(data.tier)) return false;
+                if (data.tier !== 'free' && data.expiryDate != null &&
+                    (!Number.isFinite(Date.parse(data.expiryDate)) || Date.parse(data.expiryDate) <= Date.now())) return false;
+                await useSubscriptionStore.getState().setSubscription(data.tier, data.expiryDate ?? null);
+                return data.tier !== 'free';
+            } catch { return false; }
+        })();
+        const pending = this.serverSyncPromise;
+        try { return await pending; }
+        finally { if (this.serverSyncPromise === pending) this.serverSyncPromise = null; }
     }
 
     private getTierByProductId(productId: ProductId): SubscriptionTier {
@@ -601,11 +526,13 @@ class IAPService {
         if (!this.isRevenueCatAvailable) return;
         // Skip if already identified as this user
         if (this.identifiedUserId === userId) return;
+        this.accountRevision++;
+        this.serverSyncPromise = null;
         try {
             const { customerInfo } = await Purchases.logIn(userId);
             this.identifiedUserId = userId;
             await this.syncSubscriptionStatus(customerInfo);
-            console.log('[IAP] identify succeeded', { userId });
+            readinessLogger.debug(String('[IAP] identify succeeded'), [{ userId }]);
         } catch (error) {
             crashReporting.logBreadcrumb(`IAP identify failed: ${error}`);
         }
@@ -637,7 +564,7 @@ class IAPService {
                 await this.syncSubscriptionStatus(customerInfo);
             } else {
                 // Fallback: Open the official App Store redemption URL directly
-                console.log('[IAP] RevenueCat not available, redirecting to App Store redemption URL');
+                readinessLogger.debug(String('[IAP] RevenueCat not available, redirecting to App Store redemption URL'), []);
                 const { Linking } = require('react-native');
                 await Linking.openURL(appStoreRedeemUrl);
             }
@@ -671,6 +598,9 @@ class IAPService {
      * Reset RevenueCat user on logout.
      */
     async logout(): Promise<void> {
+        this.accountRevision++;
+        this.serverSyncPromise = null;
+        this.identifiedUserId = null;
         if (!this.isRevenueCatAvailable) return;
         try {
             await Purchases.logOut();

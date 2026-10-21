@@ -1,5 +1,6 @@
 {
   "common": {
+    "localDataCleanupFailed": "Some local account data could not be cleared. Please try again before sharing this device.",
     "upgrade": "Upgrade",
     "cancel": "Cancel",
     "close": "Close",
@@ -67,7 +68,7 @@
   },
   "videoAnalysis": {
     "videoProcessingLimited": "Video Processing Limited",
-    "videoProcessingLimitedMessage": "Could not extract frames from this video. You can still add items manually — tap \"Review & Save\" to continue.",
+    "videoProcessingLimitedMessage": "Could not extract frames from this video. Choose another video or upload a photo.",
     "noClothingFound": "No Clothing Found",
     "noClothingFoundVideo": "AI could not detect clothing items in this video.",
     "noClothingFoundImage": "AI could not detect clothing items in this image.",
@@ -126,6 +127,7 @@
     "outfitLoggedFor": "Outfit logged for {{dateKey}}."
   },
   "home": {
+    "newLooksSubscriptionBody": "Choose a paid plan to generate fresh outfits. You can still browse your available saved looks.",
     "todaysLook": "Today's Look",
     "openCalendar": "Open calendar",
     "createOutfitFromShopItems": "Create outfit from shop items",
@@ -261,6 +263,8 @@
     "selectEvent": "Select {{event}} event"
   },
   "clothingEditor": {
+    "updateItem": "Update item",
+    "saving": "Saving…",
     "type": "Type",
     "colour": "Colour",
     "seasonLabel": "Season",
@@ -281,6 +285,8 @@
     "error": "Error",
     "failedToSaveItem": "Failed to save item. Please try again.",
     "types": {
+      "dresses": "Dresses",
+      "other": "Other",
       "tops": "Tops",
       "bottoms": "Bottoms",
       "shoes": "Shoes",
@@ -297,7 +303,15 @@
       "brown": "Brown",
       "green": "Green",
       "red": "Red",
-      "blue": "Blue"
+      "blue": "Blue",
+      "cream": "Cream",
+      "pink": "Pink",
+      "orange": "Orange",
+      "yellow": "Yellow",
+      "teal": "Teal",
+      "navy": "Navy",
+      "purple": "Purple",
+      "multicolor": "Multicolor"
     },
     "seasons": {
       "summer": "Summer",
@@ -445,6 +459,9 @@
     "synthesizingDna": "{{style}} DNA synthesis"
   },
   "profile": {
+    "displayName": "Display name",
+    "handle": "Unique handle",
+    "displayNameRequirements": "Enter a display name of 1–200 characters.",
     "editProfile": "Edit Profile",
     "noOutfits": "No Outfits saved",
     "account": "Account",
@@ -484,6 +501,8 @@
     "permissionNeeded": "Permission needed",
     "allowPhotoLibrary": "Allow photo library access to change your avatar.",
     "failedUpdateProfile": "Failed to update profile.",
+    "avatarInvalidSize": "Choose a photo smaller than 5 MB. The photo must not be empty.",
+    "avatarUnsupportedFormat": "Choose a JPEG, PNG, WebP, HEIC or HEIF photo.",
     "failedDeleteAccount": "Failed to delete account.",
     "comingSoon": "Coming soon",
     "notificationSettingsUnavailable": "Notification settings are not available yet.",
@@ -674,6 +693,10 @@
     }
   },
   "outfitMaker": {
+    "budgetRatesUnavailable": "Current reference exchange rates are unavailable. Please try again shortly.",
+    "referenceRate": "CBU reference estimate · {{date}}",
+    "shopPricesUnavailable": "A required shop price or currency is unavailable. Choose different items or refresh the catalog.",
+    "subscriptionRequired": "Subscribe to create new looks",
     "buy": "Buy",
     "yourOutfits": "Your Outfits",
     "saveToCalendar": "Save to Calendar",
@@ -697,7 +720,15 @@
     "tip3_1": "Choose minimal jewelry",
     "tip3_2": "Match shoes to belt color",
     "noOutfitsError": "Could not generate outfits. Add more items to your wardrobe for better suggestions.",
-    "generateFailed": "Could not reach the stylist. Check your connection and try again.",
+    "budgetTooLow": "Available clothing cannot form a complete outfit within this budget. Increase your budget or use items you own.",
+    "noItemsWithinBudget": "No available clothing items fit this budget. Increase your budget or use items you own.",
+    "noMatchingClothing": "No clothing matches your selections. Add suitable items or adjust your selections.",
+    "invalidBudget": "The budget amount or currency is invalid. Check your budget and try again.",
+    "invalidRequest": "Check your request: up to 1,000 characters, 200 selected items and 15 outfits.",
+    "requestTooLarge": "This request contains too much data. Select fewer items and try again.",
+    "requestUploadTimedOut": "Uploading your request took too long. Check your connection and try again.",
+    "generateFailed": "Could not create a complete outfit that meets your request. Try again or add suitable items.",
+    "aiUnavailable": "The AI couldn’t finish your outfit. Please try again shortly.",
     "styleChat": "Style chat",
     "outfitAI": "Outfit AI",
     "cannotSave": "Can't save",
@@ -717,6 +748,8 @@
     "travel": "Travel"
   },
   "paywall": {
+    "verifyingPurchase": "Verifying your purchase",
+    "verifyingPurchaseBody": "Your payment is complete. We are verifying your subscription. Access will activate automatically when verification finishes.",
     "heroTitle": "Your style, unlocked.",
     "heroSubtitle": "Pick the plan that fits you best.",
     "restorePurchases": "Restore Purchases",
@@ -1034,7 +1067,21 @@
     },
     "colors": {
       "title": "Your color palette",
-      "subtitle": "Select all that speak to you — {{count}} chosen"
+      "subtitle": "Select all that speak to you — {{count}} chosen",
+      "names": {
+        "midnightBlue": "Midnight blue",
+        "white": "White",
+        "navy": "Navy",
+        "beige": "Beige",
+        "gray": "Gray",
+        "burgundy": "Burgundy",
+        "olive": "Olive",
+        "brown": "Brown",
+        "pink": "Pink",
+        "blue": "Blue",
+        "red": "Red",
+        "green": "Green"
+      }
     },
     "occasions": {
       "title": "Where do you dress for?",
@@ -1103,6 +1150,7 @@
     "title": "AI Stylist"
   },
   "clothingDetail": {
+    "editItem": "Edit item",
     "title": "Clothing Detail",
     "missingImplementation": "This recovered branch is missing the original detail screen implementation.",
     "notFound": "Not found in wardrobe",
@@ -1117,6 +1165,8 @@
     "shopNow": "Shop Now"
   },
   "calendar": {
+    "loadError": "Saved plans could not be refreshed. Shown plans may be out of date. Please try again.",
+    "persistenceError": "Could not save your calendar changes. Please try again.",
     "title": "Outfit Calendar",
     "lockedTagline": "Plan every day in style. The full calendar is a Pro feature.",
     "lockedBullet1": "Plan outfits for any past or future day",
@@ -1331,6 +1381,7 @@
     "saved": "Saved",
     "savedToast": "Saved — find it under Shop > Saved",
     "unsavedToast": "Removed from Saved",
+    "savedItemsUnavailable": "Could not update saved items. Please try again.",
     "savedEmpty": "No saved items yet.",
     "savedEmptyHint": "Tap the heart on any product to keep it here.",
     "viewSaved": "View Saved",
@@ -1463,10 +1514,10 @@
     "openSettings": "Open Settings",
     "cameraAccessDisabled": "Camera Access Disabled",
     "addToCloset": "Add to Closet",
-    "uploadPhotoDescription": "Upload a photo to scan the item and remove the background, or use the standard camera mode.",
+    "uploadPhotoDescription": "Choose a photo or use the camera to identify clothing. Your original photo is kept.",
     "aiStudioPhoto": "AI Studio Photo",
     "aiStudioCamera": "AI Studio Camera",
-    "legacyCamera": "Legacy Camera",
+    "legacyCamera": "Standard camera",
     "deleteItem": "Delete Item",
     "deleteItemConfirmation": "Are you sure you want to delete this clothing piece? This action cannot be undone.",
     "searchCloset": "Search closet...",
@@ -1620,6 +1671,24 @@
     }
   },
   "wardrobeVideo": {
+    "resumeReview": "Resume scan {{index}} · {{count}} items",
+    "reviewRestoreFailed": "Could not restore saved scans. Please try again.",
+    "reviewUnavailable": "{{count}} saved scan(s) could not be read. Your files have been kept. Other saved scans are still available.",
+
+    "pendingScans": "Saved scans",
+    "pendingScansDescription": "These scans are waiting for analysis. Open this screen while online to resume.",
+    "queuedPhoto": "Photo {{index}}",
+    "queuedVideo": "Video {{index}}",
+    "queueStatus_pending": "Waiting",
+    "queueStatus_processing": "Analyzing",
+    "queueStatus_failed": "Needs attention",
+    "retryScan": "Retry",
+    "removeScan": "Remove",
+    "removeScanConfirmation": "Remove this saved scan and its temporary media? Your original photo or video will remain.",
+    "queueBusy": "Another scan is being processed. Please try again shortly.",
+    "queueActionFailed": "Could not update the saved scan. Please try again.",
+    "frame": "Frame {{index}}",
+    "extractingFrame": "Extracting frame {{index}}/{{count}}…",
     "title": "AI Wardrobe Scan",
     "selectGallery": "Select from Gallery",
     "analysisComplete": "Analysis Complete",
@@ -1637,13 +1706,13 @@
     "savedLocally": "Saved Locally!",
     "viewWardrobe": "View Wardrobe",
     "digitizeCloset": "Digitize Your Closet",
-    "uploadVideo": "Upload a quick video of your clothes, and our AI will automatically detect and catalog them.",
+    "uploadVideo": "Upload a short video to detect clothing in sampled frames, then review and save the results.",
     "record": "Record",
     "analyze": "Analyze",
     "getItems": "Get Items",
     "choosePhoto": "Choose a photo from your device",
     "chooseVideoOrPhoto": "Choose a video or photo from your device",
-    "analyzingVideo": "Our AI is analyzing every frame of your video...",
+    "analyzingVideo": "AI is analyzing sampled frames from your video…",
     "outfit": "Outfit {{index}}",
     "itemsSaved": "{{count}} items saved to your wardrobe. They will sync automatically.",
     "foundItems": "{{count}} items found",
@@ -1686,6 +1755,7 @@
     "googleSignInFailed": "Google sign-in failed",
     "signInWithGoogle": "Continue with Google",
     "or": "or",
+    "emailRequired": "Please enter your email address",
     "emailPasswordRequired": "Please enter email and password",
     "title": "Sign In",
     "email": "Email",
@@ -1730,7 +1800,7 @@
     "waitFewMinutes": "Please wait a few minutes before trying again",
     "error": "Error",
     "failedSendResetEmail": "Failed to send reset email",
-    "resetLinkSent": "We've sent a password reset link to",
+    "recoveryInstructions": "If this email is registered, look for password reset instructions in this inbox:",
     "checkSpamFolder": "If you don't see the email, check your spam folder."
   },
   "forgotPasswordScreen": {
@@ -2034,5 +2104,12 @@
       "useLayers": "Use layers",
       "wearLight": "Wear light"
     }
+  },
+  "wardrobeSync": {
+      "capacityTitle": "Some items need syncing",
+      "capacityMessage": "Syncing these items would exceed your plan’s {{limit}}-item cloud limit. Unsynced photos are kept on this device. Upgrade or remove cloud items, then retry.",
+      "retry": "Retry sync",
+      "upgrade": "Upgrade",
+      "retrying": "Syncing…"
   }
 }

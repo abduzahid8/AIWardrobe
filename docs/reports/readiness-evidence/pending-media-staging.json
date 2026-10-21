@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-17",
+  "scope": "Native pending-photo staging and managed-file rendering; upload/save cutover not yet enabled",
+  "features": [
+    "Validated byte-preserving Documents storage",
+    "Temporary write then move and final size verification",
+    "Stable per-owner/per-photo path; idempotent same-content retry and conflicting-content rejection",
+    "Restored-container path rebasing",
+    "Serialized staging/removal and per-owner cleanup",
+    "Account changes stop late publication and remove partial files",
+    "Managed local files blocked for another account or absent session; local headers contain no bearer token"
+  ],
+  "verification": {
+    "newStagingTests": 10,
+    "newManagedRenderingTests": 1,
+    "fullJestTests": 1166,
+    "fullJestSuites": 100,
+    "typecheck": "pass",
+    "targetedLint": "pass without warnings",
+    "imageImportGuard": "pass",
+    "whitespace": "pass",
+    "osFilesystemProcessRestart": "pass through Expo-shaped adapter; 2915128 bytes retained after picker eviction and container relocation",
+    "androidExport": "pass",
+    "iosExport": "pass"
+  },
+  "bundles": {
+    "android": {
+      "path": "/tmp/aiwardrobe-pending-media-android/_expo/static/js/android/index-d5354066f44c1f5f569022140e4598c1.hbc",
+      "bytes": 8379455,
+      "sha256": "486b2d8db9b8d2d3ff271a04aa0957c8db4741b105e4949bba3ed5ac9abb95d4"
+    },
+    "ios": {
+      "path": "/tmp/aiwardrobe-pending-media-ios/_expo/static/js/ios/index-13f335023f92b7a02fec037babf7fee3.hbc",
+      "bytes": 8363529,
+      "sha256": "72b68a508823e01b6d7fab5b236c7397d6b1cae5f302ff0644f07325f9313c76"
+    }
+  },
+  "sourceSha256": {
+    "src/services/pendingWardrobeMedia.ts": "6cac65929689fb5cd1aa96eca1388c870b9ea9745ef54a4c60f2ca6e4f61269a",
+    "src/services/wardrobeMedia.ts": "3ae676590e3f829ea88273d04a199a111d7b3a32839bb093020d72f82b9936d9",
+    "src/utils/mediaImageSource.ts": "886c691eb9b1aa4dde952a169cc3daaaeeaaee201bc6c0ef28558e15abc8d3be"
+  },
+  "limits": [
+    "Actual Expo filesystem/native runtime not exercised",
+    "Native-only staging; web durable binary storage not implemented",
+    "Staging and cleanup helpers not yet called from garment-save/auth cleanup paths",
+    "Existing inline/device-local production rows unchanged",
+    "No production writes/provider calls this turn",
+    "Source is not a completed queue-first upload or crash-safe server-deletion protocol"
+  ]
+}

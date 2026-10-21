@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, BackHandler, Image, Linking, Platform, StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, AppState, BackHandler, Linking, Platform, StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +15,8 @@ import useDailyUsageStore from '../store/dailyUsageStore';
 import { useStylePreferenceStore } from '../store/stylePreferenceStore';
 import useWardrobeStore from '../store/wardrobeStore';
 import { iapService } from '../src/services/iapService';
+import { Image } from '../src/components/MediaImage';
+
 
 const APPLE_EULA_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
 const PRIVACY_POLICY_URL = 'https://aiwardrobe.app/privacy';
@@ -40,6 +42,7 @@ const PaywallScreen = () => {
     const { completeOnboarding } = useStylePreferenceStore();
     const { t } = useTranslation();
     const [isLoading, setIsLoading] = useState<string | null>(null);
+    const [verificationPending, setVerificationPending] = useState(false);
     const [selectedPlan, setSelectedPlan] = useState<SelectedPlan>('lite');
     const [liveLitePrice, setLiveLitePrice] = useState<string | null>(null);
     const [liveProPrice, setLiveProPrice] = useState<string | null>(null);
@@ -148,11 +151,11 @@ const PaywallScreen = () => {
         }
     };
 
-    const resetToActivation = () => {
+    const resetToActivation = useCallback(() => {
         const target =
             wardrobeItemCount >= 3
                 ? { name: 'AIOutfit' as const, params: { source: 'wardrobe' as const } }
-                : { name: 'ScanWardrobe' as const };
+                : { name: 'Camera' as const };
 
         setTimeout(() => {
             if (navigationRef.isReady()) {
@@ -163,7 +166,27 @@ const PaywallScreen = () => {
                 } catch { /* no-op */ }
             }
         }, 300);
-    };
+    }, [navigation, wardrobeItemCount]);
+
+    useEffect(() => {
+        if (!verificationPending) return;
+        let cancelled = false;
+        let checking = false;
+        const interval = setInterval(async () => {
+            if (checking || AppState.currentState !== 'active') return;
+            checking = true;
+            try {
+                const verified = await iapService.verifyServerSubscription();
+                if (verified && !cancelled) {
+                    setVerificationPending(false);
+                    completeOnboarding();
+                    await useDailyUsageStore.getState().resetToday();
+                    if (!cancelled) resetToActivation();
+                }
+            } finally { checking = false; }
+        }, 5000);
+        return () => { cancelled = true; clearInterval(interval); };
+    }, [verificationPending, completeOnboarding, resetToActivation]);
 
     const purchase = async () => {
         const productId = getProductId(selectedPlan);
@@ -180,7 +203,10 @@ const PaywallScreen = () => {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         try {
             const result = await iapService.purchase(productId);
-            if (result.success) {
+            if (result.verificationPending) {
+                setVerificationPending(true);
+                Alert.alert(t('paywall.verifyingPurchase'), t('paywall.verifyingPurchaseBody'));
+            } else if (result.success) {
                 void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 completeOnboarding();
                 await useDailyUsageStore.getState().resetToday();
@@ -202,7 +228,10 @@ const PaywallScreen = () => {
         setIsLoading('restore');
         try {
             const result = await iapService.restorePurchases();
-            if (result.success) {
+            if (result.verificationPending) {
+                setVerificationPending(true);
+                Alert.alert(t('paywall.verifyingPurchase'), t('paywall.verifyingPurchaseBody'));
+            } else if (result.success) {
                 completeOnboarding();
                 await useDailyUsageStore.getState().resetToday();
                 resetToActivation();
@@ -331,7 +360,7 @@ const PaywallScreen = () => {
                         <ScaledText style={styles.ctaEyebrow}>{t('paywall.selectedPlan')}</ScaledText>
                         <ScaledText style={styles.ctaPlan}>{selected.title} · {selected.price}</ScaledText>
                     </View>
-                    <TouchableOpacity activeOpacity={0.88} disabled={isLoading !== null} onPress={purchase}>
+                    <TouchableOpacity activeOpacity={0.88} disabled={isLoading !== null || verificationPending} onPress={purchase}>
                         <LinearGradient colors={['#FFFFFF', '#DCEBFF']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.continueButton}>
                             {isLoading === getProductId(selectedPlan) ? (
                                 <ActivityIndicator color="#050A16" size="small" />

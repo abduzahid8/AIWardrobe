@@ -7,7 +7,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, TouchableOpacity, Image, ScrollView, TextInput, Alert,  } from 'react-native'
+import { View, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert } from 'react-native';
 import { ScaledText } from './ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -16,6 +16,8 @@ import { useTranslation } from 'react-i18next';
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 import useWardrobeStore from '../store/wardrobeStore';
 import type { ClothingCategory, Season, Occasion } from '../src/types/domain';
+import { Image } from '../src/components/MediaImage';
+
 
 const { colors, spacing, radius, typography } = LiquidGlass2026Theme;
 

@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-20",
+  "simulator": {
+    "name": "AIWardrobe-Login-Audit-20261020",
+    "udid": "A803D6CC-0840-40F3-95EF-70546B2E0ED0",
+    "runtime": "iOS26.5",
+    "ownedTemporaryFixture": true,
+    "state": "left booted awaiting user Google sign-in"
+  },
+  "installedArtifact": {
+    "matchesCurrentHermesBuild": true,
+    "sha256": "f40edb7a1931fd12ea2e19f7057e85bd6a3d366759d676f3ac12b51cbaa18ad5"
+  },
+  "observed": [
+    "Clean app launches to language selection",
+    "English selection reaches native Sign In",
+    "Invalid email shows validation and dimmed Continue",
+    "Valid-format reserved email reaches password step",
+    "Back returns to provider selection",
+    "Google button opens ASWebAuthenticationSession via configured Supabase host",
+    "Continue reaches accounts.google.com identifying AIWardrobe without org_internal error"
+  ],
+  "googleCompletion": "Not verified: user Google sign-in required; no account entered or consent completed in this test",
+  "screenshot": "native-google-entry-20261020.png",
+  "limits": [
+    "No successful authenticated session or callback return proved",
+    "No Apple sign-in completion",
+    "No signup/email recovery delivery proof",
+    "No capacity inference"
+  ],
+  "goal": "active; not certified"
+}

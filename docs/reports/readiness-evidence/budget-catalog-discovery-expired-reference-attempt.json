@@ -1,0 +1,20 @@
+{
+  "measuredAt": "2026-10-21T13:56:21.860Z",
+  "scope": "Actual budget-ordered backend RPC and staged helper in Node. Compare bounded6choice discovery with exhaustive eligible discovery over the same real slot catalog. No accounts, catalog writes or provider calls.",
+  "sourceHashes": {
+    "entry": "71d55df45afd390346bd1aa951a8a64bde47bd9531b4e5cb6f9e418f5b513996"
+  },
+  "failure": "BudgetFxError",
+  "passed": false,
+  "requests": [
+    {
+      "phase": "preferences",
+      "status": 200,
+      "limit": "1",
+      "order": "fetched_at.desc",
+      "cursor": null,
+      "rpc": false,
+      "latencyMs": 2398
+    }
+  ]
+}

@@ -60,7 +60,7 @@ async function main() {
 
   let deleted = 0;
   let staleRounds = 0;
-  while (true) {
+  for (;;) {
     // Fetch a batch of ids
     const { data: rows, error: fetchErr } = await supabase
       .from('shop_catalog')

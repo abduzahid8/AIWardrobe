@@ -1,0 +1,68 @@
+{
+  "measuredAt": "2026-10-21T13:07:54.096Z",
+  "scope": "Actual public catalog through the staged production helper with color and pattern preferences included in eligibility before page completion and slot trimming. Runs in Node, not hosted Edge. No writes, accounts or AI requests.",
+  "sourceHashes": {
+    "entry": "420fed2946d33eb91041043b7d67cf061e71c71ca9b4427920231371cbc1518d"
+  },
+  "scenarios": [
+    {
+      "preferences": {
+        "avoidColors": [
+          "black",
+          "navy",
+          "blue"
+        ]
+      },
+      "latencyMs": 1074,
+      "count": 6,
+      "allPass": true,
+      "ids": [
+        "shop_fr-ck-26935",
+        "shop_md-uz-61729474",
+        "shop_md-uz-61729634",
+        "shop_md-uz-66146228",
+        "shop_zara-uz-545461547",
+        "shop_zara-uz-545461699"
+      ]
+    },
+    {
+      "preferences": {
+        "dislikedPatterns": [
+          "striped",
+          "check",
+          "print"
+        ]
+      },
+      "latencyMs": 1486,
+      "count": 6,
+      "allPass": true,
+      "ids": [
+        "shop_fr-ck-149824",
+        "shop_fr-ck-26935",
+        "shop_md-uz-61729474",
+        "shop_md-uz-61729634",
+        "shop_md-uz-66146228",
+        "shop_zara-uz-545437449"
+      ]
+    }
+  ],
+  "passed": true,
+  "requests": [
+    {
+      "phase": "avoidColors",
+      "status": 200,
+      "limit": "100",
+      "order": "id.asc",
+      "cursor": null,
+      "latencyMs": 1036
+    },
+    {
+      "phase": "dislikedPatterns",
+      "status": 200,
+      "limit": "100",
+      "order": "id.asc",
+      "cursor": null,
+      "latencyMs": 1477
+    }
+  ]
+}

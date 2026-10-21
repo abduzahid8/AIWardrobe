@@ -311,7 +311,7 @@ export function sanitizeGeneratedOutfitItemsDetailed(
 
   // Slot 2: base top. For non-layered outfits this is still the primary top.
   // ALWAYS try to fill this slot - use any available top if needed.
-  let baseTop = pickCandidateByPriority(
+  const baseTop = pickCandidateByPriority(
     generatedCandidates,
     availableItems,
     usedKeys,
@@ -348,7 +348,7 @@ export function sanitizeGeneratedOutfitItemsDetailed(
   // Slot 3: bottom (skipped when the "top" is a dress).
   // Bottoms and shoes rotate fastest — offset by outfit index so 3 looks vary.
   if (!isDressOutfit) {
-    let bottom =
+    const bottom =
       pickGeneratedCandidate(generatedCandidates, usedKeys, ['bottom']) ||
       pickAvailableCandidate(availableItems, usedKeys, ['bottom'], normalizedStyle, rotationOffset, avoidKeys);
     if (bottom) {
@@ -359,7 +359,7 @@ export function sanitizeGeneratedOutfitItemsDetailed(
   }
 
   // Slot 4: shoes. ALWAYS try to fill - use any available item if needed.
-  let shoes =
+  const shoes =
     pickGeneratedCandidate(generatedCandidates, usedKeys, ['shoes']) ||
     pickAvailableCandidate(availableItems, usedKeys, ['shoes'], normalizedStyle, rotationOffset, avoidKeys);
   if (shoes) {

@@ -1,0 +1,40 @@
+{
+  "scope": "Seven elapsed 24-hour days across daylight-saving changes; actual store and display helpers executed in isolated timezone processes",
+  "before": {
+    "failed": 4,
+    "passed": 2
+  },
+  "after": {
+    "passed": 6
+  },
+  "trial_initialization_unit_tests": 8,
+  "full_suite": {
+    "tests": 2152,
+    "suites": 170,
+    "passed": true
+  },
+  "typescript": "pass",
+  "ios_hermes": "pass",
+  "android_arm64_release": "pass",
+  "source_map_checks": {
+    "/tmp/aiwardrobe-trial-timezone-ios.map": {
+      "store/subscriptionStore.ts": true,
+      "hooks/useTrialStatus.ts": true
+    },
+    "android/app/build/intermediates/sourcemaps/react/release/index.android.bundle.packager.map": {
+      "store/subscriptionStore.ts": true,
+      "hooks/useTrialStatus.ts": true
+    }
+  },
+  "source_sha256": {
+    "store/subscriptionStore.ts": "dcf65f02ad4a646124e813efb5b8f0ce67445d3ac3d66df83925e7aae402848e",
+    "hooks/useTrialStatus.ts": "4a07adfa81eafec334cd5a6a87dd9d0fb360ae5b9a320e7be0085d5e9a38a1ee"
+  },
+  "limits": [
+    "No production changes or live fixture in this scope",
+    "Device clock skew remains unresolved",
+    "Hook refresh currently uses cached trial flags; long-running session expiry remains open",
+    "Client builds not distributed; Android uses debug signing",
+    "Not 10000 DAU certification"
+  ]
+}

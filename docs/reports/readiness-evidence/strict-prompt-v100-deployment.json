@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-21",
+  "baseVersion": 99,
+  "version": 100,
+  "verifyJwt": true,
+  "changed": [
+    "functions/generate-outfits/index.ts"
+  ],
+  "promptSentencesChanged": 3,
+  "unchangedSharedModules": 10,
+  "allDeployedFilesMatchStaged": true,
+  "tests": {
+    "full": 2081,
+    "suites": 168,
+    "staged": 50,
+    "deno": "pass"
+  },
+  "baselineRegression": {
+    "failed": 1,
+    "passed": 12
+  },
+  "liveReports": [
+    "v99-category-budget-remaining-300-live.json",
+    "v100-date-budget-300-live.json"
+  ],
+  "remainingReadinessUsers": 0,
+  "limits": [
+    "Date remains invalid after both parsed responses",
+    "Travel correction timeout remains unresolved",
+    "Cannot attribute original42second casual time from incomplete logs",
+    "No demonstrated latency improvement or capacity certification"
+  ],
+  "nextEvidenceBasedAction": "Pass exact authoritative validation rejection reasons into the correction prompt without changing constraints"
+}

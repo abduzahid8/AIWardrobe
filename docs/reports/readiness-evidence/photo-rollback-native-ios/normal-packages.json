@@ -1,0 +1,30 @@
+{
+  "sourceChecks": {
+    "ios": {
+      "store/slices/wardrobeItemsSlice.ts": true,
+      "src/services/pendingWardrobeMedia.ts": true,
+      "src/lib/persistence.ts": true,
+      "auditEntryAbsent": true,
+      "nativeExecutableUnchanged": true,
+      "auditMarkerAbsent": true
+    },
+    "android": {
+      "store/slices/wardrobeItemsSlice.ts": true,
+      "src/services/pendingWardrobeMedia.ts": true,
+      "src/lib/persistence.ts": true,
+      "auditEntryAbsent": true,
+      "auditMarkerAbsent": true
+    }
+  },
+  "androidNativeBuildSucceeded": true,
+  "androidApkSha256": "f5b23c7c0687b32390e99a72fc92e9fa05772daaf10a79136400f7b2a0692d9b",
+  "iosNormalArtifactPath": "/tmp/aiwardrobe-photo-rollback-ios-normal.app",
+  "iosNormalBundleSha256": "3f6e24a7aa76a0e1dfe95f76a4867e56a2e66f4efaab6d2a8adca86d263826b1",
+  "iosMethod": "Fresh normal-entry Hermes bundle in unchanged existing simulator native runtime, no native recompilation",
+  "cleanup": {
+    "auditAppTerminatedUninstalled": true,
+    "auditSimulatorAbsent": true,
+    "originalSimulatorStillBooted": true
+  },
+  "passed": true
+}

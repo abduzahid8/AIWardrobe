@@ -1,0 +1,175 @@
+{
+  "measuredAt": "2026-10-20T11:27:24.190Z",
+  "scope": "Production budget preflight: input and empty-pool decisions, not generation or capacity certification",
+  "checks": [
+    {
+      "name": "unpriced_shop_pool_0",
+      "status": 422,
+      "latencyMs": 3662,
+      "code": "unverified_shop_pricing",
+      "error": "A required shop price or currency is unavailable. Choose items with verified prices.",
+      "budget": {
+        "amount": 250,
+        "currency": "USD"
+      },
+      "passed": true
+    },
+    {
+      "name": "unpriced_shop_pool_1",
+      "status": 422,
+      "latencyMs": 2524,
+      "code": "unverified_shop_pricing",
+      "error": "A required shop price or currency is unavailable. Choose items with verified prices.",
+      "budget": {
+        "amount": 250,
+        "currency": "USD"
+      },
+      "passed": true
+    },
+    {
+      "name": "unpriced_shop_pool_2",
+      "status": 422,
+      "latencyMs": 2071,
+      "code": "unverified_shop_pricing",
+      "error": "A required shop price or currency is unavailable. Choose items with verified prices.",
+      "budget": {
+        "amount": 250,
+        "currency": "USD"
+      },
+      "passed": true
+    },
+    {
+      "name": "unpriced_shop_pool_3",
+      "status": 422,
+      "latencyMs": 1429,
+      "code": "unverified_shop_pricing",
+      "error": "A required shop price or currency is unavailable. Choose items with verified prices.",
+      "budget": {
+        "amount": 250,
+        "currency": "USD"
+      },
+      "passed": true
+    },
+    {
+      "name": "unpriced_required_slot",
+      "status": 422,
+      "latencyMs": 1422,
+      "code": "unverified_shop_pricing",
+      "error": "A required shop price or currency is unavailable. Choose items with verified prices.",
+      "budget": {
+        "amount": 250,
+        "currency": "USD"
+      },
+      "passed": true
+    },
+    {
+      "name": "unsupported_shop_currency",
+      "status": 422,
+      "latencyMs": 1828,
+      "code": "unverified_shop_pricing",
+      "error": "A required shop price or currency is unavailable. Choose items with verified prices.",
+      "budget": {
+        "amount": 250,
+        "currency": "USD"
+      },
+      "passed": true
+    },
+    {
+      "name": "mixed_currency_minimum_exceeds_cap",
+      "status": 422,
+      "latencyMs": 2438,
+      "code": "no_outfit_within_budget",
+      "error": "No complete outfit in the selected clothing pool fits this budget.",
+      "budget": {
+        "amount": 400000,
+        "currency": "UZS"
+      },
+      "minimumShopSpend": 604000,
+      "passed": true
+    },
+    {
+      "name": "live_gym_catalog_cannot_meet_cap",
+      "status": 422,
+      "latencyMs": 4720,
+      "code": "no_outfit_within_budget",
+      "error": "No complete outfit in the selected clothing pool fits this budget.",
+      "budget": {
+        "amount": 3150000,
+        "currency": "UZS"
+      },
+      "minimumShopSpend": 4043000,
+      "passed": true
+    },
+    {
+      "name": "complete_outfit_minimum_exceeds_cap",
+      "status": 422,
+      "latencyMs": 1831,
+      "code": "no_outfit_within_budget",
+      "error": "No complete outfit in the selected clothing pool fits this budget.",
+      "budget": {
+        "amount": 250,
+        "currency": "USD"
+      },
+      "minimumShopSpend": 300,
+      "passed": true
+    },
+    {
+      "name": "mixed_currency_usd_stricter",
+      "status": 422,
+      "latencyMs": 1939,
+      "code": "no_matching_clothing",
+      "error": "No clothing items match your selections. Add suitable items or adjust your preferences.",
+      "budget": {
+        "amount": 100,
+        "currency": "USD"
+      },
+      "passed": true
+    },
+    {
+      "name": "mixed_currency_eur_stricter",
+      "status": 429,
+      "latencyMs": 753,
+      "error": "rate_limited",
+      "passed": false
+    },
+    {
+      "name": "selected_cap_cannot_be_raised",
+      "status": 429,
+      "latencyMs": 1306,
+      "error": "rate_limited",
+      "passed": false
+    },
+    {
+      "name": "prompt_can_lower_cap",
+      "status": 429,
+      "latencyMs": 1290,
+      "error": "rate_limited",
+      "passed": false
+    },
+    {
+      "name": "invalid_budget_rejected",
+      "status": 429,
+      "latencyMs": 805,
+      "error": "rate_limited",
+      "passed": false
+    },
+    {
+      "name": "impossible_budget_distinguished",
+      "status": 429,
+      "latencyMs": 758,
+      "error": "rate_limited",
+      "passed": false
+    },
+    {
+      "name": "zero_text_budget_preserved",
+      "status": 429,
+      "latencyMs": 1260,
+      "error": "rate_limited",
+      "passed": false
+    }
+  ],
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

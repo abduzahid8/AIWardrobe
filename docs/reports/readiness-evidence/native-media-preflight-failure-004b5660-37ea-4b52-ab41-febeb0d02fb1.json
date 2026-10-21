@@ -1,0 +1,14 @@
+{
+  "platform": "android",
+  "scope": "Native Expo vs XMLHttpRequest-backed fetch, repeated private fixture; not app transport replacement or capacity certification",
+  "plannedPerStage": 50,
+  "targetRps": 5,
+  "concurrencyCap": 20,
+  "requestTimeoutMs": 15000,
+  "passed": false,
+  "runId": "004b5660-37ea-4b52-ab41-febeb0d02fb1",
+  "fixtureBytes": 788309,
+  "fixtureSha256": "39b14e9041fca06639a34a1c04420d57cc57776bec23c524f21cd88f1a4a3bd7",
+  "defaultFetchIsExpo": true,
+  "failure": "NativeDiagnosticFailed"
+}

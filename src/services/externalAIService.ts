@@ -1,3 +1,4 @@
+import readinessLogger from '../utils/logger';
 /**
  * ExternalAIService - Secure version using Supabase Edge Functions
  * API keys are stored in Supabase, never exposed to mobile app
@@ -6,6 +7,7 @@
 import { supabase } from '../../lib/supabase';
 
 export interface ProcessingResult {
+  failureKind?: 'network' | 'timeout' | 'provider';
   success: boolean;
   imageUrl: string;
   cutoutUrl: string | null;
@@ -24,10 +26,31 @@ export interface ProcessingResult {
 
 type ProcessingOperation = 'all' | 'classify' | 'studio_photo';
 
-const buildImageDataUrl = (imageBase64: string) =>
+export const buildImageDataUrl = (imageBase64: string) =>
   imageBase64.startsWith('data:')
     ? imageBase64
     : `data:image/jpeg;base64,${imageBase64}`;
+
+/** Bound the complete SDK call, including a stalled response body or auth refresh. */
+async function invokeWithDeadline(body: Record<string, unknown>, timeoutMs: number) {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      const error = new Error('AI request timeout');
+      error.name = 'TimeoutError';
+      // Reject first so a transport-specific abort error cannot obscure the deadline.
+      reject(error);
+      controller.abort();
+    }, timeoutMs);
+  });
+  try {
+    return await Promise.race([
+      Promise.resolve().then(() => supabase.functions.invoke('ai-process', { body, signal: controller.signal })),
+      deadline,
+    ]);
+  } finally { if (timer !== undefined) clearTimeout(timer); }
+}
 
 async function invokeProcessingOperation(
   imageBase64: string,
@@ -38,22 +61,17 @@ async function invokeProcessingOperation(
   const startTime = Date.now();
   const operationName = operation === 'studio_photo' ? 'AI Studio Photo' : operation;
 
-  if (__DEV__) console.log(`[ExternalAI] Starting ${operationName}...`);
+  if (__DEV__) readinessLogger.debug(String(`[ExternalAI] Starting ${operationName}...`), []);
 
   try {
-    const { data, error } = await supabase.functions.invoke('ai-process', {
-      body: {
-        image: imageBase64,
-        operation,
-      },
-    });
+    const { data, error } = await invokeWithDeadline({ image: imageBase64, operation }, operation === 'all' ? 180_000 : 60_000);
 
     if (error) {
       console.error(`[ExternalAI] Edge Function error for ${operationName}:`, error);
       throw error;
     }
 
-    if (__DEV__) console.log(`[ExternalAI] ${operationName} response:`, {
+    if (__DEV__) readinessLogger.debug(String(`[ExternalAI] ${operationName} response:`), [{
       success: data?.success,
       hasCutoutUrl: !!data?.cutoutUrl,
       hasClassification: !!data?.classification,
@@ -61,7 +79,7 @@ async function invokeProcessingOperation(
       error: data?.error,
       localCutoutError: data?.localCutoutError,
       nvidiaError: data?._nvidiaError,
-    });
+    }]);
 
     if (!data?.success) {
       throw new Error(data?.error || 'AI processing failed');
@@ -89,6 +107,8 @@ async function invokeProcessingOperation(
 
     return {
       success: false,
+      failureKind: /timeout|abort/i.test(error?.name || '') || /timeout/i.test(error?.message || '') ? 'timeout'
+        : error?.name === 'FunctionsFetchError' || /network/i.test(error?.message || '') ? 'network' : 'provider',
       imageUrl: buildImageDataUrl(imageBase64),  // original photo is always preserved
       cutoutUrl: null,
       enhancedUrl: null,
@@ -102,6 +122,25 @@ async function invokeProcessingOperation(
 }
 
 export const ExternalAIService = {
+  async processVideoFrames(frames: string[]): Promise<ProcessingResult[]> {
+    if (frames.length < 1 || frames.length > 3 || frames.some(frame => !frame.trim())) {
+      throw new Error('Invalid video frames');
+    }
+    const started = Date.now();
+    const { data, error } = await invokeWithDeadline({ operation: 'classify_frames', frames }, frames.length * 45_000 + 15_000);
+    if (error) throw error;
+    if (!data?.success || !Array.isArray(data.frames) || data.frames.length !== frames.length) {
+      throw new Error('Incomplete video analysis');
+    }
+    return data.frames.map((frame: any, index: number) => {
+      if (frame?.frameIndex !== index || !frame.classification) throw new Error('Invalid video analysis');
+      return {
+        success: true, imageUrl: buildImageDataUrl(frames[index]), cutoutUrl: null, enhancedUrl: null,
+        normalizedUrl: null, classification: frame.classification, description: frame.description ?? null,
+        steps: ['nvidia_classify'], processingTimeMs: Date.now() - started,
+      };
+    });
+  },
   /**
    * Process clothing image via Supabase Edge Function
    * API keys stay secure in Supabase, never reach mobile app

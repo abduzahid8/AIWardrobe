@@ -1,0 +1,18 @@
+{
+  "scope": "Actual cleanup service and native AsyncStorage/filesystem across three Android processes; rejection injected at JS service boundary, not an OS permission failure",
+  "processPids": [
+    6174,
+    6289,
+    6386
+  ],
+  "forceStopConfirmedBetweenPhases": true,
+  "independentManagedDirectoryAbsenceCheck": true,
+  "assertions": 19,
+  "zeroFetchAttempts": true,
+  "passed": true,
+  "sourceSha256": {
+    "src/lib/persistence.ts": "adb4876f723c380cd39e8ede41550fe1513bd0d638aae57b51ac4faa1a5f3a84",
+    "src/services/pendingWardrobeMedia.ts": "c661478a9982e7c46c0d48dfb31c30b78e46437b3eb6ad2a1e04580e16f05ec6",
+    "scripts/validation/photo-cleanup-native-entry.tsx": "5d9e8a869afafed730bef0cd08032b15f735dfc9e262b908d4116ed9c8c6d963"
+  }
+}

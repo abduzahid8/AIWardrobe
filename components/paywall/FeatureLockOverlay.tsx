@@ -9,7 +9,7 @@
 
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native'
-import { ScaledText } from '../ui/ScaledText';;
+import { ScaledText } from '../ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';

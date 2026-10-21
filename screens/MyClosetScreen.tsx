@@ -1,8 +1,10 @@
+import readinessLogger from '../src/utils/logger';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, TouchableOpacity, StyleSheet, Dimensions, ScrollView, FlatList, ActivityIndicator, Alert, TextInput, StatusBar, Platform, Linking, Modal, Pressable,  } from 'react-native'
 import { ScaledText } from '../components/ui/ScaledText';
 import { OutfitCollagePreview } from '../components/ui/OutfitCollagePreview';
-import { Image } from 'expo-image';
+
+import { WardrobeCapacityNotice } from '../components/WardrobeCapacityNotice';
 import { TrialCountdownBanner } from '../components/TrialCountdownBanner';
 import GenerateOutfitButton from '../features/outfit-generator/components/GenerateOutfitButton';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -61,6 +63,7 @@ function humanizePieceLabel(item: { id?: unknown; image?: unknown; category?: un
 import { ExternalAIService } from '../src/services/externalAIService';
 import { BASIC_CLOTHING_ITEMS } from '../data/basicClothingItems';
 import { ClosetClothingItem } from '../features/outfit-generator/types';
+import { toClosetItem, compactClothingImage } from '../src/utils/closetItem';
 import { createLogger } from '../src/utils/logger';
 import { useTranslation } from 'react-i18next';
 import { perfMark, perfMeasure, perfAction, perfScreenReady } from '../src/utils/perf';
@@ -129,6 +132,8 @@ const { width, height } = Dimensions.get('window');
 const { colors, spacing, radius, typography } = LiquidGlass2026Theme;
 
 import { mapCategoryToType, mapColorToId, normalizeCategory, getMacroCategory, canonicalizeMacroCategory } from '../src/utils/mappingUtils';
+import { ExpoImage as Image } from '../src/components/MediaImage';
+
 
 // Pre-compiled category RegExp objects — avoids creating new RegExp instances
 // on every filter pass (100 items × 8 keywords = 800 allocations per keystroke).
@@ -235,7 +240,7 @@ const ClothingGridItem = React.memo(({
     isAnchorSelected?: boolean;
     t: (key: string) => string;
 }) => {
-    let imageUrl = item.imageUrl || item.image;
+    const imageUrl = compactClothingImage(item);
     let finalImageSource: string | null = imageUrl || null;
 
     if (imageUrl && imageUrl.startsWith('basic_clothing_')) {
@@ -331,7 +336,7 @@ const MyClosetScreen = () => {
     React.useEffect(() => {
         perfMark('MyClosetScreen:mount');
         return () => {
-            if (__DEV__) console.log('[PERF] 👗 MyClosetScreen unmounted');
+            if (__DEV__) readinessLogger.debug(String('[PERF] 👗 MyClosetScreen unmounted'), []);
         };
     }, []);
     const [items, setItems] = useState<ClothingItem[]>([]);
@@ -340,24 +345,8 @@ const MyClosetScreen = () => {
     // Sync local items state with Zustand store items reactively
     useEffect(() => {
         if (storeItems && storeItems.length > 0) {
-            const mappedFromStore: ClothingItem[] = storeItems.map(item => {
-                // Normalize once here — the filter effect below used to
-                // re-lowercase category/type per item per keystroke.
-                const normalizedSub = normalizeCategory(item.subCategory || item.category || '');
-                return {
-                    _id: item.id,
-                    id: item.id,
-                    type: normalizedSub,
-                    itemType: normalizedSub,
-                    color: item.primaryColor || 'various',
-                    imageUrl: item.imageUrl,
-                    image: item.imageUrl,
-                    category: normalizeCategory(item.category || ''),
-                    wearCount: item.wearCount,
-                    createdAt: item.createdAt,
-                    isFavorite: item.isFavorite ?? false,
-                };
-            });
+            // Normalize once per store update and retain compact image references.
+            const mappedFromStore: ClothingItem[] = storeItems.map(toClosetItem);
             setItems(mappedFromStore);
             hasItemsRef.current = mappedFromStore.length > 0;
             setLoading(false);
@@ -501,12 +490,14 @@ const MyClosetScreen = () => {
         });
     }, [selectedCollage, selectedTargets, navigation]);
 
-    const handleUnsaveSelectedOutfit = useCallback(() => {
+    const handleUnsaveSelectedOutfit = useCallback(async () => {
         if (!selectedOutfit) return;
-        useWardrobeStore.getState().unsaveOutfit(selectedOutfit.id);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        setSelectedOutfit(null);
-    }, [selectedOutfit]);
+        try {
+            await useWardrobeStore.getState().unsaveOutfit(selectedOutfit.id);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            setSelectedOutfit(null);
+        } catch { Alert.alert(t('common.error'), t('wardrobeItems.failedSaveChanges')); }
+    }, [selectedOutfit, t]);
 
     // Handler: tap "Generate Outfit" on a card — navigate to AIOutfit with the item as anchor
     const handleGenerateOutfit = useCallback((item: ClothingItem) => {
@@ -655,18 +646,18 @@ const MyClosetScreen = () => {
         setUploadStatusMsg(t('myCloset.identifyingType'));
 
         try {
-            if (__DEV__) console.log('[MyCloset] Starting AI Studio photo processing...');
+            if (__DEV__) readinessLogger.debug(String('[MyCloset] Starting AI Studio photo processing...'), []);
 
-            // AI Studio should preserve the garment and only remove the background.
+            // Classification preserves the original photo.
             const result = await ExternalAIService.processStudioPhoto(imageData);
 
-            if (__DEV__) console.log('[MyCloset] AI Studio result:', {
+            if (__DEV__) readinessLogger.debug(String('[MyCloset] AI Studio result:'), [{
                 success: result.success,
                 hasImageUrl: !!result.imageUrl,
                 hasCutoutUrl: !!result.cutoutUrl,
                 hasClassification: !!result.classification,
                 processingTimeMs: result.processingTimeMs,
-            });
+            }]);
 
             if (!result.success) {
                 throw new Error("AI processing failed");
@@ -1031,6 +1022,7 @@ const MyClosetScreen = () => {
 
                 {/* Trial banner — countdown during trial, non-blocking upsell after expiry */}
                 <TrialCountdownBanner />
+                <WardrobeCapacityNotice />
 
                 {/* Small wardrobe informational banner */}
                 {items.length > 0 && items.length < 2 && (

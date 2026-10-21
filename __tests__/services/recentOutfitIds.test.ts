@@ -86,3 +86,13 @@ test('does not persist when nothing new was added', async () => {
     await mod.getRecentShownIds();
     expect(AsyncStorage.setItem).not.toHaveBeenCalled();
 });
+
+test('keeps exclusions and pending writes isolated between accounts', async () => {
+    const mod = loadModule();
+    mod.recordShownOutfits([outfit('account-a-item')], 'account-a');
+    mod.recordShownOutfits([outfit('account-b-item')], 'account-b');
+    expect(await mod.getRecentShownIds('account-a')).toEqual(['account-a-item']);
+    expect(await mod.getRecentShownIds('account-b')).toEqual(['account-b-item']);
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith(`${STORAGE_KEY}::account-a`, JSON.stringify(['account-a-item']));
+    expect(await mod.getRecentShownIds('signed-out')).toEqual([]);
+});

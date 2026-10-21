@@ -1,0 +1,161 @@
+{
+  "date": "2026-10-16",
+  "patches": {
+    "brace-expansion@<2": "1.1.21",
+    "brace-expansion@>=2 <3": "2.1.7",
+    "brace-expansion@>=4 <6": "5.0.12"
+  },
+  "advisory": "https://github.com/advisories/GHSA-q2hr-2g5m-vwhr",
+  "installed_copy_checks": [
+    {
+      "path": "node_modules/@eslint/eslintrc/node_modules/brace-expansion",
+      "version": "1.1.21",
+      "dev": true,
+      "malformedMs": 12.68,
+      "passed": true
+    },
+    {
+      "path": "node_modules/@expo/fingerprint/node_modules/brace-expansion",
+      "version": "5.0.12",
+      "dev": false,
+      "malformedMs": 11.27,
+      "passed": true
+    },
+    {
+      "path": "node_modules/@humanwhocodes/config-array/node_modules/brace-expansion",
+      "version": "1.1.21",
+      "dev": true,
+      "malformedMs": 10.48,
+      "passed": true
+    },
+    {
+      "path": "node_modules/@jest/reporters/node_modules/brace-expansion",
+      "version": "1.1.21",
+      "dev": true,
+      "malformedMs": 10.14,
+      "passed": true
+    },
+    {
+      "path": "node_modules/appium-xcuitest-driver/node_modules/archiver-utils/node_modules/brace-expansion",
+      "version": "2.0.3",
+      "dev": true,
+      "passed": false,
+      "error": "RangeError"
+    },
+    {
+      "path": "node_modules/appium-xcuitest-driver/node_modules/brace-expansion",
+      "version": "5.0.5",
+      "dev": true,
+      "passed": false,
+      "error": "RangeError"
+    },
+    {
+      "path": "node_modules/appium-xcuitest-driver/node_modules/readdir-glob/node_modules/brace-expansion",
+      "version": "2.0.3",
+      "dev": true,
+      "passed": false,
+      "error": "RangeError"
+    },
+    {
+      "path": "node_modules/brace-expansion",
+      "version": "2.1.7",
+      "dev": false,
+      "malformedMs": 11.56,
+      "passed": true
+    },
+    {
+      "path": "node_modules/eslint-plugin-react/node_modules/brace-expansion",
+      "version": "1.1.21",
+      "dev": true,
+      "malformedMs": 10.11,
+      "passed": true
+    },
+    {
+      "path": "node_modules/eslint/node_modules/brace-expansion",
+      "version": "1.1.21",
+      "dev": true,
+      "malformedMs": 9.97,
+      "passed": true
+    },
+    {
+      "path": "node_modules/glob/node_modules/brace-expansion",
+      "version": "5.0.12",
+      "dev": false,
+      "malformedMs": 10.18,
+      "passed": true
+    },
+    {
+      "path": "node_modules/jest-config/node_modules/brace-expansion",
+      "version": "1.1.21",
+      "dev": true,
+      "malformedMs": 10.07,
+      "passed": true
+    },
+    {
+      "path": "node_modules/jest-runtime/node_modules/brace-expansion",
+      "version": "1.1.21",
+      "dev": true,
+      "malformedMs": 9.97,
+      "passed": true
+    },
+    {
+      "path": "node_modules/readdir-glob/node_modules/brace-expansion",
+      "version": "5.0.12",
+      "dev": true,
+      "malformedMs": 10.27,
+      "passed": true
+    },
+    {
+      "path": "node_modules/recursive-readdir/node_modules/brace-expansion",
+      "version": "1.1.21",
+      "dev": true,
+      "malformedMs": 10.09,
+      "passed": true
+    },
+    {
+      "path": "node_modules/rimraf/node_modules/brace-expansion",
+      "version": "1.1.21",
+      "dev": true,
+      "malformedMs": 9.9,
+      "passed": true
+    },
+    {
+      "path": "node_modules/test-exclude/node_modules/brace-expansion",
+      "version": "1.1.21",
+      "dev": true,
+      "malformedMs": 9.91,
+      "passed": true
+    }
+  ],
+  "audit": {
+    "info": 0,
+    "low": 0,
+    "moderate": 11,
+    "high": 20,
+    "critical": 0,
+    "total": 31
+  },
+  "verification": {
+    "jest_tests": 1098,
+    "jest_suites": 93,
+    "typescript": "passed",
+    "ios_export": "passed",
+    "android_export": "passed",
+    "whitespace": "passed"
+  },
+  "unresolved": [
+    "Three Appium shrinkwrapped development copies remain vulnerable and failed malformed-pattern tests",
+    "node-forge registry latest is 1.4.0; advisory identifies no patched release",
+    "http-cache-semantics 4.3.0 exists but advisory lists no patch; not upgraded without confirming fix"
+  ],
+  "bundles": [
+    {
+      "path": "/tmp/aiwardrobe-brace-ios-20261016/_expo/static/js/ios/index-1b710bd47926c4de7d43c49227d8337b.hbc",
+      "sha256": "a312831e90f38fd0ae2e7d3201a8d3a8c8993b0f27bcc81b5b911d4adb09299d"
+    },
+    {
+      "path": "/tmp/aiwardrobe-brace-android-20261016/_expo/static/js/android/index-f28f75c0c3634e259468c933c01f879b.hbc",
+      "sha256": "721bf09a1c8106b50136c60001398ec8aabb901b544eeeefc8740e764c89484b"
+    }
+  ]
+}

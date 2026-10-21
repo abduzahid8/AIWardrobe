@@ -1,0 +1,12 @@
+{
+  "localDate": "2026-10-21",
+  "scope": "Independent cleanup after fixture migration and rollback",
+  "audit_users_remaining": 0,
+  "fixture_rows_remaining": 0,
+  "unowned_wardrobe_objects": 0,
+  "garments": 109,
+  "inline_images": 18,
+  "image_uri_bytes": 15896398,
+  "auth_users": 111,
+  "profiles": 111
+}

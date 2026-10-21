@@ -1,0 +1,57 @@
+{
+  "observedVia": "CUA Firefox signed-in Supabase and Google Cloud dashboards, plus live Google authorization page",
+  "supabaseProject": "fyqpifmrsftsfqibhwhy",
+  "googleEnabled": true,
+  "appleEnabled": true,
+  "allowSignups": true,
+  "supabaseBefore": {
+    "siteUrl": "com.aiwardrobe://reset-password",
+    "redirectUrls": [
+      "com.aiwardrobe://reset-password"
+    ]
+  },
+  "approvedChange": {
+    "addRedirectUrl": "com.aiwardrobe://auth/callback",
+    "userApproved": true,
+    "saveButtonClicked": true,
+    "persistenceConfirmed": true,
+    "confirmedVia": "Authenticated CLI config pull --dry-run in isolated temporary workspace",
+    "confirmedAt": "2026-10-18T13:36:22.735Z"
+  },
+  "configuredClientProjectNumber": "858235524894",
+  "currentlyAccessibleGoogleProject": {
+    "id": "aiwardrobe-493213",
+    "number": "76314369047",
+    "configuredClientPresent": false
+  },
+  "liveGoogleError": {
+    "code": "403 org_internal",
+    "meaning": "OAuth client restricted to users within its organization"
+  },
+  "oauthCompleted": false,
+  "appleConfigurationChanged": false,
+  "quotaWarning": {
+    "plan": "Free",
+    "storageDisplayed": "1.05 / 1 GB",
+    "restrictionDateIfStillOverQuota": "2026-10-30"
+  },
+  "nextSteps": [
+    "Access project owning configured client and inspect External audience configuration",
+    "Complete live Google sign-in and signup from app"
+  ],
+  "supabaseAfter": {
+    "redirectUrls": [
+      "com.aiwardrobe://reset-password",
+      "com.aiwardrobe://auth/callback"
+    ]
+  },
+  "owningProjectAccessCheck": {
+    "observedVia": "CUA matching accessibility and screenshot",
+    "projectNumber": "858235524894",
+    "account": "vahijanovzahid1@gmail.com",
+    "heading": "You need additional access",
+    "missingPermission": "resourcemanager.projects.get",
+    "accessGranted": false,
+    "accessRequestedByAgent": false
+  }
+}

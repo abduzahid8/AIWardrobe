@@ -1,0 +1,37 @@
+{
+  "measuredAt": "2026-10-15T05:20:24.423Z",
+  "scope": "four bounded anonymous reads; no authenticated isolation or load certification",
+  "checks": [
+    {
+      "table": "shop_catalog",
+      "status": 200,
+      "latencyMs": 1586,
+      "rows": 1000,
+      "categories": {
+        "bottoms": 308,
+        "shoes": 102,
+        "tops": 590
+      },
+      "missingImage": 0,
+      "invalidPrice": 0
+    },
+    {
+      "table": "featured_capsules",
+      "status": 200,
+      "latencyMs": 555,
+      "rows": 1
+    },
+    {
+      "table": "clothing_items",
+      "status": 200,
+      "latencyMs": 1208,
+      "rows": 0
+    },
+    {
+      "table": "profiles",
+      "status": 200,
+      "latencyMs": 922,
+      "rows": 0
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "measuredAt": "2026-10-19T12:02:34.647Z",
+  "scope": "One direct NVIDIA call through actual source request/parser/validator; no hosted admission or visual-accuracy claim",
+  "observation": {
+    "providerHttpStatus": 200,
+    "finishReason": "stop",
+    "contentLength": 1080,
+    "arrayParsed": true,
+    "items": [
+      {
+        "index": 0,
+        "invalidFields": [],
+        "missingFields": []
+      },
+      {
+        "index": 1,
+        "invalidFields": [],
+        "missingFields": []
+      },
+      {
+        "index": 2,
+        "invalidFields": [
+          "fit"
+        ],
+        "invalidFitTerm": null,
+        "missingFields": []
+      },
+      {
+        "index": 3,
+        "invalidFields": [],
+        "missingFields": []
+      },
+      {
+        "index": 4,
+        "invalidFields": [
+          "fit"
+        ],
+        "invalidFitTerm": null,
+        "missingFields": []
+      }
+    ],
+    "schemaValid": false
+  },
+  "latencyMs": 15743
+}

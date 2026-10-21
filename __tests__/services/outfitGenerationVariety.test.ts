@@ -145,7 +145,7 @@ describe('buildLocalOutfits variety (10-item wardrobe)', () => {
         expect(outfits[0].items.length).toBe(3);
     });
 
-    it.each(['casual', 'minimalist', 'business_casual', 'old_money', 'streetwear'])(
+    it.each(['casual', 'minimalist', 'old_money', 'streetwear'])(
         'style %s with 10 items: yields 3 complete looks',
         (style) => {
             const outfits = buildLocalOutfits(
@@ -155,6 +155,12 @@ describe('buildLocalOutfits variety (10-item wardrobe)', () => {
             expect(outfits.length).toBe(3);
         },
     );
+
+    it('business_casual never fills a shop-only deck with owned wardrobe pieces', () => {
+        expect(buildLocalOutfits(tenItemWardrobe(), baseParams({
+            stylePreferences: 'business_casual', weather: { temp: 24, condition: 'clear' },
+        }))).toEqual([]);
+    });
 
     it('repeated taps: deck still covers distinct items (no single frozen look)', () => {
         const decks = [0, 1, 2].map(() =>

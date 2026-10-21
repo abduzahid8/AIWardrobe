@@ -1,0 +1,71 @@
+{
+  "measuredAt": "2026-10-17T00:59:52.737Z",
+  "scope": "Actual savedOutfitService source via installed Supabase JS; two disposable accounts and 251-row owner collection; with private original image bytes and snapshot references; Node native filesystem adapter is unavailable, not native runtime/capacity",
+  "checks": [
+    {
+      "name": "actual_service_reads_all_251_rows",
+      "passed": true
+    },
+    {
+      "name": "actual_service_repeated_save_keeps_one_stable_row",
+      "passed": true
+    },
+    {
+      "name": "saved_fields_persist_exactly",
+      "passed": true
+    },
+    {
+      "name": "second_account_cannot_list_owner_collection",
+      "passed": true
+    },
+    {
+      "name": "second_account_cannot_overwrite_owner_id",
+      "passed": true
+    },
+    {
+      "name": "second_account_delete_did_not_remove_owner_row",
+      "passed": true
+    },
+    {
+      "name": "actual_service_repeat_removal_is_idempotent",
+      "passed": true
+    },
+    {
+      "name": "second_account_can_save_own_outfit",
+      "passed": true
+    },
+    {
+      "name": "first_account_cannot_list_second_outfit",
+      "passed": true
+    },
+    {
+      "name": "inline_snapshot_persists_authenticated_reference",
+      "passed": true
+    },
+    {
+      "name": "save_returns_confirmed_snapshot_for_local_and_calendar_consumers",
+      "passed": false
+    }
+  ],
+  "cleanup": [
+    {
+      "fixtureFilesRemoved": true
+    },
+    {
+      "temporaryAccountDeleted": true
+    },
+    {
+      "temporaryAccountDeleted": true
+    }
+  ],
+  "executedServiceJavaScriptSha256": "87232eef5269eae021aa1315b45eda51078e29c5085b7052129005560774d28c",
+  "executedMediaJavaScriptSha256": {
+    "wardrobeMedia": "d64b05e070a343d38bc10b2a821de799f3a8e36e1942429d3620e8efc676d682",
+    "pendingWardrobeMedia": "106f28912cd13cd550d9b8d01464ccd72ab1b390f927fa05e2664151e4e19449",
+    "wardrobeItemMedia": "32776cae4606ff801c80a37c5da7d5b36c787c302c0f62ff854eb16ae3269695"
+  },
+  "fixtureBytes": 2915128,
+  "fixtureSha256": "7c1728bfad35066ad916f46dd5c2f2411e24787021a891d5ed4671780ec297f3",
+  "failure": "Error",
+  "passed": false
+}

@@ -1,0 +1,65 @@
+/** Explicit-entry audit: native RN fetch, private temporary configuration, no embedded token. */
+import React, {useEffect,useState} from 'react';
+import {Text,Platform} from 'react-native';
+import {registerRootComponent} from 'expo';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Crypto from 'expo-crypto';
+import {fetch as expoFetch} from 'expo/fetch';
+const xhrFetch = require('whatwg-fetch').fetch as typeof fetch;
+async function hash(bytes:ArrayBuffer){const digest=await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256,bytes);return [...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,'0')).join('');}
+const configPath=FileSystem.documentDirectory+'native-media-transport-config.json';
+const outputPath=FileSystem.documentDirectory+'native-media-transport-report.json';
+const sleep=(ms:number)=>new Promise<void>(resolve=>setTimeout(resolve,ms));
+const percentile=(values:number[])=>values.length?[...values].sort((a,b)=>a-b)[Math.ceil(values.length*.95)-1]:null;
+let started=false;
+function Audit(){
+ const [status,setStatus]=useState('Native media transport audit waiting for configuration');
+ useEffect(()=>{if(started)return;started=true;void(async()=>{
+  const report:Record<string,unknown>={platform:Platform.OS,scope:'Native Expo vs XMLHttpRequest-backed fetch, repeated private fixture; not app transport replacement or capacity certification',plannedPerStage:50,targetRps:5,concurrencyCap:20,requestTimeoutMs:15000,passed:false};
+  try{
+   let raw:string|undefined;
+   const waitUntil=Date.now()+180000;
+   while(Date.now()<waitUntil){try{raw=await FileSystem.readAsStringAsync(configPath);break;}catch{await sleep(1000);}}
+   if(!raw)throw new Error('ConfigurationMissing');
+   await FileSystem.deleteAsync(configPath,{idempotent:true});
+   const config=JSON.parse(raw);raw=undefined;
+   if(!/^[a-f0-9-]{36}$/.test(config.runId)||!/^https:\/\/fyqpifmrsftsfqibhwhy\.supabase\.co\/storage\/v1\/object\/authenticated\/wardrobe-images\/[a-f0-9-]{36}\/[a-f0-9-]{36}\/thumbnail\.png$/.test(config.url)
+    ||typeof config.token!=='string'||!/^[-\w]+\.[-\w]+\.[-\w]+$/.test(config.token)||!Number.isInteger(config.bytes)||config.bytes<1||config.bytes>2097152||!/^[a-f0-9]{64}$/.test(config.sha256)||config.expiresAt<=Date.now()||config.expiresAt>Date.now()+600000)throw new Error('InvalidConfiguration');
+   report.runId=config.runId;report.fixtureBytes=config.bytes;report.fixtureSha256=config.sha256;
+   report.defaultFetchIsExpo = fetch === (expoFetch as unknown as typeof fetch);
+   const smallHash=await hash(new Uint8Array([97,98,99]).buffer);
+   if(smallHash!=='ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad')throw new Error('CryptoPreflightFailed');
+   const hashBegin=performance.now();
+   report.cryptoPreflight={bytes:config.bytes,sha256:await hash(new Uint8Array(config.bytes).buffer),ms:performance.now()-hashBegin};
+   type Result={ok:boolean;status:number|null;fetchResolvedMs:number|null;ms:number;bodyMs?:number;bytes:number;error?:string;phase:string};
+   const stages:Record<string,unknown>[]=[],clients=[{name:'expo-first',request:expoFetch as unknown as typeof fetch},{name:'xhr-fetch',request:xhrFetch},{name:'expo-repeat',request:expoFetch as unknown as typeof fetch}];
+   report.stages=stages;
+   for(const client of clients){
+    const results:Result[]=[],active=new Set<Promise<void>>();let dropped=0;
+    const read=async ():Promise<Result>=>{const start=performance.now();let fetchResolvedMs:number|null=null,status:number|null=null,phase='response',receivedBytes=0;const controller=new AbortController();let timedOut=false;
+     const timer=setTimeout(()=>{timedOut=true;controller.abort();},Math.max(1,Math.min(15000,config.expiresAt-Date.now())));
+     try{const response=await client.request(config.url,{headers:{Authorization:`Bearer ${config.token}`},signal:controller.signal});fetchResolvedMs=performance.now()-start;status=response.status;phase='body';
+      const bytes=await response.arrayBuffer();receivedBytes=bytes.byteLength;phase='hash';const sha=await hash(bytes);phase='integrity';
+      return {ok:response.ok&&bytes.byteLength===config.bytes&&sha===config.sha256,status,fetchResolvedMs,bodyMs:performance.now()-start-fetchResolvedMs,ms:performance.now()-start,bytes:bytes.byteLength,phase};
+     }catch(error){return {ok:false,status,fetchResolvedMs,ms:performance.now()-start,error:timedOut?'TimeoutError':error instanceof Error?error.name:'UnknownError',phase,bytes:receivedBytes};}
+     finally{clearTimeout(timer);}
+    };
+    const begin=performance.now();
+    for(let index=0;index<50;index++){const delay=begin+index*200-performance.now();if(delay>0)await sleep(delay);if(Date.now()>=config.expiresAt)break;if(active.size>=20){dropped++;continue;}
+     const job=read().then(result=>{results.push(result);});active.add(job);void job.finally(()=>active.delete(job));}
+    await Promise.all(active);const errors:Record<string,number>={},failurePhases:Record<string,number>={};for(const result of results)if(!result.ok){const name=result.error||'HttpOrIntegrityFailure';errors[name]=(errors[name]||0)+1;failurePhases[result.phase]=(failurePhases[result.phase]||0)+1;}
+    const stage={client:client.name,planned:50,completed:results.length,successful:results.filter(x=>x.ok).length,failures:results.filter(x=>!x.ok).length,dropped,errors,failurePhases,elapsedMs:performance.now()-begin,p95Ms:percentile(results.map(x=>x.ms)),p95FetchResolvedMs:percentile(results.map(x=>x.fetchResolvedMs).filter((x):x is number=>x!==null)),p95SuccessfulBodyMs:percentile(results.filter(x=>x.ok).map(x=>x.bodyMs!)),results};
+    stages.push(stage);
+    console.warn('NATIVE_MEDIA_TRANSPORT_STAGE '+JSON.stringify({...stage,results:undefined}));
+   }
+   report.passed=stages.every(stage=>stage.successful===50&&stage.dropped===0);
+
+  }catch{report.failure='NativeDiagnosticFailed';}
+  finally{await FileSystem.deleteAsync(configPath,{idempotent:true}).catch(()=>undefined);}
+  await FileSystem.writeAsStringAsync(outputPath,JSON.stringify(report));
+  console.warn('NATIVE_MEDIA_TRANSPORT_AUDIT '+JSON.stringify({...report,stages:(report.stages as Array<Record<string,unknown>>|undefined)?.map(stage=>({...stage,results:undefined}))}));
+  setStatus('Native media transport audit '+(report.passed?'passed':'failed'));
+ })();},[]);
+ return <Text style={{padding:40,paddingTop:80}}>{status}</Text>;
+}
+registerRootComponent(Audit);

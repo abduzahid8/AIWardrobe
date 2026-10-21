@@ -1,0 +1,257 @@
+FAIL __tests__/backend/scanClassification.test.js
+  ✕ provider HTTP 401 cannot become a successful fabricated garment (72 ms)
+  ✕ provider HTTP 429 cannot become a successful fabricated garment (32 ms)
+  ✕ provider HTTP 500 cannot become a successful fabricated garment (28 ms)
+  ✕ invalid output "" cannot be accepted (22 ms)
+  ✕ invalid output "not JSON" cannot be accepted (21 ms)
+  ✕ invalid output {} cannot be accepted (19 ms)
+  ✕ invalid output {"category":"shirt","section":"tops","style":"casual","color":"invented-color","material":"cotton","description":"White cotton shirt.","confidence":0.91} cannot be accepted (19 ms)
+  ✕ invalid output {"category":"shirt","section":"tops","style":"casual","color":"white","material":"cotton","description":"","confidence":0.91} cannot be accepted (19 ms)
+  ✕ invalid output {"category":"invented-category","section":"tops","style":"casual","color":"white","material":"cotton","description":"White cotton shirt.","confidence":0.91} cannot be accepted (21 ms)
+  ✕ valid classification preserves reported attributes and confidence (20 ms)
+  ✕ contradictory section is derived from the recognized garment category (19 ms)
+  ✕ missing confidence is unknown rather than invented certainty (17 ms)
+
+  ● provider HTTP 401 cannot become a successful fabricated garment
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 503
+    Received: 200
+
+      12 | const envelope=content=>new Response(JSON.stringify({choices:[{message:{content:typeof content==='string'?content:JSON.stringify(content)}}]}));
+      13 | test.each([401,429,500])('provider HTTP %s cannot become a successful fabricated garment',async status=>{
+    > 14 |  const {handler}=load(async()=>new Response('private-provider-detail',{status}));const response=await handler(request());const body=await response.json();expect(response.status).toBe(503);expect(body.success).toBe(false);expect(body.classification).toBeNull();expect(body.error).toBe('ai_classification_unavailable');expect(JSON.stringify(body)).not.toContain('private-provider-detail');
+         |                                                                                                                                                                                   ^
+      15 | });
+      16 | test.each(['', 'not JSON', {}, {...valid,color:'invented-color'}, {...valid,description:''}, {...valid,category:'invented-category'}])('invalid output %j cannot be accepted',async content=>{
+      17 |  const {handler}=load(async()=>envelope(content));const response=await handler(request());expect(response.status).toBe(503);expect((await response.json()).success).toBe(false);
+
+      at toBe (__tests__/backend/scanClassification.test.js:14:179)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● provider HTTP 429 cannot become a successful fabricated garment
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 503
+    Received: 200
+
+      12 | const envelope=content=>new Response(JSON.stringify({choices:[{message:{content:typeof content==='string'?content:JSON.stringify(content)}}]}));
+      13 | test.each([401,429,500])('provider HTTP %s cannot become a successful fabricated garment',async status=>{
+    > 14 |  const {handler}=load(async()=>new Response('private-provider-detail',{status}));const response=await handler(request());const body=await response.json();expect(response.status).toBe(503);expect(body.success).toBe(false);expect(body.classification).toBeNull();expect(body.error).toBe('ai_classification_unavailable');expect(JSON.stringify(body)).not.toContain('private-provider-detail');
+         |                                                                                                                                                                                   ^
+      15 | });
+      16 | test.each(['', 'not JSON', {}, {...valid,color:'invented-color'}, {...valid,description:''}, {...valid,category:'invented-category'}])('invalid output %j cannot be accepted',async content=>{
+      17 |  const {handler}=load(async()=>envelope(content));const response=await handler(request());expect(response.status).toBe(503);expect((await response.json()).success).toBe(false);
+
+      at toBe (__tests__/backend/scanClassification.test.js:14:179)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● provider HTTP 500 cannot become a successful fabricated garment
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 503
+    Received: 200
+
+      12 | const envelope=content=>new Response(JSON.stringify({choices:[{message:{content:typeof content==='string'?content:JSON.stringify(content)}}]}));
+      13 | test.each([401,429,500])('provider HTTP %s cannot become a successful fabricated garment',async status=>{
+    > 14 |  const {handler}=load(async()=>new Response('private-provider-detail',{status}));const response=await handler(request());const body=await response.json();expect(response.status).toBe(503);expect(body.success).toBe(false);expect(body.classification).toBeNull();expect(body.error).toBe('ai_classification_unavailable');expect(JSON.stringify(body)).not.toContain('private-provider-detail');
+         |                                                                                                                                                                                   ^
+      15 | });
+      16 | test.each(['', 'not JSON', {}, {...valid,color:'invented-color'}, {...valid,description:''}, {...valid,category:'invented-category'}])('invalid output %j cannot be accepted',async content=>{
+      17 |  const {handler}=load(async()=>envelope(content));const response=await handler(request());expect(response.status).toBe(503);expect((await response.json()).success).toBe(false);
+
+      at toBe (__tests__/backend/scanClassification.test.js:14:179)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● invalid output "" cannot be accepted
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 503
+    Received: 200
+
+      15 | });
+      16 | test.each(['', 'not JSON', {}, {...valid,color:'invented-color'}, {...valid,description:''}, {...valid,category:'invented-category'}])('invalid output %j cannot be accepted',async content=>{
+    > 17 |  const {handler}=load(async()=>envelope(content));const response=await handler(request());expect(response.status).toBe(503);expect((await response.json()).success).toBe(false);
+         |                                                                                                                   ^
+      18 | });
+      19 | test('valid classification preserves reported attributes and confidence',async()=>{
+      20 |  const {handler}=load(async()=>envelope(valid));const response=await handler(request());expect(response.status).toBe(200);const body=await response.json();expect(body.classification).toMatchObject({category:'shirt',section:'tops',confidence:0.91,attributes:{color:'white',style:'casual',material:'cotton'}});
+
+      at toBe (__tests__/backend/scanClassification.test.js:17:115)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● invalid output "not JSON" cannot be accepted
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 503
+    Received: 200
+
+      15 | });
+      16 | test.each(['', 'not JSON', {}, {...valid,color:'invented-color'}, {...valid,description:''}, {...valid,category:'invented-category'}])('invalid output %j cannot be accepted',async content=>{
+    > 17 |  const {handler}=load(async()=>envelope(content));const response=await handler(request());expect(response.status).toBe(503);expect((await response.json()).success).toBe(false);
+         |                                                                                                                   ^
+      18 | });
+      19 | test('valid classification preserves reported attributes and confidence',async()=>{
+      20 |  const {handler}=load(async()=>envelope(valid));const response=await handler(request());expect(response.status).toBe(200);const body=await response.json();expect(body.classification).toMatchObject({category:'shirt',section:'tops',confidence:0.91,attributes:{color:'white',style:'casual',material:'cotton'}});
+
+      at toBe (__tests__/backend/scanClassification.test.js:17:115)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● invalid output {} cannot be accepted
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 503
+    Received: 200
+
+      15 | });
+      16 | test.each(['', 'not JSON', {}, {...valid,color:'invented-color'}, {...valid,description:''}, {...valid,category:'invented-category'}])('invalid output %j cannot be accepted',async content=>{
+    > 17 |  const {handler}=load(async()=>envelope(content));const response=await handler(request());expect(response.status).toBe(503);expect((await response.json()).success).toBe(false);
+         |                                                                                                                   ^
+      18 | });
+      19 | test('valid classification preserves reported attributes and confidence',async()=>{
+      20 |  const {handler}=load(async()=>envelope(valid));const response=await handler(request());expect(response.status).toBe(200);const body=await response.json();expect(body.classification).toMatchObject({category:'shirt',section:'tops',confidence:0.91,attributes:{color:'white',style:'casual',material:'cotton'}});
+
+      at toBe (__tests__/backend/scanClassification.test.js:17:115)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● invalid output {"category":"shirt","section":"tops","style":"casual","color":"invented-color","material":"cotton","description":"White cotton shirt.","confidence":0.91} cannot be accepted
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 503
+    Received: 200
+
+      15 | });
+      16 | test.each(['', 'not JSON', {}, {...valid,color:'invented-color'}, {...valid,description:''}, {...valid,category:'invented-category'}])('invalid output %j cannot be accepted',async content=>{
+    > 17 |  const {handler}=load(async()=>envelope(content));const response=await handler(request());expect(response.status).toBe(503);expect((await response.json()).success).toBe(false);
+         |                                                                                                                   ^
+      18 | });
+      19 | test('valid classification preserves reported attributes and confidence',async()=>{
+      20 |  const {handler}=load(async()=>envelope(valid));const response=await handler(request());expect(response.status).toBe(200);const body=await response.json();expect(body.classification).toMatchObject({category:'shirt',section:'tops',confidence:0.91,attributes:{color:'white',style:'casual',material:'cotton'}});
+
+      at toBe (__tests__/backend/scanClassification.test.js:17:115)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● invalid output {"category":"shirt","section":"tops","style":"casual","color":"white","material":"cotton","description":"","confidence":0.91} cannot be accepted
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 503
+    Received: 200
+
+      15 | });
+      16 | test.each(['', 'not JSON', {}, {...valid,color:'invented-color'}, {...valid,description:''}, {...valid,category:'invented-category'}])('invalid output %j cannot be accepted',async content=>{
+    > 17 |  const {handler}=load(async()=>envelope(content));const response=await handler(request());expect(response.status).toBe(503);expect((await response.json()).success).toBe(false);
+         |                                                                                                                   ^
+      18 | });
+      19 | test('valid classification preserves reported attributes and confidence',async()=>{
+      20 |  const {handler}=load(async()=>envelope(valid));const response=await handler(request());expect(response.status).toBe(200);const body=await response.json();expect(body.classification).toMatchObject({category:'shirt',section:'tops',confidence:0.91,attributes:{color:'white',style:'casual',material:'cotton'}});
+
+      at toBe (__tests__/backend/scanClassification.test.js:17:115)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● invalid output {"category":"invented-category","section":"tops","style":"casual","color":"white","material":"cotton","description":"White cotton shirt.","confidence":0.91} cannot be accepted
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 503
+    Received: 200
+
+      15 | });
+      16 | test.each(['', 'not JSON', {}, {...valid,color:'invented-color'}, {...valid,description:''}, {...valid,category:'invented-category'}])('invalid output %j cannot be accepted',async content=>{
+    > 17 |  const {handler}=load(async()=>envelope(content));const response=await handler(request());expect(response.status).toBe(503);expect((await response.json()).success).toBe(false);
+         |                                                                                                                   ^
+      18 | });
+      19 | test('valid classification preserves reported attributes and confidence',async()=>{
+      20 |  const {handler}=load(async()=>envelope(valid));const response=await handler(request());expect(response.status).toBe(200);const body=await response.json();expect(body.classification).toMatchObject({category:'shirt',section:'tops',confidence:0.91,attributes:{color:'white',style:'casual',material:'cotton'}});
+
+      at toBe (__tests__/backend/scanClassification.test.js:17:115)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● valid classification preserves reported attributes and confidence
+
+    expect(received).toMatchObject(expected)
+
+    - Expected  - 1
+    + Received  + 1
+
+    @@ -3,8 +3,8 @@
+          "color": "white",
+          "material": "cotton",
+          "style": "casual",
+        },
+        "category": "shirt",
+    -   "confidence": 0.91,
+    +   "confidence": 0.88,
+        "section": "tops",
+      }
+
+      18 | });
+      19 | test('valid classification preserves reported attributes and confidence',async()=>{
+    > 20 |  const {handler}=load(async()=>envelope(valid));const response=await handler(request());expect(response.status).toBe(200);const body=await response.json();expect(body.classification).toMatchObject({category:'shirt',section:'tops',confidence:0.91,attributes:{color:'white',style:'casual',material:'cotton'}});
+         |                                                                                                                                                                                        ^
+      21 | });
+      22 | test('contradictory section is derived from the recognized garment category',async()=>{
+      23 |  const {handler}=load(async()=>envelope({...valid,section:'shoes'}));const response=await handler(request());expect(response.status).toBe(200);expect((await response.json()).classification.section).toBe('tops');
+
+      at Object.toMatchObject (__tests__/backend/scanClassification.test.js:20:184)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● contradictory section is derived from the recognized garment category
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "tops"
+    Received: "shoes"
+
+      21 | });
+      22 | test('contradictory section is derived from the recognized garment category',async()=>{
+    > 23 |  const {handler}=load(async()=>envelope({...valid,section:'shoes'}));const response=await handler(request());expect(response.status).toBe(200);expect((await response.json()).classification.section).toBe('tops');
+         |                                                                                                                                                                                                       ^
+      24 | });
+      25 | test('missing confidence is unknown rather than invented certainty',async()=>{
+      26 |  const {confidence,...without}=valid;const {handler}=load(async()=>envelope(without));const response=await handler(request());expect((await response.json()).classification.confidence).toBe(0);
+
+      at Object.toBe (__tests__/backend/scanClassification.test.js:23:199)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● missing confidence is unknown rather than invented certainty
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 0
+    Received: 0.88
+
+      24 | });
+      25 | test('missing confidence is unknown rather than invented certainty',async()=>{
+    > 26 |  const {confidence,...without}=valid;const {handler}=load(async()=>envelope(without));const response=await handler(request());expect((await response.json()).classification.confidence).toBe(0);
+         |                                                                                                                                                                                         ^
+      27 | });
+      28 |
+
+      at Object.toBe (__tests__/backend/scanClassification.test.js:26:185)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+Test Suites: 1 failed, 1 total
+Tests:       12 failed, 12 total
+Snapshots:   0 total
+Time:        0.839 s
+Ran all test suites matching /__tests__\/backend\/scanClassification.test.js/i.

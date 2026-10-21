@@ -2,6 +2,8 @@
  * Wardrobe Outfits Slice — outfit management + disliked tracking
  */
 
+import { removeCloudOutfit } from '../../src/services/savedOutfitService';
+import { authEvents } from '../authEvents';
 import type { StateCreator } from 'zustand';
 import type { Outfit, Occasion } from '../../src/types/domain';
 import type { WardrobeState } from '../wardrobeStore';
@@ -14,7 +16,7 @@ export interface OutfitsSlice {
 
     addOutfit: (outfit: Omit<Outfit, 'id' | 'createdAt' | 'wornCount' | 'lastWornAt' | 'saved'>) => string;
     saveOutfit: (id: string, collectionCategory?: string, savedFrom?: Outfit['savedFrom']) => void;
-    unsaveOutfit: (id: string) => void;
+    unsaveOutfit: (id: string) => Promise<void>;
     rateOutfit: (id: string, rating: 1 | 2 | 3 | 4 | 5) => void;
     dislikeOutfit: (itemIds: string[]) => void;
     undislikeOutfit: (itemIds: string[]) => void;
@@ -111,7 +113,10 @@ export const createOutfitsSlice: StateCreator<WardrobeState, [], [], OutfitsSlic
         }));
     },
 
-    unsaveOutfit: (id) => {
+    unsaveOutfit: async (id) => {
+        const revision = authEvents.getRevision();
+        await removeCloudOutfit(id);
+        if (revision !== authEvents.getRevision()) return;
         set((state) => ({
             outfits: state.outfits.map((outfit) =>
                 outfit.id === id ? { ...outfit, saved: false } : outfit

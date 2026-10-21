@@ -7,15 +7,15 @@ import useAuthStore from '../store/auth';
 import { useAppNavigation } from '../hooks/useAppNavigation';
 
 /**
- * AuthCallbackScreen — deep-link target for OAuth (Google) PKCE redirects.
+ * AuthCallbackScreen — deep-link target for Google OAuth redirects.
  *
  * The actual token exchange happens in `useAuthStore.handleDeepLink`
  * (subscribed globally in App.tsx). This screen exists so React Navigation
  * has a route for `auth/callback` instead of warning about an unhandled
  * URL, and to show progress while the exchange completes.
  *
- * Once `isAuthenticated` flips, RootNavigator unmounts this screen
- * automatically and routes to Main.
+ * This route stays registered across login. Explicitly leave it once the
+ * session is published, honoring the navigator's current onboarding gate.
  */
 const AuthCallbackScreen = () => {
   const { t } = useTranslation();
@@ -25,10 +25,16 @@ const AuthCallbackScreen = () => {
   const loading = useAuthStore((s) => s.loading);
 
   useEffect(() => {
-    if (isAuthenticated) return;
-    // If the exchange failed, bounce back to SignIn after a beat so the
-    // user sees the error alert there instead of a stuck spinner.
-    if (!loading && authError) {
+    if (isAuthenticated) {
+      const available = navigation.getState().routeNames;
+      const destination = available.find((name) =>
+        name === 'Main' || name === 'StyleQuiz' || name === 'Paywall');
+      if (destination) navigation.reset({ index: 0, routes: [{ name: destination }] });
+      return;
+    }
+    // A settled callback without a session cannot make progress here,
+    // including a callback with missing or already-consumed credentials.
+    if (!loading) {
       const timer = setTimeout(() => {
         navigation.reset({ index: 0, routes: [{ name: 'SignIn' }] });
       }, 1500);

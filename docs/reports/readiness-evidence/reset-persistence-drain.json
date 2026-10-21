@@ -1,0 +1,42 @@
+{
+  "scope": "Logout/deletion cleanup drains known writes started by synchronous memory reset; no universal storage-serialization claim",
+  "before": {
+    "existingTestsPassed": 7,
+    "newTestFailed": 1,
+    "failure": "Cleanup settled while legacy upload-service deletion remained pending"
+  },
+  "after": {
+    "fullTests": 1343,
+    "suites": 118,
+    "failures": 0,
+    "newRegressionCases": 3,
+    "typescript": "passed",
+    "eslintErrors": 0,
+    "eslintWarnings": 21
+  },
+  "drained": [
+    "uploadQueue.clearQueue deletion",
+    "wardrobe-store debounced persistence",
+    "upload-store debounced persistence",
+    "saved-shop ordered persistence"
+  ],
+  "sources": {
+    "src/lib/persistence.ts": "d18fb6e6d452e4647a4cbbdd307c00ff9434e024a2b65f2365d3991ea85be1ce",
+    "__tests__/lib/persistence.test.ts": "a434bfe2a640cf87dc1a11cc6a5b0844d353b405be4089caf371246bebf1aeea"
+  },
+  "normalAndroidBuild": {
+    "exitCode": 0,
+    "packagedPersistenceSourceMatches": true,
+    "apkSha256": "21f646ca81346bc3c8021be5683c6605e207cb24a2358af839e34daca286c373",
+    "bundleSha256": "ec2dec4cac291e01dc37645329168d62cbfcabb8e899a85ad3762c0358db0de0",
+    "auditMarkerAbsent": true,
+    "nativeUiVerified": false
+  },
+  "productionChanged": false,
+  "remaining": [
+    "Normal account-switch callbacks still invoke reset synchronously without awaiting its result",
+    "Direct AsyncStorage persist stores and service writers need audit",
+    "Storage failures remain best-effort and no durable deletion guarantee is claimed",
+    "Native UI/lifecycle, stall recovery, capacity/media/store/security/deferred-provider acceptance remain open"
+  ]
+}

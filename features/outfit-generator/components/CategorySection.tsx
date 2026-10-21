@@ -1,8 +1,10 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import LiquidGlass2026Theme, { SpatialElevation } from '../../../constants/LiquidGlass2026Theme';
 import type { WardrobeDisplayItem } from '../types';
+import { Image } from '../../../src/components/MediaImage';
+
 
 const { width } = Dimensions.get('window');
 

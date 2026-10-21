@@ -1,0 +1,48 @@
+{
+  "measuredAt": "2026-10-15T09:49:56.333Z",
+  "scope": "Deployed Edge endpoints without an Authorization header; minimal empty request body",
+  "checks": [
+    {
+      "endpoint": "generate-outfits",
+      "status": 401,
+      "deniedUnauthenticated": true,
+      "latencyMs": 393
+    },
+    {
+      "endpoint": "ai-process",
+      "status": 401,
+      "deniedUnauthenticated": true,
+      "latencyMs": 182
+    },
+    {
+      "endpoint": "try-on",
+      "status": 401,
+      "deniedUnauthenticated": true,
+      "latencyMs": 765
+    },
+    {
+      "endpoint": "ai-chat",
+      "status": 401,
+      "deniedUnauthenticated": true,
+      "latencyMs": 176
+    },
+    {
+      "endpoint": "analyze-outfit",
+      "status": 401,
+      "deniedUnauthenticated": true,
+      "latencyMs": 201
+    },
+    {
+      "endpoint": "create-trip-plan",
+      "status": 404,
+      "deniedUnauthenticated": false,
+      "latencyMs": 126
+    },
+    {
+      "endpoint": "sync-subscription",
+      "status": 404,
+      "deniedUnauthenticated": false,
+      "latencyMs": 115
+    }
+  ]
+}

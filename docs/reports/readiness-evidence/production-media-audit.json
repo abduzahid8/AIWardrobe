@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-17",
+  "scope": "Read-only aggregate production SQL and active client source tracing; no photo bodies downloaded or production records changed",
+  "production": {
+    "garments": 109,
+    "ownersWithGarments": 30,
+    "inlineImageFields": 18,
+    "inlineImageBytes": 15885701,
+    "deviceLocalImageFields": 2,
+    "remoteHttpImageFields": 87,
+    "largestImageFieldBytes": 4047638,
+    "allImageFieldBytes": 15896398,
+    "thumbnailFieldBytes": 0,
+    "inlineThumbnails": 0,
+    "largestOwnerImageFieldBytes": 5281000,
+    "largestGarmentCountAmongOwners": 8,
+    "ownerImageFieldBytesP95": 3600614.2
+  },
+  "sourcePath": ["useVideoAnalysis builds frameImage data URLs", "WardrobeVideoScreen and ClothingDetailEditor pass that value to addItem", "wardrobeItemsSlice inserts imageUrl directly into clothing_items.image_url", "wardrobeSyncService reads the complete image_url for each garment"],
+  "readinessGaps": ["Device-local file/content URIs are not portable between devices and can expire with cache eviction", "Inline image bodies inflate database storage, metadata reads and local persistence", "Earlier 50-item read fixtures used short remote URLs and do not model these real payload sizes", "No stored thumbnails observed", "A proper media-storage/read/display/provider-access design and migration remain unimplemented"],
+  "separateFix": {
+    "failure": "Analysis-unavailable and exception paths prefixed an already complete PNG data URL with a JPEG data-URL prefix",
+    "before": "Both hook regressions failed with a double-prefixed image URI",
+    "change": "Reuse the existing data-URL formatter so original complete URLs are preserved",
+    "verification": {"jestTests": 1129, "jestSuites": 96, "typecheck": "pass", "targetedLint": "0 errors, 6 existing warnings", "whitespace": "pass"},
+    "limitations": "Client source only; no provider calls, provider policy changes, media migration or native rebuild"
+  }
+}

@@ -17,6 +17,9 @@
  * ErrorBoundary and producing an unrecoverable black screen.
  */
 
+import { Platform } from 'react-native';
+import { selectRevenueCatKey } from './revenueCatKey';
+
 const str = (v: string | undefined, fallback = ''): string =>
   typeof v === 'string' && v.length > 0 ? v : fallback;
 
@@ -38,7 +41,11 @@ export const Config = {
     dsn: str(process.env.EXPO_PUBLIC_SENTRY_DSN),
   },
   revenueCat: {
-    apiKey: str(process.env.EXPO_PUBLIC_REVENUECAT_API_KEY),
+    apiKey: selectRevenueCatKey(Platform.OS, {
+      ios: str(process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY),
+      android: str(process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY),
+      legacy: str(process.env.EXPO_PUBLIC_REVENUECAT_API_KEY),
+    }),
   },
   weather: {
     apiKey: str(process.env.EXPO_PUBLIC_WEATHER_API_KEY),

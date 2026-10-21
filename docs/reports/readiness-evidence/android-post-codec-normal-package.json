@@ -1,0 +1,10 @@
+{
+  "apkPath": "/Users/v.zahid/AIWardrobe/android/app/build/outputs/apk/release/app-release.apk",
+  "bytes": 66664702,
+  "sha256": "b3ecc677b2c2d4f6b2dc6758ada6816488db50e1363b67d422359310adca913f",
+  "bundleBytes": 7059236,
+  "bundleSha256": "aa43d2d898f0be41d9012b95b21ea062d249ac9517301ec464c9876da2c8243c",
+  "auditEntryIncluded": false,
+  "currentSaveGuardIncluded": true,
+  "build": "arm64 Release; local debug certificate; not Play upload signing"
+}

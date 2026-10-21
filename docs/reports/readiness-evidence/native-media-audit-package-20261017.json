@@ -1,0 +1,8 @@
+{
+  "apkBytes": 54728112,
+  "apkSha256": "39da89c1b2ffa09cc0d08c935ba03cc2b7d4d6de7a1519cfffc0cb22fdc0287c",
+  "bundleSha256": "065239a6f370acedc95d26a28cf21be5d72195106547e30e39644d932bf5770d",
+  "executedEntrySha256": "f6ab5fd6de0fe504f8b36d05aa3cf5ac307c6a0efcba9644002a02df6b001fb3",
+  "entryMatchesSourceMap": true,
+  "tokenEmbedded": false
+}

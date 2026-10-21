@@ -1,0 +1,9 @@
+{
+  "date": "2026-10-16",
+  "failureMechanism": "Sequential favorite writes previously allowed an older failed value to remain queued after a newer successful value, enabling reversal on retry.",
+  "beforeFix": "Latest-value regression failed: two requests were sent instead of one.",
+  "fix": "Group valid favorite actions by garment, send only the final queued value, and acknowledge all grouped entries only after matching-row confirmation succeeds.",
+  "verified": ["Only latest queued value sent", "Successful final confirmation acknowledges superseded entries", "Failed final confirmation preserves entire group", "Retry sends latest value again", "Existing owner and matching-row checks retained"],
+  "checks": {"jestTests": 1116, "jestSuites": 95, "typecheck": "pass", "targetedLint": "pass, no warnings", "whitespace": "pass"},
+  "limitations": ["Source only; requires native rebuild/release", "No hosted or native flaky-network scenario exercised", "Queued/in-flight item creation versus deletion still requires separate verification", "No production mutations or provider calls this turn"]
+}

@@ -1,0 +1,44 @@
+
+> wardrobe-app@1.4.3 test:dependency-security
+> node --test scripts/validation/dependency-security.test.mjs
+
+TAP version 13
+# Subtest: node_modules/proxy-addr: malformed mapped subnet cannot trust a public spoofing client
+ok 1 - node_modules/proxy-addr: malformed mapped subnet cannot trust a public spoofing client
+  ---
+  duration_ms: 3.189
+  type: 'test'
+  ...
+# Subtest: node_modules/shell-quote: newline operators and post-comment tokens reject without execution
+ok 2 - node_modules/shell-quote: newline operators and post-comment tokens reject without execution
+  ---
+  duration_ms: 3.05125
+  type: 'test'
+  ...
+# Subtest: node_modules/@appium/support: ZIP symlinks cannot escape extraction root
+ok 3 - node_modules/@appium/support: ZIP symlinks cannot escape extraction root
+  ---
+  duration_ms: 272.934875
+  type: 'test'
+  ...
+# Subtest: node_modules/@appium/support: ordinary ZIP extraction still works
+ok 4 - node_modules/@appium/support: ordinary ZIP extraction still works
+  ---
+  duration_ms: 28.40725
+  type: 'test'
+  ...
+# Subtest: advisory checks found the expected dependency families
+ok 5 - advisory checks found the expected dependency families
+  ---
+  duration_ms: 0.510792
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 360.486

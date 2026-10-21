@@ -1,0 +1,1 @@
+{"scope":"Actual app staging/thumbnail source with installed native Expo codec; no cloud session or provider","platform":"android","cases":[],"currentStep":"Repository photo: stage original","sourceUri":"assets_images_basic_outfit_1","sourceInfo":{"size":2298216,"uri":"assets_images_basic_outfit_1","isDirectory":false,"exists":true},"passed":false,"failure":"invalid_source"}

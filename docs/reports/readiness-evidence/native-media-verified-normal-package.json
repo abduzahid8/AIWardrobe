@@ -1,0 +1,18 @@
+{
+  "buildExitCode": 0,
+  "buildSeconds": 48,
+  "apkBytes": 66153894,
+  "apkSha256": "e1b81eefafc98cd9f2f1dc1c2074b74b882e977a16ccd4a65ec2cc11b2275f27",
+  "bundleSha256": "bde891c880c7cda5e3dbade9ff71675d9450773b9f37e02287b4a82dc85453fa",
+  "auditMarkersAbsent": [
+    "NATIVE_MEDIA_TRANSPORT_AUDIT",
+    "native-media-transport-config.json"
+  ],
+  "sourcesMatch": {
+    "store/auth.ts": "76cf672d0c39c18980ef004d73ce01cd56a2c19aa5b3b244358bc90170458e4d",
+    "store/savedShopStore.ts": "e2fce8ac43a35503ee9e61752e22a8643d56e82759ceb0e15952d60698b37477",
+    "src/services/calendarStorage.ts": "2484b39f90f6f37b9cf6bdd33d1a7e9599b9db1f2eeed04e781dc9a0a7e608f8",
+    "src/lib/persistence.ts": "14ce6697945a7c72bafef169eeef14689b92591f5a9103b1610dd413fe66dfbb"
+  },
+  "scope": "Normal Android release artifact restored; no installation, UI or store signing validation"
+}

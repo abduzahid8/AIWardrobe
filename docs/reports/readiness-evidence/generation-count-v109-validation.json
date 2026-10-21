@@ -1,0 +1,53 @@
+{
+  "scope": "Server response count and per-outfit audit accuracy discovered during a bounded alternative-model evaluation",
+  "version": 109,
+  "baseline": 108,
+  "verify_jwt": true,
+  "deployment": {
+    "only_entrypoint_changed": true,
+    "all_files_match": 12,
+    "shared_files_unchanged": 11,
+    "entry_sha256": "312481ab7714147ed687ec3ce5acf2c35da5532864b656a4f5a217df7afb25e9"
+  },
+  "regression_before": {
+    "requested_one_failed": 1,
+    "requested_two_passed": 1
+  },
+  "after": {
+    "full_tests": 2209,
+    "full_suites": 175,
+    "staged_handler_tests": 68,
+    "audit_budget_node_tests": 3,
+    "typescript": "pass",
+    "staged_deno": "pass"
+  },
+  "behavior": "Cap already validated outfits to the requested limit; no fabricated/repaired items, validator relaxation or provider fallback. Audit budget is evaluated separately for each returned outfit.",
+  "test_fixture_note": "Initial color-only alternative garments were collapsed as same-product families, causing the count-two case to fail for fixture reasons. Distinct garment families restore the intended two-valid-outfit fixture; baseline still fails count-one, fixed code passes both.",
+  "hosted_live": {
+    "report": "v109-hosted-travel-count-check-20261021.json",
+    "status": 200,
+    "outfitCount": 1,
+    "spendUzs": 3034400,
+    "capUzs": 3603690,
+    "latencyMs": 15972,
+    "passed": true
+  },
+  "candidate_local_real_services": {
+    "report": "nvidia-lightning-v109-travel-recheck-20261021.json",
+    "outfitCount": 1,
+    "passed": true,
+    "scope": "Actual handler through local Node with real Auth/catalog/NVIDIA, not hosted Edge runtime"
+  },
+  "cleanup": {
+    "remaining_audit_users": 0,
+    "auth_users": 111,
+    "profiles": 111,
+    "garments": 109
+  },
+  "limits": [
+    "Production remains Meta Llama3.2 11B Vision; no model switch justified by this sample",
+    "Earlier alternative-model evaluation had one pass out of three, including a true count mismatch; original aggregate over-budget flag withdrawn in separate correction",
+    "No 10000 DAU throughput/reliability certification",
+    "Backend-only change; no client rebuild required"
+  ]
+}

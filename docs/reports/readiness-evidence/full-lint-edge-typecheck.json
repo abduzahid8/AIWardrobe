@@ -1,0 +1,74 @@
+{
+  "date": "2026-10-16",
+  "full_lint": {
+    "files": 389,
+    "errors": 0,
+    "warnings": 1103,
+    "warning_rules": {
+      "@typescript-eslint/no-var-requires": 93,
+      "@typescript-eslint/no-unused-vars": 202,
+      "no-undef": 85,
+      "@typescript-eslint/no-empty-function": 34,
+      "@typescript-eslint/no-explicit-any": 631,
+      "react-hooks/exhaustive-deps": 43,
+      "@typescript-eslint/ban-ts-comment": 7,
+      "react/no-unescaped-entities": 4,
+      "no-useless-escape": 3,
+      "prefer-const": 1
+    }
+  },
+  "edge_typecheck": {
+    "command": "npm run typecheck:edge",
+    "runtime": "Deno 2.9.6 / TypeScript 6.0.3",
+    "status": "passed",
+    "frozen_lock": true,
+    "lock_sha256": "91d07072ede62d8a1cb9ec820c42b00790066e0d8996ccd3f90bc488977f3508",
+    "entrypoints": [
+      "backend/supabase/functions/add-clothing-batch/index.ts",
+      "backend/supabase/functions/ai-chat/index.ts",
+      "backend/supabase/functions/ai-process/index.ts",
+      "backend/supabase/functions/analytics/index.ts",
+      "backend/supabase/functions/analyze-outfit/index.ts",
+      "backend/supabase/functions/body-profiles/index.ts",
+      "backend/supabase/functions/create-trip-plan/index.ts",
+      "backend/supabase/functions/delete-account/index.ts",
+      "backend/supabase/functions/generate-outfits/index.ts",
+      "backend/supabase/functions/mannequin-tryon/index.ts",
+      "backend/supabase/functions/redeem-promo/index.ts",
+      "backend/supabase/functions/revenuecat-webhook/index.ts",
+      "backend/supabase/functions/save-wardrobe-items/index.ts",
+      "backend/supabase/functions/sync-subscription/index.ts",
+      "backend/supabase/functions/try-on/index.ts",
+      "backend/supabase/functions/weather/index.ts"
+    ],
+    "count": 16,
+    "source_sha256": {
+      "backend/supabase/functions/add-clothing-batch/index.ts": "570935638754714a53cdeaad1914ab4763f189e27c8af569b21b3f1cf635b9f2",
+      "backend/supabase/functions/ai-chat/index.ts": "ddf457af29b00dce33342c5fe01d79e5f3bbe5ee9d0b6fc562409d3a8584f64c",
+      "backend/supabase/functions/ai-process/index.ts": "bd71421c6e2b6d49cbd1c6b1ec4ed460491317928a723a15f97123399412635b",
+      "backend/supabase/functions/analytics/index.ts": "fe095fe078413a11766c74a4711b6b80732a1483773cee0b5c4223dcebee49de",
+      "backend/supabase/functions/analyze-outfit/index.ts": "150ffd2b7180402b0351348cbbd0905e5944344966078f33fae6d1442e70218e",
+      "backend/supabase/functions/body-profiles/index.ts": "c30d09b00fbc3cd5de6c0ead62114ade1f0869acf87a216b0d75f96d4f8fc4fc",
+      "backend/supabase/functions/create-trip-plan/index.ts": "72e0b71bb497fb24348610e8d568df2279548c7b44f258c31fc28d80191e1d1e",
+      "backend/supabase/functions/delete-account/index.ts": "d29838ec7ccca559f6c386f1dc4dc23d8462bc1bb88bc1182cc354bd32ef5c96",
+      "backend/supabase/functions/generate-outfits/index.ts": "c48293fedf8a754008de2a5a9665a8e0b0a62b8f74900549bd5ae0157ad99f8b",
+      "backend/supabase/functions/mannequin-tryon/index.ts": "3b589361a7cf352cdfe0338921cad8d33c786f8f839e6633967c0e7cc805a234",
+      "backend/supabase/functions/redeem-promo/index.ts": "d5941c60c366bee93a3307253a0368a2142353e6c0e188c47f035e335038bf87",
+      "backend/supabase/functions/revenuecat-webhook/index.ts": "1290f8cbcfab177db28af0ae32f5ebe70b94389b46e2ce91f9268c4f3dd70581",
+      "backend/supabase/functions/save-wardrobe-items/index.ts": "6550ca9976d1dfb35863735d9b85e9fd1a5c5d1254264cc0c8f5c4265b80afbf",
+      "backend/supabase/functions/sync-subscription/index.ts": "6d65fea11fd431cbbb32481cb081c29eca3bb6edfd4052fcbf9adbe348f004c0",
+      "backend/supabase/functions/try-on/index.ts": "a8d597b807f4f8b5b0b571f4697ae25957ec6aec8a227914db0ab6d6db227a1f",
+      "backend/supabase/functions/weather/index.ts": "bc09286556bc13b2f1f4e7ed92aeadcf95b09880ee59069c6bff60cf7b496341"
+    }
+  },
+  "limitations": [
+    "Local CLI gate only; no remote CI result",
+    "Type checking does not prove hosted function behavior or deployment parity",
+    "1103 lint warnings remain; no warning rules disabled",
+    "No production mutation or provider call"
+  ],
+  "additional_checks": {
+    "load_harness": "10 tests passed",
+    "navigation_links": "9 tests passed"
+  }
+}

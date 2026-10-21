@@ -1,0 +1,79 @@
+{
+  "measuredAt": "2026-10-15T09:49:15.982Z",
+  "scope": "Live production; one dedicated test account; authenticated read paths only",
+  "checks": [
+    {
+      "name": "profiles_other_owner_hidden",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "clothing_items_other_owner_hidden",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "saved_outfits_other_owner_hidden",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "subscription_status_rpc",
+      "status": 404,
+      "passed": false,
+      "code": "PGRST202"
+    }
+  ],
+  "loads": [
+    {
+      "stage": "baseline",
+      "scope": "read-only HTTP paths; excludes paid AI, uploads, writes, and native rendering",
+      "requestedRps": 5,
+      "durationSec": 30,
+      "elapsedSec": 30.284697583999996,
+      "scheduled": 150,
+      "completed": 150,
+      "dropped": 0,
+      "achievedRps": 4.95299646245264,
+      "distinctAuthenticatedUsers": 1,
+      "statuses": {
+        "200": 150
+      },
+      "failures": {},
+      "failedRequests": 0,
+      "errorRate": 0,
+      "latencyMs": {
+        "p50": 440.6536670000005,
+        "p95": 570.9989999999998,
+        "p99": 1380.1301249999997
+      },
+      "passed": true
+    },
+    {
+      "stage": "peak",
+      "scope": "read-only HTTP paths; excludes paid AI, uploads, writes, and native rendering",
+      "requestedRps": 40,
+      "durationSec": 600,
+      "elapsedSec": 600.318256,
+      "scheduled": 24000,
+      "completed": 24000,
+      "dropped": 0,
+      "achievedRps": 39.97879418146497,
+      "distinctAuthenticatedUsers": 1,
+      "statuses": {
+        "200": 23999
+      },
+      "failures": {
+        "network_or_invalid_json": 1
+      },
+      "failedRequests": 1,
+      "errorRate": 0.000041666666666666665,
+      "latencyMs": {
+        "p50": 394.565333999999,
+        "p95": 493.9554580000113,
+        "p99": 1048.183416999993
+      },
+      "passed": false
+    }
+  ]
+}

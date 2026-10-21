@@ -1,0 +1,1 @@
+{"phase":1,"platform":"android","passed":false,"checks":[],"networkAttempts":0,"failure":"Cannot assign to property 'deleteAsync' which has only a getter"}

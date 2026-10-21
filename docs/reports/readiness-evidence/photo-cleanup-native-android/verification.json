@@ -1,0 +1,27 @@
+{
+  "before": {
+    "suites": 1,
+    "failedTests": 2,
+    "passedTests": 19,
+    "failure": "Account cleanup skipped durable photo deletion and acknowledged success despite the synthetic deletion rejection"
+  },
+  "after": {
+    "focusedSuites": 2,
+    "focusedTests": 43,
+    "fullSuites": 120,
+    "fullTests": 1386,
+    "typecheckPassed": true,
+    "eslintErrors": 0,
+    "eslintWarnings": 30,
+    "auditEntryEslintWarnings": 2
+  },
+  "newRegressions": [
+    "Await deletion before cleanup acknowledgement",
+    "Deletion failure retains marker and retries",
+    "Remove all managed owner/orphan files while preserving unrelated Documents files",
+    "Superseded queued cleanup cannot delete newer-account files",
+    "Deletion rejection propagates and queue remains retryable"
+  ],
+  "nativeEvidence": "lifecycle.json",
+  "iosNativeRecoveryVerified": false
+}

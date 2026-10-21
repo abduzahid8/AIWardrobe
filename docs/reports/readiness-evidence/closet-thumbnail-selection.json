@@ -1,0 +1,48 @@
+{
+  "date": "2026-10-17",
+  "scope": "Retain and select supplied compact garment image references",
+  "changes": [
+    "Domain-to-closet adapter preserves thumbnailUrl instead of discarding it",
+    "Closet grid and carousel clothing cards select supplied thumbnailUrl",
+    "Original imageUrl and legacy image fields remain unchanged for detail/navigation consumers",
+    "Shared closet interface includes optional thumbnailUrl"
+  ],
+  "validation": {
+    "jest_suites": 108,
+    "jest_tests": 1217,
+    "failed": 0,
+    "new_rendered_card_cases": 3,
+    "typescript": "pass",
+    "diff_check": "pass",
+    "image_import_boundary": "pass",
+    "new_helper_test_lint_errors": 0,
+    "new_helper_test_lint_warnings": 0,
+    "broader_lint_errors": 0,
+    "broader_lint_warnings": 28,
+    "hermes_exports": [
+      {
+        "platform": "ios",
+        "path": "/tmp/aiwardrobe-thumbnail-selection-ios/_expo/static/js/ios/index-395d1be9656a3f6b858fc15c300dce72.hbc",
+        "bytes": 8377506,
+        "sha256": "deabffa05212074fc1b2339bcf3ffba3510f3e5999efe0162d1f09a334a7cc71"
+      },
+      {
+        "platform": "android",
+        "path": "/tmp/aiwardrobe-thumbnail-selection-android/_expo/static/js/android/index-5c5b5b910f07c017d1c0cc99def4976a.hbc",
+        "bytes": 8393950,
+        "sha256": "001d03a1fcb5144f7ebd9bd574e8c634e8c5e5c37a09d7a1d22c961610f0c507"
+      }
+    ]
+  },
+  "limitations": [
+    "No automatic thumbnail creation implemented in this change",
+    "Existing records without thumbnailUrl continue to use originals; this does not establish a speed improvement for those records",
+    "No measured native image-load latency, upload capacity, visual thumbnail quality or device cache pass in this change",
+    "Original native networking failure and full 10000 DAU readiness remain unresolved"
+  ],
+  "operations": {
+    "production_requests": 0,
+    "provider_calls": 0,
+    "new_dependencies": false
+  }
+}

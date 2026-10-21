@@ -1,20 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import useAuthStore from '../store/auth';
+import useAuthStore, { type AuthStore } from '../store/auth';
+import { authEvents } from '../store/authEvents';
+import { withRequestDeadline } from '../src/lib/requestDeadline';
 import { createLogger } from '../src/utils/logger';
-import Config from '../src/config/env';
 
 const logger = createLogger('useAdminGuard');
-
-const ADMIN_EMAIL = Config.admin?.email || 'info@aiwardrobe.club';
-
-// Stable selectors — defined at module scope so they never change reference.
-// useAuthStore(s => s.user) returns an object (new ref every render) which
-// causes infinite re-renders when used inline. Selecting only the primitives
-// we actually need avoids that.
-const selectUserId = (s: any) => s.user?.id as string | undefined;
-const selectUserEmail = (s: any) => s.user?.email as string | undefined;
-const selectIsAuthenticated = (s: any) => s.isAuthenticated as boolean;
+const selectUserId = (state: AuthStore) => state.session?.user.id ?? state.user?.id;
+const selectIsAuthenticated = (state: AuthStore) => state.isAuthenticated;
+const CACHE_TTL_MS = 30_000;
+let cached: { key: string; allowed: boolean; expires: number } | null = null;
+const pending = new Map<string, Promise<boolean>>();
 
 export interface AdminGuardResult {
     isAdmin: boolean;
@@ -22,95 +18,61 @@ export interface AdminGuardResult {
     checkAdmin: () => Promise<boolean>;
 }
 
-// Admin configuration type
-interface AdminConfig {
-    email: string;
-    allowedEmails?: string[];
-}
-
-// Module-level cache so multiple components (HomeScreen, TabNavigator, etc.)
-// that call useAdminGuard() share a single result instead of each firing
-// an independent Supabase query.
-let cachedAdminUserId: string | null = null;
-let cachedAdminResult: boolean = false;
-let cacheResolved: boolean = false;
-
+/** UI visibility only. Database/Edge authorization remains mandatory. */
 export function useAdminGuard(): AdminGuardResult {
     const userId = useAuthStore(selectUserId);
-    const userEmail = useAuthStore(selectUserEmail);
     const isAuthenticated = useAuthStore(selectIsAuthenticated);
+    const revision = authEvents.getRevision();
+    const key = `${revision}:${userId ?? ''}`;
+    const [result, setResult] = useState<{ key: string; allowed: boolean } | null>(null);
+    const [loadingKey, setLoadingKey] = useState<string | null>(null);
 
-    // Initialize state synchronously from cache when possible so the component
-    // never renders with a stale `loading=true` / `isAdmin=false` pair that
-    // immediately triggers a re-render when the cache resolves (fixes Defects 1.4 + 1.5).
-    const isCacheHit = cacheResolved && cachedAdminUserId === userId;
-    const [isAdmin, setIsAdmin] = useState(isCacheHit ? cachedAdminResult : false);
-    const [loading, setLoading] = useState(!isCacheHit);
-
-    const checkAdmin = async (): Promise<boolean> => {
-        if (!isAuthenticated || !userId) {
-            setIsAdmin(false);
-            setLoading(false);
-            // Reset cache on logout so the next user gets a fresh check (Defect 3.6).
-            cacheResolved = false;
-            cachedAdminUserId = null;
-            cachedAdminResult = false;
-            return false;
-        }
-
-        // Return cached result if the same user was already checked this session.
-        // Skip setState calls when the initial state was already set from cache
-        // to avoid a redundant re-render (fixes Defects 1.4 + 1.5).
-        if (cacheResolved && cachedAdminUserId === userId) {
-            // Only update state if it differs from what was set at init time
-            // (e.g. if userId changed between renders).
-            if (isAdmin !== cachedAdminResult) setIsAdmin(cachedAdminResult);
-            if (loading) setLoading(false);
-            return cachedAdminResult;
-        }
-
-        // Fast path: email match
-        if (userEmail?.toLowerCase() === ADMIN_EMAIL) {
-            cachedAdminUserId = userId;
-            cachedAdminResult = true;
-            cacheResolved = true;
-            setIsAdmin(true);
-            setLoading(false);
-            return true;
-        }
-
-        // DB check: is_admin flag on profile
+    const readAdmin = useCallback(async (refresh: boolean): Promise<boolean> => {
+        const stillCurrent = () => authEvents.getRevision() === revision
+            && useAuthStore.getState().isAuthenticated
+            && selectUserId(useAuthStore.getState()) === userId;
+        if (!isAuthenticated || !userId || !stillCurrent()) return false;
+        setLoadingKey(key);
         try {
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('is_admin')
-                .eq('id', userId)
-                .maybeSingle();
-
-            if (error) {
-                logger.warn('Failed to check admin status', error);
-                setIsAdmin(false);
-                return false;
+            if (!refresh && cached?.key === key && cached.expires > Date.now()) {
+                setResult({ key, allowed: cached.allowed });
+                return cached.allowed;
             }
-
-            const admin = data?.is_admin === true;
-            cachedAdminUserId = userId;
-            cachedAdminResult = admin;
-            cacheResolved = true;
-            setIsAdmin(admin);
-            return admin;
-        } catch (err) {
-            logger.error('Admin check error', err);
-            setIsAdmin(false);
+            let request = pending.get(key);
+            if (!request) {
+                request = withRequestDeadline(signal => supabase.from('profiles')
+                    .select('is_admin').eq('id', userId).abortSignal(signal).maybeSingle())
+                    .then(({ data, error }) => {
+                        if (error) throw error;
+                        return data?.is_admin === true;
+                    });
+                pending.set(key, request);
+                void request.finally(() => { if (pending.get(key) === request) pending.delete(key); }).catch(() => undefined);
+            }
+            const allowed = await request;
+            if (!stillCurrent()) return false;
+            cached = { key, allowed, expires: Date.now() + CACHE_TTL_MS };
+            setResult({ key, allowed });
+            return allowed;
+        } catch (error) {
+            if (stillCurrent()) {
+                cached = null;
+                setResult({ key, allowed: false });
+                logger.warn('Failed to check admin status', error);
+            }
             return false;
         } finally {
-            setLoading(false);
+            setLoadingKey(current => current === key ? null : current);
         }
+    }, [isAuthenticated, userId, revision, key]);
+
+    const checkAdmin = useCallback(() => readAdmin(true), [readAdmin]);
+    useEffect(() => { void readAdmin(false); }, [readAdmin]);
+
+    return {
+        // Identity-tagged results cannot flash the old account's admin controls.
+        isAdmin: isAuthenticated && result?.key === key && result.allowed,
+        loading: isAuthenticated && !!userId && (loadingKey === key || result?.key !== key),
+        checkAdmin,
     };
-
-    useEffect(() => {
-        checkAdmin();
-    }, [isAuthenticated, userId]);
-
-    return { isAdmin, loading, checkAdmin };
 }

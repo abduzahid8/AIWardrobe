@@ -1,0 +1,18 @@
+{
+  "verifiedAt": "2026-10-19T02:50:47.435787+00:00",
+  "defect": "useProvidedWardrobeOnly skipped auth.getUser in hosted function; public anon key reached pool processing",
+  "before": "Live public anon with empty supplied pool returned422; actual-handler tests with valid fixture pool reached model rather than rejecting unauthenticated requests",
+  "change": "All generation data paths verify a real user with Auth; supplied flag only skips wardrobe DB fetch. Invalid/missing user returns401; Auth outage returns503 before provider lookup/work.",
+  "tests": {
+    "stagedWire": 16,
+    "full": 1561,
+    "suites": 137,
+    "stagedDeno": "pass",
+    "liveUnauthenticatedDenials": 3,
+    "liveAuthenticatedBudgetChecks": 9
+  },
+  "livePositiveGeneration": "PASS: authenticated supplied real catalog pool returned200 in3.7s,3 exact products/URLs,2549800UZS under3150000UZS",
+  "fixtureCleanup": "Both disposable accounts deleted200; independent tagged-user count0 for run window",
+  "deployed": true,
+  "capacityBoundary": "Authentication only; authoritative paid quotas and provider capacity are not certified. Production has increment_rate_bucket(uuid,text), but consume_edge_quota(uuid,text) is absent; full local rate/quota source remains undeployed."
+}

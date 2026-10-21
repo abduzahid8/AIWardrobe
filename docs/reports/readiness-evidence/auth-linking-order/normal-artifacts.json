@@ -1,0 +1,22 @@
+{
+  "ios": {
+    "exactSources": {
+      "App.tsx": "279bb0dd131d363814964eebf748df7c1652bf81aadc076f4b3577ae6d42d290",
+      "src/lib/authLinking.ts": "9b17480fff378afd3f34b328d123b10d3fe6818eb265df882259129608260d36",
+      "screens/ResetPasswordScreen.tsx": "6f08f2b4f0577c1cb7a114f81beaaea6783af72917757f1ca2c70004ead24ff8"
+    },
+    "auditEntriesAbsent": true
+  },
+  "android": {
+    "exactSources": {
+      "App.tsx": "279bb0dd131d363814964eebf748df7c1652bf81aadc076f4b3577ae6d42d290",
+      "src/lib/authLinking.ts": "9b17480fff378afd3f34b328d123b10d3fe6818eb265df882259129608260d36",
+      "screens/ResetPasswordScreen.tsx": "6f08f2b4f0577c1cb7a114f81beaaea6783af72917757f1ca2c70004ead24ff8"
+    },
+    "auditEntriesAbsent": true
+  },
+  "iosBundleSha256": "c9adfe6eb6a7cb9175ae8875918a0f4c159ea58b8cd4be2fbf0bfb86268d2516",
+  "androidApkSha256": "5bb9255a6145f32de9b509b8679a25af2316ffdba19c5dee3ec3bcaf3f8169bd",
+  "iosScope": "Normal Hermes export, unchanged compiled native runtime; not a new native compile",
+  "androidReleaseBuildSucceeded": true
+}

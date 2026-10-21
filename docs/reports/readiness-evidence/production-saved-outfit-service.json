@@ -1,0 +1,58 @@
+{
+  "measuredAt": "2026-10-17T00:06:31.346Z",
+  "scope": "Actual savedOutfitService source via installed Supabase JS; two disposable accounts and 251-row owner collection; not native runtime/capacity",
+  "checks": [
+    {
+      "name": "actual_service_reads_all_251_rows",
+      "passed": true
+    },
+    {
+      "name": "actual_service_repeated_save_keeps_one_stable_row",
+      "passed": true
+    },
+    {
+      "name": "saved_fields_persist_exactly",
+      "passed": true
+    },
+    {
+      "name": "second_account_cannot_list_owner_collection",
+      "passed": true
+    },
+    {
+      "name": "second_account_cannot_overwrite_owner_id",
+      "passed": true
+    },
+    {
+      "name": "second_account_delete_did_not_remove_owner_row",
+      "passed": true
+    },
+    {
+      "name": "actual_service_repeat_removal_is_idempotent",
+      "passed": true
+    },
+    {
+      "name": "second_account_can_save_own_outfit",
+      "passed": true
+    },
+    {
+      "name": "first_account_cannot_list_second_outfit",
+      "passed": true
+    }
+  ],
+  "cleanup": [
+    {
+      "temporaryAccountDeleted": true
+    },
+    {
+      "temporaryAccountDeleted": true
+    }
+  ],
+  "executedServiceJavaScriptSha256": "5cc2be990c1504ffef070b4fe4bd56f449f751ba291d018ffdaf367ce9dde01c",
+  "passed": true,
+  "independentCleanupVerification": {
+    "readinessAccounts": 0,
+    "savedOutfits": 13,
+    "garments": 109,
+    "wearLogs": 0
+  }
+}

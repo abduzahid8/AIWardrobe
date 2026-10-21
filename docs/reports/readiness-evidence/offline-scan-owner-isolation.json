@@ -1,0 +1,53 @@
+{
+  "verifiedAt": "2026-10-19T13:17:17.407607+00:00",
+  "changes": [
+    "Pending scans tagged with authenticated owner; signed-out input rejected",
+    "Queue mutators and counts restricted to current owner",
+    "Scan hook only acknowledges queue acceptance when addUpload returns true",
+    "Inactive worker filters by owner and retry cap, requires explicit true success, gates stale auth/lifecycle completions, serializes connectivity checks and releases lock on failure"
+  ],
+  "checks": {
+    "queueStoreCases": 5,
+    "workerCases": 10,
+    "fullJestTests": 1763,
+    "fullJestSuites": 147,
+    "typescript": true,
+    "sourceMapMatches": {
+      "ios": {
+        "src/store/uploadQueueStore.ts": true,
+        "src/features/wardrobe/useVideoAnalysis.ts": true
+      },
+      "android": {
+        "src/store/uploadQueueStore.ts": true,
+        "src/features/wardrobe/useVideoAnalysis.ts": true
+      }
+    },
+    "workerIncludedInReleaseBundle": {
+      "ios": false,
+      "android": false
+    }
+  },
+  "sourceHashes": {
+    "src/store/uploadQueueStore.ts": "dead58e03f9fecdbefec5fde923c9d6d7890e1f054a074df663b5bfdd073cc15",
+    "src/features/wardrobe/useVideoAnalysis.ts": "a400379805691c0714c042b38516fa02c689f72627aea2462c48d39b39096205",
+    "src/services/uploadQueueProcessor.ts": "2eca7c237827ee98a8e017a0140f26c6e19f66483882c868bd8b8843d24e6dc2"
+  },
+  "artifacts": {
+    "ios": {
+      "path": "/tmp/aiwardrobe-budget-release-00nhnjcc/AIWardrobe.app/main.jsbundle",
+      "bytes": 6939928,
+      "sha256": "456f59e429456792b6c111a31576877c98af6f4c857d848158e691c100658df3"
+    },
+    "android": {
+      "path": "/Users/v.zahid/AIWardrobe/android/app/build/outputs/apk/release/app-release.apk",
+      "bytes": 66043870,
+      "sha256": "7c8ec772dba556da85d667986cea35a0eabe3d793e83ad0c35395b25f2e2e466"
+    }
+  },
+  "limitations": [
+    "Worker has no active screen integration and is absent from both release bundles",
+    "Current scan hook returns void; worker protocol now requires explicit true, so integration needs an explicit result contract",
+    "Durable offline retry/restart/review not verified; acceptance is not proof of disk flush",
+    "10k DAU capacity not certified"
+  ]
+}

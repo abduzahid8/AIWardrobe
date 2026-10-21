@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-16",
+  "scope": "Unreleased startup auth initialization lifecycle",
+  "before": {
+    "regressions_failed": 5,
+    "existing_passed": 29
+  },
+  "changes": [
+    "Latest initialization owns session restore and observer registration",
+    "Auth revision plus starting session reference reject obsolete restore/error",
+    "Cleanup invalidates pending startup and queued callbacks",
+    "Logout and successful delete use shared observer cleanup",
+    "Stale startup after newer login still registers current SDK observer when its initialization is active"
+  ],
+  "verification": {
+    "targeted_auth_tests": 34,
+    "new_regressions": 5,
+    "jest_tests": 1110,
+    "jest_suites": 95,
+    "typescript": "passed",
+    "targeted_lint_errors": 0,
+    "targeted_lint_warnings": 26,
+    "whitespace": "passed"
+  },
+  "additional_case": "Same-account reauthentication may replace session without advancing auth revision; captured-session comparison covers it",
+  "limitations": [
+    "Controlled async store tests, not actual flaky-network native login",
+    "Does not cancel an SDK-internal session read or bound the whole initialization pipeline",
+    "Native APK/iOS artifact predates this source change; rebuild/runtime check still needed",
+    "Wear-counter reconciliation and other full-readiness gates remain open"
+  ]
+}

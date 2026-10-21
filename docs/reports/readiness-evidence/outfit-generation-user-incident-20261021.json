@@ -1,0 +1,21 @@
+{
+  "measuredAt": "2026-10-21T17:28:12.021795+00:00",
+  "incident": "User screenshot22:19Tashkent: shopping Old Money/Work generation unavailable",
+  "observations": {
+    "hostedVersion": 115,
+    "latestMatchingRequestUtc": "2026-10-21T17:18:37.038",
+    "latestMatchingTimeoutUtc": "2026-10-21T17:19:22.041",
+    "correlation": "Timing,style,prompt; no unique screenshot execution identifier",
+    "behaviorChange": "Earlier HEAD backend locally assembled outfits when AI failed. Current strict backend reports503instead. This was an agent-introduced behavior change, not solely a new error translation."
+  },
+  "diagnostics": {
+    "lightning": "v115-incident-lightning-work.json",
+    "gemma": "v116-incident-gemma-work.json",
+    "streamingOriginalModel": "nvidia-incident-streaming-control.json"
+  },
+  "outcome": "Unresolved: original NVIDIA model and Gemma timed out; Lightning replied but every outfit failed structure/style validation. No working production replacement established.",
+  "productionConfigurationChangedDuringIncident": false,
+  "experimentalLocalModelConditionRemoved": true,
+  "fixturesRemaining": 0,
+  "goalAchieved": false
+}

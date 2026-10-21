@@ -1,0 +1,20 @@
+{
+  "change": "Delete each generated video thumbnail in a finally block after base64 extraction, including stale/cancelled requests and read failures; never delete the source video.",
+  "verification": {
+    "focusedHookCases": 23,
+    "fullJest": {
+      "tests": 1816,
+      "suites": 149,
+      "result": "pass"
+    },
+    "typeScript": "pass",
+    "iosHermes": "pass",
+    "androidArm64Release": "pass",
+    "sourceMaps": "changed hook exactly matches both platform maps"
+  },
+  "nativeScope": "New cleanup control flow is hook-tested with mocked native boundaries; previous native probes verify the SDK file API, not this complete production hook.",
+  "remaining": [
+    "Cleanup deletion errors are logged; broader orphan reconciliation still needed",
+    "Full shipping-app picker/provider/review flow and provider accuracy/capacity remain unverified"
+  ]
+}

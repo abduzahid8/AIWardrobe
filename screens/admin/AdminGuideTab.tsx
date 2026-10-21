@@ -2,7 +2,7 @@
  * AdminGuideTab — Edit guide page content and upload hero image
  */
 import React, { useState, useEffect } from 'react';
-import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View,  } from 'react-native'
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View } from 'react-native';
 import { ScaledText } from '../../components/ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -10,6 +10,8 @@ import { supabase } from '../../lib/supabase';
 import { useTranslation } from 'react-i18next';
 import { createLogger } from '../../src/utils/logger';
 import * as FileSystem from 'expo-file-system/legacy';
+import { Image } from '../../src/components/MediaImage';
+
 
 const logger = createLogger('AdminGuideTab');
 

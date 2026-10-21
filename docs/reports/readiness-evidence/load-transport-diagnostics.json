@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-20",
+  "scope": "Load-harness correlation and stage-timing diagnostics; not a production reliability fix",
+  "verification": {
+    "nodeHarnessChecks": 22,
+    "passed": 22
+  },
+  "changes": [
+    "HTTP failures retain route, status, request index and start time",
+    "Validated Supabase request IDs and Cloudflare ray IDs retained",
+    "Per-run exact start/end timestamps",
+    "Separate header wait and body/decode/validation timing",
+    "No request headers, URLs, tokens, response bodies or arbitrary error messages retained"
+  ],
+  "liveCalibration": {
+    "requests": 120,
+    "rps": 4,
+    "failures": 0,
+    "headersP95Ms": 793.8308750000001,
+    "bodyP95Ms": 6.108499999999822,
+    "reportedUpstreamP95Ms": 79
+  },
+  "interpretation": "Most observed end-to-end time occurred before headers. That stage includes network, gateway and upstream work and cannot identify the responsible component alone. Percentiles are not additive.",
+  "limitations": [
+    "Small public catalog calibration cannot replace failed mixed-load results",
+    "Original HTTP 502 still unmatched to a server log record",
+    "No app/server deployment or runtime change",
+    "NVIDIA reliability and 10000-DAU readiness remain unresolved"
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "scope": "Profile-response and login-follow-up isolation using controlled async responses and the real auth-event revision tracker; no production mutations",
+  "tests": {
+    "passed": 1076,
+    "suites": 91,
+    "newRegressions": 6
+  },
+  "typecheck": "pass",
+  "targetedLint": {
+    "errors": 0,
+    "warnings": 17
+  },
+  "bundles": [
+    {
+      "platform": "ios",
+      "path": "/tmp/aiwardrobe-readiness-auth-ios-20261016/_expo/static/js/ios/index-bf1a28707ade296e2dbacbe6f4336d8c.hbc",
+      "bytes": 8336463,
+      "sha256": "4865d1072aa3db12f7bd2f29bd4374c8ac23dca109a96a03569695ee56252026",
+      "exportPassed": true
+    },
+    {
+      "platform": "android",
+      "path": "/tmp/aiwardrobe-readiness-auth-android-20261016/_expo/static/js/android/index-7020f66440c19ac6dc90eb7b235680c9.hbc",
+      "bytes": 8352984,
+      "sha256": "ac4651feed22d2c7cb08d0d87339e0353573458ddf4e05219317751bdf9f9fe4",
+      "exportPassed": true
+    }
+  ],
+  "nativeRuntimeVerified": false,
+  "sdkEventLifecycleFullyVerified": false,
+  "requestDeadlinesVerified": false,
+  "mobileReleased": false
+}

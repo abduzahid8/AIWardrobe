@@ -1,0 +1,10 @@
+{
+  "normalEntry": true,
+  "auditEntryIncluded": false,
+  "bundledSavedShopSourceMatchesCurrentFile": true,
+  "savedShopSourceSha256": "e2fce8ac43a35503ee9e61752e22a8643d56e82759ceb0e15952d60698b37477",
+  "apkBytes": 66151834,
+  "apkSha256": "0f24a21fd4fd58447a17b758f0b1dd762f0827e90d8ad37f926af628cd5fbf98",
+  "bundleSha256": "3a08bcf50b8c7f72664ceed3526e90686e130a8d66a95885f2a7b6db3297c920",
+  "normalNativeUiTested": false
+}

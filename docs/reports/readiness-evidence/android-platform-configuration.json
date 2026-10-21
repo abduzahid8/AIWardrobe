@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-17",
+  "androidNativeBuild": "passed",
+  "abi": "arm64-v8a",
+  "newPlatformKeyTests": 7,
+  "appTests": 1263,
+  "appSuites": 113,
+  "typecheck": "passed",
+  "releaseToolchainChecksPassed": 5,
+  "configurationLint": "clean",
+  "iapLint": {
+    "errors": 0,
+    "warnings": 23
+  },
+  "signatureVerified": true,
+  "signer": "Android Debug",
+  "signerSha256": "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c",
+  "androidPublicSdkKeyAvailable": false,
+  "androidPurchasesVerified": false,
+  "androidNativeRuntimeTested": false,
+  "productionWrites": false,
+  "realPaymentAttempted": false,
+  "iosBinaryIncludesLatestPlatformConfig": false
+}

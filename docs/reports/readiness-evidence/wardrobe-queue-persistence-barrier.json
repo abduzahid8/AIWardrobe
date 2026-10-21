@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-17",
+  "scope": "Local queued wardrobe sync durability; no production traffic",
+  "behavior": [
+    "Force-write current partialized Zustand snapshot before processPendingActions",
+    "Flush debounced storage and await snapshot write acknowledgement",
+    "Retain pending work on persistence failure or unavailable persistence",
+    "Recheck auth revision and owner after persistence before cloud mutation"
+  ],
+  "validation": {
+    "jest": {
+      "suites": 100,
+      "tests": 1170,
+      "failed": 0
+    },
+    "typescript": "pass",
+    "diff_check": "pass",
+    "targeted_lint": {
+      "errors": 0,
+      "existing_warnings": 4
+    }
+  },
+  "limits": [
+    "Direct addItem upload path is not yet converted to queue-first media staging",
+    "Cloud acknowledgement persistence and staged-file cleanup remain unfinished",
+    "Does not establish native process-death durability or 10000 DAU capacity"
+  ]
+}

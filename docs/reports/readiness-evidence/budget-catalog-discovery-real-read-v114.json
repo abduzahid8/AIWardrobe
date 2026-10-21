@@ -1,0 +1,365 @@
+{
+  "measuredAt": "2026-10-21T15:30:18.515Z",
+  "scope": "Actual budget-ordered backend RPC and staged helper in Node. Compare bounded6choice discovery with exhaustive eligible discovery over the same real slot catalog. No accounts, catalog writes or AI calls; trusted FX cache may refresh through the production cache helper.",
+  "sourceHashes": {
+    "entry": "f63b28f381b729db1a35fee0cb168227b21aa928656b64e4d63b3df006788118"
+  },
+  "reference": "CBU:2026-10-21:12012.3:13466.99:16026.81",
+  "scenarios": [
+    {
+      "slot": "top",
+      "boundedItems": [
+        {
+          "id": "shop_zara-uz-545400880",
+          "name": "COMBINED RELAXED FIT SHIRT",
+          "price": 349900,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_zara-uz-545456467",
+          "name": "BOXY FIT CHECK SHIRT",
+          "price": 349900,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_zara-uz-548062177",
+          "name": "RELAXED FIT CHECKED SLOGAN SHIRT",
+          "price": 349900,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_zara-uz-574227457",
+          "name": "METAL KEY RING WITH KEYS",
+          "price": 349900,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_fr-tommy-154957-official",
+          "name": "Slim Fit Stretch Pique Polo",
+          "price": 399500,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_zara-uz-545456568",
+          "name": "COTTON KNIT TANK TOP",
+          "price": 399900,
+          "currency": "UZS"
+        }
+      ],
+      "boundedChoices": 6,
+      "eligibleFamilies": 272,
+      "boundedLatencyMs": 2000,
+      "globalMinimumUzs": 349900,
+      "boundedMinimumUzs": 349900,
+      "minimumPreserved": true,
+      "allEligible": true
+    },
+    {
+      "slot": "bottom",
+      "boundedItems": [
+        {
+          "id": "shop_zara-uz-549089409",
+          "name": "STRAIGHT BARREL FIT JEANS",
+          "price": 429900,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_zara-uz-545475114",
+          "name": "REGULAR FIT CHECK SUIT TROUSERS",
+          "price": 429900,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_zara-uz-555071598",
+          "name": "100% LYOCELL RELAXED FIT TROUSERS",
+          "price": 429900,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_zara-uz-565424837",
+          "name": "COMFORT SUIT TROUSERS",
+          "price": 429900,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_zara-uz-545422992",
+          "name": "BASIC SLIM FIT JEANS",
+          "price": 549900,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_zara-uz-545470813",
+          "name": "SLIM FIT CHINOS",
+          "price": 549900,
+          "currency": "UZS"
+        }
+      ],
+      "boundedChoices": 6,
+      "eligibleFamilies": 253,
+      "boundedLatencyMs": 422,
+      "globalMinimumUzs": 429900,
+      "boundedMinimumUzs": 429900,
+      "minimumPreserved": true,
+      "allEligible": true
+    },
+    {
+      "slot": "shoes",
+      "boundedItems": [
+        {
+          "id": "shop_zara-uz-545409746",
+          "name": "CASUAL LEATHER LOAFERS WITH TASSELS",
+          "price": 649900,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_zara-uz-545422633",
+          "name": "LEATHER DECK SHOES",
+          "price": 649900,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_zara-uz-549738142",
+          "name": "CASUAL SHOES",
+          "price": 649900,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_zara-uz-545423041",
+          "name": "DRESS PENNY LOAFERS",
+          "price": 779900,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_zara-uz-545961332",
+          "name": "PENNY DRESS LOAFERS",
+          "price": 779900,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_zara-uz-555820064",
+          "name": "POINTED CHELSEA BOOTS",
+          "price": 779900,
+          "currency": "UZS"
+        }
+      ],
+      "boundedChoices": 6,
+      "eligibleFamilies": 92,
+      "boundedLatencyMs": 534,
+      "globalMinimumUzs": 649900,
+      "boundedMinimumUzs": 649900,
+      "minimumPreserved": true,
+      "allEligible": true
+    }
+  ],
+  "anonymousDenied": true,
+  "passed": true,
+  "requests": [
+    {
+      "phase": "preferences",
+      "status": 200,
+      "limit": "1",
+      "order": "fetched_at.desc",
+      "cursor": null,
+      "rpc": false,
+      "latencyMs": 1746
+    },
+    {
+      "phase": "preferences",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": false,
+      "latencyMs": 484
+    },
+    {
+      "phase": "top-bounded",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 1983
+    },
+    {
+      "phase": "top-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 1330
+    },
+    {
+      "phase": "top-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 601
+    },
+    {
+      "phase": "top-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 566
+    },
+    {
+      "phase": "top-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 567
+    },
+    {
+      "phase": "top-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 475
+    },
+    {
+      "phase": "top-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 468
+    },
+    {
+      "phase": "top-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 533
+    },
+    {
+      "phase": "top-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 469
+    },
+    {
+      "phase": "top-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 584
+    },
+    {
+      "phase": "top-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 464
+    },
+    {
+      "phase": "top-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 466
+    },
+    {
+      "phase": "top-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 433
+    },
+    {
+      "phase": "bottom-bounded",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 417
+    },
+    {
+      "phase": "bottom-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 547
+    },
+    {
+      "phase": "bottom-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 418
+    },
+    {
+      "phase": "bottom-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 412
+    },
+    {
+      "phase": "bottom-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 454
+    },
+    {
+      "phase": "shoes-bounded",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 527
+    },
+    {
+      "phase": "shoes-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 427
+    },
+    {
+      "phase": "shoes-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 403
+    }
+  ]
+}

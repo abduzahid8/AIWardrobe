@@ -1,0 +1,6 @@
+{
+  "scope": "Read-only production query with anonymous client; deliberate invalid column; confirms installed SDK returns error rather than throwing",
+  "passed": true,
+  "errorCode": "42703",
+  "productionMutations": false
+}

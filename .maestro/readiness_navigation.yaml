@@ -1,0 +1,42 @@
+appId: host.exp.Exponent
+name: readiness_navigation
+---
+# Explicit launch/deep-link precondition: never run tab taps on Springboard.
+# Requires a previously authenticated test session. Does not mutate app data.
+- launchApp:
+    stopApp: false
+- openLink: "exp://127.0.0.1:8081"
+- extendedWaitUntil:
+    visible:
+      id: "homeTab"
+    timeout: 60000
+- tapOn:
+    id: "homeTab"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: "Good (morning|afternoon|evening|night).*"
+# Dismiss the Expo development error toast caused by the documented, not-yet-
+# deployed subscription RPC. Production deployment remains a release blocker.
+# This point is outside the app's interactive tab targets when no toast exists.
+- tapOn:
+    point: "96%,92.5%"
+- tapOn:
+    id: "closetTab"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*Tops.*"
+- tapOn:
+    id: "inspoTab"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*Inspiration.*"
+- tapOn:
+    id: "profileTab"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: ".*Account.*"
+- tapOn:
+    id: "homeTab"
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: readiness_navigation_home

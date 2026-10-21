@@ -74,12 +74,40 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 
     let sceneWindow = UIWindow(windowScene: windowScene)
+    var launchOptions: [UIApplication.LaunchOptionsKey: Any] = [:]
+    if let context = connectionOptions.urlContexts.first {
+      launchOptions[.url] = context.url
+      if let source = context.options.sourceApplication {
+        launchOptions[.sourceApplication] = source
+      }
+    }
+    if let activity = connectionOptions.userActivities.first(where: { $0.activityType == NSUserActivityTypeBrowsingWeb }) {
+      launchOptions[.userActivityDictionary] = [
+        "UIApplicationLaunchOptionsUserActivityTypeKey": activity.activityType,
+        "UIApplicationLaunchOptionsUserActivityKey": activity,
+      ]
+    }
     factory.startReactNative(
       withModuleName: "main",
       in: sceneWindow,
-      launchOptions: nil)
+      launchOptions: launchOptions.isEmpty ? nil : launchOptions)
 
     self.window = sceneWindow
     appDelegate.window = sceneWindow
+  }
+
+  func scene(_ scene: UIScene, openURLContexts contexts: Set<UIOpenURLContext>) {
+    guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else { return }
+    for context in contexts {
+      var options: [UIApplication.OpenURLOptionsKey: Any] = [.openInPlace: context.options.openInPlace]
+      if let source = context.options.sourceApplication { options[.sourceApplication] = source }
+      if let annotation = context.options.annotation { options[.annotation] = annotation }
+      _ = appDelegate.application(UIApplication.shared, open: context.url, options: options)
+    }
+  }
+
+  func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
+    guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else { return }
+    _ = appDelegate.application(UIApplication.shared, continue: userActivity, restorationHandler: { _ in })
   }
 }

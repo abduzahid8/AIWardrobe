@@ -1,0 +1,76 @@
+{
+  "measuredAt": "2026-10-20T11:14:42.459Z",
+  "scope": "Disposable production Auth-trigger, authenticated profile/ownership and anonymous availability HTTP checks; no existing-user changes or external provider consent",
+  "checks": [
+    {
+      "name": "requested_handle_canonicalized",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "oauth_name_separate_from_generated_handle",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "anonymous_lookup_detects_case_variant",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "anonymous_lookup_rejects_invalid_format",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "display_edit_keeps_unique_handle",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "display_names_may_be_shared",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "case_variant_duplicate_handle_rejected",
+      "status": 409,
+      "passed": true
+    },
+    {
+      "name": "invalid_profile_handle_rejected",
+      "status": 400,
+      "passed": true
+    },
+    {
+      "name": "cross_owner_name_write_denied",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "legacy_display_edit_keeps_unique_handle",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "handle_edit_canonicalizes_without_changing_name",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "released_handle_available",
+      "status": 200,
+      "passed": true
+    }
+  ],
+  "cleanup": [
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    }
+  ]
+}

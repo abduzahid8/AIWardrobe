@@ -1,0 +1,52 @@
+{
+  "date": "2026-10-17",
+  "scope": "Private wardrobe-image rendering boundary; garment uploads/migration not cut over",
+  "imageImportModulesUpdated": 44,
+  "features": [
+    "Current owner and token required before private source reaches native cache/loader",
+    "Signed references render through canonical authenticated endpoint",
+    "Private cache keys contain owner/path but no token",
+    "Identity changes remount underlying image view",
+    "Auth revision subscription clears private source synchronously on logout while SDK cleanup may still await network",
+    "Fresh token used after refresh",
+    "Mixed Expo prefetch isolates authorization from external URLs",
+    "Native private getSize uses headers; unsupported headerless native private prefetch returns false without a request"
+  ],
+  "verification": {
+    "jestTests": 1155,
+    "jestSuites": 99,
+    "typecheck": "pass",
+    "importCoverageGuard": "pass; added to CI",
+    "fullRepoLint": "last pass 0 errors/1102 warnings before final small test/hook refinements",
+    "finalTargetedLint": "0 errors, 1 existing daily-outfit hook warning",
+    "whitespace": "pass",
+    "androidExport": "pass",
+    "iosExport": "pass"
+  },
+  "bundles": {
+    "android": {
+      "file": "/tmp/aiwardrobe-private-media-render-android/_expo/static/js/android/index-6383f89c812d5e1a72c6a12f23164bae.hbc",
+      "bytes": 8371621,
+      "sha256": "3a3f97027e2ddc70f089dc7f74aa23f4252a9856ee6b8712c40a61a9828fe7cb"
+    },
+    "ios": {
+      "file": "/tmp/aiwardrobe-private-media-render-ios/_expo/static/js/ios/index-ecbd9f7a7f9ec0baf7e5dd1b7cf88307.hbc",
+      "bytes": 8355404,
+      "sha256": "7ad6b3c83a7d9aeeb0c041811098b26c8eb6c5da9494e85eca5818608e070a4f"
+    }
+  },
+  "sourceSha256": {
+    "src/components/MediaImage.tsx": "c1b00653705c9f82995e2828ce09e84f76b3bee66ca25d2e2b920effd1a66816",
+    "src/utils/mediaImageSource.ts": "ac66db9a87054d8ad3ea86729745052242b96249bdbd7dd4cec085579b90407b",
+    "src/services/wardrobeMedia.ts": "e139258d805eb46c4fc96454300e79e5db9c7d2da99e85dc7d741e27d8184720",
+    "hooks/useDailyAIOutfit.ts": "083f041e2c9dd93273251e347d44079642dfa1a5783518f97627c8055b900995"
+  },
+  "limits": [
+    "Component tests use mocked native image engines; actual device clearing/rendering not yet verified",
+    "Exports are not signed native builds or runtime tests",
+    "Upload/save cutover and offline original-file retention are unfinished",
+    "Existing inline/device-local rows not migrated",
+    "No production writes/provider calls this turn",
+    "Cached signed URL revocation limit and original intermittent write failure remain recorded"
+  ]
+}

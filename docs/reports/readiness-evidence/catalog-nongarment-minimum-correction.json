@@ -1,0 +1,30 @@
+{
+  "measuredAt": "2026-10-21T15:31:26.853148+00:00",
+  "correction": "The105900UZS top minimum in earlier v111/v113 catalog helper evidence was a SUIT CARRIER, not a wearable top. Those results only established the then-current eligibility predicate and cannot substantiate a real outfit floor. Historical evidence is retained.",
+  "activeCatalogRowsWithIncorrectLabels": [
+    {
+      "id": "fr-tommy-178013-official",
+      "name": "43Mm Silicone Strap Sport Watch",
+      "priceUzs": 219000
+    },
+    {
+      "id": "zara-uz-545470900",
+      "name": "SUIT CARRIER",
+      "priceUzs": 105900
+    },
+    {
+      "id": "zara-uz-556191794",
+      "name": "SMALL TRAINING TOWEL",
+      "priceUzs": 219900
+    },
+    {
+      "id": "zara-uz-556191796",
+      "name": "LARGE TRAINING TOWEL",
+      "priceUzs": 429900
+    }
+  ],
+  "feedCategory": "tops",
+  "feedGarmentType": "upper_body",
+  "fixVersion": 114,
+  "newMinimumEvidence": "budget-catalog-discovery-real-read-v114.json"
+}

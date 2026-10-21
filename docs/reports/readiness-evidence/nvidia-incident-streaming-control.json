@@ -1,0 +1,7 @@
+{
+  "measuredAt": "2026-10-21T17:24:30.524Z",
+  "scope": "Single minimal streaming direct NVIDIA control; synthetic identifiers, no quality or capacity proof",
+  "model": "meta/llama-3.2-11b-vision-instruct",
+  "transportError": "TimeoutError",
+  "latencyMs": 45004
+}

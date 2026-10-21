@@ -1,0 +1,138 @@
+{
+  "startedAt": "2026-10-17T11:42:00.494Z",
+  "scope": "Matched local-vs-same-project-Edge private image delivery; not complete capacity certification",
+  "fixtureBytes": 788309,
+  "config": {
+    "projectUrl": "https://fyqpifmrsftsfqibhwhy.supabase.co",
+    "owner": "38ebdb2a-7475-44e3-a8dc-c9e9ed696241",
+    "objectId": "912e2a6f-2936-4cf6-8c85-640e32eaf11a",
+    "bytes": 788309,
+    "sha256": "39b14e9041fca06639a34a1c04420d57cc57776bec23c524f21cd88f1a4a3bd7",
+    "expiresAt": 1792237591534
+  },
+  "controls": [
+    {
+      "name": "anonymous_denied",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "name": "other_fixture_owner_denied",
+      "status": 403,
+      "passed": true
+    }
+  ],
+  "remoteHttpStatus": 200,
+  "remote": {
+    "scope": "Same-project remote Storage transport diagnostic; not 10000 DAU certification",
+    "region": "eu-central-1",
+    "stages": [
+      {
+        "targetRps": 2,
+        "seconds": 10,
+        "planned": 20,
+        "completed": 20,
+        "dropped": 0,
+        "failures": 0,
+        "elapsedMs": 9528.284807,
+        "p95Ms": 2334.3269099999998,
+        "p95HeadersMs": 1132.316875,
+        "p95BodyMs": 1200.10243,
+        "bytes": 15766180
+      },
+      {
+        "targetRps": 5,
+        "seconds": 10,
+        "planned": 50,
+        "completed": 50,
+        "dropped": 0,
+        "failures": 0,
+        "elapsedMs": 9824.549377000001,
+        "p95Ms": 73.6249429999989,
+        "p95HeadersMs": 68.96772899999996,
+        "p95BodyMs": 11.962711000000127,
+        "bytes": 39415450
+      },
+      {
+        "targetRps": 10,
+        "seconds": 10,
+        "planned": 100,
+        "completed": 100,
+        "dropped": 0,
+        "failures": 0,
+        "elapsedMs": 9923.68262,
+        "p95Ms": 50.448301000000356,
+        "p95HeadersMs": 42.2039420000001,
+        "p95BodyMs": 14.708408999998937,
+        "bytes": 78830900
+      }
+    ],
+    "passed": true
+  },
+  "local": {
+    "scope": "Same-project remote Storage transport diagnostic; not 10000 DAU certification",
+    "region": "local-test-machine",
+    "stages": [
+      {
+        "targetRps": 2,
+        "seconds": 10,
+        "planned": 20,
+        "completed": 20,
+        "dropped": 0,
+        "failures": 0,
+        "elapsedMs": 12023.376375,
+        "p95Ms": 4287.80975,
+        "p95HeadersMs": 1571.1872500000027,
+        "p95BodyMs": 3267.2808330000043,
+        "bytes": 15766180
+      },
+      {
+        "targetRps": 5,
+        "seconds": 10,
+        "planned": 50,
+        "completed": 32,
+        "dropped": 18,
+        "failures": 10,
+        "elapsedMs": 20002.646417000004,
+        "p95Ms": 15002.491874999992,
+        "p95HeadersMs": 9334.624209000001,
+        "p95BodyMs": 10555.688083000001,
+        "bytes": 17342798
+      }
+    ],
+    "passed": false
+  },
+  "cleanup": {
+    "checks": [
+      {
+        "functionDeleteCommandSucceeded": true
+      },
+      {
+        "objectsRemoved": true
+      },
+      {
+        "userId": "38ebdb2a-7475-44e3-a8dc-c9e9ed696241",
+        "accountDeleted": true
+      },
+      {
+        "userId": "78a0ec65-0551-4d90-b22a-f8704bb2d658",
+        "accountDeleted": true
+      }
+    ],
+    "passed": true
+  },
+  "finishedAt": "2026-10-17T11:43:13.152Z",
+  "executedHandlerSha256": "d94fe3fdf855270560956cfb98f6df6c4014cd286c60a579ab9f037dd20921fb",
+  "fixtureDescription": "Pillow RGBA 384x512 PNG, compression level 0; matched transport control, not native codec output",
+  "failureClassification": "Local failed-read categories were not retained in this run; do not label all as timeouts from the stage counts alone.",
+  "cleanupIndependentVerification": {
+    "functionAbsent": true,
+    "usersRemaining": 0,
+    "sessionsRemaining": 0,
+    "identitiesRemaining": 0,
+    "profilesRemaining": 0,
+    "objectsRemaining": 0,
+    "privateManifestRemoved": true,
+    "temporaryImageRemoved": true
+  }
+}

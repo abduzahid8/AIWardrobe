@@ -1,0 +1,23 @@
+{
+  "baseline": "Actual Android API34 nearest-keyframe probe returned red/blue/blue at requested3/15/27seconds; expected red/green/blue.",
+  "fix": "Android uses ExpoVideo generateThumbnailsAsync with closest-frame decoding, then ImageManipulator JPEG/base64 conversion, releasing player/images/contexts/thumbnails and temporary encoded files. iOS retains its existing extraction path.",
+  "nativeEvidence": "android-native-video-sampling/result.json",
+  "baselineEvidence": "android-native-video-sampling/baseline-keyframe-result.json",
+  "result": "PASS: generated30second H264 clip; actual native API emits red/green/blue at3/15/27seconds; duration read twice consistently",
+  "scope": "Android API34 arm64 emulator, diagnostic entry with actual production sampling/encoding helper; not complete shipping picker/provider/review flow",
+  "limitations": [
+    "Other Android versions, physical devices, codecs, rotations and variable frame rates remain unverified",
+    "SDK max-size thumbnail generation upscales the small160x120fixture to1600x1200; aspect ratio preserved; no resolution-efficiency claim",
+    "Provider classification accuracy/capacity and sparse temporal coverage remain open"
+  ],
+  "cleanup": {
+    "ownedTempDirectoriesRemaining": [],
+    "adbDevices": "List of devices attached"
+  },
+  "verification": {
+    "fullJest": 1834,
+    "suites": 151,
+    "typeScript": "pass",
+    "bothReleaseBuilds": "pass"
+  }
+}

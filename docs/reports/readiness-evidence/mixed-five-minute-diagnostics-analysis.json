@@ -1,0 +1,73 @@
+{
+  "date": "2026-10-21",
+  "report": "production-mixed-five-minute-diagnostics-20261021.json",
+  "passed": true,
+  "reads": {
+    "completed": 9600,
+    "failedRequests": 0,
+    "dropped": 0,
+    "achievedRps": 31.961998271615304,
+    "latencyMs": {
+      "p50": 379.10545899998397,
+      "p95": 458.6423749999958,
+      "p99": 750.8983750000189
+    },
+    "timingMs": {
+      "headers": {
+        "samples": 9600,
+        "p50": 378.18579099999624,
+        "p95": 456.1423749999958,
+        "p99": 747.3513749999984
+      },
+      "body": {
+        "samples": 9600,
+        "p50": 0.4277920000022277,
+        "p95": 4.741333000012673,
+        "p99": 7.323291999986395
+      }
+    }
+  },
+  "writes": {
+    "completed": 2400,
+    "failed": 0,
+    "dropped": 0,
+    "achievedRps": 7.993266514492639,
+    "latencyMs": {
+      "p50": 382.77016600000206,
+      "p95": 485.29674999999406,
+      "p99": 806.445040999999
+    },
+    "timingMs": {
+      "headers": {
+        "samples": 2400,
+        "p50": 382.0157500000205,
+        "p95": 482.45599999999104,
+        "p99": 806.0613329999906
+      },
+      "body": {
+        "samples": 2400,
+        "p50": 0.3482499999809079,
+        "p95": 4.6640840000036405,
+        "p99": 7.669250000006286
+      }
+    }
+  },
+  "allTwentyStateChecksPass": true,
+  "cleanupInHarness": true,
+  "thresholdsUnchanged": {
+    "errors": 0,
+    "dropped": 0,
+    "p95BelowMs": 1000,
+    "p99BelowMs": 2000,
+    "minimumAchievedRateFraction": 0.95
+  },
+  "previousFailedReportRetained": "production-mixed-five-minute.json",
+  "attribution": "No infrastructure fix or root cause established for previous socket/502 errors; this is a separate healthy observation window",
+  "limits": [
+    "20 owners,50garments and5saved outfits per owner",
+    "Five minutes at40modeledRPS, not actual10kDAUmeasurement",
+    "No AI,media delivery/uploads,auth/billing/Realtime or native concurrency",
+    "No10k-owner production cardinality or sustained soak",
+    "No per-request proof that a particular network component caused older failures"
+  ]
+}

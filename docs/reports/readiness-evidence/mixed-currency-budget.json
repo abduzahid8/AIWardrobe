@@ -1,0 +1,42 @@
+{
+  "verifiedAt": "2026-10-19T01:41:50.485904+00:00",
+  "before": "Two new regression tests failed: client and actual Edge handler chose raw-number minimum across currencies",
+  "after": "13 targeted tests pass; 6 staged-handler tests pass; Deno and TypeScript pass; full1498 tests/131 suites pass",
+  "productionChecksPassed": 7,
+  "cleanupHttp": 200,
+  "independentRemainingFixtures": 0,
+  "conversionBoundary": "Uses existing configured application conversion rates, not a verified market exchange rate",
+  "sourceMapChecks": [
+    {
+      "platform": "ios",
+      "source": "screens/AIOutfitmaker.tsx",
+      "exactSourceMatch": true
+    },
+    {
+      "platform": "ios",
+      "source": "src/utils/outfitBudget.ts",
+      "exactSourceMatch": true
+    },
+    {
+      "platform": "android",
+      "source": "screens/AIOutfitmaker.tsx",
+      "exactSourceMatch": true
+    },
+    {
+      "platform": "android",
+      "source": "src/utils/outfitBudget.ts",
+      "exactSourceMatch": true
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "/private/tmp/aiwardrobe-budget-release-00nhnjcc/AIWardrobe.app/main.jsbundle",
+      "sha256": "fdf9610e9bc42223d44e6dbccf3cc2fa7d1464340f479c9dc84d7b25887426c8"
+    },
+    {
+      "path": "/Users/v.zahid/AIWardrobe/android/app/build/outputs/apk/release/app-release.apk",
+      "sha256": "b897926d02dbb7ffcefafaac28970b8293adcb07e82add50e43a12ac49d40e6b"
+    }
+  ],
+  "userDeviceInstalled": false
+}

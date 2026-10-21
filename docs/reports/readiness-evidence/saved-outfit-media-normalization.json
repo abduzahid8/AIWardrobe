@@ -1,0 +1,48 @@
+{
+  "date": "2026-10-17",
+  "scope": "Saved outfit snapshot media normalization and live verification",
+  "changes": [
+    "Both image/imageUrl conventions prepare permanent authenticated references before saving",
+    "Snapshot input captured before asynchronous work",
+    "Media or account-change failure prevents record write",
+    "Shared media preparer accepts only required image fields while preserving garment callers"
+  ],
+  "local_validation": {
+    "jest_suites": 104,
+    "jest_tests": 1197,
+    "failed": 0,
+    "typescript": "pass",
+    "targeted_lint_errors": 0,
+    "targeted_lint_warnings": 0,
+    "diff_check": "pass"
+  },
+  "production_validation": {
+    "evidence": "production-saved-outfit-media.json",
+    "assertions": 15,
+    "passed": 15,
+    "accounts": 2,
+    "owner_collection_rows": 251,
+    "repository_image_bytes": 2915128,
+    "repository_image_sha256": "7c1728bfad35066ad916f46dd5c2f2411e24787021a891d5ed4671780ec297f3",
+    "runtime": "Node 22.23.2 with actual transpiled service/media source and installed Supabase JS",
+    "independent_before_and_after": {
+      "disposable_accounts": 0,
+      "garments": 109,
+      "saved_outfits": 13,
+      "wardrobe_objects": 0
+    }
+  },
+  "documentation_checked": [
+    "https://supabase.com/changelog.md",
+    "https://supabase.com/changelog/cbc-tls-ciphers-deprecated",
+    "https://supabase.com/changelog/postgres-15-19-17-11-breaking-changes",
+    "https://supabase.com/docs/guides/storage/uploads/standard-uploads"
+  ],
+  "limits": [
+    "Live test uses inline repository image, not native picker or device process restart",
+    "Existing saved snapshot rows were not bulk migrated",
+    "Reference-aware local cleanup and browser staging remain open",
+    "Uploads above the tested 2.9 MB and full mixed-workload capacity remain unverified",
+    "No AI/provider calls; no claim of immediate signed-link cache invalidation"
+  ]
+}

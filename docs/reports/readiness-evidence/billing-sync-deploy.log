@@ -1,0 +1,4 @@
+Uploading asset (sync-subscription): supabase/functions/sync-subscription/index.ts
+Uploading asset (sync-subscription): supabase/functions/_shared/revenuecatSnapshot.ts
+Uploading asset (sync-subscription): supabase/functions/_shared/rateLimit.ts
+{"project_ref":"fyqpifmrsftsfqibhwhy","functions":["sync-subscription"],"dashboard_url":"https://supabase.com/dashboard/project/fyqpifmrsftsfqibhwhy/functions","message":"Deployed Functions."}

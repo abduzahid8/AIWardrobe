@@ -19,16 +19,12 @@
  */
 
 import React, { useCallback } from 'react';
-import {
-    View,
-    Image,
-    StyleSheet,
-    Dimensions,
-    Text,
-} from 'react-native';
+import { View, StyleSheet, Dimensions, Text } from 'react-native';
 import Svg, { Ellipse, Rect, Circle } from 'react-native-svg';
 import { LiquidGlass2026Theme } from '../../constants/LiquidGlass2026Theme';
 import type { ClothingItem } from '../types/domain';
+import { Image } from './MediaImage';
+
 
 const { colors } = LiquidGlass2026Theme;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');

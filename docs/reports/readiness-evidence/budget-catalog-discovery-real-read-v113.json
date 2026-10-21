@@ -1,0 +1,251 @@
+{
+  "measuredAt": "2026-10-21T13:57:03.085Z",
+  "scope": "Actual budget-ordered backend RPC and staged helper in Node. Compare bounded6choice discovery with exhaustive eligible discovery over the same real slot catalog. No accounts, catalog writes or AI calls; trusted FX cache may refresh through the production cache helper.",
+  "sourceHashes": {
+    "entry": "71d55df45afd390346bd1aa951a8a64bde47bd9531b4e5cb6f9e418f5b513996"
+  },
+  "reference": "CBU:2026-10-21:12012.3:13466.99:16026.81",
+  "scenarios": [
+    {
+      "slot": "top",
+      "boundedChoices": 6,
+      "eligibleFamilies": 276,
+      "boundedLatencyMs": 971,
+      "globalMinimumUzs": 105900,
+      "boundedMinimumUzs": 105900,
+      "minimumPreserved": true,
+      "allEligible": true
+    },
+    {
+      "slot": "bottom",
+      "boundedChoices": 6,
+      "eligibleFamilies": 253,
+      "boundedLatencyMs": 685,
+      "globalMinimumUzs": 429900,
+      "boundedMinimumUzs": 429900,
+      "minimumPreserved": true,
+      "allEligible": true
+    },
+    {
+      "slot": "shoes",
+      "boundedChoices": 6,
+      "eligibleFamilies": 92,
+      "boundedLatencyMs": 883,
+      "globalMinimumUzs": 649900,
+      "boundedMinimumUzs": 649900,
+      "minimumPreserved": true,
+      "allEligible": true
+    }
+  ],
+  "anonymousDenied": true,
+  "passed": true,
+  "requests": [
+    {
+      "phase": "preferences",
+      "status": 200,
+      "limit": "1",
+      "order": "fetched_at.desc",
+      "cursor": null,
+      "rpc": false,
+      "latencyMs": 1860
+    },
+    {
+      "phase": "preferences",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": false,
+      "latencyMs": 805
+    },
+    {
+      "phase": "top-bounded",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 943
+    },
+    {
+      "phase": "top-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 563
+    },
+    {
+      "phase": "top-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 591
+    },
+    {
+      "phase": "top-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 613
+    },
+    {
+      "phase": "top-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 472
+    },
+    {
+      "phase": "top-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 473
+    },
+    {
+      "phase": "top-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 645
+    },
+    {
+      "phase": "top-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 1743
+    },
+    {
+      "phase": "top-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 958
+    },
+    {
+      "phase": "top-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 1063
+    },
+    {
+      "phase": "top-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 1110
+    },
+    {
+      "phase": "top-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 606
+    },
+    {
+      "phase": "top-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 470
+    },
+    {
+      "phase": "bottom-bounded",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 678
+    },
+    {
+      "phase": "bottom-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 589
+    },
+    {
+      "phase": "bottom-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 629
+    },
+    {
+      "phase": "bottom-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 717
+    },
+    {
+      "phase": "bottom-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 820
+    },
+    {
+      "phase": "shoes-bounded",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 875
+    },
+    {
+      "phase": "shoes-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 646
+    },
+    {
+      "phase": "shoes-exhaustive",
+      "status": 200,
+      "limit": null,
+      "order": null,
+      "cursor": null,
+      "rpc": true,
+      "latencyMs": 587
+    }
+  ]
+}

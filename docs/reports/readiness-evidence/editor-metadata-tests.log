@@ -1,0 +1,21 @@
+PASS __tests__/features/clothingEditorMetadata.test.js
+  ✓ new save preserves specific garment identity, pattern, material and confidence under authenticated owner (1 ms)
+  ✓ user category correction supersedes conflicting detected subtype
+  ✓ unknown pattern undefined is not saved as solid
+  ✓ unknown pattern null is not saved as solid (1 ms)
+  ✓ unknown pattern "" is not saved as solid
+  ✓ zero confidence is retained
+  ✓ invalid confidence undefined is omitted
+  ✓ invalid confidence -1 is omitted
+  ✓ invalid confidence 2 is omitted
+  ✓ invalid confidence null is omitted (1 ms)
+  ✓ reload preserves known or unknown pattern null without fabricating solid (1 ms)
+  ✓ reload preserves known or unknown pattern undefined without fabricating solid
+  ✓ reload preserves known or unknown pattern "" without fabricating solid
+  ✓ reload preserves known or unknown pattern "plaid" without fabricating solid
+
+Test Suites: 1 passed, 1 total
+Tests:       14 passed, 14 total
+Snapshots:   0 total
+Time:        0.433 s
+Ran all test suites matching /__tests__\/features\/clothingEditorMetadata.test.js/i.

@@ -1,0 +1,39 @@
+{
+  "passed": true,
+  "scope": "Installed Supabase FunctionsClient with exact production wrapper and controlled fetch/body stalls plus clock; no network/native UI/capacity claim",
+  "checks": [
+    {
+      "phase": "fetch",
+      "success": false,
+      "failureKind": "timeout",
+      "transportAborted": true,
+      "deadlineCleared": true,
+      "clockBudgetMs": 60000
+    },
+    {
+      "phase": "body",
+      "success": false,
+      "failureKind": "timeout",
+      "transportAborted": true,
+      "deadlineCleared": true,
+      "clockBudgetMs": 60000
+    }
+  ],
+  "date": "2026-10-20",
+  "regression": {
+    "tests": 1870,
+    "suites": 153,
+    "typescript": "pass",
+    "iosHermes": "pass",
+    "androidArm64Release": "pass",
+    "sourceMaps": {
+      "ios": true,
+      "android": true
+    }
+  },
+  "limits": [
+    "No native UI/network failure claim",
+    "Server provider work may continue after client abort",
+    "NVIDIA output accuracy/latency and 10000 DAU readiness unresolved"
+  ]
+}

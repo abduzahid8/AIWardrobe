@@ -1,0 +1,69 @@
+{
+  "measuredAt": "2026-10-20T19:17:52.441Z",
+  "scope": "Only two tagged disposable accounts and repository PNG; no existing customer rows migrated",
+  "checks": [
+    {
+      "name": "fixture_migrated",
+      "passed": true
+    },
+    {
+      "name": "owner_download_preserves_exact_original_bytes",
+      "passed": true
+    },
+    {
+      "name": "sha256_matches_original",
+      "passed": true
+    },
+    {
+      "name": "other_owner_cannot_download",
+      "passed": true
+    },
+    {
+      "name": "public_endpoint_denied",
+      "passed": true
+    },
+    {
+      "name": "reference_and_metadata_preserved",
+      "passed": true
+    },
+    {
+      "name": "rollback_rejects_post_migration_competing_edit",
+      "passed": true
+    },
+    {
+      "name": "refused_rollback_retains_private_reference_and_edit",
+      "passed": true
+    },
+    {
+      "name": "current_version_rollback_restores_exact_inline_bytes_and_keeps_edit",
+      "passed": true
+    },
+    {
+      "name": "rollback_retains_verified_private_backup",
+      "passed": true
+    },
+    {
+      "name": "competing_edit_not_overwritten",
+      "passed": true
+    },
+    {
+      "name": "conflicted_row_keeps_original_and_new_name",
+      "passed": true
+    }
+  ],
+  "cleanup": [
+    {
+      "objectsRemoved": true
+    },
+    {
+      "accountDeleted": true
+    },
+    {
+      "accountDeleted": true
+    }
+  ],
+  "fixtureBytes": 2915128,
+  "inlineUriBytes": 3886862,
+  "storageReferenceBytes": 247,
+  "passed": true
+}

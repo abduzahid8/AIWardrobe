@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-20",
+  "tests": 1856,
+  "suites": 153,
+  "typescript": "pass",
+  "iosHermes": "pass",
+  "androidArm64Release": "pass",
+  "changedServiceMatchesBothSourceMaps": true,
+  "newFailureCases": [
+    "Empty acknowledgement preserves unsaved item",
+    "Completed record cleanup retries after deletion failure",
+    "Invalid completion marker retains review until a validated retry",
+    "Persistent cleanup failure does not hide another pending review"
+  ],
+  "freshOSProcessRestart": "pass",
+  "nativeScope": "Previous native restart probes precede this cleanup change; no native disk-failure or power-loss claim",
+  "remaining": [
+    "Corrupt committed review can block review enumeration",
+    "Web persistence",
+    "Full shipping-app authenticated scan/editor flow",
+    "Native storage failure and power loss matrix"
+  ],
+  "goal": "active, not certified for 10000 DAU"
+}

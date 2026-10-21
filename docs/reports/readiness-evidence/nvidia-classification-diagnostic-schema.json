@@ -1,0 +1,17 @@
+{
+  "measuredAt": "2026-10-19T06:55:40.407Z",
+  "scope": "One direct NVIDIA diagnostic using actual staged handler with controlled Auth/config; no production admission claim",
+  "providerResponses": [
+    {
+      "status": 200,
+      "finishReason": "stop",
+      "contentLength": 636,
+      "parsed": null
+    }
+  ],
+  "requestFormat": "json_schema",
+  "handlerStatus": 503,
+  "latencyMs": 6230,
+  "acceptedClassification": null,
+  "error": "ai_classification_unavailable"
+}

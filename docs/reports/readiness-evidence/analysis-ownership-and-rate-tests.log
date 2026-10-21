@@ -1,0 +1,8 @@
+PASS __tests__/backend/rateLimit.test.js
+PASS __tests__/backend/analyzeOutfitOwnership.test.js
+
+Test Suites: 2 passed, 2 total
+Tests:       30 passed, 30 total
+Snapshots:   0 total
+Time:        0.854 s, estimated 1 s
+Ran all test suites matching /__tests__\/backend\/analyzeOutfitOwnership.test.js|__tests__\/backend\/rateLimit.test.js/i.

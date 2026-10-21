@@ -30,6 +30,7 @@ const item = (id: string, macro: string, name: string, extra: Record<string, unk
   imageUrl: `https://example.com/${id}.jpg`,
   color: 'neutral',
   brand: '',
+  currency: 'USD',
   ...extra,
 });
 

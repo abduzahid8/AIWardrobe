@@ -21,11 +21,18 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps=false
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.6
+
+      - name: Edge Function type check
+        run: npm run typecheck:edge
 
       - name: TypeScript check
         run: npx tsc --noEmit
@@ -36,6 +43,34 @@ jobs:
       - name: Unit tests
         run: npm test -- --coverage --ci --reporters=default
 
+      - name: Asset encoding regression tests
+        run: npm run test:asset-formats
+
+      - name: Native link manifest regression tests
+        run: npm run test:native-links
+
+      - name: Release toolchain compatibility
+        run: npm run test:release-toolchain
+
+      - name: Navigation link regression tests
+        run: npm run test:navigation-links
+
+      - name: Load harness regression tests
+        run: npm run test:load-harness
+
+      - name: Private media image boundary coverage
+        run: npm run test:media-rendering
+
+      - name: Pending media filesystem durability
+        run: npm run test:media-durability
+
+      # Fail on installed vulnerable copies, including shrinkwrapped tooling.
+      - name: Dependency advisory regression checks
+        run: npm run test:dependency-security
+
+      - name: WebDriver assertion and visual service integration
+        run: npm run test:webdriver-toolchain
+
       - name: Upload coverage
         if: always()
         uses: actions/upload-artifact@v4
@@ -43,3 +78,60 @@ jobs:
           name: coverage-report
           path: coverage/
           retention-days: 7
+
+  database:
+    name: Migrations, RLS & Concurrent Quotas
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: readiness
+        ports:
+          - 55439:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 55439
+      PGUSER: postgres
+      PGPASSWORD: readiness
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client tools
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client postgresql-contrib
+      - name: Bootstrap local Supabase interfaces
+        run: psql -v ON_ERROR_STOP=1 -f scripts/validation/bootstrap-local.sql
+      - name: Replay numbered migrations
+        run: |
+          for migration in backend/supabase/migrations/[0-9]*.sql; do
+            psql -v ON_ERROR_STOP=1 --single-transaction -f "$migration"
+          done
+      - name: Seed 10,000 synthetic users
+        run: psql -v ON_ERROR_STOP=1 -f scripts/validation/seed-capacity.sql
+      - name: Assert wear log counters and ownership
+        run: |
+          psql -v ON_ERROR_STOP=1 -f scripts/validation/wear-log-counters.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/validation/wear-counter-auth-deletion.sql
+      - name: Assert ownership, entitlements and quota boundaries
+        run: psql -v ON_ERROR_STOP=1 -f scripts/validation/security.sql
+      - name: Assert avatar ownership and revoked-session storage isolation
+        run: |
+          psql -v ON_ERROR_STOP=1 -f scripts/validation/avatar-storage.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/validation/storage-live-session.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/validation/wardrobe-media.sql
+      - name: Exercise concurrent quota attempts
+        run: pgbench -n -c 40 -j 4 -t 20 -f scripts/validation/quota-concurrency.pgbench
+      - name: Assert quotas were not exceeded
+        run: psql -v ON_ERROR_STOP=1 -f scripts/validation/quota-concurrency-assert.sql
+      - name: Assert webhook retry, transfer and ordering safety
+        run: psql -v ON_ERROR_STOP=1 -f scripts/validation/revenuecat.sql
+      - name: Exercise concurrent duplicate webhook deliveries
+        run: pgbench -n -c 40 -j 4 -t 20 -f scripts/validation/revenuecat-concurrency.pgbench
+      - name: Assert one event, subscription and payment
+        run: psql -v ON_ERROR_STOP=1 -f scripts/validation/revenuecat-concurrency-assert.sql

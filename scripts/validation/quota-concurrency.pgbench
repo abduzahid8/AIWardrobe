@@ -1,0 +1,9 @@
+begin;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', md5('load-user-3')::uuid::text, true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+select * from public.check_and_increment_usage('homeSwipes', 999999, 1);
+set local role service_role;
+select set_config('request.jwt.claim.role', 'service_role', true);
+select public.consume_edge_quota(md5('load-user-4')::uuid, 'ai-process');
+commit;

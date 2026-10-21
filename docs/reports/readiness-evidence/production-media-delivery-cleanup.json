@@ -1,0 +1,11 @@
+{
+  "date": "2026-10-17",
+  "verification": "Independent Supabase MCP SQL after Storage/Auth cleanup",
+  "fixture_users_remaining": 0,
+  "fixture_objects_remaining": 0,
+  "fixtureUserIds": [
+    "44fd2d2a-4742-4bcb-9836-20cef5b1938a",
+    "6aea74d7-5f6c-45d2-abdb-357331a27aee"
+  ],
+  "runPassed": false
+}

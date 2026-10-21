@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-21",
+  "changes": [
+    "Owner/version conditional favorite updates",
+    "Durable expected-version checkpoint before mutation",
+    "Server-wins conflict confirmation without blind fresh-version retry",
+    "Pinned metadata retained on acknowledgement persistence failure",
+    "Confirmed favorite merge with unrelated edits and pending metadata",
+    "Unconfirmed/newer favorite protection"
+  ],
+  "validation": {
+    "fullTests": 2146,
+    "suites": 169,
+    "typescript": "pass",
+    "iosHermes": "pass",
+    "androidArm64Release": "pass",
+    "serviceAndSliceMatchBothMaps": true,
+    "fiveProductionFixtureChecksPass": true
+  },
+  "liveProbe": "production-favorite-version-race.json",
+  "sourceCorrespondence": {
+    "probeSyncSourceHash": "cd0567f779d7d89ad02ed43da0c4da1469f3e63a7bd712ce771b64859ae65e45",
+    "currentSyncSourceHash": "9483636ef50041a3eadaad5b227a01332e28a41917734f0322b956f484cc31e5",
+    "verifiedDelta": "JSDoc-only clarification after live probe"
+  },
+  "cleanup": {
+    "remainingAuditUsers": 0,
+    "remainingFixtureGarments": 0,
+    "queueFilesRemoved": true
+  },
+  "limits": [
+    "One fixture garment,not capacity",
+    "Locally held transport/injected503,not a real native crash",
+    "Not visually tested or store-distributed",
+    "Other full-row mutations and older clients not certified",
+    "Remaining write/session/persistence waits and full readiness remain open"
+  ]
+}

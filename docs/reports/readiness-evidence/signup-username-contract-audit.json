@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-20",
+  "finding": "Signup username uniqueness is not enforced by current production profile constraints",
+  "catalog": [
+    {
+      "constraints": [
+        {
+          "name": "profiles_admin_assigned_by_fkey",
+          "definition": "FOREIGN KEY (admin_assigned_by) REFERENCES profiles(id) ON DELETE SET NULL"
+        },
+        {
+          "name": "profiles_admin_role_check",
+          "definition": "CHECK ((admin_role = ANY (ARRAY['super_admin'::text, 'admin'::text, 'moderator'::text])))"
+        },
+        {
+          "name": "profiles_email_key",
+          "definition": "UNIQUE (email)"
+        },
+        {
+          "name": "profiles_gender_check",
+          "definition": "CHECK ((gender = ANY (ARRAY['male'::text, 'female'::text, 'other'::text, 'prefer_not_to_say'::text])))"
+        },
+        {
+          "name": "profiles_id_fkey",
+          "definition": "FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE"
+        },
+        {
+          "name": "profiles_pkey",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "name": "profiles_subscription_tier_check",
+          "definition": "CHECK ((subscription_tier = ANY (ARRAY['free'::text, 'lite'::text, 'premium'::text, 'vip'::text])))"
+        }
+      ],
+      "duplicate_nonblank_username_groups": 4
+    }
+  ],
+  "validInputProbe": [
+    {
+      "username_length": 26,
+      "satisfies_signup_username_rule": true,
+      "profiles_accepting_same_username": 2
+    }
+  ],
+  "cleanup": [
+    {
+      "fixture_users_remaining": 0,
+      "fixture_profiles_remaining": 0
+    }
+  ],
+  "sourceEvidence": {
+    "signupUI": "screens/SignUpScreen.tsx: username regex and username-taken alerts",
+    "registration": "store/auth.ts: register passes username metadata directly to Supabase signup",
+    "apple": "store/auth.ts: Apple fullName persists into profiles.username",
+    "availability": "public.is_username_available uses case-insensitive lookup; no current client call found"
+  },
+  "decisionPending": "Unique handles with separate display names, or shared display names without uniqueness promise",
+  "scope": "Rolled-back synthetic auth.users/profile-trigger probe, not full signup HTTP/email delivery. No customer names read or changed. Four duplicate nonblank normalized groups counted without returning identifiers.",
+  "goal": "active; signup correctness remains unresolved"
+}

@@ -1,0 +1,49 @@
+{
+  "runId": "544193f1-5fd8-4dd8-a839-97cd068dad2a",
+  "fixtureBytes": 85077,
+  "fixtureSha256": "69bfad1fe13b19cbf5671f7325ec38e36f96a92232d14362c6dfd92448606d72",
+  "uploadedAcknowledged": 334,
+  "readMeasurementExecuted": false,
+  "setupFailed": true,
+  "independentCleanup": [
+    {
+      "users": 0,
+      "sessions": 0,
+      "identities": 0,
+      "profiles": 0,
+      "objects": 0
+    }
+  ],
+  "originalFunctionsUnchanged": true,
+  "originalFunctionCount": 13,
+  "storageLogSubset": {
+    "result": [
+      {
+        "events": 231,
+        "max_response_time": 2713.516163006425,
+        "method": "POST",
+        "operation": "storage.object.upload",
+        "status": "200"
+      },
+      {
+        "events": 3,
+        "max_response_time": 1290.1525570005178,
+        "method": "DELETE",
+        "operation": "storage.object.delete_many",
+        "status": "200"
+      },
+      {
+        "events": 1,
+        "max_response_time": 40.148650988936424,
+        "method": "POST",
+        "operation": "storage.object.list",
+        "status": "200"
+      }
+    ]
+  },
+  "limitations": [
+    "Original harness recorded only Error, so failure cause remains unknown.",
+    "The 231 logged upload responses do not reconcile all 334 acknowledged uploads; logs cannot establish the missing failure's cause.",
+    "No read-capacity measurement ran in this attempt."
+  ]
+}

@@ -1,0 +1,32 @@
+appId: host.exp.Exponent
+name: save_outfit_home
+tags:
+  - save-checks
+  - expo-go
+  - outfit
+---
+# Home → tap the heart ("Save outfit") on the top deck card.
+# The action footer sits below the fold, so scrollUntilVisible first
+# (direction swipes never move ScrollViews on this stack — README).
+# One save consumes one swipe; the e2e.stylist account has unlimited
+# swipes while its trial is active.
+- runFlow:
+    when:
+      visible: ".*Continue with Google.*"
+    commands:
+      - assertVisible: ".*Continue with Google.*"
+      - assertNotVisible: "Save outfit"
+- tapOn:
+    point: "26%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- scrollUntilVisible:
+    element: "Save outfit"
+    direction: DOWN
+    timeout: 25000
+- assertVisible: "Save outfit"
+- takeScreenshot: save_outfit_before
+- tapOn: "Save outfit"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: save_outfit_after

@@ -1,0 +1,44 @@
+{
+  "date": "2026-10-21",
+  "baseVersion": 104,
+  "version": 105,
+  "verifyJwt": true,
+  "changedOrAdded": [
+    "functions/generate-outfits/index.ts",
+    "functions/_shared/outfitGenerationRequest.ts"
+  ],
+  "unchangedSharedModules": 10,
+  "allPreparedFilesMatch": true,
+  "limits": {
+    "requestBytes": 16777216,
+    "bodyReadMs": 15000,
+    "promptCodeUnits": 1000,
+    "conversationCodeUnits": 4000,
+    "outfits": [
+      1,
+      15
+    ],
+    "selectedOrProvidedItems": 200
+  },
+  "validation": {
+    "fullTests": 2114,
+    "suites": 169,
+    "stagedTests": 82,
+    "typescript": "pass",
+    "denoLocal": "pass",
+    "denoStaged": "pass",
+    "initialWireRegressionsFailed": 7
+  },
+  "liveReports": [
+    "v105-generation-request-initial-fixture-blocked.json",
+    "v105-generation-request-admission-live.json"
+  ],
+  "smallLiveChecksPassed": 4,
+  "remainingReadinessUsers": 0,
+  "operationalLimits": [
+    "No oversized production payload sent",
+    "Existing quota ordering unchanged",
+    "Client-specific input guidance not yet audited",
+    "No provider or capacity certification"
+  ]
+}

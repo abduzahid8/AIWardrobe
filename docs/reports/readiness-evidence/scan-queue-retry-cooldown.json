@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-20",
+  "regression": {
+    "tests": 1875,
+    "suites": 153,
+    "typescript": "pass",
+    "iosHermes": "pass",
+    "androidArm64Release": "pass",
+    "sourceMaps": {
+      "ios": {
+        "src/services/uploadQueueProcessor.ts": true,
+        "src/store/uploadQueueStore.ts": true
+      },
+      "android": {
+        "src/services/uploadQueueProcessor.ts": true,
+        "src/store/uploadQueueStore.ts": true
+      }
+    }
+  },
+  "behavior": [
+    "Persisted owner-scoped cooldown across queued captures",
+    "One failure per automatic pass",
+    "30s then120s then300s eligibility delays; actual retries occur on subsequent queue checks",
+    "Explicit Retry permitted immediately",
+    "Completed-source cleanup bypasses cooldown"
+  ],
+  "coverage": "Real worker/store with mocked network and analysis; durable AsyncStorage acknowledgement checked; processor instance lifecycle tested",
+  "limits": [
+    "No fresh native process or power-loss test",
+    "No provider-wide circuit breaker or capacity claim",
+    "Clock changes and corrupt persisted retry values not exhaustively tested"
+  ],
+  "goal": "active; not ready-certified"
+}

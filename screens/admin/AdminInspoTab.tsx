@@ -4,7 +4,7 @@
  *  - Shop / Inspo items: edit text (brand, name, price, description), change image, promote, delete
  */
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View,  } from 'react-native'
+import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View } from 'react-native';
 import { ScaledText } from '../../components/ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,6 +15,8 @@ import { useTranslation } from 'react-i18next';
 import { INSPO_MENS_SHOP_ITEMS } from '../../data/inspoMensShopItems';
 import type { ShopCatalogItem } from '../../src/types/shop';
 import { createLogger } from '../../src/utils/logger';
+import { Image } from '../../src/components/MediaImage';
+
 
 const logger = createLogger('AdminInspoTab');
 const SUPPORTED_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'];

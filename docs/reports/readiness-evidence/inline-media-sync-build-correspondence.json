@@ -1,0 +1,25 @@
+{
+  "localDate": "2026-10-21",
+  "scope": "Current real-sync fixture source matches both rebuilt native bundles",
+  "matches": {
+    "ios": {
+      "store/authEvents.ts": true,
+      "src/services/wardrobeMedia.ts": true,
+      "src/services/pendingWardrobeMedia.ts": true,
+      "src/services/wardrobeItemMedia.ts": true,
+      "store/wardrobeSyncService.ts": true
+    },
+    "android": {
+      "store/authEvents.ts": true,
+      "src/services/wardrobeMedia.ts": true,
+      "src/services/pendingWardrobeMedia.ts": true,
+      "src/services/wardrobeItemMedia.ts": true,
+      "store/wardrobeSyncService.ts": true
+    }
+  },
+  "limitations": [
+    "SDK/media execution used real Supabase from Node; native filesystem adapter unused for inline input",
+    "Not installed native rendering or older store-client compatibility",
+    "No existing customer image rows migrated"
+  ]
+}

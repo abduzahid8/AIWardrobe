@@ -1,0 +1,39 @@
+{
+  "scope": "Actual rendered recovery component with mocked auth SDK; no real recovery email sent",
+  "before": {
+    "tests": 5,
+    "failed": 4,
+    "passed": 1
+  },
+  "after": {
+    "focusedTestsPassed": 5,
+    "fullTestsPassed": 1407,
+    "fullSuitesPassed": 123,
+    "typecheckPassed": true,
+    "eslintErrors": 0,
+    "preexistingScreenWarnings": 1
+  },
+  "verifiedCases": [
+    "Same-render callbacks admit one pending request; input disabled while pending",
+    "Success shows normalized address captured for request despite queued input change",
+    "Returned auth error after unmount causes no stale alert",
+    "Failure releases admission for explicit retry",
+    "Retained submit callback cannot resend after success"
+  ],
+  "sourceSha256": {
+    "screens/ForgotPasswordScreen.tsx": "626ca7cb5e3f70a2ac193f59f395955c985c93085d463cce8941345f9314bd5b",
+    "i18n/locales/en.json": "9de4b7ca9861f8c4e7506bf4eb7e106506d4f3fb6e13ce55faaf7c1aaebfb0bf",
+    "i18n/locales/ru.json": "2fa48bb74ae676c76f9ed5ea84940f94c8b9cb1ad086d1e47c38a1ca5b9adc17",
+    "i18n/locales/uz.json": "7e5cefae907d46a8b6677e6692acdd2c37f771df16c08f3d1dda561ea61203b7",
+    "__tests__/components/recoverySubmission.test.tsx": "5456e3cc997a0e2ea2e6e351f3fb124dd95c646f7d67416c726783d395e45132"
+  },
+  "liveDeliveryVerified": false,
+  "testInboxRequested": true,
+  "limitations": [
+    "Admission is per mounted component, not a cross-screen global recovery queue",
+    "Unmount suppresses feedback but cannot undo an already-sent server request",
+    "Real SMTP delivery, recovery link and completed password change remain unverified",
+    "No native UI audit of the changed success receipt this turn"
+  ],
+  "confirmationCopy": "Conditional registered-address instructions in English/Russian/Uzbek; no assertion of proven mailbox delivery"
+}

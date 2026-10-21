@@ -1,0 +1,15 @@
+WARNING: Final field parent in class maestro.cli.command.TestCommand has been mutated reflectively by class picocli.CommandLine$Model$FieldBinding in unnamed module @358c99f5 (file:/Users/v.zahid/.maestro/lib/picocli-4.6.3.jar)
+WARNING: Use --enable-final-field-mutation=ALL-UNNAMED to avoid a warning
+WARNING: Mutating final fields will be blocked in a future release unless final field mutation is enabled
+Running on iPhone 16 Pro e2e - iOS 26.5 - 024D2F87-FEF6-42C9-81AC-32DD8678FB5F
+ > Flow expo_go_tabs_b
+Tap on point (58%,92%)... COMPLETED
+Wait for animation to end within 8000 ms... COMPLETED
+Assert that ".*Inspiration.*" is visible... COMPLETED
+Tap on point (74%,92%)... COMPLETED
+Wait for animation to end within 8000 ms... COMPLETED
+Assert that ".*Account.*" is visible... COMPLETED
+Tap on point (26%,92%)... COMPLETED
+Wait for animation to end within 8000 ms... COMPLETED
+Assert that "Good (morning|afternoon|evening|night).*" is visible... COMPLETED
+Take screenshot tabs_b_home... COMPLETED

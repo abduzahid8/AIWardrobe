@@ -1,0 +1,488 @@
+CREATE DATABASE
+DO
+CREATE SCHEMA
+CREATE TABLE
+CREATE FUNCTION
+CREATE FUNCTION
+GRANT
+GRANT
+CREATE SCHEMA
+CREATE TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE FUNCTION
+ALTER DEFAULT PRIVILEGES
+CREATE TABLE
+ALTER TABLE
+psql:backend/supabase/migrations/001_full_rebuild.sql:38: NOTICE:  policy "Users can view own profile" for relation "public.profiles" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:backend/supabase/migrations/001_full_rebuild.sql:43: NOTICE:  policy "Users can update own profile" for relation "public.profiles" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:backend/supabase/migrations/001_full_rebuild.sql:48: NOTICE:  policy "Users can insert own profile" for relation "public.profiles" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+CREATE FUNCTION
+psql:backend/supabase/migrations/001_full_rebuild.sql:70: NOTICE:  trigger "on_auth_user_created" for relation "auth.users" does not exist, skipping
+DROP TRIGGER
+CREATE TRIGGER
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+psql:backend/supabase/migrations/001_full_rebuild.sql:124: NOTICE:  policy "Users can view own items" for relation "public.clothing_items" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:backend/supabase/migrations/001_full_rebuild.sql:129: NOTICE:  policy "Users can insert own items" for relation "public.clothing_items" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:backend/supabase/migrations/001_full_rebuild.sql:134: NOTICE:  policy "Users can update own items" for relation "public.clothing_items" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:backend/supabase/migrations/001_full_rebuild.sql:139: NOTICE:  policy "Users can delete own items" for relation "public.clothing_items" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+CREATE TABLE
+CREATE INDEX
+ALTER TABLE
+psql:backend/supabase/migrations/001_full_rebuild.sql:167: NOTICE:  policy "Users can view own outfits" for relation "public.saved_outfits" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:backend/supabase/migrations/001_full_rebuild.sql:172: NOTICE:  policy "Users can insert own outfits" for relation "public.saved_outfits" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:backend/supabase/migrations/001_full_rebuild.sql:177: NOTICE:  policy "Users can update own outfits" for relation "public.saved_outfits" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:backend/supabase/migrations/001_full_rebuild.sql:182: NOTICE:  policy "Users can delete own outfits" for relation "public.saved_outfits" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+psql:backend/supabase/migrations/001_full_rebuild.sql:208: NOTICE:  policy "Users can view own wear logs" for relation "public.wear_logs" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:backend/supabase/migrations/001_full_rebuild.sql:213: NOTICE:  policy "Users can insert own wear logs" for relation "public.wear_logs" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:backend/supabase/migrations/001_full_rebuild.sql:218: NOTICE:  policy "Users can update own wear logs" for relation "public.wear_logs" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:backend/supabase/migrations/001_full_rebuild.sql:223: NOTICE:  policy "Users can delete own wear logs" for relation "public.wear_logs" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+psql:backend/supabase/migrations/001_full_rebuild.sql:261: NOTICE:  policy "Users can view own subscriptions" for relation "public.subscriptions" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+CREATE TABLE
+CREATE INDEX
+ALTER TABLE
+psql:backend/supabase/migrations/001_full_rebuild.sql:290: NOTICE:  policy "Users can view own payments" for relation "public.payments" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+INSERT 0 1
+INSERT 0 1
+psql:backend/supabase/migrations/001_full_rebuild.sql:308: NOTICE:  policy "Users can upload to AIWARDROBE" for relation "storage.objects" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:backend/supabase/migrations/001_full_rebuild.sql:316: NOTICE:  policy "Public read AIWARDROBE" for relation "storage.objects" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:backend/supabase/migrations/001_full_rebuild.sql:321: NOTICE:  policy "Users can upload own files" for relation "storage.objects" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:backend/supabase/migrations/001_full_rebuild.sql:329: NOTICE:  policy "Users can read own files" for relation "storage.objects" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:backend/supabase/migrations/001_full_rebuild.sql:337: NOTICE:  policy "Users can delete own files" for relation "storage.objects" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+CREATE FUNCTION
+psql:backend/supabase/migrations/001_full_rebuild.sql:356: NOTICE:  trigger "set_profiles_updated_at" for relation "public.profiles" does not exist, skipping
+DROP TRIGGER
+CREATE TRIGGER
+psql:backend/supabase/migrations/001_full_rebuild.sql:361: NOTICE:  trigger "set_clothing_items_updated_at" for relation "public.clothing_items" does not exist, skipping
+DROP TRIGGER
+CREATE TRIGGER
+psql:backend/supabase/migrations/001_full_rebuild.sql:366: NOTICE:  trigger "set_saved_outfits_updated_at" for relation "public.saved_outfits" does not exist, skipping
+DROP TRIGGER
+CREATE TRIGGER
+psql:backend/supabase/migrations/001_full_rebuild.sql:371: NOTICE:  trigger "set_subscriptions_updated_at" for relation "public.subscriptions" does not exist, skipping
+DROP TRIGGER
+CREATE TRIGGER
+CREATE TABLE
+ALTER TABLE
+UPDATE 0
+UPDATE 0
+UPDATE 0
+UPDATE 0
+UPDATE 0
+UPDATE 0
+UPDATE 0
+psql:backend/supabase/migrations/003_align_categories.sql:17: NOTICE:  constraint "clothing_items_category_check" of relation "clothing_items" does not exist, skipping
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+psql:backend/supabase/migrations/004_fix_wear_logs_and_indexes.sql:14: NOTICE:  column "item_ids" of relation "wear_logs" already exists, skipping
+ALTER TABLE
+DO
+psql:backend/supabase/migrations/004_fix_wear_logs_and_indexes.sql:34: NOTICE:  column "weather_temp" of relation "wear_logs" already exists, skipping
+psql:backend/supabase/migrations/004_fix_wear_logs_and_indexes.sql:34: NOTICE:  column "weather_condition" of relation "wear_logs" already exists, skipping
+ALTER TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+DO
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+CREATE POLICY
+CREATE POLICY
+INSERT 0 1
+CREATE POLICY
+CREATE POLICY
+ALTER TABLE
+COMMENT
+COMMENT
+COMMENT
+COMMENT
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+DO
+DO
+DO
+DO
+DO
+DO
+DO
+DO
+DO
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+psql:backend/supabase/migrations/008_featured_capsules.sql:28: NOTICE:  policy "featured_capsules_public_read" for relation "public.featured_capsules" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:backend/supabase/migrations/008_featured_capsules.sql:35: NOTICE:  policy "featured_capsules_service_write" for relation "public.featured_capsules" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+CREATE FUNCTION
+psql:backend/supabase/migrations/008_featured_capsules.sql:50: NOTICE:  trigger "featured_capsules_updated_at" for relation "public.featured_capsules" does not exist, skipping
+DROP TRIGGER
+CREATE TRIGGER
+INSERT 0 3
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+psql:backend/supabase/migrations/009_promo_codes.sql:28: NOTICE:  policy "Users can read active promo codes" for relation "public.promo_codes" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:backend/supabase/migrations/009_promo_codes.sql:33: NOTICE:  policy "Service role full access promo_codes" for relation "public.promo_codes" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+CREATE TABLE
+CREATE INDEX
+ALTER TABLE
+psql:backend/supabase/migrations/009_promo_codes.sql:55: NOTICE:  policy "Users can view own redemptions" for relation "public.promo_redemptions" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:backend/supabase/migrations/009_promo_codes.sql:60: NOTICE:  policy "Service role full access promo_redemptions" for relation "public.promo_redemptions" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:backend/supabase/migrations/009_promo_codes.sql:68: NOTICE:  trigger "set_promo_codes_updated_at" for relation "public.promo_codes" does not exist, skipping
+DROP TRIGGER
+CREATE TRIGGER
+INSERT 0 1
+CREATE EXTENSION
+CREATE TABLE
+CREATE INDEX
+ALTER TABLE
+psql:backend/supabase/migrations/010_usage_counters.sql:29: NOTICE:  policy "usage_counters_select_self" for relation "public.usage_counters" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+CREATE FUNCTION
+GRANT
+CREATE FUNCTION
+GRANT
+CREATE FUNCTION
+REVOKE
+REVOKE
+GRANT
+ALTER TABLE
+UPDATE 0
+CREATE FUNCTION
+DROP POLICY
+CREATE POLICY
+DROP POLICY
+CREATE POLICY
+DO
+CREATE INDEX
+psql:backend/supabase/migrations/012_subscription_client_write.sql:12: NOTICE:  policy "Users can insert own subscriptions" for relation "public.subscriptions" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:backend/supabase/migrations/012_subscription_client_write.sql:18: NOTICE:  policy "Users can update own subscriptions" for relation "public.subscriptions" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+CREATE TABLE
+ALTER TABLE
+CREATE POLICY
+CREATE POLICY
+CREATE POLICY
+INSERT 0 1
+CREATE FUNCTION
+CREATE TRIGGER
+INSERT 0 3
+DROP POLICY
+psql:backend/supabase/migrations/015_featured_capsules_admin_write.sql:9: NOTICE:  policy "featured_capsules_admin_write" for relation "public.featured_capsules" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+CREATE POLICY
+CREATE POLICY
+CREATE POLICY
+CREATE VIEW
+CREATE FUNCTION
+psql:backend/supabase/migrations/019_add_trial_end_date.sql:8: NOTICE:  column "trial_end_date" of relation "subscriptions" already exists, skipping
+ALTER TABLE
+  column_name   |        data_type         | is_nullable 
+----------------+--------------------------+-------------
+ trial_end_date | timestamp with time zone | YES
+(1 row)
+
+CREATE TABLE
+ALTER TABLE
+psql:backend/supabase/migrations/020_processed_webhooks.sql:15: NOTICE:  policy "processed_webhooks_service_only" for relation "public.processed_webhooks" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+CREATE FUNCTION
+CREATE TABLE
+ALTER TABLE
+CREATE POLICY
+CREATE POLICY
+INSERT 0 2
+CREATE FUNCTION
+CREATE TRIGGER
+ALTER TABLE
+ALTER TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+psql:backend/supabase/migrations/022_body_profiles.sql:70: NOTICE:  trigger "update_body_profiles_updated_at" for relation "public.body_profiles" does not exist, skipping
+DROP TRIGGER
+CREATE TRIGGER
+ALTER TABLE
+psql:backend/supabase/migrations/022_body_profiles.sql:80: NOTICE:  policy "Users can view own body profiles" for relation "public.body_profiles" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:backend/supabase/migrations/022_body_profiles.sql:84: NOTICE:  policy "Users can insert own body profiles" for relation "public.body_profiles" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:backend/supabase/migrations/022_body_profiles.sql:88: NOTICE:  policy "Users can update own body profiles" for relation "public.body_profiles" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:backend/supabase/migrations/022_body_profiles.sql:92: NOTICE:  policy "Users can delete own body profiles" for relation "public.body_profiles" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+CREATE FUNCTION
+UPDATE 0
+UPDATE 0
+UPDATE 0
+UPDATE 0
+UPDATE 0
+UPDATE 0
+psql:backend/supabase/migrations/026_protect_server_entitlements.sql:3: WARNING:  there is already a transaction in progress
+BEGIN
+DROP POLICY
+DROP POLICY
+REVOKE
+CREATE FUNCTION
+psql:backend/supabase/migrations/026_protect_server_entitlements.sql:48: NOTICE:  trigger "protect_profile_authority" for relation "public.profiles" does not exist, skipping
+DROP TRIGGER
+CREATE TRIGGER
+CREATE FUNCTION
+COMMIT
+WARNING:  there is no transaction in progress
+psql:backend/supabase/migrations/027_authoritative_usage.sql:2: WARNING:  there is already a transaction in progress
+BEGIN
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+REVOKE
+GRANT
+COMMIT
+WARNING:  there is no transaction in progress
+psql:backend/supabase/migrations/028_atomic_revenuecat_sync.sql:2: WARNING:  there is already a transaction in progress
+BEGIN
+ALTER TABLE
+UPDATE 0
+CREATE TABLE
+ALTER TABLE
+REVOKE
+CREATE FUNCTION
+REVOKE
+GRANT
+COMMIT
+WARNING:  there is no transaction in progress
+psql:backend/supabase/migrations/029_subscription_status.sql:2: WARNING:  there is already a transaction in progress
+BEGIN
+CREATE FUNCTION
+REVOKE
+GRANT
+COMMIT
+WARNING:  there is no transaction in progress
+INSERT 0 10000
+INSERT 0 500000
+INSERT 0 50000
+ANALYZE
+ANALYZE
+ANALYZE
+psql:scripts/validation/security.sql:2: WARNING:  there is already a transaction in progress
+BEGIN
+SET
+              set_config              
+--------------------------------------
+ c590f0e8-8e8e-254c-95cd-2ebd25f44b68
+(1 row)
+
+  set_config   
+---------------
+ authenticated
+(1 row)
+
+DO
+SET
+  set_config  
+--------------
+ service_role
+(1 row)
+
+DO
+SET
+INSERT 0 3
+SET
+  set_config   
+---------------
+ authenticated
+(1 row)
+
+              set_config              
+--------------------------------------
+ c72b8c5e-7b7b-0fb7-c6b1-36d11a04d4e3
+(1 row)
+
+DO
+              set_config              
+--------------------------------------
+ 69b561a4-f6fe-39a3-9814-f2c030997ea3
+(1 row)
+
+DO
+              set_config              
+--------------------------------------
+ 2eeb328c-0036-1a1e-5883-e11f161334b3
+(1 row)
+
+DO
+ROLLBACK
+WARNING:  there is no transaction in progress
+psql:scripts/validation/revenuecat.sql:2: WARNING:  there is already a transaction in progress
+BEGIN
+SET
+  set_config  
+--------------
+ service_role
+(1 row)
+
+DO
+SET
+  set_config   
+---------------
+ authenticated
+(1 row)
+
+DO
+ROLLBACK
+WARNING:  there is no transaction in progress
+pgbench (16.15 (Homebrew))
+transaction type: scripts/validation/quota-concurrency.pgbench
+scaling factor: 1
+query mode: simple
+number of clients: 40
+number of threads: 4
+maximum number of tries: 1
+number of transactions per client: 20
+number of transactions actually processed: 800/800
+number of failed transactions: 0 (0.000%)
+latency average = 9.697 ms
+initial connection time = 14.461 ms
+tps = 4124.795694 (without initial connection time)
+DO
+ users | wardrobe_items | saved_outfits | distinct_users_exercised 
+-------+----------------+---------------+--------------------------
+ 10000 |         500000 |         50000 |                        0
+(1 row)
+
+pgbench (16.15 (Homebrew))
+transaction type: scripts/validation/revenuecat-concurrency.pgbench
+scaling factor: 1
+query mode: simple
+number of clients: 40
+number of threads: 4
+maximum number of tries: 1
+number of transactions per client: 20
+number of transactions actually processed: 800/800
+number of failed transactions: 0 (0.000%)
+latency average = 2.935 ms
+initial connection time = 11.316 ms
+tps = 13627.923615 (without initial connection time)
+DO

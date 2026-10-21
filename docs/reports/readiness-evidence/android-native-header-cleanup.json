@@ -1,0 +1,16 @@
+{
+  "localDate": "2026-10-21",
+  "scope": "Independent SQL snapshot after Android fixture cleanup",
+  "auditUsersRemaining": 0,
+  "fixtureRowsRemaining": 0,
+  "unownedWardrobeObjects": 0,
+  "garments": 109,
+  "inlineImages": 18,
+  "authUsers": 111,
+  "profiles": 111,
+  "sessionRevoked": true,
+  "privateLocalConfigurationAndTestAPKsRemoved": true,
+  "testAppUninstalled": true,
+  "ownedEmulatorStopped": true,
+  "otherAVDsAndOriginalIOSLoginSimulatorUntouched": true
+}

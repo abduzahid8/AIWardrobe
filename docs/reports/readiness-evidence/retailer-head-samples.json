@@ -1,0 +1,27 @@
+{
+  "measuredAt": "2026-10-19T02:44:16.215Z",
+  "scope": "Three bounded public retailer HEAD requests, no cookies, no redirect following. Not browser rendering, product identity, availability or checkout certification.",
+  "checks": [
+    {
+      "id": "md-uz-62246011",
+      "url": "https://www.massimodutti.com/uz/en/100-cotton-vneck-knit-polo-l00837175?pelement=62246011",
+      "status": 200,
+      "latencyMs": 2406,
+      "redirect": false
+    },
+    {
+      "id": "zara-uz-545409746",
+      "url": "https://www.zara.com/uz/en/casual-leather-loafers-with-tassels-p12651720.html?v1=545409746",
+      "status": 200,
+      "latencyMs": 595,
+      "redirect": false
+    },
+    {
+      "id": "zara-uz-584711337",
+      "url": "https://www.zara.com/uz/en/regular-fit-100-wool-suit-trousers-p01224554.html?v1=584711337",
+      "status": 200,
+      "latencyMs": 599,
+      "redirect": false
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "sourceChecks": {
+    "ios": {
+      "signInSourceMatches": true,
+      "auditEntriesAbsent": true,
+      "nativeExecutableUnchanged": true
+    },
+    "android": {
+      "signInSourceMatches": true,
+      "auditEntriesAbsent": true
+    }
+  },
+  "androidBuildSucceeded": true,
+  "androidApkSha256": "caacdb933b140fe7c49819ea5625d50ecc523a6e1796b9a5af73ddde213ccdec",
+  "iosArtifactPath": "/tmp/aiwardrobe-signin-visibility-ios.app",
+  "iosBundleSha256": "d5c5d161b8f8c618a81d3df60e7517d8ed34b071c00301cccf689ec9483b2453",
+  "iosArtifactMethod": "Current normal-entry Hermes bundle with unchanged compiled native runtime; no fresh native compilation",
+  "cleanup": {
+    "auditAppTerminatedUninstalled": true,
+    "auditSimulatorAbsent": true,
+    "originalSimulatorStillBooted": true
+  },
+  "passed": true,
+  "approvalReview": "Initial Android rebuild rejected by approval-service usage limit and not executed; later same normal approval path succeeded"
+}

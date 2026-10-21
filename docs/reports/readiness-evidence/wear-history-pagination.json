@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-16",
+  "scope": "Unreleased wear history read correctness",
+  "finding": "Single unpaginated wear_logs query could truncate history at the Data API response cap",
+  "change": "Owner-filtered pages of 250 ordered by date DESC and id DESC; all-or-nothing replacement and auth revision guards",
+  "verification": {
+    "controlled_history_rows": 1001,
+    "pages": 5,
+    "cases": [
+      "complete ID sequence and item mapping",
+      "later page error returns null",
+      "late previous-account page returns null"
+    ],
+    "jest_tests": 1098,
+    "jest_suites": 93,
+    "typescript": "passed",
+    "targeted_lint_errors": 0,
+    "targeted_lint_warnings": 0,
+    "whitespace": "passed"
+  },
+  "reference": "https://supabase.com/docs/reference/javascript/using-modifiers-range",
+  "limitations": [
+    "Controlled query responses, not a hosted 1001-row wear-history run",
+    "Offset pagination does not provide a database snapshot across concurrent writes",
+    "No native long-history rendering, export or production deployment"
+  ]
+}

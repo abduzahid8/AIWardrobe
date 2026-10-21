@@ -1,0 +1,105 @@
+{
+  "observedAt": "2026-10-19T11:39:29.587573+00:00",
+  "method": "Signed-in RevenueCat browser UI, read-only inspection",
+  "projectId": "ab415511",
+  "projectName": "AIWardrobe",
+  "productionAssociation": "Existing webhook URL targets fyqpifmrsftsfqibhwhy Supabase production project",
+  "storeApps": [
+    {
+      "store": "App Store",
+      "id": "app31f4dc35de",
+      "bundleId": "com.aiwardrobe"
+    }
+  ],
+  "googlePlayConfigured": false,
+  "defaultOffering": {
+    "id": "ofrng2c8128b959",
+    "packages": [
+      {
+        "package": "$rc_monthly",
+        "store": "Test Store",
+        "product": "monthly"
+      },
+      {
+        "package": "$rc_annual",
+        "store": "Test Store",
+        "product": "yearly"
+      },
+      {
+        "package": "$rc_lifetime",
+        "store": "Test Store",
+        "product": "lifetime"
+      }
+    ],
+    "appStoreProductsAttached": false
+  },
+  "appStoreProducts": [
+    {
+      "id": "2.99",
+      "status": "Approved",
+      "entitlementCount": 0
+    },
+    {
+      "id": "com.aiwardrobe.lite.monthly",
+      "status": "Not found",
+      "entitlementCount": 1
+    },
+    {
+      "id": "com.aiwardrobe.premium.monthly",
+      "status": "Approved",
+      "entitlementCount": 1
+    },
+    {
+      "id": "com.aiwardrobe.premium.yearly",
+      "status": "Approved",
+      "entitlementCount": 1
+    }
+  ],
+  "webhook": {
+    "id": "whintgrad7d5a9693",
+    "url": "https://fyqpifmrsftsfqibhwhy.supabase.co/functions/v1/revenuecat-webhook",
+    "environment": "Both Production and Sandbox",
+    "eventFilter": "All events",
+    "apps": "All apps",
+    "recentVisibleDeliveryRows": 20,
+    "recentVisibleDeliveryStatuses": "All Failure; visible dates span June30\u2013September21,2026",
+    "dedicatedSecretConfiguredInSupabase": true,
+    "revenueCatHeaderSave": "Saved by user; dashboard-originated TEST returned200",
+    "latestTestEvidence": "revenuecat-dashboard-delivery.json"
+  },
+  "accountNotice": "Email not yet confirmed; Apps page reports no permission to add app configurations",
+  "changesSaved": true,
+  "purchasePerformed": false,
+  "preparedUnsavedChanges": {
+    "offering": "default",
+    "newPackage": {
+      "id": "lite_monthly",
+      "description": "Lite Monthly",
+      "appStoreProduct": "2.99"
+    },
+    "existingPackageMappings": {
+      "$rc_monthly": "com.aiwardrobe.premium.monthly",
+      "$rc_annual": "com.aiwardrobe.premium.yearly"
+    },
+    "pendingEntitlementAttachment": {
+      "product": "2.99",
+      "entitlement": "com.aiwardrobe.lite.monthly"
+    },
+    "approvalRequested": true
+  },
+  "configuredOffering": {
+    "id": "default",
+    "appStoreProducts": [
+      "2.99",
+      "com.aiwardrobe.premium.monthly",
+      "com.aiwardrobe.premium.yearly"
+    ],
+    "verifiedViaLiveIosOfferingsApi": true
+  },
+  "liteEntitlementAttached": {
+    "product": "2.99",
+    "entitlement": "com.aiwardrobe.lite.monthly",
+    "verifiedAfterReload": true
+  },
+  "serverCredentialStored": "Existing v1 key installed as REVENUECAT_SECRET_API_KEY with explicit approval; no value persisted"
+}

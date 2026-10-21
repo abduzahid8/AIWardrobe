@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { View, Image, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BASIC_CLOTHING_ITEMS } from '../../../data/basicClothingItems';
 import type { OutfitItem } from '../types';
 import { getOutfitPreviewSlots, getOutfitPreviewTitle } from '../utils/outfitPreview';
+import { Image } from '../../../src/components/MediaImage';
+
 
 function resolveClothingImage(src: string | number | undefined | null): string | number | null {
   if (src === null || src === undefined) return null;

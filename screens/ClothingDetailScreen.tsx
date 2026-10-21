@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView, Image, Alert, ActivityIndicator,  } from 'react-native'
+import { View, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -15,15 +15,20 @@ import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
 
 import useWardrobeStore from '../store/wardrobeStore';
-import { wardrobeApi } from '../src/lib/api';
+import { normalizeCategory } from '../src/utils/categoryMapper';
+import { authEvents } from '../store/authEvents';
+import { saveClothingEdits } from '../src/services/clothingEditorService';
 import type { ClothingItem, Season, Occasion } from '../src/types/domain';
 import type { RootStackParamList } from '../navigation/types';
+import { Image } from '../src/components/MediaImage';
+
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
 const TYPES = [
   { id: 'tops',        label: 'Tops' },
   { id: 'bottoms',     label: 'Bottoms' },
+  { id: 'dresses',     label: 'Dresses' },
   { id: 'shoes',       label: 'Shoes' },
   { id: 'accessories', label: 'Accessories' },
   { id: 'outerwear',   label: 'Outerwear' },
@@ -81,9 +86,11 @@ const resolveColorId = (item: ClothingItem): string => {
 
 /** Map a ClothingCategory to a TYPES entry id */
 const resolveCategoryId = (item: ClothingItem): string => {
-  const cat = (item.subCategory || item.category || '').toLowerCase();
-  const match = TYPES.find(t => t.id === cat || cat.includes(t.id));
-  return match?.id ?? 'other';
+  const subtype = (item.subCategory || '').toLowerCase();
+  if (subtype === 'sportswear' || subtype === 'homewear') return subtype;
+  const category = normalizeCategory(item.category);
+  const ids: Record<string, string> = { top: 'tops', bottom: 'bottoms', dress: 'dresses', shoes: 'shoes', accessory: 'accessories', outerwear: 'outerwear', other: 'other' };
+  return ids[category] ?? 'other';
 };
 
 // ── Component ──────────────────────────────────────────────────────────────
@@ -101,20 +108,6 @@ const ClothingDetailScreen: React.FC = () => {
   const storeItem = useWardrobeStore(s => s.items.find(i => i.id === itemId));
   const item: ClothingItem | undefined = storeItem ?? (routeItem as ClothingItem | undefined);
 
-  const updateItemInStore = useWardrobeStore(s => s.updateItem);
-  const removeItemFromStore = useWardrobeStore(s => s.removeItem);
-  const toggleFavoriteInStore = useWardrobeStore(s => s.toggleFavorite);
-
-  // ── Edit state ────────────────────────────────────────────────────────
-  const [isEditing,  setIsEditing]  = useState(false);
-  const [isSaving,   setIsSaving]   = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  const [selectedType,     setSelectedType]     = useState(() => item ? resolveCategoryId(item) : 'other');
-  const [selectedColor,    setSelectedColor]     = useState(() => item ? resolveColorId(item) : 'grey');
-  const [selectedSeasons,  setSelectedSeasons]   = useState<Season[]>(() => item?.seasons ?? []);
-  const [selectedOccasions, setSelectedOccasions] = useState<Occasion[]>(() => item?.occasions ?? []);
-
   // ── Guard: item not found ─────────────────────────────────────────────
   if (!item) {
     return (
@@ -129,6 +122,26 @@ const ClothingDetailScreen: React.FC = () => {
       </SafeAreaView>
     );
   }
+
+  return <ClothingDetailContent key={item.id} item={item} />;
+};
+
+const ClothingDetailContent: React.FC<{ item: ClothingItem }> = ({ item }) => {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { t } = useTranslation();
+  const updateItemInStore = useWardrobeStore(s => s.updateItem);
+  const removeItemFromStore = useWardrobeStore(s => s.removeItem);
+  const toggleFavoriteInStore = useWardrobeStore(s => s.toggleFavorite);
+
+  // ── Edit state ────────────────────────────────────────────────────────
+  const [isEditing,  setIsEditing]  = useState(false);
+  const [isSaving,   setIsSaving]   = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const [selectedType,     setSelectedType]     = useState(() => item ? resolveCategoryId(item) : 'other');
+  const [selectedColor,    setSelectedColor]     = useState(() => item ? resolveColorId(item) : 'grey');
+  const [selectedSeasons,  setSelectedSeasons]   = useState<Season[]>(() => item?.seasons ?? []);
+  const [selectedOccasions, setSelectedOccasions] = useState<Occasion[]>(() => item?.occasions ?? []);
 
   // ── Handlers ──────────────────────────────────────────────────────────
 
@@ -177,34 +190,33 @@ const ClothingDetailScreen: React.FC = () => {
   }, []);
 
   const handleSave = useCallback(async () => {
+    if (isSaving) return;
+    const revision = authEvents.getRevision();
     setIsSaving(true);
     const colorData = COLORS.find(c => c.id === selectedColor) ?? COLORS[2];
     const updates: Partial<ClothingItem> = {
-      subCategory:  selectedType,
+      ...(selectedType !== resolveCategoryId(item) ? {
+        category: selectedType === 'sportswear' || selectedType === 'homewear' ? item.category : normalizeCategory(selectedType),
+        subCategory: selectedType,
+      } : {}),
       primaryColor: colorData.label,
       colorHex:     colorData.hex,
       seasons:      selectedSeasons,
       occasions:    selectedOccasions,
     };
     try {
-      // Optimistic local update
+      const saved = await saveClothingEdits(item.id, updates);
+      if (revision !== authEvents.getRevision()) return;
+      if (saved?.id !== item.id) throw new Error('Item save was not confirmed');
       updateItemInStore(item.id, updates);
-      // Persist to server
-      await wardrobeApi.update(item.id, {
-        subCategory:  selectedType,
-        primaryColor: colorData.label,
-        colorHex:     colorData.hex,
-        seasons:      selectedSeasons as any,
-        occasions:    selectedOccasions as any,
-      } as any);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setIsEditing(false);
     } catch {
-      Alert.alert('Error', 'Failed to save changes. Please try again.');
+      Alert.alert(t('common.error'), t('clothingEditor.failedToSaveItem'));
     } finally {
       setIsSaving(false);
     }
-  }, [item.id, selectedType, selectedColor, selectedSeasons, selectedOccasions, updateItemInStore]);
+  }, [item, isSaving, selectedType, selectedColor, selectedSeasons, selectedOccasions, updateItemInStore, t]);
 
   const handleEditToggle = useCallback(() => {
     if (isEditing) {
@@ -248,7 +260,7 @@ const ClothingDetailScreen: React.FC = () => {
               color={isFavorite ? '#FF3B30' : '#1C1C1E'}
             />
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleEditToggle} style={styles.iconButton}>
+          <TouchableOpacity onPress={handleEditToggle} disabled={isSaving} accessibilityRole="button" accessibilityLabel={isEditing ? t('common.cancel') : t('clothingDetail.editItem')} style={styles.iconButton}>
             <Ionicons
               name={isEditing ? 'close' : 'create-outline'}
               size={24}
@@ -340,7 +352,7 @@ const ClothingDetailScreen: React.FC = () => {
                   activeOpacity={0.7}
                 >
                   <ScaledText style={[styles.chipText, selectedType === type.id && styles.chipTextSelected]}>
-                    {type.label}
+                    {t(`clothingEditor.types.${type.id}`, { defaultValue: type.label })}
                   </ScaledText>
                 </TouchableOpacity>
               ))}

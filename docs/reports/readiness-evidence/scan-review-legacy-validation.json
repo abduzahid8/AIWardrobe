@@ -1,0 +1,43 @@
+{
+  "scope": "Pre-journal scan-review recovery after a complete authoritative wardrobe read",
+  "before": {
+    "focused_failed": 1,
+    "focused_passed": 31
+  },
+  "after": {
+    "focused_tests": 57,
+    "full_tests": 2195,
+    "full_suites": 174,
+    "typescript": "pass",
+    "ios_hermes": "pass",
+    "android_arm64_release": "pass"
+  },
+  "source_maps": {
+    "/tmp/aiwardrobe-review-legacy-ios.map": {
+      "src/services/scanReviews.ts": true,
+      "store/slices/wardrobeSyncSlice.ts": true
+    },
+    "android/app/build/intermediates/sourcemaps/react/release/index.android.bundle.packager.map": {
+      "src/services/scanReviews.ts": true,
+      "store/slices/wardrobeSyncSlice.ts": true
+    }
+  },
+  "source_sha256": {
+    "src/services/scanReviews.ts": "204991b1069d3b92e2046d4dd9b015be7c34dd92ebd5b23b8c2d38c0ba16751b",
+    "store/slices/wardrobeSyncSlice.ts": "7ce49c7f1e9a4f168d3cd8c72732899f410abcbd40af90b3510ff467b23bf09d"
+  },
+  "restart_report": "scan-review-legacy-recovery.json",
+  "safety": [
+    "Only IDs returned by the cloud read enter discovery; null/error reads never substitute cached local IDs",
+    "Discovery reads reviews without removing photos or changing markers",
+    "Only pending review IDs matching authoritative garments are journaled",
+    "Existing durable journal acknowledgement handles cleanup and replay",
+    "Concurrent sync completion is awaited before retrying a journal captured too late for that operation"
+  ],
+  "harness_correction": "First fresh-process attempt lacked the React Native __DEV__ global; adapter fixed and rerun passed. Failed attempt temp root removed in finally. App code unchanged for that correction.",
+  "limits": [
+    "Authoritative cloud-read fixture and OS filesystem adapters, not a production/network/native upgrade test",
+    "Web review durability and physical-device crash/storage matrix remain unfinished",
+    "Client changes not distributed; not 10000-DAU certification"
+  ]
+}

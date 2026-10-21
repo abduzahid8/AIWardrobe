@@ -1,0 +1,127 @@
+{
+  "scope": "Normal unsigned iOS 26.5 app, observed through CUA accessibility trees and inline screenshots in this conversation; no exported screenshot files",
+  "beforeSignInSourceSha256": "b13d7870cc81a521e0d02aacb50afd76d0e4c68c5b76579815b6aa692f109f81",
+  "afterSignInSourceSha256": "06474e771c905b0a9360f96d503f1b446b35863ebaf82dc65bc95afc38c28b91",
+  "preFixNativeFailure": "Show password -> Back -> Continue retained Hide password label, matching showPassword=true",
+  "observations": [
+    {
+      "id": "first-run-language",
+      "observed": "English selection opens Sign In",
+      "phase": "before-fix",
+      "passed": true
+    },
+    {
+      "id": "empty-email",
+      "observed": "Error / Please enter your email address",
+      "phase": "before-fix",
+      "passed": true
+    },
+    {
+      "id": "malformed-email",
+      "observed": "Inline validation plus Invalid Email alert",
+      "phase": "before-fix",
+      "passed": true
+    },
+    {
+      "id": "email-step",
+      "observed": "Valid-format reserved email advances to password",
+      "phase": "before-fix",
+      "passed": true
+    },
+    {
+      "id": "empty-password",
+      "observed": "Please enter email and password alert",
+      "phase": "before-fix",
+      "passed": true
+    },
+    {
+      "id": "recovery-navigation",
+      "observed": "Forgot Password opens Reset Password",
+      "phase": "before-fix",
+      "passed": true
+    },
+    {
+      "id": "empty-recovery",
+      "observed": "Send reset link disabled",
+      "phase": "before-fix",
+      "passed": true
+    },
+    {
+      "id": "malformed-recovery",
+      "observed": "Inline validation and send button disabled",
+      "phase": "before-fix",
+      "passed": true
+    },
+    {
+      "id": "valid-recovery-format",
+      "observed": "Send reset link enabled; no submission",
+      "phase": "before-fix",
+      "passed": true
+    },
+    {
+      "id": "recovery-back",
+      "observed": "Returns to Sign In password step",
+      "phase": "before-fix",
+      "passed": true
+    },
+    {
+      "id": "signup-navigation",
+      "observed": "Sign Up opens the form",
+      "phase": "after-fix",
+      "passed": true
+    },
+    {
+      "id": "empty-signup",
+      "observed": "Missing Fields alert, no registration",
+      "phase": "after-fix",
+      "passed": true
+    },
+    {
+      "id": "signup-return",
+      "observed": "Return link reaches Sign In",
+      "phase": "after-fix",
+      "passed": true
+    },
+    {
+      "id": "password-back-reset",
+      "observed": "Revealed synthetic password cleared; next entry is empty with Show password",
+      "phase": "after-fix",
+      "passed": true
+    },
+    {
+      "id": "password-change-reset",
+      "observed": "Change email clears revealed synthetic password and restores Show password",
+      "phase": "after-fix",
+      "passed": true
+    }
+  ],
+  "unresolved": [
+    {
+      "id": "email-accessibility-role",
+      "observed": "After returning from password, CUA reports Email as secure text field while visual text is ordinary. Persists after distinct keys and explicit secureTextEntry=false.",
+      "causeEstablished": false,
+      "fixed": false
+    }
+  ],
+  "testResults": {
+    "beforeFocusedFailed": 2,
+    "afterFocusedPassed": 2,
+    "fullTestsPassed": 1392,
+    "fullSuitesPassed": 121,
+    "typecheckPassed": true,
+    "eslintErrors": 0,
+    "existingSignInWarnings": 6
+  },
+  "actionsNotPerformed": [
+    "No nonempty credential submission",
+    "No recovery email submission",
+    "No account creation",
+    "No OAuth login",
+    "No purchase or provider invocation"
+  ],
+  "limitations": [
+    "Not full authenticated UI or 10000 DAU certification",
+    "Android UI behavior not verified",
+    "Accessibility-role observation remains unresolved"
+  ]
+}

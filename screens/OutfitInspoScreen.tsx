@@ -36,8 +36,8 @@ interface DetectedItem {
     colorHex: string;
     style: string;
     material: string | null;
-    pattern: string;
-    fit: string;
+    pattern: string | null;
+    fit: string | null;
     description: string;
 }
 
@@ -346,7 +346,7 @@ const OutfitInspoScreen = () => {
                         <View style={styles.detectedItemText}>
                             <ScaledText style={styles.detectedItemName}>{item.specificType}</ScaledText>
                             <ScaledText style={styles.detectedItemMeta}>
-                                {item.primaryColor} · {item.style} · {item.pattern}
+                                {[item.primaryColor, item.style, item.pattern].filter(Boolean).join(' · ')}
                             </ScaledText>
                         </View>
                     </View>

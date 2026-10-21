@@ -1,0 +1,1151 @@
+{
+  "platform": "android",
+  "scope": "Native Expo vs XMLHttpRequest-backed fetch, repeated private fixture; not app transport replacement or capacity certification",
+  "plannedPerStage": 50,
+  "targetRps": 5,
+  "concurrencyCap": 20,
+  "requestTimeoutMs": 15000,
+  "passed": false,
+  "runId": "56bba184-9cb1-44dc-b3be-20b95fabcda4",
+  "fixtureBytes": 788309,
+  "fixtureSha256": "39b14e9041fca06639a34a1c04420d57cc57776bec23c524f21cd88f1a4a3bd7",
+  "defaultFetchIsExpo": true,
+  "diagnosticPhase": "network_stages",
+  "smallHashPreflight": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "cryptoPreflight": {
+    "bytes": 788309,
+    "sha256": "3b7d245cd9649ae315ad15c5876a497ab8f572bbdf1860fe47a79d60402d599e",
+    "ms": 3.2631660000188276,
+    "independentlyVerified": true
+  },
+  "stages": [
+    {
+      "client": "expo-first",
+      "planned": 50,
+      "completed": 20,
+      "successful": 20,
+      "failures": 0,
+      "dropped": 30,
+      "errors": {},
+      "failurePhases": {},
+      "elapsedMs": 10721.439004999935,
+      "p95Ms": 10495.61838,
+      "p95FetchResolvedMs": 2899.1731259999797,
+      "p95SuccessfulBodyMs": 7619.339546000003,
+      "results": [
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 2342.6867929999717,
+          "bodyMs": 7347.554210999981,
+          "ms": 9690.241212999914,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 2272.513917000033,
+          "bodyMs": 7619.339546000003,
+          "ms": 9891.85362900002,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 3097.7082930000033,
+          "bodyMs": 7612.7812540000305,
+          "ms": 10710.489755000104,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 2899.1731259999797,
+          "bodyMs": 7596.445045000059,
+          "ms": 10495.61838,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 2041.758417999954,
+          "bodyMs": 7454.1414619999705,
+          "ms": 9495.900004999945,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 2471.790542999981,
+          "bodyMs": 7624.806212000083,
+          "ms": 10096.596879999968,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 2698.3113340000855,
+          "bodyMs": 7597.8762119999155,
+          "ms": 10296.187712999992,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 1337.0069590000203,
+          "bodyMs": 7156.727585999994,
+          "ms": 8493.734670000034,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 1140.8208339998964,
+          "bodyMs": 7157.919170000008,
+          "ms": 8298.740212999983,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 1441.9319169999799,
+          "bodyMs": 7256.658337000059,
+          "ms": 8698.590503999963,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 791.1294169999892,
+          "bodyMs": 7109.378085999982,
+          "ms": 7900.507669999963,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 1544.0559169999324,
+          "bodyMs": 7354.663337000064,
+          "ms": 8898.719420999987,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 941.0921249999665,
+          "bodyMs": 7160.667586999945,
+          "ms": 8101.759836999932,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 1942.960917999968,
+          "bodyMs": 7357.055586999981,
+          "ms": 9300.016670999932,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 1789.3459599999478,
+          "bodyMs": 7311.178920000093,
+          "ms": 9100.525004999945,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 675.7914580000797,
+          "bodyMs": 6827.213336999994,
+          "ms": 7503.004920000094,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 458.9668750000419,
+          "bodyMs": 6845.267211999977,
+          "ms": 7304.23425400001,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 363.7285840000259,
+          "bodyMs": 6541.043752999976,
+          "ms": 6904.772462000023,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 623.3410829999484,
+          "bodyMs": 7081.8292120000115,
+          "ms": 7705.17041999998,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 355.17445900000166,
+          "bodyMs": 6749.7376279999735,
+          "ms": 7104.912211999996,
+          "bytes": 788309,
+          "phase": "integrity"
+        }
+      ]
+    },
+    {
+      "client": "xhr-fetch",
+      "planned": 50,
+      "completed": 50,
+      "successful": 50,
+      "failures": 0,
+      "dropped": 0,
+      "errors": {},
+      "failurePhases": {},
+      "elapsedMs": 9874.136672000051,
+      "p95Ms": 66.94916699989699,
+      "p95FetchResolvedMs": 18.254707999993116,
+      "p95SuccessfulBodyMs": 50.09675000002608,
+      "results": [
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 11.19316699996125,
+          "bodyMs": 42.30187500000466,
+          "ms": 53.495166999986395,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 14.026542000006884,
+          "bodyMs": 43.60016600007657,
+          "ms": 57.62683300010394,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 16.817500000004657,
+          "bodyMs": 50.13149999990128,
+          "ms": 66.94916699989699,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 15.095541000016965,
+          "bodyMs": 44.2442920000758,
+          "ms": 59.33995799999684,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 18.254707999993116,
+          "bodyMs": 44.0849589999998,
+          "ms": 62.339792000013404,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 15.106417000060901,
+          "bodyMs": 45.53708299994469,
+          "ms": 60.64358400006313,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 16.621500000008382,
+          "bodyMs": 45.418416999978945,
+          "ms": 62.04000000003725,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 13.731874999939464,
+          "bodyMs": 47.953750000102445,
+          "ms": 61.68574999994598,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 13.879917000071146,
+          "bodyMs": 45.84087499999441,
+          "ms": 59.720958000048995,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 13.893625000026077,
+          "bodyMs": 49.33224999997765,
+          "ms": 63.226000000024214,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 16.137791000073776,
+          "bodyMs": 42.60470899997745,
+          "ms": 58.74262500007171,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 17.814250000054017,
+          "bodyMs": 47.70395799994003,
+          "ms": 65.51833300001454,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 15.90445799997542,
+          "bodyMs": 45.37041700002737,
+          "ms": 61.27500000002328,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 15.362833000021055,
+          "bodyMs": 50.09675000002608,
+          "ms": 65.45970800006762,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 16.292333999997936,
+          "bodyMs": 39.98412499995902,
+          "ms": 56.27658399997745,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 16.755000000004657,
+          "bodyMs": 48.68829099996947,
+          "ms": 65.44341599999461,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 14.799750000005588,
+          "bodyMs": 49.05991700000595,
+          "ms": 63.85979200003203,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 17.699666999978945,
+          "bodyMs": 49.31462499999907,
+          "ms": 67.0144169999985,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 16.401209000032395,
+          "bodyMs": 44.12566599994898,
+          "ms": 60.52700000000186,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 17.760999999940395,
+          "bodyMs": 48.78116700006649,
+          "ms": 66.54233299999032,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 16.32645799999591,
+          "bodyMs": 44.07333399995696,
+          "ms": 60.39991699997336,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 16.618250000057742,
+          "bodyMs": 48.477667000028305,
+          "ms": 65.09604199999012,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 16.527624999987893,
+          "bodyMs": 44.436833999934606,
+          "ms": 60.96458399994299,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 20.169916999991983,
+          "bodyMs": 46.62841600005049,
+          "ms": 66.79845800006296,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 17.052000000025146,
+          "bodyMs": 40.37749999994412,
+          "ms": 57.429665999952704,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 16.02016700000968,
+          "bodyMs": 49.101082999957725,
+          "ms": 65.12145900004543,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 15.227249999996275,
+          "bodyMs": 49.60216699994635,
+          "ms": 64.82949999999255,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 17.681042000069283,
+          "bodyMs": 43.92641700000968,
+          "ms": 61.607583999983035,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 18.535000000032596,
+          "bodyMs": 48.85333299997728,
+          "ms": 67.38845800003037,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 14.830291000078432,
+          "bodyMs": 46.01220899994951,
+          "ms": 60.84262500004843,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 15.329333000001498,
+          "bodyMs": 46.19783300010022,
+          "ms": 61.52729100000579,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 16.802916000015102,
+          "bodyMs": 48.119334000046365,
+          "ms": 64.9224160000449,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 16.28170799999498,
+          "bodyMs": 43.924208000069484,
+          "ms": 60.20612500002608,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 16.642790999962017,
+          "bodyMs": 47.7487919999985,
+          "ms": 64.39170799998101,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 15.569999999948777,
+          "bodyMs": 41.69583400001284,
+          "ms": 57.266041999915615,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 16.666583999991417,
+          "bodyMs": 46.82741599995643,
+          "ms": 63.494124999968335,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 16.55183299991768,
+          "bodyMs": 43.21654200006742,
+          "ms": 59.76845799991861,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 13.252791999955662,
+          "bodyMs": 48.925333000021055,
+          "ms": 62.17820900003426,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 14.11337499995716,
+          "bodyMs": 46.429207999957725,
+          "ms": 60.542666999972425,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 14.853208999964409,
+          "bodyMs": 49.85358300001826,
+          "ms": 64.70695899997372,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 15.295332999899983,
+          "bodyMs": 49.4867090000771,
+          "ms": 64.7821249999106,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 16.601957999984734,
+          "bodyMs": 44.20908399997279,
+          "ms": 60.81116699997801,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 16.568542000022717,
+          "bodyMs": 49.18937499995809,
+          "ms": 65.7580420000013,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 14.183041999931447,
+          "bodyMs": 46.898667000001296,
+          "ms": 61.081916999886744,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 14.304957999964245,
+          "bodyMs": 47.37108300009277,
+          "ms": 61.676165999961086,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 16.04949999996461,
+          "bodyMs": 50.22208400000818,
+          "ms": 66.27170899999328,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 15.054250000044703,
+          "bodyMs": 44.2417500000447,
+          "ms": 59.29612499999348,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 16.416166999959387,
+          "bodyMs": 40.65966700005811,
+          "ms": 57.07612500002142,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 16.618874999927357,
+          "bodyMs": 45.26725000003353,
+          "ms": 61.88624999998137,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 16.472040999913588,
+          "bodyMs": 46.53237500006799,
+          "ms": 63.00458299997263,
+          "bytes": 788309,
+          "phase": "integrity"
+        }
+      ]
+    },
+    {
+      "client": "expo-repeat",
+      "planned": 50,
+      "completed": 50,
+      "successful": 50,
+      "failures": 0,
+      "dropped": 0,
+      "errors": {},
+      "failurePhases": {},
+      "elapsedMs": 9823.957171000075,
+      "p95Ms": 32.44650000007823,
+      "p95FetchResolvedMs": 6.16600000008475,
+      "p95SuccessfulBodyMs": 26.947874999954365,
+      "results": [
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 1.8815409999806434,
+          "bodyMs": 13.810083999997005,
+          "ms": 15.691749999998137,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 3.046792000066489,
+          "bodyMs": 20.508457999909297,
+          "ms": 23.555374999996275,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 3.2982909999554977,
+          "bodyMs": 25.55495899997186,
+          "ms": 28.853415999910794,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 1.698541000019759,
+          "bodyMs": 12.59699999995064,
+          "ms": 14.29562500002794,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 2.7511670000385493,
+          "bodyMs": 20.610833000042476,
+          "ms": 23.36220900004264,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 2.169084000051953,
+          "bodyMs": 18.427415999933146,
+          "ms": 20.596625000005588,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 2.3553339999634773,
+          "bodyMs": 17.020458000013605,
+          "ms": 19.375958999968134,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 4.101874999934807,
+          "bodyMs": 20.79612499999348,
+          "ms": 24.898124999948777,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 5.355333999963477,
+          "bodyMs": 26.947874999954365,
+          "ms": 32.30333399993833,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 4.636042000027373,
+          "bodyMs": 22.141041999915615,
+          "ms": 26.777249999926426,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 6.203207999933511,
+          "bodyMs": 24.252708000014536,
+          "ms": 30.456040999968536,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 5.599625000031665,
+          "bodyMs": 24.297457999899052,
+          "ms": 29.897250000038184,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 3.1684999999124557,
+          "bodyMs": 16.922040999983437,
+          "ms": 20.090665999916382,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 3.8194159999256954,
+          "bodyMs": 17.79837500001304,
+          "ms": 21.617915999959223,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 3.755707999924198,
+          "bodyMs": 19.95554200001061,
+          "ms": 23.711374999955297,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 4.891165999928489,
+          "bodyMs": 24.44850000005681,
+          "ms": 29.33979100000579,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 4.9965410000877455,
+          "bodyMs": 27.860333999968134,
+          "ms": 32.85700000007637,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 4.7523749999236315,
+          "bodyMs": 25.75933300005272,
+          "ms": 30.511874999967404,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 3.9138329999987036,
+          "bodyMs": 24.632457999978215,
+          "ms": 28.54695799993351,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 3.080625000060536,
+          "bodyMs": 21.66929099999834,
+          "ms": 24.750165999983437,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 4.156333000049926,
+          "bodyMs": 20.11020799994003,
+          "ms": 24.266666000010446,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 2.5747919999994338,
+          "bodyMs": 16.987041999935172,
+          "ms": 19.561916999984533,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 4.467416999978013,
+          "bodyMs": 22.145790999988094,
+          "ms": 26.61337499995716,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 5.291874999995343,
+          "bodyMs": 21.558334000059403,
+          "ms": 26.850291999988258,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 4.588332999963313,
+          "bodyMs": 22.60504200006835,
+          "ms": 27.193542000022717,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 6.944417000049725,
+          "bodyMs": 27.512499999953434,
+          "ms": 34.457125000073574,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 2.2354999999515712,
+          "bodyMs": 12.284042000072077,
+          "ms": 14.51962499995716,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 5.5833340000826865,
+          "bodyMs": 23.438290999969468,
+          "ms": 29.02183400001377,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 3.868875000043772,
+          "bodyMs": 22.644874999998137,
+          "ms": 26.51391700003296,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 4.459374999976717,
+          "bodyMs": 22.98141599993687,
+          "ms": 27.441040999954566,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 6.16600000008475,
+          "bodyMs": 23.828666999936104,
+          "ms": 29.994834000011906,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 4.7727080000331625,
+          "bodyMs": 25.235999999917112,
+          "ms": 30.008875000057742,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 5.109500000020489,
+          "bodyMs": 24.020750000025146,
+          "ms": 29.130416000029072,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 6.116374999983236,
+          "bodyMs": 23.194625000003725,
+          "ms": 29.31125000002794,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 2.549750000005588,
+          "bodyMs": 17.561166000086814,
+          "ms": 20.111083000083454,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 5.500583000015467,
+          "bodyMs": 22.8966669999063,
+          "ms": 28.397499999962747,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 3.243834000080824,
+          "bodyMs": 21.23341599991545,
+          "ms": 24.477416999987327,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 5.606334000010975,
+          "bodyMs": 26.004582999972627,
+          "ms": 31.61104200000409,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 5.0300840000854805,
+          "bodyMs": 26.4674159999704,
+          "ms": 31.49762500007637,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 3.2600000000093132,
+          "bodyMs": 21.819999999948777,
+          "ms": 25.08012499997858,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 3.5565840000053868,
+          "bodyMs": 21.177040999988094,
+          "ms": 24.73466700001154,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 4.194625000003725,
+          "bodyMs": 14.981541999964975,
+          "ms": 19.17629199998919,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 3.884416999993846,
+          "bodyMs": 20.16379100002814,
+          "ms": 24.048291999963112,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 4.959374999976717,
+          "bodyMs": 25.836000000010245,
+          "ms": 30.795541999978013,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 6.093333000084385,
+          "bodyMs": 26.353000000002794,
+          "ms": 32.44650000007823,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 4.472124999971129,
+          "bodyMs": 22.678417000104673,
+          "ms": 27.150750000029802,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 2.5536250000586733,
+          "bodyMs": 18.978457999997772,
+          "ms": 21.532208000076935,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 4.9348330000648275,
+          "bodyMs": 23.698916999972425,
+          "ms": 28.633917000028305,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 3.6236250000074506,
+          "bodyMs": 20.83429100003559,
+          "ms": 24.462832999997772,
+          "bytes": 788309,
+          "phase": "integrity"
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "fetchResolvedMs": 3.3667500000447035,
+          "bodyMs": 15.797541999956593,
+          "ms": 19.164417000021785,
+          "bytes": 788309,
+          "phase": "integrity"
+        }
+      ]
+    }
+  ]
+}

@@ -6,9 +6,9 @@ tags:
 ---
 # Empty-submit validation on Sign In (Expo Go, no launchApp).
 # REQUIRES: logged-out state with empty Email/Password fields (fresh reload).
-# SignInScreen shows a NATIVE ALERT (common.error / signIn.emailPasswordRequired),
-# not inline errors: "Error" / "Please enter email and password".
-# The screen has two "Sign In" nodes (title index 0, button index 1).
+# SignInScreen shows a NATIVE ALERT (common.error / signIn.emailRequired),
+# not inline errors: "Error" / "Please enter your email address".
+# The first step exposes the Continue button by test ID.
 - waitForAnimationToEnd:
     timeout: 10000
 # Fresh install shows the first-run language gate before Sign In —
@@ -20,15 +20,14 @@ tags:
       - tapOn: "English"
       - waitForAnimationToEnd:
           timeout: 20000
-- assertVisible: ".*Don't have an account.*"
+- assertVisible: "Continue with Google"
 - tapOn:
-    text: "Sign In"
-    index: 1
+    id: "continueEmailButton"
 - waitForAnimationToEnd:
     timeout: 5000
-- assertVisible: ".*Please enter email and password.*"
+- assertVisible: ".*Please enter your email address.*"
 - takeScreenshot: expo_go_signin_empty_alert
 - tapOn: "OK"
 - waitForAnimationToEnd:
     timeout: 3000
-- assertVisible: ".*Don't have an account.*"
+- assertVisible: "Continue with Google"

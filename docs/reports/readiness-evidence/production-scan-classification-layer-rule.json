@@ -1,0 +1,31 @@
+{
+  "measuredAt": "2026-10-19T06:51:53.280Z",
+  "scope": "Two bounded live NVIDIA classifications; response contract, not full visual accuracy or capacity",
+  "checks": [
+    {
+      "name": "invalid_image_provider_failure_is_not_fabricated_success",
+      "passed": true,
+      "status": 503,
+      "latencyMs": 2865,
+      "error": "ai_classification_unavailable"
+    },
+    {
+      "name": "single_garment_visual_attributes",
+      "passed": false,
+      "expected": "Beige/cream torso shirt or jacket, excluding separate green draped layer"
+    },
+    {
+      "name": "known_clothing_photo_returns_validated_classification",
+      "passed": false,
+      "status": 503,
+      "latencyMs": 7066,
+      "classification": null,
+      "description": null,
+      "error": "ai_classification_unavailable"
+    }
+  ],
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

@@ -1,3 +1,4 @@
+import { authEvents } from '../../store/authEvents';
 /**
  * Focused regression tests for the outfit calendar hook.
  */
@@ -25,6 +26,8 @@ jest.mock('expo-asset', () => ({
     },
 }));
 
+import { Alert } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { renderHook, act } from '@testing-library/react-native';
 import { useOutfitCalendar } from '../../features/calendar/hooks/useOutfitCalendar';
@@ -33,6 +36,7 @@ describe('useOutfitCalendar', () => {
     beforeEach(async () => {
         jest.clearAllMocks();
         await AsyncStorage.clear();
+        authEvents.emitLogin('calendar-owner');
     });
 
     it('saves selected items to the explicitly selected date', async () => {
@@ -123,4 +127,25 @@ describe('useOutfitCalendar', () => {
 
         expect(result.current.selectedItems.map(item => item.id)).toEqual(['new-top']);
     });
+});
+
+
+it('keeps the draft open and reports a storage failure without success feedback', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    const error = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { result } = renderHook(() => useOutfitCalendar());
+    act(() => {
+        result.current.openLogModalForDate('2026-10-16');
+        result.current.toggleItemSelection({ id: 'top', type: 'top', image: 'file://top.png' });
+    });
+    (AsyncStorage.setItem as jest.Mock).mockRejectedValueOnce(new Error('disk full'));
+    (Haptics.notificationAsync as jest.Mock).mockClear();
+    await act(async () => { await result.current.saveOutfit(); });
+    expect(result.current.showLogModal).toBe(true);
+    expect(result.current.selectedItems).toHaveLength(1);
+    expect(result.current.outfitLogs).toEqual({});
+    expect(alert).toHaveBeenCalledWith('common.error', 'calendar.persistenceError');
+    expect(Haptics.notificationAsync).not.toHaveBeenCalled();
+    alert.mockRestore();
+    error.mockRestore();
 });

@@ -1,0 +1,17 @@
+{
+  "method": "Fresh Hermes audit bundle embedded in separate copy of existing unchanged native simulator app; no new native compilation",
+  "simulator": "C98B9B6D-F452-41CB-94B0-902F6E3FA6AC",
+  "runtime": "iOS 26.5",
+  "auditBundleSha256": "bf6ddab291ac63cfa62271474bb0047a87718bcf09977b1f9f76836214029638",
+  "nativeExecutableSha256": "a1dd2cbadaf2bf3069ba39993cfe28b6952b9926e9821a67c2d15c1d3efed4b0",
+  "normalBundleSha256": "58648c26bdaab8ecf1ece14ceb70f3ef03341f55a56d527ff537e88d78e23230",
+  "checks": {
+    "scripts/validation/photo-cleanup-native-entry.tsx": true,
+    "src/lib/persistence.ts": true,
+    "src/services/pendingWardrobeMedia.ts": true,
+    "nativeExecutableUnchanged": true,
+    "nativeFrameworkFilesUnchanged": true,
+    "auditMarkerPresent": true
+  },
+  "passed": true
+}

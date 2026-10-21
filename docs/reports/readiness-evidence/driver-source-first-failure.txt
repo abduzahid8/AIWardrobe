@@ -1,0 +1,6 @@
+npm error lib/app-infos-cache.ts(4,39): error TS2307: Cannot find module 'appium/support.js' or its corresponding type declarations.
+npm error lib/commands/alert.ts(1,35): error TS2307: Cannot find module 'appium/driver.js' or its corresponding type declarations.
+npm error lib/commands/app-management.ts(4,22): error TS2307: Cannot find module 'appium/driver.js' or its corresponding type declarations.
+npm error lib/commands/app-management.ts(5,24): error TS2307: Cannot find module 'appium/support.js' or its corresponding type declarations.
+npm error lib/commands/app-strings.ts(4,45): error TS2307: Cannot find module 'appium/support.js' or its corresponding type declarations.
+npm error lib/commands/appearance.ts(2,20): error TS2307: Cannot find module 'appium/support.js' or its corresponding type declarations.

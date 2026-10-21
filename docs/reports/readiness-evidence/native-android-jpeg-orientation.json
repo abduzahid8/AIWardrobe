@@ -1,0 +1,98 @@
+{
+  "scope": "Native android output compared to independent Pillow EXIF transpose; eight synthetic JPEG fixtures",
+  "thresholds": {
+    "meanAbsoluteChannelErrorBelow": 5,
+    "maxCornerChannelErrorBelow": 15
+  },
+  "cases": [
+    {
+      "orientation": 1,
+      "dimensions": [
+        512,
+        341
+      ],
+      "meanAbsoluteChannelError": 0.24107061033724342,
+      "maxCornerChannelError": 0,
+      "originalBytesUnchanged": true,
+      "passed": true
+    },
+    {
+      "orientation": 2,
+      "dimensions": [
+        512,
+        341
+      ],
+      "meanAbsoluteChannelError": 0.23879864674975562,
+      "maxCornerChannelError": 0,
+      "originalBytesUnchanged": true,
+      "passed": true
+    },
+    {
+      "orientation": 3,
+      "dimensions": [
+        512,
+        341
+      ],
+      "meanAbsoluteChannelError": 0.23658777798142716,
+      "maxCornerChannelError": 0,
+      "originalBytesUnchanged": true,
+      "passed": true
+    },
+    {
+      "orientation": 4,
+      "dimensions": [
+        512,
+        341
+      ],
+      "meanAbsoluteChannelError": 0.2388883797653959,
+      "maxCornerChannelError": 0,
+      "originalBytesUnchanged": true,
+      "passed": true
+    },
+    {
+      "orientation": 5,
+      "dimensions": [
+        341,
+        512
+      ],
+      "meanAbsoluteChannelError": 0.24145245295698925,
+      "maxCornerChannelError": 0,
+      "originalBytesUnchanged": true,
+      "passed": true
+    },
+    {
+      "orientation": 6,
+      "dimensions": [
+        341,
+        512
+      ],
+      "meanAbsoluteChannelError": 0.23946878054740958,
+      "maxCornerChannelError": 0,
+      "originalBytesUnchanged": true,
+      "passed": true
+    },
+    {
+      "orientation": 7,
+      "dimensions": [
+        341,
+        512
+      ],
+      "meanAbsoluteChannelError": 0.2371987261730205,
+      "maxCornerChannelError": 0,
+      "originalBytesUnchanged": true,
+      "passed": true
+    },
+    {
+      "orientation": 8,
+      "dimensions": [
+        341,
+        512
+      ],
+      "meanAbsoluteChannelError": 0.23916521566471163,
+      "maxCornerChannelError": 0,
+      "originalBytesUnchanged": true,
+      "passed": true
+    }
+  ],
+  "passed": true
+}

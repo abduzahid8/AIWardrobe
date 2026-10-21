@@ -1,0 +1,17 @@
+{
+  "scope": "Rendered clothing detail component with controlled API responses; no production mutations",
+  "fullSuite": {
+    "passed": true,
+    "tests": 1038,
+    "suites": 83
+  },
+  "newRegressions": 5,
+  "typecheck": "pass",
+  "targetedLint": {
+    "errors": 0,
+    "warnings": 2
+  },
+  "nativeVerified": false,
+  "mobileReleased": false,
+  "liveEditVerified": false
+}

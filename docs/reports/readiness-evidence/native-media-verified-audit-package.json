@@ -1,0 +1,10 @@
+{
+  "apkBytes": 54731548,
+  "apkSha256": "5bee58ba132909501e91ab00b2b1cbddf5153c201165abec6354aaa476ba1d65",
+  "bundleSha256": "b04fd556eb003cf5d8703353958833b601276e82ade6766b4a7216b7c63e5ad7",
+  "sourcesMatch": {
+    "scripts/validation/media-transport-native-entry.tsx": "db0538857a36ec526b207226e2506a49169def7b8caea707361c0dd9342d04ab",
+    "scripts/validation/native-media-digest.ts": "dfa6ed7d385142399d4e91cbe99f94c15284b02a589c2c4078bdf40749a29a5b"
+  },
+  "testCredentialEmbedded": false
+}

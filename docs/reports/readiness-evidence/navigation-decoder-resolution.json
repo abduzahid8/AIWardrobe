@@ -1,0 +1,52 @@
+{
+  "date": "2026-10-16",
+  "change": "Exact navigation-core 7.24.0 override within native 7.3.18 dependency range; routers 7.6.4 -> 7.6.5",
+  "removed": [
+    "query-string",
+    "decode-uri-component",
+    "filter-obj",
+    "split-on-first",
+    "strict-uri-encode"
+  ],
+  "references": [
+    "https://raw.githubusercontent.com/react-navigation/react-navigation/7.x/packages/core/CHANGELOG.md",
+    "https://github.com/advisories/GHSA-vcc3-ghjq-m6fr"
+  ],
+  "audit": {
+    "info": 0,
+    "low": 0,
+    "moderate": 11,
+    "high": 21,
+    "critical": 0,
+    "total": 32
+  },
+  "verification": {
+    "installed_parser_tests": 9,
+    "jest_tests": 1098,
+    "jest_suites": 93,
+    "typescript": "passed",
+    "targeted_lint": "passed",
+    "ios_export": "passed",
+    "android_export": "passed",
+    "native_ios": "Sign In -> Sign Up -> Sign In -> password -> Forgot Password screen",
+    "native_device": "2F806F52-7020-4FD3-9B68-3E0CA8B69D76; iOS26.5/ExpoGo57",
+    "network_auth_submission": "none",
+    "cleanup": "Owned Metro stopped and isolated device shut down; original simulator unchanged"
+  },
+  "ci": "Added npm test:navigation-links to quality job; remote CI not run",
+  "limitations": [
+    "Controlled parser tests do not prove actual OS deep-link delivery",
+    "No authenticated navigation, Android runtime, signed release or purchase validation",
+    "32 dependency findings remain"
+  ],
+  "bundles": [
+    {
+      "path": "/tmp/aiwardrobe-navigation-ios-20261016/_expo/static/js/ios/index-1b710bd47926c4de7d43c49227d8337b.hbc",
+      "sha256": "18232d29b7e383970606f9597f154a6af492aa22d0d976e5ac92443abafe9ffd"
+    },
+    {
+      "path": "/tmp/aiwardrobe-navigation-android-20261016/_expo/static/js/android/index-f28f75c0c3634e259468c933c01f879b.hbc",
+      "sha256": "00796912de4b5a624360663f7964d152a7bfde4c7acbd1f6bc0d5870a6bf293f"
+    }
+  ]
+}

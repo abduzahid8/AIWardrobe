@@ -1,0 +1,12 @@
+{
+  "sourceDownloadedFrom": "fyqpifmrsftsfqibhwhy/try-on",
+  "sha256": "c4a1e82bea932af898b7d2c698a664e21ad7df297058c863b1c0f627387edc22",
+  "staticFindings": [
+    "Authenticated caller check exists, but shared rate/paid-quota admission absent",
+    "No-provider branch returns garment input as success:true methodUsed:mock",
+    "OffscreenCanvas-unavailable branch returns person image without garment reference",
+    "Existing Replicate fallback and provider timeouts require separate review"
+  ],
+  "deployedChangesMade": false,
+  "boundary": "Source audit; no try-on provider invocation or customer images transmitted"
+}

@@ -1,0 +1,202 @@
+{
+  "measuredAt": "2026-10-21T17:47:03.180Z",
+  "scope": "One real hosted Old Money/Work shopping request, no weather or entered budget, limit five. Controlled catalog pool; not exact screenshot account or capacity proof.",
+  "checks": [
+    {
+      "name": "all_three_catalog_slots_available",
+      "passed": true
+    },
+    {
+      "name": "usable_outfits_returned",
+      "passed": true
+    },
+    {
+      "name": "every_outfit_passes_structure_and_style",
+      "passed": true
+    },
+    {
+      "name": "every_item_matches_authoritative_active_catalog",
+      "passed": true
+    }
+  ],
+  "fixtureUserId": "86b335e0-a95f-47d9-8acd-f949dcb00fb7",
+  "candidateCount": 40,
+  "response": {
+    "status": 200,
+    "latencyMs": 7814,
+    "code": null,
+    "error": null,
+    "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+    "providerAttempts": [
+      {
+        "provider": "nvidia",
+        "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+        "status": "ok"
+      }
+    ],
+    "outfitCount": 5
+  },
+  "supplementedIds": [
+    "md-uz-61729868",
+    "md-uz-61735972",
+    "md-uz-62899832"
+  ],
+  "outfits": [
+    {
+      "items": [
+        {
+          "id": "shop_boss-uz-140333",
+          "name": "Salbo",
+          "price": 1488000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61729868",
+          "name": "100% cool wool suit blazer",
+          "price": 7000000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61729804",
+          "name": "Cold wool suit trousers",
+          "price": 2200000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-93412",
+          "name": "Gary_Slon_SDWV_204",
+          "price": 4407000,
+          "currency": "UZS"
+        }
+      ],
+      "structureReason": null,
+      "styleReason": null
+    },
+    {
+      "items": [
+        {
+          "id": "shop_fr-tommy-169173-official",
+          "name": "Regular Fit Crest Patch Interlock Polo",
+          "price": 1829000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61729868",
+          "name": "100% cool wool suit blazer",
+          "price": 7000000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61729518",
+          "name": "Tapered fit linen pants",
+          "price": 1900000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-105039",
+          "name": "TTNM Evo_Slon_Ltmxl",
+          "price": 1993000,
+          "currency": "UZS"
+        }
+      ],
+      "structureReason": null,
+      "styleReason": null
+    },
+    {
+      "items": [
+        {
+          "id": "shop_boss-uz-107095",
+          "name": "Motion_Slon_KNS",
+          "price": 2799000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61735972",
+          "name": "100% linen suit blazer",
+          "price": 4000000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61733853",
+          "name": "Cool wool blend darted pants",
+          "price": 2000000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-141303",
+          "name": "Ttnm Evo_Slon_Knrsd",
+          "price": 2696000,
+          "currency": "UZS"
+        }
+      ],
+      "structureReason": null,
+      "styleReason": null
+    },
+    {
+      "items": [
+        {
+          "id": "shop_fr-tommy-111152-official",
+          "name": "Regular Fit Striped Rugby Polo",
+          "price": 1584500,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61729868",
+          "name": "100% cool wool suit blazer",
+          "price": 7000000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61733853",
+          "name": "Cool wool blend darted pants",
+          "price": 2000000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-141303",
+          "name": "Ttnm Evo_Slon_Knrsd",
+          "price": 2696000,
+          "currency": "UZS"
+        }
+      ],
+      "structureReason": null,
+      "styleReason": null
+    },
+    {
+      "items": [
+        {
+          "id": "shop_fr-tommy-111152-official",
+          "name": "Regular Fit Striped Rugby Polo",
+          "price": 1584500,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-62899832",
+          "name": "100% tropical wool suit blazer",
+          "price": 4500000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61729804",
+          "name": "Cold wool suit trousers",
+          "price": 2200000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-90479",
+          "name": "Gary_Tenn_ltgr",
+          "price": 5916000,
+          "currency": "UZS"
+        }
+      ],
+      "structureReason": null,
+      "styleReason": null
+    }
+  ],
+  "exactFiveReturned": true,
+  "cleanup": {
+    "sessionsRevoked": true,
+    "ownerDeleted": true
+  },
+  "passed": true
+}

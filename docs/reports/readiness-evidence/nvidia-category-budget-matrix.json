@@ -1,0 +1,70 @@
+{
+  "measuredAt": "2026-10-18T14:41:48.747Z",
+  "scope": "Three live NVIDIA category/budget scenarios; not exhaustive accuracy or capacity certification",
+  "checks": [
+    {
+      "name": "casual_250_usd",
+      "status": 503,
+      "error": "ai_generation_unavailable",
+      "latencyMs": 24322,
+      "passed": false,
+      "reasons": [
+        "generation_http_503"
+      ],
+      "spendUzs": 0,
+      "capUzs": 3150000,
+      "items": [],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "meta/llama-3.2-11b-vision-instruct",
+          "status": "unparseable"
+        }
+      ]
+    },
+    {
+      "name": "business_250_usd",
+      "status": 503,
+      "error": "ai_generation_unavailable",
+      "latencyMs": 41625,
+      "passed": false,
+      "reasons": [
+        "generation_http_503"
+      ],
+      "spendUzs": 0,
+      "capUzs": 3150000,
+      "items": [],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "meta/llama-3.2-11b-vision-instruct",
+          "status": "timeout"
+        }
+      ]
+    },
+    {
+      "name": "workout_250_usd",
+      "status": 503,
+      "error": "ai_generation_unavailable",
+      "latencyMs": 24420,
+      "passed": false,
+      "reasons": [
+        "generation_http_503"
+      ],
+      "spendUzs": 0,
+      "capUzs": 3150000,
+      "items": [],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "meta/llama-3.2-11b-vision-instruct",
+          "status": "timeout"
+        }
+      ]
+    }
+  ],
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

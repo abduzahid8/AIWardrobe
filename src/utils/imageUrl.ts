@@ -27,32 +27,42 @@ export function isUnsplashUrl(url: string): boolean {
 /**
  * Append Supabase image transformation params to resize/optimize images server-side.
  * Falls back to Unsplash width param, otherwise returns the original URL.
+ *
+ * NOTE: Supabase transformations only work through the Render endpoint
+ * (`/storage/v1/render/image/public/...`) and only when the project has the
+ * Image Transformations addon enabled. Plain public-object URLs
+ * (`/storage/v1/object/public/...`) ignore — or on some CDN configs reject —
+ * query params, so they are returned as-is. Appending `?width=` to them only
+ * created cache-busting variants that made deleted/broken objects harder to
+ * debug (every card showed a unique URL for the same missing file).
  */
 export function getOptimizedImageUrl(
     url: string | undefined | null,
     options: OptimizeOptions = {}
 ): string {
     if (!url) return '';
+    const trimmed = url.trim();
+    if (!trimmed) return '';
 
-    const { width = 400, height, quality = 80 } = options;
+    const { width = 400, quality = 80 } = options;
 
-    // Supabase Storage - use native transforms
-    if (isSupabaseStorageUrl(url)) {
-        const separator = url.includes('?') ? '&' : '?';
-        const params = [`width=${width}`, `quality=${quality}`];
-        if (height) params.push(`height=${height}`);
-        params.push('resize=cover');
-        return `${url}${separator}${params.join('&')}`;
+    // Supabase Storage public-object URL — return as-is (see NOTE above).
+    // A `/render/image/` URL already carries its own transform params.
+    if (isSupabaseStorageUrl(trimmed) || trimmed.includes('/storage/v1/render/image/')) {
+        return trimmed;
     }
 
-    // Unsplash - they support w= param
-    if (isUnsplashUrl(url)) {
-        const separator = url.includes('?') ? '&' : '?';
-        return `${url}${separator}w=${width}&q=${quality}`;
+    // Unsplash - they support w=/q= params. Don't duplicate them when the
+    // stored URL already carries sizing (e.g. seeded `?w=800&q=80` rows) —
+    // just return as-is instead of appending a second `&w=`.
+    if (isUnsplashUrl(trimmed)) {
+        if (/[?&][wq]=/.test(trimmed)) return trimmed;
+        const separator = trimmed.includes('?') ? '&' : '?';
+        return `${trimmed}${separator}w=${width}&q=${quality}`;
     }
 
     // External / other URLs - return as-is (can't resize server-side)
-    return url;
+    return trimmed;
 }
 
 /**

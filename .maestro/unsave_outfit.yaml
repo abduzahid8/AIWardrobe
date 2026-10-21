@@ -1,0 +1,32 @@
+appId: host.exp.Exponent
+name: unsave_outfit
+tags:
+  - save-checks
+  - expo-go
+  - outfit
+---
+# Closet → Collections → Saved → open the first saved outfit card →
+# tap Remove (unsaveOutfit) → assert the card is gone from the Saved list.
+# The modal's action buttons: Remove + Close (common.remove / common.close).
+- tapOn:
+    point: "42%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn: ".*(Коллекции|Collections).*"
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn: ".*Saved.*filter.*"
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible: ".*outfit, open details.*"
+    timeout: 15000
+- tapOn: ".*outfit, open details.*"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: ".*(Remove|Удалить).*"
+- takeScreenshot: unsave_outfit_modal
+- tapOn: ".*(Remove|Удалить).*"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: unsave_outfit_done

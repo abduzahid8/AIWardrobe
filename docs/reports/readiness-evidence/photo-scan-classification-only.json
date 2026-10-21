@@ -1,0 +1,19 @@
+{
+  "date": "2026-10-20",
+  "change": "Wardrobe photo scan requests classify instead of all; original image retained",
+  "verification": {
+    "productionHookActualServiceIntegration": "pass; one classification invocation and original bytes retained",
+    "fullJestTests": 1871,
+    "fullJestSuites": 153,
+    "typescript": "pass",
+    "iosHermes": "pass",
+    "androidArm64Release": "pass",
+    "hookMatchesBothMaps": true
+  },
+  "deployment": "Local client source and rebuilt artifacts; no backend deployment",
+  "limits": [
+    "Not a measured latency saving",
+    "No full native UI or live provider accuracy/capacity claim"
+  ],
+  "goal": "active; readiness not certified"
+}

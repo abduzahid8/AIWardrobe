@@ -1,0 +1,40 @@
+{
+  "measuredAt": "2026-10-19T06:50:16.907Z",
+  "scope": "Two bounded live NVIDIA classifications; response contract, not full visual accuracy or capacity",
+  "checks": [
+    {
+      "name": "invalid_image_provider_failure_is_not_fabricated_success",
+      "passed": true,
+      "status": 503,
+      "latencyMs": 4568,
+      "error": "ai_classification_unavailable"
+    },
+    {
+      "name": "known_clothing_photo_returns_validated_classification",
+      "passed": true,
+      "status": 200,
+      "latencyMs": 5568,
+      "classification": {
+        "category": "jacket",
+        "section": "outerwear",
+        "confidence": 0,
+        "attributes": {
+          "style": "casual",
+          "color": "green",
+          "material": "fabric"
+        }
+      },
+      "description": "A green jacket with a beige lining and two chest pockets.",
+      "error": null
+    },
+    {
+      "name": "single_garment_visual_attributes",
+      "passed": false,
+      "reason": "Human inspection: beige torso garment with separate green draped knit layer; returned green jacket with beige lining combines attributes of distinct garments."
+    }
+  ],
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

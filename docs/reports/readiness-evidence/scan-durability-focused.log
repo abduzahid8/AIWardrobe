@@ -1,0 +1,413 @@
+PASS __tests__/hooks/offlineScanRetry.test.ts
+  ● Console
+
+    console.warn
+      react-i18next:: useTranslation: You will need to pass in an i18next instance by using initReactI18next { code: 'NO_I18NEXT_INSTANCE' }
+
+      53 |
+      54 | export const useVideoAnalysis = (): UseVideoAnalysisReturn => {
+    > 55 |   const { t } = useTranslation();
+         |                               ^
+      56 |   const [analyzing, setAnalyzing] = useState(false);
+      57 |   const [progress, setProgress] = useState('');
+      58 |   const [results, setResults] = useState<AnalysisResult | null>(null);
+
+      at warn (node_modules/react-i18next/dist/commonjs/utils.js:19:13)
+      at warnOnce (node_modules/react-i18next/dist/commonjs/utils.js:27:3)
+      at useTranslation (node_modules/react-i18next/dist/commonjs/useTranslation.js:37:25)
+      at useVideoAnalysis (src/features/wardrobe/useVideoAnalysis.ts:55:31)
+      at __tests__/hooks/offlineScanRetry.test.ts:29:55
+      at hookToRender (node_modules/@testing-library/react-native/src/render-hook.tsx:46:26)
+      at Object.react_stack_bottom_frame (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:15670:20)
+      at renderWithHooks (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4863:22)
+      at updateFunctionComponent (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:7018:19)
+      at beginWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:8499:18)
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at performUnitOfWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13224:22)
+      at workLoopSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13068:41)
+      at renderRootSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13049:11)
+      at performWorkOnRoot (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12181:11)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2908:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at Object.<anonymous>.process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at actImplementation (node_modules/@testing-library/react-native/src/act.ts:30:25)
+      at renderWithAct (node_modules/@testing-library/react-native/src/render-act.ts:13:11)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:69:33)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:44:10)
+      at renderHook (node_modules/@testing-library/react-native/src/render-hook.tsx:55:58)
+      at Object.<anonymous> (__tests__/hooks/offlineScanRetry.test.ts:29:32)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+    console.error
+      [app] [QueueProcessor] Failed to process 1792416321785s5qvto: analysis_not_confirmed
+
+      83 |
+      84 |     if (level === 'error') {
+    > 85 |         console.error(tag, message, error ?? '', payload ?? '');
+         |                 ^
+      86 |         void reportToCrashService(scope, message, error, payload);
+      87 |         return;
+      88 |     }
+
+      at error (src/utils/logger.ts:85:17)
+      at Object.send [as error] (src/utils/logger.ts:133:42)
+      at UploadQueueProcessor.error (src/services/uploadQueueProcessor.ts:131:24)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.error
+      [CrashReporting] analysis_not_confirmed {
+        scope: 'app',
+        message: '[QueueProcessor] Failed to process 1792416321785s5qvto:',
+        payload: undefined,
+        breadcrumbs: []
+      }
+
+      185 |         // Log to console in dev
+      186 |         if (__DEV__) {
+    > 187 |             console.error('[CrashReporting]', report.message, report.context);
+          |                     ^
+      188 |         }
+      189 |
+      190 |         // Store locally (fallback and for debugging)
+
+      at error (src/services/crashReporting.ts:187:21)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at CrashReportingService.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+      at CrashReportingService.apply [as reportCrash] (src/services/crashReporting.ts:158:22)
+      at reportCrash (src/utils/logger.ts:112:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12
+      at apply (src/utils/logger.ts:116:2)
+      at apply (src/utils/logger.ts:101:36)
+      at reportToCrashService (src/utils/logger.ts:86:14)
+      at Object.send [as error] (src/utils/logger.ts:133:42)
+      at UploadQueueProcessor.error (src/services/uploadQueueProcessor.ts:131:24)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+PASS __tests__/lib/persistence.test.ts
+PASS __tests__/services/uploadQueueProcessorOwnership.test.ts
+  ● Console
+
+    console.error
+      [app] [QueueProcessor] Failed to process 179241632195906pk2y: analysis_not_confirmed
+
+      83 |
+      84 |     if (level === 'error') {
+    > 85 |         console.error(tag, message, error ?? '', payload ?? '');
+         |                 ^
+      86 |         void reportToCrashService(scope, message, error, payload);
+      87 |         return;
+      88 |     }
+
+      at error (src/utils/logger.ts:85:17)
+      at Object.send [as error] (src/utils/logger.ts:133:42)
+      at UploadQueueProcessor.error (src/services/uploadQueueProcessor.ts:131:24)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.error
+      [CrashReporting] analysis_not_confirmed {
+        scope: 'app',
+        message: '[QueueProcessor] Failed to process 179241632195906pk2y:',
+        payload: undefined,
+        breadcrumbs: []
+      }
+
+      185 |         // Log to console in dev
+      186 |         if (__DEV__) {
+    > 187 |             console.error('[CrashReporting]', report.message, report.context);
+          |                     ^
+      188 |         }
+      189 |
+      190 |         // Store locally (fallback and for debugging)
+
+      at error (src/services/crashReporting.ts:187:21)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at CrashReportingService.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+      at CrashReportingService.apply [as reportCrash] (src/services/crashReporting.ts:158:22)
+      at reportCrash (src/utils/logger.ts:112:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12
+      at apply (src/utils/logger.ts:116:2)
+      at apply (src/utils/logger.ts:101:36)
+      at reportToCrashService (src/utils/logger.ts:86:14)
+      at Object.send [as error] (src/utils/logger.ts:133:42)
+      at UploadQueueProcessor.error (src/services/uploadQueueProcessor.ts:131:24)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.error
+      [app] [QueueProcessor] Failed to process 1792416321962l0vi2j: analysis_not_confirmed
+
+      83 |
+      84 |     if (level === 'error') {
+    > 85 |         console.error(tag, message, error ?? '', payload ?? '');
+         |                 ^
+      86 |         void reportToCrashService(scope, message, error, payload);
+      87 |         return;
+      88 |     }
+
+      at error (src/utils/logger.ts:85:17)
+      at Object.send [as error] (src/utils/logger.ts:133:42)
+      at UploadQueueProcessor.error (src/services/uploadQueueProcessor.ts:131:24)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.error
+      [CrashReporting] analysis_not_confirmed {
+        scope: 'app',
+        message: '[QueueProcessor] Failed to process 1792416321962l0vi2j:',
+        payload: undefined,
+        breadcrumbs: []
+      }
+
+      185 |         // Log to console in dev
+      186 |         if (__DEV__) {
+    > 187 |             console.error('[CrashReporting]', report.message, report.context);
+          |                     ^
+      188 |         }
+      189 |
+      190 |         // Store locally (fallback and for debugging)
+
+      at error (src/services/crashReporting.ts:187:21)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at CrashReportingService.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+      at CrashReportingService.apply [as reportCrash] (src/services/crashReporting.ts:158:22)
+      at reportCrash (src/utils/logger.ts:112:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12
+      at apply (src/utils/logger.ts:101:36)
+      at reportToCrashService (src/utils/logger.ts:86:14)
+      at Object.send [as error] (src/utils/logger.ts:133:42)
+      at UploadQueueProcessor.error (src/services/uploadQueueProcessor.ts:131:24)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.error
+      [app] [QueueProcessor] Failed to process 1792416321962kqmp6: analysis_not_confirmed
+
+      83 |
+      84 |     if (level === 'error') {
+    > 85 |         console.error(tag, message, error ?? '', payload ?? '');
+         |                 ^
+      86 |         void reportToCrashService(scope, message, error, payload);
+      87 |         return;
+      88 |     }
+
+      at error (src/utils/logger.ts:85:17)
+      at Object.send [as error] (src/utils/logger.ts:133:42)
+      at UploadQueueProcessor.error (src/services/uploadQueueProcessor.ts:131:24)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.error
+      [CrashReporting] analysis_not_confirmed {
+        scope: 'app',
+        message: '[QueueProcessor] Failed to process 1792416321962kqmp6:',
+        payload: undefined,
+        breadcrumbs: []
+      }
+
+      185 |         // Log to console in dev
+      186 |         if (__DEV__) {
+    > 187 |             console.error('[CrashReporting]', report.message, report.context);
+          |                     ^
+      188 |         }
+      189 |
+      190 |         // Store locally (fallback and for debugging)
+
+      at error (src/services/crashReporting.ts:187:21)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at CrashReportingService.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+      at CrashReportingService.apply [as reportCrash] (src/services/crashReporting.ts:158:22)
+      at reportCrash (src/utils/logger.ts:112:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12
+      at apply (src/utils/logger.ts:101:36)
+      at reportToCrashService (src/utils/logger.ts:86:14)
+      at Object.send [as error] (src/utils/logger.ts:133:42)
+      at UploadQueueProcessor.error (src/services/uploadQueueProcessor.ts:131:24)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.error
+      [app] [QueueProcessor] Failed to process 1792416321962kqmp6: analysis_not_confirmed
+
+      83 |
+      84 |     if (level === 'error') {
+    > 85 |         console.error(tag, message, error ?? '', payload ?? '');
+         |                 ^
+      86 |         void reportToCrashService(scope, message, error, payload);
+      87 |         return;
+      88 |     }
+
+      at error (src/utils/logger.ts:85:17)
+      at Object.send [as error] (src/utils/logger.ts:133:42)
+      at UploadQueueProcessor.error (src/services/uploadQueueProcessor.ts:131:24)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.error
+      [CrashReporting] analysis_not_confirmed {
+        scope: 'app',
+        message: '[QueueProcessor] Failed to process 1792416321962kqmp6:',
+        payload: undefined,
+        breadcrumbs: []
+      }
+
+      185 |         // Log to console in dev
+      186 |         if (__DEV__) {
+    > 187 |             console.error('[CrashReporting]', report.message, report.context);
+          |                     ^
+      188 |         }
+      189 |
+      190 |         // Store locally (fallback and for debugging)
+
+      at error (src/services/crashReporting.ts:187:21)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at CrashReportingService.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+      at CrashReportingService.apply [as reportCrash] (src/services/crashReporting.ts:158:22)
+      at reportCrash (src/utils/logger.ts:112:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12
+      at apply (src/utils/logger.ts:101:36)
+      at reportToCrashService (src/utils/logger.ts:86:14)
+      at Object.send [as error] (src/utils/logger.ts:133:42)
+      at UploadQueueProcessor.error (src/services/uploadQueueProcessor.ts:131:24)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.error
+      [app] [QueueProcessor] Failed to process 1792416321962kqmp6: analysis_not_confirmed
+
+      83 |
+      84 |     if (level === 'error') {
+    > 85 |         console.error(tag, message, error ?? '', payload ?? '');
+         |                 ^
+      86 |         void reportToCrashService(scope, message, error, payload);
+      87 |         return;
+      88 |     }
+
+      at error (src/utils/logger.ts:85:17)
+      at Object.send [as error] (src/utils/logger.ts:133:42)
+      at UploadQueueProcessor.error (src/services/uploadQueueProcessor.ts:131:24)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.error
+      [CrashReporting] analysis_not_confirmed {
+        scope: 'app',
+        message: '[QueueProcessor] Failed to process 1792416321962kqmp6:',
+        payload: undefined,
+        breadcrumbs: []
+      }
+
+      185 |         // Log to console in dev
+      186 |         if (__DEV__) {
+    > 187 |             console.error('[CrashReporting]', report.message, report.context);
+          |                     ^
+      188 |         }
+      189 |
+      190 |         // Store locally (fallback and for debugging)
+
+      at error (src/services/crashReporting.ts:187:21)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at CrashReportingService.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+      at CrashReportingService.apply [as reportCrash] (src/services/crashReporting.ts:158:22)
+      at reportCrash (src/utils/logger.ts:112:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12
+      at apply (src/utils/logger.ts:101:36)
+      at reportToCrashService (src/utils/logger.ts:86:14)
+      at Object.send [as error] (src/utils/logger.ts:133:42)
+      at UploadQueueProcessor.error (src/services/uploadQueueProcessor.ts:131:24)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.warn
+      [app] [QueueProcessor] Item 1792416321962kqmp6 exhausted 3 retries, marked failed.
+
+      88 |     }
+      89 |     if (level === 'warn') {
+    > 90 |         console.warn(tag, message, payload ?? '');
+         |                 ^
+      91 |         void breadcrumb(scope, `WARN: ${message}`);
+      92 |         return;
+      93 |     }
+
+      at warn (src/utils/logger.ts:90:17)
+      at Object.send (src/utils/logger.ts:132:34)
+      at UploadQueueProcessor.warn (src/services/uploadQueueProcessor.ts:141:28)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.warn
+      [app] [QueueProcessor] Analysis hook not yet available, skipping...
+
+      88 |     }
+      89 |     if (level === 'warn') {
+    > 90 |         console.warn(tag, message, payload ?? '');
+         |                 ^
+      91 |         void breadcrumb(scope, `WARN: ${message}`);
+      92 |         return;
+      93 |     }
+
+      at warn (src/utils/logger.ts:90:17)
+      at Object.send (src/utils/logger.ts:132:34)
+      at UploadQueueProcessor.warn (src/services/uploadQueueProcessor.ts:103:28)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.warn
+      [app] [QueueProcessor] Queue check failed; entries retained
+
+      88 |     }
+      89 |     if (level === 'warn') {
+    > 90 |         console.warn(tag, message, payload ?? '');
+         |                 ^
+      91 |         void breadcrumb(scope, `WARN: ${message}`);
+      92 |         return;
+      93 |     }
+
+      at warn (src/utils/logger.ts:90:17)
+      at Object.send (src/utils/logger.ts:132:34)
+      at UploadQueueProcessor.warn (src/services/uploadQueueProcessor.ts:151:20)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+
+Test Suites: 3 passed, 3 total
+Tests:       38 passed, 38 total
+Snapshots:   0 total
+Time:        0.849 s, estimated 1 s
+Ran all test suites matching /__tests__\/hooks\/offlineScanRetry.test.ts|__tests__\/services\/uploadQueueProcessorOwnership.test.ts|__tests__\/lib\/persistence.test.ts/i.

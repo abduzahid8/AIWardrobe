@@ -1,0 +1,13 @@
+{
+  "measuredAt": "2026-10-19T02:43:33.027Z",
+  "scope": "Read-only syntax/host audit of public active catalog URLs; not HTTP availability or product-page identity verification",
+  "count": 1529,
+  "invalid": 0,
+  "credentials": 0,
+  "hosts": {
+    "etln.uz": 26,
+    "frgroup.uz": 90,
+    "www.massimodutti.com": 397,
+    "www.zara.com": 1016
+  }
+}

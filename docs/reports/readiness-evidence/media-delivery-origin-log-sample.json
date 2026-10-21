@@ -1,0 +1,80 @@
+{
+  "windowStart": "2026-10-17T06:13:19Z",
+  "windowEnd": "2026-10-17T06:15:00Z",
+  "source": "Supabase Storage logs",
+  "coverage": "Partial: nine fixture-path rows, not complete per-request trace",
+  "result": [
+    {
+      "execution_time": "376",
+      "method": "POST",
+      "path": "/object/wardrobe-images/6aea74d7-5f6c-45d2-abdb-357331a27aee/97266ab5-4fc4-4673-937b-0f57cdd8330c/thumbnail.png",
+      "region": "ap-northeast-1",
+      "response_time": "375.99685698747635",
+      "status": "200"
+    },
+    {
+      "execution_time": "72",
+      "method": "GET",
+      "path": "/object/authenticated/wardrobe-images/6aea74d7-5f6c-45d2-abdb-357331a27aee/97266ab5-4fc4-4673-937b-0f57cdd8330c/thumbnail.png",
+      "region": "ap-northeast-1",
+      "response_time": "75.56922000646591",
+      "status": "200"
+    },
+    {
+      "execution_time": "45",
+      "method": "GET",
+      "path": "/object/info/authenticated/wardrobe-images/44fd2d2a-4742-4bcb-9836-20cef5b1938a/a6b5c7b7-cad3-4840-94c4-fb41d1296a63/thumbnail.png",
+      "region": "ap-northeast-1",
+      "response_time": "45.007846996188164",
+      "status": "200"
+    },
+    {
+      "execution_time": "48",
+      "method": "GET",
+      "path": "/object/info/authenticated/wardrobe-images/44fd2d2a-4742-4bcb-9836-20cef5b1938a/a6b5c7b7-cad3-4840-94c4-fb41d1296a63/thumbnail.png",
+      "region": "ap-northeast-1",
+      "response_time": "48.28943799994886",
+      "status": "400"
+    },
+    {
+      "execution_time": "0",
+      "method": "GET",
+      "path": "/object/info/authenticated/wardrobe-images/44fd2d2a-4742-4bcb-9836-20cef5b1938a/a6b5c7b7-cad3-4840-94c4-fb41d1296a63/thumbnail.png",
+      "region": "ap-northeast-1",
+      "response_time": "0.5729119926691055",
+      "status": "400"
+    },
+    {
+      "execution_time": "31",
+      "method": "GET",
+      "path": "/object/info/authenticated/wardrobe-images/44fd2d2a-4742-4bcb-9836-20cef5b1938a/a6b5c7b7-cad3-4840-94c4-fb41d1296a63/original.png",
+      "region": "ap-northeast-1",
+      "response_time": "31.283327999524772",
+      "status": "200"
+    },
+    {
+      "execution_time": "60",
+      "method": "GET",
+      "path": "/object/authenticated/wardrobe-images/44fd2d2a-4742-4bcb-9836-20cef5b1938a/a6b5c7b7-cad3-4840-94c4-fb41d1296a63/original.png",
+      "region": "ap-northeast-1",
+      "response_time": "79.93556699156761",
+      "status": "200"
+    },
+    {
+      "execution_time": "1774",
+      "method": "POST",
+      "path": "/object/wardrobe-images/44fd2d2a-4742-4bcb-9836-20cef5b1938a/a6b5c7b7-cad3-4840-94c4-fb41d1296a63/original.png",
+      "region": "ap-northeast-1",
+      "response_time": "1773.8706559985876",
+      "status": "200"
+    },
+    {
+      "execution_time": "1000",
+      "method": "POST",
+      "path": "/object/wardrobe-images/44fd2d2a-4742-4bcb-9836-20cef5b1938a/a6b5c7b7-cad3-4840-94c4-fb41d1296a63/thumbnail.png",
+      "region": "ap-northeast-1",
+      "response_time": "1000.4580859988928",
+      "status": "200"
+    }
+  ]
+}

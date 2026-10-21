@@ -1,0 +1,28 @@
+{
+  "method": "Normal-entry Hermes JavaScript embedded in a separate copy of the unchanged native simulator app; not a new native compilation",
+  "artifactPath": "/tmp/aiwardrobe-photo-cleanup-ios-normal.app",
+  "bundleSha256": "24f111ce6416acd63b42246756059e0890e6896866b6bc795c714497ef86b871",
+  "nativeExecutableSha256": "a1dd2cbadaf2bf3069ba39993cfe28b6952b9926e9821a67c2d15c1d3efed4b0",
+  "checks": {
+    "App.tsx": true,
+    "src/lib/persistence.ts": true,
+    "src/services/pendingWardrobeMedia.ts": true,
+    "src/services/wardrobeThumbnail.ts": true,
+    "nativeExecutableUnchanged": true,
+    "nativeFrameworkFilesUnchanged": true,
+    "auditEntryAbsent": true,
+    "auditMarkerAbsent": true,
+    "auditSimulatorAbsent": true,
+    "originalSimulatorStillBooted": true
+  },
+  "passed": true,
+  "cleanup": {
+    "auditAppTerminatedAndUninstalled": true,
+    "dedicatedSimulatorDeleted": true
+  },
+  "limitations": [
+    "Unsigned simulator artifact",
+    "No full normal-app UI certification",
+    "Not physical-device or store validation"
+  ]
+}

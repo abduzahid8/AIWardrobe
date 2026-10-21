@@ -1,0 +1,46 @@
+{
+  "policy": {
+    "allFeaturesVisible": true,
+    "newGeneration": "active server trial or paid entitlement required",
+    "existingFreeAllowances": "three Home swipes and five scans unchanged",
+    "existingDailyCache": "readable without new generation"
+  },
+  "server": {
+    "deployed": true,
+    "sourceSha256": "c826f08bafc23346ad9c746e58fbee35d2408421b7a2ff3c523391f62359fed0",
+    "freshBaselineMatched": true,
+    "paidMeterEnabled": true,
+    "liveEntitlementChecksPassed": 8,
+    "rateChecksPassed": 5,
+    "suppliedBusinessGeneration": "200 in 5967ms; 2549800UZS under 3150000UZS; exact source metadata/URLs and style/structure pass"
+  },
+  "client": {
+    "hookTests": "generation blocked without payment; cache remains readable; upgrade enables generation",
+    "viewTest": "actual Home empty-state expression shows subscription CTA with working Paywall navigation; no retry/spinner",
+    "locales": [
+      "en",
+      "ru",
+      "uz"
+    ],
+    "fullTests": 1576,
+    "suites": 138,
+    "typescript": "passed",
+    "targetedLint": {
+      "errors": 0,
+      "warnings": 46
+    },
+    "iosNormalHermesExport": "passed",
+    "androidArm64Release": "passed",
+    "sourceMapMatches": [
+      "HomeScreen.tsx",
+      "useDailyAIOutfit.ts"
+    ]
+  },
+  "limitations": [
+    "Client builds are not installed customer releases.",
+    "Home view tests render the actual isolated expression, not full native navigation.",
+    "No completed real purchase or exhaustive feature-page/device verification.",
+    "Provider capacity and category reliability remain unproven.",
+    "Server meter counts rate-admitted attempts, including invalid input; paid/trial outfit quota is currently unlimited."
+  ]
+}

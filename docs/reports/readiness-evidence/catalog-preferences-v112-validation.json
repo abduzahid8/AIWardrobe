@@ -1,0 +1,47 @@
+{
+  "measuredAt": "2026-10-21T13:09:54.561264+00:00",
+  "scope": "Preference eligibility before catalog page completion and per-slot trimming. Not global cheapest discovery or full readiness certification.",
+  "deployment": {
+    "version": 112,
+    "verifyJwt": true,
+    "exactFiles": 12,
+    "sharedFilesUnchanged": 11,
+    "entrySha256": "420fed2946d33eb91041043b7d67cf061e71c71ca9b4427920231371cbc1518d"
+  },
+  "baselineActualHandler": {
+    "wireTestsPassed": 70,
+    "newTestsFailed": 2,
+    "failure": "False422 when first100 choices violate avoidColors or dislikedPatterns while a valid later-page bottom exists."
+  },
+  "validation": {
+    "stagedFocusedTests": 83,
+    "stagedFocusedSuites": 2,
+    "fullTests": 2221,
+    "fullSuites": 175,
+    "typescript": "pass",
+    "stagedDeno": "pass"
+  },
+  "publicCatalogEvidence": "catalog-preferences-public-read-v112.json",
+  "hostedEvidence": "v112-avoid-black-hosted-smoke-20261021.json",
+  "hostedChecks": {
+    "passed": 7,
+    "total": 7,
+    "status": 200,
+    "latencyMs": 10381,
+    "spendUzs": 1900000,
+    "capUzs": 3603690
+  },
+  "cleanupIndependent": {
+    "auditUsers": 0,
+    "fixtureGarments": 0,
+    "authUsers": 111,
+    "profiles": 111,
+    "garments": 109
+  },
+  "limitations": [
+    "Real public-catalog helper checks execute in Node; pagination preference regressions use full-handler fixtures.",
+    "The hosted smoke covers one avoid-black request, not every pattern/color or native UI path.",
+    "Catalog early stopping remains unaware of cheaper later products.",
+    "NVIDIA timeout/invalid-output history, throughput, retailer price/stock and overall10000DAU readiness remain unresolved."
+  ]
+}

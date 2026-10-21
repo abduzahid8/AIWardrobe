@@ -1,22 +1,28 @@
+import readinessLogger from '../../src/utils/logger';
 /**
  * Wardrobe Sync Slice — cloud sync, realtime subscriptions, rehydration
  */
 
 import type { StateCreator } from 'zustand';
+import type { PersistOptions, PersistStorage } from 'zustand/middleware';
 import { supabase } from '../../lib/supabase';
-import { wardrobeApi, wearLogApi, type ApiClothingItem } from '../../src/lib/api';
-import { fetchItemsFromServer, processPendingActions } from '../wardrobeSyncService';
-import type { PendingAction } from '../wardrobeSyncService';
+import { fetchItemsFromServer, fetchWearLogsFromServer, processPendingActions, reconcileCloudItems } from '../wardrobeSyncService';
+import type { PendingAction, WardrobeCapacityIssue } from '../wardrobeSyncService';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import type { ClothingItem, ClothingCategory, WearLog, Season, Occasion } from '../../src/types/domain';
+import type { ClothingItem, ClothingCategory, Season, Occasion } from '../../src/types/domain';
 import type { WardrobeState } from '../wardrobeStore';
-import { calculateStreak, mapApiItem } from './helpers';
+import { calculateStreak } from './helpers';
 import useAuthStore from '../auth';
+import { authEvents } from '../authEvents';
+import { replaceSavedOutfitImages } from '../../src/utils/confirmedOutfitMedia';
 
 export interface SyncSlice {
     isSyncing: boolean;
     lastSyncedAt: string | null;
     pendingActions: PendingAction[];
+    wardrobeCapacityIssue: WardrobeCapacityIssue | null;
+    /** Durable cleanup journal: garment confirmation must precede review removal. */
+    pendingReviewAcknowledgements: string[];
 
     fetchItems: () => Promise<void>;
     syncToServer: () => Promise<void>;
@@ -36,6 +42,7 @@ let activeRehydratePromise: Promise<void> | null = null;
 // below must be user-scoped: after delete -> create, the new (empty) account
 // must never skip its initial fetch because the previous user synced recently.
 let _lastRehydrateUserId: string | null = null;
+let activeSync: { revision: number; promise: Promise<void> } | null = null;
 
 /**
  * Invalidate any in-flight rehydrate and forget which user last synced.
@@ -45,6 +52,7 @@ let _lastRehydrateUserId: string | null = null;
  */
 export function invalidateRehydrateState(): void {
     activeRehydratePromise = null;
+    activeSync = null;
     _lastRehydrateUserId = null;
 }
 
@@ -52,41 +60,163 @@ export const createSyncSlice: StateCreator<WardrobeState, [], [], SyncSlice> = (
     isSyncing: false,
     lastSyncedAt: null,
     pendingActions: [],
+    wardrobeCapacityIssue: null,
+    pendingReviewAcknowledgements: [],
 
     fetchItems: async () => {
+        const revision = authEvents.getRevision();
+        const userId = useAuthStore.getState().user?.id;
+        if (!userId) return;
+        const sameAccount = () => revision === authEvents.getRevision()
+            && useAuthStore.getState().user?.id === userId;
+        const before = get().items;
+        set({ isLoading: true });
         try {
-            set({ isLoading: true });
-            const apiItems = await wardrobeApi.list();
-            const items: ClothingItem[] = apiItems.map(mapApiItem);
-            set({ items, isLoading: false, lastSyncedAt: new Date().toISOString() });
-        } catch {
-            try {
-                const items = await fetchItemsFromServer();
-                if (items) set({ items, isLoading: false, lastSyncedAt: new Date().toISOString() });
-                else set({ isLoading: false });
-            } catch (err) {
-                console.error('[WardrobeStore] Fetch failed:', err);
-                set({ isLoading: false });
-            }
-        }
+            const items = await fetchItemsFromServer();
+            if (!sameAccount()) return;
+            if (items) set(state => ({ items: reconcileCloudItems(items, before, state.items, state.pendingActions), lastSyncedAt: new Date().toISOString() }));
+        } catch (err) {
+            console.error('[WardrobeStore] Fetch failed:', err);
+        } finally { if (sameAccount()) set({ isLoading: false }); }
     },
 
     syncToServer: async () => {
+        const revision = authEvents.getRevision();
+        const userId = useAuthStore.getState().user?.id;
+        if (!userId) return;
+        if (activeSync?.revision === revision) return activeSync.promise;
         const { pendingActions, items } = get();
-        if (pendingActions.length === 0) return;
-
+        if (pendingActions.length === 0 && get().pendingReviewAcknowledgements.length === 0) return;
+        const sameAccount = () => revision === authEvents.getRevision()
+            && useAuthStore.getState().user?.id === userId;
+        const before = new Map(items.map(item => [item.id, item]));
+        const startingActionIds = new Set(pendingActions.map(action => action.id));
         set({ isSyncing: true });
-        try {
-            const { processedIds, updatedItems } = await processPendingActions(pendingActions, items);
-            set((state) => ({
-                items: updatedItems,
-                pendingActions: state.pendingActions.filter((a) => !processedIds.includes(a.id)),
-                isSyncing: false,
-                lastSyncedAt: new Date().toISOString(),
-            }));
-        } catch (err) {
-            console.error('[WardrobeStore] Sync failed:', err);
-            set({ isSyncing: false });
+        const operation = (async () => {
+            let acknowledgedActions: PendingAction[] = [];
+            try {
+                // Force a fresh snapshot: an earlier debounced write may have failed.
+                const persistence = (store as typeof store & { persist?: {
+                    getOptions: () => Partial<PersistOptions<WardrobeState, unknown>>;
+                } }).persist?.getOptions();
+                const storage = persistence?.storage as (PersistStorage<unknown> & { flush?: () => Promise<void> }) | undefined;
+                if (!storage || !persistence?.name) throw new Error('Wardrobe persistence unavailable');
+                const persistSnapshot = async () => {
+                    const snapshot = persistence.partialize ? persistence.partialize(get()) : get();
+                    const write = Promise.resolve(storage.setItem(persistence.name!, {
+                        state: snapshot, version: persistence.version ?? 0,
+                    }));
+                    await Promise.all([write, Promise.resolve().then(() => storage.flush?.())]);
+                };
+                await persistSnapshot();
+                if (!sameAccount()) return;
+                const checkpointFavorite = async (actions: PendingAction[]) => {
+                    if (!sameAccount()) throw new Error('Wardrobe checkpoint account changed');
+                    const updates = new Map(actions.map(action => [action.id, action]));
+                    if (actions.some(action => !get().pendingActions.some(current => current.id === action.id))) {
+                        throw new Error('Favorite action no longer pending');
+                    }
+                    set(state => ({ pendingActions: state.pendingActions.map(action => updates.get(action.id) ?? action) }));
+                    await persistSnapshot();
+                    if (!sameAccount()) throw new Error('Wardrobe checkpoint account changed');
+                };
+                const { processedIds, updatedItems, capacityIssue } = (pendingActions.length ? await processPendingActions(pendingActions, items, userId, checkpointFavorite)
+                    : { processedIds: [] as string[], updatedItems: items, capacityIssue: undefined });
+                if (!sameAccount()) return;
+                // Keep persisted versions if acknowledgement persistence fails.
+                acknowledgedActions = get().pendingActions.filter(action => startingActionIds.has(action.id) && processedIds.includes(action.id));
+                const confirmedReviewIds = acknowledgedActions.filter(action => action.type === 'add_item')
+                    .map(action => action.payload.id).filter((id): id is string => typeof id === 'string'
+                        && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
+                const previousIssue = get().wardrobeCapacityIssue;
+                const reportedIssue = capacityIssue ?? previousIssue;
+                const remainingIssueIds = reportedIssue?.actionIds.filter(id => !processedIds.includes(id) && get().pendingActions.some(action => action.id === id)) ?? [];
+                const nextIssue = reportedIssue && remainingIssueIds.length ? { ...reportedIssue, actionIds: remainingIssueIds } : null;
+                const issueChanged = JSON.stringify(previousIssue) !== JSON.stringify(nextIssue);
+                const synced = new Map(updatedItems.map(item => [item.id, item]));
+                const imageReplacements = new Map<string, string>();
+                for (const item of updatedItems) {
+                    const previous = before.get(item.id);
+                    for (const field of ['imageUrl', 'thumbnailUrl'] as const) {
+                        const old = previous?.[field], next = item[field];
+                        if (old && next && old !== next) imageReplacements.set(old, next);
+                    }
+                }
+                set((state) => {
+                    const unconfirmedFavorites = new Set(state.pendingActions.filter(action =>
+                        action.type === 'update_item' && !processedIds.includes(action.id)
+                        && typeof action.payload.itemId === 'string').map(action => String(action.payload.itemId)));
+                    return {
+                        // Preserve additions, removals and edits made during the request.
+                        items: state.items.map(item => {
+                            const previous = before.get(item.id), next = synced.get(item.id);
+                            if (!next) return item;
+                            if (previous === item && !unconfirmedFavorites.has(item.id)) return next;
+                            // An intervening favorite/name edit must not retain a
+                            // temporary image, nor overwrite a newly selected photo.
+                            return { ...item,
+                                ...(previous?.imageUrl === item.imageUrl && next.imageUrl ? { imageUrl: next.imageUrl } : {}),
+                                ...(previous?.thumbnailUrl === item.thumbnailUrl && next.thumbnailUrl ? { thumbnailUrl: next.thumbnailUrl } : {}),
+                                ...(previous && previous.isFavorite === item.isFavorite && typeof next.isFavorite === 'boolean'
+                                    && !unconfirmedFavorites.has(item.id) ? { isFavorite: next.isFavorite } : {}),
+                            };
+                        }),
+                        outfits: state.outfits?.map(outfit => replaceSavedOutfitImages(outfit, imageReplacements)) ?? [],
+                        dailySuggestion: state.dailySuggestion ? { ...state.dailySuggestion,
+                            outfit: replaceSavedOutfitImages(state.dailySuggestion.outfit, imageReplacements),
+                        } : state.dailySuggestion,
+                        pendingActions: state.pendingActions.filter(action => !processedIds.includes(action.id)).map(action => {
+                            if (action.type !== 'add_item') return action;
+                            const id = String(action.payload.id), previous = before.get(id), next = synced.get(id);
+                            if (!previous || !next || typeof next.isFavorite !== 'boolean' || unconfirmedFavorites.has(id)
+                                || action.payload.isFavorite !== previous.isFavorite || action.payload.isFavorite === next.isFavorite) return action;
+                            // A later metadata upload must not resurrect the
+                            // superseded favorite value from its old snapshot.
+                            return { ...action, payload: { ...action.payload, isFavorite: next.isFavorite } };
+                        }),
+                        pendingReviewAcknowledgements: [...new Set([...state.pendingReviewAcknowledgements, ...confirmedReviewIds])],
+                        wardrobeCapacityIssue: nextIssue,
+                        ...(processedIds.length ? { lastSyncedAt: new Date().toISOString() } : {}),
+                    };
+                });
+                // Persist acknowledgement before any later file cleanup can run.
+                if (acknowledgedActions.length || issueChanged) await persistSnapshot();
+                acknowledgedActions = [];
+                const reviewIds = [...get().pendingReviewAcknowledgements];
+                if (reviewIds.length) {
+                    const { acknowledgeSavedScanReviewItems } = require('../../src/services/scanReviews') as typeof import('../../src/services/scanReviews');
+                    await acknowledgeSavedScanReviewItems(userId, reviewIds);
+                    if (!sameAccount()) return;
+                    set(state => ({ pendingReviewAcknowledgements: state.pendingReviewAcknowledgements.filter(id => !reviewIds.includes(id)) }));
+                    try { await persistSnapshot(); }
+                    catch (error) {
+                        if (sameAccount()) set(state => ({ pendingReviewAcknowledgements: [...new Set([...reviewIds, ...state.pendingReviewAcknowledgements])] }));
+                        throw error;
+                    }
+                }
+            } catch (err) {
+                if (sameAccount() && acknowledgedActions.length) {
+                    // Unknown disk state must remain retryable. Stable IDs make
+                    // replay safe, and old actions must stay ahead of newer edits.
+                    set(state => ({ pendingActions: [
+                        ...acknowledgedActions.filter(action => !state.pendingActions.some(current => current.id === action.id)),
+                        ...state.pendingActions,
+                    ] }));
+                }
+                console.error('[WardrobeStore] Sync failed:', err);
+            } finally {
+                if (sameAccount()) set({ isSyncing: false });
+            }
+        })();
+        const entry = { revision, promise: operation };
+        activeSync = entry;
+        try { await operation; }
+        finally {
+            if (activeSync === entry) activeSync = null;
+            // Drain newly queued user actions; failed old actions alone do not spin.
+            if (sameAccount() && get().pendingActions.some(action => !startingActionIds.has(action.id))) {
+                await get().syncToServer();
+            }
         }
     },
 
@@ -96,6 +226,8 @@ export const createSyncSlice: StateCreator<WardrobeState, [], [], SyncSlice> = (
         // mid-flight (delete -> create without restart), the result must be
         // discarded instead of writing user A's items into user B's store.
         const startUserId = useAuthStore.getState().user?.id ?? null;
+        const revision = authEvents.getRevision();
+        if (!startUserId) return;
 
         // Wait for Zustand storage hydration to finish if it hasn't already
         const persistStore = store as any;
@@ -107,24 +239,28 @@ export const createSyncSlice: StateCreator<WardrobeState, [], [], SyncSlice> = (
                     resolve();
                 });
             });
-            if (__DEV__) console.log(`[PERF] 🟡 wardrobe hydration wait: ${Date.now() - hydrationStart}ms`);
+            if (__DEV__) readinessLogger.debug(String(`[PERF] 🟡 wardrobe hydration wait: ${Date.now() - hydrationStart}ms`), []);
         }
+
+        if (revision !== authEvents.getRevision() || useAuthStore.getState().user?.id !== startUserId) return;
 
         // TTL guard: skip network round-trip when items are already loaded
         // and the last sync was recent. Upload/delete operations pass force=true
         // to bypass this and immediately reflect the mutation.
         // User-scoped: a different user must always fetch, even if the
         // previous user synced seconds ago (delete -> create freeze fix).
-        const { items: currentItems, lastSyncedAt } = get();
+        const { items: currentItems, lastSyncedAt, pendingActions } = get();
         const isSameUserAsLastSync = startUserId !== null && startUserId === _lastRehydrateUserId;
         if (
             !force &&
+            pendingActions.length === 0 &&
+            get().pendingReviewAcknowledgements.length === 0 &&
             isSameUserAsLastSync &&
             currentItems.length > 0 &&
             lastSyncedAt &&
             Date.now() - new Date(lastSyncedAt).getTime() < REHYDRATE_TTL_MS
         ) {
-            if (__DEV__) console.log(`[PERF] 🟢 wardrobe rehydrate skipped (TTL ${Math.round((Date.now() - new Date(lastSyncedAt).getTime()) / 1000)}s ago)`);
+            if (__DEV__) readinessLogger.debug(String(`[PERF] 🟢 wardrobe rehydrate skipped (TTL ${Math.round((Date.now() - new Date(lastSyncedAt).getTime()) / 1000)}s ago)`), []);
             return;
         }
 
@@ -132,110 +268,54 @@ export const createSyncSlice: StateCreator<WardrobeState, [], [], SyncSlice> = (
             return activeRehydratePromise;
         }
 
-        activeRehydratePromise = (async () => {
+        const sameAccount = () => revision === authEvents.getRevision() && useAuthStore.getState().user?.id === startUserId;
+        const operation = (async () => {
             set({ isLoading: true });
             try {
-                const { pendingActions, wearLogs: localWearLogs } = get();
-                if (pendingActions.length > 0) {
-                    const syncStart = Date.now();
-                    await get().syncToServer();
-                    if (__DEV__) console.log(`[PERF] 🟡 wardrobe syncToServer: ${Date.now() - syncStart}ms`);
-                }
-
-                // Skip the wear-log fetch when the local store already has persisted
-                // data — up to 1000 logs are saved to AsyncStorage by the persist
-                // middleware, so a full server round-trip on every cold start is
-                // unnecessary (fixes Defect 1.7).
-                const hasLocalWearLogs = localWearLogs.length > 0;
-
-                const fetchStart = Date.now();
-                // Bound the custom-backend call: on Render cold start it can hang
-                // for seconds before the catch-path falls back to Supabase
-                // directly (the 2263ms rehydrate in startup logs). 8s is plenty
-                // for a healthy backend; slower means fall back now.
-                const backendListWithTimeout = Promise.race([
-                    wardrobeApi.list(),
-                    new Promise<never>((_, reject) =>
-                        setTimeout(() => reject(new Error('wardrobe backend timeout')), 8000),
-                    ),
-                ]);
-                const [apiItems, apiLogs] = await Promise.all([
-                    backendListWithTimeout,
-                    hasLocalWearLogs ? Promise.resolve(null) : wearLogApi.list(),
-                ]);
-                if (__DEV__) console.log(`[PERF] 🟡 wardrobe fetch (${hasLocalWearLogs ? 'items only' : 'items + wearLogs'}): ${Date.now() - fetchStart}ms`);
-
-                // Account-switch guard: if the user changed while the network
-                // was in flight, drop this result instead of writing user A's
-                // wardrobe into user B's store (delete -> create freeze fix).
-                const endUserId = useAuthStore.getState().user?.id ?? null;
-                if (endUserId !== startUserId) {
-                    if (__DEV__) console.log('[WardrobeStore] Rehydrate discarded — account changed mid-fetch');
-                    set({ isLoading: false });
-                    return;
-                }
-
-                const items: ClothingItem[] = apiItems.map(mapApiItem);
-
-                // Use server wear logs only when we had none locally; otherwise
-                // keep the persisted logs to avoid the extra network round-trip.
-                const wearLogs: WearLog[] = hasLocalWearLogs
-                    ? localWearLogs
-                    : (apiLogs ?? []).map((l) => ({
-                        id: l.id,
-                        userId: l.userId,
-                        itemIds: l.itemIds,
-                        outfitId: l.outfitId ?? undefined,
-                        date: l.date,
-                        occasion: l.occasion ?? undefined,
-                        weatherTemp: l.weatherTemp ?? undefined,
-                        weatherCondition: l.weatherCondition ?? undefined,
-                        notes: l.notes ?? undefined,
-                        createdAt: l.createdAt,
-                    }));
-
-                set({
-                    items,
-                    wearLogs,
-                    streak: calculateStreak(wearLogs),
-                    isLoading: false,
-                    lastSyncedAt: new Date().toISOString(),
+                if (get().pendingActions.length || get().pendingReviewAcknowledgements.length) await get().syncToServer();
+                if (!sameAccount()) return;
+                const beforeItems = get().items;
+                const beforeLogs = new Set(get().wearLogs.map(log => log.id));
+                const [items, cloudLogs] = await Promise.all([fetchItemsFromServer(), fetchWearLogsFromServer()]);
+                if (!sameAccount()) return;
+                set(state => {
+                    const logs = cloudLogs === null ? [...state.wearLogs] : [...cloudLogs];
+                    const pendingLogIds = new Set(state.pendingActions.filter(action => action.type === 'add_wear_log').map(action => action.payload.id));
+                    const byId = new Map(logs.map(log => [log.id, log]));
+                    for (const log of state.wearLogs) if (!beforeLogs.has(log.id) || pendingLogIds.has(log.id)) byId.set(log.id, log);
+                    const wearLogs = [...byId.values()].sort((a, b) => b.date.localeCompare(a.date));
+                    return {
+                        ...(items ? { items: reconcileCloudItems(items, beforeItems, state.items, state.pendingActions) } : {}),
+                        wearLogs, streak: calculateStreak(wearLogs),
+                        ...(items !== null && cloudLogs !== null ? { lastSyncedAt: new Date().toISOString() } : {}),
+                    };
                 });
-                _lastRehydrateUserId = endUserId;
-            } catch {
-                try {
-                    // Single fallback query — items only. Wear logs are less critical
-                    // for the fallback path, so we keep the current in-memory state
-                    // rather than issuing a second Supabase round-trip (Defect 4.4 fix).
-                    const serverItems = await fetchItemsFromServer();
-                    if (serverItems) {
-                        const fallbackUserId = useAuthStore.getState().user?.id ?? null;
-                        if (fallbackUserId !== startUserId) {
-                            if (__DEV__) console.log('[WardrobeStore] Rehydrate fallback discarded — account changed mid-fetch');
-                            set({ isLoading: false });
-                        } else {
-                            set({
-                                items: serverItems,
-                                wearLogs: get().wearLogs,
-                                isLoading: false,
-                                lastSyncedAt: new Date().toISOString(),
-                            });
-                            _lastRehydrateUserId = fallbackUserId;
+                if (items !== null && cloudLogs !== null) _lastRehydrateUserId = startUserId;
+                if (items !== null) {
+                    // Recover pre-journal reviews only from authoritative rows,
+                    // never cached or optimistic garments after a failed fetch.
+                    const { findConfirmedScanReviewItems } = require('../../src/services/scanReviews') as typeof import('../../src/services/scanReviews');
+                    const confirmed = await findConfirmedScanReviewItems(startUserId, items.map(item => item.id));
+                    if (!sameAccount()) return;
+                    if (confirmed.length) {
+                        set(state => ({ pendingReviewAcknowledgements: [...new Set([...state.pendingReviewAcknowledgements, ...confirmed])] }));
+                        const wasSyncing = get().isSyncing;
+                        await get().syncToServer();
+                        // A concurrent sync may have already captured its journal.
+                        if (wasSyncing && sameAccount() && get().pendingReviewAcknowledgements.some(id => confirmed.includes(id))) {
+                            await get().syncToServer();
                         }
-                    } else {
-                        set({ isLoading: false });
                     }
-                } catch (err) {
-                    console.error('[WardrobeStore] Rehydrate failed:', err);
-                    set({ isLoading: false });
                 }
-            }
-        })().finally(() => {
-            activeRehydratePromise = null;
-            if (__DEV__) console.log(`[PERF] 🟢 wardrobe rehydrateFromCloud total: ${Date.now() - rehydrateStart}ms`);
-        });
-
-        return activeRehydratePromise;
+            } catch (err) { console.error('[WardrobeStore] Rehydrate failed:', err); }
+            finally { if (sameAccount()) set({ isLoading: false }); }
+        })();
+        activeRehydratePromise = operation;
+        try { await operation; }
+        finally {
+            if (activeRehydratePromise === operation) activeRehydratePromise = null;
+            if (__DEV__) readinessLogger.debug(`[PERF] wardrobe rehydrate: ${Date.now() - rehydrateStart}ms`, []);
+        }
     },
 
     subscribeToRealtime: () => {

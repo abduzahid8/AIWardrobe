@@ -8,7 +8,7 @@
  *
  *   features/outfit-generator/utils/deckDedupe.ts  (also used by AIOutfitmaker)
  *
- * plus a deck-assembly simulation over REAL catalog ids that mirrors the
+ * plus a deck-assembly simulation over fixture catalog ids that mirrors the
  * app's assemble gate (only non-dupes are ever added).
  */
 
@@ -19,7 +19,7 @@ import {
   prioritizeUnseen,
   NEAR_DUPE_THRESHOLD,
 } from '../../features/outfit-generator/utils/deckDedupe';
-import { SHOP_CATALOG_ITEMS } from '../../data/shopCatalogItems';
+import { TEST_SHOP_CATALOG as SHOP_CATALOG_ITEMS } from '../fixtures/shopCatalog';
 
 const ids = (...xs: string[]) => xs;
 
@@ -78,7 +78,7 @@ describe('deckDedupe — real implementation', () => {
   });
 });
 
-describe('deck assembly e2e — real catalog ids, app assembly gate', () => {
+describe('deck assembly e2e — fixture catalog ids, app assembly gate', () => {
   // Mirrors AIOutfitmaker: iterate candidates, keep iff !isDupe, track kept.
   function assemble(candidates: string[][]): string[][] {
     const d = createDeckDedupe();

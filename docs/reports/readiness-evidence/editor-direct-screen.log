@@ -1,0 +1,15 @@
+PASS __tests__/screens/clothingReviewPersistence.test.tsx
+  ✓ review editor keeps the original item when an existing-item save fails (132 ms)
+  ✓ review editor confirms server persistence before updating local state (70 ms)
+  ✓ same-tick new-item taps share one in-flight save and defer success feedback (28 ms)
+  ✓ failed asynchronous custom save reports an error and allows retry without false success (132 ms)
+  ✓ late new-item confirmation after logout cannot show success for the next account (29 ms)
+  ✓ direct-photo editor saves retained analysis metadata after rendering the result (87 ms)
+  ✓ direct-photo analysis failure is visible instead of silently becoming a successful classification (63 ms)
+  ✓ save remains blocked until direct-photo classification finishes (73 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       8 passed, 8 total
+Snapshots:   0 total
+Time:        1.113 s, estimated 4 s
+Ran all test suites matching /__tests__\/screens\/clothingReviewPersistence.test.tsx/i.

@@ -1,0 +1,81 @@
+{
+  "scope": "Native Expo/XHR/Expo transport comparison; not app replacement or capacity certification",
+  "rps": 5,
+  "secondsPerStage": 10,
+  "plannedPerStage": 50,
+  "stages": [
+    {
+      "client": "expo-first",
+      "planned": 50,
+      "completed": 20,
+      "successful": 20,
+      "failures": 0,
+      "dropped": 30,
+      "errors": {},
+      "failurePhases": {},
+      "elapsedMs": 10721.439004999935,
+      "p95Ms": 10495.61838,
+      "p95FetchResolvedMs": 2899.1731259999797,
+      "p95SuccessfulBodyMs": 7619.339546000003
+    },
+    {
+      "client": "xhr-fetch",
+      "planned": 50,
+      "completed": 50,
+      "successful": 50,
+      "failures": 0,
+      "dropped": 0,
+      "errors": {},
+      "failurePhases": {},
+      "elapsedMs": 9874.136672000051,
+      "p95Ms": 66.94916699989699,
+      "p95FetchResolvedMs": 18.254707999993116,
+      "p95SuccessfulBodyMs": 50.09675000002608
+    },
+    {
+      "client": "expo-repeat",
+      "planned": 50,
+      "completed": 50,
+      "successful": 50,
+      "failures": 0,
+      "dropped": 0,
+      "errors": {},
+      "failurePhases": {},
+      "elapsedMs": 9823.957171000075,
+      "p95Ms": 32.44650000007823,
+      "p95FetchResolvedMs": 6.16600000008475,
+      "p95SuccessfulBodyMs": 26.947874999954365
+    }
+  ],
+  "concurrencyCap": 20,
+  "requestTimeoutMs": 15000,
+  "fixtureUsers": 1,
+  "fixtureObjects": 1,
+  "project": "fyqpifmrsftsfqibhwhy",
+  "runId": "56bba184-9cb1-44dc-b3be-20b95fabcda4",
+  "owner": "5c95ec43-978c-4098-a035-1913309b98b4",
+  "objectId": "d5ebd753-88c4-4813-aa02-a59ca20ce413",
+  "email": "readiness-56bba184-9cb1-44dc-b3be-20b95fabcda4@aiwardrobe.club",
+  "startedAt": "2026-10-17T16:52:55.051Z",
+  "status": "measurement_failed_target_and_cleaned",
+  "fixtureBytes": 788309,
+  "fixtureSha256": "39b14e9041fca06639a34a1c04420d57cc57776bec23c524f21cd88f1a4a3bd7",
+  "nodeVersion": "v22.23.2",
+  "curlVersion": "curl 8.7.1 (x86_64-apple-darwin25.0) libcurl/8.7.1 (SecureTransport) LibreSSL/3.3.6 zlib/1.2.12 nghttp2/1.68.1",
+  "updatedAt": "2026-10-17T16:58:57.047Z",
+  "cleanup": {
+    "ownershipConfirmed": true,
+    "removeSucceeded": true,
+    "objectsAbsent": true,
+    "deleteSucceeded": true,
+    "userAbsent": true,
+    "passed": true,
+    "independentSqlCounts": {
+      "users": 0,
+      "sessions": 0,
+      "identities": 0,
+      "profiles": 0,
+      "objects": 0
+    }
+  }
+}

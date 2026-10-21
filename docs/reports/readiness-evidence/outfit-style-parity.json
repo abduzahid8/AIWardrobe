@@ -1,0 +1,12 @@
+{
+  "verifiedAt": "2026-10-19T01:52:09.922726+00:00",
+  "trigger": "Hosted casual output2853000UZS within budget but shared app judge rejected its basic cotton T-shirt",
+  "defect": "Hosted validator did not apply the shared style judge; app could discard successful server responses",
+  "change": "Hosted filter resolves authoritative candidates and applies exact shared styleJudgeReason with occasion,prompt,weather before accepting each model pass",
+  "before": "Staged actual-handler regression accepted prohibited tee with200",
+  "after": "Staged actual-handler regression rejects it with no outfits; 7 staged wire tests pass; Deno pass; full1505 tests/131 suites pass",
+  "deployed": true,
+  "scope": "Shared style rejection applied to model validation; not complete source deployment or full post-enrichment/anchor audit",
+  "localApiStatusDifference": "Local quality rejection currently500, staged hosted rejection503; regression asserts non-success and empty output rather than equating statuses",
+  "liveRetest": "FAIL: NVIDIA timed out;503 in50.1s; no outfits. This did not exercise the new judge with live model output. Fixture removed, independent remaining count0."
+}

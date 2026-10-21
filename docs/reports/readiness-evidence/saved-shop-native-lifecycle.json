@@ -1,0 +1,55 @@
+{
+  "date": "2026-10-17",
+  "status": "completed_and_cleaned",
+  "avd": "AIWardrobe_saved_shop_20261017",
+  "serial": "emulator-5580",
+  "initialDeviceInventory": "no attached devices",
+  "previousAuditAvdMissingTemporaryDirectory": true,
+  "scope": "Three independent app processes with synthetic identities and actual native AsyncStorage; no cloud client",
+  "sourceSha256": {
+    "scripts/validation/saved-shop-native-entry.tsx": "133ca9bc6e0ebe7514913a0d7379cc737e84c8ba263a416d9adc8882f3de7412",
+    "store/savedShopStore.ts": "e2fce8ac43a35503ee9e61752e22a8643d56e82759ceb0e15952d60698b37477",
+    "store/authEvents.ts": "4a276d38e09fc9b2fe577b0dcb8361ab450eadda454ba36cc8f299a1bbbb30c3"
+  },
+  "setupFailures": [
+    "First audit file write used Android working directory; corrected before source creation",
+    "Sandbox Gradle lock write denied; permitted Gradle invocation used",
+    "Expo entry resolution requires project-relative scripts/validation/...; corrected",
+    "Old audit AVD registration pointed to removed /tmp data; created fresh dedicated AVD"
+  ],
+  "productionRequests": false,
+  "visualUiPassClaimed": false,
+  "nativePhaseProcessIds": [
+    4044,
+    7187,
+    7287
+  ],
+  "nativePhaseChecks": 8,
+  "realAsyncStorage": true,
+  "forcedProcessStops": 2,
+  "fixtureKeysRemovedByFinalPhase": true,
+  "collectorCorrection": "Android process creation may briefly return no pid after am start; collector now polls the existing launch rather than failing or restarting it",
+  "auditAppUninstallSucceeded": true,
+  "auditPackageAbsentAfterUninstall": true,
+  "normalBuildRestored": true,
+  "normalBuildSeconds": 34,
+  "normalBundleAuditEntryAbsent": true,
+  "normalBundleSavedShopSourceMatchesCurrentFile": true,
+  "auditEmulatorProcessExitCode": 0,
+  "auditAvdDeleted": true,
+  "finalDeviceInventory": "no attached devices",
+  "typecheck": "passed",
+  "harnessLint": "passed with zero warnings",
+  "releaseToolchainTests": 5,
+  "whitespace": "passed",
+  "lastFullAppTests": 1291,
+  "lastFullAppSuites": 114,
+  "normalNativeUiTested": false,
+  "remaining": [
+    "Power loss or process death while a write is in progress",
+    "Native disk-full or ambiguous write failure",
+    "iOS native saved-shop restart verification",
+    "Broader shared-device cache and global cleanup coordination",
+    "Production media capacity and remaining readiness gates"
+  ]
+}

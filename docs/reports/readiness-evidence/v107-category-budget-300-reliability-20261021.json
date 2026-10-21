@@ -1,0 +1,155 @@
+{
+  "measuredAt": "2026-10-21T08:53:33.089Z",
+  "scope": "Live NVIDIA category/budget scenarios; not exhaustive accuracy or capacity certification",
+  "checks": [
+    {
+      "name": "date_old_money_300_usd",
+      "status": 200,
+      "latencyMs": 18735,
+      "passed": true,
+      "reasons": [],
+      "spendUzs": 2749800,
+      "capUzs": 3603690,
+      "provider": "nvidia:meta/llama-3.2-11b-vision-instruct",
+      "source": "ai",
+      "items": [
+        {
+          "id": "shop_zara-uz-545490391",
+          "name": "100% LINEN SUIT TROUSERS",
+          "macroCategory": "bottom",
+          "price": 849900,
+          "currency": "UZS",
+          "shopUrl": "https://www.zara.com/uz/en/100-linen-suit-trousers-p04410411.html?v1=545490391"
+        },
+        {
+          "id": "shop_md-uz-62286483",
+          "name": "100% cotton V-neck knit polo",
+          "macroCategory": "top",
+          "price": 900000,
+          "currency": "UZS",
+          "shopUrl": "https://www.massimodutti.com/uz/en/100-cotton-vneck-knit-polo-l01367201?pelement=62286483"
+        },
+        {
+          "id": "shop_zara-uz-545447343",
+          "name": "LEATHER LOAFERS",
+          "macroCategory": "shoes",
+          "price": 999900,
+          "currency": "UZS",
+          "shopUrl": "https://www.zara.com/uz/en/leather-loafers-p12680820.html?v1=545447343"
+        }
+      ],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "meta/llama-3.2-11b-vision-instruct",
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "name": "formal_semi_classic_300_usd",
+      "status": 200,
+      "latencyMs": 8975,
+      "passed": true,
+      "reasons": [],
+      "spendUzs": 3249800,
+      "capUzs": 3603690,
+      "provider": "nvidia:meta/llama-3.2-11b-vision-instruct",
+      "source": "ai",
+      "items": [
+        {
+          "id": "shop_md-uz-62327592",
+          "name": "100% linen regular fit striped shirt",
+          "macroCategory": "top",
+          "price": 1400000,
+          "currency": "UZS",
+          "shopUrl": "https://www.massimodutti.com/uz/en/100-linen-regular-fit-striped-shirt-l02103298?pelement=62327592"
+        },
+        {
+          "id": "shop_zara-uz-545490391",
+          "name": "100% LINEN SUIT TROUSERS",
+          "macroCategory": "bottom",
+          "price": 849900,
+          "currency": "UZS",
+          "shopUrl": "https://www.zara.com/uz/en/100-linen-suit-trousers-p04410411.html?v1=545490391"
+        },
+        {
+          "id": "shop_zara-uz-545447343",
+          "name": "LEATHER LOAFERS",
+          "macroCategory": "shoes",
+          "price": 999900,
+          "currency": "UZS",
+          "shopUrl": "https://www.zara.com/uz/en/leather-loafers-p12680820.html?v1=545447343"
+        }
+      ],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "meta/llama-3.2-11b-vision-instruct",
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "name": "travel_minimalist_300_usd",
+      "status": 200,
+      "latencyMs": 8224,
+      "passed": true,
+      "reasons": [],
+      "spendUzs": 3549900,
+      "capUzs": 3603690,
+      "provider": "nvidia:meta/llama-3.2-11b-vision-instruct",
+      "source": "ai",
+      "items": [
+        {
+          "id": "shop_md-uz-62246011",
+          "name": "100% cotton V-neck knit polo shirt",
+          "macroCategory": "top",
+          "price": 800000,
+          "currency": "UZS",
+          "shopUrl": "https://www.massimodutti.com/uz/en/100-cotton-vneck-knit-polo-l00837175?pelement=62246011"
+        },
+        {
+          "id": "shop_zara-uz-545490391",
+          "name": "100% LINEN SUIT TROUSERS",
+          "macroCategory": "bottom",
+          "price": 849900,
+          "currency": "UZS",
+          "shopUrl": "https://www.zara.com/uz/en/100-linen-suit-trousers-p04410411.html?v1=545490391"
+        },
+        {
+          "id": "shop_md-uz-61729477",
+          "name": "Soft split suede leather sports shoe",
+          "macroCategory": "shoes",
+          "price": 1900000,
+          "currency": "UZS",
+          "shopUrl": "https://www.massimodutti.com/uz/en/soft-split-suede-leather-sneaker-l12108850?pelement=61729477"
+        }
+      ],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "meta/llama-3.2-11b-vision-instruct",
+          "status": "ok"
+        }
+      ]
+    }
+  ],
+  "reference": {
+    "id": "CBU:2026-10-21:12012.3:13466.99:16026.81",
+    "source": "CBU",
+    "asOf": "2026-10-21",
+    "fetchedAt": "2026-10-21T08:33:09.365Z",
+    "uzsPerUnit": {
+      "USD": 12012.3,
+      "EUR": 13466.99,
+      "GBP": 16026.81,
+      "UZS": 1
+    }
+  },
+  "cleanup": {
+    "refreshSessionsRevoked": true,
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

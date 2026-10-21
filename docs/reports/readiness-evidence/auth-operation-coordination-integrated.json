@@ -1,0 +1,58 @@
+{
+  "status": "integrated_with_scoped_verification",
+  "actions": [
+    "initializeAuth",
+    "handleDeepLink",
+    "register",
+    "login",
+    "signInWithApple",
+    "signInWithGoogle",
+    "logout",
+    "deleteAccount"
+  ],
+  "fullSuite": {
+    "tests": 1330,
+    "suites": 117,
+    "failures": 0
+  },
+  "typescript": "passed",
+  "eslint": {
+    "errors": 0,
+    "warnings": 38
+  },
+  "appRegressions": [
+    "Ordered pending sign-ins and logout",
+    "Later login held behind cleanup after UI deadline",
+    "Queued deletion bound to request-time account",
+    "Disposed queued initialization never attaches observer"
+  ],
+  "queueRegressions": [
+    "Caller stops waiting without releasing operation",
+    "Retained native work holds barrier after action return",
+    "Rejected work does not poison subsequent operations"
+  ],
+  "sdkDiagnostic": {
+    "casesPassed": 4,
+    "actualInstalledSdk": "2.115.0",
+    "scope": "Exact queue helper plus synthetic SDK HTTP/storage; app-level SDK calls separately mocked"
+  },
+  "normalAndroidBuild": {
+    "exitCode": 0,
+    "seconds": 23,
+    "apkSha256": "90780e7fe8385d61814b5d0ee7561663b58fa16b5a85f3ed9700bea0aff81250",
+    "bundleSha256": "6b7233277e1b5d8ff084613ba0d49bb491cd5e6651b92ec7e241293abba5c08d",
+    "sourceMapMatches": {
+      "store/auth.ts": "d7a9fe92a8c2c13b8756c7c905ee4bc7aba304dc77ca4bb064374806af0c7f7d",
+      "src/lib/authOperationQueue.ts": "ef2b8bfc0b8187894ee42cfce0c1540a564acd2001b79bc2add282c6daf0b610"
+    },
+    "auditMarkerAbsent": true
+  },
+  "remaining": [
+    "Native/UI email, Apple and Google lifecycle execution",
+    "Explicit UI feedback and recovery if native or storage work never settles",
+    "Direct password update and external IAP identity operations remain outside this store queue",
+    "Reset helpers may start untracked persistence work; audit all remaining writers",
+    "Production capacity, cold media, store purchases, security and deferred provider gates remain open"
+  ],
+  "productionChanged": false
+}

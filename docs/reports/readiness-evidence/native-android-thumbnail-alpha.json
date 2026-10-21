@@ -1,0 +1,19 @@
+{
+  "originalDimensions": [
+    1024,
+    1024
+  ],
+  "thumbnailDimensions": [
+    512,
+    512
+  ],
+  "originalAlphaRange": [
+    240,
+    255
+  ],
+  "thumbnailAlphaRange": [
+    247,
+    255
+  ],
+  "nonopaqueAlphaRetained": true
+}

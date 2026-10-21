@@ -1,0 +1,447 @@
+{
+  "date": "2026-10-20",
+  "deployment": {
+    "project": "fyqpifmrsftsfqibhwhy",
+    "migration": "20261020051942_cache_main_owner_rls.sql",
+    "status": "applied; remote history verified",
+    "initialAttempt": "Rejected syntax before any policy change; CASE expressions parenthesized and retry applied"
+  },
+  "beforePolicies": [
+    {
+      "tablename": "clothing_items",
+      "policyname": "Users can delete own items",
+      "permissive": "PERMISSIVE",
+      "roles": "{public}",
+      "cmd": "DELETE",
+      "qual": "(auth.uid() = user_id)",
+      "with_check": null
+    },
+    {
+      "tablename": "clothing_items",
+      "policyname": "Users can insert own items",
+      "permissive": "PERMISSIVE",
+      "roles": "{public}",
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "(auth.uid() = user_id)"
+    },
+    {
+      "tablename": "clothing_items",
+      "policyname": "Users can update own items",
+      "permissive": "PERMISSIVE",
+      "roles": "{public}",
+      "cmd": "UPDATE",
+      "qual": "(auth.uid() = user_id)",
+      "with_check": null
+    },
+    {
+      "tablename": "clothing_items",
+      "policyname": "Users can view own items",
+      "permissive": "PERMISSIVE",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "qual": "(auth.uid() = user_id)",
+      "with_check": null
+    },
+    {
+      "tablename": "profiles",
+      "policyname": "Users can insert own profile",
+      "permissive": "PERMISSIVE",
+      "roles": "{public}",
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "(auth.uid() = id)"
+    },
+    {
+      "tablename": "profiles",
+      "policyname": "Users can update own profile",
+      "permissive": "PERMISSIVE",
+      "roles": "{public}",
+      "cmd": "UPDATE",
+      "qual": "(auth.uid() = id)",
+      "with_check": null
+    },
+    {
+      "tablename": "profiles",
+      "policyname": "Users can view own profile",
+      "permissive": "PERMISSIVE",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "qual": "(auth.uid() = id)",
+      "with_check": null
+    },
+    {
+      "tablename": "saved_outfits",
+      "policyname": "Users can delete own outfits",
+      "permissive": "PERMISSIVE",
+      "roles": "{public}",
+      "cmd": "DELETE",
+      "qual": "(auth.uid() = user_id)",
+      "with_check": null
+    },
+    {
+      "tablename": "saved_outfits",
+      "policyname": "Users can insert own outfits",
+      "permissive": "PERMISSIVE",
+      "roles": "{public}",
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "(auth.uid() = user_id)"
+    },
+    {
+      "tablename": "saved_outfits",
+      "policyname": "Users can update own outfits",
+      "permissive": "PERMISSIVE",
+      "roles": "{public}",
+      "cmd": "UPDATE",
+      "qual": "(auth.uid() = user_id)",
+      "with_check": null
+    },
+    {
+      "tablename": "saved_outfits",
+      "policyname": "Users can view own outfits",
+      "permissive": "PERMISSIVE",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "qual": "(auth.uid() = user_id)",
+      "with_check": null
+    },
+    {
+      "tablename": "wear_logs",
+      "policyname": "Users can delete own wear logs",
+      "permissive": "PERMISSIVE",
+      "roles": "{public}",
+      "cmd": "DELETE",
+      "qual": "(auth.uid() = user_id)",
+      "with_check": null
+    },
+    {
+      "tablename": "wear_logs",
+      "policyname": "Users can insert own wear logs",
+      "permissive": "PERMISSIVE",
+      "roles": "{public}",
+      "cmd": "INSERT",
+      "qual": null,
+      "with_check": "(auth.uid() = user_id)"
+    },
+    {
+      "tablename": "wear_logs",
+      "policyname": "Users can update own wear logs",
+      "permissive": "PERMISSIVE",
+      "roles": "{public}",
+      "cmd": "UPDATE",
+      "qual": "(auth.uid() = user_id)",
+      "with_check": null
+    },
+    {
+      "tablename": "wear_logs",
+      "policyname": "Users can view own wear logs",
+      "permissive": "PERMISSIVE",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "qual": "(auth.uid() = user_id)",
+      "with_check": null
+    }
+  ],
+  "afterPolicies": [
+    {
+      "tablename": "clothing_items",
+      "policyname": "Users can delete own items",
+      "cmd": "DELETE",
+      "roles": "{public}",
+      "qual": "(( SELECT auth.uid() AS uid) = user_id)",
+      "with_check": null
+    },
+    {
+      "tablename": "clothing_items",
+      "policyname": "Users can insert own items",
+      "cmd": "INSERT",
+      "roles": "{public}",
+      "qual": null,
+      "with_check": "(( SELECT auth.uid() AS uid) = user_id)"
+    },
+    {
+      "tablename": "clothing_items",
+      "policyname": "Users can update own items",
+      "cmd": "UPDATE",
+      "roles": "{public}",
+      "qual": "(( SELECT auth.uid() AS uid) = user_id)",
+      "with_check": "(( SELECT auth.uid() AS uid) = user_id)"
+    },
+    {
+      "tablename": "clothing_items",
+      "policyname": "Users can view own items",
+      "cmd": "SELECT",
+      "roles": "{public}",
+      "qual": "(( SELECT auth.uid() AS uid) = user_id)",
+      "with_check": null
+    },
+    {
+      "tablename": "profiles",
+      "policyname": "Users can insert own profile",
+      "cmd": "INSERT",
+      "roles": "{public}",
+      "qual": null,
+      "with_check": "(( SELECT auth.uid() AS uid) = id)"
+    },
+    {
+      "tablename": "profiles",
+      "policyname": "Users can update own profile",
+      "cmd": "UPDATE",
+      "roles": "{public}",
+      "qual": "(( SELECT auth.uid() AS uid) = id)",
+      "with_check": "(( SELECT auth.uid() AS uid) = id)"
+    },
+    {
+      "tablename": "profiles",
+      "policyname": "Users can view own profile",
+      "cmd": "SELECT",
+      "roles": "{public}",
+      "qual": "(( SELECT auth.uid() AS uid) = id)",
+      "with_check": null
+    },
+    {
+      "tablename": "saved_outfits",
+      "policyname": "Users can delete own outfits",
+      "cmd": "DELETE",
+      "roles": "{public}",
+      "qual": "(( SELECT auth.uid() AS uid) = user_id)",
+      "with_check": null
+    },
+    {
+      "tablename": "saved_outfits",
+      "policyname": "Users can insert own outfits",
+      "cmd": "INSERT",
+      "roles": "{public}",
+      "qual": null,
+      "with_check": "(( SELECT auth.uid() AS uid) = user_id)"
+    },
+    {
+      "tablename": "saved_outfits",
+      "policyname": "Users can update own outfits",
+      "cmd": "UPDATE",
+      "roles": "{public}",
+      "qual": "(( SELECT auth.uid() AS uid) = user_id)",
+      "with_check": "(( SELECT auth.uid() AS uid) = user_id)"
+    },
+    {
+      "tablename": "saved_outfits",
+      "policyname": "Users can view own outfits",
+      "cmd": "SELECT",
+      "roles": "{public}",
+      "qual": "(( SELECT auth.uid() AS uid) = user_id)",
+      "with_check": null
+    },
+    {
+      "tablename": "wear_logs",
+      "policyname": "Users can delete own wear logs",
+      "cmd": "DELETE",
+      "roles": "{public}",
+      "qual": "(( SELECT auth.uid() AS uid) = user_id)",
+      "with_check": null
+    },
+    {
+      "tablename": "wear_logs",
+      "policyname": "Users can insert own wear logs",
+      "cmd": "INSERT",
+      "roles": "{public}",
+      "qual": null,
+      "with_check": "(( SELECT auth.uid() AS uid) = user_id)"
+    },
+    {
+      "tablename": "wear_logs",
+      "policyname": "Users can update own wear logs",
+      "cmd": "UPDATE",
+      "roles": "{public}",
+      "qual": "(( SELECT auth.uid() AS uid) = user_id)",
+      "with_check": "(( SELECT auth.uid() AS uid) = user_id)"
+    },
+    {
+      "tablename": "wear_logs",
+      "policyname": "Users can view own wear logs",
+      "cmd": "SELECT",
+      "roles": "{public}",
+      "qual": "(( SELECT auth.uid() AS uid) = user_id)",
+      "with_check": null
+    }
+  ],
+  "verification": {
+    "rolesAndCommandsUnchanged": true,
+    "liveBefore": [
+      {
+        "assertion": "passed: owner CRUD, cross-owner read/insert/delete rejection, owner reassignment rejection and profile read/update"
+      }
+    ],
+    "liveAfter": [
+      {
+        "assertion": "passed: owner CRUD, cross-owner read/insert/delete rejection, owner reassignment rejection and profile read/update"
+      }
+    ],
+    "fixtureCleanup": [
+      {
+        "rolled_back_test_users_remaining": 0,
+        "rolled_back_test_profiles_remaining": 0
+      }
+    ],
+    "beforePlan": [
+      {
+        "QUERY PLAN": [
+          {
+            "Plan": {
+              "Node Type": "Limit",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 0.27,
+              "Total Cost": 2.49,
+              "Plan Rows": 1,
+              "Plan Width": 417,
+              "Plans": [
+                {
+                  "Node Type": "Result",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Startup Cost": 0.27,
+                  "Total Cost": 2.49,
+                  "Plan Rows": 1,
+                  "Plan Width": 417,
+                  "One-Time Filter": "((COALESCE(NULLIF(current_setting('request.jwt.claim.sub'::text, true), ''::text), ((NULLIF(current_setting('request.jwt.claims'::text, true), ''::text))::jsonb ->> 'sub'::text)))::uuid = '11111111-1111-4111-8111-111111111111'::uuid)",
+                  "Plans": [
+                    {
+                      "Node Type": "Index Scan",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Scan Direction": "Forward",
+                      "Index Name": "clothing_items_owner_cursor_idx",
+                      "Relation Name": "clothing_items",
+                      "Alias": "clothing_items",
+                      "Startup Cost": 0.27,
+                      "Total Cost": 2.49,
+                      "Plan Rows": 1,
+                      "Plan Width": 417,
+                      "Index Cond": "(user_id = '11111111-1111-4111-8111-111111111111'::uuid)"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "afterPlan": [
+      {
+        "QUERY PLAN": [
+          {
+            "Plan": {
+              "Node Type": "Limit",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 0.3,
+              "Total Cost": 2.52,
+              "Plan Rows": 1,
+              "Plan Width": 417,
+              "Plans": [
+                {
+                  "Node Type": "Result",
+                  "Parent Relationship": "InitPlan",
+                  "Subplan Name": "InitPlan 1",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Startup Cost": 0,
+                  "Total Cost": 0.03,
+                  "Plan Rows": 1,
+                  "Plan Width": 16
+                },
+                {
+                  "Node Type": "Result",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Startup Cost": 0.27,
+                  "Total Cost": 2.49,
+                  "Plan Rows": 1,
+                  "Plan Width": 417,
+                  "One-Time Filter": "((InitPlan 1).col1 = '11111111-1111-4111-8111-111111111111'::uuid)",
+                  "Plans": [
+                    {
+                      "Node Type": "Index Scan",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Scan Direction": "Forward",
+                      "Index Name": "clothing_items_owner_cursor_idx",
+                      "Relation Name": "clothing_items",
+                      "Alias": "clothing_items",
+                      "Startup Cost": 0.27,
+                      "Total Cost": 2.49,
+                      "Plan Rows": 1,
+                      "Plan Width": 417,
+                      "Index Cond": "(user_id = '11111111-1111-4111-8111-111111111111'::uuid)"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "advisors": {
+    "before": [
+      {
+        "name": "unindexed_foreign_keys",
+        "count": 5
+      },
+      {
+        "name": "auth_rls_initplan",
+        "count": 34
+      },
+      {
+        "name": "no_primary_key",
+        "count": 1
+      },
+      {
+        "name": "unused_index",
+        "count": 11
+      },
+      {
+        "name": "multiple_permissive_policies",
+        "count": 66
+      }
+    ],
+    "after": [
+      {
+        "name": "unindexed_foreign_keys",
+        "count": 5
+      },
+      {
+        "name": "auth_rls_initplan",
+        "count": 19
+      },
+      {
+        "name": "no_primary_key",
+        "count": 1
+      },
+      {
+        "name": "unused_index",
+        "count": 11
+      },
+      {
+        "name": "multiple_permissive_policies",
+        "count": 66
+      }
+    ],
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan"
+  },
+  "scope": "15 owner policies: identity init-plan caching and explicit equivalent UPDATE checks. Synthetic live transaction fixture tests roll back. Existing explicit-owner wardrobe query already had indexed/one-time-filter plan before; no measured speedup or 10000 DAU capacity claim.",
+  "remaining": [
+    "19 auth init-plan advisories elsewhere",
+    "Five unindexed foreign keys and other performance/security advisors",
+    "Full authenticated HTTP mixed soak at representative owner cardinality",
+    "Google native sign-in still awaiting user"
+  ],
+  "goal": "active; not certified"
+}

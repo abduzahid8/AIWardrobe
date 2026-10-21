@@ -1,0 +1,40 @@
+{
+  "scope": "React Native Android fetch transport diagnostic; not capacity certification",
+  "rps": 5,
+  "seconds": 10,
+  "planned": 50,
+  "concurrencyCap": 20,
+  "requestTimeoutMs": 15000,
+  "fixtureUsers": 1,
+  "fixtureObjects": 1,
+  "project": "fyqpifmrsftsfqibhwhy",
+  "runId": "98aba250-1455-4ca2-bde2-f038e7d99ae2",
+  "owner": "36adb3ff-012e-4444-86c7-a535b3ae022f",
+  "objectId": "fdf78504-16de-4e75-b7c5-c160206701ac",
+  "email": "readiness-98aba250-1455-4ca2-bde2-f038e7d99ae2@aiwardrobe.club",
+  "startedAt": "2026-10-17T13:52:09.830Z",
+  "status": "native_measurement_failed_cleaned",
+  "stages": [],
+  "fixtureBytes": 788309,
+  "fixtureSha256": "39b14e9041fca06639a34a1c04420d57cc57776bec23c524f21cd88f1a4a3bd7",
+  "nodeVersion": "v22.23.2",
+  "curlVersion": "curl 8.7.1 (x86_64-apple-darwin25.0) libcurl/8.7.1 (SecureTransport) LibreSSL/3.3.6 zlib/1.2.12 nghttp2/1.68.1",
+  "updatedAt": "2026-10-17T13:54:00.866Z",
+  "cleanup": {
+    "ownershipConfirmed": true,
+    "removeSucceeded": true,
+    "objectsAbsent": true,
+    "deleteSucceeded": true,
+    "userAbsent": true,
+    "passed": true
+  },
+  "nativeResultFile": "native-media-result-98aba250-1455-4ca2-bde2-f038e7d99ae2.json",
+  "cleanupIndependentSql": {
+    "usersRemaining": 0,
+    "sessionsRemaining": 0,
+    "identitiesRemaining": 0,
+    "profilesRemaining": 0,
+    "objectsRemaining": 0
+  },
+  "privateConfigurationRemoved": true
+}

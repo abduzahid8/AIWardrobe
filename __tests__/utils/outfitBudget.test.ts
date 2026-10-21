@@ -1,3 +1,4 @@
+import {referenceFx} from '../fixtures/budgetFx';
 import {
     parseBudgetFromText,
     outfitShopSpend,
@@ -97,6 +98,7 @@ function shopPiece(slot: 'top' | 'bottom' | 'shoes', name: string, price: number
         name,
         isShopItem: true,
         price,
+        currency: 'USD',
     } as LocalClothingItem;
 }
 
@@ -124,4 +126,30 @@ describe('buildLocalOutfits respects budget', () => {
             expect(o.items.some((i) => /luxury/i.test(i.name || ''))).toBe(false);
         }
     });
+});
+
+it('local outfits retain mixed listed currencies while enforcing a USD cap', () => {
+    idCounter = 0;
+    const pool = [
+        { ...shopPiece('top', 'local cotton polo', 100000), currency: 'UZS' },
+        shopPiece('bottom', 'cotton chinos', 5),
+        shopPiece('shoes', 'leather loafers', 5),
+        shopPiece('top', 'expensive cotton polo', 25),
+    ];
+    const outfits = buildLocalOutfits(pool, { stylePreferences: 'casual', occasion: 'Weekend', prompt: 'under $20', budgetFx: referenceFx, weather: { temp: 22, condition: 'clear' }, limit: 1 });
+    expect(outfits.length).toBeGreaterThan(0);
+    for (const outfit of outfits) {
+        expect(outfitShopSpend(outfit.items, undefined, 'USD', referenceFx)).toBeLessThanOrEqual(20);
+        expect(outfit.items.find(item => item.name === 'local cotton polo')).toMatchObject({ price: 100000, currency: 'UZS' });
+    }
+});
+
+it('the local last-chance fallback cannot bypass unknown-currency budget rejection', () => {
+    const pool = [shopPiece('top', 'cotton polo', 25), shopPiece('bottom', 'cotton chinos', 30), shopPiece('shoes', 'leather loafers', 20)]
+        .map(item => ({ ...item, currency: 'ZZZ' }));
+    expect(buildLocalOutfits(pool, { stylePreferences: 'casual', occasion: 'Weekend', prompt: 'under $100', weather: { temp: 22, condition: 'clear' }, limit: 1 })).toEqual([]);
+});
+
+it.each([NaN, Infinity, -Infinity])('does not format an unknown spend %s as zero', amount => {
+    expect(formatMoney(amount, 'USD')).toBe('—');
 });

@@ -1,0 +1,82 @@
+{
+  "measuredAt": "2026-10-17T00:17:45.413Z",
+  "scope": "Actual wardrobeMedia source; two disposable accounts, unchanged 2.9MB repository PNG; no app cutover/provider calls",
+  "checks": [
+    {
+      "name": "upload_returns_canonical_private_reference",
+      "passed": true
+    },
+    {
+      "name": "retry_retains_stable_reference",
+      "passed": true
+    },
+    {
+      "name": "authenticated_download_preserves_all_bytes",
+      "passed": true
+    },
+    {
+      "name": "public_endpoint_cannot_read",
+      "passed": true
+    },
+    {
+      "name": "unauthenticated_endpoint_cannot_read",
+      "passed": true
+    },
+    {
+      "name": "other_owner_cannot_download",
+      "passed": true
+    },
+    {
+      "name": "other_owner_cannot_overwrite",
+      "passed": true
+    },
+    {
+      "name": "other_owner_cannot_list",
+      "passed": true
+    },
+    {
+      "name": "explicit_temporary_access_preserves_bytes",
+      "passed": true
+    },
+    {
+      "name": "account_delete_cleans_private_bucket",
+      "passed": true
+    },
+    {
+      "name": "deleted_owner_media_absent",
+      "passed": true
+    },
+    {
+      "name": "deleted_object_invalidates_signed_link",
+      "passed": false
+    }
+  ],
+  "cleanup": [
+    {
+      "fixtureFilesRemoved": true
+    },
+    {
+      "temporaryAccountDeleted": true
+    },
+    {
+      "temporaryAccountDeleted": true
+    }
+  ],
+  "executedServiceJavaScriptSha256": "cb28e9bc08bddd1ed7e5e885dda07f291a2b80eeb9662a7f2b9ddb538555a821",
+  "fixtureBytes": 2915128,
+  "fixtureSha256": "7c1728bfad35066ad916f46dd5c2f2411e24787021a891d5ed4671780ec297f3",
+  "failure": "Error",
+  "passed": false,
+  "independentCleanupVerification": {
+    "readinessAccounts": 0,
+    "wardrobeStorageObjects": 0,
+    "bucketPublic": false,
+    "bucketMaxBytes": 10485760
+  },
+  "documentedCacheBoundary": {
+    "source": "https://supabase.com/docs/guides/storage/cdn/smart-cdn",
+    "observed": "Previously fetched signed link remained readable immediately after object deletion",
+    "documentation": "CDN deletion invalidation can take up to 60 seconds; token expiry and CDN response caching are independent",
+    "status": "Original failed immediate-revocation assertion preserved; no claim of instant signed-link revocation"
+  }
+}

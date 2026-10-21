@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, TextInput, TouchableOpacity, Alert, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScaledText } from '../components/ui/ScaledText';
@@ -6,10 +6,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppNavigation } from '../hooks/useAppNavigation';
 import * as Haptics from 'expo-haptics';
-import { supabase } from '../lib/supabase';
 import { useTranslation } from 'react-i18next';
 
 import useAuthStore from '../store/auth';
+import { authEvents } from '../store/authEvents';
 
 /**
  * ResetPasswordScreen — deep link target for password reset.
@@ -19,14 +19,24 @@ import useAuthStore from '../store/auth';
 const ResetPasswordScreen = () => {
     const navigation = useAppNavigation();
     const { t } = useTranslation();
-    const { session, isAuthenticated } = useAuthStore();
+    const { session, isAuthenticated, passwordRecovery } = useAuthStore();
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const recoveryOwner = useRef<string | null>(null);
+    const inFlight = useRef(false);
+    const mounted = useRef(true);
+    useEffect(() => {
+        mounted.current = true;
+        return () => { mounted.current = false; };
+    }, []);
+    const validRecovery = passwordRecovery?.ownerId === session?.user.id
+        && passwordRecovery?.revision === authEvents.getRevision();
+    if (!recoveryOwner.current && session?.user.id && isAuthenticated && validRecovery) recoveryOwner.current = session.user.id;
 
     // If no session is found, the user might have arrived here manually
     // or the deep link token might have expired.
-    if (!session || !isAuthenticated) {
+    if (!session || !isAuthenticated || !validRecovery || session.user.id !== recoveryOwner.current) {
         return (
             <LinearGradient colors={['#0A0A0A', '#1A1C29', '#16213E']} style={styles.container}>
                 <View style={styles.formContainer}>
@@ -60,32 +70,45 @@ const ResetPasswordScreen = () => {
     const canSubmit = isPasswordValid && passwordsMatch;
 
     const handleResetPassword = async () => {
-        if (!canSubmit || isLoading) return;
+        if (!canSubmit || inFlight.current) return;
+        const owner = recoveryOwner.current!;
+        const revision = authEvents.getRevision();
+        const sameOwner = () => mounted.current && authEvents.getRevision() === revision
+            && useAuthStore.getState().isAuthenticated
+            && useAuthStore.getState().session?.user.id === owner
+            && useAuthStore.getState().passwordRecovery?.ownerId === owner
+            && useAuthStore.getState().passwordRecovery?.revision === revision;
 
+        inFlight.current = true;
         setIsLoading(true);
         try {
-            const { error } = await supabase.auth.updateUser({ password });
+            await useAuthStore.getState().updatePassword(password, owner);
+            if (!sameOwner()) return;
 
-            if (error) throw error;
-
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
             Alert.alert(
                 t('resetPassword.passwordUpdated'),
                 t('resetPassword.passwordResetSuccess'),
                 [
                     {
                         text: t('auth.signIn'),
-                        onPress: () => {
-                            navigation.reset({
-                                index: 0,
-                                routes: [{ name: 'SignIn' }],
-                            });
+                        onPress: async () => {
+                            if (!sameOwner()) return;
+                            try {
+                                await useAuthStore.getState().logout(owner);
+                                if (mounted.current && !useAuthStore.getState().isAuthenticated) {
+                                    navigation.reset({ index: 0, routes: [{ name: 'SignIn' }] });
+                                }
+                            } catch {
+                                if (sameOwner()) Alert.alert(t('resetPassword.error'), t('resetPassword.failedResetPassword'));
+                            }
                         },
                     },
                 ],
             );
         } catch (error: any) {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            if (!sameOwner()) return;
+            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
             const msg = error.message || t('resetPassword.failedResetPassword');
 
             if (msg.includes('same_password') || msg.includes('different from your old')) {
@@ -96,7 +119,8 @@ const ResetPasswordScreen = () => {
                 Alert.alert(t('resetPassword.error'), msg);
             }
         } finally {
-            setIsLoading(false);
+            inFlight.current = false;
+            if (mounted.current) setIsLoading(false);
         }
     };
 

@@ -1,0 +1,55 @@
+{
+  "measuredAt": "2026-10-21T07:44:55.653Z",
+  "scope": "One disposable user and synthetic subscription row; actual owner SDK and store. Paid status and expiry reconciliation, not an App Store purchase, renewal or refund.",
+  "checks": [
+    {
+      "name": "new_fixture_has_no_trial",
+      "passed": true
+    },
+    {
+      "name": "owner_initializer_confirms_server_date_and_trial_access",
+      "passed": true
+    },
+    {
+      "name": "repeated_initialization_and_fresh_store_do_not_restart_trial",
+      "passed": true
+    },
+    {
+      "name": "owner_cannot_clear_trial",
+      "passed": true
+    },
+    {
+      "name": "owner_cannot_extend_trial",
+      "passed": true
+    },
+    {
+      "name": "rejected_resets_leave_original_date_unchanged",
+      "passed": true
+    },
+    {
+      "name": "future_paid_record_grants_verified_paid_access",
+      "passed": true
+    },
+    {
+      "name": "expired_paid_record_stops_paid_status_and_preserves_original_trial",
+      "passed": true
+    },
+    {
+      "name": "expired_fixture_reconciles_to_free_without_restarting",
+      "passed": true
+    },
+    {
+      "name": "expired_free_allowances_are_preserved",
+      "passed": true
+    }
+  ],
+  "sourceHashes": {
+    "store/authEvents.ts": "4a276d38e09fc9b2fe577b0dcb8361ab450eadda454ba36cc8f299a1bbbb30c3",
+    "store/subscriptionStore.ts": "1fe240a7bc300228e978a453e308e414723ca9dd7886bcd37988d9e2680ba6e3"
+  },
+  "cleanup": {
+    "refreshSessionsRevoked": true,
+    "userDeleted": true
+  },
+  "passed": true
+}

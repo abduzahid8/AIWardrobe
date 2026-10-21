@@ -1,0 +1,22 @@
+{
+  "measuredAt": "2026-10-15T09:58:56.662Z",
+  "scope": "Production temporary-account wardrobe, outfit, calendar CRUD and two-user isolation; no provider calls or existing-user writes",
+  "checks": [
+    {
+      "name": "profile_client_cannot_self_grant_paid_tier",
+      "status": 200,
+      "passed": false,
+      "observedTier": "premium"
+    }
+  ],
+  "cleanup": [
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    }
+  ]
+}

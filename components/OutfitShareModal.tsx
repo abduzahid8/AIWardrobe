@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, StyleSheet, Modal, TouchableOpacity, Share, Image, Dimensions, TextInput, ScrollView, Alert, ActivityIndicator,  } from 'react-native'
+import { View, StyleSheet, Modal, TouchableOpacity, Share, Dimensions, TextInput, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { ScaledText } from './ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -8,6 +8,8 @@ import * as MediaLibrary from 'expo-media-library';
 import ViewShot from 'react-native-view-shot';
 import { LinearGradient } from 'expo-linear-gradient';
 import AppColors from '../constants/AppColors';
+import { Image } from '../src/components/MediaImage';
+
 
 const { width } = Dimensions.get('window');
 

@@ -1,0 +1,12 @@
+{
+  "scope": "Same cleanup implementation on Android and iOS native filesystem/AsyncStorage across three processes each",
+  "androidAssertions": 19,
+  "iosAssertions": 19,
+  "sameSourceHashes": true,
+  "passed": true,
+  "limitations": [
+    "Rejection injected at JavaScript service boundary; not a native OS permission failure",
+    "Force-stop/relaunch coverage, not power-loss or mid-write crash coverage",
+    "Headless protocol audit, not full normal-app UI verification"
+  ]
+}

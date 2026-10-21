@@ -7,7 +7,7 @@
  *   src/features/wardrobe/types.ts             (shared types)
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, TouchableOpacity, StyleSheet, ScrollView, Alert, Platform, Dimensions } from 'react-native';
 import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -33,13 +33,17 @@ import Animated, {
     useAnimatedProps,
     cancelAnimation,
 } from 'react-native-reanimated';
+import { authEvents } from '../store/authEvents';
+import { listScanReviews, loadScanReview, subscribeScanReviews, type ScanReviewSummary } from '../src/services/scanReviews';
+import { PendingScanQueue } from '../components/wardrobe/PendingScanQueue';
 import CorrectionModal from '../src/components/CorrectionModal';
+import { mapCategoryToType } from '../src/utils/mappingUtils';
 import { RootStackParamList } from '../navigation/types';
 import { supabase } from '../lib/supabase';
 import useAuthStore from '../store/auth';
 import useWardrobeStore from '../store/wardrobeStore';
-import { useVideoAnalysis } from '../src/features/wardrobe/useVideoAnalysis';
-import { DetectedItem } from '../src/features/wardrobe/types';
+import uploadQueueProcessor from '../src/services/uploadQueueProcessor';
+import { useVideoAnalysis, type DetectedItem } from '../src/features/wardrobe/useVideoAnalysis';
 import { createLogger } from '../src/utils/logger';
 import { useTranslation } from 'react-i18next';
 
@@ -161,7 +165,50 @@ const WardrobeVideoScreen = () => {
     const navigation = useAppNavigation();
     const route = useRoute<RouteProp<RootStackParamList, 'WardrobeVideo'>>();
 
-    const { analyzing, progress, results, analyzeVideo, analyzeImage, reset } = useVideoAnalysis();
+    const { analyzing, progress, results, analyzeVideo, analyzeImage, reset, restoreReview } = useVideoAnalysis();
+
+    const reviewOwner = useAuthStore(state => state.user?.id);
+    const [savedReviews, setSavedReviews] = useState<ScanReviewSummary[]>([]);
+    const [unavailableReviews, setUnavailableReviews] = useState(0);
+    const reviewListOwner = useRef<string | undefined>(undefined);
+    const reviewRestorePending = useRef(true);
+    const queueGate = useRef({ analyzing, results });
+    queueGate.current = { analyzing, results };
+    const initialMediaPending = useRef(Boolean(route.params?.imageUri || route.params?.videoUri));
+    useEffect(() => {
+        uploadQueueProcessor.setAnalysisHook({
+            analyzeImage, analyzeVideo, restoreReview,
+            canProcess: () => navigation.isFocused() && !reviewRestorePending.current && !initialMediaPending.current && !queueGate.current.analyzing && !queueGate.current.results,
+        });
+        uploadQueueProcessor.initialize();
+        return () => uploadQueueProcessor.destroy();
+    }, []);
+
+    useEffect(() => {
+        let active = true, version = 0;
+        reviewRestorePending.current = true;
+        const refresh = async () => {
+            const request = ++version;
+            if (!reviewOwner || Platform.OS === 'web') { reviewRestorePending.current = false; return; }
+            try {
+                let unavailable = 0;
+                const reviews = await listScanReviews(reviewOwner, count => { unavailable = count; });
+                if (!active || request !== version || reviewOwner !== authEvents.getUserId()) return;
+                reviewListOwner.current = reviewOwner; setSavedReviews(reviews); setUnavailableReviews(unavailable);
+                const currentId = queueGate.current.results?.reviewId;
+                const selected = currentId ? reviews.find(review => review.id === currentId)
+                    : !initialMediaPending.current && !queueGate.current.analyzing ? reviews[0] : undefined;
+                if (selected) {
+                    const result = await loadScanReview(reviewOwner, selected.id);
+                    if (!active || request !== version || reviewOwner !== authEvents.getUserId()) return;
+                    queueGate.current.results = result; restoreReview(result);
+                } else if (currentId) { queueGate.current.results = null; reset(); }
+            } catch { if (active && reviewOwner === authEvents.getUserId()) Alert.alert(t('common.error'), t('wardrobeVideo.reviewRestoreFailed')); }
+            finally { if (active && request === version) { reviewRestorePending.current = false; void uploadQueueProcessor.processQueue(); } }
+        };
+        void refresh(); const stop = subscribeScanReviews(() => { void refresh(); });
+        return () => { active = false; stop(); };
+    }, [reviewOwner]);
 
     const [correctionModal, setCorrectionModal] = useState<{
         visible: boolean;
@@ -172,9 +219,11 @@ const WardrobeVideoScreen = () => {
     // Auto-start if params provided
     React.useEffect(() => {
         if (route.params?.videoUri) {
-            analyzeVideo(route.params.videoUri);
+            initialMediaPending.current = true;
+            void analyzeVideo(route.params.videoUri).finally(() => { initialMediaPending.current = false; });
         } else if (route.params?.imageUri) {
-            analyzeImage(route.params.imageUri);
+            initialMediaPending.current = true;
+            void analyzeImage(route.params.imageUri).finally(() => { initialMediaPending.current = false; });
         }
     }, [route.params]);
 
@@ -350,19 +399,24 @@ const WardrobeVideoScreen = () => {
         }
     };
 
-    // Navigate to detail editor for the first detected item
-    const handleReviewAndSave = () => {
-        if (!results || results.detectedItems.length === 0) return;
+    // Open the selected detection; keep the results available when the editor closes.
+    const handleReviewAndSave = (itemIndex = 0) => {
+        if (!results || !Number.isInteger(itemIndex) || itemIndex < 0 || itemIndex >= results.detectedItems.length) return;
         
-        const firstItem = results.detectedItems[0];
-        const imgUrl = firstItem.frameImage || firstItem.cutoutImage || '';
+        const selectedItem = results.detectedItems[itemIndex];
+        const imgUrl = selectedItem.frameImage || selectedItem.cutoutImage || '';
         
         // Navigate to detail editor with detected data
         navigation.navigate('ClothingDetailEditor', {
             imageUri: imgUrl,
-            detectedType: mapToClosetCategory(firstItem.itemType),
-            detectedColor: firstItem.color?.toLowerCase() || 'beige',
-            detectedItem: firstItem,
+            detectedType: mapCategoryToType(selectedItem.itemType),
+            detectedColor: selectedItem.color?.toLowerCase(),
+            detectedMaterial: selectedItem.material,
+            detectedStyle: selectedItem.style,
+            aiConfidence: selectedItem.confidence,
+            detectedDescription: selectedItem.description,
+            detectedItem: selectedItem,
+            ...(results.reviewId && selectedItem.reviewItemId ? { scanReviewId: results.reviewId, scanReviewItemId: selectedItem.reviewItemId } : {}),
         });
     };
 
@@ -462,6 +516,15 @@ const WardrobeVideoScreen = () => {
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={styles.scrollContent}
                 >
+                    <PendingScanQueue disabled={analyzing || !!results} />
+                    {reviewListOwner.current === reviewOwner && reviewOwner === authEvents.getUserId() && unavailableReviews > 0 && (
+                        <ScaledText accessibilityRole="alert" style={{ padding: 16 }}>{t('wardrobeVideo.reviewUnavailable', { count: unavailableReviews })}</ScaledText>
+                    )}
+                    {(reviewListOwner.current === reviewOwner && reviewOwner === authEvents.getUserId() ? savedReviews : []).map((review, index) => <TouchableOpacity key={review.id} disabled={analyzing}
+                        accessibilityRole="button" style={{ padding: 16 }}
+                        onPress={() => { if (reviewOwner) void loadScanReview(reviewOwner, review.id).then(result => { if (reviewOwner === authEvents.getUserId()) { queueGate.current.results = result; restoreReview(result); } }).catch(() => { if (reviewOwner === authEvents.getUserId()) Alert.alert(t('common.error'), t('wardrobeVideo.reviewRestoreFailed')); }); }}>
+                        <ScaledText>{t('wardrobeVideo.resumeReview', { index: index + 1, count: review.count })}</ScaledText>
+                    </TouchableOpacity>)}
                     {/* ─── Hero / Instructions ─── */}
                     {!results && !analyzing && (
                         <Animated.View entering={FadeInDown.springify().damping(20)} style={styles.heroSection}>
@@ -574,7 +637,7 @@ const WardrobeVideoScreen = () => {
                                                 <ScaledText style={styles.outfitBadgeText}>{outfitIndex + 1}</ScaledText>
                                             </LinearGradient>
                                         </View>
-                                        <ScaledText style={styles.outfitTitle}>{t('wardrobeVideo.outfit', { index: outfitIndex + 1 })}</ScaledText>
+                                        <ScaledText style={styles.outfitTitle}>{t('wardrobeVideo.frame', { index: outfitIndex + 1 })}</ScaledText>
                                         <ScaledText style={styles.outfitCount}>
                                             ({t('wardrobeVideo.itemsCount', { count: outfitGroups[outfitId].length })})
                                         </ScaledText>
@@ -586,7 +649,13 @@ const WardrobeVideoScreen = () => {
                                             key={itemIdx}
                                             entering={FadeInDown.delay(150 + itemIdx * 80).springify().damping(20)}
                                         >
-                                            <View style={styles.resultCard}>
+                                            <TouchableOpacity
+                                                style={styles.resultCard}
+                                                accessibilityRole="button"
+                                                accessibilityLabel={`${t('wardrobeVideo.reviewSave')}: ${item.itemType}, ${item.color}`}
+                                                onPress={() => handleReviewAndSave(results.detectedItems.indexOf(item))}
+                                                activeOpacity={0.85}
+                                            >
                                                 <BlurView intensity={20} tint="light" style={styles.resultCardBlur}>
                                                     {/* Item icon */}
                                                     <View style={styles.resultIconWrap}>
@@ -619,7 +688,7 @@ const WardrobeVideoScreen = () => {
                                                         <Ionicons name="checkmark-circle" size={22} color={GLASS.success} />
                                                     </View>
                                                 </BlurView>
-                                            </View>
+                                            </TouchableOpacity>
                                         </Animated.View>
                                     ))}
                                 </Animated.View>
@@ -644,7 +713,7 @@ const WardrobeVideoScreen = () => {
                             <Animated.View entering={FadeInUp.delay(400).springify().damping(16)}>
                                 <TouchableOpacity
                                     style={styles.saveButton}
-                                    onPress={handleReviewAndSave}
+                                    onPress={() => handleReviewAndSave()}
                                     activeOpacity={0.85}
                                 >
                                     <LinearGradient

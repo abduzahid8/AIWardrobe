@@ -1,0 +1,24 @@
+{
+  "scope": "Actual app auth-store and installed SDK, transient synthetic session-removal failure then fresh SDK/store module state over the same memory disk; no OS restart or production calls",
+  "passed": false,
+  "afterLogout": {
+    "logoutResolved": true,
+    "logoutRejected": false,
+    "appOwner": null,
+    "storedOwner": "old-owner"
+  },
+  "restoredOwner": "old-owner",
+  "requests": [
+    "/auth/v1/token",
+    "/rest/v1/profiles",
+    "/auth/v1/logout",
+    "/rest/v1/profiles"
+  ],
+  "sourceSha256": {
+    "store/authEvents.ts": "4a276d38e09fc9b2fe577b0dcb8361ab450eadda454ba36cc8f299a1bbbb30c3",
+    "src/lib/authOperationQueue.ts": "ef2b8bfc0b8187894ee42cfce0c1540a564acd2001b79bc2add282c6daf0b610",
+    "store/auth.ts": "b8fec9d5d6dda28999b4ffb514db6eb8ab8a4b41f4538076aae9284059096ce2"
+  },
+  "sdkVersion": "2.115.0",
+  "diagnosticSha256": "e3821815b3e14432a22bff22f245909011a9df67f8dfb0847d2e8e52ec41b4a3"
+}

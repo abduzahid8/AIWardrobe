@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-20",
+  "jest": {
+    "tests": 2031,
+    "suites": 166,
+    "passed": true
+  },
+  "typeScript": true,
+  "iosHermes": true,
+  "androidArm64Release": true,
+  "sourceMaps": {
+    "ios": {
+      "matches": {
+        "src/utils/outfitBudget.ts": true,
+        "src/services/budgetRates.ts": true,
+        "src/services/outfitGenerationService.ts": true,
+        "src/services/outfitGenerationFailure.ts": true,
+        "screens/AIOutfitmaker.tsx": true,
+        "features/outfit-generator/utils/normalizeSlots.ts": true,
+        "backend/supabase/functions/_shared/budgetFx.ts": true,
+        "backend/supabase/functions/_shared/outfitBudgetText.ts": true
+      },
+      "serverCacheAbsent": true,
+      "testReferenceFixtureAbsent": true
+    },
+    "android": {
+      "matches": {
+        "src/utils/outfitBudget.ts": true,
+        "src/services/budgetRates.ts": true,
+        "src/services/outfitGenerationService.ts": true,
+        "src/services/outfitGenerationFailure.ts": true,
+        "screens/AIOutfitmaker.tsx": true,
+        "features/outfit-generator/utils/normalizeSlots.ts": true,
+        "backend/supabase/functions/_shared/budgetFx.ts": true,
+        "backend/supabase/functions/_shared/outfitBudgetText.ts": true
+      },
+      "serverCacheAbsent": true,
+      "testReferenceFixtureAbsent": true
+    }
+  },
+  "unbundledLegacyScreen": "screens/AIAssistant.tsx",
+  "scope": "Client/native build evidence and source correspondence; pending Google simulator was not overwritten; not installed-budget UI, store distribution, provider reliability or capacity certification"
+}

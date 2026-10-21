@@ -1,0 +1,66 @@
+{
+  "date": "2026-10-17",
+  "scope": "Onboarding choice labels and selection semantics",
+  "changes": [
+    "All twelve color options have localized accessible names in English, Russian and Uzbek",
+    "Multi-select colors, occasions and goals use checkbox roles with checked state",
+    "Single-select personalities and fit options use radio roles with checked state",
+    "Back and Continue controls have explicit localized labels and button roles",
+    "Persisted color and preference IDs unchanged, including #0A1931"
+  ],
+  "local_verification": {
+    "jest_suites": 107,
+    "jest_tests": 1214,
+    "failed": 0,
+    "new_screen_tests": 4,
+    "languages": [
+      "en",
+      "ru",
+      "uz"
+    ],
+    "typescript": "pass",
+    "diff_check": "pass",
+    "lint_errors": 0,
+    "screen_existing_warnings": 12,
+    "new_data_test_lint_warnings": 0
+  },
+  "native_verification": {
+    "configuration": "arm64 Release, CODE_SIGNING_ALLOWED=NO",
+    "build": "BUILD SUCCEEDED",
+    "build_log": "/tmp/aiwardrobe-onboarding-accessibility-native-build.log",
+    "simulator": "AIWardrobe avatar audit, iOS 26.5",
+    "udid": "2F806F52-7020-4FD3-9B68-3E0CA8B69D76",
+    "language": "English",
+    "bundle_bytes": 8377264,
+    "bundle_sha256": "a398ab39d47125783a96936309d107343f0ca06bb68a4bea21fcf2238da40372",
+    "accessibility_tree_observed": [
+      "Welcome Continue exposed as named button",
+      "Personality Minimalist exposed as radio button unchecked, then checked after tap",
+      "All twelve colors exposed by names with checkbox unchecked state",
+      "Midnight blue changes to checkbox checked and Continue enabled after selection",
+      "Deselecting Midnight blue restores unchecked state, zero chosen and Continue disabled",
+      "Back exposed by name"
+    ],
+    "native_state_injection": false
+  },
+  "cleanup": {
+    "temporary_account_deleted": true,
+    "private_repository_fixture_removed": true,
+    "credential_manifest_removed": true,
+    "audit_app_data_cleared_and_verified_build_reinstalled": true,
+    "audit_simulator_final_state": "Shutdown",
+    "original_user_simulator_state": "Booted; not modified",
+    "independent_production_counts": {
+      "disposable_accounts": 0,
+      "garments": 109,
+      "saved_outfits": 13,
+      "wardrobe_objects": 0
+    }
+  },
+  "limits": [
+    "Native accessibility tree verified in English only; Russian/Uzbek verified by rendered-screen tests",
+    "Actual VoiceOver audio, complete keyboard navigation, dynamic type and Android accessibility runtime not verified",
+    "No explicit AI generation or purchase action invoked",
+    "Initial network failure, image-load latency, photo cleanup and full 10000 DAU capacity remain open"
+  ]
+}

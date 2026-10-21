@@ -1,0 +1,98 @@
+{
+  "mode": "sdk-baseline",
+  "queueSourceSha256": "1c9103cda7f0a989904ad23f7622b403199473497cabbd244c5ac334b67bf948",
+  "sdkVersion": "2.115.0",
+  "sourceSha256": "f15ebfa81876cbc81e59510388398b0a30fafbcf82d56f1d0b185439cf3a3381",
+  "scope": "Actual installed Supabase SDK, isolated asynchronous in-memory storage and synthetic fetch; no live network or UI",
+  "passed": false,
+  "cases": [
+    {
+      "scenario": "sequential sign-in then sign-out control",
+      "expectedOwner": null,
+      "signedInOwner": "old",
+      "actualOwner": null,
+      "passed": true,
+      "events": [
+        {
+          "event": "INITIAL_SESSION",
+          "owner": null
+        },
+        {
+          "event": "SIGNED_IN",
+          "owner": "old"
+        },
+        {
+          "event": "SIGNED_OUT",
+          "owner": null
+        }
+      ]
+    },
+    {
+      "scenario": "sign-in response arrives after completed logout",
+      "expectedOwner": null,
+      "ownerAfterLogout": null,
+      "actualOwner": "old",
+      "passed": false,
+      "events": [
+        {
+          "event": "INITIAL_SESSION",
+          "owner": null
+        },
+        {
+          "event": "SIGNED_OUT",
+          "owner": null
+        },
+        {
+          "event": "SIGNED_IN",
+          "owner": "old"
+        }
+      ]
+    },
+    {
+      "scenario": "older sign-in response arrives after newer sign-in",
+      "expectedOwner": "new",
+      "ownerBeforeOldResponse": "new",
+      "actualOwner": "old",
+      "passed": false,
+      "events": [
+        {
+          "event": "INITIAL_SESSION",
+          "owner": null
+        },
+        {
+          "event": "SIGNED_IN",
+          "owner": "new"
+        },
+        {
+          "event": "SIGNED_IN",
+          "owner": "old"
+        }
+      ]
+    },
+    {
+      "scenario": "old logout response arrives after newer sign-in",
+      "expectedOwner": "new",
+      "ownerBeforeLogoutResponse": "new",
+      "actualOwner": null,
+      "passed": false,
+      "events": [
+        {
+          "event": "INITIAL_SESSION",
+          "owner": null
+        },
+        {
+          "event": "SIGNED_IN",
+          "owner": "old"
+        },
+        {
+          "event": "SIGNED_IN",
+          "owner": "new"
+        },
+        {
+          "event": "SIGNED_OUT",
+          "owner": null
+        }
+      ]
+    }
+  ]
+}

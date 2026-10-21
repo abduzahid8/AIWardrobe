@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-21",
+  "changes": [
+    "Shared field validation before metered generation endpoint",
+    "Known invalid-request error mapping",
+    "HTTP400/413/408-specific guidance",
+    "English Russian Uzbek messages"
+  ],
+  "before": {
+    "newRegressionCasesFailed": 9,
+    "existingCasesPassed": 32
+  },
+  "validation": {
+    "fullTests": 2124,
+    "suites": 169,
+    "focusedTests": 41,
+    "typescript": "pass",
+    "iosHermes": "pass",
+    "androidArm64Release": "pass",
+    "threeRuntimeModulesMatchBothMaps": true,
+    "allNineMessagesPresentInBothBytecodeBundles": true
+  },
+  "limits": [
+    "No installed UI or language-switch observation",
+    "No store distribution",
+    "No backend deployment; version105 unchanged",
+    "Server quota accounting order unchanged",
+    "No broad reliability or capacity certification"
+  ]
+}

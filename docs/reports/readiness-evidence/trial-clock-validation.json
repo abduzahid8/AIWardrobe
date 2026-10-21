@@ -1,0 +1,47 @@
+{
+  "scope": "Trial expiry in an open client, foreground resume and immediate feature checks; separate real production fixture initialization",
+  "full_suite": {
+    "tests": 2157,
+    "suites": 171,
+    "passed": true
+  },
+  "focused_hook_tests": 5,
+  "typescript": "pass after correcting test callback type",
+  "ios_hermes": "pass",
+  "android_arm64_release": "pass",
+  "source_maps": {
+    "/tmp/aiwardrobe-trial-clock-ios.map": {
+      "App.tsx": true,
+      "store/subscriptionStore.ts": true,
+      "src/hooks/useSubscriptionClock.ts": true
+    },
+    "android/app/build/intermediates/sourcemaps/react/release/index.android.bundle.packager.map": {
+      "App.tsx": true,
+      "store/subscriptionStore.ts": true,
+      "src/hooks/useSubscriptionClock.ts": true
+    }
+  },
+  "source_sha256": {
+    "App.tsx": "cf689e6ea70ea8ed0b071674429c549ceff0f66451367b903b5a28680abcb53a",
+    "store/subscriptionStore.ts": "1d0cc281a20e1fdbd60682316fc761bfc598e8e9495c6bc5a8ac7a4490f2d249",
+    "src/hooks/useSubscriptionClock.ts": "a5034039507b725fee85f18bd30ad35b80b0bcc94e977d33fb0a3f0173b35a9c"
+  },
+  "live_trial_checks": {
+    "passed": 8,
+    "report": "production-trial-initialization.json"
+  },
+  "independent_cleanup": {
+    "remaining_audit_users": 0,
+    "auth_users": 111,
+    "profiles": 111,
+    "garments": 109
+  },
+  "limits": [
+    "No real native signup/provider/email-delivery completion in this scope",
+    "Local device clock remains the clock source for UI; server enforces its own time",
+    "Paid subscription expiry and daily quota direct callers still need separate review",
+    "Minute clock tick and nearest trial expiry timer are JavaScript callbacks; resume and action checks reconcile delayed delivery",
+    "No client distribution or 10000 DAU capacity certification"
+  ],
+  "initial_harness_failure": "CommonJS AsyncStorage adapter interop mismatch; retained in production-trial-initialization-adapter-failure.json, fixture cleaned before corrected rerun"
+}

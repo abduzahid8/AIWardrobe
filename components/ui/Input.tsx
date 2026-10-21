@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, TextInput, TextInputProps, StyleSheet, ViewStyle, TextStyle, TouchableOpacity,  } from 'react-native'
-import { ScaledText } from '../ui/ScaledText';;
+import { ScaledText } from '../ui/ScaledText';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,

@@ -1,0 +1,36 @@
+{
+  "measuredAt": "2026-10-19T03:06:54.322Z",
+  "scope": "Scheduled cleanup of one disposable-user fixture only",
+  "checks": [
+    {
+      "name": "scheduled_cleanup_removed_expired_fixture",
+      "passed": true
+    },
+    {
+      "name": "current_and_retention_boundary_counters_preserved",
+      "passed": true
+    }
+  ],
+  "elapsedMs": 9347,
+  "observed": [
+    {
+      "feature": "__retention_live:0",
+      "day": "2026-10-19",
+      "used": 3
+    },
+    {
+      "feature": "__retention_live:1",
+      "day": "2026-10-18",
+      "used": 3
+    },
+    {
+      "feature": "__retention_live:2",
+      "day": "2026-10-17",
+      "used": 3
+    }
+  ],
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

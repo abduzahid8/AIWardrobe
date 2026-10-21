@@ -1,0 +1,14 @@
+transaction type: scripts/validation/cursor-capacity.pgbench
+scaling factor: 1
+query mode: simple
+number of clients: 40
+number of threads: 4
+maximum number of tries: 1
+duration: 30 s
+number of transactions actually processed: 6117
+number of failed transactions: 0 (0.000%)
+latency average = 3.621 ms
+latency stddev = 2.322 ms
+rate limit schedule lag: avg 1.921 (max 20.739) ms
+initial connection time = 22.777 ms
+tps = 204.064803 (without initial connection time)

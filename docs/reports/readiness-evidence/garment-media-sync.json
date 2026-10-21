@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-17",
+  "scope": "Local queued garment media upload integration",
+  "changes": [
+    "Queued local-wins garment records prepare original and thumbnail media before batch upsert",
+    "Original and thumbnail have distinct stable object filenames; identical sources reuse one upload",
+    "Managed pending paths rebase to current Documents container",
+    "Own signed references normalize to authenticated references; foreign owner references reject",
+    "Only confirmed record writes return uploaded references for local persistence",
+    "In-flight favorite and name edits survive canonical image replacement; new photo selection is preserved",
+    "Matching local outfit snapshot and preview references update with garment references",
+    "Wear logs depending on unconfirmed garment creation remain queued"
+  ],
+  "verification": {
+    "jest_suites": 102,
+    "jest_tests": 1184,
+    "failed": 0,
+    "typescript": "pass",
+    "targeted_lint_errors": 0,
+    "existing_lint_warnings": 4,
+    "diff_check": "pass",
+    "image_import_boundary": "pass",
+    "os_staging_durability": "pass: 2915128 bytes after picker eviction and container move in new Node process"
+  },
+  "limits": [
+    "New sync integration uses mocked network tests; no live garment pipeline or device runtime verification this turn",
+    "Native Documents staging is not yet called by addItem; initial selected files can still be evicted before upload",
+    "No staged media cleanup enabled; retain originals until reference handling is complete",
+    "Cloud saved_outfits embedded snapshots still need normalization",
+    "No production capacity, provider or account operations this turn"
+  ]
+}

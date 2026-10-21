@@ -1,0 +1,58 @@
+{
+  "avd": "AIWardrobe_signout_restart_20261018",
+  "serial": "emulator-5580",
+  "initialInventoryEmpty": true,
+  "phases": [
+    {
+      "phase": 1,
+      "pid": 4654,
+      "passed": true,
+      "checks": 4,
+      "blockedFetchAttempts": 0,
+      "syntheticHttpRequests": 2
+    },
+    {
+      "phase": 2,
+      "pid": 5387,
+      "passed": true,
+      "checks": 6,
+      "blockedFetchAttempts": 0,
+      "syntheticHttpRequests": 1
+    },
+    {
+      "phase": 3,
+      "pid": 5955,
+      "passed": true,
+      "checks": 6,
+      "blockedFetchAttempts": 0,
+      "syntheticHttpRequests": 0
+    }
+  ],
+  "visualUiClaimed": false,
+  "status": "passed_cleaned_normal_artifact_restored",
+  "scope": "Native SDK/intent/persistence protocol, not actual app auth-store or UI execution",
+  "forcedProcessStops": 2,
+  "actualNativeAsyncStorage": true,
+  "sdkHttp": "In-process synthetic responses at .invalid host; no remote auth service",
+  "faultInjection": "JavaScript storage-adapter removal rejection, not physical disk failure",
+  "networkScope": "Global app fetch blocked with zero attempts; no packet capture of OS/native networking",
+  "productionDataChanged": false,
+  "auditAppUninstalled": true,
+  "adbUidBeforeShutdown": 2000,
+  "emulatorExitCode": 0,
+  "auditAvdDeleted": true,
+  "finalDeviceInventoryEmpty": true,
+  "normalBuild": "passed_with_source_and_marker_verification",
+  "typecheck": "passed",
+  "harnessLint": {
+    "errors": 0,
+    "warnings": 1
+  },
+  "remaining": [
+    "Complete native auth-store/UI recovery flow",
+    "Power loss/process death during an unacknowledged native write",
+    "Physical disk-full and marker-write failure across crash",
+    "iOS/physical-device counterpart",
+    "Remote revocation and wider readiness gates"
+  ]
+}

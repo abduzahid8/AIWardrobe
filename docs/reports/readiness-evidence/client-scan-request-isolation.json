@@ -1,0 +1,39 @@
+{
+  "verifiedAt": "2026-10-19T13:07:57.236161+00:00",
+  "changes": [
+    "Request version plus auth revision and mounted guards around file/frame/provider awaits",
+    "Only current request can publish results, progress, failure alerts or offline queue actions",
+    "Account changes clear existing private results",
+    "Reset and unmount invalidate pending work and remove auth listeners"
+  ],
+  "checks": {
+    "requestRaceHookCases": 8,
+    "combinedScanHookCases": 19,
+    "fullJestTests": 1751,
+    "fullJestSuites": 146,
+    "typescript": true,
+    "sourceMapMatches": {
+      "ios": true,
+      "android": true
+    }
+  },
+  "sourceSha256": "9449e764dfcabdf42360ebdffae28d27f0b5b2392829b9611ae3f96c316b8a53",
+  "artifacts": {
+    "ios": {
+      "path": "/tmp/aiwardrobe-budget-release-00nhnjcc/AIWardrobe.app/main.jsbundle",
+      "bytes": 6939600,
+      "sha256": "a98f938e95088dc754365f63f14575de3252a31943972ae30a068b0b65b9e52b"
+    },
+    "android": {
+      "path": "/Users/v.zahid/AIWardrobe/android/app/build/outputs/apk/release/app-release.apk",
+      "bytes": 66043518,
+      "sha256": "b4133c66e136f95bc1b32c883b931cd19ef4b9d279ec5acf15485ef70cf4db25"
+    }
+  },
+  "limitations": [
+    "Actual React hook tests use deferred mocked provider/file operations; no new live model load",
+    "Already dispatched provider HTTP requests are not aborted by these guards",
+    "Physical-device flows, multi-item video review and provider capacity remain unverified",
+    "Earlier NVIDIA10-concurrent stage failure remains open"
+  ]
+}

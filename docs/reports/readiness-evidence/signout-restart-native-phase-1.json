@@ -1,0 +1,13 @@
+{
+  "phase": 1,
+  "platform": "android",
+  "passed": true,
+  "checks": [
+    "SDK removal rejection is observable",
+    "old SDK session remains acknowledged in native storage",
+    "sign-out intent is acknowledged in native storage",
+    "no global app fetch attempts"
+  ],
+  "blockedFetchAttempts": 0,
+  "syntheticHttpRequests": 2
+}

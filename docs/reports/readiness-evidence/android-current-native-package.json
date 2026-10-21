@@ -1,0 +1,14 @@
+{
+  "apkPath": "/Users/v.zahid/AIWardrobe/android/app/build/outputs/apk/release/app-release.apk",
+  "bytes": 66146870,
+  "sha256": "2bcfd5a1e11a9bc6a94df5121c607ca996e5ed13f52c63c617a524ae1e55c6e8",
+  "nativeAbis": [
+    "arm64-v8a"
+  ],
+  "bundleBytes": 7059236,
+  "bundleSha256": "aa43d2d898f0be41d9012b95b21ea062d249ac9517301ec464c9876da2c8243c",
+  "imageManipulatorModulePackaged": true,
+  "currentSaveGuardIncluded": true,
+  "platformPurchaseConfigIncluded": true,
+  "auditEntryIncluded": false
+}

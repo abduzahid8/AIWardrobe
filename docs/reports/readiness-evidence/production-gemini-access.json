@@ -1,0 +1,13 @@
+{
+  "firstObservedBeforeProviderChanges": "2026-10-15T10:03:34Z",
+  "latestErrorReason": "API_KEY_SERVICE_BLOCKED",
+  "latestErrorStatus": 403,
+  "message": "Requests to this API generativelanguage.googleapis.com method google.ai.generativelanguage.v1beta.GenerativeService.GenerateContent are blocked.",
+  "keyValueRecorded": false,
+  "models": [
+    "gemini-3.5-flash-lite",
+    "gemini-2.0-flash"
+  ],
+  "entitlementProbe": "Rejected by automatic approval review; no synthetic subscription was created; subsequent probe used an ordinary trial account",
+  "googleRestrictionChangeConfirmedSaved": false
+}

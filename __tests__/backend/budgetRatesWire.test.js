@@ -1,0 +1,10 @@
+/** @jest-environment node */
+const fs=require('fs'),ts=require('typescript');
+const code=ts.transpileModule(fs.readFileSync('backend/supabase/functions/budget-rates/index.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+function load(denial=null,unavailable=false){let handler;const limit=jest.fn().mockResolvedValue(denial),read=jest.fn().mockImplementation(async()=>{if(unavailable)throw Error('private internal diagnostic');return{source:'CBU',id:'fixture'};});
+ Function('require','exports','Deno',code)(name=>name.includes('server.ts')?{serve:fn=>handler=fn}:name.includes('supabase-js')?{createClient:()=>({})}:name.includes('rateLimit')?{enforceRateLimit:limit}:{currentBudgetRates:read},{},{env:{get:()=> 'fixture'}});
+ return{handler,limit,read};}
+test.each(['GET','POST'])('%s returns reference data behind authentication/rate admission',async method=>{const app=load(),r=await app.handler(new Request('https://example.invalid',{method}));expect(r.status).toBe(200);expect((await r.json()).snapshot.source).toBe('CBU');expect(app.limit).toHaveBeenCalledWith(expect.anything(),expect.objectContaining({feature:'budget-rates',meterPaidWork:false,limit:20}));});
+test.each([401,429,503])('admission denial %s prevents a reference/cache request',async status=>{const app=load(new Response('{}',{status})),r=await app.handler(new Request('https://example.invalid'));expect(r.status).toBe(status);expect(app.read).not.toHaveBeenCalled();});
+test('cache/upstream failures expose only the safe typed error',async()=>{const app=load(null,true),r=await app.handler(new Request('https://example.invalid'));expect(r.status).toBe(503);expect(await r.json()).toEqual({success:false,error:'budget_rates_unavailable'});});
+test.each(['PUT','DELETE'])('%s cannot alter the rate cache through this endpoint',async method=>{const app=load(),r=await app.handler(new Request('https://example.invalid',{method}));expect(r.status).toBe(405);expect(app.read).not.toHaveBeenCalled();});

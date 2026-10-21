@@ -1,0 +1,15 @@
+{
+  "normalBundleSha256": "58648c26bdaab8ecf1ece14ceb70f3ef03341f55a56d527ff537e88d78e23230",
+  "nativeBuildSucceeded": true,
+  "checks": {
+    "src/services/wardrobeThumbnail.ts": true,
+    "src/services/pendingWardrobeMedia.ts": true,
+    "store/authEvents.ts": true,
+    "auditEntryAbsent": true,
+    "auditMarkerAbsent": true,
+    "auditSimulatorAbsent": true,
+    "originalSimulatorStillBooted": true
+  },
+  "passed": true,
+  "unsignedSimulatorBuild": true
+}

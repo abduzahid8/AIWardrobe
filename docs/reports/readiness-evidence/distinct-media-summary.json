@@ -1,0 +1,193 @@
+{
+  "runId": "ae276af3-eb51-4d81-9d00-c0420259ae1a",
+  "scope": "First-touch distinct authenticated object URLs, same bytes on disjoint remote/local cohorts; not capacity certification",
+  "fixtureBytes": 371583,
+  "fixtureSha256": "84a7028aa534aac67d4b77c64c64ee062054172edee6e1c44e4031c7715d5256",
+  "uploadedObjects": 340,
+  "uploadBytes": 126338220,
+  "verifiedReads": 296,
+  "verifiedReadBytes": 109988568,
+  "projectRegion": "ap-northeast-1",
+  "remoteRegion": "eu-central-1",
+  "controls": [
+    {
+      "name": "anonymous",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "name": "other_owner",
+      "status": 403,
+      "passed": true
+    }
+  ],
+  "acceptancePassed": false,
+  "measurements": {
+    "remote": [
+      {
+        "targetRps": 2,
+        "seconds": 10,
+        "planned": 20,
+        "completed": 20,
+        "dropped": 0,
+        "failures": 0,
+        "elapsedMs": 11593.215608999999,
+        "p95Ms": 2741.592828,
+        "p95HeadersMs": 1935.0204750000003,
+        "p95BodyMs": 992.3750640000003,
+        "bytes": 7431660,
+        "httpStatuses": {
+          "200": 20
+        },
+        "cacheStatuses": {
+          "MISS": 20
+        }
+      },
+      {
+        "targetRps": 5,
+        "seconds": 10,
+        "planned": 50,
+        "completed": 50,
+        "dropped": 0,
+        "failures": 0,
+        "elapsedMs": 12639.169302999999,
+        "p95Ms": 2839.9053270000004,
+        "p95HeadersMs": 2025.0407349999987,
+        "p95BodyMs": 990.9084710000006,
+        "bytes": 18579150,
+        "httpStatuses": {
+          "200": 50
+        },
+        "cacheStatuses": {
+          "MISS": 50
+        }
+      },
+      {
+        "targetRps": 10,
+        "seconds": 10,
+        "planned": 100,
+        "completed": 81,
+        "dropped": 19,
+        "failures": 0,
+        "elapsedMs": 12679.761825999998,
+        "p95Ms": 2780.103633999999,
+        "p95HeadersMs": 1931.3714569999975,
+        "p95BodyMs": 1000.1428050000031,
+        "bytes": 30098223,
+        "httpStatuses": {
+          "200": 81
+        },
+        "cacheStatuses": {
+          "MISS": 81
+        }
+      }
+    ],
+    "local": [
+      {
+        "targetRps": 2,
+        "seconds": 10,
+        "planned": 20,
+        "completed": 20,
+        "dropped": 0,
+        "failures": 0,
+        "elapsedMs": 12197.252666,
+        "p95Ms": 3141.7829589999965,
+        "p95HeadersMs": 2184.797750000005,
+        "p95BodyMs": 1127.0996670000022,
+        "bytes": 7431660,
+        "httpStatuses": {
+          "200": 20
+        },
+        "cacheStatuses": {
+          "MISS": 20
+        }
+      },
+      {
+        "targetRps": 5,
+        "seconds": 10,
+        "planned": 50,
+        "completed": 50,
+        "dropped": 0,
+        "failures": 0,
+        "elapsedMs": 13206.174583,
+        "p95Ms": 3205.5664169999945,
+        "p95HeadersMs": 2235.645540999998,
+        "p95BodyMs": 1050.9103329999998,
+        "bytes": 18579150,
+        "httpStatuses": {
+          "200": 50
+        },
+        "cacheStatuses": {
+          "MISS": 50
+        }
+      },
+      {
+        "targetRps": 10,
+        "seconds": 10,
+        "planned": 100,
+        "completed": 75,
+        "dropped": 25,
+        "failures": 0,
+        "elapsedMs": 12674.478625000003,
+        "p95Ms": 3039.85779200001,
+        "p95HeadersMs": 2180.4573329999985,
+        "p95BodyMs": 1145.9814999999944,
+        "bytes": 27868725,
+        "httpStatuses": {
+          "200": 75
+        },
+        "cacheStatuses": {
+          "MISS": 75
+        }
+      }
+    ]
+  },
+  "cleanup": {
+    "checks": [
+      {
+        "functionDeleted": true
+      },
+      {
+        "objectsRemoved": true,
+        "objectsAbsent": true
+      },
+      {
+        "userId": "b9d77e60-b265-42fa-b530-025997538e41",
+        "deleteSucceeded": true,
+        "userAbsent": true
+      },
+      {
+        "userId": "2e29a936-a421-4a68-ad6a-55b0cd32c227",
+        "deleteSucceeded": true,
+        "userAbsent": true
+      }
+    ],
+    "passed": true,
+    "independentSqlCounts": {
+      "users": 0,
+      "sessions": 0,
+      "identities": 0,
+      "profiles": 0,
+      "objects": 0
+    },
+    "independentFunctionAbsenceVerified": true,
+    "privateConfigAbsent": true,
+    "privateTemporaryConfigAbsent": true,
+    "originalFunctionVersionsUnchanged": true,
+    "originalFunctionCount": 13
+  },
+  "validation": {
+    "loadHarnessTests": 29,
+    "failures": 0,
+    "lint": "passed"
+  },
+  "limitations": [
+    "All objects contain one identical Pillow-generated alpha PNG, not native codec output or varied photos",
+    "One object owner plus a second auth-denial fixture, not 10000 owners",
+    "Remote probe is Frankfurt while project is Tokyo; geography contribution unmeasured",
+    "Drops are due to the configured client concurrency cap; not proof of backend hard capacity",
+    "Headers timing is fetch resolution; body timing includes hashing",
+    "No native image rendering or physical network/device measurement"
+  ],
+  "nextEvidenceNeeded": "Controlled regional comparison with fresh, disjoint object cohorts before changing placement"
+}

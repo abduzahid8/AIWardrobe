@@ -1,0 +1,32 @@
+{
+  "measuredAt": "2026-10-19T12:33:27.702508+00:00",
+  "project": "fyqpifmrsftsfqibhwhy",
+  "function": "try-on",
+  "sourceSha256": "e0dc1baa984fc624924777cbabd8f0a35d38c00c6b52aac9ede522f462601e67",
+  "compositeHelperSha256": "3532dcd389ec40108ed3daf64d5e54eed259e98504e33a2f65b1048d61bbbfd6",
+  "scope": [
+    "Authenticated rate5/fixed minute and authoritative paid/trial admission",
+    "No mock success returning garment input",
+    "Bounded server-side JPEG/PNG person+garment composition without OffscreenCanvas fallback",
+    "400invalid shapes/size/type/JSON,405method,401missing user,503unavailable provider",
+    "45secondNVIDIA fetch deadline and90secondReplicate fetch/poll deadline; total sequential provider budget not unified",
+    "Sanitized provider error logs; existing provider routing preserved"
+  ],
+  "localVerification": {
+    "deployedBaselineTests": "2failed1passed",
+    "handlerAndCompositeTests": 19,
+    "fullTests": 1676,
+    "fullSuites": 141,
+    "stagedDeno": "pass"
+  },
+  "liveVerification": {
+    "checksPassed": 7,
+    "providerRenderingRequested": false,
+    "runId": "4cbc8143-d65b-475d-b1aa-89590844e4e6",
+    "remainingAccounts": 0,
+    "remainingProfiles": 0,
+    "remainingUsageRows": 0
+  },
+  "providerReference": "https://docs.api.nvidia.com/nim/reference/black-forest-labs-flux_1-kontext-dev-infer",
+  "providerBoundary": "Hosted preview documentation permits predefined examples only; arbitrary customer-photo generation was not tested or certified. Existing Replicate fallback availability, dress category mapping, generated image accuracy and overall job deadline remain unverified."
+}

@@ -1,0 +1,12 @@
+env: load .env
+env: export APIFY_API_TOKEN EXPO_PUBLIC_ADMIN_EMAIL EXPO_PUBLIC_AI_VISION_PROVIDER EXPO_PUBLIC_ALICEVISION_URL EXPO_PUBLIC_API_URL EXPO_PUBLIC_MODAL_VTON_URL EXPO_PUBLIC_REVENUECAT_API_KEY EXPO_PUBLIC_SENTRY_DSN EXPO_PUBLIC_SUPABASE_ANON_KEY EXPO_PUBLIC_SUPABASE_URL EXPO_PUBLIC_TRYON_STRATEGY EXPO_PUBLIC_WEATHER_API_KEY FLUX_LOCAL_URL FLUX_PROVIDER SUPABASE_SERVICE_KEY TRYON_DISABLE_FLUX_REFINEMENT TRYON_STRATEGY TRYON_V3_PER_GARMENT
+Starting Metro Bundler
+
+| (node:34500) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+iOS Bundled 14717ms index.ts (2049 modules)
+Writing bundle output to: /tmp/aiwardrobe-budget-release-00nhnjcc/AIWardrobe.app/main.jsbundle
+Writing sourcemap output to: /tmp/aiwardrobe-editor-direct-ios.map
+Copying 44 asset files
+Done writing bundle output
+Done writing sourcemap output

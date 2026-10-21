@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useMemo, Suspense } from "react";
-import * as SplashScreen from "expo-splash-screen";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { View } from "react-native";
 
@@ -28,7 +27,6 @@ const lazyScreen = (loader: () => Promise<{ default: React.ComponentType<any> }>
   return Wrapped;
 };
 
-const ScanWardrobeScreen = lazyScreen(() => import("../screens/ScreenWardrobe"));
 const AIOutfitmaker = lazyScreen(() => import("../screens/AIOutfitmaker"));
 const WardrobeVideoScreen = lazyScreen(() => import("../screens/WardrobeVideoScreen"));
 const CameraScreen = lazyScreen(() => import("../screens/CameraScreen"));
@@ -60,6 +58,7 @@ import { useSessionGuard } from "../src/hooks/useSessionGuard";
 import analyticsService from "../src/services/analyticsService";
 import { iapService } from "../src/services/iapService";
 import { LiquidPresets } from "./liquidTransitions";
+import { markAppReady } from "../src/lib/appReady";
 import usePromoCodeStore from "../store/promoCodeStore";
 import { useStylePreferenceStore } from "../store/stylePreferenceStore";
 import useLanguageStore from "../store/languageStore";
@@ -277,11 +276,10 @@ const RootNavigator = () => {
 
   useEffect(() => {
     if (isAppReady && isInitialized && isLanguageInitialized) {
-      // Hide the splash screen only after ALL services are initialized and the app is ready to render.
-      // Defer slightly to ensure the Navigator has mounted and rendered its first frame.
-      const timer = setTimeout(() => {
-        SplashScreen.hideAsync().catch(() => undefined);
-      }, 100);
+      // Signal that the first real frame is ready. SplashTransition takes it
+      // from here: it hides the native splash and dissolves the branded
+      // overlay into the app (see src/components/SplashTransition.tsx).
+      markAppReady();
 
       // Warm non-Home tab caches (Inspo catalog/capsules/hero, Closet + Inspo
       // images) on idle so the first visit to each tab finds warm caches
@@ -294,7 +292,6 @@ const RootNavigator = () => {
       }, 2500);
 
       return () => {
-        clearTimeout(timer);
         clearTimeout(prewarmTimer);
       };
     }
@@ -389,7 +386,7 @@ const RootNavigator = () => {
             />
             <Stack.Screen
               name="ScanWardrobe"
-              component={ScanWardrobeScreen}
+              component={CameraScreen}
               options={{ ...LiquidPresets.rise }}
             />
             <Stack.Screen

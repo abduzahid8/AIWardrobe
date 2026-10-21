@@ -1,0 +1,56 @@
+{
+  "avd": "AIWardrobe_cleanup_restart_20261018",
+  "serial": "emulator-5580",
+  "initialInventoryEmpty": true,
+  "phases": [
+    {
+      "phase": 1,
+      "pid": 5756,
+      "passed": true,
+      "checks": 4,
+      "networkAttempts": 0
+    },
+    {
+      "phase": 2,
+      "pid": 6005,
+      "passed": true,
+      "checks": 6,
+      "networkAttempts": 0
+    },
+    {
+      "phase": 3,
+      "pid": 6120,
+      "passed": true,
+      "checks": 5,
+      "networkAttempts": 0
+    }
+  ],
+  "visualUiClaimed": false,
+  "status": "passed_cleaned_normal_artifact_restored",
+  "forcedProcessStops": 2,
+  "nativeAsyncStorage": true,
+  "faultInjection": "Synthetic JavaScript registry-operation rejection; not a physical disk failure",
+  "networkScope": "Global app fetch disabled; zero attempts, no packet capture of native/OS networking",
+  "productionDataChanged": false,
+  "auditAppUninstalled": true,
+  "adbUidBeforeShutdown": 2000,
+  "emulatorExitCode": 0,
+  "auditAvdDeleted": true,
+  "finalInventoryEmpty": true,
+  "normalBuild": "passed_source_and_audit_marker_verification",
+  "typecheck": "passed",
+  "harnessLint": {
+    "errors": 0,
+    "warnings": 1
+  },
+  "setupNotes": [
+    "SDK AVD device metadata warning was emitted; exact AVD registration/name and successful native boot were independently checked"
+  ],
+  "remaining": [
+    "Process death while native write itself is in progress",
+    "Physical disk-full or power-loss ambiguity",
+    "iOS/physical device counterpart",
+    "SDK sign-out intent/session durability under storage failure",
+    "Native authentication UI and remaining readiness gates"
+  ]
+}

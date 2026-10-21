@@ -1,0 +1,56 @@
+{
+  "measuredAt": "2026-10-19T01:48:34.083Z",
+  "scope": "One live casual outfit after slot mapping patch; this failed end-to-end style validation despite HTTP200",
+  "checks": [
+    {
+      "name": "casual_250_usd",
+      "status": 200,
+      "latencyMs": 35883,
+      "passed": false,
+      "reasons": [
+        "item \"\u0424\u0443\u0442\u0431\u043e\u043b\u043a\u0430 SS BADGE 30S JERSEY CLASSIC TEE\": refined casual wears knit polos, not basic cotton tees"
+      ],
+      "spendUzs": 2853000,
+      "capUzs": 3150000,
+      "provider": "nvidia:meta/llama-3.2-11b-vision-instruct",
+      "source": "ai",
+      "items": [
+        {
+          "id": "shop_fr-ck-170436",
+          "name": "\u0424\u0443\u0442\u0431\u043e\u043b\u043a\u0430 SS BADGE 30S JERSEY CLASSIC TEE",
+          "macroCategory": "top",
+          "price": 639000
+        },
+        {
+          "id": "shop_fr-ck-26935",
+          "name": "\u0414\u0436\u0438\u043d\u0441\u044b SLIM",
+          "macroCategory": "bottom",
+          "price": 929500
+        },
+        {
+          "id": "shop_fr-ck-108932",
+          "name": "\u041a\u0440\u043e\u0441\u0441\u043e\u0432\u043a\u0438 HIKE RUNNER CASUAL NY-SU",
+          "macroCategory": "shoes",
+          "price": 1284500
+        }
+      ],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "meta/llama-3.2-11b-vision-instruct",
+          "status": "ok"
+        },
+        {
+          "provider": "nvidia",
+          "model": "meta/llama-3.2-11b-vision-instruct",
+          "status": "ok"
+        }
+      ]
+    }
+  ],
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  },
+  "independentRemainingFixtures": 0
+}

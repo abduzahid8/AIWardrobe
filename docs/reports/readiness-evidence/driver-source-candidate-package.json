@@ -1,0 +1,14 @@
+{
+  "name": "aiwardrobe-driver-security-candidate",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "appium": "3.8.0",
+    "appium-xcuitest-driver": "git+https://github.com/appium/appium-xcuitest-driver.git#1be253af959bbd29427166a910a78a38fdd66185"
+  },
+  "overrides": {
+    "shell-quote": "1.11.0",
+    "proxy-addr": "2.0.8",
+    "compression": "1.8.2"
+  }
+}

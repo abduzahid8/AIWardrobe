@@ -1,0 +1,50 @@
+{
+  "measuredAt": "2026-10-19T06:45:28.973Z",
+  "scope": "Exhausted disposable scan quotas and invalid inputs only; no provider calls",
+  "checks": [
+    {
+      "name": "missing_image_rejected_without_quota",
+      "passed": true,
+      "status": 400
+    },
+    {
+      "name": "invalid_image_type_rejected",
+      "passed": true,
+      "status": 400
+    },
+    {
+      "name": "unknown_operation_rejected",
+      "passed": true,
+      "status": 400
+    },
+    {
+      "name": "free_five_scan_limit_enforced_despite_client_claims",
+      "passed": true,
+      "status": 403
+    },
+    {
+      "name": "alternate_operation_cannot_bypass_scan_quota",
+      "passed": true,
+      "status": 403
+    },
+    {
+      "name": "public_anon_cannot_scan",
+      "passed": true,
+      "status": 401
+    },
+    {
+      "name": "invalid_and_denied_attempts_do_not_increase_daily_quota",
+      "passed": true,
+      "used": 5
+    },
+    {
+      "name": "lite_thirty_scan_limit_enforced",
+      "passed": true,
+      "status": 403
+    }
+  ],
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

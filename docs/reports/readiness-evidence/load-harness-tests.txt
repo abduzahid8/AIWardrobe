@@ -1,0 +1,46 @@
+TAP version 13
+# Subtest: 10k DAU assumptions produce 240k daily requests and a 40 RPS target
+ok 1 - 10k DAU assumptions produce 240k daily requests and a 40 RPS target
+  ---
+  duration_ms: 0.738541
+  type: 'test'
+  ...
+# Subtest: passes valid read paths and records distinct authenticated identities
+ok 2 - passes valid read paths and records distinct authenticated identities
+  ---
+  duration_ms: 176.707541
+  type: 'test'
+  ...
+# Subtest: fails if HTTP 200 contains rows belonging to another user
+ok 3 - fails if HTTP 200 contains rows belonging to another user
+  ---
+  duration_ms: 177.449917
+  type: 'test'
+  ...
+# Subtest: fails HTTP errors and never accepts rate limiting as successful capacity
+ok 4 - fails HTTP errors and never accepts rate limiting as successful capacity
+  ---
+  duration_ms: 177.174333
+  type: 'test'
+  ...
+# Subtest: fails empty inventory and malformed success payloads
+ok 5 - fails empty inventory and malformed success payloads
+  ---
+  duration_ms: 176.627666
+  type: 'test'
+  ...
+# Subtest: multiple semantic failures on one response count as one failed request
+ok 6 - multiple semantic failures on one response count as one failed request
+  ---
+  duration_ms: 177.92175
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 929.17225

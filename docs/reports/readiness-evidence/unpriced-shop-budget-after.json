@@ -1,0 +1,79 @@
+{
+  "date": "2026-10-20",
+  "scope": "Actual client and Edge helpers with synthetic invalid or absent shop prices, not hosted generated output",
+  "checks": [
+    {
+      "label": "missing",
+      "client": {
+        "finite": false,
+        "passes100USD": false
+      },
+      "edge": {
+        "finite": false,
+        "passes100USD": false
+      },
+      "passed": true
+    },
+    {
+      "label": "null",
+      "client": {
+        "finite": false,
+        "passes100USD": false
+      },
+      "edge": {
+        "finite": false,
+        "passes100USD": false
+      },
+      "passed": true
+    },
+    {
+      "label": "zero",
+      "client": {
+        "finite": false,
+        "passes100USD": false
+      },
+      "edge": {
+        "finite": false,
+        "passes100USD": false
+      },
+      "passed": true
+    },
+    {
+      "label": "negative",
+      "client": {
+        "finite": false,
+        "passes100USD": false
+      },
+      "edge": {
+        "finite": false,
+        "passes100USD": false
+      },
+      "passed": true
+    },
+    {
+      "label": "NaN",
+      "client": {
+        "finite": false,
+        "passes100USD": false
+      },
+      "edge": {
+        "finite": false,
+        "passes100USD": false
+      },
+      "passed": true
+    },
+    {
+      "label": "Infinity",
+      "client": {
+        "finite": false,
+        "passes100USD": false
+      },
+      "edge": {
+        "finite": false,
+        "passes100USD": false
+      },
+      "passed": true
+    }
+  ],
+  "passed": true
+}

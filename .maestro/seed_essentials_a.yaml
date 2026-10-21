@@ -1,0 +1,35 @@
+appId: host.exp.Exponent
+name: seed_essentials_a
+tags:
+  - save-checks
+  - expo-go
+  - seed
+---
+# Home renders Wardrobe Essentials (not the swipe deck) while items.length < 5
+# (HomeScreen.tsx:2041), so the "Save outfit" heart cannot exist yet. Each
+# essentials button is a one-tap addItem(). The catalog has exactly 5; a pair
+# of flows adds them (3 here + 2 in seed_essentials_b).
+# MUST start at the top of Home (runner reopens the app first) — the first
+# row sits below the fold, so scrollUntilVisible (DOWN only) is required.
+- tapOn:
+    point: "26%,92%"
+- waitForAnimationToEnd:
+    timeout: 6000
+- scrollUntilVisible:
+    element: "Add Кроссовки OUTDOOR SNEAKER TECH MIX to wardrobe"
+    direction: DOWN
+    timeout: 20000
+- tapOn: "Add Кроссовки OUTDOOR SNEAKER TECH MIX to wardrobe"
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn: "Add Ботинки TH CHUNKY TL LACE UP BOOT to wardrobe"
+- waitForAnimationToEnd:
+    timeout: 3000
+- scrollUntilVisible:
+    element: "Add Жилет SLVSS FEATHERWEIGHT NYLON CHNNL to wardrobe"
+    direction: DOWN
+    timeout: 15000
+- tapOn: "Add Жилет SLVSS FEATHERWEIGHT NYLON CHNNL to wardrobe"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: seed_a

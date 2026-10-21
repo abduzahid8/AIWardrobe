@@ -1,0 +1,52 @@
+{
+  "measuredAt": "2026-10-21T14:02:14.970Z",
+  "scope": "Direct read-only backend budget_catalog_candidates RPC at2,10,40RPS. No AI, media, user auth, billing, native UI or10000DAU certification. FX cache may refresh.",
+  "phases": [
+    {
+      "rps": 2,
+      "seconds": 10,
+      "scheduled": 20,
+      "attempted": 20,
+      "succeeded": 20,
+      "failed": 0,
+      "dropped": 0,
+      "errors": {},
+      "elapsedMs": 10131,
+      "p50Ms": 564,
+      "p95Ms": 1057,
+      "p99Ms": 1240
+    },
+    {
+      "rps": 10,
+      "seconds": 20,
+      "scheduled": 200,
+      "attempted": 200,
+      "succeeded": 200,
+      "failed": 0,
+      "dropped": 0,
+      "errors": {},
+      "elapsedMs": 20447,
+      "p50Ms": 483,
+      "p95Ms": 1171,
+      "p99Ms": 1419
+    },
+    {
+      "rps": 40,
+      "seconds": 60,
+      "scheduled": 2400,
+      "attempted": 2400,
+      "succeeded": 2400,
+      "failed": 0,
+      "dropped": 0,
+      "errors": {},
+      "elapsedMs": 62767,
+      "p50Ms": 488,
+      "p95Ms": 1438,
+      "p99Ms": 2259
+    }
+  ],
+  "reference": "CBU:2026-10-21:12012.3:13466.99:16026.81",
+  "passed": true,
+  "finishedAt": "2026-10-21T14:03:49.513Z",
+  "safetyStop": false
+}

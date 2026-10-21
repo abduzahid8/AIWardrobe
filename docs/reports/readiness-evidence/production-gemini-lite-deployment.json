@@ -1,0 +1,12 @@
+{
+  "verifiedAt": "2026-10-15T15:30:19.995Z",
+  "function": "generate-outfits",
+  "version": 74,
+  "model": "gemini-3.5-flash-lite",
+  "verifyJwt": true,
+  "bundleSha256": "7a00a54912652f29e5036ac6c554159dc13ec2072e4271be8a882295d2ff2b40",
+  "hostedSmokePassed": true,
+  "latencyMs": 12991,
+  "temporaryAccountDeleted": true,
+  "capacityVerified": false
+}

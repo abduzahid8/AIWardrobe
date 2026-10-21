@@ -1,0 +1,32 @@
+appId: host.exp.Exponent
+name: verify_clothing_persist
+tags:
+  - save-checks
+  - expo-go
+  - clothing
+---
+# Cold relaunch → Closet → assert the grid is NOT empty (the item saved by
+# save_clothing_photo survived the restart via zustand persist → AsyncStorage
+# and/or the Supabase clothing_items fetch on boot).
+# The runner kills + reopens Expo Go BEFORE invoking this flow, so this
+# flow only asserts the post-relaunch state.
+- runFlow:
+    when:
+      visible: "Choose your language"
+    commands:
+      - tapOn:
+          id: "languageOption-en"
+      - waitForAnimationToEnd:
+          timeout: 20000
+- tapOn:
+    point: "42%,92%"
+- waitForAnimationToEnd:
+    timeout: 10000
+- assertVisible: ".*(Мой гардероб|My Wardrobe|Wardrobe|Closet).*"
+- assertNotVisible: "Your closet is empty"
+# A real grid cell carries the "{category} item" a11y label.
+- extendedWaitUntil:
+    visible: ".* item.*"
+    timeout: 20000
+- assertVisible: ".* item.*"
+- takeScreenshot: verify_clothing_persist

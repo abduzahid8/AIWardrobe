@@ -1,0 +1,82 @@
+{
+  "measuredAt": "2026-10-21T15:30:18.264Z",
+  "scope": "One disposable production owner with18real fixture garments: six valid tops, six valid shoes, six formal-ineligible bottoms. Real Auth/catalog/NVIDIA; one USD50 outfit request. No native image/UI or capacity claim.",
+  "checks": [
+    {
+      "name": "one_real_generated_outfit_returned",
+      "passed": true
+    },
+    {
+      "name": "complete_formal_outfit_passes_shared_rules",
+      "passed": true
+    },
+    {
+      "name": "ineligible_owned_bottoms_are_not_returned",
+      "passed": true
+    },
+    {
+      "name": "shop_supplement_supplies_the_missing_bottom",
+      "passed": true
+    },
+    {
+      "name": "returned_product_fields_match_owned_and_active_catalog_rows",
+      "passed": true
+    },
+    {
+      "name": "catalog_spend_respects_exact_request_budget",
+      "passed": true
+    }
+  ],
+  "preferences": {},
+  "fixtureUserId": "ed6df65e-3da5-4639-99b8-7d2895b2cb8d",
+  "response": {
+    "status": 200,
+    "latencyMs": 29732,
+    "error": null,
+    "code": null,
+    "provider": "nvidia:meta/llama-3.2-11b-vision-instruct",
+    "providerAttempts": [
+      {
+        "provider": "nvidia",
+        "model": "meta/llama-3.2-11b-vision-instruct",
+        "status": "ok"
+      }
+    ]
+  },
+  "budget": {
+    "spendUzs": 429900,
+    "capUzs": 600615,
+    "reference": "CBU:2026-10-21:12012.3:13466.99:16026.81"
+  },
+  "items": [
+    {
+      "id": "1a26eecf-7a44-45ce-ba4b-2530a6bef851",
+      "name": "White long sleeve cotton shirt",
+      "slot": "top",
+      "source": "owned",
+      "price": null,
+      "currency": null
+    },
+    {
+      "id": "shop_zara-uz-545475114",
+      "name": "REGULAR FIT CHECK SUIT TROUSERS",
+      "slot": "bottom",
+      "source": "catalog",
+      "price": 429900,
+      "currency": "UZS"
+    },
+    {
+      "id": "9e12d9b0-54cf-46e6-ba17-4ff3bdaabc9d",
+      "name": "Brown leather penny loafers",
+      "slot": "shoes",
+      "source": "owned",
+      "price": null,
+      "currency": null
+    }
+  ],
+  "cleanup": {
+    "refreshSessionsRevoked": true,
+    "userDeleted": true
+  },
+  "passed": true
+}

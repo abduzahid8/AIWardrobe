@@ -54,7 +54,7 @@ async function uploadNvidiaInputAsset({ imageBuffer, contentType, description })
 }
 
 async function buildComposite() {
-  const mannequinPath = path.join(process.cwd(), 'assets/images/mannequin_front.png');
+  const mannequinPath = path.join(process.cwd(), 'assets/images/mannequin_front.jpg');
   const garmentPath = path.join(process.cwd(), 'assets/images/basic_cardigan.png');
 
   const mannequinBuf = fs.readFileSync(mannequinPath);

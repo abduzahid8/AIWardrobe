@@ -1,0 +1,17 @@
+{
+  "en": {
+    "editorColors": 16,
+    "uploadDescription": "Choose a photo or use the camera to identify clothing. Your original photo is kept.",
+    "cameraLabel": "Standard camera"
+  },
+  "ru": {
+    "editorColors": 16,
+    "uploadDescription": "Выберите фото или используйте камеру для распознавания одежды. Исходное фото сохраняется.",
+    "cameraLabel": "Обычная камера"
+  },
+  "uz": {
+    "editorColors": 16,
+    "uploadDescription": "Kiyimni aniqlash uchun rasm tanlang yoki kameradan foydalaning. Asl rasm saqlanadi.",
+    "cameraLabel": "Oddiy kamera"
+  }
+}

@@ -1,0 +1,287 @@
+{
+  "measuredAt": "2026-10-19T01:46:20.259Z",
+  "scope": "Public-catalog reads and deployed fetch/rank/full validation plus current shared style judge; no AI call or account writes. Empty wardrobe, no exclusions,20C,limit1. Not exact captured hosted candidate pools or exhaustive catalog feasibility.",
+  "checks": [
+    {
+      "style": "casual",
+      "occasion": "Everyday",
+      "candidateCount": 18,
+      "counts": {
+        "top": 6,
+        "bottom": 6,
+        "shoes": 6
+      },
+      "combinationsTested": 216,
+      "serverValidWithinBudget": 9,
+      "strictValidWithinBudget": 5,
+      "strictRejections": {
+        "item \"Футболка SS BADGE 30S JERSEY CLASSIC TEE\": refined casual wears knit polos, not basic cotton tees": 4
+      },
+      "serverRejections": {
+        "over_budget": 207
+      },
+      "cheapest": {
+        "spendUzs": 3014000,
+        "items": [
+          {
+            "id": "shop_md-uz-62246011",
+            "name": "100% cotton V-neck knit polo shirt",
+            "price": 800000,
+            "currency": "UZS"
+          },
+          {
+            "id": "shop_fr-ck-26935",
+            "name": "Джинсы SLIM",
+            "price": 929500,
+            "currency": "UZS"
+          },
+          {
+            "id": "shop_fr-ck-108932",
+            "name": "Кроссовки HIKE RUNNER CASUAL NY-SU",
+            "price": 1284500,
+            "currency": "UZS"
+          }
+        ]
+      },
+      "candidatePrices": [
+        {
+          "id": "shop_fr-ck-39382",
+          "name": "Рубашка CASUAL CLASSIC VAIL DENIM SHIRT",
+          "macroCategory": "top",
+          "price": 989500,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_fr-ck-170436",
+          "name": "Футболка SS BADGE 30S JERSEY CLASSIC TEE",
+          "macroCategory": "top",
+          "price": 639000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_fr-tommy-152421",
+          "name": "Лоферы HILFIGER STITCHDOWN SUEDE LOAFER",
+          "macroCategory": "shoes",
+          "price": 1384500,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-62286483",
+          "name": "100% cotton V-neck knit polo",
+          "macroCategory": "top",
+          "price": 900000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-62246011",
+          "name": "100% cotton V-neck knit polo shirt",
+          "macroCategory": "top",
+          "price": 800000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61729263",
+          "name": "100% cotton intarsia knit polo shirt",
+          "macroCategory": "top",
+          "price": 900000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-62812140",
+          "name": "100% cotton micro-textured knit polo shirt",
+          "macroCategory": "top",
+          "price": 900000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_fr-ck-149824",
+          "name": "Джинсы 90S TAPER DRIFTWOOD BLUE JEAN",
+          "macroCategory": "bottom",
+          "price": 1484500,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_fr-ck-26935",
+          "name": "Джинсы SLIM",
+          "macroCategory": "bottom",
+          "price": 929500,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-66146228",
+          "name": "Relaxed fit suede pants with front darts",
+          "macroCategory": "bottom",
+          "price": 1400000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-62899807",
+          "name": "Slim fit jeans",
+          "macroCategory": "bottom",
+          "price": 1400000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61729743",
+          "name": "Tapered fit jeans",
+          "macroCategory": "bottom",
+          "price": 1100000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_zara-uz-561288459",
+          "name": "AARON LEVINE X ZARA PLEATED CHINO TROUSERS",
+          "macroCategory": "bottom",
+          "price": 1299900,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_fr-ck-150933",
+          "name": "Кроссовки CLASSIC CUPS LACEUP KNIT",
+          "macroCategory": "shoes",
+          "price": 1895200,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_fr-ck-108932",
+          "name": "Кроссовки HIKE RUNNER CASUAL NY-SU",
+          "macroCategory": "shoes",
+          "price": 1284500,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_fr-ck-172469",
+          "name": "Лоферы ESS RUBBER LOAFER HW PLAQ VA LTH",
+          "macroCategory": "shoes",
+          "price": 2929000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61729184",
+          "name": "Leather loafers with penny strap",
+          "macroCategory": "shoes",
+          "price": 2900000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-62129862",
+          "name": "Soft leather loafers with tie",
+          "macroCategory": "shoes",
+          "price": 2000000,
+          "currency": "UZS"
+        }
+      ]
+    },
+    {
+      "style": "sport",
+      "occasion": "Gym workout",
+      "candidateCount": 13,
+      "counts": {
+        "top": 6,
+        "bottom": 6,
+        "shoes": 1
+      },
+      "combinationsTested": 36,
+      "serverValidWithinBudget": 0,
+      "strictValidWithinBudget": 0,
+      "strictRejections": {},
+      "serverRejections": {
+        "over_budget": 36
+      },
+      "cheapest": null,
+      "candidatePrices": [
+        {
+          "id": "shop_boss-uz-107095",
+          "name": "Motion_Slon_KNS",
+          "macroCategory": "top",
+          "price": 2799000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-140333",
+          "name": "Salbo",
+          "macroCategory": "top",
+          "price": 1488000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-105362",
+          "name": "TTNM Evo_Slon_Ltmxl",
+          "macroCategory": "top",
+          "price": 2492000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-113793",
+          "name": "Ttnm Evo_Runn_Itynm",
+          "macroCategory": "top",
+          "price": 2928000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-100022",
+          "name": "кроссовки ttnm light_runn_ltnu 10249949 01",
+          "macroCategory": "top",
+          "price": 1560000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_fr-ck-91160",
+          "name": "Жилет SLVSS FEATHERWEIGHT NYLON CHNNL",
+          "macroCategory": "top",
+          "price": 2375200,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-93885",
+          "name": "Delaware",
+          "macroCategory": "bottom",
+          "price": 956000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_fr-ck-149824",
+          "name": "Джинсы 90S TAPER DRIFTWOOD BLUE JEAN",
+          "macroCategory": "bottom",
+          "price": 1484500,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_fr-ck-26935",
+          "name": "Джинсы SLIM",
+          "macroCategory": "bottom",
+          "price": 929500,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61850981",
+          "name": "100% Linen Elastic-Waist Pants",
+          "macroCategory": "bottom",
+          "price": 1900000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61741522",
+          "name": "100% Linen Jogger-Fit Pants",
+          "macroCategory": "bottom",
+          "price": 1900000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61733889",
+          "name": "100% Linen Striped Pants",
+          "macroCategory": "bottom",
+          "price": 1900000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-82505",
+          "name": "Gary",
+          "macroCategory": "shoes",
+          "price": 2279000,
+          "currency": "UZS"
+        }
+      ]
+    }
+  ]
+}

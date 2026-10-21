@@ -1,0 +1,58 @@
+{
+  "verifiedAt": "2026-10-19T12:56:16.934294+00:00",
+  "changes": [
+    "Onboarding activation opens current Camera for fewer than three garments",
+    "Legacy ScanWardrobe route maps to current Camera instead of legacy Render/batch-save flow",
+    "Photo/video capture opens analysis independent of optional gallery permission or gallery-save failure"
+  ],
+  "actualProductionHandlerRegression": {
+    "baseline": {
+      "passed": 6,
+      "failed": 6
+    },
+    "current": {
+      "passed": 12,
+      "failed": 0
+    }
+  },
+  "fullJest": {
+    "suites": 142,
+    "tests": 1707,
+    "passed": true
+  },
+  "typescript": true,
+  "sourceMapMatches": {
+    "ios": {
+      "screens/CameraScreen.tsx": true,
+      "screens/PaywallScreen.tsx": true,
+      "navigation/RootNavigator.tsx": true
+    },
+    "android": {
+      "screens/CameraScreen.tsx": true,
+      "screens/PaywallScreen.tsx": true,
+      "navigation/RootNavigator.tsx": true
+    }
+  },
+  "sourceHashes": {
+    "screens/CameraScreen.tsx": "a72d765e10d976e2a8b3a90e41190c1c92c45e86dbe09a0d8874e4752e85bb2d",
+    "screens/PaywallScreen.tsx": "7a4fc324783b66a1f662e4c8b42cfec45ec09c12f24add86ad15133bf48c0589",
+    "navigation/RootNavigator.tsx": "678c11ef75eb525757538f9e71c5eac334cdec38b043fda18a440ee08a257547"
+  },
+  "artifacts": {
+    "ios": {
+      "path": "/tmp/aiwardrobe-budget-release-00nhnjcc/AIWardrobe.app/main.jsbundle",
+      "bytes": 6977096,
+      "sha256": "842ae5f9d2d03bf6b99c98d872dbb6eea1951cd3597b705f1fb44df1eacf9880"
+    },
+    "android": {
+      "path": "/Users/v.zahid/AIWardrobe/android/app/build/outputs/apk/release/app-release.apk",
+      "bytes": 66080854,
+      "sha256": "0b4dee1f2d1ce4ff1b7c528970aa5df237cce23140dc6f5a982252246c853321"
+    }
+  },
+  "limitations": [
+    "No physical camera capture or signed device installation tested",
+    "Legacy ReviewScan component remains registered but no current entry through ScanWardrobe reaches it",
+    "No new claim of provider concurrency, billing transaction or 10000 DAU readiness"
+  ]
+}

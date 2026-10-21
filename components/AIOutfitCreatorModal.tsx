@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useMemo, useCallback } from 'react';
-import { View, ScrollView, Image, TouchableOpacity, StyleSheet, Dimensions, ActivityIndicator,  } from 'react-native'
+import { View, ScrollView, TouchableOpacity, StyleSheet, Dimensions, ActivityIndicator } from 'react-native';
 import { ScaledText } from './ui/ScaledText';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +22,8 @@ import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 import { generateSuggestions, ScoredOutfit } from '../src/services/suggestionEngine';
 import useWardrobeStore from '../store/wardrobeStore';
 import type { Occasion } from '../src/types/domain';
+import { Image } from '../src/components/MediaImage';
+
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const { colors, spacing, typography, radius } = LiquidGlass2026Theme;

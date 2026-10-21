@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-17",
+  "runId": "98aba250-1455-4ca2-bde2-f038e7d99ae2",
+  "status": "completed_failed_workload_and_cleaned",
+  "avd": "AIWardrobe_media_20261017",
+  "api": 34,
+  "abi": "arm64-v8a",
+  "serial": "emulator-5580",
+  "initialDeviceInventory": "no attached devices",
+  "actualNativeReactNativeFetch": true,
+  "expoImageRenderingTested": false,
+  "visualUiPassClaimed": false,
+  "injectedPrivateConfigViaStdin": true,
+  "credentialEmbeddedInSourceOrApk": false,
+  "fixtureCleanupApiPassed": true,
+  "independentSqlCountsAllZero": true,
+  "privateLocalConfigRemoved": true,
+  "auditAppUninstalled": true,
+  "adbdFinalUid": 2000,
+  "emulatorProcessExitCode": 0,
+  "auditAvdDeleted": true,
+  "finalDeviceInventory": "no attached devices",
+  "normalBuildRestored": true,
+  "normalBuildSeconds": 30,
+  "normalAppInstalledOrLaunched": false,
+  "typecheck": "passed",
+  "harnessLint": "passed, zero warnings",
+  "initialHarnessLintCorrection": "Converted nested function declaration to a const arrow before installed build",
+  "releaseToolchainTests": 5,
+  "lastFullAppTests": 1303,
+  "lastFullAppSuites": 114,
+  "sourceSha256": {
+    "scripts/load/native-media-fixture.mjs": "f8596ad9326e27714302e1c977094261a74f553d7c496ad4f53bc81621d18885",
+    "scripts/validation/media-transport-native-entry.tsx": "f6ab5fd6de0fe504f8b36d05aa3cf5ac307c6a0efcba9644002a02df6b001fb3"
+  },
+  "remaining": [
+    "Failure-stage instrumentation to distinguish body read and hash verification deadline",
+    "Native Expo Image and representative native-thumbnail measurements",
+    "Physical-device/iOS and independent network route comparisons",
+    "Sustained many-owner capacity acceptance and all other readiness gates"
+  ]
+}

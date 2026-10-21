@@ -1,0 +1,165 @@
+{
+  "platform": "android",
+  "scope": "Native React Native fetch, repeated private fixture; not Expo Image rendering or capacity certification",
+  "planned": 50,
+  "targetRps": 5,
+  "concurrencyCap": 20,
+  "requestTimeoutMs": 15000,
+  "passed": false,
+  "runId": "98aba250-1455-4ca2-bde2-f038e7d99ae2",
+  "fixtureBytes": 788309,
+  "fixtureSha256": "39b14e9041fca06639a34a1c04420d57cc57776bec23c524f21cd88f1a4a3bd7",
+  "completed": 20,
+  "successful": 0,
+  "failures": 20,
+  "dropped": 30,
+  "errors": {
+    "TimeoutError": 20
+  },
+  "elapsedMs": 18828.271425,
+  "p95Ms": 15024.128131999998,
+  "p95FetchResolvedMs": 3391.0672519999935,
+  "p95SuccessfulBodyMs": null,
+  "results": [
+    {
+      "ok": false,
+      "status": 200,
+      "fetchResolvedMs": 3548.4129600000015,
+      "ms": 15024.742965000012,
+      "error": "TimeoutError"
+    },
+    {
+      "ok": false,
+      "status": 200,
+      "fetchResolvedMs": 3391.0672519999935,
+      "ms": 15018.987007999996,
+      "error": "TimeoutError"
+    },
+    {
+      "ok": false,
+      "status": 200,
+      "fetchResolvedMs": 3163.0870850000065,
+      "ms": 15019.276173999999,
+      "error": "TimeoutError"
+    },
+    {
+      "ok": false,
+      "status": 200,
+      "fetchResolvedMs": 2990.9003759999905,
+      "ms": 15018.854007000002,
+      "error": "TimeoutError"
+    },
+    {
+      "ok": false,
+      "status": 200,
+      "fetchResolvedMs": 2820.178083999999,
+      "ms": 15018.161757000009,
+      "error": "TimeoutError"
+    },
+    {
+      "ok": false,
+      "status": 200,
+      "fetchResolvedMs": 3212.9253759999992,
+      "ms": 15018.647715,
+      "error": "TimeoutError"
+    },
+    {
+      "ok": false,
+      "status": 200,
+      "fetchResolvedMs": 3014.7823759999883,
+      "ms": 15024.128131999998,
+      "error": "TimeoutError"
+    },
+    {
+      "ok": false,
+      "status": 200,
+      "fetchResolvedMs": 2814.3195429999905,
+      "ms": 15017.872589999999,
+      "error": "TimeoutError"
+    },
+    {
+      "ok": false,
+      "status": 200,
+      "fetchResolvedMs": 2617.8027929999953,
+      "ms": 15018.528340999997,
+      "error": "TimeoutError"
+    },
+    {
+      "ok": false,
+      "status": 200,
+      "fetchResolvedMs": 2690.004918000006,
+      "ms": 15018.704507000002,
+      "error": "TimeoutError"
+    },
+    {
+      "ok": false,
+      "status": 200,
+      "fetchResolvedMs": 2844.2264589999977,
+      "ms": 15021.158465,
+      "error": "TimeoutError"
+    },
+    {
+      "ok": false,
+      "status": 200,
+      "fetchResolvedMs": 2647.105334000007,
+      "ms": 15018.493673999998,
+      "error": "TimeoutError"
+    },
+    {
+      "ok": false,
+      "status": 200,
+      "fetchResolvedMs": 2444.587585000001,
+      "ms": 15018.722131999995,
+      "error": "TimeoutError"
+    },
+    {
+      "ok": false,
+      "status": 200,
+      "fetchResolvedMs": 2247.413917999991,
+      "ms": 15017.718131999995,
+      "error": "TimeoutError"
+    },
+    {
+      "ok": false,
+      "status": 200,
+      "fetchResolvedMs": 2098.3945419999945,
+      "ms": 15022.607048999998,
+      "error": "TimeoutError"
+    },
+    {
+      "ok": false,
+      "status": 200,
+      "fetchResolvedMs": 2761.199209000013,
+      "ms": 15018.815007000012,
+      "error": "TimeoutError"
+    },
+    {
+      "ok": false,
+      "status": 200,
+      "fetchResolvedMs": 2339.850126000005,
+      "ms": 15020.031382000001,
+      "error": "TimeoutError"
+    },
+    {
+      "ok": false,
+      "status": 200,
+      "fetchResolvedMs": 2470.7341270000034,
+      "ms": 15021.942840999996,
+      "error": "TimeoutError"
+    },
+    {
+      "ok": false,
+      "status": 200,
+      "fetchResolvedMs": 2270.744709999999,
+      "ms": 15018.792258000001,
+      "error": "TimeoutError"
+    },
+    {
+      "ok": false,
+      "status": 200,
+      "fetchResolvedMs": 2070.0027100000007,
+      "ms": 15017.983299,
+      "error": "TimeoutError"
+    }
+  ]
+}

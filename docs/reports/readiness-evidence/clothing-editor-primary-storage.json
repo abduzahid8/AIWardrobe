@@ -1,0 +1,18 @@
+{
+  "scope": "Primary editor storage path with controlled component tests and actual service against disposable production users",
+  "fullSuite": {
+    "passed": true,
+    "tests": 1041,
+    "suites": 84
+  },
+  "typecheck": "pass",
+  "targetedLint": {
+    "errors": 0,
+    "warnings": 2
+  },
+  "liveChecksPassed": 6,
+  "fixtureAccountsDeleted": 2,
+  "productionEvidence": "production-clothing-editor.json",
+  "nativeVerified": false,
+  "mobileReleased": false
+}

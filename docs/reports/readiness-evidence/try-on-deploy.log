@@ -1,0 +1,4 @@
+Uploading asset (try-on): supabase/functions/try-on/index.ts
+Uploading asset (try-on): supabase/functions/_shared/rateLimit.ts
+Uploading asset (try-on): supabase/functions/_shared/tryOnComposite.ts
+{"project_ref":"fyqpifmrsftsfqibhwhy","functions":["try-on"],"dashboard_url":"https://supabase.com/dashboard/project/fyqpifmrsftsfqibhwhy/functions","message":"Deployed Functions."}

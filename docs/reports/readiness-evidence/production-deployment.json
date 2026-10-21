@@ -1,0 +1,40 @@
+{
+  "project": "fyqpifmrsftsfqibhwhy",
+  "status": "applied_and_verified",
+  "migrations": [
+    "026",
+    "029",
+    "20261015102421_server_rpc_boundaries"
+  ],
+  "localRpcMigration": "030_server_rpc_boundaries.sql",
+  "securitySqlSha256": "33cedf68916289481e88bc60f11da308123f136d9967d31570247a5638c87725",
+  "liveHttpAssertionsPassed": 16,
+  "temporaryAccountsDeleted": 2,
+  "remainingEdgeAndMobileChangesDeployed": false,
+  "edgeHotfix": {
+    "name": "generate-outfits",
+    "version": 70,
+    "verifyJwt": true,
+    "scope": "Response trace fix, safe diagnostics, normalized references and optional authenticated Gemini selection; default routing unchanged",
+    "sourceSha256": "ccf68db80f6f763c95aa1602c4acd1de02162f1b9d4f334ef0d9a3123addaa7e",
+    "denoTypecheck": "passed",
+    "primaryAiSuccessAfterDeployment": "One NVIDIA source:ai response verified; direct Gemini selection still returns 403",
+    "sharedHelper": "backend/supabase/functions/_shared/modelOutfitResponse.ts",
+    "sharedHelperSha256": "8410cf49317dc0b75d8ce71abd94c61333ff7a661f77532ecce62cd890b44acd",
+    "normalizerRegressionTestsPassed": 3
+  },
+  "populatedReadCapacity": {
+    "users": 20,
+    "wardrobeItems": 1000,
+    "savedOutfits": 100,
+    "rps": 40,
+    "durationSeconds": 120,
+    "requests": 4800,
+    "failedRequests": 0,
+    "p95Ms": 469.71875,
+    "p99Ms": 875.206207999996,
+    "temporaryAccountsDeleted": 20
+  },
+  "selectedPrimaryProvider": "Gemini",
+  "geminiCutoverStatus": "prepared locally; not enabled as production default; awaiting key API restriction correction"
+}

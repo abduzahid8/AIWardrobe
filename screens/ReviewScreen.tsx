@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, FlatList, TouchableOpacity, Alert, ActivityIndicator, Image } from 'react-native';
+import { View, FlatList, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,6 +7,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import useAuthStore from '../store/auth';
 import { supabase } from '../lib/supabase';
 import { useTranslation } from 'react-i18next';
+import { Image } from '../src/components/MediaImage';
+
 
 const ReviewRow = React.memo(function ReviewRow({
     item,

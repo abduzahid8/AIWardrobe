@@ -1,0 +1,30 @@
+{
+  "scope": "Native JPEG vs same-native PNG; repository-derived photos, not camera captures",
+  "thresholds": {
+    "meanAbsoluteChannelErrorBelow": 3,
+    "psnrDbAtLeast": 35
+  },
+  "cases": [
+    {
+      "name": "Opaque photo 1",
+      "jpegBytes": 82977,
+      "pngBytes": 456323,
+      "reductionPercent": 81.81616968682272,
+      "meanAbsoluteChannelError": 1.9041019015842011,
+      "psnrDb": 38.50927643261191,
+      "originalUnchanged": true,
+      "passed": true
+    },
+    {
+      "name": "Opaque photo 2",
+      "jpegBytes": 32995,
+      "pngBytes": 164674,
+      "reductionPercent": 79.9634429235945,
+      "meanAbsoluteChannelError": 0.4567616780598958,
+      "psnrDb": 49.19912560647364,
+      "originalUnchanged": true,
+      "passed": true
+    }
+  ],
+  "passed": true
+}

@@ -1,0 +1,54 @@
+{
+  "verifiedAt": "2026-10-18T19:32:07.148488+00:00",
+  "change": "Main outfit screen uses withRequestDeadline and passes AbortSignal to Functions invoke",
+  "targetedTests": 12,
+  "fullTests": 1496,
+  "suites": 131,
+  "typecheck": "pass",
+  "targetedLint": "pass",
+  "scope": "Local actual SDK transport cancellation with mocked network; no server cancellation guarantee or capacity certification",
+  "packaging": "iOS normal Hermes export and Android arm64 release build passed; source maps match current screen, deadline helper and budget helper",
+  "sourceMapChecks": [
+    {
+      "platform": "ios",
+      "source": "screens/AIOutfitmaker.tsx",
+      "exactSourceMatch": true
+    },
+    {
+      "platform": "ios",
+      "source": "src/lib/requestDeadline.ts",
+      "exactSourceMatch": true
+    },
+    {
+      "platform": "ios",
+      "source": "src/utils/outfitBudget.ts",
+      "exactSourceMatch": true
+    },
+    {
+      "platform": "android",
+      "source": "screens/AIOutfitmaker.tsx",
+      "exactSourceMatch": true
+    },
+    {
+      "platform": "android",
+      "source": "src/lib/requestDeadline.ts",
+      "exactSourceMatch": true
+    },
+    {
+      "platform": "android",
+      "source": "src/utils/outfitBudget.ts",
+      "exactSourceMatch": true
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "/private/tmp/aiwardrobe-budget-release-00nhnjcc/AIWardrobe.app/main.jsbundle",
+      "sha256": "386131a240f3e352cd6a0700c69e681364e6a7e2fc54e694c3b45b4c9d24500a"
+    },
+    {
+      "path": "/Users/v.zahid/AIWardrobe/android/app/build/outputs/apk/release/app-release.apk",
+      "sha256": "57176dc3f97102e1783b0463d2c53f7478c49ffb37c0c3a6c057e8825c6bb4eb"
+    }
+  ],
+  "installedOnUserDevice": false
+}

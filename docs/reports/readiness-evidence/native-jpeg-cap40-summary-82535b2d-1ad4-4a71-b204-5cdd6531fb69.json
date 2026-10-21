@@ -1,0 +1,175 @@
+{
+  "runId": "82535b2d-1ad4-4a71-b204-5cdd6531fb69",
+  "scope": "Declared 40-read generator cap at unchanged 2/5/10 RPS; distinct native-JPEG URLs; not 10000 DAU certification",
+  "fixtureBytes": 85077,
+  "fixtureSha256": "69bfad1fe13b19cbf5671f7325ec38e36f96a92232d14362c6dfd92448606d72",
+  "preparationAcknowledgedUploads": 340,
+  "probeControls": [
+    {
+      "region": "ap-northeast-1",
+      "name": "anonymous",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "region": "ap-northeast-1",
+      "name": "other_owner",
+      "status": 403,
+      "passed": true
+    },
+    {
+      "region": "eu-central-1",
+      "name": "anonymous",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "region": "eu-central-1",
+      "name": "other_owner",
+      "status": 403,
+      "passed": true
+    }
+  ],
+  "regions": [
+    {
+      "requestedRegion": "ap-northeast-1",
+      "runtimeRegion": "ap-northeast-1",
+      "responseRegion": "ap-northeast-1",
+      "passed": true,
+      "stages": [
+        {
+          "concurrencyCap": 40,
+          "peakActiveReads": 2,
+          "targetRps": 2,
+          "planned": 20,
+          "completed": 20,
+          "failures": 0,
+          "dropped": 0,
+          "p95Ms": 445.65482300000076,
+          "p95HeadersMs": 438.63291500000014,
+          "p95BodyMs": 14.347313999999642,
+          "bytes": 1701540
+        },
+        {
+          "concurrencyCap": 40,
+          "peakActiveReads": 4,
+          "targetRps": 5,
+          "planned": 50,
+          "completed": 50,
+          "failures": 0,
+          "dropped": 0,
+          "p95Ms": 573.5263110000014,
+          "p95HeadersMs": 571.5553970000001,
+          "p95BodyMs": 80.7709790000008,
+          "bytes": 4253850
+        },
+        {
+          "concurrencyCap": 40,
+          "peakActiveReads": 7,
+          "targetRps": 10,
+          "planned": 100,
+          "completed": 100,
+          "failures": 0,
+          "dropped": 0,
+          "p95Ms": 679.6498900000006,
+          "p95HeadersMs": 589.4892949999994,
+          "p95BodyMs": 75.72436800000287,
+          "bytes": 8507700
+        }
+      ]
+    },
+    {
+      "requestedRegion": "eu-central-1",
+      "runtimeRegion": "eu-central-1",
+      "responseRegion": "eu-central-1",
+      "passed": true,
+      "stages": [
+        {
+          "concurrencyCap": 40,
+          "peakActiveReads": 5,
+          "targetRps": 2,
+          "planned": 20,
+          "completed": 20,
+          "failures": 0,
+          "dropped": 0,
+          "p95Ms": 2205.659374,
+          "p95HeadersMs": 1840.06459,
+          "p95BodyMs": 504.4569279999996,
+          "bytes": 1701540
+        },
+        {
+          "concurrencyCap": 40,
+          "peakActiveReads": 12,
+          "targetRps": 5,
+          "planned": 50,
+          "completed": 50,
+          "failures": 0,
+          "dropped": 0,
+          "p95Ms": 2213.860692,
+          "p95HeadersMs": 1940.5083479999994,
+          "p95BodyMs": 486.99981900000057,
+          "bytes": 4253850
+        },
+        {
+          "concurrencyCap": 40,
+          "peakActiveReads": 22,
+          "targetRps": 10,
+          "planned": 100,
+          "completed": 100,
+          "failures": 0,
+          "dropped": 0,
+          "p95Ms": 2194.280042999999,
+          "p95HeadersMs": 1893.4290349999974,
+          "p95BodyMs": 490.93094700000074,
+          "bytes": 8507700
+        }
+      ]
+    }
+  ],
+  "http200IntegrityVerifiedReads": 340,
+  "verifiedBytes": 28926180,
+  "cacheStatuses": {
+    "MISS": 340
+  },
+  "acceptancePassed": true,
+  "runnerExitCode": 0,
+  "cleanup": {
+    "checks": [
+      {
+        "functionSlug": "readiness-distinct-media-82535b2d-tokyo",
+        "functionDeleted": true
+      },
+      {
+        "functionSlug": "readiness-distinct-media-82535b2d-frankfurt",
+        "functionDeleted": true
+      },
+      {
+        "objectsRemoved": true,
+        "objectsAbsent": true
+      },
+      {
+        "userId": "b17f1ea5-57bc-493d-8ac9-c740952fef17",
+        "deleteSucceeded": true,
+        "userAbsent": true
+      },
+      {
+        "userId": "85c380dc-9715-41d3-917a-ce0eae5584d8",
+        "deleteSucceeded": true,
+        "userAbsent": true
+      }
+    ],
+    "passed": true
+  },
+  "privateConfigAndTemporaryFileAbsent": true,
+  "sourceSha256": {
+    "scripts/load/remote-media-probe.mjs": "c66c1229cebf0cb5edaf8e3121acff9647f155c0272587a04b4b236dbbb4fb57",
+    "scripts/load/distinct-media-diagnostic.mjs": "ac1a8fde85876b3a3777136bfe95e0d34a306ed0d7ba233e593e220a4bbda4e5"
+  },
+  "limitations": [
+    "New read-generator configuration, not a retroactive pass for earlier 20-cap failures",
+    "Short fixed-order stages with one owner/photo, fresh disjoint URL cohorts",
+    "Frankfurt still has approximately 2.2-second p95 latency",
+    "Prior preparation upload failure remains unexplained",
+    "Not native rendering, many-owner sustained capacity, or AI-provider verification"
+  ]
+}

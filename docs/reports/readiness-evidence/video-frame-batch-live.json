@@ -1,0 +1,57 @@
+{
+  "runId": "bc3af386-b2aa-4b66-a55b-6624045a0bbc",
+  "purpose": "one scoped live video batch; not a capacity or video-decoder test",
+  "userId": "72b78d38-dfad-493d-bf68-9730af8a7a99",
+  "usedBefore": 0,
+  "invalidBatch": {
+    "status": 400,
+    "usedAfter": 0
+  },
+  "batch": {
+    "status": 200,
+    "elapsedMs": 18818,
+    "success": true,
+    "frames": [
+      {
+        "frameIndex": 0,
+        "classification": {
+          "category": "jeans",
+          "section": "bottoms",
+          "confidence": 0,
+          "attributes": {
+            "style": "casual",
+            "color": "blue",
+            "material": "denim"
+          }
+        },
+        "description": "A pair of blue jeans."
+      },
+      {
+        "frameIndex": 1,
+        "classification": {
+          "category": "jacket",
+          "section": "outerwear",
+          "confidence": 0,
+          "attributes": {
+            "style": "casual",
+            "color": "brown",
+            "material": null
+          }
+        },
+        "description": "A brown jacket with two chest pockets and a collar, worn over a white shirt and black pants, with brown shoes."
+      }
+    ]
+  },
+  "usedAfter": 1,
+  "cleanup": {
+    "status": 200,
+    "deleted": true
+  },
+  "independentCleanupSQL": {
+    "auth_users": 0,
+    "profiles": 0,
+    "usage_counters": 0,
+    "storage_objects": 0
+  },
+  "semanticAccuracy": "FAIL: photo-1 expected torso jacket; provider returned jeans. API ordering and one-scan metering pass, not garment accuracy."
+}

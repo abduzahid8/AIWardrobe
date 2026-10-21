@@ -1,0 +1,87 @@
+{
+  "verifiedAt": "2026-10-19T02:37:43.013623+00:00",
+  "changes": [
+    "Shared outfit mapping retains authoritative currency with price",
+    "Shared API accepts a typed structured budget cap and preserves it in the request",
+    "Known budget failures carry a whitelisted localization key through the daily outfit hook",
+    "Exhausted daily deck with a failed refresh shows failure and retry rather than preparing forever"
+  ],
+  "tests": {
+    "full": 1540,
+    "suites": 134,
+    "homeActualStatusExpressionRendered": 3,
+    "currencyRegression": "failed before, passes after",
+    "targetedServiceAndHookTests": 16,
+    "typecheck": "pass",
+    "targetedLint": "0 errors;90 existing warnings"
+  },
+  "packaging": {
+    "iosHermes": "pass",
+    "androidArm64Release": "pass",
+    "sourceMapChecks": [
+      {
+        "platform": "ios",
+        "source": "src/services/outfitGenerationService.ts",
+        "exactSourceMatch": true
+      },
+      {
+        "platform": "ios",
+        "source": "hooks/useDailyAIOutfit.ts",
+        "exactSourceMatch": true
+      },
+      {
+        "platform": "ios",
+        "source": "screens/HomeScreen.tsx",
+        "exactSourceMatch": true
+      },
+      {
+        "platform": "ios",
+        "source": "screens/AIOutfitmaker.tsx",
+        "exactSourceMatch": true
+      },
+      {
+        "platform": "ios",
+        "source": "src/services/outfitGenerationFailure.ts",
+        "exactSourceMatch": true
+      },
+      {
+        "platform": "android",
+        "source": "src/services/outfitGenerationService.ts",
+        "exactSourceMatch": true
+      },
+      {
+        "platform": "android",
+        "source": "hooks/useDailyAIOutfit.ts",
+        "exactSourceMatch": true
+      },
+      {
+        "platform": "android",
+        "source": "screens/HomeScreen.tsx",
+        "exactSourceMatch": true
+      },
+      {
+        "platform": "android",
+        "source": "screens/AIOutfitmaker.tsx",
+        "exactSourceMatch": true
+      },
+      {
+        "platform": "android",
+        "source": "src/services/outfitGenerationFailure.ts",
+        "exactSourceMatch": true
+      }
+    ]
+  },
+  "legacyChatBoundary": "OutfitAIScreen source also uses localized failures but is not registered in current RootNavigator or included in release source maps. Do not count as shipped chat coverage.",
+  "scope": "Home status expression rendered with controlled context and actual service/hook tests; not a complete native Home/device navigation test",
+  "userDeviceInstalled": false,
+  "artifacts": [
+    {
+      "path": "/private/tmp/aiwardrobe-budget-release-00nhnjcc/AIWardrobe.app/main.jsbundle",
+      "sha256": "31b3fe75f648e207da3a6c8674e9d22f918290aabc5bb75455f95074eb34c522"
+    },
+    {
+      "path": "/Users/v.zahid/AIWardrobe/android/app/build/outputs/apk/release/app-release.apk",
+      "sha256": "be565142b473bafb4a5e80b7f1ff626dd4bc188bc686263a4abf48bac798f8f0"
+    }
+  ]
+}

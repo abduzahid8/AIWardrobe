@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-21",
+  "change": "30second shared deadline for wardrobe/history session and all page reads, cooperative SDK abort and late-result guards",
+  "before": {
+    "newRegressionFailures": 4,
+    "existingPassed": 13
+  },
+  "validation": {
+    "fullTests": 2134,
+    "suites": 169,
+    "typescript": "pass",
+    "iosHermes": "pass",
+    "androidArm64Release": "pass",
+    "readerAndDeadlineMatchBothMaps": true,
+    "actualProductionReaderReport": "production-owned-read-pagination-deadline.json"
+  },
+  "live": {
+    "garments": 501,
+    "garmentPages": 3,
+    "garmentMs": 1978,
+    "wearLogs": 1001,
+    "wearPages": 5,
+    "wearMs": 2482,
+    "allReadStatuses": 200,
+    "fixtureDeleted": true,
+    "refreshSessionsRevoked": true
+  },
+  "limits": [
+    "Read boundary only; write/persistence waits still separate",
+    "No installed native UI observation or store distribution",
+    "Fixture metadata, not physical garment/photo verification",
+    "One owner,not10k-user capacity"
+  ]
+}

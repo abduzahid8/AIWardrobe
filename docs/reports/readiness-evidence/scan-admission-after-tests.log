@@ -1,0 +1,15 @@
+PASS __tests__/backend/scanAdmission.test.js
+  ✓ scan admission denial 403 cannot reach configuration or providers (69 ms)
+  ✓ scan admission denial 429 cannot reach configuration or providers (34 ms)
+  ✓ scan admission denial 503 cannot reach configuration or providers (27 ms)
+  ✓ invalid scan input is rejected before consuming quota: {} (23 ms)
+  ✓ invalid scan input is rejected before consuming quota: {"image":12,"operation":"classify"} (20 ms)
+  ✓ invalid scan input is rejected before consuming quota: {"image":"AA==","operation":"unknown"} (18 ms)
+  ✓ malformed JSON does not consume quota (20 ms)
+  ✓ provider configuration values are absent from diagnostic logs (19 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       8 passed, 8 total
+Snapshots:   0 total
+Time:        0.495 s, estimated 1 s
+Ran all test suites matching /__tests__\/backend\/scanAdmission.test.js/i.

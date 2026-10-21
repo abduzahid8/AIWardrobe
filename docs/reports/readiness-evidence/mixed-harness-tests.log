@@ -1,0 +1,118 @@
+TAP version 13
+# Subtest: 10k DAU assumptions produce 240k daily requests and a 40 RPS target
+ok 1 - 10k DAU assumptions produce 240k daily requests and a 40 RPS target
+  ---
+  duration_ms: 0.459084
+  type: 'test'
+  ...
+# Subtest: passes valid read paths and records distinct authenticated identities
+ok 2 - passes valid read paths and records distinct authenticated identities
+  ---
+  duration_ms: 177.51175
+  type: 'test'
+  ...
+# Subtest: fails if HTTP 200 contains rows belonging to another user
+ok 3 - fails if HTTP 200 contains rows belonging to another user
+  ---
+  duration_ms: 178.097209
+  type: 'test'
+  ...
+# Subtest: fails HTTP errors and never accepts rate limiting as successful capacity
+ok 4 - fails HTTP errors and never accepts rate limiting as successful capacity
+  ---
+  duration_ms: 177.217333
+  type: 'test'
+  ...
+# Subtest: fails empty inventory and malformed success payloads
+ok 5 - fails empty inventory and malformed success payloads
+  ---
+  duration_ms: 176.378375
+  type: 'test'
+  ...
+# Subtest: multiple semantic failures on one response count as one failed request
+ok 6 - multiple semantic failures on one response count as one failed request
+  ---
+  duration_ms: 176.35
+  type: 'test'
+  ...
+# Subtest: transport diagnostics retain safe codes without credential-bearing messages
+ok 7 - transport diagnostics retain safe codes without credential-bearing messages
+  ---
+  duration_ms: 174.809209
+  type: 'test'
+  ...
+# Subtest: representative app reads include ownership filters and reject missing fixture rows
+ok 8 - representative app reads include ownership filters and reject missing fixture rows
+  ---
+  duration_ms: 354.444958
+  type: 'test'
+  ...
+# Subtest: invalid JSON diagnostics distinguish response decoding from transport failure
+ok 9 - invalid JSON diagnostics distinguish response decoding from transport failure
+  ---
+  duration_ms: 177.902042
+  type: 'test'
+  ...
+# Subtest: an aborted run stops scheduling and cannot pass capacity
+ok 10 - an aborted run stops scheduling and cannot pass capacity
+  ---
+  duration_ms: 1.766542
+  type: 'test'
+  ...
+# Subtest: repeated requests reuse IDs and validate ordinary owner write confirmations
+ok 11 - repeated requests reuse IDs and validate ordinary owner write confirmations
+  ---
+  duration_ms: 151.402875
+  type: 'test'
+  ...
+# Subtest: fails rate_limit
+ok 12 - fails rate_limit
+  ---
+  duration_ms: 151.170459
+  type: 'test'
+  ...
+# Subtest: fails wrong_owner
+ok 13 - fails wrong_owner
+  ---
+  duration_ms: 154.337208
+  type: 'test'
+  ...
+# Subtest: fails invalid_json
+ok 14 - fails invalid_json
+  ---
+  duration_ms: 152.729375
+  type: 'test'
+  ...
+# Subtest: fails transport
+ok 15 - fails transport
+  ---
+  duration_ms: 151.437375
+  type: 'test'
+  ...
+# Subtest: an aborted workload cannot pass
+ok 16 - an aborted workload cannot pass
+  ---
+  duration_ms: 0.406542
+  type: 'test'
+  ...
+# Subtest: dropped scheduled writes prevent capacity success
+ok 17 - dropped scheduled writes prevent capacity success
+  ---
+  duration_ms: 66.814875
+  type: 'test'
+  ...
+# Subtest: transport diagnostics retain safe cause codes without headers or error messages
+ok 18 - transport diagnostics retain safe cause codes without headers or error messages
+  ---
+  duration_ms: 150.884917
+  type: 'test'
+  ...
+1..18
+# tests 18
+# suites 0
+# pass 18
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1632.768833

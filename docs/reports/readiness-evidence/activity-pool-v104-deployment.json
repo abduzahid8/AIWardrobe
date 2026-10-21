@@ -1,0 +1,50 @@
+{
+  "date": "2026-10-21",
+  "baseVersion": 103,
+  "version": 104,
+  "verifyJwt": true,
+  "changed": [
+    "functions/generate-outfits/index.ts"
+  ],
+  "unchangedSharedModules": 10,
+  "allPreparedFilesMatch": true,
+  "validation": {
+    "fullTests": 2097,
+    "suites": 168,
+    "stagedTests": 66,
+    "typescript": "pass",
+    "denoLocal": "pass",
+    "denoStaged": "pass"
+  },
+  "baselineRegressionsFailed": 2,
+  "publicQuery": {
+    "report": "production-activity-pool-query.json",
+    "httpStatuses": [
+      200,
+      200,
+      200
+    ],
+    "counts": {
+      "top": 6,
+      "bottom": 0,
+      "shoes": 0
+    },
+    "invalidCandidates": 0,
+    "latencyMs": 4131
+  },
+  "live": {
+    "report": "v104-workout-activity-admission-live.json",
+    "status": 422,
+    "code": "no_matching_clothing",
+    "latencyMs": 5639,
+    "generatedOutfit": false
+  },
+  "remainingReadinessUsers": 0,
+  "limits": [
+    "Current catalog metadata/rules lack complete verified athletic inventory",
+    "Accurate rejection is not a generated-look success",
+    "No independent physical garment or retailer-stock verification",
+    "No production capacity test",
+    "10000 DAU goal incomplete"
+  ]
+}

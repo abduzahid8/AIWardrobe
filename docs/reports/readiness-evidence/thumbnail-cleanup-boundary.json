@@ -1,0 +1,12 @@
+{
+  "date": "2026-10-17",
+  "targetedTests": 20,
+  "appTests": 1238,
+  "appSuites": 109,
+  "typecheck": "passed",
+  "targetedLint": "passed",
+  "whitespace": "passed",
+  "nativeRuntimeRetested": false,
+  "productionWrites": false,
+  "scope": "Malformed codec result URI deletion boundary; not filesystem substitution or 10000 DAU certification"
+}

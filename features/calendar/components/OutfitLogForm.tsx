@@ -4,21 +4,14 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import {
-    View,
-    Text,
-    Modal,
-    TouchableOpacity,
-    Image,
-    ScrollView,
-    StyleSheet,
-    Dimensions,
-} from 'react-native';
+import { View, Text, Modal, TouchableOpacity, ScrollView, StyleSheet, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
 import { type WardrobeItem, type OccasionId, type ClothingCategory, matchesCategory } from '../types';
 import type { Product } from '../../../src/services/shoppingService';
+import { Image } from '../../../src/components/MediaImage';
+
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SLOT_WIDTH = (SCREEN_WIDTH - 48 - 24) / 3;

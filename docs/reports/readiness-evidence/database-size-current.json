@@ -1,0 +1,12 @@
+{
+  "measuredAt": "2026-10-19T12:47:43.998360+00:00",
+  "method": "pg_database_size and pg_stat_user_tables",
+  "databaseBytes": 104615059,
+  "largestPublicTable": {
+    "name": "clothing_items",
+    "totalBytes": 79790080,
+    "estimatedLiveRows": 109,
+    "estimatedDeadRows": 42
+  },
+  "boundary": "Database files only; does not measure allocated disk, WAL or reconcile historical dashboard disk warning. Row counts are statistics estimates."
+}

@@ -1,0 +1,80 @@
+{
+  "measuredAt": "2026-10-21T09:04:04.150Z",
+  "scope": "One disposable production owner with18real fixture garments: six valid tops, six valid shoes, six formal-ineligible bottoms. Real Auth/catalog/NVIDIA; one USD300 outfit request. No native image/UI or capacity claim.",
+  "checks": [
+    {
+      "name": "one_real_generated_outfit_returned",
+      "passed": true
+    },
+    {
+      "name": "complete_formal_outfit_passes_shared_rules",
+      "passed": true
+    },
+    {
+      "name": "ineligible_owned_bottoms_are_not_returned",
+      "passed": true
+    },
+    {
+      "name": "shop_supplement_supplies_the_missing_bottom",
+      "passed": true
+    },
+    {
+      "name": "returned_product_fields_match_owned_and_active_catalog_rows",
+      "passed": true
+    },
+    {
+      "name": "catalog_spend_respects_exact_request_budget",
+      "passed": true
+    }
+  ],
+  "response": {
+    "status": 200,
+    "latencyMs": 12093,
+    "error": null,
+    "code": null,
+    "provider": "nvidia:meta/llama-3.2-11b-vision-instruct",
+    "providerAttempts": [
+      {
+        "provider": "nvidia",
+        "model": "meta/llama-3.2-11b-vision-instruct",
+        "status": "ok"
+      }
+    ]
+  },
+  "budget": {
+    "spendUzs": 1499900,
+    "capUzs": 3603690,
+    "reference": "CBU:2026-10-21:12012.3:13466.99:16026.81"
+  },
+  "items": [
+    {
+      "id": "9816a8f5-b3f2-4672-ac67-3b66503ce6be",
+      "name": "White long sleeve cotton shirt",
+      "slot": "top",
+      "source": "owned",
+      "price": null,
+      "currency": null
+    },
+    {
+      "id": "shop_zara-uz-584711337",
+      "name": "100% WOOL REGULAR FIT SUIT TROUSERS",
+      "slot": "bottom",
+      "source": "catalog",
+      "price": 1499900,
+      "currency": "UZS"
+    },
+    {
+      "id": "92be9a3d-6c3c-4a9a-8fe4-6719a480847b",
+      "name": "Brown leather penny loafers",
+      "slot": "shoes",
+      "source": "owned",
+      "price": null,
+      "currency": null
+    }
+  ],
+  "cleanup": {
+    "refreshSessionsRevoked": true,
+    "userDeleted": true
+  },
+  "passed": true
+}

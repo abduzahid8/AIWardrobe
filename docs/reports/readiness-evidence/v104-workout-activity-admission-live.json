@@ -1,0 +1,36 @@
+{
+  "measuredAt": "2026-10-21T02:24:53.457Z",
+  "scope": "Live NVIDIA category/budget scenarios; not exhaustive accuracy or capacity certification",
+  "checks": [
+    {
+      "name": "workout_400_usd",
+      "status": 422,
+      "error": "The selected clothing pool has no complete outfit suitable for this activity.",
+      "code": "no_matching_clothing",
+      "latencyMs": 5639,
+      "passed": false,
+      "reasons": [
+        "generation_http_422"
+      ],
+      "spendUzs": 0,
+      "capUzs": 4804920,
+      "items": []
+    }
+  ],
+  "reference": {
+    "id": "CBU:2026-10-21:12012.3:13466.99:16026.81",
+    "source": "CBU",
+    "asOf": "2026-10-21",
+    "fetchedAt": "2026-10-21T01:51:20.012Z",
+    "uzsPerUnit": {
+      "USD": 12012.3,
+      "EUR": 13466.99,
+      "GBP": 16026.81,
+      "UZS": 1
+    }
+  },
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

@@ -1,0 +1,144 @@
+{
+  "measuredAt": "2026-10-15T09:51:10.083Z",
+  "scope": "Production temporary-account wardrobe, outfit, calendar CRUD and two-user isolation; no provider calls or existing-user writes",
+  "checks": [
+    {
+      "name": "clothing_items_create",
+      "status": 201,
+      "passed": true
+    },
+    {
+      "name": "clothing_items_persists",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "clothing_items_other_user_cannot_read",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "clothing_items_other_user_cannot_update",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "clothing_items_other_user_cannot_delete",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "clothing_items_other_user_cannot_insert_for_owner",
+      "status": 403,
+      "passed": true,
+      "code": "42501"
+    },
+    {
+      "name": "clothing_items_owner_update_persists",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "clothing_items_owner_delete_persists",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "saved_outfits_create",
+      "status": 201,
+      "passed": true
+    },
+    {
+      "name": "saved_outfits_persists",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "saved_outfits_other_user_cannot_read",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "saved_outfits_other_user_cannot_update",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "saved_outfits_other_user_cannot_delete",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "saved_outfits_other_user_cannot_insert_for_owner",
+      "status": 403,
+      "passed": true,
+      "code": "42501"
+    },
+    {
+      "name": "saved_outfits_owner_update_persists",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "saved_outfits_owner_delete_persists",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "wear_logs_create",
+      "status": 201,
+      "passed": true
+    },
+    {
+      "name": "wear_logs_persists",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "wear_logs_other_user_cannot_read",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "wear_logs_other_user_cannot_update",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "wear_logs_other_user_cannot_delete",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "wear_logs_other_user_cannot_insert_for_owner",
+      "status": 403,
+      "passed": true,
+      "code": "42501"
+    },
+    {
+      "name": "wear_logs_owner_update_persists",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "wear_logs_owner_delete_persists",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "profile_client_cannot_self_grant_paid_tier",
+      "status": 200,
+      "passed": false
+    }
+  ],
+  "cleanup": [
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    }
+  ]
+}

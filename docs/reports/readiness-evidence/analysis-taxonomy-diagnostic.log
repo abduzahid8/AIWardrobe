@@ -1,0 +1,62 @@
+{
+  "measuredAt": "2026-10-19T12:21:49.035Z",
+  "scope": "One direct NVIDIA call through actual source request/parser/validator; no hosted admission or visual-accuracy claim",
+  "observation": {
+    "providerHttpStatus": 200,
+    "finishReason": "stop",
+    "contentLength": 903,
+    "arrayParsed": true,
+    "items": [
+      {
+        "index": 0,
+        "taxonomy": {
+          "category": "tops",
+          "section": "tops"
+        },
+        "invalidFields": [
+          "category",
+          "section"
+        ],
+        "missingFields": []
+      },
+      {
+        "index": 1,
+        "taxonomy": {
+          "category": "outerwear",
+          "section": "outerwear"
+        },
+        "invalidFields": [
+          "category",
+          "section"
+        ],
+        "missingFields": []
+      },
+      {
+        "index": 2,
+        "taxonomy": {
+          "category": "bottoms",
+          "section": "bottoms"
+        },
+        "invalidFields": [
+          "category",
+          "section"
+        ],
+        "missingFields": []
+      },
+      {
+        "index": 3,
+        "taxonomy": {
+          "category": "accessories",
+          "section": "accessories"
+        },
+        "invalidFields": [
+          "category",
+          "section"
+        ],
+        "missingFields": []
+      }
+    ],
+    "schemaValid": false
+  },
+  "latencyMs": 17241
+}

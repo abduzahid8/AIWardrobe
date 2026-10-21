@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, TouchableOpacity, Modal, StyleSheet, Animated, Image,  } from 'react-native'
+import { View, TouchableOpacity, Modal, StyleSheet, Animated } from 'react-native';
 import { ScaledText } from './ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -7,6 +7,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { DESIGNER_STYLES, DesignerStyle } from '../src/styles/designerStyles';
 import { colors, shadows, spacing } from '../src/theme';
+import { Image } from '../src/components/MediaImage';
+
 
 const STYLE_STORAGE_KEY = '@selected_style';
 

@@ -1,0 +1,34 @@
+{
+  "scope": "Rendered actual SignIn/SignUp components; captured callbacks invoked in one React render; auth actions mocked, no provider API calls",
+  "before": {
+    "tests": 10,
+    "failed": 8,
+    "passed": 2
+  },
+  "after": {
+    "newCasesPassed": 10,
+    "focusedIncludingVisibilityRegression": 12,
+    "fullTestsPassed": 1402,
+    "fullSuitesPassed": 122,
+    "typecheckPassed": true,
+    "eslintErrors": 0,
+    "preexistingScreenWarnings": 13
+  },
+  "casesPerScreen": [
+    "Duplicate Google callbacks admit one pending action",
+    "Duplicate Apple callbacks admit one pending action",
+    "Captured Apple callback blocked after Google admission",
+    "Provider cancellation allows an explicit retry",
+    "Duplicate valid email callbacks admit one pending action"
+  ],
+  "sourceSha256": {
+    "screens/SignInScreen.tsx": "ace56a2237b79dec006a8447b52b5da2bfda16cb3e9e3246077ca4d732df6a5f",
+    "screens/SignUpScreen.tsx": "baad0350aef9401adcc85cf75fb60a86d95fcb3ab23000676aaf20e23184b6d8",
+    "__tests__/components/authSubmissionAdmission.test.tsx": "70b38ca124aa36ce49ca08d081f11fc50f9330685babf8da664e56076159ed4a"
+  },
+  "limitations": [
+    "Per-screen admission; existing store auth queue remains responsible across instances/actions",
+    "Tests do not complete live OAuth, email registration or sign-in",
+    "Not full UI, auth capacity or 10000 DAU certification"
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "verifiedAt": "2026-10-19T17:20:02.933912+00:00",
+  "changes": [
+    "Copy native queued media into owner-specific Documents directory before persistence acknowledgment",
+    "14MiB image/100MiB video bounds checked before copying; copied/committed size verified; collision rejected",
+    "Rebase managed queue URI after container change; foreign owner rejected",
+    "Persist queue removal before managed-file cleanup; arbitrary picker/camera files never deleted",
+    "Independent serialized pending-scan cleanup joins account-boundary cleanup"
+  ],
+  "checks": {
+    "osProcessRestart": {
+      "measuredAt": "2026-10-19T13:26:25.557Z",
+      "codeSha256": "847011885d1417314ec9e3528e36359cd92ec281aebd61654aab7e2a6337e160",
+      "processRestart": true,
+      "originalSourcesEvicted": true,
+      "oldContainerAbsent": true,
+      "restoredByteHashesMatch": true,
+      "imageAndVideoCopies": 2,
+      "otherOwnerBlocked": true,
+      "managedCleanup": true,
+      "partialCopyRejected": true,
+      "accountSwitchDuringCopyRejected": true,
+      "oversizeRejectedBeforeCopy": true,
+      "fixtures": [
+        {
+          "type": "image",
+          "sha256": "2d47a0ac74bd074352bb446576e38d54ca5339ca3b8687cbc78812ca1f80a717",
+          "bytes": 666026
+        },
+        {
+          "type": "video",
+          "sha256": "5ae9782017a68037004b2bf806c77d324db4d915ed3725d84eb3121b2ad16061",
+          "bytes": 1048576
+        }
+      ],
+      "scope": "Actual filesystem and child-process restart through Expo adapter; synthetic video bytes are not video-decoder or device evidence"
+    },
+    "nativeQueueDelegationTest": true,
+    "fullJestTests": 1774,
+    "fullJestSuites": 148,
+    "typescript": true,
+    "sourceMapMatches": {
+      "ios": {
+        "src/services/pendingScanMedia.ts": true,
+        "src/features/wardrobe/useVideoAnalysis.ts": true,
+        "src/services/uploadQueueProcessor.ts": true,
+        "src/lib/persistence.ts": true
+      },
+      "android": {
+        "src/services/pendingScanMedia.ts": true,
+        "src/features/wardrobe/useVideoAnalysis.ts": true,
+        "src/services/uploadQueueProcessor.ts": true,
+        "src/lib/persistence.ts": true
+      }
+    }
+  },
+  "sourceHashes": {
+    "src/services/pendingScanMedia.ts": "6eef4b1da04f354e0df1b2980a7198198224228990c0140bdfc1932bd5bc98c5",
+    "src/features/wardrobe/useVideoAnalysis.ts": "71d80ccd0e939368c5885878518e2622125eaad64d9268978fff3b02baaf5cb9",
+    "src/services/uploadQueueProcessor.ts": "01601baf64632da698c6d2ad83063ce1fea7649285af36afd54949645483e85c",
+    "src/lib/persistence.ts": "ca76579e4ef4dddf62306d39a8332a235ef349c4ac589a5537c916496ed5e6a4"
+  },
+  "artifacts": {
+    "ios": {
+      "path": "/tmp/aiwardrobe-budget-release-00nhnjcc/AIWardrobe.app/main.jsbundle",
+      "bytes": 6955000,
+      "sha256": "a1b572783c107824e726cbe923cb1e12aff258f87dbd7dd2b6a4ce712d15df8b"
+    },
+    "android": {
+      "path": "/Users/v.zahid/AIWardrobe/android/app/build/outputs/apk/release/app-release.apk",
+      "bytes": 66058730,
+      "sha256": "6f876b58e5713f77a7cc0512c5c387562d64bf1510671c423c3a07aaa388c96a"
+    }
+  },
+  "docsReference": "https://docs.expo.dev/versions/v57.0.0/sdk/filesystem-legacy/",
+  "limitations": [
+    "OS restart probe uses Expo-shaped Node filesystem adapter, not native Expo execution",
+    "Video fixture is synthetic copy bytes, not real video decoding evidence",
+    "Full app queue hydration/restart, exhausted-entry UI/manual retry, legacy unowned entries and native content URI behavior remain unverified",
+    "Orphan reconciliation after interruption between file commit and queue persistence remains open",
+    "No live model call or 10k DAU certification"
+  ]
+}

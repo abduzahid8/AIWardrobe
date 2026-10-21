@@ -1,0 +1,56 @@
+{
+  "beforeVersion": 97,
+  "afterVersion": 98,
+  "verifyJwt": true,
+  "changed": [
+    "functions/generate-outfits/index.ts"
+  ],
+  "unchangedSharedModules": 10,
+  "stagedReadbackMatches": true,
+  "date": "2026-10-20",
+  "scope": "NVIDIA generation transport deadline and failure diagnostics",
+  "baseline": {
+    "targetedTestsFailed": 4,
+    "targetedTestsPassed": 8
+  },
+  "verification": {
+    "fullTests": 2045,
+    "suites": 166,
+    "stagedChecks": 48,
+    "typeScript": "passed",
+    "deno": "passed"
+  },
+  "behavior": {
+    "deadlineMs": 45000,
+    "boundedStages": [
+      "fetch headers",
+      "response JSON body"
+    ],
+    "failureStatuses": [
+      "timeout",
+      "network_error",
+      "invalid_response"
+    ],
+    "cancellation": "Deadline rejects independently and aborts cooperative transport"
+  },
+  "limits": [
+    "Does not make NVIDIA always available or accurate",
+    "Earlier historical timeout traces cannot distinguish exception causes",
+    "No native runtime changes; no new native build required",
+    "No 10000-DAU certification"
+  ],
+  "liveRecheck": {
+    "report": "nvidia-casual-deadline-after.json",
+    "status": 503,
+    "latencyMs": 68648,
+    "attemptStatuses": [
+      "ok",
+      "timeout"
+    ]
+  },
+  "independentCleanup": {
+    "auditUsersRemaining": 0,
+    "authUsers": 111,
+    "profiles": 111
+  }
+}

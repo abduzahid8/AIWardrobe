@@ -1,0 +1,44 @@
+{
+  "projectRef": "fyqpifmrsftsfqibhwhy",
+  "migration": "20261019030552_bounded_usage_retention.sql",
+  "sha256": "5b4e2fcec1094b46c26e9436c9d01ab61bf715df912ec02203fb4721cfe57d47",
+  "deployed": true,
+  "batchRows": 10000,
+  "retainedUtcDays": "today and previous two days",
+  "schedule": "once per minute",
+  "jobHistoryRetentionDays": 7,
+  "runtimeVerification": {
+    "recent_runs": [
+      {
+        "status": "succeeded",
+        "end_time": "2026-10-19T03:07:00.085623+00:00",
+        "start_time": "2026-10-19T03:07:00.076811+00:00",
+        "return_message": "DELETE 0"
+      }
+    ],
+    "client_can_prune": false,
+    "retention_index_exists": true,
+    "cleanup_remaining_users": 0
+  },
+  "liveFixtureEvidence": "production-usage-retention.json",
+  "localReplay": {
+    "passed": true,
+    "database": "aiwardrobe_readiness_1792379172757491000",
+    "retentionAssertions": "10005 expired rows: first batch removes 10000, second removes 5; all three retained-day rows unchanged; client execution denied",
+    "seedUsers": 10000,
+    "seedGarments": 500000,
+    "seedOutfits": 50000,
+    "quotaAndRevenueCatConcurrencyPassed": true,
+    "scheduler": "pg_cron unavailable in local Postgres; actual scheduler verified on production instead",
+    "clusterStopped": true
+  },
+  "limitations": [
+    "One bounded scheduled live fixture run, not a long-running retention capacity soak.",
+    "Production had zero usage counters before deployment; no customer history was deleted by the verification.",
+    "NVIDIA throughput, paid generation integration and other readiness gaps remain open."
+  ],
+  "fullAppTests": {
+    "passed": 1571,
+    "suites": 138
+  }
+}

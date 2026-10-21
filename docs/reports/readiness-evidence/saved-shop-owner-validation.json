@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-17",
+  "scope": "Saved-shop cache durable owner validation and synchronous identity-change invalidation",
+  "storageFormat": {
+    "key": "savedInspo",
+    "version": 1,
+    "ownerId": "authenticated user ID",
+    "items": "saved catalog items"
+  },
+  "newOwnershipTests": 8,
+  "totalSavedShopStoreTests": 15,
+  "appTests": 1279,
+  "appSuites": 114,
+  "typecheck": "passed",
+  "lint": {
+    "errors": 0,
+    "warnings": 6,
+    "kind": "lazy require in tests"
+  },
+  "whitespace": "passed",
+  "storageBoundary": "Jest AsyncStorage mock with actual store; fresh isolated module registry for startup identity test",
+  "initialFullRun": {
+    "passed": 1278,
+    "failed": 1,
+    "reason": "New fresh-module test used .default on CommonJS AsyncStorage mock; corrected test import, final full suite passed"
+  },
+  "sourceSha256": {
+    "store/savedShopStore.ts": "f41c02b5d95394d89bc25f2949381da85a1abc7f687054683f08df623798b7c8",
+    "store/authEvents.ts": "4a276d38e09fc9b2fe577b0dcb8361ab450eadda454ba36cc8f299a1bbbb30c3",
+    "__tests__/store/savedShopIsolation.test.ts": "a8242e8378d60dd9c2a98a68fe01e74ac2586151867486de88ff5cb04d11bd1b",
+    "__tests__/lib/persistence.test.ts": "e519acee9aae71b5f3c838e01e1d0a1fe7eca122c18fc43a4ee4ab23eb88a6fc"
+  },
+  "legacyPolicy": "Untagged legacy arrays are not assigned to any account; no owner can be verified",
+  "productionRequests": false,
+  "newNativeBuild": false,
+  "remaining": [
+    "Native restart/process-death validation",
+    "Broader shared-device caches and global cleanup overlapping a new login",
+    "Best-effort saved-shop write durability",
+    "Saved-shop mutation before initial hydration may overwrite existing own cache"
+  ]
+}

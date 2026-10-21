@@ -1,0 +1,22 @@
+{
+  "date": "2026-10-20",
+  "tests": 1866,
+  "suites": 153,
+  "typescript": "pass",
+  "iosHermes": "pass",
+  "androidArm64Release": "pass",
+  "sourceMapMatches": {
+    "ios": true,
+    "android": true
+  },
+  "newCases": [
+    "Duplicate candidate IDs",
+    "Invalid timestamp",
+    "Invalid source ID",
+    "Review-ID collision preserves original",
+    "Candidate-ID collision prevents publication"
+  ],
+  "freshProcessEvidence": "scan-review-restart.json",
+  "scope": "Local storage integrity; not native power loss, full shipping UI or AI accuracy/capacity",
+  "readiness": "not certified; goal active"
+}

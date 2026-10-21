@@ -1,0 +1,21 @@
+{
+  "measuredAt": "2026-10-19T07:22:55.611Z",
+  "scope": "Empty body only; dedicated secret absent; no billing reads or writes",
+  "checks": [
+    {
+      "name": "missing",
+      "status": 503,
+      "configurationBlocked": true
+    },
+    {
+      "name": "invalid",
+      "status": 503,
+      "configurationBlocked": true
+    },
+    {
+      "name": "public_sdk_key",
+      "status": 503,
+      "configurationBlocked": true
+    }
+  ]
+}

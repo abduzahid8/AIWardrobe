@@ -1,0 +1,65 @@
+{
+  "measuredAt": "2026-10-19T06:41:34.865Z",
+  "scope": "Bounded production generation rate gate; invalid budgets prevent all AI calls",
+  "checks": [
+    {
+      "name": "cors_preflight_not_metered",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "anon_not_authenticated",
+      "passed": true,
+      "status": 401
+    },
+    {
+      "name": "concurrent_requests_capped_at_ten_per_window",
+      "passed": true,
+      "statuses": [
+        400,
+        400,
+        429,
+        400,
+        400,
+        429,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400
+      ],
+      "allowed": 10,
+      "denied": 2
+    },
+    {
+      "name": "second_user_has_independent_allowance",
+      "passed": true,
+      "status": 400
+    },
+    {
+      "name": "only_rate_admitted_attempts_reach_paid_meter",
+      "passed": true,
+      "counters": [
+        {
+          "feature": "rl:generate-outfits:1792392060000",
+          "used": 12
+        },
+        {
+          "feature": "edge:aiOutfits",
+          "used": 10
+        }
+      ]
+    }
+  ],
+  "cleanup": [
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    }
+  ]
+}

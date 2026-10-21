@@ -1,0 +1,36 @@
+{
+  "package": "fast-uri",
+  "before": "3.1.7",
+  "after": "3.1.8",
+  "advisory": "https://github.com/advisories/GHSA-hrr3-gc8f-f4qj",
+  "lockChangedPackages": [
+    "node_modules/fast-uri"
+  ],
+  "advisoryRegressions": {
+    "beforeFailed": 1,
+    "afterPassed": 6
+  },
+  "fullTests": 1571,
+  "suites": 138,
+  "typescript": "passed",
+  "iosNormalHermesExport": "passed",
+  "androidArm64Release": "passed",
+  "auditBefore": {
+    "high": 84,
+    "moderate": 22,
+    "total": 106
+  },
+  "auditAfter": {
+    "high": 82,
+    "moderate": 21,
+    "total": 103
+  },
+  "remainingOptionalTreeResidues": [
+    "@emnapi/runtime",
+    "@img/sharp-wasm32"
+  ],
+  "limitations": [
+    "Other advisories remain open.",
+    "No customer release installation or production deployment in this dependency patch."
+  ]
+}

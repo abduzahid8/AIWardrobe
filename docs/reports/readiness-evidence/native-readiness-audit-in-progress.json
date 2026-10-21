@@ -1,0 +1,54 @@
+{
+  "deviceId": "E9DCCF8A-976A-4B6C-870E-DC0C57C459DC",
+  "bundleSha256": "a1b572783c107824e726cbe923cb1e12aff258f87dbd7dd2b6a4ce712d15df8b",
+  "recordedAt": "2026-10-19T17:55:55.410597+00:00",
+  "fixtureRunId": "a44e7035-d490-47ea-81e5-b96a43c54adf",
+  "nativeEmailSignIn": {
+    "initial": "NSURLErrorDomain -1005; no server session",
+    "controlledRetest": "style quiz then Home; server session count1"
+  },
+  "localValidation": [
+    "empty email rejected",
+    "malformed email rejected",
+    "empty password rejected"
+  ],
+  "nativePhotoSelection": "user selected first known beige-jacket photo",
+  "nativeScan": {
+    "providerDescription": "A beige shirt with a collar and two chest pockets.",
+    "accuracy": "FAIL: shirt versus expected jacket",
+    "manualCorrection": "outerwear selected before save",
+    "save": "success alert, Closet card and production row verified",
+    "privateStorageObjects": 2
+  },
+  "coldStartBeforeFix": "FAIL: authenticated but completed style quiz repeated",
+  "localization": "48 editor color labels resolve in en/ru/uz; corrected original-photo dialog copy",
+  "fixtureCleanup": {
+    "authenticatedDeleteAccountHTTP": 200,
+    "independentSQL": {
+      "auth_users": 0,
+      "profiles": 0,
+      "clothing_items": 0,
+      "storage_objects": 0
+    },
+    "auditSimulator": "shutdown and deleted; original user simulator untouched"
+  },
+  "status": "completed scoped native audit; full readiness not certified",
+  "coldStartAfterFix": {
+    "result": "PASS: terminated app, relaunched directly to Home; saved outerwear reopened from Closet",
+    "mechanism": "Only initialization may reuse matching stamped owner caches; pending cleanup and signout barriers remain; absent/mismatched stamp resets caches",
+    "migrationLimit": "Previously erased quiz answers cannot be recovered; unowned legacy caches reset once"
+  },
+  "verification": {
+    "authTests": 102,
+    "typecheck": "pass",
+    "iosHermes": "pass",
+    "androidArm64Release": "pass",
+    "runtimeSourceMaps": "store/auth.ts and src/lib/persistence.ts exact matches both platforms",
+    "fullSuite": {
+      "tests": 1778,
+      "suites": 148,
+      "result": "pass"
+    }
+  },
+  "finalBundleSha256": "323d2d788bf41871e30afd0dc4e65ef546aeccb5e95ab91eda2a34d9ee0afcb8"
+}

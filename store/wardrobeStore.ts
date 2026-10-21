@@ -11,6 +11,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createDebouncedStorage } from '../src/lib/debouncedStorage';
+import logger from '../src/utils/logger';
 
 import type { ClothingItem } from '../src/types/domain';
 import type { PendingAction } from './wardrobeSyncService';
@@ -25,50 +27,19 @@ import { createOutfitGeneratorSlice, type OutfitGeneratorSlice } from './slices/
 // DEBOUNCED STORAGE ADAPTER
 // ============================================
 
-/**
- * Wraps AsyncStorage with a debounced `setItem` so that high-frequency
- * mutations (e.g. toggleFavorite) do not trigger synchronous JSON
- * serialization on every tap.  Writes are coalesced and flushed at most
- * once per `delay` ms.  `getItem` and `removeItem` pass through immediately
- * so state is always restored correctly on app restart.
- */
-const createDebouncedStorage = (delay = 500) => {
-    // One timer per storage key so concurrent keys don't interfere.
-    const timers: Record<string, ReturnType<typeof setTimeout>> = {};
+const debouncedStorage = createDebouncedStorage(AsyncStorage, 500, error => logger.warn('Wardrobe persistence failed', error));
 
-    return {
-        getItem: (name: string): Promise<string | null> =>
-            AsyncStorage.getItem(name),
-
-        setItem: (name: string, value: string): Promise<void> => {
-            if (timers[name]) {
-                clearTimeout(timers[name]);
-            }
-            return new Promise<void>((resolve) => {
-                timers[name] = setTimeout(() => {
-                    delete timers[name];
-                    AsyncStorage.setItem(name, value).then(() => resolve());
-                }, delay);
-            });
-        },
-
-        removeItem: (name: string): Promise<void> => {
-            if (timers[name]) {
-                clearTimeout(timers[name]);
-                delete timers[name];
-            }
-            return AsyncStorage.removeItem(name);
-        },
-    };
-};
-
-const debouncedStorage = createDebouncedStorage(500);
+export const clearWardrobePersistence = () => debouncedStorage.removeItem('wardrobe-storage');
+export const flushWardrobePersistence = () => debouncedStorage.flush();
 
 // Wrap the debounced storage with createJSONStorage so Zustand's persist
 // middleware serializes state to JSON before calling setItem (and deserializes
 // on getItem). Without this wrapper, persist passes the raw state object to
 // setItem, which causes the AsyncStorage "value is not a string" warning.
-const debouncedJSONStorage = createJSONStorage(() => debouncedStorage as any);
+const jsonStorage = createJSONStorage(() => debouncedStorage);
+const debouncedJSONStorage = jsonStorage
+    ? Object.assign(jsonStorage, { flush: () => debouncedStorage.flush() })
+    : undefined;
 
 // ============================================
 // COMPOSED STATE TYPE
@@ -116,12 +87,14 @@ const useWardrobeStore = create<WardrobeState>()(
             partialize: (state) => ({
                 items: state.items,
                 outfits: state.outfits,
-                wearLogs: state.wearLogs.slice(0, 1000),
+                wearLogs: state.wearLogs,
                 dailySuggestion: state.dailySuggestion,
                 streak: state.streak,
                 lastWearDate: state.lastWearDate,
                 lastSyncedAt: state.lastSyncedAt,
                 pendingActions: state.pendingActions,
+                wardrobeCapacityIssue: state.wardrobeCapacityIssue,
+                pendingReviewAcknowledgements: state.pendingReviewAcknowledgements,
                 dislikedOutfitKeys: state.dislikedOutfitKeys,
             }),
         }

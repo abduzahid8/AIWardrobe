@@ -1,0 +1,266 @@
+{
+  "measuredAt": "2026-10-16T23:57:19.066Z",
+  "scope": "20 disposable owners; 40 wear-log upserts/second for 30 seconds; paired retries; excludes AI/uploads/native",
+  "verification": [
+    {
+      "expectedDistinctLogs": 30,
+      "actualLogs": 30,
+      "actualWearCount": 30,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 30,
+      "actualLogs": 30,
+      "actualWearCount": 30,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 30,
+      "actualLogs": 30,
+      "actualWearCount": 30,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 30,
+      "actualLogs": 30,
+      "actualWearCount": 30,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 30,
+      "actualLogs": 30,
+      "actualWearCount": 30,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 30,
+      "actualLogs": 30,
+      "actualWearCount": 30,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 30,
+      "actualLogs": 30,
+      "actualWearCount": 30,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 30,
+      "actualLogs": 30,
+      "actualWearCount": 30,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 30,
+      "actualLogs": 30,
+      "actualWearCount": 30,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 30,
+      "actualLogs": 30,
+      "actualWearCount": 30,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 30,
+      "actualLogs": 30,
+      "actualWearCount": 30,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 30,
+      "actualLogs": 30,
+      "actualWearCount": 30,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 30,
+      "actualLogs": 30,
+      "actualWearCount": 30,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 30,
+      "actualLogs": 30,
+      "actualWearCount": 30,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 30,
+      "actualLogs": 30,
+      "actualWearCount": 30,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 30,
+      "actualLogs": 30,
+      "actualWearCount": 30,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 30,
+      "actualLogs": 30,
+      "actualWearCount": 30,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 30,
+      "actualLogs": 30,
+      "actualWearCount": 30,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 30,
+      "actualLogs": 30,
+      "actualWearCount": 30,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 30,
+      "actualLogs": 30,
+      "actualWearCount": 30,
+      "passed": true
+    }
+  ],
+  "cleanup": [
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    }
+  ],
+  "load": {
+    "planned": 1200,
+    "completed": 1200,
+    "failed": 0,
+    "dropped": 0,
+    "elapsedSec": 30.343121084000003,
+    "achievedRps": 39.54767858843508,
+    "statuses": {
+      "200": 600,
+      "201": 600
+    },
+    "failures": {},
+    "failureDetails": [],
+    "latencyMs": {
+      "p50": 381.265625,
+      "p95": 659.8557500000024,
+      "p99": 1121.828540999999
+    },
+    "aborted": false,
+    "diagnostics": {
+      "errorTypes": {},
+      "tenSecondWindows": {
+        "0": {
+          "attempted": 400,
+          "failed": 0
+        },
+        "1": {
+          "attempted": 400,
+          "failed": 0
+        },
+        "2": {
+          "attempted": 400,
+          "failed": 0
+        }
+      },
+      "maxScheduleLagMs": 6.482999999996537,
+      "wallElapsedMs": 30345,
+      "eventLoopDelayMs": {
+        "mean": 20.63501226957114,
+        "max": 25.657343
+      },
+      "upstreamHeaderSamples": 1200,
+      "upstreamHeaderMaxMs": 924,
+      "runtime": {
+        "node": "v22.23.2",
+        "platform": "darwin",
+        "arch": "arm64"
+      }
+    },
+    "passed": true
+  },
+  "passed": true,
+  "independentCleanupVerification": {
+    "readinessAccounts": 0,
+    "garments": 109,
+    "wearLogs": 0,
+    "cumulativeDatabaseDeadlocks": 0
+  }
+}

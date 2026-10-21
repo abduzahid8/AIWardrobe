@@ -1,0 +1,55 @@
+{
+  "measuredAt": "2026-10-19T02:49:15.342Z",
+  "scope": "Live authenticated supplied-catalog path; not exhaustive accuracy or capacity certification",
+  "checks": [
+    {
+      "name": "business_250_usd",
+      "status": 200,
+      "latencyMs": 3696,
+      "passed": true,
+      "reasons": [],
+      "spendUzs": 2549800,
+      "capUzs": 3150000,
+      "provider": "nvidia:meta/llama-3.2-11b-vision-instruct",
+      "source": "ai",
+      "items": [
+        {
+          "id": "shop_md-uz-62246011",
+          "name": "100% cotton V-neck knit polo shirt",
+          "macroCategory": "top",
+          "price": 800000,
+          "currency": "UZS",
+          "shopUrl": "https://www.massimodutti.com/uz/en/100-cotton-vneck-knit-polo-l00837175?pelement=62246011"
+        },
+        {
+          "id": "shop_zara-uz-557829873",
+          "name": "100% WOOL PINSTRIPE REGULAR FIT SUIT TROUSERS",
+          "macroCategory": "bottom",
+          "price": 1099900,
+          "currency": "UZS",
+          "shopUrl": "https://www.zara.com/uz/en/100-wool-pinstripe-regular-fit-suit-trousers-p01564771.html?v1=557829873"
+        },
+        {
+          "id": "shop_zara-uz-545409746",
+          "name": "CASUAL LEATHER LOAFERS WITH TASSELS",
+          "macroCategory": "shoes",
+          "price": 649900,
+          "currency": "UZS",
+          "shopUrl": "https://www.zara.com/uz/en/casual-leather-loafers-with-tassels-p12651720.html?v1=545409746"
+        }
+      ],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "meta/llama-3.2-11b-vision-instruct",
+          "status": "ok"
+        }
+      ]
+    }
+  ],
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  },
+  "independentRemainingFixtures": 0
+}

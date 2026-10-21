@@ -1,0 +1,32 @@
+{
+  "beforeVersion": 96,
+  "afterVersion": 97,
+  "verifyJwt": true,
+  "changed": [
+    "functions/generate-outfits/index.ts",
+    "functions/_shared/outfitBudgetFeedback.ts"
+  ],
+  "unchangedSharedModules": 9,
+  "allStagedFilesMatch": true,
+  "date": "2026-10-20",
+  "scope": "Correction suggestions obey existing per-item style, climate and activity checks",
+  "tests": {
+    "full": 2041,
+    "suites": 166,
+    "staged": 43,
+    "typeScript": "passed",
+    "deno": "passed"
+  },
+  "baseline": {
+    "normalCatalogCasual": "503 after over-budget first response and style-invalid correction",
+    "normalCatalogBusiness": "200, 2949800 UZS under 3011180 UZS",
+    "normalCatalogWorkout": "422, no complete outfit within cap"
+  },
+  "limits": [
+    "No validation rule relaxed",
+    "No catalog products or prices changed",
+    "No provider fallback introduced",
+    "Not a capacity certification"
+  ]
+}
+

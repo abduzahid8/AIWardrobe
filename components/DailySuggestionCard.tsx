@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { View, StyleSheet, Image } from 'react-native'
+import { View, StyleSheet } from 'react-native';
 import { ScaledText } from './ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -15,6 +15,8 @@ import useWardrobeStore from '../store/wardrobeStore';
 import WearLogButton from './WearLogButton';
 import StreakBadge from './StreakBadge';
 import type { DailySuggestion, ClothingItem } from '../src/types/domain';
+import { Image } from '../src/components/MediaImage';
+
 
 const { colors, spacing, radius, typography } = LiquidGlass2026Theme;
 

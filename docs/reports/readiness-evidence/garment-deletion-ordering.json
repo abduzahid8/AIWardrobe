@@ -1,0 +1,10 @@
+{
+  "date": "2026-10-16",
+  "failure": "Older queued upload/favorite entries survived successful later deletion and could replay after it.",
+  "beforeFix": "Queue regression failed: successful delete acknowledged only the delete, leaving upload and favorite entries.",
+  "changes": ["Removal queues its durable action in the same state update as optimistic local removal and uses the serialized sync pipeline", "Linear reverse queue pass makes later deletion supersede older garment uploads, favorites and duplicate deletes", "Superseded entries are acknowledged only when deletion succeeds", "Direct insert settlement for an already removed local garment queues another idempotent removal instead of publishing or queueing creation", "Account revision guards retained"],
+  "regressions": ["Failed deletion keeps all related actions", "Successful deletion acknowledges related obsolete mutations without uploading them", "Late successful insert after initial deletion acknowledgement queues removal", "Late insert error/lost acknowledgement queues removal", "Failure after account switch cannot queue work into next account"],
+  "checks": {"jestTests": 1119, "jestSuites": 95, "typecheck": "pass", "targetedLint": "0 errors, 3 existing warnings", "whitespace": "pass"},
+  "deployment": "Client source only; no production mutations/provider calls",
+  "limits": ["Native network races not yet exercised", "An app killed after a server accepts an in-flight insert and before the compensating delete is persisted is not proven safe; server tombstones or durable request protocol would be needed for that guarantee", "No hosted write-capacity certification", "Latest native build/release still required"]
+}

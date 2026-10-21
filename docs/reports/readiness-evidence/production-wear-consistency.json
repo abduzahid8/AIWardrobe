@@ -1,0 +1,81 @@
+{
+  "measuredAt": "2026-10-16T16:02:42.299Z",
+  "scope": "Two disposable accounts; sequential correctness checks, not capacity testing",
+  "checks": [
+    {
+      "name": "insert_log_confirmed",
+      "status": 201,
+      "passed": true
+    },
+    {
+      "name": "retry_log_confirmed",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "retry_and_duplicates_count_once",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "cross_owner_item_unchanged",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "cached_garment_update_allowed",
+      "status": 204,
+      "passed": true
+    },
+    {
+      "name": "server_statistics_preserved",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "other_cannot_read_log",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "delete_log_success",
+      "status": 204,
+      "passed": true
+    },
+    {
+      "name": "delete_log_clears_statistics",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "wear_history_restored_for_auth_deletion",
+      "status": 201,
+      "passed": true
+    },
+    {
+      "name": "auth_deletion_with_wear_history",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "auth_deletion_cascades_history",
+      "status": 200,
+      "passed": true
+    }
+  ],
+  "cleanup": [
+    {
+      "temporaryAccountDeleted": true,
+      "status": 404
+    },
+    {
+      "temporaryAccountDeleted": true,
+      "status": 200
+    }
+  ],
+  "independentCleanupVerification": {
+    "readinessAccounts": 0,
+    "garments": 109,
+    "wearLogs": 0
+  }
+}

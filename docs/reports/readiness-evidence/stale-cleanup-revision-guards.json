@@ -1,0 +1,37 @@
+{
+  "date": "2026-10-17",
+  "scope": "Auth-revision guards for stale local cleanup and logout completion",
+  "newTests": 5,
+  "appTests": 1303,
+  "appSuites": 114,
+  "focusedFinalTests": 43,
+  "focusedFinalSuites": 2,
+  "typecheck": "passed",
+  "targetedLint": {
+    "errors": 0,
+    "warnings": 49
+  },
+  "whitespace": "passed",
+  "sourceSha256": {
+    "src/lib/persistence.ts": "14ce6697945a7c72bafef169eeef14689b92591f5a9103b1610dd413fe66dfbb",
+    "store/auth.ts": "82a135282d071b4401a481310f2bc4d64dd59df45a07720d38bfad3ef7b65e76",
+    "__tests__/lib/persistence.test.ts": "c234df9be31dabdb8cace554c9b7791fd110a8264afc661f9787a5d80f535e4b",
+    "__tests__/store/auth.test.ts": "bfa845013bc532a78134f7adaf486da6c8f4842397cce4a90f63db24632a393a"
+  },
+  "verificationBoundary": "Actual auth store and cleanup helper under mocked SDK/storage; no production logout or account changes",
+  "initialTestCorrection": "Bulk-deletion assertion originally counted unrelated sub-store removals; refined to registered bulk clear. Final delayed-removal test explicitly targets wardrobe-storage-containing bulk call.",
+  "docs": [
+    "https://supabase.com/changelog",
+    "https://supabase.com/docs/reference/javascript/auth-signout",
+    "https://supabase.com/docs/reference/javascript/auth-onauthstatechange"
+  ],
+  "productionRequests": false,
+  "newNativeBuild": false,
+  "remaining": [
+    "Already-issued SDK sign-out, IAP logout or storage removal can still finish after a new login",
+    "No serialization barrier yet between account entry and cleanup",
+    "Account deletion lifecycle needs equivalent end-to-end concurrency audit",
+    "Native cleanup overlap verification",
+    "Other readiness gates remain open"
+  ]
+}

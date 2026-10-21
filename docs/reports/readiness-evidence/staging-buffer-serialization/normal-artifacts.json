@@ -1,0 +1,19 @@
+{
+  "sourceChecks": {
+    "ios": {
+      "stagingSourceMatches": true,
+      "auditEntriesAbsent": true,
+      "nativeExecutableUnchanged": true
+    },
+    "android": {
+      "stagingSourceMatches": true,
+      "auditEntriesAbsent": true
+    }
+  },
+  "androidNativeBuildSucceeded": true,
+  "androidApkSha256": "e0f3bcc31335917fffffa99425ac0227a1b8798ab92c4bf3145366510139624a",
+  "iosArtifactPath": "/tmp/aiwardrobe-staging-buffer-ios.app",
+  "iosBundleSha256": "e4a9099b3ea076fa24e4eb24c7e0b99066439dd05f46eb1e9d7284c7ea430fd9",
+  "iosMethod": "Current normal-entry Hermes bundle, unchanged compiled native runtime; no new native compilation",
+  "passed": true
+}

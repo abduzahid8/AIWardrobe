@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-20",
+  "scope": "Owner-specific daily usage cache, ordered writes and cleanup drain",
+  "baseline": {
+    "failed": 2,
+    "passed": 21
+  },
+  "verification": {
+    "tests": 2051,
+    "suites": 166,
+    "typeScript": "passed",
+    "iosHermes": "passed",
+    "androidArm64Release": "passed",
+    "nativeSourceCorrespondence": {
+      "ios": {
+        "store/dailyUsageStore.ts": true,
+        "src/lib/persistence.ts": true
+      },
+      "android": {
+        "store/dailyUsageStore.ts": true,
+        "src/lib/persistence.ts": true
+      }
+    }
+  },
+  "cases": [
+    "late account A write does not replace account B counters",
+    "legacy unowned counter cache not attributed to current account",
+    "cleanup drains writes before dynamic key removal"
+  ],
+  "storagePrefix": "daily_usage_v2::",
+  "serverQuotaChanges": false,
+  "cleanup": {
+    "obsoleteTemporaryBuildArtifactsRemoved": 11,
+    "latestBuildPreserved": true,
+    "googleSimulatorUntouched": true
+  },
+  "limitations": [
+    "Controlled store/AsyncStorage tests, not full installed native account-switch or disk-failure matrix",
+    "Existing server counters remain authoritative; legacy unowned cache is ignored",
+    "Rebuilt client not distributed or installed over pending Google flow",
+    "No provider reliability or 10000-DAU capacity certification"
+  ]
+}

@@ -13,15 +13,20 @@
 ALTER TABLE public.wear_logs
     ADD COLUMN IF NOT EXISTS item_ids UUID[] DEFAULT '{}';
 
--- Backfill: copy existing single FK into the array
-UPDATE public.wear_logs
-SET item_ids = ARRAY[clothing_item_id]
-WHERE clothing_item_id IS NOT NULL
-  AND (item_ids IS NULL OR item_ids = '{}');
-
--- Make the single FK nullable (new inserts use item_ids instead)
-ALTER TABLE public.wear_logs
-    ALTER COLUMN clothing_item_id DROP NOT NULL;
+-- Older installations have clothing_item_id; clean rebuilds already use item_ids.
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'wear_logs'
+          AND column_name = 'clothing_item_id'
+    ) THEN
+        EXECUTE 'UPDATE public.wear_logs SET item_ids = ARRAY[clothing_item_id]
+                 WHERE clothing_item_id IS NOT NULL AND (item_ids IS NULL OR item_ids = ''{}'')';
+        EXECUTE 'ALTER TABLE public.wear_logs ALTER COLUMN clothing_item_id DROP NOT NULL';
+    END IF;
+END;
+$$;
 
 -- Add weather columns used by the app
 ALTER TABLE public.wear_logs

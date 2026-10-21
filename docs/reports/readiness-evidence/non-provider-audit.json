@@ -1,0 +1,23 @@
+{
+  "verifiedAt": "2026-10-15T16:26:17.451Z",
+  "unitTests": {
+    "passed": 991,
+    "suites": 75
+  },
+  "mobileTypecheck": true,
+  "deleteAccountDenoCheck": true,
+  "cleanMigrationReplay": {
+    "passed": true,
+    "count": 31
+  },
+  "isolatedStorageOwnershipAndCascadeAssertions": true,
+  "productionDeletion": {
+    "version": 11,
+    "checksPassed": 14,
+    "total": 14,
+    "temporaryFixturesCleaned": true,
+    "verifyJwt": true
+  },
+  "mobileChangesReleased": false,
+  "providerCapacityDeferred": true
+}

@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-16",
+  "scope": "Unreleased admin UI visibility guard",
+  "findings": [
+    "Displayed profile email bypassed server flag",
+    "Late prior-account check could update current hook state",
+    "Cached results had no lifetime and manual check reused indefinitely"
+  ],
+  "change": [
+    "Only strict server is_admin true grants visibility",
+    "Identity/revision-tagged results and stale response rejection",
+    "Shared in-flight checks and 30-second reuse cache",
+    "Manual check bypasses resolved cache",
+    "15-second request bound with AbortSignal"
+  ],
+  "verification": {
+    "new_hook_regressions": 5,
+    "jest_tests": 1103,
+    "jest_suites": 94,
+    "typescript": "passed",
+    "targeted_lint_errors": 0,
+    "targeted_lint_warnings": 1,
+    "whitespace": "passed",
+    "production_read_only_counts": {
+      "server_flag_admins": 1,
+      "configured_email_without_admin_flag": 0
+    }
+  },
+  "limitations": [
+    "UI visibility is not authorization; server policies remain required",
+    "Mounted UI does not poll role revocations continuously",
+    "No new native admin-screen test, bundle export or deployment"
+  ]
+}

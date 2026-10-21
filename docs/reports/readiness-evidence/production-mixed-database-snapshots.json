@@ -1,0 +1,39 @@
+{
+  "before": [
+    {
+      "observed_at": "2026-10-19 13:09:56.31822+00",
+      "database_bytes": 104934547,
+      "max_connections": "60",
+      "observed_connections": 14,
+      "observed_active_connections": 1,
+      "deadlocks": 0,
+      "temp_files": 228,
+      "temp_bytes": 1899006493
+    }
+  ],
+  "during": [
+    {
+      "observed_at": "2026-10-19 13:10:44.782703+00",
+      "observed_connections": 16,
+      "observed_active_connections": 1,
+      "deadlocks": 0,
+      "temp_files": 228,
+      "temp_bytes": 1899006493
+    }
+  ],
+  "after": [
+    {
+      "observed_at": "2026-10-19 13:13:00.830728+00",
+      "remaining_run_users": 0,
+      "remaining_named_fixture_garments": 0,
+      "remaining_named_fixture_outfits": 0,
+      "orphan_wear_logs": 0,
+      "database_bytes": 104729747,
+      "observed_connections": 23,
+      "deadlocks": 0,
+      "temp_files": 228,
+      "temp_bytes": 1899006493
+    }
+  ],
+  "scope": "Shared database point observations, not peak resource metrics. Exact run-user count plus named fixture and orphan counts independently checked after cleanup."
+}

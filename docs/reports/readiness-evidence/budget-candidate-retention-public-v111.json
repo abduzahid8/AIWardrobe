@@ -1,0 +1,51 @@
+{
+  "measuredAt": "2026-10-21T13:02:05.124Z",
+  "scope": "Read-only real public catalog and exact deployed helper in Node. Not hosted handler execution, provider success or capacity evidence.",
+  "entrySha256": "4334594845180d7ba54b56bea96b50549e0431285ecbe598b8256efa218684b2",
+  "catalogRows": 1529,
+  "eligiblePricedRows": 1163,
+  "slots": [
+    {
+      "slot": "top",
+      "sourceMinimumUzs": 105900,
+      "beforeMinimumUzs": 989500,
+      "afterMinimumUzs": 105900,
+      "preserved": true
+    },
+    {
+      "slot": "bottom",
+      "sourceMinimumUzs": 429900,
+      "beforeMinimumUzs": 5119000,
+      "afterMinimumUzs": 429900,
+      "preserved": true
+    },
+    {
+      "slot": "shoes",
+      "sourceMinimumUzs": 549900,
+      "beforeMinimumUzs": 1384500,
+      "afterMinimumUzs": 549900,
+      "preserved": true
+    },
+    {
+      "slot": "outerwear",
+      "sourceMinimumUzs": 549900,
+      "beforeMinimumUzs": 789500,
+      "afterMinimumUzs": 549900,
+      "preserved": true
+    },
+    {
+      "slot": "dress",
+      "sourceMinimumUzs": 779900,
+      "beforeMinimumUzs": null,
+      "afterMinimumUzs": 779900,
+      "preserved": true
+    }
+  ],
+  "checks": {
+    "allKnownSlotMinimaRetained": true,
+    "eligibleOnly": true,
+    "withinPoolCap": true,
+    "uniqueIds": true
+  },
+  "passed": true
+}

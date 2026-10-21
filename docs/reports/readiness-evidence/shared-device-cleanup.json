@@ -1,0 +1,25 @@
+{
+  "scope": "Local mobile logout cleanup and delayed saved-shop hydration; no production mutations",
+  "tests": {
+    "passed": 1001,
+    "suites": 77,
+    "focusedRegressions": 3
+  },
+  "typecheck": "pass",
+  "targetedLint": {
+    "errors": 0,
+    "warnings": 11
+  },
+  "nativeReleaseVerified": false,
+  "coveredKeys": [
+    "outfitLogs",
+    "@outfit_logs",
+    "@ai_chat_history",
+    "@selected_style",
+    "savedInspo",
+    "aiRecentShownItemIds",
+    "aiExcludeShownItemIds",
+    "aiExcludeShownItemIds:: prefix",
+    "notificationLastScheduled"
+  ]
+}

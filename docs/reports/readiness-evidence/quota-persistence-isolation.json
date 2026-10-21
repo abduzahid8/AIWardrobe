@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-20",
+  "scope": "Daily quota authorization publication after asynchronous persistence",
+  "baseline": {
+    "failed": 3,
+    "passed": 18
+  },
+  "verification": {
+    "fullTests": 2048,
+    "suites": 166,
+    "typeScript": "passed",
+    "iosHermes": "passed",
+    "androidArm64Release": "passed",
+    "sourceMapCorrespondence": {
+      "ios": true,
+      "android": true
+    },
+    "runtimeSha256": "9d923320ee37d7cf137078b65c1ea9be5e7b1ba680a2513f796632451f52c50a"
+  },
+  "cases": [
+    "account switch during server-result persistence",
+    "account switch during offline-result persistence",
+    "UTC midnight during persistence"
+  ],
+  "limitations": [
+    "Controlled store/AsyncStorage execution, not installed native account-switch UI",
+    "Does not establish durability or ordering of all account cache writes",
+    "No refund policy or daily allowance changed",
+    "Built client not store distributed or installed over pending Google sign-in",
+    "No 10000-DAU capacity certification"
+  ]
+}

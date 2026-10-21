@@ -1,0 +1,45 @@
+FAIL __tests__/backend/tryOnContract.test.js
+  ✕ missing provider configuration is 503 and never a successful garment-image mock (2008 ms)
+  ✕ denied admission stops before config, body processing, or paid work (8 ms)
+  ✓ CORS preflight does not consume quota (1 ms)
+
+  ● missing provider configuration is 503 and never a successful garment-image mock
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 503
+    Received: 200
+
+      27 |   const { handler, mockFetch } = loadHandler();
+      28 |   const result = await handler(new Request('https://example.test', { method: 'POST', body: JSON.stringify({ person_image: 'person', garment_image: 'garment' }) }));
+    > 29 |   expect(result.status).toBe(503);
+         |                         ^
+      30 |   const body = await result.json();
+      31 |   expect(body.success).toBe(false);
+      32 |   expect(body.resultImage).toBeUndefined();
+
+      at Object.toBe (__tests__/backend/tryOnContract.test.js:29:25)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● denied admission stops before config, body processing, or paid work
+
+    TypeError: Method Map.prototype.entries called on incompatible receiver #<Map>
+
+      37 |   const denied = new Response('{}', { status: 429 });
+      38 |   const { handler, mockClient, mockFetch } = loadHandler(denied);
+    > 39 |   expect(await handler(new Request('https://example.test', { method: 'POST' }))).toBe(denied);
+         |                                                                                  ^
+      40 |   expect(mockClient).not.toHaveBeenCalled();
+      41 |   expect(mockFetch).not.toHaveBeenCalled();
+      42 | });
+
+      at Object.toBe (__tests__/backend/tryOnContract.test.js:39:82)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 1 passed, 3 total
+Snapshots:   0 total
+Time:        2.623 s
+Ran all test suites matching /__tests__\/backend\/tryOnContract.test.js/i.

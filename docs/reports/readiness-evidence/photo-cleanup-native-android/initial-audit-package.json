@@ -1,0 +1,11 @@
+{
+  "apkSha256": "a8f16a303f5435324bc9d20d5e1af77b9f4431850bd3b61b66700f111abe230c",
+  "bundleSha256": "f4af12068add92cbd9d843cfc1b9ad64d5e27d56d249e561a9c5c2aae4241547",
+  "checks": {
+    "scripts/validation/photo-cleanup-native-entry.tsx": true,
+    "src/lib/persistence.ts": true,
+    "src/services/pendingWardrobeMedia.ts": true,
+    "auditMarkerPresent": true
+  },
+  "passed": true
+}

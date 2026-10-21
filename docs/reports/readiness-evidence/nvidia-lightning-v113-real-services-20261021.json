@@ -1,0 +1,116 @@
+{
+  "measuredAt": "2026-10-21T14:08:50.220Z",
+  "scope": "Live NVIDIA category/budget scenarios; not exhaustive accuracy or capacity certification",
+  "checks": [
+    {
+      "name": "date_old_money_300_usd",
+      "status": 503,
+      "error": "ai_generation_unavailable",
+      "latencyMs": 11397,
+      "passed": false,
+      "reasons": [
+        "generation_http_503",
+        "wrong_outfit_count"
+      ],
+      "outfitCount": 0,
+      "outfitSpendsUzs": [],
+      "spendUzs": null,
+      "capUzs": 3603690,
+      "items": [],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "status": "ok"
+        },
+        {
+          "provider": "nvidia",
+          "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "name": "formal_semi_classic_300_usd",
+      "status": 500,
+      "error": "no_valid_outfits_for_request",
+      "latencyMs": 11800,
+      "passed": false,
+      "reasons": [
+        "generation_http_500",
+        "wrong_outfit_count"
+      ],
+      "outfitCount": 0,
+      "outfitSpendsUzs": [],
+      "spendUzs": null,
+      "capUzs": 3603690,
+      "items": []
+    },
+    {
+      "name": "travel_minimalist_300_usd",
+      "status": 503,
+      "error": "ai_generation_unavailable",
+      "latencyMs": 11169,
+      "passed": false,
+      "reasons": [
+        "generation_http_503",
+        "wrong_outfit_count"
+      ],
+      "outfitCount": 0,
+      "outfitSpendsUzs": [],
+      "spendUzs": null,
+      "capUzs": 3603690,
+      "items": [],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "status": "ok"
+        },
+        {
+          "provider": "nvidia",
+          "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "status": "ok"
+        }
+      ]
+    }
+  ],
+  "fixtureUserId": "773c1371-a898-431a-aa6d-d61667ce31d5",
+  "reference": {
+    "id": "CBU:2026-10-21:12012.3:13466.99:16026.81",
+    "source": "CBU",
+    "asOf": "2026-10-21",
+    "fetchedAt": "2026-10-21T13:57:03.127Z",
+    "uzsPerUnit": {
+      "USD": 12012.3,
+      "EUR": 13466.99,
+      "GBP": 16026.81,
+      "UZS": 1
+    }
+  },
+  "cleanup": {
+    "refreshSessionsRevoked": true,
+    "temporaryUserDeleted": true,
+    "status": 200
+  },
+  "execution": {
+    "runtime": "Local Node with actual current handler modules; real Supabase Auth/catalog/rate guards and hosted NVIDIA",
+    "candidateModel": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "sourceHashes": {
+      "generate-outfits/index.ts": "71d55df45afd390346bd1aa951a8a64bde47bd9531b4e5cb6f9e418f5b513996",
+      "_shared/outfitGenerationRequest.ts": "30412ecc9a1fc0695dff2563bf98bb33a25289ffb19cedb0d08ef339bf724f03",
+      "_shared/occasionRules.ts": "178339bcc8b6962280a695027bff1afa06edfb34c38054d49bc25abafd31ea5d",
+      "_shared/outfitBudgetText.ts": "bb2942b93c782908b4389f39c04ba6b6cca0c014f82a83b34ecafdb8d58bfc1f",
+      "_shared/budgetFx.ts": "e1aa62bb1d5f06d5fa484e9e9033991a9218d1bde42657514c010f8ecf7c526a",
+      "_shared/budgetFxCache.ts": "2060d666cb044ce6e20ad12f37a874aa7ede57c0018faf7d0da5ad96a6f02425",
+      "_shared/rateLimit.ts": "de9201c135537983a3c84ccd7e25bf9880c37a3c85fea64e6862f9372f48fa54",
+      "_shared/outfitBudgetFeasibility.ts": "70040dc0b5779813aa2fc80cd0c3b5310308ee00c0a4928f5aa72a9d80e9c57e",
+      "_shared/outfitStructure.ts": "6665b5a7e66f43408d73af0ed27753bb02f296e97550ef1ede823a09239a8ab6",
+      "_shared/outfitBudgetSelection.ts": "7be1bb224da400e8fc3328cece5b911f1f7a580433eea2ad2c2f28b6ebc9fe3e",
+      "_shared/outfitBudgetFeedback.ts": "ffb3373f563dbb2642253ae10166c98d6e4e3ccc4da1fcc54b3e291ae2ecc548",
+      "_shared/modelOutfitResponse.ts": "ed0fab20006ac6a91559450a6860b2bdadd998c970ab9b40c51e627d5f56d52c"
+    },
+    "productionConfigurationChanged": false,
+    "limits": "Not hosted Edge runtime or native UI; this comparison does not establish production model throughput."
+  }
+}

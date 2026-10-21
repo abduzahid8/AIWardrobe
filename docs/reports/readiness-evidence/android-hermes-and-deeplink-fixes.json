@@ -1,0 +1,44 @@
+{
+  "date": "2026-10-16",
+  "before": {
+    "release_build_session": 34532,
+    "result": "FAILED; terminal exit 1",
+    "duration": "3m33s",
+    "task": ":app:createBundleReleaseJsAndAssets",
+    "cause": "Explicit legacy react-native/sdks/hermesc/osx-bin/hermesc path does not exist",
+    "native_link_test": "FAILED; MainActivity had no com.aiwardrobe filter"
+  },
+  "fixes": {
+    "android/app/build.gradle": "Removed stale Hermes command override; installed React Native Gradle plugin resolves hermes-compiler by default",
+    "android/app/src/main/AndroidManifest.xml": "Added VIEW, DEFAULT, BROWSABLE and configured com.aiwardrobe scheme to existing exported singleTask MainActivity"
+  },
+  "after_checks": {
+    "native_links": 1,
+    "toolchain": 4,
+    "jest_tests": 1103,
+    "jest_suites": 94,
+    "typescript": "passed",
+    "targeted_lint": "zero errors/warnings",
+    "whitespace": "passed",
+    "ci": "Native manifest and toolchain regressions added; remote CI not run"
+  },
+  "native_rebuild": {
+    "status": "SUCCEEDED after normal approval review became available",
+    "reason": "Automatic approval review could not complete because of usage limit; not an unsafe-action determination",
+    "work_remaining": [
+      "Install/launch Android APK and test OS-delivered links",
+      "Production signing"
+    ],
+    "bypass_attempted": false
+  },
+  "reference": "https://developer.android.com/training/app-links/create-deeplinks",
+  "source_sha256": {
+    "android/app/build.gradle": "aa4b5e2d90953ab8eef1ef2f3f16de2ce619f5a58d1e56d0c503a0b105a2f7ac",
+    "android/app/src/main/AndroidManifest.xml": "d346440e6dc7079628e3e10d40deb162747d0d94195f2121c176c5fb51224c3c"
+  },
+  "limitations": [
+    "Source/controlled tests do not prove compiled APK or OS link resolution",
+    "Local Release signing uses debug key; production signing unverified",
+    "Overall readiness remains uncertified"
+  ]
+}

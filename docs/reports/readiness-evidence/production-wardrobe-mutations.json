@@ -1,0 +1,61 @@
+{
+  "scope": "Actual clothing editor service with disposable production accounts; no existing-user changes",
+  "checks": [
+    {
+      "name": "actual_service_confirms_owner_save",
+      "passed": true
+    },
+    {
+      "name": "all_edited_fields_persist",
+      "passed": true
+    },
+    {
+      "name": "other_account_edit_rejected",
+      "passed": true
+    },
+    {
+      "name": "owner_item_unchanged_after_attack",
+      "passed": true
+    },
+    {
+      "name": "nonexistent_item_not_reported_saved",
+      "passed": true
+    },
+    {
+      "name": "unauthenticated_editor_rejected",
+      "passed": true
+    },
+    {
+      "name": "favorite_true_persists",
+      "passed": true
+    },
+    {
+      "name": "repeated_false_is_idempotent",
+      "passed": true
+    },
+    {
+      "name": "cross_account_favorite_not_acknowledged",
+      "passed": true
+    },
+    {
+      "name": "cross_account_delete_preserves_owner_item",
+      "passed": true
+    },
+    {
+      "name": "owner_delete_persists",
+      "passed": true
+    },
+    {
+      "name": "owner_delete_replay_is_idempotent",
+      "passed": true
+    }
+  ],
+  "cleanup": [
+    {
+      "accountDeleted": true
+    },
+    {
+      "accountDeleted": true
+    }
+  ]
+}

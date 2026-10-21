@@ -1,0 +1,24 @@
+{
+  "measuredAt": "2026-10-21T07:48:23.562Z",
+  "scope": "One disposable free user with expired trial; direct owner SDK inserts, 21 fixture garments maximum; no load/capacity certification",
+  "checks": [
+    {
+      "name": "server_rejects_twenty_first_free_garment",
+      "passed": false
+    },
+    {
+      "name": "existing_row_upsert_remains_usable_at_capacity",
+      "passed": true
+    }
+  ],
+  "observed": {
+    "extraInsertStatus": 201,
+    "extraInsertErrorCode": null,
+    "ownedItemCount": 21
+  },
+  "cleanup": {
+    "refreshSessionsRevoked": true,
+    "userDeleted": true
+  },
+  "passed": false
+}

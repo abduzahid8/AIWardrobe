@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-21",
+  "baseVersion": 100,
+  "version": 101,
+  "verifyJwt": true,
+  "changed": [
+    "functions/generate-outfits/index.ts"
+  ],
+  "unchangedSharedModules": 10,
+  "allDeployedFilesMatchStaged": true,
+  "changes": [
+    "Pass existing validator rejection reasons and 1-based outfit indices into correction prompt; at most20 reasons,300 characters each",
+    "Preserve multiword reject phrases instead of inventing broader first-word or sneaker bans"
+  ],
+  "validation": {
+    "fullTests": 2087,
+    "suites": 168,
+    "stagedTests": 56,
+    "typescript": "pass",
+    "denoStaged": "pass"
+  },
+  "regressions": [
+    "Missing suede/suit feedback reproduced",
+    "Broad keyword expansion reproduced",
+    "Unchanged invalid correction remains rejected",
+    "Corrected leather penny loafers accepted",
+    "Tie-laced loafers/driving moccasins still rejected",
+    "Model shoe metadata cannot replace the catalog-backed rejection",
+    "Paid request uses NVIDIA; Gemini explicitly disabled before legacy routing"
+  ],
+  "liveReports": [
+    "v101-date-budget-300-live.json",
+    "v101-travel-budget-300-live.json"
+  ],
+  "limits": [
+    "No general reliability or capacity certification",
+    "Date required a correction attempt",
+    "Post-deployment log query returned no matching validation entries; exact first rejection cannot be reconstructed",
+    "Dirty local source not deployed wholesale"
+  ],
+  "remainingReadinessUsers": 0,
+  "liveResults": {
+    "date": "200,10586ms,two parsed attempts,2429800UZS under3603690UZS",
+    "travel": "503,50350ms,first provider attempt timeout"
+  }
+}

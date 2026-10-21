@@ -1,0 +1,136 @@
+{
+  "measuredAt": "2026-10-21T08:40:19.528Z",
+  "scope": "Live NVIDIA category/budget scenarios; not exhaustive accuracy or capacity certification",
+  "checks": [
+    {
+      "name": "date_old_money_300_usd",
+      "status": 200,
+      "latencyMs": 16079,
+      "passed": true,
+      "reasons": [],
+      "spendUzs": 3299800,
+      "capUzs": 3603690,
+      "provider": "nvidia:meta/llama-3.2-11b-vision-instruct",
+      "source": "ai",
+      "items": [
+        {
+          "id": "shop_zara-uz-584711337",
+          "name": "100% WOOL REGULAR FIT SUIT TROUSERS",
+          "macroCategory": "bottom",
+          "price": 1499900,
+          "currency": "UZS",
+          "shopUrl": "https://www.zara.com/uz/en/regular-fit-100-wool-suit-trousers-p01224554.html?v1=584711337"
+        },
+        {
+          "id": "shop_md-uz-62246011",
+          "name": "100% cotton V-neck knit polo shirt",
+          "macroCategory": "top",
+          "price": 800000,
+          "currency": "UZS",
+          "shopUrl": "https://www.massimodutti.com/uz/en/100-cotton-vneck-knit-polo-l00837175?pelement=62246011"
+        },
+        {
+          "id": "shop_zara-uz-545465814",
+          "name": "LEATHER PENNY LOAFERS",
+          "macroCategory": "shoes",
+          "price": 999900,
+          "currency": "UZS",
+          "shopUrl": "https://www.zara.com/uz/en/leather-penny-loafers-p12686820.html?v1=545465814"
+        }
+      ],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "meta/llama-3.2-11b-vision-instruct",
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "name": "formal_semi_classic_300_usd",
+      "status": 503,
+      "error": "ai_generation_unavailable",
+      "latencyMs": 49208,
+      "passed": false,
+      "reasons": [
+        "generation_http_503"
+      ],
+      "spendUzs": 0,
+      "capUzs": 3603690,
+      "items": [],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "meta/llama-3.2-11b-vision-instruct",
+          "status": "timeout"
+        }
+      ]
+    },
+    {
+      "name": "travel_minimalist_300_usd",
+      "status": 200,
+      "latencyMs": 12760,
+      "passed": true,
+      "reasons": [],
+      "spendUzs": 3034400,
+      "capUzs": 3603690,
+      "provider": "nvidia:meta/llama-3.2-11b-vision-instruct",
+      "source": "ai",
+      "items": [
+        {
+          "id": "shop_md-uz-62246011",
+          "name": "100% cotton V-neck knit polo shirt",
+          "macroCategory": "top",
+          "price": 800000,
+          "currency": "UZS",
+          "shopUrl": "https://www.massimodutti.com/uz/en/100-cotton-vneck-knit-polo-l00837175?pelement=62246011"
+        },
+        {
+          "id": "shop_zara-uz-545490391",
+          "name": "100% LINEN SUIT TROUSERS",
+          "macroCategory": "bottom",
+          "price": 849900,
+          "currency": "UZS",
+          "shopUrl": "https://www.zara.com/uz/en/100-linen-suit-trousers-p04410411.html?v1=545490391"
+        },
+        {
+          "id": "shop_fr-tommy-152421",
+          "name": "Лоферы HILFIGER STITCHDOWN SUEDE LOAFER",
+          "macroCategory": "shoes",
+          "price": 1384500,
+          "currency": "UZS",
+          "shopUrl": "https://frgroup.uz/ru/store/lofery-hilfiger-stitchdown-suede-loafer-tommy-hilfiger-fm0fm05782-bezhevyj"
+        }
+      ],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "meta/llama-3.2-11b-vision-instruct",
+          "status": "ok"
+        },
+        {
+          "provider": "nvidia",
+          "model": "meta/llama-3.2-11b-vision-instruct",
+          "status": "ok"
+        }
+      ]
+    }
+  ],
+  "reference": {
+    "id": "CBU:2026-10-21:12012.3:13466.99:16026.81",
+    "source": "CBU",
+    "asOf": "2026-10-21",
+    "fetchedAt": "2026-10-21T08:33:09.365Z",
+    "uzsPerUnit": {
+      "USD": 12012.3,
+      "EUR": 13466.99,
+      "GBP": 16026.81,
+      "UZS": 1
+    }
+  },
+  "cleanup": {
+    "refreshSessionsRevoked": true,
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

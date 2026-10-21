@@ -17,10 +17,22 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const MAX_RECENT_IDS = 150;
 const STORAGE_KEY = 'aiExcludeShownItemIds';
 
-let recentIds: string[] = [];
-let hydrated = false;
-let hydratePromise: Promise<void> | null = null;
-let writeChain: Promise<void> = Promise.resolve();
+interface RecencyState {
+    recentIds: string[];
+    hydrated: boolean;
+    hydratePromise: Promise<void> | null;
+    writeChain: Promise<void>;
+}
+const states = new Map<string, RecencyState>();
+function stateFor(scope?: string): { key: string; state: RecencyState } {
+    const key = scope ? `${STORAGE_KEY}::${encodeURIComponent(scope)}` : STORAGE_KEY;
+    let state = states.get(key);
+    if (!state) {
+        state = { recentIds: [], hydrated: false, hydratePromise: null, writeChain: Promise.resolve() };
+        states.set(key, state);
+    }
+    return { key, state };
+}
 
 function isRealPoolId(id: string): boolean {
     if (!id) return false;
@@ -31,10 +43,10 @@ function isRealPoolId(id: string): boolean {
     return true;
 }
 
-function ensureHydrated(): Promise<void> {
-    if (hydrated) return Promise.resolve();
-    if (!hydratePromise) {
-        hydratePromise = AsyncStorage.getItem(STORAGE_KEY)
+function ensureHydrated(state: RecencyState, key: string): Promise<void> {
+    if (state.hydrated) return Promise.resolve();
+    if (!state.hydratePromise) {
+        state.hydratePromise = AsyncStorage.getItem(key)
             .then((raw) => {
                 if (raw) {
                     try {
@@ -42,7 +54,7 @@ function ensureHydrated(): Promise<void> {
                         if (Array.isArray(ids)) {
                             const valid = ids.map((v: unknown) => String(v ?? '')).filter(isRealPoolId);
                             // Stored oldest-first — keep the newest window.
-                            recentIds = valid.slice(Math.max(0, valid.length - MAX_RECENT_IDS));
+                            state.recentIds = valid.slice(Math.max(0, valid.length - MAX_RECENT_IDS));
                         }
                     } catch (_) {
                         // Corrupt cache — start fresh.
@@ -51,10 +63,10 @@ function ensureHydrated(): Promise<void> {
             })
             .catch(() => undefined)
             .then(() => {
-                hydrated = true;
+                state.hydrated = true;
             });
     }
-    return hydratePromise;
+    return state.hydratePromise;
 }
 
 /**
@@ -62,9 +74,10 @@ function ensureHydrated(): Promise<void> {
  * Awaits hydration AND any in-flight record so the very next request
  * already excludes the deck the user just saw.
  */
-export async function getRecentShownIds(): Promise<string[]> {
-    await Promise.all([ensureHydrated(), writeChain]);
-    return [...recentIds];
+export async function getRecentShownIds(scope?: string): Promise<string[]> {
+    const { state, key } = stateFor(scope);
+    await Promise.all([ensureHydrated(state, key), state.writeChain]);
+    return [...state.recentIds];
 }
 
 /**
@@ -73,11 +86,12 @@ export async function getRecentShownIds(): Promise<string[]> {
  * forget for callers; internally ordered so hydration always runs first
  * and the first record can never clobber stored ids.
  */
-export function recordShownOutfits(outfits: unknown): void {
-    writeChain = writeChain.then(async () => {
-        await ensureHydrated();
+export function recordShownOutfits(outfits: unknown, scope?: string): void {
+    const { state, key } = stateFor(scope);
+    state.writeChain = state.writeChain.then(async () => {
+        await ensureHydrated(state, key);
         if (!Array.isArray(outfits)) return;
-        const seen = new Set(recentIds);
+        const seen = new Set(state.recentIds);
         let added = false;
         for (const outfit of outfits) {
             const items = (outfit as { items?: unknown } | null)?.items;
@@ -86,15 +100,15 @@ export function recordShownOutfits(outfits: unknown): void {
                 const id = String((raw as { id?: unknown } | null)?.id ?? '').trim();
                 if (!isRealPoolId(id) || seen.has(id)) continue;
                 seen.add(id);
-                recentIds.push(id);
+                state.recentIds.push(id);
                 added = true;
             }
         }
-        if (recentIds.length > MAX_RECENT_IDS) {
-            recentIds = recentIds.slice(recentIds.length - MAX_RECENT_IDS);
+        if (state.recentIds.length > MAX_RECENT_IDS) {
+            state.recentIds = state.recentIds.slice(state.recentIds.length - MAX_RECENT_IDS);
         }
         if (added) {
-            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(recentIds)).catch(() => undefined);
+            await AsyncStorage.setItem(key, JSON.stringify(state.recentIds)).catch(() => undefined);
         }
     }).catch(() => {
         // Recency is best-effort — never break generation.

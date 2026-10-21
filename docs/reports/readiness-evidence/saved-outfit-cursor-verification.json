@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-17",
+  "originalFailure": "Offset pagination skipped outfit-0251 after deletion of an earlier-page record in a regression fixture.",
+  "fix": "Descending immutable-ID cursor with 250-row limit and final chronological ordering; reject non-advancing cursors.",
+  "migration": "20261017000540_saved_outfit_cursor_index.sql",
+  "productionIndex": {
+    "deployed": true,
+    "valid": true,
+    "ready": true,
+    "definition": "saved_outfits(user_id,id desc)"
+  },
+  "localQueryDataset": {
+    "owners": 10000,
+    "savedOutfits": 60000,
+    "largestOwnerSavedOutfits": 10005
+  },
+  "queryTimesMs": {
+    "beforeFirst": 4.873,
+    "beforeLater": 2.977,
+    "afterFirst": 0.386,
+    "afterLater": 0.443
+  },
+  "checks": {
+    "jestTests": 1127,
+    "jestSuites": 95,
+    "typecheck": "pass",
+    "targetedLint": "pass without warnings",
+    "whitespace": "pass",
+    "freshMigrations": 37,
+    "productionActualServiceChecks": 9,
+    "securityAdvisors": "Existing findings unchanged"
+  },
+  "limits": [
+    "Cursor reads are not a transaction snapshot; concurrent insert above crossed cursor may await refresh",
+    "Single-run local query timings, not hosted latency",
+    "Live actual-source checks use Node and installed Supabase SDK, not native runtime",
+    "Live collection static during reads; concurrent-deletion behavior exercised by regression model",
+    "Saved-outfit write capacity and signed native release remain unverified",
+    "Original intermittent wear-write failure remains unexplained"
+  ]
+}

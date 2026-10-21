@@ -1,0 +1,22 @@
+{
+  "measuredAt": "2026-10-21T09:05:11.723Z",
+  "scope": "Live NVIDIA category/budget scenarios; not exhaustive accuracy or capacity certification",
+  "checks": [],
+  "reference": {
+    "id": "CBU:2026-10-21:12012.3:13466.99:16026.81",
+    "source": "CBU",
+    "asOf": "2026-10-21",
+    "fetchedAt": "2026-10-21T08:33:09.365Z",
+    "uzsPerUnit": {
+      "USD": 12012.3,
+      "EUR": 13466.99,
+      "GBP": 16026.81,
+      "UZS": 1
+    }
+  },
+  "failure": "TypeError",
+  "cleanup": {
+    "refreshSessionsRevoked": false,
+    "temporaryUserDeleted": false
+  }
+}

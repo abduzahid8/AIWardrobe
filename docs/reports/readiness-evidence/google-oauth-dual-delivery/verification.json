@@ -1,0 +1,17 @@
+{
+  "before": {
+    "failed": 2,
+    "passed": 88
+  },
+  "fullJest": {
+    "passed": 1450,
+    "suites": 124
+  },
+  "typescriptPassed": true,
+  "targetedLint": {
+    "errors": 0,
+    "warnings": 42
+  },
+  "addedCases": 6,
+  "scope": "Mocked SDK/browser dual callback delivery and four changed-identity controls; not native or live Google OAuth completion"
+}

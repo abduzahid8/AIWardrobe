@@ -1,0 +1,25 @@
+{
+  "windowStart": "2026-10-16T15:51:00Z",
+  "windowEnd": "2026-10-16T15:57:00Z",
+  "filter": "edge_logs, POST /rest/v1/wear_logs",
+  "rows": [
+    {
+      "requests": 1177,
+      "status": "201",
+      "timed_requests": 1177,
+      "upstream_max_ms": 933,
+      "upstream_p50_ms": 3,
+      "upstream_p95_ms": 8
+    },
+    {
+      "requests": 1157,
+      "status": "200",
+      "timed_requests": 1157,
+      "upstream_max_ms": 950,
+      "upstream_p50_ms": 3,
+      "upstream_p95_ms": 6
+    }
+  ],
+  "coverage": "2334 logged requests, fewer than 4045 successful HTTP responses seen by client; coverage incomplete and cause unknown",
+  "conclusion": "Available upstream timings are low for most logged requests; this does not establish why the client timed out or exclude unlogged slow requests."
+}

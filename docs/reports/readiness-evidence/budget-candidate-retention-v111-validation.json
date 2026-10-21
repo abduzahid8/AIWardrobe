@@ -1,0 +1,48 @@
+{
+  "measuredAt": "2026-10-21T13:03:38.247783+00:00",
+  "scope": "Scoped production outfit candidate budget retention. Not a full catalog discovery, provider reliability or capacity certification.",
+  "deployment": {
+    "version": 111,
+    "verifyJwt": true,
+    "filesExact": 12,
+    "sharedFilesUnchanged": 11,
+    "entrySha256": "4334594845180d7ba54b56bea96b50549e0431285ecbe598b8256efa218684b2"
+  },
+  "regression": {
+    "actualHandlerBefore": {
+      "status": 422,
+      "testsPassed": 69,
+      "testsFailed": 1
+    },
+    "actualHandlerAfter": {
+      "status": 200,
+      "knownFeasibleOutfitUsd": 30,
+      "requestBudgetUsd": 100
+    },
+    "unitCasesAdded": 4
+  },
+  "validation": {
+    "stagedFocusedTests": 81,
+    "stagedFocusedSuites": 2,
+    "fullTests": 2219,
+    "fullSuites": 175,
+    "typescript": "pass",
+    "stagedDeno": "pass"
+  },
+  "publicCatalogEvidence": "budget-candidate-retention-public-v111.json",
+  "liveSmokeEvidence": "v111-owned-wardrobe-smoke-20261021.json",
+  "cleanupIndependent": {
+    "auditUsers": 0,
+    "fixtureGarments": 0,
+    "authUsers": 111,
+    "profiles": 111,
+    "garments": 109
+  },
+  "limitations": [
+    "Early catalog stopping can still miss cheaper products on later pages.",
+    "Shop preference filtering currently occurs after per-slot selection.",
+    "The real-catalog helper check executes deployed source in Node, not the hosted handler.",
+    "One successful hosted NVIDIA request does not erase prior timeouts or demonstrate throughput.",
+    "Retailer current stock and price, native UI and overall 10000 DAU readiness remain unverified."
+  ]
+}

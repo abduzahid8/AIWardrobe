@@ -5,7 +5,7 @@
 import type { StateCreator } from 'zustand';
 import type { ClothingItem, WearLog, Occasion } from '../../src/types/domain';
 import type { WardrobeState } from '../wardrobeStore';
-import { generateId, getTodayDate, calculateStreak } from './helpers';
+import { generateId, getTodayDate, calculateStreak, recentWornItemIds } from './helpers';
 
 export interface WearLogSlice {
     wearLogs: WearLog[];
@@ -29,6 +29,8 @@ export const createWearLogSlice: StateCreator<WardrobeState, [], [], WearLogSlic
     dailySuggestion: null,
 
     logWear: (itemIds, occasion, weather) => {
+        itemIds = [...new Set(itemIds.filter(id => typeof id === 'string' && id.length > 0))];
+        if (!itemIds.length) return;
         const today = getTodayDate();
         const now = new Date().toISOString();
 
@@ -61,7 +63,7 @@ export const createWearLogSlice: StateCreator<WardrobeState, [], [], WearLogSlic
                 )
                 : state.outfits;
 
-            const newLogs = [newLog, ...state.wearLogs].slice(0, 1000);
+            const newLogs = [newLog, ...state.wearLogs];
             const newStreak = calculateStreak(newLogs);
 
             return {
@@ -76,6 +78,7 @@ export const createWearLogSlice: StateCreator<WardrobeState, [], [], WearLogSlic
                 ],
             };
         });
+        void get().syncToServer().catch(() => undefined);
     },
 
     getStreak: () => calculateStreak(get().wearLogs),
@@ -83,17 +86,13 @@ export const createWearLogSlice: StateCreator<WardrobeState, [], [], WearLogSlic
     getClosetUtilization: (days = 30) => {
         const { items, wearLogs } = get();
         if (items.length === 0) return 0;
-        const cutoff = new Date(Date.now() - days * 86400000).toISOString().split('T')[0];
-        const recentLogs = wearLogs.filter((log) => log.date >= cutoff);
-        const wornItemIds = new Set(recentLogs.flatMap((log) => log.itemIds));
-        return Math.round((wornItemIds.size / items.length) * 100);
+        const wornItemIds = recentWornItemIds(wearLogs, days);
+        return Math.round((items.filter(item => wornItemIds.has(item.id)).length / items.length) * 100);
     },
 
     getUnwornItems: (days = 30) => {
         const { items, wearLogs } = get();
-        const cutoff = new Date(Date.now() - days * 86400000).toISOString().split('T')[0];
-        const recentLogs = wearLogs.filter((log) => log.date >= cutoff);
-        const wornItemIds = new Set(recentLogs.flatMap((log) => log.itemIds));
+        const wornItemIds = recentWornItemIds(wearLogs, days);
         return items.filter((item) => !wornItemIds.has(item.id));
     },
 

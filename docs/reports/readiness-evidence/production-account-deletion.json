@@ -1,0 +1,100 @@
+{
+  "measuredAt": "2026-10-15T16:22:26.525Z",
+  "scope": "Disposable production accounts and explicitly created files only; no existing-user changes",
+  "checks": [
+    {
+      "name": "get_cannot_delete_account",
+      "status": 405,
+      "passed": true
+    },
+    {
+      "name": "anonymous_cannot_enumerate_storage",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "name": "authenticated_cannot_enumerate_storage",
+      "status": 403,
+      "passed": true
+    },
+    {
+      "name": "anonymous_delete_denied",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "name": "owner_delete_success",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "owner_auth_removed",
+      "status": 404,
+      "passed": true
+    },
+    {
+      "name": "owner_profile_removed",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "owner_garments_removed",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "owner_file_removed_user_uploads_root",
+      "status": 400,
+      "passed": true
+    },
+    {
+      "name": "owner_file_removed_user_uploads_nested",
+      "status": 400,
+      "passed": true
+    },
+    {
+      "name": "owner_file_removed_AIWARDROBE_root",
+      "status": 400,
+      "passed": true
+    },
+    {
+      "name": "other_user_file_preserved",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "body_cannot_target_other_user",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "deleted_account_token_cannot_authenticate",
+      "status": 403,
+      "passed": true
+    }
+  ],
+  "cleanup": [
+    {
+      "kind": "fixture_files",
+      "bucket": "user_uploads",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "kind": "fixture_files",
+      "bucket": "AIWARDROBE",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "kind": "temporary_account",
+      "status": 404,
+      "passed": true
+    },
+    {
+      "kind": "temporary_account",
+      "status": 200,
+      "passed": true
+    }
+  ]
+}

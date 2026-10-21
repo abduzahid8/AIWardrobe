@@ -9,12 +9,14 @@
  */
 
 import React from 'react';
-import { View, Image, StyleSheet, ScrollView, TouchableOpacity,  } from 'react-native'
+import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { ScaledText } from './ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 import type { ClothingItem } from '../src/types/domain';
+import { Image } from '../src/components/MediaImage';
+
 
 const { colors, spacing, radius, typography } = LiquidGlass2026Theme;
 

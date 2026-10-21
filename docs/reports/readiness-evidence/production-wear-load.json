@@ -1,0 +1,253 @@
+{
+  "measuredAt": "2026-10-16T15:51:30.280Z",
+  "scope": "20 disposable owners; 40 wear-log upserts/second for 120 seconds; paired retries; excludes AI/uploads/native",
+  "verification": [
+    {
+      "expectedDistinctLogs": 120,
+      "actualLogs": 107,
+      "actualWearCount": 107,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 120,
+      "actualLogs": 105,
+      "actualWearCount": 105,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 120,
+      "actualLogs": 107,
+      "actualWearCount": 107,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 120,
+      "actualLogs": 107,
+      "actualWearCount": 107,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 120,
+      "actualLogs": 106,
+      "actualWearCount": 106,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 120,
+      "actualLogs": 106,
+      "actualWearCount": 106,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 120,
+      "actualLogs": 109,
+      "actualWearCount": 109,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 120,
+      "actualLogs": 105,
+      "actualWearCount": 105,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 120,
+      "actualLogs": 104,
+      "actualWearCount": 104,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 120,
+      "actualLogs": 104,
+      "actualWearCount": 104,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 120,
+      "actualLogs": 103,
+      "actualWearCount": 103,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 120,
+      "actualLogs": 104,
+      "actualWearCount": 104,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 120,
+      "actualLogs": 103,
+      "actualWearCount": 103,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 120,
+      "actualLogs": 103,
+      "actualWearCount": 103,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 120,
+      "actualLogs": 104,
+      "actualWearCount": 104,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 120,
+      "actualLogs": 104,
+      "actualWearCount": 104,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 120,
+      "actualLogs": 106,
+      "actualWearCount": 106,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 120,
+      "actualLogs": 106,
+      "actualWearCount": 106,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 120,
+      "actualLogs": 104,
+      "actualWearCount": 104,
+      "passed": false
+    },
+    {
+      "expectedDistinctLogs": 120,
+      "actualLogs": 106,
+      "actualWearCount": 106,
+      "passed": false
+    }
+  ],
+  "cleanup": [
+    {
+      "deleted": false,
+      "status": 500
+    },
+    {
+      "deleted": false,
+      "status": 500
+    },
+    {
+      "deleted": false,
+      "status": 500
+    },
+    {
+      "deleted": false,
+      "status": 500
+    },
+    {
+      "deleted": false,
+      "status": 500
+    },
+    {
+      "deleted": false,
+      "status": 500
+    },
+    {
+      "deleted": false,
+      "status": 500
+    },
+    {
+      "deleted": false,
+      "status": 500
+    },
+    {
+      "deleted": false,
+      "status": 500
+    },
+    {
+      "deleted": false,
+      "status": 500
+    },
+    {
+      "deleted": false,
+      "status": 500
+    },
+    {
+      "deleted": false,
+      "status": 500
+    },
+    {
+      "deleted": false,
+      "status": 500
+    },
+    {
+      "deleted": false,
+      "status": 500
+    },
+    {
+      "deleted": false,
+      "status": 500
+    },
+    {
+      "deleted": false,
+      "status": 500
+    },
+    {
+      "deleted": false,
+      "status": 500
+    },
+    {
+      "deleted": false,
+      "status": 500
+    },
+    {
+      "deleted": false,
+      "status": 500
+    },
+    {
+      "deleted": false,
+      "status": 500
+    }
+  ],
+  "load": {
+    "planned": 4800,
+    "completed": 4153,
+    "failed": 108,
+    "dropped": 647,
+    "elapsedSec": 124.091502708,
+    "achievedRps": 33.467239169247826,
+    "statuses": {
+      "200": 1974,
+      "201": 2071
+    },
+    "failures": {
+      "transport_or_decode": 108
+    },
+    "latencyMs": {
+      "p50": 526.8996670000051,
+      "p95": 6901.859166999988,
+      "p99": 10001.928207999998
+    },
+    "aborted": false,
+    "passed": false
+  },
+  "passed": false,
+  "cleanupRecovery": {
+    "originalCleanupFailed": true,
+    "originalFailedAccounts": 20,
+    "fixtureWearLogsRemovedByScopedDatabaseQuery": 2103,
+    "authApiRecoveryAttempted": 20,
+    "authApiRecoveryFailures": 0,
+    "independentTotalsAfterRecovery": {
+      "readinessAccounts": 0,
+      "garments": 109,
+      "wearLogs": 0
+    }
+  },
+  "counterIntegrityAmongCompletedLogs": {
+    "ownersChecked": 20,
+    "ownersWithActualLogCountEqualToWearCount": 20,
+    "distinctLogsPresent": 2103
+  },
+  "diagnosticLimits": [
+    "Original harness recorded transport_or_decode but not individual cause codes; failure layer remains unresolved",
+    "Later harness adds safe error-type/cause-code diagnostics; this run did not use them",
+    "Database samples showed zero deadlocks, 17 connections, unchanged temp counters; samples do not exclude transient saturation"
+  ]
+}

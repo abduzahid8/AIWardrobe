@@ -1,0 +1,27 @@
+{
+  "measuredAt": "2026-10-20T03:00:06.113Z",
+  "codeSha256": "7fa1f36e4b845a0d3a5cfa269c81f0e50a53d35be8a6dc27d30f634993dd0f65",
+  "processRestart": true,
+  "originalSourcesEvicted": true,
+  "oldContainerAbsent": true,
+  "restoredByteHashesMatch": true,
+  "imageAndVideoCopies": 2,
+  "otherOwnerBlocked": true,
+  "managedCleanup": true,
+  "partialCopyRejected": true,
+  "accountSwitchDuringCopyRejected": true,
+  "oversizeRejectedBeforeCopy": true,
+  "fixtures": [
+    {
+      "type": "image",
+      "sha256": "2d47a0ac74bd074352bb446576e38d54ca5339ca3b8687cbc78812ca1f80a717",
+      "bytes": 666026
+    },
+    {
+      "type": "video",
+      "sha256": "5ae9782017a68037004b2bf806c77d324db4d915ed3725d84eb3121b2ad16061",
+      "bytes": 1048576
+    }
+  ],
+  "scope": "Actual filesystem and child-process restart through Expo adapter; synthetic video bytes are not video-decoder or device evidence"
+}

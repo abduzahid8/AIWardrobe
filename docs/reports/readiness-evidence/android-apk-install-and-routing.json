@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-16",
+  "apk": "android/app/build/outputs/apk/release/app-release.apk",
+  "device": {
+    "avd": "AIWardrobe_readiness_20261016",
+    "adb_serial": "emulator-5554",
+    "model": "sdk_gphone64_arm64",
+    "api": 34,
+    "isolated": true
+  },
+  "boot": {
+    "first_attempt": "terminated; insufficient userdata creation space (required 7372.8 MB)",
+    "after_cleanup": "boot_completed=1"
+  },
+  "install": {
+    "status": "Success",
+    "version_name": "1.4.3",
+    "version_code": 56,
+    "min_sdk": 24,
+    "target_sdk": 36
+  },
+  "package_resolution": {
+    "com.aiwardrobe://auth/callback?code=readiness-test": "com.aiwardrobe/.MainActivity",
+    "com.aiwardrobe://reset-password": "com.aiwardrobe/.MainActivity"
+  },
+  "visual_runtime": {
+    "status": "NOT VERIFIED",
+    "reason": "CUA reports Mac locked; manual unlock requested through pending user-input question; recheck still locked",
+    "app_launch_attempted": false,
+    "screenshots_taken": false
+  },
+  "cleanup": [
+    "Removed completed generated Android dependency build and CMake directories; retained source/packages, APK, SDKs and verified JDK",
+    "Confirmed temporary synthetic Postgres cluster stopped, then removed it; fixtures, migrations and prior test evidence retained",
+    "Stopped only emulator whose AVD name was confirmed; installed APK and AVD retained"
+  ],
+  "limitations": [
+    "Package resolution is not actual delivered-link screen verification",
+    "No native app launch or authenticated flows verified on Android",
+    "No production upload signing or store readiness claim",
+    "Full 10000 DAU goal remains incomplete"
+  ]
+}

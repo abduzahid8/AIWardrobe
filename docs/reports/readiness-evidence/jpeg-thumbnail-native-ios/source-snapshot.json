@@ -1,0 +1,6 @@
+{
+  "scripts/validation/thumbnail-native-entry.tsx": "d538734a291dc6016bb35a7860f8bf1aa1bfae1b47b1691e868eaf59ed63fa0c",
+  "src/services/wardrobeThumbnail.ts": "f340668688ea280e4ab4b090dfced5c046a52f204caf87efacd3d82107dfcc78",
+  "src/services/pendingWardrobeMedia.ts": "dbac44c22cc30221cc1bbd76e91b34aa1714ada74bf8a8cd3a19bf9813de7bd9",
+  "store/authEvents.ts": "4a276d38e09fc9b2fe577b0dcb8361ab450eadda454ba36cc8f299a1bbbb30c3"
+}

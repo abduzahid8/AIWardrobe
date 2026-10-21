@@ -1,0 +1,60 @@
+{
+  "verifiedAt": "2026-10-19T13:22:45.209516+00:00",
+  "changes": [
+    "WardrobeVideo screen binds/initializes worker and destroys it on cleanup",
+    "Explicit boolean result contract distinguishes valid published scan from failed/cancelled analysis",
+    "Retry disabled while initial photo, current analysis or existing review result occupies the screen",
+    "Only one successful result published per worker pass",
+    "Background retry opts out of duplicate enqueue and modal failure alerts",
+    "Transport/timeout categories preserved separately from provider errors; vendor failure is not disguised as offline transport",
+    "Normal queue acknowledgement waits for persistence flush and current identity",
+    "Interrupted owner processing entries recover to pending at worker initialization/destruction; unreachable network consumes no attempt"
+  ],
+  "checks": {
+    "workerCases": 13,
+    "integrationCases": 4,
+    "transportClassificationCases": 3,
+    "fullJestTests": 1773,
+    "fullJestSuites": 148,
+    "typescript": true,
+    "sourceMapMatches": {
+      "ios": {
+        "src/features/wardrobe/useVideoAnalysis.ts": true,
+        "src/services/uploadQueueProcessor.ts": true,
+        "src/services/externalAIService.ts": true,
+        "screens/WardrobeVideoScreen.tsx": true
+      },
+      "android": {
+        "src/features/wardrobe/useVideoAnalysis.ts": true,
+        "src/services/uploadQueueProcessor.ts": true,
+        "src/services/externalAIService.ts": true,
+        "screens/WardrobeVideoScreen.tsx": true
+      }
+    }
+  },
+  "sourceHashes": {
+    "src/features/wardrobe/useVideoAnalysis.ts": "f1d601dd399b90bcb4120f8f7e41e5c58e16fed2a278edb55f66f2bdc28c1414",
+    "src/services/uploadQueueProcessor.ts": "0b18f86b2a205715b9ff34f36b5d1943346b6ae013fb6adde07278fd6c280eec",
+    "src/services/externalAIService.ts": "c45e31cc53f25b2b35de9d52331cbaee497d94140a6cbddf2c0849ba828eabb0",
+    "screens/WardrobeVideoScreen.tsx": "89f82a0e72b73d69344cca25dad5184b0cf09432433ab631c76eb2d5e6d95ced"
+  },
+  "artifacts": {
+    "ios": {
+      "path": "/tmp/aiwardrobe-budget-release-00nhnjcc/AIWardrobe.app/main.jsbundle",
+      "bytes": 6947112,
+      "sha256": "94ab8f7d30d67d2ad1d8d274df59cd9b3ccdaf54d2cdc6b61e23f05b4a1fe0d8"
+    },
+    "android": {
+      "path": "/Users/v.zahid/AIWardrobe/android/app/build/outputs/apk/release/app-release.apk",
+      "bytes": 66050786,
+      "sha256": "bd2f239ac019e0719c36b409e106591f239b7de5f62b799e00c6383941d00676"
+    }
+  },
+  "limitations": [
+    "Integration tests execute actual extracted screen effect with real worker/hook/store and mocked provider/connectivity/storage; not native device E2E",
+    "Retry operates only while the review screen is mounted, not as an OS background task",
+    "Temporary native file URIs are not copied to durable queue-specific media storage yet",
+    "Legacy unowned entries, full restart recovery, exhausted-entry UI/manual retry and queued media cleanup remain incomplete",
+    "No new live NVIDIA capacity test; 10k DAU readiness remains unproven"
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-17",
+  "scope": "Owner-scoped local calendar persistence and cleanup registration",
+  "storagePrefix": "outfitLogs::",
+  "ownerEncoding": "encodeURIComponent",
+  "legacyPolicy": "Never read, migrate, or overwrite unowned outfitLogs during normal owner reads/writes; existing logout/account deletion still remove it",
+  "newServiceTests": 7,
+  "totalServiceTests": 12,
+  "appTests": 1298,
+  "appSuites": 114,
+  "typecheck": "passed",
+  "lint": {
+    "errors": 0,
+    "warnings": 18
+  },
+  "whitespace": "passed",
+  "verificationBoundary": "Actual calendar service and cleanup helper with Jest AsyncStorage; calendar hook fixtures explicitly authenticate",
+  "initialFocusedRun": "Two hook tests had no auth identity; fixtures now establish login and final full suite passes",
+  "productionRequests": false,
+  "newNativeBuild": false,
+  "sourceSha256": {
+    "src/services/calendarStorage.ts": "2484b39f90f6f37b9cf6bdd33d1a7e9599b9db1f2eeed04e781dc9a0a7e608f8",
+    "src/lib/persistence.ts": "50831d7076979a52bf6d7dd6990504a9def35fd309bb73c8db7c8efba78e8b4d",
+    "__tests__/services/calendarStorage.test.ts": "5516b5353c2278c0b3b93cbfd7729ff554a2b881af4fec50a81307935817b3f8",
+    "__tests__/features/useOutfitCalendar.test.ts": "40f74851ceed10bc04321e9223665128ea83042f53536e75064699fa681ed682",
+    "__tests__/lib/persistence.test.ts": "1e955f3c287951e33e3607fd0e3001cc9fc9970f3c1728a25ff39eb4bad480d9"
+  },
+  "remaining": [
+    "Native calendar restart/process-death tests",
+    "User-visible legacy calendar recovery requires verifiable ownership",
+    "Global cleanup overlapping a new account login",
+    "Other unowned shared-device caches",
+    "Production media capacity and deferred provider/store configuration"
+  ]
+}

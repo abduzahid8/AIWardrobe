@@ -1,0 +1,39 @@
+{
+  "measuredAt": "2026-10-21T02:33:25.592Z",
+  "scope": "Small production request-admission checks; no oversized production bodies, not generation/capacity certification",
+  "checks": [
+    {
+      "name": "outfit_count_exceeds_product_max",
+      "status": 403,
+      "code": "feature_limit_reached",
+      "latencyMs": 3538,
+      "passed": false
+    },
+    {
+      "name": "non_object_root",
+      "status": 403,
+      "code": "feature_limit_reached",
+      "latencyMs": 1737,
+      "passed": false
+    },
+    {
+      "name": "malformed_json",
+      "status": 403,
+      "code": "feature_limit_reached",
+      "latencyMs": 1165,
+      "passed": false
+    },
+    {
+      "name": "valid_request_reaches_budget_admission",
+      "status": 403,
+      "code": "feature_limit_reached",
+      "latencyMs": 1610,
+      "passed": false
+    }
+  ],
+  "cleanup": {
+    "refreshSessionsRevoked": true,
+    "revokeStatus": 204,
+    "userDeleted": true
+  }
+}

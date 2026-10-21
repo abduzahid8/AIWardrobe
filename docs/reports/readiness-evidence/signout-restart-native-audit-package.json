@@ -1,0 +1,10 @@
+{
+  "scope": "Explicit synthetic SDK/intent native protocol entry, not app auth-store/UI execution",
+  "apkSha256": "096fe4b658e819b33a5c45fa8a727c9abc3d4e5bf2e59936f28674e55ab0bf2c",
+  "bundleSha256": "d089629565b31f4374a29be8718170199507916a0b30e31ebc8c078a5737d39c",
+  "sourcesMatch": {
+    "scripts/validation/signout-restart-native-entry.tsx": "7435b8ac7c8a36706bafbf3b85c66421c5c02ec021e8f89927b5bc40210eef61",
+    "src/lib/signOutIntent.ts": "7c25e10efec8a2f528c932138a1c29e9ef9f386cc85c1951f93d50280dc7488d",
+    "src/lib/persistence.ts": "2df68bb96996cc1f9b4c174360104683d77a81f3b1eda165430b3e84c9d92656"
+  }
+}

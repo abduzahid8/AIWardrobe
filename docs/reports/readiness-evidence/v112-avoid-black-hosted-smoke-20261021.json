@@ -1,0 +1,90 @@
+{
+  "measuredAt": "2026-10-21T13:08:28.569Z",
+  "scope": "One disposable production owner with18real fixture garments: six valid tops, six valid shoes, six formal-ineligible bottoms. Real Auth/catalog/NVIDIA; one USD300 outfit request. No native image/UI or capacity claim.",
+  "checks": [
+    {
+      "name": "one_real_generated_outfit_returned",
+      "passed": true
+    },
+    {
+      "name": "complete_formal_outfit_passes_shared_rules",
+      "passed": true
+    },
+    {
+      "name": "ineligible_owned_bottoms_are_not_returned",
+      "passed": true
+    },
+    {
+      "name": "shop_supplement_supplies_the_missing_bottom",
+      "passed": true
+    },
+    {
+      "name": "returned_product_fields_match_owned_and_active_catalog_rows",
+      "passed": true
+    },
+    {
+      "name": "catalog_spend_respects_exact_request_budget",
+      "passed": true
+    },
+    {
+      "name": "requested_shop_color_is_absent",
+      "passed": true
+    }
+  ],
+  "preferences": {
+    "avoidColors": [
+      "black"
+    ]
+  },
+  "fixtureUserId": "2cb81f23-7773-4885-be78-3511dc8b5255",
+  "response": {
+    "status": 200,
+    "latencyMs": 10381,
+    "error": null,
+    "code": null,
+    "provider": "nvidia:meta/llama-3.2-11b-vision-instruct",
+    "providerAttempts": [
+      {
+        "provider": "nvidia",
+        "model": "meta/llama-3.2-11b-vision-instruct",
+        "status": "ok"
+      }
+    ]
+  },
+  "budget": {
+    "spendUzs": 1900000,
+    "capUzs": 3603690,
+    "reference": "CBU:2026-10-21:12012.3:13466.99:16026.81"
+  },
+  "items": [
+    {
+      "id": "6b33c969-a9d4-48a6-b53a-5f1ee29a0e54",
+      "name": "White long sleeve cotton shirt",
+      "slot": "top",
+      "source": "owned",
+      "price": null,
+      "currency": null
+    },
+    {
+      "id": "shop_md-uz-61729156",
+      "name": "100% linen pants with dart detail",
+      "slot": "bottom",
+      "source": "catalog",
+      "price": 1900000,
+      "currency": "UZS"
+    },
+    {
+      "id": "0dd8d103-130c-4da2-995c-7b6c5df445af",
+      "name": "Brown leather penny loafers",
+      "slot": "shoes",
+      "source": "owned",
+      "price": null,
+      "currency": null
+    }
+  ],
+  "cleanup": {
+    "refreshSessionsRevoked": true,
+    "userDeleted": true
+  },
+  "passed": true
+}

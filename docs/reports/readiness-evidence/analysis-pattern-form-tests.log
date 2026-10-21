@@ -1,0 +1,262 @@
+  console.warn
+    analysis_rejected {"reason":"invalid_json_array"}
+
+      at analysisUnavailable (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:224:13)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:398:20)
+
+  console.warn
+    analysis_rejected {"reason":"invalid_json_array"}
+
+      at analysisUnavailable (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:224:13)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:398:20)
+
+  console.warn
+    analysis_rejected {"reason":"invalid_json_array"}
+
+      at analysisUnavailable (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:224:13)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:398:20)
+
+  console.warn
+    analysis_rejected {"reason":"invalid_item_fields","items":[{"index":0,"fields":["item_shape"]}]}
+
+      at analysisUnavailable (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:224:13)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:402:20)
+
+  console.warn
+    analysis_rejected {"reason":"invalid_item_fields","items":[{"index":0,"fields":["item_shape"]}]}
+
+      at analysisUnavailable (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:224:13)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:402:20)
+
+  console.warn
+    analysis_rejected {"reason":"invalid_item_fields","items":[{"index":0,"fields":["category","section","specificType","primaryColor","colorHex","style","material","pattern","fit","description"]}],"patternForms":["missing"]}
+
+      at analysisUnavailable (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:224:13)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:402:20)
+
+  console.warn
+    analysis_rejected {"reason":"invalid_item_fields","items":[{"index":0,"fields":["section","specificType","colorHex","style","material","pattern","fit","description"]}],"patternForms":["missing"]}
+
+      at analysisUnavailable (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:224:13)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:402:20)
+
+  console.warn
+    analysis_rejected {"reason":"truncated_completion"}
+
+      at analysisUnavailable (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:224:13)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:394:20)
+
+  console.error
+    NVIDIA API error: 429
+
+      at callNvidiaVision (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:96:17)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:386:36)
+
+  console.warn
+    analysis_rejected {"reason":"provider_failure","kind":"Error","providerStatus":429}
+
+      at analysisUnavailable (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:224:13)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:390:20)
+
+  console.error
+    NVIDIA API error: 503
+
+      at callNvidiaVision (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:96:17)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:386:36)
+
+  console.warn
+    analysis_rejected {"reason":"provider_failure","kind":"Error","providerStatus":503}
+
+      at analysisUnavailable (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:224:13)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:390:20)
+
+  console.warn
+    analysis_rejected {"reason":"invalid_item_fields","items":[{"index":0,"fields":["section"]}]}
+
+      at analysisUnavailable (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:224:13)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:402:20)
+
+  console.warn
+    analysis_rejected {"reason":"invalid_item_fields","items":[{"index":0,"fields":["primaryColor"]}]}
+
+      at analysisUnavailable (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:224:13)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:402:20)
+
+  console.warn
+    analysis_rejected {"reason":"invalid_item_fields","items":[{"index":0,"fields":["colorHex"]}]}
+
+      at analysisUnavailable (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:224:13)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:402:20)
+
+  console.warn
+    analysis_rejected {"reason":"invalid_item_fields","items":[{"index":0,"fields":["style"]}]}
+
+      at analysisUnavailable (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:224:13)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:402:20)
+
+  console.warn
+    analysis_rejected {"reason":"invalid_item_fields","items":[{"index":0,"fields":["material"]}]}
+
+      at analysisUnavailable (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:224:13)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:402:20)
+
+  console.warn
+    analysis_rejected {"reason":"invalid_item_fields","items":[{"index":0,"fields":["pattern"]}],"patternForms":["array"]}
+
+      at analysisUnavailable (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:224:13)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:402:20)
+
+  console.warn
+    analysis_rejected {"reason":"invalid_item_fields","items":[{"index":0,"fields":["fit"]}]}
+
+      at analysisUnavailable (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:224:13)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:402:20)
+
+  console.warn
+    analysis_rejected {"reason":"invalid_item_fields","items":[{"index":0,"fields":["description"]}]}
+
+      at analysisUnavailable (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:224:13)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:402:20)
+
+  console.warn
+    analysis_rejected {"reason":"single_mode_multiple_items","count":2}
+
+      at analysisUnavailable (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:224:13)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:405:20)
+
+  console.warn
+    analysis_rejected {"reason":"invalid_item_fields","items":[{"index":0,"fields":["category","section"]}]}
+
+      at analysisUnavailable (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:224:13)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:402:20)
+
+  console.warn
+    analysis_rejected {"reason":"invalid_item_fields","items":[{"index":0,"fields":["category","section"]}]}
+
+      at analysisUnavailable (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:224:13)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:402:20)
+
+  console.warn
+    analysis_rejected {"reason":"invalid_item_fields","items":[{"index":0,"fields":["category","section"]}]}
+
+      at analysisUnavailable (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:224:13)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:402:20)
+
+  console.warn
+    analysis_rejected {"reason":"invalid_item_fields","items":[{"index":0,"fields":["pattern"]}],"patternForms":["unrecognized_string"]}
+
+      at analysisUnavailable (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:224:13)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:402:20)
+
+  console.warn
+    analysis_rejected {"reason":"invalid_item_fields","items":[{"index":0,"fields":["pattern"]}],"patternForms":["missing"]}
+
+      at analysisUnavailable (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:224:13)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:402:20)
+
+  console.warn
+    analysis_rejected {"reason":"invalid_item_fields","items":[{"index":0,"fields":["pattern"]}],"patternForms":["quoted_null"]}
+
+      at analysisUnavailable (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:224:13)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:402:20)
+
+  console.warn
+    analysis_rejected {"reason":"invalid_item_fields","items":[{"index":0,"fields":["pattern"]}],"patternForms":["copied_option_list"]}
+
+      at analysisUnavailable (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:224:13)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:402:20)
+
+  console.warn
+    analysis_rejected {"reason":"invalid_item_fields","items":[{"index":0,"fields":["pattern"]}],"patternForms":["empty_string"]}
+
+      at analysisUnavailable (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:224:13)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:402:20)
+
+  console.warn
+    analysis_rejected {"reason":"invalid_item_fields","items":[{"index":0,"fields":["pattern"]}],"patternForms":["array"]}
+
+      at analysisUnavailable (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:224:13)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:402:20)
+
+  console.warn
+    analysis_rejected {"reason":"invalid_item_fields","items":[{"index":0,"fields":["pattern"]}],"patternForms":["object"]}
+
+      at analysisUnavailable (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:224:13)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:402:20)
+
+PASS __tests__/backend/analyzeOutfitOwnership.test.js
+  ✓ payload userId cannot select another owner through the service role (4 ms)
+  ✓ authentication failure stops before provider work or wardrobe reads (1 ms)
+  ✓ rejects invalid image shape or size before external work
+  ✓ rejects invalid image shape or size before external work
+  ✓ rejects invalid image shape or size before external work
+  ✓ rejects invalid image shape or size before external work (55 ms)
+  ✓ analysis admission denial 403 prevents wardrobe and provider access (1 ms)
+  ✓ analysis admission denial 429 prevents wardrobe and provider access
+  ✓ analysis admission denial 503 prevents wardrobe and provider access
+  ✓ the actual outfit image stays in the final user message after the JSON-array example (1 ms)
+  ✓ matching color, style and pattern never makes trousers similar to a jacket (1 ms)
+  ✓ missing clothing types never earn an empty-string category match (1 ms)
+  ✓ t-shirt is not a substring match for shirt; typed broad categories use their specific garment type
+  ✓ primary_color participates in ranking and legitimate trouser aliases match
+  ✓ broad catalog labels use explicit English/Russian garment names, never shared color alone (1 ms)
+  ✓ dress shirts remain shirts and contradictory specific catalog types are withheld
+  ✓ broad dress catalog title is recognized: Linen dress
+  ✓ broad dress catalog title is recognized: Summer dresses
+  ✓ broad dress catalog title is recognized: Белое платье
+  ✓ invalid or incomplete provider output is an explicit retryable failure: not JSON (7 ms)
+  ✓ invalid or incomplete provider output is an explicit retryable failure: [{"category":"shirt"},]
+  ✓ invalid or incomplete provider output is an explicit retryable failure: [{"category":"shirt"}, {"category": (1 ms)
+  ✓ invalid or incomplete provider output is an explicit retryable failure: [null]
+  ✓ invalid or incomplete provider output is an explicit retryable failure: [1]
+  ✓ invalid or incomplete provider output is an explicit retryable failure: [{}] (1 ms)
+  ✓ invalid or incomplete provider output is an explicit retryable failure: [{"category":"shirt","primaryColor":"white"}]
+  ✓ a genuine empty JSON array remains distinct from invalid provider output
+  ✓ truncated completion is not presented as a complete outfit even if it contains parseable JSON
+  ✓ provider HTTP 429 is a retryable analysis failure (1 ms)
+  ✓ provider HTTP 503 is a retryable analysis failure
+  ✓ invalid structured garment field is rejected: {"section":"bottoms"}
+  ✓ invalid structured garment field is rejected: {"primaryColor":{}}
+  ✓ invalid structured garment field is rejected: {"colorHex":"beige"}
+  ✓ invalid structured garment field is rejected: {"style":"invented"} (1 ms)
+  ✓ invalid structured garment field is rejected: {"material":{}}
+  ✓ invalid structured garment field is rejected: {"pattern":[]}
+  ✓ invalid structured garment field is rejected: {"fit":"unknown"}
+  ✓ invalid structured garment field is rejected: {"description":""} (1 ms)
+  ✓ single-garment mode actually requests one item instead of a full outfit
+  ✓ unknown analysis modes are rejected before provider work
+  ✓ multiple detected items cannot masquerade as a successful single-garment analysis
+  ✓ explicit unknown fit is retained as null without inventing regular fit (1 ms)
+  ✓ hosted rejection diagnostics record field names without model text or image input (1 ms)
+  ✓ broad model label tops is resolved from explicit garment description white shirt
+  ✓ broad model label tops is resolved from explicit garment description beige jacket
+  ✓ broad model label outerwear is resolved from explicit garment description wool coat
+  ✓ broad model label bottoms is resolved from explicit garment description blue jeans
+  ✓ broad model label accessories is resolved from explicit garment description black belt (1 ms)
+  ✓ broad model label shoes is resolved from explicit garment description black loafers
+  ✓ ambiguous or contradictory broad-bottom label is rejected: beige casual item
+  ✓ ambiguous or contradictory broad-bottom label is rejected: shirt and pants set
+  ✓ ambiguous or contradictory broad-bottom label is rejected: white shirt (1 ms)
+  ✓ an explicit unknown pattern is retained as null, without fabricating solid fabric
+  ✓ known pattern wording Plain preserves its meaning as solid
+  ✓ known pattern wording no_pattern preserves its meaning as solid
+  ✓ known pattern wording solid-colored preserves its meaning as solid
+  ✓ known pattern wording Stripes preserves its meaning as striped (1 ms)
+  ✓ known pattern wording Checkered preserves its meaning as plaid
+  ✓ known pattern wording floral preserves its meaning as other
+  ✓ known pattern wording textured preserves its meaning as other
+  ✓ known pattern wording Unknown preserves its meaning as null
+  ✓ known pattern wording n/a preserves its meaning as null (1 ms)
+  ✓ unrecognized pattern text still fails instead of fabricating a known pattern
+  ✓ pattern failure shape is diagnostic without retaining free text: undefined
+  ✓ pattern failure shape is diagnostic without retaining free text: "null"
+  ✓ pattern failure shape is diagnostic without retaining free text: "solid|striped" (1 ms)
+  ✓ pattern failure shape is diagnostic without retaining free text: ""
+  ✓ pattern failure shape is diagnostic without retaining free text: []
+  ✓ pattern failure shape is diagnostic without retaining free text: {}
+
+Test Suites: 1 passed, 1 total
+Tests:       69 passed, 69 total
+Snapshots:   0 total
+Time:        0.747 s, estimated 1 s
+Ran all test suites matching /__tests__\/backend\/analyzeOutfitOwnership.test.js/i.

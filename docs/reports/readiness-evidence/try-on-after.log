@@ -1,0 +1,8 @@
+PASS __tests__/backend/tryOnComposite.test.js
+PASS __tests__/backend/tryOnContract.test.js
+
+Test Suites: 2 passed, 2 total
+Tests:       19 passed, 19 total
+Snapshots:   0 total
+Time:        0.927 s, estimated 1 s
+Ran all test suites matching /__tests__\/backend\/tryOnContract.test.js|__tests__\/backend\/tryOnComposite.test.js/i.

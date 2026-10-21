@@ -114,6 +114,12 @@ scripts/out/
 *.pth
 *.bin
 !backend/api/blank_mannequin.jpg
+# First-party splash assets must stay tracked (overrides the scratch *.png rule).
+!assets/splash-logo.png
+!android/app/src/main/res/drawable-*/splash_logo.png
+# Small, reproducible native codec fixtures.
+!scripts/validation/fixtures/opaque-photo/*.jpg
+!scripts/validation/fixtures/photo-orientation/*.jpg
 
 # Shop product shots — 1.4GB staging dir, served from Supabase Storage.
 # Never commit, never bundle (see app.json assetBundlePatterns).

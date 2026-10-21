@@ -11,6 +11,7 @@ import type { OutfitLog } from './useCalendarState';
 const STORAGE_KEY = '@outfit_logs';
 
 export function useOutfitLogs() {
+    const { t } = useTranslation();
     const [outfitLogs, setOutfitLogs] = useState<Record<string, OutfitLog>>({});
 
     // Load logs from storage
@@ -43,8 +44,7 @@ export function useOutfitLogs() {
             rating?: number
         ) => {
             if (selectedItems.length === 0) {
-                const { t } = useTranslation();
-                Alert.alert(t('outfitLogs.noItems'), t('outfitLogs.selectAtLeastOne'));
+                        Alert.alert(t('outfitLogs.noItems'), t('outfitLogs.selectAtLeastOne'));
                 return false;
             }
             const newLog: OutfitLog = {
@@ -58,7 +58,7 @@ export function useOutfitLogs() {
             await saveLogs(updated);
             return true;
         },
-        [outfitLogs, saveLogs]
+        [outfitLogs, saveLogs, t]
     );
 
     const deleteOutfitLog = useCallback(
@@ -67,14 +67,13 @@ export function useOutfitLogs() {
             delete updated[dateStr];
             await saveLogs(updated);
         },
-        [outfitLogs, saveLogs]
+        [outfitLogs, saveLogs, t]
     );
 
     const getMonthlyStats = useCallback(
         (year: number, month: number) => {
             const entries = Object.entries(outfitLogs).filter(([date]) => {
-                const d = new Date(date);
-                return d.getFullYear() === year && d.getMonth() === month;
+                return date.startsWith(`${year}-${String(month + 1).padStart(2, '0')}-`);
             });
             return {
                 totalOutfits: entries.length,

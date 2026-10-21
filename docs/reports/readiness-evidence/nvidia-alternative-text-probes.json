@@ -1,0 +1,17 @@
+{
+  "measuredAt": "2026-10-18T18:57:01.315Z",
+  "results": [
+    {
+      "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+      "status": 200,
+      "latencyMs": 28882,
+      "content": null
+    },
+    {
+      "model": "nv-mistralai/mistral-nemo-12b-instruct",
+      "status": 404,
+      "latencyMs": 769,
+      "content": null
+    }
+  ]
+}

@@ -1,23 +1,25 @@
 /**
- * useVideoAnalysis — Serverless version using External AI APIs directly
- * No backend server needed - calls HuggingFace/Replicate from mobile
+ * useVideoAnalysis — image/video frame classification through authenticated Edge Functions.
  */
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { authEvents } from '../../../store/authEvents';
 import { Platform } from 'react-native';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Alert } from 'react-native';
-import { ExternalAIService } from '../../services/externalAIService';
-import useUploadQueueStore from '../../store/uploadQueueStore';
+import { ExternalAIService, type ProcessingResult } from '../../services/externalAIService';
+import useUploadQueueStore, { flushUploadQueuePersistence } from '../../store/uploadQueueStore';
+import { commitScanReview } from '../../services/scanReviews';
+import { readVideoSampleTimes, readAccurateVideoFrames } from '../../services/videoFrameSampling';
 import { createLogger } from '../../utils/logger';
 import { useTranslation } from 'react-i18next';
 
 const logger = createLogger('useVideoAnalysis');
 
-const FRAME_TIME_POINTS = [0, 1000, 2000]; // ms
 
 export interface DetectedItem {
+  reviewItemId?: string;
   itemType: string;
   specificType?: string;
   color: string;
@@ -37,31 +39,71 @@ export interface DetectedItem {
 }
 
 export interface AnalysisResult {
+  reviewId?: string;
+  sourceQueueId?: string;
   detectedItems: DetectedItem[];
 }
+
+export interface ScanOptions { queueOnFailure?: boolean; silent?: boolean; queueId?: string }
 
 export interface UseVideoAnalysisReturn {
   analyzing: boolean;
   progress: string;
   results: AnalysisResult | null;
-  analyzeVideo: (videoUri: string) => Promise<void>;
-  analyzeImage: (imageUri: string) => Promise<void>;
+  analyzeVideo: (videoUri: string, options?: ScanOptions) => Promise<boolean>;
+  analyzeImage: (imageUri: string, options?: ScanOptions) => Promise<boolean>;
   reset: () => void;
+  restoreReview: (review: AnalysisResult) => void;
 }
 
 export const useVideoAnalysis = (): UseVideoAnalysisReturn => {
+  const { t } = useTranslation();
   const [analyzing, setAnalyzing] = useState(false);
   const [progress, setProgress] = useState('');
   const [results, setResults] = useState<AnalysisResult | null>(null);
 
+  const requestVersion = useRef(0);
+  const pendingMetadata = useRef<AbortController | null>(null);
+  const mounted = useRef(true);
+
   const reset = () => {
+    requestVersion.current++;
+    pendingMetadata.current?.abort();
     setAnalyzing(false);
     setProgress('');
     setResults(null);
   };
 
+  useEffect(() => {
+    mounted.current = true;
+    let identityRevision = authEvents.getRevision();
+    const onIdentityChange = () => {
+      const revision = authEvents.getRevision();
+      if (identityRevision === revision) return;
+      identityRevision = revision;
+      reset();
+    };
+    const offLogin = authEvents.onLogin(onIdentityChange);
+    const offLogout = authEvents.onLogout(onIdentityChange);
+    return () => {
+      mounted.current = false;
+      pendingMetadata.current?.abort();
+      requestVersion.current++;
+      offLogin(); offLogout();
+    };
+  }, []);
+
+  const beginRequest = () => {
+    pendingMetadata.current?.abort();
+    const controller = new AbortController();
+    pendingMetadata.current = controller;
+    const version = ++requestVersion.current;
+    const revision = authEvents.getRevision();
+    return Object.assign(() => mounted.current && version === requestVersion.current && revision === authEvents.getRevision(), { signal: controller.signal });
+  };
+
   // Extract frames from video
-  const extractFrames = async (videoUri: string): Promise<string[]> => {
+  const extractFrames = async (videoUri: string, current: () => boolean, signal: AbortSignal): Promise<string[]> => {
     const frames: string[] = [];
     
     if (Platform.OS === 'web') {
@@ -69,14 +111,32 @@ export const useVideoAnalysis = (): UseVideoAnalysisReturn => {
       return [];
     }
     
-    for (const time of FRAME_TIME_POINTS) {
+    if (Platform.OS === 'android') {
+      const samples = await readAccurateVideoFrames(videoUri, signal);
+      return current() ? samples.map(sample => sample.base64) : [];
+    }
+    const timePoints = await readVideoSampleTimes(videoUri, signal);
+    if (!current()) return [];
+    for (const time of timePoints) {
+      if (!current()) return [];
+      let thumbnailUri: string | undefined;
       try {
-        setProgress(`Extracting frame ${frames.length + 1}/${FRAME_TIME_POINTS.length}...`);
+        setProgress(t('wardrobeVideo.extractingFrame', { index: frames.length + 1, count: timePoints.length }));
         const { uri } = await VideoThumbnails.getThumbnailAsync(videoUri, { time, quality: 0.9 });
+        thumbnailUri = uri;
+        if (!current()) return [];
         const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+        if (!current()) return [];
         frames.push(base64);
       } catch (error) {
         console.warn(`Failed to extract frame at ${time}ms:`, error);
+      } finally {
+        // Results retain bytes, never this temporary file. This also runs when
+        // cancellation wins while thumbnail extraction or reading is pending.
+        if (thumbnailUri) {
+          try { await FileSystem.deleteAsync(thumbnailUri, { idempotent: true }); }
+          catch { logger.warn('Unable to remove temporary scan thumbnail'); }
+        }
       }
     }
     
@@ -84,125 +144,135 @@ export const useVideoAnalysis = (): UseVideoAnalysisReturn => {
   };
 
   // Analyze a single frame using External AI
-  const analyzeFrame = async (base64Image: string): Promise<DetectedItem[]> => {
-    setProgress('Analyzing with AI...');
-    
-    try {
-      const result = await ExternalAIService.processClothingImage(base64Image);
+  const mapFrameResult = (result: ProcessingResult): DetectedItem[] => {
       
-      if (!result.success || !result.classification) {
-        // Return fallback item
-        return [{
-          itemType: 'Clothing Item',
-          color: 'Unknown',
-          style: 'Casual',
-          description: 'Detected clothing item',
-          position: 'upper',
-          confidence: 0.5,
-          confidenceLevel: 'low',
-          detectionSources: ['ExternalAI Fallback'],
-          frameImage: `data:image/jpeg;base64,${base64Image}`,
-        }];
+    if (!result.success || !result.classification) {
+      throw new Error(result.failureKind === 'network' || result.failureKind === 'timeout' ? 'network' : t('videoAnalysis.somethingWrong'));
+    }
+    const positions: Record<string, DetectedItem['position']> = {
+      tops: 'upper', outerwear: 'upper', bottoms: 'lower', dresses: 'full',
+      shoes: 'feet', accessories: 'accessory',
+    };
+
+    const position = positions[result.classification.section];
+    if (!position) throw new Error(t('videoAnalysis.somethingWrong'));
+
+    const item: DetectedItem = {
+      itemType: result.classification.category,
+      specificType: result.classification.category,
+      color: result.classification.attributes.color || '',
+      material: result.classification.attributes.material ?? undefined,
+      style: result.classification.attributes.style,
+      description: result.description || `${result.classification.category}`,
+      position,
+      confidence: result.classification.confidence,
+      confidenceLevel: result.classification.confidence > 0.8 ? 'high' :
+                      result.classification.confidence > 0.5 ? 'medium' : 'low',
+      detectionSources: result.steps,
+      frameImage: result.imageUrl,
+      cutoutImage: result.cutoutUrl || undefined,
+    };
+
+    return [item];
+  };
+
+  const analyzeFrame = async (base64Image: string, current: () => boolean): Promise<DetectedItem[]> => {
+    if (!current()) return [];
+    setProgress('Analyzing with AI...');
+    const result = await ExternalAIService.classifyOnly(base64Image);
+    return current() ? mapFrameResult(result) : [];
+  };
+
+  const queueForRetry = async (uri: string, type: 'image' | 'video', current: () => boolean): Promise<boolean> => {
+    const owner = authEvents.getUserId();
+    if (!owner || !current()) return false;
+    let staged = uri;
+    let queued = false;
+    try {
+      if (Platform.OS !== 'web') {
+        const { stagePendingScanMedia } = require('../../services/pendingScanMedia') as typeof import('../../services/pendingScanMedia');
+        staged = await stagePendingScanMedia(owner, uri, type);
       }
-
-      const item: DetectedItem = {
-        itemType: result.classification.category,
-        specificType: result.classification.category,
-        color: 'Unknown', // Color detection would need additional model
-        colorHex: '#888888',
-        style: result.classification.attributes.style,
-        description: result.description || `${result.classification.category}`,
-        position: result.classification.section as any,
-        confidence: result.classification.confidence,
-        confidenceLevel: result.classification.confidence > 0.8 ? 'high' : 
-                        result.classification.confidence > 0.5 ? 'medium' : 'low',
-        detectionSources: result.steps,
-        frameImage: result.imageUrl,
-        cutoutImage: result.cutoutUrl || undefined,
-      };
-
-      return [item];
-    } catch (error) {
-      console.error('Analysis error:', error);
-      return [{
-        itemType: 'Clothing Item',
-        color: 'Unknown',
-        style: 'Casual',
-        description: 'Error during analysis',
-        position: 'upper',
-        confidence: 0.3,
-        confidenceLevel: 'low',
-        detectionSources: ['Error Fallback'],
-        frameImage: `data:image/jpeg;base64,${base64Image}`,
-      }];
+      if (!current()) return false;
+      queued = useUploadQueueStore.getState().addUpload(staged, type);
+      if (!queued) return false;
+      await flushUploadQueuePersistence();
+      return current();
+    } catch { return false; }
+    finally {
+      if (Platform.OS !== 'web' && !queued && staged !== uri) {
+        const media = require('../../services/pendingScanMedia') as typeof import('../../services/pendingScanMedia');
+        const referenced = useUploadQueueStore.getState().pendingUploads.some(entry => {
+          if (entry.ownerId !== owner) return false;
+          try { return media.resolvePendingScanMedia(entry.uri, owner) === staged; } catch { return false; }
+        });
+        if (!referenced) await media.removePendingScanMedia(owner, staged, () => useUploadQueueStore.getState().pendingUploads.filter(entry => entry.ownerId === owner).map(entry => entry.uri)).catch(() => undefined);
+      }
     }
   };
 
   // Analyze video
-  const analyzeVideo = async (videoUri: string): Promise<void> => {
-    logger.info('analyzeVideo called', { videoUri });
+  const analyzeVideo = async (videoUri: string, options: ScanOptions = {}): Promise<boolean> => {
+    if (!mounted.current) return false;
+    const current = beginRequest();
     setAnalyzing(true);
     setResults(null);
     setProgress('Extracting frames...');
     
     try {
-      const frames = await extractFrames(videoUri);
+      const frames = await extractFrames(videoUri, current, current.signal);
+      if (!current()) return false;
       
       if (frames.length === 0) {
-        const { t } = useTranslation();
-        Alert.alert(
+        if (!options.silent) Alert.alert(
           t('videoAnalysis.videoProcessingLimited'),
           t('videoAnalysis.videoProcessingLimitedMessage'),
           [{ text: t('common.ok') }]
         );
-        setResults({
-          detectedItems: [{
-            itemType: 'Clothing Item',
-            color: 'Unknown',
-            style: 'Casual',
-            description: 'Add details manually in the next step',
-            position: 'upper',
-            confidence: 0.3,
-            confidenceLevel: 'low',
-            detectionSources: ['Manual Fallback'],
-            frameImage: undefined,
-            cutoutImage: undefined,
-          }],
-        });
-        return;
+        return false;
       }
 
-      // Analyze the best frame (first one for now)
-      const detectedItems = await analyzeFrame(frames[0]);
+      setProgress(t('wardrobeVideo.analyzingVideo'));
+      const frameResults = await ExternalAIService.processVideoFrames(frames);
+      if (!current()) return false;
+      const detectedItems = frameResults.flatMap((result, frameIndex) =>
+        mapFrameResult(result).map(item => ({ ...item, outfitId: frameIndex + 1 })));
+
       
       if (detectedItems.length === 0) {
-        const { t } = useTranslation();
-        Alert.alert(t('videoAnalysis.noClothingFound'), t('videoAnalysis.noClothingFoundVideo'));
-        return;
+        if (!options.silent) Alert.alert(t('videoAnalysis.noClothingFound'), t('videoAnalysis.noClothingFoundVideo'));
+        return false;
       }
 
-      setResults({ detectedItems });
+      const owner = authEvents.getUserId();
+      const review = Platform.OS === 'web' ? { detectedItems } : await commitScanReview(owner || '', { detectedItems }, options.queueId);
+      if (!current()) return false;
+      setResults(review);
+      return true;
     } catch (error: any) {
+      if (!current()) return false;
       console.error('analyzeVideo error:', error);
-      const isNetworkError = error.message?.toLowerCase().includes('network') || 
+      const isNetworkError = error.name === 'FunctionsFetchError' || error.name === 'AbortError' || error.message?.toLowerCase().includes('network') || 
                             error.message?.toLowerCase().includes('timeout');
 
-      if (isNetworkError) {
-        useUploadQueueStore.getState().addUpload(videoUri, 'video');
-        const { t } = useTranslation();
-        Alert.alert(t('videoAnalysis.savedOffline'), t('videoAnalysis.savedOfflineVideo'));
+      if (isNetworkError && options.queueOnFailure !== false) {
+        const queued = await queueForRetry(videoUri, 'video', current);
+        if (!current()) return false;
+        if (!options.silent) Alert.alert(t(queued ? 'videoAnalysis.savedOffline' : 'videoAnalysis.analysisFailed'),
+          t(queued ? 'videoAnalysis.savedOfflineVideo' : 'videoAnalysis.somethingWrong'));
       } else {
-        const { t } = useTranslation();
-        Alert.alert(t('videoAnalysis.analysisFailed'), error.message || t('videoAnalysis.somethingWrong'));
+        if (!options.silent) Alert.alert(t('videoAnalysis.analysisFailed'), error.message || t('videoAnalysis.somethingWrong'));
       }
+      return false;
     } finally {
-      setAnalyzing(false);
-      setProgress('');
+      if (current()) { setAnalyzing(false); setProgress(''); }
     }
   };
 
   // Analyze image
-  const analyzeImage = async (imageUri: string): Promise<void> => {
+  const analyzeImage = async (imageUri: string, options: ScanOptions = {}): Promise<boolean> => {
+    if (!mounted.current) return false;
+    const current = beginRequest();
     setAnalyzing(true);
     setResults(null);
     setProgress('Processing image...');
@@ -216,34 +286,41 @@ export const useVideoAnalysis = (): UseVideoAnalysisReturn => {
         base64 = await FileSystem.readAsStringAsync(imageUri, { encoding: 'base64' });
       }
       
-      const detectedItems = await analyzeFrame(base64);
+      if (!current()) return false;
+      const detectedItems = await analyzeFrame(base64, current);
+      if (!current()) return false;
       
       if (detectedItems.length === 0) {
-        const { t } = useTranslation();
-        Alert.alert(t('videoAnalysis.noClothingFound'), t('videoAnalysis.noClothingFoundImage'));
-        return;
+        if (!options.silent) Alert.alert(t('videoAnalysis.noClothingFound'), t('videoAnalysis.noClothingFoundImage'));
+        return false;
       }
 
-      setResults({ detectedItems });
+      const owner = authEvents.getUserId();
+      const review = Platform.OS === 'web' ? { detectedItems } : await commitScanReview(owner || '', { detectedItems }, options.queueId);
+      if (!current()) return false;
+      setResults(review);
+      return true;
     } catch (error: any) {
-      const isNetworkError = error.message?.toLowerCase().includes('network') || 
+      if (!current()) return false;
+      const isNetworkError = error.name === 'FunctionsFetchError' || error.name === 'AbortError' || error.message?.toLowerCase().includes('network') || 
                             error.message?.toLowerCase().includes('timeout');
 
-      if (isNetworkError) {
-        useUploadQueueStore.getState().addUpload(imageUri, 'image');
-        const { t } = useTranslation();
-        Alert.alert(t('videoAnalysis.savedOffline'), t('videoAnalysis.savedOfflinePhoto'));
+      if (isNetworkError && options.queueOnFailure !== false) {
+        const queued = await queueForRetry(imageUri, 'image', current);
+        if (!current()) return false;
+        if (!options.silent) Alert.alert(t(queued ? 'videoAnalysis.savedOffline' : 'videoAnalysis.analysisFailed'),
+          t(queued ? 'videoAnalysis.savedOfflinePhoto' : 'videoAnalysis.somethingWrong'));
       } else {
-        const { t } = useTranslation();
-        Alert.alert(t('videoAnalysis.analysisFailed'), error.message || t('videoAnalysis.somethingWrong'));
+        if (!options.silent) Alert.alert(t('videoAnalysis.analysisFailed'), error.message || t('videoAnalysis.somethingWrong'));
       }
+      return false;
     } finally {
-      setAnalyzing(false);
-      setProgress('');
+      if (current()) { setAnalyzing(false); setProgress(''); }
     }
   };
 
-  return { analyzing, progress, results, analyzeVideo, analyzeImage, reset };
+  const restoreReview = (review: AnalysisResult) => { reset(); setResults(review); };
+  return { analyzing, progress, results, analyzeVideo, analyzeImage, reset, restoreReview };
 };
 
 export default useVideoAnalysis;

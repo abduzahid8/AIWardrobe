@@ -1,0 +1,18 @@
+{
+  "scope": "Active wardrobe sync/fetch slice and Supabase error handling; no production mutations",
+  "fullSuite": {
+    "tests": 1026,
+    "suites": 81,
+    "passed": true
+  },
+  "newRegressions": 7,
+  "typecheck": "pass",
+  "targetedLint": {
+    "errors": 0,
+    "warnings": 10
+  },
+  "liveEvidence": "supabase-error-contract.json",
+  "nativeVerified": false,
+  "mobileReleased": false,
+  "hostedOfflineReplayVerified": false
+}

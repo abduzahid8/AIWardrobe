@@ -1,0 +1,34 @@
+{
+  "scope": "Serialize native-photo staging metadata/read/encoding/commit; not a whole-app memory cap",
+  "before": {
+    "tests": 25,
+    "failed": 2,
+    "passed": 23
+  },
+  "after": {
+    "focusedTests": 61,
+    "focusedSuites": 3,
+    "fullTests": 1410,
+    "fullSuites": 123,
+    "typecheckPassed": true,
+    "eslintErrors": 0,
+    "eslintWarnings": 0
+  },
+  "newRegressions": [
+    "Second input is not read until first commit completes",
+    "Stale queued work rejects before metadata/body access",
+    "Read rejection leaves later queue work usable"
+  ],
+  "sourceSha256": {
+    "src/services/pendingWardrobeMedia.ts": "c02b09118a82079f26c78cc8d6e5ba39627d9963adf13851d91f9f45eaa59d58",
+    "__tests__/services/pendingWardrobeMedia.test.ts": "06854f27a63dec0a2d634aced996bd11eee7f0899e72e9e6328c111ccf42ec62",
+    "scripts/validation/pending-media-durability.mjs": "d317ad3b133548308bd4f2c95f781af0eb856f61f0b56d6e066984a1008909a5"
+  },
+  "osAdapterResult": "../staging-buffer-os-durability.json",
+  "limitations": [
+    "Native RSS and high-resolution decode memory not measured",
+    "Queued caller-owned data URI strings, upload buffers and native codec allocations remain outside this bound",
+    "A pending read holds the filesystem queue until it settles; no new native-read timeout was added",
+    "No new native simulator runtime or 10000 DAU capacity verification"
+  ]
+}

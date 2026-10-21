@@ -1,0 +1,37 @@
+{
+  "measuredAt": "2026-10-21T16:21:55.964Z",
+  "scope": "One real hosted Old Money/Work shopping request, no weather or entered budget, limit five. Controlled catalog pool; not exact screenshot account or capacity proof.",
+  "checks": [
+    {
+      "name": "all_three_catalog_slots_available",
+      "passed": true
+    },
+    {
+      "name": "usable_outfits_returned",
+      "passed": false
+    }
+  ],
+  "fixtureUserId": "94686664-0947-414e-8215-7bdedb6c2d8b",
+  "candidateCount": 40,
+  "response": {
+    "status": 503,
+    "latencyMs": 48150,
+    "code": null,
+    "error": "ai_generation_unavailable",
+    "provider": null,
+    "providerAttempts": [
+      {
+        "provider": "nvidia",
+        "model": "meta/llama-3.2-11b-vision-instruct",
+        "status": "timeout"
+      }
+    ],
+    "outfitCount": 0
+  },
+  "failure": "Audit assertion failed",
+  "cleanup": {
+    "sessionsRevoked": true,
+    "ownerDeleted": true
+  },
+  "passed": false
+}

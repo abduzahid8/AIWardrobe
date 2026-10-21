@@ -1,0 +1,39 @@
+{
+  "measuredAt": "2026-10-21T02:34:04.666Z",
+  "scope": "Small production request-admission checks; no oversized production bodies, not generation/capacity certification",
+  "checks": [
+    {
+      "name": "outfit_count_exceeds_product_max",
+      "status": 400,
+      "code": "invalid_generation_request",
+      "latencyMs": 2332,
+      "passed": true
+    },
+    {
+      "name": "non_object_root",
+      "status": 400,
+      "code": "invalid_generation_request",
+      "latencyMs": 2186,
+      "passed": true
+    },
+    {
+      "name": "malformed_json",
+      "status": 400,
+      "code": "invalid_generation_request",
+      "latencyMs": 1742,
+      "passed": true
+    },
+    {
+      "name": "valid_request_reaches_budget_admission",
+      "status": 422,
+      "code": "no_items_within_budget",
+      "latencyMs": 5120,
+      "passed": true
+    }
+  ],
+  "cleanup": {
+    "refreshSessionsRevoked": true,
+    "revokeStatus": 204,
+    "userDeleted": true
+  }
+}

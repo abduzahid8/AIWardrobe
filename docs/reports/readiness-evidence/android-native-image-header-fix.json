@@ -1,0 +1,77 @@
+{
+  "localDate": "2026-10-21",
+  "scope": "Android native private-image request header forwarding and session recovery",
+  "reactNativeVersion": "0.86.3",
+  "sdkSource": "node_modules/react-native/Libraries/Image/Image.android.js",
+  "sdkSourceSha256": "8ed5fffb8844e8262a5c1fe3c130e989c84e7509ec31b4fe9c38f4fad24be7b6",
+  "rootCause": "Installed Android Image code forwards source headers in the array branch but not the single-object branch",
+  "baseline": {
+    "componentRegressionFailed": 1,
+    "nativeOwnerRender": "failed",
+    "expoOwnerRender": "loaded",
+    "authenticatedFetchStatus": 200,
+    "authenticatedFetchBytes": 2915128,
+    "nativeProbeResult": "timeout before owner phase completed"
+  },
+  "fix": [
+    "Normalize Android header-bearing single sources to the supported one-element array form",
+    "Preserve object-source width and height fallback",
+    "Retain iOS and unauthenticated source behavior",
+    "Reject Android candidate arrays with different header maps because the SDK shares first-candidate headers"
+  ],
+  "verification": {
+    "tests": 2066,
+    "suites": 167,
+    "typeScript": "passed",
+    "iosHermes": "passed",
+    "androidArm64Release": "passed",
+    "sourceCorrespondence": {
+      "ios": {
+        "src/components/MediaImage.tsx": "391ed1b4b5a50f9553bb0238ae657a0e5f2298859757c99e7f4a220781d0f091",
+        "src/utils/mediaImageSource.ts": "722bad4271044653954e564574fe43cf58471212b366456ba3ba34a9885d5a84"
+      },
+      "android": {
+        "src/components/MediaImage.tsx": "391ed1b4b5a50f9553bb0238ae657a0e5f2298859757c99e7f4a220781d0f091",
+        "src/utils/mediaImageSource.ts": "722bad4271044653954e564574fe43cf58471212b366456ba3ba34a9885d5a84"
+      },
+      "probe": {
+        "src/components/MediaImage.tsx": "391ed1b4b5a50f9553bb0238ae657a0e5f2298859757c99e7f4a220781d0f091",
+        "src/utils/mediaImageSource.ts": "722bad4271044653954e564574fe43cf58471212b366456ba3ba34a9885d5a84"
+      }
+    },
+    "nativePhases": [
+      {
+        "phase": "owner",
+        "native": "loaded 1125 x 1500",
+        "expo": "loaded 403 x 538"
+      },
+      {
+        "phase": "owner invalid token",
+        "native": "failed",
+        "expo": "failed"
+      },
+      {
+        "phase": "owner refreshed token",
+        "native": "loaded 1125 x 1500",
+        "expo": "loaded 403 x 538"
+      }
+    ]
+  },
+  "measurementLimitations": [
+    "Desktop controller could not bind emulator window; native callback/result-file instrumentation used",
+    "No Android pixel or visual-clearing assertion",
+    "Initial console-only collection was inconclusive; failed file-based baseline retained separately",
+    "SDK refresh executed by fixture controller; auth-store publication by test harness",
+    "Probe reused release native libraries and was separately signed with development debug key",
+    "No production configuration changed to run the test",
+    "Older released clients, full wardrobe/login flows and 10000-DAU capacity remain unverified"
+  ],
+  "testInfrastructure": {
+    "emulator": "Android 14 API34 Google APIs arm64-v8a",
+    "avd": "AIWardrobe_Media_Render_20261021",
+    "actualDataPartitionBytes": 6442450944,
+    "snapshotDisabled": true,
+    "cacheCleanup": "Inactive Xcode module cache and Gradle transforms only; module cache regenerated as needed",
+    "sdkInstalledUnchanged": true
+  }
+}

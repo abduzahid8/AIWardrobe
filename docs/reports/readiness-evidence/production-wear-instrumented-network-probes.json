@@ -1,0 +1,275 @@
+{
+  "scope": "Thirty public catalog GET probes using independent curl processes during the instrumented write run; same Mac/network; additional read traffic approximately 0.28 RPS",
+  "probes": [
+    {
+      "at": "2026-10-17T00:00:11.978Z",
+      "status": 200,
+      "dnsSec": 0.00279,
+      "connectSec": 0.098127,
+      "tlsSec": 0.196623,
+      "firstByteSec": 0.579451,
+      "totalSec": 0.579788
+    },
+    {
+      "at": "2026-10-17T00:00:15.576Z",
+      "status": 200,
+      "dnsSec": 0.004452,
+      "connectSec": 0.098471,
+      "tlsSec": 0.209177,
+      "firstByteSec": 1.069565,
+      "totalSec": 1.073723
+    },
+    {
+      "at": "2026-10-17T00:00:19.674Z",
+      "status": 200,
+      "dnsSec": 0.003772,
+      "connectSec": 0.08859,
+      "tlsSec": 0.198828,
+      "firstByteSec": 0.566087,
+      "totalSec": 0.566507
+    },
+    {
+      "at": "2026-10-17T00:00:23.266Z",
+      "status": 200,
+      "dnsSec": 0.00421,
+      "connectSec": 0.088849,
+      "tlsSec": 0.190779,
+      "firstByteSec": 0.55737,
+      "totalSec": 0.562205
+    },
+    {
+      "at": "2026-10-17T00:00:26.852Z",
+      "status": 200,
+      "dnsSec": 0.004552,
+      "connectSec": 0.099832,
+      "tlsSec": 0.212391,
+      "firstByteSec": 0.582213,
+      "totalSec": 0.589429
+    },
+    {
+      "at": "2026-10-17T00:00:30.467Z",
+      "status": 200,
+      "dnsSec": 0.003701,
+      "connectSec": 0.1143,
+      "tlsSec": 0.228412,
+      "firstByteSec": 0.612301,
+      "totalSec": 0.612532
+    },
+    {
+      "at": "2026-10-17T00:00:34.102Z",
+      "status": 200,
+      "dnsSec": 0.004468,
+      "connectSec": 0.10228,
+      "tlsSec": 0.212862,
+      "firstByteSec": 0.58544,
+      "totalSec": 0.585819
+    },
+    {
+      "at": "2026-10-17T00:00:37.711Z",
+      "status": 200,
+      "dnsSec": 0.004475,
+      "connectSec": 0.102303,
+      "tlsSec": 0.208868,
+      "firstByteSec": 0.565782,
+      "totalSec": 0.566214
+    },
+    {
+      "at": "2026-10-17T00:00:41.301Z",
+      "status": 200,
+      "dnsSec": 0.004061,
+      "connectSec": 0.095705,
+      "tlsSec": 0.212442,
+      "firstByteSec": 0.601758,
+      "totalSec": 0.602185
+    },
+    {
+      "at": "2026-10-17T00:00:44.929Z",
+      "status": 200,
+      "dnsSec": 0.003824,
+      "connectSec": 0.092154,
+      "tlsSec": 0.20333,
+      "firstByteSec": 0.57053,
+      "totalSec": 0.570959
+    },
+    {
+      "at": "2026-10-17T00:00:48.525Z",
+      "status": 200,
+      "dnsSec": 0.002656,
+      "connectSec": 0.09424,
+      "tlsSec": 0.20152,
+      "firstByteSec": 0.593073,
+      "totalSec": 0.593486
+    },
+    {
+      "at": "2026-10-17T00:00:52.143Z",
+      "status": 200,
+      "dnsSec": 0.003666,
+      "connectSec": 0.092929,
+      "tlsSec": 0.194651,
+      "firstByteSec": 0.59235,
+      "totalSec": 0.592528
+    },
+    {
+      "at": "2026-10-17T00:00:55.758Z",
+      "status": 200,
+      "dnsSec": 0.003692,
+      "connectSec": 0.091726,
+      "tlsSec": 0.195394,
+      "firstByteSec": 0.57567,
+      "totalSec": 0.57584
+    },
+    {
+      "at": "2026-10-17T00:00:59.354Z",
+      "status": 200,
+      "dnsSec": 0.004021,
+      "connectSec": 0.109038,
+      "tlsSec": 0.231522,
+      "firstByteSec": 0.614488,
+      "totalSec": 0.618873
+    },
+    {
+      "at": "2026-10-17T00:01:02.998Z",
+      "status": 200,
+      "dnsSec": 0.003229,
+      "connectSec": 0.099669,
+      "tlsSec": 0.201028,
+      "firstByteSec": 0.570101,
+      "totalSec": 0.570486
+    },
+    {
+      "at": "2026-10-17T00:01:06.583Z",
+      "status": 200,
+      "dnsSec": 0.002672,
+      "connectSec": 0.088621,
+      "tlsSec": 0.19562,
+      "firstByteSec": 0.583716,
+      "totalSec": 0.584349
+    },
+    {
+      "at": "2026-10-17T00:01:10.186Z",
+      "status": 200,
+      "dnsSec": 0.004605,
+      "connectSec": 0.095015,
+      "tlsSec": 0.197785,
+      "firstByteSec": 0.582894,
+      "totalSec": 0.583211
+    },
+    {
+      "at": "2026-10-17T00:01:13.794Z",
+      "status": 200,
+      "dnsSec": 0.002856,
+      "connectSec": 0.092481,
+      "tlsSec": 0.198687,
+      "firstByteSec": 0.58323,
+      "totalSec": 0.58351
+    },
+    {
+      "at": "2026-10-17T00:01:17.392Z",
+      "status": 200,
+      "dnsSec": 0.003408,
+      "connectSec": 0.0853,
+      "tlsSec": 0.18711,
+      "firstByteSec": 0.55845,
+      "totalSec": 0.558887
+    },
+    {
+      "at": "2026-10-17T00:01:20.972Z",
+      "status": 200,
+      "dnsSec": 0.003999,
+      "connectSec": 0.093991,
+      "tlsSec": 0.208793,
+      "firstByteSec": 0.573882,
+      "totalSec": 0.575233
+    },
+    {
+      "at": "2026-10-17T00:01:24.572Z",
+      "status": 200,
+      "dnsSec": 0.003971,
+      "connectSec": 0.102235,
+      "tlsSec": 0.213493,
+      "firstByteSec": 0.595383,
+      "totalSec": 0.595722
+    },
+    {
+      "at": "2026-10-17T00:01:28.193Z",
+      "status": 200,
+      "dnsSec": 0.004428,
+      "connectSec": 0.11031,
+      "tlsSec": 0.212955,
+      "firstByteSec": 0.578242,
+      "totalSec": 0.578851
+    },
+    {
+      "at": "2026-10-17T00:01:31.796Z",
+      "status": 200,
+      "dnsSec": 0.00354,
+      "connectSec": 0.097876,
+      "tlsSec": 0.203976,
+      "firstByteSec": 0.573531,
+      "totalSec": 0.573909
+    },
+    {
+      "at": "2026-10-17T00:01:35.397Z",
+      "status": 200,
+      "dnsSec": 0.004468,
+      "connectSec": 0.093917,
+      "tlsSec": 0.200492,
+      "firstByteSec": 0.565713,
+      "totalSec": 0.566045
+    },
+    {
+      "at": "2026-10-17T00:01:38.988Z",
+      "status": 200,
+      "dnsSec": 0.003867,
+      "connectSec": 0.097942,
+      "tlsSec": 0.207162,
+      "firstByteSec": 0.58566,
+      "totalSec": 0.593499
+    },
+    {
+      "at": "2026-10-17T00:01:42.607Z",
+      "status": 200,
+      "dnsSec": 0.002606,
+      "connectSec": 0.085779,
+      "tlsSec": 0.196038,
+      "firstByteSec": 0.544642,
+      "totalSec": 0.544901
+    },
+    {
+      "at": "2026-10-17T00:01:46.173Z",
+      "status": 200,
+      "dnsSec": 0.004507,
+      "connectSec": 0.102688,
+      "tlsSec": 0.213185,
+      "firstByteSec": 0.587498,
+      "totalSec": 0.592725
+    },
+    {
+      "at": "2026-10-17T00:01:49.788Z",
+      "status": 200,
+      "dnsSec": 0.003883,
+      "connectSec": 0.102263,
+      "tlsSec": 0.202333,
+      "firstByteSec": 0.57548,
+      "totalSec": 0.575855
+    },
+    {
+      "at": "2026-10-17T00:01:53.385Z",
+      "status": 200,
+      "dnsSec": 0.00458,
+      "connectSec": 0.110623,
+      "tlsSec": 0.228454,
+      "firstByteSec": 0.613726,
+      "totalSec": 0.614168
+    },
+    {
+      "at": "2026-10-17T00:01:57.023Z",
+      "status": 200,
+      "dnsSec": 0.004241,
+      "connectSec": 0.092963,
+      "tlsSec": 0.202839,
+      "firstByteSec": 0.55805,
+      "totalSec": 0.558474
+    }
+  ]
+}

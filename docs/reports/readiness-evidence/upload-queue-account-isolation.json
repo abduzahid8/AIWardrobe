@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-16",
+  "scope": "Unreleased photo/video upload queue persistence and account reset",
+  "finding": "wardrobe-upload-queue was absent from persistence cleanup registry and memory reset",
+  "changes": [
+    "Register actual photo/video queue key",
+    "Use ordered storage adapter with pending-read invalidation",
+    "Clear queue persistence before registry removal",
+    "Reset queue memory at account boundaries"
+  ],
+  "verification": {
+    "new_regressions": 3,
+    "jest_tests": 1088,
+    "jest_suites": 93,
+    "typescript": "passed",
+    "targeted_lint": {
+      "errors": 0,
+      "warnings": 17
+    },
+    "whitespace": "passed"
+  },
+  "limitations": [
+    "Controlled storage tests only; native background/kill behavior unverified",
+    "Full external sign-out disk cleanup coordination remains incomplete",
+    "No production changes or AI calls"
+  ]
+}

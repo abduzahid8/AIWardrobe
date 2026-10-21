@@ -1,0 +1,30 @@
+{
+  "measuredAt": "2026-10-18T19:00:16.312Z",
+  "scope": "Candidate handler executed locally against real Auth/catalog/NVIDIA, with Lightning thinking disabled; hosted routing unchanged",
+  "checks": [
+    {
+      "name": "date_old_money_250_usd",
+      "status": 503,
+      "error": "ai_generation_unavailable",
+      "latencyMs": 49506,
+      "passed": false,
+      "reasons": [
+        "generation_http_503"
+      ],
+      "spendUzs": 0,
+      "capUzs": 3150000,
+      "items": [],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "status": "timeout"
+        }
+      ]
+    }
+  ],
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

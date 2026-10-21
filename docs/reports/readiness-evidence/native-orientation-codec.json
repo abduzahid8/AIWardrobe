@@ -1,0 +1,166 @@
+{
+  "scope": "Actual app staging/thumbnail source with installed native Expo codec; no cloud session or provider",
+  "cases": [
+    {
+      "name": "Repository photo",
+      "originalPath": "file:///tmp/aiwardrobe-native-orientation-artifacts/0-originalPath.png",
+      "thumbnailPath": "file:///tmp/aiwardrobe-native-orientation-artifacts/0-thumbnailPath.png",
+      "originalBytes": 2915128,
+      "thumbnailBytes": 472270,
+      "elapsedMs": 125,
+      "dimensions": {
+        "width": 384,
+        "height": 512
+      },
+      "pngColorType": 6,
+      "originalUnchanged": true,
+      "alphaChannel": true,
+      "passed": true
+    },
+    {
+      "name": "Transparent app icon",
+      "originalPath": "file:///tmp/aiwardrobe-native-orientation-artifacts/1-originalPath.png",
+      "thumbnailPath": "file:///tmp/aiwardrobe-native-orientation-artifacts/1-thumbnailPath.png",
+      "originalBytes": 41271,
+      "thumbnailBytes": 23256,
+      "elapsedMs": 14,
+      "dimensions": {
+        "width": 512,
+        "height": 512
+      },
+      "pngColorType": 6,
+      "originalUnchanged": true,
+      "alphaChannel": true,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 1",
+      "originalPath": "file:///tmp/aiwardrobe-native-orientation-artifacts/2-originalPath.jpg",
+      "thumbnailPath": "file:///tmp/aiwardrobe-native-orientation-artifacts/2-thumbnailPath.png",
+      "originalBytes": 62854,
+      "thumbnailBytes": 13169,
+      "elapsedMs": 20,
+      "dimensions": {
+        "width": 512,
+        "height": 342
+      },
+      "pngColorType": 6,
+      "originalUnchanged": true,
+      "alphaChannel": true,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 2",
+      "originalPath": "file:///tmp/aiwardrobe-native-orientation-artifacts/3-originalPath.jpg",
+      "thumbnailPath": "file:///tmp/aiwardrobe-native-orientation-artifacts/3-thumbnailPath.png",
+      "originalBytes": 62854,
+      "thumbnailBytes": 13385,
+      "elapsedMs": 16,
+      "dimensions": {
+        "width": 512,
+        "height": 342
+      },
+      "pngColorType": 6,
+      "originalUnchanged": true,
+      "alphaChannel": true,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 3",
+      "originalPath": "file:///tmp/aiwardrobe-native-orientation-artifacts/4-originalPath.jpg",
+      "thumbnailPath": "file:///tmp/aiwardrobe-native-orientation-artifacts/4-thumbnailPath.png",
+      "originalBytes": 62854,
+      "thumbnailBytes": 13481,
+      "elapsedMs": 13,
+      "dimensions": {
+        "width": 512,
+        "height": 342
+      },
+      "pngColorType": 6,
+      "originalUnchanged": true,
+      "alphaChannel": true,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 4",
+      "originalPath": "file:///tmp/aiwardrobe-native-orientation-artifacts/5-originalPath.jpg",
+      "thumbnailPath": "file:///tmp/aiwardrobe-native-orientation-artifacts/5-thumbnailPath.png",
+      "originalBytes": 62854,
+      "thumbnailBytes": 13336,
+      "elapsedMs": 12,
+      "dimensions": {
+        "width": 512,
+        "height": 342
+      },
+      "pngColorType": 6,
+      "originalUnchanged": true,
+      "alphaChannel": true,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 5",
+      "originalPath": "file:///tmp/aiwardrobe-native-orientation-artifacts/6-originalPath.jpg",
+      "thumbnailPath": "file:///tmp/aiwardrobe-native-orientation-artifacts/6-thumbnailPath.png",
+      "originalBytes": 62854,
+      "thumbnailBytes": 17889,
+      "elapsedMs": 12,
+      "dimensions": {
+        "width": 342,
+        "height": 512
+      },
+      "pngColorType": 6,
+      "originalUnchanged": true,
+      "alphaChannel": true,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 6",
+      "originalPath": "file:///tmp/aiwardrobe-native-orientation-artifacts/7-originalPath.jpg",
+      "thumbnailPath": "file:///tmp/aiwardrobe-native-orientation-artifacts/7-thumbnailPath.png",
+      "originalBytes": 62854,
+      "thumbnailBytes": 18298,
+      "elapsedMs": 12,
+      "dimensions": {
+        "width": 342,
+        "height": 512
+      },
+      "pngColorType": 6,
+      "originalUnchanged": true,
+      "alphaChannel": true,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 7",
+      "originalPath": "file:///tmp/aiwardrobe-native-orientation-artifacts/8-originalPath.jpg",
+      "thumbnailPath": "file:///tmp/aiwardrobe-native-orientation-artifacts/8-thumbnailPath.png",
+      "originalBytes": 62854,
+      "thumbnailBytes": 18096,
+      "elapsedMs": 11,
+      "dimensions": {
+        "width": 342,
+        "height": 512
+      },
+      "pngColorType": 6,
+      "originalUnchanged": true,
+      "alphaChannel": true,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 8",
+      "originalPath": "file:///tmp/aiwardrobe-native-orientation-artifacts/9-originalPath.jpg",
+      "thumbnailPath": "file:///tmp/aiwardrobe-native-orientation-artifacts/9-thumbnailPath.png",
+      "originalBytes": 62854,
+      "thumbnailBytes": 17705,
+      "elapsedMs": 13,
+      "dimensions": {
+        "width": 342,
+        "height": 512
+      },
+      "pngColorType": 6,
+      "originalUnchanged": true,
+      "alphaChannel": true,
+      "passed": true
+    }
+  ],
+  "passed": true
+}

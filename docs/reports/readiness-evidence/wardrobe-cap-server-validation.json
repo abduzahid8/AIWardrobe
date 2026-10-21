@@ -1,0 +1,54 @@
+{
+  "scope": "Production new-garment admission and bounded concurrent owner requests; not overall capacity certification",
+  "deployment": {
+    "project": "fyqpifmrsftsfqibhwhy",
+    "method": "execute_sql; migration file generated with CLI and retained, no blanket schema push",
+    "migration": "backend/supabase/migrations/20261021075034_enforce_wardrobe_capacity.sql",
+    "sha256": "4a908a7a5fe3846ab7676a4c415f715c4925b03cd3222aca84f55d322dbf5835",
+    "body_md5": "d5f0a302903cfbbad22c5ce3a36d7946",
+    "remote_body_matches": true,
+    "private_schema": "app_security",
+    "security_definer": true,
+    "volatile": true,
+    "search_path": "",
+    "execute_grants": {
+      "anon": false,
+      "authenticated": false,
+      "service_role": false
+    }
+  },
+  "before": {
+    "twenty_first_free_insert_status": 201,
+    "owned_count": 21,
+    "report": "production-wardrobe-cap-admission-before.json"
+  },
+  "after": {
+    "admission_checks_passed": 2,
+    "matrix_checks_passed": 12,
+    "concurrent_requests": 6,
+    "concurrent_accepted": 1,
+    "concurrent_cap_rejections": 5,
+    "reports": [
+      "production-wardrobe-cap-admission.json",
+      "production-wardrobe-cap-matrix.json"
+    ]
+  },
+  "independent_cleanup": {
+    "remaining_audit_users": 0,
+    "remaining_fixture_garments": 0,
+    "orphan_subscriptions": 0,
+    "auth_users": 111,
+    "profiles": 111,
+    "garments": 109
+  },
+  "advisors": "wardrobe-cap-advisors.json; no finding names the new trigger; other security/performance findings remain open",
+  "client_checks": "Unchanged from prior turn: 2169 tests/173 suites, TypeScript, both native release builds; no client edits or redundant rebuild in this SQL-only turn",
+  "limits": [
+    "Six simultaneous calls on one owner are not a 10000-DAU load test",
+    "Synthetic subscription records exclude App Store transactions",
+    "A cross-device server cap error still needs explicit localized client feedback; sync retains pending work rather than acknowledging failed writes",
+    "No customer rows deleted or migrated",
+    "Trusted service-role imports intentionally retain administrative authority",
+    "Migration history reconciliation not performed; exact SQL is saved for versioned deployment"
+  ]
+}

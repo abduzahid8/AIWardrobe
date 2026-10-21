@@ -10,26 +10,19 @@
  */
 
 import React, { useEffect, useCallback } from 'react';
-import {
-  View,
-  Text,
-  Image,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  Linking,
-  AccessibilityInfo,
-} from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Linking, AccessibilityInfo } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 
 import { BottomSheet } from '../../../components/ui/BottomSheet';
+import { getShopDestination } from '../../../src/utils/shopDestination';
 import OutfitCollageDisplay from './OutfitCollageDisplay';
 import LiquidGlass2026Theme, { SpatialElevation } from '../../../constants/LiquidGlass2026Theme';
 import { BASIC_CLOTHING_ITEMS } from '../../../data/basicClothingItems';
 import type { GeneratedOutfit, OutfitItem, ClosetClothingItem } from '../types';
+import { Image } from '../../../src/components/MediaImage';
+
 
 const { colors, spacing, typography } = LiquidGlass2026Theme;
 
@@ -94,7 +87,9 @@ const ItemCard: React.FC<ItemCardProps> = ({ item, index }) => {
 
   const handleShopPress = useCallback(() => {
     if (item.shopUrl) {
-      Linking.openURL(item.shopUrl).catch(() => {
+      // Catalog/edge URLs are untrusted: only http(s) retailer links may
+      // reach Linking; anything else falls back to a Shopping search.
+      Linking.openURL(getShopDestination(item)).catch(() => {
         // Silently ignore if URL can't be opened
       });
     }

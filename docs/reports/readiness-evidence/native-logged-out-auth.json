@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-16",
+  "device": "2F806F52-7020-4FD3-9B68-3E0CA8B69D76",
+  "runtime": "iOS 26.5 / official Expo Go 57.0.9 / current Metro source",
+  "observed": [
+    "First-run language gate renders",
+    "Choosing English routes to Sign In",
+    "Empty email produces native alert",
+    "Malformed email remains on email step with native error",
+    "Valid synthetic email opens secure password step",
+    "Change returns to email step",
+    "Corrected email-only empty validation visible natively"
+  ],
+  "copy_fix": "Email-only screen now requests email, with en/ru/uz translations",
+  "unresolved": [
+    "Email field described as secure by AX after returning from password; key/remount attempt did not resolve observation and was removed",
+    "Authenticated flows, production native build, Android and native lifecycle tests remain incomplete"
+  ],
+  "screenshot": "native-email-validation.png",
+  "verification": {
+    "jest_tests": 1095,
+    "jest_suites": 93,
+    "typescript": "passed",
+    "whitespace": "passed"
+  },
+  "cleanup": "Metro PID 62079 stopped; isolated simulator shut down; original signed-in simulator unchanged",
+  "scope": "No auth request or account creation, no AI call; Maestro flow files updated but not executed"
+}

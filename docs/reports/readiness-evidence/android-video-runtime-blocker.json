@@ -1,0 +1,19 @@
+{
+  "status": "blocked before Android app launch; not an application runtime pass",
+  "attempts": [
+    {
+      "configuration": "Default Pixel7 API34 arm64 disposable AVD",
+      "failure": "Needs12288MiB userdata; available2598.02MiB"
+    },
+    {
+      "configuration": "Disposable AVD requested1024MiB data partition",
+      "failure": "Emulator enforces minimum7372.80MiB; available2606.20MiB"
+    }
+  ],
+  "sourceFinding": "Installed expo-video-thumbnails Android implementation uses OPTION_CLOSEST_SYNC, so requested time selects a nearby keyframe. ExpoVideo newer thumbnail implementation uses OPTION_CLOSEST; migration/behavior verification remains open.",
+  "preparedHarness": "scripts/validation/video-frame-sampling-android-native.mjs",
+  "cleanup": "Owned test directories removed, no adb devices remain; original AIWardrobe_readiness_20261016 AVD retained",
+  "userActionPending": "Free roughly10GB or supply an external writable temporary directory with enough space.",
+  "scope": "No Android playback, metadata or image-extraction result obtained.",
+  "superseded": "20October2026: user-authorized cache cleanup freed9.74GiB; actual Android probe ran, exposed nearest-keyframe failure and passed after the exact-frame API fix. See android-exact-video-frames.json."
+}

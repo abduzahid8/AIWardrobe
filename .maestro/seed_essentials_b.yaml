@@ -1,0 +1,25 @@
+appId: host.exp.Exponent
+name: seed_essentials_b
+tags:
+  - save-checks
+  - expo-go
+  - seed
+---
+# Second half of the essentials seeding (items 4 and 5). Crossing 5 swaps the
+# essentials grid for the swipe deck, so this flow must follow seed_essentials_a
+# with the app still on Home.
+- tapOn:
+    point: "26%,92%"
+- waitForAnimationToEnd:
+    timeout: 6000
+- tapOn: "Add Свитер LS VERTICAL TEXTURE CTTN CREWNK to wardrobe"
+- waitForAnimationToEnd:
+    timeout: 3000
+- scrollUntilVisible:
+    element: "Add Рубашка CASUAL CLASSIC VAIL DENIM SHIRT to wardrobe"
+    direction: DOWN
+    timeout: 15000
+- tapOn: "Add Рубашка CASUAL CLASSIC VAIL DENIM SHIRT to wardrobe"
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: seed_b

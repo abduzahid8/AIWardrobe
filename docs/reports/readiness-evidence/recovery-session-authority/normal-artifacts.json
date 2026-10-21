@@ -1,0 +1,22 @@
+{
+  "ios": {
+    "exactSourceHashes": {
+      "store/auth.ts": "f79d5bd590cf92646b0fa5a1f6e9e8bcdd87c1b2c1c14921b692c25a09ffc256",
+      "screens/ResetPasswordScreen.tsx": "cd9366063f482916f8d7efabe83d0a10f24a822a357c447f07d1007cf9e6b03c",
+      "src/lib/authLinking.ts": "9b17480fff378afd3f34b328d123b10d3fe6818eb265df882259129608260d36"
+    },
+    "auditEntriesAbsent": true
+  },
+  "android": {
+    "exactSourceHashes": {
+      "store/auth.ts": "f79d5bd590cf92646b0fa5a1f6e9e8bcdd87c1b2c1c14921b692c25a09ffc256",
+      "screens/ResetPasswordScreen.tsx": "cd9366063f482916f8d7efabe83d0a10f24a822a357c447f07d1007cf9e6b03c",
+      "src/lib/authLinking.ts": "9b17480fff378afd3f34b328d123b10d3fe6818eb265df882259129608260d36"
+    },
+    "auditEntriesAbsent": true
+  },
+  "iosBundleSha256": "7258332a1404e65acf1a7a757dd251d195de292262e03ef9d9d7941da5c6f7c8",
+  "iosScope": "Normal-entry Hermes export with unchanged compiled native runtime; not a new native compile",
+  "androidReleaseBuildSucceeded": true,
+  "androidApkSha256": "99e12f74ff84c17adc5e4ff58752b1f469573126ebf9cb18320f22c7f19fa013"
+}

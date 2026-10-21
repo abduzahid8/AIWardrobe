@@ -1,0 +1,21 @@
+{
+  "measuredAt": "2026-10-19T07:20:33.595Z",
+  "scope": "Empty webhook body only, rejected before all database reads/writes; public SDK key never logged",
+  "checks": [
+    {
+      "name": "missing",
+      "status": 401,
+      "payloadValidationReached": false
+    },
+    {
+      "name": "invalid",
+      "status": 401,
+      "payloadValidationReached": false
+    },
+    {
+      "name": "public_sdk_key",
+      "status": 400,
+      "payloadValidationReached": true
+    }
+  ]
+}

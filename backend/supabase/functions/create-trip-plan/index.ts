@@ -1,3 +1,4 @@
+import { enforceRateLimit } from '../_shared/rateLimit.ts'
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -14,6 +15,10 @@ serve(async (req) => {
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }
+
+    const rateLimitResponse = await enforceRateLimit(req, { feature: 'create-trip-plan', limit: 5, headers: corsHeaders })
+    if (rateLimitResponse) return rateLimitResponse
+
 
     try {
         const supabaseClient = createClient(
@@ -33,29 +38,16 @@ serve(async (req) => {
             throw new Error("User not authenticated")
         }
 
-        // Check subscription tier - trip planner is premium-only
-        const { data: profile } = await supabaseClient
-            .from('profiles')
-            .select('subscription_tier, subscription_expires_at')
-            .eq('id', user.id)
-            .single();
-
-        const tier = profile?.subscription_tier || 'free';
-        const isExpired = profile?.subscription_expires_at 
-            ? new Date(profile.subscription_expires_at) <= new Date() 
-            : true;
-
-        if ((tier === 'free' || isExpired) && tier !== 'free') {
-            return new Response(
-                JSON.stringify({ error: 'Premium required', message: 'Trip planner requires an active subscription' }),
-                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
-            );
+        // Admission control has already verified server-owned entitlements.
+        if (typeof destination !== 'string' || !destination.trim() || destination.length > 200 ||
+            !validTripDate(startDate) || !validTripDate(endDate) || endDate < startDate ||
+            (Date.parse(endDate) - Date.parse(startDate)) / 86400000 > 30 ||
+            (occasions !== undefined && (!Array.isArray(occasions) || !occasions.length || occasions.length > 8 ||
+              occasions.some((value: unknown) => typeof value !== 'string' || !value.trim() || value.length > 60)))) {
+            return tripError('Invalid destination, trip dates or occasions', 400)
         }
 
-        console.log(`Creating trip plan for user ${user.id} to ${destination}`);
-
-        // 1. Fetch weather forecast (or dummy)
-        const weatherData = await fetchWeatherForTrip(destination, startDate, endDate);
+        const weatherData = await fetchWeatherForTrip(destination.trim(), startDate, endDate);
 
         // 2. Get user's wardrobe from Supabase
         // Note: 'clothing_items' table is expected to have 'type', 'category', 'item_type' etc. 
@@ -85,7 +77,7 @@ serve(async (req) => {
             itemType: item.type || item.category || 'unknown',
             material: item.material || '',
             style: item.style || '',
-            image: item.image,
+            image: item.image_url || item.image,
             color: item.color || 'unknown',
             ...item
         }));
@@ -109,7 +101,7 @@ serve(async (req) => {
                 missingItems: tripPlan.missingItems,
                 stats: {
                     totalItems: tripPlan.packingList.length,
-                    totalOutfits: tripPlan.outfitsByDay.length,
+                    totalOutfits: tripPlan.outfitsByDay.reduce((total: number, day: any) => total + day.outfits.length, 0),
                     daysPlanned: tripPlan.outfitsByDay.length
                 }
             }),
@@ -118,55 +110,60 @@ serve(async (req) => {
 
     } catch (error: any) {
         return new Response(
-            JSON.stringify({ error: error.message }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+            JSON.stringify({ error: error instanceof TripError ? error.message : error instanceof SyntaxError ? 'Invalid JSON request' : 'Trip planning failed' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: error instanceof TripError ? error.status : error instanceof SyntaxError ? 400 : 500 }
         )
     }
 })
 
 // --- Logic Helpers ---
 
+class TripError extends Error {
+    constructor(message: string, public status: number) { super(message) }
+}
+function tripError(error: string, status: number) {
+    return new Response(JSON.stringify({ error }), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+}
+function validTripDate(value: unknown): value is string {
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+    const parsed = new Date(`${value}T00:00:00Z`)
+    return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value
+}
+
 async function fetchWeatherForTrip(city: string, startDate: string, endDate: string) {
-    if (!WEATHER_API_KEY) {
-        return {
-            city,
-            country: 'Unknown',
-            forecasts: generateDummyWeather(startDate, endDate)
-        };
-    }
-
+    if (!WEATHER_API_KEY) throw new TripError('Weather service is not configured', 503)
     try {
-        // Get coordinates
-        const geoRes = await fetch(`${WEATHER_API_URL}/weather?q=${city}&appid=${WEATHER_API_KEY}&units=metric`);
-        if (!geoRes.ok) throw new Error('Weather API Error');
-        const geoData = await geoRes.json();
-        const { lat, lon, name, sys } = geoData;
-
-        // Get forecast
-        const forecastRes = await fetch(`${WEATHER_API_URL}/forecast?lat=${lat}&lon=${lon}&appid=${WEATHER_API_KEY}&units=metric&cnt=40`);
-        if (!forecastRes.ok) throw new Error('Forecast API Error');
-        const forecastData = await forecastRes.json();
-
-        return {
-            city: name,
-            country: sys.country,
-            forecasts: parseDailyForecasts(forecastData.list)
-        };
+        const geoUrl = new URL(`${WEATHER_API_URL}/weather`)
+        geoUrl.search = new URLSearchParams({ q: city, appid: WEATHER_API_KEY, units: 'metric' }).toString()
+        const geoRes = await fetch(geoUrl, { signal: AbortSignal.timeout(10000) })
+        if (!geoRes.ok) throw new TripError('Destination weather lookup failed', geoRes.status === 404 ? 422 : 503)
+        const geo = await geoRes.json()
+        const { lat, lon } = geo.coord || {}
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) throw new TripError('Invalid weather location response', 503)
+        const forecastUrl = new URL(`${WEATHER_API_URL}/forecast`)
+        forecastUrl.search = new URLSearchParams({ lat: String(lat), lon: String(lon), appid: WEATHER_API_KEY, units: 'metric', cnt: '40' }).toString()
+        const forecastRes = await fetch(forecastUrl, { signal: AbortSignal.timeout(10000) })
+        if (!forecastRes.ok) throw new TripError('Weather forecast is unavailable', 503)
+        const forecast = await forecastRes.json()
+        if (!Array.isArray(forecast.list) || !forecast.list.length) throw new TripError('Weather forecast is unavailable', 503)
+        if (!Number.isFinite(forecast.city?.timezone)) throw new TripError('Forecast timezone is unavailable', 503)
+        const forecasts: any[] = parseDailyForecasts(forecast.list, forecast.city.timezone)
+            .filter((day: any) => day.date >= startDate && day.date <= endDate)
+        const expectedDays = (Date.parse(endDate) - Date.parse(startDate)) / 86400000 + 1
+        if (forecasts.length !== expectedDays) throw new TripError('Forecast does not cover the requested trip dates', 422)
+        return { city: geo.name || city, country: geo.sys?.country || '', forecasts }
     } catch (error) {
-        console.error('Weather fetch error:', error);
-        return {
-            city,
-            country: 'Unknown',
-            forecasts: generateDummyWeather(startDate, endDate)
-        };
+        if (error instanceof TripError) throw error
+        throw new TripError('Weather service is unavailable', 503)
     }
 }
 
-function parseDailyForecasts(forecastList: any[]) {
+function parseDailyForecasts(forecastList: any[], timezoneOffsetSec = 0) {
     const dailyData: any = {};
 
     forecastList.forEach(item => {
-        const date = item.dt_txt.split(' ')[0]; // YYYY-MM-DD
+        if (!Number.isFinite(item.dt) || !Number.isFinite(item.main?.temp) || !item.weather?.[0]?.main) throw new TripError('Invalid forecast response', 503)
+        const date = new Date((item.dt + timezoneOffsetSec) * 1000).toISOString().slice(0, 10)
         if (!dailyData[date]) {
             dailyData[date] = { date, temps: [], conditions: [], descriptions: [], icons: [] };
         }
@@ -191,24 +188,6 @@ function mostCommon(arr: any[]) {
     const counts: any = {};
     arr.forEach(item => counts[item] = (counts[item] || 0) + 1);
     return Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
-}
-
-function generateDummyWeather(startDate: string, endDate: string) {
-    const forecasts = [];
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        forecasts.push({
-            date: d.toISOString().split('T')[0],
-            tempHigh: 25,
-            tempLow: 18,
-            tempAvg: 22,
-            condition: 'Clear',
-            description: 'clear sky',
-            icon: '01d'
-        });
-    }
-    return forecasts;
 }
 
 function generateTripPlan({ wardrobe, weather, startDate, endDate, occasions }: any) {
@@ -262,21 +241,29 @@ function allocateOutfit({ wardrobe, weather, occasion, usedItems, dayIndex }: an
 
     if (suitable.length === 0) return { items: [] };
 
-    // Select items (Logic ported)
+    const dress = suitable.filter((item: any) => {
+        const type = String(item.itemType || '').toLowerCase();
+        const category = String(item.category || '').toLowerCase();
+        return /^(dress|dresses|jumpsuit|jumpsuits|romper|rompers)$/.test(category) ||
+          (/\b(dress|jumpsuit|romper)\b/.test(type) && !/\bdress[ -]+(shirt|shoes?|pants|trousers)\b/.test(type));
+    }).sort((a: any, b: any) => (usedItems[String(a._id)] || 0) - (usedItems[String(b._id)] || 0))[0];
+    if (dress) selectedItems.push(dress);
     const top = selectBestItem(suitable, ['shirt', 'tshirt', 'blouse', 'sweater', 'hoodie', 'top'], usedItems, dayIndex);
-    if (top) selectedItems.push(top);
+    if (top && !dress) selectedItems.push(top);
 
-    const bottom = selectBestItem(suitable, ['pants', 'jeans', 'shorts', 'skirt', 'trousers'], usedItems, dayIndex);
-    if (bottom) selectedItems.push(bottom);
+    const bottom = selectBestItem(suitable, ['pants', 'jeans', 'shorts', 'skirt', 'trousers', 'bottom'], usedItems, dayIndex);
+    if (bottom && !dress) selectedItems.push(bottom);
 
-    const shoes = selectBestItem(suitable, ['shoes', 'sneakers', 'boots', 'sandals', 'heels'], usedItems, dayIndex);
+    const shoes = selectBestItem(suitable, ['shoe', 'sneaker', 'boot', 'sandal', 'heel'], usedItems, dayIndex);
     if (shoes) selectedItems.push(shoes);
 
+    let hasLayer = false;
     if (weather.tempHigh < 15) {
         const jacket = selectBestItem(suitable, ['jacket', 'coat', 'blazer'], usedItems, dayIndex);
-        if (jacket) selectedItems.push(jacket);
+        if (jacket) { selectedItems.push(jacket); hasLayer = true; }
     }
 
+    if ((!dress && (!top || !bottom)) || !shoes || (weather.tempHigh < 15 && !hasLayer)) return { items: [] };
     return { items: selectedItems };
 }
 
@@ -284,6 +271,9 @@ function isWeatherAppropriate(item: any, weather: any) {
     const temp = weather.tempAvg;
     const type = item.itemType?.toLowerCase() || '';
     const material = item.material?.toLowerCase() || '';
+    const evidence = `${type} ${item.name || ''} ${item.sub_category || ''}`.toLowerCase();
+    if (temp < 10 && /\b(shorts?|sandals?|tank|swimwear|flip[ -]?flops?)\b/.test(evidence)) return false;
+    if (temp > 25 && /\b(overcoat|parka|puffer|heavy wool|thermal)\b/.test(`${evidence} ${material}`)) return false;
 
     if (temp > 25) {
         if (['shorts', 'tank', 'sandals', 'tshirt', 'top'].some(t => type.includes(t))) return true;

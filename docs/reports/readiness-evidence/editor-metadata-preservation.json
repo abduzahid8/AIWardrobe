@@ -1,0 +1,62 @@
+{
+  "verifiedAt": "2026-10-19T13:01:38.275872+00:00",
+  "changes": [
+    "Save actual known pattern; unknown is empty rather than fabricated solid",
+    "Preserve detected specific garment type when compatible with user-selected category; user corrections supersede conflicting detected types",
+    "Retain valid detection confidence including zero; omit invalid numeric metadata",
+    "Reload known/unknown pattern without substituting solid"
+  ],
+  "checks": {
+    "actualHandlerAndReloadRegressions": 14,
+    "jestTests": 1733,
+    "jestSuites": 144,
+    "typescript": true,
+    "sourceMapMatches": {
+      "ios": {
+        "components/ClothingDetailEditor.tsx": true,
+        "store/wardrobeSyncService.ts": true
+      },
+      "android": {
+        "components/ClothingDetailEditor.tsx": true,
+        "store/wardrobeSyncService.ts": true
+      }
+    }
+  },
+  "productionSchemaReadOnly": {
+    "pattern": {
+      "type": "text",
+      "nullable": true,
+      "default": "solid"
+    },
+    "sub_category": {
+      "type": "text",
+      "nullable": true
+    },
+    "detection_confidence": {
+      "type": "double precision",
+      "nullable": true
+    }
+  },
+  "artifacts": {
+    "ios": {
+      "path": "/tmp/aiwardrobe-budget-release-00nhnjcc/AIWardrobe.app/main.jsbundle",
+      "bytes": 6976716,
+      "sha256": "0751348cf6c513a3c7270b67c65dbcde53c34ce42cc1d62893d41a5cf7ebbf01"
+    },
+    "android": {
+      "path": "/Users/v.zahid/AIWardrobe/android/app/build/outputs/apk/release/app-release.apk",
+      "bytes": 66073126,
+      "sha256": "b699e20b973b05e8d246b5a80f561e73ac0ba8074b15d8bed3d568b078e68e73"
+    }
+  },
+  "sourceHashes": {
+    "components/ClothingDetailEditor.tsx": "e55607d72a47f9d99a9a22ea03f76914f782fe9a6870cc54009c0316564cae6a",
+    "store/wardrobeSyncService.ts": "57adba6583a819fb578fe35451c04ee40b5f7ce3eb395f6eb23fa22c4e51129e"
+  },
+  "limitations": [
+    "No new live account write/read fixture or installed-device UI certification in this check",
+    "Database default solid remains; callers that omit pattern require follow-up audit",
+    "Unknown color/season defaults, direct-editor analysis metadata and full multi-item video review still require audit",
+    "10k DAU production capacity not established"
+  ]
+}

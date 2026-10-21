@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-16",
+  "production_eas_node": {
+    "before": "22.11.0",
+    "before_compatible": false,
+    "after": "22.23.2",
+    "after_compatible": true,
+    "native_requirement": "^20.19.4 || ^22.13.0 || ^24.3.0 || >=25.0.0"
+  },
+  "regressions": {
+    "release_toolchain_tests": 3,
+    "status": "passed",
+    "ci_step_added": true,
+    "targeted_lint": "passed",
+    "whitespace": "passed"
+  },
+  "ios": {
+    "pod_lock_matches_manifest": true,
+    "React_Core": "0.86.3",
+    "Expo": "57.0.20",
+    "workspace_list": "passed outside sandbox",
+    "release_simulator_build": "SUCCEEDED; compiled app installed and launched",
+    "session_id": null,
+    "log": "/tmp/aiwardrobe-native-release-build.log",
+    "derived_data": "/tmp/aiwardrobe-native-release-derived",
+    "latest_observed_target": "RNGestureHandler x86_64"
+  },
+  "android": {
+    "sdk": "/opt/homebrew/share/android-commandlinetools",
+    "gradle": "8.14.3",
+    "java": "26.0.2",
+    "configuration_result": "failed: Unsupported class file major version 70",
+    "requires": "Compatible JDK; actual Android build unverified",
+    "compatible_jdk": "Temporary checksum-verified Temurin 17.0.20.1+1",
+    "jdk17_configuration_session": 21723,
+    "jdk17_configuration_status": "BUILD SUCCESSFUL (6m14s; 33 executed tasks)",
+    "release_build_session": 34532,
+    "release_build_status": "running"
+  },
+  "limitations": [
+    "Unsigned simulator compilation does not prove device signing or store readiness",
+    "No cloud EAS build or deployment performed",
+    "iOS build remains live and must be polled using the existing handle"
+  ]
+}

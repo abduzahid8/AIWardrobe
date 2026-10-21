@@ -1,0 +1,11 @@
+{
+  "scenario": "Bundle audit entry with eight JPEG resources, then assemble normal release without manually deleting resources",
+  "auditFixtureResourcesBefore": 8,
+  "fixtureImagesRemaining": 0,
+  "auditEntryIncluded": false,
+  "normalSaveGuardIncluded": true,
+  "apkBytes": 66146870,
+  "apkSha256": "209efe5ffc13e6a122cda25d6dca7785bb7d291590774de22708140fa2d89dfd",
+  "bundleSha256": "aa43d2d898f0be41d9012b95b21ea062d249ac9517301ec464c9876da2c8243c",
+  "passed": true
+}

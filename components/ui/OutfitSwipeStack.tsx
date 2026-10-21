@@ -7,7 +7,7 @@
  */
 import React, { forwardRef, useImperativeHandle, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
-import { Image as ExpoImage } from 'expo-image';
+
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
@@ -22,6 +22,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { ScaledText } from './ScaledText';
 import { OutfitCollagePreview, type OutfitCollageItem } from './OutfitCollagePreview';
+import { ExpoImage } from '../../src/components/MediaImage';
+
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.28;

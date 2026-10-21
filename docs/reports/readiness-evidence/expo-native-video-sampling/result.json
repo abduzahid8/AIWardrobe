@@ -1,0 +1,51 @@
+{
+  "success": true,
+  "times": [
+    3000,
+    15000,
+    27000
+  ],
+  "repeatedTimes": [
+    3000,
+    15000,
+    27000
+  ],
+  "frames": [
+    {
+      "timeMs": 3000,
+      "width": 160,
+      "height": 120,
+      "base64Length": 2448,
+      "file": "sample-3000.jpg"
+    },
+    {
+      "timeMs": 15000,
+      "width": 160,
+      "height": 120,
+      "base64Length": 2448,
+      "file": "sample-15000.jpg"
+    },
+    {
+      "timeMs": 27000,
+      "width": 160,
+      "height": 120,
+      "base64Length": 2460,
+      "file": "sample-27000.jpg"
+    }
+  ],
+  "reviewCommitted": true,
+  "reviewRestart": {
+    "success": true,
+    "exactImages": true,
+    "stableIDs": true,
+    "acknowledgedItems": 3,
+    "completedSourceRemembered": true
+  },
+  "dominantChannels": [
+    0,
+    1,
+    2
+  ],
+  "allThreeScenesVerified": true,
+  "scope": "Actual production readVideoSampleTimes + ExpoVideo/ExpoVideoThumbnails JS/native bridge in isolated iOS26.5 app; generated H264 clip; no picker, provider or complete shipping-app flow claim"
+}

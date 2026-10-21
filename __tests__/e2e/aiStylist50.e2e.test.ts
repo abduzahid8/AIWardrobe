@@ -38,6 +38,10 @@ function item(id: string, macro: string, name: string, extra: Record<string, unk
 
 /** Live-catalog shaped pool: enough legal pieces for every style × occasion. */
 const POOL = [
+  item('t-athletic', 'top', 'Performance training t-shirt'),
+  item('b-athletic', 'bottom', 'Athletic training track pants'),
+  item('s-athletic', 'shoes', 'Performance running sneakers'),
+  item('ow-athletic', 'outerwear', 'Athletic training jacket'),
   item('ow-budget-coat', 'outerwear', 'Charcoal wool topcoat', { price: 24 }),
   item('ow-overcoat', 'outerwear', 'Navy wool overcoat'),
   item('t-budget-oxford', 'top', 'Slim fit cotton Oxford shirt', { price: 22 }),

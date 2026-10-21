@@ -1,0 +1,76 @@
+{
+  "localDate": "2026-10-21",
+  "scope": "Native image resource and credential lifecycle; iOS component verification",
+  "baseline": {
+    "targetedTestsFailed": 4,
+    "targetedTestsPassed": 5,
+    "invalidToken": {
+      "native": "failed",
+      "expo": "failed but retained prior source pixels"
+    },
+    "refreshedToken": {
+      "native": "remained pending in observed baseline",
+      "expo": "loaded"
+    }
+  },
+  "fix": "Semantically compare resource/header/owner/token/recycling identity and remount with an opaque bounded version; equivalent source objects remain stable",
+  "verification": {
+    "tests": 2062,
+    "suites": 167,
+    "typeScript": "passed",
+    "iosHermes": "passed",
+    "androidArm64Release": "passed",
+    "sourceCorrespondence": {
+      "ios": {
+        "src/components/MediaImage.tsx": "d26751894951e4ec1636c5400f1ac969e4ee7ffd386f4480a416399d2a8ee3d3",
+        "src/utils/mediaImageLifecycle.ts": "c2ff040ab01bf1d4af4fcde1956a8cd10a0ac37477991cca0de411c65ef40da9"
+      },
+      "android": {
+        "src/components/MediaImage.tsx": "d26751894951e4ec1636c5400f1ac969e4ee7ffd386f4480a416399d2a8ee3d3",
+        "src/utils/mediaImageLifecycle.ts": "c2ff040ab01bf1d4af4fcde1956a8cd10a0ac37477991cca0de411c65ef40da9"
+      },
+      "probe": {
+        "src/components/MediaImage.tsx": "d26751894951e4ec1636c5400f1ac969e4ee7ffd386f4480a416399d2a8ee3d3",
+        "src/utils/mediaImageLifecycle.ts": "c2ff040ab01bf1d4af4fcde1956a8cd10a0ac37477991cca0de411c65ef40da9"
+      }
+    },
+    "sdkRefreshSucceeded": true,
+    "sdkAccessTokenChanged": true,
+    "nativeAfter": [
+      {
+        "phase": "owner",
+        "native": "loaded",
+        "expo": "loaded"
+      },
+      {
+        "phase": "invalid token and new uncached resource",
+        "native": "failed and blank",
+        "expo": "failed and blank"
+      },
+      {
+        "phase": "refreshed token on same URI without restart",
+        "native": "loaded 1062 x 1416",
+        "expo": "loaded 1125 x 1500"
+      },
+      {
+        "phase": "signed out",
+        "native": "failed and blank",
+        "expo": "pending and blank"
+      }
+    ]
+  },
+  "safety": [
+    "No credentials or inline image strings used as native/React keys",
+    "Fresh storage object and reinstalled probe prevented the original successful request from satisfying the failed-token case",
+    "Original login simulator untouched",
+    "Probe uninstalled and audit simulator shut down",
+    "Fixture session revoked; account, three objects and local credential files removed"
+  ],
+  "limits": [
+    "Real SDK refresh executed in fixture controller; auth store publication performed by probe, not automatic full-app refresh flow",
+    "Android build verified; native Android image behavior remains unverified",
+    "No older released-client or complete wardrobe navigation coverage",
+    "Existing customer image rows not migrated",
+    "No provider reliability or 10000-DAU capacity certification"
+  ]
+}

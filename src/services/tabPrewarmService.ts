@@ -17,7 +17,7 @@
  * app launch — caches have their own TTLs and refresh silently afterwards.
  */
 
-import { Image as ExpoImage } from 'expo-image';
+
 import { supabase } from '../../lib/supabase';
 import {
     prefetchShopCatalog,
@@ -26,6 +26,8 @@ import {
 import { prefetchFeaturedCapsules } from '../../hooks/useFeaturedCapsules';
 import useWardrobeStore from '../../store/wardrobeStore';
 import { createLogger } from '../utils/logger';
+import { ExpoImage } from '../components/MediaImage';
+
 
 const logger = createLogger('TabPrewarm');
 

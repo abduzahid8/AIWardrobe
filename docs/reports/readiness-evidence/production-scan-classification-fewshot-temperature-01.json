@@ -1,0 +1,86 @@
+{
+  "measuredAt": "2026-10-19T06:58:55.458Z",
+  "scope": "Two bounded live NVIDIA classifications; response contract, not full visual accuracy or capacity",
+  "checks": [
+    {
+      "name": "invalid_image_provider_failure_is_not_fabricated_success",
+      "passed": true,
+      "status": 503,
+      "latencyMs": 4928,
+      "error": "ai_classification_unavailable"
+    },
+    {
+      "name": "single_garment_visual_attributes_1",
+      "passed": true,
+      "expected": "Beige/cream torso shirt or jacket, excluding separate green draped layer"
+    },
+    {
+      "name": "known_clothing_photo_returns_validated_classification_1",
+      "passed": true,
+      "status": 200,
+      "latencyMs": 5425,
+      "classification": {
+        "category": "jacket",
+        "section": "outerwear",
+        "confidence": 0,
+        "attributes": {
+          "style": "casual",
+          "color": "beige",
+          "material": "null"
+        }
+      },
+      "description": "A beige jacket with a green scarf.",
+      "error": null
+    },
+    {
+      "name": "single_garment_visual_attributes_2",
+      "passed": false,
+      "expected": "Beige/cream torso shirt or jacket, excluding separate green draped layer"
+    },
+    {
+      "name": "known_clothing_photo_returns_validated_classification_2",
+      "passed": true,
+      "status": 200,
+      "latencyMs": 4126,
+      "classification": {
+        "category": "jeans",
+        "section": "bottoms",
+        "confidence": 0,
+        "attributes": {
+          "style": "casual",
+          "color": "blue",
+          "material": "denim"
+        }
+      },
+      "description": "A pair of blue jeans.",
+      "error": null
+    },
+    {
+      "name": "single_garment_visual_attributes_3",
+      "passed": true,
+      "expected": "Beige/cream torso shirt or jacket, excluding separate green draped layer"
+    },
+    {
+      "name": "known_clothing_photo_returns_validated_classification_3",
+      "passed": true,
+      "status": 200,
+      "latencyMs": 5061,
+      "classification": {
+        "category": "jacket",
+        "section": "outerwear",
+        "confidence": 0,
+        "attributes": {
+          "style": "casual",
+          "color": "beige",
+          "material": "null"
+        }
+      },
+      "description": "A beige jacket with a green scarf.",
+      "error": null
+    }
+  ],
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

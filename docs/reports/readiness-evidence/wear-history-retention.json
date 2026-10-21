@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-16",
+  "scope": "Unreleased wear-history retention",
+  "before": [
+    "logWear truncated history to 1000 after every addition",
+    "Zustand partialize truncated persisted history to 1000"
+  ],
+  "change": "Removed both silent caps; full paginated history remains available in memory and persistence",
+  "verification": {
+    "retained_after_add": 1501,
+    "restored_from_storage": 1500,
+    "new_tests": 2,
+    "jest_tests": 1105,
+    "jest_suites": 95,
+    "typescript": "passed",
+    "lint_errors": 0,
+    "lint_warnings": 2,
+    "whitespace": "passed"
+  },
+  "test_fixture_note": "Initial rehydrate fixture was blocked by a newer pending storage snapshot; corrected by draining that write and restoring captured disk snapshot before rehydrate",
+  "additional_read_only_finding": {
+    "production_wear_logs_user_triggers": 0,
+    "next_audit": "Whether clothing wear counts are durably reconciled after wear-log synchronization; not yet a live failure claim"
+  },
+  "limitations": [
+    "Controlled AsyncStorage evidence, not native large-history performance",
+    "No production mutation or native rebuild",
+    "Older already-truncated offline-only history cannot be reconstructed from this fix alone",
+    "Native Android rebuild remains unavailable after approval-review usage-limit failure"
+  ]
+}

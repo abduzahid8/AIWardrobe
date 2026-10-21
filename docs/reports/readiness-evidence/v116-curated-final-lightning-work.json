@@ -1,0 +1,146 @@
+{
+  "measuredAt": "2026-10-21T17:42:55.626Z",
+  "scope": "One real hosted Old Money/Work shopping request, no weather or entered budget, limit five. Controlled catalog pool; not exact screenshot account or capacity proof.",
+  "checks": [
+    {
+      "name": "all_three_catalog_slots_available",
+      "passed": true
+    },
+    {
+      "name": "usable_outfits_returned",
+      "passed": true
+    },
+    {
+      "name": "every_outfit_passes_structure_and_style",
+      "passed": true
+    },
+    {
+      "name": "every_item_matches_authoritative_active_catalog",
+      "passed": true
+    }
+  ],
+  "fixtureUserId": "694477d7-4c32-4945-a63e-6449cb477332",
+  "candidateCount": 40,
+  "response": {
+    "status": 200,
+    "latencyMs": 5331,
+    "code": null,
+    "error": null,
+    "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+    "providerAttempts": [
+      {
+        "provider": "nvidia",
+        "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+        "status": "ok"
+      }
+    ],
+    "outfitCount": 2
+  },
+  "supplementedIds": [
+    "md-uz-61729868"
+  ],
+  "outfits": [
+    {
+      "items": [
+        {
+          "id": "shop_fr-tommy-111152-official",
+          "name": "Regular Fit Striped Rugby Polo",
+          "price": 1584500,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61729868",
+          "name": "100% cool wool suit blazer",
+          "price": 7000000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61729804",
+          "name": "Cold wool suit trousers",
+          "price": 2200000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-104096",
+          "name": "Gary_tenn_sdbbe",
+          "price": 4841000,
+          "currency": "UZS"
+        }
+      ],
+      "structureReason": null,
+      "styleReason": null
+    },
+    {
+      "items": [
+        {
+          "id": "shop_fr-tommy-169173-official",
+          "name": "Regular Fit Crest Patch Interlock Polo",
+          "price": 1829000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61729868",
+          "name": "100% cool wool suit blazer",
+          "price": 7000000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61729518",
+          "name": "Tapered fit linen pants",
+          "price": 1900000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-105039",
+          "name": "TTNM Evo_Slon_Ltmxl",
+          "price": 1993000,
+          "currency": "UZS"
+        }
+      ],
+      "structureReason": null,
+      "styleReason": null
+    }
+  ],
+  "exactFiveReturned": false,
+  "cleanup": {
+    "sessionsRevoked": true,
+    "ownerDeleted": true
+  },
+  "passed": true,
+  "providerObservations": [
+    {
+      "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+      "requestCharacters": 6395,
+      "maxTokens": 700,
+      "status": 200,
+      "latencyMs": 2144,
+      "finishReason": "stop",
+      "contentCharacters": 636,
+      "usage": {
+        "promptTokens": 2831,
+        "completionTokens": 149
+      }
+    }
+  ],
+  "execution": {
+    "runtime": "Local Node with actual current handler modules; real Supabase Auth/catalog/rate guards and hosted NVIDIA",
+    "candidateModel": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "sourceHashes": {
+      "generate-outfits/index.ts": "92ec3eb52015c86d71e9e136bb1ca7b4de8b60efa7e7df198f2c3ecb53238b6f",
+      "_shared/outfitChoices.ts": "3f60e1963b36c4ab11ac236ef23955b6f6c66a61c8e3533f1a85926702d4128d",
+      "_shared/outfitStructure.ts": "62de820735f065d7a7bac6baace20243d9dbcb1435f88d4fa6a927b5d895f523",
+      "_shared/outfitGenerationRequest.ts": "30412ecc9a1fc0695dff2563bf98bb33a25289ffb19cedb0d08ef339bf724f03",
+      "_shared/occasionRules.ts": "178339bcc8b6962280a695027bff1afa06edfb34c38054d49bc25abafd31ea5d",
+      "_shared/outfitBudgetText.ts": "bb2942b93c782908b4389f39c04ba6b6cca0c014f82a83b34ecafdb8d58bfc1f",
+      "_shared/budgetFx.ts": "e1aa62bb1d5f06d5fa484e9e9033991a9218d1bde42657514c010f8ecf7c526a",
+      "_shared/budgetFxCache.ts": "2060d666cb044ce6e20ad12f37a874aa7ede57c0018faf7d0da5ad96a6f02425",
+      "_shared/rateLimit.ts": "de9201c135537983a3c84ccd7e25bf9880c37a3c85fea64e6862f9372f48fa54",
+      "_shared/outfitBudgetFeasibility.ts": "70040dc0b5779813aa2fc80cd0c3b5310308ee00c0a4928f5aa72a9d80e9c57e",
+      "_shared/outfitBudgetSelection.ts": "7be1bb224da400e8fc3328cece5b911f1f7a580433eea2ad2c2f28b6ebc9fe3e",
+      "_shared/outfitBudgetFeedback.ts": "ffb3373f563dbb2642253ae10166c98d6e4e3ccc4da1fcc54b3e291ae2ecc548",
+      "_shared/modelOutfitResponse.ts": "ed0fab20006ac6a91559450a6860b2bdadd998c970ab9b40c51e627d5f56d52c"
+    },
+    "productionConfigurationChanged": false,
+    "limits": "Not hosted Edge runtime or native UI; this comparison does not establish production model throughput."
+  }
+}

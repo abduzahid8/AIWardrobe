@@ -1,0 +1,35 @@
+{
+  "scope": "Synchronous account publication ordering across login/register/startup/SDK callback; SDK and cache reset mocked",
+  "before": {
+    "newRegressionsFailed": 3,
+    "existingAuthPassed": 47
+  },
+  "after": {
+    "fullTests": 1323,
+    "suites": 116,
+    "failures": 0,
+    "typescript": "passed",
+    "lintErrors": 0,
+    "lintWarnings": 38
+  },
+  "invariants": [
+    "Cleanup barriers registered before login handlers",
+    "Cache owner updated before session subscriber notification",
+    "Old profile not published under new owner",
+    "Same-account recovery remains covered"
+  ],
+  "sourceSha256": "1bfafbbeaa985a6abd3829b79def4980e7c27871050c3727095a2bba14b71ff3",
+  "remaining": [
+    "Late SDK authentication result after a later logout or sign-in",
+    "Already-issued storage/SDK/IAP cleanup overlap",
+    "Native authentication UI and full capacity acceptance"
+  ],
+  "normalAndroidBuild": {
+    "exitCode": 0,
+    "packagedAuthSourceMatches": true,
+    "auditMarkerAbsent": true,
+    "apkSha256": "4965d9270be5afc443b7f0d3569dc43f223cfbb5641928b7374a81b756cce93e",
+    "bundleSha256": "d2186b0b7fca5657294c477684749453a8bcd85b1253ef68dfbbf7a23dc1a0ce",
+    "scope": "Packaging verified, no installation/UI/store signing validation"
+  }
+}

@@ -63,9 +63,15 @@ const CameraScreen = () => {
                 skipProcessing: false,
             });
 
-            if (photo?.uri && mediaPermission?.granted) {
-                await MediaLibrary.saveToLibraryAsync(photo.uri);
-                Alert.alert(t('cameraScreen.photoSaved'), t('cameraScreen.photoSavedGallery'));
+            if (photo?.uri) {
+                if (mediaPermission?.granted) {
+                    try {
+                        await MediaLibrary.saveToLibraryAsync(photo.uri);
+                        Alert.alert(t('cameraScreen.photoSaved'), t('cameraScreen.photoSavedGallery'));
+                    } catch {
+                        // The captured file remains available for analysis if gallery storage fails.
+                    }
+                }
                 // Navigate to WardrobeVideo to analyze
                 navigation.navigate('WardrobeVideo', { imageUri: photo.uri });
             }
@@ -97,9 +103,15 @@ const CameraScreen = () => {
                 maxDuration: 60,
             });
 
-            if (video?.uri && mediaPermission?.granted) {
-                await MediaLibrary.saveToLibraryAsync(video.uri);
-                Alert.alert(t('cameraScreen.videoSaved'), t('cameraScreen.videoSavedGallery'));
+            if (video?.uri) {
+                if (mediaPermission?.granted) {
+                    try {
+                        await MediaLibrary.saveToLibraryAsync(video.uri);
+                        Alert.alert(t('cameraScreen.videoSaved'), t('cameraScreen.videoSavedGallery'));
+                    } catch {
+                        // Gallery storage is optional; analysis uses the captured local file.
+                    }
+                }
                 // Navigate to WardrobeVideo to analyze
                 navigation.navigate('WardrobeVideo', { videoUri: video.uri });
             }

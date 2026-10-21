@@ -1,6 +1,6 @@
 import React, { useEffect, useCallback } from 'react';
 import { View, StyleSheet, Dimensions, TouchableOpacity,  } from 'react-native'
-import { ScaledText } from '../ui/ScaledText';;
+import { ScaledText } from '../ui/ScaledText';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,

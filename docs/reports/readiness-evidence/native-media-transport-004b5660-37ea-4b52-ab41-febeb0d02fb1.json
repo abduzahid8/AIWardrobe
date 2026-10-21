@@ -1,0 +1,40 @@
+{
+  "scope": "Native Expo/XHR/Expo transport comparison; not app replacement or capacity certification",
+  "rps": 5,
+  "secondsPerStage": 10,
+  "plannedPerStage": 50,
+  "stages": [],
+  "concurrencyCap": 20,
+  "requestTimeoutMs": 15000,
+  "fixtureUsers": 1,
+  "fixtureObjects": 1,
+  "project": "fyqpifmrsftsfqibhwhy",
+  "runId": "004b5660-37ea-4b52-ab41-febeb0d02fb1",
+  "owner": "b41b18c4-cfb9-4ff3-9825-d759f52f02fc",
+  "objectId": "f1245c6b-ec57-4781-b06f-bfb9c1672cb9",
+  "email": "readiness-004b5660-37ea-4b52-ab41-febeb0d02fb1@aiwardrobe.club",
+  "startedAt": "2026-10-17T13:58:34.916Z",
+  "status": "preflight_failed_and_cleaned",
+  "fixtureBytes": 788309,
+  "fixtureSha256": "39b14e9041fca06639a34a1c04420d57cc57776bec23c524f21cd88f1a4a3bd7",
+  "nodeVersion": "v22.23.2",
+  "curlVersion": "curl 8.7.1 (x86_64-apple-darwin25.0) libcurl/8.7.1 (SecureTransport) LibreSSL/3.3.6 zlib/1.2.12 nghttp2/1.68.1",
+  "updatedAt": "2026-10-17T15:51:39.802Z",
+  "cleanup": {
+    "ownershipConfirmed": true,
+    "removeSucceeded": true,
+    "objectsAbsent": true,
+    "deleteSucceeded": true,
+    "userAbsent": true,
+    "passed": true
+  },
+  "nativeNetworkStagesExecuted": false,
+  "cleanupIndependentSql": {
+    "usersRemaining": 0,
+    "sessionsRemaining": 0,
+    "identitiesRemaining": 0,
+    "profilesRemaining": 0,
+    "objectsRemaining": 0
+  },
+  "privateConfigurationRemoved": true
+}

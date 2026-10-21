@@ -1,0 +1,108 @@
+{
+  "date": "2026-10-17",
+  "scope": "Automatic native thumbnails for local garment saves",
+  "dependency": {
+    "package": "expo-image-manipulator",
+    "version": "57.0.21",
+    "pinned_exactly": true,
+    "expo_version_unchanged": "57.0.20",
+    "react_native_unchanged": "0.86.3",
+    "ios_autolinking_updated": true,
+    "pod_lock_matches_manifest": true
+  },
+  "behavior": [
+    "Original photo bytes remain unchanged in durable owner-scoped staging",
+    "Missing or original-identical thumbnail inputs generate a separate PNG preview before queuing",
+    "Distinct supplied thumbnails remain supported",
+    "Longest output edge is 512 pixels, no upscaling; dimensions and aspect ratio checked",
+    "Input dimensions must be positive integer and at most 50 million pixels before manipulation",
+    "Native decoder operations serialized; queued work captures auth revision at invocation",
+    "Cache output removed only from validated app cache paths after durable staging or failure",
+    "Native image/context references released after each operation",
+    "Generation errors cannot publish an original-only garment action"
+  ],
+  "validation": {
+    "jest_suites": 109,
+    "jest_tests": 1231,
+    "failed": 0,
+    "thumbnail_service_tests": 13,
+    "typescript": "pass",
+    "lint_errors": 0,
+    "existing_items_slice_warnings": 1,
+    "whitespace": "pass",
+    "media_import_boundary": "pass",
+    "os_original_staging_durability": "pass"
+  },
+  "native_codec_evidence": "native-thumbnail-codec.json",
+  "native_codec_summary": {
+    "photo_original_bytes": 2915128,
+    "photo_thumbnail_bytes": 472270,
+    "photo_reduction_percent": 83.8,
+    "photo_dimensions": [
+      384,
+      512
+    ],
+    "photo_generation_ms_one_sample": 664,
+    "icon_original_bytes": 41271,
+    "icon_thumbnail_bytes": 23256,
+    "icon_dimensions": [
+      512,
+      512
+    ],
+    "icon_generation_ms_one_sample": 31,
+    "originals_byte_identical": true,
+    "icon_nonopaque_alpha_preserved": true
+  },
+  "native_scope_limits": [
+    "Standalone actual-source/native-codec harness, not a picker-to-cloud UI test",
+    "Codec timing is one sample per fixture and is not an upload or HTTP capacity measurement",
+    "Serial decoding wrapper separately covered by regression tests; codec sample timings are from the preceding direct helper harness run",
+    "Native fixtures were PNG; camera JPEG/HEIC, Android runtime and heavy-image stress remain unverified"
+  ],
+  "normal_app_restored": {
+    "build": "BUILD SUCCEEDED",
+    "configuration": "arm64 iOS Release, unsigned simulator",
+    "main_jsbundle_bytes": 8391820,
+    "main_jsbundle_sha256": "ef7aaa0fa7877aee1cba891eb9ccd5c14aced6795b6409f5eec28e36224ec314",
+    "thumbnail_export_present": true,
+    "audit_heading_absent": true,
+    "startup_observed": "Normal language gate after tracking declined",
+    "audit_fixture_app_data_removed": true,
+    "original_user_simulator_modified": false
+  },
+  "android_hermes_export": [
+    {
+      "path": "/tmp/aiwardrobe-thumbnail-final-android/_expo/static/js/android/index-727d50074e4a36f95b44ded1e8044bb3.hbc",
+      "bytes": 8408479,
+      "sha256": "67e69da2f688b24b570819d827807c5f300ed32d4e4521bf6703d0de1d01614b"
+    }
+  ],
+  "dependency_audit": {
+    "current_findings": 115,
+    "critical": 3,
+    "high": 87,
+    "moderate": 24,
+    "low": 1,
+    "control_without_new_module_findings": 115,
+    "control_method": "Current lock graph copied with new module removed; not a historical pre-install audit",
+    "finding_objects_identical": false,
+    "new_module_direct_finding": false,
+    "critical_modules": [
+      "@appium/support",
+      "proxy-addr",
+      "shell-quote"
+    ],
+    "exploit_reachability_not_established": true,
+    "evidence": [
+      "npm-audit-thumbnail-added.json",
+      "npm-audit-thumbnail-control.json"
+    ]
+  },
+  "remaining": [
+    "Existing images are not bulk backfilled with thumbnails",
+    "Native picker save/restart and complete native upload flow still need verification",
+    "Browser staging/generation, staged originals cleanup and media HTTP capacity remain open",
+    "Current dependency findings require further remediation",
+    "Full 10000 DAU goal remains unproven"
+  ]
+}

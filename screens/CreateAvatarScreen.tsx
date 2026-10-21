@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { View, StyleSheet, TouchableOpacity, Dimensions, Platform, ScrollView, TextInput, KeyboardAvoidingView, Keyboard, Image,  } from 'react-native'
+import { View, StyleSheet, TouchableOpacity, Dimensions, Platform, ScrollView, TextInput, KeyboardAvoidingView, Keyboard } from 'react-native';
 import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -16,8 +16,10 @@ const { width } = Dimensions.get("window");
 
 import { BODY_TYPES, BodyTypeId } from "../src/types/bodyTypes";
 import useAvatarStore from "../store/avatarStore";
+import { Image } from '../src/components/MediaImage';
 
-const MANNEQUIN_IMAGE = require('../assets/images/mannequin_front.png');
+
+const MANNEQUIN_IMAGE = require('../assets/images/mannequin_front.jpg');
 
 export default function CreateAvatarScreen() {
     const { t } = useTranslation();

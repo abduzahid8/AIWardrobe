@@ -1,0 +1,22 @@
+PASS __tests__/services/iapService.test.ts
+  iapService purchase product resolution
+    ✓ buys only the requested Lite product when offerings contain Pro and Yearly packages (51 ms)
+    ✓ a completed payment with unavailable verification remains pending, never a fake activation (2 ms)
+    ✓ identity verification failure stops before charging the store (1 ms)
+    ✓ a server response for a logged-out owner cannot reactivate that account (1 ms)
+    ✓ restored store entitlements remain pending until the server verifies them (1 ms)
+    ✓ logout invalidates in-flight verification even before the Auth session finishes clearing (1 ms)
+    ✓ a late SDK update cannot begin verification during logout with a still-cached Auth session (1 ms)
+    ✓ verification service unavailable stops before any store payment (1 ms)
+    ✓ a verified free account can start a purchase when reconciliation is ready (2 ms)
+    ✓ a stalled checkout preflight times out without starting payment, even if it resolves late (3 ms)
+    ✓ logout while offerings load prevents store checkout (1 ms)
+    ✓ invalid verification response null cannot start payment (2 ms)
+    ✓ invalid verification response {"verified":false,"tier":"free"} cannot start payment (1 ms)
+    ✓ invalid verification response {"verified":true,"tier":"administrator"} cannot start payment (1 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       14 passed, 14 total
+Snapshots:   0 total
+Time:        0.359 s, estimated 1 s
+Ran all test suites matching /__tests__\/services\/iapService.test.ts/i.

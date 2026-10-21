@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-17",
+  "scope": "Native diagnostic preflight correction; not production application transport fix",
+  "status": "corrected_locally_native_rerun_unverified",
+  "installedVersions": {
+    "expo": "57.0.20",
+    "expo-crypto": "57.0.2",
+    "react-native": "0.86.3",
+    "whatwg-fetch": "3.6.20"
+  },
+  "runtimeFinding": "Expo global fetch defaults to Expo streaming implementation; executed diagnostic confirmed defaultFetchIsExpo=true",
+  "failureRecord": "native-media-preflight-failure-004b5660-37ea-4b52-ab41-febeb0d02fb1.json",
+  "networkStagesExecuted": false,
+  "correction": "Convert ArrayBuffer input to Uint8Array before installed Android native digest boundary",
+  "focusedTests": 3,
+  "typecheck": "passed",
+  "lint": {
+    "errors": 0,
+    "warnings": 2
+  },
+  "whitespace": "passed",
+  "nativeRebuildExecuted": false,
+  "reviewFailure": {
+    "action": "Rebuild corrected native diagnostic",
+    "reason": "Automatic approval review usage limit reached",
+    "unsafeDetermination": false
+  },
+  "cleanup": {
+    "fixtureApiPassed": true,
+    "independentSqlAllZero": true,
+    "localTokenRemoved": true,
+    "auditAppUninstalled": true,
+    "adbdFinalUid": 2000,
+    "emulatorExited": true,
+    "avdDeleted": true,
+    "finalDeviceInventory": "no attached devices"
+  },
+  "sourceSha256": {
+    "scripts/validation/native-media-digest.ts": "dfa6ed7d385142399d4e91cbe99f94c15284b02a589c2c4078bdf40749a29a5b",
+    "scripts/validation/media-transport-native-entry.tsx": "db0538857a36ec526b207226e2506a49169def7b8caea707361c0dd9342d04ab",
+    "__tests__/services/nativeMediaDigest.test.ts": "e26c6c5f868f8476318137cdf8ceec59ea1c02312c983dadb5eca682ce86d9a2"
+  },
+  "limits": [
+    "Actual preflight error was not retained beyond generic failure; argument incompatibility found by installed source inspection",
+    "Corrected typed-array path is verified against an Android-shaped mock and reference SHA, not rerun natively",
+    "Earlier native workload timeout evidence remains failed; no retroactive body/hash-stage attribution",
+    "No application fetch implementation changed"
+  ],
+  "appTests": 1306,
+  "appSuites": 115
+}

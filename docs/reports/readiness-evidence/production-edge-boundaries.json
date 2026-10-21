@@ -1,0 +1,55 @@
+{
+  "measuredAt": "2026-10-19T12:49:07.752Z",
+  "scope": "Gateway-valid public anon JWT, without a user identity; valid request shape where required. A gateway-only401 is insufficient to establish that a function exists.",
+  "checks": [
+    {
+      "endpoint": "generate-outfits",
+      "status": 401,
+      "outcome": "unauthenticated_denied",
+      "deniedUnauthenticated": true,
+      "latencyMs": 1545
+    },
+    {
+      "endpoint": "ai-process",
+      "status": 401,
+      "outcome": "unauthenticated_denied",
+      "deniedUnauthenticated": true,
+      "latencyMs": 1297
+    },
+    {
+      "endpoint": "try-on",
+      "status": 401,
+      "outcome": "unauthenticated_denied",
+      "deniedUnauthenticated": true,
+      "latencyMs": 592
+    },
+    {
+      "endpoint": "ai-chat",
+      "status": 401,
+      "outcome": "unauthenticated_denied",
+      "deniedUnauthenticated": true,
+      "latencyMs": 1418
+    },
+    {
+      "endpoint": "analyze-outfit",
+      "status": 401,
+      "outcome": "unauthenticated_denied",
+      "deniedUnauthenticated": true,
+      "latencyMs": 529
+    },
+    {
+      "endpoint": "create-trip-plan",
+      "status": 404,
+      "outcome": "not_deployed",
+      "deniedUnauthenticated": false,
+      "latencyMs": 103
+    },
+    {
+      "endpoint": "sync-subscription",
+      "status": 401,
+      "outcome": "unauthenticated_denied",
+      "deniedUnauthenticated": true,
+      "latencyMs": 1186
+    }
+  ]
+}

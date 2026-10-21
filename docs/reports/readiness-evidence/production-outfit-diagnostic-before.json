@@ -1,0 +1,28 @@
+{
+  "measuredAt": "2026-10-15T10:29:10.529Z",
+  "scope": "Three representative production AI requests; not provider capacity or universal output accuracy",
+  "checks": [
+    {
+      "name": "generate_outfit_has_items",
+      "status": 500,
+      "latencyMs": 13651,
+      "passed": false,
+      "outfitCount": 0,
+      "itemCounts": [],
+      "source": null,
+      "provider": null,
+      "items": []
+    },
+    {
+      "name": "primary_ai_outfit_generation",
+      "status": 500,
+      "passed": false,
+      "observedSource": null
+    }
+  ],
+  "providerAttempts": [],
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

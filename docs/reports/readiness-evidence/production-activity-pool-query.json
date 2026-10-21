@@ -1,0 +1,30 @@
+{
+  "measuredAt": "2026-10-21T02:24:23.024Z",
+  "scope": "Read-only real candidate fetch and activity admission against public catalog; no provider call, not exhaustive fashion or capacity proof",
+  "latencyMs": 4131,
+  "httpStatuses": [
+    200,
+    200,
+    200
+  ],
+  "candidateCounts": {
+    "top": 6,
+    "bottom": 0,
+    "shoes": 0
+  },
+  "invalidActivityCandidates": 0,
+  "sourceHashes": {
+    "generate-outfits/index.ts": "098678476be1e3fb624a0ae8df242b12e911a4b0f15e5dd0b099d6f28765fb36",
+    "_shared/occasionRules.ts": "8e61248a8277594f0c4e9462206c9ecf605c0aa013f712089017d97f775a3e99",
+    "_shared/outfitBudgetText.ts": "8e11a80c1c1b08aef57fcc75ad23ea5905d83d52713862a5a9287cf83053094c",
+    "_shared/budgetFx.ts": "51324fbbcdd436f6c64beeaaa529d92579a559cb66a4e3d47acbace5e20ef868",
+    "_shared/budgetFxCache.ts": "16717bb417e146189c905368f9bd35038c460387ae15259735ca7d40dba2b3aa",
+    "_shared/rateLimit.ts": "6484b9ae04a7f61240216e617294695f945ba1455a88208faad0ba627aa1fc55",
+    "_shared/outfitBudgetFeasibility.ts": "18f1ab5740fae94e29cdc767d1ccb9b84c92e442bf9a8bac460366c790e17cd5",
+    "_shared/outfitStructure.ts": "3b3ac2b7c3b7b6f77f20f3c370d6d3581135f178c7704be415222a4bf9addb9d",
+    "_shared/outfitBudgetSelection.ts": "cb9d0eb6ec11609c46624bb654eb76b0dd6df14abc9be7ca087ee5bcc0227900",
+    "_shared/outfitBudgetFeedback.ts": "0a6f9a63b1674b6eacb1495d0c84a3bc0ecfb758de0e4e4078b175fea571fb0b",
+    "_shared/modelOutfitResponse.ts": "8eff632237504041a66b0686227c6a4aabc2b12dfc4f5d5af7cb9a4f2d3ae6cc"
+  },
+  "passed": true
+}

@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-20",
+  "passed": true,
+  "scope": "Exact new client loader with installed FunctionsClient and controlled transport/clock; not connected to outfit generation or native UI yet",
+  "checks": [
+    {
+      "phase": "fetch",
+      "callerSettles": true,
+      "transportAborted": true,
+      "clockBudgetMs": 15000,
+      "deadlineCleared": true
+    },
+    {
+      "phase": "body",
+      "callerSettles": true,
+      "transportAborted": true,
+      "clockBudgetMs": 15000,
+      "deadlineCleared": true
+    }
+  ]
+}

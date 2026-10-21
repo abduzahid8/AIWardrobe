@@ -1,0 +1,60 @@
+{
+  "date": "2026-10-20",
+  "scope": "Interpretation of five-minute production load; no capacity certification",
+  "result": "failed",
+  "readFailures": 2,
+  "writeFailures": 2,
+  "attemptedRequests": 12000,
+  "droppedRequests": 0,
+  "p95ReadMs": 1282.1992909999972,
+  "p95WriteMs": 1288.2908749999915,
+  "p99ReadMs": 2446.7774999999965,
+  "p99WriteMs": 2451.235333999968,
+  "criteria": {
+    "zeroErrors": true,
+    "p95BelowMs": 1000,
+    "p99BelowMs": 2000,
+    "achievedRateAtLeastFraction": 0.95
+  },
+  "writeConsistencyOwnersPassed": 20,
+  "distinctWearLogsPerOwner": 60,
+  "harnessCorrection": {
+    "interruptedReport": "production-mixed-five-minute-interrupted.json",
+    "loadRequestsBeforeInterruption": 0,
+    "reason": "Fixed 24 log IDs per owner supported only the previous 120-second run",
+    "correctedCoverage": [
+      {
+        "durationSec": 120,
+        "logIdsPerOwner": 24
+      },
+      {
+        "durationSec": 300,
+        "logIdsPerOwner": 60
+      },
+      {
+        "durationSec": 600,
+        "logIdsPerOwner": 120
+      }
+    ]
+  },
+  "serverLogSample": {
+    "windowStart": "2026-10-20T17:28:00Z",
+    "windowEnd": "2026-10-20T17:36:00Z",
+    "routeEvents": 8491,
+    "observedRest5xx": 0,
+    "upstreamP95Ms": {
+      "clothing_items": 7,
+      "profiles": 2,
+      "saved_outfits": 3,
+      "shop_catalog": 3,
+      "wear_logs": 5
+    },
+    "limitation": "Sample coverage does not match all measured requests; no matched 502. Cannot identify root cause from this sample."
+  },
+  "limits": [
+    "20 active fixture owners, not 10000-owner production cardinality",
+    "DAU traffic assumptions are not validated by real usage telemetry",
+    "No AI/media/authentication/billing/realtime mixed capacity or native rendering test",
+    "Three UND_ERR_SOCKET failures do not identify which network component closed the socket"
+  ]
+}

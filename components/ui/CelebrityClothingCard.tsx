@@ -2,8 +2,8 @@
 // Clean white background, centered cutout, professional styling
 
 import React from 'react';
-import { View, Image, StyleSheet, Pressable, ViewStyle, Dimensions,  } from 'react-native'
-import { ScaledText } from '../ui/ScaledText';;
+import { View, StyleSheet, Pressable, ViewStyle, Dimensions } from 'react-native';
+import { ScaledText } from '../ui/ScaledText';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -15,6 +15,8 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../src/hooks/useTheme';
 import { useTranslation } from 'react-i18next';
+import { Image } from '../../src/components/MediaImage';
+
 
 const { width } = Dimensions.get('window');
 

@@ -1,0 +1,75 @@
+appId: host.exp.Exponent
+name: save_clothing_photo
+tags:
+  - save-checks
+  - expo-go
+  - clothing
+---
+# Closet → Upload clothing → "AI Studio Photo" → pick the seeded photo in
+# the PHPicker → wait for the ClothingDetailEditor → tap Save → assert the
+# "Saved!" alert → OK. This exercises the REAL pipeline:
+#   pickImage → ai-process edge fn (classify) → editor → addItem (optimistic
+#   insert + Supabase clothing_items insert).
+# The empty closet shows "Scan wardrobe" instead of the header Upload
+# button — both call handleUploadChoice, so branch on whichever is visible.
+- tapOn:
+    point: "42%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow:
+    when:
+      visible: "Upload clothing"
+    commands:
+      - tapOn: "Upload clothing"
+- runFlow:
+    when:
+      visible: ".*Scan wardrobe.*"
+    commands:
+      - tapOn: ".*Scan wardrobe.*"
+- waitForAnimationToEnd:
+    timeout: 5000
+# Native iOS Alert — the three source options + Cancel.
+- extendedWaitUntil:
+    visible: "AI Studio Photo"
+    timeout: 10000
+- takeScreenshot: clothing_upload_alert
+- tapOn: "AI Studio Photo"
+# PHPicker sheet: tap the first (most recently added) photo thumbnail.
+# The seeded garment photos are the only library content.
+- extendedWaitUntil:
+    visible: "Recents"
+    timeout: 15000
+- tapOn: "Recents"
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    point: "25%,30%"
+- waitForAnimationToEnd:
+    timeout: 3000
+# AI classify round-trip — generous budget for the edge function.
+- extendedWaitUntil:
+    visible: ".*Update Item.*|.*Save.*"
+    timeout: 90000
+- takeScreenshot: clothing_editor
+- runFlow:
+    when:
+      visible: ".*Update Item.*"
+    commands:
+      # Editor opened in edit-existing mode (classifier matched a prior item).
+      # Assert the editor rendered, then bail — the save path differs.
+      - assertVisible: ".*(Type|Тип).*"
+      - takeScreenshot: clothing_editor_edit_mode
+- runFlow:
+    when:
+      notVisible: ".*Update Item.*"
+    commands:
+      - tapOn: "Save"
+      # addItem resolves optimistically; the alert fires after the insert attempt.
+      - extendedWaitUntil:
+          visible: ".*Saved!.*|.*Сохранено!.*"
+          timeout: 30000
+      - takeScreenshot: clothing_saved_alert
+      - tapOn: ".*OK.*|.*ОК.*"
+      - waitForAnimationToEnd:
+          timeout: 8000
+- takeScreenshot: clothing_saved_done

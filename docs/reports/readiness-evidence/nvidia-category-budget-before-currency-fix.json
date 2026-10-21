@@ -1,0 +1,46 @@
+{
+  "measuredAt": "2026-10-18T14:39:22.088Z",
+  "scope": "Three live NVIDIA category/budget scenarios; not exhaustive accuracy or capacity certification",
+  "checks": [
+    {
+      "name": "casual_250_usd",
+      "status": 200,
+      "latencyMs": 3660,
+      "passed": false,
+      "reasons": [
+        "generation_http_200"
+      ],
+      "spendUzs": 0,
+      "capUzs": 3150000,
+      "items": []
+    },
+    {
+      "name": "business_250_usd",
+      "status": 200,
+      "latencyMs": 2965,
+      "passed": false,
+      "reasons": [
+        "generation_http_200"
+      ],
+      "spendUzs": 0,
+      "capUzs": 3150000,
+      "items": []
+    },
+    {
+      "name": "workout_250_usd",
+      "status": 200,
+      "latencyMs": 2355,
+      "passed": false,
+      "reasons": [
+        "generation_http_200"
+      ],
+      "spendUzs": 0,
+      "capUzs": 3150000,
+      "items": []
+    }
+  ],
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "scope": "Active local Calendar/AIOutfitmaker persistence and Profile reads; no production mutations",
+  "fullSuite": {
+    "tests": 1007,
+    "suites": 78,
+    "passed": true
+  },
+  "focusedNewRegressions": 6,
+  "typecheck": "pass",
+  "targetedLint": {
+    "errors": 0,
+    "warnings": 213
+  },
+  "nativeVerified": false,
+  "crossDeviceSyncVerified": false,
+  "mobileReleased": false
+}

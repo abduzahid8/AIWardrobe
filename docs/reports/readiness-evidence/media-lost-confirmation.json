@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-17",
+  "scope": "Actual processPendingActions + prepareWardrobeItemMedia + uploadWardrobeImage with simulated remote boundary",
+  "scenarios": [
+    "Storage commits original bytes then returns an error; record commits then returns an error; retry confirms",
+    "Storage commits original bytes then throws; record commits then throws; retry confirms"
+  ],
+  "invariants": [
+    "Failed attempts return no acknowledged action and retain local media references",
+    "Final state has one garment row, one original and one thumbnail with exact fixture bytes",
+    "Final confirmation returns stable canonical references",
+    "Input action remains unchanged"
+  ],
+  "limitations": [
+    "Not actual network/hosted Supabase fault injection",
+    "Not native picker/process-death testing",
+    "Not concurrent clients or late commits after deletion",
+    "Not a 10000 DAU capacity measurement"
+  ],
+  "applicationCodeChanged": false
+}

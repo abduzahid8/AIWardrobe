@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-21",
+  "deadlineMs": 60000,
+  "scope": "Same-project POST/PUT /storage/v1/object/wardrobe-images/ via configured SDK fetch",
+  "sdkEvidence": "StorageFileApi.uploadOrUpdate forwards headers/duplex but not upload AbortSignal; wrapper supplies transport signal",
+  "cases": [
+    "stalled upload headers",
+    "stalled acknowledgement body",
+    "unrelated route/origin passthrough",
+    "late committed success remains failed",
+    "explicit retry preserves path and bytes"
+  ],
+  "validation": {
+    "testsPassed": 2079,
+    "suitesPassed": 168,
+    "typescript": "pass",
+    "iosHermes": "pass",
+    "androidArm64Release": "pass",
+    "fourRuntimeSourcesMatchBothMaps": true
+  },
+  "limits": [
+    "Simulated SDK transport; no production write",
+    "No installed native timeout observation",
+    "No capacity test or store distribution",
+    "Database/persistence deadlines still separate",
+    "10000 DAU goal remains incomplete"
+  ]
+}

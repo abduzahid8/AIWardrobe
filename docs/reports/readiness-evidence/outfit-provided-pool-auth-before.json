@@ -1,0 +1,7 @@
+{
+  "measuredAt": "2026-10-19T02:46:16.060Z",
+  "scope": "Anonymous public-key request with empty supplied pool; no model input or customer writes",
+  "status": 422,
+  "code": "no_matching_clothing",
+  "error": "No clothing items match your selections. Add suitable items or adjust your preferences."
+}

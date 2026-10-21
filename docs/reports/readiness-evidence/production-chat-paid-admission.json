@@ -1,0 +1,50 @@
+{
+  "measuredAt": "2026-10-19T07:16:40.681Z",
+  "scope": "Paid chat admission on one disposable account; empty query prevents all provider calls",
+  "checks": [
+    {
+      "name": "free_user_denied_before_chat",
+      "passed": true,
+      "status": 403
+    },
+    {
+      "name": "valid_trial_reaches_input_validation",
+      "passed": true,
+      "status": 400
+    },
+    {
+      "name": "expired_trial_denied",
+      "passed": true,
+      "status": 403
+    },
+    {
+      "name": "lite_reaches_input_validation",
+      "passed": true,
+      "status": 400
+    },
+    {
+      "name": "premium_reaches_input_validation",
+      "passed": true,
+      "status": 400
+    },
+    {
+      "name": "vip_reaches_input_validation",
+      "passed": true,
+      "status": 400
+    },
+    {
+      "name": "free_three_swipes_preserved",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "free_five_scans_preserved",
+      "passed": true,
+      "status": 200
+    }
+  ],
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

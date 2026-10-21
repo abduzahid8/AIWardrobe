@@ -3,8 +3,10 @@
  * Allows users to verify and edit AI-detected clothing attributes
  */
 
+import { acknowledgeScanReviewItem } from '../src/services/scanReviews';
+import { flushWardrobePersistence } from '../store/wardrobeStore';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView, Image, StatusBar, Alert, ActivityIndicator,  } from 'react-native'
+import { View, StyleSheet, TouchableOpacity, ScrollView, StatusBar, Alert, ActivityIndicator } from 'react-native';
 import { ScaledText } from './ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,11 +15,15 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import useWardrobeStore from '../store/wardrobeStore';
 import useAuthStore from '../store/auth';
-import { wardrobeApi } from '../src/lib/api';
+import { saveClothingEdits } from '../src/services/clothingEditorService';
+import { normalizeCategory } from '../src/utils/categoryMapper';
+import { authEvents } from '../store/authEvents';
 import type { Season, Occasion, ClothingItem } from '../src/types/domain';
-import { ExternalAIService } from '../src/services/externalAIService';
-import * as FileSystem from 'expo-file-system';
+import { ExternalAIService, type ProcessingResult } from '../src/services/externalAIService';
+import * as FileSystem from 'expo-file-system/legacy';
 import { mapCategoryToType, mapColorToId } from '../src/utils/mappingUtils';
+import { Image } from '../src/components/MediaImage';
+
 interface ClothingDetailEditorProps {
     imageUri?: string;
     initialData?: {
@@ -25,7 +31,7 @@ interface ClothingDetailEditorProps {
         color?: string;
         season?: string;
     };
-    onSave?: (data: ClothingData) => void;
+    onSave?: (data: ClothingData) => void | Promise<void>;
     onCancel?: () => void;
 }
 
@@ -120,6 +126,9 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
     // Existing item editing mode
     const existingItem = route.params?.existingItem as ClothingItem | undefined;
     const isEditingExisting = !!existingItem;
+    const [isSaving, setIsSaving] = useState(false);
+    const saveInFlight = useRef(false);
+    const retainedCreate = useRef<{ owner: string; source: string | undefined; id: string } | null>(null);
 
     const domainSeasonToEditor = (season?: string): string => {
         if (season === 'fall') return 'autumn';
@@ -130,19 +139,22 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
         return season as Season;
     };
 
+    const [analysisMetadata, setAnalysisMetadata] = useState<ProcessingResult | null>(null);
+
     // Get data from route params, props, or existing item
     const itemImageUri = existingItem?.imageUrl || route.params?.imageUri || imageUri;
     const detectedType = existingItem?.subCategory || route.params?.detectedType || initialData?.type || 'tops';
     const detectedColor = (existingItem?.primaryColor ? mapColorToId(existingItem.primaryColor) : undefined)
         || route.params?.detectedColor || initialData?.color || 'beige';
-    const detectedStyle: string | undefined = route.params?.detectedStyle;
-    const detectedMaterial: string | undefined = existingItem?.material || route.params?.detectedMaterial;
-    const aiConfidence: number | undefined = existingItem?.detectionConfidence || route.params?.aiConfidence;
-    const detectedDescription: string | undefined = existingItem?.name || route.params?.detectedDescription;
+    const detectedStyle: string | undefined = route.params?.detectedStyle ?? analysisMetadata?.classification?.attributes.style;
+    const detectedMaterial: string | undefined = existingItem?.material ?? route.params?.detectedMaterial ?? analysisMetadata?.classification?.attributes.material ?? undefined;
+    const aiConfidence: number | undefined = existingItem?.detectionConfidence ?? route.params?.aiConfidence ?? analysisMetadata?.classification?.confidence;
+    const detectedDescription: string | undefined = existingItem?.name || route.params?.detectedDescription || analysisMetadata?.description || undefined;
+    const detectedPattern = existingItem?.pattern ?? route.params?.detectedItem?.pattern ?? '';
+    const detectedSpecificType = route.params?.detectedItem?.specificType || route.params?.detectedItem?.itemType || analysisMetadata?.classification?.category;
 
     // AI analysis for images opened without pre-detected data (skip for existing items)
     const [isAnalyzing, setIsAnalyzing] = useState(!isEditingExisting && !route.params?.detectedType && !!itemImageUri);
-    const hasRunAnalysis = useRef(false);
 
     const [selectedType, setSelectedType] = useState(
         isEditingExisting && existingItem?.subCategory
@@ -167,32 +179,35 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
 
     // Live AI analysis when editor opened with just imageUri (no pre-classified data)
     useEffect(() => {
-        if (!isAnalyzing || !itemImageUri || hasRunAnalysis.current) return;
-        hasRunAnalysis.current = true;
+        if (!isAnalyzing || !itemImageUri) return;
 
-        (async () => {
+        const revision = authEvents.getRevision();
+        let cancelled = false;
+        const canApply = () => !cancelled && revision === authEvents.getRevision();
+        const analyzeEditorImage = async () => {
             try {
-                const b64 = await FileSystem.readAsStringAsync(itemImageUri, {
-                    encoding: 'base64' as any,
-                });
+                const b64 = await FileSystem.readAsStringAsync(itemImageUri, { encoding: 'base64' });
+                if (!canApply()) return;
                 const aiResult = await ExternalAIService.classifyOnly(b64);
-                if (aiResult.success && aiResult.classification) {
-                    const cat = aiResult.classification.category.toLowerCase();
-                    const sec = aiResult.classification.section.toLowerCase();
-
-                    const newType = mapCategoryToType(cat, sec);
-                    const newColor = mapColorToId(aiResult.classification.attributes?.color || '');
-                    setSelectedType(newType);
-                    setSelectedColor(newColor);
-                    setSelectedSeason(inferSeasonFromType(newType, aiResult.classification.attributes?.material));
-                    setSelectedWeather(inferWeatherFromType(newType, aiResult.classification.attributes?.material));
-                }
+                if (!canApply()) return;
+                if (!aiResult.success || !aiResult.classification) throw new Error('classification_unavailable');
+                const cat = aiResult.classification.category.toLowerCase();
+                const sec = aiResult.classification.section.toLowerCase();
+                const newType = mapCategoryToType(cat, sec);
+                const newColor = mapColorToId(aiResult.classification.attributes?.color || '');
+                setAnalysisMetadata(aiResult);
+                setSelectedType(newType);
+                setSelectedColor(newColor);
+                setSelectedSeason(inferSeasonFromType(newType, aiResult.classification.attributes?.material));
+                setSelectedWeather(inferWeatherFromType(newType, aiResult.classification.attributes?.material));
             } catch {
-                // silently ignore
+                if (canApply()) Alert.alert(t('videoAnalysis.analysisFailed'), t('videoAnalysis.somethingWrong'));
             } finally {
-                setIsAnalyzing(false);
+                if (canApply()) setIsAnalyzing(false);
             }
-        })();
+        };
+        void analyzeEditorImage();
+        return () => { cancelled = true; };
     }, []);
 
     const handleTypeSelect = (typeId: string) => {
@@ -219,7 +234,8 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     };
 
-    const handleSave = async () => {
+    const saveChanges = async () => {
+        const saveRevision = authEvents.getRevision();
         const data: ClothingData = {
             type: selectedType,
             color: selectedColor,
@@ -227,11 +243,10 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
             weather: selectedWeather,
         };
 
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
         // If onSave callback provided, use it
         if (onSave) {
-            onSave(data);
+            await onSave(data);
+            if (saveRevision === authEvents.getRevision()) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             return;
         }
 
@@ -239,16 +254,22 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
 
         // Editing existing item
         if (isEditingExisting && existingItem) {
+            const revision = authEvents.getRevision();
             try {
                 const updateItemInStore = useWardrobeStore.getState().updateItem;
-                const updates = {
-                    subCategory: selectedType,
-                    primaryColor: selectedColorData.label,
+                const updates: Partial<ClothingItem> = {
+                    ...(selectedType !== mapCategoryToType(existingItem.subCategory, existingItem.category || '') ? {
+                        category: selectedType === 'sportswear' || selectedType === 'homewear' ? existingItem.category : normalizeCategory(selectedType),
+                        subCategory: selectedType,
+                    } : {}),
+                    primaryColor: selectedColorData.id,
                     colorHex: selectedColorData.hex,
                     seasons: [editorSeasonToDomain(selectedSeason)] as Season[],
                 };
+                await saveClothingEdits(existingItem.id, updates);
+                if (revision !== authEvents.getRevision()) return;
                 updateItemInStore(existingItem.id, updates);
-                await wardrobeApi.update(existingItem.id, updates);
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 Alert.alert(
                     t('clothingEditor.saved'),
                     t('clothingEditor.itemAddedToWardrobe'),
@@ -256,7 +277,7 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
                 );
             } catch (error: any) {
                 console.error('Failed to update item:', error);
-                Alert.alert(t('clothingEditor.error'), t('clothingEditor.failedToSaveItem'));
+                if (revision === authEvents.getRevision()) Alert.alert(t('clothingEditor.error'), t('clothingEditor.failedToSaveItem'));
             }
             return;
         }
@@ -271,14 +292,15 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
         const addItem = useWardrobeStore.getState().addItem;
 
         try {
-            await addItem({
+            const itemInput = {
                 userId: user.id,
                 imageUrl: itemImageUri || '',
                 category: selectedType as any,
-                subCategory: selectedType,
-                primaryColor: selectedColorData.label,
+                subCategory: detectedSpecificType && mapCategoryToType(detectedSpecificType) === selectedType
+                    ? detectedSpecificType : selectedType,
+                primaryColor: selectedColorData.id,
                 colorHex: selectedColorData.hex,
-                pattern: 'solid',
+                pattern: typeof detectedPattern === 'string' ? detectedPattern : '',
                 material: detectedMaterial || '',
                 brand: '',
                 name: detectedDescription
@@ -286,7 +308,21 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
                     : `${selectedColorData.label} ${selectedType}`,
                 seasons: [editorSeasonToDomain(selectedSeason)] as Season[],
                 occasions: styleToOccasions(detectedStyle),
-            });
+                ...(typeof aiConfidence === 'number' && Number.isFinite(aiConfidence) && aiConfidence >= 0 && aiConfidence <= 1
+                    ? { detectionConfidence: aiConfidence } : {}),
+            };
+            if (route.params?.scanReviewItemId) await addItem(itemInput, { idempotencyId: route.params.scanReviewItemId });
+            else if (retainedCreate.current?.owner === user.id && retainedCreate.current.source === itemImageUri) {
+                await addItem(itemInput, { idempotencyId: retainedCreate.current.id });
+            } else await addItem(itemInput);
+            if (saveRevision !== authEvents.getRevision()) return;
+            if (route.params?.scanReviewId && route.params.scanReviewItemId) {
+                await flushWardrobePersistence();
+                if (saveRevision !== authEvents.getRevision()) return;
+                try { await acknowledgeScanReviewItem(user.id, route.params.scanReviewId, route.params.scanReviewItemId); }
+                catch { console.warn('Saved wardrobe item; scan-review acknowledgement will need retry'); }
+            }
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
             Alert.alert(
                 t('clothingEditor.saved'),
@@ -294,10 +330,15 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
                 [{ text: t('clothingEditor.ok'), onPress: () => navigation.goBack() }]
             );
         } catch (error: any) {
+            if (saveRevision !== authEvents.getRevision()) return;
             if (error?.code === 'WARDROBE_LIMIT_REACHED') {
+                if (error.savedLocally && typeof error.itemId === 'string') {
+                    retainedCreate.current = { owner: user.id, source: itemImageUri, id: error.itemId };
+                }
                 Alert.alert(
                     t('clothingEditor.wardrobeFull'),
-                    t('clothingEditor.freePlanLimit', { limit: error.limit ?? 20 }),
+                    error.savedLocally ? t('wardrobeSync.capacityMessage', { limit: error.limit ?? 20 })
+                        : t('clothingEditor.freePlanLimit', { limit: error.limit ?? 20 }),
                     [
                         { text: t('clothingEditor.maybeLater'), style: 'cancel' },
                         {
@@ -311,6 +352,23 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
             }
             console.error('Failed to save item:', error);
             Alert.alert(t('clothingEditor.error'), t('clothingEditor.failedToSaveItem'));
+        }
+    };
+
+    const handleSave = async () => {
+        // A ref closes the same-tick window before React renders disabled=true.
+        if (isAnalyzing || saveInFlight.current) return;
+        saveInFlight.current = true;
+        setIsSaving(true);
+        const revision = authEvents.getRevision();
+        try {
+            await saveChanges();
+        } catch (error) {
+            console.error('Failed to save item:', error);
+            if (revision === authEvents.getRevision()) Alert.alert(t('clothingEditor.error'), t('clothingEditor.failedToSaveItem'));
+        } finally {
+            saveInFlight.current = false;
+            setIsSaving(false);
         }
     };
 
@@ -353,7 +411,6 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
         }
     };
 
-    const selectedColorData = COLORS.find(c => c.id === selectedColor) || COLORS[2];
 
     return (
         <View style={styles.container}>
@@ -398,7 +455,7 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
                             <ScaledText style={styles.aiBannerText}>{t('clothingEditor.aiAnalyzing')}</ScaledText>
                         </View>
                     )}
-                    {!isEditingExisting && !isAnalyzing && aiConfidence !== undefined && (
+                    {!isEditingExisting && !isAnalyzing && typeof aiConfidence === 'number' && aiConfidence > 0 && aiConfidence <= 1 && (
                         <View style={styles.aiBanner}>
                             <Ionicons name="sparkles" size={14} color="#007AFF" style={{ marginRight: 6 }} />
                             <ScaledText style={styles.aiBannerText}>
@@ -568,12 +625,16 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
                 {/* Save Button */}
                 <View style={styles.saveButtonContainer}>
                     <TouchableOpacity
+                        testID="clothingEditorSave"
+                        accessibilityRole="button"
                         style={styles.saveButton}
                         onPress={handleSave}
+                        disabled={isSaving || isAnalyzing}
+                        accessibilityState={{ disabled: isSaving || isAnalyzing, busy: isSaving || isAnalyzing }}
                         activeOpacity={0.8}
                     >
                         <ScaledText style={styles.saveButtonText}>
-                            {isEditingExisting ? 'Update Item' : t('clothingEditor.save')}
+                            {isSaving ? t('clothingEditor.saving') : isEditingExisting ? t('clothingEditor.updateItem') : t('clothingEditor.save')}
                         </ScaledText>
                     </TouchableOpacity>
                 </View>

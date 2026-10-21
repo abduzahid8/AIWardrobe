@@ -1,0 +1,21 @@
+{
+  "measuredAt": "2026-10-19T02:48:27.984Z",
+  "scope": "Anonymous/missing/invalid session live denials with supplied empty pool; no AI work or data writes",
+  "checks": [
+    {
+      "name": "missing",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "name": "public_anon",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "name": "invalid",
+      "status": 401,
+      "passed": true
+    }
+  ]
+}

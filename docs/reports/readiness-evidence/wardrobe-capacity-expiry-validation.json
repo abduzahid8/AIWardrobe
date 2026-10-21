@@ -1,0 +1,40 @@
+{
+  "scope": "Client wardrobe cap honors current access and photo-staging expiry; separate direct server admission audit",
+  "regression_before": {
+    "failed": 5
+  },
+  "focused_after": {
+    "passed": 48
+  },
+  "typescript": "pass",
+  "ios_hermes": "pass",
+  "android_arm64_release": "pass",
+  "source_map_checks": {
+    "/tmp/aiwardrobe-wardrobe-cap-ios.map": true,
+    "android/app/build/intermediates/sourcemaps/react/release/index.android.bundle.packager.map": true
+  },
+  "source_sha256": "e92ef34e7dfbcc116b17404da472c4ba27d30c7ab90927d3f958731959d6292e",
+  "server_admission": {
+    "enforced": false,
+    "twenty_first_insert_status": 201,
+    "owned_count": 21,
+    "report": "production-wardrobe-cap-admission.json"
+  },
+  "independent_cleanup": {
+    "remaining_audit_users": 0,
+    "auth_users": 111,
+    "profiles": 111,
+    "garments": 109
+  },
+  "limits": [
+    "Server capacity enforcement remains open; owner can bypass the client cap",
+    "Client changes not distributed",
+    "Native fixture uses mocked staging; no new physical-device UI verification",
+    "Not 10000 DAU readiness certification"
+  ],
+  "initial_full_suite_failure": "One media test had an outdated subscription-store mock; mock updated to the current action contract.",
+  "full_suite": {
+    "passed": 2169,
+    "suites": 173
+  }
+}

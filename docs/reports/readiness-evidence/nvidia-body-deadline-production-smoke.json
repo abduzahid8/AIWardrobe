@@ -1,0 +1,49 @@
+{
+  "measuredAt": "2026-10-19T01:44:30.774Z",
+  "scope": "One live hosted business outfit smoke after provider deadline patch; not exhaustive accuracy or capacity certification",
+  "checks": [
+    {
+      "name": "business_250_usd",
+      "status": 200,
+      "latencyMs": 9092,
+      "passed": true,
+      "reasons": [],
+      "spendUzs": 2649800,
+      "capUzs": 3150000,
+      "provider": "nvidia:meta/llama-3.2-11b-vision-instruct",
+      "source": "ai",
+      "items": [
+        {
+          "id": "shop_zara-uz-557829873",
+          "name": "100% WOOL PINSTRIPE REGULAR FIT SUIT TROUSERS",
+          "macroCategory": "bottom",
+          "price": 1099900
+        },
+        {
+          "id": "shop_md-uz-62812140",
+          "name": "100% cotton micro-textured knit polo shirt",
+          "macroCategory": "top",
+          "price": 900000
+        },
+        {
+          "id": "shop_zara-uz-545409746",
+          "name": "CASUAL LEATHER LOAFERS WITH TASSELS",
+          "macroCategory": "shoes",
+          "price": 649900
+        }
+      ],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "meta/llama-3.2-11b-vision-instruct",
+          "status": "ok"
+        }
+      ]
+    }
+  ],
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  },
+  "independentRemainingFixtures": 0
+}

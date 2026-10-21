@@ -1,0 +1,27 @@
+{
+  "mode": "single",
+  "measuredAt": "2026-10-19T12:33:57.147Z",
+  "scope": "One direct NVIDIA call through actual source request/parser/validator; no hosted admission or visual-accuracy claim",
+  "observation": {
+    "providerHttpStatus": 200,
+    "finishReason": "stop",
+    "contentLength": 238,
+    "arrayParsed": true,
+    "items": [
+      {
+        "index": 0,
+        "invalidPatternTerm": null,
+        "taxonomy": {
+          "category": "jacket",
+          "section": "outerwear"
+        },
+        "invalidFields": [
+          "pattern"
+        ],
+        "missingFields": []
+      }
+    ],
+    "schemaValid": false
+  },
+  "latencyMs": 5729
+}

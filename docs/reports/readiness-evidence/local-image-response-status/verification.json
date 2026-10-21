@@ -1,0 +1,18 @@
+{
+  "before": {
+    "failed": 9,
+    "passed": 18
+  },
+  "focused": {
+    "passed": 52,
+    "suites": 2
+  },
+  "full": {
+    "passed": 1422,
+    "suites": 123
+  },
+  "typescriptPassed": true,
+  "targetedLintPassed": true,
+  "osDurabilityPassed": true,
+  "scope": "Mocked response-status cases and OS-file adapter durability; not native fetch-status validation"
+}

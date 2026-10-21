@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "measuredAt": "2026-10-21T08:26:05.210Z",
+  "scope": "Actual sync slice and review-storage modules through OS filesystem adapters, injected cleanup failure and a fresh Node process; cloud confirmation stubbed; no native/UI/production-capacity claim",
+  "cloudAckAndJournalPersistedBeforeCleanup": true,
+  "reviewRetainedAfterCleanupFailure": true,
+  "journalRestored": true,
+  "noRepeatedCloudWrite": true,
+  "onlyConfirmedCandidateRemoved": true,
+  "unsavedImageBytesExact": true,
+  "journalClearPersisted": true,
+  "sourceHashes": {
+    "store/authEvents.ts": "4a276d38e09fc9b2fe577b0dcb8361ab450eadda454ba36cc8f299a1bbbb30c3",
+    "src/services/scanReviews.ts": "0425cad70b9f7edb4cfc7c99b2897a78a5e4e3914c6f607fb84f3f704ab69636",
+    "src/utils/confirmedOutfitMedia.ts": "f9ad11b3987837a75fce0fcd1c9beb93216a7a57fcb77e4d8b25f43676c35aca",
+    "store/slices/wardrobeSyncSlice.ts": "8f59ef228764cdc00223151031e4c52cdd2f4abde318bcd59006d18c1978c33f"
+  },
+  "fixtureFilesRemoved": true
+}

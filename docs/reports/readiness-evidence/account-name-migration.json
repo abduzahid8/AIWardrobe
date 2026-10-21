@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-20",
+  "decision": "Unique handles and separate non-unique display names",
+  "migrationVersion": "20261020111306",
+  "before": {
+    "profile_count": 111,
+    "preserved_profile_digest": "e1be67eb79d9ae4d04e13ecbcdd27187",
+    "auth_count": 111
+  },
+  "after": {
+    "profile_count": 111,
+    "preserved_profile_digest": "e1be67eb79d9ae4d04e13ecbcdd27187",
+    "distinct_handles": 111,
+    "valid_handles": 111,
+    "legacy_names_preserved": 111,
+    "auth_count": 111,
+    "migration_version": "20261020111306"
+  },
+  "liveRollbackChecks": {
+    "account_name_checks": {
+      "scope": "Auth trigger, case-insensitive unique constraint, display/legacy separation, format, availability, internal ACL; rolled back",
+      "passed": true
+    }
+  },
+  "limitations": [
+    "Native client changes built, not yet store-distributed or installed-profile UI certified",
+    "Actual external Google/Apple provider completion remains separate",
+    "Availability RPC intentionally returns only a boolean through SECURITY DEFINER; existing documented advisor category remains",
+    "Not 10000 DAU capacity certification"
+  ]
+}

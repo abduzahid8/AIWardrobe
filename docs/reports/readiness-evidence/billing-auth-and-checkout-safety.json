@@ -1,0 +1,55 @@
+{
+  "projectRef": "fyqpifmrsftsfqibhwhy",
+  "securityFinding": {
+    "confirmed": "Published iOS SDK key authenticated the hosted webhook; empty body reached400payload validation while missing/invalid keys returned401",
+    "scope": "No database reads/writes or forged purchases performed"
+  },
+  "deployedWebhookFix": {
+    "sourceSha256": "17a6e4b0ff53f913882c1d8be7b5afcf2fe0c9eb35cb50e292b310ab984ccb19",
+    "dedicatedSecretRequired": true,
+    "sdkApiKeyFallbackRemoved": true,
+    "jwtGateway": "Existing disabled setting preserved for server-to-server webhook",
+    "liveAfter": "All three empty-body probes return503because dedicated secret is missing"
+  },
+  "billingReadiness": {
+    "ready": false,
+    "syncSubscriptionFunction": "not deployed in inspected function inventory",
+    "atomicSnapshotRpcAndTable": "absent",
+    "dedicatedWebhookSecret": "absent",
+    "serverCredentialAlias": "REVENUECAT_API_KEY exists; actual RevenueCat read authorization not verified",
+    "localClientConfiguration": "Legacy iOS SDK key present; no explicit Android SDK key in .env",
+    "realStorePurchaseRenewalRefund": "not verified",
+    "dashboard": "Opened RevenueCat sign-in; user sign-in pending"
+  },
+  "clientGuard": {
+    "before": "Known unavailable verification could still start SDK payment and return verificationPending afterward",
+    "after": "Checkout readiness must be verified, including for free users, before initiating a payment; auth revisions rechecked after product lookup",
+    "deadlinesMs": 20000,
+    "postPaymentOutage": "Actual completed payment remains success with verificationPending; no fake grant",
+    "ownerRaceAndLateReplyTests": "passed"
+  },
+  "checks": {
+    "webhookDedicatedSecretCasesPassed": 6,
+    "iapCasesPassed": 14,
+    "fullAppTests": 1619,
+    "suites": 141,
+    "typescript": "passed",
+    "targetedLint": {
+      "errors": 0,
+      "warnings": 37
+    },
+    "iosNormalHermesExport": "passed",
+    "androidArm64Release": "passed",
+    "sourceMapMatches": [
+      "iapService.ts",
+      "requestDeadline.ts"
+    ]
+  },
+  "limitations": [
+    "Webhook deliberately returns503until dedicated authentication is configured; real RevenueCat delivery remains unavailable.",
+    "New checkout guard is in local release artifacts, not installed customer releases.",
+    "No real or sandbox payment was executed.",
+    "Prepared atomic integration remains undeployed and requires verified provider/store configuration.",
+    "NVIDIA scan concurrency failure remains open."
+  ]
+}

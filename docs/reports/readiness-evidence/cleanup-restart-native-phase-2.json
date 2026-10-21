@@ -1,0 +1,14 @@
+{
+  "phase": 2,
+  "platform": "android",
+  "passed": true,
+  "checks": [
+    "marker survives force-stop into a fresh native process",
+    "fixture chat survives with pending marker",
+    "retry removes previous-owner chat",
+    "retry removes previous-owner plan",
+    "retry removes marker after confirmed cleanup",
+    "no fetch requests attempted"
+  ],
+  "networkAttempts": 0
+}

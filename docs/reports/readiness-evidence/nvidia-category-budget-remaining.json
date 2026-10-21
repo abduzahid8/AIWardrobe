@@ -1,0 +1,116 @@
+{
+  "measuredAt": "2026-10-18T18:48:39.202Z",
+  "scope": "Three live NVIDIA category/budget scenarios; not exhaustive accuracy or capacity certification",
+  "checks": [
+    {
+      "name": "date_old_money_250_usd",
+      "status": 503,
+      "error": "ai_generation_unavailable",
+      "latencyMs": 16817,
+      "passed": false,
+      "reasons": [
+        "generation_http_503"
+      ],
+      "spendUzs": 0,
+      "capUzs": 3150000,
+      "items": [],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "meta/llama-3.2-11b-vision-instruct",
+          "status": "ok"
+        },
+        {
+          "provider": "nvidia",
+          "model": "meta/llama-3.2-11b-vision-instruct",
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "name": "formal_semi_classic_250_usd",
+      "status": 200,
+      "latencyMs": 12637,
+      "passed": true,
+      "reasons": [],
+      "spendUzs": 2729800,
+      "capUzs": 3150000,
+      "provider": "nvidia:meta/llama-3.2-11b-vision-instruct",
+      "source": "ai",
+      "items": [
+        {
+          "id": "shop_md-uz-61729268",
+          "name": "100% linen regular fit stand collar shirt",
+          "macroCategory": "top",
+          "price": 1100000
+        },
+        {
+          "id": "shop_zara-uz-545490391",
+          "name": "100% LINEN SUIT TROUSERS",
+          "macroCategory": "bottom",
+          "price": 849900
+        },
+        {
+          "id": "shop_zara-uz-545423041",
+          "name": "DRESS PENNY LOAFERS",
+          "macroCategory": "shoes",
+          "price": 779900
+        }
+      ],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "meta/llama-3.2-11b-vision-instruct",
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "name": "travel_minimalist_250_usd",
+      "status": 200,
+      "latencyMs": 14466,
+      "passed": true,
+      "reasons": [],
+      "spendUzs": 3134400,
+      "capUzs": 3150000,
+      "provider": "nvidia:meta/llama-3.2-11b-vision-instruct",
+      "source": "ai",
+      "items": [
+        {
+          "id": "shop_md-uz-62286483",
+          "name": "100% cotton V-neck knit polo",
+          "macroCategory": "top",
+          "price": 900000
+        },
+        {
+          "id": "shop_zara-uz-545490391",
+          "name": "100% LINEN SUIT TROUSERS",
+          "macroCategory": "bottom",
+          "price": 849900
+        },
+        {
+          "id": "shop_fr-tommy-152421",
+          "name": "Лоферы HILFIGER STITCHDOWN SUEDE LOAFER",
+          "macroCategory": "shoes",
+          "price": 1384500
+        }
+      ],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "meta/llama-3.2-11b-vision-instruct",
+          "status": "ok"
+        },
+        {
+          "provider": "nvidia",
+          "model": "meta/llama-3.2-11b-vision-instruct",
+          "status": "ok"
+        }
+      ]
+    }
+  ],
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

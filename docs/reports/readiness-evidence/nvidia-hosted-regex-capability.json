@@ -1,0 +1,19 @@
+{
+  "measuredAt": "2026-10-21T02:11:37.836Z",
+  "scope": "Hosted NVIDIA nvext.guided_regex capability; synthetic IDs, not outfit quality or capacity",
+  "checks": [
+    {
+      "mode": "guided_regex",
+      "status": 200,
+      "latencyMs": 1257,
+      "exactRequiredSlots": false,
+      "returnedKeys": [
+        "top",
+        "bottom"
+      ],
+      "syntheticContentPreview": "```json\n{\n  \"top\": \"probe-top\",\n  \"bottom\": \"probe-bottom\"\n}\n```",
+      "finishReason": "stop",
+      "errorCode": null
+    }
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "measuredAt": "2026-10-15T10:24:49.095Z",
+  "scope": "Production temporary-account wardrobe, outfit, calendar CRUD and two-user isolation; no provider calls or existing-user writes",
+  "checks": [
+    {
+      "name": "profile_client_cannot_self_grant_paid_tier",
+      "status": 403,
+      "passed": true,
+      "code": "42501",
+      "observedTier": "free"
+    },
+    {
+      "name": "client_cannot_self_grant_admin",
+      "status": 403,
+      "passed": true,
+      "code": "42501"
+    },
+    {
+      "name": "owner_subscription_status_rpc",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "client_cannot_insert_paid_subscription",
+      "status": 403,
+      "passed": true,
+      "code": "42501"
+    },
+    {
+      "name": "ordinary_owner_profile_edit_allowed",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "initial_trial_uses_server_time",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "trial_cannot_be_reset",
+      "status": 403,
+      "passed": true,
+      "code": "42501"
+    },
+    {
+      "name": "anonymous_cannot_call_increment_rate_bucket",
+      "status": 401,
+      "passed": true,
+      "code": "42501"
+    },
+    {
+      "name": "authenticated_cannot_call_increment_rate_bucket",
+      "status": 403,
+      "passed": true,
+      "code": "42501"
+    },
+    {
+      "name": "anonymous_cannot_call_prune_processed_webhooks",
+      "status": 401,
+      "passed": true,
+      "code": "42501"
+    },
+    {
+      "name": "authenticated_cannot_call_prune_processed_webhooks",
+      "status": 403,
+      "passed": true,
+      "code": "42501"
+    },
+    {
+      "name": "anonymous_cannot_call_handle_failed_login",
+      "status": 401,
+      "passed": true,
+      "code": "42501"
+    },
+    {
+      "name": "authenticated_cannot_call_handle_failed_login",
+      "status": 403,
+      "passed": true,
+      "code": "42501"
+    },
+    {
+      "name": "anonymous_cannot_call_handle_successful_login",
+      "status": 401,
+      "passed": true,
+      "code": "42501"
+    },
+    {
+      "name": "authenticated_cannot_call_handle_successful_login",
+      "status": 403,
+      "passed": true,
+      "code": "42501"
+    },
+    {
+      "name": "service_rate_counter_remains_available",
+      "status": 200,
+      "passed": true
+    }
+  ],
+  "cleanup": [
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    }
+  ]
+}

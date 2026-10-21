@@ -1,0 +1,20 @@
+BEGIN
+ALTER TABLE
+ALTER TABLE
+psql:scripts/validation/revenuecat.sql:2: WARNING:  there is already a transaction in progress
+BEGIN
+SET
+  set_config  
+--------------
+ service_role
+(1 row)
+
+DO
+SET
+  set_config   
+---------------
+ authenticated
+(1 row)
+
+DO
+ROLLBACK

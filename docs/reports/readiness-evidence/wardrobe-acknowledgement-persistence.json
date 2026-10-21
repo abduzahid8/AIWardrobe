@@ -1,0 +1,25 @@
+{
+  "date": "2026-10-17",
+  "scope": "Queued cloud acknowledgement persistence",
+  "behavior": [
+    "Sync awaits an explicit current snapshot write and flush after removing acknowledged actions",
+    "Acknowledgement persistence failure restores original stable-ID actions before newly queued edits",
+    "Previous-account failed acknowledgement cannot restore work into the new account",
+    "Old failed actions alone do not automatically spin retries"
+  ],
+  "verification": {
+    "jest_suites": 100,
+    "jest_tests": 1174,
+    "failed": 0,
+    "typescript": "pass",
+    "diff_check": "pass",
+    "targeted_lint_errors": 0,
+    "existing_lint_warnings": 4
+  },
+  "limits": [
+    "Mock-backed persistence regression tests, not native process-death verification",
+    "Photo staging, canonical image upload integration and reference-aware cleanup remain open",
+    "No production traffic or AI calls in this change",
+    "Does not establish 10000 DAU readiness"
+  ]
+}

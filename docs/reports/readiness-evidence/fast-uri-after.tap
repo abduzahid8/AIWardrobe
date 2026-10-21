@@ -1,0 +1,46 @@
+TAP version 13
+# Subtest: node_modules/proxy-addr: malformed mapped subnet cannot trust a public spoofing client
+ok 1 - node_modules/proxy-addr: malformed mapped subnet cannot trust a public spoofing client
+  ---
+  duration_ms: 2.182584
+  type: 'test'
+  ...
+# Subtest: node_modules/shell-quote: newline operators and post-comment tokens reject without execution
+ok 2 - node_modules/shell-quote: newline operators and post-comment tokens reject without execution
+  ---
+  duration_ms: 1.256375
+  type: 'test'
+  ...
+# Subtest: node_modules/@appium/support: ZIP symlinks cannot escape extraction root
+ok 3 - node_modules/@appium/support: ZIP symlinks cannot escape extraction root
+  ---
+  duration_ms: 113.373667
+  type: 'test'
+  ...
+# Subtest: node_modules/@appium/support: ordinary ZIP extraction still works
+ok 4 - node_modules/@appium/support: ordinary ZIP extraction still works
+  ---
+  duration_ms: 25.668375
+  type: 'test'
+  ...
+# Subtest: advisory checks found the expected dependency families
+ok 5 - advisory checks found the expected dependency families
+  ---
+  duration_ms: 0.467
+  type: 'test'
+  ...
+# Subtest: node_modules/fast-uri: percent-encoded hostname case cannot evade canonical comparison
+ok 6 - node_modules/fast-uri: percent-encoded hostname case cannot evade canonical comparison
+  ---
+  duration_ms: 1.68275
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 181.652375

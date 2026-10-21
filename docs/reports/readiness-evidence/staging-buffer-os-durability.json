@@ -1,0 +1,31 @@
+{
+  "scope": "Actual source logic and OS file rename/read across a new Node process; Expo-shaped filesystem adapter, not device runtime",
+  "passed": true,
+  "oversizedPreflight": {
+    "logicalBytes": 67108864,
+    "bodyReadAttempted": false,
+    "rejected": true
+  },
+  "concurrentStaging": {
+    "submitted": 8,
+    "completed": 8,
+    "fixtureBytes": 2915128,
+    "totalCommittedBytes": 23321024,
+    "peakBodyReads": 1,
+    "readCalls": 8,
+    "unchangedSource": true,
+    "allCommittedHashesMatch": true,
+    "scope": "Actual service through Node OS-file adapter; five-ms read delay exposes overlap, not native RSS profiling"
+  },
+  "sourceJavaScriptSha256": "3409570f6a80ef5f92687fccc06408a794edafea1b11ac1688c2ad8a30e638fb",
+  "restoration": {
+    "bytes": 2915128,
+    "originalPickerEvicted": true,
+    "oldContainerAbsent": true,
+    "restoredByteHashMatches": true,
+    "retryAfterProcessRestart": true,
+    "otherOwnerBlocked": true,
+    "managedCleanupPassed": true
+  },
+  "temporaryFilesRemoved": true
+}

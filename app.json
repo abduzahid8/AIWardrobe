@@ -8,7 +8,7 @@
       "assets/splash-icon.png",
       "assets/adaptive-icon.png",
       "assets/favicon.png",
-      "assets/images/mannequin_front.png",
+      "assets/images/mannequin_front.jpg",
       "assets/images/basic_outfit_1.png",
       "assets/images/basic_brown_loafers.png",
       "assets/images/basic_brown_pants.png",
@@ -31,7 +31,7 @@
     },
     "scheme": "com.aiwardrobe",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/splash-logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#ADD8E6"
     },

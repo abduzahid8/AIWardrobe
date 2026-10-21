@@ -1,0 +1,36 @@
+FAIL __tests__/services/iapService.test.ts
+  iapService purchase product resolution
+    ✓ buys only the requested Lite product when offerings contain Pro and Yearly packages (69 ms)
+    ✓ a completed payment with unavailable verification remains pending, never a fake activation (2 ms)
+    ✓ identity verification failure stops before charging the store (2 ms)
+    ✓ a server response for a logged-out owner cannot reactivate that account
+    ✓ restored store entitlements remain pending until the server verifies them (2 ms)
+    ✓ logout invalidates in-flight verification even before the Auth session finishes clearing
+    ✓ a late SDK update cannot begin verification during logout with a still-cached Auth session (1 ms)
+    ✕ verification service unavailable stops before any store payment (1 ms)
+    ✓ a verified free account can start a purchase when reconciliation is ready (1 ms)
+
+  ● iapService purchase product resolution › verification service unavailable stops before any store payment
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: false
+    Received: true
+
+      201 |         const { iapService } = require('../../src/services/iapService');
+      202 |         const result = await iapService.purchase('2.99');
+    > 203 |         expect(result.success).toBe(false);
+          |                                ^
+      204 |         expect(mockPurchasePackage).not.toHaveBeenCalled();
+      205 |         expect(mockPurchaseStoreProduct).not.toHaveBeenCalled();
+      206 |     });
+
+      at Object.toBe (__tests__/services/iapService.test.ts:203:32)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 8 passed, 9 total
+Snapshots:   0 total
+Time:        0.474 s, estimated 1 s
+Ran all test suites matching /__tests__\/services\/iapService.test.ts/i.

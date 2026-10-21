@@ -1,0 +1,30 @@
+{
+  "measuredAt": "2026-10-21T12:43:59.829Z",
+  "scope": "One disposable production owner with18real fixture garments: six valid tops, six valid shoes, six formal-ineligible bottoms. Real Auth/catalog/NVIDIA; one USD300 outfit request. No native image/UI or capacity claim.",
+  "checks": [
+    {
+      "name": "one_real_generated_outfit_returned",
+      "passed": false
+    }
+  ],
+  "response": {
+    "status": 503,
+    "latencyMs": 50670,
+    "error": "ai_generation_unavailable",
+    "code": null,
+    "provider": null,
+    "providerAttempts": [
+      {
+        "provider": "nvidia",
+        "model": "meta/llama-3.2-11b-vision-instruct",
+        "status": "timeout"
+      }
+    ]
+  },
+  "failure": "Fixture assertion failed",
+  "cleanup": {
+    "refreshSessionsRevoked": true,
+    "userDeleted": true
+  },
+  "passed": false
+}

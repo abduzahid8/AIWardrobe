@@ -11,7 +11,6 @@ def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
 react {
     entryFile = file(["node", "-e", "require('expo/scripts/resolveAppEntry')", projectRoot, "android", "absolute"].execute(null, rootDir).text.trim())
     reactNativeDir = new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()
-    hermesCommand = new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim()).getParentFile().getAbsolutePath() + "/sdks/hermesc/%OS-BIN%/hermesc"
     codegenDir = new File(["node", "--print", "require.resolve('@react-native/codegen/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()
 
     enableBundleCompression = (findProperty('android.enableBundleCompression') ?: false).toBoolean()
@@ -61,6 +60,18 @@ react {
 
     /* Autolinking */
     autolinkLibrariesWithApp()
+}
+
+// Metro writes into this task-owned directory without removing images from a
+// previous entry point. Rebuild it from the current graph so audit/old assets
+// cannot survive an incremental release bundle.
+tasks.withType(com.facebook.react.tasks.BundleHermesCTask).configureEach { bundleTask ->
+    // RN tracks JS/TS by default; translations are imported JSON and must
+    // invalidate the release bundle even when no JavaScript file changed.
+    bundleTask.sources.include("i18n/**/*.json")
+    doFirst {
+        project.delete(bundleTask.resourcesDir.get().asFile)
+    }
 }
 
 /**

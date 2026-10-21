@@ -1,0 +1,49 @@
+{
+  "measuredAt": "2026-10-18T14:20:50.950Z",
+  "scope": "Three representative production AI requests; not provider capacity or universal output accuracy",
+  "checks": [
+    {
+      "name": "generate_outfit_has_items",
+      "status": 200,
+      "latencyMs": 17968,
+      "passed": true,
+      "outfitCount": 1,
+      "itemCounts": [
+        3
+      ],
+      "source": "ai",
+      "provider": "nvidia:meta/llama-3.2-11b-vision-instruct",
+      "items": [
+        {
+          "type": "top",
+          "name": "100% cotton V-neck knit polo "
+        },
+        {
+          "type": "bottom",
+          "name": "Джинсы 90S TAPER DRIFTWOOD BLUE JEAN "
+        },
+        {
+          "type": "shoes",
+          "name": "Лоферы HILFIGER STITCHDOWN SUEDE LOAFER"
+        }
+      ]
+    },
+    {
+      "name": "primary_ai_outfit_generation",
+      "status": 200,
+      "passed": true,
+      "observedSource": "ai"
+    }
+  ],
+  "providerAttempts": [
+    {
+      "provider": "nvidia",
+      "model": "meta/llama-3.2-11b-vision-instruct",
+      "status": "ok"
+    }
+  ],
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

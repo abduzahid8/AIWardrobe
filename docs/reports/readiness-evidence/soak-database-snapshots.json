@@ -1,0 +1,21 @@
+{
+  "scope": "Two aggregate production snapshots; during snapshot is not a pre-run baseline, neither is a peak measurement",
+  "during": {
+    "sampledAt": "2026-10-16T02:39:54.355Z",
+    "configured_max_connections": 60,
+    "observed_connections": 15,
+    "active_connections": 1,
+    "deadlocks": 0,
+    "temp_files": 228,
+    "temp_bytes": 1899006493
+  },
+  "after": {
+    "sampledAt": "2026-10-16T02:48:14.808Z",
+    "configured_max_connections": 60,
+    "observed_connections": 22,
+    "active_connections": 1,
+    "deadlocks": 0,
+    "temp_files": 228,
+    "temp_bytes": 1899006493
+  }
+}

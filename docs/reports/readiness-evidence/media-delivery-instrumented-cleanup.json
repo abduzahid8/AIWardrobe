@@ -1,0 +1,11 @@
+{
+  "date": "2026-10-17",
+  "source": "Independent Supabase MCP SQL",
+  "fixture_users_remaining": 0,
+  "fixture_objects_remaining": 0,
+  "fixtureUserIds": [
+    "e631af03-9385-4fd4-a428-bbc99d748d5a",
+    "fc1e2c6f-136b-484d-a456-4f903a105847"
+  ],
+  "runPassed": false
+}

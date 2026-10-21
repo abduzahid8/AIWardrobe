@@ -1,0 +1,51 @@
+{
+  "measuredAt": "2026-10-21T07:16:46.231Z",
+  "scope": "One private fixture garment; real SQL conditional writes, locally delayed older PATCH and injected readback503; serialized queue replay, not native process-crash or capacity certification",
+  "checks": [
+    {
+      "name": "old_version_checkpoint_precedes_patch",
+      "passed": true
+    },
+    {
+      "name": "newer_same_value_write_confirmed_and_version_advanced",
+      "passed": true
+    },
+    {
+      "name": "older_collision_retains_persisted_version_after_injected_readback_failure",
+      "passed": true
+    },
+    {
+      "name": "serialized_retry_adopts_server_without_another_patch",
+      "passed": true
+    },
+    {
+      "name": "final_database_favorite_stays_newer_value",
+      "passed": true
+    }
+  ],
+  "sourceHashes": {
+    "store/authEvents.ts": "4a276d38e09fc9b2fe577b0dcb8361ab450eadda454ba36cc8f299a1bbbb30c3",
+    "src/lib/requestDeadline.ts": "158dfcfcd498674fcca78f8b5357aa1dcbf49ce75aff2f571500e46b408d295b",
+    "src/services/wardrobeMedia.ts": "e7e00901e1647317a67e663d18ead2e27e3784546d5a3fd781f22e1a82ee5332",
+    "src/services/pendingWardrobeMedia.ts": "c02b09118a82079f26c78cc8d6e5ba39627d9963adf13851d91f9f45eaa59d58",
+    "src/services/wardrobeItemMedia.ts": "637679a4cfa10574642b2a9e08884514ec8598833ff348ac75241ed44a808f6d",
+    "store/wardrobeSyncService.ts": "cd0567f779d7d89ad02ed43da0c4da1469f3e63a7bd712ce771b64859ae65e45"
+  },
+  "patchResponses": [
+    {
+      "patch": 2,
+      "status": 200
+    },
+    {
+      "patch": 1,
+      "status": 406
+    }
+  ],
+  "injectedReadbackFailures": 4,
+  "cleanup": {
+    "refreshSessionsRevoked": true,
+    "userDeleted": true,
+    "queueFilesRemoved": true
+  },
+  "passed": true
+}

@@ -1,0 +1,106 @@
+{
+  "measuredAt": "2026-10-20T17:00:21.324Z",
+  "scope": "Live NVIDIA category/budget scenarios; not exhaustive accuracy or capacity certification",
+  "checks": [
+    {
+      "name": "casual_250_usd",
+      "status": 503,
+      "error": "ai_generation_unavailable",
+      "latencyMs": 21744,
+      "passed": false,
+      "reasons": [
+        "generation_http_503",
+        "unacknowledged_reference_snapshot"
+      ],
+      "spendUzs": 0,
+      "capUzs": 3011180,
+      "items": [],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "meta/llama-3.2-11b-vision-instruct",
+          "status": "ok"
+        },
+        {
+          "provider": "nvidia",
+          "model": "meta/llama-3.2-11b-vision-instruct",
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "name": "business_250_usd",
+      "status": 200,
+      "latencyMs": 35897,
+      "passed": true,
+      "reasons": [],
+      "spendUzs": 2949800,
+      "capUzs": 3011180,
+      "provider": "nvidia:meta/llama-3.2-11b-vision-instruct",
+      "source": "ai",
+      "items": [
+        {
+          "id": "shop_zara-uz-584711337",
+          "name": "100% WOOL REGULAR FIT SUIT TROUSERS",
+          "macroCategory": "bottom",
+          "price": 1499900,
+          "currency": "UZS",
+          "shopUrl": "https://www.zara.com/uz/en/regular-fit-100-wool-suit-trousers-p01224554.html?v1=584711337"
+        },
+        {
+          "id": "shop_md-uz-62246011",
+          "name": "100% cotton V-neck knit polo shirt",
+          "macroCategory": "top",
+          "price": 800000,
+          "currency": "UZS",
+          "shopUrl": "https://www.massimodutti.com/uz/en/100-cotton-vneck-knit-polo-l00837175?pelement=62246011"
+        },
+        {
+          "id": "shop_zara-uz-545409746",
+          "name": "CASUAL LEATHER LOAFERS WITH TASSELS",
+          "macroCategory": "shoes",
+          "price": 649900,
+          "currency": "UZS",
+          "shopUrl": "https://www.zara.com/uz/en/casual-leather-loafers-with-tassels-p12651720.html?v1=545409746"
+        }
+      ],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "meta/llama-3.2-11b-vision-instruct",
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "name": "workout_250_usd",
+      "status": 422,
+      "error": "No complete outfit in the selected clothing pool fits this budget.",
+      "latencyMs": 5793,
+      "passed": false,
+      "reasons": [
+        "generation_http_422",
+        "unacknowledged_reference_snapshot"
+      ],
+      "spendUzs": 0,
+      "capUzs": 3011180,
+      "items": []
+    }
+  ],
+  "reference": {
+    "id": "CBU:2026-10-20:12044.72:13525.02:16062.84",
+    "source": "CBU",
+    "asOf": "2026-10-20",
+    "fetchedAt": "2026-10-20T16:32:51.275Z",
+    "uzsPerUnit": {
+      "USD": 12044.72,
+      "EUR": 13525.02,
+      "GBP": 16062.84,
+      "UZS": 1
+    }
+  },
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

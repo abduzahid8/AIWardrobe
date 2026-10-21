@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-20",
+  "change": "serialize-javascript 6.0.2 ->7.1.2 exact transitive override",
+  "lockChanges": [
+    "serialize-javascript updated",
+    "unused randombytes removed"
+  ],
+  "lifecycleScripts": "disabled",
+  "node": "22.23.2; override requires >=20, CI uses22",
+  "reproducers": {
+    "RegExp.flags": "marker executes before; escaped after",
+    "Date.toISOString": "marker executes before; invalid ISO rejected after"
+  },
+  "compatibility": [
+    "Date/RegExp/function roundtrip",
+    "Mocha10 serial and parallel actual CLI modes"
+  ],
+  "dependencyGate": {
+    "passed": 12,
+    "failed": 0
+  },
+  "jest": {
+    "tests": 1875,
+    "suites": 153
+  },
+  "typescript": "pass",
+  "iosHermes": "pass",
+  "androidArm64Release": "pass",
+  "audit": {
+    "high": 81,
+    "moderate": 20,
+    "critical": 0,
+    "total": 101,
+    "serializerPresent": false
+  },
+  "advisories": [
+    "https://github.com/advisories/GHSA-5c6j-r48x-rmvq",
+    "https://github.com/advisories/GHSA-qj8w-gfj5-8c6v"
+  ],
+  "limits": [
+    "Tooling vulnerability reproduced, not a mobile exploit",
+    "CPU-exhaustion advisory removed by patched version, not separately reproduced",
+    "Remaining dependency findings and complete security audit unresolved"
+  ],
+  "goal": "active"
+}

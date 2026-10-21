@@ -1,0 +1,44 @@
+{
+  "date": "2026-10-20",
+  "change": {
+    "package": "ip-address",
+    "before": "10.7.0",
+    "after": "10.7.4",
+    "exactOverride": true,
+    "lockRecordsChanged": [
+      "node_modules/ip-address"
+    ],
+    "lifecycleScripts": "disabled"
+  },
+  "verification": {
+    "crossFamilySubnetReproducer": "failed before, passes after",
+    "oversizedInvalidInputProcessBound": "passes before and after; not a reproduced second exploit",
+    "dependencySecurityChecks": 8,
+    "jestTests": 1875,
+    "jestSuites": 153,
+    "typescript": "pass",
+    "iosHermes": "pass",
+    "androidArm64Release": "pass",
+    "appiumVersionCommand": "3.8.0 passes"
+  },
+  "auditBefore": {
+    "high": 84,
+    "moderate": 21,
+    "critical": 0,
+    "total": 105
+  },
+  "auditAfter": {
+    "high": 82,
+    "moderate": 20,
+    "critical": 0,
+    "total": 102
+  },
+  "attribution": "Only ip-address changed and its advisory entry disappeared. Two inherited react-native-purchases/view-shot findings also disappeared between audit responses despite identical lock records; no fix to those packages is claimed. Counts are registry/graph snapshots.",
+  "reachability": "socks -> proxy agents -> Puppeteer/Webdriver tooling; not proof of an exploitable mobile-app allowlist",
+  "advisories": [
+    "https://github.com/advisories/GHSA-j6r3-76f7-8jcv",
+    "https://github.com/advisories/GHSA-h3mg-xc3c-68pw"
+  ],
+  "remaining": "102 reported findings, including82high; no comprehensive security certification",
+  "goal": "active"
+}

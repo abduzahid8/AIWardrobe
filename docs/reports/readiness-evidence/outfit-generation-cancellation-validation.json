@@ -1,0 +1,31 @@
+{
+  "measuredAt": "2026-10-21T17:12:42.997246+00:00",
+  "scope": "Client outfit-generation lifecycle; real screen handler extraction and installed SDK deadline tests. No provider success or capacity claim.",
+  "changes": [
+    "Synchronous in-flight guard begins before quota admission",
+    "Cancel aborts client transport and invalidates generation nonce",
+    "Late approval/result cannot restart or display cancelled work",
+    "Finally releases only its own controller; old completion cannot stop newer retry",
+    "Unmount aborts active client request"
+  ],
+  "verification": {
+    "fullJestTests": 2274,
+    "fullJestSuites": 176,
+    "typescript": true,
+    "iosHermesBundle": true,
+    "androidArm64ReleaseBuild": true,
+    "sourceMapsMatchCurrentSources": true
+  },
+  "sourceHashes": {
+    "screens/AIOutfitmaker.tsx": "8949af345574d7b49e6866dc8857c9b4a3a2f6853831e904a601db92cc93b2b1",
+    "src/lib/requestDeadline.ts": "5147cd7478ee6cab7c48caa5f3d5ad41cec3cbc526bb9d54878cc41793b88080"
+  },
+  "limits": [
+    "New client bundles not installed or store-distributed",
+    "Installed native Back/retry UI flow not yet exercised",
+    "Aborting client transport does not prove cancellation of provider work already accepted by hosted Edge",
+    "Admission already accepted may remain recorded; no refund semantics changed",
+    "NVIDIA reliability and10,000DAU readiness remain unproven"
+  ],
+  "backendChanged": false
+}

@@ -1,0 +1,66 @@
+{
+  "measuredAt": "2026-10-21T16:28:41.863Z",
+  "scope": "One real hosted Old Money/Work shopping request, no weather or entered budget, limit five. Controlled catalog pool; not exact screenshot account or capacity proof.",
+  "checks": [
+    {
+      "name": "all_three_catalog_slots_available",
+      "passed": true
+    },
+    {
+      "name": "usable_outfits_returned",
+      "passed": false
+    }
+  ],
+  "fixtureUserId": "1809c060-6a36-455d-a566-eea340747754",
+  "candidateCount": 40,
+  "response": {
+    "status": 503,
+    "latencyMs": 49398,
+    "code": null,
+    "error": "ai_generation_unavailable",
+    "provider": null,
+    "providerAttempts": [
+      {
+        "provider": "nvidia",
+        "model": "meta/llama-3.2-11b-vision-instruct",
+        "status": "timeout"
+      }
+    ],
+    "outfitCount": 0
+  },
+  "failure": "Audit assertion failed",
+  "cleanup": {
+    "sessionsRevoked": true,
+    "ownerDeleted": true
+  },
+  "passed": false,
+  "providerObservations": [
+    {
+      "model": "meta/llama-3.2-11b-vision-instruct",
+      "requestCharacters": 19407,
+      "maxTokens": 2000,
+      "latencyMs": 45007,
+      "transportError": "AbortError"
+    }
+  ],
+  "execution": {
+    "runtime": "Local Node with actual current handler modules; real Supabase Auth/catalog/rate guards and hosted NVIDIA",
+    "candidateModel": "meta/llama-3.2-11b-vision-instruct",
+    "sourceHashes": {
+      "generate-outfits/index.ts": "58e954b9641faf11cc1f01db11080f48e183f8db64740e5e1911dd4165171269",
+      "_shared/outfitGenerationRequest.ts": "30412ecc9a1fc0695dff2563bf98bb33a25289ffb19cedb0d08ef339bf724f03",
+      "_shared/occasionRules.ts": "178339bcc8b6962280a695027bff1afa06edfb34c38054d49bc25abafd31ea5d",
+      "_shared/outfitBudgetText.ts": "bb2942b93c782908b4389f39c04ba6b6cca0c014f82a83b34ecafdb8d58bfc1f",
+      "_shared/budgetFx.ts": "e1aa62bb1d5f06d5fa484e9e9033991a9218d1bde42657514c010f8ecf7c526a",
+      "_shared/budgetFxCache.ts": "2060d666cb044ce6e20ad12f37a874aa7ede57c0018faf7d0da5ad96a6f02425",
+      "_shared/rateLimit.ts": "de9201c135537983a3c84ccd7e25bf9880c37a3c85fea64e6862f9372f48fa54",
+      "_shared/outfitBudgetFeasibility.ts": "70040dc0b5779813aa2fc80cd0c3b5310308ee00c0a4928f5aa72a9d80e9c57e",
+      "_shared/outfitStructure.ts": "62de820735f065d7a7bac6baace20243d9dbcb1435f88d4fa6a927b5d895f523",
+      "_shared/outfitBudgetSelection.ts": "7be1bb224da400e8fc3328cece5b911f1f7a580433eea2ad2c2f28b6ebc9fe3e",
+      "_shared/outfitBudgetFeedback.ts": "ffb3373f563dbb2642253ae10166c98d6e4e3ccc4da1fcc54b3e291ae2ecc548",
+      "_shared/modelOutfitResponse.ts": "ed0fab20006ac6a91559450a6860b2bdadd998c970ab9b40c51e627d5f56d52c"
+    },
+    "productionConfigurationChanged": false,
+    "limits": "Not hosted Edge runtime or native UI; this comparison does not establish production model throughput."
+  }
+}

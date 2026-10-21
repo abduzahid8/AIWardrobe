@@ -1,0 +1,29 @@
+{
+  "change": "Video scans send all extracted sample frames in one authenticated classify_frames request; server validates one to three frames and total10MiB input before one rate/quota admission; sequential classification returns all results or fails without partial success. Client preserves source-image/index binding and permits review of each frame candidate.",
+  "deployedFunction": "ai-process",
+  "project": "fyqpifmrsftsfqibhwhy",
+  "backendSourceSha256": "5324009b906c206621b710d8efe09a720710e476c5f71151658c9de047b0c425",
+  "verification": {
+    "focusedTests": 63,
+    "hostedDeploymentSourceTests": 34,
+    "accountIsolationTests": 9,
+    "typeScript": "pass",
+    "denoCheck": "pass",
+    "iosHermes": "pass",
+    "androidArm64Release": "pass",
+    "fullJest": {
+      "tests": 1796,
+      "suites": 148,
+      "result": "pass"
+    },
+    "sourceMaps": "All three changed runtime files exactly match both platform source maps"
+  },
+  "liveEvidence": "video-frame-batch-live.json",
+  "limitations": [
+    "Samples remain0/1000/2000ms; full-duration sampling and real native decode not yet verified",
+    "One primary garment per sampled frame; not all garments per frame",
+    "Repeated candidates are retained for review, not reliably tracked/deduplicated",
+    "Live first fixture wrong primary garment: jeans versus expected jacket",
+    "NVIDIA concurrency/capacity still unproven; batch can perform three provider requests per admitted scan"
+  ]
+}

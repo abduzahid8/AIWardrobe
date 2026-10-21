@@ -1,0 +1,76 @@
+{
+  "measuredAt": "2026-10-20T19:13:28.472Z",
+  "scope": "Only two tagged disposable accounts and repository PNG; no existing customer rows migrated",
+  "checks": [
+    {
+      "name": "fixture_migrated",
+      "passed": true
+    },
+    {
+      "name": "owner_download_preserves_exact_original_bytes",
+      "passed": true
+    },
+    {
+      "name": "sha256_matches_original",
+      "passed": true
+    },
+    {
+      "name": "other_owner_cannot_download",
+      "passed": true
+    },
+    {
+      "name": "public_endpoint_denied",
+      "passed": true
+    },
+    {
+      "name": "reference_and_metadata_preserved",
+      "passed": true
+    },
+    {
+      "name": "legacy_pending_action_confirmed",
+      "passed": true
+    },
+    {
+      "name": "stale_inline_cache_does_not_restore_inline_database_payload",
+      "passed": true
+    },
+    {
+      "name": "local_queue_receives_durable_private_reference",
+      "passed": true
+    },
+    {
+      "name": "reuploaded_cached_image_preserves_original_bytes",
+      "passed": true
+    },
+    {
+      "name": "competing_edit_not_overwritten",
+      "passed": true
+    },
+    {
+      "name": "conflicted_row_keeps_original_and_new_name",
+      "passed": true
+    }
+  ],
+  "cleanup": [
+    {
+      "objectsRemoved": true
+    },
+    {
+      "accountDeleted": true
+    },
+    {
+      "accountDeleted": true
+    }
+  ],
+  "fixtureBytes": 2915128,
+  "inlineUriBytes": 3886862,
+  "storageReferenceBytes": 247,
+  "executedSyncSourceHashes": {
+    "store/authEvents.ts": "4a276d38e09fc9b2fe577b0dcb8361ab450eadda454ba36cc8f299a1bbbb30c3",
+    "src/services/wardrobeMedia.ts": "3c63bcfc3c250dfe348d228b4e7cc98f1bfbae366c74aeb895ecaee8b5f30b26",
+    "src/services/pendingWardrobeMedia.ts": "c02b09118a82079f26c78cc8d6e5ba39627d9963adf13851d91f9f45eaa59d58",
+    "src/services/wardrobeItemMedia.ts": "637679a4cfa10574642b2a9e08884514ec8598833ff348ac75241ed44a808f6d",
+    "store/wardrobeSyncService.ts": "57adba6583a819fb578fe35451c04ee40b5f7ce3eb395f6eb23fa22c4e51129e"
+  },
+  "passed": true
+}

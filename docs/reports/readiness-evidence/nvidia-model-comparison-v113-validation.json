@@ -1,0 +1,40 @@
+{
+  "measuredAt": "2026-10-21T15:44:17.426637+00:00",
+  "scope": "Actual v113 handler modules in local Node with real Supabase Auth/catalog/rate guards and NVIDIA. Not hosted Edge runtime, paired identical prompts or throughput certification.",
+  "productionConfigurationChanged": false,
+  "credentialSourceEvidence": "nvidia-credential-source-equivalence-20261021.json",
+  "candidates": [
+    {
+      "model": "nvidia/nemotron-3-super-120b-a12b",
+      "checksPassed": 0,
+      "checksTotal": 3,
+      "providerStatuses": [
+        "404",
+        "404",
+        "404"
+      ],
+      "evidence": "nvidia-super-v113-real-services-20261021.json"
+    },
+    {
+      "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+      "checksPassed": 0,
+      "checksTotal": 3,
+      "handlerStatuses": [
+        503,
+        500,
+        503
+      ],
+      "failures": [
+        "unknown product IDs after correction",
+        "formal invalid structure passed legacy validation then failed final validation with500",
+        "missing required slots after correction"
+      ],
+      "evidence": "nvidia-lightning-v113-real-services-20261021.json"
+    }
+  ],
+  "decision": "Do not promote either candidate. The observed formal500 led to the separately tested v114 validator repair; these candidates have not been requalified.",
+  "sources": [
+    "https://build.nvidia.com/nvidia/nemotron-3-super-120b-a12b/modelcard",
+    "https://docs.nvidia.com/nim/large-language-models/2.0.10/get-started/advanced/get-started-nemotron-3.5-lightning.html"
+  ]
+}

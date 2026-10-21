@@ -1,5 +1,8 @@
+import { OutfitGenerationFailure } from '../src/services/outfitGenerationFailure';
+import { useStylePreferenceStore } from '../store/stylePreferenceStore';
+import { generateOutfitsFromDB } from '../src/services/outfitGenerationService';
 import React, { useState, useRef, useEffect } from 'react';
-import { View, TextInput, TouchableOpacity, StyleSheet, Dimensions, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Image,  } from 'react-native'
+import { View, TextInput, TouchableOpacity, StyleSheet, Dimensions, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator } from 'react-native';
 import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,6 +31,8 @@ import { useTranslation } from 'react-i18next';
 import { useSubscriptionGate } from '../src/hooks/useSubscriptionGate';
 import useShopCatalogStore from '../store/shopCatalogStore';
 import { buildAgentClothingContext } from '../src/utils/outfitBudget';
+import { Image } from '../src/components/MediaImage';
+
 
 const logger = createLogger('OutfitAI');
 
@@ -82,11 +87,11 @@ interface OccasionSuggestion {
 }
 
 // Helper to fetch current weather
-async function fetchWeather(): Promise<WeatherContext> {
+async function fetchWeather(): Promise<WeatherContext | null> {
     try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
-            return { temp: 20, condition: 'clear' };
+            return null;
         }
 
         const location = await Location.getCurrentPositionAsync({});
@@ -104,8 +109,9 @@ async function fetchWeather(): Promise<WeatherContext> {
 
         if (response.ok) {
             const data = await response.json();
+            if (!Number.isFinite(data.temp ?? data.temperature)) return null;
             return {
-                temp: Math.round(data.temp || data.temperature || 20),
+                temp: Math.round(data.temp ?? data.temperature),
                 condition: data.condition || data.description || 'clear',
                 location: data.city || data.location
             };
@@ -113,7 +119,7 @@ async function fetchWeather(): Promise<WeatherContext> {
     } catch (error) {
         logger.warn('Weather fetch failed, using defaults', error);
     }
-    return { temp: 20, condition: 'clear' };
+    return null;
 }
 
 // Typing Indicator Animation
@@ -311,7 +317,7 @@ const OutfitAIScreen = () => {
 
     const [isLoading, setIsLoading] = useState(false);
     const [showSuggestions, setShowSuggestions] = useState(true);
-    const [weather, setWeather] = useState<WeatherContext>({ temp: 20, condition: 'clear' });
+    const [weather, setWeather] = useState<WeatherContext | null>(null);
 
     // Get wardrobe items from hook
     const { items: wardrobeItems, loading: wardrobeLoading } = useWardrobeItems();
@@ -356,96 +362,34 @@ const OutfitAIScreen = () => {
         scrollToBottom();
 
         try {
-            // Format wardrobe items for AI
-            const formattedWardrobe = wardrobeItems.map(item => ({
-                id: item.id,
-                type: item.type || item.itemType,
-                color: item.color,
-                style: item.style,
-                description: item.description,
-                hasImage: !!(item.image || item.imageUrl)
+            const result = await generateOutfitsFromDB({
+                prompt: text.trim(),
+                conversationContext: messages.slice(-6).map(m => `${m.isAI ? 'Stylist' : 'User'}: ${m.text}`).join('\n'),
+                stylePreferences: useStylePreferenceStore.getState().preferences.stylePersonality,
+                preferences: useStylePreferenceStore.getState().preferences,
+                occasion: text.trim(),
+                weather: weather ?? undefined,
+                limit: 3,
+            });
+            if (!result.success) throw new OutfitGenerationFailure(result.errorTranslationKey);
+            const suggestedOutfits = result.outfits.map(o => ({
+                ...o,
+                reasoning: o.description,
+                items: o.items.map(item => ({ ...item, category: item.macroCategory || item.type, specificType: item.name, primaryColor: item.color })),
             }));
-
-
-
-            // Try AliceVision /stylist/chat endpoint first
-            let response = await fetch(`${ALICEVISION_API}/stylist/chat`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    message: text.trim(),
-                    session_id: null, // New session
-                    images: []
-                }),
-            }).catch(() => null);
-
-            // Fallback to /outfit/chat if stylist endpoint fails
-            if (!response?.ok) {
-                response = await fetch(`${ALICEVISION_API}/outfit/chat`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        message: text.trim(),
-                        wardrobe_items: formattedWardrobe,
-                        context: {
-                            weather: weather,
-                            occasion: detectOccasion(text),
-                        }
-                    }),
-                });
-            }
-
-            if (response?.ok) {
-                const data = await response.json();
-
-
-                // Add AI response
-                const aiMessage: ChatMessage = {
-                    id: (Date.now() + 1).toString(),
-                    text: data.message || data.response || "I'd recommend a smart casual look for that occasion!",
-                    isAI: true,
-                    suggestedOutfits: data.suggestedOutfits,
-                    outfit: data.suggestedOutfits?.[0],
-                };
-                setMessages(prev => [...prev, aiMessage]);
-            } else {
-                // Try Node.js backend fallback
-                const fallbackResponse = await fetch(`${API_URL}/ai-chat`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        query: `${text.trim()}\n\n[Clothing context]\n${buildAgentClothingContext({
-                            owned: wardrobeItems,
-                            shop: shopItems,
-                            userMessage: text.trim(),
-                        })}`,
-                    }),
-                }).catch(() => null);
-
-                if (fallbackResponse?.ok) {
-                    const data = await fallbackResponse.json();
-                    const aiMessage: ChatMessage = {
-                        id: (Date.now() + 1).toString(),
-                        text: data.text || t('outfitAI.suggestOutfitIdeas'),
-                        isAI: true,
-                    };
-                    setMessages(prev => [...prev, aiMessage]);
-                } else {
-                    // Final fallback
-                    const aiMessage: ChatMessage = {
-                        id: (Date.now() + 1).toString(),
-                        text: t('outfitAI.troubleConnecting'),
-                        isAI: true,
-                    };
-                    setMessages(prev => [...prev, aiMessage]);
-                }
-            }
+            setMessages(prev => [...prev, {
+                id: (Date.now() + 1).toString(),
+                text: result.outfits.map(o => o.description).join('\n'),
+                isAI: true,
+                suggestedOutfits,
+                outfit: suggestedOutfits[0],
+            }]);
         } catch (error) {
             console.error('Chat error:', error);
-            // Graceful fallback with style tips
+            // Explain the known failure without fabricating an outfit.
             const aiMessage: ChatMessage = {
                 id: (Date.now() + 1).toString(),
-                text: generateFallbackResponse(text, wardrobeItems.length, weather),
+                text: t(error instanceof OutfitGenerationFailure ? error.translationKey : 'outfitMaker.generateFailed'),
                 isAI: true,
             };
             setMessages(prev => [...prev, aiMessage]);

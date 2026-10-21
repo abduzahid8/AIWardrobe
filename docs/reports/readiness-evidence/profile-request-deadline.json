@@ -1,0 +1,34 @@
+{
+  "scope": "Profile read deadline and cancellation; controlled timers/transports, no production requests",
+  "deadlineMs": 15000,
+  "jest": {
+    "passed": 1082,
+    "suites": 92,
+    "newRegressions": 6
+  },
+  "installedSupabaseSdk": "2.115.0",
+  "typecheck": "pass",
+  "targetedLint": {
+    "errors": 0,
+    "warnings": 19
+  },
+  "bundles": [
+    {
+      "platform": "ios",
+      "path": "/tmp/aiwardrobe-readiness-deadline-ios-20261016/_expo/static/js/ios/index-22b83bf30c649ae1bf7b23d77c3d828c.hbc",
+      "bytes": 8338707,
+      "sha256": "f15bf862dd77d182fb5e52684a09e80249668405258a2acc94b87b80b26b1bfb",
+      "exportPassed": true
+    },
+    {
+      "platform": "android",
+      "path": "/tmp/aiwardrobe-readiness-deadline-android-20261016/_expo/static/js/android/index-2938176987b6eb36c0e594461314b72a.hbc",
+      "bytes": 8355117,
+      "sha256": "efdae497eb11a7e0a1a9d8a5e941909c7c3781c25341041bdec7abb32f43f4c6",
+      "exportPassed": true
+    }
+  ],
+  "nativeRuntimeVerified": false,
+  "allNetworkOperationsBounded": false,
+  "mobileReleased": false
+}

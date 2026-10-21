@@ -1,0 +1,12 @@
+{
+  "verifiedAt": "2026-10-19T01:44:51.750718+00:00",
+  "before": "New stalled response body test failed: timer cleared immediately after response headers",
+  "after": "Deadline covers fetch and response JSON read; timer cleaned in finally",
+  "localAndStagedRequestTests": 3,
+  "fullTests": 1499,
+  "suites": 131,
+  "stagedDeno": "pass",
+  "deployment": "generate-outfits deployed; default NVIDIA model unchanged",
+  "scope": "Cooperative fetch body cancellation tested with actual function implementation and simulated stalled transport. Live stalled provider response not induced.",
+  "productionSmoke": "PASS: business outfit200 in9.1s, actual catalog spend2649800UZS under3150000UZS cap; fixture deleted and independent remaining count0"
+}

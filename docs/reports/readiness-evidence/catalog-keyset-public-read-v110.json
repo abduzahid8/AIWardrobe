@@ -1,0 +1,43 @@
+{
+  "measuredAt": "2026-10-21T12:41:09.319Z",
+  "scope": "Actual public catalog through staged helper; an artificial target-ID predicate forces discovery past100rows. No catalog mutation, user account or NVIDIA request.",
+  "sourceHashes": {
+    "entry": "1062ad2debf3b8f3bf3633eee207494580e60372776266a23a022fc23138f693"
+  },
+  "checks": {
+    "targetReturned": true,
+    "multiplePages": true,
+    "successfulRequests": true,
+    "stableOrder": true,
+    "cursorAdvances": true
+  },
+  "helperLatencyMs": 1793,
+  "targetId": "zara-uz-545474951",
+  "passed": true,
+  "requests": [
+    {
+      "phase": "choose-target",
+      "status": 200,
+      "limit": "100",
+      "order": "id.asc",
+      "cursor": null,
+      "latencyMs": 2287
+    },
+    {
+      "phase": "actual-helper",
+      "status": 200,
+      "limit": "100",
+      "order": "id.asc",
+      "cursor": null,
+      "latencyMs": 553
+    },
+    {
+      "phase": "actual-helper",
+      "status": 200,
+      "limit": "100",
+      "order": "id.asc",
+      "cursor": "gt.zara-uz-545474845",
+      "latencyMs": 1220
+    }
+  ]
+}

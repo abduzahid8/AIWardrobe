@@ -1,0 +1,166 @@
+FAIL __tests__/backend/scanAdmission.test.js
+  ✕ scan admission denial 403 cannot reach configuration or providers (70 ms)
+  ✕ scan admission denial 429 cannot reach configuration or providers (39 ms)
+  ✕ scan admission denial 503 cannot reach configuration or providers (23 ms)
+  ✕ invalid scan input is rejected before consuming quota: {} (21 ms)
+  ✕ invalid scan input is rejected before consuming quota: {"image":12,"operation":"classify"} (20 ms)
+  ✕ invalid scan input is rejected before consuming quota: {"image":"AA==","operation":"unknown"} (18 ms)
+  ✕ malformed JSON does not consume quota (22 ms)
+  ✕ provider configuration values are absent from diagnostic logs (19 ms)
+
+  ● scan admission denial 403 cannot reach configuration or providers
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 403
+    Received: 500
+
+      23 |  const {handler,admission,readConfig}=load(new Response('{"error":"denied"}',{status}));
+      24 |  const response=await handler(req({image:'AA==',operation:'classify'}));
+    > 25 |  expect(response.status).toBe(status);expect(admission).toHaveBeenCalledWith(expect.any(Request),expect.objectContaining({feature:'ai-process',limit:20}));expect(readConfig).not.toHaveBeenCalled();
+         |                          ^
+      26 | });
+      27 | test.each([{},{image:12,operation:'classify'},{image:'AA==',operation:'unknown'}])('invalid scan input is rejected before consuming quota: %j',async body=>{
+      28 |  const {handler,admission,readConfig}=load();const response=await handler(req(body));expect(response.status).toBe(400);expect(admission).not.toHaveBeenCalled();expect(readConfig).not.toHaveBeenCalled();
+
+      at toBe (__tests__/backend/scanAdmission.test.js:25:26)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● scan admission denial 429 cannot reach configuration or providers
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 429
+    Received: 500
+
+      23 |  const {handler,admission,readConfig}=load(new Response('{"error":"denied"}',{status}));
+      24 |  const response=await handler(req({image:'AA==',operation:'classify'}));
+    > 25 |  expect(response.status).toBe(status);expect(admission).toHaveBeenCalledWith(expect.any(Request),expect.objectContaining({feature:'ai-process',limit:20}));expect(readConfig).not.toHaveBeenCalled();
+         |                          ^
+      26 | });
+      27 | test.each([{},{image:12,operation:'classify'},{image:'AA==',operation:'unknown'}])('invalid scan input is rejected before consuming quota: %j',async body=>{
+      28 |  const {handler,admission,readConfig}=load();const response=await handler(req(body));expect(response.status).toBe(400);expect(admission).not.toHaveBeenCalled();expect(readConfig).not.toHaveBeenCalled();
+
+      at toBe (__tests__/backend/scanAdmission.test.js:25:26)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● scan admission denial 503 cannot reach configuration or providers
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 503
+    Received: 500
+
+      23 |  const {handler,admission,readConfig}=load(new Response('{"error":"denied"}',{status}));
+      24 |  const response=await handler(req({image:'AA==',operation:'classify'}));
+    > 25 |  expect(response.status).toBe(status);expect(admission).toHaveBeenCalledWith(expect.any(Request),expect.objectContaining({feature:'ai-process',limit:20}));expect(readConfig).not.toHaveBeenCalled();
+         |                          ^
+      26 | });
+      27 | test.each([{},{image:12,operation:'classify'},{image:'AA==',operation:'unknown'}])('invalid scan input is rejected before consuming quota: %j',async body=>{
+      28 |  const {handler,admission,readConfig}=load();const response=await handler(req(body));expect(response.status).toBe(400);expect(admission).not.toHaveBeenCalled();expect(readConfig).not.toHaveBeenCalled();
+
+      at toBe (__tests__/backend/scanAdmission.test.js:25:26)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● invalid scan input is rejected before consuming quota: {}
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 500
+
+      26 | });
+      27 | test.each([{},{image:12,operation:'classify'},{image:'AA==',operation:'unknown'}])('invalid scan input is rejected before consuming quota: %j',async body=>{
+    > 28 |  const {handler,admission,readConfig}=load();const response=await handler(req(body));expect(response.status).toBe(400);expect(admission).not.toHaveBeenCalled();expect(readConfig).not.toHaveBeenCalled();
+         |                                                                                                              ^
+      29 | });
+      30 | test('malformed JSON does not consume quota',async()=>{
+      31 |  const {handler,admission}=load();const response=await handler(new Request('https://fixture.invalid',{method:'POST',body:'{'}));expect(response.status).toBe(400);expect(admission).not.toHaveBeenCalled();
+
+      at toBe (__tests__/backend/scanAdmission.test.js:28:110)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● invalid scan input is rejected before consuming quota: {"image":12,"operation":"classify"}
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 500
+
+      26 | });
+      27 | test.each([{},{image:12,operation:'classify'},{image:'AA==',operation:'unknown'}])('invalid scan input is rejected before consuming quota: %j',async body=>{
+    > 28 |  const {handler,admission,readConfig}=load();const response=await handler(req(body));expect(response.status).toBe(400);expect(admission).not.toHaveBeenCalled();expect(readConfig).not.toHaveBeenCalled();
+         |                                                                                                              ^
+      29 | });
+      30 | test('malformed JSON does not consume quota',async()=>{
+      31 |  const {handler,admission}=load();const response=await handler(new Request('https://fixture.invalid',{method:'POST',body:'{'}));expect(response.status).toBe(400);expect(admission).not.toHaveBeenCalled();
+
+      at toBe (__tests__/backend/scanAdmission.test.js:28:110)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● invalid scan input is rejected before consuming quota: {"image":"AA==","operation":"unknown"}
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 500
+
+      26 | });
+      27 | test.each([{},{image:12,operation:'classify'},{image:'AA==',operation:'unknown'}])('invalid scan input is rejected before consuming quota: %j',async body=>{
+    > 28 |  const {handler,admission,readConfig}=load();const response=await handler(req(body));expect(response.status).toBe(400);expect(admission).not.toHaveBeenCalled();expect(readConfig).not.toHaveBeenCalled();
+         |                                                                                                              ^
+      29 | });
+      30 | test('malformed JSON does not consume quota',async()=>{
+      31 |  const {handler,admission}=load();const response=await handler(new Request('https://fixture.invalid',{method:'POST',body:'{'}));expect(response.status).toBe(400);expect(admission).not.toHaveBeenCalled();
+
+      at toBe (__tests__/backend/scanAdmission.test.js:28:110)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● malformed JSON does not consume quota
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 500
+
+      29 | });
+      30 | test('malformed JSON does not consume quota',async()=>{
+    > 31 |  const {handler,admission}=load();const response=await handler(new Request('https://fixture.invalid',{method:'POST',body:'{'}));expect(response.status).toBe(400);expect(admission).not.toHaveBeenCalled();
+         |                                                                                                                                                         ^
+      32 | });
+      33 | test('provider configuration values are absent from diagnostic logs',async()=>{
+      34 |  const {handler,logs}=load();await handler(req({image:'AA==',operation:'classify'}));expect(JSON.stringify(logs)).not.toContain('sensitive-fixture');
+
+      at Object.toBe (__tests__/backend/scanAdmission.test.js:31:153)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● provider configuration values are absent from diagnostic logs
+
+    expect(received).not.toContain(expected) // indexOf
+
+    Expected substring: not "sensitive-fixture"
+    Received string:        "[[\"NVIDIA config query result:\",{\"nvidiaConfig\":{\"value\":null,\"diagnostic\":\"sensitive-fixture\"},\"nvidiaError\":null,\"hasValue\":false}],[\"Tokens loaded:\",{\"hasNvidia\":false,\"hasReplicate\":false}]]"
+
+      32 | });
+      33 | test('provider configuration values are absent from diagnostic logs',async()=>{
+    > 34 |  const {handler,logs}=load();await handler(req({image:'AA==',operation:'classify'}));expect(JSON.stringify(logs)).not.toContain('sensitive-fixture');
+         |                                                                                                                       ^
+      35 | });
+      36 |
+
+      at Object.toContain (__tests__/backend/scanAdmission.test.js:34:119)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+Test Suites: 1 failed, 1 total
+Tests:       8 failed, 8 total
+Snapshots:   0 total
+Time:        0.811 s
+Ran all test suites matching /__tests__\/backend\/scanAdmission.test.js/i.

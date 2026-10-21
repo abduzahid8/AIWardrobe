@@ -1,0 +1,71 @@
+{
+  "measuredAt": "2026-10-15T10:03:03.439Z",
+  "scope": "Three representative production AI requests; not provider capacity or universal output accuracy",
+  "checks": [
+    {
+      "name": "chat_returns_text",
+      "status": 200,
+      "latencyMs": 4145,
+      "passed": true,
+      "provider": "nvidia"
+    },
+    {
+      "name": "generate_outfit_has_items",
+      "status": 200,
+      "latencyMs": 24612,
+      "passed": true,
+      "outfitCount": 1,
+      "itemCounts": [
+        3
+      ],
+      "source": "local",
+      "provider": null,
+      "items": [
+        {
+          "category": "tops",
+          "type": "upper_body",
+          "name": "Рубашка CASUAL CLASSIC VAIL DENIM SHIRT"
+        },
+        {
+          "category": "bottoms",
+          "type": "lower_body",
+          "name": "Slim fit jeans"
+        },
+        {
+          "category": "shoes",
+          "type": "shoes",
+          "name": "Лоферы HILFIGER STITCHDOWN SUEDE LOAFER"
+        }
+      ]
+    },
+    {
+      "name": "catalog_garment_classification",
+      "status": 200,
+      "latencyMs": 4912,
+      "passed": true,
+      "expectedCatalogCategory": "bottoms",
+      "classification": {
+        "category": "pants",
+        "section": "bottoms",
+        "confidence": 0.88,
+        "attributes": {
+          "style": "casual",
+          "color": "black",
+          "material": "fabric"
+        }
+      },
+      "providerReportedError": false
+    },
+    {
+      "name": "primary_ai_outfit_generation",
+      "status": 200,
+      "passed": false,
+      "observedSource": "local",
+      "assessment": "Derived from the recorded live response source; no additional provider call"
+    }
+  ],
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

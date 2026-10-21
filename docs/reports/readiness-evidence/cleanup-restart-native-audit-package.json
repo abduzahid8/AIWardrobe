@@ -1,0 +1,10 @@
+{
+  "scope": "Explicit synthetic cleanup restart entry, not normal application UI",
+  "apkSha256": "5158581dab88d3ccd4c4844185cc54ec769f40f4e3e364b309a642e8f3588494",
+  "bundleSha256": "a53d22bb490fdc8eb93b10a72685c5065ebb486d72bc38d8c8e4253191e6179a",
+  "sourcesMatch": {
+    "scripts/validation/cleanup-restart-native-entry.tsx": "0b3e263a305331b0f7710640e75ba2cd856cbb2b322d73843e05130fadd620f3",
+    "src/lib/persistence.ts": "2df68bb96996cc1f9b4c174360104683d77a81f3b1eda165430b3e84c9d92656",
+    "store/auth.ts": "b8fec9d5d6dda28999b4ffb514db6eb8ab8a4b41f4538076aae9284059096ce2"
+  }
+}

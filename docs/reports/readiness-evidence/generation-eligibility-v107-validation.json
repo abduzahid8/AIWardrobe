@@ -1,0 +1,76 @@
+{
+  "scope": "Hard candidate eligibility before ranking/provider, explicit incompatible selections, general slot admission and consistent dress coverage",
+  "version": 107,
+  "baseline": 106,
+  "verify_jwt": true,
+  "package_verification": {
+    "all_files_match": 12,
+    "shared_files_unchanged": 11,
+    "only_entrypoint_changed": true,
+    "entry_sha256": "ab4723710296fb30ce749b08604add96cb87797c8fe61aa2e7cb563444e3d962"
+  },
+  "regressions": {
+    "ranking_floor_test_failed_before": 1,
+    "staged_dress_cases_failed_before_legacy_validator_fix": 2
+  },
+  "checks": {
+    "staged_handler_and_request_tests": 82,
+    "full_tests": 2204,
+    "full_suites": 175,
+    "typescript": "pass",
+    "staged_deno": "pass"
+  },
+  "behavior": [
+    "Automatic ranking floors operate only on style/occasion/climate/activity-eligible candidates",
+    "Incompatible selected or locked IDs return explicit422 rather than being silently replaced",
+    "Manual pools also exclude unselected incompatible extras",
+    "Missing required eligible slots fail before provider work; dress covers top/bottom",
+    "Legacy dress minimum is2items, or3with required outerwear; dress detection delegates to the existing canonical helper and does not mistake dress shoes/pants for dresses"
+  ],
+  "live_scenarios": [
+    {
+      "name": "date_old_money_300_usd",
+      "status": 200,
+      "latencyMs": 18735,
+      "passed": true,
+      "spendUzs": 2749800,
+      "capUzs": 3603690
+    },
+    {
+      "name": "formal_semi_classic_300_usd",
+      "status": 200,
+      "latencyMs": 8975,
+      "passed": true,
+      "spendUzs": 3249800,
+      "capUzs": 3603690
+    },
+    {
+      "name": "travel_minimalist_300_usd",
+      "status": 200,
+      "latencyMs": 8224,
+      "passed": true,
+      "spendUzs": 3549900,
+      "capUzs": 3603690
+    }
+  ],
+  "live_report": "v107-category-budget-300-reliability-20261021.json",
+  "cleanup": {
+    "refreshSessionsRevoked": true,
+    "temporaryUserDeleted": true,
+    "status": 200
+  },
+  "independent_cleanup": {
+    "remaining_audit_users": 0,
+    "auth_users": 111,
+    "profiles": 111,
+    "garments": 109
+  },
+  "limits": [
+    "Three sequential successful scenarios do not establish reliability, causality or 10000 DAU throughput",
+    "Prior malformed-output/timeout failures remain evidence",
+    "Eligibility still runs after initial supplement-slot counts; invalid original wardrobe rows can suppress a useful shop supplement, requiring follow-up",
+    "Pairwise outfit coherence still requires model selection and final validation",
+    "Workout inventory, retailer stock/price and physical UI remain unverified",
+    "Backend-only change; no client rebuild or store distribution in this scope"
+  ]
+}

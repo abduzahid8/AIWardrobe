@@ -1,0 +1,12 @@
+-- Local synthetic dataset from seed-capacity.sql and seed-cursor-history.sql.
+\set owner random(1,10000)
+begin;
+set local role authenticated;
+select set_config('request.jwt.claim.sub',md5('load-user-' || :owner)::uuid::text,true);
+select id,category,image_url,wear_count from public.clothing_items
+where user_id=auth.uid() and id < '80000000-0000-4000-8000-000000000000'::uuid
+order by id desc limit 250;
+select id,item_ids,date,created_at from public.wear_logs
+where user_id=auth.uid() and id < '80000000-0000-4000-8000-000000000000'::uuid
+order by id desc limit 250;
+commit;

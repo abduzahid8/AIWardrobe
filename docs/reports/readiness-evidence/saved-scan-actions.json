@@ -1,0 +1,21 @@
+{
+  "change": "Visible authenticated-owner saved-scan list with retry and confirmed removal, translated en/ru/uz; manual actions serialize with analysis, flush disk before acknowledgement, retain recoverable records on write/delete failure and reject stale owners; late queue hydration recovers interrupted processing entries.",
+  "verification": {
+    "focusedQueueCases": 33,
+    "fullJest": {
+      "tests": 1834,
+      "suites": 151,
+      "result": "pass"
+    },
+    "typeScript": "pass",
+    "iosHermes": "pass",
+    "androidArm64Release": "pass",
+    "sourceMaps": "All six changed runtime files match both platform source maps"
+  },
+  "limitations": [
+    "Queue UI tested with rendered React Native components and real queue/processor tests, not a complete installed production account flow",
+    "Crash between persisted record removal and managed file deletion still requires orphan reconciliation",
+    "A storage write failure during rollback can still prevent durable recovery; it is not acknowledged as successful",
+    "All other readiness/provider/purchase/operations gaps remain open"
+  ]
+}

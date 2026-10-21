@@ -1,0 +1,16 @@
+{
+  "verifiedAt": "2026-10-18T13:49:46.272222+00:00",
+  "before": {
+    "failed": 4,
+    "passed": 94
+  },
+  "after": {
+    "focusedPassed": 98,
+    "fullPassed": 1454,
+    "suites": 124,
+    "typecheck": "pass",
+    "lintErrors": 0,
+    "lintWarnings": 42
+  },
+  "scope": "Local mocked-SDK authorization checks only; no live password mutation or release rebuild."
+}

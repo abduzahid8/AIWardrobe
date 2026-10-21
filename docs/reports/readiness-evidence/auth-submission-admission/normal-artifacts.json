@@ -1,0 +1,26 @@
+{
+  "sourceChecks": {
+    "ios": {
+      "screens/SignInScreen.tsx": true,
+      "screens/SignUpScreen.tsx": true,
+      "auditEntriesAbsent": true,
+      "nativeExecutableUnchanged": true
+    },
+    "android": {
+      "screens/SignInScreen.tsx": true,
+      "screens/SignUpScreen.tsx": true,
+      "auditEntriesAbsent": true
+    }
+  },
+  "androidNativeBuildSucceeded": true,
+  "androidApkSha256": "9a7f6e3fd4f08e1eb88fdfebfbce7d316b1b960c6e768596ce6764ba64c2296f",
+  "androidBundleSha256": "82be14cb40d698fc80b684111db4e217d9c21f9808515352ea6da937958c8f56",
+  "iosArtifactPath": "/tmp/aiwardrobe-auth-admission-ios.app",
+  "iosBundleSha256": "54d67fb80843037232529fe5c6efffb4c8ada6cc8dcdbc70fc23bea3197516d9",
+  "iosMethod": "Current normal-entry Hermes JavaScript in unchanged native simulator runtime, not fresh native compilation",
+  "passed": true,
+  "limitations": [
+    "Unsigned/debug-signed artifacts, not store certification",
+    "No real provider sign-in or native rapid-tap audit in this change"
+  ]
+}

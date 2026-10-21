@@ -1,0 +1,230 @@
+{
+  "measuredAt": "2026-10-21T17:44:29.752Z",
+  "scope": "Live NVIDIA category/budget scenarios; not exhaustive accuracy or capacity certification",
+  "checks": [
+    {
+      "name": "date_old_money_300_usd",
+      "status": 200,
+      "latencyMs": 10300,
+      "passed": true,
+      "reasons": [],
+      "outfitCount": 1,
+      "outfitSpendsUzs": [
+        1479700
+      ],
+      "spendUzs": 1479700,
+      "capUzs": 3603690,
+      "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+      "source": "ai",
+      "items": [
+        {
+          "id": "shop_zara-uz-545456568",
+          "name": "COTTON KNIT TANK TOP",
+          "macroCategory": "top",
+          "price": 399900,
+          "currency": "UZS",
+          "shopUrl": "https://www.zara.com/uz/en/cotton-knit-tank-top-p04231405.html?v1=545456568"
+        },
+        {
+          "id": "shop_zara-uz-565424837",
+          "name": "COMFORT SUIT TROUSERS",
+          "macroCategory": "bottom",
+          "price": 429900,
+          "currency": "UZS",
+          "shopUrl": "https://www.zara.com/uz/en/comfort-suit-trousers-p04457999.html?v1=565424837"
+        },
+        {
+          "id": "shop_zara-uz-545409746",
+          "name": "CASUAL LEATHER LOAFERS WITH TASSELS",
+          "macroCategory": "shoes",
+          "price": 649900,
+          "currency": "UZS",
+          "shopUrl": "https://www.zara.com/uz/en/casual-leather-loafers-with-tassels-p12651720.html?v1=545409746"
+        }
+      ],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "name": "formal_semi_classic_300_usd",
+      "status": 200,
+      "latencyMs": 8043,
+      "passed": true,
+      "reasons": [],
+      "outfitCount": 1,
+      "outfitSpendsUzs": [
+        1479700
+      ],
+      "spendUzs": 1479700,
+      "capUzs": 3603690,
+      "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+      "source": "ai",
+      "items": [
+        {
+          "id": "shop_zara-uz-545456568",
+          "name": "COTTON KNIT TANK TOP",
+          "macroCategory": "top",
+          "price": 399900,
+          "currency": "UZS",
+          "shopUrl": "https://www.zara.com/uz/en/cotton-knit-tank-top-p04231405.html?v1=545456568"
+        },
+        {
+          "id": "shop_zara-uz-545475114",
+          "name": "REGULAR FIT CHECK SUIT TROUSERS",
+          "macroCategory": "bottom",
+          "price": 429900,
+          "currency": "UZS",
+          "shopUrl": "https://www.zara.com/uz/en/check-suit-regular-fit-trousers-p00706409.html?v1=545475114"
+        },
+        {
+          "id": "shop_zara-uz-545409746",
+          "name": "CASUAL LEATHER LOAFERS WITH TASSELS",
+          "macroCategory": "shoes",
+          "price": 649900,
+          "currency": "UZS",
+          "shopUrl": "https://www.zara.com/uz/en/casual-leather-loafers-with-tassels-p12651720.html?v1=545409746"
+        }
+      ],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "name": "travel_minimalist_300_usd",
+      "status": 200,
+      "latencyMs": 12240,
+      "passed": true,
+      "reasons": [],
+      "outfitCount": 1,
+      "outfitSpendsUzs": [
+        1299700
+      ],
+      "spendUzs": 1299700,
+      "capUzs": 3603690,
+      "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+      "source": "ai",
+      "items": [
+        {
+          "id": "shop_zara-uz-555080536",
+          "name": "BASIC IRREGULAR FINISH T-SHIRT",
+          "macroCategory": "top",
+          "price": 219900,
+          "currency": "UZS",
+          "shopUrl": "https://www.zara.com/uz/en/basic-irregular-finish-t-shirt-p05644143.html?v1=555080536"
+        },
+        {
+          "id": "shop_zara-uz-555071598",
+          "name": "100% LYOCELL RELAXED FIT TROUSERS",
+          "macroCategory": "bottom",
+          "price": 429900,
+          "currency": "UZS",
+          "shopUrl": "https://www.zara.com/uz/en/100-lyocell-relaxed-fit-trousers-p08574310.html?v1=555071598"
+        },
+        {
+          "id": "shop_zara-uz-545422633",
+          "name": "LEATHER DECK SHOES",
+          "macroCategory": "shoes",
+          "price": 649900,
+          "currency": "UZS",
+          "shopUrl": "https://www.zara.com/uz/en/leather-deck-shoes-p12456720.html?v1=545422633"
+        }
+      ],
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "status": "ok"
+        }
+      ]
+    }
+  ],
+  "fixtureUserId": "cb91d8e1-4a2e-40d4-bd35-688aca89786a",
+  "reference": {
+    "id": "CBU:2026-10-21:12012.3:13466.99:16026.81",
+    "source": "CBU",
+    "asOf": "2026-10-21",
+    "fetchedAt": "2026-10-21T17:44:34.241Z",
+    "uzsPerUnit": {
+      "USD": 12012.3,
+      "EUR": 13466.99,
+      "GBP": 16026.81,
+      "UZS": 1
+    }
+  },
+  "cleanup": {
+    "refreshSessionsRevoked": true,
+    "temporaryUserDeleted": true,
+    "status": 200
+  },
+  "providerObservations": [
+    {
+      "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+      "requestCharacters": 5388,
+      "maxTokens": 700,
+      "status": 200,
+      "latencyMs": 1819,
+      "finishReason": "stop",
+      "contentCharacters": 373,
+      "usage": {
+        "promptTokens": 2492,
+        "completionTokens": 89
+      }
+    },
+    {
+      "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+      "requestCharacters": 5314,
+      "maxTokens": 700,
+      "status": 200,
+      "latencyMs": 1695,
+      "finishReason": "stop",
+      "contentCharacters": 328,
+      "usage": {
+        "promptTokens": 2469,
+        "completionTokens": 75
+      }
+    },
+    {
+      "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+      "requestCharacters": 5184,
+      "maxTokens": 700,
+      "status": 200,
+      "latencyMs": 3090,
+      "finishReason": "stop",
+      "contentCharacters": 289,
+      "usage": {
+        "promptTokens": 2433,
+        "completionTokens": 78
+      }
+    }
+  ],
+  "execution": {
+    "runtime": "Local Node with actual current handler modules; real Supabase Auth/catalog/rate guards and hosted NVIDIA",
+    "candidateModel": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "sourceHashes": {
+      "generate-outfits/index.ts": "11316859547f9c79f96a9f723881064a8d0c1e77defe4d2d25ae22d3a92f938b",
+      "_shared/outfitChoices.ts": "3f60e1963b36c4ab11ac236ef23955b6f6c66a61c8e3533f1a85926702d4128d",
+      "_shared/outfitStructure.ts": "62de820735f065d7a7bac6baace20243d9dbcb1435f88d4fa6a927b5d895f523",
+      "_shared/outfitGenerationRequest.ts": "30412ecc9a1fc0695dff2563bf98bb33a25289ffb19cedb0d08ef339bf724f03",
+      "_shared/occasionRules.ts": "178339bcc8b6962280a695027bff1afa06edfb34c38054d49bc25abafd31ea5d",
+      "_shared/outfitBudgetText.ts": "bb2942b93c782908b4389f39c04ba6b6cca0c014f82a83b34ecafdb8d58bfc1f",
+      "_shared/budgetFx.ts": "e1aa62bb1d5f06d5fa484e9e9033991a9218d1bde42657514c010f8ecf7c526a",
+      "_shared/budgetFxCache.ts": "2060d666cb044ce6e20ad12f37a874aa7ede57c0018faf7d0da5ad96a6f02425",
+      "_shared/rateLimit.ts": "de9201c135537983a3c84ccd7e25bf9880c37a3c85fea64e6862f9372f48fa54",
+      "_shared/outfitBudgetFeasibility.ts": "70040dc0b5779813aa2fc80cd0c3b5310308ee00c0a4928f5aa72a9d80e9c57e",
+      "_shared/outfitBudgetSelection.ts": "7be1bb224da400e8fc3328cece5b911f1f7a580433eea2ad2c2f28b6ebc9fe3e",
+      "_shared/outfitBudgetFeedback.ts": "ffb3373f563dbb2642253ae10166c98d6e4e3ccc4da1fcc54b3e291ae2ecc548",
+      "_shared/modelOutfitResponse.ts": "ed0fab20006ac6a91559450a6860b2bdadd998c970ab9b40c51e627d5f56d52c"
+    },
+    "productionConfigurationChanged": false,
+    "limits": "Not hosted Edge runtime or native UI; this comparison does not establish production model throughput."
+  }
+}

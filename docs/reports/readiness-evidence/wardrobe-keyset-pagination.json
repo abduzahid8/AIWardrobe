@@ -1,0 +1,10 @@
+{
+  "date": "2026-10-16",
+  "originalFailure": "Both wardrobe and wear-log readers skipped an unseen row when another device deleted an earlier-page row during offset pagination.",
+  "beforeFix": "Concurrent-deletion regressions failed for both readers.",
+  "fix": "Traverse immutable IDs descending with lt(id,cursor) and limit(250), then sort returned results chronologically. Preserve null-on-failure/account-change behavior and reject non-advancing cursors.",
+  "verified": ["501 wardrobe rows", "1001 wear logs", "Deletion between pages does not shift unseen rows out", "Chronological display ordering", "Non-advancing cursor returns null after two pages", "Later-page errors preserve cache", "Account-change invalidation"],
+  "checks": {"jestTests": 1124, "jestSuites": 95, "typecheck": "pass", "targetedLint": "pass without warnings", "whitespace": "pass"},
+  "documentation": "https://supabase.com/docs/reference/javascript/using-filters-lt",
+  "limits": ["Separate requests do not provide transaction snapshot consistency", "Newly inserted IDs above an already crossed cursor can await the next refresh", "Owner/id composite index and hosted query-plan verification remain outstanding", "No production writes or provider calls", "Source changed after the most recent Android artifact; rebuild required"]
+}

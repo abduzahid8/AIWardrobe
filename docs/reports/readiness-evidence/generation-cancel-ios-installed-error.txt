@@ -1,0 +1,2 @@
+There has been no change in the accessibility tree for Window: "AIWardrobe-Login-Audit-20261020".
+The focused UI element is 0 standard window AIWardrobe-Login-Audit-20261020 – iOS 26.5, Secondary Actions: Raise

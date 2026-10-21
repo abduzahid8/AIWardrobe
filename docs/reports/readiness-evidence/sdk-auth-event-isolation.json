@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-16",
+  "scope": "Client SDK auth-event memory and async-work isolation; unreleased",
+  "before": {
+    "regressions_failed": 2,
+    "details": [
+      "SIGNED_OUT did not advance auth revision",
+      "SDK account change retained previous profile"
+    ]
+  },
+  "after": {
+    "targeted_auth_tests": 29,
+    "jest_tests": 1085,
+    "jest_suites": 92,
+    "typescript": "passed",
+    "targeted_lint": {
+      "errors": 0,
+      "warnings": 24
+    }
+  },
+  "native_observation": "Simulator accessible through CUA; original signed-in iPhone 16 Pro e2e observed only, no interaction or account changes",
+  "limitations": [
+    "SDK callback resets memory and auth revision; does not coordinate full on-disk cleanup for external sign-outs",
+    "No new native runtime test, Hermes export or production deployment",
+    "Provider work deferred; full 10000 DAU readiness not certified"
+  ],
+  "docs": "https://supabase.com/docs/reference/javascript/auth-onauthstatechange"
+}

@@ -1,0 +1,52 @@
+{
+  "scope": "Durable scan-review cleanup after garment sync acknowledgement, including retry with no cloud queue remaining",
+  "before": {
+    "regressions_failed": 2,
+    "existing_passed": 20,
+    "scope": "Repeated final acknowledgement and failed marker write"
+  },
+  "after": {
+    "focused_tests": 54,
+    "full_tests": 2192,
+    "full_suites": 174,
+    "typescript": "pass",
+    "ios_hermes": "pass",
+    "android_arm64_release": "pass"
+  },
+  "source_maps": {
+    "/tmp/aiwardrobe-review-ack-ios.map": {
+      "src/services/scanReviews.ts": true,
+      "store/slices/wardrobeSyncSlice.ts": true,
+      "store/wardrobeStore.ts": true,
+      "src/lib/persistence.ts": true
+    },
+    "android/app/build/intermediates/sourcemaps/react/release/index.android.bundle.packager.map": {
+      "src/services/scanReviews.ts": true,
+      "store/slices/wardrobeSyncSlice.ts": true,
+      "store/wardrobeStore.ts": true,
+      "src/lib/persistence.ts": true
+    }
+  },
+  "source_sha256": {
+    "src/services/scanReviews.ts": "0425cad70b9f7edb4cfc7c99b2897a78a5e4e3914c6f607fb84f3f704ab69636",
+    "store/slices/wardrobeSyncSlice.ts": "8f59ef228764cdc00223151031e4c52cdd2f4abde318bcd59006d18c1978c33f",
+    "store/wardrobeStore.ts": "a4f4c9b003c567fbb8b91e4ae52191265b80c9059c3d13a3e0170f15d074f162",
+    "src/lib/persistence.ts": "99112d39c6a62a3632b7ad7a2e32158a998b18d45efc288ed0bca5c4da51345d"
+  },
+  "restart_report": "scan-review-sync-journal-restart.json",
+  "behavior": [
+    "A successful garment action and its review-cleanup journal ID are persisted together before any review files are removed",
+    "Cleanup errors retain the journal and original review for replay",
+    "A journal-only sync does not repeat cloud writes; boot rehydration bypasses the TTL guard for pending cleanup",
+    "Matching stable garment IDs acknowledge only those review candidates; saved markers are read back before success",
+    "A failed journal-clear write restores entries; replay and completed-review acknowledgements are idempotent",
+    "Logout resets journal state with other owner data"
+  ],
+  "limits": [
+    "Fresh-process recovery used actual production modules through real OS-file adapters, with simulated cloud confirmation; no native/UI/provider claim",
+    "Physical iOS/Android flow and native crash/storage matrix remain incomplete",
+    "Web scan-review durability remains unfinished",
+    "Old pre-journal already-confirmed items may require reopening their editor; no broad migration of legacy reviews was performed",
+    "Client changes not distributed; not 10000 DAU certification"
+  ]
+}

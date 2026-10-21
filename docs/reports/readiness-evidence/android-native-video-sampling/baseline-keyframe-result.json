@@ -1,0 +1,43 @@
+{
+  "success": true,
+  "times": [
+    3000,
+    15000,
+    27000
+  ],
+  "repeatedTimes": [
+    3000,
+    15000,
+    27000
+  ],
+  "frames": [
+    {
+      "timeMs": 3000,
+      "width": 160,
+      "height": 120,
+      "base64Length": 1176,
+      "file": "sample-3000.jpg"
+    },
+    {
+      "timeMs": 15000,
+      "width": 160,
+      "height": 120,
+      "base64Length": 1176,
+      "file": "sample-15000.jpg"
+    },
+    {
+      "timeMs": 27000,
+      "width": 160,
+      "height": 120,
+      "base64Length": 1176,
+      "file": "sample-27000.jpg"
+    }
+  ],
+  "dominantChannels": [
+    0,
+    2,
+    2
+  ],
+  "scope": "Actual production readVideoSampleTimes + ExpoVideo/VideoThumbnails bridge; isolated Android API34 arm64 emulator, generated H264; no picker/provider/full app flow claim",
+  "accuracyCheckPassed": false
+}

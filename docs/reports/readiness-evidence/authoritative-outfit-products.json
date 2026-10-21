@@ -1,0 +1,19 @@
+{
+  "verifiedAt": "2026-10-19T02:27:35.597487+00:00",
+  "changes": [
+    "Selected product attributes now come only from the authoritative candidate row; model metadata discarded",
+    "Missing images no longer cause a different product to be substituted or an extra catalog query",
+    "Final enriched/anchor-adjusted response is rechecked for shared style, slot structure, exclusions and total budget",
+    "Hosted provider failure response explicitly contains success:false and outfits:[]"
+  ],
+  "verification": {
+    "before": "Actual staged handler leaked invented product metadata in regression",
+    "stagedWireTests": 9,
+    "fullTests": 1507,
+    "suites": 131,
+    "stagedDeno": "pass"
+  },
+  "deployed": true,
+  "normalLiveSmoke": "PASS: business outfit200 in7.9s; authoritative catalog IDs/names/brands/prices/currencies all match; complete style-valid look2949800UZS under3150000UZS cap. Fixture deletion200 and independent remaining count0.",
+  "scope": "Scoped hosted generation output validation; not all pending local quota/rate or other changes deployed"
+}

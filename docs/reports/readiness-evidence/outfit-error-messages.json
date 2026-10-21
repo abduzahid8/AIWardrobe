@@ -1,0 +1,48 @@
+{
+  "verifiedAt": "2026-10-19T02:33:44.057766+00:00",
+  "change": "Main outfit screen decodes whitelisted structured codes from direct failure data or Supabase HTTP error Response; displays English/Russian/Uzbek messages rather than raw server text or connectivity-only generic copy",
+  "checks": {
+    "targetedTests": 14,
+    "fullTests": 1534,
+    "suites": 133,
+    "typecheck": "pass",
+    "targetedLint": "0 errors;199 pre-existing screen warnings remain",
+    "iosHermesExport": "pass",
+    "androidArm64Release": "pass"
+  },
+  "sourceMapChecks": [
+    {
+      "platform": "ios",
+      "source": "screens/AIOutfitmaker.tsx",
+      "exactSourceMatch": true
+    },
+    {
+      "platform": "ios",
+      "source": "src/services/outfitGenerationFailure.ts",
+      "exactSourceMatch": true
+    },
+    {
+      "platform": "android",
+      "source": "screens/AIOutfitmaker.tsx",
+      "exactSourceMatch": true
+    },
+    {
+      "platform": "android",
+      "source": "src/services/outfitGenerationFailure.ts",
+      "exactSourceMatch": true
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "/private/tmp/aiwardrobe-budget-release-00nhnjcc/AIWardrobe.app/main.jsbundle",
+      "sha256": "0cfeae64ab67ea976c2c748d4bf378deba871ef29019180a0b27b48c3314cf37"
+    },
+    {
+      "path": "/Users/v.zahid/AIWardrobe/android/app/build/outputs/apk/release/app-release.apk",
+      "sha256": "ff5a10cd1cea85024ff5257f3358fc9abcc5eb7730d5ae254c554e3c665d8167"
+    }
+  ],
+  "scope": "Actual installed Supabase client with controlled HTTP transport and JSON response, plus source/build verification. No native rendered outfit error-screen check or customer device installation yet.",
+  "serverDeploymentNeeded": false,
+  "userDeviceInstalled": false
+}

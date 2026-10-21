@@ -1,0 +1,8 @@
+{
+  "localDate": "2026-10-21",
+  "platform": "Android 14 API34 arm64 emulator",
+  "scope": "Native component callback instrumentation; no pixel assertion",
+  "passed": false,
+  "reason": "native_callback_timeout",
+  "phases": []
+}

@@ -1,0 +1,23 @@
+{
+  "measuredAt": "2026-10-15T15:10:17.495Z",
+  "scope": "Direct minimal Gemini requests using supplied candidate key; no production secret change",
+  "results": [
+    {
+      "model": "gemini-3.5-flash-lite",
+      "status": 403,
+      "errorStatus": "PERMISSION_DENIED",
+      "reasons": [
+        "API_KEY_IOS_APP_BLOCKED"
+      ]
+    },
+    {
+      "model": "gemini-2.0-flash",
+      "status": 403,
+      "errorStatus": "PERMISSION_DENIED",
+      "reasons": [
+        "API_KEY_IOS_APP_BLOCKED"
+      ]
+    }
+  ],
+  "productionSecretChanged": false
+}

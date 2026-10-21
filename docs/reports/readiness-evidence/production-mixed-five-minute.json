@@ -1,0 +1,446 @@
+{
+  "measuredAt": "2026-10-20T17:28:00.244Z",
+  "runId": "a0ca73f5-ada5-4c92-8c6d-1a46c36cfed5",
+  "assumptions": {
+    "dau": 10000,
+    "sessionsPerDay": 2,
+    "requestsPerSession": 12,
+    "peakHourFraction": 0.2,
+    "headroom": 3,
+    "dailyRequests": 240000,
+    "peakRps": 13.333333333333334,
+    "targetRps": 40
+  },
+  "scope": "Production concurrent 32 app read RPS + 8 wear-log upsert RPS for 300 seconds; 20 temporary owners, 50 garments/5 outfits each; excludes AI, image delivery, uploads, subscriptions and native",
+  "fixtureUsers": 20,
+  "wardrobeItemsPerUser": 50,
+  "savedOutfitsPerUser": 5,
+  "cleanup": [
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    }
+  ],
+  "preflight": {
+    "completed": 4,
+    "failedRequests": 0,
+    "statuses": {
+      "200": 4
+    },
+    "failures": {},
+    "passed": true
+  },
+  "reads": {
+    "scope": "read-only HTTP paths; excludes paid AI, uploads, writes, and native rendering",
+    "workload": "app",
+    "aborted": false,
+    "requestedRps": 32,
+    "durationSec": 300,
+    "elapsedSec": 303.199413,
+    "scheduled": 9600,
+    "completed": 9600,
+    "dropped": 0,
+    "achievedRps": 31.66233042806056,
+    "distinctAuthenticatedUsers": 20,
+    "statuses": {
+      "200": 9598,
+      "502": 1
+    },
+    "failures": {
+      "http_502": 1,
+      "network_or_invalid_json": 1
+    },
+    "failureDetails": [
+      {
+        "route": "profile",
+        "stage": "fetch",
+        "requestIndex": 6847,
+        "errorType": "TypeError",
+        "causeCode": "UND_ERR_SOCKET"
+      }
+    ],
+    "failedRequests": 2,
+    "errorRate": 0.00020833333333333335,
+    "latencyMs": {
+      "p50": 499.9775420000078,
+      "p95": 1282.1992909999972,
+      "p99": 2446.7774999999965
+    },
+    "passed": false
+  },
+  "writes": {
+    "planned": 2400,
+    "completed": 2400,
+    "failed": 2,
+    "dropped": 0,
+    "elapsedSec": 302.642853625,
+    "achievedRps": 7.930139341647242,
+    "statuses": {
+      "200": 1198,
+      "201": 1200
+    },
+    "failures": {
+      "transport_or_decode": 2
+    },
+    "failureDetails": [
+      {
+        "requestIndex": 1677,
+        "stage": "fetch",
+        "errorType": "TypeError",
+        "causeCode": "UND_ERR_SOCKET"
+      },
+      {
+        "requestIndex": 2319,
+        "stage": "fetch",
+        "errorType": "TypeError",
+        "causeCode": "UND_ERR_SOCKET"
+      }
+    ],
+    "latencyMs": {
+      "p50": 510.51333400000294,
+      "p95": 1288.2908749999915,
+      "p99": 2451.235333999968
+    },
+    "aborted": false,
+    "diagnostics": {
+      "errorTypes": {
+        "TypeError": 2
+      },
+      "tenSecondWindows": {
+        "0": {
+          "attempted": 81,
+          "failed": 0
+        },
+        "1": {
+          "attempted": 79,
+          "failed": 0
+        },
+        "2": {
+          "attempted": 80,
+          "failed": 0
+        },
+        "3": {
+          "attempted": 81,
+          "failed": 0
+        },
+        "4": {
+          "attempted": 79,
+          "failed": 0
+        },
+        "5": {
+          "attempted": 81,
+          "failed": 0
+        },
+        "6": {
+          "attempted": 79,
+          "failed": 0
+        },
+        "7": {
+          "attempted": 81,
+          "failed": 0
+        },
+        "8": {
+          "attempted": 79,
+          "failed": 0
+        },
+        "9": {
+          "attempted": 81,
+          "failed": 0
+        },
+        "10": {
+          "attempted": 79,
+          "failed": 0
+        },
+        "11": {
+          "attempted": 81,
+          "failed": 0
+        },
+        "12": {
+          "attempted": 80,
+          "failed": 0
+        },
+        "13": {
+          "attempted": 79,
+          "failed": 0
+        },
+        "14": {
+          "attempted": 81,
+          "failed": 0
+        },
+        "15": {
+          "attempted": 79,
+          "failed": 0
+        },
+        "16": {
+          "attempted": 80,
+          "failed": 0
+        },
+        "17": {
+          "attempted": 80,
+          "failed": 0
+        },
+        "18": {
+          "attempted": 80,
+          "failed": 0
+        },
+        "19": {
+          "attempted": 81,
+          "failed": 0
+        },
+        "20": {
+          "attempted": 80,
+          "failed": 1
+        },
+        "21": {
+          "attempted": 80,
+          "failed": 0
+        },
+        "22": {
+          "attempted": 79,
+          "failed": 0
+        },
+        "23": {
+          "attempted": 80,
+          "failed": 0
+        },
+        "24": {
+          "attempted": 81,
+          "failed": 0
+        },
+        "25": {
+          "attempted": 80,
+          "failed": 0
+        },
+        "26": {
+          "attempted": 79,
+          "failed": 0
+        },
+        "27": {
+          "attempted": 81,
+          "failed": 0
+        },
+        "28": {
+          "attempted": 80,
+          "failed": 1
+        },
+        "29": {
+          "attempted": 79,
+          "failed": 0
+        }
+      },
+      "maxScheduleLagMs": 11.258832999970764,
+      "wallElapsedMs": 302656,
+      "eventLoopDelayMs": {
+        "mean": 20.685183588762047,
+        "max": 36.143103
+      },
+      "upstreamHeaderSamples": 2398,
+      "upstreamHeaderMaxMs": 618,
+      "runtime": {
+        "node": "v22.23.2",
+        "platform": "darwin",
+        "arch": "arm64"
+      }
+    },
+    "passed": false
+  },
+  "verification": [
+    {
+      "expectedDistinctLogs": 60,
+      "actualLogs": 60,
+      "actualWearCount": 60,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 60,
+      "actualLogs": 60,
+      "actualWearCount": 60,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 60,
+      "actualLogs": 60,
+      "actualWearCount": 60,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 60,
+      "actualLogs": 60,
+      "actualWearCount": 60,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 60,
+      "actualLogs": 60,
+      "actualWearCount": 60,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 60,
+      "actualLogs": 60,
+      "actualWearCount": 60,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 60,
+      "actualLogs": 60,
+      "actualWearCount": 60,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 60,
+      "actualLogs": 60,
+      "actualWearCount": 60,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 60,
+      "actualLogs": 60,
+      "actualWearCount": 60,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 60,
+      "actualLogs": 60,
+      "actualWearCount": 60,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 60,
+      "actualLogs": 60,
+      "actualWearCount": 60,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 60,
+      "actualLogs": 60,
+      "actualWearCount": 60,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 60,
+      "actualLogs": 60,
+      "actualWearCount": 60,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 60,
+      "actualLogs": 60,
+      "actualWearCount": 60,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 60,
+      "actualLogs": 60,
+      "actualWearCount": 60,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 60,
+      "actualLogs": 60,
+      "actualWearCount": 60,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 60,
+      "actualLogs": 60,
+      "actualWearCount": 60,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 60,
+      "actualLogs": 60,
+      "actualWearCount": 60,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 60,
+      "actualLogs": 60,
+      "actualWearCount": 60,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 60,
+      "actualLogs": 60,
+      "actualWearCount": 60,
+      "passed": true
+    }
+  ],
+  "passed": false
+}

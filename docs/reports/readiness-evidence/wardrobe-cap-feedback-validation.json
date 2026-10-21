@@ -1,0 +1,91 @@
+{
+  "scope": "Typed server wardrobe-cap feedback, durable pending notice, stable editor retries and Android locale input tracking",
+  "baseline": {
+    "focused_failures": 4,
+    "focused_passed": 45,
+    "log": "/tmp/aiwardrobe-cap-feedback-before.log"
+  },
+  "after": {
+    "focused_tests": 71,
+    "full_tests": 2185,
+    "full_suites": 174,
+    "typescript": "pass",
+    "ios_hermes": "pass",
+    "android_arm64_release": "pass"
+  },
+  "source_maps": {
+    "/tmp/aiwardrobe-cap-feedback-ios.map": {
+      "store/wardrobeSyncService.ts": true,
+      "store/slices/wardrobeSyncSlice.ts": true,
+      "store/slices/wardrobeItemsSlice.ts": true,
+      "store/wardrobeStore.ts": true,
+      "src/lib/persistence.ts": true,
+      "components/ClothingDetailEditor.tsx": true,
+      "components/WardrobeCapacityNotice.tsx": true,
+      "screens/MyClosetScreen.tsx": true
+    },
+    "android/app/build/intermediates/sourcemaps/react/release/index.android.bundle.packager.map": {
+      "store/wardrobeSyncService.ts": true,
+      "store/slices/wardrobeSyncSlice.ts": true,
+      "store/slices/wardrobeItemsSlice.ts": true,
+      "store/wardrobeStore.ts": true,
+      "src/lib/persistence.ts": true,
+      "components/ClothingDetailEditor.tsx": true,
+      "components/WardrobeCapacityNotice.tsx": true,
+      "screens/MyClosetScreen.tsx": true
+    }
+  },
+  "source_sha256": {
+    "store/wardrobeSyncService.ts": "14c41dbc6c5efd6faf81d4cd87608d2d9d1bd418945cdcb10b7e0b003fc0efb9",
+    "store/slices/wardrobeSyncSlice.ts": "5f73690d71a1bf57c7f8d2743bddb1e9320dd199b005123b5a02a1d1f72831c0",
+    "store/slices/wardrobeItemsSlice.ts": "676694228e8b4870c013df6869ef3f6ff71faacf999cd8c478fb62002db467fe",
+    "store/wardrobeStore.ts": "24d6dc9dec701c50c2153f2b166d3261227266330c8cb0cee83029c8066fc5df",
+    "src/lib/persistence.ts": "1b7dc5b6e241cb796fa9aa60db869bda8a44df41adba5b87429fbafac74b4a95",
+    "components/ClothingDetailEditor.tsx": "f09401d4e90d28f7fd5fbe25c9cfaa5c46946beb06d0c2ddd2866200e0b9bf61",
+    "components/WardrobeCapacityNotice.tsx": "b9f7eec48f0decf59ab6b2212511d7e237b0b9f2b313d9a3bbd082575a4eab26",
+    "screens/MyClosetScreen.tsx": "66538d9b8af2cd9885fff20f6f0b8a359bf6786d3504b5213a1be68f5dfc513b",
+    "android/app/build.gradle": "19e57949c589151942affec9a051526701ebbb95e4ddd5cda078a5d56af5c5bd"
+  },
+  "bundled_notice_strings": {
+    "ios": {
+      "en": 5,
+      "ru": 5,
+      "uz": 5
+    },
+    "android_apk": {
+      "en": 5,
+      "ru": 5,
+      "uz": 5
+    }
+  },
+  "android_json_incremental_regression": {
+    "before": "Bundle task incorrectly UP-TO-DATE after JSON-only copy edit; APK lacked all three current messages",
+    "after": "Translation file tree added as task input; final JSON-only edit reruns createBundleReleaseJsAndAssets and APK contains all 15 current strings",
+    "non_json_source_inputs_unchanged": {
+      "store/wardrobeSyncService.ts": true,
+      "store/slices/wardrobeSyncSlice.ts": true,
+      "components/WardrobeCapacityNotice.tsx": true,
+      "android/app/build.gradle": true
+    },
+    "final_log": "/tmp/aiwardrobe-cap-feedback-android-json-only.log"
+  },
+  "live": {
+    "passed": 5,
+    "report": "production-wardrobe-cap-feedback.json",
+    "scope": "Actual service + owner SDK; remote URL fixture, not a new native photo capture"
+  },
+  "independent_cleanup": {
+    "remaining_audit_users": 0,
+    "remaining_fixture_garments": 0,
+    "auth_users": 111,
+    "profiles": 111,
+    "garments": 109
+  },
+  "limits": [
+    "No installed-device visual check or physical capture in this turn",
+    "Scan-review durable acknowledgement after a banner-initiated retry still needs verification",
+    "Other Metro asset/config inputs beyond locale JSON need separate incremental-build review",
+    "Android still uses debug signing; client changes not distributed",
+    "Not 10000-DAU workload or complete app certification"
+  ]
+}

@@ -1,0 +1,23 @@
+PASS __tests__/backend/analyzeOutfitOwnership.test.js
+  ✓ payload userId cannot select another owner through the service role (4 ms)
+  ✓ authentication failure stops before provider work or wardrobe reads (1 ms)
+  ✓ rejects invalid image shape or size before external work
+  ✓ rejects invalid image shape or size before external work (1 ms)
+  ✓ rejects invalid image shape or size before external work
+  ✓ rejects invalid image shape or size before external work (46 ms)
+  ✓ analysis admission denial 403 prevents wardrobe and provider access
+  ✓ analysis admission denial 429 prevents wardrobe and provider access (1 ms)
+  ✓ analysis admission denial 503 prevents wardrobe and provider access (1 ms)
+  ✓ the actual outfit image stays in the final user message after the JSON-array example (1 ms)
+  ✓ matching color, style and pattern never makes trousers similar to a jacket (1 ms)
+  ✓ missing clothing types never earn an empty-string category match
+  ✓ t-shirt is not a substring match for shirt; typed broad categories use their specific garment type (1 ms)
+  ✓ primary_color participates in ranking and legitimate trouser aliases match
+  ✓ broad catalog labels use explicit English/Russian garment names, never shared color alone (1 ms)
+  ✓ dress shirts remain shirts and contradictory specific catalog types are withheld
+
+Test Suites: 1 passed, 1 total
+Tests:       16 passed, 16 total
+Snapshots:   0 total
+Time:        0.692 s, estimated 1 s
+Ran all test suites matching /__tests__\/backend\/analyzeOutfitOwnership.test.js/i.

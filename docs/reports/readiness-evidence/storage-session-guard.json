@@ -1,0 +1,87 @@
+{
+  "scope": "Production Storage policy hardening verified with disposable fixtures and isolated SQL tests; no client release",
+  "migration": "20261016041316_storage_live_session_guard.sql",
+  "deployedName": "storage_live_session_guard",
+  "before": {
+    "deletedTokenAvatarUploadStatus": 200,
+    "deletedTokenUserUploadsStatus": 200,
+    "evidence": "production-deleted-token-writes-before.json"
+  },
+  "after": {
+    "deletionAndStaleTokenChecksPassed": 17,
+    "avatarLifecycleChecksPassed": 17,
+    "allFixtureCleanupPassed": true,
+    "privateHelperApiBoundaryStatus": 406,
+    "privateHelperApiBoundaryCode": "PGRST106"
+  },
+  "localDatabase": {
+    "migrationCount": 33,
+    "syntheticUsers": 10000,
+    "securityAndSessionAssertionsPassed": true,
+    "quotaConcurrencyAttempts": 800,
+    "webhookConcurrencyAttempts": 800,
+    "concurrencyFailures": 0,
+    "serverStopped": true
+  },
+  "jest": {
+    "passed": 1076,
+    "suites": 91
+  },
+  "typecheck": "pass",
+  "targetedLint": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "advisoryGroups": {
+    "before": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO"
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN"
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN"
+      },
+      {
+        "name": "auth_leaked_password_protection",
+        "level": "WARN"
+      }
+    ],
+    "after": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO"
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN"
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN"
+      },
+      {
+        "name": "auth_leaked_password_protection",
+        "level": "WARN"
+      }
+    ]
+  },
+  "remainingBoundaries": [
+    "authenticated Storage operations only; not universal JWT revocation",
+    "native runtime not verified",
+    "Storage sustained throughput not measured",
+    "remote CI execution not observed"
+  ]
+}

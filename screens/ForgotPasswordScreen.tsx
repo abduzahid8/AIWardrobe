@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Alert, ScrollView } from 'react-native'
 import { ScaledText } from '../components/ui/ScaledText';
 import { useNavigation } from '@react-navigation/native';
@@ -15,27 +15,41 @@ const ForgotPasswordScreen = () => {
     const [email, setEmail] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isSent, setIsSent] = useState(false);
+    const [sentEmail, setSentEmail] = useState('');
+    const submission = useRef<'idle' | 'pending' | 'sent'>('idle');
+    const mounted = useRef(true);
+    useEffect(() => {
+        mounted.current = true;
+        return () => { mounted.current = false; };
+    }, []);
 
     const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
     const handleResetPassword = async () => {
+        if (!mounted.current || submission.current !== 'idle') return;
         if (!isEmailValid) {
             Alert.alert(t('forgotPassword.invalidEmail'), t('forgotPassword.enterValidEmail'));
             return;
         }
 
+        const submittedEmail = email.trim().toLowerCase();
+        submission.current = 'pending';
         setIsLoading(true);
         try {
             const redirectTo = Linking.createURL('reset-password');
-            const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+            const { error } = await supabase.auth.resetPasswordForEmail(submittedEmail, {
                 redirectTo,
             });
 
+            if (!mounted.current) return;
             if (error) throw error;
 
+            submission.current = 'sent';
+            setSentEmail(submittedEmail);
             setIsSent(true);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         } catch (error: any) {
+            if (!mounted.current) return;
             const message = error.message || t('forgotPassword.failedSendResetEmail');
             if (message.includes('rate limit') || message.includes('too many')) {
                 Alert.alert(t('forgotPassword.tooManyRequests'), t('forgotPassword.waitFewMinutes'));
@@ -43,7 +57,8 @@ const ForgotPasswordScreen = () => {
                 Alert.alert(t('forgotPassword.error'), message);
             }
         } finally {
-            setIsLoading(false);
+            if (submission.current === 'pending') submission.current = 'idle';
+            if (mounted.current) setIsLoading(false);
         }
     };
 
@@ -56,8 +71,8 @@ const ForgotPasswordScreen = () => {
                     </View>
                     <ScaledText style={styles.successTitle}>{t('forgotPasswordScreen.checkYourEmail')}</ScaledText>
                     <ScaledText style={styles.successMessage}>
-                        {t('forgotPassword.resetLinkSent')}{'\n'}
-                        <ScaledText style={styles.emailHighlight}>{email}</ScaledText>
+                        {t('forgotPassword.recoveryInstructions')}{'\n'}
+                        <ScaledText style={styles.emailHighlight}>{sentEmail}</ScaledText>
                     </ScaledText>
                     <ScaledText style={styles.successHint}>
                         {t('forgotPassword.checkSpamFolder')}
@@ -112,6 +127,7 @@ const ForgotPasswordScreen = () => {
                             keyboardType="email-address"
                             autoCapitalize="none"
                             autoFocus
+                            editable={!isLoading}
                             maxLength={255}
                             accessibilityLabel={t('auth.email')}
                         />

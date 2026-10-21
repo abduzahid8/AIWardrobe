@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Image as ExpoImage } from 'expo-image';
+
 
 const CACHE_INDEX_KEY = '@image_cache_index';
 const MAX_CACHE_ENTRIES = 200;
@@ -195,6 +195,8 @@ export const getCachedImageUri = async (uri: string): Promise<string> => {
 
 // React hook for cached images
 import { useState, useEffect } from 'react';
+import { ExpoImage } from '../components/MediaImage';
+
 
 export const useCachedImage = (uri: string): { cachedUri: string; loading: boolean } => {
     const [cachedUri, setCachedUri] = useState(uri);

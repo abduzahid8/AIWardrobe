@@ -73,8 +73,7 @@ function buildStatus(snap: StoreSnap): TrialStatus {
     let hoursRemaining = 0;
     if (isTrialActive && trialStartedAt) {
         const { FREE_TRIAL_DAYS } = require('../store/subscriptionStore');
-        const trialEnd = new Date(trialStartedAt);
-        trialEnd.setDate(trialEnd.getDate() + FREE_TRIAL_DAYS);
+        const trialEnd = new Date(Date.parse(trialStartedAt) + FREE_TRIAL_DAYS * 24 * 60 * 60 * 1000);
         const ms = trialEnd.getTime() - Date.now();
         hoursRemaining = Math.max(0, Math.ceil(ms / (1000 * 60 * 60)));
     }

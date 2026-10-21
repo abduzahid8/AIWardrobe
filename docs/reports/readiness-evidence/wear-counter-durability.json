@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-16",
+  "productionProject": "fyqpifmrsftsfqibhwhy",
+  "originalFailure": "Rollback-only production probe inserted one wear log but garment wear_count remained zero.",
+  "migration": "20261016141704_wear_log_counters.sql",
+  "deployed": true,
+  "deploymentTransport": "Supabase MCP apply_migration",
+  "deploymentRetry": "First call returned Invalid or expired requestState; catalog confirmed no new triggers. Second call succeeded.",
+  "productionVerification": {
+    "executionRole": "authenticated for garment/log operations; privileged fixture setup and final cross-owner assertion",
+    "passed": ["insert increments", "duplicate and malformed IDs ignored", "cross-owner garment unchanged", "retry upsert idempotent", "cached direct counter/timestamp overwrite blocked", "membership update adjusts both garments", "latest timestamp correction", "delete clears counts and timestamps"],
+    "fixtures": "Random IDs and unique test-domain emails; all writes rolled back",
+    "afterProbe": {"wearLogs": 0, "testDomainUsers": 0, "newTriggers": 2},
+    "preDeployment": {"wearLogs": 0, "existingNonzeroStatistics": 0},
+    "backfill": "None; no production history existed at verification time",
+    "securityAdvisors": "Existing INFO/WARN findings unchanged; no new findings"
+  },
+  "localVerification": {
+    "freshMigrationReplay": 34,
+    "workers": 12,
+    "insertTransactions": 120,
+    "countsAfterInsert": [120, 120],
+    "deleteTransactions": 120,
+    "countsAfterDelete": [0, 0],
+    "remainingTimestamps": 0,
+    "fixtureCleanup": "Disposable auth user deleted in finally"
+  },
+  "client": "logWear now attempts sync immediately; failed sync preserves queued log. Included in source, not rebuilt/released native binaries.",
+  "checks": {"jestTests": 1111, "jestSuites": 95, "typecheck": "pass", "targetedLint": "0 errors, 2 existing warnings", "diffWhitespace": "pass"},
+  "limits": ["Concurrency exercised on isolated local PostgreSQL, not hosted production", "No 10,000-user write capacity certification", "JSONB production schema tested; legacy UUID array conversion supported but not exercised end-to-end", "Arbitrary multi-log transactions may still deadlock and require transaction retry", "AI provider work deferred", "Existing native artifacts predate client changes"]
+}

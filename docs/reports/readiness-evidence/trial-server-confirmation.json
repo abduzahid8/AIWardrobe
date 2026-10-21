@@ -1,0 +1,26 @@
+{
+  "change": "Trial initialization requires a server-confirmed persisted date; failed reads/writes cannot create a local trial; cached dates do not bypass server confirmation.",
+  "source": "store/subscriptionStore.ts",
+  "sha256": "31407980d1c68509a706678fcce1bcdfc1b40718fc11b7faa8eda34543d439a0",
+  "regressionEvidence": "Initial targeted run failed server-date and failed-write assertions before implementation; test storage mock isolation subsequently corrected.",
+  "tests": {
+    "trialCases": 8,
+    "fullPassed": 1569,
+    "suitesPassed": 138,
+    "typescript": "passed",
+    "targetedLint": {
+      "errors": 0,
+      "warnings": 8
+    }
+  },
+  "builds": {
+    "ios": "normal Hermes export passed",
+    "android": "arm64 Release assemble passed",
+    "sourceMaps": "both match subscriptionStore.ts exactly"
+  },
+  "limitations": [
+    "Local client artifacts only; not installed on customer devices or published to app stores.",
+    "Controlled client tests plus previous production trial RPC checks; no new full native sign-up flow verified.",
+    "Free Home quota policy still pending; generation paid metering is not connected."
+  ]
+}

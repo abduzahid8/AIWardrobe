@@ -1,0 +1,121 @@
+{
+  "date": "2026-10-20",
+  "migration": "20261020052414_harden_profile_status_helpers.sql",
+  "remoteHistory": [
+    {
+      "version": "20261020052414",
+      "name": "harden_profile_status_helpers"
+    }
+  ],
+  "beforeGhostUser": [
+    {
+      "nonexistent_user_reports_premium": true
+    }
+  ],
+  "baselineCrossOwnerTest": "Rejected assertion: cross-owner premium status leaked",
+  "changes": [
+    "Two legacy status functions now SECURITY INVOKER with fixed empty search_path",
+    "Missing user premium check uses EXISTS and returns false",
+    "Anonymous execute revoked; authenticated/service roles retain prior intended entrypoints",
+    "Auth profile trigger has fixed search_path and no anon/authenticated RPC execute privilege"
+  ],
+  "afterRoleTests": [
+    {
+      "assertion": "passed: trigger creation, own and service status, cross-owner isolation, missing/expired/free status, anonymous RPC rejection"
+    }
+  ],
+  "afterFunctionPrivileges": [
+    {
+      "proname": "handle_new_user",
+      "prosecdef": true,
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "anon_execute": false,
+      "authenticated_execute": false,
+      "service_execute": true
+    },
+    {
+      "proname": "has_premium_access",
+      "prosecdef": false,
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "anon_execute": false,
+      "authenticated_execute": true,
+      "service_execute": true
+    },
+    {
+      "proname": "is_account_locked",
+      "prosecdef": false,
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "anon_execute": false,
+      "authenticated_execute": true,
+      "service_execute": true
+    }
+  ],
+  "cleanup": [
+    {
+      "fixture_users_remaining": 0,
+      "fixture_profiles_remaining": 0
+    }
+  ],
+  "httpEvidence": "profile-helper-anonymous-http.json",
+  "advisors": {
+    "before": [
+      {
+        "name": "rls_enabled_no_policy",
+        "count": 5
+      },
+      {
+        "name": "function_search_path_mutable",
+        "count": 10
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "count": 5
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "count": 8
+      },
+      {
+        "name": "auth_leaked_password_protection",
+        "count": 1
+      }
+    ],
+    "after": [
+      {
+        "name": "rls_enabled_no_policy",
+        "count": 5
+      },
+      {
+        "name": "function_search_path_mutable",
+        "count": 7
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "count": 2
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "count": 5
+      },
+      {
+        "name": "auth_leaked_password_protection",
+        "count": 1
+      }
+    ],
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable"
+  },
+  "scope": "Legacy helper accuracy and privacy fix; no app/DB helper callers were found in current source/catalog searches. Does not prove that prior false helper result granted a subscription. Live synthetic fixture transactions rolled back; no client source changed.",
+  "remaining": [
+    "Two intentional/remaining anonymous definer functions need further review",
+    "Other mutable-path and definer advisories",
+    "Google sign-in not completed by user",
+    "Broader 10000 DAU capacity, accuracy and live flows remain unverified"
+  ],
+  "goal": "active"
+}

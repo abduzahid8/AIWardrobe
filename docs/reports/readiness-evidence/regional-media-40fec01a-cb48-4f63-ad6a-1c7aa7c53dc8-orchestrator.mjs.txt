@@ -1,0 +1,97 @@
+/** Bounded fixture-only distinct-URL comparison; privileged credentials stay in memory. */
+import 'dotenv/config';
+import {createClient} from '@supabase/supabase-js';
+import {execFileSync} from 'node:child_process';
+import {readFile,writeFile,mkdtemp,rm,rename} from 'node:fs/promises';
+import {randomUUID,createHash} from 'node:crypto';
+import {measureRemoteMedia} from './remote-media-probe.mjs';
+import {REGIONAL_MEDIA_CASES,verifyRegionalMediaExecution} from './regional-media.mjs';
+const regional=process.argv.includes('--regions');
+const project='fyqpifmrsftsfqibhwhy',base=`https://${project}.supabase.co`,cli=process.env.SUPABASE_CLI_BIN;
+const emit=value=>process.stdout.write(JSON.stringify(value)+'\n');
+const plan={scope:'Distinct private object URLs on separate remote/local cohorts; not 10000 DAU certification',users:2,objects:340,readsPerCohort:170,rps:[2,5,10],secondsPerStage:10,concurrencyCap:20,deadlineMs:15000,fixture:'Pillow RGBA 384x512 PNG, compression=6; not native codec output'};
+if(regional){plan.scope='Controlled Tokyo/Frankfurt distinct-URL comparison; not 10000 DAU certification';plan.regions=REGIONAL_MEDIA_CASES.map(value=>value.region);plan.temporaryFunctions=2;}
+const mode=process.argv[2];if(mode==='--plan'){emit(plan);process.exit(0);}
+if(!['prepare','measure','cleanup'].includes(mode)||!cli||process.env.EXPO_PUBLIC_SUPABASE_URL?.replace(/\/$/,'')!==base)throw new Error('Explicit diagnostic configuration required');
+function command(args){try{return execFileSync(cli,args,{encoding:'utf8',stdio:['ignore','pipe','pipe'],timeout:40000});}catch{throw new Error('ManagementCommandFailed');}}
+let key;const metadata=JSON.parse(command(['projects','api-keys','--project-ref',project,'--reveal','--output','json','--agent','yes']));
+function visit(value){if(!value||typeof value!=='object')return;if(typeof value.api_key==='string'){try{const claims=JSON.parse(Buffer.from(value.api_key.split('.')[1],'base64url'));if(claims.ref===project&&claims.role==='service_role')key=value.api_key;}catch{}}for(const child of Object.values(value))if(child&&typeof child==='object')visit(child);}visit(metadata);if(!key)throw new Error('FixtureCredentialUnavailable');
+const options={auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},global:{fetch:(input,init)=>fetch(input,{...init,signal:init?.signal??AbortSignal.timeout(20000)})}};
+const admin=createClient(base,key,options);key=undefined;
+let state,report,runId=process.argv[3];
+if(mode==='prepare')runId=randomUUID();
+if(!/^[a-f0-9-]{36}$/.test(runId||''))throw new Error('Valid run ID required');
+const output=new URL(`../../docs/reports/readiness-evidence/distinct-media-${runId}.json`,import.meta.url),privatePath=`/tmp/aiwardrobe-distinct-media-${runId}.json`;
+let saving=Promise.resolve();
+const save=()=>{const work=saving.then(async()=>{await writeFile(output.pathname+'.tmp',JSON.stringify(report,null,2)+'\n');await rename(output.pathname+'.tmp',output);});saving=work.catch(()=>undefined);return work;};
+const savePrivate=async()=>{await writeFile(privatePath+'.tmp',JSON.stringify(state),{mode:0o600});await rename(privatePath+'.tmp',privatePath);};
+if(mode==='prepare'){
+ state={project,runId,slug:`readiness-distinct-media-${runId.slice(0,8)}`,users:Array.from({length:2},()=>({id:randomUUID(),email:`readiness-${randomUUID()}@aiwardrobe.club`})),remoteIds:Array.from({length:170},randomUUID),localIds:Array.from({length:170},randomUUID)};
+ state.regional=regional;state.functions=regional?REGIONAL_MEDIA_CASES.map(value=>({...value,slug:`${state.slug}-${value.suffix}`})):[];
+ report={...plan,regional,functions:state.functions,runId,project,slug:state.slug,fixtureUsers:state.users.map(({id,email})=>({id,email})),remoteIds:state.remoteIds,localIds:state.localIds,status:'preparing',startedAt:new Date().toISOString(),uploaded:0};
+ await writeFile(output,JSON.stringify(report,null,2)+'\n',{flag:'wx'});await writeFile(privatePath,JSON.stringify(state),{mode:0o600,flag:'wx'});
+}else{report=JSON.parse(await readFile(output,'utf8'));state=JSON.parse(await readFile(privatePath,'utf8'));if(report.runId!==runId||state.runId!==runId||state.project!==project||state.slug!==report.slug||!/^readiness-distinct-media-[a-f0-9]{8}$/.test(state.slug)||state.users.length!==2||state.remoteIds.length!==170||state.localIds.length!==170)throw new Error('Invalid diagnostic ledger');}
+if(state.regional&&(!Array.isArray(state.functions)||state.functions.length!==2||REGIONAL_MEDIA_CASES.some((value,index)=>state.functions[index]?.slug!==`${state.slug}-${value.suffix}`||state.functions[index]?.region!==value.region||state.functions[index]?.cohort!==value.cohort)))throw new Error('Invalid regional fixture ledger');
+const paths=()=>[...state.remoteIds,...state.localIds].map(id=>`${state.users[0].id}/${id}/thumbnail.png`);
+async function cleanup(){
+ const checks=[];
+ if(report.functionDeploymentAttempted){for(const slug of state.regional?state.functions.map(value=>value.slug):[state.slug]){try{command(['functions','delete',slug,'--project-ref',project,'--yes','--agent','yes']);checks.push({functionSlug:slug,functionDeleted:true});}catch{checks.push({functionSlug:slug,functionDeleted:false});}}}
+ const owner=state.users[0],found=await admin.auth.admin.getUserById(owner.id);
+ if(!found.error&&found.data.user?.email===owner.email&&found.data.user?.app_metadata?.readiness_audit===runId){
+  const all=paths();let removed=true;for(let i=0;i<all.length;i+=100){const result=await admin.storage.from('wardrobe-images').remove(all.slice(i,i+100));if(result.error)removed=false;}
+  const remaining=await admin.storage.from('wardrobe-images').list(owner.id,{limit:1000});checks.push({objectsRemoved:removed,objectsAbsent:!remaining.error&&remaining.data.length===0});
+ }else if(found.error?.status===404){const remaining=await admin.storage.from('wardrobe-images').list(owner.id,{limit:1000});checks.push({objectsAbsent:!remaining.error&&remaining.data.length===0});}
+ else checks.push({ownershipConfirmed:false});
+ if(checks.some(check=>check.objectsRemoved===false||check.objectsAbsent===false||check.ownershipConfirmed===false)){report.cleanup={checks,passed:false};await save();return;}
+ for(const user of state.users){
+  const found=await admin.auth.admin.getUserById(user.id);
+  if(found.error?.status===404){checks.push({userId:user.id,userAbsent:true});continue;}
+  if(found.error||found.data.user?.email!==user.email||found.data.user?.app_metadata?.readiness_audit!==runId){checks.push({userId:user.id,ownershipConfirmed:false});continue;}
+  const deleted=await admin.auth.admin.deleteUser(user.id),absent=await admin.auth.admin.getUserById(user.id);
+  checks.push({userId:user.id,deleteSucceeded:!deleted.error,userAbsent:absent.error?.status===404});
+ }
+ report.cleanup={checks,passed:checks.every(check=>Object.entries(check).every(([name,value])=>['userId','functionSlug'].includes(name)||value===true))};await save();
+ if(report.cleanup.passed){await rm(privatePath,{force:true});await rm(privatePath+'.tmp',{force:true});}
+}
+let prepared=false,temp;
+try{
+ if(mode==='prepare'){
+  temp=await mkdtemp('/tmp/aiwardrobe-distinct-fixture-');const imagePath=temp+'/thumbnail.png';
+  execFileSync('python3',['-c',"from PIL import Image\nimport sys\nim=Image.open('assets/images/basic_outfit_1.png').convert('RGBA');im.thumbnail((512,512),Image.Resampling.LANCZOS);im.save(sys.argv[1],compress_level=6)",imagePath],{stdio:['ignore','pipe','pipe']});
+  const bytes=await readFile(imagePath);report.fixtureBytes=bytes.length;report.fixtureSha256=createHash('sha256').update(bytes).digest('hex');await save();
+  for(const user of state.users){
+   const password=randomUUID()+'Aa!9';const created=await admin.auth.admin.createUser({id:user.id,email:user.email,password,email_confirm:true,app_metadata:{readiness_audit:runId},user_metadata:{readiness_test:true}});
+   if(created.error||created.data.user?.id!==user.id)throw new Error('FixtureCreateFailed');
+   const client=createClient(base,process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,options),login=await client.auth.signInWithPassword({email:user.email,password});
+   if(login.error||!login.data.session)throw new Error('FixtureLoginFailed');user.token=login.data.session.access_token;await savePrivate();
+  }
+  const client=createClient(base,process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,{...options,global:{...options.global,headers:{Authorization:`Bearer ${state.users[0].token}`}}});
+  const ids=[...state.remoteIds,...state.localIds];let cursor=0;
+  let uploadFailed=false;
+  const uploads=await Promise.allSettled(Array.from({length:4},async()=>{while(!uploadFailed&&cursor<ids.length){try{const id=ids[cursor++];const result=await client.storage.from('wardrobe-images').upload(`${state.users[0].id}/${id}/thumbnail.png`,bytes,{contentType:'image/png',cacheControl:'3600'});if(result.error)throw new Error('FixtureUploadFailed');report.uploaded++;if(report.uploaded%20===0){await save();emit({runId,uploaded:report.uploaded});}}catch(error){uploadFailed=true;throw error;}}}));
+  if(uploads.some(result=>result.status==='rejected'))throw new Error('FixtureUploadFailed');
+  state.config={projectUrl:base,owner:state.users[0].id,objectId:state.remoteIds[0],bytes:bytes.length,sha256:report.fixtureSha256,expiresAt:Date.now()+480000};report.config=state.config;await savePrivate();report.status='prepared';await save();prepared=true;
+ }else if(mode==='measure'){
+  if(report.status!=='prepared'||!report.functionDeploymentAttempted)throw new Error('Deployment ledger required');
+  if(state.regional){
+   report.regionalResults=[];report.controls=[];
+   for(const probe of state.functions){
+    const call=token=>fetch(`${base}/functions/v1/${probe.slug}`,{method:'POST',headers:{apikey:process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,'x-region':probe.region,...(token?{Authorization:`Bearer ${token}`}:{})},signal:AbortSignal.timeout(120000)});
+    for(const [name,token,expected] of [['anonymous',null,401],['other_owner',state.users[1].token,403]]){const response=await call(token);await response.arrayBuffer();report.controls.push({region:probe.region,name,status:response.status,passed:response.status===expected});if(response.status!==expected)throw new Error('AuthorizationControlFailed');}
+    emit({runId,stage:probe.region});const response=await call(state.users[0].token);if(!response.ok)throw new Error('RegionalMeasurementFailed');
+    const result=await response.json(),responseRegion=response.headers.get('x-sb-edge-region');verifyRegionalMediaExecution(result,probe.region,responseRegion);
+    report.regionalResults.push({requestedRegion:probe.region,responseRegion,cohort:probe.cohort,result});await save();
+   }
+   report.acceptancePassed=report.regionalResults.length===2&&report.regionalResults.every(value=>value.result.passed);report.status='measured';if(!report.acceptancePassed)process.exitCode=2;await save();
+  }else{
+  const call=token=>fetch(`${base}/functions/v1/${state.slug}`,{method:'POST',headers:{apikey:process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,...(token?{Authorization:`Bearer ${token}`}:{})},signal:AbortSignal.timeout(120000)});
+  report.controls=[];for(const [name,token,expected] of [['anonymous',null,401],['other_owner',state.users[1].token,403]]){const response=await call(token);await response.arrayBuffer();report.controls.push({name,status:response.status,passed:response.status===expected});if(response.status!==expected)throw new Error('AuthorizationControlFailed');}
+  emit({runId,stage:'remote'});const remote=await call(state.users[0].token);if(!remote.ok)throw new Error('RemoteMeasurementFailed');report.remote=await remote.json();await save();
+  emit({runId,stage:'local'});report.local=await measureRemoteMedia({...state.config,objectIds:state.localIds,region:'local-Mac'},`Bearer ${state.users[0].token}`);report.acceptancePassed=report.remote.passed&&report.local.passed;report.status='measured';if(!report.acceptancePassed)process.exitCode=2;await save();
+  }
+ }
+}catch(error){report.failure=error.name;report.status='failed';process.exitCode=1;}
+finally{
+ if(!prepared){try{await cleanup();}catch{report.cleanup={passed:false,error:'CleanupFailed'};process.exitCode=1;}}
+ if(temp)await rm(temp,{recursive:true,force:true});report.updatedAt=new Date().toISOString();await save();emit({runId,status:report.status,uploaded:report.uploaded,cleanup:report.cleanup,failure:report.failure});if(!prepared&&!report.cleanup?.passed)process.exitCode=1;
+}

@@ -1,0 +1,20 @@
+{
+  "scope": "Model discovery and bounded real-services candidate evaluation; no production configuration change",
+  "advertised_models": 83,
+  "model_listing": "nvidia-model-catalog-20261021.json",
+  "candidate": "nvidia/nemotron-3.5-lightning-30b-a3b",
+  "official_reference": "https://build.nvidia.com/nvidia/nemotron-3.5-lightning-30b-a3b/build",
+  "official_cookbook": "https://github.com/NVIDIA-NeMo/Nemotron/tree/main/usage-cookbook/Nemotron-3.5-Lightning",
+  "first_run": "nvidia-lightning-v108-real-services-20261021.json",
+  "first_run_passes": 1,
+  "first_run_cases": 3,
+  "audit_correction": "nvidia-lightning-v108-audit-correction.json",
+  "post_count_fix_travel": "nvidia-lightning-v109-travel-recheck-20261021.json",
+  "decision": "Do not switch production based on this small, inconsistent sample; model access works but quality/latency/capacity are not proven.",
+  "limits": [
+    "Candidate ran in local Node with actual12modules, real Auth/catalog/rate guards/provider; not hosted Edge runtime",
+    "Not a paired identical-prompt statistical comparison",
+    "Catalog listing does not prove chat access to all83models",
+    "Pricing, quota and sustained throughput not verified"
+  ]
+}

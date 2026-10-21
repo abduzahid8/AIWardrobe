@@ -1,0 +1,185 @@
+{
+  "scope": "Actual app staging/thumbnail source with installed native Expo codec; no cloud session or provider",
+  "platform": "android",
+  "cases": [
+    {
+      "name": "Repository photo",
+      "originalPath": "file:///tmp/aiwardrobe-native-android-codec-artifacts/0-originalPath.png",
+      "thumbnailPath": "file:///tmp/aiwardrobe-native-android-codec-artifacts/0-thumbnailPath.png",
+      "originalBytes": 2298216,
+      "thumbnailBytes": 336693,
+      "elapsedMs": 293,
+      "dimensions": {
+        "height": 512,
+        "width": 384
+      },
+      "smallerThanOriginal": true,
+      "pngColorType": 2,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    },
+    {
+      "name": "Transparent app icon",
+      "originalPath": "file:///tmp/aiwardrobe-native-android-codec-artifacts/1-originalPath.png",
+      "thumbnailPath": "file:///tmp/aiwardrobe-native-android-codec-artifacts/1-thumbnailPath.png",
+      "originalBytes": 12653,
+      "thumbnailBytes": 14158,
+      "elapsedMs": 54,
+      "dimensions": {
+        "height": 512,
+        "width": 512
+      },
+      "smallerThanOriginal": false,
+      "pngColorType": 6,
+      "originalUnchanged": true,
+      "alphaChannel": true,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 1",
+      "originalPath": "file:///tmp/aiwardrobe-native-android-codec-artifacts/2-originalPath.jpg",
+      "thumbnailPath": "file:///tmp/aiwardrobe-native-android-codec-artifacts/2-thumbnailPath.png",
+      "originalBytes": 62854,
+      "thumbnailBytes": 5827,
+      "elapsedMs": 124,
+      "dimensions": {
+        "height": 341,
+        "width": 512
+      },
+      "smallerThanOriginal": true,
+      "pngColorType": 2,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 2",
+      "originalPath": "file:///tmp/aiwardrobe-native-android-codec-artifacts/3-originalPath.jpg",
+      "thumbnailPath": "file:///tmp/aiwardrobe-native-android-codec-artifacts/3-thumbnailPath.png",
+      "originalBytes": 62854,
+      "thumbnailBytes": 5743,
+      "elapsedMs": 112,
+      "dimensions": {
+        "height": 341,
+        "width": 512
+      },
+      "smallerThanOriginal": true,
+      "pngColorType": 2,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 3",
+      "originalPath": "file:///tmp/aiwardrobe-native-android-codec-artifacts/4-originalPath.jpg",
+      "thumbnailPath": "file:///tmp/aiwardrobe-native-android-codec-artifacts/4-thumbnailPath.png",
+      "originalBytes": 62854,
+      "thumbnailBytes": 5745,
+      "elapsedMs": 93,
+      "dimensions": {
+        "height": 341,
+        "width": 512
+      },
+      "smallerThanOriginal": true,
+      "pngColorType": 2,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 4",
+      "originalPath": "file:///tmp/aiwardrobe-native-android-codec-artifacts/5-originalPath.jpg",
+      "thumbnailPath": "file:///tmp/aiwardrobe-native-android-codec-artifacts/5-thumbnailPath.png",
+      "originalBytes": 62854,
+      "thumbnailBytes": 5784,
+      "elapsedMs": 89,
+      "dimensions": {
+        "height": 341,
+        "width": 512
+      },
+      "smallerThanOriginal": true,
+      "pngColorType": 2,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 5",
+      "originalPath": "file:///tmp/aiwardrobe-native-android-codec-artifacts/6-originalPath.jpg",
+      "thumbnailPath": "file:///tmp/aiwardrobe-native-android-codec-artifacts/6-thumbnailPath.png",
+      "originalBytes": 62854,
+      "thumbnailBytes": 6239,
+      "elapsedMs": 112,
+      "dimensions": {
+        "height": 512,
+        "width": 341
+      },
+      "smallerThanOriginal": true,
+      "pngColorType": 2,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 6",
+      "originalPath": "file:///tmp/aiwardrobe-native-android-codec-artifacts/7-originalPath.jpg",
+      "thumbnailPath": "file:///tmp/aiwardrobe-native-android-codec-artifacts/7-thumbnailPath.png",
+      "originalBytes": 62854,
+      "thumbnailBytes": 6184,
+      "elapsedMs": 117,
+      "dimensions": {
+        "height": 512,
+        "width": 341
+      },
+      "smallerThanOriginal": true,
+      "pngColorType": 2,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 7",
+      "originalPath": "file:///tmp/aiwardrobe-native-android-codec-artifacts/8-originalPath.jpg",
+      "thumbnailPath": "file:///tmp/aiwardrobe-native-android-codec-artifacts/8-thumbnailPath.png",
+      "originalBytes": 62854,
+      "thumbnailBytes": 6144,
+      "elapsedMs": 121,
+      "dimensions": {
+        "height": 512,
+        "width": 341
+      },
+      "smallerThanOriginal": true,
+      "pngColorType": 2,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 8",
+      "originalPath": "file:///tmp/aiwardrobe-native-android-codec-artifacts/9-originalPath.jpg",
+      "thumbnailPath": "file:///tmp/aiwardrobe-native-android-codec-artifacts/9-thumbnailPath.png",
+      "originalBytes": 62854,
+      "thumbnailBytes": 6253,
+      "elapsedMs": 117,
+      "dimensions": {
+        "height": 512,
+        "width": 341
+      },
+      "smallerThanOriginal": true,
+      "pngColorType": 2,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    }
+  ],
+  "currentStep": "EXIF orientation 8: generate thumbnail",
+  "sourceUri": "scripts_validation_fixtures_photoorientation_orientation8",
+  "sourceInfo": {
+    "size": 62854,
+    "uri": "scripts_validation_fixtures_photoorientation_orientation8",
+    "isDirectory": false,
+    "exists": true
+  },
+  "passed": true
+}

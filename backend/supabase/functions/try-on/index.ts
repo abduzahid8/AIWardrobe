@@ -1,3 +1,5 @@
+import { composeTryOnImages } from '../_shared/tryOnComposite.ts'
+import { enforceRateLimit } from '../_shared/rateLimit.ts'
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -8,7 +10,7 @@ const corsHeaders = {
 
 // ── NVIDIA FLUX.1-Kontext-dev NIM endpoint ────────────────────────────────
 const NVIDIA_NIM_URL =
-    'https://ai.api.nvidia.com/v1/genai/black-forest-labs/flux-1-kontext-dev'
+    'https://ai.api.nvidia.com/v1/genai/black-forest-labs/flux.1-kontext-dev'
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -34,32 +36,6 @@ function buildPersonTryOnPrompt(garmentType: string): string {
     return base + ' The garment is an upper-body item (shirt, jacket, etc.).'
 }
 
-async function compositeImages(personB64: string, garmentB64: string): Promise<string> {
-    if (typeof OffscreenCanvas === 'undefined') return personB64
-
-    const loadImage = async (b64: string): Promise<ImageBitmap> => {
-        const raw = stripDataUri(b64)
-        const bytes = Uint8Array.from(atob(raw), (c) => c.charCodeAt(0))
-        const blob = new Blob([bytes], { type: 'image/png' })
-        return createImageBitmap(blob)
-    }
-
-    const [left, right] = await Promise.all([loadImage(personB64), loadImage(garmentB64)])
-
-    const W = 1536, H = 1024, halfW = W / 2
-    const canvas = new OffscreenCanvas(W, H)
-    const ctx = canvas.getContext('2d')!
-    ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, W, H)
-    ctx.drawImage(left, 0, 0, halfW, H)
-    ctx.drawImage(right, halfW, 0, halfW, H)
-
-    const compositeBlob = await canvas.convertToBlob({ type: 'image/png' })
-    const buf = await compositeBlob.arrayBuffer()
-    const raw = btoa(String.fromCharCode(...new Uint8Array(buf)))
-    return `data:image/png;base64,${raw}`
-}
-
 // ── NVIDIA FLUX.1-Kontext-dev call ────────────────────────────────────────
 async function callNvidiaKontext(
     nvidiaKey: string,
@@ -68,12 +44,13 @@ async function callNvidiaKontext(
     garmentType: string,
 ): Promise<string | null> {
     try {
-        const compositeDataUri = await compositeImages(personImage, garmentImage)
+        const compositeDataUri = composeTryOnImages(personImage, garmentImage)
         const imagePayload = compositeDataUri.startsWith('data:')
             ? compositeDataUri
             : `data:image/png;base64,${stripDataUri(compositeDataUri)}`
 
         const res = await fetch(NVIDIA_NIM_URL, {
+            signal: AbortSignal.timeout(45000),
             method: 'POST',
             headers: {
                 Authorization: `Bearer ${nvidiaKey}`,
@@ -83,8 +60,9 @@ async function callNvidiaKontext(
             body: JSON.stringify({
                 prompt: buildPersonTryOnPrompt(garmentType),
                 image: imagePayload,
-                guidance_scale: 4.0,
-                num_inference_steps: 30,
+                cfg_scale: 4.0,
+                steps: 30,
+                samples: 1,
                 seed: 42,
                 height: 1024,
                 width: 768,
@@ -92,7 +70,7 @@ async function callNvidiaKontext(
         })
 
         if (!res.ok) {
-            console.error('NVIDIA NIM error:', res.status, await res.text())
+            console.error('NVIDIA NIM error:', res.status)
             return null
         }
 
@@ -101,10 +79,10 @@ async function callNvidiaKontext(
         if (data.image) return data.image.startsWith('data:') ? data.image : `data:image/png;base64,${data.image}`
         if (data.output?.image) return data.output.image
 
-        console.error('NVIDIA NIM unexpected response:', JSON.stringify(data).slice(0, 300))
+        console.error('NVIDIA NIM response missing image')
         return null
     } catch (err) {
-        console.error('NVIDIA NIM call failed:', err)
+        console.error('NVIDIA NIM call failed')
         return null
     }
 }
@@ -117,7 +95,9 @@ async function callReplicateIDMVTON(
     garmentType: string,
 ): Promise<string> {
     const category = garmentType === 'lower_body' ? 'lower_body' : 'upper_body'
+    const deadline = AbortSignal.timeout(90000)
     const response = await fetch("https://api.replicate.com/v1/predictions", {
+        signal: deadline,
         method: "POST",
         headers: {
             "Authorization": `Token ${replicateToken}`,
@@ -143,6 +123,7 @@ async function callReplicateIDMVTON(
         if (result.status === 'succeeded' || result.status === 'failed') break
         await new Promise(r => setTimeout(r, 2000))
         const pollRes = await fetch(result.urls.get, {
+            signal: deadline,
             headers: { "Authorization": `Token ${replicateToken}` },
         })
         result = await pollRes.json()
@@ -160,6 +141,11 @@ serve(async (req) => {
         return new Response('ok', { headers: corsHeaders })
     }
 
+    if (req.method !== 'POST') return new Response(JSON.stringify({success:false,error:'Method not allowed'}), {status:405,headers:{...corsHeaders,'Content-Type':'application/json'}})
+    const rateLimitResponse = await enforceRateLimit(req, { feature: 'try-on', limit: 5, headers: corsHeaders })
+    if (rateLimitResponse) return rateLimitResponse
+
+
     try {
         // Authenticated client — verify the caller
         const supabaseClient = createClient(
@@ -169,7 +155,12 @@ serve(async (req) => {
         )
 
         const { data: { user } } = await supabaseClient.auth.getUser()
-        if (!user) throw new Error("User not authenticated")
+        if (!user) return new Response(JSON.stringify({success:false,error:'Unauthorized'}),{status:401,headers:{...corsHeaders,'Content-Type':'application/json'}})
+
+        const {person_image,garment_image,garment_type='upper_body'}=await req.json()
+        if (![person_image,garment_image].every(image=>typeof image==='string'&&image.trim().length>0&&image.length<=14*1024*1024)||!['upper_body','lower_body','dresses'].includes(garment_type)) {
+            return new Response(JSON.stringify({success:false,error:'Valid images and garment type are required'}),{status:400,headers:{...corsHeaders,'Content-Type':'application/json'}})
+        }
 
         // Service-role client to read app_config securely
         const supabaseAdmin = createClient(
@@ -185,8 +176,6 @@ serve(async (req) => {
         const NVIDIA_KEY = nvidiaRow?.value
         const REPLICATE_TOKEN = replicateRow?.value
 
-        const { person_image, garment_image, garment_type } = await req.json()
-        if (!person_image || !garment_image) throw new Error("Missing person_image or garment_image")
 
         // ── Path A: NVIDIA FLUX.1-Kontext-dev (primary) ───────────────────
         if (NVIDIA_KEY) {
@@ -209,23 +198,15 @@ serve(async (req) => {
             )
         }
 
-        // ── No keys — mock response ──────────────────────────────────────
-        await new Promise(r => setTimeout(r, 2000))
         return new Response(
-            JSON.stringify({
-                success: true,
-                resultImage: garment_image,
-                methodUsed: 'mock',
-                note: "Add nvidia_token or replicate_token to app_config for real AI.",
-            }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 },
+            JSON.stringify({ success: false, error: 'Try-on provider is not configured' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 503 },
         )
 
     } catch (error: any) {
         return new Response(
-            JSON.stringify({ success: false, error: error.message }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 },
+            JSON.stringify({ success: false, error: error instanceof SyntaxError?'Invalid JSON request':'Try-on unavailable' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: error instanceof SyntaxError?400:503 },
         )
     }
-})
 })

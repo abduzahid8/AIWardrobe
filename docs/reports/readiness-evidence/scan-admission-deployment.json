@@ -1,0 +1,35 @@
+{
+  "projectRef": "fyqpifmrsftsfqibhwhy",
+  "function": "ai-process",
+  "sourceSha256": "306efe731cc476957b5c4966b0fdee3c38aa1cbca20a7c1dd9c3f24f817ccd39",
+  "deployed": true,
+  "scope": [
+    "Server per-user rate and scan quota admission before provider configuration/work",
+    "Early input shape/operation/size validation before quota",
+    "Full provider configuration removed from diagnostic logs"
+  ],
+  "limits": {
+    "ratePerMinute": 20,
+    "freeScansPerDay": 5,
+    "liteScansPerDay": 30,
+    "premiumVipTrial": "unlimited daily scans, subject to rate limit"
+  },
+  "tests": {
+    "beforeFailed": 8,
+    "actualHandlerAfterPassed": 8,
+    "livePassed": 8,
+    "fullAppPassed": 1584,
+    "fullAppSuites": 139,
+    "stagedAndLocalDeno": "passed"
+  },
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "independentRemainingTaggedUsers": 0
+  },
+  "limitations": [
+    "Live verification used seeded exhausted counters and invalid input; no provider classification or full scan UI was exercised in this patch.",
+    "Provider configuration logging removal does not remove historical logs or rotate the existing provider key.",
+    "Actual admitted processing failures currently still consume a scan attempt; invalid input is rejected before admission.",
+    "NVIDIA capacity and complete 10000DAU readiness remain unproven."
+  ]
+}

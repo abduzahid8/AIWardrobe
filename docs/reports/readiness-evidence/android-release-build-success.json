@@ -1,0 +1,74 @@
+{
+  "date": "2026-10-16",
+  "result": "BUILD SUCCESSFUL",
+  "duration": "28s final attempt; prior attempts retained in logs",
+  "tasks": {
+    "executed": 77,
+    "up_to_date": 879,
+    "total": 956
+  },
+  "apk": "/Users/v.zahid/AIWardrobe/android/app/build/outputs/apk/release/app-release.apk",
+  "apk_sha256": "061273f3d31e81fcbd4f0662a4560ce3013bcee284532bc1d37fbbfd6b76315f",
+  "apk_bytes": 147265603,
+  "abis": [
+    "arm64-v8a",
+    "armeabi-v7a",
+    "x86",
+    "x86_64"
+  ],
+  "signing": "apksigner verification passed; repository debug certificate, not production signing",
+  "fixes": [
+    "Removed legacy Hermes executable override",
+    "Added Android com.aiwardrobe VIEW/DEFAULT/BROWSABLE intent filter",
+    "Renamed two JPEG assets with incorrect PNG extensions; bytes unchanged",
+    "Updated MainApplication host initialization to installed Expo57 template"
+  ],
+  "asset_renames": [
+    {
+      "old": "assets/images/mannequin_front.png",
+      "new": "assets/images/mannequin_front.jpg",
+      "sha256": "17ed1043dbe9d7d84ae5cb9edfbe622269f100866995afac824ec847d873ba78"
+    },
+    {
+      "old": "assets/images/mannequin_side.png",
+      "new": "assets/images/mannequin_side.jpg",
+      "sha256": "b2341eff757e78348b1230c6599d8ddc3718e5879d7516bc36008677766413cb"
+    }
+  ],
+  "verification": {
+    "jest_tests": 1105,
+    "jest_suites": 95,
+    "typescript": "passed",
+    "asset_format_test": "passed",
+    "source_and_apk_manifest_test": "passed",
+    "release_toolchain_tests": 5,
+    "targeted_lint": "zero warnings/errors",
+    "whitespace": "passed"
+  },
+  "attempt_failures": [
+    "Missing Hermes executable",
+    "AAPT rejected JPEG named mannequin_front.png",
+    "Removed Expo ReactNativeHostWrapper API"
+  ],
+  "manifest_test_note": "Compiled launchMode is enum 2; verified ActivityInfo.LAUNCH_SINGLE_TASK=2 against installed SDK",
+  "runtime": "APK installed on booted isolated API34 emulator; version and OS package resolution verified; visual app launch blocked by desktop lock",
+  "emulator": {
+    "name": "AIWardrobe_readiness_20261016",
+    "path": "/tmp/aiwardrobe-android-avd",
+    "image": "android-34/google_apis/arm64-v8a",
+    "device": "pixel_7",
+    "data_partition": "2G",
+    "created": true,
+    "booted": true,
+    "warning": "Image lacks optional devices.xml; creation completed using built-in Pixel7 profile",
+    "current_state": "stopped after checks; APK retained"
+  },
+  "approval": "Normal review accepted after reset time and read-only account status reported ordinary usage allowed; no bypass",
+  "remaining": [
+    "Android runtime and actual OS link delivery",
+    "Production Android signing and store build",
+    "iOS source changed since earlier native build",
+    "Wear-counter reconciliation and startup session race audits",
+    "Deferred AI provider/capacity work and full readiness requirements"
+  ]
+}

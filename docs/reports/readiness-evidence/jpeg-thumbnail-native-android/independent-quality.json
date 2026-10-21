@@ -1,0 +1,160 @@
+{
+  "scope": "Android native codec; independent Pillow output comparison; repository-derived JPEG photos, not camera captures",
+  "photoThresholds": {
+    "meanAbsoluteChannelErrorBelow": 3,
+    "psnrDbAtLeast": 35
+  },
+  "orientationThresholds": {
+    "meanAbsoluteChannelErrorBelow": 5,
+    "maxCornerChannelErrorBelow": 15
+  },
+  "cases": [
+    {
+      "name": "Repository photo",
+      "size": [
+        384,
+        512
+      ],
+      "bytes": 336693,
+      "passed": true
+    },
+    {
+      "name": "Transparent app icon",
+      "size": [
+        512,
+        512
+      ],
+      "bytes": 14158,
+      "alphaRange": [
+        247,
+        255
+      ],
+      "passed": true
+    },
+    {
+      "name": "Opaque photo 1",
+      "size": [
+        384,
+        512
+      ],
+      "bytes": 85077,
+      "meanAbsoluteChannelError": 2.3417527940538196,
+      "psnrDb": 37.08536714662729,
+      "pngBytes": 335443,
+      "reductionPercent": 74.63741977027394,
+      "originalUnchanged": true,
+      "passed": true
+    },
+    {
+      "name": "Opaque photo 2",
+      "size": [
+        384,
+        512
+      ],
+      "bytes": 31649,
+      "meanAbsoluteChannelError": 0.5046488444010416,
+      "psnrDb": 48.0886415391773,
+      "pngBytes": 101287,
+      "reductionPercent": 68.75314699813401,
+      "originalUnchanged": true,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 1",
+      "size": [
+        512,
+        341
+      ],
+      "bytes": 10421,
+      "meanAbsoluteChannelError": 0.6739865896871945,
+      "maxCornerChannelError": 0,
+      "originalUnchanged": true,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 2",
+      "size": [
+        512,
+        341
+      ],
+      "bytes": 10411,
+      "meanAbsoluteChannelError": 0.6682455858993158,
+      "maxCornerChannelError": 0,
+      "originalUnchanged": true,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 3",
+      "size": [
+        512,
+        341
+      ],
+      "bytes": 10349,
+      "meanAbsoluteChannelError": 0.6540448588709676,
+      "maxCornerChannelError": 0,
+      "originalUnchanged": true,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 4",
+      "size": [
+        512,
+        341
+      ],
+      "bytes": 10359,
+      "meanAbsoluteChannelError": 0.6605991874389052,
+      "maxCornerChannelError": 0,
+      "originalUnchanged": true,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 5",
+      "size": [
+        341,
+        512
+      ],
+      "bytes": 10783,
+      "meanAbsoluteChannelError": 0.6783987811583577,
+      "maxCornerChannelError": 0,
+      "originalUnchanged": true,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 6",
+      "size": [
+        341,
+        512
+      ],
+      "bytes": 10774,
+      "meanAbsoluteChannelError": 0.7030906341642229,
+      "maxCornerChannelError": 0,
+      "originalUnchanged": true,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 7",
+      "size": [
+        341,
+        512
+      ],
+      "bytes": 10772,
+      "meanAbsoluteChannelError": 0.6985467069892474,
+      "maxCornerChannelError": 0,
+      "originalUnchanged": true,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 8",
+      "size": [
+        341,
+        512
+      ],
+      "bytes": 10790,
+      "meanAbsoluteChannelError": 0.6731789925464321,
+      "maxCornerChannelError": 0,
+      "originalUnchanged": true,
+      "passed": true
+    }
+  ],
+  "passed": true
+}

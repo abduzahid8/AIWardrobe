@@ -1,0 +1,49 @@
+{
+  "measuredAt": "2026-10-19T07:30:34.528Z",
+  "runId": "30c56fc8-083b-4e1e-ba79-13bc39099541",
+  "scope": "Caller/victim disposable fixtures only; one real outfit-analysis request, no customer data",
+  "checks": [
+    {
+      "name": "public_anon_denied",
+      "passed": true,
+      "status": 401
+    },
+    {
+      "name": "free_access_denied",
+      "passed": true,
+      "status": 403
+    },
+    {
+      "name": "invalid_shape_denied_before_provider",
+      "passed": true,
+      "status": 400
+    },
+    {
+      "name": "caller_cannot_read_victim_fixture_via_rls",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "forged_owner_request_returns_only_callers_wardrobe",
+      "passed": false,
+      "status": 200,
+      "latencyMs": 12025,
+      "success": false,
+      "ownFixtureSeen": false,
+      "foreignFixtureSeen": false,
+      "detectedItemCount": 0,
+      "wardrobeRecommendationCount": 0,
+      "error": "Could not detect clothing items in the image"
+    }
+  ],
+  "cleanup": [
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    }
+  ]
+}

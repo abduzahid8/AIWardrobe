@@ -2,6 +2,7 @@
  * Shared helpers for wardrobe store slices
  */
 
+import { localDateKey, parseCalendarDate, shiftCalendarDay } from '../../src/utils/calendarDate';
 import type { ClothingItem, ClothingCategory, Season, Occasion, WearLog } from '../../src/types/domain';
 import type { ApiClothingItem } from '../../src/lib/api';
 
@@ -16,34 +17,30 @@ export const generateId = (): string => {
     });
 };
 
-export const getTodayDate = () => {
-    return new Date().toISOString().split('T')[0];
-};
+export const getTodayDate = () => localDateKey(new Date());
 
-export const calculateStreak = (wearLogs: WearLog[]): number => {
-    if (wearLogs.length === 0) return 0;
-
-    const dates = [...new Set(wearLogs.map(log => log.date))].sort().reverse();
-    const today = getTodayDate();
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-
-    if (dates[0] !== today && dates[0] !== yesterday) return 0;
-
-    let streak = 1;
-    for (let i = 1; i < dates.length; i++) {
-        const prev = new Date(dates[i - 1]);
-        const curr = new Date(dates[i]);
-        const diffDays = (prev.getTime() - curr.getTime()) / 86400000;
-
-        if (Math.round(diffDays) === 1) {
-            streak++;
-        } else {
-            break;
-        }
+export const calculateStreak = (wearLogs: Pick<WearLog, 'date'>[]): number => {
+    const today = new Date();
+    const todayKey = localDateKey(today);
+    const dates = new Set(wearLogs.map(log => log.date).filter(date => date <= todayKey && parseCalendarDate(date)));
+    let cursor = dates.has(todayKey) ? today : shiftCalendarDay(today, -1);
+    let streak = 0;
+    while (dates.has(localDateKey(cursor))) {
+        streak++;
+        cursor = shiftCalendarDay(cursor, -1);
     }
-
     return streak;
 };
+
+/** Inclusive window: today and the preceding days - 1 local calendar days. */
+export function recentWornItemIds(wearLogs: WearLog[], days: number): Set<string> {
+    if (!Number.isFinite(days) || days < 1) return new Set();
+    const today = new Date();
+    const todayKey = localDateKey(today);
+    const cutoff = localDateKey(shiftCalendarDay(today, -(Math.floor(days) - 1)));
+    return new Set(wearLogs.filter(log => log.date >= cutoff && log.date <= todayKey && parseCalendarDate(log.date))
+        .flatMap(log => log.itemIds));
+}
 
 export function mapApiItem(a: ApiClothingItem): ClothingItem {
     return {

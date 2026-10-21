@@ -14,18 +14,18 @@ export const STYLE_PERSONALITIES = [
 ] as const;
 
 export const COLOR_OPTIONS = [
-    { id: '#0A1931', name: '#0A1931', color: '#0A1931' },
-    { id: 'white', name: 'White', color: '#FFFFFF' },
-    { id: 'navy', name: 'Navy', color: '#1a237e' },
-    { id: 'beige', name: 'Beige', color: '#d4c4a8' },
-    { id: 'gray', name: 'Gray', color: '#757575' },
-    { id: 'burgundy', name: 'Burgundy', color: '#800020' },
-    { id: 'olive', name: 'Olive', color: '#556b2f' },
-    { id: 'brown', name: 'Brown', color: '#8b4513' },
-    { id: 'pink', name: 'Pink', color: '#e91e63' },
-    { id: 'blue', name: 'Blue', color: '#2196f3' },
-    { id: 'red', name: 'Red', color: '#f44336' },
-    { id: 'green', name: 'Green', color: '#4caf50' },
+    { id: '#0A1931', name: 'Midnight Blue', color: '#0A1931', tKey: 'styleQuiz.colors.names.midnightBlue' },
+    { id: 'white', name: 'White', color: '#FFFFFF', tKey: 'styleQuiz.colors.names.white' },
+    { id: 'navy', name: 'Navy', color: '#1a237e', tKey: 'styleQuiz.colors.names.navy' },
+    { id: 'beige', name: 'Beige', color: '#d4c4a8', tKey: 'styleQuiz.colors.names.beige' },
+    { id: 'gray', name: 'Gray', color: '#757575', tKey: 'styleQuiz.colors.names.gray' },
+    { id: 'burgundy', name: 'Burgundy', color: '#800020', tKey: 'styleQuiz.colors.names.burgundy' },
+    { id: 'olive', name: 'Olive', color: '#556b2f', tKey: 'styleQuiz.colors.names.olive' },
+    { id: 'brown', name: 'Brown', color: '#8b4513', tKey: 'styleQuiz.colors.names.brown' },
+    { id: 'pink', name: 'Pink', color: '#e91e63', tKey: 'styleQuiz.colors.names.pink' },
+    { id: 'blue', name: 'Blue', color: '#2196f3', tKey: 'styleQuiz.colors.names.blue' },
+    { id: 'red', name: 'Red', color: '#f44336', tKey: 'styleQuiz.colors.names.red' },
+    { id: 'green', name: 'Green', color: '#4caf50', tKey: 'styleQuiz.colors.names.green' },
 ] as const;
 
 export const OCCASIONS = [

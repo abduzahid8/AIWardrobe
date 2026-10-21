@@ -1,0 +1,16 @@
+[
+  {
+    "file": "photo-1.jpg",
+    "source": "assets/images/basic_outfit_1.png",
+    "description": "Opaque JPEG test fixture derived from repository PNG; not a camera capture",
+    "bytes": 666026,
+    "sha256": "2d47a0ac74bd074352bb446576e38d54ca5339ca3b8687cbc78812ca1f80a717"
+  },
+  {
+    "file": "photo-2.jpg",
+    "source": "assets/images/basic_outfit_2.png",
+    "description": "Opaque JPEG test fixture derived from repository PNG; not a camera capture",
+    "bytes": 96374,
+    "sha256": "661a2b576bf4fd2798cca61e8b2a2649369583412a55da016d8d9cb3ba3c2824"
+  }
+]

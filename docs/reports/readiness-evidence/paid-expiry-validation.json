@@ -1,0 +1,48 @@
+{
+  "scope": "Paid-plan expiry and direct quota calls, including expiry during a failed RPC; no payment transaction",
+  "before": {
+    "new_regressions_failed": 7,
+    "existing_tests_passed": 5
+  },
+  "after": {
+    "focused_tests": 56,
+    "full_tests": 2164,
+    "full_suites": 172,
+    "passed": true
+  },
+  "typescript": "pass",
+  "ios_hermes": "pass",
+  "android_arm64_release": "pass",
+  "source_maps": {
+    "/tmp/aiwardrobe-paid-expiry-ios.map": {
+      "store/subscriptionStore.ts": true,
+      "store/dailyUsageStore.ts": true,
+      "src/hooks/useSubscriptionClock.ts": true
+    },
+    "android/app/build/intermediates/sourcemaps/react/release/index.android.bundle.packager.map": {
+      "store/subscriptionStore.ts": true,
+      "store/dailyUsageStore.ts": true,
+      "src/hooks/useSubscriptionClock.ts": true
+    }
+  },
+  "source_sha256": {
+    "store/subscriptionStore.ts": "1fe240a7bc300228e978a453e308e414723ca9dd7886bcd37988d9e2680ba6e3",
+    "store/dailyUsageStore.ts": "fc2eaf5774f955a809249e5333a1f685146968ac6f5006535c4c47987e53b0e7",
+    "src/hooks/useSubscriptionClock.ts": "472c6c714a1adb9c847ddd8731bfd2c78fb5977d7bcb713a585ee210d3ad5dc9"
+  },
+  "live_report": "production-paid-expiry.json",
+  "limits": [
+    "Synthetic subscription fixture does not verify purchases, renewals, refunds or store receipts",
+    "No client distribution or 10000 DAU certification",
+    "Local clock skew unresolved",
+    "Wardrobe item cap still reads the last verified tier directly; separate repair required",
+    "Offline local quota enforcement is not global cross-device capacity/authority proof"
+  ],
+  "independent_cleanup": {
+    "remaining_audit_users": 0,
+    "orphan_subscriptions": 0,
+    "auth_users": 111,
+    "profiles": 111,
+    "garments": 109
+  }
+}

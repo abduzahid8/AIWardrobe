@@ -1,0 +1,68 @@
+{
+  "passed": true,
+  "runtime": "iOS 26.5",
+  "scope": "Actual iOS AVFoundation duration and exact-time H264 frame decoding with production TS time selection; no Expo bridge or provider/UI claim",
+  "metadata": {
+    "durationSeconds": 30,
+    "samples": []
+  },
+  "current": {
+    "durationSeconds": 30,
+    "samples": [
+      {
+        "rgb": [
+          247,
+          36,
+          0
+        ],
+        "timeMs": 3000
+      },
+      {
+        "rgb": [
+          63,
+          251,
+          0
+        ],
+        "timeMs": 15000
+      },
+      {
+        "rgb": [
+          26,
+          34,
+          255
+        ],
+        "timeMs": 27000
+      }
+    ]
+  },
+  "previous": {
+    "durationSeconds": 30,
+    "samples": [
+      {
+        "rgb": [
+          247,
+          36,
+          0
+        ],
+        "timeMs": 0
+      },
+      {
+        "rgb": [
+          247,
+          36,
+          0
+        ],
+        "timeMs": 1000
+      },
+      {
+        "rgb": [
+          247,
+          36,
+          0
+        ],
+        "timeMs": 2000
+      }
+    ]
+  },
+  "lateScenesObserved": true
+}

@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-17",
+  "status": "Foundation implemented/deployed; garment-save and image-rendering cutover not enabled",
+  "migration": "20261017001357_private_wardrobe_media.sql",
+  "bucket": {"name":"wardrobe-images","public":false,"maxBytes":10485760,"ownerFolderPolicies":true,"existingLiveSessionGuardApplies":true},
+  "service": "src/services/wardrobeMedia.ts",
+  "behavior": ["Unchanged ArrayBuffer upload", "Stable caller-owned UUID object path supports idempotent retry", "Canonical authenticated references contain no expiring token", "MIME/size/signature validation", "Account revision guards before and after async work", "Request credentials limited to exact project origin and owner", "Signed imports normalize to canonical references", "Explicit export helper documents CDN cache limits and is not wired to app rendering"],
+  "dependency": "base64-arraybuffer exactly 1.0.2; already installed transitively, now declared directly with lockfile",
+  "verification": {"mediaUnitTests":15,"fullJestTests":1144,"fullJestSuites":97,"typecheck":"pass","targetedLint":"pass without warnings","whitespace":"pass","freshMigrationCount":38,"combinedStorageRegressionChain":"pass","securityAdvisors":"Existing findings unchanged"},
+  "live": {"actualServiceExecuted":true,"fixtureBytes":2915128,"byteExactAuthenticatedAndSignedDownloads":true,"ownerIsolationAndPublicDenial":true,"accountDeletionRemovedObject":true,"checksExecuted":12,"checksPassed":11,"plannedChecks":13,"failedAssertion":"Immediate cached signed-link revocation after deletion","fixtureCleanup":"All objects and disposable users removed; independently verified"},
+  "cacheDocumentation": "https://supabase.com/docs/guides/storage/cdn/smart-cdn",
+  "remaining": ["Private React Native/Expo image rendering integration", "Provider image access without treating cached signed URL expiry as instant revocation", "Durable offline source-file ownership and cleanup", "Upload queue and direct garment save cutover", "Existing inline-image migration and unavailable local-file handling", "Thumbnail strategy and realistic media capacity", "Native rebuild/runtime verification", "Original intermittent write-load failure remains unexplained"]
+}

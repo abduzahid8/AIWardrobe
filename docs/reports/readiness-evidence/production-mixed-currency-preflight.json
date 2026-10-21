@@ -1,0 +1,80 @@
+{
+  "measuredAt": "2026-10-20T11:02:21.653Z",
+  "scope": "Production budget preflight: input and empty-pool decisions, not generation or capacity certification",
+  "checks": [
+    {
+      "name": "mixed_currency_minimum_exceeds_cap",
+      "status": 403,
+      "latencyMs": 2280,
+      "error": "feature_limit_reached",
+      "passed": false
+    },
+    {
+      "name": "live_gym_catalog_cannot_meet_cap",
+      "status": 403,
+      "latencyMs": 1647,
+      "error": "feature_limit_reached",
+      "passed": false
+    },
+    {
+      "name": "complete_outfit_minimum_exceeds_cap",
+      "status": 403,
+      "latencyMs": 1613,
+      "error": "feature_limit_reached",
+      "passed": false
+    },
+    {
+      "name": "mixed_currency_usd_stricter",
+      "status": 403,
+      "latencyMs": 1662,
+      "error": "feature_limit_reached",
+      "passed": false
+    },
+    {
+      "name": "mixed_currency_eur_stricter",
+      "status": 403,
+      "latencyMs": 1669,
+      "error": "feature_limit_reached",
+      "passed": false
+    },
+    {
+      "name": "selected_cap_cannot_be_raised",
+      "status": 403,
+      "latencyMs": 2097,
+      "error": "feature_limit_reached",
+      "passed": false
+    },
+    {
+      "name": "prompt_can_lower_cap",
+      "status": 403,
+      "latencyMs": 1024,
+      "error": "feature_limit_reached",
+      "passed": false
+    },
+    {
+      "name": "invalid_budget_rejected",
+      "status": 403,
+      "latencyMs": 1479,
+      "error": "feature_limit_reached",
+      "passed": false
+    },
+    {
+      "name": "impossible_budget_distinguished",
+      "status": 403,
+      "latencyMs": 1055,
+      "error": "feature_limit_reached",
+      "passed": false
+    },
+    {
+      "name": "zero_text_budget_preserved",
+      "status": 403,
+      "latencyMs": 1503,
+      "error": "feature_limit_reached",
+      "passed": false
+    }
+  ],
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

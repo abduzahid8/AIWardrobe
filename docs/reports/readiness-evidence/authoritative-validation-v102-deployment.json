@@ -1,0 +1,47 @@
+{
+  "date": "2026-10-21",
+  "baseVersion": 101,
+  "version": 102,
+  "verifyJwt": true,
+  "changed": [
+    "functions/generate-outfits/index.ts"
+  ],
+  "unchangedSharedModules": 10,
+  "allFilesMatchStaged": true,
+  "regressions": {
+    "failedBefore": 3,
+    "cases": [
+      "model color conceals excluded canonical color",
+      "model pattern conceals excluded canonical pattern",
+      "model metadata falsely rejects allowed canonical items"
+    ]
+  },
+  "validation": {
+    "fullTests": 2090,
+    "suites": 168,
+    "stagedTests": 59,
+    "typescript": "pass",
+    "deno": "pass"
+  },
+  "live": {
+    "report": "v102-authoritative-date-budget-300-live.json",
+    "status": 503,
+    "latencyMs": 8960,
+    "attempts": [
+      "parsed but missing shoes",
+      "parsed but missing shoes"
+    ],
+    "rejectionLogTimes": [
+      "2026-10-21T02:07:54.623Z",
+      "2026-10-21T02:07:56.376Z"
+    ]
+  },
+  "remainingReadinessUsers": 0,
+  "limits": [
+    "Validator fault injection is not a reproduced public API exploit",
+    "Live smoke failed; not reliability proof",
+    "Two stochastic samples do not establish whether the canonical-metadata change affected success rate",
+    "No load or native test in this check",
+    "10000 DAU goal incomplete"
+  ]
+}

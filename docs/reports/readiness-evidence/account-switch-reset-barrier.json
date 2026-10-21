@@ -1,0 +1,41 @@
+{
+  "scope": "App account-session publication waits for known reset-persistence promises; SDK callbacks return synchronously",
+  "changes": [
+    "New owner remains anonymous until reset promise settles",
+    "Superseded reset work included in later publication barrier",
+    "SDK callback and successful sign-in share matching publication",
+    "Queued actions wait for pending callback reset/publication",
+    "Signed-out event prevents pending publication revival",
+    "Rejected reset leaves next account unauthenticated"
+  ],
+  "verification": {
+    "fullTests": 1350,
+    "suites": 118,
+    "failures": 0,
+    "newStoreRegressions": 7,
+    "typescript": "passed",
+    "eslintErrors": 0,
+    "eslintWarnings": 38,
+    "actualSdkAndStoreDiagnosticPassed": true
+  },
+  "sources": {
+    "store/auth.ts": "9c3b24a907a097c50c820f04921b5311c409b555a30081981552efc49e61b1c7",
+    "__tests__/store/auth.test.ts": "b96493b90dd6a3568f3f4ab0756b6ea33897907f45f3a84c2b80e2a1ff88e66d",
+    "scripts/validation/auth-store-sdk-reset.mjs": "573d9b0f3bfcca3d5c19d08f140258620dd08d074ca5da4133490ad53d92760d"
+  },
+  "normalAndroidBuild": {
+    "exitCode": 0,
+    "packagedAuthSourceMatches": true,
+    "apkSha256": "8493d0f0dbe139ece9daaeac667b430e1957227ef21dc0d22e117a5092060692",
+    "bundleSha256": "1d0c461e77c451f7355118fb5816bcc744fcda99c7d940b42955e391e76e9e46",
+    "auditMarkerAbsent": true,
+    "nativeUiVerified": false
+  },
+  "productionChanged": false,
+  "remaining": [
+    "Actual persistence can swallow errors; settled reset does not prove durable removal after a storage failure",
+    "Raw persist writers and external service mutations still need audit",
+    "Physical device/native auth and stalled-work recovery",
+    "Cold media, full capacity, security, store purchases and deferred provider acceptance"
+  ]
+}

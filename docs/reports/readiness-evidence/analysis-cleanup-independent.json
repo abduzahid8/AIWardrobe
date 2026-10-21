@@ -1,0 +1,9 @@
+{
+  "checkedAt": "2026-10-19T11:38:19.791731+00:00",
+  "method": "Supabase SQL auth.users raw_app_meta_data readiness_audit exact run IDs",
+  "runIds": [
+    "30c56fc8-083b-4e1e-ba79-13bc39099541",
+    "6f0d1a01-9ce7-4c6e-a186-852e9d171a65"
+  ],
+  "remainingAccounts": 0
+}

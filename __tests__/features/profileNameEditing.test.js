@@ -1,0 +1,17 @@
+/** @jest-environment node */
+const fs=require('fs'),ts=require('typescript');
+jest.mock('../../lib/supabase',()=>({supabase:{rpc:jest.fn()}}));
+const {profileNameUpdates,AccountNameError}=require('../../src/services/accountNames');
+const source=fs.readFileSync('screens/ProfileScreen.tsx','utf8');const ast=ts.createSourceFile('profile.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+let handler;function walk(node){if(ts.isVariableDeclaration(node)&&node.name.getText(ast)==='handleSaveProfile')handler=node.initializer.getText(ast);ts.forEachChild(node,walk);}walk(ast);
+const body=ts.transpileModule(`const execute=${handler};`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText+';return execute;';
+function setup(){
+ let revision=1,owner='owner';const update=jest.fn(()=>({eq:()=>({select:()=>({single:async()=>({error:null})})})}));
+ const state={user:{id:'owner',handle:'handle_one',display_name:'Old Name'},saving:false,profileEditMounted:{current:true},authEvents:{getUserId:()=>owner,getRevision:()=>revision},setSaving:jest.fn(),setShowEditProfile:jest.fn(),editName:'New Full Name',editHandle:'handle_one',editAvatar:null,editAvatarMimeType:null,profileNameUpdates,assertHandleAvailable:jest.fn().mockResolvedValue(undefined),uploadProfileAvatar:jest.fn(),supabase:{from:()=>({update}),storage:{from:()=>({remove:jest.fn().mockResolvedValue({error:null})})}},fetchUser:jest.fn().mockResolvedValue(undefined),Haptics:{notificationAsync:jest.fn(),NotificationFeedbackType:{Success:'success'}},AccountNameError,AvatarUploadError:class extends Error{},t:key=>key,getErrorMessage:error=>error.message,Alert:{alert:jest.fn()}};
+ return {state,update,execute:()=>Function(...Object.keys(state),body)(...Object.values(state))(),switchOwner:()=>{owner='other';revision++;}};
+}
+test('actual profile save writes display_name without renaming the handle',async()=>{const app=setup();await app.execute();expect(app.update).toHaveBeenCalledWith({display_name:'New Full Name'});expect(app.state.assertHandleAvailable).not.toHaveBeenCalled();});
+test('actual profile save validates a changed handle and sends both independent fields',async()=>{const app=setup();app.state.editHandle=' NEW_HANDLE ';await app.execute();expect(app.state.assertHandleAvailable).toHaveBeenCalledWith('new_handle');expect(app.update).toHaveBeenCalledWith({display_name:'New Full Name',handle:'new_handle'});});
+test('an unavailable handle never reaches the profile write',async()=>{const app=setup();app.state.editHandle='occupied';app.state.assertHandleAvailable.mockRejectedValue(new AccountNameError('username_exists'));await app.execute();expect(app.update).not.toHaveBeenCalled();expect(app.state.Alert.alert).toHaveBeenCalledWith('common.error','signUp.usernameAlreadyUse');});
+test('an account switch during availability cannot write a stale profile',async()=>{const app=setup();app.state.editHandle='new_handle';let finish;app.state.assertHandleAvailable.mockImplementation(()=>new Promise(resolve=>{finish=resolve;}));const pending=app.execute();app.switchOwner();finish();await pending;expect(app.update).not.toHaveBeenCalled();expect(app.state.setShowEditProfile).not.toHaveBeenCalled();});
+test('a unique-constraint race is shown as a taken handle',async()=>{const app=setup();app.update.mockReturnValue({eq:()=>({select:()=>({single:async()=>({error:{code:'23505'}})})})});await app.execute();expect(app.state.Alert.alert).toHaveBeenCalledWith('common.error','signUp.usernameAlreadyUse');expect(app.state.setShowEditProfile).not.toHaveBeenCalled();});

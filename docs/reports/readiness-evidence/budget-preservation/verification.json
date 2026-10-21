@@ -1,0 +1,50 @@
+{
+  "verifiedAt": "2026-10-18T19:30:00.296368+00:00",
+  "scope": "Budget correctness, not category-wide model reliability or capacity certification",
+  "sourceMapChecks": [
+    {
+      "platform": "ios",
+      "source": "screens/AIOutfitmaker.tsx",
+      "exactSourceMatch": true
+    },
+    {
+      "platform": "ios",
+      "source": "src/utils/outfitBudget.ts",
+      "exactSourceMatch": true
+    },
+    {
+      "platform": "ios",
+      "source": "screens/AuthCallbackScreen.tsx",
+      "exactSourceMatch": true
+    },
+    {
+      "platform": "android",
+      "source": "screens/AIOutfitmaker.tsx",
+      "exactSourceMatch": true
+    },
+    {
+      "platform": "android",
+      "source": "src/utils/outfitBudget.ts",
+      "exactSourceMatch": true
+    },
+    {
+      "platform": "android",
+      "source": "screens/AuthCallbackScreen.tsx",
+      "exactSourceMatch": true
+    }
+  ],
+  "tests": 1495,
+  "suites": 131,
+  "productionPreflightChecksPassed": 5,
+  "artifacts": [
+    {
+      "path": "/tmp/aiwardrobe-budget-release-00nhnjcc/AIWardrobe.app/main.jsbundle",
+      "sha256": "b7b2bb53b8cb270660812dd69d7b85578b6e1b540ddf7352c85986cd56e90982"
+    },
+    {
+      "path": "android/app/build/outputs/apk/release/app-release.apk",
+      "sha256": "b819cbfc4c7dc16edbcf45d2d7d0449fceeeeea43aec99cd6c7736b0854a3b0d"
+    }
+  ],
+  "installedOnUserDevice": false
+}

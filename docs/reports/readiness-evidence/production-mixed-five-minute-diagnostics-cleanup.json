@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-21",
+  "runId": "d4e35932-a335-4474-b957-afb3be269f08",
+  "source": "Independent post-load SQL counts",
+  "remainingAuditUsers": 0,
+  "remainingFixtureGarments": 0,
+  "remainingFixtureOutfits": 0,
+  "orphanGarments": 0,
+  "orphanWearLogs": 0,
+  "authUsers": 111,
+  "profiles": 111,
+  "garments": 109
+}

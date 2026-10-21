@@ -1,0 +1,32 @@
+{
+  "measuredAt": "2026-10-21T02:10:52.160Z",
+  "scope": "Hosted NVIDIA response_format JSON Schema capability; synthetic IDs, not outfit quality or capacity",
+  "checks": [
+    {
+      "mode": "json_schema",
+      "status": 200,
+      "latencyMs": 1243,
+      "exactRequiredSlots": false,
+      "returnedKeys": [
+        "top",
+        "bottom"
+      ],
+      "syntheticContentPreview": "```json\n{\n  \"top\": \"probe-top\",\n  \"bottom\": \"probe-bottom\"\n}\n```",
+      "finishReason": "stop",
+      "errorCode": null
+    },
+    {
+      "mode": "json_object",
+      "status": 200,
+      "latencyMs": 1482,
+      "exactRequiredSlots": false,
+      "returnedKeys": [
+        "top",
+        "bottom"
+      ],
+      "syntheticContentPreview": "```json\n{\n  \"top\": \"probe-top\",\n  \"bottom\": \"probe-bottom\"\n}\n```",
+      "finishReason": "stop",
+      "errorCode": null
+    }
+  ]
+}

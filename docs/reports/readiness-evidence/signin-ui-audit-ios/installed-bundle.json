@@ -1,0 +1,9 @@
+{
+  "simulator": "399C2EE8-BA50-4A64-8057-CB7A53C5DCC7",
+  "runtime": "iOS 26.5",
+  "testedProcessPid": 26681,
+  "bundleSha256": "d5c5d161b8f8c618a81d3df60e7517d8ed34b071c00301cccf689ec9483b2453",
+  "installedMatchesSourceVerifiedCandidate": true,
+  "artifactMethod": "Normal-entry Hermes bundle embedded in unchanged compiled simulator native runtime",
+  "unsignedSimulatorArtifact": true
+}

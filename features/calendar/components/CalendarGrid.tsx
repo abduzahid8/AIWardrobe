@@ -34,7 +34,6 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
     currentMonth,
     currentYear,
     todayStr,
-    today,
     outfitLogs,
     onDayPress,
     onPrevMonth,
@@ -67,7 +66,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
             const dateStr = formatDate(currentYear, currentMonth, day);
             const log = outfitLogs[dateStr];
             const isToday = dateStr === todayStr;
-            const isFuture = new Date(dateStr) > today;
+            const isFuture = dateStr > todayStr;
 
             days.push(
                 <TouchableOpacity

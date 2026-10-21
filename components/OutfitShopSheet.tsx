@@ -1,3 +1,4 @@
+import { shopPriceLabel } from '../src/utils/shopPriceLabel';
 import React, { useCallback } from 'react';
 import {
   View,
@@ -8,11 +9,14 @@ import {
   ScrollView,
   Pressable,
 } from 'react-native';
-import { Image as ExpoImage } from 'expo-image';
+
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
 import { ScaledText } from './ui/ScaledText';
+import { getShopDestination } from '../src/utils/shopDestination';
+import { ExpoImage } from '../src/components/MediaImage';
+
 
 export interface ShopSheetItem {
   id: string | number;
@@ -66,31 +70,18 @@ const getCategoryLabel = (item: ShopSheetItem): string => {
   return raw ? String(raw) : 'Item';
 };
 
-const formatPrice = (item: ShopSheetItem): string | null => {
-  if (typeof item.price !== 'number' || Number.isNaN(item.price) || item.price <= 0) return null;
-  const currency = item.currency || 'USD';
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency,
-      maximumFractionDigits: 0,
-    }).format(item.price);
-  } catch {
-    return `$${item.price}`;
-  }
-};
 
 export const OutfitShopSheet = ({ visible, onClose, items, occasion, style }: OutfitShopSheetProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const openShopUrl = useCallback(async (url?: string, itemName?: string) => {
-    const target = url || (itemName ? `https://www.google.com/search?q=${encodeURIComponent(`buy ${itemName}`)}&tbm=shop` : undefined);
-    if (!target) return;
+    if (!url && !itemName) return;
+    // Only http(s) retailer links may reach Linking; hostile schemes
+    // (tel:, javascript:, app deep links) fall back to a Shopping search.
+    const target = getShopDestination({ shopUrl: url, name: itemName });
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      const supported = await Linking.canOpenURL(target);
-      if (supported) await Linking.openURL(target);
-      else await Linking.openURL(target);
+      await Linking.openURL(target);
     } catch {
       // Linking failures are non-fatal — user stays on the sheet.
     }
@@ -122,7 +113,7 @@ export const OutfitShopSheet = ({ visible, onClose, items, occasion, style }: Ou
               const image = getItemImage(item);
               const shopUrl = getShopUrl(item);
               const retailer = getRetailerLabel(shopUrl);
-              const price = formatPrice(item);
+              const price = shopPriceLabel(item, i18n?.resolvedLanguage || i18n?.language);
               const name = item.name || item.type || `Item ${index + 1}`;
               return (
                 <View key={String(item.id ?? `${name}-${index}`)} style={styles.row}>

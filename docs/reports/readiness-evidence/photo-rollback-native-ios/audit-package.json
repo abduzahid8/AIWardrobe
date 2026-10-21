@@ -1,0 +1,15 @@
+{
+  "method": "Fresh Hermes audit bundle in separate copy of unchanged native simulator app",
+  "runtime": "iOS 26.5",
+  "simulator": "4E8FB48F-8869-4C76-903C-295F4B8967C9",
+  "bundleSha256": "257814b176fb6adcf4ae80682784033395c83c1b6e66f35f667d4c2af311083d",
+  "checks": {
+    "scripts/validation/photo-rollback-native-entry.tsx": true,
+    "store/slices/wardrobeItemsSlice.ts": true,
+    "src/services/pendingWardrobeMedia.ts": true,
+    "nativeExecutableUnchanged": true,
+    "nativeFrameworkFilesUnchanged": true,
+    "auditMarkerPresent": true
+  },
+  "passed": true
+}

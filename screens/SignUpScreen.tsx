@@ -1,3 +1,4 @@
+import { AccountNameError } from '../src/services/accountNames';
 import {
   Alert,
   Platform,
@@ -9,7 +10,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { ScaledText } from '../components/ui/ScaledText';
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -42,6 +43,7 @@ const SignUpScreen = () => {
   const navigation = useNavigation();
   const { register, signInWithApple, signInWithGoogle } = useAuthStore();
   const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
+  const authRequestInFlight = useRef(false);
 
   const entering = (delay: number) =>
     isReducedMotionEnabled ? undefined : FadeInDown.delay(delay).duration(400);
@@ -53,7 +55,8 @@ const SignUpScreen = () => {
   }, []);
 
   const handleAppleSignUp = async () => {
-    if (isLoading || isGoogleLoading) return;
+    if (authRequestInFlight.current || isLoading || isGoogleLoading) return;
+    authRequestInFlight.current = true;
     setIsLoading(true);
     try {
       await signInWithApple();
@@ -62,12 +65,14 @@ const SignUpScreen = () => {
         Alert.alert(t('signUp.registrationFailed'), error.message || t('signIn.appleSignInFailed'));
       }
     } finally {
+      authRequestInFlight.current = false;
       setIsLoading(false);
     }
   };
 
   const handleGoogleSignUp = async () => {
-    if (isLoading || isGoogleLoading) return;
+    if (authRequestInFlight.current || isLoading || isGoogleLoading) return;
+    authRequestInFlight.current = true;
     setIsGoogleLoading(true);
     try {
       await signInWithGoogle();
@@ -76,6 +81,7 @@ const SignUpScreen = () => {
         Alert.alert(t('signUp.registrationFailed'), error.message || t('signIn.googleSignInFailed'));
       }
     } finally {
+      authRequestInFlight.current = false;
       setIsGoogleLoading(false);
     }
   };
@@ -102,6 +108,7 @@ const SignUpScreen = () => {
   const canSubmit = isEmailValid && isPasswordValid && isUsernameValid;
 
   const handleSignUp = async () => {
+    if (authRequestInFlight.current) return;
     if (!email || !password || !username) {
       Alert.alert(t('signUp.missingFields'), t('signUp.fillRequiredFields'));
       return;
@@ -128,6 +135,7 @@ const SignUpScreen = () => {
       return;
     }
 
+    authRequestInFlight.current = true;
     setIsLoading(true);
     try {
       await register(normalizedEmail, password, trimmedUsername);
@@ -140,6 +148,13 @@ const SignUpScreen = () => {
       if (errorMessage.includes(SUPABASE_AUTH_ERRORS.EMAIL_CONFIRMATION_REQUIRED)) {
         setSentEmail(normalizedEmail);
         setIsSent(true);
+        return;
+      }
+      if (error instanceof AccountNameError) {
+        Alert.alert(
+          t(error.code === 'username_exists' ? 'signUp.usernameTaken' : error.code === 'invalid_handle' ? 'signUp.invalidUsername' : 'signUp.connectionFailed'),
+          t(error.code === 'username_exists' ? 'signUp.usernameAlreadyUse' : error.code === 'invalid_handle' ? 'signUp.usernameRequirements' : 'signUp.cannotConnectServer'),
+        );
         return;
       }
       // Parse specific error messages
@@ -155,6 +170,7 @@ const SignUpScreen = () => {
         Alert.alert(t('signUp.registrationFailed'), errorMessage);
       }
     } finally {
+      authRequestInFlight.current = false;
       setIsLoading(false);
     }
   };

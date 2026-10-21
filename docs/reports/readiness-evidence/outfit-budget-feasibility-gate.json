@@ -1,0 +1,27 @@
+{
+  "verifiedAt": "2026-10-19T02:31:20.946090+00:00",
+  "change": "Reject a proven unaffordable required-slot pool before provider configuration lookup or AI call",
+  "proof": "Sum of per-slot minimum same-currency known prices is a conservative lower bound; it ignores compatibility and never claims that a feasible look exists",
+  "guards": [
+    "Missing required slot returns undecided",
+    "Unknown or invalid price/currency returns undecided",
+    "Owned items cost zero",
+    "Dress alternatives skip ordinary top-bottom bound",
+    "Layered requests include outerwear"
+  ],
+  "tests": {
+    "full": 1520,
+    "suites": 132,
+    "stagedWire": 12,
+    "stagedDeno": "pass"
+  },
+  "live": {
+    "correctedPreflightPassed": 8,
+    "gymStatus": 422,
+    "gymLatencyMs": 3447,
+    "gymMinimumUzs": 4043000,
+    "gymCapUzs": 3150000,
+    "fixturesRemaining": 0
+  },
+  "limitation": "Main mobile screen still commonly displays generic generation failure for these structured codes; client-specific budget copy not yet verified"
+}

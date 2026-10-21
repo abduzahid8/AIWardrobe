@@ -1,0 +1,27 @@
+{
+  "scope": "Actual app store and installed SDK, expired synthetic persisted session plus saved sign-out intent, automatic SDK refresh enabled; memory storage and intercepted HTTP, no OS restart",
+  "passed": true,
+  "restoredOwner": null,
+  "publishedOwners": [],
+  "refreshesBeforeAppInit": 1,
+  "refreshResponse": "synthetic server rejection",
+  "tokenGrants": [
+    "password",
+    "refresh_token"
+  ],
+  "requests": [
+    "/auth/v1/token",
+    "/rest/v1/profiles",
+    "/auth/v1/token"
+  ],
+  "intentRemovedAfterRecovery": true,
+  "sdkSessionRemovedAfterRecovery": true,
+  "sourceSha256": {
+    "store/authEvents.ts": "4a276d38e09fc9b2fe577b0dcb8361ab450eadda454ba36cc8f299a1bbbb30c3",
+    "src/lib/authOperationQueue.ts": "ef2b8bfc0b8187894ee42cfce0c1540a564acd2001b79bc2add282c6daf0b610",
+    "src/lib/signOutIntent.ts": "7c25e10efec8a2f528c932138a1c29e9ef9f386cc85c1951f93d50280dc7488d",
+    "store/auth.ts": "11b66b2cde7d192471f8def21fe1c474dfbedfb6e9798826f8278507e493cc0a"
+  },
+  "sdkVersion": "2.115.0",
+  "diagnosticSha256": "fb0a212232977108ffc2b8ec563f434b0f07fcfa61a71c59fd278478e6cc5375"
+}

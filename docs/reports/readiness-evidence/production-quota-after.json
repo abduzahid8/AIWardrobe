@@ -1,0 +1,78 @@
+{
+  "measuredAt": "2026-10-19T02:56:49.049Z",
+  "scope": "Disposable-user quota RPC and role checks; no AI/provider calls or customer data changes",
+  "mode": "after",
+  "checks": [
+    {
+      "name": "free_paid_work_denied",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "concurrent_free_swipes_capped_despite_forged_unlimited",
+      "passed": true,
+      "requests": 20,
+      "allowed": 3
+    },
+    {
+      "name": "zero_amount_rejected",
+      "passed": true,
+      "status": 400
+    },
+    {
+      "name": "unknown_feature_rejected",
+      "passed": true,
+      "status": 400
+    },
+    {
+      "name": "client_cannot_call_server_meter",
+      "passed": true,
+      "status": 403
+    },
+    {
+      "name": "client_cannot_query_arbitrary_user_tier",
+      "passed": true,
+      "status": 403
+    },
+    {
+      "name": "first_trial_uses_server_time",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "server_trial_receives_premium",
+      "passed": true
+    },
+    {
+      "name": "valid_trial_paid_work_admitted",
+      "passed": true
+    },
+    {
+      "name": "expired_trial_paid_work_denied",
+      "passed": true
+    },
+    {
+      "name": "client_cannot_restart_trial",
+      "passed": true,
+      "status": 403
+    },
+    {
+      "name": "exact_persisted_counters",
+      "passed": true,
+      "counters": [
+        {
+          "feature": "homeSwipes",
+          "used": 3
+        },
+        {
+          "feature": "edge:aiOutfits",
+          "used": 1
+        }
+      ]
+    }
+  ],
+  "cleanup": {
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

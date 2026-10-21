@@ -1,0 +1,18 @@
+{
+  "date": "2026-10-20",
+  "scope": "Two anonymous production RPC privilege checks; no user records requested",
+  "results": [
+    {
+      "function": "has_premium_access",
+      "status": 401,
+      "code": "42501",
+      "passed": true
+    },
+    {
+      "function": "is_account_locked",
+      "status": 401,
+      "code": "42501",
+      "passed": true
+    }
+  ]
+}

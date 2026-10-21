@@ -1,0 +1,77 @@
+{
+  "scope": "Actual app staging/thumbnail source with installed native Expo codec; no cloud session or provider",
+  "cases": [
+    {
+      "name": "Repository photo",
+      "originalPath": "file:///Users/v.zahid/Library/Developer/CoreSimulator/Devices/2F806F52-7020-4FD3-9B68-3E0CA8B69D76/data/Containers/Data/Application/58176D3D-DB50-4F5C-92B6-B1A71C717715/Documents/aiwardrobe-pending-media/11111111-1111-4111-8111-111111111111/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.png",
+      "thumbnailPath": "file:///Users/v.zahid/Library/Developer/CoreSimulator/Devices/2F806F52-7020-4FD3-9B68-3E0CA8B69D76/data/Containers/Data/Application/58176D3D-DB50-4F5C-92B6-B1A71C717715/Documents/aiwardrobe-pending-media/11111111-1111-4111-8111-111111111111/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb.png",
+      "originalBytes": 2915128,
+      "thumbnailBytes": 472270,
+      "elapsedMs": 664,
+      "dimensions": {
+        "width": 384,
+        "height": 512
+      },
+      "pngColorType": 6,
+      "originalUnchanged": true,
+      "alphaChannel": true,
+      "passed": true,
+      "originalAlphaRange": [
+        255,
+        255
+      ],
+      "originalDimensions": [
+        1125,
+        1500
+      ],
+      "thumbnailAlphaRange": [
+        255,
+        255
+      ],
+      "thumbnailDimensions": [
+        384,
+        512
+      ],
+      "byte_reduction_percent": 83.8,
+      "hostOriginalArtifact": "/tmp/aiwardrobe-native-thumbnail-artifacts/0-original.png",
+      "hostThumbnailArtifact": "/tmp/aiwardrobe-native-thumbnail-artifacts/0-thumbnail.png"
+    },
+    {
+      "name": "Transparent app icon",
+      "originalPath": "file:///Users/v.zahid/Library/Developer/CoreSimulator/Devices/2F806F52-7020-4FD3-9B68-3E0CA8B69D76/data/Containers/Data/Application/58176D3D-DB50-4F5C-92B6-B1A71C717715/Documents/aiwardrobe-pending-media/11111111-1111-4111-8111-111111111111/cccccccc-cccc-4ccc-8ccc-cccccccccccc.png",
+      "thumbnailPath": "file:///Users/v.zahid/Library/Developer/CoreSimulator/Devices/2F806F52-7020-4FD3-9B68-3E0CA8B69D76/data/Containers/Data/Application/58176D3D-DB50-4F5C-92B6-B1A71C717715/Documents/aiwardrobe-pending-media/11111111-1111-4111-8111-111111111111/dddddddd-dddd-4ddd-8ddd-dddddddddddd.png",
+      "originalBytes": 41271,
+      "thumbnailBytes": 23256,
+      "elapsedMs": 31,
+      "dimensions": {
+        "width": 512,
+        "height": 512
+      },
+      "pngColorType": 6,
+      "originalUnchanged": true,
+      "alphaChannel": true,
+      "passed": true,
+      "originalAlphaRange": [
+        240,
+        255
+      ],
+      "originalDimensions": [
+        1024,
+        1024
+      ],
+      "thumbnailAlphaRange": [
+        244,
+        255
+      ],
+      "thumbnailDimensions": [
+        512,
+        512
+      ],
+      "byte_reduction_percent": 43.65,
+      "hostOriginalArtifact": "/tmp/aiwardrobe-native-thumbnail-artifacts/1-original.png",
+      "hostThumbnailArtifact": "/tmp/aiwardrobe-native-thumbnail-artifacts/1-thumbnail.png"
+    }
+  ],
+  "passed": true,
+  "host_readonly_pixel_inspection": "Pillow read-only inspection of actual native output files"
+}

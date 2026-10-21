@@ -1,3 +1,4 @@
+import { authEvents } from '../store/authEvents';
 /**
  * InspoScreen — Inspiration page
  * Minimalist Liquid Glass design with Guide + Shop tabs
@@ -31,6 +32,8 @@ import { INSPO_MENS_SHOP_ITEMS, CLASSIC_MENS_ITEMS } from '../data/inspoMensShop
 import { useShopCatalog } from '../hooks/useShopCatalog';
 import { useFeaturedCapsules, type FeaturedCapsule } from '../hooks/useFeaturedCapsules';
 import { useTranslation } from 'react-i18next';
+import { formatMoney } from '../src/utils/outfitBudget';
+import { inferShopRowMacro } from '../src/utils/shopCatalogOrder';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const { colors, spacing, typography, radius } = LiquidGlass2026Theme;
@@ -43,6 +46,38 @@ const { colors, spacing, typography, radius } = LiquidGlass2026Theme;
 const CAPSULE_CARD_WIDTH = 180;
 const CAPSULE_CARD_HEIGHT = 250;
 const PRODUCT_CARD_WIDTH = (SCREEN_WIDTH - spacing.screenPadding * 2 - spacing.sm) / 2;
+
+// ── Shop price + spotlight helpers ──────────────────────────────────────
+// shop_catalog rows are priced in UZS (median ~1.2M so'm) — never render
+// them with a `$` prefix. formatMoney('UZS') groups as "2 232 000 UZS".
+const formatShopPrice = (item: ShopCatalogItem): string => {
+    const n = Number((item as unknown as { price?: unknown })?.price);
+    if (!Number.isFinite(n) || n <= 0) return '';
+    return formatMoney(n, 'UZS');
+};
+
+const getShopItemMacro = (item: ShopCatalogItem): string => {
+    try {
+        const g = String((item as unknown as { garmentType?: unknown })?.garmentType ?? '');
+        const n = String((item as unknown as { name?: unknown })?.name ?? '');
+        return inferShopRowMacro(g, n);
+    } catch {
+        const g = String((item as unknown as { garmentType?: unknown })?.garmentType ?? '');
+        if (g === 'shoes') return 'shoes';
+        if (g === 'lower_body') return 'bottom';
+        return 'top';
+    }
+};
+
+// Big (spotlight) cards are editorial covers — shoes or outerwear only,
+// never pants/bottoms. Small pair cards can show anything.
+const isSpotlightEligible = (item: ShopCatalogItem): boolean => {
+    const macro = getShopItemMacro(item);
+    return macro === 'shoes' || macro === 'outerwear';
+};
+
+const isPantsItem = (item: ShopCatalogItem): boolean =>
+    getShopItemMacro(item) === 'bottom';
 
 // ── Sub-Components ──────────────────────────────────────
 
@@ -148,7 +183,7 @@ const ProductCard = React.memo(({
             onPress={handleCardPress}
             activeOpacity={0.9}
             accessibilityRole="button"
-            accessibilityLabel={`${item.brand} ${item.name} $${item.price.toFixed(0)}`}
+            accessibilityLabel={`${item.brand} ${item.name} ${formatShopPrice(item)}`}
             accessibilityHint={t('inspo.buyNow')}
         >
             <View
@@ -198,7 +233,7 @@ const ProductCard = React.memo(({
                     {item.brand}
                 </ScaledText>
                 <ScaledText style={[styles.captionPrice, spotlight && styles.captionPriceLarge]}>
-                    ${item.price.toFixed(0)}
+                    {formatShopPrice(item)}
                 </ScaledText>
             </View>
         </TouchableOpacity>
@@ -516,15 +551,20 @@ const InspoScreen = () => {
 
     const saveInspo = useCallback(async (item: ShopCatalogItem) => {
         // toggleSave persists + syncs Profile saved outfits via the shared store.
-        const wasSaved = useSavedShopStore.getState().items.some((s) => String(s.id) === String(item.id));
-        const nowSaved = await useSavedShopStore.getState().toggleSave(item);
-        Haptics.notificationAsync(
-            wasSaved
-                ? Haptics.NotificationFeedbackType.Warning
-                : Haptics.NotificationFeedbackType.Success,
-        ).catch(() => {});
-        flashSaveToast(t(wasSaved ? 'inspo.unsavedToast' : 'inspo.savedToast'));
-        if (nowSaved) setShowSavedOnly(false);
+        const revision = authEvents.getRevision();
+        try {
+            const nowSaved = await useSavedShopStore.getState().toggleSave(item);
+            if (revision !== authEvents.getRevision() || !authEvents.getUserId()) return;
+            Haptics.notificationAsync(
+                nowSaved
+                    ? Haptics.NotificationFeedbackType.Success
+                    : Haptics.NotificationFeedbackType.Warning,
+            ).catch(() => {});
+            flashSaveToast(t(nowSaved ? 'inspo.savedToast' : 'inspo.unsavedToast'));
+            if (nowSaved) setShowSavedOnly(false);
+        } catch {
+            if (revision === authEvents.getRevision()) flashSaveToast(t('inspo.savedItemsUnavailable'));
+        }
     }, [flashSaveToast, t]);
 
     const isShopEmpty = syncedShopItems.length === 0;
@@ -577,11 +617,13 @@ const InspoScreen = () => {
         [savedInspo],
     );
 
-    // Break the grid's rhythm on purpose: every 5th item leads a fresh
-    // block as a full-width spotlight before the next pair of small cards,
-    // so the shop reads like a curated editorial spread instead of a flat
-    // uniform tile wall.
-    // startIndex = the card's global position in shopItems — ProductCard only
+    // Break the grid's rhythm on purpose: every 5th slot is a full-width
+    // spotlight before the next pair of small cards, so the shop reads like
+    // a curated editorial spread instead of a flat uniform tile wall.
+    // Spotlight covers are shoes or outerwear ONLY — never pants/bottoms.
+    // Every item still renders exactly once; pants displaced from a cover
+    // slot simply flow into the next small pair row.
+    // startIndex = the card's position in display order — ProductCard only
     // animates `index < 8`, so this must be the real position, not a hardcoded
     // 0/1 (which previously made EVERY card animate on every data change).
     type ShopRow =
@@ -589,21 +631,66 @@ const InspoScreen = () => {
         | { type: 'pair'; items: [ShopCatalogItem, ShopCatalogItem | null]; startIndex: number };
 
     const shopRows = useMemo<ShopRow[]>(() => {
+        if (shopItems.length === 0) return [];
         const rows: ShopRow[] = [];
-        let i = 0;
+        // Track by array index (not id) so every element renders exactly
+        // once even if two rows ever share an id.
+        const used = new Set<number>();
+        const keyOf = (it: ShopCatalogItem) => String((it as unknown as { id?: unknown })?.id);
+        let displayIndex = 0;
         let plate = 1;
-        while (i < shopItems.length) {
-            rows.push({ type: 'spotlight', item: shopItems[i], plate: plate++, startIndex: i });
-            i += 1;
-            for (let pairCount = 0; pairCount < 2 && i < shopItems.length; pairCount++) {
-                const left = shopItems[i];
-                const right = shopItems[i + 1] ?? null;
-                rows.push({ type: 'pair', items: [left, right], startIndex: i });
-                i += right ? 2 : 1;
+
+        // Deep-linked piece from an outfit stays pinned as the first cover
+        // even if it's pants — the user explicitly tapped it.
+        const focusedIdx = focusedShopItemId
+            ? shopItems.findIndex((it) => keyOf(it) === String(focusedShopItemId))
+            : -1;
+
+        const pickSpotlightIdx = (): number => {
+            let fallbackNonPants = -1;
+            for (let k = 0; k < shopItems.length; k++) {
+                if (used.has(k)) continue;
+                if (isSpotlightEligible(shopItems[k])) return k;
+                if (fallbackNonPants < 0 && !isPantsItem(shopItems[k])) fallbackNonPants = k;
+            }
+            if (fallbackNonPants >= 0) return fallbackNonPants;
+            for (let k = 0; k < shopItems.length; k++) {
+                if (!used.has(k)) return k;
+            }
+            return -1;
+        };
+
+        const nextUnusedIdx = (): number => {
+            for (let k = 0; k < shopItems.length; k++) {
+                if (!used.has(k)) return k;
+            }
+            return -1;
+        };
+
+        if (focusedIdx >= 0) {
+            rows.push({ type: 'spotlight', item: shopItems[focusedIdx], plate: plate++, startIndex: displayIndex++ });
+            used.add(focusedIdx);
+        }
+
+        while (used.size < shopItems.length) {
+            const coverIdx = pickSpotlightIdx();
+            if (coverIdx < 0) break;
+            rows.push({ type: 'spotlight', item: shopItems[coverIdx], plate: plate++, startIndex: displayIndex++ });
+            used.add(coverIdx);
+
+            for (let pairCount = 0; pairCount < 2; pairCount++) {
+                const leftIdx = nextUnusedIdx();
+                if (leftIdx < 0) break;
+                used.add(leftIdx);
+                const rightIdx = nextUnusedIdx();
+                const right = rightIdx >= 0 ? shopItems[rightIdx] : null;
+                if (rightIdx >= 0) used.add(rightIdx);
+                rows.push({ type: 'pair', items: [shopItems[leftIdx], right], startIndex: displayIndex });
+                displayIndex += right ? 2 : 1;
             }
         }
         return rows;
-    }, [shopItems]);
+    }, [shopItems, focusedShopItemId]);
 
     const renderShopRow = useCallback(
         ({ item: row }: { item: ShopRow }) => {

@@ -1,0 +1,51 @@
+{
+  "measuredAt": "2026-10-19T12:32:04.665Z",
+  "runId": "4cbc8143-d65b-475d-b1aa-89590844e4e6",
+  "scope": "Auth/entitlement/rate and invalid-input checks; no valid paid rendering input sent",
+  "checks": [
+    {
+      "name": "public_anon_denied",
+      "passed": true,
+      "status": 401
+    },
+    {
+      "name": "missing_auth_denied",
+      "passed": true,
+      "status": 401
+    },
+    {
+      "name": "free_try_on_denied",
+      "passed": true,
+      "status": 403
+    },
+    {
+      "name": "trial_invalid_image",
+      "passed": true,
+      "status": 400
+    },
+    {
+      "name": "trial_invalid_type",
+      "passed": true,
+      "status": 400
+    },
+    {
+      "name": "trial_malformed_json",
+      "passed": true,
+      "status": 400
+    },
+    {
+      "name": "five_per_minute_enforced",
+      "passed": true,
+      "status": 429,
+      "seededBucketCount": 5,
+      "sameFixedWindow": true
+    }
+  ],
+  "cleanup": [
+    {
+      "deleted": true,
+      "status": 200
+    }
+  ],
+  "fixtureOwner": "c1b6e2cc-de5d-41ac-82dc-3f4b27906e58"
+}

@@ -1,0 +1,82 @@
+{
+  "measuredAt": "2026-10-19T11:47:44.676Z",
+  "runId": "b5feeda5-4210-49fb-ae1c-11930a7d3afe",
+  "scope": "One disposable free account; no store purchase or paid access",
+  "checks": [
+    {
+      "name": "anonymous_denied",
+      "passed": true,
+      "status": 401
+    },
+    {
+      "name": "verified_free_cannot_self_grant",
+      "passed": false,
+      "status": 503,
+      "latencyMs": 2569,
+      "verified": false,
+      "tier": null,
+      "error": "Subscription synchronization failed"
+    },
+    {
+      "name": "profile_remains_free",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "server_snapshot_records_only_owner",
+      "passed": false,
+      "status": 200
+    },
+    {
+      "name": "client_cannot_call_authoritative_writer",
+      "passed": true,
+      "status": 403
+    },
+    {
+      "name": "ios_offering_contains_three_approved_products",
+      "passed": true,
+      "status": 200,
+      "products": [
+        "2.99",
+        "com.aiwardrobe.premium.monthly",
+        "com.aiwardrobe.premium.yearly"
+      ],
+      "currentOffering": "default"
+    }
+  ],
+  "cleanup": [
+    {
+      "system": "revenuecat",
+      "deletionRequested": true,
+      "status": 200,
+      "note": "RevenueCat deletion is asynchronous; no GET used because it creates missing customers."
+    },
+    {
+      "system": "diagnostic_ledger",
+      "deleted": true,
+      "status": 204
+    },
+    {
+      "system": "sync_ledger",
+      "deleted": true,
+      "status": 204
+    },
+    {
+      "system": "supabase_user",
+      "deleted": true,
+      "status": 200
+    }
+  ],
+  "fixtureOwner": "3cbd9a39-2269-417d-95f1-0abbe418e2b9",
+  "providerDiagnostic": {
+    "status": 201,
+    "requestDateType": "number",
+    "hasSubscriber": true,
+    "entitlementsType": "object"
+  },
+  "rpcDiagnostic": {
+    "status": 400,
+    "code": "42703",
+    "message": "column \"auto_renew\" of relation \"subscriptions\" does not exist"
+  }
+}

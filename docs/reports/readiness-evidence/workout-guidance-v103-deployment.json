@@ -1,0 +1,47 @@
+{
+  "date": "2026-10-21",
+  "baseVersion": 102,
+  "version": 103,
+  "verifyJwt": true,
+  "changed": [
+    "functions/generate-outfits/index.ts"
+  ],
+  "unchangedSharedModules": 10,
+  "allFilesMatchStaged": true,
+  "changes": [
+    "Workout intent selects sport guidance instead of saved tailoring aesthetic for candidate fetch/rank and prompts",
+    "Sport context accepts verified athletic clothing and rejects dress footwear",
+    "Workout-specific knowledge replaces universal tailoring advice for this activity",
+    "Cold workout prompt requests warm performance layering",
+    "Correction prompt respects athletic requirements",
+    "Validation uses sport context for workout activity"
+  ],
+  "regressions": {
+    "warmWorkoutFailedBefore": true,
+    "coldWorkoutAndDressShoeRejectionChecked": true
+  },
+  "validation": {
+    "fullTests": 2093,
+    "suites": 168,
+    "stagedTests": 62,
+    "typescript": "pass",
+    "denoLocal": "pass",
+    "denoStaged": "pass"
+  },
+  "limits": [
+    "Simulation cases use fixture clothing metadata",
+    "No production capacity or native test",
+    "Original 250USD case remains a separate budget feasibility scenario",
+    "Live 400USD scenario measured separately"
+  ],
+  "live": {
+    "report": "v103-workout-budget-400-live.json",
+    "status": 503,
+    "latencyMs": 74167,
+    "firstAttempt": "parsed, rejected: workout requires verified athletic top",
+    "correction": "timeout",
+    "capUzs": 4804920
+  },
+  "remainingReadinessUsers": 0,
+  "nextEvidenceBasedAction": "Exclude candidates that fail hard activity admission and check complete eligible slots before provider generation"
+}

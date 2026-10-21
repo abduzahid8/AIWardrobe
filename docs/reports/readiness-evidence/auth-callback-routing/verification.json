@@ -1,0 +1,13 @@
+{
+  "renderedTestsPassed": 6,
+  "fullTestsPassed": 1475,
+  "fullSuitesPassed": 129,
+  "typecheck": "pass",
+  "targetedLint": "pass",
+  "iosSourceMatches": true,
+  "iosScope": "Normal-entry Hermes bundle using unchanged compiled native runtime",
+  "liveGoogleNativeSessionVerified": false,
+  "androidReleaseBuild": "pass",
+  "androidSourceMatches": true,
+  "androidApkSha256": "91a6b189d3c0b8b0af8b6c84355a308feb88526b6dfce9afcd840600bafe0940"
+}

@@ -1,0 +1,29 @@
+{
+  "verifiedAt": "2026-10-19T01:42:39.856863+00:00",
+  "before": {
+    "compiledUrlSchemeRegistered": false,
+    "safariObservation": "Safari cannot open the page because the address is invalid",
+    "compiledRegistrationContract": "failed"
+  },
+  "after": {
+    "nativeArm64ReleaseBuild": "passed",
+    "sourceAndCompiledRegistrationContract": "passed",
+    "schemes": [
+      "com.aiwardrobe"
+    ],
+    "appLaunch": "passed; Sign In observed",
+    "warmAndColdUrlDelivery": "PASS: warm reset, warm empty callback, and cold reset delivery; complete Google login not tested",
+    "safariObservation": "Exact com.aiwardrobe://reset-password link now shows Open this page in AIWardrobe prompt; previously invalid address.",
+    "warmResetLinkDelivery": "PASS: Safari opened app, Invalid Session screen displayed for tokenless reset link; Back to Sign In returned to Sign In",
+    "warmEmptyCallback": "PASS: exact com.aiwardrobe://auth/callback opened from Safari, subsequent observed native screen Sign In, no spinner",
+    "coldResetLinkDelivery": "PASS: simctl terminate audit app returned0; Safari UI exact com.aiwardrobe://reset-password; user tapped Open; CUA observed Invalid Session and expected tokenless-link message"
+  },
+  "nativeExecutableSha256": "485125829bff58abde692896baa718f41a4f861e4bbb0ec74b3d9d0f03db6d18",
+  "normalHermesSha256": "1f4386276e68084bdbd152c3a9348bc91e7ca6249fddb85ad09086a4916964dc",
+  "scope": "Freshly rebuilt native Release arm64 simulator runtime; exact previously source-verified normal Hermes bundle. Not signed-device, full Google login or store certification.",
+  "simulatorId": "B9187869-6F34-44BA-AEB0-901DAB6C1034",
+  "simulatorName": "AIWardrobe-Callback-Audit",
+  "simulatorCleanup": "Audit simulator shut down and deleted after tests; both simctl commands returned0",
+  "productionAccountsCreated": 0,
+  "originalSimulatorModified": false
+}

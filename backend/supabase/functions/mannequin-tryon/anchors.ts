@@ -1,5 +1,5 @@
 // =============================================================================
-// Anatomical anchor boxes for the FIXED mannequin (assets/images/mannequin_front.png).
+// Anatomical anchor boxes for the FIXED mannequin (assets/images/mannequin_front.jpg).
 // Coordinates are normalized [0..1] of a 1024x1024 working canvas. They were
 // measured from the reference image and replace the previous hand-tuned
 // smoothstep masks. Because the mannequin never changes pose, simple boxes
@@ -17,7 +17,7 @@ export interface AnchorBox {
   feather: number
 }
 
-// Box layout for assets/images/mannequin_front.png.
+// Box layout for assets/images/mannequin_front.jpg.
 // Slight overlap between layer and top is intentional so a jacket can be added
 // over an existing shirt without erasing the collar.
 export const ANCHOR_BOXES: Record<GarmentLabel, AnchorBox> = {

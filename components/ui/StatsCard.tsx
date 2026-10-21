@@ -3,7 +3,7 @@
 
 import React, { useEffect } from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native'
-import { ScaledText } from '../ui/ScaledText';;
+import { ScaledText } from '../ui/ScaledText';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,

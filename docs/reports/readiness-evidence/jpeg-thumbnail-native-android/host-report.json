@@ -1,0 +1,251 @@
+{
+  "scope": "Actual app staging/thumbnail source with installed native Expo codec; no cloud session or provider",
+  "platform": "android",
+  "cases": [
+    {
+      "name": "Repository photo",
+      "originalPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/00-originalPath.png",
+      "thumbnailPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/00-thumbnailPath.png",
+      "originalBytes": 2298216,
+      "thumbnailBytes": 336693,
+      "elapsedMs": 225,
+      "dimensions": {
+        "height": 512,
+        "width": 384
+      },
+      "smallerThanOriginal": true,
+      "encodedFormat": "png",
+      "pngColorType": 2,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    },
+    {
+      "name": "Transparent app icon",
+      "originalPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/01-originalPath.png",
+      "thumbnailPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/01-thumbnailPath.png",
+      "originalBytes": 12653,
+      "thumbnailBytes": 14158,
+      "elapsedMs": 250,
+      "dimensions": {
+        "height": 512,
+        "width": 512
+      },
+      "smallerThanOriginal": false,
+      "encodedFormat": "png",
+      "pngColorType": 6,
+      "originalUnchanged": true,
+      "alphaChannel": true,
+      "passed": true
+    },
+    {
+      "name": "Opaque photo 1",
+      "originalPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/02-originalPath.jpg",
+      "thumbnailPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/02-thumbnailPath.jpg",
+      "originalBytes": 666026,
+      "thumbnailBytes": 85077,
+      "elapsedMs": 61,
+      "dimensions": {
+        "height": 512,
+        "width": 384
+      },
+      "smallerThanOriginal": true,
+      "baselinePngPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/02-baselinePngPath.png",
+      "baselinePngBytes": 335443,
+      "encodedFormat": "jpeg",
+      "pngColorType": null,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    },
+    {
+      "name": "Opaque photo 2",
+      "originalPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/03-originalPath.jpg",
+      "thumbnailPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/03-thumbnailPath.jpg",
+      "originalBytes": 96374,
+      "thumbnailBytes": 31649,
+      "elapsedMs": 163,
+      "dimensions": {
+        "height": 512,
+        "width": 384
+      },
+      "smallerThanOriginal": true,
+      "baselinePngPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/03-baselinePngPath.png",
+      "baselinePngBytes": 101287,
+      "encodedFormat": "jpeg",
+      "pngColorType": null,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 1",
+      "originalPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/04-originalPath.jpg",
+      "thumbnailPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/04-thumbnailPath.jpg",
+      "originalBytes": 62854,
+      "thumbnailBytes": 10421,
+      "elapsedMs": 197,
+      "dimensions": {
+        "height": 341,
+        "width": 512
+      },
+      "smallerThanOriginal": true,
+      "baselinePngPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/04-baselinePngPath.png",
+      "baselinePngBytes": 5827,
+      "encodedFormat": "jpeg",
+      "pngColorType": null,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 2",
+      "originalPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/05-originalPath.jpg",
+      "thumbnailPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/05-thumbnailPath.jpg",
+      "originalBytes": 62854,
+      "thumbnailBytes": 10411,
+      "elapsedMs": 166,
+      "dimensions": {
+        "height": 341,
+        "width": 512
+      },
+      "smallerThanOriginal": true,
+      "baselinePngPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/05-baselinePngPath.png",
+      "baselinePngBytes": 5743,
+      "encodedFormat": "jpeg",
+      "pngColorType": null,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 3",
+      "originalPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/06-originalPath.jpg",
+      "thumbnailPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/06-thumbnailPath.jpg",
+      "originalBytes": 62854,
+      "thumbnailBytes": 10349,
+      "elapsedMs": 192,
+      "dimensions": {
+        "height": 341,
+        "width": 512
+      },
+      "smallerThanOriginal": true,
+      "baselinePngPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/06-baselinePngPath.png",
+      "baselinePngBytes": 5745,
+      "encodedFormat": "jpeg",
+      "pngColorType": null,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 4",
+      "originalPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/07-originalPath.jpg",
+      "thumbnailPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/07-thumbnailPath.jpg",
+      "originalBytes": 62854,
+      "thumbnailBytes": 10359,
+      "elapsedMs": 162,
+      "dimensions": {
+        "height": 341,
+        "width": 512
+      },
+      "smallerThanOriginal": true,
+      "baselinePngPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/07-baselinePngPath.png",
+      "baselinePngBytes": 5784,
+      "encodedFormat": "jpeg",
+      "pngColorType": null,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 5",
+      "originalPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/08-originalPath.jpg",
+      "thumbnailPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/08-thumbnailPath.jpg",
+      "originalBytes": 62854,
+      "thumbnailBytes": 10783,
+      "elapsedMs": 195,
+      "dimensions": {
+        "height": 512,
+        "width": 341
+      },
+      "smallerThanOriginal": true,
+      "baselinePngPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/08-baselinePngPath.png",
+      "baselinePngBytes": 6239,
+      "encodedFormat": "jpeg",
+      "pngColorType": null,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 6",
+      "originalPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/09-originalPath.jpg",
+      "thumbnailPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/09-thumbnailPath.jpg",
+      "originalBytes": 62854,
+      "thumbnailBytes": 10774,
+      "elapsedMs": 212,
+      "dimensions": {
+        "height": 512,
+        "width": 341
+      },
+      "smallerThanOriginal": true,
+      "baselinePngPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/09-baselinePngPath.png",
+      "baselinePngBytes": 6184,
+      "encodedFormat": "jpeg",
+      "pngColorType": null,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 7",
+      "originalPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/10-originalPath.jpg",
+      "thumbnailPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/10-thumbnailPath.jpg",
+      "originalBytes": 62854,
+      "thumbnailBytes": 10772,
+      "elapsedMs": 166,
+      "dimensions": {
+        "height": 512,
+        "width": 341
+      },
+      "smallerThanOriginal": true,
+      "baselinePngPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/10-baselinePngPath.png",
+      "baselinePngBytes": 6144,
+      "encodedFormat": "jpeg",
+      "pngColorType": null,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    },
+    {
+      "name": "EXIF orientation 8",
+      "originalPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/11-originalPath.jpg",
+      "thumbnailPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/11-thumbnailPath.jpg",
+      "originalBytes": 62854,
+      "thumbnailBytes": 10790,
+      "elapsedMs": 205,
+      "dimensions": {
+        "height": 512,
+        "width": 341
+      },
+      "smallerThanOriginal": true,
+      "baselinePngPath": "/Users/v.zahid/AIWardrobe/docs/reports/readiness-evidence/jpeg-thumbnail-native-android/11-baselinePngPath.png",
+      "baselinePngBytes": 6253,
+      "encodedFormat": "jpeg",
+      "pngColorType": null,
+      "originalUnchanged": true,
+      "alphaChannel": false,
+      "passed": true
+    }
+  ],
+  "currentStep": "EXIF orientation 8: generate thumbnail",
+  "sourceUri": "scripts_validation_fixtures_photoorientation_orientation8",
+  "sourceInfo": {
+    "size": 62854,
+    "uri": "scripts_validation_fixtures_photoorientation_orientation8",
+    "isDirectory": false,
+    "exists": true
+  },
+  "passed": true
+}

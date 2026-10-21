@@ -5,6 +5,16 @@ import useSubscriptionStore, {
   type FeatureKey,
 } from './subscriptionStore';
 import { supabase } from '../lib/supabase';
+import { authEvents } from './authEvents';
+import { withRequestDeadline } from '../src/lib/requestDeadline';
+
+// Time may have advanced while no screen was mounted or while an RPC was pending.
+function currentFeatureLimit(feature: FeatureKey): number {
+  useSubscriptionStore.getState().refreshTimeState();
+  const tier = useSubscriptionStore.getState().effectiveTier;
+  const raw = TIER_FEATURES[tier][feature];
+  return typeof raw === 'number' ? raw : raw ? -1 : 0;
+}
 
 // ─────────────────────────────────────────────────────────────
 // Source-of-truth: Supabase RPC `check_and_increment_usage`.
@@ -38,14 +48,14 @@ type DailyUsageState = {
   resetToday: () => Promise<void>;
 };
 
-const DAILY_USAGE_KEY = 'daily_usage_v1';
+export const DAILY_USAGE_STORAGE_PREFIX = 'daily_usage_v2::';
+const storageKey = (owner: string) => `${DAILY_USAGE_STORAGE_PREFIX}${encodeURIComponent(owner)}`;
+let writeChain: Promise<void> = Promise.resolve();
+export function drainDailyUsageWrites(): Promise<void> { return writeChain; }
 
 function todayKey(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  // Match the UTC day used by Postgres quota counters in every timezone.
+  return new Date().toISOString().slice(0, 10);
 }
 
 function emptySnapshot(): DailyUsageSnapshot {
@@ -60,12 +70,17 @@ function rollover(snapshot: DailyUsageSnapshot): DailyUsageSnapshot {
   return snapshot;
 }
 
-async function persist(snapshot: DailyUsageSnapshot) {
-  try {
-    await AsyncStorage.setItem(DAILY_USAGE_KEY, JSON.stringify(snapshot));
-  } catch (error) {
-    console.warn('[dailyUsageStore] persist failed', error);
-  }
+async function persist(snapshot: DailyUsageSnapshot, owner: string | null, revision: number) {
+  if (!owner) return;
+  writeChain = writeChain.then(async () => {
+    if (revision !== authEvents.getRevision() || owner !== authEvents.getUserId()) return;
+    try {
+      await AsyncStorage.setItem(storageKey(owner), JSON.stringify(snapshot));
+    } catch (error) {
+      console.warn('[dailyUsageStore] persist failed', error);
+    }
+  });
+  await writeChain;
 }
 
 const useDailyUsageStore = create<DailyUsageState>((set, get) => ({
@@ -73,8 +88,12 @@ const useDailyUsageStore = create<DailyUsageState>((set, get) => ({
   hydrated: false,
 
   hydrate: async () => {
+    const revision = authEvents.getRevision();
+    const owner = authEvents.getUserId();
     try {
-      const raw = await AsyncStorage.getItem(DAILY_USAGE_KEY);
+      // Legacy unowned counters cannot safely be assigned to an account.
+      const raw = owner ? await AsyncStorage.getItem(storageKey(owner)) : null;
+      if (revision !== authEvents.getRevision()) return;
       if (!raw) {
         set({ snapshot: emptySnapshot(), hydrated: true });
         return;
@@ -87,21 +106,32 @@ const useDailyUsageStore = create<DailyUsageState>((set, get) => ({
         parsed = emptySnapshot();
       }
 
+      if (!parsed || typeof parsed !== 'object' || !parsed.counts || typeof parsed.counts !== 'object' || Array.isArray(parsed.counts)) {
+        parsed = emptySnapshot();
+      }
+      parsed.counts = Object.fromEntries(Object.entries(parsed.counts).filter(([, count]) => Number.isSafeInteger(count) && (count as number) >= 0));
       const snapshot = rollover(parsed);
       set({ snapshot, hydrated: true });
       if (snapshot.date !== parsed.date) {
-        await persist(snapshot);
+        await persist(snapshot, owner, revision);
       }
     } catch (error) {
       console.warn('[dailyUsageStore] hydrate failed', error);
+      if (revision !== authEvents.getRevision()) return;
       set({ hydrated: true });
     }
   },
 
   consume: async (feature, amount = 1) => {
-    const tier = useSubscriptionStore.getState().effectiveTier;
-    const rawLimit = TIER_FEATURES[tier][feature];
-    const limit = typeof rawLimit === 'number' ? rawLimit : rawLimit ? -1 : 0;
+    const revision = authEvents.getRevision();
+    const owner = authEvents.getUserId();
+    const requestDay = todayKey();
+    const stillCurrent = () => revision === authEvents.getRevision() && requestDay === todayKey();
+    const cancelled = () => ({ allowed: false, used: get().getUsed(feature), remaining: get().getRemaining(feature) });
+    if (!Number.isSafeInteger(amount) || amount < 1 || amount > 100) {
+      return { allowed: false, used: get().getUsed(feature), remaining: get().getRemaining(feature) };
+    }
+    let limit = currentFeatureLimit(feature);
 
     // Try the server RPC first — it is atomic and tamper-proof.
     // Bound it with a timeout: on slow networks (15s+ Supabase stalls)
@@ -109,15 +139,12 @@ const useDailyUsageStore = create<DailyUsageState>((set, get) => ({
     // On timeout we fall through to the local cache immediately.
     const RPC_TIMEOUT_MS = 6000;
     try {
-      const rpcPromise = supabase.rpc('check_and_increment_usage', {
+      const { data, error } = await withRequestDeadline(() => supabase.rpc('check_and_increment_usage', {
         p_feature: feature,
         p_limit: limit,
         p_amount: amount,
-      });
-      const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
-        setTimeout(() => resolve({ data: null, error: new Error('usage RPC timed out') }), RPC_TIMEOUT_MS)
-      );
-      const { data, error } = await Promise.race([rpcPromise, timeoutPromise]);
+      }), RPC_TIMEOUT_MS);
+      if (!stillCurrent()) return cancelled();
 
       if (!error && Array.isArray(data) && data.length > 0) {
         const row = data[0] as { allowed: boolean; used: number; remaining: number };
@@ -126,10 +153,11 @@ const useDailyUsageStore = create<DailyUsageState>((set, get) => ({
         const current = rollover(get().snapshot);
         const next = {
           date: current.date,
-          counts: { ...current.counts, [feature]: row.used },
+          counts: { ...current.counts, [feature]: Math.max(current.counts[feature] ?? 0, row.used) },
         };
         set({ snapshot: next });
-        await persist(next);
+        await persist(next, owner, revision);
+        if (!stillCurrent()) return cancelled();
 
         return { allowed: row.allowed, used: row.used, remaining: row.remaining };
       }
@@ -137,6 +165,10 @@ const useDailyUsageStore = create<DailyUsageState>((set, get) => ({
       console.warn('[dailyUsageStore] RPC failed, falling back to local cache', err);
     }
 
+    if (!stillCurrent()) return cancelled();
+
+    // Re-evaluate after the await: a plan or trial may have expired meanwhile.
+    limit = currentFeatureLimit(feature);
     // Offline fallback — best-effort enforcement against the cached counter.
     const current = rollover(get().snapshot);
     const used = (current.counts[feature] ?? 0);
@@ -150,7 +182,8 @@ const useDailyUsageStore = create<DailyUsageState>((set, get) => ({
       counts: { ...current.counts, [feature]: nextCount },
     };
     set({ snapshot: next });
-    await persist(next);
+    await persist(next, owner, revision);
+    if (!stillCurrent()) return cancelled();
     return {
       allowed: true,
       used: nextCount,
@@ -165,12 +198,7 @@ const useDailyUsageStore = create<DailyUsageState>((set, get) => ({
 
   getRemaining: (feature) => {
     const current = rollover(get().snapshot);
-    const tier = useSubscriptionStore.getState().effectiveTier;
-    const limit = TIER_FEATURES[tier][feature];
-
-    if (typeof limit === 'boolean') {
-      return limit ? -1 : 0;
-    }
+    const limit = currentFeatureLimit(feature);
 
     if (limit === -1) {
       return -1;
@@ -186,9 +214,11 @@ const useDailyUsageStore = create<DailyUsageState>((set, get) => ({
   },
 
   resetToday: async () => {
+    const owner = authEvents.getUserId();
+    const revision = authEvents.getRevision();
     const snapshot = emptySnapshot();
     set({ snapshot });
-    await persist(snapshot);
+    await persist(snapshot, owner, revision);
   },
 }));
 

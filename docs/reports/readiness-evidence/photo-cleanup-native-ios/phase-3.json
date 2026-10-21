@@ -1,0 +1,1 @@
+{"phase":3,"platform":"ios","passed":true,"checks":["managed photos remain absent after a second process restart","completed cleanup marker remains absent","clean startup does not recreate managed photos","unrelated file survives restart","no fetch requests attempted"],"networkAttempts":0}

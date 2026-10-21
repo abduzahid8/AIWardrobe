@@ -1,0 +1,18 @@
+{
+  "runId": "28421e1d-576e-4079-8741-adf153e9058e",
+  "requests": {
+    "outfit": {
+      "status": 503,
+      "latencyMs": 19903
+    },
+    "single": {
+      "status": 503,
+      "latencyMs": 6013
+    }
+  },
+  "admissionRlsPassed": 4,
+  "remainingTaggedAccountsIndependentSql": 0,
+  "conclusion": "Null-fit mismatch reproduced/fixed but does not explain all hosted failures. Both mode-positive checks remain failed.",
+  "logging": "Latest deployed source emits static reason codes, invalid field names/indexes and counts only. Model/image/owner not logged. Privacy assertion passed.",
+  "logReadAttempt": "Unified log query unavailable/backend error; no additional provider call after logging deployment."
+}

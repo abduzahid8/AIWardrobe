@@ -1,0 +1,31 @@
+{
+  "observedAt": "2026-10-18T13:51:48.936051+00:00",
+  "project": "aiwardrobe-493213",
+  "clientId": "76314369047-tir2ipgmhnbh9lrd6gt4f2t89ijjnlp3.apps.googleusercontent.com",
+  "clientName": "AIwardrobe-webb=app",
+  "authorizedRedirectUrisObserved": [
+    "https://fyqpifmrsftsfqibhwhy.supabase.co/auth/v1/callback"
+  ],
+  "audience": "External",
+  "publishingStatus": "In production",
+  "callbackApprovedByUser": "https://fyqpifmrsftsfqibhwhy.supabase.co/auth/v1/callback",
+  "callbackSaveConfirmed": true,
+  "supabaseClientSwitched": true,
+  "blocker": "Hosted Google login succeeds; native app handoff/session publication still unverified.",
+  "callbackVerifiedAfterFreshNavigation": true,
+  "callbackVerifiedAt": "2026-10-18T13:55:33.295258+00:00",
+  "liveFirstHopStatus": 302,
+  "liveFirstHopClientId": "76314369047-tir2ipgmhnbh9lrd6gt4f2t89ijjnlp3.apps.googleusercontent.com",
+  "liveScopes": "email profile",
+  "googleConsentReached": true,
+  "orgInternalAtConsent": false,
+  "credentialExchangeVerified": true,
+  "updatedAt": "2026-10-18T14:03:15.436640+00:00",
+  "callbackError": "invalid_client: The provided client secret is invalid.",
+  "callbackErrorTimeUTC": "2026-10-18T14:04:34Z",
+  "liveLoginEventUTC": "2026-10-18T14:10:48Z",
+  "liveCallbackHTTPStatus": 302,
+  "liveCallbackError": "",
+  "laterRepeatedCallbackError": "OAuth state not found or expired at 2026-10-18T14:11:19Z",
+  "nativeAppSessionVerified": false
+}

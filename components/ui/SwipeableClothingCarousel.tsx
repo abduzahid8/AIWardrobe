@@ -1,6 +1,6 @@
 import React, { useCallback, useRef } from 'react';
 import { View, FlatList, StyleSheet, Dimensions, ViewToken,  } from 'react-native'
-import { ScaledText } from '../ui/ScaledText';;
+import { ScaledText } from '../ui/ScaledText';
 import Animated, {
     useSharedValue,
     useAnimatedScrollHandler,

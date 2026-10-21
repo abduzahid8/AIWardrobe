@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { View, Animated, Dimensions, StyleSheet, Easing } from 'react-native'
-import { Image } from 'expo-image';
+
 import { ScaledText } from './ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
+import { ExpoImage as Image } from '../src/components/MediaImage';
+
 
 const { width, height } = Dimensions.get('window');
 

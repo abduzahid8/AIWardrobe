@@ -1,0 +1,28 @@
+{
+  "projectRef": "fyqpifmrsftsfqibhwhy",
+  "scope": "Scoped generated endpoint per-user rate admission; paid meter explicitly false pending free Home policy",
+  "baselineFreshDownloadMatched": true,
+  "limit": {
+    "requests": 10,
+    "windowSeconds": 60,
+    "type": "fixed window per authenticated user"
+  },
+  "stagedSourceSha256": "8e6a4b5e229315364737a5890cde0a287283f852ba0772282824d8cccfca2683",
+  "rateHelperSha256": "c5c290ef5440fb01eeeaad6b9b655cb02fb8534f15bfaf90c001eecd747ee11f",
+  "deploymentSucceeded": true,
+  "liveEvidence": "production-generation-rate-admission.json",
+  "liveChecksPassed": 5,
+  "stagedTestsPassed": 37,
+  "stagedDeno": "passed",
+  "fullAppTests": 1571,
+  "fullAppSuites": 138,
+  "limitations": [
+    "Rate cap is not a global NVIDIA concurrency or throughput guarantee.",
+    "Paid entitlement quota is not connected to generation pending free Home policy.",
+    "Fixed windows permit adjacent-window bursts.",
+    "Retention schedule remains unestablished.",
+    "Local repo handler still contains pending paid-meter integration; whole source deployment remains inappropriate."
+  ],
+  "laterIntegrationEvidence": "paid-generation-policy.json",
+  "laterRetentionEvidence": "usage-retention-deployment.json"
+}

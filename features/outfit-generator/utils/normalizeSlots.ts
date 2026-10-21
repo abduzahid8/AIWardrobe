@@ -1,3 +1,5 @@
+import { fitsBudgetAmount } from '../../../backend/supabase/functions/_shared/budgetFx';
+import readinessLogger from '../../../src/utils/logger';
 /**
  * normalizeSlots — outfit slot normalization extracted from
  * screens/AIOutfitmaker.tsx so the REAL pick code (not a mirror) is
@@ -8,9 +10,9 @@
  * so all call sites behave byte-identically to before.
  */
 import { canonicalizeMacroCategory } from '../../../src/utils/categoryMapper';
-import { occasionFormality, rejectForStyleOccasion, rejectForClimate, rejectOutfitClimate, rejectOutfitIncoherence, matchesOccasionSilhouette, detectSlotMismatch, isUnderwearItem, isAccessoryPropItem, ACCESSORY_PROP_RE, SHORT_SLEEVE_RE, STRIP_SHORT_SLEEVE_RE, humanizeProductName } from './occasionRules';
+import { rejectForActivity, occasionFormality, rejectForStyleOccasion, rejectForClimate, rejectOutfitClimate, rejectOutfitIncoherence, matchesOccasionSilhouette, detectSlotMismatch, isUnderwearItem, isAccessoryPropItem, ACCESSORY_PROP_RE, SHORT_SLEEVE_RE, STRIP_SHORT_SLEEVE_RE, humanizeProductName } from './occasionRules';
 import { orderSlotCandidates, selectSlotPick } from './deckDedupe';
-import { parseBudgetFromText, resolveShopPrice, outfitShopSpend, budgetInCurrency, catalogCurrencyOf, type ParsedBudget } from '../../../src/utils/outfitBudget';
+import { parseBudgetFromText, resolveShopQuote, resolveShopPrice, outfitShopSpend, type ParsedBudget } from '../../../src/utils/outfitBudget';
 import { parseStylistIntent } from './stylistIntent';
 import { normalizeCatalogNameKey, isTrustedProductImage, isBrandCatalogImage, collapseDuplicateProductImages, productImageKey, garmentVarietyFamily } from '../../../src/utils/shopCatalogOrder';
 
@@ -383,7 +385,7 @@ export function createSlotNormalizer(ctx: SlotNormalizerContext) {
       if (!it || (ctx.baseItemId && String(it?.id) === String(ctx.baseItemId))) return it;
       const fixed = detectSlotMismatch(it?.macroCategory, it?.name || '', it?.type || '');
       if (!fixed) return it;
-      if (__DEV__) console.log('[normalizeTo4Slots] slot repair:', { id: it.id, was: it.macroCategory, now: fixed, name: (it.name || '').slice(0, 50) });
+      if (__DEV__) readinessLogger.debug(String('[normalizeTo4Slots] slot repair:'), [{ id: it.id, was: it.macroCategory, now: fixed, name: (it.name || '').slice(0, 50) }]);
       return { ...it, macroCategory: fixed };
     };
     const pickPoolMapped: any[] = collapseDuplicateProductImages(
@@ -434,21 +436,20 @@ export function createSlotNormalizer(ctx: SlotNormalizerContext) {
         if (conf === nameTotals.get(nk)) poolConflictNames.add(nk);
       }
     }
+    const requestBudgetFx = ctx.maxShopBudget?.fx;
     const rawBudget: ParsedBudget | null =
       ctx.maxShopBudget
-      || parseBudgetFromText(ctx.budgetText || '')
+      || parseBudgetFromText(ctx.budgetText || '', requestBudgetFx)
       || null;
-    // shop_catalog is priced in UZS while a parsed "$250" is USD: compare the
-    // cap in the pool's currency or fitsBudget rejects EVERY priced candidate
-    // and the card falls back to placeholder "Pants"/"Shoes" tiles.
+    // Keep the cap's original units; price comparisons use its pinned snapshot.
     const budget: ParsedBudget | null =
-      budgetInCurrency(rawBudget, catalogCurrencyOf([...(pickPoolFixed || []), ...(pickPool || [])]));
-    const priceOf = (it: any) => resolveShopPrice(it, pickPoolFixed);
+      rawBudget;
+    const priceOf = (it: any) => resolveShopPrice(it, pickPoolFixed, budget?.currency, budget?.fx);
     const withListedPrice = (it: any) => {
       if (!it) return it;
-      const listed = priceOf(it);
-      if (listed <= 0) return it;
-      return { ...it, price: listed, isShopItem: it.isShopItem ?? (ctx.currentSource === 'shop') };
+      const quote = resolveShopQuote(it, pickPoolFixed);
+      if (!quote) return it;
+      return { ...it, price: quote.price, currency: quote.currency, isShopItem: it.isShopItem ?? (ctx.currentSource === 'shop') };
     };
     // Image repair: edge/AI items frequently arrive with a legacy placeholder
     // string (`placeholder_pants`, `basic_clothing_shoes`) or an empty image
@@ -486,7 +487,7 @@ export function createSlotNormalizer(ctx: SlotNormalizerContext) {
     const poolShopUrlById = new Map<string, string>();
     const poolShopUrlByName = new Map<string, string>();
     for (const r of pickPoolFixed) {
-      const url = r?.shopUrl || r?.sourceUrl;
+      const url = r?.shopUrl || r?.shop_url || r?.sourceUrl || r?.source_url;
       if (typeof url !== 'string' || !url) continue;
       const id = String(r.id || '');
       if (id && !poolShopUrlById.has(id)) poolShopUrlById.set(id, url);
@@ -494,7 +495,9 @@ export function createSlotNormalizer(ctx: SlotNormalizerContext) {
       if (nk && !poolShopUrlByName.has(nk)) poolShopUrlByName.set(nk, url);
     }
     const repairShopUrl = (it: any) => {
-      if (!it || it.shopUrl) return it;
+      if (!it) return it;
+      const ownUrl = it.shopUrl || it.shop_url || it.sourceUrl || it.source_url;
+      if (ownUrl) return { ...it, shopUrl: ownUrl };
       const id = String(it?.id || '');
       const bare = id.replace(/^shop_/i, '');
       const nk = normalizeCatalogNameKey(it?.name || '');
@@ -504,7 +507,7 @@ export function createSlotNormalizer(ctx: SlotNormalizerContext) {
       if (!found) return it;
       return { ...it, shopUrl: found };
     };
-    let incomingItems = items;
+    const incomingItems = items;
     // Helper: prefer an item's own macroCategory (canonicalized) over the
     // keyword-based fallback. Keeps items whose type/category are raw
     // garmentType strings (`upper_body`, `lower_body`) from being dropped.
@@ -528,7 +531,7 @@ export function createSlotNormalizer(ctx: SlotNormalizerContext) {
         if ((rawId && poolConflictIds.has(rawId))
           || (bareId && poolConflictIds.has(bareId))
           || (rawKey && poolConflictNames.has(rawKey))) {
-          if (__DEV__) console.log('[normalizeTo4Slots] drop zone-name conflict:', { id: rawId, name: String(raw?.name || '').slice(0, 60) });
+          if (__DEV__) readinessLogger.debug(String('[normalizeTo4Slots] drop zone-name conflict:'), [{ id: rawId, name: String(raw?.name || '').slice(0, 60) }]);
           return null;
         }
       }
@@ -577,18 +580,18 @@ export function createSlotNormalizer(ctx: SlotNormalizerContext) {
       || climateNeedsLayer;
     const usedIds = new Set<string>();
 
-    if (__DEV__) console.log('[normalizeTo4Slots] incoming items:', incoming.map((it: any) => ({ id: it.id, name: it.name, macro: it.macroCategory, image: (it.image || '').substring(0, 40) })));
-    if (__DEV__) console.log('[normalizeTo4Slots] pool size:', pickPool.length, 'sample:', pickPool.slice(0, 5).map((it: any) => ({ id: it.id, macro: it.macroCategory })));
-    if (__DEV__) console.log('[normalizeTo4Slots] needsLayer:', needsLayer, 'weather:', ctx.weather, 'anchor:', anchorMacro, ctx.baseItemId);
+    if (__DEV__) readinessLogger.debug(String('[normalizeTo4Slots] incoming items:'), [incoming.map((it: any) => ({ id: it.id, name: it.name, macro: it.macroCategory, image: (it.image || '').substring(0, 40) }))]);
+    if (__DEV__) readinessLogger.debug(String('[normalizeTo4Slots] pool size:'), [pickPool.length, 'sample:', pickPool.slice(0, 5).map((it: any) => ({ id: it.id, macro: it.macroCategory }))]);
+    if (__DEV__) readinessLogger.debug(String('[normalizeTo4Slots] needsLayer:'), [needsLayer, 'weather:', ctx.weather, 'anchor:', anchorMacro, ctx.baseItemId]);
 
     const pickedForBudget: any[] = [];
     const remainingBudget = () =>
-      budget ? budget.amount - outfitShopSpend(pickedForBudget, pickPoolFixed) : Number.POSITIVE_INFINITY;
+      budget ? budget.amount - outfitShopSpend(pickedForBudget, pickPoolFixed, budget?.currency, budget?.fx) : Number.POSITIVE_INFINITY;
     const fitsBudget = (candidate: any) => {
       if (!budget) return true;
       const p = priceOf(candidate);
       if (p <= 0) return false;
-      return p <= budget.amount && p <= remainingBudget() + 0.009;
+      return fitsBudgetAmount(p, budget.amount) && fitsBudgetAmount(p, remainingBudget());
     };
 
     const nameKeyOf = (candidate: any) => normalizeCatalogNameKey(candidate?.name || '');
@@ -604,6 +607,7 @@ export function createSlotNormalizer(ctx: SlotNormalizerContext) {
     };
     const pickCandidate = (predicate: (candidate: any) => boolean, slotOffset = 0, ignoreBudget = false) => {
       const basePass = (candidate: any, uniqueName: boolean) => {
+        if (rejectForActivity(candidate, occasionId) !== null) return false;
         const key = String(candidate.id || '');
         if (usedIds.has(key)) return false;
         if (uniqueName) {
@@ -760,7 +764,7 @@ export function createSlotNormalizer(ctx: SlotNormalizerContext) {
         pickCandidate((c: any) => c.macroCategory === 'bottom' && hasRealImage(c) && !isShortsBottom(c), 7)
         || pickCandidate((c: any) => c.macroCategory === 'bottom' && !isShortsBottom(c), 7);
       if (replacement) {
-        if (__DEV__) console.log('[normalizeTo4Slots] formal+shorts repair: pants', slotPantsRaw.name, '->', replacement.name);
+        if (__DEV__) readinessLogger.debug(String('[normalizeTo4Slots] formal+shorts repair: pants'), [slotPantsRaw.name, '->', replacement.name]);
         slotPants = { ...replacement, macroCategory: 'bottom' as const };
       } else {
         // 4-item rule: never drop the layer — swap the formal one for a
@@ -770,10 +774,10 @@ export function createSlotNormalizer(ctx: SlotNormalizerContext) {
           pickCandidate((c: any) => c.macroCategory === 'outerwear' && !isFormalLayer(c) && !isShortSleeve(c) && hasRealImage(c) && styleOk(c), 0)
           || pickCandidate((c: any) => c.macroCategory === 'outerwear' && !isFormalLayer(c) && !isShortSleeve(c), 0, true);
         if (casualLayer) {
-          if (__DEV__) console.log('[normalizeTo4Slots] formal+shorts repair: layer', slotOuterwear.name, '->', casualLayer.name);
+          if (__DEV__) readinessLogger.debug(String('[normalizeTo4Slots] formal+shorts repair: layer'), [slotOuterwear.name, '->', casualLayer.name]);
           slotOuterwear = { ...casualLayer, macroCategory: 'outerwear' as const };
         } else if (__DEV__) {
-          console.log('[normalizeTo4Slots] formal+shorts repair: keeping formal layer with shorts', slotOuterwear.name);
+          readinessLogger.debug(String('[normalizeTo4Slots] formal+shorts repair: keeping formal layer with shorts'), [slotOuterwear.name]);
         }
       }
     }
@@ -834,7 +838,7 @@ export function createSlotNormalizer(ctx: SlotNormalizerContext) {
     if (__DEV__ && slotShoes.id === 'placeholder_shoes') {
       const shoesPool = pickPoolFixed.filter((c: any) => c.macroCategory === 'shoes');
       const combo = (c: any) => comboOk(c, [slotOuterwear, slotMainTop, slotPants]);
-      console.log('[normalizeTo4Slots] SHOES PLACEHOLDER', {
+      readinessLogger.debug(String('[normalizeTo4Slots] SHOES PLACEHOLDER'), [{
         poolShoes: shoesPool.length,
         withImage: shoesPool.filter(hasRealImage).length,
         styleOk: shoesPool.filter(styleOk).length,
@@ -847,7 +851,7 @@ export function createSlotNormalizer(ctx: SlotNormalizerContext) {
         ),
         outfit: [slotOuterwear, slotMainTop, slotPants].map((c: any) => String(c?.name || '?').slice(0, 40)),
         sample: shoesPool.slice(0, 8).map((c: any) => `${String(c.name).slice(0, 26)}|img=${hasRealImage(c)}|st=${styleOk(c)}|combo=${combo(c)}`),
-      });
+      }]);
     }
 
     const slotSecondTopRaw = slotOuterwear && !(slotMainTop && !looksLikeLayerGarment(slotMainTop))
@@ -859,13 +863,13 @@ export function createSlotNormalizer(ctx: SlotNormalizerContext) {
     // Force macroCategory to 'top' so OutfitSlotGrid.classifyItem never drops it
     const slotSecondTop = slotSecondTopRaw ? { ...slotSecondTopRaw, macroCategory: 'top' as const } : undefined;
 
-    if (__DEV__) console.log('[normalizeTo4Slots] PICKS:', {
+    if (__DEV__) readinessLogger.debug(String('[normalizeTo4Slots] PICKS:'), [{
       slotOuterwear: slotOuterwear ? { id: slotOuterwear.id, name: slotOuterwear.name, macro: slotOuterwear.macroCategory, image: (slotOuterwear.image || '').substring(0, 40) } : null,
       slotMainTop: slotMainTop ? { id: slotMainTop.id, name: slotMainTop.name, macro: slotMainTop.macroCategory, image: (slotMainTop.image || '').substring(0, 40) } : null,
       slotSecondTop: slotSecondTop ? { id: slotSecondTop.id, name: slotSecondTop.name, macro: slotSecondTop.macroCategory, image: (slotSecondTop.image || '').substring(0, 40) } : null,
       slotPants: slotPants ? { id: slotPants.id, name: slotPants.name, macro: slotPants.macroCategory, image: (slotPants.image || '').substring(0, 40) } : null,
       slotShoes: slotShoes ? { id: slotShoes.id, name: slotShoes.name, macro: slotShoes.macroCategory, image: (slotShoes.image || '').substring(0, 40) } : null,
-    });
+    }]);
 
     // ── Layer-vs-base repair: never show two same-category tops ──
     // If the layer and the base share a fabric family (knit-on-knit) or the
@@ -879,7 +883,7 @@ export function createSlotNormalizer(ctx: SlotNormalizerContext) {
         || pickCandidate((c: any) => c.macroCategory === 'top' && String(c.id) !== String(slotOuterwear.id) && String(c.id) !== String(slotMainTop?.id) && fabricFamily(c) !== layerFam && hasRealImage(c) && styleOk(c), 5)
         || pickCandidate((c: any) => c.macroCategory === 'top' && String(c.id) !== String(slotOuterwear.id) && String(c.id) !== String(slotMainTop?.id) && fabricFamily(c) !== layerFam && styleOk(c), 5);
       if (altBase) {
-        if (__DEV__) console.log('[normalizeTo4Slots] layer/base same-category repair:', { layer: slotOuterwear.name, was: slotMainTop.name, now: altBase.name });
+        if (__DEV__) readinessLogger.debug(String('[normalizeTo4Slots] layer/base same-category repair:'), [{ layer: slotOuterwear.name, was: slotMainTop.name, now: altBase.name }]);
         repairedMainTop = { ...altBase, macroCategory: 'top' as const };
       }
     }
@@ -940,23 +944,23 @@ export function createSlotNormalizer(ctx: SlotNormalizerContext) {
         }
       }
     }
-    if (__DEV__) console.log('[normalizeTo4Slots] RESULT (4 items):', result.map((it: any) => ({ id: it.id, name: it.name, macro: it.macroCategory, price: it.price })));
-    if (budget && outfitShopSpend(result, pickPoolFixed) > budget.amount + 0.009) {
+    if (__DEV__) readinessLogger.debug(String('[normalizeTo4Slots] RESULT (4 items):'), [result.map((it: any) => ({ id: it.id, name: it.name, macro: it.macroCategory, price: it.price }))]);
+    if (budget && !fitsBudgetAmount(outfitShopSpend(result, pickPoolFixed, budget?.currency, budget?.fx), budget.amount)) {
       // 4-item rule: never drop a slot to fit the cap. Cascade swaps of the
       // most expensive piece for a strictly cheaper same-slot item (style-clean
       // first, any cheaper one as last resort) until under the cap or no swap
       // helps. If the catalog genuinely cannot fit the cap, keep all 4 items —
       // the card reports the honest spend.
       const clamped = result.map(withListedPrice);
-      const spendOf = () => outfitShopSpend(clamped, pickPoolFixed);
-      for (let guard = 0; guard < 12 && spendOf() > budget.amount + 0.009; guard++) {
+      const spendOf = () => outfitShopSpend(clamped, pickPoolFixed, budget?.currency, budget?.fx);
+      for (let guard = 0; guard < 12 && !fitsBudgetAmount(spendOf(), budget.amount); guard++) {
         const used = new Set(clamped.map((p: any) => String(p.id)));
         const byPrice = clamped
           .map((p: any, i: number) => ({ i, pr: priceOf(p) }))
           .sort((a: any, b: any) => b.pr - a.pr);
         let swapped = false;
         for (const { i, pr } of byPrice) {
-          if (spendOf() <= budget.amount + 0.009) break;
+          if (fitsBudgetAmount(spendOf(), budget.amount)) break;
           const slot = canonicalizeMacroCategory(clamped[i]?.macroCategory || '');
           const cheaperAll = pickPoolFixed
             .filter((c: any) => canonicalizeMacroCategory(c.macroCategory || '') === slot && !used.has(String(c.id)))
@@ -996,16 +1000,15 @@ export function createSlotNormalizer(ctx: SlotNormalizerContext) {
         }
         if (!swapped) break;
       }
-      if (__DEV__) console.log('[normalizeTo4Slots] budget clamp', {
+      if (__DEV__) readinessLogger.debug(String('[normalizeTo4Slots] budget clamp'), [{
         cap: budget.amount,
-        before: outfitShopSpend(result, pickPoolFixed),
+        before: outfitShopSpend(result, pickPoolFixed, budget?.currency, budget?.fx),
         after: spendOf(),
         items: clamped.length,
-      });
+      }]);
       return clamped;
     }
     return result.map(withListedPrice);
     };
     return normalizeTo4Slots;
 }
-

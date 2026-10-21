@@ -12,6 +12,7 @@ import {
     type StyleId,
 } from '../../features/outfit-generator/utils/styleInference';
 import type { ShopCatalogItem } from '../types/shop';
+import { getShopDestination } from '../utils/shopDestination';
 
 // Static catalogs require()d lazily — ~120KB of data modules must not
 // parse/evaluate on app startup (this service is reachable from eager
@@ -369,8 +370,13 @@ class ShoppingService {
      * Get affiliate link for product
      */
     getAffiliateLink(product: Product): string {
-        // In production, generate proper affiliate links with tracking
-        return product.affiliateUrl || product.productUrl;
+        // Feed URLs are untrusted: only http(s) links reach Linking.openURL;
+        // anything else becomes a Shopping search for the product.
+        return getShopDestination({
+            brand: product.brand,
+            name: product.name,
+            shopUrl: product.affiliateUrl || product.productUrl,
+        });
     }
 
     /**
@@ -461,6 +467,7 @@ export interface ShopFillItem {
     color: string;
     brand?: string;
     price?: number;
+    currency?: string;
     shopUrl?: string;
     isShopItem: true;
     recommendation: string;
@@ -530,6 +537,7 @@ function rowToShopFillItem(row: ShopCatalogRow, slot: OutfitSlotId): ShopFillIte
         color: inferShopColor(row),
         brand: row.brand || undefined,
         price: typeof row.price === 'number' ? row.price : undefined,
+        currency: row.currency || undefined,
         shopUrl: row.source_url || undefined,
         isShopItem: true,
         recommendation: `Suggested from shop to complete your ${slot === 'outerwear' ? 'main-top layer' : slot}`,

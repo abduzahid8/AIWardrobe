@@ -1,0 +1,98 @@
+{
+  "scope": "Native ios output compared to independent Pillow EXIF transpose; eight synthetic JPEG fixtures",
+  "thresholds": {
+    "meanAbsoluteChannelErrorBelow": 5,
+    "maxCornerChannelErrorBelow": 15
+  },
+  "cases": [
+    {
+      "orientation": 1,
+      "dimensions": [
+        512,
+        342
+      ],
+      "meanAbsoluteChannelError": 1.1645422149122806,
+      "maxCornerChannelError": 2,
+      "originalBytesUnchanged": true,
+      "passed": true
+    },
+    {
+      "orientation": 2,
+      "dimensions": [
+        512,
+        342
+      ],
+      "meanAbsoluteChannelError": 1.2400516264619883,
+      "maxCornerChannelError": 2,
+      "originalBytesUnchanged": true,
+      "passed": true
+    },
+    {
+      "orientation": 3,
+      "dimensions": [
+        512,
+        342
+      ],
+      "meanAbsoluteChannelError": 1.4741848653752436,
+      "maxCornerChannelError": 2,
+      "originalBytesUnchanged": true,
+      "passed": true
+    },
+    {
+      "orientation": 4,
+      "dimensions": [
+        512,
+        342
+      ],
+      "meanAbsoluteChannelError": 1.474834003411306,
+      "maxCornerChannelError": 2,
+      "originalBytesUnchanged": true,
+      "passed": true
+    },
+    {
+      "orientation": 5,
+      "dimensions": [
+        342,
+        512
+      ],
+      "meanAbsoluteChannelError": 1.1636189540692008,
+      "maxCornerChannelError": 2,
+      "originalBytesUnchanged": true,
+      "passed": true
+    },
+    {
+      "orientation": 6,
+      "dimensions": [
+        342,
+        512
+      ],
+      "meanAbsoluteChannelError": 1.4046604684454191,
+      "maxCornerChannelError": 2,
+      "originalBytesUnchanged": true,
+      "passed": true
+    },
+    {
+      "orientation": 7,
+      "dimensions": [
+        342,
+        512
+      ],
+      "meanAbsoluteChannelError": 1.4046604684454191,
+      "maxCornerChannelError": 2,
+      "originalBytesUnchanged": true,
+      "passed": true
+    },
+    {
+      "orientation": 8,
+      "dimensions": [
+        342,
+        512
+      ],
+      "meanAbsoluteChannelError": 1.1636189540692008,
+      "maxCornerChannelError": 2,
+      "originalBytesUnchanged": true,
+      "passed": true
+    }
+  ],
+  "passed": true
+}

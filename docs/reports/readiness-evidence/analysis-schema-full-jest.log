@@ -1,0 +1,1980 @@
+PASS __tests__/backend/outfitBudgetWire.test.js
+  ● Console
+
+    console.log
+      [wardrobeOnly] Skipping shop supplement — 3 Supabase wardrobe item(s) only
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2511:21)
+
+    console.log
+      [budget] shop items over 250 USD dropped: 3 -> 3
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2553:21)
+
+    console.log
+      [rank] 3 -> 3 items after style filter for casual
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2594:21)
+
+    console.log
+      Outfit gen: 3 items, prompt="Create one casual outfit. Budget under $1000.", style=casual
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2596:17)
+
+    console.log
+      [layer] style=casual weather=20°C layered=false
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2688:17)
+
+    console.log
+      [NVIDIA] attempt 1, model: meta/llama-3.2-11b-vision-instruct
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2163:21)
+
+    console.log
+      [NVIDIA] response length: 76 chars
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2185:21)
+
+    console.log
+      [NVIDIA] parsed 1 outfits
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2188:25)
+
+    console.log
+      [validate] 1/1 outfits passed style check for casual (layered=false)
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2728:21)
+
+    console.log
+      [Deno macroCategory] Input -> category: "top", type: "", name: "White cotton shirt" => Mapped to: "top"
+
+      at macroCategory (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:208:13)
+          at Array.map (<anonymous>)
+          at Array.map (<anonymous>)
+
+    console.log
+      [Deno macroCategory] Input -> category: "bottom", type: "", name: "Navy cotton trousers" => Mapped to: "bottom"
+
+      at macroCategory (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:208:13)
+          at Array.map (<anonymous>)
+          at Array.map (<anonymous>)
+
+    console.log
+      [Deno macroCategory] Input -> category: "shoes", type: "", name: "Brown leather loafers" => Mapped to: "shoes"
+
+      at macroCategory (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:208:13)
+          at Array.map (<anonymous>)
+          at Array.map (<anonymous>)
+
+    console.log
+      [wardrobeOnly] Skipping shop supplement — 3 Supabase wardrobe item(s) only
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2511:21)
+
+    console.log
+      [budget] shop items over 0 USD dropped: 3 -> 3
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2553:21)
+
+    console.log
+      [rank] 3 -> 3 items after style filter for casual
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2594:21)
+
+    console.log
+      Outfit gen: 3 items, prompt="Create one casual outfit. Budget under $1000.", style=casual
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2596:17)
+
+    console.log
+      [layer] style=casual weather=20°C layered=false
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2688:17)
+
+    console.log
+      [NVIDIA] attempt 1, model: meta/llama-3.2-11b-vision-instruct
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2163:21)
+
+    console.log
+      [NVIDIA] response length: 76 chars
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2185:21)
+
+    console.log
+      [NVIDIA] parsed 1 outfits
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2188:25)
+
+    console.log
+      [validate] 1/1 outfits passed style check for casual (layered=false)
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2728:21)
+
+    console.log
+      [Deno macroCategory] Input -> category: "top", type: "", name: "White cotton shirt" => Mapped to: "top"
+
+      at macroCategory (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:208:13)
+          at Array.map (<anonymous>)
+          at Array.map (<anonymous>)
+
+    console.log
+      [Deno macroCategory] Input -> category: "bottom", type: "", name: "Navy cotton trousers" => Mapped to: "bottom"
+
+      at macroCategory (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:208:13)
+          at Array.map (<anonymous>)
+          at Array.map (<anonymous>)
+
+    console.log
+      [Deno macroCategory] Input -> category: "shoes", type: "", name: "Brown leather loafers" => Mapped to: "shoes"
+
+      at macroCategory (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:208:13)
+          at Array.map (<anonymous>)
+          at Array.map (<anonymous>)
+
+    console.log
+      [wardrobeOnly] Skipping shop supplement — 3 Supabase wardrobe item(s) only
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2511:21)
+
+    console.log
+      [budget] shop items over 1 USD dropped: 3 -> 0
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2553:21)
+
+    console.log
+      [rank] 0 -> 0 items after style filter for casual
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2594:21)
+
+    console.log
+      Outfit gen: 0 items, prompt="Create one casual outfit. Budget under $1000.", style=casual
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2596:17)
+
+    console.log
+      [wardrobeOnly] Skipping shop supplement — 0 Supabase wardrobe item(s) only
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2511:21)
+
+    console.log
+      [budget] shop items over 1000 USD dropped: 0 -> 0
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2553:21)
+
+    console.log
+      [rank] 0 -> 0 items after style filter for casual
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2594:21)
+
+    console.log
+      Outfit gen: 0 items, prompt="Create one casual outfit. Budget under $1000.", style=casual
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2596:17)
+
+    console.log
+      [wardrobeOnly] Skipping shop supplement — 3 Supabase wardrobe item(s) only
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2511:21)
+
+    console.log
+      [budget] shop items over 100 USD dropped: 3 -> 3
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2553:21)
+
+    console.log
+      [rank] 3 -> 3 items after style filter for casual
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2594:21)
+
+    console.log
+      Outfit gen: 3 items, prompt="Create a casual outfit. Maximum $100 or £90.", style=casual
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2596:17)
+
+    console.log
+      [layer] style=casual weather=20°C layered=false
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2688:17)
+
+    console.log
+      [NVIDIA] attempt 1, model: meta/llama-3.2-11b-vision-instruct
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2163:21)
+
+    console.log
+      [NVIDIA] response length: 76 chars
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2185:21)
+
+    console.log
+      [NVIDIA] parsed 1 outfits
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2188:25)
+
+    console.log
+      [validate] 1/1 outfits passed style check for casual (layered=false)
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2728:21)
+
+    console.log
+      [Deno macroCategory] Input -> category: "top", type: "", name: "White cotton shirt" => Mapped to: "top"
+
+      at macroCategory (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:208:13)
+          at Array.map (<anonymous>)
+          at Array.map (<anonymous>)
+
+    console.log
+      [Deno macroCategory] Input -> category: "bottom", type: "", name: "Navy cotton trousers" => Mapped to: "bottom"
+
+      at macroCategory (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:208:13)
+          at Array.map (<anonymous>)
+          at Array.map (<anonymous>)
+
+    console.log
+      [Deno macroCategory] Input -> category: "shoes", type: "", name: "Brown leather loafers" => Mapped to: "shoes"
+
+      at macroCategory (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:208:13)
+          at Array.map (<anonymous>)
+          at Array.map (<anonymous>)
+
+    console.log
+      [wardrobeOnly] Skipping shop supplement — 3 Supabase wardrobe item(s) only
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2511:21)
+
+    console.log
+      [budget] shop items over 250 USD dropped: 3 -> 3
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2553:21)
+
+    console.log
+      [rank] 3 -> 3 items after style filter for casual
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2594:21)
+
+    console.log
+      Outfit gen: 3 items, prompt="Create one casual outfit. Budget under $1000.", style=casual
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2596:17)
+
+    console.log
+      [layer] style=casual weather=20°C layered=false
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2688:17)
+
+    console.log
+      [NVIDIA] attempt 1, model: meta/llama-3.2-11b-vision-instruct
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2163:21)
+
+    console.log
+      [NVIDIA] response length: 76 chars
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2185:21)
+
+    console.log
+      [NVIDIA] parsed 1 outfits
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2188:25)
+
+    console.warn
+      [quality-reject] {
+        reason: 'item "Футболка SS BADGE 30S JERSEY CLASSIC TEE": refined casual wears knit polos, not basic cotton tees'
+      }
+
+      at filterValidOutfits (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:1168:21)
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2726:27)
+
+    console.log
+      [validate] 0/1 outfits passed style check for casual (layered=false)
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2728:21)
+
+    console.log
+      [validate] pass rate 0.00 too low — retrying with correction
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2733:25)
+
+    console.log
+      [NVIDIA] attempt 1, model: meta/llama-3.2-11b-vision-instruct
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2163:21)
+
+    console.log
+      [NVIDIA] response length: 76 chars
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2185:21)
+
+    console.log
+      [NVIDIA] parsed 1 outfits
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2188:25)
+
+    console.warn
+      [quality-reject] {
+        reason: 'item "Футболка SS BADGE 30S JERSEY CLASSIC TEE": refined casual wears knit polos, not basic cotton tees'
+      }
+
+      at filterValidOutfits (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:1168:21)
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2743:40)
+
+    console.log
+      [validate] no validated outfits survived
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2759:25)
+
+    console.error
+      generate-outfits error: Error: no_valid_outfits
+          at eval (eval at load (/Users/v.zahid/AIWardrobe/__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2764:19)
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2821:17)
+
+    console.log
+      [wardrobeOnly] Skipping shop supplement — 3 Supabase wardrobe item(s) only
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2511:21)
+
+    console.log
+      [budget] shop items over 250 USD dropped: 3 -> 3
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2553:21)
+
+    console.log
+      [rank] 3 -> 3 items after style filter for casual
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2594:21)
+
+    console.log
+      Outfit gen: 3 items, prompt="Create one casual outfit. Budget under $1000.", style=casual
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2596:17)
+
+    console.log
+      [layer] style=casual weather=20°C layered=false
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2688:17)
+
+    console.log
+      [NVIDIA] attempt 1, model: meta/llama-3.2-11b-vision-instruct
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2163:21)
+
+    console.log
+      [NVIDIA] response length: 484 chars
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2185:21)
+
+    console.log
+      [NVIDIA] parsed 1 outfits
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2188:25)
+
+    console.log
+      [validate] 1/1 outfits passed style check for casual (layered=false)
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2728:21)
+
+    console.log
+      [Deno macroCategory] Input -> category: "top", type: "", name: "White cotton shirt" => Mapped to: "top"
+
+      at macroCategory (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:208:13)
+          at Array.map (<anonymous>)
+          at Array.map (<anonymous>)
+
+    console.log
+      [Deno macroCategory] Input -> category: "bottom", type: "", name: "Navy cotton trousers" => Mapped to: "bottom"
+
+      at macroCategory (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:208:13)
+          at Array.map (<anonymous>)
+          at Array.map (<anonymous>)
+
+    console.log
+      [Deno macroCategory] Input -> category: "shoes", type: "", name: "Brown leather loafers" => Mapped to: "shoes"
+
+      at macroCategory (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:208:13)
+          at Array.map (<anonymous>)
+          at Array.map (<anonymous>)
+
+    console.log
+      [wardrobeOnly] Skipping shop supplement — 4 Supabase wardrobe item(s) only
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2511:21)
+
+    console.log
+      [budget] shop items over 250 USD dropped: 4 -> 4
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2553:21)
+
+    console.log
+      [rank] 4 -> 4 items after style filter for casual
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2594:21)
+
+    console.log
+      Outfit gen: 4 items, prompt="Create one casual outfit. Budget under $1000.", style=casual
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2596:17)
+
+    console.log
+      [layer] style=casual weather=20°C layered=false
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2688:17)
+
+    console.log
+      [NVIDIA] attempt 1, model: meta/llama-3.2-11b-vision-instruct
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2163:21)
+
+    console.log
+      [NVIDIA] response length: 76 chars
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2185:21)
+
+    console.log
+      [NVIDIA] parsed 1 outfits
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2188:25)
+
+    console.log
+      [validate] 1/1 outfits passed style check for casual (layered=false)
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2728:21)
+
+    console.log
+      [Deno macroCategory] Input -> category: "top", type: "", name: "White cotton shirt" => Mapped to: "top"
+
+      at macroCategory (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:208:13)
+          at Array.map (<anonymous>)
+          at Array.map (<anonymous>)
+
+    console.log
+      [Deno macroCategory] Input -> category: "bottom", type: "", name: "Navy cotton trousers" => Mapped to: "bottom"
+
+      at macroCategory (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:208:13)
+          at Array.map (<anonymous>)
+          at Array.map (<anonymous>)
+
+    console.log
+      [Deno macroCategory] Input -> category: "shoes", type: "", name: "Brown leather loafers" => Mapped to: "shoes"
+
+      at macroCategory (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:208:13)
+          at Array.map (<anonymous>)
+          at Array.map (<anonymous>)
+
+    console.log
+      [anchor] Enforcing anchor item shop_anchor (top) in 1 AI outfits
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2798:25)
+
+    console.log
+      [Deno macroCategory] Input -> category: "", type: "top", name: "" => Mapped to: "top"
+
+      at macroCategory (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:208:13)
+
+    console.log
+      [Deno macroCategory] Input -> category: "top", type: "top", name: "" => Mapped to: "top"
+
+      at macroCategory (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:208:13)
+          at Array.findIndex (<anonymous>)
+          at Array.map (<anonymous>)
+
+    console.error
+      generate-outfits error: Error: no_valid_outfits_for_request
+          at eval (eval at load (/Users/v.zahid/AIWardrobe/__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2815:19)
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2821:17)
+
+    console.log
+      [wardrobeOnly] Skipping shop supplement — 3 Supabase wardrobe item(s) only
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2511:21)
+
+    console.log
+      [budget] shop items over 250 USD dropped: 3 -> 3
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2553:21)
+
+    console.log
+      [rank] 3 -> 3 items after style filter for casual
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2594:21)
+
+    console.log
+      Outfit gen: 3 items, prompt="Create one casual outfit. Budget under $1000.", style=casual
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2596:17)
+
+    console.log
+      [wardrobeOnly] Skipping shop supplement — 3 Supabase wardrobe item(s) only
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2511:21)
+
+    console.log
+      [budget] shop items over 250 USD dropped: 3 -> 3
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2553:21)
+
+    console.log
+      [rank] 3 -> 3 items after style filter for casual
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2594:21)
+
+    console.log
+      Outfit gen: 3 items, prompt="Create one casual outfit. Budget under $1000.", style=casual
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2596:17)
+
+    console.log
+      [layer] style=casual weather=20°C layered=false
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2688:17)
+
+    console.log
+      [NVIDIA] attempt 1, model: meta/llama-3.2-11b-vision-instruct
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2163:21)
+
+    console.log
+      [NVIDIA] response length: 76 chars
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2185:21)
+
+    console.log
+      [NVIDIA] parsed 1 outfits
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2188:25)
+
+    console.log
+      [validate] 1/1 outfits passed style check for casual (layered=false)
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2728:21)
+
+    console.log
+      [Deno macroCategory] Input -> category: "top", type: "", name: "White cotton shirt" => Mapped to: "top"
+
+      at macroCategory (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:208:13)
+          at Array.map (<anonymous>)
+          at Array.map (<anonymous>)
+
+    console.log
+      [Deno macroCategory] Input -> category: "bottom", type: "", name: "Navy cotton trousers" => Mapped to: "bottom"
+
+      at macroCategory (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:208:13)
+          at Array.map (<anonymous>)
+          at Array.map (<anonymous>)
+
+    console.log
+      [Deno macroCategory] Input -> category: "shoes", type: "", name: "Brown leather loafers" => Mapped to: "shoes"
+
+      at macroCategory (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:208:13)
+          at Array.map (<anonymous>)
+          at Array.map (<anonymous>)
+
+    console.log
+      [wardrobeOnly] Skipping shop supplement — 3 Supabase wardrobe item(s) only
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2511:21)
+
+    console.log
+      [budget] shop items over 250 USD dropped: 3 -> 3
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2553:21)
+
+    console.log
+      [rank] 3 -> 3 items after style filter for casual
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2594:21)
+
+    console.log
+      Outfit gen: 3 items, prompt="Create one casual outfit. Budget under $1000.", style=casual
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2596:17)
+
+    console.log
+      [layer] style=casual weather=20°C layered=false
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2688:17)
+
+    console.log
+      [NVIDIA] attempt 1, model: meta/llama-3.2-11b-vision-instruct
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2163:21)
+
+    console.log
+      [NVIDIA] response length: 76 chars
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2185:21)
+
+    console.log
+      [NVIDIA] parsed 1 outfits
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2188:25)
+
+    console.log
+      [validate] rejected outfit for casual (layered=false): dress + bottom (macros: top,bottom,shoes) — a dress replaces the bottom slot
+
+      at filterValidOutfits (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:1173:21)
+
+    console.log
+      [validate] 0/1 outfits passed style check for casual (layered=false)
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2728:21)
+
+    console.log
+      [validate] pass rate 0.00 too low — retrying with correction
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2733:25)
+
+    console.log
+      [NVIDIA] attempt 1, model: meta/llama-3.2-11b-vision-instruct
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2163:21)
+
+    console.log
+      [NVIDIA] response length: 76 chars
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2185:21)
+
+    console.log
+      [NVIDIA] parsed 1 outfits
+
+      at callNvidia (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2188:25)
+
+    console.log
+      [validate] rejected outfit for casual (layered=false): dress + bottom (macros: top,bottom,shoes) — a dress replaces the bottom slot
+
+      at filterValidOutfits (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:1173:21)
+
+    console.log
+      [validate] no validated outfits survived
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2759:25)
+
+    console.error
+      generate-outfits error: Error: no_valid_outfits
+          at eval (eval at load (/Users/v.zahid/AIWardrobe/__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2764:19)
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:17:2), <anonymous>:2821:17)
+
+PASS __tests__/store/auth.test.ts
+  ● Console
+
+    console.error
+      [WardrobeStore] Rehydrate failed: TypeError: _supabase.supabase.from(...).select(...).eq(...).order is not a function
+          at order (/Users/v.zahid/AIWardrobe/store/wardrobeSyncService.ts:73:14)
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+      237 |                 });
+      238 |                 if (items !== null && cloudLogs !== null) _lastRehydrateUserId = startUserId;
+    > 239 |             } catch (err) { console.error('[WardrobeStore] Rehydrate failed:', err); }
+          |                                     ^
+      240 |             finally { if (sameAccount()) set({ isLoading: false }); }
+      241 |         })();
+      242 |         activeRehydratePromise = operation;
+
+      at error (store/slices/wardrobeSyncSlice.ts:239:37)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.error
+      [AuthStore] Login failed { message: 'Invalid credentials' }
+
+      83 |
+      84 |     if (level === 'error') {
+    > 85 |         console.error(tag, message, error ?? '', payload ?? '');
+         |                 ^
+      86 |         void reportToCrashService(scope, message, error, payload);
+      87 |         return;
+      88 |     }
+
+      at error (src/utils/logger.ts:85:17)
+      at Object.send [as error] (src/utils/logger.ts:133:42)
+      at error (store/auth.ts:333:9)
+      at setAuthError (store/auth.ts:584:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.error
+      [WardrobeStore] Rehydrate failed: TypeError: _supabase.supabase.from(...).select(...).eq(...).order is not a function
+          at order (/Users/v.zahid/AIWardrobe/store/wardrobeSyncService.ts:73:14)
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+      237 |                 });
+      238 |                 if (items !== null && cloudLogs !== null) _lastRehydrateUserId = startUserId;
+    > 239 |             } catch (err) { console.error('[WardrobeStore] Rehydrate failed:', err); }
+          |                                     ^
+      240 |             finally { if (sameAccount()) set({ isLoading: false }); }
+      241 |         })();
+      242 |         activeRehydratePromise = operation;
+
+      at error (store/slices/wardrobeSyncSlice.ts:239:37)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.warn
+      [AuthStore] OAuth deep link returned an error { oauthError: 'access_denied', description: 'Consent was 100% denied' }
+
+      88 |     }
+      89 |     if (level === 'warn') {
+    > 90 |         console.warn(tag, message, payload ?? '');
+         |                 ^
+      91 |         void breadcrumb(scope, `WARN: ${message}`);
+      92 |         return;
+      93 |     }
+
+      at warn (src/utils/logger.ts:90:17)
+      at Object.send (src/utils/logger.ts:132:34)
+      at warn (store/auth.ts:464:17)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12
+      at apply (store/auth.ts:448:19)
+      at action (store/auth.ts:975:25)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.warn
+      [AuthStore] OAuth deep link returned an error { oauthError: 'access_denied', description: 'Consent denied' }
+
+      88 |     }
+      89 |     if (level === 'warn') {
+    > 90 |         console.warn(tag, message, payload ?? '');
+         |                 ^
+      91 |         void breadcrumb(scope, `WARN: ${message}`);
+      92 |         return;
+      93 |     }
+
+      at warn (src/utils/logger.ts:90:17)
+      at Object.send (src/utils/logger.ts:132:34)
+      at warn (store/auth.ts:464:17)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12
+      at apply (store/auth.ts:448:19)
+      at action (store/auth.ts:975:25)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.error
+      [AuthStore] Deep link auth failed { message: 'synthetic expired link' }
+
+      83 |
+      84 |     if (level === 'error') {
+    > 85 |         console.error(tag, message, error ?? '', payload ?? '');
+         |                 ^
+      86 |         void reportToCrashService(scope, message, error, payload);
+      87 |         return;
+      88 |     }
+
+      at error (src/utils/logger.ts:85:17)
+      at Object.send [as error] (src/utils/logger.ts:133:42)
+      at error (store/auth.ts:523:17)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.error
+      [AuthStore] Deep link auth failed { message: 'synthetic expired link' }
+
+      83 |
+      84 |     if (level === 'error') {
+    > 85 |         console.error(tag, message, error ?? '', payload ?? '');
+         |                 ^
+      86 |         void reportToCrashService(scope, message, error, payload);
+      87 |         return;
+      88 |     }
+
+      at error (src/utils/logger.ts:85:17)
+      at Object.send [as error] (src/utils/logger.ts:133:42)
+      at error (store/auth.ts:523:17)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.error
+      [AuthStore] Account deletion failed Error: Account deletion failed
+          at /Users/v.zahid/AIWardrobe/store/auth.ts:818:47
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+      83 |
+      84 |     if (level === 'error') {
+    > 85 |         console.error(tag, message, error ?? '', payload ?? '');
+         |                 ^
+      86 |         void reportToCrashService(scope, message, error, payload);
+      87 |         return;
+      88 |     }
+
+      at error (src/utils/logger.ts:85:17)
+      at Object.send [as error] (src/utils/logger.ts:133:42)
+      at error (store/auth.ts:333:9)
+      at setAuthError (store/auth.ts:866:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.warn
+      [AuthStore] supabase.auth.signOut timed out after 8000ms — continuing local cleanup
+
+      88 |     }
+      89 |     if (level === 'warn') {
+    > 90 |         console.warn(tag, message, payload ?? '');
+         |                 ^
+      91 |         void breadcrumb(scope, `WARN: ${message}`);
+      92 |         return;
+      93 |     }
+
+      at warn (src/utils/logger.ts:90:17)
+      at Object.send (src/utils/logger.ts:132:34)
+      at warn (store/auth.ts:305:17)
+      at callTimer (node_modules/@sinonjs/fake-timers/src/fake-timers-src.js:744:24)
+      at doTickInner (node_modules/@sinonjs/fake-timers/src/fake-timers-src.js:1312:29)
+      at doTick (node_modules/@sinonjs/fake-timers/src/fake-timers-src.js:1393:20)
+      at Immediate._onImmediate (node_modules/@sinonjs/fake-timers/src/fake-timers-src.js:1413:29)
+
+    console.warn
+      [AuthStore] Error fetching profile { message: 'temporarily unavailable' }
+
+      88 |     }
+      89 |     if (level === 'warn') {
+    > 90 |         console.warn(tag, message, payload ?? '');
+         |                 ^
+      91 |         void breadcrumb(scope, `WARN: ${message}`);
+      92 |         return;
+      93 |     }
+
+      at warn (src/utils/logger.ts:90:17)
+      at Object.send (src/utils/logger.ts:132:34)
+      at Object.warn (store/auth.ts:885:21)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.warn
+      [AuthStore] Stale refresh token detected — clearing session Invalid Refresh Token
+
+      88 |     }
+      89 |     if (level === 'warn') {
+    > 90 |         console.warn(tag, message, payload ?? '');
+         |                 ^
+      91 |         void breadcrumb(scope, `WARN: ${message}`);
+      92 |         return;
+      93 |     }
+
+      at warn (src/utils/logger.ts:90:17)
+      at Object.send (src/utils/logger.ts:132:34)
+      at warn (store/auth.ts:375:29)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.error
+      [AuthStore] Account deletion failed Error: Session does not match the selected account
+          at /Users/v.zahid/AIWardrobe/store/auth.ts:810:76
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+      83 |
+      84 |     if (level === 'error') {
+    > 85 |         console.error(tag, message, error ?? '', payload ?? '');
+         |                 ^
+      86 |         void reportToCrashService(scope, message, error, payload);
+      87 |         return;
+      88 |     }
+
+      at error (src/utils/logger.ts:85:17)
+      at Object.send [as error] (src/utils/logger.ts:133:42)
+      at error (store/auth.ts:333:9)
+      at setAuthError (store/auth.ts:866:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.warn
+      [AuthStore] clearAllPersistedUserData timed out after 10000ms — continuing local cleanup
+
+      88 |     }
+      89 |     if (level === 'warn') {
+    > 90 |         console.warn(tag, message, payload ?? '');
+         |                 ^
+      91 |         void breadcrumb(scope, `WARN: ${message}`);
+      92 |         return;
+      93 |     }
+
+      at warn (src/utils/logger.ts:90:17)
+      at Object.send (src/utils/logger.ts:132:34)
+      at warn (store/auth.ts:305:17)
+      at callTimer (node_modules/@sinonjs/fake-timers/src/fake-timers-src.js:744:24)
+      at doTickInner (node_modules/@sinonjs/fake-timers/src/fake-timers-src.js:1312:29)
+      at doTick (node_modules/@sinonjs/fake-timers/src/fake-timers-src.js:1393:20)
+      at Immediate._onImmediate (node_modules/@sinonjs/fake-timers/src/fake-timers-src.js:1413:29)
+
+    console.error
+      [AuthStore] Login failed Error: synthetic reset failure
+          at Object.<anonymous> (/Users/v.zahid/AIWardrobe/__tests__/store/auth.test.ts:1047:63)
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+          at /Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+          at new Promise (<anonymous>)
+          at Object.<anonymous> (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+          at Promise.then.completed (/Users/v.zahid/AIWardrobe/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/Users/v.zahid/AIWardrobe/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/Users/v.zahid/AIWardrobe/node_modules/jest-circus/build/run.js:316:40)
+          at _runTest (/Users/v.zahid/AIWardrobe/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/Users/v.zahid/AIWardrobe/node_modules/jest-circus/build/run.js:126:9)
+          at run (/Users/v.zahid/AIWardrobe/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/Users/v.zahid/AIWardrobe/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/Users/v.zahid/AIWardrobe/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/Users/v.zahid/AIWardrobe/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/Users/v.zahid/AIWardrobe/node_modules/jest-runner/build/runTest.js:444:34)
+
+      83 |
+      84 |     if (level === 'error') {
+    > 85 |         console.error(tag, message, error ?? '', payload ?? '');
+         |                 ^
+      86 |         void reportToCrashService(scope, message, error, payload);
+      87 |         return;
+      88 |     }
+
+      at error (src/utils/logger.ts:85:17)
+      at Object.send [as error] (src/utils/logger.ts:133:42)
+      at error (store/auth.ts:333:9)
+      at setAuthError (store/auth.ts:584:13)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.error
+      [AuthStore] Login failed Error: synthetic marker read failure
+          at Object.<anonymous> (/Users/v.zahid/AIWardrobe/__tests__/store/auth.test.ts:1074:93)
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+          at /Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+          at new Promise (<anonymous>)
+          at Object.<anonymous> (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+          at Promise.then.completed (/Users/v.zahid/AIWardrobe/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/Users/v.zahid/AIWardrobe/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/Users/v.zahid/AIWardrobe/node_modules/jest-circus/build/run.js:316:40)
+          at _runTest (/Users/v.zahid/AIWardrobe/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/Users/v.zahid/AIWardrobe/node_modules/jest-circus/build/run.js:126:9)
+          at run (/Users/v.zahid/AIWardrobe/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/Users/v.zahid/AIWardrobe/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/Users/v.zahid/AIWardrobe/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/Users/v.zahid/AIWardrobe/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/Users/v.zahid/AIWardrobe/node_modules/jest-runner/build/runTest.js:444:34)
+
+      83 |
+      84 |     if (level === 'error') {
+    > 85 |         console.error(tag, message, error ?? '', payload ?? '');
+         |                 ^
+      86 |         void reportToCrashService(scope, message, error, payload);
+      87 |         return;
+      88 |     }
+
+      at error (src/utils/logger.ts:85:17)
+      at Object.send [as error] (src/utils/logger.ts:133:42)
+      at error (store/auth.ts:333:9)
+      at setAuthError (store/auth.ts:584:13)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.error
+      [AuthStore] Google sign-in failed Error: Consent was 100% denied
+          at /Users/v.zahid/AIWardrobe/store/auth.ts:700:36
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+      83 |
+      84 |     if (level === 'error') {
+    > 85 |         console.error(tag, message, error ?? '', payload ?? '');
+         |                 ^
+      86 |         void reportToCrashService(scope, message, error, payload);
+      87 |         return;
+      88 |     }
+
+      at error (src/utils/logger.ts:85:17)
+      at Object.send [as error] (src/utils/logger.ts:133:42)
+      at error (store/auth.ts:333:9)
+      at setAuthError (store/auth.ts:734:9)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.error
+      [AuthStore] Google sign-in failed Error: Consent was 100% denied
+          at /Users/v.zahid/AIWardrobe/store/auth.ts:700:36
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+      83 |
+      84 |     if (level === 'error') {
+    > 85 |         console.error(tag, message, error ?? '', payload ?? '');
+         |                 ^
+      86 |         void reportToCrashService(scope, message, error, payload);
+      87 |         return;
+      88 |     }
+
+      at error (src/utils/logger.ts:85:17)
+      at Object.send [as error] (src/utils/logger.ts:133:42)
+      at error (store/auth.ts:333:9)
+      at setAuthError (store/auth.ts:734:9)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+PASS __tests__/hooks/useDailyAIOutfit.test.ts
+PASS __tests__/screens/clothingReviewPersistence.test.tsx
+PASS __tests__/backend/analyzeOutfitOwnership.test.js
+  ● Console
+
+    console.error
+      NVIDIA API error: 429 {"choices":[{"message":{"content":"[{\"section\":\"tops\",\"specificType\":\"shirt\",\"primaryColor\":\"white\",\"colorHex\":\"#ffffff\",\"style\":\"casual\",\"material\":null,\"pattern\":\"solid\",\"fit\":\"regular\",\"description\":\"A visible garment.\",\"category\":\"shirt\"}]"},"finish_reason":"stop"}]}
+
+      at callNvidiaVision (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:94:17)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:320:36)
+
+    console.error
+      NVIDIA API error: 503 {"choices":[{"message":{"content":"[{\"section\":\"tops\",\"specificType\":\"shirt\",\"primaryColor\":\"white\",\"colorHex\":\"#ffffff\",\"style\":\"casual\",\"material\":null,\"pattern\":\"solid\",\"fit\":\"regular\",\"description\":\"A visible garment.\",\"category\":\"shirt\"}]"},"finish_reason":"stop"}]}
+
+      at callNvidiaVision (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:94:17)
+      at eval (eval at load (__tests__/backend/analyzeOutfitOwnership.test.js:30:3), <anonymous>:320:36)
+
+PASS __tests__/screens/clothingDetailPersistence.test.tsx
+PASS __tests__/backend/scanClassification.test.js
+PASS __tests__/e2e/aiStylist50.e2e.test.ts
+PASS __tests__/backend/tryOnComposite.test.js
+PASS __tests__/backend/rateLimit.test.js
+PASS __tests__/screens/styleQuizAccessibility.test.tsx
+  ● Console
+
+    console.info
+      🌐 i18next is made possible by our own product, Locize — consider powering your project with managed localization (AI, CDN, integrations): https://locize.com 💙
+
+      at I18n.init (node_modules/i18next/dist/cjs/i18next.js:1794:90)
+
+    console.error
+      An update to Icon inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14402:19
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14401:9)
+      at scheduleUpdateOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12086:9)
+      at Object.enqueueSetState (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:16926:13)
+      at Icon.Object.<anonymous>.process.env.NODE_ENV.Component.setState (node_modules/react/cjs/react.development.js:655:20)
+      at Icon.setState (node_modules/@expo/vector-icons/src/createIconSet.tsx:181:31)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.error
+      An update to Icon inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14402:19
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14401:9)
+      at scheduleUpdateOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12086:9)
+      at Object.enqueueSetState (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:16926:13)
+      at Icon.Object.<anonymous>.process.env.NODE_ENV.Component.setState (node_modules/react/cjs/react.development.js:655:20)
+      at Icon.setState (node_modules/@expo/vector-icons/src/createIconSet.tsx:181:31)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+PASS __tests__/backend/scanAdmission.test.js
+PASS __tests__/hooks/useAdminGuard.test.ts
+  ● Console
+
+    console.warn
+      [useAdminGuard] Failed to check admin status { message: 'unavailable' }
+
+      88 |     }
+      89 |     if (level === 'warn') {
+    > 90 |         console.warn(tag, message, payload ?? '');
+         |                 ^
+      91 |         void breadcrumb(scope, `WARN: ${message}`);
+      92 |         return;
+      93 |     }
+
+      at warn (src/utils/logger.ts:90:17)
+      at Object.send (src/utils/logger.ts:132:34)
+      at warn (hooks/useAdminGuard.ts:61:24)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+PASS __tests__/features/calendarReadIsolation.test.ts
+  ● Console
+
+    console.error
+      Error loading outfit logs: Error: Calendar account changed
+          at assertSession (/Users/v.zahid/AIWardrobe/src/services/calendarStorage.ts:11:98)
+          at assertSession (/Users/v.zahid/AIWardrobe/src/services/calendarStorage.ts:29:3)
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+       96 |             }
+       97 |         } catch (error) {
+    >  98 |             console.error('Error loading outfit logs:', error);
+          |                     ^
+       99 |         }
+      100 |     }, [calculateStreakFromLogs, todayStr]);
+      101 |
+
+      at error (features/calendar/hooks/useOutfitCalendar.ts:98:21)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+PASS __tests__/components/authSubmissionAdmission.test.tsx
+PASS __tests__/backend/outfitCandidateCurrency.test.js
+  ● Console
+
+    console.log
+      [Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "White cotton shirt" => Mapped to: "top"
+
+      at macroCategory (eval at Object.<anonymous> (__tests__/backend/outfitCandidateCurrency.test.js:9:13), <anonymous>:208:13)
+          at Array.filter (<anonymous>)
+
+    console.log
+      [Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "White cotton shirt" => Mapped to: "top"
+
+      at macroCategory (eval at Object.<anonymous> (__tests__/backend/outfitCandidateCurrency.test.js:9:13), <anonymous>:208:13)
+          at Array.filter (<anonymous>)
+
+    console.log
+      [Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "White cotton shirt" => Mapped to: "top"
+
+      at macroCategory (eval at Object.<anonymous> (__tests__/backend/outfitCandidateCurrency.test.js:9:13), <anonymous>:208:13)
+          at Array.filter (<anonymous>)
+
+    console.log
+      [Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "White cotton shirt" => Mapped to: "top"
+
+      at macroCategory (eval at Object.<anonymous> (__tests__/backend/outfitCandidateCurrency.test.js:9:13), <anonymous>:208:13)
+          at Array.filter (<anonymous>)
+
+PASS __tests__/store/wearHistoryAccuracy.test.ts
+PASS __tests__/components/resetPasswordIsolation.test.tsx
+PASS __tests__/store/wardrobeStore.test.ts
+PASS __tests__/backend/nvidiaOutfitRequest.test.js
+  ● Console
+
+    console.log
+      [NVIDIA] attempt 1, model: meta/llama-3.2-11b-vision-instruct
+
+      at Object.callNvidia (eval at <anonymous> (__tests__/backend/nvidiaOutfitRequest.test.js:9:12), <anonymous>:2171:21)
+
+    console.log
+      [NVIDIA] response length: 93 chars
+
+      at Object.callNvidia (eval at <anonymous> (__tests__/backend/nvidiaOutfitRequest.test.js:9:12), <anonymous>:2193:21)
+
+    console.log
+      [NVIDIA] parsed 1 outfits
+
+      at Object.callNvidia (eval at <anonymous> (__tests__/backend/nvidiaOutfitRequest.test.js:9:12), <anonymous>:2196:25)
+
+    console.log
+      [NVIDIA] attempt 1, model: nvidia/nemotron-3.5-lightning-30b-a3b
+
+      at Object.callNvidia (eval at <anonymous> (__tests__/backend/nvidiaOutfitRequest.test.js:9:12), <anonymous>:2171:21)
+
+    console.log
+      [NVIDIA] response length: 93 chars
+
+      at Object.callNvidia (eval at <anonymous> (__tests__/backend/nvidiaOutfitRequest.test.js:9:12), <anonymous>:2193:21)
+
+    console.log
+      [NVIDIA] parsed 1 outfits
+
+      at Object.callNvidia (eval at <anonymous> (__tests__/backend/nvidiaOutfitRequest.test.js:9:12), <anonymous>:2196:25)
+
+    console.log
+      [NVIDIA] attempt 1, model: meta/llama-3.2-11b-vision-instruct
+
+      at Object.callNvidia (eval at <anonymous> (__tests__/backend/nvidiaOutfitRequest.test.js:9:12), <anonymous>:2171:21)
+
+    console.error
+      [NVIDIA] call error: Error: body aborted
+          at AbortSignal.signal.addEventListener.once (/Users/v.zahid/AIWardrobe/__tests__/backend/nvidiaOutfitRequest.test.js:25:48)
+          at AbortSignal.[nodejs.internal.kHybridDispatch] (node:internal/event_target:843:20)
+          at AbortSignal.dispatchEvent (node:internal/event_target:776:26)
+          at runAbort (node:internal/abort_controller:486:10)
+          at abortSignal (node:internal/abort_controller:457:3)
+          at AbortController.abort (node:internal/abort_controller:505:5)
+          at eval (eval at <anonymous> (/Users/v.zahid/AIWardrobe/__tests__/backend/nvidiaOutfitRequest.test.js:9:12), <anonymous>:2169:51)
+          at callTimer (/Users/v.zahid/AIWardrobe/node_modules/@sinonjs/fake-timers/src/fake-timers-src.js:744:24)
+          at doTickInner (/Users/v.zahid/AIWardrobe/node_modules/@sinonjs/fake-timers/src/fake-timers-src.js:1312:29)
+          at doTick (/Users/v.zahid/AIWardrobe/node_modules/@sinonjs/fake-timers/src/fake-timers-src.js:1393:20)
+          at Immediate.<anonymous> (/Users/v.zahid/AIWardrobe/node_modules/@sinonjs/fake-timers/src/fake-timers-src.js:1413:29)
+          at processImmediate (node:internal/timers:484:21)
+
+      at Object.callNvidia (eval at <anonymous> (__tests__/backend/nvidiaOutfitRequest.test.js:9:12), <anonymous>:2205:21)
+
+PASS __tests__/utils/calendarDate.test.ts
+PASS __tests__/components/dailyOutfitFailureState.test.tsx
+PASS __tests__/store/stylePreferenceStore.test.ts
+PASS __tests__/services/stylistAgentChaos.test.ts
+PASS __tests__/components/dailyOutfitDeckSelection.test.ts
+PASS __tests__/backend/edgeSyntax.test.js
+PASS __tests__/store/wardrobeOutfitsDedup.test.ts
+PASS __tests__/components/signInVisibilityReset.test.tsx
+PASS __tests__/services/stylistAgentAdversarial.test.ts
+PASS __tests__/store/wardrobeStore.addItem.test.ts
+PASS __tests__/store/wearHistoryPersistence.test.ts
+PASS __tests__/store/languageStore.test.ts
+  ● Console
+
+    console.info
+      🌐 i18next is made possible by our own product, Locize — consider powering your project with managed localization (AI, CDN, integrations): https://locize.com 💙
+
+      at I18n.init (node_modules/i18next/dist/cjs/i18next.js:1794:90)
+
+    console.error
+      [LanguageStore] Unsupported language { language: 'de' }
+
+      83 |
+      84 |     if (level === 'error') {
+    > 85 |         console.error(tag, message, error ?? '', payload ?? '');
+         |                 ^
+      86 |         void reportToCrashService(scope, message, error, payload);
+      87 |         return;
+      88 |     }
+
+      at error (src/utils/logger.ts:85:17)
+      at Object.send [as error] (src/utils/logger.ts:133:42)
+      at Object.error (store/languageStore.ts:54:17)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+      at Object.apply [as setLanguage] (store/languageStore.ts:52:16)
+      at Object.setLanguage (__tests__/store/languageStore.test.ts:106:39)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.error
+      [CrashReporting] [object Object] {
+        scope: 'LanguageStore',
+        message: 'Unsupported language',
+        payload: undefined,
+        breadcrumbs: []
+      }
+
+      185 |         // Log to console in dev
+      186 |         if (__DEV__) {
+    > 187 |             console.error('[CrashReporting]', report.message, report.context);
+          |                     ^
+      188 |         }
+      189 |
+      190 |         // Store locally (fallback and for debugging)
+
+      at error (src/services/crashReporting.ts:187:21)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at CrashReportingService.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+      at CrashReportingService.apply [as reportCrash] (src/services/crashReporting.ts:158:22)
+      at reportCrash (src/utils/logger.ts:112:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12
+      at apply (src/utils/logger.ts:116:2)
+      at apply (src/utils/logger.ts:101:36)
+      at reportToCrashService (src/utils/logger.ts:86:14)
+      at Object.send [as error] (src/utils/logger.ts:133:42)
+      at Object.error (store/languageStore.ts:54:17)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+      at Object.apply [as setLanguage] (store/languageStore.ts:52:16)
+      at Object.setLanguage (__tests__/store/languageStore.test.ts:106:39)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+PASS __tests__/store/subscriptionAuthority.test.ts
+  ● Console
+
+    console.error
+      Failed to verify subscription from server: Error: unavailable
+          at Object.<anonymous> (/Users/v.zahid/AIWardrobe/__tests__/store/subscriptionAuthority.test.ts:28:57)
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+      343 |         } catch (error) {
+      344 |             if (revision !== authEvents.getRevision()) return;
+    > 345 |             console.error('Failed to verify subscription from server:', error);
+          |                     ^
+      346 |             // On error, clear pending so the UI isn't stuck waiting forever
+      347 |             const { tier, expiryDate, trialStartedAt } = get();
+      348 |             set(deriveState(tier, expiryDate, trialStartedAt, false));
+
+      at Object.error (store/subscriptionStore.ts:345:21)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+PASS __tests__/backend/webhookDedicatedSecret.test.js
+PASS __tests__/components/recoverySubmission.test.tsx
+PASS __tests__/utils/validators.test.ts
+  ● Console
+
+    console.warn
+      [validators] Invalid clothing row skipped: Invalid UUID
+
+      74 |             valid.push(result.data);
+      75 |         } else {
+    > 76 |             console.warn('[validators] Invalid clothing row skipped:', result.error.issues[0]?.message);
+         |                     ^
+      77 |         }
+      78 |     }
+      79 |     return valid;
+
+      at warn (src/utils/validators.ts:76:21)
+      at Object.<anonymous> (__tests__/utils/validators.test.ts:40:47)
+
+    console.warn
+      [validators] Invalid clothing row skipped: Invalid input: expected string, received undefined
+
+      74 |             valid.push(result.data);
+      75 |         } else {
+    > 76 |             console.warn('[validators] Invalid clothing row skipped:', result.error.issues[0]?.message);
+         |                     ^
+      77 |         }
+      78 |     }
+      79 |     return valid;
+
+      at warn (src/utils/validators.ts:76:21)
+      at Object.<anonymous> (__tests__/utils/validators.test.ts:45:40)
+
+PASS __tests__/components/MediaImage.test.tsx
+PASS __tests__/store/dailyUsageStore.test.ts
+  ● Console
+
+    console.warn
+      [dailyUsageStore] RPC failed, falling back to local cache TypeError: _supabase.supabase.rpc is not a function
+          at rpc (/Users/v.zahid/AIWardrobe/store/dailyUsageStore.ts:125:72)
+          at start (/Users/v.zahid/AIWardrobe/src/lib/requestDeadline.ts:21:36)
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+          at /Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+          at new Promise (<anonymous>)
+          at /Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12
+          at apply (/Users/v.zahid/AIWardrobe/src/lib/requestDeadline.ts:23:2)
+          at apply (/Users/v.zahid/AIWardrobe/src/lib/requestDeadline.ts:11:42)
+          at /Users/v.zahid/AIWardrobe/store/dailyUsageStore.ts:125:56
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+          at /Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+          at new Promise (<anonymous>)
+          at Object.<anonymous> (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+          at Object.apply [as consume] (/Users/v.zahid/AIWardrobe/store/dailyUsageStore.ts:107:10)
+          at Object.consume (/Users/v.zahid/AIWardrobe/__tests__/store/dailyUsageStore.test.ts:48:41)
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+      145 |       }
+      146 |     } catch (err) {
+    > 147 |       console.warn('[dailyUsageStore] RPC failed, falling back to local cache', err);
+          |               ^
+      148 |     }
+      149 |
+      150 |     if (!stillCurrent()) return cancelled();
+
+      at warn (store/dailyUsageStore.ts:147:15)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.warn
+      [dailyUsageStore] RPC failed, falling back to local cache TypeError: _supabase.supabase.rpc is not a function
+          at rpc (/Users/v.zahid/AIWardrobe/store/dailyUsageStore.ts:125:72)
+          at start (/Users/v.zahid/AIWardrobe/src/lib/requestDeadline.ts:21:36)
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+          at /Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+          at new Promise (<anonymous>)
+          at /Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12
+          at apply (/Users/v.zahid/AIWardrobe/src/lib/requestDeadline.ts:11:42)
+          at /Users/v.zahid/AIWardrobe/store/dailyUsageStore.ts:125:56
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+          at /Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+          at new Promise (<anonymous>)
+          at Object.<anonymous> (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+          at Object.apply [as consume] (/Users/v.zahid/AIWardrobe/store/dailyUsageStore.ts:107:10)
+          at Object.consume (/Users/v.zahid/AIWardrobe/__tests__/store/dailyUsageStore.test.ts:49:41)
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+      145 |       }
+      146 |     } catch (err) {
+    > 147 |       console.warn('[dailyUsageStore] RPC failed, falling back to local cache', err);
+          |               ^
+      148 |     }
+      149 |
+      150 |     if (!stillCurrent()) return cancelled();
+
+      at warn (store/dailyUsageStore.ts:147:15)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.warn
+      [dailyUsageStore] RPC failed, falling back to local cache TypeError: _supabase.supabase.rpc is not a function
+          at rpc (/Users/v.zahid/AIWardrobe/store/dailyUsageStore.ts:125:72)
+          at start (/Users/v.zahid/AIWardrobe/src/lib/requestDeadline.ts:21:36)
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+          at /Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+          at new Promise (<anonymous>)
+          at /Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12
+          at apply (/Users/v.zahid/AIWardrobe/src/lib/requestDeadline.ts:23:2)
+          at apply (/Users/v.zahid/AIWardrobe/src/lib/requestDeadline.ts:11:42)
+          at /Users/v.zahid/AIWardrobe/store/dailyUsageStore.ts:125:56
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+          at /Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+          at new Promise (<anonymous>)
+          at Object.<anonymous> (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+          at Object.apply [as consume] (/Users/v.zahid/AIWardrobe/store/dailyUsageStore.ts:107:10)
+          at Object.consume (/Users/v.zahid/AIWardrobe/__tests__/store/dailyUsageStore.test.ts:58:43)
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+      145 |       }
+      146 |     } catch (err) {
+    > 147 |       console.warn('[dailyUsageStore] RPC failed, falling back to local cache', err);
+          |               ^
+      148 |     }
+      149 |
+      150 |     if (!stillCurrent()) return cancelled();
+
+      at warn (store/dailyUsageStore.ts:147:15)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.warn
+      [dailyUsageStore] RPC failed, falling back to local cache TypeError: _supabase.supabase.rpc is not a function
+          at rpc (/Users/v.zahid/AIWardrobe/store/dailyUsageStore.ts:125:72)
+          at start (/Users/v.zahid/AIWardrobe/src/lib/requestDeadline.ts:21:36)
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+          at /Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+          at new Promise (<anonymous>)
+          at /Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12
+          at apply (/Users/v.zahid/AIWardrobe/src/lib/requestDeadline.ts:11:42)
+          at /Users/v.zahid/AIWardrobe/store/dailyUsageStore.ts:125:56
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+          at /Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+          at new Promise (<anonymous>)
+          at Object.<anonymous> (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+          at Object.apply [as consume] (/Users/v.zahid/AIWardrobe/store/dailyUsageStore.ts:107:10)
+          at Object.consume (/Users/v.zahid/AIWardrobe/__tests__/store/dailyUsageStore.test.ts:58:43)
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+      145 |       }
+      146 |     } catch (err) {
+    > 147 |       console.warn('[dailyUsageStore] RPC failed, falling back to local cache', err);
+          |               ^
+      148 |     }
+      149 |
+      150 |     if (!stillCurrent()) return cancelled();
+
+      at warn (store/dailyUsageStore.ts:147:15)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.warn
+      [dailyUsageStore] RPC failed, falling back to local cache TypeError: _supabase.supabase.rpc is not a function
+          at rpc (/Users/v.zahid/AIWardrobe/store/dailyUsageStore.ts:125:72)
+          at start (/Users/v.zahid/AIWardrobe/src/lib/requestDeadline.ts:21:36)
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+          at /Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+          at new Promise (<anonymous>)
+          at /Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12
+          at apply (/Users/v.zahid/AIWardrobe/src/lib/requestDeadline.ts:11:42)
+          at /Users/v.zahid/AIWardrobe/store/dailyUsageStore.ts:125:56
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+          at /Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+          at new Promise (<anonymous>)
+          at Object.<anonymous> (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+          at Object.apply [as consume] (/Users/v.zahid/AIWardrobe/store/dailyUsageStore.ts:107:10)
+          at Object.consume (/Users/v.zahid/AIWardrobe/__tests__/store/dailyUsageStore.test.ts:58:43)
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+      145 |       }
+      146 |     } catch (err) {
+    > 147 |       console.warn('[dailyUsageStore] RPC failed, falling back to local cache', err);
+          |               ^
+      148 |     }
+      149 |
+      150 |     if (!stillCurrent()) return cancelled();
+
+      at warn (store/dailyUsageStore.ts:147:15)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.warn
+      [dailyUsageStore] RPC failed, falling back to local cache TypeError: _supabase.supabase.rpc is not a function
+          at rpc (/Users/v.zahid/AIWardrobe/store/dailyUsageStore.ts:125:72)
+          at start (/Users/v.zahid/AIWardrobe/src/lib/requestDeadline.ts:21:36)
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+          at /Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+          at new Promise (<anonymous>)
+          at /Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12
+          at apply (/Users/v.zahid/AIWardrobe/src/lib/requestDeadline.ts:23:2)
+          at apply (/Users/v.zahid/AIWardrobe/src/lib/requestDeadline.ts:11:42)
+          at /Users/v.zahid/AIWardrobe/store/dailyUsageStore.ts:125:56
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+          at /Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+          at new Promise (<anonymous>)
+          at Object.<anonymous> (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+          at Object.apply [as consume] (/Users/v.zahid/AIWardrobe/store/dailyUsageStore.ts:107:10)
+          at Object.consume (/Users/v.zahid/AIWardrobe/__tests__/store/dailyUsageStore.test.ts:101:41)
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+      145 |       }
+      146 |     } catch (err) {
+    > 147 |       console.warn('[dailyUsageStore] RPC failed, falling back to local cache', err);
+          |               ^
+      148 |     }
+      149 |
+      150 |     if (!stillCurrent()) return cancelled();
+
+      at warn (store/dailyUsageStore.ts:147:15)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+PASS __tests__/e2e/aiOccasion.e2e.test.ts
+PASS __tests__/backend/tripPlanContract.test.js
+PASS __tests__/utils/outfitBudget.test.ts
+PASS __tests__/services/outfitGenerationVariety.test.ts
+PASS __tests__/features/useWardrobeLoader.test.ts
+PASS __tests__/services/iapService.test.ts
+PASS __tests__/services/outfitTopSlotRegression.test.ts
+PASS __tests__/backend/subscriptionSyncContract.test.js
+PASS __tests__/services/outfitDescriptionCopy.test.ts
+PASS __tests__/e2e/aiPipeline.e2e.test.ts
+PASS __tests__/components/clothingThumbnail.test.tsx
+PASS __tests__/backend/nvidiaChatRouting.test.js
+PASS __tests__/services/pendingWardrobeMedia.test.ts
+PASS __tests__/backend/accountDeletion.test.js
+  ● Console
+
+    console.error
+      [delete-account] Storage enumeration failed { code: 'unavailable' }
+
+      at eval (eval at load (__tests__/backend/accountDeletion.test.js:21:3), <anonymous>:40:25)
+
+    console.error
+      [delete-account] Storage removal failed { status: 503 }
+
+      at eval (eval at load (__tests__/backend/accountDeletion.test.js:21:3), <anonymous>:54:29)
+
+PASS __tests__/backend/outfitBudgetSelection.test.js
+PASS __tests__/features/normalizeSlots.test.ts
+PASS __tests__/lib/persistence.test.ts
+PASS __tests__/backend/revenuecatWebhookContract.test.js
+PASS __tests__/services/functionAuthorization.test.ts
+PASS __tests__/e2e/aiPersonas.e2e.test.ts
+PASS __tests__/hooks/useVideoAnalysisImages.test.ts
+  ● Console
+
+    console.warn
+      react-i18next:: useTranslation: You will need to pass in an i18next instance by using initReactI18next { code: 'NO_I18NEXT_INSTANCE' }
+
+      51 |
+      52 | export const useVideoAnalysis = (): UseVideoAnalysisReturn => {
+    > 53 |   const { t } = useTranslation();
+         |                               ^
+      54 |   const [analyzing, setAnalyzing] = useState(false);
+      55 |   const [progress, setProgress] = useState('');
+      56 |   const [results, setResults] = useState<AnalysisResult | null>(null);
+
+      at warn (node_modules/react-i18next/dist/commonjs/utils.js:19:13)
+      at warnOnce (node_modules/react-i18next/dist/commonjs/utils.js:27:3)
+      at useTranslation (node_modules/react-i18next/dist/commonjs/useTranslation.js:37:25)
+      at useVideoAnalysis (src/features/wardrobe/useVideoAnalysis.ts:53:31)
+      at __tests__/hooks/useVideoAnalysisImages.test.ts:25:55
+      at hookToRender (node_modules/@testing-library/react-native/src/render-hook.tsx:46:26)
+      at Object.react_stack_bottom_frame (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:15670:20)
+      at renderWithHooks (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4863:22)
+      at updateFunctionComponent (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:7018:19)
+      at beginWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:8499:18)
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at performUnitOfWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13224:22)
+      at workLoopSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13068:41)
+      at renderRootSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13049:11)
+      at performWorkOnRoot (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12181:11)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2908:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at Object.<anonymous>.process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at actImplementation (node_modules/@testing-library/react-native/src/act.ts:30:25)
+      at renderWithAct (node_modules/@testing-library/react-native/src/render-act.ts:13:11)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:69:33)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:44:10)
+      at renderHook (node_modules/@testing-library/react-native/src/render-hook.tsx:55:58)
+      at __tests__/hooks/useVideoAnalysisImages.test.ts:25:32
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12
+      at apply (__tests__/hooks/useVideoAnalysisImages.test.ts:29:2)
+
+PASS __tests__/services/aiService.test.ts
+PASS __tests__/e2e/aiAdversarial.e2e.test.ts
+PASS __tests__/backend/tryOnContract.test.js
+PASS __tests__/store/wardrobeSyncService.test.ts
+  ● Console
+
+    console.error
+      [WardrobeSyncService] Batch upsert failed: { message: 'network error' }
+
+      290 |                 if (batchError) {
+      291 |                     // Batch failed — keep all local-wins actions in the queue for retry.
+    > 292 |                     console.error(
+          |                             ^
+      293 |                         '[WardrobeSyncService] Batch upsert failed:',
+      294 |                         batchError
+      295 |                     );
+
+      at error (store/wardrobeSyncService.ts:292:29)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+PASS __tests__/services/wardrobeMedia.test.ts
+PASS __tests__/backend/outfitBudgetFeasibility.test.js
+PASS __tests__/backend/outfitBudgetFeedback.test.js
+PASS __tests__/services/wardrobeThumbnail.test.ts
+PASS __tests__/store/trialInitialization.test.ts
+PASS __tests__/store/savedShopIsolation.test.ts
+PASS __tests__/components/authCallbackRouting.test.tsx
+PASS __tests__/backend/modelOutfitResponse.test.js
+PASS __tests__/services/stylistCanonicalRequest.test.ts
+  ● Console
+
+    console.warn
+      [outfitGenerationService] Edge function error, generation rejected: Error: unavailable
+          at Object.<anonymous> (/Users/v.zahid/AIWardrobe/__tests__/services/stylistCanonicalRequest.test.ts:10:51)
+          at Generator.next (<anonymous>)
+          at asyncGeneratorStep (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+          at _next (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+          at /Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+          at new Promise (<anonymous>)
+          at Object.<anonymous> (/Users/v.zahid/AIWardrobe/node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+          at Promise.then.completed (/Users/v.zahid/AIWardrobe/node_modules/jest-circus/build/utils.js:298:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/Users/v.zahid/AIWardrobe/node_modules/jest-circus/build/utils.js:231:10)
+          at _callCircusTest (/Users/v.zahid/AIWardrobe/node_modules/jest-circus/build/run.js:316:40)
+          at _runTest (/Users/v.zahid/AIWardrobe/node_modules/jest-circus/build/run.js:252:3)
+          at _runTestsForDescribeBlock (/Users/v.zahid/AIWardrobe/node_modules/jest-circus/build/run.js:126:9)
+          at _runTestsForDescribeBlock (/Users/v.zahid/AIWardrobe/node_modules/jest-circus/build/run.js:121:9)
+          at run (/Users/v.zahid/AIWardrobe/node_modules/jest-circus/build/run.js:71:3)
+          at runAndTransformResultsToJestFormat (/Users/v.zahid/AIWardrobe/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+          at jestAdapter (/Users/v.zahid/AIWardrobe/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+          at runTestInternal (/Users/v.zahid/AIWardrobe/node_modules/jest-runner/build/runTest.js:367:16)
+          at runTest (/Users/v.zahid/AIWardrobe/node_modules/jest-runner/build/runTest.js:444:34)
+
+      167 |
+      168 |         if (error) {
+    > 169 |             console.warn('[outfitGenerationService] Edge function error, generation rejected:', error);
+          |                     ^
+      170 |             return { success: false, outfits: [], error: 'stylist_generation_failed', errorTranslationKey: (await outfitGenerationFailure(data, error)).translationKey };
+      171 |         }
+      172 |
+
+      at warn (src/services/outfitGenerationService.ts:169:21)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.warn
+      [outfitGenerationService] Empty AI response, generation rejected
+
+      172 |
+      173 |         if ((data?.source && data.source !== 'ai') || !data?.success || !Array.isArray(data?.outfits) || data.outfits.length === 0) {
+    > 174 |             console.warn('[outfitGenerationService] Empty AI response, generation rejected');
+          |                     ^
+      175 |             return { success: false, outfits: [], error: 'stylist_generation_failed', errorTranslationKey: (await outfitGenerationFailure(data, error)).translationKey };
+      176 |         }
+      177 |
+
+      at warn (src/services/outfitGenerationService.ts:174:21)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.warn
+      [outfitGenerationService] Empty AI response, generation rejected
+
+      172 |
+      173 |         if ((data?.source && data.source !== 'ai') || !data?.success || !Array.isArray(data?.outfits) || data.outfits.length === 0) {
+    > 174 |             console.warn('[outfitGenerationService] Empty AI response, generation rejected');
+          |                     ^
+      175 |             return { success: false, outfits: [], error: 'stylist_generation_failed', errorTranslationKey: (await outfitGenerationFailure(data, error)).translationKey };
+      176 |         }
+      177 |
+
+      at warn (src/services/outfitGenerationService.ts:174:21)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.warn
+      [outfitGenerationService] Edge function timed out, generation rejected
+
+      186 |     } catch (err: any) {
+      187 |         if (err?.message === 'outfit_generation_timeout') {
+    > 188 |             console.warn('[outfitGenerationService] Edge function timed out, generation rejected');
+          |                     ^
+      189 |             return { success: false, outfits: [], error: 'outfit_generation_timeout' };
+      190 |         }
+      191 |         console.error('[outfitGenerationService] Unexpected error:', err);
+
+      at warn (src/services/outfitGenerationService.ts:188:21)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.warn
+      [outfitGenerationService] Edge function error, generation rejected: {
+        context: Response {
+          status: 422,
+          statusText: '',
+          headers: Headers { 'content-type': 'text/plain;charset=UTF-8' },
+          body: ReadableStream { locked: false, state: 'readable', supportsBYOB: true },
+          bodyUsed: false,
+          ok: false,
+          redirected: false,
+          type: 'default',
+          url: ''
+        }
+      }
+
+      167 |
+      168 |         if (error) {
+    > 169 |             console.warn('[outfitGenerationService] Edge function error, generation rejected:', error);
+          |                     ^
+      170 |             return { success: false, outfits: [], error: 'stylist_generation_failed', errorTranslationKey: (await outfitGenerationFailure(data, error)).translationKey };
+      171 |         }
+      172 |
+
+      at warn (src/services/outfitGenerationService.ts:169:21)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+PASS __tests__/services/profileAvatar.test.ts
+PASS __tests__/features/useOutfitCalendar.test.ts
+  ● Console
+
+    console.warn
+      react-i18next:: useTranslation: You will need to pass in an i18next instance by using initReactI18next { code: 'NO_I18NEXT_INSTANCE' }
+
+      50 |
+      51 | export function useOutfitCalendar() {
+    > 52 |     const { t } = useTranslation();
+         |                                 ^
+      53 |     const today = new Date();
+      54 |     const todayStr = formatDate(today.getFullYear(), today.getMonth(), today.getDate());
+      55 |
+
+      at warn (node_modules/react-i18next/dist/commonjs/utils.js:19:13)
+      at warnOnce (node_modules/react-i18next/dist/commonjs/utils.js:27:3)
+      at useTranslation (node_modules/react-i18next/dist/commonjs/useTranslation.js:37:25)
+      at useOutfitCalendar (features/calendar/hooks/useOutfitCalendar.ts:52:33)
+      at __tests__/features/useOutfitCalendar.test.ts:43:62
+      at hookToRender (node_modules/@testing-library/react-native/src/render-hook.tsx:46:26)
+      at Object.react_stack_bottom_frame (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:15670:20)
+      at renderWithHooks (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4863:22)
+      at updateFunctionComponent (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:7018:19)
+      at beginWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:8499:18)
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at performUnitOfWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13224:22)
+      at workLoopSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13068:41)
+      at renderRootSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13049:11)
+      at performWorkOnRoot (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12181:11)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2908:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at Object.<anonymous>.process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at actImplementation (node_modules/@testing-library/react-native/src/act.ts:30:25)
+      at renderWithAct (node_modules/@testing-library/react-native/src/render-act.ts:13:11)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:69:33)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:44:10)
+      at renderHook (node_modules/@testing-library/react-native/src/render-hook.tsx:55:58)
+      at Object.<anonymous> (__tests__/features/useOutfitCalendar.test.ts:43:38)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+PASS __tests__/services/outfitCacheKey.test.ts
+PASS __tests__/features/outfitBudgetLivePool.test.ts
+PASS __tests__/scripts/syncZaraMen.test.js
+  ● Console
+
+    console.log
+      ◇ injected env (18) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+PASS __tests__/services/wardrobeReadIntegrity.test.ts
+PASS __tests__/services/outfitGenerationFailure.test.ts
+PASS __tests__/features/useQuizState.test.ts
+PASS __tests__/store/wardrobeSyncRace.test.ts
+PASS __tests__/store/outfitUnsaveIntegrity.test.ts
+PASS __tests__/store/wardrobePhotoStaging.test.ts
+PASS __tests__/services/savedOutfitPagination.test.ts
+PASS __tests__/services/suggestionEngine.test.ts
+PASS __tests__/lib/requestDeadline.test.ts
+PASS __tests__/features/sanitizeGeneratedOutfit.test.ts
+PASS __tests__/services/clothingEditorService.test.ts
+PASS __tests__/lib/debouncedStorage.test.ts
+PASS __tests__/lib/authFetch.test.ts
+PASS __tests__/utils/shopDestinationSecurity.test.ts
+PASS __tests__/services/retentionService.test.ts
+PASS __tests__/services/calendarStorage.test.ts
+PASS __tests__/hooks/featuredCapsulesRepair.test.ts
+PASS __tests__/features/slotPickOrder.test.ts
+PASS __tests__/features/shopPriceLabel.test.ts
+PASS __tests__/services/savedOutfitService.test.ts
+PASS __tests__/services/nativeMediaDigest.test.ts
+PASS __tests__/services/wardrobeMediaRetry.test.ts
+PASS __tests__/utils/occasionRulesRussianShoes.test.ts
+PASS __tests__/utils/outfitCoherenceUniversal.test.ts
+PASS __tests__/features/outfitNormalize.test.ts
+PASS __tests__/features/stylistIntent.test.ts
+PASS __tests__/store/uploadQueueIsolation.test.ts
+PASS __tests__/store/subscriptionStore.test.ts
+PASS __tests__/services/apiClient.test.ts
+PASS __tests__/services/wardrobeSyncErrors.test.ts
+PASS __tests__/services/savedOutfitMedia.test.ts
+PASS __tests__/services/offlineQueue.test.ts
+  ● Console
+
+    console.warn
+      [OfflineQueue] Action q_1792411102415_i3czi9 failed with 400, dropping
+
+      92 |                 // Client error — don't retry
+      93 |                 failed++;
+    > 94 |                 console.warn(`[OfflineQueue] Action ${action.id} failed with ${response.status}, dropping`);
+         |                         ^
+      95 |             } else {
+      96 |                 // Server error — retry later
+      97 |                 remaining.push({ ...action, retryCount: action.retryCount + 1 });
+
+      at warn (src/services/offlineQueue.ts:94:25)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.warn
+      [OfflineQueue] Action q_test exceeded max retries, dropping
+
+      104 |             } else {
+      105 |                 // Too many retries, drop
+    > 106 |                 console.warn(`[OfflineQueue] Action ${action.id} exceeded max retries, dropping`);
+          |                         ^
+      107 |             }
+      108 |             failed++;
+      109 |         }
+
+      at warn (src/services/offlineQueue.ts:106:25)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+PASS __tests__/services/stylistPersonaLang.test.ts
+PASS __tests__/e2e/aiDecks.e2e.test.ts
+PASS __tests__/lib/fit/fitEngine.test.ts
+PASS __tests__/utils/mediaImageSource.test.ts
+PASS __tests__/utils/confirmedOutfitMedia.test.ts
+PASS __tests__/features/calendarClassifier.test.ts
+PASS __tests__/store/wardrobeMutationQueue.test.ts
+PASS __tests__/backend/revenuecatSnapshot.test.ts
+PASS __tests__/utils/normalizeSlotsShopUrl.test.ts
+PASS __tests__/utils/mappingUtils.test.ts
+PASS __tests__/features/styleInference.test.ts
+PASS __tests__/services/wardrobeMediaSync.test.ts
+PASS __tests__/services/recentOutfitIds.test.ts
+PASS __tests__/services/dailyOutfitDisplay.test.ts
+PASS __tests__/services/stylistStrictQuality.test.ts
+PASS __tests__/services/wardrobeItemMedia.test.ts
+PASS __tests__/lib/signOutIntent.test.ts
+PASS __tests__/utils/shopCatalogOrder.test.ts
+PASS __tests__/utils/conflictRowClassification.test.ts
+PASS __tests__/features/outfitPreview.test.ts
+PASS __tests__/features/calendarTypes.test.ts
+PASS __tests__/config/envRevenueCat.test.ts
+PASS __tests__/config/revenueCatKey.test.ts
+PASS __tests__/services/uploadQueueCleanup.test.ts
+PASS __tests__/services/outfitStructure.test.ts
+PASS __tests__/lib/authLinking.test.ts
+PASS __tests__/lib/authOperationQueue.test.ts
+PASS __tests__/utils/categoryMapper.test.ts
+PASS __tests__/utils/shopDestination.test.ts
+PASS __tests__/features/useItemSelection.test.ts
+PASS __tests__/integration/auth.contract.test.ts
+PASS __tests__/services/externalAIService.test.ts
+
+Test Suites: 141 passed, 141 total
+Tests:       1651 passed, 1651 total
+Snapshots:   0 total
+Time:        13.719 s
+Ran all test suites.

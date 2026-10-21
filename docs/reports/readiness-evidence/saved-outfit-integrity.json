@@ -1,0 +1,22 @@
+{
+  "scope": "Outfit maker confirmed cloud saves, stable IDs and Closet cloud unsave",
+  "fullSuite": {
+    "passed": true,
+    "tests": 1058,
+    "suites": 88
+  },
+  "newRegressions": 6,
+  "typecheck": "pass",
+  "targetedLint": {
+    "errors": 0,
+    "warnings": 227
+  },
+  "liveChecksPassed": 14,
+  "savedOutfitLiveChecks": 8,
+  "fixtureAccountsDeleted": 2,
+  "liveEvidence": "production-saved-outfits.json",
+  "nativeVerified": false,
+  "mobileReleased": false,
+  "legacyIdsReconciled": false,
+  "calendarAndCloudAtomic": false
+}

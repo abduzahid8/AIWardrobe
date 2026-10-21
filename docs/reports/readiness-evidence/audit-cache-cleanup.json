@@ -1,0 +1,25 @@
+{
+  "recordedAt": "2026-10-20T02:35:09.141539+00:00",
+  "userAuthorizedCleanup": true,
+  "removed": [
+    {
+      "path": "/tmp/aiwardrobe-jpeg-ios-build",
+      "allocatedBytesBefore": 3026628608,
+      "removed": true
+    },
+    {
+      "path": "/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-quota-pg-14qg9mor",
+      "allocatedBytesBefore": 1695514624,
+      "removed": true
+    },
+    {
+      "path": "/Users/v.zahid/Library/Developer/Xcode/DerivedData/AIWardrobe-dfkfksluxapdhjgrcynroqjcogdw",
+      "allocatedBytesBefore": 6140071936,
+      "removed": true
+    }
+  ],
+  "freeBytesBefore": 2850996224,
+  "freeBytesAfter": 13313613824,
+  "recoveredBytes": 10462617600,
+  "preserved": "Repository, reports, current simulator app, Android SDK/JDK, existing AVD and personal data"
+}

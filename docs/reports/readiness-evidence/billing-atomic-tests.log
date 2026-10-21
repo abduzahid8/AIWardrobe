@@ -1,0 +1,10 @@
+PASS __tests__/backend/webhookDedicatedSecret.test.js
+PASS __tests__/backend/revenuecatWebhookContract.test.js
+PASS __tests__/backend/subscriptionSyncContract.test.js
+PASS __tests__/backend/revenuecatSnapshot.test.ts
+
+Test Suites: 4 passed, 4 total
+Tests:       25 passed, 25 total
+Snapshots:   0 total
+Time:        0.6 s, estimated 1 s
+Ran all test suites matching /__tests__\/backend\/revenuecatSnapshot.test.ts|__tests__\/backend\/revenuecatWebhookContract.test.js|__tests__\/backend\/subscriptionSyncContract.test.js|__tests__\/backend\/webhookDedicatedSecret.test.js/i.

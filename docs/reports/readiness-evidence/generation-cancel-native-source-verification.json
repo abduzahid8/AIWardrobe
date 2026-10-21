@@ -1,0 +1,22 @@
+[
+  {
+    "platform": "ios",
+    "source": "screens/AIOutfitmaker.tsx",
+    "exact": true
+  },
+  {
+    "platform": "ios",
+    "source": "src/lib/requestDeadline.ts",
+    "exact": true
+  },
+  {
+    "platform": "android",
+    "source": "screens/AIOutfitmaker.tsx",
+    "exact": true
+  },
+  {
+    "platform": "android",
+    "source": "src/lib/requestDeadline.ts",
+    "exact": true
+  }
+]

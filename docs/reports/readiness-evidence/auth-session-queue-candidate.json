@@ -1,0 +1,116 @@
+{
+  "mode": "candidate-coordination-not-integrated",
+  "queueSourceSha256": "1c9103cda7f0a989904ad23f7622b403199473497cabbd244c5ac334b67bf948",
+  "sdkVersion": "2.115.0",
+  "sourceSha256": "f15ebfa81876cbc81e59510388398b0a30fafbcf82d56f1d0b185439cf3a3381",
+  "scope": "Actual installed Supabase SDK, isolated asynchronous in-memory storage and synthetic fetch; no live network or UI",
+  "passed": true,
+  "cases": [
+    {
+      "scenario": "sequential sign-in then sign-out control",
+      "expectedOwner": null,
+      "signedInOwner": "old",
+      "actualOwner": null,
+      "passed": true,
+      "events": [
+        {
+          "event": "INITIAL_SESSION",
+          "owner": null
+        },
+        {
+          "event": "SIGNED_IN",
+          "owner": "old"
+        },
+        {
+          "event": "SIGNED_OUT",
+          "owner": null
+        }
+      ]
+    },
+    {
+      "scenario": "coordinated old then logout",
+      "noOverlappingSdkRequest": true,
+      "expectedOwner": null,
+      "actualOwner": null,
+      "passed": true,
+      "events": [
+        {
+          "event": "INITIAL_SESSION",
+          "owner": null
+        },
+        {
+          "event": "SIGNED_IN",
+          "owner": "old"
+        },
+        {
+          "event": "SIGNED_OUT",
+          "owner": null
+        }
+      ]
+    },
+    {
+      "scenario": "coordinated old then new",
+      "noOverlappingSdkRequest": true,
+      "expectedOwner": "new",
+      "actualOwner": "new",
+      "passed": true,
+      "events": [
+        {
+          "event": "INITIAL_SESSION",
+          "owner": null
+        },
+        {
+          "event": "SIGNED_IN",
+          "owner": "old"
+        },
+        {
+          "event": "SIGNED_IN",
+          "owner": "new"
+        }
+      ]
+    },
+    {
+      "scenario": "coordinated logout then new",
+      "noOverlappingSdkRequest": true,
+      "expectedOwner": "new",
+      "actualOwner": "new",
+      "passed": true,
+      "events": [
+        {
+          "event": "INITIAL_SESSION",
+          "owner": null
+        },
+        {
+          "event": "SIGNED_IN",
+          "owner": "old"
+        },
+        {
+          "event": "SIGNED_OUT",
+          "owner": null
+        },
+        {
+          "event": "SIGNED_IN",
+          "owner": "new"
+        }
+      ]
+    }
+  ],
+  "unitTests": {
+    "passed": 2,
+    "failed": 0,
+    "cases": [
+      "caller deadline does not release outstanding cleanup",
+      "rejection reaches caller and later operations continue"
+    ]
+  },
+  "typescript": "passed",
+  "eslint": "passed",
+  "integratedIntoApp": false,
+  "remaining": [
+    "Queue complete store operations rather than only individual SDK calls",
+    "Keep already-issued cleanup and IAP identity operations inside the barrier",
+    "Handle initialization, SDK callbacks and cancelled provider/browser flows",
+    "Verify app-level callers, UI loading/errors and restart behavior",
+    "Define recovery for indefinitely stalled native/storage work without unsafe queue release"
+  ]
+}

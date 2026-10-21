@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-21",
+  "baseline": {
+    "newStallCasesFailed": 2,
+    "existingMediaCasesPassed": 27
+  },
+  "behavior": {
+    "deadlineMs": 15000,
+    "scope": [
+      "local fetch headers",
+      "local fetch arrayBuffer"
+    ],
+    "passesAbortSignal": true,
+    "lateBytesNeverUploaded": true,
+    "queueRetainedAndExplicitRetryTested": true
+  },
+  "validation": {
+    "testsPassed": 2072,
+    "suitesPassed": 167,
+    "typescript": "pass",
+    "maintenanceTestsPassed": 10,
+    "actualRuntimeLoader": "pass"
+  },
+  "limits": [
+    "No production mutation or deployment",
+    "No native rebuild or native stalled-file test",
+    "Storage upload/database/persistence deadlines not covered",
+    "Not 10000 DAU certification"
+  ]
+}

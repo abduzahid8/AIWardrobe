@@ -1,5 +1,6 @@
 {
   "common": {
+    "localDataCleanupFailed": "Hisobning ayrim mahalliy maʼlumotlarini oʻchirib boʻlmadi. Qurilmani boshqa foydalanuvchiga berishdan oldin qayta urinib koʻring.",
     "upgrade": "Pro'ga o'tish",
     "cancel": "Bekor qilish",
     "close": "Yopish",
@@ -67,7 +68,7 @@
   },
   "videoAnalysis": {
     "videoProcessingLimited": "Video qayta ishlash cheklangan",
-    "videoProcessingLimitedMessage": "Ushbu videodan kadrlarni olib bo'lmadi. Siz hali ham elementlarni qo'shishingiz mumkin — davom etish uchun \"Ko'rib chiqish va saqlash\" tugmasini bosing.",
+    "videoProcessingLimitedMessage": "Videodan kadrlarni olish imkoni bo‘lmadi. Boshqa video tanlang yoki surat yuklang.",
     "noClothingFound": "Kiyim topilmadi",
     "noClothingFoundVideo": "AI bu videoda kiyim elementlarini aniqlay olmadi.",
     "noClothingFoundImage": "AI bu rasmda kiyim elementlarini aniqlay olmadi.",
@@ -126,6 +127,7 @@
     "couldNotSaveToCalendar": "Libosni kalenderga saqlab bo'lmadi."
   },
   "home": {
+    "newLooksSubscriptionBody": "Yangi obrazlar yaratish uchun pullik tarifni tanlang. Mavjud saqlangan obrazlarni ko‘rishda davom etishingiz mumkin.",
     "title": "Obrazlar",
     "dailyBrief": "Kunlik ma'lumot",
     "todaysLook": "Bugungi obraz",
@@ -261,6 +263,8 @@
     }
   },
   "clothingEditor": {
+    "updateItem": "Kiyimni yangilash",
+    "saving": "Saqlanmoqda…",
     "type": "Turi",
     "colour": "Rang",
     "seasonLabel": "Mavsum",
@@ -282,6 +286,8 @@
     "error": "Xatolik",
     "failedToSaveItem": "Narsani saqlab bo'lmadi. Iltimos, qayta urinib ko'ring.",
     "types": {
+      "dresses": "Ko‘ylaklar",
+      "other": "Boshqa",
       "tops": "Ustki kiyimlar",
       "bottoms": "Pastki kiyimlar",
       "shoes": "Oyoq kiyimlar",
@@ -298,7 +304,15 @@
       "brown": "Jigarrang",
       "green": "Yashil",
       "red": "Qizil",
-      "blue": "Ko'k"
+      "blue": "Ko'k",
+      "cream": "Kremrang",
+      "pink": "Pushti",
+      "orange": "To'q sariq",
+      "yellow": "Sariq",
+      "teal": "Ko'k-yashil",
+      "navy": "To'q ko'k",
+      "purple": "Binafsha",
+      "multicolor": "Rang-barang"
     },
     "seasons": {
       "summer": "Yoz",
@@ -460,9 +474,14 @@
     "aiFeatures": "AI Xususiyatlari"
   },
   "profile": {
+    "displayName": "Ko‘rinadigan ism",
+    "handle": "Noyob foydalanuvchi nomi",
+    "displayNameRequirements": "1–200 belgidan iborat ko‘rinadigan ism kiriting.",
     "permissionNeeded": "Ruxsat kerak",
     "allowPhotoLibrary": "Avatarni o'zgartirish uchun fototeka kirishiga ruxsat bering.",
     "failedUpdateProfile": "Profilni yangilab bo'lmadi.",
+    "avatarInvalidSize": "Hajmi 5 MB dan kichik suratni tanlang. Fayl bo'sh bo'lmasligi kerak.",
+    "avatarUnsupportedFormat": "JPEG, PNG, WebP, HEIC yoki HEIF formatidagi suratni tanlang.",
     "failedDeleteAccount": "Hisobni o'chirib bo'lmadi.",
     "comingSoon": "Tez orada",
     "notificationSettingsUnavailable": "Bildirishnomalar sozlamalari hali mavjud emas.",
@@ -689,6 +708,10 @@
     "uzbek": "O'zbek"
   },
   "outfitMaker": {
+    "budgetRatesUnavailable": "Joriy ma’lumot uchun valyuta kurslari mavjud emas. Birozdan keyin qayta urinib ko‘ring.",
+    "referenceRate": "Markaziy bank kursi bo‘yicha taxmin · {{date}}",
+    "shopPricesUnavailable": "Kerakli mahsulot narxi yoki valyutasi mavjud emas. Boshqa kiyimlarni tanlang yoki katalogni yangilang.",
+    "subscriptionRequired": "Yangi obrazlar yaratish uchun obuna bo‘ling",
     "buy": "Sotib olish",
     "yourOutfits": "Sizning liboslaringiz",
     "saveToCalendar": "Kalenderga saqlash",
@@ -729,9 +752,19 @@
     "tip3_1": "Minimal zargarlik tanlang",
     "tip3_2": "Oyoq kiyimini kamar rangiga moslang",
     "noOutfitsError": "Liboslar yaratib bo'lmadi. Yaxshi takliflar uchun shkafingizga ko'proq narsa qo'shing.",
-    "generateFailed": "Stilistga ulanib bo'lmadi. Internetni tekshirib, qayta urinib ko'ring."
+    "budgetTooLow": "Mavjud kiyimlardan bu byudjetga mos to‘liq obraz tuzib bo‘lmaydi. Byudjetni oshiring yoki o‘zingizdagi kiyimlardan foydalaning.",
+    "noItemsWithinBudget": "Bu byudjetga mos kiyim topilmadi. Byudjetni oshiring yoki o‘zingizdagi kiyimlardan foydalaning.",
+    "noMatchingClothing": "Tanlovlaringizga mos kiyim topilmadi. Mos kiyim qo‘shing yoki tanlovlarni o‘zgartiring.",
+    "invalidBudget": "Byudjet miqdori yoki valyutasi noto‘g‘ri. Byudjetni tekshirib, qayta urinib ko‘ring.",
+    "invalidRequest": "So‘rovni tekshiring: ko‘pi bilan 1000 ta belgi, 200 ta tanlangan kiyim va 15 ta obraz.",
+    "requestTooLarge": "So‘rovdagi ma’lumot hajmi juda katta. Kamroq kiyim tanlab, qayta urinib ko‘ring.",
+    "requestUploadTimedOut": "So‘rovni yuborish juda uzoq davom etdi. Internet aloqasini tekshirib, qayta urinib ko‘ring.",
+    "generateFailed": "So‘rovingizga mos to‘liq obraz yaratib bo‘lmadi. Qayta urinib ko‘ring yoki mos kiyim qo‘shing.",
+    "aiUnavailable": "Sun’iy intellekt obrazni yarata olmadi. Birozdan so‘ng qayta urinib ko‘ring."
   },
   "paywall": {
+    "verifyingPurchase": "Xarid tekshirilmoqda",
+    "verifyingPurchaseBody": "Toʻlov yakunlandi. Obunangiz tekshirilmoqda. Tekshiruv tugashi bilan kirish avtomatik faollashadi.",
     "heroTitle": "Sizning stilingiz ochilgan.",
     "heroSubtitle": "Sizga mos rejani tanlang.",
     "restorePurchases": "Xaridlarni tiklash",
@@ -939,6 +972,8 @@
     ]
   },
   "calendar": {
+    "loadError": "Saqlangan rejalarni yangilab bo‘lmadi. Ko‘rsatilgan rejalar eskirgan bo‘lishi mumkin. Qayta urinib ko‘ring.",
+    "persistenceError": "Taqvimdagi o‘zgarishlarni saqlab bo‘lmadi. Qayta urinib ko‘ring.",
     "title": "Liboslar kalendari",
     "lockedTagline": "Har kunni uslub bilan rejalashtiring. To'liq kalendar — Pro funksiyasi.",
     "lockedBullet1": "Istalgan o'tgan yoki kelajakdagi kun uchun libos rejalashtiring",
@@ -1134,7 +1169,21 @@
     },
     "colors": {
       "title": "Rang palitrangiz",
-      "subtitle": "O'zingizga yoqqanlarini tanlang — {{count}} ta tanlandi"
+      "subtitle": "O'zingizga yoqqanlarini tanlang — {{count}} ta tanlandi",
+      "names": {
+        "midnightBlue": "Tungi ko'k",
+        "white": "Oq",
+        "navy": "To'q ko'k",
+        "beige": "Bej",
+        "gray": "Kulrang",
+        "burgundy": "Bordo",
+        "olive": "Zaytunrang",
+        "brown": "Jigarrang",
+        "pink": "Pushti",
+        "blue": "Ko'k",
+        "red": "Qizil",
+        "green": "Yashil"
+      }
     },
     "occasions": {
       "title": "Nima uchun kiyinasiz?",
@@ -1183,6 +1232,7 @@
     "title": "AI Stilist"
   },
   "clothingDetail": {
+    "editItem": "Kiyimni tahrirlash",
     "title": "Kiyim tafsilotlari",
     "missingImplementation": "Bu tiklangan shobada asl tafsilotlar ekranini amalga oshirish yo'q.",
     "notFound": "Narsa topilmadi",
@@ -1342,6 +1392,7 @@
     "saved": "Saqlangan",
     "savedToast": "Saqlandi — Shop > Saved bo'limida topasiz",
     "unsavedToast": "Saqlanganlardan o'chirildi",
+    "savedItemsUnavailable": "Saqlangan mahsulotlarni yangilab bo‘lmadi. Qayta urinib ko‘ring.",
     "savedEmpty": "Hozircha saqlangan narsa yo'q.",
     "savedEmptyHint": "Mahsulotni shu yerda saqlash uchun yurakchani bosing.",
     "viewSaved": "Saqlanganlarni ko'rish",
@@ -1460,10 +1511,10 @@
     "openSettings": "Sozlamalarni ochish",
     "cameraAccessDisabled": "Kamera kirishi o'chirilgan",
     "addToCloset": "Shkafga qo'shish",
-    "uploadPhotoDescription": "Narsani skan qilish va fonni o'chirish uchun rasm yuklang yoki standart kamera rejimidan foydalaning.",
+    "uploadPhotoDescription": "Kiyimni aniqlash uchun rasm tanlang yoki kameradan foydalaning. Asl rasm saqlanadi.",
     "aiStudioPhoto": "AI Studio Rasm",
     "aiStudioCamera": "AI Studio Kamera",
-    "legacyCamera": "Eski kamera",
+    "legacyCamera": "Oddiy kamera",
     "deleteItem": "Narsani o'chirish",
     "deleteItemConfirmation": "Ushbu kiyim narsasini o'chirmoqchimisiz? Bu amalni bekor qilib bo'lmaydi.",
     "searchCloset": "Shkafni qidirish...",
@@ -1616,6 +1667,24 @@
     }
   },
   "wardrobeVideo": {
+    "resumeReview": "{{index}}-skanni davom ettirish · {{count}} ta kiyim",
+    "reviewRestoreFailed": "Saqlangan skanlarni tiklab bo‘lmadi. Qayta urinib ko‘ring.",
+    "reviewUnavailable": "{{count}} ta saqlangan skanni o‘qib bo‘lmadi. Fayllaringiz saqlab qolindi. Boshqa skanlardan foydalanishingiz mumkin.",
+
+    "pendingScans": "Saqlangan skanlar",
+    "pendingScansDescription": "Bu skanlar tahlilni kutmoqda. Davom etish uchun internetga ulangan holda ushbu ekranni oching.",
+    "queuedPhoto": "Surat {{index}}",
+    "queuedVideo": "Video {{index}}",
+    "queueStatus_pending": "Kutilmoqda",
+    "queueStatus_processing": "Tahlil qilinmoqda",
+    "queueStatus_failed": "E’tibor talab qiladi",
+    "retryScan": "Qayta urinish",
+    "removeScan": "O‘chirish",
+    "removeScanConfirmation": "Saqlangan skan va uning vaqtinchalik fayli o‘chirilsinmi? Asl surat yoki video saqlanib qoladi.",
+    "queueBusy": "Boshqa skan qayta ishlanmoqda. Birozdan keyin qayta urinib ko‘ring.",
+    "queueActionFailed": "Saqlangan skanni yangilab bo‘lmadi. Qayta urinib ko‘ring.",
+    "frame": "Kadr {{index}}",
+    "extractingFrame": "{{index}}/{{count}} kadr olinmoqda…",
     "title": "AI Shkaf skanlash",
     "selectGallery": "Galereyadan tanlash",
     "analysisComplete": "Tahlil tugallandi",
@@ -1635,13 +1704,13 @@
     "itemsSaved": "{{count}} ta narsa shkafingizga saqlandi. Ular avtomatik ravishda sinxronlanadi.",
     "viewWardrobe": "Shkafni ko'rish",
     "digitizeCloset": "Shkafingizni raqamlashtiring",
-    "uploadVideo": "Kiyimlaringizning qisqa videosini yuklang va bizning AIimiz ularni avtomatik ravishda aniqlab va kataloglaydi.",
+    "uploadVideo": "Kiyimlarni tanlangan kadrlarda aniqlash uchun qisqa video yuklang, keyin natijalarni tekshiring va saqlang.",
     "record": "Yozish",
     "analyze": "Tahlil",
     "getItems": "Narsalarni olish",
     "choosePhoto": "Qurilmangizdan fotosurat tanlang",
     "chooseVideoOrPhoto": "Qurilmangizdan video yoki foto tanlang",
-    "analyzingVideo": "Bizning AIimiz videoningizning har bir kadrini tahlil qilmoqda...",
+    "analyzingVideo": "AI videongizdan tanlangan kadrlarni tahlil qilmoqda…",
     "foundItems": "{{count}} ta narsa topildi",
     "itemsCount": "{{count}} ta narsa"
   },
@@ -1682,6 +1751,7 @@
     "tryAgain": "Qayta urinib ko'ring"
   },
   "signIn": {
+    "emailRequired": "Email manzilingizni kiriting",
     "emailPasswordRequired": "Iltimos, email va parolni kiriting",
     "title": "Kirish",
     "email": "Elektron pochta",
@@ -1737,7 +1807,7 @@
     "waitFewMinutes": "Iltimos, qayta urinishdan oldin bir necha daqiqa kutib turing.",
     "error": "Xato",
     "failedSendResetEmail": "Parolni tikish xatini yuborib bo'lmadi",
-    "resetLinkSent": "Biz parolni tikish havolasini yubordik",
+    "recoveryInstructions": "Bu email ro‘yxatdan o‘tgan bo‘lsa, parolni tiklash yo‘riqnomasini pochtadan qidiring:",
     "checkSpamFolder": "Agar xatni ko'rmasangiz, spam papkasini tekshiring."
   },
   "forgotPasswordScreen": {
@@ -2034,5 +2104,12 @@
       "useLayers": "Use layers",
       "wearLight": "Wear light"
     }
+  },
+  "wardrobeSync": {
+      "capacityTitle": "Ba’zi buyumlar sinxronlanmagan",
+      "capacityMessage": "Bu buyumlarni sinxronlash tarifingizdagi {{limit}} ta bulut buyumi chegarasidan oshadi. Sinxronlanmagan rasmlar shu qurilmada saqlanadi. Tarifni yangilang yoki bulutdagi buyumlarni o‘chiring, so‘ng qayta urinib ko‘ring.",
+      "retry": "Qayta sinxronlash",
+      "upgrade": "Tarifni yangilash",
+      "retrying": "Sinxronlanmoqda…"
   }
 }

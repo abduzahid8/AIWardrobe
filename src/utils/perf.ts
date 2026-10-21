@@ -1,3 +1,4 @@
+import readinessLogger from './logger';
 /**
  * perf.ts — Lightweight performance timing utility
  *
@@ -30,7 +31,7 @@ import { isVerboseLoggingEnabled } from './logger';
 export function perfMark(name: string): void {
   if (!isVerboseLoggingEnabled()) return;
   marks[name] = Date.now();
-  console.log(`[PERF] mark "${name}"`);
+  readinessLogger.debug(String(`[PERF] mark "${name}"`), []);
 }
 
 /**
@@ -47,7 +48,7 @@ export function perfMeasure(startMark: string, endMark?: string): number {
   const elapsed = end - start;
   const label = endMark ? `"${startMark}" → "${endMark}"` : `"${startMark}" → now`;
   const emoji = elapsed < 300 ? '🟢' : elapsed < 800 ? '🟡' : '🔴';
-  console.log(`[PERF] ${emoji} measure ${label}: ${elapsed}ms`);
+  readinessLogger.debug(String(`[PERF] ${emoji} measure ${label}: ${elapsed}ms`), []);
   return elapsed;
 }
 
@@ -63,11 +64,11 @@ export function perfMeasure(startMark: string, endMark?: string): number {
 export function perfAction(actionName: string): () => number {
   if (!isVerboseLoggingEnabled()) return () => -1;
   const start = Date.now();
-  console.log(`[PERF] action "${actionName}" started`);
+  readinessLogger.debug(String(`[PERF] action "${actionName}" started`), []);
   return () => {
     const elapsed = Date.now() - start;
     const emoji = elapsed < 100 ? '🟢' : elapsed < 500 ? '🟡' : '🔴';
-    console.log(`[PERF] ${emoji} action "${actionName}" completed in ${elapsed}ms`);
+    readinessLogger.debug(String(`[PERF] ${emoji} action "${actionName}" completed in ${elapsed}ms`), []);
     return elapsed;
   };
 }
@@ -82,16 +83,16 @@ export async function perfAsync<T>(
 ): Promise<T> {
   if (!isVerboseLoggingEnabled()) return fn();
   const start = Date.now();
-  console.log(`[PERF] async "${label}" started`);
+  readinessLogger.debug(String(`[PERF] async "${label}" started`), []);
   try {
     const result = await fn();
     const elapsed = Date.now() - start;
     const emoji = elapsed < 300 ? '🟢' : elapsed < 1000 ? '🟡' : '🔴';
-    console.log(`[PERF] ${emoji} async "${label}" resolved in ${elapsed}ms`);
+    readinessLogger.debug(String(`[PERF] ${emoji} async "${label}" resolved in ${elapsed}ms`), []);
     return result;
   } catch (err) {
     const elapsed = Date.now() - start;
-    console.log(`[PERF] async "${label}" FAILED after ${elapsed}ms`, err);
+    readinessLogger.debug(String(`[PERF] async "${label}" FAILED after ${elapsed}ms`), [err]);
     throw err;
   }
 }
@@ -108,7 +109,7 @@ let pendingSwitch: { from: string; to: string; at: number } | null = null;
 export function perfTabSwitch(fromTab: string, toTab: string): void {
   if (!isVerboseLoggingEnabled()) return;
   pendingSwitch = { from: fromTab, to: toTab, at: Date.now() };
-  console.log(`[PERF] tab switch "${fromTab}" → "${toTab}" initiated`);
+  readinessLogger.debug(String(`[PERF] tab switch "${fromTab}" → "${toTab}" initiated`), []);
 }
 
 /**
@@ -121,7 +122,7 @@ export function perfTabSwitchComplete(toTab: string): void {
   if (pendingSwitch && pendingSwitch.to === toTab) {
     const elapsed = Date.now() - pendingSwitch.at;
     const emoji = elapsed < 150 ? '🟢' : elapsed < 400 ? '🟡' : '🔴';
-    console.log(`[PERF] ${emoji} TAB SWITCH COMPLETE "${toTab}": ${elapsed}ms (press → screen visible)`);
+    readinessLogger.debug(String(`[PERF] ${emoji} TAB SWITCH COMPLETE "${toTab}": ${elapsed}ms (press → screen visible)`), []);
     pendingSwitch = null;
   }
 }
@@ -135,9 +136,9 @@ export function perfScreenReady(screenName: string): void {
   if (pendingSwitch && pendingSwitch.to === screenName) {
     const elapsed = Date.now() - pendingSwitch.at;
     const emoji = elapsed < 200 ? '🟢' : elapsed < 600 ? '🟡' : '🔴';
-    console.log(`[PERF] ${emoji} screen "${screenName}" ready after tab switch: ${elapsed}ms`);
+    readinessLogger.debug(String(`[PERF] ${emoji} screen "${screenName}" ready after tab switch: ${elapsed}ms`), []);
   } else {
     // No tab switch recorded — just log the screen ready event
-    console.log(`[PERF] screen "${screenName}" ready`);
+    readinessLogger.debug(String(`[PERF] screen "${screenName}" ready`), []);
   }
 }

@@ -1,0 +1,36 @@
+{
+  "change": "Read each selected/restored file duration using a temporary ExpoVideo player loaded asynchronously; sample10/50/90percent within the clip; cancel and release metadata work on reset, unmount and newer requests.",
+  "verification": {
+    "fullJest": {
+      "tests": 1814,
+      "suites": 149,
+      "result": "pass"
+    },
+    "focusedSamplerTests": 18,
+    "typeScript": "pass including diagnostic entry",
+    "iosHermes": "pass",
+    "androidArm64Release": "pass",
+    "sourceMaps": {
+      "ios": {
+        "src/services/videoFrameSampling.ts": true,
+        "src/features/wardrobe/useVideoAnalysis.ts": true
+      },
+      "android": {
+        "src/services/videoFrameSampling.ts": true,
+        "src/features/wardrobe/useVideoAnalysis.ts": true
+      }
+    }
+  },
+  "nativeEvidence": [
+    "video-frame-sampling-native.json",
+    "expo-native-video-sampling/result.json"
+  ],
+  "nativeResult": "iOS26.5 actual Expo JS/native bridge read30second H264 duration twice and extracted3/15/27second JPEGs; decoded image dominant colors red/green/blue match expected scene order. Earlier0/1/2second native probe saw only red.",
+  "cleanup": "Both isolated audit simulators shut down and deleted; no live users or provider calls used. Original user simulator untouched.",
+  "remaining": [
+    "Only three temporal samples; garments between samples may be missed",
+    "One primary garment per frame; all-garment detection and reliable dedup/tracking unfinished",
+    "Android native runtime, rotated/variable frame-rate/other codecs and full picker-to-provider-to-editor flow remain unverified",
+    "Provider primary-garment accuracy and capacity failures remain open"
+  ]
+}

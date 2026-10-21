@@ -1,3 +1,4 @@
+import { dailyOutfitDisplayItems } from '../src/services/dailyOutfitDisplay';
 /**
  * HomeScreen - 2026 Redesign
  * Features: Bento Grid layout, Liquid Glass aesthetics, GenUI-ready components
@@ -14,7 +15,7 @@ import { useAppNavigation } from '../hooks/useAppNavigation';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import useAuthStore from '../store/auth';
 import { LinearGradient } from "expo-linear-gradient";
-import { Image as ExpoImage } from 'expo-image';
+
 import { useVideoPlayer, VideoView } from 'expo-video';
 import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
@@ -60,6 +61,8 @@ import {
   normalizeCatalogNameKey,
   getCatalogShoeFamily,
 } from '../src/utils/shopCatalogOrder';
+import { ExpoImage } from '../src/components/MediaImage';
+
 
 type EssentialSlot = 'outerwear' | 'shirts' | 'knitwear' | 'tees' | 'bottoms' | 'shoes';
 type EssentialAddState = 'adding' | 'added';
@@ -295,7 +298,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const selectAddItem = (state: any) => state.addItem;
 // Select only the username string (primitive) — selecting the full user object
 // would return a new reference on every render, triggering the getSnapshot warning.
-const selectUsername = (state: any) => state.user?.username as string | undefined;
+const selectUsername = (state: any) => (state.user?.display_name || state.user?.username || state.user?.handle) as string | undefined;
 
 // Pre-compiled RegExp constants for shop item name classification.
 // Defined at module scope so they are compiled once, not on every render.
@@ -393,11 +396,6 @@ const DailyOutfitSection = React.memo(({
   style,
   weather,
   weatherForAI,
-  shopTops,
-  shopBottoms,
-  shopShoes,
-  catalogEssentials,
-  needsOuterwear,
   isReducedMotionEnabled,
   navigation,
   t,
@@ -426,6 +424,7 @@ const DailyOutfitSection = React.memo(({
   const { consumeOrPaywall, consume, requireFeature, getRemaining, canUseNow } = useSubscriptionGate();
   const effectiveTier = useSubscriptionStore((s) => s.effectiveTier);
   const isTrialExpired = useSubscriptionStore((s) => s.isTrialExpired);
+  const canGenerateNewLooks = effectiveTier !== 'free';
 
   // Load the daily outfits for this style and occasion
   const dailyAI = useDailyAIOutfit({
@@ -434,6 +433,7 @@ const DailyOutfitSection = React.memo(({
     weather: weatherForAI,
     variants: 15,
     enabled,
+    allowGeneration: canGenerateNewLooks,
   });
 
   // Tracks the `dailyAI.outfits` batch (by reference) we've already asked to
@@ -511,330 +511,9 @@ const DailyOutfitSection = React.memo(({
   const buyButtonStyle = styles.createAvatarButton;
   const emptyIconName = isOldMoney ? 'wine-outline' : 'shirt-outline';
 
-  // Helper classifiers inside component
-  const isOuterwear = (name: string) => isOuterwearName(name);
-
-  // Pre-compiled list of curated combinations for client-side fallback
-  const curatedCombinations = useMemo(() => {
-    if (shopTops.length === 0 || shopBottoms.length === 0) return [];
-    
-    const realOuterwear = shopTops.filter(t => isOuterwear(t.name));
-    const realTops = shopTops.filter(t => !isOuterwear(t.name));
-    const topsPool = realTops.length > 0 ? realTops : shopTops;
-
-    const results = [];
-    const count = 3;
-    
-    for (let i = 0; i < count; i++) {
-      const seed = style.length + i;
-      results.push({
-        id: i + 1,
-        mainTop: topsPool[seed % topsPool.length],
-        mainBottom: shopBottoms[(seed + 1) % shopBottoms.length],
-        outerLayer: realOuterwear.length > 0 ? realOuterwear[(seed + 2) % realOuterwear.length] : null,
-        shoes: shopShoes.length > 0 ? shopShoes[(seed + 3) % shopShoes.length] : null,
-      });
-    }
-    
-    return results;
-  }, [shopTops, shopBottoms, shopShoes, style]);
-
-  const mapLegacyOutfitItemsForCollage = useCallback((c: any) => {
-    const allOuterwear = catalogEssentials.filter(t => isOuterwear(t.name));
-    const safeOuterwear = allOuterwear.length > 0 ? allOuterwear : catalogEssentials;
-    const allShoes = shopShoes.length > 0
-      ? shopShoes
-      : catalogEssentials.filter(t => t.garmentType === 'shoes' || t.name.toLowerCase().includes('shoe') || t.name.toLowerCase().includes('sneaker'));
-
-    const shopByMacro: Record<string, ShopCatalogItem[]> = {
-      top: shopTops.filter(t => !isOuterwear(t.name)),
-      bottom: shopBottoms.length > 0 ? shopBottoms : catalogEssentials,
-      shoes: allShoes,
-      outerwear: safeOuterwear,
-    };
-
-    const items: any[] = [];
-    const filledSlots = new Set<string>();
-
-    if (c?.outerLayer) {
-      items.push({ id: `legacy_outer_${c.id}`, image: c.outerLayer.imageUrl || c.outerLayer.image, type: c.outerLayer.type || c.outerLayer.name || 'Outerwear', name: c.outerLayer.name || 'Outerwear', macroCategory: 'outerwear', brand: c.outerLayer.brand, price: c.outerLayer.price, currency: c.outerLayer.currency, shopUrl: c.outerLayer.sourceUrl || c.outerLayer.shopUrl });
-      filledSlots.add('outerwear');
-    }
-    if (c?.mainTop) {
-      const topName = c.mainTop.name || 'Top';
-      const forcedTopType = isTopName(topName) && !isOuterwearName(topName) ? topName : `${topName} Shirt`;
-      items.push({ id: `legacy_top_${c.id}`, image: c.mainTop.imageUrl || c.mainTop.image, type: forcedTopType, name: topName, macroCategory: 'top', brand: c.mainTop.brand, price: c.mainTop.price, currency: c.mainTop.currency, shopUrl: c.mainTop.sourceUrl || c.mainTop.shopUrl });
-      filledSlots.add('top');
-    }
-    if (c?.mainBottom) {
-      const btmName = c.mainBottom.name || 'Pants';
-      const forcedBtmType = isBottomName(btmName) ? btmName : `${btmName} Pants`;
-      items.push({ id: `legacy_btm_${c.id}`, image: c.mainBottom.imageUrl || c.mainBottom.image, type: forcedBtmType, name: btmName, macroCategory: 'bottom', brand: c.mainBottom.brand, price: c.mainBottom.price, currency: c.mainBottom.currency, shopUrl: c.mainBottom.sourceUrl || c.mainBottom.shopUrl });
-      filledSlots.add('bottom');
-    }
-    if (c?.shoes && shopByMacro.shoes.length > 0) {
-      const shoeName = c.shoes.name || 'Shoes';
-      const forcedShoeType = isShoeName(shoeName) ? shoeName : `${shoeName} Shoe`;
-      items.push({ id: `legacy_shoe_${c.id}`, image: c.shoes.imageUrl || c.shoes.image, type: forcedShoeType, name: shoeName, macroCategory: 'shoes', brand: c.shoes.brand, price: c.shoes.price, currency: c.shoes.currency, shopUrl: c.shoes.sourceUrl || c.shoes.shopUrl });
-      filledSlots.add('shoes');
-    }
-
-    if (needsOuterwear && !filledSlots.has('outerwear')) {
-      const fallbackItems = shopByMacro['outerwear'] || [];
-      const realOuter = fallbackItems.filter(i => isOuterwear(i.name));
-      if (realOuter.length > 0) {
-        const shopItem = realOuter[Math.floor(Math.random() * realOuter.length)];
-        items.push({
-          id: `legacy_fill_outerwear_${c.id}`,
-          image: shopItem.imageUrl,
-          type: shopItem.name,
-          name: shopItem.name,
-          macroCategory: 'outerwear',
-          brand: shopItem.brand,
-          price: shopItem.price,
-          currency: shopItem.currency,
-          shopUrl: shopItem.sourceUrl,
-        });
-        filledSlots.add('outerwear');
-      }
-    }
-
-    const mandatorySlots = ['top', 'bottom', 'shoes'];
-    mandatorySlots.forEach(slot => {
-      if (!filledSlots.has(slot)) {
-        const fallbackItems = shopByMacro[slot] || [];
-        if (fallbackItems.length > 0) {
-          const shopItem = fallbackItems[Math.floor(Math.random() * fallbackItems.length)];
-          items.push({
-            id: `legacy_fill_${slot}_${c.id}`,
-            image: shopItem.imageUrl,
-            type: shopItem.name,
-            name: shopItem.name,
-            macroCategory: slot,
-            brand: shopItem.brand,
-            price: shopItem.price,
-            currency: shopItem.currency,
-            shopUrl: shopItem.sourceUrl,
-          });
-        }
-      }
-    });
-
-    // Curated fallback combinations are sourced from the shop catalog.
-    return items.map((item) => ({ ...item, isShopItem: true }));
-  }, [catalogEssentials, shopTops, shopBottoms, shopShoes, needsOuterwear]);
-
-  // Snapshot the shop pools once per outfits batch. The live catalog arrives
-  // in stages (instant static seed → background Supabase refresh with
-  // different rows), and remapping every card on each refresh swapped tile
-  // images under already-mounted cards — the "appears, disappears, then the
-  // final image appears seconds later" flash. A mounted deck keeps the pools
-  // it was born with; the next batch (or regenerate) picks up fresh rows.
-  // The one exception: a batch born while the catalog was still completely
-  // empty upgrades to the first non-empty pools so it never stays blank.
-  const poolSnapshotRef = useRef<{ tops: ShopCatalogItem[]; bottoms: ShopCatalogItem[]; shoes: ShopCatalogItem[] } | null>(null);
-  const outfitsSnapshotRef = useRef<unknown>(null);
-  {
-    const livePools = { tops: shopTops, bottoms: shopBottoms, shoes: shopShoes };
-    const liveEmpty = livePools.tops.length === 0 && livePools.bottoms.length === 0 && livePools.shoes.length === 0;
-    const snap = poolSnapshotRef.current;
-    const snapEmpty = !snap || (snap.tops.length === 0 && snap.bottoms.length === 0 && snap.shoes.length === 0);
-    if (outfitsSnapshotRef.current !== dailyAI.outfits || (snapEmpty && !liveEmpty)) {
-      outfitsSnapshotRef.current = dailyAI.outfits;
-      poolSnapshotRef.current = livePools;
-    }
-  }
-  const frozenPools = poolSnapshotRef.current ?? { tops: shopTops, bottoms: shopBottoms, shoes: shopShoes };
-
-  const mapAiOutfitItemsForCollage = useCallback((outfit: any, outfitIndex = 0) => {
-    const shopByMacro: Record<string, ShopCatalogItem[]> = {
-      top: frozenPools.tops.filter(t => !isOuterwear(t.name)),
-      bottom: frozenPools.bottoms,
-      shoes: frozenPools.shoes,
-      outerwear: frozenPools.tops.filter(t => isOuterwear(t.name)),
-    };
-    // Team Collaboration is shop-only — every item in every outfit must come
-    // from shopping, and every outfit combination must be unique.
-    const shopOnly = isShopOnlyDeck(style, occasion);
-
-    // Track ids already used in THIS outfit so two slots never share one
-    // garment (duplicate React keys collapsed two tiles into one — a 4-piece
-    // outfit rendering as 2-3 pieces).
-    const usedIds = new Set<string>();
-    // Peek-only: finds the first unused pick WITHOUT marking it used, so
-    // computing a candidate never wastes pool entries. Call `claimId` only
-    // for the pick that actually renders.
-    const peekUniqueShopPick = (pool: ShopCatalogItem[], startIndex: number): ShopCatalogItem | undefined => {
-      if (pool.length === 0) return undefined;
-      for (let offset = 0; offset < pool.length; offset++) {
-        const candidate = pool[(startIndex + offset) % pool.length];
-        if (!usedIds.has(String(candidate.id))) return candidate;
-      }
-      return undefined;
-    };
-    const claimId = (id: unknown) => { if (id != null) usedIds.add(String(id)); };
-
-    const mappedRaw = (outfit.items || []).map((item: any, index: number) => {
-      let img = item.imageUrl || item.image_url || item.image || '';
-      let finalItem = { ...item };
-
-      const macro = (item.macroCategory || '').toLowerCase();
-      const macroNormalized = macro === 'upper_body' ? 'top' : macro === 'lower_body' ? 'bottom' : macro;
-      const shopItems = shopByMacro[macroNormalized] || [];
-
-      // Keep real wardrobe pieces intact — except on shop-only decks where
-      // wardrobe pieces are never allowed. The old implementation replaced
-      // every AI-selected item with a random catalog product from the same
-      // category, which made a wardrobe outfit look like an advert. Only
-      // resolve through the catalog when the item is explicitly a shop pick,
-      // or use it as a visual fallback when the original item has no image.
-      const exactShopItem = shopItems.find((candidate) => String(candidate.id) === String(item.id));
-      // Shop-only decks must ALWAYS resolve to a real catalog row. The old
-      // code kept the AI's original URL when `isShopItem === true`, even if
-      // the id was hallucinated (no exact catalog match) — that URL then
-      // 404'd in <Piece/> and rendered as a blank placeholder tile.
-      const needsShopSwap = shopOnly && shopItems.length > 0 && (
-        item.isShopItem !== true || !exactShopItem || !img
-      );
-      // Deterministic rotation (no Math.random): the same batch always maps
-      // to the same visuals, and different outfits rotate onto different shop
-      // picks instead of randomly colliding onto identical combinations.
-      // Peek (no claim) so an unused candidate never wastes a pool entry.
-      let shopItem: ShopCatalogItem | undefined;
-      if (exactShopItem && !usedIds.has(String(exactShopItem.id)) && (!shopOnly || img)) {
-        shopItem = exactShopItem;
-      } else if (needsShopSwap) {
-        shopItem = peekUniqueShopPick(shopItems, outfitIndex + index);
-      } else if (!img && shopItems.length > 0) {
-        shopItem = peekUniqueShopPick(shopItems, outfitIndex + index);
-      }
-      if (shopItem && (item.isShopItem === true || !img || needsShopSwap)) {
-        finalItem = {
-          ...item,
-          id: shopItem.id,
-          imageUrl: shopItem.imageUrl,
-          image: shopItem.imageUrl,
-          name: shopItem.name,
-          type: shopItem.name,
-          macroCategory: macroNormalized,
-          isShopItem: true,
-          brand: shopItem.brand ?? item.brand,
-          price: shopItem.price ?? item.price,
-          currency: (shopItem as any).currency ?? (item as any).currency,
-          shopUrl: shopItem.sourceUrl || (item as any).shopUrl,
-        };
-        img = typeof shopItem.imageUrl === 'string' ? shopItem.imageUrl : img;
-        claimId(shopItem.id);
-      } else if (finalItem.id) {
-        // Reserve wardrobe ids too so a later shop fill can't collide with
-        // an id already on screen.
-        claimId(finalItem.id);
-      }
-
-      return {
-        id: finalItem.id || `home_ai_${outfitIndex}_${index}`,
-        image: img,
-        type: finalItem.type || finalItem.name || 'Item',
-        name: finalItem.name || finalItem.type || 'Item',
-        macroCategory: finalItem.macroCategory,
-        isShopItem: finalItem.isShopItem === true,
-        brand: finalItem.brand,
-        price: finalItem.price,
-        currency: finalItem.currency,
-        shopUrl: finalItem.shopUrl || finalItem.sourceUrl,
-      };
-    });
-    // Shop-only decks must never render a wardrobe tile — drop it here so
-    // the mandatory-slot fill below replaces it with a shop pick.
-    const mapped = mappedRaw.filter((ci: any) => {
-      if (shopOnly && ci.isShopItem !== true) return false;
-      return true;
-    });
-
-    // Recompute filled slots AFTER the shop-only filter — otherwise a dropped
-    // wardrobe tile would still count as "filled" and the slot would never be
-    // replaced with a shop pick, leaving incomplete/duplicated cards.
-    const filledSlots = new Set<string>();
-    mapped.forEach((ci: any) => {
-      if (ci.macroCategory) filledSlots.add(String(ci.macroCategory).toLowerCase());
-    });
-
-    const mandatorySlots = ['top', 'bottom', 'shoes'];
-    mandatorySlots.forEach((slot, slotIdx) => {
-      if (!filledSlots.has(slot)) {
-        const fallbackItems = shopByMacro[slot] || [];
-        if (fallbackItems.length > 0) {
-          const shopItem = peekUniqueShopPick(fallbackItems, outfitIndex + slotIdx)
-            ?? fallbackItems[(outfitIndex + slotIdx) % fallbackItems.length];
-          if (shopItem && !usedIds.has(String(shopItem.id))) {
-            claimId(shopItem.id);
-            mapped.push({
-              id: shopItem.id,
-              image: shopItem.imageUrl,
-              type: shopItem.name,
-              name: shopItem.name,
-              macroCategory: slot,
-              isShopItem: true,
-              brand: shopItem.brand,
-              price: shopItem.price,
-              currency: (shopItem as any).currency,
-              shopUrl: shopItem.sourceUrl,
-            });
-            filledSlots.add(slot);
-          }
-        }
-      }
-    });
-
-    // Last-defense styling rule (render layer): suits never pair with shorts,
-    // and formal decks never contain shorts at all. Upstream rebuilds already
-    // enforce this, but an edge-function outfit or a stale cache entry can
-    // still arrive with a blazer + shorts combination — swap the shorts for
-    // trousers/chinos here so it can never reach the card.
-    const SHORTS_LIKE_RE = /\b(shorts?|bermudas?|trunks?|swim\w*|swimwear|board\s*shorts?|bathing\s*suit)\b/i;
-    const FORMAL_LAYER_LIKE_RE = /\b(blazer|suit\s*jacket|sport\s*coat|sports\s*coat|overcoat|top\s*coat|topcoat|trench|peacoat|pea\s*coat|tuxedo)\b/i;
-    const isShortsLike = (ci: any): boolean => {
-      if (String(ci?.macroCategory || '').toLowerCase() !== 'bottom') return false;
-      return SHORTS_LIKE_RE.test(`${ci?.type || ''} ${ci?.name || ''}`);
-    };
-    const isFormalLayerLike = (ci: any): boolean =>
-      FORMAL_LAYER_LIKE_RE.test(`${ci?.type || ''} ${ci?.name || ''}`);
-    const styleKey = String(style || '').toLowerCase().replace(/[\s-]+/g, '_');
-    const isFormalDeck = styleKey === 'business_casual' || styleKey === 'old_money' || styleKey === 'classic' || styleKey === 'formal';
-    const shortsIdx = mapped.findIndex(isShortsLike);
-    if (shortsIdx >= 0 && (isFormalDeck || mapped.some(isFormalLayerLike))) {
-      const replacementPool = (shopByMacro.bottom || []).filter(
-        (b) => !usedIds.has(String(b.id)) && !SHORTS_LIKE_RE.test(`${b.name || ''}`),
-      );
-      const replacement = replacementPool.length > 0
-        ? replacementPool[outfitIndex % replacementPool.length]
-        : undefined;
-      if (replacement) {
-        claimId(replacement.id);
-        mapped[shortsIdx] = {
-          id: replacement.id,
-          image: replacement.imageUrl,
-          type: replacement.name,
-          name: replacement.name,
-          macroCategory: 'bottom',
-          isShopItem: true,
-          brand: replacement.brand,
-          price: replacement.price,
-          currency: (replacement as any).currency,
-          shopUrl: replacement.sourceUrl,
-        };
-      } else {
-        // No trousers available — drop the shorts rather than showing a
-        // suit + shorts combination. A 3-piece card beats a broken 4-piece.
-        mapped.splice(shortsIdx, 1);
-      }
-    }
-
-    return mapped;
-    // NOTE: intentionally depends on the per-batch frozen pools, not the
-    // live catalog arrays — see the snapshot above.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frozenPools, style, occasion]);
+  // Display accepted products unchanged: no catalog swaps, slot fills or synthetic IDs.
+  const mapAiOutfitItemsForCollage = useCallback((outfit: any, _outfitIndex = 0) =>
+    dailyOutfitDisplayItems(outfit), []);
 
   const collageItemsList = useMemo(() => {
     return dailyAI.outfits.map((o, idx) => mapAiOutfitItemsForCollage(o, idx));
@@ -847,47 +526,26 @@ const DailyOutfitSection = React.memo(({
   // etc.), which could flicker whichever piece was already on screen.
   const deckData = useMemo(() => {
     const aiOutfits = dailyAI.outfits;
-    const useAI = aiOutfits.length > 0;
 
-    type DailyOutfitCard = { id: string; outfit?: any; legacy?: any; index: number };
-    const data: DailyOutfitCard[] = useAI
-      // The backend can repeat an outfit id across variants. A guaranteed
-      // unique deck key is required here because the maps below and React's
-      // card reconciliation both use it; duplicate ids made multiple swipes
-      // appear to show the same outfit.
-      ? aiOutfits.map((o, i) => ({ id: `${o.id || 'ai'}-${style}-${i}`, outfit: o, index: i }))
-      : curatedCombinations.map((c) => ({ id: String(c.id), legacy: c, index: 0 }));
+    type DailyOutfitCard = { id: string; outfit: any; index: number };
+    const data: DailyOutfitCard[] = aiOutfits.map((o, i) => ({
+      id: `${o.id || 'ai'}-${style}-${i}`, outfit: o, index: i,
+    }));
 
     // Full-fidelity collage items per card (image + name + macroCategory) —
     // used for the share sheet and the Try On handoff. The swipe stack
     // itself only needs the trimmed {id, image, category} shape below.
     const collageItemsByCardKey = new Map<string, any[]>();
     data.forEach((d) => {
-      const items = d.outfit
-        ? (collageItemsList[d.index] ?? mapAiOutfitItemsForCollage(d.outfit, d.index))
-        : mapLegacyOutfitItemsForCollage(d.legacy);
+      const items = collageItemsList[d.index] ?? mapAiOutfitItemsForCollage(d.outfit, d.index);
       collageItemsByCardKey.set(d.id, items);
     });
 
-    // Item IDs actually saved/disliked when the user decides on a card — the
-    // AI outfit's own items for AI-generated looks, or the underlying shop
-    // items for a curated combo when the AI batch hasn't loaded yet.
+    // Save and dislike the exact products displayed on each accepted AI card.
     const itemIdsByCardKey = new Map<string, string[]>();
     data.forEach((d) => {
-      if (d.outfit) {
-        itemIdsByCardKey.set(
-          d.id,
-          (d.outfit.items || []).filter((it: any) => it.id).map((it: any) => String(it.id)),
-        );
-      } else {
-        const c = d.legacy;
-        itemIdsByCardKey.set(
-          d.id,
-          [c?.mainTop?.id, c?.mainBottom?.id, c?.outerLayer?.id, c?.shoes?.id]
-            .filter((v: any) => v !== undefined && v !== null)
-            .map(String),
-        );
-      }
+      const items = collageItemsByCardKey.get(d.id) ?? [];
+      itemIdsByCardKey.set(d.id, items.map((item: any) => String(item.id)));
     });
 
     const cards: SwipeStackCard[] = [];
@@ -922,7 +580,7 @@ const DailyOutfitSection = React.memo(({
     });
 
     return { cards, collageItemsByCardKey, itemIdsByCardKey };
-  }, [dailyAI.outfits, curatedCombinations, collageItemsList, mapLegacyOutfitItemsForCollage, mapAiOutfitItemsForCollage, style, t]);
+  }, [dailyAI.outfits, collageItemsList, mapAiOutfitItemsForCollage, style, t]);
 
   const getOccasionTranslation = (key: string) => {
     const camel = toCamelCase(key);
@@ -1042,14 +700,14 @@ const DailyOutfitSection = React.memo(({
   // (auto-triggered above) or the user tapped "Try again" after a failure —
   // show a brief loading state instead of a dead-end "no more" card.
   // When the free 3-swipe quota is hit, dead-end into a Paywall CTA instead.
-  const emptyStateContent = isSwipeLocked ? (
+  const emptyStateContent = isSwipeLocked || !canGenerateNewLooks ? (
     <>
       <Ionicons name="lock-closed-outline" size={44} color={colors.accent.primary} />
       <ScaledText style={[suggestionTextStyle, { marginTop: spacing.md, textAlign: 'center', fontWeight: '700' }]}>
-        {t('home.swipeLimitTitle', "You've used your 3 free swipes")}
+        {!canGenerateNewLooks ? t('outfitMaker.subscriptionRequired') : t('home.swipeLimitTitle', "You've used your 3 free swipes")}
       </ScaledText>
       <ScaledText style={[suggestionTextStyle, { marginTop: spacing.xs, textAlign: 'center' }]}>
-        {t('home.swipeLimitBody', 'Upgrade to Pro for unlimited swipes.')}
+        {!canGenerateNewLooks ? t('home.newLooksSubscriptionBody') : t('home.swipeLimitBody', 'Upgrade to Pro for unlimited swipes.')}
       </ScaledText>
       <TouchableOpacity
         style={[styles.createAvatarButton, { marginTop: spacing.md }]}
@@ -1063,7 +721,7 @@ const DailyOutfitSection = React.memo(({
         <ScaledText style={styles.createAvatarText}>{t('home.unlockUnlimited', 'Unlock unlimited')}</ScaledText>
       </TouchableOpacity>
     </>
-  ) : stackExhausted || dailyAI.loading ? (
+  ) : dailyAI.loading || (stackExhausted && !dailyAI.error) ? (
     <>
       <ActivityIndicator size="small" color={colors.accent.primary} />
       <ScaledText style={[suggestionTextStyle, { marginTop: spacing.md, textAlign: 'center' }]}>
@@ -1074,7 +732,7 @@ const DailyOutfitSection = React.memo(({
     <>
       <Ionicons name={emptyIconName} size={44} color={colors.text.tertiary} />
       <ScaledText style={[suggestionTextStyle, { marginTop: spacing.md, textAlign: 'center' }]}>
-        No looks available right now.
+        {t(dailyAI.error?.startsWith('outfitMaker.') ? dailyAI.error : 'outfitMaker.generateFailed')}
       </ScaledText>
       <TouchableOpacity
         style={[styles.createAvatarButton, { marginTop: spacing.md }]}
@@ -1424,18 +1082,19 @@ const HomeScreen = () => {
   // cache instantly.
   const isWardrobeLoading = useWardrobeStore((state) => state.isLoading);
   const dailyDecksEnabled = isFocused && !!userId && !isWardrobeLoading;
-  // Defer deck DATA past first paint: each DailyOutfitSection fires an
-  // edge-function + combinatorial rebuild on enable. Enabling the moment the
-  // wardrobe settles competes with hero/video first paint (freeze). The
-  // sections render skeletons while disabled, so no layout jump — the fetch
-  // simply starts ~600ms later, after the user sees content.
+  // Defer deck DATA briefly past first paint so the hero/video paints
+  // first. The hook serves the daily cache (async read, no rebuild) or an
+  // instant static deck almost for free, and staggers only its network
+  // refresh internally per style — so a short gate is enough. (Was 600ms +
+  // 1.5–3s per-deck stagger before every paint, which left both cards on
+  // "Styling today's looks…" for seconds even with a warm cache.)
   const [decksReady, setDecksReady] = useState(false);
   useEffect(() => {
     if (!dailyDecksEnabled) {
       setDecksReady(false);
       return;
     }
-    const timer = setTimeout(() => setDecksReady(true), 600);
+    const timer = setTimeout(() => setDecksReady(true), 200);
     return () => clearTimeout(timer);
   }, [dailyDecksEnabled]);
   const decksFetchEnabled = dailyDecksEnabled && decksReady;

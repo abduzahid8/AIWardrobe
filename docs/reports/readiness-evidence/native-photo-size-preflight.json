@@ -1,0 +1,19 @@
+{
+  "date": "2026-10-17",
+  "scope": "Native file: staging metadata preflight before full-buffer read",
+  "stagingTests": 19,
+  "appTests": 1253,
+  "appSuites": 111,
+  "typecheck": "passed",
+  "lint": "passed",
+  "whitespace": "passed",
+  "realOsSparseFileBytes": 67108864,
+  "oversizedBodyReadAttempted": false,
+  "newNativeDeviceRun": false,
+  "productionWrites": false,
+  "limitations": [
+    "content:/blob: sources retain post-read byte limit",
+    "Metadata preflight is not a streaming bound or protection from file growth between stat/read",
+    "Not a fix for observed image-delivery latency"
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "sourceChecks": {
+    "ios": {
+      "screens/ForgotPasswordScreen.tsx": true,
+      "i18n/locales/en.json embedded literal": true,
+      "i18n/locales/ru.json embedded literal": true,
+      "i18n/locales/uz.json embedded literal": true,
+      "auditEntriesAbsent": true,
+      "legacyConfirmationKeyAbsent": true,
+      "nativeExecutableUnchanged": true
+    },
+    "android": {
+      "screens/ForgotPasswordScreen.tsx": true,
+      "i18n/locales/en.json source map": true,
+      "i18n/locales/ru.json source map": true,
+      "i18n/locales/uz.json source map": true,
+      "auditEntriesAbsent": true
+    }
+  },
+  "androidNativeBuildSucceeded": true,
+  "androidApkSha256": "1728150702d450304a68e12c67165d0ad7470340f7c8499617619b34678563b4",
+  "iosArtifactPath": "/tmp/aiwardrobe-recovery-admission-ios.app",
+  "iosBundleSha256": "a7cf37d0554a8d5d35df51b7e8b99470d4fa72b4bf842b2c56d44cfcfd4508c4",
+  "iosMethod": "Current normal-entry Hermes JavaScript; unchanged compiled native runtime, no native recompilation",
+  "localeVerification": "Android JSON source maps match current files; iOS map omits JSON modules, so each current translated literal is verified in bytecode (English UTF-8, Russian/Uzbek UTF-16LE), with legacy key absent. Not visual receipt verification.",
+  "passed": true,
+  "approvalReview": "Initial packaging review timed out before execution; permitted retry succeeded through normal approval path"
+}
