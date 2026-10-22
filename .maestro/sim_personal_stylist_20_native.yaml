@@ -1,0 +1,70 @@
+appId: com.aiwardrobe
+name: sim_personal_stylist_20_native
+---
+- runFlow:
+    when:
+      visible: ".*(Your Outfits|Ваши образы).*"
+    commands:
+      - tapOn:
+          point: "8%,11%"
+      - waitForAnimationToEnd:
+          timeout: 8000
+- runFlow:
+    when:
+      visible: ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*"
+    commands:
+      - tapOn: ".*(Создать образ|Create outfit).*"
+      - waitForAnimationToEnd:
+          timeout: 10000
+- runFlow:
+    when:
+      visible: ".*(Вдохновение|Inspiration).*"
+    commands:
+      - tapOn: ".*(Магазин|Shop).*"
+      - waitForAnimationToEnd:
+          timeout: 8000
+      - tapOn: ".*(Персональный стилист|Personal stylist).*"
+      - waitForAnimationToEnd:
+          timeout: 10000
+- assertVisible:
+    id: stylistCommentInput
+- runFlow:
+    when:
+      visible: ".*(New clothing|Новая одежда).*"
+    commands:
+      - tapOn: ".*(New clothing|Новая одежда).*"
+      - waitForAnimationToEnd:
+          timeout: 2000
+- tapOn:
+    id: stylistCommentInput
+- eraseText
+- inputText: ${COMMENT}
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: stylistGenerate
+- extendedWaitUntil:
+    visible: ".*(Your Outfits|Ваши образы).*"
+    timeout: 75000
+- extendedWaitUntil:
+    visible: ".*(BOTTOM|Pants|PANTS).*"
+    timeout: 20000
+- extendedWaitUntil:
+    visible: ".*(SHOES|Shoes).*"
+    timeout: 20000
+- assertVisible: ".*% Match.*"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: ${SHOT}
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2500
+- takeScreenshot: ${SHOT}_c2
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2500
+- takeScreenshot: ${SHOT}_c3
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2500
+- takeScreenshot: ${SHOT}_c4

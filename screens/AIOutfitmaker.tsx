@@ -32,7 +32,7 @@ import { readCalendarLogs, updateCalendarLogs } from '../src/services/calendarSt
 import { createOutfitLog, type OutfitItem as CalendarOutfitItem } from '../features/calendar/types';
 import AIThinkingAnimation from '../components/AIThinkingAnimation';
 import { canonicalizeMacroCategory } from '../src/utils/categoryMapper';
-import { createDeckDedupe, deckSignature, prioritizeUnseen } from '../features/outfit-generator/utils/deckDedupe';
+import { assembleDeck, prioritizeUnseen } from '../features/outfit-generator/utils/deckDedupe';
 import { isShortsBottom, isFormalLayer, fabricFamily, isSameLayerBaseCategory, PLACEHOLDER_PANTS, PLACEHOLDER_SHOES, getBackendMacroCategory, isCompleteNormalizedOutfit, isFourSlotLook, REAL_IMAGE_RE, repairEdgeItems, createSlotNormalizer, ensureSlotFloors } from '../features/outfit-generator/utils/normalizeSlots';
 import { parseBudgetFromText, stripBudgetFromText, outfitShopSpend, formatMoney, budgetCandidatesFromText, resolveShopQuote, withOutfitBudget } from '../src/utils/outfitBudget';
 import { getShopDestination } from '../src/utils/shopDestination';
@@ -828,7 +828,8 @@ async function generateOfflineOutfits(
   };
 
   const keepOfflineCandidate = (outfitItems: any[], tag: number, relaxed: boolean): boolean => {
-    // Reject exact + near-duplicates: 4-item looks must differ by ≥2 items.
+    // Reject exact + near-duplicates: any two looks may share at most 1
+    // item (sharing 2+ reads as the same outfit with a different shirt).
     const sig = outfitItems.map((p: any) => String(p.id)).sort().join('|');
     if (!sig || seenSigs.has(sig)) return false;
     if (!relaxed) {
@@ -839,7 +840,7 @@ async function generateOfflineOutfits(
         for (const id of ids) if (built.has(id)) shared++;
         if (shared > maxShared) maxShared = shared;
       }
-      if (builtSets.length > 0 && maxShared >= 3) return false;
+      if (builtSets.length > 0 && maxShared >= 2) return false;
     }
     seenSigs.add(sig);
     builtSets.push(new Set(outfitItems.map((p: any) => String(p.id))));
@@ -2289,96 +2290,48 @@ const AIOutfitGenerator = () => {
         }
         const budgetedOutfits = withinBudget;
 
-        // Two cards that share shoes AND pants look like the same outfit.
-        // Sharing one hero piece is allowed; sharing two is a clone.
-        const anchorSkip = baseItemId ? new Set([String(baseItemId)]) : undefined;
-        const idsOf = (items: OutfitItem[]): string[] =>
-          items.map((x: any) => {
-            const nk = normalizeCatalogNameKey(x?.name);
-            return nk ? `n:${nk}` : String(x.id);
-          });
-        let fillAttempts = 0;
-        const strictDedupe = createDeckDedupe();
-        const keptSigs = new Set<string>();
-        const deck: GeneratedOutfit[] = [];
-        // Strict near-dupe rejection first. When the style-clean pool cannot
-        // produce 3 visually distinct cards (thin pool × style × budget), relax
-        // to exact-duplicate-only: a deck of 3 similar cards beats a deck of 1.
-        const tryPush = (o: GeneratedOutfit, relaxed: boolean): boolean => {
-          const ids = idsOf(o.items as any[]);
-          // Exact-identity uses product ids: name-keys collapse distinct
-          // catalog rows that share a (common) name and made relaxed fills
-          // look like exact dupes of a kept card.
-          const sig = deckSignature((o.items as any[]).map((x: any) => String(x.id)));
-          if (keptSigs.has(sig)) {
-            if (__DEV__) readinessLogger.debug(String(`[AIOutfitmaker] tryPush: exact-sig already kept (relaxed=${relaxed}) sig=${sig}`), []);
-            return false;
-          }
-          if (!relaxed && strictDedupe.isDupe(ids, anchorSkip)) {
-            if (__DEV__) readinessLogger.debug(String(`[AIOutfitmaker] tryPush: near-dupe (strict) ids=${ids.join(',')}`), []);
-            return false;
-          }
-          keptSigs.add(sig);
-          strictDedupe.track(ids);
-          deck.push(o);
-          return true;
+        // Diversity gate: any two looks may share at most 1 non-anchor
+        // product (same SKU, same normalized name, same image, or same
+        // product family all count as the same product). Acceptance order
+        // is strict candidates -> strict fresh fills -> relaxed fills ->
+        // relaxed candidates, so near-duplicate edge looks are replaced
+        // from the remaining pool before anything is relaxed. Accepted
+        // looks seed slotDeckUsed, so fills rotate every slot.
+        const productKeysOf = (x: any): string[] => {
+          const keys = [String(x?.id ?? '')];
+          const nk = normalizeCatalogNameKey(x?.name);
+          if (nk) keys.push(`__n:${nk}`);
+          const img = productImageKey(x);
+          if (img) keys.push(`__img:${img}`);
+          const fam = garmentVarietyFamily(x);
+          if (fam) keys.push(`__fam:${fam}`);
+          return keys.filter(Boolean);
         };
-        const runFills = (relaxed: boolean): void => {
-          // Each phase gets its own attempt budget: the strict pass may burn
-          // 12 tries without landing a card, and the relaxed pass must still
-          // get a full run to reach a 3-card deck.
-          const maxFills = relaxed ? 24 : 12;
-          while (deck.length < 3 && fillAttempts < maxFills) {
-            fillAttempts += 1;
-            const extraItems = normalize(
-              [],
-              styleToUse,
-              deck.length + fillAttempts,
-              tapNonce,
-              genPool,
-              slotDeckUsed,
-            );
-            if (!(isFourSlotLook(extraItems) || isCompleteNormalizedOutfit(extraItems))) {
-              if (__DEV__) readinessLogger.debug(String(`[AIOutfitmaker] fill #${fillAttempts}: incomplete look`), []);
-              break;
-            }
-            if (!passesStyleJudge(extraItems as any[], styleToUse, `${occasionToUse} ${effectivePrompt || promptText || ''}`, resolvedWeather)) {
-              if (__DEV__) readinessLogger.debug(String(`[AIOutfitmaker] fill #${fillAttempts}: judge rejected reason="${styleJudgeReason(extraItems as any[], styleToUse, `${occasionToUse} ${effectivePrompt || promptText || ''}`, resolvedWeather) || '?'}" items (${(extraItems as any[]).map((x: any) => `${x.slot || x.macro || '?'}=${String(x.name || '').slice(0, 24)}`).join(' | ')})`), []);
-              continue;
-            }
-            if (tryPush(
-              wrapLook(
-                { id: `catalog_${tapNonce}_${deck.length}` },
-                extraItems,
-                deck.length,
-              ),
-              relaxed,
-            )) {
-              if (__DEV__ && relaxed) readinessLogger.debug(String(`[AIOutfitmaker] fill #${fillAttempts}: accepted (relaxed dedupe)`), []);
-            } else if (__DEV__) {
-              readinessLogger.debug(String(`[AIOutfitmaker] fill #${fillAttempts}: near-dupe rejected`), []);
-            }
-          }
+        const anchorKeys = baseItemId
+          ? new Set<string>([
+              String(baseItemId),
+              ...[...budgetedOutfits.flatMap((o: GeneratedOutfit) => o.items as any[]), ...genPool]
+                .filter((x: any) => String(x?.id ?? '') === String(baseItemId))
+                .flatMap((x: any) => productKeysOf(x)),
+            ])
+          : undefined;
+        const buildFill = (_usedKeys: Set<string>, attempt: number): GeneratedOutfit | null => {
+          const extraItems = normalize([], styleToUse, attempt, tapNonce, genPool, slotDeckUsed);
+          if (!(isFourSlotLook(extraItems) || isCompleteNormalizedOutfit(extraItems))) return null;
+          if (!passesStyleJudge(extraItems as any[], styleToUse, `${occasionToUse} ${effectivePrompt || promptText || ''}`, resolvedWeather)) return null;
+          if (!fitsCap(extraItems as any[])) return null;
+          return wrapLook({ id: `catalog_${tapNonce}_${attempt}` }, extraItems, attempt);
         };
         if (__DEV__) readinessLogger.debug(String(`[AIOutfitmaker] fill start: judged=${judgedOutfits.length} budgeted=${budgetedOutfits.length}`), []);
-        for (const o of budgetedOutfits) {
-          if (deck.length >= 3) break;
-          if (!tryPush(o, false) && __DEV__) {
-            readinessLogger.debug(String(`[AIOutfitmaker] dedupe dropped main card (${(o.items as any[]).map((x: any) => String(x.name || x.slot || '?').slice(0, 20)).join(' | ')})`), []);
-          }
-        }
-
-        if (deck.length < 3 && __DEV__) {
-          readinessLogger.debug(String(`[AIOutfitmaker] strict dedupe left ${deck.length}/3 — relaxing to exact-dupe-only`), []);
-        }
-        if (deck.length < 3) {
-          for (const o of budgetedOutfits) {
-            if (deck.length >= 3) break;
-            tryPush(o, true);
-          }
-
-        }
-        const finalOutfits = deck;
+        const { deck: finalOutfits, relaxed: deckRelaxed } = assembleDeck<GeneratedOutfit>({
+          candidates: budgetedOutfits,
+          itemsOf: (o) => o.items as any[],
+          keysOf: productKeysOf,
+          anchorKeys,
+          usedKeys: slotDeckUsed,
+          buildFill,
+        });
+        if (__DEV__ && deckRelaxed) readinessLogger.debug(String('[AIOutfitmaker] deck relaxed to exact-dupe-only after strict fills were exhausted'), []);
         if (__DEV__) readinessLogger.debug(String(`[AIOutfitmaker] nonce=${generationNonce.current} edge=${cleanedOutfits.length} shown=${finalOutfits.length}`), []);
 
         if (finalOutfits.length === 0) {

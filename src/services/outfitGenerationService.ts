@@ -1211,10 +1211,10 @@ export function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOu
         const signature = outfitSignatureFor(normalizedOutfitItems);
         if (!signature || seenSignatures.has(signature)) return false;
         if (!relaxed) {
-            // Skip near-duplicates sharing all-but-one piece while rotation
-            // tries remain.
+            // Skip near-duplicates while rotation tries remain: any two
+            // looks may share at most 1 item, whatever the slot count.
             const ids = normalizedOutfitItems.map((it) => String(it.id));
-            if (builtIdSets.length > 0 && maxSharedWithBuilt(ids) >= targetItems - 1) return false;
+            if (builtIdSets.length > 0 && maxSharedWithBuilt(ids) >= 2) return false;
         }
         seenSignatures.add(signature);
         builtIdSets.push(new Set(normalizedOutfitItems.map((it) => String(it.id))));
@@ -1240,14 +1240,18 @@ export function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOu
     // construction. Fill the remaining slots with exact-dupe-only rejection
     // so the user gets 3 looks varying the pieces that DO exist instead of 1.
     if (outfits.length < limit) {
-        for (let i = 0, tag = 1000; outfits.length < limit && i < limit * 12; i++, tag++) {
-            const candidate = buildCandidateItems(i + limit * 12, attempt);
-            if (!candidate) { attempt++; continue; }
+        // Drive rotation by attempt alone (never reset): incrementing both
+        // i and attempt per failure made the bottom index advance by
+        // 1 + 13 ≡ 0 (mod 2), so thin pools cycled the same bottom and
+        // only ~3 signatures were ever explored before giving up at 2.
+        let relaxedAttempt = attempt;
+        const relaxedAttemptEnd = attempt + limit * 12;
+        for (let tag = 1000; outfits.length < limit && relaxedAttempt < relaxedAttemptEnd; tag++) {
+            const candidate = buildCandidateItems(limit * 12, relaxedAttempt);
+            relaxedAttempt++;
+            if (!candidate) continue;
             if (tryKeepCandidate(candidate, true)) {
                 pushOutfit(candidate, tag);
-                attempt = 0;
-            } else {
-                attempt++;
             }
         }
     }

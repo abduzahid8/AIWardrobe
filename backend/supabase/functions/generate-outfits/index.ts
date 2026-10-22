@@ -1127,11 +1127,11 @@ function filterValidOutfits(outfits: any[], style: string, itemMap: Map<string, 
     const kept: any[] = []
     const signatures = new Set<string>()
     const keptIdSets: Array<Set<string>> = []
-    // 3-item looks must differ by ≥2 items; 4-item layered looks by ≥2 items.
-    // Sharing all-but-one piece (e.g. same top+bottom, different shoes) is
-    // the "3 similar outfits" bug — reject it while rotation tries remain.
+    // Any two looks may share at most 1 item, whatever the slot count:
+    // sharing the same blazer AND trousers (2 of 4) already reads as the
+    // same outfit with a different shirt.
     const targetItems = layered ? 4 : 3
-    const maxAllowedShared = targetItems - 2
+    const maxAllowedShared = 1
     const shopOnly = isShopOnlyDeck(style, occasion)
     const hasOwnedCandidates = !shopOnly && Array.from(itemMap.values()).some(
         (item: any) => !item.isShopItem && !String(item.id || '').startsWith('shop_'),
@@ -1966,8 +1966,8 @@ async function localFallback(items: any[], style: string, occasion: string, limi
         const sig = parts.map((p: any) => String(p.id)).sort().join('|')
         if (!sig || seenSigs.has(sig)) return false
         if (!relaxed) {
-            // Skip near-duplicates sharing all-but-one piece while rotation
-            // tries remain.
+            // Skip near-duplicates while rotation tries remain: any two
+            // looks may share at most 1 item.
             const partIds = parts.map((p: any) => String(p.id))
             let maxShared = 0
             for (const built of outfits) {
@@ -1976,7 +1976,7 @@ async function localFallback(items: any[], style: string, occasion: string, limi
                 for (const id of partIds) if (builtSet.has(id)) shared++
                 if (shared > maxShared) maxShared = shared
             }
-            if (outfits.length > 0 && maxShared >= targetItems - 1) return false
+            if (outfits.length > 0 && maxShared >= 2) return false
         }
         seenSigs.add(sig)
         // Ensure each outfit has a unique ID

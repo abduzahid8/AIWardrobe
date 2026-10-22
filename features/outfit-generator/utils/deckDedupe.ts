@@ -192,6 +192,147 @@ export function orderSlotCandidates<T>(
     return [...preferUnused(incomingMatches), ...preferUnused(shuffledPool)];
 }
 
+/**
+ * Count how many items of `itemKeys` (one key-list per item) are already
+ * represented in `keptKeys`. An item counts once when ANY of its keys
+ * (id / normalized name / image / product family) matches — so the same
+ * product under a different SKU id still counts as repeated. Items whose
+ * keys intersect `anchorKeys` are ignored entirely.
+ */
+export function countSharedProducts(
+    itemKeys: string[][],
+    keptKeys: ReadonlySet<string>,
+    anchorKeys?: ReadonlySet<string>,
+): number {
+    let shared = 0;
+    for (const keys of itemKeys) {
+        if (anchorKeys && keys.some((k) => anchorKeys.has(k))) continue;
+        if (keys.some((k) => keptKeys.has(k))) shared++;
+    }
+    return shared;
+}
+
+export interface AssembleDeckOptions<O> {
+    /** Edge/AI looks, in preference order. */
+    candidates: O[];
+    itemsOf: (outfit: O) => any[];
+    /** All equivalence keys for one item (id, name, image, family…). */
+    keysOf: (item: any) => string[];
+    /** Product keys of the locked anchor item — never counted, never seeded. */
+    anchorKeys?: ReadonlySet<string>;
+    /** Deck size to reach. Default 3. */
+    target?: number;
+    /** Max non-anchor products any two looks may share. Default 1. */
+    maxShared?: number;
+    /**
+     * Build one replacement look from the remaining pool. Receives the
+     * shared used-keys set (seeded from every accepted look, mutated by
+     * the builder as it picks, exactly like normalizeTo4Slots) and the
+     * attempt index. Return null when no look can be built right now.
+     */
+    buildFill?: (usedKeys: Set<string>, attempt: number) => O | null;
+    /** Attempt budget per fill phase (strict, then relaxed). Default 24. */
+    maxFillAttempts?: number;
+    /** External diversity state shared with the slot picker. */
+    usedKeys: Set<string>;
+}
+
+export interface AssembleDeckResult<O> {
+    deck: O[];
+    /** True when any look was accepted under relaxed (exact-only) rules. */
+    relaxed: boolean;
+    fillAttempts: number;
+}
+
+/**
+ * assembleDeck — the deck-level diversity gate.
+ *
+ * Order of acceptance (never skip a phase):
+ *   1. strict candidates   (pairwise shared non-anchor products ≤ maxShared)
+ *   2. strict fills        (fresh replacement looks from the remaining pool)
+ *   3. relaxed fills       (exact-duplicate-only, thin pools)
+ *   4. relaxed candidates  (last resort so a deck never collapses to 1 card
+ *                           when the pool genuinely cannot diversify)
+ *
+ * Every accepted look seeds `usedKeys` with all of its product keys
+ * (anchor excluded), so fill builders prefer unused products in every
+ * slot. Signatures still differ is NOT the invariant — pairwise shared
+ * product count is.
+ */
+export function assembleDeck<O>(opts: AssembleDeckOptions<O>): AssembleDeckResult<O> {
+    const target = opts.target ?? 3;
+    const maxShared = opts.maxShared ?? 1;
+    const maxFillAttempts = opts.maxFillAttempts ?? 24;
+    const deck: O[] = [];
+    const keptKeySets: Array<Set<string>> = [];
+    const keptSigs = new Set<string>();
+    let relaxed = false;
+    let fillAttempts = 0;
+
+    const keysFor = (outfit: O): string[][] =>
+        opts.itemsOf(outfit).map((item) => opts.keysOf(item).filter(Boolean));
+    const sigFor = (itemKeys: string[][]): string =>
+        deckSignature(itemKeys.map((keys) => keys[0] ?? ''));
+    const isAnchorItem = (keys: string[]): boolean =>
+        Boolean(opts.anchorKeys && keys.some((k) => opts.anchorKeys!.has(k)));
+
+    const accept = (outfit: O, itemKeys: string[][]): void => {
+        const kept = new Set<string>();
+        for (const keys of itemKeys) {
+            if (isAnchorItem(keys)) continue;
+            keys.forEach((k) => kept.add(k));
+            keys.forEach((k) => opts.usedKeys.add(k));
+        }
+        keptKeySets.push(kept);
+        keptSigs.add(sigFor(itemKeys));
+        deck.push(outfit);
+    };
+
+    const tryAccept = (outfit: O, strict: boolean): boolean => {
+        if (deck.length >= target) return false;
+        const itemKeys = keysFor(outfit);
+        if (itemKeys.length === 0) return false;
+        if (keptSigs.has(sigFor(itemKeys))) return false;
+        if (strict) {
+            for (const kept of keptKeySets) {
+                if (countSharedProducts(itemKeys, kept, opts.anchorKeys) > maxShared) return false;
+            }
+        }
+        accept(outfit, itemKeys);
+        return true;
+    };
+
+    for (const candidate of opts.candidates) {
+        if (deck.length >= target) break;
+        tryAccept(candidate, true);
+    }
+
+    if (opts.buildFill) {
+        for (const strict of [true, false]) {
+            let phaseAttempts = 0;
+            while (deck.length < target && phaseAttempts < maxFillAttempts) {
+                phaseAttempts++;
+                fillAttempts++;
+                const fill = opts.buildFill(opts.usedKeys, fillAttempts);
+                if (!fill) break;
+                if (tryAccept(fill, strict)) {
+                    if (!strict) relaxed = true;
+                }
+            }
+            if (deck.length >= target) break;
+        }
+    }
+
+    if (deck.length < target) {
+        for (const candidate of opts.candidates) {
+            if (deck.length >= target) break;
+            if (tryAccept(candidate, false)) relaxed = true;
+        }
+    }
+
+    return { deck, relaxed, fillAttempts };
+}
+
 export interface SlotPickSelection {
     rotationOffset?: number;
     slotOffset?: number;

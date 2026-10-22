@@ -107,6 +107,7 @@ npx eslint <new test>    -> exit 0
 - These are deterministic React Native service/pipeline tests. They do **not** launch a simulator or call the live Supabase edge function, NVIDIA, or a paid AI provider.
 - They verify the stylist's local contract: parsing, prompt context, deck construction, budget handling, localization, and rule-based judging.
 - Device-level visual behavior (layout, image rendering, animations) remains covered by the existing Maestro suites, including `.maestro/STYLIST_50_REPORT.md`.
+- The 20 scenarios were also executed on the iOS simulator; see `docs/reports/PERSONAL_STYLIST_20_SIMULATOR_REPORT.md` for the 17/20 pass result and the three live-edge failures.
 - Live model quality is not asserted; the suite checks the guardrails and contracts around the model, which is the intended boundary described in `docs/ARCHITECTURE.md`.
 
 ## Recommendations
