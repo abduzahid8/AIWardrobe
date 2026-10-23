@@ -16,6 +16,11 @@ export function validateOutfitGenerationRequest(body: unknown): Record<string, a
   text(body.prompt, 1000); text(body.stylePreferences, 80); text(body.occasion, 100);
   text(body.conversationContext, 4000); text(body.anchorItemId, 200);
   if (body.limit !== undefined && (!Number.isInteger(body.limit) || body.limit < 1 || body.limit > 15)) throw new OutfitRequestError();
+  // deckTarget = the deck size the caller DISPLAYS. It may be smaller than
+  // limit (the Personal Stylist requests extra candidates but shows three
+  // cards). Capacity is judged against deckTarget, so it must be a sane
+  // integer no larger than the requested limit.
+  if (body.deckTarget !== undefined && (!Number.isInteger(body.deckTarget) || body.deckTarget < 1 || body.deckTarget > 15)) throw new OutfitRequestError();
   list(body.selectedItemIds, 200, 200); list(body.excludeItemIds, 200, 200);
   for (const key of ['wardrobeOnly', 'useProvidedWardrobeOnly']) if (body[key] !== undefined && typeof body[key] !== 'boolean') throw new OutfitRequestError();
   if (body.weather !== undefined && body.weather !== null) {

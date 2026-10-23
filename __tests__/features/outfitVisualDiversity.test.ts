@@ -345,9 +345,40 @@ describe('G. genuinely thin inventory relaxes honestly', () => {
             poolItems: thinPool(),
             buildFill: fillBuilder(thinPool()),
         });
-        expect(result.deck.length).toBeGreaterThanOrEqual(2);
+        // A wardrobe with ONE garment per slot can produce exactly ONE
+        // distinct look. Repeating that look would show the user the same
+        // card two or three times, so the deck is one card and says so.
+        expect(result.deck).toHaveLength(1);
         expect(result.relaxed).toBe(true);
         expect(result.relaxReason).toBe('insufficient_unique_products');
+    });
+
+    it('repeats only the thin slot and keeps a different look beside it', () => {
+        // Two tops, one bottom, one pair of shoes: the bottom and shoes are
+        // forced, but the two looks still DIFFER (different tops), so both
+        // cards are shown.
+        const pool = [
+            product('t1', 'top', 'White oxford shirt'),
+            product('t2', 'top', 'Blue poplin shirt'),
+            product('b1', 'bottom', 'Grey tailored trousers'),
+            product('s1', 'shoes', 'Brown penny loafers'),
+        ];
+        const first = look('t1-first', [pool[0], pool[2], pool[3]]);
+        const second = look('t2-second', [pool[1], pool[2], pool[3]]);
+        const copy = look('t1-copy', [pool[0], pool[2], pool[3]]);
+        const result = assembleDiverseDeck<Look>({
+            candidates: [first, second, copy],
+            itemsOf,
+            keysOf: productIdentityKeys,
+            usedKeys: new Set<string>(),
+            poolItems: pool,
+            activeSlots: ['top', 'bottom', 'shoes'],
+            target: 2,
+        });
+        expect(result.deck).toHaveLength(2);
+        expect(result.deck.map((entry) => entry.id)).toEqual(['t1-first', 't2-second']);
+        expect(result.inventory.forcedRepeatSlots).toEqual(expect.arrayContaining(['bottom', 'shoes']));
+        expect(result.productDiversity.illegalProductReuseCount).toBe(0);
     });
 });
 
@@ -423,7 +454,6 @@ describe('J. uniqueness outranks a small quality difference', () => {
             usedKeys: new Set<string>(),
             poolItems: richPool(),
             target: 2,
-            maxSharedProducts: 0,
         });
         expect(result.deck).toHaveLength(2);
         expect(result.deck.map((entry) => entry.id)).toEqual(['best', 'unique']);

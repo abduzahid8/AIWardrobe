@@ -2183,6 +2183,11 @@ const AIOutfitGenerator = () => {
           wardrobeItems: payloadItems,
           weather: resolvedWeather,
           limit: 5,
+          // The edge asks for a few extra candidates but the user sees three
+          // cards. Capacity must be judged against the DISPLAYED deck size,
+          // otherwise a 5-candidate request would mark a 3-pair shoe slot
+          // "thin" and license repeating shoes on the three visible cards.
+          deckTarget: 3,
           prompt: edgePrompt,
           // Lock the anchor item into every outfit when navigated from MyClosetScreen.
           // Wardrobe mode only: in shop ("New clothing") mode the anchor is a
@@ -2337,6 +2342,22 @@ const AIOutfitGenerator = () => {
           return wrapLook({ id: `catalog_${tapNonce}_${attempt}` }, extraItems, attempt);
         };
         if (__DEV__) readinessLogger.debug(String(`[AIOutfitmaker] fill start: judged=${judgedOutfits.length} budgeted=${budgetedOutfits.length}`), []);
+        // The edge's capacity verdict (active / strict / forced-repeat slots)
+        // as reported by the authoritative valid pool.
+        const edgeDiversityCapacity = ((): { activeSlots?: DiversitySlot[]; strictSlots?: DiversitySlot[]; forcedRepeatSlots?: DiversitySlot[] } | undefined => {
+          const raw = (data as any)?.diversity;
+          if (!raw || typeof raw !== 'object') return undefined;
+          const slots = (value: unknown): DiversitySlot[] | undefined =>
+            Array.isArray(value) ? value.filter((slot): slot is DiversitySlot => typeof slot === 'string') : undefined;
+          const active = slots(raw.activeSlots);
+          const strict = slots(raw.strictSlots);
+          const forced = slots(raw.forcedRepeatSlots);
+          if (!active && !strict && !forced) return undefined;
+          return { activeSlots: active, strictSlots: strict, forcedRepeatSlots: forced };
+        })();
+        // The client renders 4-slot cards (layer + top + bottom + shoes), so
+        // every card slot participates in the composition.
+        const clientDiversitySlots: DiversitySlot[] = ['top', 'outerwear', 'bottom', 'shoes'];
         const {
           deck: finalOutfits,
           relaxed: deckRelaxed,
@@ -2351,6 +2372,15 @@ const AIOutfitGenerator = () => {
           keysOf: productKeysOf,
           anchorKeys,
           anchorSlot,
+          // Every card the client renders is a 4-slot look
+          // (layer + top + bottom + shoes), so all four slots participate.
+          activeSlots: clientDiversitySlots,
+          // The user sees three cards.
+          target: 3,
+          // The edge owns the valid pool and therefore the capacity verdict.
+          // Re-deriving it from the truncated client pool would reject the
+          // edge's legitimate forced repeat and cost the user cards.
+          capacity: edgeDiversityCapacity,
           usedKeys: slotDeckUsed,
           buildFill,
           // The VALID pool (style / occasion / climate filtered) decides
@@ -2364,7 +2394,7 @@ const AIOutfitGenerator = () => {
         });
         const deckProducts = analyzeDeckProductDiversity(
           finalOutfits.map((outfit) => outfit.items as any[]),
-          { anchorKeys },
+          { anchorKeys, forcedSlots: deckInventory?.forcedRepeatSlots },
         );
         if (__DEV__) {
           readinessLogger.debug(String('[AIOutfitmaker] stylist deck'), [{
@@ -2376,17 +2406,26 @@ const AIOutfitGenerator = () => {
             maxDistinctProducts: deckInventory?.maxDistinctProducts,
             supportsUniqueProducts: deckInventory?.supportsUniqueProducts,
             nonAnchorProductReuseCount: deckProducts.nonAnchorProductReuseCount,
+            illegalProductReuseCount: deckProducts.illegalProductReuseCount,
+            forcedRepeatProducts: deckProducts.forcedRepeatProducts,
+            anchorRepeatProducts: deckProducts.anchorRepeatProducts,
             repeatedProductKeys: deckProducts.repeatedProductKeys,
             anchorRepetitionCount: deckProducts.anchorRepetitionCount,
           }]);
-          const decision = deckProducts.nonAnchorProductReuseCount === 0
-            ? 'UNIQUE_PRODUCTS'
-            : (deckRelaxReason || 'REPEATED_PRODUCTS');
+          const decision = deckProducts.illegalProductReuseCount > 0
+            ? 'REPEATED_PRODUCTS'
+            : (deckProducts.forcedRepeatProducts.length > 0
+              ? 'FORCED_SLOT_REUSE'
+              : 'UNIQUE_PRODUCTS');
           console.log('[stylist-product-diversity]', JSON.stringify({
             decision,
             nonAnchorProductReuseCount: deckProducts.nonAnchorProductReuseCount,
+            illegalProductReuseCount: deckProducts.illegalProductReuseCount,
+            forcedRepeatProducts: deckProducts.forcedRepeatProducts,
+            anchorRepeatProducts: deckProducts.anchorRepeatProducts,
             repeatedProductKeys: deckProducts.repeatedProductKeys,
             repeatedCanonicalKeys: deckProducts.repeatedCanonicalKeys,
+            repeatedProducts: deckProducts.repeatedProducts,
             anchorRepetitionCount: deckProducts.anchorRepetitionCount,
             lookProductKeys: deckProducts.lookProductKeys,
             lookCanonicalProducts: finalOutfits.map((outfit) =>
@@ -2395,7 +2434,20 @@ const AIOutfitGenerator = () => {
             looks: finalOutfits.map((outfit) => (outfit.items as any[]).map((item) => String(item?.id ?? ''))),
             relaxReason: deckRelaxReason,
             supportsUniqueProducts: deckInventory?.supportsUniqueProducts,
-            inventory: deckInventory,
+            activeSlots: deckInventory?.activeSlots,
+            strictSlots: deckInventory?.strictSlots,
+            forcedRepeatSlots: deckInventory?.forcedRepeatSlots,
+            uniqueProductsPerSlot: deckInventory?.uniqueProductsPerSlot,
+            deckSize: finalOutfits.length,
+            deckTarget: 3,
+            hasQualitySignal: true,
+            // End-to-end marker: the edge shipped its capacity verdict, so
+            // the client did NOT have to re-derive it from a truncated pool.
+            edgeCapacity: edgeDiversityCapacity ? {
+              activeSlots: edgeDiversityCapacity.activeSlots,
+              strictSlots: edgeDiversityCapacity.strictSlots,
+              forcedRepeatSlots: edgeDiversityCapacity.forcedRepeatSlots,
+            } : null,
           }));
         }
         if (__DEV__ && deckRelaxed) readinessLogger.debug(String(`[AIOutfitmaker] deck relaxed (${deckRelaxReason}) after strict diverse alternatives were exhausted`), []);

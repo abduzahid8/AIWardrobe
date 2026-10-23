@@ -6,12 +6,11 @@ import { currentBudgetRates, budgetRatesById } from '../_shared/budgetFxCache.ts
 import { minimumSlotSpend } from '../_shared/outfitBudgetFeasibility.ts'
 import { strictestOutfitBudget } from '../_shared/outfitBudgetSelection.ts'
 import { outfitBudgetFeedback } from '../_shared/outfitBudgetFeedback.ts'
-import { geminiOutfitSchema } from '../_shared/geminiOutfitSchema.ts'
 import { normalizeModelOutfits } from '../_shared/modelOutfitResponse.ts'
 import { enforceRateLimit } from '../_shared/rateLimit.ts'
 import { outfitStructureReason, isDressGarment, isNonOutfitItem } from '../_shared/outfitStructure.ts'
 import { styleJudgeReason, normalizeGarmentText, isWorkoutOccasion, rejectForStyleOccasion, rejectForClimate, rejectForActivity } from '../_shared/occasionRules.ts'
-import { analyzeDeckProductDiversity, assembleDiverseDeck, assessInventoryDiversity, canonicalProductKey, productIdentityKeys, diversitySlotOf } from '../_shared/outfitDiversity.ts'
+import { analyzeDeckProductDiversity, assembleDiverseDeck, canonicalProductKey, productIdentityKeys, diversitySlotOf, type DiversitySlot } from '../_shared/outfitDiversity.ts'
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
@@ -779,16 +778,29 @@ function buildSystemPrompt(limit: number, style: string, layered: boolean, prefe
     const budgetRule = budget
         ? `- HARD BUDGET ${budget.amount} ${budget.currency}: for EACH outfit, the sum of budgetCost values (converted to the budget currency) MUST be <= ${budget.amount}. Owned wardrobe items (source:user wardrobe) cost 0. Never pick a shop item whose budgetCost alone exceeds remaining budget. Prefer a cheaper shop substitute over dropping a required slot.`
         : `- Shop items may include a price. If the user prompt names a budget, shop prices in each look MUST sum to that cap or less (owned = 0). Always cite prices for shop picks.`
+    // PRODUCT UNIQUENESS IS THE ONLY HARD DIVERSITY RULE.
+    //
+    // The provider's job is to return `limit` valid, high-quality looks
+    // whose ACTUAL PRODUCTS do not repeat (unless the slot is genuinely
+    // thin). The GLOBAL deck selector then picks the best combination.
+    //
+    // The old wording ("must differ by at least 2 item ids", "visibly
+    // different") contradicted that rule twice: it permitted two looks to
+    // share two products, and it forbade the same outfit FORMULA — which is
+    // legal and often correct. A prompt that contradicts the architecture
+    // produces decks the selector then has to throw away.
     const uniquenessRule = shopOnly
-        ? `- ALL ${limit} OUTFITS MUST BE VISIBLY DIFFERENT. Each outfit must differ from EVERY other outfit by AT LEAST 2 item ids (for 3-item looks) / AT LEAST 2 item ids (for 4-item layered looks). Enumerate the Cartesian product of shop slots — rotate tops, bottoms AND shoes so outfit_1 uses top A / bottom A / shoes A, outfit_2 uses top B / bottom B / shoes B, etc. Repeating the same set — or sharing all-but-one item — is INVALID.
-- VARY THE PRODUCTS, not just the ids: candidates with the same product name are color variants of one garment. Never reuse the same actual product (same name or same photo) in two looks when another valid product is available.`
-        : `- ALL ${limit} OUTFITS MUST BE VISIBLY DIFFERENT. Each outfit must differ from EVERY other outfit by AT LEAST 2 item ids. Rotate slots: if outfit_1 uses top A, outfit_2 MUST use a different top B (if ≥${limit} tops exist), same rotation for bottoms and shoes. Never return the same set of item ids twice, and never return two outfits sharing all-but-one item. Reusing one anchor item across all outfits is allowed ONLY when an ANCHOR ITEM is locked; all other slots MUST still rotate.`
+        ? `- NEVER reuse the same actual product in two looks when another valid product is available. Two candidates with the same product name or the same photo are the SAME product; candidates whose names differ only by color are DIFFERENT products.
+- Different looks MAY use the same garment types and the same outfit structure. Rotate tops, bottoms AND shoes so each look uses a different actual product in every slot.`
+        : `- NEVER reuse the same actual non-anchor item in two looks when another valid product is available. An item is the SAME product when the id, the product name or the photo matches.
+- Different looks MAY use the same garment types and the same outfit structure. Rotate tops, bottoms and shoes so each look uses a different actual product in every slot.
+- Reusing one anchor item across all looks is allowed ONLY when an ANCHOR ITEM is locked; all other slots MUST still rotate.`
     // Same formula is allowed; same actual product is not. The deck may
     // repeat an outfit structure (blazer + shirt + trousers + loafers x3)
     // when that is the right formula for the occasion — what must never
     // repeat is the actual clothing product, when alternatives exist.
     const directionRule = `- PRODUCT UNIQUENESS ACROSS THE ${limit} LOOKS:
-  - Never intentionally reuse the same non-anchor catalog item when another valid item is available. Each non-anchor item should normally appear in only one look.
+  - Each non-anchor item should appear in only one look. When a slot has fewer candidates than looks, it is acceptable to reuse that slot's product rather than break style, occasion, weather or budget.
   - Different looks MAY use the same garment types or the same overall outfit structure. Three blazer + shirt + trousers + loafer looks are acceptable if every blazer, shirt, trouser and shoe is a different actual product.
   - Do not sacrifice style, occasion, weather or budget correctness just to force different silhouettes or formulas.
   - Prefer some visual variety when equally good alternatives exist, but product uniqueness is the hard diversity requirement.`
@@ -807,7 +819,7 @@ ${directionRule}
 - NEVER invent items. Use ONLY the exact ids listed in "Available wardrobe items".
 - Pick items whose styleTags, name, description, or material indicate they FIT the requested style. If an item's tags or description clash with the style, do NOT use it, even when it is the only option for that slot.
 - Favor color harmony (tonal, monochromatic, or analogous palettes from the style's preferred palette). When layering, the base top must color-coordinate with the outerwear (tonal or complementary — never clashing).
-- DIVERSITY IS MANDATORY: spread usage evenly across the available pool. Do not put the same top, bottom, or shoes in all ${limit} outfits when alternatives exist. If a slot has ≥${limit} candidates, each outfit MUST use a different one.
+- PRODUCT ROTATION: spread usage across the available pool. Do not put the same top, bottom, or shoes in all ${limit} outfits when alternatives exist. If a slot has ≥${limit} candidates, each outfit MUST use a different actual product. The same garment TYPE repeating across looks is fine; the same actual PRODUCT repeating is not.
 - NEVER pair formal outerwear (blazer, suit jacket, sport coat, overcoat, topcoat, trench, peacoat, tuxedo) with shorts or bermudas. If the only available bottom is shorts and a formal layer is required, omit the outfit.
 - Each outfit needs a vivid 1-2 sentence description and 2 actionable styling tips.
 
@@ -839,7 +851,7 @@ Self-check BEFORE responding:
   1. Did I pick only items whose description/material/styleTags match ${style}?
   2. Is the color palette coherent with ${style}?
   3. Did I avoid every REJECT category?
-  4. Does any non-anchor item appear in more than one outfit? If so, rebuild the overlapping outfit with a different actual product (a different blazer/shirt/trousers/shoes — the same garment type is fine).
+  4. Does any non-anchor item (same id, same product name or same photo) appear in more than one outfit? If so, rebuild the overlapping outfit with a different actual product (a different blazer/shirt/trousers/shoes — the same garment type and the same formula are fine).
   5. Are style, occasion, weather and budget still correct for every outfit? Never trade correctness for variety.
 If the answer to any of these is "no", rebuild the outfit.
 
@@ -1135,24 +1147,22 @@ function validateOutfitCompatibility(outfit: any, itemMap: Map<string, any>, sty
     return { ok: true }
 }
 
-function filterValidOutfits(outfits: any[], style: string, itemMap: Map<string, any>, layered: boolean, preferences?: any, occasion?: string, weather?: any, onReject?: (index: number, reason: string) => void, anchorItemId?: string): any[] {
+/**
+ * Validate every candidate outfit INDEPENDENTLY.
+ *
+ * This function answers exactly one question: "is this individual outfit
+ * valid?" It answers NOTHING about which looks should coexist in the final
+ * deck. Cross-look product uniqueness is decided ONCE, globally, by
+ * `assembleDiverseDeck()`.
+ *
+ * A greedy cross-look filter here would be actively harmful: if candidate A
+ * overlaps B, C and D while B/C/D are mutually unique, accepting A first
+ * would reject B, C and D and destroy the only correct deck. The global
+ * selector explores combinations, so it can pick B + C + D.
+ */
+function filterValidOutfits(outfits: any[], style: string, itemMap: Map<string, any>, layered: boolean, preferences?: any, occasion?: string, weather?: any, onReject?: (index: number, reason: string) => void): any[] {
     const kept: any[] = []
     const signatures = new Set<string>()
-    const keptProductKeySets: Array<Set<string>> = []
-    // Product uniqueness, aligned with the final deck selector: when the
-    // candidate pool supports unique products, two looks may share ZERO
-    // non-anchor actual products (id / normalized name / normalized image
-    // — family is not identity, same formula is allowed). Thin pools keep
-    // a coarse allowance of 1 here; the final selector makes the exact
-    // thin-inventory call. The anchor product never counts.
-    const anchorKeys = new Set<string>()
-    if (anchorItemId) {
-        const anchorSrc = itemMap.get(String(anchorItemId))
-        if (anchorSrc) productIdentityKeys(anchorSrc).forEach((k: string) => anchorKeys.add(k))
-        anchorKeys.add(`id:${String(anchorItemId)}`)
-    }
-    const supportsUnique = assessInventoryDiversity(Array.from(itemMap.values()), { target: Math.min(3, Math.max(1, outfits.length)) }).supportsUniqueProducts
-    const maxAllowedShared = supportsUnique ? 0 : 1
     const shopOnly = isShopOnlyDeck(style, occasion)
     const hasOwnedCandidates = !shopOnly && Array.from(itemMap.values()).some(
         (item: any) => !item.isShopItem && !String(item.id || '').startsWith('shop_'),
@@ -1228,23 +1238,6 @@ function filterValidOutfits(outfits: any[], style: string, itemMap: Map<string, 
             console.log(`[validate] rejected duplicate outfit combination: ${signature}`)
             continue
         }
-        // Product-reuse check: reject outfits sharing more than the
-        // allowed number of actual products with any already-kept outfit.
-        const candidateKeySets = (o.items || []).map((item: any) => productIdentityKeys(item))
-        let maxShared = 0
-        for (const keptSet of keptProductKeySets) {
-            let shared = 0
-            for (const keys of candidateKeySets) {
-                if (keys.some((k: string) => anchorKeys.has(k))) continue
-                if (keys.some((k: string) => keptSet.has(k))) shared++
-            }
-            if (shared > maxShared) maxShared = shared
-        }
-        if (keptProductKeySets.length > 0 && maxShared > maxAllowedShared) {
-            reject('outfit reuses a product from an earlier accepted outfit')
-            console.log(`[validate] rejected product-reuse outfit (shares ${maxShared} products, max allowed ${maxAllowedShared}): ${signature}`)
-            continue
-        }
         if (shopOnly) {
             const allShop = (o.items || []).length > 0 && (o.items || []).every((item: any) => {
                 const source = itemMap.get(String(item.id)) || item
@@ -1268,7 +1261,6 @@ function filterValidOutfits(outfits: any[], style: string, itemMap: Map<string, 
             }
         }
         signatures.add(signature)
-        keptProductKeySets.push(new Set(candidateKeySets.flat()))
         kept.push(o)
     }
     return kept
@@ -1987,28 +1979,17 @@ async function localFallback(items: any[], style: string, occasion: string, limi
         return parts
     }
 
-    // Product uniqueness is the only hard diversity rule here — the same
-    // contract as the AI path. Same formula is allowed; same actual
-    // product is not (when the pool supports unique products).
-    // visualSimilarity / sameArchetype are soft ranking signals for the
-    // final deck selector, never hard rejections in this rotation.
-    const fallbackSupportsUnique = assessInventoryDiversity(items, { target: limit }).supportsUniqueProducts
-    const keepParts = (parts: any[], relaxed: boolean): boolean => {
+    // The fallback builds CANDIDATES. It does NOT decide which looks may
+    // coexist: cross-look product uniqueness has exactly ONE authority,
+    // assembleDiverseDeck(). Keeping a second (greedy) rule here would be a
+    // competing algorithm — and a greedy one, which is exactly the trap that
+    // destroys the correct deck.
+    //
+    // The only rejection here is an EXACT duplicate look (same item set),
+    // which is interchangeable with the one already built.
+    const keepParts = (parts: any[]): boolean => {
         const sig = parts.map((p: any) => String(p.id)).sort().join('|')
         if (!sig || seenSigs.has(sig)) return false
-        if (!relaxed && outfits.length > 0) {
-            const candidateKeys = parts.map((p: any) => productIdentityKeys(p))
-            for (const built of outfits) {
-                const builtKeys = new Set((built.items || []).flatMap((p: any) => productIdentityKeys(p)))
-                let shared = 0
-                for (const keys of candidateKeys) {
-                    if (keys.some((k: string) => builtKeys.has(k))) shared++
-                }
-                // Rich inventory: zero shared products. Thin inventory:
-                // at most 1, so rotation still completes a deck.
-                if (shared > (fallbackSupportsUnique ? 0 : 1)) return false
-            }
-        }
         seenSigs.add(sig)
         // Ensure each outfit has a unique ID
         outfits.push({
@@ -2023,27 +2004,16 @@ async function localFallback(items: any[], style: string, occasion: string, limi
         return true
     }
 
-    // Strict pass: no shared actual products between looks. Rejections perturb the
-    // attempt so retries explore new slot combinations.
+    // Build up to `limit` distinct candidates. There is deliberately NO
+    // "relaxed pass": reaching the target is never a reason to repeat a
+    // product. If the candidates cannot form a unique deck, the global
+    // selector returns the largest valid UNIQUE subset instead.
     let edgeAttempt = 0
     for (let i = 0; outfits.length < limit && i < limit * 12; i++) {
         const candidate = buildParts(i, edgeAttempt)
         if (!candidate) { edgeAttempt++; continue }
-        if (keepParts(candidate, false)) edgeAttempt = 0
+        if (keepParts(candidate)) edgeAttempt = 0
         else edgeAttempt++
-    }
-
-    // Relaxed pass: thin pools (a single shoes/bottom/outerwear choice) can
-    // NEVER satisfy the strict rule — every second look shares 3 of 4 by
-    // construction. Fill the remaining slots with exact-dupe-only rejection
-    // so the user gets 3 looks instead of 1.
-    if (outfits.length < limit) {
-        for (let i = 0; outfits.length < limit && i < limit * 12; i++) {
-            const candidate = buildParts(i + limit * 12, edgeAttempt)
-            if (!candidate) { edgeAttempt++; continue }
-            if (keepParts(candidate, true)) edgeAttempt = 0
-            else edgeAttempt++
-        }
     }
 
     // If no outfits generated, create at least one with available items
@@ -2180,6 +2150,35 @@ export interface ProviderAttempt {
     status: string;
 }
 
+/**
+ * PROVIDER_ROUTING (explicit, single source of truth)
+ * ────────────────────────────────────────────────────
+ * Outfit generation is NVIDIA-only. There is deliberately NO second AI
+ * provider: a Gemini implementation existed but was never reachable, and
+ * dead provider-routing branches mislead engineers into believing a
+ * fallback protects production. It has been removed.
+ *
+ *   • Primary provider .............. NVIDIA (one model for every tier)
+ *   • Retry policy .................. 1 retry for TRANSIENT failures only
+ *                                   (HTTP 429, HTTP 5xx, network error).
+ *                                   2s backoff after 429/5xx, 1.5s after a
+ *                                   network error. 4xx (other than 429) and
+ *                                   unparseable bodies are NOT retried here.
+ *   • Timeout policy ................ 45s per HTTP attempt, covering the
+ *                                   response body read as well.
+ *   • Second provider .............. none
+ *   • On provider failure .......... the DETERMINISTIC fallback below is
+ *                                   used. Its candidates must pass the SAME
+ *                                   independent validation as AI output and
+ *                                   the SAME global deck selector. If they
+ *                                   do not, the client receives a
+ *                                   retryable 503 `ai_generation_unavailable`.
+ *   • Retryable client errors ....... 503 `ai_generation_unavailable`,
+ *                                   503 `catalog_lookup_unavailable`,
+ *                                   503 `budget_rates_unavailable`
+ *   • Non-retryable client errors ... 401/403 (auth), 422 (no matching
+ *                                   clothing / invalid request)
+ */
 async function callNvidia(key: string, model: string, sys: string, usr: string, retries = 0, trace?: ProviderAttempt[], layered = false, outputContract?: string): Promise<any[]|null> {
     for (let attempt = 0; attempt <= retries; attempt++) {
         const controller = new AbortController()
@@ -2229,52 +2228,6 @@ async function callNvidia(key: string, model: string, sys: string, usr: string, 
         } finally {
             // Reading a response body is part of the provider deadline too.
             clearTimeout(timer!)
-        }
-    }
-    return null
-}
-
-// ── Gemini call with model fallback chain ───────────────────────────────
-// Tries each model in order (first = configured/preferred, last = known
-// good). A missing model id fails fast (404, no retry) so misconfiguration
-// costs one cheap roundtrip, not a timeout.
-async function callGemini(key: string, model: string, sys: string, usr: string, retries = 0, trace?: ProviderAttempt[], schema?: ReturnType<typeof geminiOutfitSchema>): Promise<any[]|null> {
-    for (let attempt = 0; attempt <= retries; attempt++) {
-        const controller = new AbortController()
-        const timer = setTimeout(() => controller.abort(), 45_000)
-        try {
-            console.log(`[Gemini] Attempt ${attempt + 1}, model: ${model}`)
-            const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-                method:'POST', headers:{'Content-Type':'application/json','x-goog-api-key':key},
-                body: JSON.stringify({ contents:[{parts:[{text:`${sys}\n\n${usr}`}]}], generationConfig:{maxOutputTokens:3000,...(schema ? { responseFormat:{text:{mimeType:'application/json',schema}} } : { responseMimeType:'application/json' })} }),
-                signal: controller.signal,
-            })
-            clearTimeout(timer)
-            if (r.status === 429 || r.status >= 500) {
-                console.warn(`[Gemini] ${r.status}, retrying...`)
-                trace?.push({ provider: 'gemini', model, status: String(r.status) })
-                if (attempt < retries) { await new Promise(r => setTimeout(r, 2000)); continue }
-                return null
-            }
-            if (!r.ok) { console.error('[Gemini] error:', r.status); trace?.push({ provider: 'gemini', model, status: String(r.status) }); return null }
-            const d = await r.json()
-            const content = d.candidates?.[0]?.content?.parts?.[0]?.text || '{}'
-            console.log(`[Gemini] Response length: ${content.length} chars`)
-            const outfits = safeParseOutfits(content)
-            if (outfits && outfits.length > 0) {
-                console.log(`[Gemini] Parsed ${outfits.length} outfits`)
-                trace?.push({ provider: 'gemini', model, status: 'ok' })
-                return outfits
-            }
-            console.warn('[Gemini] Unparseable content')
-            trace?.push({ provider: 'gemini', model, status: 'unparseable' })
-            return null
-        } catch(e) {
-            clearTimeout(timer)
-            console.error('[Gemini] call error:', e)
-            trace?.push({ provider: 'gemini', model, status: 'timeout' })
-            if (attempt < retries) { await new Promise(r => setTimeout(r, 1500)); continue }
-            return null
         }
     }
     return null
@@ -2345,6 +2298,12 @@ serve(async (req: Request) => {
         occasion = 'Everyday',
         weather,
         limit = 3,
+        // Deck size the caller will actually DISPLAY. The Personal Stylist
+        // requests a few extra candidates (limit) but shows three cards
+        // (deckTarget). Capacity must be judged against the DISPLAYED deck
+        // size, otherwise a 5-candidate request would mark a 3-shoe slot
+        // "thin" and license repeating shoes on the three visible cards.
+        deckTarget,
         selectedItemIds = [],
         wardrobeItems: legacyWardrobe = [],
         useProvidedWardrobeOnly = false,
@@ -2771,21 +2730,19 @@ serve(async (req: Request) => {
         // ── 4. Get API keys ───────────────────────────────────────────────
         let nvidiaKey = Deno.env.get('NVIDIA_API_KEY') || ''
         let nvidiaModel = resolveNvidiaModel(Deno.env.get('NVIDIA_TEXT_MODEL') || Deno.env.get('NVIDIA_MODEL'))
-        let geminiKey = Deno.env.get('GEMINI_API_KEY') || ''
-        // Preferred Gemini model (env > app_config > product default), with
-        // a known-good fallback appended at call time.
-        const geminiModelPrimary = 'gemini-3.5-flash-lite'
+        // Provider routing policy (explicit — see the PROVIDER_ROUTING
+        // comment above callNvidia): generation is NVIDIA-only. No second AI
+        // provider is wired for outfit generation.
 
-        if (SUPABASE_SERVICE_ROLE_KEY && (!nvidiaKey || !geminiKey)) {
+        if (SUPABASE_SERVICE_ROLE_KEY && !nvidiaKey) {
             const svc = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
             const { data: cfg } = await svc
                 .from('app_config')
                 .select('key, value')
-                .in('key', ['nvidia_token', 'gemma', 'gemini_token', 'gemini_model', 'nvidia_model', 'nvidia_text_model'])
+                .in('key', ['nvidia_token', 'gemma', 'nvidia_model', 'nvidia_text_model'])
             if (cfg) {
                 for (const row of cfg) {
                     if ((row.key === 'nvidia_token' || row.key === 'gemma') && !nvidiaKey) nvidiaKey = row.value
-                    if (row.key === 'gemini_token' && !geminiKey) geminiKey = row.value
                     if ((row.key === 'nvidia_model' || row.key === 'nvidia_text_model') && (!nvidiaModel || nvidiaModel === DEFAULT_NVIDIA_MODEL)) {
                         nvidiaModel = resolveNvidiaModel(row.value)
                     }
@@ -2794,10 +2751,10 @@ serve(async (req: Request) => {
         }
 
         // ── 4b. Subscription tier (server-authoritative) ────────────────────
-        // Paid tiers (lite/premium/vip with an active trial/subscription)
-        // route to Gemini first; free/anonymous runs NVIDIA first and only
-        // falls back to Gemini when NVIDIA fails (rate limits included).
-        // Fail-open to 'free' — tier must never hard-error generation.
+        // The tier is read for entitlement/billing visibility ONLY. It does
+        // NOT select a provider: every tier generates through the same
+        // NVIDIA path (see PROVIDER_ROUTING). Fail-open to 'free' — the tier
+        // must never hard-error generation.
         let paidTier = false
         if (requestUserId && SUPABASE_SERVICE_ROLE_KEY) {
             try {
@@ -2873,22 +2830,35 @@ Choose exactly ${Math.min(limit, choices.length)} of the supplied complete look 
           products:wardrobeItems.filter((item:any)=>usedIds.has(item.id)).map((item:any)=>({id:item.id,name:item.name,slot:item.macroCategory,color:item.color,material:item.material,pattern:item.pattern})),
           looks:choices.map(choice=>({id:choice.id,items:choice.items.map(item=>item.id)}))})
         const choiceContract = '\nOUTPUT CONTRACT: {"outfits":[{"description":"brief styling explanation","items":[{"id":"look001"}]}]}. Each outfit selects exactly ONE supplied complete look ID. Do not return individual garment IDs.'
-        const selections = await callNvidia(nvidiaKey,nvidiaModel,choiceSystem,choiceUser,0,providerTrace,false,choiceContract)
+        providerCalls += 1
+        const selections = await callNvidia(nvidiaKey,nvidiaModel,choiceSystem,choiceUser,1,providerTrace,false,choiceContract)
         return resolveOutfitChoices(selections,choices)
         }
-        // One configured provider for every subscription; a failed provider is an error.
+        // One configured provider for every subscription; a failed provider is
+        // an error that falls through to the deterministic fallback below.
         const providerTrace: ProviderAttempt[] = []
         const aiProviderUsed = 'nvidia:' + nvidiaModel
-        const generate = (system: string, user: string) =>
-            callNvidia(nvidiaKey, nvidiaModel, system, user, 0, providerTrace, layered)
+        // 'ai' while the provider answered, 'deterministic_fallback' when the
+        // deterministic builder produced the deck after a provider failure.
+        let generationSource: 'ai' | 'deterministic_fallback' = 'ai'
+        // Logical provider calls. An HTTP retry inside callNvidia does NOT
+        // count as a new call, so the correction budget stays stable.
+        let providerCalls = 0
+        // One retry for TRANSIENT provider failures (429 / 5xx / network).
+        // The retry lives inside callNvidia and stays bounded by the 45s
+        // per-attempt deadline.
+        const generate = (system: string, user: string) => {
+            providerCalls += 1
+            return callNvidia(nvidiaKey, nvidiaModel, system, user, 1, providerTrace, layered)
+        }
         let aiOutfits = useCuratedChoices ? await generateCuratedChoices() : await generate(sys, usr)
 
         // An unreadable response needs a format correction, not an empty
         // wardrobe message. Share the two-call budget with quality correction.
-        const nvidiaAttempts = () => providerTrace.filter(attempt => attempt.provider === 'nvidia').length
         const lastAttempt = providerTrace[providerTrace.length - 1]
-        if (!useCuratedChoices && !aiOutfits && nvidiaKey && lastAttempt?.provider === 'nvidia' && lastAttempt.status === 'unparseable' && nvidiaAttempts() < 2) {
+        if (!useCuratedChoices && !aiOutfits && nvidiaKey && lastAttempt?.provider === 'nvidia' && lastAttempt.status === 'unparseable' && providerCalls < 2) {
             const formatUsr = `${usr}\n\nFORMAT CORRECTION: Return only a JSON object with an outfits array. Each outfit must have an items array of objects with an id string copied exactly from the candidate list. Omit descriptions and explanations. No markdown, prose, alternate keys or invented IDs. Preserve every requested slot, style, occasion, selected item and budget constraint.`
+            providerCalls += 1
             aiOutfits = await callNvidia(nvidiaKey, nvidiaModel, sys, formatUsr, 0, providerTrace, layered)
         }
 
@@ -2905,13 +2875,13 @@ Choose exactly ${Math.min(limit, choices.length)} of the supplied complete look 
             const validationFailures: Array<{ outfit: number; reason: string }> = []
             const valid = filterValidOutfits(aiOutfits, styleKey, itemMap, layered, preferences, `${occasion} ${prompt}`, weather, (outfit, reason) => {
                 if (validationFailures.length < 20) validationFailures.push({ outfit, reason })
-            }, anchorItemId ? String(anchorItemId) : undefined)
+            })
             const passRate = valid.length / aiOutfits.length
             console.log(`[validate] ${valid.length}/${aiOutfits.length} outfits passed style check for ${styleKey} (layered=${layered})`)
 
             if (valid.length >= Math.max(1, Math.min(limit, aiOutfits.length) - 1)) {
                 validatedOutfits = valid
-            } else if (!useCuratedChoices && passRate < 0.5 && (nvidiaKey || geminiKey) && nvidiaAttempts() < 2) {
+            } else if (!useCuratedChoices && passRate < 0.5 && nvidiaKey && providerCalls < 2) {
                 console.log(`[validate] pass rate ${passRate.toFixed(2)} too low — retrying with correction`)
                 const layeredReqs = layered
                     ? `  1. EVERY outfit MUST be a FOUR-slot layered look with ALL of these macroCategories present: "top" (base layer — t-shirt, shirt, polo, blouse), "outerwear" (main top — sweater, blazer, cardigan, hoodie, jacket), "bottom" (pants/trousers/jeans/shorts/skirt), "shoes". A 3-item outfit is INVALID.\n  2. The base top must sit UNDER the outerwear and color-coordinate with it. Think: white oxford shirt under a navy blazer, or cream tee under a camel cardigan.\n  3. Do NOT return two base tops or two outerwear pieces — exactly one of each.`
@@ -2926,7 +2896,7 @@ Choose exactly ${Math.min(limit, choices.length)} of the supplied complete look 
                         && !rejectForActivity(item, `${occasion} ${prompt}`))
                 const retry = await generate(sys, correctionUsr)
                 if (retry && retry.length > 0) {
-                    const retryValid = filterValidOutfits(retry, styleKey, itemMap, layered, preferences, `${occasion} ${prompt}`, weather, undefined, anchorItemId ? String(anchorItemId) : undefined)
+                    const retryValid = filterValidOutfits(retry, styleKey, itemMap, layered, preferences, `${occasion} ${prompt}`, weather)
                     // Never fall back to the raw `retry` array — same leak as
                     // above. Keep whichever VALIDATED pass is larger.
                     validatedOutfits = retryValid.length > valid.length ? retryValid : (valid.length > 0 ? valid : null)
@@ -2943,6 +2913,70 @@ Choose exactly ${Math.min(limit, choices.length)} of the supplied complete look 
                 console.log('[validate] no validated outfits survived')
                 aiOutfits = null
             }
+        }
+
+        // ── Provider failure → deterministic fallback ──────────────────────
+        // The provider is the ONLY step that can fail; everything after this
+        // point is deterministic. So the product decision is explicit: when
+        // the AI cannot deliver, the user still gets a deck.
+        //
+        // The fallback is NOT a bypass. Its candidates must pass the SAME
+        // independent validation as AI output (filterValidOutfits) and the
+        // SAME global deck selector (assembleDiverseDeck). A fallback that
+        // cannot satisfy style / occasion / activity / weather / budget is
+        // NOT returned — the client gets a retryable 503 instead.
+        if (!aiOutfits?.length && !useCuratedChoices) {
+            console.warn('[provider] PROVIDER_GENERATION_FAILED', {
+                attempts: providerTrace,
+                provider: aiProviderUsed,
+                style: styleKey,
+                occasion,
+            })
+            let fallbackCandidates: any[] = []
+            try {
+                fallbackCandidates = await localFallback(
+                    wardrobeItems,
+                    styleKey,
+                    occasion,
+                    limit,
+                    layered,
+                    undefined,
+                    preferences,
+                    wardrobeOnly,
+                    deckSalt,
+                )
+            } catch (fallbackError: any) {
+                console.error('[provider] deterministic fallback failed:', fallbackError)
+            }
+            // The fallback may draw items the deck selector has not seen;
+            // register them so the validators resolve every id.
+            for (const item of fallbackCandidates.flatMap((outfit: any) => outfit?.items || [])) {
+                if (item?.id && !itemMap.has(String(item.id))) itemMap.set(String(item.id), item)
+            }
+            const fallbackValid = filterValidOutfits(
+                fallbackCandidates,
+                styleKey,
+                itemMap,
+                layered,
+                preferences,
+                `${occasion} ${prompt}`,
+                weather,
+            )
+            if (fallbackValid.length > 0) {
+                aiOutfits = fallbackValid
+                generationSource = 'deterministic_fallback'
+                console.log('[provider] DETERMINISTIC_FALLBACK_USED', {
+                    candidates: fallbackCandidates.length,
+                    valid: fallbackValid.length,
+                    style: styleKey,
+                    occasion,
+                })
+            }
+        } else if (!aiOutfits?.length) {
+            // Curated mode fails CLOSED: it selects among whole pre-built
+            // looks, and a locally assembled look is not one of them. The
+            // client gets the retryable 503 instead.
+            console.warn('[provider] curated mode produced no usable selection')
         }
 
         if (!aiOutfits?.length) return new Response(JSON.stringify({ success: false, error: 'ai_generation_unavailable', outfits: [], providerAttempts: providerTrace }), {status: 503, headers: {...corsHeaders, 'Content-Type':'application/json'}})
@@ -3003,12 +3037,28 @@ Choose exactly ${Math.min(limit, choices.length)} of the supplied complete look 
         // COMBINATION of validated looks with zero non-anchor product
         // reuse (quality first, visual variety only as a tie-breaker);
         // the client runs the same gate independently.
+        // The capacity verdict travels with the response: the client owns a
+        // truncated view of the valid pool and must not re-derive "is this
+        // slot genuinely thin?" from it.
+        let diversityCapacity: { activeSlots: DiversitySlot[]; strictSlots: DiversitySlot[]; forcedRepeatSlots: DiversitySlot[] } | undefined
         if (finalOutfits.length > 0) {
             const anchorForDiversity = anchorItemId && !isShopOnlyDeck(stylePreferences, occasion)
                 ? wardrobeItems.find((i: any) => String(i.id) === String(anchorItemId))
                 : undefined
             const anchorIdentityKeys = new Set<string>(
                 anchorForDiversity ? productIdentityKeys(anchorForDiversity) : [],
+            )
+            // Only the slots the requested composition actually uses count
+            // for capacity. A single outerwear item must never make a
+            // non-layered request look thin, and the anchor slot is excluded
+            // so a locked blazer does not starve the companion slots.
+            const diversityActiveSlots: DiversitySlot[] = layered
+                ? ['top', 'outerwear', 'bottom', 'shoes']
+                : ['top', 'bottom', 'shoes']
+            // The displayed deck size drives the capacity assessment.
+            const requestedDeckTarget = Math.max(
+                1,
+                Math.min(Number(deckTarget) || limit, limit, finalOutfits.length || limit),
             )
             const diverseDeck = assembleDiverseDeck<any>({
                 candidates: finalOutfits,
@@ -3017,12 +3067,13 @@ Choose exactly ${Math.min(limit, choices.length)} of the supplied complete look 
                 keysOf: (item: any) => productIdentityKeys(item),
                 anchorKeys: anchorIdentityKeys.size > 0 ? anchorIdentityKeys : undefined,
                 anchorSlot: anchorForDiversity ? diversitySlotOf(anchorForDiversity) : null,
+                activeSlots: diversityActiveSlots,
                 usedKeys: new Set<string>(),
                 poolItems: wardrobeItems,
-                // The Personal Stylist shows three cards: guarantee a diverse
-                // TRIO here, and keep the remaining validated looks behind it
-                // so the client still has alternatives to choose from.
-                target: Math.min(3, finalOutfits.length),
+                // The displayed deck size: guarantee a diverse deck HERE and
+                // keep the remaining validated looks behind it so the client
+                // still has alternatives to choose from.
+                target: requestedDeckTarget,
                 debug: (message: string, data?: unknown) => console.log('[stylist-diversity]', message, data ?? ''),
             })
             if (diverseDeck.deck.length > 0) {
@@ -3032,16 +3083,30 @@ Choose exactly ${Math.min(limit, choices.length)} of the supplied complete look 
                 finalOutfits = [...diverseDeck.deck, ...extras]
                 const productDiversity = analyzeDeckProductDiversity(
                     diverseDeck.deck.map((o: any) => o.items || []),
-                    { anchorKeys: anchorIdentityKeys },
+                    {
+                        anchorKeys: anchorIdentityKeys,
+                        forcedSlots: diverseDeck.inventory.forcedRepeatSlots,
+                    },
                 )
+                diversityCapacity = {
+                    activeSlots: diverseDeck.inventory.activeSlots,
+                    strictSlots: diverseDeck.inventory.strictSlots,
+                    forcedRepeatSlots: diverseDeck.inventory.forcedRepeatSlots,
+                }
                 console.log(`[stylist-diversity] archetypes=${JSON.stringify(diverseDeck.archetypes)} similarities=${JSON.stringify(diverseDeck.similarities.map(s => Number(s.score.toFixed(2))))} relaxed=${diverseDeck.relaxed} reason=${diverseDeck.relaxReason ?? 'strict'} nonAnchorProductReuseCount=${productDiversity.nonAnchorProductReuseCount}`)
                 console.log('[stylist-product-diversity]', JSON.stringify({
-                    decision: productDiversity.nonAnchorProductReuseCount === 0
-                        ? 'UNIQUE_PRODUCTS'
-                        : (diverseDeck.relaxReason || 'REPEATED_PRODUCTS'),
+                    decision: productDiversity.illegalProductReuseCount > 0
+                        ? 'REPEATED_PRODUCTS'
+                        : (productDiversity.forcedRepeatProducts.length > 0
+                            ? 'FORCED_SLOT_REUSE'
+                            : 'UNIQUE_PRODUCTS'),
                     nonAnchorProductReuseCount: productDiversity.nonAnchorProductReuseCount,
+                    illegalProductReuseCount: productDiversity.illegalProductReuseCount,
+                    forcedRepeatProducts: productDiversity.forcedRepeatProducts,
+                    anchorRepeatProducts: productDiversity.anchorRepeatProducts,
                     repeatedProductKeys: productDiversity.repeatedProductKeys,
                     repeatedCanonicalKeys: productDiversity.repeatedCanonicalKeys,
+                    repeatedProducts: productDiversity.repeatedProducts,
                     anchorRepetitionCount: productDiversity.anchorRepetitionCount,
                     lookProductKeys: productDiversity.lookProductKeys,
                     lookCanonicalProducts: diverseDeck.deck.map((o: any) =>
@@ -3050,13 +3115,22 @@ Choose exactly ${Math.min(limit, choices.length)} of the supplied complete look 
                     lookIds: diverseDeck.deck.map((o: any) => (o.items || []).map((it: any) => String(it.id))),
                     relaxReason: diverseDeck.relaxReason,
                     supportsUniqueProducts: diverseDeck.inventory.supportsUniqueProducts,
+                    activeSlots: diverseDeck.inventory.activeSlots,
+                    strictSlots: diverseDeck.inventory.strictSlots,
+                    forcedRepeatSlots: diverseDeck.inventory.forcedRepeatSlots,
+                    uniqueProductsPerSlot: diverseDeck.inventory.uniqueProductsPerSlot,
+                    deckSize: diverseDeck.deck.length,
+                    deckTarget: requestedDeckTarget,
+                    hasQualitySignal: diverseDeck.hasQualitySignal,
+                    generationSource,
+                    provider: aiProviderUsed,
                 }))
             }
         }
         finalOutfits = finalOutfits.slice(0, limit)
         if (!finalOutfits.length) return new Response(JSON.stringify({ success: false, error: 'ai_generation_unavailable', outfits: [], providerAttempts: providerTrace }), {status: 503, headers: {...corsHeaders, 'Content-Type':'application/json'}})
 
-        return new Response(JSON.stringify({ success: true, outfits: finalOutfits, source: 'ai', layered, provider: aiProviderUsed, providerAttempts: providerTrace, budgetReference: requestFx ? {id: requestFx.snapshot.id, asOf: requestFx.snapshot.asOf, source: 'CBU'} : undefined }), {
+        return new Response(JSON.stringify({ success: true, outfits: finalOutfits, source: generationSource, layered, provider: aiProviderUsed, providerAttempts: providerTrace, diversity: diversityCapacity, budgetReference: requestFx ? {id: requestFx.snapshot.id, asOf: requestFx.snapshot.asOf, source: 'CBU'} : undefined }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
 

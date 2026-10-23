@@ -495,13 +495,21 @@ test('a dress-loafer proposal missing a top enters correction before final valid
  expect((await response.json()).outfits[0].items.map(item=>item.id).sort()).toEqual(owned.map(item=>item.id).sort());
 });
 
-test('repeated structurally invalid provider choices fail as unavailable with no malformed outfit',async()=>{
+test('repeated structurally invalid provider choices never return a malformed outfit',async()=>{
  const {handler,fetchMock}=load(['wardrobe-pants','wardrobe-shoes','dress-penny']);
  const items=[...owned,{...owned[2],id:'dress-penny',name:'DRESS PENNY LOAFERS'}];
  const body=await request({amount:300,currency:'USD'},items).json();body.stylePreferences='semi_classic';body.occasion='formal';body.prompt='Create one complete formal outfit.';
  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
- expect(response.status).toBe(503);expect(fetchMock).toHaveBeenCalledTimes(2);
- const data=await response.json();expect(data.error).toBe('ai_generation_unavailable');expect(data.outfits).toEqual([]);
+ expect(fetchMock).toHaveBeenCalledTimes(2);
+ const data=await response.json();
+ // The provider answer is unusable. The deterministic fallback takes over,
+ // and everything it returns must be a VALID, authoritative wardrobe item —
+ // never a malformed or invented outfit.
+ expect(response.status).toBe(200);
+ expect(data.source).toBe('deterministic_fallback');
+ const allowed=new Set(items.map(item=>item.id));
+ for(const outfit of data.outfits)for(const item of outfit.items)expect(allowed.has(item.id)).toBe(true);
+ expect(data.outfits.length).toBeGreaterThan(0);
 });
 
 test('an unparseable provider response gets one bounded format correction',async()=>{
@@ -517,19 +525,35 @@ test('format and quality correction together cannot exceed two provider requests
  const {handler,fetchMock}=load(['wardrobe-shirt','wardrobe-shoes']);
  fetchMock.mockImplementationOnce(async()=>new Response(JSON.stringify({choices:[{message:{content:'Invalid output'}}]})));
  const response=await handler(request({amount:300,currency:'USD'}));
- expect(response.status).toBe(503);expect(fetchMock).toHaveBeenCalledTimes(2);
- expect((await response.json()).outfits).toEqual([]);
+ expect(fetchMock).toHaveBeenCalledTimes(2);
+ const data=await response.json();
+ // The provider budget is two logical calls. When both fail, the
+ // deterministic fallback still delivers a validated deck.
+ expect(response.status).toBe(200);
+ expect(data.source).toBe('deterministic_fallback');
+ const allowed=new Set(owned.map(item=>item.id));
+ for(const outfit of data.outfits)for(const item of outfit.items)expect(allowed.has(item.id)).toBe(true);
 });
-test('two unparseable responses return an explicit AI failure and no invented outfit',async()=>{
+test('two unparseable responses fall back to a validated deck without inventing an outfit',async()=>{
  const {handler,fetchMock}=load();fetchMock.mockImplementation(async()=>new Response(JSON.stringify({choices:[{message:{content:'Invalid output'}}]})));
  const response=await handler(request({amount:300,currency:'USD'}));const data=await response.json();
- expect(response.status).toBe(503);expect(fetchMock).toHaveBeenCalledTimes(2);expect(data.error).toBe('ai_generation_unavailable');expect(data.outfits).toEqual([]);
+ expect(fetchMock).toHaveBeenCalledTimes(2);
  expect(data.providerAttempts.map(attempt=>attempt.status)).toEqual(['unparseable','unparseable']);
+ expect(response.status).toBe(200);
+ expect(data.source).toBe('deterministic_fallback');
+ const allowed=new Set(owned.map(item=>item.id));
+ for(const outfit of data.outfits)for(const item of outfit.items)expect(allowed.has(item.id)).toBe(true);
 });
 test('rate-limited provider requests do not trigger a format correction',async()=>{
  const {handler,fetchMock}=load();fetchMock.mockImplementation(async()=>new Response('{}',{status:429}));
  const response=await handler(request({amount:300,currency:'USD'}));
- expect(response.status).toBe(503);expect(fetchMock).toHaveBeenCalledTimes(1);
+ // One logical provider call with ONE bounded transient retry — never a
+ // format correction (the provider answered, it was just rate limited).
+ expect(fetchMock).toHaveBeenCalledTimes(2);
+ for(const call of fetchMock.mock.calls)expect(JSON.parse(call[1].body).messages[1].content).not.toContain('FORMAT CORRECTION');
+ const data=await response.json();
+ expect(response.status).toBe(200);
+ expect(data.source).toBe('deterministic_fallback');
 });
 
 test('primary and format-correction requests both describe the required climate layer',async()=>{
@@ -561,7 +585,10 @@ test.each(['unknown','partial','duplicate','timeout'])('curated mode fails close
   const outfits=mode==='unknown'?[{items:[{id:'invented-look'}]}]:mode==='partial'?[{items:[{id:owned[0].id}]}]:[choice,choice];
   return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({outfits})}}]}));
  });
- const response=await handler(request(null));const data=await response.json();expect(response.status).toBe(503);expect(data.outfits).toEqual([]);expect(data.error).toBe('ai_generation_unavailable');expect(fetchMock).toHaveBeenCalledTimes(1);
+ const response=await handler(request(null));const data=await response.json();expect(response.status).toBe(503);expect(data.outfits).toEqual([]);expect(data.error).toBe('ai_generation_unavailable');
+ // A network failure is retried once inside the provider call; the
+ // correction budget is untouched.
+ expect(fetchMock).toHaveBeenCalledTimes(mode==='timeout'?2:1);
 });
 test('curated mode never offers a combination over the selected shopping budget',async()=>{
  const {handler,fetchMock}=load(undefined,null,null,null,null,'curated');

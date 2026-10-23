@@ -14,18 +14,30 @@
  * is VALID: every actual product is different, even though the formula
  * (blazer + shirt + trousers + loafers) repeats.
  *
- * Three layers, in order:
+ * Four layers, in order:
  *
  *   1. PRODUCT IDENTITY — id / normalized name / normalized image.
- *      Garment family is NOT identity.
- *   2. DECK SELECTION — pick the COMBINATION of looks with zero
- *      non-anchor product reuse, quality first. Relaxation is allowed
- *      only for a genuinely thin inventory
- *      (`insufficient_unique_products`).
- *   3. SOFT VISUAL VARIETY — fingerprint + similarity scoring used only
+ *      Garment family is NOT identity. The name normalization is Unicode
+ *      safe: Cyrillic / Greek / CJK names keep their identity instead of
+ *      collapsing to an empty key.
+ *   2. SLOT-AWARE CAPACITY — for every ACTIVE slot of the requested
+ *      composition, count the distinct products the valid pool can
+ *      supply. A slot with fewer distinct products than the deck target
+ *      is `forced` (repetition is unavoidable there); every other active
+ *      slot is `strict` (repetition is a defect).
+ *   3. DECK SELECTION — pick the COMBINATION of looks with no non-anchor
+ *      product reuse in a strict slot, quality first. Visual variety only
+ *      breaks ties. Relaxation reasons:
+ *        'insufficient_unique_products'    — a slot is genuinely thin.
+ *        'insufficient_unique_candidates'  — the pool is rich but no full
+ *            deck exists; the largest UNIQUE subset is returned instead
+ *            of repeating a product.
+ *        'no_candidates'                   — not enough valid looks.
+ *   4. SOFT VISUAL VARIETY — fingerprint + similarity scoring used only
  *      as a tie-breaker among equally good unique-product decks.
- *      visualSimilarity / sameArchetype describe a deck; they never
- *      reject an otherwise valid look.
+ *      visualSimilarity / sameArchetype / sharedExactProducts DESCRIBE a
+ *      deck; they never reject an otherwise valid look. A repeated outfit
+ *      FORMULA is legal — only a repeated actual PRODUCT is not.
  *
  * Pure + deterministic, no imports: safe in the Expo client and inside the
  * Deno edge function. Covered by __tests__/features/outfitVisualDiversity.test.ts.
@@ -48,7 +60,7 @@ export const DIVERSITY_SLOTS: readonly DiversitySlot[] = ['outerwear', 'top', 'b
 export const FORMULA_SLOTS: readonly DiversitySlot[] = ['outerwear', 'top', 'bottom'] as const;
 
 /**
- * Hard ceiling for "these two looks look the same to a human".
+ * Reference score for "these two looks look the same to a human".
  *
  * Chosen from the score distribution produced by this module (see
  * __tests__/features/outfitVisualDiversity.test.ts for the live numbers):
@@ -56,14 +68,17 @@ export const FORMULA_SLOTS: readonly DiversitySlot[] = ['outerwear', 'top', 'bot
  *   same formula, one slot swapped      -> 0.55 .. 0.70
  *   clearly different concepts           -> 0.10 .. 0.35
  *
- * 0.65 sits inside the "one slot swapped" band, which is why the archetype
- * rule (sameArchetype) is a SEPARATE, hard gate: two looks that share the
- * outfit FORMULA are rejected at every rung, no matter how well their
- * colours happen to differ.
+ * DIAGNOSTIC ONLY. The score is reported (telemetry, report script) and
+ * used as a tie-breaker between equally good unique-product decks. It never
+ * rejects a look: a repeated outfit FORMULA is legal, and a hard score gate
+ * would throw away correct, product-unique decks.
  */
 export const MAX_VISUAL_SIMILARITY = 0.65;
 
-/** Max number of garment families two looks may share (anchor slot excluded). */
+/**
+ * Reference count of garment families two looks may share (anchor slot
+ * excluded). DIAGNOSTIC ONLY — reported, never enforced.
+ */
 export const MAX_SHARED_VISUAL_FAMILIES = 1;
 
 /**
@@ -87,10 +102,13 @@ export const DIVERSITY_WEIGHTS = {
 } as const;
 
 /**
- * Escape hatch for the shared-family rule: a pair that shares two garment
- * families is still allowed when the looks are clearly different CONCEPTS
- * (similarity below this value), e.g. a coat + knit + denim look next to a
- * blazer + shirt + tailored look.
+ * Reference threshold for the shared-family description: a pair that shares
+ * two garment families still reads as one concept when its similarity stays
+ * below this value, e.g. a coat + knit + denim look next to a blazer + shirt
+ * + tailored look.
+ *
+ * DIAGNOSTIC ONLY — the shared-family count describes a deck, it never
+ * rejects a look.
  *
  * 0.50 sits below every "same concept" pair measured by the score
  * distribution (0.52 .. 0.67) and above every "clearly different concept"
@@ -136,8 +154,45 @@ function fullBlob(item: any): string {
     return `${text(item.name)} ${text(item.type)} ${text(item.subCategory)} ${text(item.category)} ${text(item.description)} ${text(item.material)} ${text(item.brand)}`.toLowerCase();
 }
 
+/**
+ * Separator between "meaningful" characters of a product name.
+ *
+ * Built with `new RegExp` (not a literal) so an engine without Unicode
+ * property escapes degrades to a broad Latin/Greek/Cyrillic/CJK range instead
+ * of throwing a parse-time SyntaxError at module load.
+ */
+const NON_ALPHANUMERIC: RegExp = (() => {
+    try {
+        return new RegExp('[^\\p{L}\\p{N}]+', 'gu');
+    } catch {
+        return /[^a-z0-9\u00c0-\u024f\u0370-\u03ff\u0400-\u052f\u4e00-\u9fff\uac00-\ud7af]+/gi;
+    }
+})();
+
+/** NFKC normalization when the runtime supports it. */
+function unicodeFold(value: string): string {
+    try {
+        return typeof (value as any).normalize === 'function' ? value.normalize('NFKC') : value;
+    } catch {
+        return value;
+    }
+}
+
+/**
+ * Normalized product-name key.
+ *
+ * Unicode-aware on purpose. The catalog contains Cyrillic, accented and CJK
+ * names, and an ASCII-only normalizer (`[^a-z0-9]`) collapses every non-Latin
+ * product to the SAME empty string — which would make hundreds of unrelated
+ * products look like ONE product and wrongly force a "thin inventory"
+ * verdict. NFKC + Unicode letter/number classes preserve the meaningful
+ * identity of a multilingual name:
+ *
+ *   'Коричневые кожаные лоферы' → 'коричневые кожаные лоферы'
+ */
 export function normalizeNameKey(name: unknown): string {
-    return text(name).toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+    const raw = unicodeFold(text(name)).toLowerCase();
+    return raw.replace(NON_ALPHANUMERIC, ' ').replace(/\s+/g, ' ').trim();
 }
 
 export function imageKey(item: any): string {
@@ -234,6 +289,10 @@ const SLOT_BY_MACRO: Record<string, DiversitySlot> = {
     top: 'top',
     bottom: 'bottom',
     shoes: 'shoes',
+    // A dress replaces the top AND the bottom. The structural validator
+    // normalizes it to the 'top' slot, so product identity and capacity must
+    // use the same mapping or a dress deck would look "bottomless".
+    dress: 'top',
 };
 
 /** Which slot of the 2x2 card an item belongs to. */
@@ -917,17 +976,12 @@ export function sharedVisualFamilies(
  *   navy blazer  + white oxford  + grey tailored trousers + brown loafers
  *   charcoal     + blue poplin   + black trousers       + penny loafers
  *
- * This is the rule that product-id dedupe cannot express, and it is why the
- * reported failure mode ("three SKUs of blazer + shirt + trousers + loafers")
- * is caught even when the numeric similarity score stays under the
- * threshold.
- *
- * ESCAPE: NONE at outfit level. A structured navy double-breasted blazer
- * and a soft beige unstructured linen blazer are different PRODUCTS (item
- * dedupe honours that), but they still fill the same blazer slot, so two
- * looks built on them are variations of one formula, not two directions.
- * §12 asks that a repeated family not decide the ITEM comparison; it must
- * not be read as "a different colourway creates a new outfit".
+ * DESCRIPTIVE, NOT A RULE. This was once a hard gate that rejected every
+ * repeated formula. That was wrong: three blazer + shirt + trousers +
+ * loafer looks are a CORRECT deck when every blazer, shirt, trouser and
+ * shoe is a different actual product. The product-uniqueness layer (layer 3
+ * of this module) is what decides a deck; this function only describes the
+ * formula for telemetry and the report script.
  *
  * The comparison runs over FORMULA_SLOTS only. Footwear is a finishing
  * detail: two looks that agree on outerwear + top + bottom are the same
@@ -955,7 +1009,10 @@ export function sameArchetype(
     return true;
 }
 
-/** Number of identical products (id / name / photo) two looks share. */
+/**
+ * Number of identical products (id / name / photo) two looks share.
+ * DIAGNOSTIC ONLY — the deck selector enforces product uniqueness itself.
+ */
 export function sharedExactProducts(
     a: OutfitFingerprint,
     b: OutfitFingerprint,
@@ -983,6 +1040,33 @@ export interface DeckProductDiversity {
      * cluster count above, this is a direct name/image-key view for logs.
      */
     repeatedCanonicalKeys: string[];
+    /**
+     * Every repeated non-anchor product with the slot it occupies. A repeat
+     * in a `forced` slot is physically unavoidable; a repeat in a `strict`
+     * slot is a defect.
+     */
+    repeatedProducts: Array<{
+        key: string;
+        slot: DiversitySlot | null;
+        lookCount: number;
+        lookIds: number[];
+        /**
+         * True when the repeat is legitimate: the slot physically cannot
+         * supply enough distinct products for the deck (a thin slot), or the
+         * repeated product IS the locked anchor.
+         */
+        legitimate: boolean;
+    }>;
+    /**
+     * Repeats that are DEFECTS: a non-anchor product repeated in a slot that
+     * had enough distinct products to avoid it. This is the number that must
+     * stay at zero.
+     */
+    illegalProductReuseCount: number;
+    /** Repeats that are unavoidable because the slot is genuinely thin. */
+    forcedRepeatProducts: string[];
+    /** Repeats of the locked anchor (always allowed). */
+    anchorRepeatProducts: string[];
     /** How many looks contain the anchor product. */
     anchorLookCount: number;
     /** Extra anchor appearances beyond the first (0 for a normal deck). */
@@ -1035,9 +1119,9 @@ function clusterProductOccurrences(
  */
 export function analyzeDeckProductDiversity(
     looksItems: any[][],
-    opts: { anchorKeys?: ReadonlySet<string> } = {},
+    opts: { anchorKeys?: ReadonlySet<string>; forcedSlots?: readonly DiversitySlot[] } = {},
 ): DeckProductDiversity {
-    const occurrences: Array<{ keys: string[]; canonicalKey: string; look: number; anchor: boolean }> = [];
+    const occurrences: Array<{ keys: string[]; canonicalKey: string; look: number; anchor: boolean; slot: DiversitySlot | null }> = [];
     const lookProductKeys: string[][] = [];
     const anchorKeys = opts.anchorKeys;
     (looksItems || []).forEach((items, look) => {
@@ -1051,6 +1135,7 @@ export function analyzeDeckProductDiversity(
                 canonicalKey: identity.canonicalKey,
                 look,
                 anchor,
+                slot: diversitySlotOf(item),
             });
             canonicalForLook.push(identity.canonicalKey);
         }
@@ -1058,17 +1143,43 @@ export function analyzeDeckProductDiversity(
     });
 
     const repeatedProductKeys = new Set<string>();
+    const repeatedProducts: DeckProductDiversity['repeatedProducts'] = [];
+    const forcedSlots = new Set<DiversitySlot>(opts.forcedSlots || []);
+    const forcedRepeatProducts = new Set<string>();
+    const anchorRepeatProducts = new Set<string>();
     let nonAnchorProductReuseCount = 0;
+    let illegalProductReuseCount = 0;
     for (const group of clusterProductOccurrences(occurrences)) {
         const looks = new Set(group.map((index) => occurrences[index].look));
         if (looks.size < 2) continue;
         const nonAnchor = group
             .map((index) => occurrences[index])
             .filter((occurrence) => !occurrence.anchor);
-        if (nonAnchor.length === 0) continue;
+        // A cluster made only of the anchor is an allowed anchor repetition.
+        if (nonAnchor.length === 0) {
+            for (const occurrence of group.map((index) => occurrences[index])) {
+                anchorRepeatProducts.add(occurrence.canonicalKey);
+            }
+            continue;
+        }
         nonAnchorProductReuseCount += 1;
         repeatedProductKeys.add(nonAnchor[0].canonicalKey);
+        const lookIds = [...new Set(nonAnchor.map((occurrence) => occurrence.look))].sort((a, b) => a - b);
+        const slot = nonAnchor[0].slot;
+        // The repeat is legitimate only when the slot is physically too small
+        // to fill the deck. Anything else is a defect.
+        const legitimate = slot != null && forcedSlots.has(slot);
+        if (legitimate) forcedRepeatProducts.add(nonAnchor[0].canonicalKey);
+        else illegalProductReuseCount += 1;
+        repeatedProducts.push({
+            key: nonAnchor[0].canonicalKey,
+            slot,
+            lookCount: lookIds.length,
+            lookIds,
+            legitimate,
+        });
     }
+    repeatedProducts.sort((a, b) => String(a.slot).localeCompare(String(b.slot)) || a.key.localeCompare(b.key));
 
     const canonicalLooks = new Map<string, Set<number>>();
     for (const occurrence of occurrences) {
@@ -1088,6 +1199,10 @@ export function analyzeDeckProductDiversity(
         nonAnchorProductReuseCount,
         repeatedProductKeys: [...repeatedProductKeys],
         repeatedCanonicalKeys,
+        repeatedProducts,
+        illegalProductReuseCount,
+        forcedRepeatProducts: [...forcedRepeatProducts],
+        anchorRepeatProducts: [...anchorRepeatProducts],
         anchorLookCount,
         anchorRepetitionCount: Math.max(0, anchorLookCount - 1),
         lookProductKeys,
@@ -1171,6 +1286,22 @@ export function visualSimilarity(
 
 // ── Inventory assessment ────────────────────────────────────────────────
 
+/** Per-slot uniqueness capacity for the requested deck size. */
+export interface SlotCapacity {
+    /** The slot this entry describes. */
+    slot: DiversitySlot;
+    /** Distinct actual products available for this slot. */
+    uniqueProducts: number;
+    /**
+     * True when the slot cannot supply `target` distinct products, so
+     * repetition in THIS slot is physically unavoidable. Only these slots
+     * may repeat a product.
+     */
+    forced: boolean;
+    /** True when the slot is pinned by the anchor (repetition allowed). */
+    anchor: boolean;
+}
+
 export interface InventoryDiversity {
     /** Distinct visual families available per slot. */
     familiesPerSlot: Partial<Record<DiversitySlot, number>>;
@@ -1188,6 +1319,24 @@ export interface InventoryDiversity {
     supportsUniqueProducts: boolean;
     /** Slots that actually participate in the deck structure. */
     activeSlots: DiversitySlot[];
+    /**
+     * Per-slot capacity detail. A slot is `forced` only when it genuinely
+     * cannot supply `target` distinct products — the deck selector uses this
+     * to allow repetition in ONE sparse slot without loosening the whole
+     * deck.
+     */
+    slotCapacity: SlotCapacity[];
+    /**
+     * Active slots where product repetition is PHYSICALLY unavoidable
+     * (fewer distinct products than the deck size). These — and only these —
+     * may repeat a product.
+     */
+    forcedRepeatSlots: DiversitySlot[];
+    /**
+     * Active slots where product repetition is FORBIDDEN because valid
+     * alternatives exist.
+     */
+    strictSlots: DiversitySlot[];
     /**
      * Number of active slots where the pool offers exactly ONE garment
      * family. Those slots CANNOT be varied, so any two looks are bound to
@@ -1235,20 +1384,32 @@ export interface InventoryDiversity {
 export interface InventoryOptions {
     /** Slots that are pinned by the anchor (excluded from the assessment). */
     ignoreSlots?: readonly DiversitySlot[];
-    /** Slots that participate in the deck structure. */
+    /**
+     * Slots that participate in the deck structure. Only these are counted:
+     * a single outerwear item must never make a non-layered request look
+     * thin. Defaults to the slots the pool actually contains.
+     */
     activeSlots?: readonly DiversitySlot[];
     /** Deck size the pool must support. Default 3. */
     target?: number;
 }
 
 /**
- * Detect whether the valid inventory is genuinely thin.
+ * Detect whether the valid inventory is genuinely thin, PER SLOT.
  *
- * A pool with one blazer, one shirt, one trouser and one shoe cannot produce
- * three different concepts — repetition is unavoidable and the deck must be
- * allowed to repeat. A pool with 8 blazers, 2 coats, 3 overshirts, 5 shirts,
- * 4 polos, 5 knits, 6 tailored trousers, 4 chinos, 3 jeans, 5 loafers,
- * 3 derbies and 4 sneakers can — repeating one formula there is a bug.
+ * The question is not "can the pool produce three different FORMULAS?" — a
+ * repeated formula is legal. The question is "can every ACTIVE slot supply
+ * `target` DISTINCT PRODUCTS?".
+ *
+ * A pool with one blazer, one shirt, one trouser and one shoe cannot: the
+ * blazer, shirt and trouser slots are `forced`, so repetition there is
+ * physically unavoidable and the deck is allowed to repeat them. A pool with
+ * 8 blazers, 5 shirts, 6 tailored trousers, 5 loafers and 3 derbies can:
+ * every slot is `strict`, so repeating a product there is a defect.
+ *
+ * The anchor slot is excluded (the anchor is pinned by the user), and only
+ * the ACTIVE slots are counted — a single outerwear item must never make a
+ * non-layered request look thin.
  */
 export function assessInventoryDiversity(
     items: any[],
@@ -1311,6 +1472,18 @@ export function assessInventoryDiversity(
         (slot) => (familiesPerSlot[slot] ?? 0) === 1,
     ).length;
 
+    // Per-slot uniqueness capacity. A slot may repeat a product ONLY when it
+    // cannot supply `target` distinct products — that is the difference
+    // between "one sparse slot" (shoes) and "the whole deck is thin".
+    const slotCapacity: SlotCapacity[] = activeSlots.map((slot) => ({
+        slot,
+        uniqueProducts: uniqueProductsPerSlot[slot] ?? 0,
+        forced: (uniqueProductsPerSlot[slot] ?? 0) < target,
+        anchor: ignore.has(slot),
+    }));
+    const forcedRepeatSlots = slotCapacity.filter((entry) => entry.forced).map((entry) => entry.slot);
+    const strictSlots = slotCapacity.filter((entry) => !entry.forced && !entry.anchor).map((entry) => entry.slot);
+
     return {
         familiesPerSlot,
         tokensPerSlot,
@@ -1318,6 +1491,9 @@ export function assessInventoryDiversity(
         maxDistinctProducts,
         supportsUniqueProducts,
         activeSlots,
+        slotCapacity,
+        forcedRepeatSlots,
+        strictSlots,
         forcedSharedFamilies,
         maxDistinctArchetypes,
         conceptCapacity: Math.min(conceptCapacity, 100000),
@@ -1337,6 +1513,27 @@ export interface DiverseDeckCandidate<O> {
     index: number;
 }
 
+/**
+ * Capacity verdict produced by the AUTHORITATIVE pool.
+ *
+ * The edge owns the valid pool (style / occasion / climate filtered, plus the
+ * shop supplement), so it owns the "is this slot genuinely thin?" question.
+ * The client only sees a truncated view of that pool and must not re-derive
+ * the verdict from it — otherwise a thin slot the edge legitimately repeated
+ * would be rejected on the client and the user would lose cards.
+ *
+ * When supplied, the verdict wins for every slot it names. Slots it does not
+ * name fall back to the locally computed assessment.
+ */
+export interface DeckCapacity {
+    /** Slots that participate in the deck composition (edge composition). */
+    activeSlots?: readonly DiversitySlot[];
+    /** Slots rich enough that repetition is a defect, not a necessity. */
+    strictSlots?: readonly DiversitySlot[];
+    /** Slots physically too small to fill the deck — repetition allowed. */
+    forcedRepeatSlots?: readonly DiversitySlot[];
+}
+
 export interface AssembleDiverseDeckOptions<O> {
     /** Candidate looks in preference order (edge output first). */
     candidates: O[];
@@ -1344,27 +1541,36 @@ export interface AssembleDiverseDeckOptions<O> {
     itemsOf: (outfit: O) => any[];
     /** Quality of a look in 0..1 (match score / confidence). */
     qualityOf?: (outfit: O) => number;
-    /** Identity keys of an item (id / name / image / family). */
+    /** Product identity keys of an item (id / normalized name / image). */
     keysOf?: (item: any) => string[];
     /** Product keys of the locked anchor — never counted as repetition. */
     anchorKeys?: ReadonlySet<string>;
-    /** Slot pinned by the anchor (excluded from visual comparison). */
+    /** Slot pinned by the anchor (excluded from capacity and comparison). */
     anchorSlot?: DiversitySlot | null;
     /** Deck size to reach. Default 3. */
     target?: number;
-    /** Max non-anchor products two looks may share. Default 0 (hard). */
-    maxSharedProducts?: number;
+    /**
+     * Slots that participate in the deck composition. Only these count for
+     * capacity: a single outerwear item must never make a NON-LAYERED
+     * request look thin. Defaults to the slots the candidate looks use.
+     */
+    activeSlots?: readonly DiversitySlot[];
+    /**
+     * Capacity verdict from the authoritative pool (the edge). When present
+     * it decides which slots may repeat; see DeckCapacity.
+     */
+    capacity?: DeckCapacity;
     /**
      * Soft visual-similarity reference. Kept for API compatibility and
-     * diagnostics; visual similarity no longer rejects a pair. Same
-     * archetype is allowed when the products are unique.
+     * diagnostics; visual similarity never rejects a pair. Same archetype is
+     * allowed when the products are unique.
      */
     maxVisualSimilarity?: number;
     /** Soft shared-family reference (diagnostics only). */
     maxSharedVisualFamilies?: number;
     /** Builds one replacement look from the remaining pool. */
     buildFill?: (usedKeys: Set<string>, attempt: number) => O | null;
-    /** Fill attempt budget. Default 24. */
+    /** Fill attempt budget. Default 48. */
     maxFillAttempts?: number;
     /** Product keys already used in the deck (mutated as looks are accepted). */
     usedKeys: Set<string>;
@@ -1382,14 +1588,19 @@ export interface DiverseDeckSimilarity {
 
 export interface AssembleDiverseDeckResult<O> {
     deck: O[];
-    /** True when the strict visual rule could not be honoured. */
+    /**
+     * True when the deck repeats a product or is smaller than the target.
+     * Repetition is only ever permitted in a slot whose inventory is
+     * physically too small to fill the deck.
+     */
     relaxed: boolean;
     /**
      * Why the deck had to relax (null in strict mode):
-     *   'thin_inventory' — the pool genuinely cannot produce N concepts.
-     *   'diversity_unavailable_despite_varied_inventory' — the pool COULD
-     *     support N concepts but no qualifying combination was found; the
-     *     least repetitive trio the inventory allows is returned instead.
+     *   'insufficient_unique_products' — at least one ACTIVE slot cannot
+     *     supply `target` distinct products, so repetition there is forced.
+     *   'insufficient_unique_candidates' — the inventory is rich, but the
+     *     candidate set could not produce a full deck. The largest valid
+     *     UNIQUE subset is returned instead of repeating a product.
      *   'no_candidates' — there were not enough valid looks at all.
      */
     relaxReason: string | null;
@@ -1403,6 +1614,15 @@ export interface AssembleDiverseDeckResult<O> {
     fillsUsed: number;
     /** Product-reuse diagnostics for the accepted deck. */
     productDiversity: DeckProductDiversity;
+    /**
+     * True when the candidates carried a REAL quality signal (not one
+     * constant placeholder value). When false, quality cannot discriminate
+     * and the visual tie-breaker decides — a known limitation, not
+     * calibrated personalization.
+     */
+    hasQualitySignal: boolean;
+    /** Quality spread across the candidate pool (min / max). */
+    qualityRange: { min: number; max: number };
 }
 
 function identityKeySets(item: any, keysOf?: (item: any) => string[]): string[] {
@@ -1410,20 +1630,30 @@ function identityKeySets(item: any, keysOf?: (item: any) => string[]): string[] 
     return identityKeysOf(item);
 }
 
-function sharedByKeys(
-    left: string[][],
-    right: string[][],
-    anchorKeys?: ReadonlySet<string>,
-): number {
-    const rightKeys = new Set<string>();
-    for (const keys of right) for (const key of keys) rightKeys.add(key);
-    let shared = 0;
-    for (const keys of left) {
-        if (anchorKeys && keys.some((key) => anchorKeys.has(key))) continue;
-        if (keys.some((key) => rightKeys.has(key))) shared += 1;
-    }
-    return shared;
+/** One item of a look, with its identity keys and the slot it occupies. */
+interface ItemProductRef {
+    keys: string[];
+    slot: DiversitySlot | null;
 }
+
+/** How two looks share actual products. */
+interface PairProductReuse {
+    /** Shared products in a slot that HAS alternatives — a hard defect. */
+    violations: Array<{ slot: DiversitySlot | null; keys: string[] }>;
+    /** Shared products allowed because their slot cannot fill the deck. */
+    forced: Array<{ slot: DiversitySlot | null; keys: string[] }>;
+    /** Shared products allowed because they are the pinned anchor. */
+    anchor: Array<{ keys: string[] }>;
+}
+
+/**
+ * Quality granularity. Quality differences larger than this dominate the
+ * soft visual tie-breaker; smaller differences are treated as a tie so the
+ * variety signal can decide between otherwise equivalent looks.
+ */
+const QUALITY_BUCKET = 0.05;
+/** Weight applied to the bucketed quality sum so it dominates the tie-breaker. */
+const QUALITY_WEIGHT = 1000;
 
 /**
  * assembleDiverseDeck — the deck-level product-uniqueness gate.
@@ -1439,18 +1669,20 @@ function sharedByKeys(
  * family is NOT product identity either: two different loafers are two
  * products. Product identity is id / normalized name / normalized image.
  *
- * The only relaxation is a genuinely thin inventory. The inventory
- * assessment counts distinct PRODUCTS per slot; when it cannot supply
- * `target` unique products, repetition is unavoidable and the deck is
- * marked `insufficient_unique_products`. When enough products exist, the
- * uniqueness rule never relaxes.
+ * Relaxation is PER SLOT, never per deck. The inventory assessment counts
+ * distinct PRODUCTS per ACTIVE slot:
+ *   • a slot that cannot supply `target` distinct products is `forced` —
+ *     repetition there is physically unavoidable (`insufficient_unique_products`);
+ *   • every other active slot is `strict` — repetition there is a defect.
+ * A rich inventory NEVER relaxes: when the candidates cannot form a full
+ * deck, the largest UNIQUE subset is returned instead
+ * (`insufficient_unique_candidates`).
  *
  * The deck is chosen as a COMBINATION, not accepted look-by-look: the best
  * single look must not occupy every slot of the deck.
  */
 export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): AssembleDiverseDeckResult<O> {
-    const target = opts.target ?? 3;
-    const maxSharedProducts = Math.max(0, Math.floor(opts.maxSharedProducts ?? 0));
+    const target = Math.max(1, Math.floor(opts.target ?? 3));
     const maxFillAttempts = opts.maxFillAttempts ?? 48;
     const ignoreSlots: DiversitySlot[] = opts.anchorSlot ? [opts.anchorSlot] : [];
     const debug = opts.debug;
@@ -1472,8 +1704,42 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
 
     for (const candidate of opts.candidates || []) pushCandidate(candidate, 'edge');
 
-    const keySetsFor = (candidate: DiverseDeckCandidate<O>): string[][] =>
-        (opts.itemsOf(candidate.outfit) || []).map((item) => identityKeySets(item, opts.keysOf));
+    const itemRefsFor = (candidate: DiverseDeckCandidate<O>): ItemProductRef[] =>
+        (opts.itemsOf(candidate.outfit) || []).map((item) => ({
+            keys: identityKeySets(item, opts.keysOf),
+            slot: diversitySlotOf(item),
+        }));
+
+    /**
+     * Slots that participate in the composition. An explicit `activeSlots`
+     * wins (the caller knows the requested structure); otherwise the slots
+     * the candidate looks and the valid pool actually use are used.
+     */
+    const explicitActiveSlots = opts.activeSlots && opts.activeSlots.length
+        ? DIVERSITY_SLOTS.filter((slot) => opts.activeSlots!.includes(slot)).filter((slot) => !ignoreSlots.includes(slot))
+        : null;
+    // The authoritative capacity verdict (the edge owns the valid pool).
+    // Its active slots win over the derived ones, and its per-slot verdict
+    // wins over the locally computed one for every slot it names.
+    const capacity = opts.capacity;
+    const capacityActiveSlots = capacity?.activeSlots && capacity.activeSlots.length
+        ? DIVERSITY_SLOTS.filter((slot) => capacity!.activeSlots!.includes(slot)).filter((slot) => !ignoreSlots.includes(slot))
+        : null;
+    const deriveActiveSlots = (): DiversitySlot[] => {
+        if (explicitActiveSlots) return explicitActiveSlots;
+        if (capacityActiveSlots) return capacityActiveSlots;
+        const seen = new Set<DiversitySlot>();
+        for (const candidate of pool) {
+            for (const ref of itemRefsFor(candidate)) {
+                if (ref.slot) seen.add(ref.slot);
+            }
+        }
+        for (const item of opts.poolItems || []) {
+            const slot = diversitySlotOf(item);
+            if (slot) seen.add(slot);
+        }
+        return DIVERSITY_SLOTS.filter((slot) => seen.has(slot) && !ignoreSlots.includes(slot));
+    };
 
     // Pairwise caches (recomputed lazily as the pool grows).
     const similarityCache = new Map<string, number>();
@@ -1485,71 +1751,233 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
         similarityCache.set(key, score);
         return score;
     };
-    const sharedCache = new Map<string, number>();
-    const sharedOf = (a: DiverseDeckCandidate<O>, b: DiverseDeckCandidate<O>): number => {
+
+    // The inventory decides WHICH SLOTS may repeat. It is recomputed as the
+    // candidate pool grows (fills add products), so the reuse rule stays
+    // slot-aware from the start and never relies on a stale snapshot.
+    const computeInventory = (): InventoryDiversity => assessInventoryDiversity(
+        [
+            ...pool.flatMap((member) => opts.itemsOf(member.outfit) || []),
+            ...(opts.poolItems || []),
+        ],
+        { ignoreSlots, activeSlots: deriveActiveSlots(), target },
+    );
+    const reuseCache = new Map<string, PairProductReuse>();
+    /**
+     * A slot may repeat only when it is genuinely thin. The authoritative
+     * verdict wins for the slots it names; unnamed slots keep the locally
+     * computed verdict.
+     */
+    const resolveForcedSlots = (assessment: InventoryDiversity): Set<DiversitySlot> => {
+        const computed = new Set<DiversitySlot>(assessment.forcedRepeatSlots);
+        if (!capacity) return computed;
+        const forced = new Set<DiversitySlot>(capacity.forcedRepeatSlots || []);
+        const strict = new Set<DiversitySlot>(capacity.strictSlots || []);
+        for (const slot of [...computed, ...forced, ...strict]) {
+            if (forced.has(slot)) computed.add(slot);
+            else if (strict.has(slot)) computed.delete(slot);
+        }
+        return computed;
+    };
+    /**
+     * The assessment as it is EFFECTIVELY applied. When the authoritative
+     * verdict is present it replaces the local one, so the reported
+     * inventory (telemetry, the response payload, the client's capacity
+     * override) always matches the rule the selector actually enforced.
+     */
+    const applyCapacity = (assessment: InventoryDiversity): InventoryDiversity => {
+        const forced = resolveForcedSlots(assessment);
+        return {
+            ...assessment,
+            forcedRepeatSlots: assessment.activeSlots.filter((slot) => forced.has(slot)),
+            strictSlots: assessment.activeSlots.filter((slot) => !forced.has(slot)),
+        };
+    };
+    let inventory = applyCapacity(computeInventory());
+    let strictSlots = new Set<DiversitySlot>(inventory.strictSlots);
+    let forcedSlots = resolveForcedSlots(inventory);
+
+    const refreshInventory = () => {
+        inventory = applyCapacity(computeInventory());
+        strictSlots = new Set<DiversitySlot>(inventory.strictSlots);
+        forcedSlots = resolveForcedSlots(inventory);
+        reuseCache.clear();
+    };
+
+    if (debug) {
+        debug('ACTIVE_DIVERSITY_SLOTS', {
+            activeSlots: inventory.activeSlots,
+            target,
+            uniqueProductsPerSlot: inventory.uniqueProductsPerSlot,
+        });
+        debug(inventory.supportsUniqueProducts ? 'UNIQUE_INVENTORY_SUPPORTED' : 'UNIQUE_INVENTORY_UNSUPPORTED', {
+            strictSlots: inventory.strictSlots,
+            forcedRepeatSlots: inventory.forcedRepeatSlots,
+            maxDistinctProducts: inventory.maxDistinctProducts,
+        });
+    }
+
+    /**
+     * STRICT identity of an item for the duplicate-LOOK guard: the same
+     * photo or the same row id. A shared generic name is deliberately NOT
+     * enough here — placeholder rows are all called "item", and treating
+     * those as one product would refuse perfectly distinct cards.
+     */
+    const strictIdentityOf = (item: any): string[] => {
+        const identity = productIdentityOf(item);
+        const keys: string[] = [];
+        if (identity.imageKey) keys.push(identity.imageKey);
+        if (identity.idKey) keys.push(identity.idKey);
+        return keys;
+    };
+    /**
+     * True when two looks carry the same items in every position (a perfect
+     * matching exists and every matched item shares a photo or a row id).
+     * The locked anchor is ignored: it is SUPPOSED to appear in every look.
+     */
+    const looksCarrySameProducts = (a: DiverseDeckCandidate<O>, b: DiverseDeckCandidate<O>): boolean => {
+        const itemsOf = (candidate: DiverseDeckCandidate<O>) => (opts.itemsOf(candidate.outfit) || []).filter((item) => {
+            if (!opts.anchorKeys) return true;
+            return !identityKeySets(item, opts.keysOf).some((key) => opts.anchorKeys!.has(key));
+        });
+        const left = itemsOf(a);
+        const right = itemsOf(b);
+        if (left.length === 0 || left.length !== right.length) return false;
+        const leftKeys = left.map(strictIdentityOf);
+        const rightKeys = right.map(strictIdentityOf);
+        const used = new Array(rightKeys.length).fill(false);
+        const match = (index: number): boolean => {
+            if (index === leftKeys.length) return true;
+            for (let j = 0; j < rightKeys.length; j++) {
+                if (used[j]) continue;
+                const sharesStrictKey = leftKeys[index].length > 0
+                    && rightKeys[j].length > 0
+                    && leftKeys[index].some((key) => rightKeys[j].includes(key));
+                if (!sharesStrictKey) continue;
+                used[j] = true;
+                if (match(index + 1)) return true;
+                used[j] = false;
+            }
+            return false;
+        };
+        return match(0);
+    };
+    const reuseOf = (a: DiverseDeckCandidate<O>, b: DiverseDeckCandidate<O>): PairProductReuse => {
         const key = a.index < b.index ? `${a.index}:${b.index}` : `${b.index}:${a.index}`;
-        const cached = sharedCache.get(key);
-        if (cached !== undefined) return cached;
-        const shared = sharedByKeys(keySetsFor(a), keySetsFor(b), opts.anchorKeys);
-        sharedCache.set(key, shared);
-        return shared;
+        const cached = reuseCache.get(key);
+        if (cached) return cached;
+        const result: PairProductReuse = { violations: [], forced: [], anchor: [] };
+        const refsA = itemRefsFor(a);
+        const refsB = itemRefsFor(b);
+        for (const refA of refsA) {
+            for (const refB of refsB) {
+                const shared = refA.keys.filter((identityKey) => refB.keys.includes(identityKey));
+                if (!shared.length) continue;
+                const anchorKeys = opts.anchorKeys;
+                if (anchorKeys && shared.some((identityKey) => anchorKeys.has(identityKey))) {
+                    result.anchor.push({ keys: shared });
+                    continue;
+                }
+                const slot = refA.slot ?? refB.slot;
+                // A slot with alternatives forbids the repeat. A slot that
+                // CANNOT fill the deck forces it. An unknown slot is treated
+                // as strict: we cannot prove alternatives exist, so we do
+                // not grant permission to repeat.
+                if (slot && forcedSlots.has(slot)) {
+                    result.forced.push({ slot, keys: shared });
+                } else {
+                    result.violations.push({ slot, keys: shared });
+                }
+            }
+        }
+        // A look whose product MULTISET equals another look's is the SAME
+        // card. Repeating it adds no information to the deck, so the copy is
+        // rejected even when every one of its slots is genuinely thin: the
+        // honest answer is a SMALLER deck (or a look that differs
+        // somewhere), never the same card twice.
+        //
+        // The comparison matches ITEMS, not slot names: a non-layered
+        // request may fill its top slot with an outerwear piece, and the
+        // same item must still be recognised wherever it sits.
+        if (looksCarrySameProducts(a, b)) {
+            result.violations.push({ slot: null, keys: ['duplicate_look'] });
+        }
+        reuseCache.set(key, result);
+        return result;
     };
 
     /**
      * Soft deck score. Product uniqueness is enforced by hard filtering, so
-     * this score only decides WHICH valid combination to show. Quality stays
-     * dominant; archetype/similarity are small tie-breakers.
+     * this score only decides WHICH valid combination to show.
+     *
+     * Quality DOMINATES: the quality sum is bucketed and scaled so any real
+     * quality difference outweighs the entire variety term. Variety only
+     * breaks ties between combinations of equivalent quality.
      */
     const deckScore = (indices: number[]): number => {
         const members = indices.map((index) => pool[index]);
-        const quality = members.reduce((sum, member) => sum + member.quality, 0);
+        const qualitySum = members.reduce((sum, member) => sum + member.quality, 0);
+        const qualityBucket = Math.round(qualitySum / QUALITY_BUCKET) * QUALITY_BUCKET;
         const archetypes = new Set(members.map((member) => member.fingerprint.archetype));
         const bonus = DIVERSITY_BONUS_PER_ARCHETYPE * 0.35 * (archetypes.size - 1);
         let similarityPenalty = 0;
-        let sharedPenalty = 0;
         let pairs = 0;
         for (let i = 0; i < members.length; i++) {
             for (let j = i + 1; j < members.length; j++) {
                 similarityPenalty += similarityOf(members[i], members[j]);
-                // Only thin inventories can reach a non-zero value here.
-                sharedPenalty += sharedOf(members[i], members[j]);
                 pairs += 1;
             }
         }
         const meanSimilarity = pairs > 0 ? similarityPenalty / pairs : 0;
-        const meanShared = pairs > 0 ? sharedPenalty / pairs : 0;
-        return quality
-            + bonus
-            - DIVERSITY_SIMILARITY_PENALTY * 0.5 * meanSimilarity
-            - 1.5 * meanShared;
+        const variety = bonus - DIVERSITY_SIMILARITY_PENALTY * 0.5 * meanSimilarity;
+        return qualityBucket * QUALITY_WEIGHT + variety;
     };
 
     // Rejection diagnostics (development builds only). Capped so a big pool
     // cannot flood the console.
     const loggedRejections = new Set<string>();
-    const logRejection = (a: DiverseDeckCandidate<O>, b: DiverseDeckCandidate<O>, shared: number) => {
+    const logRejection = (a: DiverseDeckCandidate<O>, b: DiverseDeckCandidate<O>, reuse: PairProductReuse) => {
         if (!debug) return;
         if (loggedRejections.size >= 12) return;
         const key = `${Math.min(a.index, b.index)}:${Math.max(a.index, b.index)}:shared_product`;
         if (loggedRejections.has(key)) return;
         loggedRejections.add(key);
-        debug('decision: REJECT_SHARED_PRODUCT', {
+        debug('PRODUCT_REUSE_REJECT', {
             pair: [a.index + 1, b.index + 1],
-            sharedProducts: shared,
+            slots: reuse.violations.map((entry) => entry.slot),
+            products: reuse.violations.map((entry) => entry.keys[0]),
             archetypes: [a.fingerprint.archetype, b.fingerprint.archetype],
         });
     };
+    const logAllowedReuse = (a: DiverseDeckCandidate<O>, b: DiverseDeckCandidate<O>, reuse: PairProductReuse) => {
+        if (!debug) return;
+        for (const entry of reuse.forced) {
+            debug('FORCED_SLOT_REUSE', {
+                slot: entry.slot,
+                product: entry.keys[0],
+                pair: [a.index + 1, b.index + 1],
+                uniqueProductsInSlot: inventory.uniqueProductsPerSlot[entry.slot ?? 'top'] ?? 0,
+            });
+        }
+        for (const entry of reuse.anchor) {
+            debug('ANCHOR_REUSE_ALLOWED', {
+                product: entry.keys[0],
+                pair: [a.index + 1, b.index + 1],
+            });
+        }
+    };
 
-    const combinationAllowed = (indices: number[], allowedShared: number): boolean => {
+    const combinationAllowed = (indices: number[]): boolean => {
         for (let i = 0; i < indices.length; i++) {
             for (let j = i + 1; j < indices.length; j++) {
                 const a = pool[indices[i]];
                 const b = pool[indices[j]];
-                const shared = sharedOf(a, b);
-                if (shared > allowedShared) {
-                    logRejection(a, b, shared);
+                const reuse = reuseOf(a, b);
+                if (reuse.violations.length > 0) {
+                    logRejection(a, b, reuse);
                     return false;
                 }
+                logAllowedReuse(a, b, reuse);
             }
         }
         return true;
@@ -1557,13 +1985,13 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
 
     const MAX_COMBINATIONS = 250000;
 
-    const selectCombination = (size: number, allowedShared: number): number[] | null => {
+    const selectCombination = (size: number): number[] | null => {
         const n = pool.length;
         if (n < size || size < 1) return null;
         let best: number[] | null = null;
         let bestScore = Number.NEGATIVE_INFINITY;
         const consider = (indices: number[]) => {
-            if (!combinationAllowed(indices, allowedShared)) return;
+            if (!combinationAllowed(indices)) return;
             const score = deckScore(indices);
             if (score > bestScore) {
                 bestScore = score;
@@ -1593,48 +2021,53 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
             walk(0);
             return best;
         }
-        // Greedy fallback for very large pools: start from the strongest
-        // look, then add the most compatible companions.
-        const seed = pool
-            .map((member, index) => ({ index, quality: member.quality }))
-            .sort((a, b) => b.quality - a.quality)[0];
-        if (!seed) return null;
-        const chosen = [seed.index];
-        while (chosen.length < size) {
-            let bestAdd = -1;
-            let bestAddScore = Number.NEGATIVE_INFINITY;
-            for (let i = 0; i < n; i++) {
-                if (chosen.includes(i)) continue;
-                const trial = [...chosen, i];
-                if (!combinationAllowed(trial, allowedShared)) continue;
-                const score = deckScore(trial);
-                if (score > bestAddScore) {
-                    bestAddScore = score;
-                    bestAdd = i;
+        // Greedy fallback for very large pools. Every candidate is tried as
+        // the seed so one strong-but-conflicting look cannot starve the
+        // deck (the greedy trap).
+        let bestSeed: number[] | null = null;
+        let bestSeedScore = Number.NEGATIVE_INFINITY;
+        for (let seed = 0; seed < n; seed++) {
+            const chosen = [seed];
+            let failed = false;
+            while (chosen.length < size) {
+                let bestAdd = -1;
+                let bestAddScore = Number.NEGATIVE_INFINITY;
+                for (let i = 0; i < n; i++) {
+                    if (chosen.includes(i)) continue;
+                    const trial = [...chosen, i];
+                    if (!combinationAllowed(trial)) continue;
+                    const score = deckScore(trial);
+                    if (score > bestAddScore) {
+                        bestAddScore = score;
+                        bestAdd = i;
+                    }
                 }
+                if (bestAdd < 0) { failed = true; break; }
+                chosen.push(bestAdd);
             }
-            if (bestAdd < 0) return null;
-            chosen.push(bestAdd);
+            if (failed) continue;
+            const score = deckScore(chosen);
+            if (score > bestSeedScore) {
+                bestSeedScore = score;
+                bestSeed = chosen;
+            }
         }
-        consider(chosen);
+        if (bestSeed) consider(bestSeed);
         return best;
     };
 
-    const selectBestUpTo = (maxSize: number, allowedShared: number): number[] | null => {
+    /**
+     * Largest valid combination up to `maxSize` under the SAME slot-aware
+     * uniqueness rule. Used when the target size cannot be reached: the
+     * answer is a SMALLER valid deck, never a deck with repeated products.
+     */
+    const selectBestUpTo = (maxSize: number): number[] | null => {
         for (let size = Math.min(maxSize, pool.length); size >= 1; size--) {
-            const selection = selectCombination(size, allowedShared);
+            const selection = selectCombination(size);
             if (selection) return selection;
         }
         return null;
     };
-
-    const inventoryOf = (): InventoryDiversity => assessInventoryDiversity(
-        [
-            ...pool.flatMap((member) => opts.itemsOf(member.outfit) || []),
-            ...(opts.poolItems || []),
-        ],
-        { ignoreSlots, target },
-    );
 
     const seedUsedKeys = (indices: number[]) => {
         for (const index of indices) {
@@ -1654,13 +2087,7 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
         }
     };
 
-    // The inventory assessment decides whether uniqueness is physically
-    // possible. It counts distinct products, not archetype tokens.
-    const inventory = inventoryOf();
-    const uniquenessSupported = inventory.supportsUniqueProducts;
-    const sharedLimit = uniquenessSupported ? maxSharedProducts : Number.POSITIVE_INFINITY;
-
-    let selection = selectCombination(target, sharedLimit);
+    let selection = selectCombination(target);
     let fillsUsed = 0;
 
     if (opts.buildFill) {
@@ -1680,6 +2107,7 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
                 continue;
             }
             const candidate = pushCandidate(fill, 'fill');
+            refreshInventory();
             if (debug) {
                 debug(`replacement selected: ${candidate.fingerprint.archetype}`, {
                     attempt,
@@ -1687,7 +2115,7 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
                     products: (opts.itemsOf(fill) || []).map((item) => canonicalProductKey(item)),
                 });
             }
-            const next = selectCombination(target, sharedLimit);
+            const next = selectCombination(target);
             if (!next) {
                 // Still searching for the first valid unique combination.
                 staleAttempts = 0;
@@ -1707,18 +2135,20 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
     let relaxed = false;
     let relaxReason: string | null = null;
 
-    if (!uniquenessSupported) {
-        // Genuinely thin inventory: uniqueness is impossible in at least one
-        // slot. Keep the least repetitive combination and report honestly.
-        if (!selection) selection = selectBestUpTo(target, Number.POSITIVE_INFINITY);
-        relaxed = Boolean(selection);
-        relaxReason = selection ? 'insufficient_unique_products' : 'no_candidates';
-    } else if (!selection) {
-        // The inventory has enough unique products, but the candidate set /
-        // fill builder could not produce a full trio. Never relax the
-        // uniqueness rule; show the largest valid unique subset instead.
-        selection = selectBestUpTo(target, maxSharedProducts);
-        relaxReason = selection ? 'insufficient_unique_candidates' : 'no_candidates';
+    if (!selection) {
+        // The inventory is rich but the candidate set could not produce a
+        // full deck. NEVER relax product uniqueness to reach the target —
+        // return the largest valid UNIQUE subset instead.
+        selection = selectBestUpTo(target);
+        if (selection && selection.length < target) {
+            relaxed = true;
+            // Name the REAL binding constraint: when an active slot cannot
+            // supply `target` distinct products the deck was capped by the
+            // inventory itself; otherwise the candidates were the limit.
+            relaxReason = forcedSlots.size > 0
+                ? 'insufficient_unique_products'
+                : 'insufficient_unique_candidates';
+        }
     }
 
     if (debug) {
@@ -1729,10 +2159,6 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
                 products: (opts.itemsOf(member.outfit) || []).map((item) => canonicalProductKey(item)),
             });
         }
-        debug(`inventory: uniqueProductsPerSlot=${JSON.stringify(inventory.uniqueProductsPerSlot)} maxDistinctProducts=${inventory.maxDistinctProducts} supportsUniqueProducts=${inventory.supportsUniqueProducts}`, {
-            familiesPerSlot: inventory.familiesPerSlot,
-            tokensPerSlot: inventory.tokensPerSlot,
-        });
     }
 
     if (!selection) {
@@ -1745,6 +2171,8 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
             inventory,
             fillsUsed,
             productDiversity: analyzeDeckProductDiversity([], { anchorKeys: opts.anchorKeys }),
+            hasQualitySignal: false,
+            qualityRange: { min: 0, max: 0 },
         };
     }
 
@@ -1761,8 +2189,27 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
 
     const productDiversity = analyzeDeckProductDiversity(
         chosen.map((member) => opts.itemsOf(member.outfit) || []),
-        { anchorKeys: opts.anchorKeys },
+        { anchorKeys: opts.anchorKeys, forcedSlots: inventory.forcedRepeatSlots },
     );
+
+    // A repeat is only acceptable when it happens in a slot that cannot
+    // fill the deck. Any repeat in a slot with alternatives is a defect and
+    // must never be reported as a relaxed-but-fine deck.
+    const forbiddenRepeats = productDiversity.repeatedProducts.filter(
+        (entry) => !(entry.slot && forcedSlots.has(entry.slot)),
+    );
+    if (forbiddenRepeats.length > 0) {
+        relaxed = true;
+        relaxReason = 'repeated_products_in_strict_slot';
+    } else if (productDiversity.repeatedProducts.length > 0) {
+        relaxed = true;
+        relaxReason = 'insufficient_unique_products';
+    }
+
+    const qualities = pool.map((member) => member.quality);
+    const qualityMin = qualities.length ? Math.min(...qualities) : 0;
+    const qualityMax = qualities.length ? Math.max(...qualities) : 0;
+    const hasQualitySignal = qualities.length > 0 && qualityMax - qualityMin > 1e-9;
 
     if (debug) {
         for (const entry of similarities) {
@@ -1770,17 +2217,27 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
                 archetypes: [chosen[entry.a].fingerprint.archetype, chosen[entry.b].fingerprint.archetype],
             });
         }
-        debug(`decision: ${relaxed ? `RELAXED (${relaxReason})` : 'UNIQUE_PRODUCTS'}`, {
+        debug('DIVERSE_DECK_SELECTED', {
+            deckSize: chosen.length,
+            target,
             archetypes: chosen.map((member) => member.fingerprint.archetype),
             nonAnchorProductReuseCount: productDiversity.nonAnchorProductReuseCount,
             repeatedProductKeys: productDiversity.repeatedProductKeys,
+            repeatedSlots: productDiversity.repeatedProducts.map((entry) => entry.slot),
             anchorRepetitionCount: productDiversity.anchorRepetitionCount,
-            inventory: {
-                homogeneous: inventory.homogeneous,
-                maxDistinctProducts: inventory.maxDistinctProducts,
-                supportsUniqueProducts: inventory.supportsUniqueProducts,
-            },
+            activeSlots: inventory.activeSlots,
+            forcedRepeatSlots: inventory.forcedRepeatSlots,
+            relaxed,
+            relaxReason,
+            hasQualitySignal,
         });
+        if (chosen.length < target) {
+            debug('UNIQUE_CANDIDATE_SUBSET_ONLY', {
+                deckSize: chosen.length,
+                target,
+                reason: 'no fully unique combination of the requested size',
+            });
+        }
     }
 
     // Seed the shared used-keys set with the accepted looks so later
@@ -1796,6 +2253,8 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
         inventory,
         fillsUsed,
         productDiversity,
+        hasQualitySignal,
+        qualityRange: { min: qualityMin, max: qualityMax },
     };
 }
 

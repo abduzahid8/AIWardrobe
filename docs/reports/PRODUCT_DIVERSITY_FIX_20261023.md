@@ -143,3 +143,54 @@ grep stylist-product-diversity .expo/dev/logs/start.log
 - `02` FX and `11` black-tie are provider-side; retry when the providers
   recover (both passed in earlier audits).
 - `13`/`14` need a sport catalog in the shop feed.
+
+## Hardening pass (same day, follow-up)
+
+The first fix removed the greedy cross-look filters but left four structural
+defects that a live simulator run reproduced. All four are fixed and verified.
+
+### Defects → fixes
+
+| Defect (reproduced) | Fix |
+|---|---|
+| The Selector could show **two identical cards**. Live run (scenario 01, shop): card 1 and card 3 carried the same four products (trench coat + sweater + wool pants + denim shoes, identical prices) because every slot was thin, so every repeat was "allowed". | `assembleDiverseDeck` now rejects a pair whose items match in **every** position (same photo or same row id, matched one-to-one). A thin inventory yields a **smaller** deck, never the same card twice. |
+| Capacity was judged against the **candidate batch** (`limit: 5`) instead of the **displayed deck** (3 cards), and against **inactive** slots. | The client sends the additive `deckTarget` field (validated in `outfitGenerationRequest.ts`); the edge assesses capacity per **active composition slot** (`layered ? top/outerwear/bottom/shoes : top/bottom/shoes`) and reports the verdict back. |
+| The client re-derived "is this slot thin?" from a **truncated pool**, so it could reject a repeat the edge had legitimately forced (and vice versa). | `assembleDiverseDeck` accepted a `capacity` override; the edge returns `diversity: {activeSlots, strictSlots, forcedRepeatSlots}` and the client applies it (unnamed slots keep the local verdict). |
+| Provider failure returned a hard `503` even though a deterministic builder existed and was never called. A **second** cross-look product rule also lived in `localFallback`, and its "relaxed pass" reached the target by repeating products. | `localFallback` is now wired into the provider-failure path, gated through the SAME `filterValidOutfits` + `assembleDiverseDeck`. Its own cross-look rule and relaxed pass are gone. If nothing validates, the client still gets the retryable `503 ai_generation_unavailable`. Curated mode keeps failing closed. |
+
+Also removed: the unreachable Gemini provider (dead `callGemini`, key and
+model loading), the prompt's contradicting "must differ by ≥2 item ids"
+diversity rule, and the ASCII-only product-name normalization (Cyrillic
+names collapsed to an empty identity). NVIDIA is the single provider, with
+one bounded retry for transient failures (429/5xx/network) that does **not**
+consume the format/quality correction budget.
+
+### Verification
+
+| Gate | Result |
+|---|---|
+| `npx tsc --noEmit` | pass |
+| `npx jest` | 186 suites · 2379 tests pass |
+| `npx tsx scripts/stylist-diversity-report.ts` | 20/20 STRICT, reuse 0, worst similarity 0.40 |
+| Simulator, live edge v120, scenario 01 (shop, old money) | 3 cards; `illegalProductReuseCount=0`; one **forced** repeat (`n:100 cool wool suit blazer`, thin outerwear slot); `deckSize=3`, `deckTarget=3`; `edgeCapacity` present in telemetry (the edge's verdict reached the client) |
+| Lint | unchanged (1 pre-existing error, no new errors) |
+
+New regression suites:
+
+- `__tests__/features/stylistDeckSelection.test.ts` — greedy trap, same
+  formula, duplicate rows, Cyrillic identity, irrelevant outerwear, anchor
+  slot, thin-slot-only repeats, rich never relaxes, duplicate card, deck
+  target, authoritative capacity override.
+- `__tests__/backend/generateOutfitsFallback.test.js` — `filterValidOutfits`
+  is independent per look (a look sharing a product is kept; an exact
+  duplicate is not), the fallback no longer judges the deck, and the
+  provider policy (no second provider, bounded retry, single routing
+  comment).
+
+Reproduce the headline case:
+
+```bash
+npx jest __tests__/features/stylistDeckSelection.test.ts
+OUT=.maestro/verify-shots/sim_product_dup_fix ./.maestro/run_personal_stylist_20_sim.sh
+grep stylist-product-diversity /tmp/metro8083.log | tail -1
+```

@@ -13,7 +13,9 @@ import { buildLocalOutfits, type LocalClothingItem } from '../../src/services/ou
 
 function owned(id: string, slot: string, name: string, color = 'navy'): LocalClothingItem {
   return {
-    id, userId: 'u1', imageUrl: 'https://example.com/x.jpg',
+    // A real wardrobe never points every garment at ONE photo, and the
+    // product-identity layer treats a shared photo as a shared product.
+    id, userId: 'u1', imageUrl: `https://example.com/${id}.jpg`,
     category: slot as any, subCategory: name, macroCategory: slot,
     primaryColor: color, colorHex: '#000000', pattern: 'solid', material: 'cotton',
     brand: '', name, seasons: [], occasions: [], wearCount: 0, lastWornAt: null,
