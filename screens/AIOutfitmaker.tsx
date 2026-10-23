@@ -32,7 +32,12 @@ import { readCalendarLogs, updateCalendarLogs } from '../src/services/calendarSt
 import { createOutfitLog, type OutfitItem as CalendarOutfitItem } from '../features/calendar/types';
 import AIThinkingAnimation from '../components/AIThinkingAnimation';
 import { canonicalizeMacroCategory } from '../src/utils/categoryMapper';
-import { assembleDeck, prioritizeUnseen } from '../features/outfit-generator/utils/deckDedupe';
+import { prioritizeUnseen } from '../features/outfit-generator/utils/deckDedupe';
+import {
+    assembleDiverseDeck,
+    diversitySlotOf,
+    type DiversitySlot,
+} from '../features/outfit-generator/utils/outfitDiversity';
 import { isShortsBottom, isFormalLayer, fabricFamily, isSameLayerBaseCategory, PLACEHOLDER_PANTS, PLACEHOLDER_SHOES, getBackendMacroCategory, isCompleteNormalizedOutfit, isFourSlotLook, REAL_IMAGE_RE, repairEdgeItems, createSlotNormalizer, ensureSlotFloors } from '../features/outfit-generator/utils/normalizeSlots';
 import { parseBudgetFromText, stripBudgetFromText, outfitShopSpend, formatMoney, budgetCandidatesFromText, resolveShopQuote, withOutfitBudget } from '../src/utils/outfitBudget';
 import { getShopDestination } from '../src/utils/shopDestination';
@@ -2270,7 +2275,10 @@ const AIOutfitGenerator = () => {
             }
           });
         }
-        const judgedOutfits = judged.slice(0, 3);
+        // Keep EVERY validated look: the diversity gate below picks the best
+        // COMBINATION of 3, so trimming to 3 here would throw away exactly
+        // the alternatives the stylist needs.
+        const judgedOutfits = judged;
 
         let withinBudget = shopBudget
           ? judgedOutfits.filter((outfit: GeneratedOutfit) => fitsCap(outfit.items as any[]))
@@ -2315,6 +2323,15 @@ const AIOutfitGenerator = () => {
                 .flatMap((x: any) => productKeysOf(x)),
             ])
           : undefined;
+        // The anchor pins one slot of the card. That slot is excluded from the
+        // VISUAL comparison: repeating the anchor is the user's explicit
+        // choice, repeating the rest of the formula is not.
+        const anchorSlot = ((): DiversitySlot | null => {
+          if (!baseItemId) return null;
+          const anchorItem = [...budgetedOutfits.flatMap((o: GeneratedOutfit) => o.items as any[]), ...genPool]
+            .find((x: any) => String(x?.id ?? '') === String(baseItemId));
+          return anchorItem ? diversitySlotOf(anchorItem) : null;
+        })();
         const buildFill = (_usedKeys: Set<string>, attempt: number): GeneratedOutfit | null => {
           const extraItems = normalize([], styleToUse, attempt, tapNonce, genPool, slotDeckUsed);
           if (!(isFourSlotLook(extraItems) || isCompleteNormalizedOutfit(extraItems))) return null;
@@ -2323,15 +2340,42 @@ const AIOutfitGenerator = () => {
           return wrapLook({ id: `catalog_${tapNonce}_${attempt}` }, extraItems, attempt);
         };
         if (__DEV__) readinessLogger.debug(String(`[AIOutfitmaker] fill start: judged=${judgedOutfits.length} budgeted=${budgetedOutfits.length}`), []);
-        const { deck: finalOutfits, relaxed: deckRelaxed } = assembleDeck<GeneratedOutfit>({
+        const {
+          deck: finalOutfits,
+          relaxed: deckRelaxed,
+          relaxReason: deckRelaxReason,
+          archetypes: deckArchetypes,
+          similarities: deckSimilarities,
+          inventory: deckInventory,
+        } = assembleDiverseDeck<GeneratedOutfit>({
           candidates: budgetedOutfits,
           itemsOf: (o) => o.items as any[],
+          qualityOf: (o) => Number(o.matchScore ?? 0.9),
           keysOf: productKeysOf,
           anchorKeys,
+          anchorSlot,
           usedKeys: slotDeckUsed,
           buildFill,
+          // The VALID pool (style / occasion / climate filtered) decides
+          // whether the inventory is genuinely thin. A catalogue full of
+          // alternatives must never fall back to three colourways of one
+          // formula, so relaxation is gated on this assessment.
+          poolItems: payloadItems,
+          debug: __DEV__
+            ? (message: string, data?: unknown) => readinessLogger.debug(String(`[stylist-diversity] ${message}`), data ? [data] : [])
+            : undefined,
         });
-        if (__DEV__ && deckRelaxed) readinessLogger.debug(String('[AIOutfitmaker] deck relaxed to exact-dupe-only after strict fills were exhausted'), []);
+        if (__DEV__) {
+          readinessLogger.debug(String('[AIOutfitmaker] stylist deck'), [{
+            archetypes: deckArchetypes,
+            similarities: deckSimilarities.map((s) => `${s.a + 1}<->${s.b + 1}=${s.score.toFixed(2)}`),
+            relaxed: deckRelaxed,
+            reason: deckRelaxReason,
+            conceptCapacity: deckInventory?.conceptCapacity,
+            supportsTargetConcepts: deckInventory?.supportsTargetConcepts,
+          }]);
+        }
+        if (__DEV__ && deckRelaxed) readinessLogger.debug(String(`[AIOutfitmaker] deck relaxed (${deckRelaxReason}) after strict diverse alternatives were exhausted`), []);
         if (__DEV__) readinessLogger.debug(String(`[AIOutfitmaker] nonce=${generationNonce.current} edge=${cleanedOutfits.length} shown=${finalOutfits.length}`), []);
 
         if (finalOutfits.length === 0) {

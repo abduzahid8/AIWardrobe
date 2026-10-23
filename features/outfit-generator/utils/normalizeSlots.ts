@@ -15,6 +15,7 @@ import { orderSlotCandidates, selectSlotPick } from './deckDedupe';
 import { parseBudgetFromText, resolveShopQuote, resolveShopPrice, outfitShopSpend, type ParsedBudget } from '../../../src/utils/outfitBudget';
 import { parseStylistIntent } from './stylistIntent';
 import { normalizeCatalogNameKey, isTrustedProductImage, isBrandCatalogImage, collapseDuplicateProductImages, productImageKey, garmentVarietyFamily } from '../../../src/utils/shopCatalogOrder';
+import { garmentVisualFamily } from './outfitDiversity';
 
 // ── Shared helpers: formal-layer + shorts rule ─────────────────────────
 export function isFormalLayer(item: { type?: string; name?: string; brand?: string; macroCategory?: string } | null | undefined): boolean {
@@ -595,45 +596,74 @@ export function createSlotNormalizer(ctx: SlotNormalizerContext) {
     };
 
     const nameKeyOf = (candidate: any) => normalizeCatalogNameKey(candidate?.name || '');
+    /**
+     * Visual family key (finer than `garmentVarietyFamily`): the key carries
+     * the SLOT, so a knit cardigan never blocks a knit top. Used to make
+     * replacement looks explore a DIFFERENT garment type instead of another
+     * SKU of the same formula.
+     */
+    const visualFamilyKeyOf = (candidate: any): string => {
+        const family = garmentVisualFamily(candidate);
+        return family ? `__vf:${family}` : '';
+    };
     const deckKeysOf = (candidate: any): string[] => {
-      const keys = [String(candidate?.id || '')];
-      const nk = nameKeyOf(candidate);
-      if (nk) keys.push(`__n:${nk}`);
-      const img = productImageKey(candidate);
-      if (img) keys.push(`__img:${img}`);
-      const fam = garmentVarietyFamily(candidate);
-      if (fam) keys.push(`__fam:${fam}`);
-      return keys.filter(Boolean);
+        const keys = [String(candidate?.id || '')];
+        const nk = nameKeyOf(candidate);
+        if (nk) keys.push(`__n:${nk}`);
+        const img = productImageKey(candidate);
+        if (img) keys.push(`__img:${img}`);
+        const fam = garmentVarietyFamily(candidate);
+        if (fam) keys.push(`__fam:${fam}`);
+        // The visual family makes the deck-wide "unused" check slot-aware and
+        // finer than the coarse variety family: a replacement look should
+        // explore a DIFFERENT garment type, not another SKU of the same one.
+        const vf = visualFamilyKeyOf(candidate);
+        if (vf) keys.push(vf);
+        return keys.filter(Boolean);
     };
     const pickCandidate = (predicate: (candidate: any) => boolean, slotOffset = 0, ignoreBudget = false) => {
-      const basePass = (candidate: any, uniqueName: boolean) => {
-        if (rejectForActivity(candidate, occasionId) !== null) return false;
-        const key = String(candidate.id || '');
-        if (usedIds.has(key)) return false;
-        if (uniqueName) {
-          const nk = nameKeyOf(candidate);
-          if (nk && (usedIds.has(`__n:${nk}`) || deckUsedIds?.has(`__n:${nk}`))) return false;
-          const img = productImageKey(candidate);
-          if (img && (usedIds.has(`__img:${img}`) || deckUsedIds?.has(`__img:${img}`))) return false;
-          const fam = garmentVarietyFamily(candidate);
-          if (fam.startsWith('shoe:') && (usedIds.has(`__fam:${fam}`) || deckUsedIds?.has(`__fam:${fam}`))) return false;
-          if (ctx.avoidIds && ctx.avoidIds.size > 0) {
-            if (ctx.avoidIds.has(key)) return false;
-            if (nk && ctx.avoidIds.has(`__n:${nk}`)) return false;
-            if (img && ctx.avoidIds.has(`__img:${img}`)) return false;
-            if (fam.startsWith('shoe:') && ctx.avoidIds.has(`__fam:${fam}`)) return false;
-          }
+        // Pick strictness ladder:
+        //   distinct  — name/photo unique AND the garment family is not yet
+        //               used in this deck (a replacement look must explore a
+        //               different garment type, not another SKU).
+        //   unique    — name/photo unique (today's behaviour).
+        //   loose     — anything that satisfies the slot predicate.
+        // The ladder never starves: a thin pool falls back automatically.
+        const basePass = (candidate: any, mode: 'distinct' | 'unique' | 'loose') => {
+            if (rejectForActivity(candidate, occasionId) !== null) return false;
+            const key = String(candidate.id || '');
+            if (usedIds.has(key)) return false;
+            if (mode !== 'loose') {
+                const nk = nameKeyOf(candidate);
+                if (nk && (usedIds.has(`__n:${nk}`) || deckUsedIds?.has(`__n:${nk}`))) return false;
+                const img = productImageKey(candidate);
+                if (img && (usedIds.has(`__img:${img}`) || deckUsedIds?.has(`__img:${img}`))) return false;
+                const fam = garmentVarietyFamily(candidate);
+                if (fam.startsWith('shoe:') && (usedIds.has(`__fam:${fam}`) || deckUsedIds?.has(`__fam:${fam}`))) return false;
+                if (ctx.avoidIds && ctx.avoidIds.size > 0) {
+                    if (ctx.avoidIds.has(key)) return false;
+                    if (nk && ctx.avoidIds.has(`__n:${nk}`)) return false;
+                    if (img && ctx.avoidIds.has(`__img:${img}`)) return false;
+                    if (fam.startsWith('shoe:') && ctx.avoidIds.has(`__fam:${fam}`)) return false;
+                }
+                if (mode === 'distinct') {
+                    const vf = visualFamilyKeyOf(candidate);
+                    if (vf && (usedIds.has(vf) || deckUsedIds?.has(vf))) return false;
+                }
+            }
+            return predicate(candidate) && (ignoreBudget || fitsBudget(candidate));
+        };
+        const collect = (mode: 'distinct' | 'unique' | 'loose') => ({
+            incomingMatches: incoming.filter((c: any) => basePass(c, mode)),
+            poolMatches: pickPoolFixed.filter((c: any) => basePass(c, mode)),
+        });
+        let { incomingMatches, poolMatches } = collect('distinct');
+        if (incomingMatches.length === 0 && poolMatches.length === 0) {
+            ({ incomingMatches, poolMatches } = collect('unique'));
         }
-        return predicate(candidate) && (ignoreBudget || fitsBudget(candidate));
-      };
-      const collect = (uniqueName: boolean) => ({
-        incomingMatches: incoming.filter((c: any) => basePass(c, uniqueName)),
-        poolMatches: pickPoolFixed.filter((c: any) => basePass(c, uniqueName)),
-      });
-      let { incomingMatches, poolMatches } = collect(true);
-      if (incomingMatches.length === 0 && poolMatches.length === 0) {
-        ({ incomingMatches, poolMatches } = collect(false));
-      }
+        if (incomingMatches.length === 0 && poolMatches.length === 0) {
+            ({ incomingMatches, poolMatches } = collect('loose'));
+        }
       if (incomingMatches.length === 0 && poolMatches.length === 0) return undefined;
       const seed = (tapSeed ?? ctx.generationNonceRef?.current ?? 0) || 0;
       const ordered = orderSlotCandidates(incomingMatches, poolMatches, {
@@ -659,6 +689,11 @@ export function createSlotNormalizer(ctx: SlotNormalizerContext) {
       if (foundFam) {
         usedIds.add(`__fam:${foundFam}`);
         deckUsedIds?.add(`__fam:${foundFam}`);
+      }
+      const foundVf = visualFamilyKeyOf(found);
+      if (foundVf) {
+        usedIds.add(foundVf);
+        deckUsedIds?.add(foundVf);
       }
       const priced = withListedPrice({ ...found, image: resolveImage(found) || found.image || '' });
       pickedForBudget.push(priced);

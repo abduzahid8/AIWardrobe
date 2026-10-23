@@ -26,6 +26,7 @@ import { mapDbCategory as canonicalMapDbCategory, getMacroCategory as canonicalG
 import { rankItemsForStyle, scoreItemForStyle, normalizeStyleId, type StyleId } from '../../features/outfit-generator/utils/styleInference';
 import { AI_STYLES } from '../../features/outfit-generator/types';
 import { buildCatalogSimilarityKey, spreadSimilarCatalogItems } from '../utils/shopCatalogOrder';
+import { assembleDiverseDeck } from '../../features/outfit-generator/utils/outfitDiversity';
 import { parseBudgetFromText, budgetCandidatesFromText, budgetInCurrency, outfitShopSpend, itemShopPrice, isShopPricedItem, type ParsedBudget } from '../utils/outfitBudget';
 import { getRecentShownIds, recordShownOutfits } from './recentOutfitIds';
 import useWardrobeStore from '../../store/wardrobeStore';
@@ -1040,6 +1041,12 @@ export function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOu
     const slotSize = (pool: ClothingItem[]) => Math.max(pool.length, 1);
     const seenSignatures = new Set<string>();
     const builtIdSets: Set<string>[] = [];
+    /**
+     * Every valid candidate look. The deck is chosen FROM this list by the
+     * diversity gate below — accepting looks one at a time would let the
+     * three best-looking but visually identical outfits win every slot.
+     */
+    const collectedCandidates: GeneratedOutfitItem[][] = [];
     const outfitSignatureFor = (list: GeneratedOutfitItem[]) =>
         list.map((it) => String(it.id)).sort().join('|');
     const maxSharedWithBuilt = (ids: string[]): number => {
@@ -1218,17 +1225,22 @@ export function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOu
         }
         seenSignatures.add(signature);
         builtIdSets.push(new Set(normalizedOutfitItems.map((it) => String(it.id))));
+        collectedCandidates.push(normalizedOutfitItems);
         return true;
     };
 
     // Strict pass: decks must differ by >= 2 items. Rejections perturb the
     // attempt so retries explore new slot combinations.
+    //
+    // More candidates are collected than the deck needs: the diversity gate
+    // below picks the best COMBINATION, so it needs a choice to pick from —
+    // three candidates and three cards would leave it no freedom at all.
+    const collectionTarget = Math.max(limit * 4, limit + 6);
     let attempt = 0;
-    for (let i = 0, tag = 0; outfits.length < limit && i < limit * 12; i++, tag++) {
+    for (let i = 0, tag = 0; collectedCandidates.length < collectionTarget && i < limit * 24; i++, tag++) {
         const candidate = buildCandidateItems(i, attempt);
         if (!candidate) { attempt++; continue; }
         if (tryKeepCandidate(candidate, false)) {
-            pushOutfit(candidate, tag);
             attempt = 0;
         } else {
             attempt++;
@@ -1239,21 +1251,39 @@ export function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOu
     // NEVER satisfy the strict rule — every second look shares 3 of 4 by
     // construction. Fill the remaining slots with exact-dupe-only rejection
     // so the user gets 3 looks varying the pieces that DO exist instead of 1.
-    if (outfits.length < limit) {
+    if (collectedCandidates.length < collectionTarget) {
         // Drive rotation by attempt alone (never reset): incrementing both
         // i and attempt per failure made the bottom index advance by
         // 1 + 13 ≡ 0 (mod 2), so thin pools cycled the same bottom and
         // only ~3 signatures were ever explored before giving up at 2.
         let relaxedAttempt = attempt;
-        const relaxedAttemptEnd = attempt + limit * 12;
-        for (let tag = 1000; outfits.length < limit && relaxedAttempt < relaxedAttemptEnd; tag++) {
+        const relaxedAttemptEnd = attempt + limit * 24;
+        for (let tag = 1000; collectedCandidates.length < collectionTarget && relaxedAttempt < relaxedAttemptEnd; tag++) {
             const candidate = buildCandidateItems(limit * 12, relaxedAttempt);
             relaxedAttempt++;
             if (!candidate) continue;
-            if (tryKeepCandidate(candidate, true)) {
-                pushOutfit(candidate, tag);
-            }
+            tryKeepCandidate(candidate, true);
         }
+    }
+
+    // VISUAL / STYLISTIC diversity — the layer product dedupe cannot express.
+    // "navy blazer + white oxford + grey tailored trousers + brown loafers"
+    // and "charcoal blazer + blue poplin + black trousers + penny loafers"
+    // are one outfit to a human, no matter how many SKUs they use. The deck
+    // is now chosen as the COMBINATION that maximises quality + diversity
+    // instead of accepting looks one at a time.
+    if (collectedCandidates.length > 0) {
+        const selected = assembleDiverseDeck<GeneratedOutfitItem[]>({
+            candidates: collectedCandidates,
+            itemsOf: (items) => items,
+            qualityOf: () => 0.9,
+            keysOf: (item: any) => [String(item?.id ?? '')],
+            usedKeys: new Set<string>(),
+            target: limit,
+            poolItems: effectiveItems as any[],
+        });
+        let tag = 0;
+        for (const items of selected.deck) pushOutfit(items, tag++);
     }
 
 

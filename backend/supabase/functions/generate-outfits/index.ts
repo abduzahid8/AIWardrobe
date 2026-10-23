@@ -11,6 +11,7 @@ import { normalizeModelOutfits } from '../_shared/modelOutfitResponse.ts'
 import { enforceRateLimit } from '../_shared/rateLimit.ts'
 import { outfitStructureReason, isDressGarment, isNonOutfitItem } from '../_shared/outfitStructure.ts'
 import { styleJudgeReason, normalizeGarmentText, isWorkoutOccasion, rejectForStyleOccasion, rejectForClimate, rejectForActivity } from '../_shared/occasionRules.ts'
+import { assembleDiverseDeck, buildOutfitFingerprint, visualSimilarity, sameArchetype, diversitySlotOf, MAX_VISUAL_SIMILARITY } from '../_shared/outfitDiversity.ts'
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
@@ -782,6 +783,24 @@ function buildSystemPrompt(limit: number, style: string, layered: boolean, prefe
         ? `- ALL ${limit} OUTFITS MUST BE VISIBLY DIFFERENT. Each outfit must differ from EVERY other outfit by AT LEAST 2 item ids (for 3-item looks) / AT LEAST 2 item ids (for 4-item layered looks). Enumerate the Cartesian product of shop slots — rotate tops, bottoms AND shoes so outfit_1 uses top A / bottom A / shoes A, outfit_2 uses top B / bottom B / shoes B, etc. Repeating the same set — or sharing all-but-one item — is INVALID.
 - VARY THE PRODUCTS, not just the ids: candidates with the same product name are color variants of one garment. Do not feature the same product name in more than 3 of the ${limit} looks — spread same-name items across outfits instead of clustering them.`
         : `- ALL ${limit} OUTFITS MUST BE VISIBLY DIFFERENT. Each outfit must differ from EVERY other outfit by AT LEAST 2 item ids. Rotate slots: if outfit_1 uses top A, outfit_2 MUST use a different top B (if ≥${limit} tops exist), same rotation for bottoms and shoes. Never return the same set of item ids twice, and never return two outfits sharing all-but-one item. Reusing one anchor item across all outfits is allowed ONLY when an ANCHOR ITEM is locked; all other slots MUST still rotate.`
+    // The 3 looks must be three STYLING DIRECTIONS, not three colourways of
+    // one formula. This is the request that product-id diversity cannot
+    // express: three different blazers + shirts + trousers + loafers is one
+    // outfit to a human, no matter how many SKUs it uses.
+    const directionRule = `- THE ${limit} LOOKS MUST BE ${limit} MEANINGFULLY DIFFERENT STYLING DIRECTIONS — NOT ${limit} VARIATIONS OF THE SAME OUTFIT FORMULA.
+  UNACCEPTABLE (all ${limit} looks share one formula, only the colours/SKUs change):
+    - blazer + shirt + tailored trousers + loafers
+    - blazer + shirt + tailored trousers + loafers
+    - blazer + shirt + tailored trousers + loafers
+  PREFER VARIATION IN:
+    - outerwear type (blazer / coat / overshirt / cardigan / knitwear)
+    - base top (dress shirt / knit polo / fine-gauge knit / tee)
+    - bottom silhouette (tailored trousers / chinos / dark denim)
+    - footwear family (loafers / derbies / clean minimal sneakers)
+    - texture and material (wool / linen / suede / fine knit / denim)
+    - overall silhouette (sharp tailoring vs relaxed layering)
+  Two looks that use the same garment FAMILIES in most slots read as the SAME outfit to the user, even when every product id, colour and fabric differs. Change the FORMULA, not the colourway.
+  IMPORTANT: variety happens INSIDE the dress code. Never break the requested style, occasion, weather, budget or the MUST NOT list to force variety — a black-tie deck stays black tie, a work deck stays work-appropriate.`
 
     return `You are a world-class fashion stylist curating outfits for a specific aesthetic. You must obey the STYLE DIRECTION below as if your reputation depends on it.
 
@@ -792,6 +811,7 @@ ${slotRules}
 ${ownershipRule}
 ${budgetRule}
 ${uniquenessRule}
+${directionRule}
 - If any required slot has no suitable item, omit that outfit. Return fewer outfits or an empty outfits array rather than relaxing the request.
 - NEVER invent items. Use ONLY the exact ids listed in "Available wardrobe items".
 - Pick items whose styleTags, name, description, or material indicate they FIT the requested style. If an item's tags or description clash with the style, do NOT use it, even when it is the only option for that slot.
@@ -829,6 +849,7 @@ Self-check BEFORE responding:
   2. Is the color palette coherent with ${style}?
   3. Did I avoid every REJECT category?
   4. Do all ${limit} outfits differ from each other by AT LEAST 2 item ids? If any two share all-but-one item, rebuild the overlapping outfit with different slot picks.
+  5. Do the ${limit} outfits read as ${limit} DIFFERENT STYLING DIRECTIONS (different silhouette / different formula)? If two outfits use the same garment families in most slots, rebuild one of them with a different outerwear type, base top, bottom silhouette or footwear family.
 If the answer to any of these is "no", rebuild the outfit.
 
 Respond ONLY in pure JSON (no markdown, no code fences):
@@ -1977,6 +1998,21 @@ async function localFallback(items: any[], style: string, occasion: string, limi
                 if (shared > maxShared) maxShared = shared
             }
             if (outfits.length > 0 && maxShared >= 2) return false
+            // VISUAL diversity: different product ids are not enough. Two
+            // looks built on the same formula ("blazer + shirt + tailored
+            // trousers + loafers") read as the same outfit to the user, so
+            // the rotation must keep looking for another formula.
+            if (outfits.length > 0) {
+                const candidatePrint = buildOutfitFingerprint(parts)
+                for (const built of outfits) {
+                    const builtPrint = buildOutfitFingerprint(built.items || [])
+                    // The invariant is `visualSimilarity < MAX_VISUAL_SIMILARITY`
+                    // and "different formula" — the categorical rule catches
+                    // the same formula even when the colours differ.
+                    if (visualSimilarity(candidatePrint, builtPrint) >= MAX_VISUAL_SIMILARITY) return false
+                    if (sameArchetype(candidatePrint, builtPrint)) return false
+                }
+            }
         }
         seenSigs.add(sig)
         // Ensure each outfit has a unique ID
@@ -2967,6 +3003,46 @@ Choose exactly ${Math.min(limit, choices.length)} of the supplied complete look 
             return !reason && complete && !repeats && budgetOk
         })
         // Provider compliance is not authority over the requested batch size.
+        // ── 9c. Visual diversity gate ─────────────────────────────────────
+        // Different product ids are not the same as different outfits. The
+        // model happily returns "blazer + shirt + tailored trousers + loafers"
+        // three times with three different colours. Select the COMBINATION of
+        // validated looks that maximises quality + stylistic diversity; the
+        // client runs the same gate independently.
+        if (finalOutfits.length > 0) {
+            const anchorForDiversity = anchorItemId && !isShopOnlyDeck(stylePreferences, occasion)
+                ? wardrobeItems.find((i: any) => String(i.id) === String(anchorItemId))
+                : undefined
+            const anchorIdentityKeys = new Set<string>()
+            if (anchorForDiversity) {
+                anchorIdentityKeys.add(`id:${String(anchorForDiversity.id)}`)
+                const nk = String(anchorForDiversity.name || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+                if (nk) anchorIdentityKeys.add(`n:${nk}`)
+                const img = String(anchorForDiversity.imageUrl || anchorForDiversity.image || '').trim().split('?')[0].toLowerCase()
+                if (img) anchorIdentityKeys.add(`i:${img}`)
+            }
+            const diverseDeck = assembleDiverseDeck<any>({
+                candidates: finalOutfits,
+                itemsOf: (o: any) => o.items || [],
+                qualityOf: (o: any) => Number(o.confidence ?? o.matchScore ?? 0.9),
+                anchorKeys: anchorIdentityKeys.size > 0 ? anchorIdentityKeys : undefined,
+                anchorSlot: anchorForDiversity ? diversitySlotOf(anchorForDiversity) : null,
+                usedKeys: new Set<string>(),
+                poolItems: wardrobeItems,
+                // The Personal Stylist shows three cards: guarantee a diverse
+                // TRIO here, and keep the remaining validated looks behind it
+                // so the client still has alternatives to choose from.
+                target: Math.min(3, finalOutfits.length),
+                debug: (message: string, data?: unknown) => console.log('[stylist-diversity]', message, data ?? ''),
+            })
+            if (diverseDeck.deck.length > 0) {
+                const signatureOf = (o: any) => (o.items || []).map((it: any) => String(it.id)).sort().join('|')
+                const selectedSignatures = new Set(diverseDeck.deck.map(signatureOf))
+                const extras = finalOutfits.filter((o: any) => !selectedSignatures.has(signatureOf(o)))
+                finalOutfits = [...diverseDeck.deck, ...extras]
+                console.log(`[stylist-diversity] archetypes=${JSON.stringify(diverseDeck.archetypes)} similarities=${JSON.stringify(diverseDeck.similarities.map(s => Number(s.score.toFixed(2))))} relaxed=${diverseDeck.relaxed} reason=${diverseDeck.relaxReason ?? 'strict'}`)
+            }
+        }
         finalOutfits = finalOutfits.slice(0, limit)
         if (!finalOutfits.length) return new Response(JSON.stringify({ success: false, error: 'ai_generation_unavailable', outfits: [], providerAttempts: providerTrace }), {status: 503, headers: {...corsHeaders, 'Content-Type':'application/json'}})
 
