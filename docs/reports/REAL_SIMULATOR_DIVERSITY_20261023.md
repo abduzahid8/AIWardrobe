@@ -85,17 +85,31 @@ combination score then prefers the edge candidates because they have lower
 colour/material similarity, so the genuinely different fill candidates are
 not selected.
 
-## Evidence (local, git-ignored)
+## Evidence
 
-- Full suite screenshots: `.maestro/verify-shots/sim20_diversity_20261022/`
-- Retry evidence for scenario 19: `.maestro/verify-shots/sim20_diversity_20261022_retry/19/`
-- Telemetry-run screenshots: `.maestro/verify-shots/sim20_telemetry/`
+All screenshots from this audit are committed under `.maestro/verify-shots/`
+(force-added despite the blanket `.maestro/verify-shots/` ignore rule):
+
+- Full suite screenshots (16 passing scenarios + 4 failure captures):
+  `.maestro/verify-shots/sim20_diversity_20261022/`
+- Retry evidence for scenario 19:
+  `.maestro/verify-shots/sim20_diversity_20261022_retry/19/`
+- Telemetry-run screenshots (scenarios 01, 05, 10, 18):
+  `.maestro/verify-shots/sim20_telemetry/`
 - Maestro run log: `.maestro/verify-shots/sim20_diversity_20261022/run.log`
 - Verbose deck telemetry: `.expo/dev/logs/start.log` (search `stylist deck`)
 - Deterministic report output: `/tmp/stylist-diversity-report.md`
 
-The screenshot directories are intentionally excluded by `.gitignore`
-(`.maestro/verify-shots/`) because they are multi-GB run artifacts.
+Key cards:
+
+| Evidence | Path |
+|---|---|
+| 05 — near-duplicate knitwear cards 1 and 2 | `.maestro/verify-shots/sim20_telemetry/05/sim20_05.png`, `sim20_05_c2.png` |
+| 18 — three blazer-based cards | `.maestro/verify-shots/sim20_telemetry/18/sim20_18.png`, `sim20_18_c2.png`, `sim20_18_c3.png` |
+| 10 — strict, three distinct archetypes | `.maestro/verify-shots/sim20_telemetry/10/sim20_10.png`, `sim20_10_c2.png`, `sim20_10_c3.png` |
+| 11 — black-tie 503 failure | `.maestro/verify-shots/sim20_diversity_20261022/11/sim20_11_fail.png` |
+| 13 / 14 — sport 422 failures | `.maestro/verify-shots/sim20_diversity_20261022/13/sim20_13_fail.png`, `.../14/sim20_14_fail.png` |
+| 19 — transient failure, then retry pass | `.maestro/verify-shots/sim20_diversity_20261022/19/sim20_19_fail.png`, `.maestro/verify-shots/sim20_diversity_20261022_retry/19/sim20_19.png` |
 
 ## Reproduction
 
