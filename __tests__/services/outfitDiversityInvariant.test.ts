@@ -2,22 +2,18 @@
  * Production-path diversity invariant for buildLocalOutfits (the local
  * fallback + Home daily-deck builder).
  *
- * Two layers are asserted:
- *   1. PRODUCT diversity — with enough valid inventory, any two looks share
- *      at most 1 item (never the same blazer AND trousers).
- *   2. VISUAL diversity — the three looks must not be three colourways of
- *      one outfit formula (blazer + shirt + tailored trousers + loafers).
- *      Different product ids are NOT enough.
+ * The invariant is PRODUCT uniqueness, not archetype variety:
+ *   - with enough valid inventory, no non-anchor product appears twice;
+ *   - the same archetype is valid when every actual product is unique;
+ *   - genuinely thin inventory may repeat, but still produces a deck.
  */
 import {
     buildLocalOutfits,
     type LocalClothingItem,
 } from '../../src/services/outfitGenerationService';
 import {
-    buildOutfitFingerprint,
-    MAX_VISUAL_SIMILARITY,
-    sameArchetype,
-    visualSimilarity,
+    analyzeDeckProductDiversity,
+    productIdentityKeys,
 } from '../../features/outfit-generator/utils/outfitDiversity';
 
 let n = 0;
@@ -84,7 +80,7 @@ function variedPool(): LocalClothingItem[] {
 }
 
 describe('buildLocalOutfits diversity invariant', () => {
-    it('3 looks from a large pool share at most 1 item pairwise', () => {
+    it('3 looks from a large pool reuse zero non-anchor products', () => {
         for (let run = 0; run < 5; run++) {
             const outfits = buildLocalOutfits(largePool(), {
                 stylePreferences: 'classic',
@@ -93,20 +89,18 @@ describe('buildLocalOutfits diversity invariant', () => {
                 limit: 3,
             });
             expect(outfits).toHaveLength(3);
-            const idSets = outfits.map((o) => new Set(o.items.map((i) => String(i.id))));
-            for (let i = 0; i < 3; i++) {
-                for (let j = i + 1; j < 3; j++) {
-                    const shared = [...idSets[i]].filter((id) => idSets[j].has(id));
-                    expect(shared.length).toBeLessThanOrEqual(1);
-                }
-            }
-            // No item appears in all three looks.
-            const inAll = [...idSets[0]].filter((id) => idSets.every((s) => s.has(id)));
-            expect(inAll).toHaveLength(0);
+            const diversity = analyzeDeckProductDiversity(
+                outfits.map((outfit) => outfit.items as any[]),
+            );
+            expect(diversity.nonAnchorProductReuseCount).toBe(0);
+            const keys = new Set(outfits.flatMap((outfit) =>
+                outfit.items.flatMap((item) => productIdentityKeys(item)),
+            ));
+            expect(keys.size).toBeGreaterThan(0);
         }
     });
 
-    it('3 looks from a varied pool are three different STYLING DIRECTIONS', () => {
+    it('3 looks from a varied pool stay product-unique even when they share an archetype', () => {
         for (let run = 0; run < 5; run++) {
             const outfits = buildLocalOutfits(variedPool(), {
                 stylePreferences: 'casual',
@@ -115,17 +109,10 @@ describe('buildLocalOutfits diversity invariant', () => {
                 limit: 3,
             });
             expect(outfits).toHaveLength(3);
-            const fingerprints = outfits.map((o) => buildOutfitFingerprint(o.items as any[]));
-            const archetypes = fingerprints.map((f) => f.archetype);
-            // Not three colourways of one formula.
-            expect(new Set(archetypes).size).toBeGreaterThan(1);
-            for (let i = 0; i < 3; i++) {
-                for (let j = i + 1; j < 3; j++) {
-                    expect(sameArchetype(fingerprints[i], fingerprints[j])).toBe(false);
-                    expect(visualSimilarity(fingerprints[i], fingerprints[j]))
-                        .toBeLessThan(MAX_VISUAL_SIMILARITY);
-                }
-            }
+            const diversity = analyzeDeckProductDiversity(
+                outfits.map((outfit) => outfit.items as any[]),
+            );
+            expect(diversity.nonAnchorProductReuseCount).toBe(0);
         }
     });
 

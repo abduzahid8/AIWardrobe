@@ -11,7 +11,7 @@ import { normalizeModelOutfits } from '../_shared/modelOutfitResponse.ts'
 import { enforceRateLimit } from '../_shared/rateLimit.ts'
 import { outfitStructureReason, isDressGarment, isNonOutfitItem } from '../_shared/outfitStructure.ts'
 import { styleJudgeReason, normalizeGarmentText, isWorkoutOccasion, rejectForStyleOccasion, rejectForClimate, rejectForActivity } from '../_shared/occasionRules.ts'
-import { assembleDiverseDeck, buildOutfitFingerprint, visualSimilarity, sameArchetype, diversitySlotOf, MAX_VISUAL_SIMILARITY } from '../_shared/outfitDiversity.ts'
+import { analyzeDeckProductDiversity, assembleDiverseDeck, buildOutfitFingerprint, canonicalProductKey, productIdentityKeys, visualSimilarity, sameArchetype, diversitySlotOf, MAX_VISUAL_SIMILARITY } from '../_shared/outfitDiversity.ts'
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
@@ -3013,18 +3013,14 @@ Choose exactly ${Math.min(limit, choices.length)} of the supplied complete look 
             const anchorForDiversity = anchorItemId && !isShopOnlyDeck(stylePreferences, occasion)
                 ? wardrobeItems.find((i: any) => String(i.id) === String(anchorItemId))
                 : undefined
-            const anchorIdentityKeys = new Set<string>()
-            if (anchorForDiversity) {
-                anchorIdentityKeys.add(`id:${String(anchorForDiversity.id)}`)
-                const nk = String(anchorForDiversity.name || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
-                if (nk) anchorIdentityKeys.add(`n:${nk}`)
-                const img = String(anchorForDiversity.imageUrl || anchorForDiversity.image || '').trim().split('?')[0].toLowerCase()
-                if (img) anchorIdentityKeys.add(`i:${img}`)
-            }
+            const anchorIdentityKeys = new Set<string>(
+                anchorForDiversity ? productIdentityKeys(anchorForDiversity) : [],
+            )
             const diverseDeck = assembleDiverseDeck<any>({
                 candidates: finalOutfits,
                 itemsOf: (o: any) => o.items || [],
                 qualityOf: (o: any) => Number(o.confidence ?? o.matchScore ?? 0.9),
+                keysOf: (item: any) => productIdentityKeys(item),
                 anchorKeys: anchorIdentityKeys.size > 0 ? anchorIdentityKeys : undefined,
                 anchorSlot: anchorForDiversity ? diversitySlotOf(anchorForDiversity) : null,
                 usedKeys: new Set<string>(),
@@ -3040,7 +3036,27 @@ Choose exactly ${Math.min(limit, choices.length)} of the supplied complete look 
                 const selectedSignatures = new Set(diverseDeck.deck.map(signatureOf))
                 const extras = finalOutfits.filter((o: any) => !selectedSignatures.has(signatureOf(o)))
                 finalOutfits = [...diverseDeck.deck, ...extras]
-                console.log(`[stylist-diversity] archetypes=${JSON.stringify(diverseDeck.archetypes)} similarities=${JSON.stringify(diverseDeck.similarities.map(s => Number(s.score.toFixed(2))))} relaxed=${diverseDeck.relaxed} reason=${diverseDeck.relaxReason ?? 'strict'}`)
+                const productDiversity = analyzeDeckProductDiversity(
+                    diverseDeck.deck.map((o: any) => o.items || []),
+                    { anchorKeys: anchorIdentityKeys },
+                )
+                console.log(`[stylist-diversity] archetypes=${JSON.stringify(diverseDeck.archetypes)} similarities=${JSON.stringify(diverseDeck.similarities.map(s => Number(s.score.toFixed(2))))} relaxed=${diverseDeck.relaxed} reason=${diverseDeck.relaxReason ?? 'strict'} nonAnchorProductReuseCount=${productDiversity.nonAnchorProductReuseCount}`)
+                console.log('[stylist-product-diversity]', JSON.stringify({
+                    decision: productDiversity.nonAnchorProductReuseCount === 0
+                        ? 'UNIQUE_PRODUCTS'
+                        : (diverseDeck.relaxReason || 'REPEATED_PRODUCTS'),
+                    nonAnchorProductReuseCount: productDiversity.nonAnchorProductReuseCount,
+                    repeatedProductKeys: productDiversity.repeatedProductKeys,
+                    repeatedCanonicalKeys: productDiversity.repeatedCanonicalKeys,
+                    anchorRepetitionCount: productDiversity.anchorRepetitionCount,
+                    lookProductKeys: productDiversity.lookProductKeys,
+                    lookCanonicalProducts: diverseDeck.deck.map((o: any) =>
+                        (o.items || []).map((it: any) => canonicalProductKey(it)),
+                    ),
+                    lookIds: diverseDeck.deck.map((o: any) => (o.items || []).map((it: any) => String(it.id))),
+                    relaxReason: diverseDeck.relaxReason,
+                    supportsUniqueProducts: diverseDeck.inventory.supportsUniqueProducts,
+                }))
             }
         }
         finalOutfits = finalOutfits.slice(0, limit)

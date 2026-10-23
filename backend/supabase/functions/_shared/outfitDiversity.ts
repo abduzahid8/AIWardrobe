@@ -144,8 +144,90 @@ export function normalizeNameKey(name: unknown): string {
 }
 
 export function imageKey(item: any): string {
-    const raw = text(item?.imageUrl || item?.image).trim().split('?')[0].toLowerCase();
-    return raw;
+    const raw = text(item?.imageUrl || item?.image).trim().toLowerCase();
+    if (!raw) return '';
+    return raw
+        .split('#')[0]
+        .split('?')[0]
+        .replace(/^https?:\/\//, '')
+        .replace(/^\/\//, '')
+        .replace(/\/+$/, '');
+}
+
+export interface ProductIdentity {
+    /** Stable id key (`id:...`). */
+    idKey: string;
+    /** Normalized catalog name key (`n:...`). */
+    nameKey: string;
+    /** Normalized image URL key (`i:...`). */
+    imageKey: string;
+    /**
+     * Best single display/compare key for the product: normalized name when
+     * available, otherwise the image URL, otherwise the id. Two rows that
+     * differ only by SKU id or thumbnail transform share this key.
+     */
+    canonicalKey: string;
+    /** All equivalence keys. A shared key means "same product". */
+    keys: string[];
+}
+
+/**
+ * Product identity for deck uniqueness.
+ *
+ * A product is the same product when ANY of these match:
+ *   - catalog id,
+ *   - normalized name (case / punctuation / ingestion suffix),
+ *   - normalized image URL (thumbnail query params stripped).
+ *
+ * Garment family is deliberately NOT part of identity. A black loafer and a
+ * brown loafer are two valid products of the same family; using the family
+ * as identity would wrongly collapse them and force repeated products.
+ */
+export function productIdentityOf(item: any): ProductIdentity {
+    const id = text(item?.id).trim();
+    const idKey = id ? `id:${id}` : '';
+    const name = normalizeNameKey(item?.name);
+    const nameKey = name ? `n:${name}` : '';
+    const image = imageKey(item);
+    const imageKeyValue = image ? `i:${image}` : '';
+    const canonicalKey = nameKey || imageKeyValue || idKey;
+    const keys = [idKey, nameKey, imageKeyValue].filter(Boolean);
+    return { idKey, nameKey, imageKey: imageKeyValue, canonicalKey, keys };
+}
+
+/** All equivalence keys for one product (id + normalized name + image). */
+export function productIdentityKeys(item: any): string[] {
+    return productIdentityOf(item).keys;
+}
+
+/** Best single key for logs / reports. */
+export function canonicalProductKey(item: any): string {
+    return productIdentityOf(item).canonicalKey;
+}
+
+/**
+ * Count distinct products, collapsing rows that share an id, name or image.
+ * Used by the inventory assessment (family is not identity).
+ */
+export function countDistinctProducts(items: any[]): number {
+    const groups: Array<Set<string>> = [];
+    for (const item of Array.isArray(items) ? items : []) {
+        if (!item) continue;
+        const keys = productIdentityKeys(item);
+        if (keys.length === 0) continue;
+        const matches = groups.filter((group) => keys.some((key) => group.has(key)));
+        if (matches.length === 0) {
+            groups.push(new Set(keys));
+            continue;
+        }
+        const [first, ...rest] = matches;
+        for (const key of keys) first.add(key);
+        for (const group of rest) {
+            for (const key of group) first.add(key);
+            groups.splice(groups.indexOf(group), 1);
+        }
+    }
+    return groups.length;
 }
 
 // ── Slot resolution ─────────────────────────────────────────────────────
@@ -589,14 +671,7 @@ export interface OutfitFingerprint {
 }
 
 function identityKeysOf(item: any): string[] {
-    const keys: string[] = [];
-    const id = text(item?.id).trim();
-    if (id) keys.push(`id:${id}`);
-    const nk = normalizeNameKey(item?.name);
-    if (nk) keys.push(`n:${nk}`);
-    const img = imageKey(item);
-    if (img) keys.push(`i:${img}`);
-    return keys;
+    return productIdentityKeys(item);
 }
 
 const SILHOUETTE_BY_FAMILY: Record<string, string> = {
@@ -901,6 +976,127 @@ export function sharedExactProducts(
     return shared;
 }
 
+export interface DeckProductDiversity {
+    /** Distinct non-anchor products that appear in more than one look. */
+    nonAnchorProductReuseCount: number;
+    /** Canonical key of every repeated non-anchor product. */
+    repeatedProductKeys: string[];
+    /**
+     * Canonical keys that appear in more than one look. Unlike the robust
+     * cluster count above, this is a direct name/image-key view for logs.
+     */
+    repeatedCanonicalKeys: string[];
+    /** How many looks contain the anchor product. */
+    anchorLookCount: number;
+    /** Extra anchor appearances beyond the first (0 for a normal deck). */
+    anchorRepetitionCount: number;
+    /** Canonical key of every item in every look (telemetry). */
+    lookProductKeys: string[][];
+}
+
+function clusterProductOccurrences(
+    occurrences: Array<{ keys: string[]; canonicalKey: string; look: number; anchor: boolean }>,
+): number[][] {
+    const parent = occurrences.map((_, index) => index);
+    const find = (index: number): number => {
+        let current = index;
+        while (parent[current] !== current) {
+            parent[current] = parent[parent[current]];
+            current = parent[current];
+        }
+        return current;
+    };
+    const union = (a: number, b: number): void => {
+        const rootA = find(a);
+        const rootB = find(b);
+        if (rootA !== rootB) parent[rootB] = rootA;
+    };
+    const owner = new Map<string, number>();
+    occurrences.forEach((occurrence, index) => {
+        for (const key of occurrence.keys) {
+            const previous = owner.get(key);
+            if (previous === undefined) owner.set(key, index);
+            else union(index, previous);
+        }
+    });
+    const groups = new Map<number, number[]>();
+    occurrences.forEach((_, index) => {
+        const root = find(index);
+        if (!groups.has(root)) groups.set(root, []);
+        groups.get(root)!.push(index);
+    });
+    return [...groups.values()];
+}
+
+/**
+ * Measure product reuse in a final deck.
+ *
+ * Two rows are the same product when id / normalized name / normalized
+ * image match. Garment family is intentionally ignored: different loafers
+ * are different products. Items matching `anchorKeys` are reported via the
+ * anchor counters and excluded from the non-anchor reuse count.
+ */
+export function analyzeDeckProductDiversity(
+    looksItems: any[][],
+    opts: { anchorKeys?: ReadonlySet<string> } = {},
+): DeckProductDiversity {
+    const occurrences: Array<{ keys: string[]; canonicalKey: string; look: number; anchor: boolean }> = [];
+    const lookProductKeys: string[][] = [];
+    const anchorKeys = opts.anchorKeys;
+    (looksItems || []).forEach((items, look) => {
+        const canonicalForLook: string[] = [];
+        for (const item of Array.isArray(items) ? items : []) {
+            if (!item) continue;
+            const identity = productIdentityOf(item);
+            const anchor = Boolean(anchorKeys && identity.keys.some((key) => anchorKeys.has(key)));
+            occurrences.push({
+                keys: identity.keys,
+                canonicalKey: identity.canonicalKey,
+                look,
+                anchor,
+            });
+            canonicalForLook.push(identity.canonicalKey);
+        }
+        lookProductKeys.push(canonicalForLook);
+    });
+
+    const repeatedProductKeys = new Set<string>();
+    let nonAnchorProductReuseCount = 0;
+    for (const group of clusterProductOccurrences(occurrences)) {
+        const looks = new Set(group.map((index) => occurrences[index].look));
+        if (looks.size < 2) continue;
+        const nonAnchor = group
+            .map((index) => occurrences[index])
+            .filter((occurrence) => !occurrence.anchor);
+        if (nonAnchor.length === 0) continue;
+        nonAnchorProductReuseCount += 1;
+        repeatedProductKeys.add(nonAnchor[0].canonicalKey);
+    }
+
+    const canonicalLooks = new Map<string, Set<number>>();
+    for (const occurrence of occurrences) {
+        if (occurrence.anchor || !occurrence.canonicalKey) continue;
+        if (!canonicalLooks.has(occurrence.canonicalKey)) canonicalLooks.set(occurrence.canonicalKey, new Set());
+        canonicalLooks.get(occurrence.canonicalKey)!.add(occurrence.look);
+    }
+    const repeatedCanonicalKeys = [...canonicalLooks.entries()]
+        .filter(([, looks]) => looks.size > 1)
+        .map(([key]) => key);
+
+    const anchorLookCount = new Set(
+        occurrences.filter((occurrence) => occurrence.anchor).map((occurrence) => occurrence.look),
+    ).size;
+
+    return {
+        nonAnchorProductReuseCount,
+        repeatedProductKeys: [...repeatedProductKeys],
+        repeatedCanonicalKeys,
+        anchorLookCount,
+        anchorRepetitionCount: Math.max(0, anchorLookCount - 1),
+        lookProductKeys,
+    };
+}
+
 /**
  * visualSimilarity — 0.0 (completely different concepts) .. 1.0 (the same
  * outfit twice). Composition dominates; exact colours barely matter.
@@ -983,6 +1179,16 @@ export interface InventoryDiversity {
     familiesPerSlot: Partial<Record<DiversitySlot, number>>;
     /** Distinct archetype TOKENS available per slot (the formula roles). */
     tokensPerSlot: Partial<Record<DiversitySlot, number>>;
+    /** Distinct actual PRODUCTS available per slot (id/name/image identity). */
+    uniqueProductsPerSlot: Partial<Record<DiversitySlot, number>>;
+    /** Smallest per-slot unique-product count (the uniqueness bottleneck). */
+    maxDistinctProducts: number;
+    /**
+     * True when every active slot has at least `target` distinct products.
+     * This is the hard uniqueness capacity: when true, repeating a
+     * non-anchor product across looks is a bug, not a thin inventory.
+     */
+    supportsUniqueProducts: boolean;
     /** Slots that actually participate in the deck structure. */
     activeSlots: DiversitySlot[];
     /**
@@ -1053,12 +1259,15 @@ export function assessInventoryDiversity(
     const ignore = new Set(opts.ignoreSlots ?? []);
     const families = new Map<DiversitySlot, Set<string>>();
     const tokens = new Map<DiversitySlot, Set<string>>();
+    const products = new Map<DiversitySlot, any[]>();
     const seenSlots = new Set<DiversitySlot>();
     for (const item of Array.isArray(items) ? items : []) {
         if (!item) continue;
         const slot = diversitySlotOf(item);
         if (!slot || ignore.has(slot)) continue;
         seenSlots.add(slot);
+        if (!products.has(slot)) products.set(slot, []);
+        products.get(slot)!.push(item);
         const family = garmentVisualFamily(item);
         if (family) {
             if (!families.has(slot)) families.set(slot, new Set<string>());
@@ -1077,9 +1286,11 @@ export function assessInventoryDiversity(
 
     const familiesPerSlot: Partial<Record<DiversitySlot, number>> = {};
     const tokensPerSlot: Partial<Record<DiversitySlot, number>> = {};
+    const uniqueProductsPerSlot: Partial<Record<DiversitySlot, number>> = {};
     for (const slot of activeSlots) {
         familiesPerSlot[slot] = families.get(slot)?.size ?? 0;
         tokensPerSlot[slot] = tokens.get(slot)?.size ?? 0;
+        uniqueProductsPerSlot[slot] = countDistinctProducts(products.get(slot) ?? []);
     }
     // Capacity is measured in FORMULAS, so it counts the slots that define a
     // formula. A pool with one blazer, one shirt, one trouser and five pairs
@@ -1094,6 +1305,9 @@ export function assessInventoryDiversity(
         : 0;
     const target = opts.target ?? 3;
     const supportsTargetConcepts = conceptCapacity >= target;
+    const productCounts = activeSlots.map((slot) => uniqueProductsPerSlot[slot] ?? 0);
+    const maxDistinctProducts = productCounts.length ? Math.min(...productCounts) : 0;
+    const supportsUniqueProducts = activeSlots.length > 0 && maxDistinctProducts >= target;
     const homogeneous = formulaSlots.length > 0 && tokenCounts.every((count) => count <= 1);
     const forcedSharedFamilies = activeSlots.filter(
         (slot) => (familiesPerSlot[slot] ?? 0) === 1,
@@ -1102,6 +1316,9 @@ export function assessInventoryDiversity(
     return {
         familiesPerSlot,
         tokensPerSlot,
+        uniqueProductsPerSlot,
+        maxDistinctProducts,
+        supportsUniqueProducts,
         activeSlots,
         forcedSharedFamilies,
         maxDistinctArchetypes,
@@ -1137,11 +1354,15 @@ export interface AssembleDiverseDeckOptions<O> {
     anchorSlot?: DiversitySlot | null;
     /** Deck size to reach. Default 3. */
     target?: number;
-    /** Max non-anchor products two looks may share. Default 1. */
+    /** Max non-anchor products two looks may share. Default 0 (hard). */
     maxSharedProducts?: number;
-    /** Max pairwise visual similarity. Default 0.65. */
+    /**
+     * Soft visual-similarity reference. Kept for API compatibility and
+     * diagnostics; visual similarity no longer rejects a pair. Same
+     * archetype is allowed when the products are unique.
+     */
     maxVisualSimilarity?: number;
-    /** Max shared garment families. Default 1. */
+    /** Soft shared-family reference (diagnostics only). */
     maxSharedVisualFamilies?: number;
     /** Builds one replacement look from the remaining pool. */
     buildFill?: (usedKeys: Set<string>, attempt: number) => O | null;
@@ -1182,36 +1403,9 @@ export interface AssembleDiverseDeckResult<O> {
     inventory: InventoryDiversity;
     /** How many replacement looks were generated. */
     fillsUsed: number;
+    /** Product-reuse diagnostics for the accepted deck. */
+    productDiversity: DeckProductDiversity;
 }
-
-interface Rung {
-    name: string;
-    maxSimilarity: number;
-    maxSharedFamilies: number;
-    /**
-     * True only for the absolute floor: two looks may then share the exact
-     * same outfit formula. Every other rung forbids it, so three SKUs of
-     * "blazer + shirt + tailored trousers + loafers" can never be presented
-     * as three styling directions.
-     */
-    allowSameArchetype: boolean;
-}
-
-/**
- * The strictness ladder.
- *
- * Only the FIRST rung is a legitimate outcome. The middle rungs exist for
- * genuinely thin inventories (one blazer, one shirt, one trouser, one shoe
- * cannot produce three different ideas) and are FORBIDDEN whenever the
- * inventory assessment says the pool could have supported three different
- * concepts.
- */
-const RUNGS: Rung[] = [
-    { name: 'strict', maxSimilarity: MAX_VISUAL_SIMILARITY, maxSharedFamilies: MAX_SHARED_VISUAL_FAMILIES, allowSameArchetype: false },
-    { name: 'relaxed-visual', maxSimilarity: 0.74, maxSharedFamilies: MAX_SHARED_VISUAL_FAMILIES, allowSameArchetype: false },
-    { name: 'relaxed-formula', maxSimilarity: 0.86, maxSharedFamilies: 2, allowSameArchetype: false },
-    { name: 'product-only', maxSimilarity: 1.01, maxSharedFamilies: DIVERSITY_SLOTS.length, allowSameArchetype: true },
-];
 
 function identityKeySets(item: any, keysOf?: (item: any) => string[]): string[] {
     if (keysOf) return keysOf(item).filter(Boolean);
@@ -1234,25 +1428,32 @@ function sharedByKeys(
 }
 
 /**
- * assembleDiverseDeck — the deck-level diversity gate.
+ * assembleDiverseDeck — the deck-level product-uniqueness gate.
  *
- * Order of operations (never skipped):
- *   1. collect candidates (edge looks first, then targeted replacements)
- *   2. score every look
- *   3. search the COMBINATION of looks that maximises quality + diversity
- *   4. if no combination qualifies, generate targeted replacements and
- *      search again
- *   5. only then relax the visual rule (thin inventory)
+ * Priority order (hardest first):
+ *   1. the caller's style / occasion validation (looks are already filtered)
+ *   2. no non-anchor product may repeat across looks
+ *   3. outfit quality
+ *   4. soft styling variety (archetype / similarity scoring only)
  *
- * The deck is NOT built by accepting looks one at a time: the best single
- * look must not occupy every slot of the deck.
+ * Same archetype is NOT a rejection. Three "blazer + shirt + trousers +
+ * loafers" looks are valid when every actual product is different. Garment
+ * family is NOT product identity either: two different loafers are two
+ * products. Product identity is id / normalized name / normalized image.
+ *
+ * The only relaxation is a genuinely thin inventory. The inventory
+ * assessment counts distinct PRODUCTS per slot; when it cannot supply
+ * `target` unique products, repetition is unavoidable and the deck is
+ * marked `insufficient_unique_products`. When enough products exist, the
+ * uniqueness rule never relaxes.
+ *
+ * The deck is chosen as a COMBINATION, not accepted look-by-look: the best
+ * single look must not occupy every slot of the deck.
  */
 export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): AssembleDiverseDeckResult<O> {
     const target = opts.target ?? 3;
-    const maxSharedProducts = opts.maxSharedProducts ?? 1;
-    const maxVisualSimilarity = opts.maxVisualSimilarity ?? MAX_VISUAL_SIMILARITY;
-    const maxSharedVisualFamilies = opts.maxSharedVisualFamilies ?? MAX_SHARED_VISUAL_FAMILIES;
-    const maxFillAttempts = opts.maxFillAttempts ?? 24;
+    const maxSharedProducts = Math.max(0, Math.floor(opts.maxSharedProducts ?? 0));
+    const maxFillAttempts = opts.maxFillAttempts ?? 48;
     const ignoreSlots: DiversitySlot[] = opts.anchorSlot ? [opts.anchorSlot] : [];
     const debug = opts.debug;
 
@@ -1295,81 +1496,60 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
         sharedCache.set(key, shared);
         return shared;
     };
-    const familiesOf = (a: DiverseDeckCandidate<O>, b: DiverseDeckCandidate<O>): number =>
-        sharedVisualFamilies(a.fingerprint, b.fingerprint, { ignoreSlots });
 
     /**
-     * How many garment families two looks may share.
-     *
-     * The base limit is MAX_SHARED_VISUAL_FAMILIES, raised when the POOL
-     * itself cannot vary a slot: a black-tie inventory with a single formal
-     * shirt and a single tuxedo trouser forces every pair of looks to share
-     * two families — punishing that would make a correct deck impossible.
+     * Soft deck score. Product uniqueness is enforced by hard filtering, so
+     * this score only decides WHICH valid combination to show. Quality stays
+     * dominant; archetype/similarity are small tie-breakers.
      */
-    let forcedSharedFamilies = 0;
-    const allowedSharedFamilies = (): number =>
-        Math.max(maxSharedVisualFamilies, forcedSharedFamilies);
-
     const deckScore = (indices: number[]): number => {
         const members = indices.map((index) => pool[index]);
         const quality = members.reduce((sum, member) => sum + member.quality, 0);
         const archetypes = new Set(members.map((member) => member.fingerprint.archetype));
-        const bonus = DIVERSITY_BONUS_PER_ARCHETYPE * (archetypes.size - 1);
-        let penalty = 0;
+        const bonus = DIVERSITY_BONUS_PER_ARCHETYPE * 0.35 * (archetypes.size - 1);
+        let similarityPenalty = 0;
+        let sharedPenalty = 0;
         let pairs = 0;
         for (let i = 0; i < members.length; i++) {
             for (let j = i + 1; j < members.length; j++) {
-                penalty += DIVERSITY_SIMILARITY_PENALTY * similarityOf(members[i], members[j]);
+                similarityPenalty += similarityOf(members[i], members[j]);
+                // Only thin inventories can reach a non-zero value here.
+                sharedPenalty += sharedOf(members[i], members[j]);
                 pairs += 1;
             }
         }
-        // The penalty is the MEAN pairwise similarity, so the score does not
-        // change meaning when the deck grows from 3 looks to 15.
-        const meanPenalty = pairs > 0 ? penalty / pairs : 0;
-        return quality + bonus - meanPenalty;
+        const meanSimilarity = pairs > 0 ? similarityPenalty / pairs : 0;
+        const meanShared = pairs > 0 ? sharedPenalty / pairs : 0;
+        return quality
+            + bonus
+            - DIVERSITY_SIMILARITY_PENALTY * 0.5 * meanSimilarity
+            - 1.5 * meanShared;
     };
 
     // Rejection diagnostics (development builds only). Capped so a big pool
     // cannot flood the console.
     const loggedRejections = new Set<string>();
-    const logRejection = (a: DiverseDeckCandidate<O>, b: DiverseDeckCandidate<O>, reason: string, similarity: number) => {
+    const logRejection = (a: DiverseDeckCandidate<O>, b: DiverseDeckCandidate<O>, shared: number) => {
         if (!debug) return;
         if (loggedRejections.size >= 12) return;
-        const key = `${Math.min(a.index, b.index)}:${Math.max(a.index, b.index)}:${reason}`;
+        const key = `${Math.min(a.index, b.index)}:${Math.max(a.index, b.index)}:shared_product`;
         if (loggedRejections.has(key)) return;
         loggedRejections.add(key);
-        debug(`decision: ${reason}`, {
+        debug('decision: REJECT_SHARED_PRODUCT', {
             pair: [a.index + 1, b.index + 1],
-            similarity: Number(similarity.toFixed(2)),
-            threshold: MAX_VISUAL_SIMILARITY,
+            sharedProducts: shared,
             archetypes: [a.fingerprint.archetype, b.fingerprint.archetype],
         });
     };
 
-    const combinationAllowed = (indices: number[], rung: Rung): boolean => {
+    const combinationAllowed = (indices: number[], allowedShared: number): boolean => {
         for (let i = 0; i < indices.length; i++) {
             for (let j = i + 1; j < indices.length; j++) {
                 const a = pool[indices[i]];
                 const b = pool[indices[j]];
-                if (sharedOf(a, b) > maxSharedProducts) return false;
-                const similarity = similarityOf(a, b);
-                // The invariant is `visualSimilarity < MAX_VISUAL_SIMILARITY`,
-                // so a pair that lands exactly ON the threshold is rejected.
-                if (similarity >= rung.maxSimilarity) {
-                    logRejection(a, b, 'REJECT_VISUAL_NEAR_DUPE', similarity);
-                    return false;
-                }
-                // Same outfit FORMULA — the rule product dedupe cannot express.
-                if (!rung.allowSameArchetype && sameArchetype(a.fingerprint, b.fingerprint, { ignoreSlots })) {
-                    logRejection(a, b, 'REJECT_SAME_ARCHETYPE', similarity);
-                    return false;
-                }
-                // Shared garment families are a structural smell, but two
-                // looks can share a garment TYPE and still be different
-                // concepts. The escape hatch keeps genuinely different looks
-                // (very low similarity) even when a family repeats.
-                if (familiesOf(a, b) > allowedSharedFamilies() && similarity >= FAMILY_ESCAPE_SIMILARITY) {
-                    logRejection(a, b, 'REJECT_SHARED_FAMILY', similarity);
+                const shared = sharedOf(a, b);
+                if (shared > allowedShared) {
+                    logRejection(a, b, shared);
                     return false;
                 }
             }
@@ -1379,30 +1559,30 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
 
     const MAX_COMBINATIONS = 250000;
 
-    const selectCombination = (rung: Rung): number[] | null => {
+    const selectCombination = (size: number, allowedShared: number): number[] | null => {
         const n = pool.length;
-        if (n < target) return null;
+        if (n < size || size < 1) return null;
         let best: number[] | null = null;
         let bestScore = Number.NEGATIVE_INFINITY;
         const consider = (indices: number[]) => {
-            if (!combinationAllowed(indices, rung)) return;
+            if (!combinationAllowed(indices, allowedShared)) return;
             const score = deckScore(indices);
             if (score > bestScore) {
                 bestScore = score;
                 best = indices;
             }
         };
-        // Number of combinations C(n, target) — exhaustive search is only
+        // Number of combinations C(n, size) — exhaustive search is only
         // affordable for small pools.
         let combinations = 1;
-        for (let i = 0; i < target; i++) {
+        for (let i = 0; i < size; i++) {
             combinations = combinations * (n - i) / (i + 1);
             if (combinations > MAX_COMBINATIONS) break;
         }
         if (combinations <= MAX_COMBINATIONS) {
             const current: number[] = [];
             const walk = (start: number) => {
-                if (current.length === target) {
+                if (current.length === size) {
                     consider([...current]);
                     return;
                 }
@@ -1416,19 +1596,19 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
             return best;
         }
         // Greedy fallback for very large pools: start from the strongest
-        // look, then add the most different companions.
+        // look, then add the most compatible companions.
         const seed = pool
             .map((member, index) => ({ index, quality: member.quality }))
             .sort((a, b) => b.quality - a.quality)[0];
         if (!seed) return null;
         const chosen = [seed.index];
-        while (chosen.length < target) {
+        while (chosen.length < size) {
             let bestAdd = -1;
             let bestAddScore = Number.NEGATIVE_INFINITY;
             for (let i = 0; i < n; i++) {
                 if (chosen.includes(i)) continue;
                 const trial = [...chosen, i];
-                if (!combinationAllowed(trial, rung)) continue;
+                if (!combinationAllowed(trial, allowedShared)) continue;
                 const score = deckScore(trial);
                 if (score > bestAddScore) {
                     bestAddScore = score;
@@ -1440,6 +1620,14 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
         }
         consider(chosen);
         return best;
+    };
+
+    const selectBestUpTo = (maxSize: number, allowedShared: number): number[] | null => {
+        for (let size = Math.min(maxSize, pool.length); size >= 1; size--) {
+            const selection = selectCombination(size, allowedShared);
+            if (selection) return selection;
+        }
+        return null;
     };
 
     const inventoryOf = (): InventoryDiversity => assessInventoryDiversity(
@@ -1458,165 +1646,107 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
                     if (opts.anchorKeys && opts.anchorKeys.has(key)) continue;
                     opts.usedKeys.add(key);
                 }
-            }
-        }
-    };
-
-    /**
-     * Steering: mark the VISUAL FAMILIES of the current best trio as used so
-     * the replacement builder explores a DIFFERENT garment type instead of
-     * another SKU of the same formula. Without this the first replacement
-     * happily re-picks the blazer family and is then rejected by the
-     * similarity gate — wasting an attempt.
-     */
-    const seedVisualFamilies = (indices: number[]) => {
-        for (const index of indices) {
-            const member = pool[index];
-            for (const item of opts.itemsOf(member.outfit) || []) {
+                // Soft steering only: replacement looks prefer a different
+                // garment type, but family never blocks a unique product.
                 const slot = diversitySlotOf(item);
-                if (slot && ignoreSlots.includes(slot)) continue; // the anchor repeats by design
+                if (slot && ignoreSlots.includes(slot)) continue;
                 const family = garmentVisualFamily(item);
                 if (family) opts.usedKeys.add(`__vf:${family}`);
             }
         }
     };
 
-    // The strict rung honours the caller's overrides.
-    const strictRung: Rung = {
-        name: 'strict',
-        maxSimilarity: maxVisualSimilarity,
-        maxSharedFamilies: maxSharedVisualFamilies,
-        allowSameArchetype: false,
-    };
-    const ladder: Rung[] = [strictRung, ...RUNGS.slice(1)];
-
-    // The inventory assessment drives two decisions: whether relaxing the
-    // visual rule is allowed at all, and how many garment families two
-    // looks may share (slots the pool cannot vary are not a styling fault).
+    // The inventory assessment decides whether uniqueness is physically
+    // possible. It counts distinct products, not archetype tokens.
     const inventory = inventoryOf();
-    forcedSharedFamilies = inventory.forcedSharedFamilies;
+    const uniquenessSupported = inventory.supportsUniqueProducts;
+    const sharedLimit = uniquenessSupported ? maxSharedProducts : Number.POSITIVE_INFINITY;
 
-    let rungIndex = 0;
-    let selection = selectCombination(ladder[0]);
+    let selection = selectCombination(target, sharedLimit);
     let fillsUsed = 0;
 
     if (opts.buildFill) {
-        // Seed the shared used-keys with the current best combination so the
-        // replacement builder starts from pieces the deck is not likely to
-        // reuse, and can only build a look from genuinely fresh products.
-        const seedFrom = selection ?? selectCombination(ladder[ladder.length - 1]);
-        if (seedFrom) seedUsedKeys(seedFrom);
-        // Actively search for diverse alternatives instead of deleting the
-        // rejected looks: build fresh candidates from the unused pool.
-        //
-        // The search continues while the deck score IMPROVES — stopping at
-        // the first acceptable combination would leave "blazer + shirt +
-        // tailored trousers + loafers" next to a second blazer look when a
-        // third, genuinely different direction was one replacement away.
+        if (selection) seedUsedKeys(selection);
         let bestScore = selection ? deckScore(selection) : Number.NEGATIVE_INFINITY;
         let staleAttempts = 0;
-        const patience = 3;
-        while (fillsUsed < maxFillAttempts && staleAttempts < patience) {
+        const patience = 5;
+        while (fillsUsed < maxFillAttempts) {
+            if (selection && staleAttempts >= patience) break;
             const attempt = fillsUsed;
             fillsUsed += 1;
-            // Steer the replacement toward another FORMULA. Only the SINGLE
-            // strongest look is used as the reference: the replacement must
-            // explore a different formula than the look most likely to be
-            // kept, while the global combination search decides the rest.
-            const steer = selectCombination(ladder[ladder.length - 1]);
-            if (steer) {
-                const reference = steer
-                    .map((index) => pool[index])
-                    .sort((a, b) => (b.quality - a.quality) || (a.index - b.index))[0];
-                if (reference) seedVisualFamilies([reference.index]);
-            }
             const fill = opts.buildFill(opts.usedKeys, attempt);
             // A rejected replacement (style judge / budget) must NOT end the
             // search — the next attempt rotates to different slot picks.
-            if (!fill) continue;
+            if (!fill) {
+                if (!selection) staleAttempts = 0;
+                continue;
+            }
             const candidate = pushCandidate(fill, 'fill');
             if (debug) {
                 debug(`replacement selected: ${candidate.fingerprint.archetype}`, {
                     attempt,
                     archetype: candidate.fingerprint.archetype,
+                    products: (opts.itemsOf(fill) || []).map((item) => canonicalProductKey(item)),
                 });
             }
-            const previous = selection;
-            selection = selectCombination(ladder[0]);
-            const score = selection ? deckScore(selection) : Number.NEGATIVE_INFINITY;
-            if (score > bestScore) {
+            const next = selectCombination(target, sharedLimit);
+            if (!next) {
+                // Still searching for the first valid unique combination.
+                staleAttempts = 0;
+                continue;
+            }
+            const score = deckScore(next);
+            if (!selection || score > bestScore) {
+                selection = next;
                 bestScore = score;
                 staleAttempts = 0;
             } else {
-                // No improvement — keep the better of the two and keep the
-                // previous combination when the new candidate did not help.
-                selection = previous ?? selection;
                 staleAttempts += 1;
             }
         }
     }
 
+    let relaxed = false;
     let relaxReason: string | null = null;
 
-    if (!selection) {
-        // Relaxation is a LAST resort and is FORBIDDEN when the valid
-        // inventory could have supported `target` different concepts. A pool
-        // with 8 blazers / 2 coats / 3 overshirts / … must never fall back to
-        // "blazer + shirt + tailored trousers + loafers" three times.
-        if (!inventory.supportsTargetConcepts) {
-            for (let i = 1; i < ladder.length - 1 && !selection; i++) {
-                rungIndex = i;
-                selection = selectCombination(ladder[i]);
-            }
-            if (selection) relaxReason = 'thin_inventory';
-        } else {
-            relaxReason = 'diversity_unavailable_despite_varied_inventory';
-        }
+    if (!uniquenessSupported) {
+        // Genuinely thin inventory: uniqueness is impossible in at least one
+        // slot. Keep the least repetitive combination and report honestly.
+        if (!selection) selection = selectBestUpTo(target, Number.POSITIVE_INFINITY);
+        relaxed = Boolean(selection);
+        relaxReason = selection ? 'insufficient_unique_products' : 'no_candidates';
+    } else if (!selection) {
+        // The inventory has enough unique products, but the candidate set /
+        // fill builder could not produce a full trio. Never relax the
+        // uniqueness rule; show the largest valid unique subset instead.
+        selection = selectBestUpTo(target, maxSharedProducts);
+        relaxReason = selection ? 'insufficient_unique_candidates' : 'no_candidates';
     }
-
-    if (!selection) {
-        // Absolute floor: product-level diversity only. The deck score still
-        // prefers the most different combination, so the user gets the least
-        // repetitive trio the inventory allows.
-        rungIndex = ladder.length - 1;
-        selection = selectCombination(ladder[rungIndex]);
-        if (!relaxReason) {
-            relaxReason = inventory.supportsTargetConcepts
-                ? 'diversity_unavailable_despite_varied_inventory'
-                : 'thin_inventory';
-        }
-    }
-
-    const relaxed = rungIndex > 0;
 
     if (debug) {
         for (const member of pool) {
             debug(`candidate ${member.index + 1} archetype: ${member.fingerprint.archetype}`, {
                 source: member.source,
                 quality: member.quality,
+                products: (opts.itemsOf(member.outfit) || []).map((item) => canonicalProductKey(item)),
             });
         }
-        debug(`inventory: conceptCapacity=${inventory.conceptCapacity} supportsTarget=${inventory.supportsTargetConcepts} homogeneous=${inventory.homogeneous} forcedSharedFamilies=${inventory.forcedSharedFamilies}`, {
+        debug(`inventory: uniqueProductsPerSlot=${JSON.stringify(inventory.uniqueProductsPerSlot)} maxDistinctProducts=${inventory.maxDistinctProducts} supportsUniqueProducts=${inventory.supportsUniqueProducts}`, {
             familiesPerSlot: inventory.familiesPerSlot,
             tokensPerSlot: inventory.tokensPerSlot,
         });
     }
 
     if (!selection) {
-        // Nothing qualified at all — keep the highest-quality looks so the
-        // user still sees a deck instead of an empty screen.
-        const best = pool
-            .slice()
-            .sort((a, b) => b.quality - a.quality)
-            .slice(0, target);
         return {
-            deck: best.map((member) => member.outfit),
+            deck: [],
             relaxed: true,
             relaxReason: relaxReason ?? 'no_candidates',
-            archetypes: best.map((member) => member.fingerprint.archetype),
+            archetypes: [],
             similarities: [],
             inventory,
             fillsUsed,
+            productDiversity: analyzeDeckProductDiversity([], { anchorKeys: opts.anchorKeys }),
         };
     }
 
@@ -1631,29 +1761,26 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
         }
     }
 
+    const productDiversity = analyzeDeckProductDiversity(
+        chosen.map((member) => opts.itemsOf(member.outfit) || []),
+        { anchorKeys: opts.anchorKeys },
+    );
+
     if (debug) {
         for (const entry of similarities) {
             debug(`similarity ${entry.a + 1}<->${entry.b + 1} = ${entry.score.toFixed(2)}`, {
                 archetypes: [chosen[entry.a].fingerprint.archetype, chosen[entry.b].fingerprint.archetype],
             });
         }
-        // §17 diagnostics: a replacement look and how far it sits from the
-        // looks it now ships next to.
-        for (const member of chosen) {
-            if (member.source !== 'fill') continue;
-            const others = chosen.filter((other) => other.index !== member.index);
-            const scores = others.map((other) => similarityOf(member, other));
-            debug(`replacement shipped: ${member.fingerprint.archetype}`, {
-                similarityWithKeptLooks: scores.map((score) => Number(score.toFixed(2))),
-            });
-        }
-        debug(`decision: ${relaxed ? `RELAXED (${relaxReason})` : 'STRICT'}`, {
+        debug(`decision: ${relaxed ? `RELAXED (${relaxReason})` : 'UNIQUE_PRODUCTS'}`, {
             archetypes: chosen.map((member) => member.fingerprint.archetype),
+            nonAnchorProductReuseCount: productDiversity.nonAnchorProductReuseCount,
+            repeatedProductKeys: productDiversity.repeatedProductKeys,
+            anchorRepetitionCount: productDiversity.anchorRepetitionCount,
             inventory: {
                 homogeneous: inventory.homogeneous,
-                maxDistinctArchetypes: inventory.maxDistinctArchetypes,
-                conceptCapacity: inventory.conceptCapacity,
-                supportsTargetConcepts: inventory.supportsTargetConcepts,
+                maxDistinctProducts: inventory.maxDistinctProducts,
+                supportsUniqueProducts: inventory.supportsUniqueProducts,
             },
         });
     }
@@ -1670,6 +1797,7 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
         similarities,
         inventory,
         fillsUsed,
+        productDiversity,
     };
 }
 

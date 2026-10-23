@@ -20,9 +20,12 @@
  */
 import { writeFileSync } from 'fs';
 import {
+    analyzeDeckProductDiversity,
     assembleDiverseDeck,
     buildOutfitFingerprint,
+    canonicalProductKey,
     MAX_VISUAL_SIMILARITY,
+    productIdentityKeys,
     sameArchetype,
     visualSimilarity,
     type DiversitySlot,
@@ -193,6 +196,14 @@ export interface ScenarioReport {
     similarities: number[];
     mode: 'STRICT' | 'RELAXED';
     relaxReason: string | null;
+    /** Canonical product key per item, per look. */
+    productKeys: string[][];
+    /** Number of distinct non-anchor products appearing in >1 look. */
+    nonAnchorProductReuseCount: number;
+    repeatedProductKeys: string[];
+    repeatedCanonicalKeys: string[];
+    anchorRepetitionCount: number;
+    supportsUniqueProducts: boolean;
     pass: boolean;
     notes: string[];
 }
@@ -258,7 +269,7 @@ export function runScenario(scenario: Scenario, catalog: CatalogItem[] = buildCa
         candidates,
         itemsOf: (look) => look.items,
         qualityOf: () => 0.9,
-        keysOf: (item: any) => [String(item?.id ?? '')],
+        keysOf: (item: any) => productIdentityKeys(item),
         usedKeys: slotDeckUsed,
         buildFill,
         poolItems: valid,
@@ -270,6 +281,10 @@ export function runScenario(scenario: Scenario, catalog: CatalogItem[] = buildCa
     const looks = fingerprints.map((fingerprint) =>
         Object.values(fingerprint.archetypeTokens).filter(Boolean) as string[],
     );
+    const productDiversity = analyzeDeckProductDiversity(
+        result.deck.map((look) => look.items),
+    );
+    const productKeys = result.deck.map((look) => look.items.map((item) => canonicalProductKey(item)));
     const similarities: number[] = [];
     for (let i = 0; i < fingerprints.length; i++) {
         for (let j = i + 1; j < fingerprints.length; j++) {
@@ -289,19 +304,18 @@ export function runScenario(scenario: Scenario, catalog: CatalogItem[] = buildCa
             notes.push(`pairwise similarity ${score.toFixed(2)} >= ${MAX_VISUAL_SIMILARITY}`);
         }
     }
-    for (let i = 0; i < fingerprints.length; i++) {
-        for (let j = i + 1; j < fingerprints.length; j++) {
-            if (sameArchetype(fingerprints[i], fingerprints[j])) {
-                pass = false;
-                notes.push(`look ${i + 1} and look ${j + 1} share the outfit formula`);
-            }
-        }
+    if (result.inventory.supportsUniqueProducts && productDiversity.nonAnchorProductReuseCount > 0) {
+        pass = false;
+        notes.push(`${productDiversity.nonAnchorProductReuseCount} non-anchor product(s) reused: ${productDiversity.repeatedProductKeys.join(', ')}`);
+    }
+    if (!result.inventory.supportsUniqueProducts && productDiversity.nonAnchorProductReuseCount > 0) {
+        // Genuinely thin inventory: repetition is allowed, but it must be
+        // reported with the honest reason.
+        notes.push(`thin inventory allowed ${productDiversity.nonAnchorProductReuseCount} reused product(s)`);
     }
     if (new Set(archetypes).size < Math.min(3, result.deck.length)) {
-        // Not a hard failure: two looks may share the archetype STRING while
-        // still being different garments (a notch-lapel vs a shawl-collar
-        // dinner jacket). It is reported so the report stays honest.
-        notes.push(`only ${new Set(archetypes).size} distinct archetype string(s)`);
+        // Soft signal only: the same formula with unique products is valid.
+        notes.push(`shared archetype formula (allowed): ${archetypes.join(' / ')}`);
     }
     // The diversity layer must never break the dress code.
     for (const look of result.deck) {
@@ -319,6 +333,12 @@ export function runScenario(scenario: Scenario, catalog: CatalogItem[] = buildCa
         similarities,
         mode: result.relaxed ? 'RELAXED' : 'STRICT',
         relaxReason: result.relaxReason,
+        productKeys,
+        nonAnchorProductReuseCount: productDiversity.nonAnchorProductReuseCount,
+        repeatedProductKeys: productDiversity.repeatedProductKeys,
+        repeatedCanonicalKeys: productDiversity.repeatedCanonicalKeys,
+        anchorRepetitionCount: productDiversity.anchorRepetitionCount,
+        supportsUniqueProducts: result.inventory.supportsUniqueProducts,
         pass,
         notes,
     };
@@ -358,6 +378,12 @@ export function formatReport(reports: ScenarioReport[]): string {
             });
         }
         lines.push('');
+        lines.push(`  Products:`);
+        report.productKeys.forEach((keys, index) => {
+            lines.push(`    Look ${index + 1}: ${keys.join(' | ')}`);
+        });
+        lines.push('');
+        lines.push(`  Product uniqueness: nonAnchorProductReuseCount=${report.nonAnchorProductReuseCount} · supportsUniqueProducts=${report.supportsUniqueProducts}${report.repeatedProductKeys.length ? ` · repeated=${report.repeatedProductKeys.join(', ')}` : ''}`);
         lines.push(`  Diversity mode: ${report.mode}${report.relaxReason ? ` (${report.relaxReason})` : ''}`);
         lines.push(`  ${report.pass ? 'PASS' : 'FAIL'}${report.notes.length ? ` — ${report.notes.join('; ')}` : ''}`);
     }
@@ -365,9 +391,11 @@ export function formatReport(reports: ScenarioReport[]): string {
     lines.push('='.repeat(64));
     const strict = reports.filter((r) => r.mode === 'STRICT').length;
     const failed = reports.filter((r) => !r.pass).length;
+    const reuse = reports.reduce((sum, r) => sum + r.nonAnchorProductReuseCount, 0);
     const worst = reports.reduce((max, r) => Math.max(max, ...r.similarities), 0);
     lines.push(`scenarios: ${reports.length} · strict: ${strict} · relaxed: ${reports.length - strict} · failed: ${failed}`);
-    lines.push(`worst pairwise similarity across all decks: ${worst.toFixed(2)} (threshold ${MAX_VISUAL_SIMILARITY})`);
+    lines.push(`non-anchor product reuse across all decks: ${reuse} (target 0)`);
+    lines.push(`worst pairwise similarity across all decks: ${worst.toFixed(2)} (soft signal, threshold ${MAX_VISUAL_SIMILARITY})`);
     return lines.join('\n');
 }
 

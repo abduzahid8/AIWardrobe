@@ -250,7 +250,7 @@ describe('normalizeTo4Slots — screenshot incidents', () => {
     expect(new Set(names('shoes')).size).toBe(3);
   });
 
-  it('three cards from a rich pool share at most one piece', () => {
+  it('three cards from a rich pool reuse zero products', () => {
     const normalize = createSlotNormalizer(ctx({ selectedOccasion: 'work', currentSource: 'shop' }));
     const deck = new Set<string>();
     const pool = [
@@ -272,12 +272,12 @@ describe('normalizeTo4Slots — screenshot incidents', () => {
       for (let b = a + 1; b < 3; b++) {
         const idsA = new Set((outs[a] as any[]).map((x) => x.id));
         const shared = (outs[b] as any[]).filter((x) => idsA.has(x.id)).length;
-        expect(shared).toBeLessThan(2);
+        expect(shared).toBe(0);
       }
     }
   });
 
-  it('does not put two loafer clones in one deck when oxfords exist', () => {
+  it('allows different products of one family but never repeats a product', () => {
     const normalize = createSlotNormalizer(ctx({ selectedOccasion: 'work', currentSource: 'shop' }));
     const deck = new Set<string>();
     const pool = [
@@ -293,10 +293,16 @@ describe('normalizeTo4Slots — screenshot incidents', () => {
     ];
     const a = normalize([], 'old_money', 0, 9, pool, deck);
     const b = normalize([], 'old_money', 1, 9, pool, deck);
-    const shoes = [...a, ...b]
+    const shoesA = a
       .filter((x: any) => x.macroCategory === 'shoes')
-      .map((x: any) => String(x.name).toLowerCase());
-    expect(shoes.filter((n) => n.includes('loafer')).length).toBeLessThan(2);
+      .map((x: any) => String(x.id));
+    const shoesB = b
+      .filter((x: any) => x.macroCategory === 'shoes')
+      .map((x: any) => String(x.id));
+    // Same family is allowed; the same product is not.
+    expect(shoesA.length).toBe(1);
+    expect(shoesB.length).toBe(1);
+    expect(shoesA[0]).not.toBe(shoesB[0]);
   });
 
   it('never fills a clothing slot with sunglasses or a card holder', () => {

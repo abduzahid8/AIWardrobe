@@ -15,7 +15,7 @@ import { orderSlotCandidates, selectSlotPick } from './deckDedupe';
 import { parseBudgetFromText, resolveShopQuote, resolveShopPrice, outfitShopSpend, type ParsedBudget } from '../../../src/utils/outfitBudget';
 import { parseStylistIntent } from './stylistIntent';
 import { normalizeCatalogNameKey, isTrustedProductImage, isBrandCatalogImage, collapseDuplicateProductImages, productImageKey, garmentVarietyFamily } from '../../../src/utils/shopCatalogOrder';
-import { garmentVisualFamily } from './outfitDiversity';
+import { garmentVisualFamily, productIdentityKeys } from './outfitDiversity';
 
 // ── Shared helpers: formal-layer + shorts rule ─────────────────────────
 export function isFormalLayer(item: { type?: string; name?: string; brand?: string; macroCategory?: string } | null | undefined): boolean {
@@ -598,97 +598,82 @@ export function createSlotNormalizer(ctx: SlotNormalizerContext) {
     const nameKeyOf = (candidate: any) => normalizeCatalogNameKey(candidate?.name || '');
     /**
      * Visual family key (finer than `garmentVarietyFamily`): the key carries
-     * the SLOT, so a knit cardigan never blocks a knit top. Used to make
-     * replacement looks explore a DIFFERENT garment type instead of another
-     * SKU of the same formula.
+     * the SLOT, so a knit cardigan never blocks a knit top. Family is a SOFT
+     * ordering preference only — two different loafers are two products and
+     * must both be usable.
      */
     const visualFamilyKeyOf = (candidate: any): string => {
         const family = garmentVisualFamily(candidate);
         return family ? `__vf:${family}` : '';
     };
-    const deckKeysOf = (candidate: any): string[] => {
-        const keys = [String(candidate?.id || '')];
-        const nk = nameKeyOf(candidate);
-        if (nk) keys.push(`__n:${nk}`);
-        const img = productImageKey(candidate);
-        if (img) keys.push(`__img:${img}`);
-        const fam = garmentVarietyFamily(candidate);
-        if (fam) keys.push(`__fam:${fam}`);
-        // The visual family makes the deck-wide "unused" check slot-aware and
-        // finer than the coarse variety family: a replacement look should
-        // explore a DIFFERENT garment type, not another SKU of the same one.
+    // Product identity is id + normalized name + normalized image. Garment
+    // family is deliberately absent: it is not a duplicate signal.
+    const deckKeysOf = (candidate: any): string[] => productIdentityKeys(candidate);
+    const isDeckFresh = (candidate: any): boolean => {
+        if (!deckUsedIds || deckUsedIds.size === 0) return true;
+        return !deckKeysOf(candidate).some((key) => deckUsedIds.has(key));
+    };
+    const prefersUnusedFamily = (candidate: any): boolean => {
+        if (!deckUsedIds || deckUsedIds.size === 0) return true;
         const vf = visualFamilyKeyOf(candidate);
-        if (vf) keys.push(vf);
-        return keys.filter(Boolean);
+        return !vf || !deckUsedIds.has(vf);
+    };
+    const softFamilyOrder = <T,>(list: T[]): T[] => {
+        const fresh = list.filter((candidate) => prefersUnusedFamily(candidate));
+        const used = list.filter((candidate) => !prefersUnusedFamily(candidate));
+        return [...fresh, ...used];
     };
     const pickCandidate = (predicate: (candidate: any) => boolean, slotOffset = 0, ignoreBudget = false) => {
-        // Pick strictness ladder:
-        //   distinct  — name/photo unique AND the garment family is not yet
-        //               used in this deck (a replacement look must explore a
-        //               different garment type, not another SKU).
-        //   unique    — name/photo unique (today's behaviour).
-        //   loose     — anything that satisfies the slot predicate.
-        // The ladder never starves: a thin pool falls back automatically.
-        const basePass = (candidate: any, mode: 'distinct' | 'unique' | 'loose') => {
+        // Product-uniqueness first, then soft family variety. A family is
+        // never a hard filter: if a unique product of an already-used family
+        // exists, it is still preferred over repeating an actual product.
+        const basePass = (candidate: any, mode: 'unique' | 'fresh' | 'loose') => {
             if (rejectForActivity(candidate, occasionId) !== null) return false;
-            const key = String(candidate.id || '');
-            if (usedIds.has(key)) return false;
             if (mode !== 'loose') {
-                const nk = nameKeyOf(candidate);
-                if (nk && (usedIds.has(`__n:${nk}`) || deckUsedIds?.has(`__n:${nk}`))) return false;
-                const img = productImageKey(candidate);
-                if (img && (usedIds.has(`__img:${img}`) || deckUsedIds?.has(`__img:${img}`))) return false;
-                const fam = garmentVarietyFamily(candidate);
-                if (fam.startsWith('shoe:') && (usedIds.has(`__fam:${fam}`) || deckUsedIds?.has(`__fam:${fam}`))) return false;
-                if (ctx.avoidIds && ctx.avoidIds.size > 0) {
-                    if (ctx.avoidIds.has(key)) return false;
+                const identity = deckKeysOf(candidate);
+                if (identity.length > 0 && identity.some((key) => usedIds.has(key) || deckUsedIds?.has(key))) return false;
+                if (mode === 'unique' && ctx.avoidIds && ctx.avoidIds.size > 0) {
+                    const key = String(candidate.id || '');
+                    if (key && ctx.avoidIds.has(key)) return false;
+                    if (identity.some((identityKey) => ctx.avoidIds!.has(identityKey))) return false;
+                    // Compatibility with the legacy recency key format.
+                    const nk = nameKeyOf(candidate);
                     if (nk && ctx.avoidIds.has(`__n:${nk}`)) return false;
+                    const img = productImageKey(candidate);
                     if (img && ctx.avoidIds.has(`__img:${img}`)) return false;
-                    if (fam.startsWith('shoe:') && ctx.avoidIds.has(`__fam:${fam}`)) return false;
-                }
-                if (mode === 'distinct') {
-                    const vf = visualFamilyKeyOf(candidate);
-                    if (vf && (usedIds.has(vf) || deckUsedIds?.has(vf))) return false;
                 }
             }
             return predicate(candidate) && (ignoreBudget || fitsBudget(candidate));
         };
-        const collect = (mode: 'distinct' | 'unique' | 'loose') => ({
+        const collect = (mode: 'unique' | 'fresh' | 'loose') => ({
             incomingMatches: incoming.filter((c: any) => basePass(c, mode)),
             poolMatches: pickPoolFixed.filter((c: any) => basePass(c, mode)),
         });
-        let { incomingMatches, poolMatches } = collect('distinct');
+        let { incomingMatches, poolMatches } = collect('unique');
         if (incomingMatches.length === 0 && poolMatches.length === 0) {
-            ({ incomingMatches, poolMatches } = collect('unique'));
+            // Recency must never force a repeated product: an unused item
+            // that was shown in an earlier tap beats repeating this deck.
+            ({ incomingMatches, poolMatches } = collect('fresh'));
         }
         if (incomingMatches.length === 0 && poolMatches.length === 0) {
             ({ incomingMatches, poolMatches } = collect('loose'));
         }
       if (incomingMatches.length === 0 && poolMatches.length === 0) return undefined;
       const seed = (tapSeed ?? ctx.generationNonceRef?.current ?? 0) || 0;
-      const ordered = orderSlotCandidates(incomingMatches, poolMatches, {
+      const orderedRaw = orderSlotCandidates(incomingMatches, poolMatches, {
         seed: ((seed * 2654435761 + slotOffset * 97) >>> 0),
         deckUsedIds,
         keysOf: deckKeysOf,
       });
+      const ordered = [
+        ...softFamilyOrder(orderedRaw.filter((candidate) => isDeckFresh(candidate))),
+        ...softFamilyOrder(orderedRaw.filter((candidate) => !isDeckFresh(candidate))),
+      ];
       const found = selectSlotPick(ordered, { rotationOffset, slotOffset, deckUsedIds, keysOf: deckKeysOf });
       if (!found) return undefined;
-      usedIds.add(String(found.id || ''));
-      deckUsedIds?.add(String(found.id || ''));
-      const foundNameKey = nameKeyOf(found);
-      if (foundNameKey) {
-        usedIds.add(`__n:${foundNameKey}`);
-        deckUsedIds?.add(`__n:${foundNameKey}`);
-      }
-      const foundImg = productImageKey(found);
-      if (foundImg) {
-        usedIds.add(`__img:${foundImg}`);
-        deckUsedIds?.add(`__img:${foundImg}`);
-      }
-      const foundFam = garmentVarietyFamily(found);
-      if (foundFam) {
-        usedIds.add(`__fam:${foundFam}`);
-        deckUsedIds?.add(`__fam:${foundFam}`);
+      for (const foundKey of deckKeysOf(found)) {
+        usedIds.add(foundKey);
+        deckUsedIds?.add(foundKey);
       }
       const foundVf = visualFamilyKeyOf(found);
       if (foundVf) {
@@ -705,12 +690,14 @@ export function createSlotNormalizer(ctx: SlotNormalizerContext) {
     const pickAnchorForSlot = (slotMacro: string) => {
       if (!anchorany || !anchorMacro || anchorMacro !== slotMacro) return undefined;
       const key = String(anchorany.id || '');
-      if (usedIds.has(key)) {
+      const anchorIdentity = productIdentityKeys(anchorany);
+      if (usedIds.has(key) || anchorIdentity.some((anchorKey) => usedIds.has(anchorKey))) {
         // Already placed (e.g. outerwear anchor also matching top fallback) —
         // return the same object so caller keeps a single instance.
         return { ...anchorany, image: resolveImage(anchorany) || anchorany.image || '' };
       }
       usedIds.add(key);
+      for (const anchorKey of anchorIdentity) usedIds.add(anchorKey);
       const priced = withListedPrice({ ...anchorany, image: resolveImage(anchorany) || anchorany.image || '' });
       pickedForBudget.push(priced);
       return priced;
@@ -1010,12 +997,7 @@ export function createSlotNormalizer(ctx: SlotNormalizerContext) {
           // deck exact duplicates of card #1.
           const deckFresh = (c: any) => {
             if (!deckUsedIds || deckUsedIds.size === 0) return true;
-            if (deckUsedIds.has(String(c.id || ''))) return false;
-            const nk = nameKeyOf(c);
-            if (nk && deckUsedIds.has(`__n:${nk}`)) return false;
-            const img = productImageKey(c);
-            if (img && deckUsedIds.has(`__img:${img}`)) return false;
-            return true;
+            return !productIdentityKeys(c).some((key) => deckUsedIds.has(key));
           };
           const freshCheaper = cheaperAll.filter(deckFresh);
           const cheaper = freshCheaper.length > 0 ? freshCheaper : cheaperAll;

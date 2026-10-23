@@ -1,0 +1,553 @@
+=== 02 work, classic, under $250 ===
+WARNING: Final field parent in class maestro.cli.command.TestCommand has been mutated reflectively by class picocli.CommandLine$Model$FieldBinding in unnamed module @358c99f5 (file:/Users/v.zahid/.maestro/lib/picocli-4.6.3.jar)
+WARNING: Use --enable-final-field-mutation=ALL-UNNAMED to avoid a warning
+WARNING: Mutating final fields will be blocked in a future release unless final field mutation is enabled
+Running on AIWardrobe-Login-Audit-20261020 - iOS 26.5 - A803D6CC-0840-40F3-95EF-70546B2E0ED0
+ > Flow sim_personal_stylist_20
+Run flow when ".*(Your Outfits|Ваши образы).*" is visible...
+Run flow when ".*(Your Outfits|Ваши образы).*" is visible... SKIPPED
+Run flow when ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*" is visible...
+Run flow when ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*" is visible... SKIPPED
+Run flow when ".*(Вдохновение|Inspiration).*" is visible...
+Run flow when ".*(Вдохновение|Inspiration).*" is visible... SKIPPED
+Assert that id: stylistCommentInput is visible... COMPLETED
+Run flow when ".*(New clothing|Новая одежда).*" is visible...
+  Tap on ".*(New clothing|Новая одежда).*"... COMPLETED
+  Wait for animation to end within 2000 ms... COMPLETED
+Run flow when ".*(New clothing|Новая одежда).*" is visible... COMPLETED
+Tap on id: stylistCommentInput... COMPLETED
+Erase text... COMPLETED
+Input text ${COMMENT}...WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by com.oracle.truffle.api.dsl.InlineSupport$UnsafeField (file:/Users/v.zahid/.maestro/lib/truffle-api-24.2.0.jar)
+WARNING: Please consider reporting this to the maintainers of class com.oracle.truffle.api.dsl.InlineSupport$UnsafeField
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+ COMPLETED
+Wait for animation to end within 2000 ms... COMPLETED
+Tap on id: stylistGenerate... COMPLETED
+Assert that ".*(Your Outfits|Ваши образы).*" is visible... FAILED
+
+Assertion is false: ".*(Your Outfits|Ваши образы).*" is visible
+
+Assertion '".*(Your Outfits|Ваши образы).*" is visible' failed. Check the UI hierarchy in debug artifacts to verify the element state and properties.
+
+Possible causes:
+- Element selector may be incorrect - check if there are similar elements with slightly different names/properties.
+- Element may be temporarily unavailable due to loading state
+- This could be a real regression that needs to be addressed
+
+==== Debug output (logs & screenshots) ====
+
+/Users/v.zahid/AIWardrobe/.maestro/verify-shots/sim20_product/attempts/02_1/2026-10-23_123758
+  attempt 1 failed
+WARNING: Final field parent in class maestro.cli.command.TestCommand has been mutated reflectively by class picocli.CommandLine$Model$FieldBinding in unnamed module @358c99f5 (file:/Users/v.zahid/.maestro/lib/picocli-4.6.3.jar)
+WARNING: Use --enable-final-field-mutation=ALL-UNNAMED to avoid a warning
+WARNING: Mutating final fields will be blocked in a future release unless final field mutation is enabled
+Running on AIWardrobe-Login-Audit-20261020 - iOS 26.5 - A803D6CC-0840-40F3-95EF-70546B2E0ED0
+ > Flow sim_personal_stylist_20
+Run flow when ".*(Your Outfits|Ваши образы).*" is visible...
+Run flow when ".*(Your Outfits|Ваши образы).*" is visible... SKIPPED
+Run flow when ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*" is visible...
+Run flow when ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*" is visible... SKIPPED
+Run flow when ".*(Вдохновение|Inspiration).*" is visible...
+Run flow when ".*(Вдохновение|Inspiration).*" is visible... SKIPPED
+Assert that id: stylistCommentInput is visible... COMPLETED
+Run flow when ".*(New clothing|Новая одежда).*" is visible...
+  Tap on ".*(New clothing|Новая одежда).*"... COMPLETED
+  Wait for animation to end within 2000 ms... COMPLETED
+Run flow when ".*(New clothing|Новая одежда).*" is visible... COMPLETED
+Tap on id: stylistCommentInput... COMPLETED
+Erase text... COMPLETED
+Input text ${COMMENT}...WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by com.oracle.truffle.api.dsl.InlineSupport$UnsafeField (file:/Users/v.zahid/.maestro/lib/truffle-api-24.2.0.jar)
+WARNING: Please consider reporting this to the maintainers of class com.oracle.truffle.api.dsl.InlineSupport$UnsafeField
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+ COMPLETED
+Wait for animation to end within 2000 ms... COMPLETED
+Tap on id: stylistGenerate... COMPLETED
+Assert that ".*(Your Outfits|Ваши образы).*" is visible... FAILED
+
+Assertion is false: ".*(Your Outfits|Ваши образы).*" is visible
+
+Assertion '".*(Your Outfits|Ваши образы).*" is visible' failed. Check the UI hierarchy in debug artifacts to verify the element state and properties.
+
+Possible causes:
+- Element selector may be incorrect - check if there are similar elements with slightly different names/properties.
+- Element may be temporarily unavailable due to loading state
+- This could be a real regression that needs to be addressed
+
+==== Debug output (logs & screenshots) ====
+
+/Users/v.zahid/AIWardrobe/.maestro/verify-shots/sim20_product/attempts/02_2/2026-10-23_123956
+  attempt 2 failed
+WARNING: Final field parent in class maestro.cli.command.TestCommand has been mutated reflectively by class picocli.CommandLine$Model$FieldBinding in unnamed module @358c99f5 (file:/Users/v.zahid/.maestro/lib/picocli-4.6.3.jar)
+WARNING: Use --enable-final-field-mutation=ALL-UNNAMED to avoid a warning
+WARNING: Mutating final fields will be blocked in a future release unless final field mutation is enabled
+Running on AIWardrobe-Login-Audit-20261020 - iOS 26.5 - A803D6CC-0840-40F3-95EF-70546B2E0ED0
+ > Flow sim_personal_stylist_20
+Run flow when ".*(Your Outfits|Ваши образы).*" is visible...
+Run flow when ".*(Your Outfits|Ваши образы).*" is visible... SKIPPED
+Run flow when ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*" is visible...
+Run flow when ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*" is visible... SKIPPED
+Run flow when ".*(Вдохновение|Inspiration).*" is visible...
+Run flow when ".*(Вдохновение|Inspiration).*" is visible... SKIPPED
+Assert that id: stylistCommentInput is visible... COMPLETED
+Run flow when ".*(New clothing|Новая одежда).*" is visible...
+  Tap on ".*(New clothing|Новая одежда).*"... COMPLETED
+  Wait for animation to end within 2000 ms... COMPLETED
+Run flow when ".*(New clothing|Новая одежда).*" is visible... COMPLETED
+Tap on id: stylistCommentInput... COMPLETED
+Erase text... COMPLETED
+Input text ${COMMENT}...WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by com.oracle.truffle.api.dsl.InlineSupport$UnsafeField (file:/Users/v.zahid/.maestro/lib/truffle-api-24.2.0.jar)
+WARNING: Please consider reporting this to the maintainers of class com.oracle.truffle.api.dsl.InlineSupport$UnsafeField
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+ COMPLETED
+Wait for animation to end within 2000 ms... COMPLETED
+Tap on id: stylistGenerate... COMPLETED
+Assert that ".*(Your Outfits|Ваши образы).*" is visible... FAILED
+
+Assertion is false: ".*(Your Outfits|Ваши образы).*" is visible
+
+Assertion '".*(Your Outfits|Ваши образы).*" is visible' failed. Check the UI hierarchy in debug artifacts to verify the element state and properties.
+
+Possible causes:
+- Element selector may be incorrect - check if there are similar elements with slightly different names/properties.
+- Element may be temporarily unavailable due to loading state
+- This could be a real regression that needs to be addressed
+
+==== Debug output (logs & screenshots) ====
+
+/Users/v.zahid/AIWardrobe/.maestro/verify-shots/sim20_product/attempts/02_3/2026-10-23_124149
+  attempt 3 failed
+  FAIL
+=== 05 date night, old money ===
+WARNING: Final field parent in class maestro.cli.command.TestCommand has been mutated reflectively by class picocli.CommandLine$Model$FieldBinding in unnamed module @358c99f5 (file:/Users/v.zahid/.maestro/lib/picocli-4.6.3.jar)
+WARNING: Use --enable-final-field-mutation=ALL-UNNAMED to avoid a warning
+WARNING: Mutating final fields will be blocked in a future release unless final field mutation is enabled
+Running on AIWardrobe-Login-Audit-20261020 - iOS 26.5 - A803D6CC-0840-40F3-95EF-70546B2E0ED0
+ > Flow sim_personal_stylist_20
+Run flow when ".*(Your Outfits|Ваши образы).*" is visible...
+Run flow when ".*(Your Outfits|Ваши образы).*" is visible... SKIPPED
+Run flow when ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*" is visible...
+Run flow when ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*" is visible... SKIPPED
+Run flow when ".*(Вдохновение|Inspiration).*" is visible...
+Run flow when ".*(Вдохновение|Inspiration).*" is visible... SKIPPED
+Assert that id: stylistCommentInput is visible... COMPLETED
+Run flow when ".*(New clothing|Новая одежда).*" is visible...
+  Tap on ".*(New clothing|Новая одежда).*"... COMPLETED
+  Wait for animation to end within 2000 ms... COMPLETED
+Run flow when ".*(New clothing|Новая одежда).*" is visible... COMPLETED
+Tap on id: stylistCommentInput... COMPLETED
+Erase text... COMPLETED
+Input text ${COMMENT}...WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by com.oracle.truffle.api.dsl.InlineSupport$UnsafeField (file:/Users/v.zahid/.maestro/lib/truffle-api-24.2.0.jar)
+WARNING: Please consider reporting this to the maintainers of class com.oracle.truffle.api.dsl.InlineSupport$UnsafeField
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+ COMPLETED
+Wait for animation to end within 2000 ms... COMPLETED
+Tap on id: stylistGenerate... COMPLETED
+Assert that ".*(Your Outfits|Ваши образы).*" is visible... COMPLETED
+Assert that ".*(BOTTOM|Pants|PANTS).*" is visible... COMPLETED
+Assert that ".*(SHOES|Shoes).*" is visible... COMPLETED
+Assert that ".*% Match.*" is visible... COMPLETED
+Wait for animation to end within 5000 ms... COMPLETED
+Take screenshot ${SHOT}... COMPLETED
+Scroll vertically... COMPLETED
+Wait for animation to end within 2500 ms... COMPLETED
+Take screenshot ${SHOT}_c2... COMPLETED
+Scroll vertically... COMPLETED
+Wait for animation to end within 2500 ms... COMPLETED
+Take screenshot ${SHOT}_c3... COMPLETED
+Scroll vertically... COMPLETED
+Wait for animation to end within 2500 ms... COMPLETED
+Take screenshot ${SHOT}_c4... COMPLETED
+  PASS
+=== 12 formal gala, semi-classic ===
+WARNING: Final field parent in class maestro.cli.command.TestCommand has been mutated reflectively by class picocli.CommandLine$Model$FieldBinding in unnamed module @358c99f5 (file:/Users/v.zahid/.maestro/lib/picocli-4.6.3.jar)
+WARNING: Use --enable-final-field-mutation=ALL-UNNAMED to avoid a warning
+WARNING: Mutating final fields will be blocked in a future release unless final field mutation is enabled
+Running on AIWardrobe-Login-Audit-20261020 - iOS 26.5 - A803D6CC-0840-40F3-95EF-70546B2E0ED0
+ > Flow sim_personal_stylist_20
+Run flow when ".*(Your Outfits|Ваши образы).*" is visible...
+  Tap on point (8%,11%)... COMPLETED
+  Wait for animation to end within 8000 ms... COMPLETED
+Run flow when ".*(Your Outfits|Ваши образы).*" is visible... COMPLETED
+Run flow when ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*" is visible...
+Run flow when ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*" is visible... SKIPPED
+Run flow when ".*(Вдохновение|Inspiration).*" is visible...
+Run flow when ".*(Вдохновение|Inspiration).*" is visible... SKIPPED
+Assert that id: stylistCommentInput is visible... COMPLETED
+Run flow when ".*(New clothing|Новая одежда).*" is visible...
+  Tap on ".*(New clothing|Новая одежда).*"... COMPLETED
+  Wait for animation to end within 2000 ms... COMPLETED
+Run flow when ".*(New clothing|Новая одежда).*" is visible... COMPLETED
+Tap on id: stylistCommentInput... COMPLETED
+Erase text... COMPLETED
+Input text ${COMMENT}...WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by com.oracle.truffle.api.dsl.InlineSupport$UnsafeField (file:/Users/v.zahid/.maestro/lib/truffle-api-24.2.0.jar)
+WARNING: Please consider reporting this to the maintainers of class com.oracle.truffle.api.dsl.InlineSupport$UnsafeField
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+ COMPLETED
+Wait for animation to end within 2000 ms... COMPLETED
+Tap on id: stylistGenerate... COMPLETED
+Assert that ".*(Your Outfits|Ваши образы).*" is visible... COMPLETED
+Assert that ".*(BOTTOM|Pants|PANTS).*" is visible... COMPLETED
+Assert that ".*(SHOES|Shoes).*" is visible... COMPLETED
+Assert that ".*% Match.*" is visible... COMPLETED
+Wait for animation to end within 5000 ms... COMPLETED
+Take screenshot ${SHOT}... COMPLETED
+Scroll vertically... COMPLETED
+Wait for animation to end within 2500 ms... COMPLETED
+Take screenshot ${SHOT}_c2... COMPLETED
+Scroll vertically... COMPLETED
+Wait for animation to end within 2500 ms... COMPLETED
+Take screenshot ${SHOT}_c3... COMPLETED
+Scroll vertically... COMPLETED
+Wait for animation to end within 2500 ms... COMPLETED
+Take screenshot ${SHOT}_c4... COMPLETED
+  PASS
+=== 15 travel airport, classic ===
+WARNING: Final field parent in class maestro.cli.command.TestCommand has been mutated reflectively by class picocli.CommandLine$Model$FieldBinding in unnamed module @358c99f5 (file:/Users/v.zahid/.maestro/lib/picocli-4.6.3.jar)
+WARNING: Use --enable-final-field-mutation=ALL-UNNAMED to avoid a warning
+WARNING: Mutating final fields will be blocked in a future release unless final field mutation is enabled
+Running on AIWardrobe-Login-Audit-20261020 - iOS 26.5 - A803D6CC-0840-40F3-95EF-70546B2E0ED0
+ > Flow sim_personal_stylist_20
+Run flow when ".*(Your Outfits|Ваши образы).*" is visible...
+  Tap on point (8%,11%)... COMPLETED
+  Wait for animation to end within 8000 ms... COMPLETED
+Run flow when ".*(Your Outfits|Ваши образы).*" is visible... COMPLETED
+Run flow when ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*" is visible...
+Run flow when ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*" is visible... SKIPPED
+Run flow when ".*(Вдохновение|Inspiration).*" is visible...
+Run flow when ".*(Вдохновение|Inspiration).*" is visible... SKIPPED
+Assert that id: stylistCommentInput is visible... COMPLETED
+Run flow when ".*(New clothing|Новая одежда).*" is visible...
+  Tap on ".*(New clothing|Новая одежда).*"... COMPLETED
+  Wait for animation to end within 2000 ms... COMPLETED
+Run flow when ".*(New clothing|Новая одежда).*" is visible... COMPLETED
+Tap on id: stylistCommentInput... COMPLETED
+Erase text... COMPLETED
+Input text ${COMMENT}...WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by com.oracle.truffle.api.dsl.InlineSupport$UnsafeField (file:/Users/v.zahid/.maestro/lib/truffle-api-24.2.0.jar)
+WARNING: Please consider reporting this to the maintainers of class com.oracle.truffle.api.dsl.InlineSupport$UnsafeField
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+ COMPLETED
+Wait for animation to end within 2000 ms... COMPLETED
+Tap on id: stylistGenerate... COMPLETED
+Assert that ".*(Your Outfits|Ваши образы).*" is visible... FAILED
+
+Assertion is false: ".*(Your Outfits|Ваши образы).*" is visible
+
+Assertion '".*(Your Outfits|Ваши образы).*" is visible' failed. Check the UI hierarchy in debug artifacts to verify the element state and properties.
+
+Possible causes:
+- Element selector may be incorrect - check if there are similar elements with slightly different names/properties.
+- Element may be temporarily unavailable due to loading state
+- This could be a real regression that needs to be addressed
+
+==== Debug output (logs & screenshots) ====
+
+/Users/v.zahid/AIWardrobe/.maestro/verify-shots/sim20_product/attempts/15_1/2026-10-23_124514
+  attempt 1 failed
+WARNING: Final field parent in class maestro.cli.command.TestCommand has been mutated reflectively by class picocli.CommandLine$Model$FieldBinding in unnamed module @358c99f5 (file:/Users/v.zahid/.maestro/lib/picocli-4.6.3.jar)
+WARNING: Use --enable-final-field-mutation=ALL-UNNAMED to avoid a warning
+WARNING: Mutating final fields will be blocked in a future release unless final field mutation is enabled
+Running on AIWardrobe-Login-Audit-20261020 - iOS 26.5 - A803D6CC-0840-40F3-95EF-70546B2E0ED0
+ > Flow sim_personal_stylist_20
+Run flow when ".*(Your Outfits|Ваши образы).*" is visible...
+Run flow when ".*(Your Outfits|Ваши образы).*" is visible... SKIPPED
+Run flow when ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*" is visible...
+Run flow when ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*" is visible... SKIPPED
+Run flow when ".*(Вдохновение|Inspiration).*" is visible...
+Run flow when ".*(Вдохновение|Inspiration).*" is visible... SKIPPED
+Assert that id: stylistCommentInput is visible... COMPLETED
+Run flow when ".*(New clothing|Новая одежда).*" is visible...
+  Tap on ".*(New clothing|Новая одежда).*"... COMPLETED
+  Wait for animation to end within 2000 ms... COMPLETED
+Run flow when ".*(New clothing|Новая одежда).*" is visible... COMPLETED
+Tap on id: stylistCommentInput... COMPLETED
+Erase text... COMPLETED
+Input text ${COMMENT}...WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by com.oracle.truffle.api.dsl.InlineSupport$UnsafeField (file:/Users/v.zahid/.maestro/lib/truffle-api-24.2.0.jar)
+WARNING: Please consider reporting this to the maintainers of class com.oracle.truffle.api.dsl.InlineSupport$UnsafeField
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+ COMPLETED
+Wait for animation to end within 2000 ms... COMPLETED
+Tap on id: stylistGenerate... COMPLETED
+Assert that ".*(Your Outfits|Ваши образы).*" is visible... COMPLETED
+Assert that ".*(BOTTOM|Pants|PANTS).*" is visible... COMPLETED
+Assert that ".*(SHOES|Shoes).*" is visible... COMPLETED
+Assert that ".*% Match.*" is visible... COMPLETED
+Wait for animation to end within 5000 ms... COMPLETED
+Take screenshot ${SHOT}... COMPLETED
+Scroll vertically... COMPLETED
+Wait for animation to end within 2500 ms... COMPLETED
+Take screenshot ${SHOT}_c2... COMPLETED
+Scroll vertically... COMPLETED
+Wait for animation to end within 2500 ms... COMPLETED
+Take screenshot ${SHOT}_c3... COMPLETED
+Scroll vertically... COMPLETED
+Wait for animation to end within 2500 ms... COMPLETED
+Take screenshot ${SHOT}_c4... COMPLETED
+  PASS
+=== 16 flight travel, semi-classic ===
+WARNING: Final field parent in class maestro.cli.command.TestCommand has been mutated reflectively by class picocli.CommandLine$Model$FieldBinding in unnamed module @358c99f5 (file:/Users/v.zahid/.maestro/lib/picocli-4.6.3.jar)
+WARNING: Use --enable-final-field-mutation=ALL-UNNAMED to avoid a warning
+WARNING: Mutating final fields will be blocked in a future release unless final field mutation is enabled
+Running on AIWardrobe-Login-Audit-20261020 - iOS 26.5 - A803D6CC-0840-40F3-95EF-70546B2E0ED0
+ > Flow sim_personal_stylist_20
+Run flow when ".*(Your Outfits|Ваши образы).*" is visible...
+  Tap on point (8%,11%)... COMPLETED
+  Wait for animation to end within 8000 ms... COMPLETED
+Run flow when ".*(Your Outfits|Ваши образы).*" is visible... COMPLETED
+Run flow when ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*" is visible...
+Run flow when ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*" is visible... SKIPPED
+Run flow when ".*(Вдохновение|Inspiration).*" is visible...
+Run flow when ".*(Вдохновение|Inspiration).*" is visible... SKIPPED
+Assert that id: stylistCommentInput is visible... COMPLETED
+Run flow when ".*(New clothing|Новая одежда).*" is visible...
+  Tap on ".*(New clothing|Новая одежда).*"... COMPLETED
+  Wait for animation to end within 2000 ms... COMPLETED
+Run flow when ".*(New clothing|Новая одежда).*" is visible... COMPLETED
+Tap on id: stylistCommentInput... COMPLETED
+Erase text... COMPLETED
+Input text ${COMMENT}...WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by com.oracle.truffle.api.dsl.InlineSupport$UnsafeField (file:/Users/v.zahid/.maestro/lib/truffle-api-24.2.0.jar)
+WARNING: Please consider reporting this to the maintainers of class com.oracle.truffle.api.dsl.InlineSupport$UnsafeField
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+ COMPLETED
+Wait for animation to end within 2000 ms... COMPLETED
+Tap on id: stylistGenerate... COMPLETED
+Assert that ".*(Your Outfits|Ваши образы).*" is visible... FAILED
+
+Assertion is false: ".*(Your Outfits|Ваши образы).*" is visible
+
+Assertion '".*(Your Outfits|Ваши образы).*" is visible' failed. Check the UI hierarchy in debug artifacts to verify the element state and properties.
+
+Possible causes:
+- Element selector may be incorrect - check if there are similar elements with slightly different names/properties.
+- Element may be temporarily unavailable due to loading state
+- This could be a real regression that needs to be addressed
+
+==== Debug output (logs & screenshots) ====
+
+/Users/v.zahid/AIWardrobe/.maestro/verify-shots/sim20_product/attempts/16_1/2026-10-23_124800
+  attempt 1 failed
+WARNING: Final field parent in class maestro.cli.command.TestCommand has been mutated reflectively by class picocli.CommandLine$Model$FieldBinding in unnamed module @358c99f5 (file:/Users/v.zahid/.maestro/lib/picocli-4.6.3.jar)
+WARNING: Use --enable-final-field-mutation=ALL-UNNAMED to avoid a warning
+WARNING: Mutating final fields will be blocked in a future release unless final field mutation is enabled
+Running on AIWardrobe-Login-Audit-20261020 - iOS 26.5 - A803D6CC-0840-40F3-95EF-70546B2E0ED0
+ > Flow sim_personal_stylist_20
+Run flow when ".*(Your Outfits|Ваши образы).*" is visible...
+Run flow when ".*(Your Outfits|Ваши образы).*" is visible... SKIPPED
+Run flow when ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*" is visible...
+Run flow when ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*" is visible... SKIPPED
+Run flow when ".*(Вдохновение|Inspiration).*" is visible...
+Run flow when ".*(Вдохновение|Inspiration).*" is visible... SKIPPED
+Assert that id: stylistCommentInput is visible... COMPLETED
+Run flow when ".*(New clothing|Новая одежда).*" is visible...
+  Tap on ".*(New clothing|Новая одежда).*"... COMPLETED
+  Wait for animation to end within 2000 ms... COMPLETED
+Run flow when ".*(New clothing|Новая одежда).*" is visible... COMPLETED
+Tap on id: stylistCommentInput... COMPLETED
+Erase text... COMPLETED
+Input text ${COMMENT}...WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by com.oracle.truffle.api.dsl.InlineSupport$UnsafeField (file:/Users/v.zahid/.maestro/lib/truffle-api-24.2.0.jar)
+WARNING: Please consider reporting this to the maintainers of class com.oracle.truffle.api.dsl.InlineSupport$UnsafeField
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+ COMPLETED
+Wait for animation to end within 2000 ms... COMPLETED
+Tap on id: stylistGenerate... COMPLETED
+Assert that ".*(Your Outfits|Ваши образы).*" is visible... COMPLETED
+Assert that ".*(BOTTOM|Pants|PANTS).*" is visible... COMPLETED
+Assert that ".*(SHOES|Shoes).*" is visible... COMPLETED
+Assert that ".*% Match.*" is visible... COMPLETED
+Wait for animation to end within 5000 ms... COMPLETED
+Take screenshot ${SHOT}... COMPLETED
+Scroll vertically... COMPLETED
+Wait for animation to end within 2500 ms... COMPLETED
+Take screenshot ${SHOT}_c2... COMPLETED
+Scroll vertically... COMPLETED
+Wait for animation to end within 2500 ms... COMPLETED
+Take screenshot ${SHOT}_c3... COMPLETED
+Scroll vertically... COMPLETED
+Wait for animation to end within 2500 ms... COMPLETED
+Take screenshot ${SHOT}_c4... COMPLETED
+  PASS
+=== 17 quiet luxury weekend, old money ===
+WARNING: Final field parent in class maestro.cli.command.TestCommand has been mutated reflectively by class picocli.CommandLine$Model$FieldBinding in unnamed module @358c99f5 (file:/Users/v.zahid/.maestro/lib/picocli-4.6.3.jar)
+WARNING: Use --enable-final-field-mutation=ALL-UNNAMED to avoid a warning
+WARNING: Mutating final fields will be blocked in a future release unless final field mutation is enabled
+Running on AIWardrobe-Login-Audit-20261020 - iOS 26.5 - A803D6CC-0840-40F3-95EF-70546B2E0ED0
+ > Flow sim_personal_stylist_20
+Run flow when ".*(Your Outfits|Ваши образы).*" is visible...
+  Tap on point (8%,11%)... COMPLETED
+  Wait for animation to end within 8000 ms... COMPLETED
+Run flow when ".*(Your Outfits|Ваши образы).*" is visible... COMPLETED
+Run flow when ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*" is visible...
+Run flow when ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*" is visible... SKIPPED
+Run flow when ".*(Вдохновение|Inspiration).*" is visible...
+Run flow when ".*(Вдохновение|Inspiration).*" is visible... SKIPPED
+Assert that id: stylistCommentInput is visible... COMPLETED
+Run flow when ".*(New clothing|Новая одежда).*" is visible...
+  Tap on ".*(New clothing|Новая одежда).*"... COMPLETED
+  Wait for animation to end within 2000 ms... COMPLETED
+Run flow when ".*(New clothing|Новая одежда).*" is visible... COMPLETED
+Tap on id: stylistCommentInput... COMPLETED
+Erase text... COMPLETED
+Input text ${COMMENT}...WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by com.oracle.truffle.api.dsl.InlineSupport$UnsafeField (file:/Users/v.zahid/.maestro/lib/truffle-api-24.2.0.jar)
+WARNING: Please consider reporting this to the maintainers of class com.oracle.truffle.api.dsl.InlineSupport$UnsafeField
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+ COMPLETED
+Wait for animation to end within 2000 ms... COMPLETED
+Tap on id: stylistGenerate... COMPLETED
+Assert that ".*(Your Outfits|Ваши образы).*" is visible... COMPLETED
+Assert that ".*(BOTTOM|Pants|PANTS).*" is visible... COMPLETED
+Assert that ".*(SHOES|Shoes).*" is visible... COMPLETED
+Assert that ".*% Match.*" is visible... COMPLETED
+Wait for animation to end within 5000 ms... COMPLETED
+Take screenshot ${SHOT}... COMPLETED
+Scroll vertically... COMPLETED
+Wait for animation to end within 2500 ms... COMPLETED
+Take screenshot ${SHOT}_c2... COMPLETED
+Scroll vertically... COMPLETED
+Wait for animation to end within 2500 ms... COMPLETED
+Take screenshot ${SHOT}_c3... COMPLETED
+Scroll vertically... COMPLETED
+Wait for animation to end within 2500 ms... COMPLETED
+Take screenshot ${SHOT}_c4... COMPLETED
+  PASS
+=== 18 modern professional office ===
+WARNING: Final field parent in class maestro.cli.command.TestCommand has been mutated reflectively by class picocli.CommandLine$Model$FieldBinding in unnamed module @358c99f5 (file:/Users/v.zahid/.maestro/lib/picocli-4.6.3.jar)
+WARNING: Use --enable-final-field-mutation=ALL-UNNAMED to avoid a warning
+WARNING: Mutating final fields will be blocked in a future release unless final field mutation is enabled
+Running on AIWardrobe-Login-Audit-20261020 - iOS 26.5 - A803D6CC-0840-40F3-95EF-70546B2E0ED0
+ > Flow sim_personal_stylist_20
+Run flow when ".*(Your Outfits|Ваши образы).*" is visible...
+  Tap on point (8%,11%)... COMPLETED
+  Wait for animation to end within 8000 ms... COMPLETED
+Run flow when ".*(Your Outfits|Ваши образы).*" is visible... COMPLETED
+Run flow when ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*" is visible...
+Run flow when ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*" is visible... SKIPPED
+Run flow when ".*(Вдохновение|Inspiration).*" is visible...
+Run flow when ".*(Вдохновение|Inspiration).*" is visible... SKIPPED
+Assert that id: stylistCommentInput is visible... COMPLETED
+Run flow when ".*(New clothing|Новая одежда).*" is visible...
+  Tap on ".*(New clothing|Новая одежда).*"... COMPLETED
+  Wait for animation to end within 2000 ms... COMPLETED
+Run flow when ".*(New clothing|Новая одежда).*" is visible... COMPLETED
+Tap on id: stylistCommentInput... COMPLETED
+Erase text... COMPLETED
+Input text ${COMMENT}...WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by com.oracle.truffle.api.dsl.InlineSupport$UnsafeField (file:/Users/v.zahid/.maestro/lib/truffle-api-24.2.0.jar)
+WARNING: Please consider reporting this to the maintainers of class com.oracle.truffle.api.dsl.InlineSupport$UnsafeField
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+ COMPLETED
+Wait for animation to end within 2000 ms... COMPLETED
+Tap on id: stylistGenerate... COMPLETED
+Assert that ".*(Your Outfits|Ваши образы).*" is visible... COMPLETED
+Assert that ".*(BOTTOM|Pants|PANTS).*" is visible... COMPLETED
+Assert that ".*(SHOES|Shoes).*" is visible... COMPLETED
+Assert that ".*% Match.*" is visible... COMPLETED
+Wait for animation to end within 5000 ms... COMPLETED
+Take screenshot ${SHOT}... COMPLETED
+Scroll vertically... COMPLETED
+Wait for animation to end within 2500 ms... COMPLETED
+Take screenshot ${SHOT}_c2... COMPLETED
+Scroll vertically... COMPLETED
+Wait for animation to end within 2500 ms... COMPLETED
+Take screenshot ${SHOT}_c3... COMPLETED
+Scroll vertically... COMPLETED
+Wait for animation to end within 2500 ms... COMPLETED
+Take screenshot ${SHOT}_c4... COMPLETED
+  PASS
+=== 19 офис, олд мани ===
+WARNING: Final field parent in class maestro.cli.command.TestCommand has been mutated reflectively by class picocli.CommandLine$Model$FieldBinding in unnamed module @358c99f5 (file:/Users/v.zahid/.maestro/lib/picocli-4.6.3.jar)
+WARNING: Use --enable-final-field-mutation=ALL-UNNAMED to avoid a warning
+WARNING: Mutating final fields will be blocked in a future release unless final field mutation is enabled
+Running on AIWardrobe-Login-Audit-20261020 - iOS 26.5 - A803D6CC-0840-40F3-95EF-70546B2E0ED0
+ > Flow sim_personal_stylist_20
+Run flow when ".*(Your Outfits|Ваши образы).*" is visible...
+  Tap on point (8%,11%)... COMPLETED
+  Wait for animation to end within 8000 ms... COMPLETED
+Run flow when ".*(Your Outfits|Ваши образы).*" is visible... COMPLETED
+Run flow when ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*" is visible...
+Run flow when ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*" is visible... SKIPPED
+Run flow when ".*(Вдохновение|Inspiration).*" is visible...
+Run flow when ".*(Вдохновение|Inspiration).*" is visible... SKIPPED
+Assert that id: stylistCommentInput is visible... COMPLETED
+Run flow when ".*(New clothing|Новая одежда).*" is visible...
+  Tap on ".*(New clothing|Новая одежда).*"... COMPLETED
+  Wait for animation to end within 2000 ms... COMPLETED
+Run flow when ".*(New clothing|Новая одежда).*" is visible... COMPLETED
+Tap on id: stylistCommentInput... COMPLETED
+Erase text... COMPLETED
+Input text ${COMMENT}...WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by com.oracle.truffle.api.dsl.InlineSupport$UnsafeField (file:/Users/v.zahid/.maestro/lib/truffle-api-24.2.0.jar)
+WARNING: Please consider reporting this to the maintainers of class com.oracle.truffle.api.dsl.InlineSupport$UnsafeField
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+ COMPLETED
+Wait for animation to end within 2000 ms... COMPLETED
+Tap on id: stylistGenerate... COMPLETED
+Assert that ".*(Your Outfits|Ваши образы).*" is visible... COMPLETED
+Assert that ".*(BOTTOM|Pants|PANTS).*" is visible... COMPLETED
+Assert that ".*(SHOES|Shoes).*" is visible... COMPLETED
+Assert that ".*% Match.*" is visible... COMPLETED
+Wait for animation to end within 5000 ms... COMPLETED
+Take screenshot ${SHOT}... COMPLETED
+Scroll vertically... COMPLETED
+Wait for animation to end within 2500 ms... COMPLETED
+Take screenshot ${SHOT}_c2... COMPLETED
+Scroll vertically... COMPLETED
+Wait for animation to end within 2500 ms... COMPLETED
+Take screenshot ${SHOT}_c3... COMPLETED
+Scroll vertically... COMPLETED
+Wait for animation to end within 2500 ms... COMPLETED
+Take screenshot ${SHOT}_c4... COMPLETED
+  PASS
+=== 20 sayohat uchun, oddiy ===
+WARNING: Final field parent in class maestro.cli.command.TestCommand has been mutated reflectively by class picocli.CommandLine$Model$FieldBinding in unnamed module @358c99f5 (file:/Users/v.zahid/.maestro/lib/picocli-4.6.3.jar)
+WARNING: Use --enable-final-field-mutation=ALL-UNNAMED to avoid a warning
+WARNING: Mutating final fields will be blocked in a future release unless final field mutation is enabled
+Running on AIWardrobe-Login-Audit-20261020 - iOS 26.5 - A803D6CC-0840-40F3-95EF-70546B2E0ED0
+ > Flow sim_personal_stylist_20
+Run flow when ".*(Your Outfits|Ваши образы).*" is visible...
+  Tap on point (8%,11%)... COMPLETED
+  Wait for animation to end within 8000 ms... COMPLETED
+Run flow when ".*(Your Outfits|Ваши образы).*" is visible... COMPLETED
+Run flow when ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*" is visible...
+Run flow when ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*" is visible... SKIPPED
+Run flow when ".*(Вдохновение|Inspiration).*" is visible...
+Run flow when ".*(Вдохновение|Inspiration).*" is visible... SKIPPED
+Assert that id: stylistCommentInput is visible... COMPLETED
+Run flow when ".*(New clothing|Новая одежда).*" is visible...
+  Tap on ".*(New clothing|Новая одежда).*"... COMPLETED
+  Wait for animation to end within 2000 ms... COMPLETED
+Run flow when ".*(New clothing|Новая одежда).*" is visible... COMPLETED
+Tap on id: stylistCommentInput... COMPLETED
+Erase text... COMPLETED
+Input text ${COMMENT}...WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by com.oracle.truffle.api.dsl.InlineSupport$UnsafeField (file:/Users/v.zahid/.maestro/lib/truffle-api-24.2.0.jar)
+WARNING: Please consider reporting this to the maintainers of class com.oracle.truffle.api.dsl.InlineSupport$UnsafeField
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+ COMPLETED
+Wait for animation to end within 2000 ms... COMPLETED
+Tap on id: stylistGenerate... COMPLETED
+Assert that ".*(Your Outfits|Ваши образы).*" is visible... COMPLETED
+Assert that ".*(BOTTOM|Pants|PANTS).*" is visible... COMPLETED
+Assert that ".*(SHOES|Shoes).*" is visible... COMPLETED
+Assert that ".*% Match.*" is visible... COMPLETED
+Wait for animation to end within 5000 ms... COMPLETED
+Take screenshot ${SHOT}... COMPLETED
+Scroll vertically... COMPLETED
+Wait for animation to end within 2500 ms... COMPLETED
+Take screenshot ${SHOT}_c2... COMPLETED
+Scroll vertically... COMPLETED
+Wait for animation to end within 2500 ms... COMPLETED
+Take screenshot ${SHOT}_c3... COMPLETED
+Scroll vertically... COMPLETED
+Wait for animation to end within 2500 ms... COMPLETED
+Take screenshot ${SHOT}_c4... COMPLETED
+  PASS
+=== simulator run done pass=8 fail=1 ===

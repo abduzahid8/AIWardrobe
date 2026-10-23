@@ -1,29 +1,20 @@
 /**
- * The score distribution that justifies MAX_VISUAL_SIMILARITY and
- * FAMILY_ESCAPE_SIMILARITY.
+ * Visual similarity is a SOFT ranking signal, not the deck gate.
  *
- * The thresholds are only meaningful if the regimes they separate do not
- * overlap. Measured on the fixture matrix below:
+ * The score distribution below is still useful: identical formulas score
+ * higher than clearly different concepts. But the deck invariant is product
+ * uniqueness. Two looks with the same formula and different actual products
+ * are allowed; the similarity score only breaks ties between valid decks.
  *
- *   identical formula, different SKUs   -> 0.75 .. 0.83   REJECTED
- *   same formula, only the shoes differ -> 0.54 .. 0.60   REJECTED
- *   same concept, one slot swapped      -> 0.54 .. 0.67   REJECTED
- *   clearly different concepts           -> 0.09 .. 0.52   ACCEPTED
- *
- * 0.65 sits inside the "same concept" band, which is exactly why the
- * categorical archetype rule (sameArchetype) and the shared-family rule
- * exist alongside the numeric score: the score alone cannot separate
- * "same formula" from "same formula minus one slot", and a look whose only
- * change is the shoes can score BELOW the threshold. The archetype rule
- * rejects it categorically.
- *
- * This test asserts the DECISION (would the gate accept the pair?), not
- * just the raw numbers.
+ *   identical formula, different SKUs   -> high band
+ *   same formula, only the shoes differ -> threshold band
+ *   clearly different concepts           -> low band
  */
 import {
+    assembleDiverseDeck,
     buildOutfitFingerprint,
-    FAMILY_ESCAPE_SIMILARITY,
     MAX_VISUAL_SIMILARITY,
+    productIdentityKeys,
     sharedVisualFamilies,
     sameArchetype,
     visualSimilarity,
@@ -48,28 +39,14 @@ const fingerprints = Object.fromEntries(
     Object.entries(looks).map(([key, items]) => [key, buildOutfitFingerprint(items)]),
 );
 
-/** The strict rule of the deck gate, mirrored here as the contract. */
-const gateAccepts = (a: string, b: string): boolean => {
-    const left = fingerprints[a];
-    const right = fingerprints[b];
-    const similarity = visualSimilarity(left, right);
-    if (similarity >= MAX_VISUAL_SIMILARITY) return false;
-    if (sameArchetype(left, right)) return false;
-    if (sharedVisualFamilies(left, right) > 1 && similarity >= FAMILY_ESCAPE_SIMILARITY) return false;
-    return true;
-};
-
 describe('visual similarity distribution', () => {
-    it('identical formulas score far above the threshold', () => {
+    it('identical formulas score above the strict reference threshold', () => {
         for (const [a, b] of [['A', 'B'], ['A', 'C'], ['B', 'C']]) {
             expect(visualSimilarity(fingerprints[a], fingerprints[b])).toBeGreaterThan(MAX_VISUAL_SIMILARITY);
         }
     });
 
-    it('the categorical rule catches identical formulas even in the low band', () => {
-        // A/B/C: one formula, three colourways. A/F, B/F, C/F: same garment
-        // roles with different shoes — still one formula. Footwear is a
-        // finishing detail, not a styling direction.
+    it('sameArchetype describes the formula, including when only the shoes differ', () => {
         for (const [a, b] of [
             ['A', 'B'], ['A', 'C'], ['B', 'C'],
             ['A', 'F'], ['B', 'F'], ['C', 'F'],
@@ -78,55 +55,27 @@ describe('visual similarity distribution', () => {
         }
     });
 
-    it('the gate rejects every "same formula" and "same concept" pair', () => {
-        const sameConceptPairs: Array<[string, string]> = [
-            ['A', 'B'], ['A', 'C'], ['B', 'C'],   // identical formula
-            ['A', 'F'], ['B', 'F'], ['C', 'F'],   // one slot swapped
-            ['G', 'H'],                          // same concept, different coat
-        ];
-        for (const [a, b] of sameConceptPairs) {
-            expect(gateAccepts(a, b)).toBe(false);
+    it('clearly different concepts score lower and share fewer families', () => {
+        for (const [a, b] of [['A', 'D'], ['A', 'E'], ['D', 'E'], ['D', 'G'], ['E', 'H']]) {
+            expect(visualSimilarity(fingerprints[a], fingerprints[b]))
+                .toBeLessThan(visualSimilarity(fingerprints.A, fingerprints.B));
+            expect(sharedVisualFamilies(fingerprints[a], fingerprints[b]))
+                .toBeLessThan(sharedVisualFamilies(fingerprints.A, fingerprints.B));
         }
     });
 
-    it('the gate accepts every clearly different concept pair', () => {
-        const differentConceptPairs: Array<[string, string]> = [
-            ['A', 'D'], ['A', 'E'], ['A', 'G'], ['A', 'H'],
-            ['B', 'D'], ['B', 'E'], ['C', 'D'], ['C', 'E'],
-            ['D', 'E'], ['D', 'G'], ['D', 'H'], ['F', 'G'], ['F', 'H'],
-        ];
-        for (const [a, b] of differentConceptPairs) {
-            expect(gateAccepts(a, b)).toBe(true);
-        }
-    });
-
-    it('the whole matrix separates the regimes', () => {
-        const keys = Object.keys(looks);
-        const sameFormula: number[] = [];
-        const accepted: number[] = [];
-        for (let i = 0; i < keys.length; i++) {
-            for (let j = i + 1; j < keys.length; j++) {
-                const a = keys[i];
-                const b = keys[j];
-                const value = visualSimilarity(fingerprints[a], fingerprints[b]);
-                if (sameArchetype(fingerprints[a], fingerprints[b])) sameFormula.push(value);
-                if (gateAccepts(a, b)) accepted.push(value);
-            }
-        }
-        // Every accepted pair is strictly below the threshold …
-        expect(accepted.length).toBeGreaterThan(0);
-        expect(Math.max(...accepted)).toBeLessThan(MAX_VISUAL_SIMILARITY);
-        // … and every same-formula pair is rejected by the gate, even the
-        // ones that score below the threshold (only the shoes changed). The
-        // numeric rule alone does NOT separate them; the categorical rule
-        // does, which is why both exist.
-        expect(Math.min(...sameFormula)).toBeLessThan(MAX_VISUAL_SIMILARITY);
-        for (const [a, b] of [
-            ['A', 'B'], ['A', 'C'], ['B', 'C'],
-            ['A', 'F'], ['B', 'F'], ['C', 'F'],
-        ]) {
-            expect(sameArchetype(fingerprints[a], fingerprints[b])).toBe(true);
-            expect(gateAccepts(a, b)).toBe(false);
-        }
+    it('does not reject same-formula looks when their products are unique', () => {
+        const candidates = ['A', 'B', 'C'].map((key) => ({ id: key, items: looks[key] }));
+        const result = assembleDiverseDeck<{ id: string; items: any[] }>({
+            candidates,
+            itemsOf: (look) => look.items,
+            keysOf: productIdentityKeys,
+            usedKeys: new Set<string>(),
+            poolItems: Object.values(looks).flat(),
+        });
+        expect(result.deck).toHaveLength(3);
+        expect(result.relaxed).toBe(false);
+        expect(new Set(result.archetypes).size).toBe(1);
+        expect(result.productDiversity.nonAnchorProductReuseCount).toBe(0);
     });
 });

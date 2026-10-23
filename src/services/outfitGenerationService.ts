@@ -26,7 +26,7 @@ import { mapDbCategory as canonicalMapDbCategory, getMacroCategory as canonicalG
 import { rankItemsForStyle, scoreItemForStyle, normalizeStyleId, type StyleId } from '../../features/outfit-generator/utils/styleInference';
 import { AI_STYLES } from '../../features/outfit-generator/types';
 import { buildCatalogSimilarityKey, spreadSimilarCatalogItems } from '../utils/shopCatalogOrder';
-import { assembleDiverseDeck } from '../../features/outfit-generator/utils/outfitDiversity';
+import { assembleDiverseDeck, productIdentityKeys } from '../../features/outfit-generator/utils/outfitDiversity';
 import { parseBudgetFromText, budgetCandidatesFromText, budgetInCurrency, outfitShopSpend, itemShopPrice, isShopPricedItem, type ParsedBudget } from '../utils/outfitBudget';
 import { getRecentShownIds, recordShownOutfits } from './recentOutfitIds';
 import useWardrobeStore from '../../store/wardrobeStore';
@@ -1277,7 +1277,7 @@ export function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOu
             candidates: collectedCandidates,
             itemsOf: (items) => items,
             qualityOf: () => 0.9,
-            keysOf: (item: any) => [String(item?.id ?? '')],
+            keysOf: (item: any) => productIdentityKeys(item),
             usedKeys: new Set<string>(),
             target: limit,
             poolItems: effectiveItems as any[],

@@ -1,36 +1,32 @@
 /**
- * outfitVisualDiversity — the VISUAL / STYLISTIC diversity layer.
+ * Product-level deck diversity — the invariant the Personal Stylist needs.
  *
- * Product dedupe guarantees that two looks never repeat the same SKU. That
- * is not enough: a user seeing
+ * The bug was never "three looks share an archetype". Same archetype is a
+ * valid styling choice. The bug is showing the same actual PRODUCT twice
+ * when the catalog has valid alternatives.
  *
- *   navy blazer  + white oxford  + grey tailored trousers + brown loafers
- *   charcoal     + blue poplin   + black trousers       + penny loafers
- *   beige        + striped shirt + navy trousers       + tassel loafers
- *
- * has seen ONE outfit three times. These tests pin the invariant that the
- * three cards must be three DIFFERENT STYLING DIRECTIONS whenever the
- * inventory allows it.
- *
- * Covered: A (same formula, different ids) · B (same family, different ids)
- * · C (truly diverse) · D (same style, different concepts) · E (black tie)
- * · F (anchor) · G (thin inventory) · H (large inventory never relaxes)
- * · I (full-look archetype regression) · J (pairwise similarity ceiling).
+ * Covered (A–J):
+ *   A. exact product reuse is rejected
+ *   B. same archetype + unique products is accepted
+ *   C. different products of the same family are allowed
+ *   D. duplicate catalog rows (same normalized name) count as one product
+ *   E. duplicate images (thumbnail query variants) count as one product
+ *   F. the locked anchor may repeat; every other product must be unique
+ *   G. genuinely thin inventory relaxes with `insufficient_unique_products`
+ *   H. enough products means zero non-anchor reuse
+ *   I. archetype variety is never forced
+ *   J. product uniqueness outranks a small quality difference
  */
 import {
+    analyzeDeckProductDiversity,
     assembleDiverseDeck,
     assessInventoryDiversity,
     buildOutfitFingerprint,
-    describeFingerprint,
     garmentVisualFamily,
-    MAX_VISUAL_SIMILARITY,
-    sameArchetype,
-    sharedVisualFamilies,
-    visualSimilarity,
+    productIdentityKeys,
+    productIdentityOf,
     type DiversitySlot,
 } from '../../features/outfit-generator/utils/outfitDiversity';
-
-// ── Fixtures ──────────────────────────────────────────────────────────────
 
 type Product = {
     id: string;
@@ -39,7 +35,6 @@ type Product = {
     image?: string;
     color?: string;
     material?: string;
-    description?: string;
 };
 
 const product = (
@@ -56,668 +51,382 @@ const product = (
 });
 
 type Look = { id: string; items: Product[]; score?: number };
-
 const look = (id: string, items: Product[], score = 0.9): Look => ({ id, items, score });
+const itemsOf = (value: Look) => value.items;
 
-const itemsOf = (l: Look) => l.items;
-const keysOf = (item: Product) => [String(item.id)];
+const formula = (prefix: string, label = 'look'): Look =>
+    look(prefix, [
+        product(`${prefix}_o`, 'outerwear', `${label} navy wool blazer`),
+        product(`${prefix}_t`, 'top', `${label} white oxford shirt`),
+        product(`${prefix}_b`, 'bottom', `${label} grey tailored trousers`),
+        product(`${prefix}_s`, 'shoes', `${label} brown penny loafers`),
+    ]);
 
-/**
- * Fill builder mirroring the production slot picker: prefer a garment whose
- * VISUAL FAMILY is not used yet (a different garment TYPE, not another SKU
- * of the same one), then fall back to any unused product.
- */
+const richPool = (): Product[] => {
+    const pool: Product[] = [];
+    const push = (prefix: string, slot: DiversitySlot, names: string[]) => {
+        names.forEach((name, index) => pool.push(product(`${prefix}_${index}`, slot, name)));
+    };
+    push('blz', 'outerwear', [
+        'Navy wool blazer', 'Charcoal wool blazer', 'Beige linen blazer',
+        'Olive tweed blazer', 'Brown houndstooth blazer', 'Black dinner jacket',
+    ]);
+    push('top', 'top', [
+        'White oxford shirt', 'Blue poplin shirt', 'Striped cotton shirt',
+        'Navy knit polo', 'Grey merino sweater', 'Cream cashmere knit',
+    ]);
+    push('bot', 'bottom', [
+        'Grey tailored trousers', 'Navy pleated trousers', 'Beige chinos',
+        'Dark rinse jeans', 'Olive chinos', 'Black suit trousers',
+    ]);
+    push('sho', 'shoes', [
+        'Brown penny loafers', 'Black penny loafers', 'Tan tassel loafers',
+        'Brown derby shoes', 'Minimal white sneakers', 'Chelsea boots',
+    ]);
+    return pool;
+};
+
+const thinPool = (): Product[] => [
+    product('thin_o', 'outerwear', 'Navy wool blazer'),
+    product('thin_t', 'top', 'White oxford shirt'),
+    product('thin_b', 'bottom', 'Grey tailored trousers'),
+    product('thin_s', 'shoes', 'Brown penny loafers'),
+];
+
+/** Mirrors the production picker: product-fresh first, family only a soft preference. */
 const fillBuilder = (pool: Product[]) => {
     const slots: DiversitySlot[] = ['outerwear', 'top', 'bottom', 'shoes'];
     return (usedKeys: Set<string>, attempt = 0): Look | null => {
         const items: Product[] = [];
         for (const [slotIndex, slot] of slots.entries()) {
-            const inSlot = pool.filter((p) => p.macroCategory === slot);
+            const inSlot = pool.filter((item) => item.macroCategory === slot);
             if (!inSlot.length) return null;
-            const fresh = inSlot.filter((p) => !usedKeys.has(String(p.id)));
-            const unusedFamily = fresh.filter((p) => !usedKeys.has(`__vf:${garmentVisualFamily(p)}`));
-            const choices = unusedFamily.length ? unusedFamily : fresh.length ? fresh : inSlot;
-            const rotation = attempt + slotIndex * 2;
-            const pick = choices[rotation % choices.length];
+            const fresh = inSlot.filter((item) =>
+                !productIdentityKeys(item).some((key) => usedKeys.has(key)),
+            );
+            const choices = fresh.length ? fresh : inSlot;
+            const familyFresh = choices.filter((item) => {
+                const family = garmentVisualFamily(item);
+                return !family || !usedKeys.has(`__vf:${family}`);
+            });
+            const ordered = [...familyFresh, ...choices.filter((item) => !familyFresh.includes(item))];
+            const pick = ordered[(attempt + slotIndex) % ordered.length];
             items.push(pick);
-            usedKeys.add(String(pick.id));
-            usedKeys.add(`__vf:${garmentVisualFamily(pick)}`);
+            productIdentityKeys(pick).forEach((key) => usedKeys.add(key));
+            const family = garmentVisualFamily(pick);
+            if (family) usedKeys.add(`__vf:${family}`);
         }
         return look(`fill_${attempt}`, items, 0.85);
     };
 };
 
-/** The §10 catalogue: rich enough for three genuinely different directions. */
-const richPool = (): Product[] => {
-    const pool: Product[] = [];
-    const push = (
-        prefix: string,
-        slot: DiversitySlot,
-        names: string[],
-        extra: Partial<Product> = {},
-    ) => {
-        names.forEach((name, index) => {
-            pool.push(product(`${prefix}_${index}`, slot, name, extra));
-        });
-    };
-    push('blz', 'outerwear', [
-        'Navy wool blazer', 'Charcoal wool blazer', 'Beige linen blazer',
-        'Navy double breasted blazer', 'Grey unstructured blazer',
-        'Black structured blazer', 'Olive wool blazer', 'Brown tweed blazer',
-    ]);
-    push('coat', 'outerwear', ['Camel wool topcoat', 'Navy peacoat']);
-    push('ovr', 'outerwear', ['Chambray overshirt', 'Waxed cotton overshirt', 'Suede jacket']);
-    push('shrt', 'top', [
-        'White oxford shirt', 'Blue poplin shirt', 'Striped shirt', 'Linen shirt', 'Flannel shirt',
-    ]);
-    push('polo', 'top', ['Navy knit polo', 'White piqué polo', 'Green polo', 'Grey polo']);
-    push('knit', 'top', [
-        'Grey merino sweater', 'Navy fine gauge knit', 'Cream cashmere knit',
-        'Charcoal roll neck', 'Brown crewneck sweater',
-    ]);
-    push('trsr', 'bottom', [
-        'Grey tailored trousers', 'Black suit trousers', 'Navy pleated trousers',
-        'Charcoal wool trousers', 'Stone tailored trousers', 'Dark tailored trousers',
-    ]);
-    push('chno', 'bottom', ['Beige chinos', 'Navy chinos', 'Olive chinos', 'Stone chinos']);
-    push('jean', 'bottom', ['Dark rinse jeans', 'Indigo jeans', 'Black jeans']);
-    push('loaf', 'shoes', [
-        'Brown penny loafers', 'Black penny loafers', 'Tan tassel loafers',
-        'Suede loafers', 'Dark brown loafers',
-    ]);
-    push('drby', 'shoes', ['Brown derby shoes', 'Black derby shoes', 'Tan derby shoes']);
-    push('snkr', 'shoes', [
-        'White leather sneakers', 'Minimal white sneakers', 'Grey suede sneakers', 'Black sneakers',
-    ]);
-    return pool;
-};
+const deckProducts = (deck: Look[]) =>
+    analyzeDeckProductDiversity(deck.map((entry) => entry.items));
 
-/** The §10 thin catalogue: one blazer, one shirt, one trouser, one shoe. */
-const thinPool = (): Product[] => [
-    product('thin_blazer', 'outerwear', 'Navy wool blazer'),
-    product('thin_shirt', 'top', 'White oxford shirt'),
-    product('thin_trousers', 'bottom', 'Grey tailored trousers'),
-    product('thin_loafers', 'shoes', 'Brown penny loafers'),
-];
-
-const archetypesOf = (deck: Look[]) =>
-    deck.map((l) => buildOutfitFingerprint(l.items).archetype);
-
-const pairwise = (deck: Look[]) => {
-    const fps = deck.map((l) => buildOutfitFingerprint(l.items));
-    const out: number[] = [];
-    for (let i = 0; i < fps.length; i++) {
-        for (let j = i + 1; j < fps.length; j++) out.push(visualSimilarity(fps[i], fps[j]));
-    }
-    return out;
-};
-
-// ── Tests ────────────────────────────────────────────────────────────────
-
-describe('outfit visual diversity — fingerprints', () => {
-    it('describes a complete look as an outfit formula, not a product list', () => {
-        const fingerprint = buildOutfitFingerprint([
-            product('a1', 'outerwear', 'Navy wool blazer'),
-            product('a2', 'top', 'White oxford shirt'),
-            product('a3', 'bottom', 'Grey tailored trousers'),
-            product('a4', 'shoes', 'Brown penny loafers'),
-        ]);
-        // The archetype token is the coarse ROLE in the formula, so an oxford
-        // and a poplin shirt are the same role.
-        expect(fingerprint.archetype).toBe('blazer-shirt-tailored-loafer');
-        expect(fingerprint.silhouette).toBe('tailored');
-        expect(fingerprint.footwearFamily).toBe('shoe:loafer');
-        expect(fingerprint.families).toEqual([
-            'outer:blazer', 'top:dress-shirt', 'bottom:tailored', 'shoe:loafer',
-        ]);
-        expect(describeFingerprint(fingerprint)).toContain('blazer-shirt-tailored-loafer');
-    });
-
-    it('keeps colour the weakest signal: same formula, different palette, still similar', () => {
-        const navy = buildOutfitFingerprint([
-            product('a1', 'outerwear', 'Navy wool blazer'),
-            product('a2', 'top', 'White oxford shirt'),
-            product('a3', 'bottom', 'Grey tailored trousers'),
-            product('a4', 'shoes', 'Brown penny loafers'),
-        ]);
-        const beige = buildOutfitFingerprint([
-            product('b1', 'outerwear', 'Beige linen blazer'),
-            product('b2', 'top', 'Striped shirt'),
-            product('b3', 'bottom', 'Navy trousers'),
-            product('b4', 'shoes', 'Tassel loafer'),
-        ]);
-        expect(visualSimilarity(navy, beige)).toBeGreaterThan(MAX_VISUAL_SIMILARITY);
-    });
-});
-
-describe('A. different product ids, identical outfit formula', () => {
-    const candidates: Look[] = [
-        look('A', [
-            product('a1', 'outerwear', 'Navy wool blazer'),
-            product('a2', 'top', 'White oxford shirt'),
-            product('a3', 'bottom', 'Grey tailored trousers'),
-            product('a4', 'shoes', 'Brown penny loafers'),
-        ]),
-        look('B', [
-            product('b1', 'outerwear', 'Charcoal blazer'),
-            product('b2', 'top', 'Blue poplin shirt'),
-            product('b3', 'bottom', 'Black trousers'),
-            product('b4', 'shoes', 'Penny loafer'),
-        ]),
-        look('C', [
-            product('c1', 'outerwear', 'Beige blazer'),
-            product('c2', 'top', 'Striped shirt'),
-            product('c3', 'bottom', 'Navy trousers'),
-            product('c4', 'shoes', 'Tassel loafer'),
-        ]),
-    ];
-
-    it('must not accept all three as strictly diverse', () => {
+describe('A. exact product reuse fails', () => {
+    it('replaces a duplicated look with a unique one', () => {
+        const base = formula('a', 'soft');
+        const clone = look('clone', base.items.map((item) => ({ ...item })), 0.98);
+        const third = formula('c', 'minimal');
+        const fourth = formula('d', 'weekend');
         const result = assembleDiverseDeck<Look>({
-            candidates,
+            candidates: [look('base', base.items, 0.99), clone, third, fourth],
             itemsOf,
-            keysOf,
-            usedKeys: new Set<string>(),
-            poolItems: richPool(),
-        });
-        // The pool is rich, so the deck must NOT be presented as STRICT — the
-        // honest reason has to be reported instead of silently shipping three
-        // colourways of one formula as "diverse".
-        expect(result.relaxed).toBe(true);
-        expect(result.relaxReason).toBe('diversity_unavailable_despite_varied_inventory');
-    });
-
-    it('the three cards share the same archetype token tuple', () => {
-        const fingerprints = candidates.map((c) => buildOutfitFingerprint(c.items));
-        expect(sameArchetype(fingerprints[0], fingerprints[1])).toBe(true);
-        expect(sameArchetype(fingerprints[0], fingerprints[2])).toBe(true);
-        expect(sameArchetype(fingerprints[1], fingerprints[2])).toBe(true);
-        expect(new Set(fingerprints.map((f) => f.archetype)).size).toBe(1);
-    });
-
-    it('rejects the pair outright on the archetype rule', () => {
-        const result = assembleDiverseDeck<Look>({
-            candidates,
-            itemsOf,
-            keysOf,
+            keysOf: productIdentityKeys,
             usedKeys: new Set<string>(),
             poolItems: richPool(),
             buildFill: fillBuilder(richPool()),
         });
-        expect(result.relaxed).toBe(false);
         expect(result.deck).toHaveLength(3);
-        // Three DIFFERENT formulas — the reported bug produced one.
-        expect(new Set(result.archetypes).size).toBe(3);
+        expect(result.deck.map((entry) => entry.id)).not.toContain('clone');
+        expect(deckProducts(result.deck).nonAnchorProductReuseCount).toBe(0);
+        expect(result.relaxed).toBe(false);
+    });
+
+    it('counts different rows of the same product as one product', () => {
+        const a = product('sku-a', 'top', 'White oxford shirt', { image: 'https://cdn.test/a.jpg' });
+        const b = product('sku-b', 'top', 'White Oxford Shirt', { image: 'https://cdn.test/b.jpg' });
+        const diversity = analyzeDeckProductDiversity([[a], [b]]);
+        expect(diversity.nonAnchorProductReuseCount).toBe(1);
+        expect(diversity.repeatedProductKeys).toContain(productIdentityOf(a).canonicalKey);
     });
 });
 
-describe('B. similar products with different ids', () => {
-    it('shares the garment family and counts towards visual similarity', () => {
-        const left = buildOutfitFingerprint([
-            product('x1', 'outerwear', 'Navy wool blazer'),
-            product('x2', 'top', 'White oxford shirt'),
-            product('x3', 'bottom', 'Grey tailored trousers'),
-            product('x4', 'shoes', 'Brown penny loafers'),
-        ]);
-        const right = buildOutfitFingerprint([
-            product('y1', 'outerwear', 'Charcoal wool blazer'),
-            product('y2', 'top', 'Blue oxford shirt'),
-            product('y3', 'bottom', 'Black tailored trousers'),
-            product('y4', 'shoes', 'Dark brown loafers'),
-        ]);
-        // Same family per slot, different ids / names / photos.
-        expect(sharedVisualFamilies(left, right)).toBe(4);
-        expect(visualSimilarity(left, right)).toBeGreaterThan(MAX_VISUAL_SIMILARITY);
-    });
-
-    it('does not punish two items of the same family that look clearly different', () => {
-        const plain = buildOutfitFingerprint([
-            product('p1', 'outerwear', 'Navy wool blazer'),
-            product('p2', 'top', 'White oxford shirt'),
-            product('p3', 'bottom', 'Grey tailored trousers'),
-            product('p4', 'shoes', 'Brown penny loafers'),
-        ]);
-        const plainCopy = buildOutfitFingerprint([
-            product('q1', 'outerwear', 'Navy wool blazer'),
-            product('q2', 'top', 'White oxford shirt'),
-            product('q3', 'bottom', 'Grey tailored trousers'),
-            product('q4', 'shoes', 'Brown penny loafers'),
-        ]);
-        const distinct = buildOutfitFingerprint([
-            product('t1', 'outerwear', 'Beige linen blazer'),
-            product('t2', 'top', 'White oxford shirt'),
-            product('t3', 'bottom', 'Grey tailored trousers'),
-            product('t4', 'shoes', 'Brown penny loafers'),
-        ]);
-        // The outerwear is a different VARIANT (colour + material), so it does
-        // not count as a repeated garment family …
-        expect(sharedVisualFamilies(plain, distinct)).toBe(3);
-        expect(sharedVisualFamilies(plain, plainCopy)).toBe(4);
-        // … and the variant is recognised as a real difference: a beige linen
-        // blazer is measurably further from a navy wool blazer than another
-        // navy wool blazer is.
-        expect(visualSimilarity(plain, distinct))
-            .toBeLessThan(visualSimilarity(plain, plainCopy));
-    });
-
-    it('decides at outfit level: a same-family blazer does not buy a pass', () => {
-        const left = look('L', [
-            product('l1', 'outerwear', 'Structured navy double breasted wool blazer'),
-            product('l2', 'top', 'White oxford shirt'),
-            product('l3', 'bottom', 'Grey tailored trousers'),
-            product('l4', 'shoes', 'Brown penny loafers'),
-        ]);
-        const right = look('R', [
-            product('r1', 'outerwear', 'Soft beige unstructured linen blazer'),
-            product('r2', 'top', 'Blue poplin shirt'),
-            product('r3', 'bottom', 'Navy tailored trousers'),
-            product('r4', 'shoes', 'Black derby shoes'),
-        ]);
-        // Both looks are still "blazer + shirt + tailored trousers + formal
-        // shoes": the family rule no longer counts the blazer, but the
-        // outfit-level comparison still refuses the pair.
-        expect(sharedVisualFamilies(
-            buildOutfitFingerprint(left.items),
-            buildOutfitFingerprint(right.items),
-        )).toBe(2);
+describe('B. same archetype + unique products is accepted', () => {
+    it('keeps three blazer + shirt + trousers + loafer looks when the products differ', () => {
+        const candidates = [formula('b1', 'navy'), formula('b2', 'charcoal'), formula('b3', 'beige')];
         const result = assembleDiverseDeck<Look>({
-            candidates: [left, right],
+            candidates,
             itemsOf,
-            keysOf,
+            keysOf: productIdentityKeys,
             usedKeys: new Set<string>(),
             poolItems: richPool(),
         });
-        expect(result.relaxed).toBe(true);
-    });
-
-    it('does not let different shoes — or a different colourway — create a new formula', () => {
-        // The hole the simulator found: blazer + shirt + trousers twice with
-        // only the shoes (and the blazer's colour) changed scored 0.55 and
-        // slipped under the numeric threshold. Footwear is a finishing
-        // detail, not a styling direction.
-        const derby = buildOutfitFingerprint([
-            product('s1', 'outerwear', 'Beige unstructured linen blazer'),
-            product('s2', 'top', 'Chambray button down shirt'),
-            product('s3', 'bottom', 'Charcoal wool trousers'),
-            product('s4', 'shoes', 'Black derby shoes'),
-        ]);
-        const boot = buildOutfitFingerprint([
-            product('t1', 'outerwear', 'Navy wool tailored blazer'),
-            product('t2', 'top', 'Blue poplin shirt'),
-            product('t3', 'bottom', 'Grey tailored trousers'),
-            product('t4', 'shoes', 'Chelsea boots'),
-        ]);
-        expect(visualSimilarity(derby, boot)).toBeLessThan(MAX_VISUAL_SIMILARITY);
-        expect(sameArchetype(derby, boot)).toBe(true);
+        expect(result.deck).toHaveLength(3);
+        expect(result.relaxed).toBe(false);
+        expect(new Set(result.archetypes).size).toBe(1);
+        expect(deckProducts(result.deck).nonAnchorProductReuseCount).toBe(0);
     });
 });
 
-describe('C. a genuinely diverse deck is accepted', () => {
-    it('keeps three different styling directions', () => {
-        const candidates: Look[] = [
-            look('A', [
-                product('a1', 'outerwear', 'Navy wool blazer'),
-                product('a2', 'top', 'White oxford shirt'),
-                product('a3', 'bottom', 'Grey tailored trousers'),
-                product('a4', 'shoes', 'Brown penny loafers'),
+describe('C. different products of the same family are allowed', () => {
+    it('does not treat two loafers as the same product', () => {
+        const candidates = [
+            look('c1', [
+                product('c1_o', 'outerwear', 'Navy wool blazer'),
+                product('c1_t', 'top', 'White oxford shirt'),
+                product('c1_b', 'bottom', 'Grey tailored trousers'),
+                product('c1_s', 'shoes', 'Brown penny loafers'),
             ]),
-            look('B', [
-                product('b1', 'outerwear', 'Suede jacket'),
-                product('b2', 'top', 'Knitted polo'),
-                product('b3', 'bottom', 'Beige chinos'),
-                product('b4', 'shoes', 'Minimal leather sneakers'),
+            look('c2', [
+                product('c2_o', 'outerwear', 'Charcoal wool blazer'),
+                product('c2_t', 'top', 'Blue poplin shirt'),
+                product('c2_b', 'bottom', 'Navy pleated trousers'),
+                product('c2_s', 'shoes', 'Black penny loafers'),
             ]),
-            look('C', [
-                product('c1', 'outerwear', 'Cardigan'),
-                product('c2', 'top', 'Fine gauge knit'),
-                product('c3', 'bottom', 'Dark denim jeans'),
-                product('c4', 'shoes', 'Derby shoes'),
+            look('c3', [
+                product('c3_o', 'outerwear', 'Beige linen blazer'),
+                product('c3_t', 'top', 'Striped cotton shirt'),
+                product('c3_b', 'bottom', 'Beige chinos'),
+                product('c3_s', 'shoes', 'Tan tassel loafers'),
             ]),
         ];
+        const families = candidates.map((entry) =>
+            garmentVisualFamily(entry.items.find((item) => item.macroCategory === 'shoes')!),
+        );
+        expect(new Set(families)).toEqual(new Set(['shoe:loafer']));
         const result = assembleDiverseDeck<Look>({
             candidates,
             itemsOf,
-            keysOf,
+            keysOf: productIdentityKeys,
             usedKeys: new Set<string>(),
             poolItems: richPool(),
         });
-        expect(result.relaxed).toBe(false);
         expect(result.deck).toHaveLength(3);
-        expect(new Set(result.archetypes).size).toBe(3);
-        for (const score of pairwise(result.deck)) {
-            expect(score).toBeLessThan(MAX_VISUAL_SIMILARITY);
-        }
+        expect(result.relaxed).toBe(false);
+        expect(deckProducts(result.deck).nonAnchorProductReuseCount).toBe(0);
     });
 });
 
-describe('D. same style, different concepts', () => {
-    it('three old-money looks still have to be three directions', () => {
-        const oldMoney = (id: string, names: [string, string, string, string]): Look =>
-            look(id, [
-                product(`${id}_o`, 'outerwear', names[0]),
-                product(`${id}_t`, 'top', names[1]),
-                product(`${id}_b`, 'bottom', names[2]),
-                product(`${id}_s`, 'shoes', names[3]),
-            ]);
-        const candidates: Look[] = [
-            oldMoney('A', ['Navy wool blazer', 'White oxford shirt', 'Grey tailored trousers', 'Brown penny loafers']),
-            oldMoney('B', ['Suede jacket', 'Knitted polo', 'Beige chinos', 'Minimal leather sneakers']),
-            oldMoney('C', ['Cardigan', 'Fine gauge knit', 'Dark denim jeans', 'Derby shoes']),
+describe('D. duplicate catalog rows are blocked', () => {
+    it('normalizes the product name for identity', () => {
+        const first = product('dup-a', 'top', 'White oxford shirt');
+        const second = product('dup-b', 'top', '  WHITE   Oxford, Shirt! ');
+        expect(productIdentityOf(second).canonicalKey).toBe(productIdentityOf(first).canonicalKey);
+        expect(productIdentityKeys(second).some((key) => productIdentityKeys(first).includes(key))).toBe(true);
+    });
+
+    it('never puts both duplicate rows in the same deck', () => {
+        const first = product('dup-a', 'top', 'White oxford shirt');
+        const second = product('dup-b', 'top', 'White oxford shirt');
+        const candidates = [
+            look('d1', [
+                product('d1_o', 'outerwear', 'Navy wool blazer'),
+                first,
+                product('d1_b', 'bottom', 'Grey tailored trousers'),
+                product('d1_s', 'shoes', 'Brown penny loafers'),
+            ]),
+            look('d2', [
+                product('d2_o', 'outerwear', 'Charcoal wool blazer'),
+                second,
+                product('d2_b', 'bottom', 'Navy pleated trousers'),
+                product('d2_s', 'shoes', 'Black penny loafers'),
+            ]),
+            formula('d3', 'minimal'),
+            formula('d4', 'weekend'),
         ];
         const result = assembleDiverseDeck<Look>({
             candidates,
             itemsOf,
-            keysOf,
+            keysOf: productIdentityKeys,
             usedKeys: new Set<string>(),
             poolItems: richPool(),
         });
-        expect(result.relaxed).toBe(false);
-        expect(new Set(result.archetypes).size).toBe(3);
         expect(result.deck).toHaveLength(3);
+        expect(deckProducts(result.deck).nonAnchorProductReuseCount).toBe(0);
+        const names = result.deck.flatMap((entry) => entry.items.map((item) => item.id));
+        expect(names.filter((id) => id === 'dup-a').length + names.filter((id) => id === 'dup-b').length).toBeLessThan(2);
     });
 });
 
-describe('E. formal occasion — diversity never introduces casual clothing', () => {
-    it('three black-tie looks stay formal and still differ', () => {
-        const candidates: Look[] = [
-            look('A', [
-                product('a1', 'outerwear', 'Classic black tuxedo dinner jacket'),
-                product('a2', 'top', 'White tuxedo formal shirt'),
-                product('a3', 'bottom', 'Black tuxedo trousers'),
-                product('a4', 'shoes', 'Black patent Oxford shoes'),
+describe('E. duplicate images are blocked', () => {
+    it('strips thumbnail query params and protocol before comparing', () => {
+        const first = product('img-a', 'shoes', 'Brown penny loafers', {
+            image: 'https://cdn.test/product.jpg?width=300',
+        });
+        const second = product('img-b', 'shoes', 'Brown penny loafers large', {
+            image: 'http://cdn.test/product.jpg?width=1200#hero',
+        });
+        expect(productIdentityOf(first).imageKey).toBe('i:cdn.test/product.jpg');
+        expect(productIdentityOf(second).imageKey).toBe('i:cdn.test/product.jpg');
+        expect(productIdentityKeys(first).some((key) => productIdentityKeys(second).includes(key))).toBe(true);
+        expect(analyzeDeckProductDiversity([[first], [second]]).nonAnchorProductReuseCount).toBe(1);
+    });
+
+    it('rejects a pair whose only overlap is the product photo', () => {
+        const first = product('photo-a', 'top', 'White oxford shirt', {
+            image: 'https://cdn.test/shared.jpg?width=300',
+        });
+        const second = product('photo-b', 'top', 'White shirt regular fit', {
+            image: 'https://cdn.test/shared.jpg?width=900',
+        });
+        const candidates = [
+            look('e1', [
+                product('e1_o', 'outerwear', 'Navy wool blazer'),
+                first,
+                product('e1_b', 'bottom', 'Grey tailored trousers'),
+                product('e1_s', 'shoes', 'Brown penny loafers'),
             ]),
-            look('B', [
-                product('b1', 'outerwear', 'Midnight navy dinner jacket'),
-                product('b2', 'top', 'White formal dress shirt'),
-                product('b3', 'bottom', 'Midnight tuxedo trousers'),
-                product('b4', 'shoes', 'Black velvet loafers'),
+            look('e2', [
+                product('e2_o', 'outerwear', 'Charcoal wool blazer'),
+                second,
+                product('e2_b', 'bottom', 'Navy pleated trousers'),
+                product('e2_s', 'shoes', 'Black penny loafers'),
             ]),
-            look('C', [
-                product('c1', 'outerwear', 'Shawl collar dinner jacket'),
-                product('c2', 'top', 'White pleated formal shirt'),
-                product('c3', 'bottom', 'Black tuxedo trousers'),
-                product('c4', 'shoes', 'Polished black formal shoes'),
-            ]),
+            formula('e3', 'minimal'),
+            formula('e4', 'weekend'),
         ];
         const result = assembleDiverseDeck<Look>({
             candidates,
             itemsOf,
-            keysOf,
+            keysOf: productIdentityKeys,
             usedKeys: new Set<string>(),
-            poolItems: candidates.flatMap((c) => c.items),
+            poolItems: richPool(),
         });
         expect(result.deck).toHaveLength(3);
-        // Every garment is still evening/formal — no sneaker, denim or
-        // overshirt slipped in to buy diversity.
-        for (const item of result.deck.flatMap((l) => l.items)) {
-            expect(/sneaker|denim|jeans|overshirt|chinos|polo/i.test(item.name)).toBe(false);
-        }
-        for (const item of result.deck.flatMap((l) => l.items)) {
-            const family = garmentVisualFamily(item);
-            if (item.macroCategory === 'top') expect(family).toBe('top:dress-shirt');
-            if (item.macroCategory === 'shoes') expect(family).not.toBe('shoe:sneaker');
-        }
-    });
-
-    it('never relaxes the dress code to reach diversity', () => {
-        const tuxedo = (id: string, outer: string, shoe: string): Look =>
-            look(id, [
-                product(`${id}_o`, 'outerwear', outer),
-                product(`${id}_t`, 'top', 'White formal dress shirt'),
-                product(`${id}_b`, 'bottom', 'Black tuxedo trousers'),
-                product(`${id}_s`, 'shoes', shoe),
-            ]);
-        const candidates: Look[] = [
-            tuxedo('A', 'Black tuxedo dinner jacket', 'Black patent Oxford shoes'),
-            tuxedo('B', 'Midnight navy dinner jacket', 'Black velvet loafers'),
-            tuxedo('C', 'Shawl collar dinner jacket', 'Polished black formal shoes'),
-        ];
-        const result = assembleDiverseDeck<Look>({
-            candidates,
-            itemsOf,
-            keysOf,
-            usedKeys: new Set<string>(),
-            poolItems: candidates.flatMap((c) => c.items),
-        });
-        expect(result.deck).toHaveLength(3);
-        for (const item of result.deck.flatMap((l) => l.items)) {
-            expect(/sneaker|denim|overshirt/i.test(item.name)).toBe(false);
-        }
+        expect(deckProducts(result.deck).nonAnchorProductReuseCount).toBe(0);
     });
 });
 
-describe('F. an explicit anchor repeats — everything else must vary', () => {
-    it('keeps the anchor in all three looks while the structure changes', () => {
+describe('F. the anchor repeats by design', () => {
+    it('excludes the anchor from product reuse while every other product rotates', () => {
         const anchor = product('anchor_blazer', 'outerwear', 'Navy wool blazer');
-        const candidates: Look[] = [
-            look('A', [
-                anchor,
-                product('a2', 'top', 'White oxford shirt'),
-                product('a3', 'bottom', 'Grey tailored trousers'),
-                product('a4', 'shoes', 'Brown penny loafers'),
-            ]),
-            look('B', [
-                anchor,
-                product('b2', 'top', 'Knitted polo'),
-                product('b3', 'bottom', 'Beige chinos'),
-                product('b4', 'shoes', 'Minimal leather sneakers'),
-            ]),
-            look('C', [
-                anchor,
-                product('c2', 'top', 'Fine gauge knit'),
-                product('c3', 'bottom', 'Dark denim jeans'),
-                product('c4', 'shoes', 'Derby shoes'),
-            ]),
+        const candidates = [
+            look('f1', [anchor, product('f1_t', 'top', 'White oxford shirt'), product('f1_b', 'bottom', 'Grey tailored trousers'), product('f1_s', 'shoes', 'Brown penny loafers')]),
+            look('f2', [anchor, product('f2_t', 'top', 'Blue poplin shirt'), product('f2_b', 'bottom', 'Navy pleated trousers'), product('f2_s', 'shoes', 'Black penny loafers')]),
+            look('f3', [anchor, product('f3_t', 'top', 'Striped cotton shirt'), product('f3_b', 'bottom', 'Beige chinos'), product('f3_s', 'shoes', 'Tan tassel loafers')]),
         ];
+        const anchorKeys = new Set(productIdentityKeys(anchor));
         const result = assembleDiverseDeck<Look>({
             candidates,
             itemsOf,
-            keysOf,
-            anchorKeys: new Set([String(anchor.id)]),
+            keysOf: productIdentityKeys,
+            anchorKeys,
             anchorSlot: 'outerwear',
             usedKeys: new Set<string>(),
             poolItems: richPool(),
         });
         expect(result.deck).toHaveLength(3);
-        for (const l of result.deck) {
-            expect(l.items.some((i) => i.id === anchor.id)).toBe(true);
+        for (const entry of result.deck) {
+            expect(entry.items.some((item) => item.id === anchor.id)).toBe(true);
         }
-        // The anchor is excluded from the visual comparison, so the three
-        // looks still have to differ in the other three slots.
-        expect(new Set(result.archetypes).size).toBe(3);
-        for (const score of pairwise(result.deck)) {
-            expect(score).toBeLessThan(MAX_VISUAL_SIMILARITY);
-        }
+        const diversity = analyzeDeckProductDiversity(
+            result.deck.map((entry) => entry.items),
+            { anchorKeys },
+        );
+        expect(diversity.nonAnchorProductReuseCount).toBe(0);
+        expect(diversity.anchorLookCount).toBe(3);
+        expect(diversity.anchorRepetitionCount).toBe(2);
     });
 });
 
-describe('G. genuinely thin inventory allows controlled repetition', () => {
-    it('completes the deck instead of failing', () => {
-        const pool = thinPool();
-        const result = assembleDiverseDeck<Look>({
-            candidates: [],
-            itemsOf,
-            keysOf,
-            usedKeys: new Set<string>(),
-            poolItems: pool,
-            buildFill: fillBuilder(pool),
-        });
-        expect(result.deck.length).toBeGreaterThanOrEqual(1);
-        expect(result.relaxed).toBe(true);
-        expect(result.relaxReason).toBe('thin_inventory');
-    });
-
-    it('detects the thin inventory before relaxing', () => {
+describe('G. genuinely thin inventory relaxes honestly', () => {
+    it('reports insufficient_unique_products instead of pretending to be diverse', () => {
         const assessment = assessInventoryDiversity(thinPool(), { target: 3 });
-        expect(assessment.homogeneous).toBe(true);
-        expect(assessment.supportsTargetConcepts).toBe(false);
-        expect(assessment.conceptCapacity).toBe(1);
-    });
+        expect(assessment.supportsUniqueProducts).toBe(false);
+        expect(assessment.maxDistinctProducts).toBe(1);
+        expect(assessment.uniqueProductsPerSlot.top).toBe(1);
 
-    it('a rich inventory is never treated as thin', () => {
-        const assessment = assessInventoryDiversity(richPool(), { target: 3 });
-        expect(assessment.homogeneous).toBe(false);
-        expect(assessment.supportsTargetConcepts).toBe(true);
-        expect(assessment.conceptCapacity).toBeGreaterThanOrEqual(3);
-    });
-});
-
-describe('H. a large inventory must never relax', () => {
-    it('finds three different directions and stays STRICT', () => {
-        const pool = richPool();
         const result = assembleDiverseDeck<Look>({
             candidates: [],
             itemsOf,
-            keysOf,
+            keysOf: productIdentityKeys,
             usedKeys: new Set<string>(),
-            poolItems: pool,
-            buildFill: fillBuilder(pool),
+            poolItems: thinPool(),
+            buildFill: fillBuilder(thinPool()),
+        });
+        expect(result.deck.length).toBeGreaterThanOrEqual(2);
+        expect(result.relaxed).toBe(true);
+        expect(result.relaxReason).toBe('insufficient_unique_products');
+    });
+});
+
+describe('H. enough products means zero non-anchor reuse', () => {
+    it('fills a strict deck from a rich pool without repeating a product', () => {
+        const result = assembleDiverseDeck<Look>({
+            candidates: [],
+            itemsOf,
+            keysOf: productIdentityKeys,
+            usedKeys: new Set<string>(),
+            poolItems: richPool(),
+            buildFill: fillBuilder(richPool()),
         });
         expect(result.deck).toHaveLength(3);
         expect(result.relaxed).toBe(false);
         expect(result.relaxReason).toBeNull();
-        expect(new Set(result.archetypes).size).toBe(3);
-        for (const score of pairwise(result.deck)) {
-            expect(score).toBeLessThan(MAX_VISUAL_SIMILARITY);
-        }
-    });
-
-    it('refuses to relax even when every edge candidate is one formula', () => {
-        const pool = richPool();
-        const sameFormula = (id: string, outer: string, top: string, bottom: string, shoe: string): Look =>
-            look(id, [
-                product(`${id}_o`, 'outerwear', outer),
-                product(`${id}_t`, 'top', top),
-                product(`${id}_b`, 'bottom', bottom),
-                product(`${id}_s`, 'shoes', shoe),
-            ]);
-        const candidates: Look[] = [
-            sameFormula('A', 'Navy wool blazer', 'White oxford shirt', 'Grey tailored trousers', 'Brown penny loafers'),
-            sameFormula('B', 'Charcoal blazer', 'Blue poplin shirt', 'Black trousers', 'Penny loafer'),
-            sameFormula('C', 'Beige blazer', 'Striped shirt', 'Navy trousers', 'Tassel loafer'),
-        ];
-        const result = assembleDiverseDeck<Look>({
-            candidates,
-            itemsOf,
-            keysOf,
-            usedKeys: new Set<string>(),
-            poolItems: pool,
-            buildFill: fillBuilder(pool),
-        });
-        expect(result.relaxed).toBe(false);
-        expect(new Set(result.archetypes).size).toBe(3);
-    });
-
-    it('reports the honest reason when a varied inventory still cannot be diversified', () => {
-        const pool = richPool();
-        const sameFormula = (id: string, outer: string, top: string, bottom: string, shoe: string): Look =>
-            look(id, [
-                product(`${id}_o`, 'outerwear', outer),
-                product(`${id}_t`, 'top', top),
-                product(`${id}_b`, 'bottom', bottom),
-                product(`${id}_s`, 'shoes', shoe),
-            ]);
-        const candidates: Look[] = [
-            sameFormula('A', 'Navy wool blazer', 'White oxford shirt', 'Grey tailored trousers', 'Brown penny loafers'),
-            sameFormula('B', 'Charcoal blazer', 'Blue poplin shirt', 'Black trousers', 'Penny loafer'),
-            sameFormula('C', 'Beige blazer', 'Striped shirt', 'Navy trousers', 'Tassel loafer'),
-        ];
-        // No fill builder: the deck can only be built from these three.
-        const result = assembleDiverseDeck<Look>({
-            candidates,
-            itemsOf,
-            keysOf,
-            usedKeys: new Set<string>(),
-            poolItems: pool,
-        });
-        expect(result.relaxed).toBe(true);
-        expect(result.relaxReason).toBe('diversity_unavailable_despite_varied_inventory');
+        expect(result.inventory.supportsUniqueProducts).toBe(true);
+        expect(result.productDiversity.nonAnchorProductReuseCount).toBe(0);
+        expect(deckProducts(result.deck).nonAnchorProductReuseCount).toBe(0);
     });
 });
 
-describe('I. full-look archetype regression', () => {
-    it('never ships three looks with one composition', () => {
-        const pool = richPool();
-        const candidates: Look[] = [
-            look('A', [
-                product('a1', 'outerwear', 'Navy wool blazer'),
-                product('a2', 'top', 'White oxford shirt'),
-                product('a3', 'bottom', 'Grey tailored trousers'),
-                product('a4', 'shoes', 'Brown penny loafers'),
-            ]),
-            look('B', [
-                product('b1', 'outerwear', 'Charcoal wool blazer'),
-                product('b2', 'top', 'Blue poplin shirt'),
-                product('b3', 'bottom', 'Black tailored trousers'),
-                product('b4', 'shoes', 'Dark brown loafers'),
-            ]),
-            look('C', [
-                product('c1', 'outerwear', 'Beige linen blazer'),
-                product('c2', 'top', 'White striped shirt'),
-                product('c3', 'bottom', 'Navy tailored trousers'),
-                product('c4', 'shoes', 'Tassel loafer'),
-            ]),
-        ];
+describe('I. archetype variety is never forced', () => {
+    it('returns three same-formula looks when their products are unique', () => {
+        const candidates = [formula('i1', 'navy'), formula('i2', 'charcoal'), formula('i3', 'beige')];
         const result = assembleDiverseDeck<Look>({
             candidates,
             itemsOf,
-            keysOf,
+            keysOf: productIdentityKeys,
             usedKeys: new Set<string>(),
-            poolItems: pool,
-            buildFill: fillBuilder(pool),
+            poolItems: richPool(),
         });
         expect(result.deck).toHaveLength(3);
-        const archetypes = result.archetypes;
-        expect(new Set(archetypes).size).toBe(3);
-        expect(archetypes).not.toContain('blazer-dress-shirt-tailored-loafer|blazer-dress-shirt-tailored-loafer');
+        expect(new Set(result.archetypes).size).toBe(1);
+        expect(result.relaxReason).toBeNull();
+        expect(result.productDiversity.nonAnchorProductReuseCount).toBe(0);
+    });
+
+    it('still reports formula similarity as a soft signal', () => {
+        const fingerprints = [formula('j1', 'navy'), formula('j2', 'charcoal')].map((entry) =>
+            buildOutfitFingerprint(entry.items),
+        );
+        expect(fingerprints[0].archetype).toBe(fingerprints[1].archetype);
     });
 });
 
-describe('J. pairwise similarity ceiling of the final deck', () => {
-    it('every pair stays below the strict threshold', () => {
-        const pool = richPool();
+describe('J. uniqueness outranks a small quality difference', () => {
+    it('drops a slightly better look when it repeats a product', () => {
+        const shared = product('j_shared_o', 'outerwear', 'Navy wool blazer');
+        const best = look('best', [
+            shared,
+            product('j_best_t', 'top', 'White oxford shirt'),
+            product('j_best_b', 'bottom', 'Grey tailored trousers'),
+            product('j_best_s', 'shoes', 'Brown penny loafers'),
+        ], 0.99);
+        const nearBest = look('near', [
+            shared,
+            product('j_near_t', 'top', 'Blue poplin shirt'),
+            product('j_near_b', 'bottom', 'Navy pleated trousers'),
+            product('j_near_s', 'shoes', 'Black penny loafers'),
+        ], 0.98);
+        const unique = look('unique', [
+            product('j_unique_o', 'outerwear', 'Charcoal wool blazer'),
+            product('j_unique_t', 'top', 'Striped cotton shirt'),
+            product('j_unique_b', 'bottom', 'Beige chinos'),
+            product('j_unique_s', 'shoes', 'Tan tassel loafers'),
+        ], 0.70);
         const result = assembleDiverseDeck<Look>({
-            candidates: [],
+            candidates: [best, nearBest, unique],
             itemsOf,
-            keysOf,
+            keysOf: productIdentityKeys,
+            qualityOf: (entry) => entry.score ?? 0.9,
             usedKeys: new Set<string>(),
-            poolItems: pool,
-            buildFill: fillBuilder(pool),
+            poolItems: richPool(),
+            target: 2,
+            maxSharedProducts: 0,
         });
-        expect(result.similarities).toHaveLength(3);
-        for (const entry of result.similarities) {
-            expect(entry.score).toBeLessThan(MAX_VISUAL_SIMILARITY);
-        }
-    });
-
-    it('the deck is chosen as a COMBINATION, not by accepting looks one by one', () => {
-        const pool = richPool();
-        const lookWith = (id: string, outer: string, top: string, bottom: string, shoe: string, score: number): Look =>
-            look(id, [
-                product(`${id}_o`, 'outerwear', outer),
-                product(`${id}_t`, 'top', top),
-                product(`${id}_b`, 'bottom', bottom),
-                product(`${id}_s`, 'shoes', shoe),
-            ], score);
-        const candidates: Look[] = [
-            lookWith('A', 'Navy wool blazer', 'White oxford shirt', 'Grey tailored trousers', 'Brown penny loafers', 0.94),
-            lookWith('B', 'Charcoal blazer', 'Blue poplin shirt', 'Black trousers', 'Penny loafer', 0.93),
-            lookWith('C', 'Beige blazer', 'Striped shirt', 'Navy trousers', 'Tassel loafer', 0.92),
-        ];
-        const result = assembleDiverseDeck<Look>({
-            candidates,
-            itemsOf,
-            qualityOf: (l) => l.score ?? 0.9,
-            keysOf,
-            usedKeys: new Set<string>(),
-            poolItems: pool,
-            buildFill: fillBuilder(pool),
-        });
-        // The three 0.94/0.93/0.92 looks must NOT win every slot: the deck
-        // trades a little quality for three real directions.
-        expect(result.deck).toHaveLength(3);
-        expect(new Set(result.archetypes).size).toBe(3);
-        const keptScore = Math.max(...result.deck.map((l) => l.score ?? 0.9));
-        expect(keptScore).toBeGreaterThanOrEqual(0.9);
+        expect(result.deck).toHaveLength(2);
+        expect(result.deck.map((entry) => entry.id)).toEqual(['best', 'unique']);
+        expect(result.productDiversity.nonAnchorProductReuseCount).toBe(0);
     });
 });

@@ -222,7 +222,7 @@ export interface AssembleDeckOptions<O> {
     anchorKeys?: ReadonlySet<string>;
     /** Deck size to reach. Default 3. */
     target?: number;
-    /** Max non-anchor products any two looks may share. Default 1. */
+    /** Max non-anchor products any two looks may share. Default 0. */
     maxShared?: number;
     /**
      * Build one replacement look from the remaining pool. Receives the
@@ -261,7 +261,7 @@ export interface AssembleDeckResult<O> {
  */
 export function assembleDeck<O>(opts: AssembleDeckOptions<O>): AssembleDeckResult<O> {
     const target = opts.target ?? 3;
-    const maxShared = opts.maxShared ?? 1;
+    const maxShared = opts.maxShared ?? 0;
     const maxFillAttempts = opts.maxFillAttempts ?? 24;
     const deck: O[] = [];
     const keptKeySets: Array<Set<string>> = [];

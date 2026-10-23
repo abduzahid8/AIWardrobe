@@ -1,5 +1,9 @@
 # Real Simulator Audit — Personal Stylist Deck Diversity
 
+> **Status: FIXED** — the repeated-product root cause described below was
+> fixed and re-validated on the simulator. See
+> `PRODUCT_DIVERSITY_FIX_20261023.md` for the fix verification report.
+
 **Date:** 2026-10-23
 **Device:** iPhone Simulator `AIWardrobe-Login-Audit-20261020` (`A803D6CC-0840-40F3-95EF-70546B2E0ED0`), iOS 26.5
 **App:** `com.aiwardrobe` 1.4.3 (56), **Debug** build rebuilt from the working tree

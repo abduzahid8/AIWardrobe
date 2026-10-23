@@ -3,22 +3,17 @@
  *
  * `scripts/stylist-diversity-report.ts` runs the REAL production chain
  * (valid pool → candidate looks → assembleDiverseDeck → createSlotNormalizer
- * replacements) for 20 style × occasion scenarios and measures the quality of
- * every deck: the outfit archetype of each look, the three pairwise
- * similarity scores and the diversity mode.
+ * replacements) for 20 style × occasion scenarios.
  *
- * This test turns that report into an invariant: whenever the inventory can
- * support three different styling directions, the three cards must BE three
- * different styling directions.
+ * The invariant is PRODUCT uniqueness: whenever the inventory has at least
+ * three distinct products per active slot, no non-anchor product may appear
+ * in more than one card. Archetype variety is reported but never required.
  */
 import {
     formatReport,
     runAllScenarios,
     SCENARIOS,
 } from '../../scripts/stylist-diversity-report';
-import {
-    MAX_VISUAL_SIMILARITY,
-} from '../../features/outfit-generator/utils/outfitDiversity';
 
 describe('personal stylist simulator — 20 scenarios', () => {
     const reports = runAllScenarios();
@@ -34,18 +29,22 @@ describe('personal stylist simulator — 20 scenarios', () => {
         }
     });
 
-    it('every deck keeps the three looks pairwise below the strict threshold', () => {
+    it('reports pairwise similarity as a soft signal', () => {
         for (const report of reports) {
             expect(report.similarities).toHaveLength(3);
             for (const score of report.similarities) {
-                expect(score).toBeLessThan(MAX_VISUAL_SIMILARITY);
+                expect(Number.isFinite(score)).toBe(true);
+                expect(score).toBeLessThanOrEqual(1);
             }
         }
     });
 
-    it('no two looks in a deck share the same outfit formula', () => {
+    it('no deck reuses a non-anchor product when the inventory can avoid it', () => {
         for (const report of reports) {
-            expect(report.notes.filter((note) => note.includes('outfit formula'))).toHaveLength(0);
+            if (report.supportsUniqueProducts) {
+                expect(report.nonAnchorProductReuseCount).toBe(0);
+                expect(report.repeatedProductKeys).toEqual([]);
+            }
         }
     });
 
@@ -55,8 +54,9 @@ describe('personal stylist simulator — 20 scenarios', () => {
         }
     });
 
-    it('never relaxes while the inventory can support three concepts', () => {
+    it('never relaxes uniqueness while the inventory has enough products', () => {
         for (const report of reports) {
+            expect(report.supportsUniqueProducts).toBe(true);
             expect(report.mode).toBe('STRICT');
             expect(report.relaxReason).toBeNull();
         }

@@ -34,8 +34,11 @@ import AIThinkingAnimation from '../components/AIThinkingAnimation';
 import { canonicalizeMacroCategory } from '../src/utils/categoryMapper';
 import { prioritizeUnseen } from '../features/outfit-generator/utils/deckDedupe';
 import {
+    analyzeDeckProductDiversity,
     assembleDiverseDeck,
+    canonicalProductKey,
     diversitySlotOf,
+    productIdentityKeys,
     type DiversitySlot,
 } from '../features/outfit-generator/utils/outfitDiversity';
 import { isShortsBottom, isFormalLayer, fabricFamily, isSameLayerBaseCategory, PLACEHOLDER_PANTS, PLACEHOLDER_SHOES, getBackendMacroCategory, isCompleteNormalizedOutfit, isFourSlotLook, REAL_IMAGE_RE, repairEdgeItems, createSlotNormalizer, ensureSlotFloors } from '../features/outfit-generator/utils/normalizeSlots';
@@ -2298,23 +2301,17 @@ const AIOutfitGenerator = () => {
         }
         const budgetedOutfits = withinBudget;
 
-        // Diversity gate: any two looks may share at most 1 non-anchor
-        // product (same SKU, same normalized name, same image, or same
-        // product family all count as the same product). Acceptance order
-        // is strict candidates -> strict fresh fills -> relaxed fills ->
-        // relaxed candidates, so near-duplicate edge looks are replaced
-        // from the remaining pool before anything is relaxed. Accepted
-        // looks seed slotDeckUsed, so fills rotate every slot.
-        const productKeysOf = (x: any): string[] => {
-          const keys = [String(x?.id ?? '')];
-          const nk = normalizeCatalogNameKey(x?.name);
-          if (nk) keys.push(`__n:${nk}`);
-          const img = productImageKey(x);
-          if (img) keys.push(`__img:${img}`);
-          const fam = garmentVarietyFamily(x);
-          if (fam) keys.push(`__fam:${fam}`);
-          return keys.filter(Boolean);
-        };
+        // Diversity gate: no non-anchor product may repeat across looks
+        // (same SKU, normalized name, or normalized image). Same archetype
+        // and same garment family are allowed when the products differ.
+        // Near-duplicate edge looks are replaced from the remaining pool
+        // before anything is relaxed. Accepted looks seed slotDeckUsed, so
+        // fills rotate every slot. Uniqueness is relaxed only when the
+        // inventory genuinely cannot supply enough distinct products.
+        // Product identity: id + normalized name + normalized image. Garment
+        // family is NOT identity — a black loafer and a brown loafer are two
+        // products, not a duplicate.
+        const productKeysOf = (x: any): string[] => productIdentityKeys(x);
         const anchorKeys = baseItemId
           ? new Set<string>([
               String(baseItemId),
@@ -2365,15 +2362,41 @@ const AIOutfitGenerator = () => {
             ? (message: string, data?: unknown) => readinessLogger.debug(String(`[stylist-diversity] ${message}`), data ? [data] : [])
             : undefined,
         });
+        const deckProducts = analyzeDeckProductDiversity(
+          finalOutfits.map((outfit) => outfit.items as any[]),
+          { anchorKeys },
+        );
         if (__DEV__) {
           readinessLogger.debug(String('[AIOutfitmaker] stylist deck'), [{
             archetypes: deckArchetypes,
             similarities: deckSimilarities.map((s) => `${s.a + 1}<->${s.b + 1}=${s.score.toFixed(2)}`),
             relaxed: deckRelaxed,
             reason: deckRelaxReason,
-            conceptCapacity: deckInventory?.conceptCapacity,
-            supportsTargetConcepts: deckInventory?.supportsTargetConcepts,
+            uniqueProductsPerSlot: deckInventory?.uniqueProductsPerSlot,
+            maxDistinctProducts: deckInventory?.maxDistinctProducts,
+            supportsUniqueProducts: deckInventory?.supportsUniqueProducts,
+            nonAnchorProductReuseCount: deckProducts.nonAnchorProductReuseCount,
+            repeatedProductKeys: deckProducts.repeatedProductKeys,
+            anchorRepetitionCount: deckProducts.anchorRepetitionCount,
           }]);
+          const decision = deckProducts.nonAnchorProductReuseCount === 0
+            ? 'UNIQUE_PRODUCTS'
+            : (deckRelaxReason || 'REPEATED_PRODUCTS');
+          console.log('[stylist-product-diversity]', JSON.stringify({
+            decision,
+            nonAnchorProductReuseCount: deckProducts.nonAnchorProductReuseCount,
+            repeatedProductKeys: deckProducts.repeatedProductKeys,
+            repeatedCanonicalKeys: deckProducts.repeatedCanonicalKeys,
+            anchorRepetitionCount: deckProducts.anchorRepetitionCount,
+            lookProductKeys: deckProducts.lookProductKeys,
+            lookCanonicalProducts: finalOutfits.map((outfit) =>
+              (outfit.items as any[]).map((item) => canonicalProductKey(item)),
+            ),
+            looks: finalOutfits.map((outfit) => (outfit.items as any[]).map((item) => String(item?.id ?? ''))),
+            relaxReason: deckRelaxReason,
+            supportsUniqueProducts: deckInventory?.supportsUniqueProducts,
+            inventory: deckInventory,
+          }));
         }
         if (__DEV__ && deckRelaxed) readinessLogger.debug(String(`[AIOutfitmaker] deck relaxed (${deckRelaxReason}) after strict diverse alternatives were exhausted`), []);
         if (__DEV__) readinessLogger.debug(String(`[AIOutfitmaker] nonce=${generationNonce.current} edge=${cleanedOutfits.length} shown=${finalOutfits.length}`), []);
@@ -2415,7 +2438,7 @@ const AIOutfitGenerator = () => {
       if (data?.debug) edgeErr.debug = data.debug;
       throw edgeErr;
     } catch (err: any) {
-      console.warn('[AIOutfitmaker] Edge function failed:', err, err?.debug ? JSON.stringify(err.debug) : '');
+      console.warn('[AIOutfitmaker] Edge function failed:', err, err?.stack || '', err?.debug ? JSON.stringify(err.debug) : '');
       if (fallbackTimer.current) clearTimeout(fallbackTimer.current);
       if (!isCurrentGeneration()) return;
       if (isMounted.current) {
