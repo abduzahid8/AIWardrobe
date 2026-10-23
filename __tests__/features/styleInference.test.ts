@@ -3,6 +3,7 @@ import {
   scoreItemForStyle,
   rankItemsForStyle,
   normalizeStyleId,
+  needsLayering,
 } from '../../features/outfit-generator/utils/styleInference';
 
 describe('styleInference', () => {
@@ -173,6 +174,16 @@ describe('styleInference', () => {
       expect(normalizeStyleId('semi_classic')).toBe('semi_classic');
       expect(normalizeStyleId('unknown')).toBe('casual');
       expect(normalizeStyleId(null)).toBe('casual');
+    });
+
+    describe('needsLayering', () => {
+      it('uses weather and explicit intent, not style alone', () => {
+        expect(needsLayering('old_money', { temp: 24, condition: 'clear' }, null)).toBe(false);
+        expect(needsLayering('casual', { temp: 5, condition: 'clear' }, null)).toBe(true);
+        expect(needsLayering('casual', undefined, null)).toBe(false);
+        expect(needsLayering('casual', { temp: 30, condition: 'clear' }, 'black-tie gala')).toBe(true);
+        expect(needsLayering('casual', { temp: 5, condition: 'clear' }, 'summer no jacket')).toBe(false);
+      });
     });
   });
 });

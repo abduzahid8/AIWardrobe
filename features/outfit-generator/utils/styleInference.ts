@@ -12,6 +12,7 @@
  * Everything here is pure, deterministic, and inexpensive. It's designed to
  * run both on the client (React Native) and in Deno edge functions.
  */
+import { needsLayering as resolveNeedsLayering, type CompositionWeather } from '../../../backend/supabase/functions/_shared/outfitComposition';
 
 export type StyleId =
   | 'old_money'
@@ -450,11 +451,11 @@ export function rankItemsForStyle<T extends ItemForInference>(
 }
 
 /**
- * Decide whether an outfit should force a two-top layered composition
- * (base top + outerwear/main top + bottom + shoes). Layering is the
- * backbone of old_money / business_casual / semi_classic looks, and is
- * always required when the weather is cool. A user prompt that explicitly
- * asks for a summer / no-jacket look disables layering.
+ * Resolve whether an outfit needs a two-top layered composition
+ * (base top + outerwear/main top + bottom + shoes). The structural decision
+ * is shared with the Edge Function: cold weather or explicit formal intent
+ * layers; warm, missing-weather, and explicit summer/no-jacket requests do
+ * not.
  */
 export interface LayeringWeather {
   temp?: number | null;
@@ -466,21 +467,7 @@ export function needsLayering(
   weather?: LayeringWeather | null,
   prompt?: string | null,
 ): boolean {
-  const normalized = normalizeStyleId(style || '');
-  const promptBlob = (prompt || '').toLowerCase();
-  if (/\b(summer|hot|heatwave|tee[-\s]?only|no jacket|no outerwear|beach)\b/.test(promptBlob)) {
-    return false;
-  }
-
-  const condition = (weather?.condition || '').toLowerCase();
-  const temp = typeof weather?.temp === 'number' ? weather!.temp! : null;
-  const coldTemp = temp != null && temp < 18;
-  const coldCondition = /\b(cold|chilly|freezing|snow|rain|drizzle|wind|storm)\b/.test(condition);
-  if (coldTemp || coldCondition) return true;
-
-  if (normalized === 'old_money' || normalized === 'business_casual' || normalized === 'classic') return true;
-  if (normalized === 'semi_classic') return true; // cardigan-over-tee is canonical
-  return false;
+  return resolveNeedsLayering(style, weather as CompositionWeather | null, prompt);
 }
 
 /**

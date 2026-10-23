@@ -140,4 +140,9 @@ describe('provider routing', () => {
         expect(edgeSource).toMatch(/PROVIDER_GENERATION_FAILED/);
         expect(edgeSource).toMatch(/DETERMINISTIC_FALLBACK_USED/);
     });
+
+    test('missing NVIDIA configuration still reaches the deterministic fallback', () => {
+        expect(edgeSource).toMatch(/NVIDIA_API_KEY is not configured/);
+        expect(edgeSource).not.toMatch(/if\s*\(!nvidiaKey\)\s*throw/);
+    });
 });

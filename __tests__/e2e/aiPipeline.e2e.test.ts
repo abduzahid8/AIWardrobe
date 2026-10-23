@@ -205,12 +205,13 @@ describe('AI pipeline e2e — real catalog → real code', () => {
     expect(normalizeStyleId('  old_money  ')).toBe('old_money');
   });
 
-  it('layering policy matrix: cold/formal layers, beach never does', () => {
-    expect(needsLayering('old_money', { temp: 22, condition: 'clear' }, null)).toBe(true);
+  it('layering policy matrix: cold/formal layers, warm style alone does not', () => {
+    expect(needsLayering('old_money', { temp: 22, condition: 'clear' }, null)).toBe(false);
     expect(needsLayering('casual', { temp: 5, condition: 'clear' }, null)).toBe(true);
     expect(needsLayering('casual', { temp: 30, condition: 'clear' }, 'beach day')).toBe(false);
     expect(needsLayering('casual', { temp: 30, condition: 'clear' }, null)).toBe(false);
-    expect(needsLayering('business_casual', { temp: 25, condition: 'clear' }, null)).toBe(true);
+    expect(needsLayering('casual', { temp: 30, condition: 'clear' }, 'black-tie gala')).toBe(true);
+    expect(needsLayering('business_casual', { temp: 25, condition: 'clear' }, null)).toBe(false);
   });
 
   it('diversifier honors its sliding-window contract (shop-deck variety)', () => {

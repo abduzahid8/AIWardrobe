@@ -5,6 +5,7 @@ import { getBudgetRates } from './budgetRates';
 import { outfitGenerationFailure, type OutfitGenerationFailure } from './outfitGenerationFailure';
 import readinessLogger from '../utils/logger';
 import { outfitStructureReason } from '../../backend/supabase/functions/_shared/outfitStructure';
+import { needsLayering as resolveNeedsLayering } from '../../backend/supabase/functions/_shared/outfitComposition';
 /**
  * outfitGenerationService.ts
  *
@@ -559,19 +560,7 @@ function isShortsItem(item: { name?: string; type?: string; brand?: string; macr
 }
 
 function isLayeredWeather(weather?: { temp?: number | null; condition?: string | null }, prompt?: string | null): boolean {
-    const promptBlob = (prompt || '').toLowerCase();
-    // Explicit hot/summer keywords override to non-layered, even without weather.
-    if (/\b(summer|hot|heatwave|tee[-\s]?only|no jacket|no outerwear|beach)\b/.test(promptBlob)) return false;
-    const condition = (weather?.condition || '').toString().toLowerCase();
-    const temp = typeof weather?.temp === 'number' ? weather.temp : null;
-    // When we have NEITHER a temperature nor a weather description, default
-    // to layered=true. This matches the client's `needsOuterwear` default
-    // and keeps the pipeline from producing 3-item outfits that render as
-    // "layer + pants + shoes with no base top" on the card.
-    if (temp == null && !condition) return true;
-    const coldTemp = temp != null && temp < 18;
-    const coldCondition = /\b(cold|chilly|freezing|snow|rain|drizzle|wind|storm|cool)\b/.test(condition);
-    return coldTemp || coldCondition;
+    return resolveNeedsLayering(undefined, weather, prompt);
 }
 
 function getItemStyleScore(item: ClothingItem, style: StyleId): number {

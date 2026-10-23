@@ -45,7 +45,7 @@ import { isShortsBottom, isFormalLayer, fabricFamily, isSameLayerBaseCategory, P
 import { parseBudgetFromText, stripBudgetFromText, outfitShopSpend, formatMoney, budgetCandidatesFromText, resolveShopQuote, withOutfitBudget } from '../src/utils/outfitBudget';
 import { getShopDestination } from '../src/utils/shopDestination';
 import { parseStylistIntent } from '../features/outfit-generator/utils/stylistIntent';
-import { scoreItemForStyle, normalizeStyleId } from '../features/outfit-generator/utils/styleInference';
+import { scoreItemForStyle, normalizeStyleId, needsLayering } from '../features/outfit-generator/utils/styleInference';
 import useWardrobeStore from '../store/wardrobeStore';
 import { useStylePreferenceStore } from '../store/stylePreferenceStore';
 import { useTranslation } from 'react-i18next';
@@ -578,7 +578,7 @@ async function generateOfflineOutfits(
   if (!itemMacros.has('shoes')) missingSlots.push('shoes');
   if (!itemMacros.has('bottom')) missingSlots.push('bottom');
   if (!itemMacros.has('top')) missingSlots.push('top');
-  const needsLayerFill = !weather || weather.temp < 18 || /\b(cold|rain|wind)\b/.test((weather?.condition || '').toLowerCase());
+  const needsLayerFill = needsLayering(style, weather, null);
   if (needsLayerFill && !itemMacros.has('outerwear')) missingSlots.push('outerwear');
   if (needsLayerFill && availableItems.filter((it: any) => getOfflineMacroCategory(it.type || '', it.category || '', it.name || '') === 'top').length < 2) {
     missingSlots.push('top');
@@ -702,7 +702,7 @@ async function generateOfflineOutfits(
   const shoes = shuffleArray(classified.filter(c => c.category === 'shoes').map(c => c.item));
 
   // Determine if layering needed based on weather ONLY
-  const needsLayer = !weather || weather.temp < 18 || /\b(cold|rain|wind)\b/.test((weather?.condition || '').toLowerCase());
+  const needsLayer = needsLayering(style, weather, null);
 
   const casualLayers = layers.filter(l => !isFormalLayer(l));
   const nonShortsPants = pants.filter(p => !isShortsBottom(p));
@@ -2355,15 +2355,17 @@ const AIOutfitGenerator = () => {
           if (!active && !strict && !forced) return undefined;
           return { activeSlots: active, strictSlots: strict, forcedRepeatSlots: forced };
         })();
-        // The client renders 4-slot cards (layer + top + bottom + shoes), so
-        // every card slot participates in the composition.
-        const clientDiversitySlots: DiversitySlot[] = ['top', 'outerwear', 'bottom', 'shoes'];
+        // The edge-resolved composition determines which slots participate.
+        const clientDiversitySlots: DiversitySlot[] = data.layered
+          ? ['top', 'outerwear', 'bottom', 'shoes']
+          : ['top', 'bottom', 'shoes'];
         const {
           deck: finalOutfits,
           relaxed: deckRelaxed,
           relaxReason: deckRelaxReason,
           archetypes: deckArchetypes,
           similarities: deckSimilarities,
+          hasQualitySignal: deckHasQualitySignal,
           inventory: deckInventory,
         } = assembleDiverseDeck<GeneratedOutfit>({
           candidates: budgetedOutfits,
@@ -2372,8 +2374,8 @@ const AIOutfitGenerator = () => {
           keysOf: productKeysOf,
           anchorKeys,
           anchorSlot,
-          // Every card the client renders is a 4-slot look
-          // (layer + top + bottom + shoes), so all four slots participate.
+          // The edge-resolved composition is authoritative. Non-layered
+          // decks must not let an irrelevant outerwear row affect capacity.
           activeSlots: clientDiversitySlots,
           // The user sees three cards.
           target: 3,
@@ -2440,7 +2442,7 @@ const AIOutfitGenerator = () => {
             uniqueProductsPerSlot: deckInventory?.uniqueProductsPerSlot,
             deckSize: finalOutfits.length,
             deckTarget: 3,
-            hasQualitySignal: true,
+            hasQualitySignal: deckHasQualitySignal,
             // End-to-end marker: the edge shipped its capacity verdict, so
             // the client did NOT have to re-derive it from a truncated pool.
             edgeCapacity: edgeDiversityCapacity ? {

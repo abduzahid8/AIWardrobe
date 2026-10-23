@@ -11,6 +11,13 @@ test('accepts the maximum selected pool without dropping IDs or request constrai
  expect(api.validateOutfitGenerationRequest(body)).toBe(body);
  expect(await api.readOutfitGenerationRequest(req(body))).toEqual(body);
 });
+test.each([
+  [{limit:3,deckTarget:4}],
+  [{limit:1,deckTarget:2}],
+  [{deckTarget:4}],
+])('rejects deckTarget above the effective limit: %j',body=>{
+ expect(()=>api.validateOutfitGenerationRequest(body)).toThrow();
+});
 test('preserves a legacy inline image at the measured existing maximum size',async()=>{
  const imageUrl='data:image/jpeg;base64,'+'a'.repeat(4047638);
  const body={wardrobeItems:[{id:'legacy-garment',imageUrl,name:'Shirt',brand:null,pattern:null,material:null,styleTags:null}]};

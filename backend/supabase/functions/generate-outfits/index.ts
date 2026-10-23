@@ -11,6 +11,7 @@ import { enforceRateLimit } from '../_shared/rateLimit.ts'
 import { outfitStructureReason, isDressGarment, isNonOutfitItem } from '../_shared/outfitStructure.ts'
 import { styleJudgeReason, normalizeGarmentText, isWorkoutOccasion, rejectForStyleOccasion, rejectForClimate, rejectForActivity } from '../_shared/occasionRules.ts'
 import { analyzeDeckProductDiversity, assembleDiverseDeck, canonicalProductKey, productIdentityKeys, diversitySlotOf, type DiversitySlot } from '../_shared/outfitDiversity.ts'
+import { needsLayering as resolveNeedsLayering } from '../_shared/outfitComposition.ts'
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
@@ -159,27 +160,8 @@ function isDressItem(item: any): boolean {
 // bottom + shoes). Layering now follows WEATHER ONLY — the user confirmed
 // the composition rule is "Top + Bottom + Shoes always; Layer only when
 // cold". Style alone no longer forces a jacket in summer.
-function needsLayering(_style: string | null | undefined, weather: any, prompt: string | null | undefined): boolean {
-    const promptBlob = (prompt || '').toLowerCase()
-    if (/black[ -]?tie|смокинг/.test(promptBlob)) return true
-    // Explicit "hot" / "summer" prompt keywords still opt the user OUT of
-    // layered composition, even when weather is missing.
-    if (/\b(summer|hot|heatwave|tee[-\s]?only|no jacket|no outerwear|beach)\b/.test(promptBlob)) return false
-
-    const condition = (weather?.condition || '').toString().toLowerCase()
-    const temp = typeof weather?.temp === 'number' ? weather.temp : null
-
-    // When we have NEITHER a temperature nor a weather description, default
-    // to layered=true. This matches the client's `needsOuterwear` default
-    // and keeps outfits from degrading to 3-item looks that then render as
-    // "layer + pants + shoes with no base top" on the client. A warm-weather
-    // user will only hit this branch if Location permission is denied, in
-    // which case a safe-layered look is the least-broken fallback.
-    if (temp == null && !condition) return false
-
-    const coldTemp = temp != null && temp < 18
-    const coldCondition = /\b(cold|chilly|freezing|snow|rain|drizzle|wind|storm|cool)\b/.test(condition)
-    return coldTemp || coldCondition
+function needsLayering(style: string | null | undefined, weather: any, prompt: string | null | undefined): boolean {
+    return resolveNeedsLayering(style, weather, prompt)
 }
 
 // Formal outerwear = blazer/suit jacket/overcoat/topcoat/trench/peacoat/sport
@@ -2784,8 +2766,6 @@ serve(async (req: Request) => {
         const layered = needsLayering(stylePreferences, weather, `${occasion} ${prompt}`)
         console.log(`[layer] style=${styleKey} weather=${weather?.temp ?? '?'}°C layered=${layered}`)
 
-        if (!nvidiaKey) throw new Error('nvidia_provider_not_configured')
-
         // ── 6. Build prompts ───────────────────────────────────────────────
         // When an anchor is locked, tell the model explicitly to build AROUND
         // it (color/style/material match + mandatory id). Post-hoc slot swap
@@ -2851,7 +2831,13 @@ Choose exactly ${Math.min(limit, choices.length)} of the supplied complete look 
             providerCalls += 1
             return callNvidia(nvidiaKey, nvidiaModel, system, user, 1, providerTrace, layered)
         }
-        let aiOutfits = useCuratedChoices ? await generateCuratedChoices() : await generate(sys, usr)
+        let aiOutfits: any[] | null = null
+        if (nvidiaKey) {
+            aiOutfits = useCuratedChoices ? await generateCuratedChoices() : await generate(sys, usr)
+        } else {
+            providerTrace.push({ provider: 'nvidia', model: nvidiaModel, status: 'not_configured' })
+            console.warn('[provider] NVIDIA_API_KEY is not configured; using deterministic fallback')
+        }
 
         // An unreadable response needs a format correction, not an empty
         // wardrobe message. Share the two-call budget with quality correction.
@@ -3058,7 +3044,7 @@ Choose exactly ${Math.min(limit, choices.length)} of the supplied complete look 
             // The displayed deck size drives the capacity assessment.
             const requestedDeckTarget = Math.max(
                 1,
-                Math.min(Number(deckTarget) || limit, limit, finalOutfits.length || limit),
+                Math.min(Number(deckTarget) || limit, limit),
             )
             const diverseDeck = assembleDiverseDeck<any>({
                 candidates: finalOutfits,

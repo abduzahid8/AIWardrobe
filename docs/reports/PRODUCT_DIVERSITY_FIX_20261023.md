@@ -187,6 +187,34 @@ New regression suites:
   provider policy (no second provider, bounded retry, single routing
   comment).
 
+## Composition-policy stabilization follow-up
+
+The follow-up audit confirmed that the backend and client still had
+independent layering decisions. The production contract is now centralized in
+`backend/supabase/functions/_shared/outfitComposition.ts` and used by the Edge
+Function, client style inference, local generation service, offline builder,
+and client diversity selection:
+
+- warm weather and missing weather: `top + bottom + shoes`;
+- cold temperature/conditions: `outerwear + top + bottom + shoes`;
+- explicit black-tie/tuxedo intent: layered, even if the weather is warm;
+- explicit summer/no-jacket intent: non-layered unless formal intent is also
+  present;
+- style presets alone do not force a layer.
+
+The client now uses the Edge-resolved active slots for capacity and diversity
+selection. The request validator rejects `deckTarget > limit`, the server
+keeps the requested deck target independent of the number of surviving AI
+candidates, and quality telemetry reports the selector's actual
+`hasQualitySignal` value. Missing `NVIDIA_API_KEY` is recorded as a provider
+failure and proceeds through the existing deterministic fallback path.
+
+Focused composition and request-validation tests were added. In this
+environment, the baseline and final Jest/typecheck commands could not run
+because `npm ci` could not retrieve the uncached `expo-modules-core` tarball;
+the available JavaScript syntax checks and `git diff --check` passed. No
+production deployment was performed.
+
 Reproduce the headline case:
 
 ```bash
