@@ -1,34 +1,31 @@
 /**
- * outfitDiversity — VISUAL / STYLISTIC diversity layer for AI outfit decks.
+ * outfitDiversity — product-uniqueness + soft visual-variety layer for
+ * AI outfit decks.
  *
- * The deck-level dedupe that already exists (features/outfit-generator/utils/
- * deckDedupe.ts) guarantees PRODUCT diversity: two looks never share the same
- * SKU / normalized name / photo / product family more than once. That is
- * necessary but NOT sufficient. A deck of
+ * The hard rule is PRODUCT uniqueness: the same non-anchor actual product
+ * (id / normalized name / normalized image) must not appear in more than
+ * one look when valid alternatives exist. Same formula is allowed; same
+ * clothing is not. A deck of
  *
  *   navy blazer  + white oxford  + grey tailored trousers + brown loafers
  *   charcoal blazer + blue poplin + black trousers       + penny loafers
  *   beige blazer + striped shirt + navy trousers         + tassel loafers
  *
- * has three different sets of product ids and still reads as ONE outfit to a
- * human. This module models the thing the user actually perceives: the
- * STYLING CONCEPT of a complete look.
+ * is VALID: every actual product is different, even though the formula
+ * (blazer + shirt + trousers + loafers) repeats.
  *
  * Three layers, in order:
  *
- *   1. FINGERPRINT — a structured description of one look:
- *      slot families, outfit archetype, silhouette, formality, palette,
- *      materials, texture, pattern, footwear family.
- *   2. SIMILARITY — a normalized 0..1 distance between two fingerprints.
- *      Composition (archetype / silhouette) dominates; colours are the
- *      smallest term on purpose.
- *   3. DECK SELECTION — pick the COMBINATION of looks that maximises
- *      quality + diversity instead of accepting/rejecting looks one by one.
- *
- * The deck selection NEVER relaxes the visual rule while the inventory could
- * have supported `target` different concepts: a catalogue with 8 blazers,
- * 2 coats and 3 overshirts must produce three different formulas, not three
- * colourways of one.
+ *   1. PRODUCT IDENTITY — id / normalized name / normalized image.
+ *      Garment family is NOT identity.
+ *   2. DECK SELECTION — pick the COMBINATION of looks with zero
+ *      non-anchor product reuse, quality first. Relaxation is allowed
+ *      only for a genuinely thin inventory
+ *      (`insufficient_unique_products`).
+ *   3. SOFT VISUAL VARIETY — fingerprint + similarity scoring used only
+ *      as a tie-breaker among equally good unique-product decks.
+ *      visualSimilarity / sameArchetype describe a deck; they never
+ *      reject an otherwise valid look.
  *
  * Pure + deterministic, no imports: safe in the Expo client and inside the
  * Deno edge function. Covered by __tests__/features/outfitVisualDiversity.test.ts.
@@ -46,7 +43,7 @@ export const DIVERSITY_SLOTS: readonly DiversitySlot[] = ['outerwear', 'top', 'b
  * Footwear is a finishing detail, not a styling direction: swapping loafers
  * for Chelsea boots does not turn the same blazer + shirt + trousers look
  * into a different outfit. It still contributes to the similarity SCORE, but
- * it cannot rescue a pair from the "same formula" rule.
+ * it describes the shared formula; it is not a rejection rule.
  */
 export const FORMULA_SLOTS: readonly DiversitySlot[] = ['outerwear', 'top', 'bottom'] as const;
 
@@ -1222,7 +1219,8 @@ export interface InventoryDiversity {
     conceptCapacity: number;
     /**
      * True when the pool can, in principle, support `target` DIFFERENT
-     * styling concepts. When true, relaxing the visual rule is FORBIDDEN.
+     * styling concepts. Diagnostic only: same formula is allowed, so
+     * this never forbids a unique-product deck.
      */
     supportsTargetConcepts: boolean;
     /**
