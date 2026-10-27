@@ -38,6 +38,20 @@ services:
         sync: false
       - key: HF_TOKEN
         sync: false
+      - key: AIONLABS_API_KEY
+        sync: false
+      - key: COHERE_API_KEY
+        sync: false
+      - key: OLLAMA_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: CLOUDFLARE_API_TOKEN
+        sync: false
+      - key: CLOUDFLARE_ACCOUNT_ID
+        sync: false
+      - key: AI_PROVIDER_ORDER
+        sync: false
       - key: REPLICATE_API_TOKEN
         sync: false
       - key: MOBILE_VTON_SERVICE_URL

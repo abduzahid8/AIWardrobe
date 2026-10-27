@@ -13,9 +13,9 @@ import { ALICEVISION_URL } from "../../config.js";
 import logger from "../../utils/logger.js";
 import { validateImageData } from "../../middleware/validators.js";
 import hfService from "../../services/huggingface.js";
-import geminiService from "../../services/gemini.js";
 import replicateService from "../../services/replicate.js";
 import openaiService from "../../services/openai.js";
+import aiRouter from "../../services/ai/index.js";
 
 const router = express.Router();
 
@@ -167,12 +167,14 @@ router.post(
                 logger.warn("AliceVision classification unavailable");
             }
 
-            // Gemini Vision classification fallback
-            if (!classification && geminiService.isAvailable()) {
+            // LLM vision classification via the failover router
+            // (Gemini → OpenAI → OpenRouter… — first provider with valid JSON wins)
+            if (!classification) {
                 try {
-                    logger.info("🔮 Using Gemini Vision for classification...");
+                    logger.info("🔮 Using LLM vision failover chain for classification...");
                     const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
-                    const analysis = await geminiService.analyzeClothingImage(cleanBase64);
+                    const analysisResult = await aiRouter.analyzeClothingImage(cleanBase64);
+                    const analysis = analysisResult.result;
 
                     const section = LABEL_TO_SECTION[analysis.category?.toLowerCase()] || "other";
                     classification = {
@@ -187,9 +189,10 @@ router.post(
                         },
                     };
                     description = analysis.description;
-                    steps.push("gemini_classify");
-                } catch (geminiErr) {
-                    logger.warn("Gemini Vision fallback failed:", geminiErr.message);
+                    steps.push(`${analysisResult.provider}_classify`);
+                } catch (visionErr) {
+                    const attempts = visionErr.attempts?.map((a) => `${a.provider}:${a.error}`).join(", ");
+                    logger.warn("LLM vision classification failed:", attempts || visionErr.message);
                 }
             }
 

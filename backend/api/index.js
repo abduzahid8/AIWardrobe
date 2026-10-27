@@ -36,6 +36,7 @@ import fitRoutes from "./routes/fit.js";
 import { apiLimiter, aiLimiter } from "./middleware/rateLimit.js";
 import { auditLogger } from "./middleware/security.js";
 import { authenticateToken, requireAdmin } from "./middleware/auth.js";
+import aiRouterService from "./services/ai/index.js";
 
 import logger from "./utils/logger.js";
 import "./lib/supabase.js"; // Initialize Supabase client globally
@@ -133,6 +134,11 @@ app.use("/api", aiLimiter, chatRouter);           // /api/smart-search, /api/ai-
 app.use("/api", aiLimiter, outfitsRouter);        // /api/generate-outfits
 app.use("/api", aiLimiter, imageProcessorRouter); // /api/process-upload
 app.use("/api/studio", aiLimiter, studioRouter);  // /api/studio/analyze, /api/studio/generate
+
+// AI provider health — configuration + circuit-breaker states (no secrets)
+app.get("/ai-status", async (req, res) => {
+    res.json(await aiRouterService.status());
+});
 
 // Gemini AI proxy (server-side key — never exposed to client)
 app.use("/api/gemini", aiLimiter, geminiRoutes);

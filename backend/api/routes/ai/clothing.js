@@ -1,6 +1,6 @@
 /**
  * AI Clothing Analysis & Image Generation Routes
- * POST /openai/analyze-clothing  — Gemini Vision + HuggingFace CLIP fallback
+ * POST /openai/analyze-clothing  — Vision failover chain → HuggingFace CLIP fallback
  * POST /openai/generate-image    — OpenAI DALL-E 3 image generation
  * POST /generate-product-image   — Alias
  * POST /remove-background        — AliceVision → Replicate fallback
@@ -13,7 +13,7 @@ import { aiLimiter } from "../../middleware/rateLimit.js";
 import logger from "../../utils/logger.js";
 import { validateImageData } from "../../middleware/validators.js";
 import hfService from "../../services/huggingface.js";
-import geminiService from "../../services/gemini.js";
+import aiRouter from "../../services/ai/index.js";
 import openaiService from "../../services/openai.js";
 import replicateService from "../../services/replicate.js";
 
@@ -30,30 +30,32 @@ router.post("/openai/analyze-clothing", authenticateToken, aiLimiter, validateIm
 
         logger.info("👔 Analyzing clothing...");
 
-        // Strategy 1: Gemini Vision (fast, accurate, free)
-        if (geminiService.isAvailable()) {
-            try {
-                const analysis = await geminiService.analyzeClothingImage(imageBase64);
-                logger.info(`✅ Gemini detected: ${analysis.category}`);
+        // Strategy 1: LLM vision via the failover router — cycles through
+        // every vision-capable provider (Gemini → OpenAI → OpenRouter…)
+        // until one returns a valid structured analysis.
+        try {
+            const analysisResult = await aiRouter.analyzeClothingImage(imageBase64);
+            const analysis = analysisResult.result;
+            logger.info(`✅ ${analysisResult.provider} detected: ${analysis.category}`);
 
-                return res.json({
-                    detectedItems: [{
-                        itemType: analysis.category,
-                        color: analysis.primaryColor || "Detected from image",
-                        style: analysis.style,
-                        material: analysis.material || "Detected",
-                        description: analysis.description,
-                        confidence: 95,
-                        position: "detected",
-                    }],
-                    provider: "gemini",
-                });
-            } catch (geminiErr) {
-                logger.warn("Gemini clothing analysis failed, falling back to HF:", geminiErr.message);
-            }
+            return res.json({
+                detectedItems: [{
+                    itemType: analysis.category,
+                    color: analysis.primaryColor || "Detected from image",
+                    style: analysis.style,
+                    material: analysis.material || "Detected",
+                    description: analysis.description,
+                    confidence: 95,
+                    position: "detected",
+                }],
+                provider: analysisResult.provider,
+            });
+        } catch (visionErr) {
+            const attempts = visionErr.attempts?.map((a) => `${a.provider}:${a.error}`).join(", ");
+            logger.warn("LLM vision chain failed, falling back to HF pipeline:", attempts || visionErr.message);
         }
 
-        // Strategy 2: HuggingFace BLIP-2 + CLIP (free tier)
+        // Strategy 2: HuggingFace BLIP-2 + CLIP (free tier, non-LLM pipeline)
         const analysis = await hfService.analyzeClothingImage(imageBase64);
 
         const detectedItems = [{

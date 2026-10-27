@@ -70,6 +70,7 @@ tmp/
 test/
 tests/
 !backend/mobile-vton-service/tests/
+!backend/api/tests/
 /dist*/
 
 # One-off test/demo files

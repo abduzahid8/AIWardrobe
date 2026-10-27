@@ -1,7 +1,7 @@
 /**
- * AI Proxy Routes (Gemini path — now multi-provider)
- * POST /api/gemini/analyze-image  — Image analysis: OpenAI Vision → Gemini → HF CLIP
- * POST /api/gemini/chat           — Chat: OpenAI GPT-4o-mini → Gemini → HF
+ * AI Proxy Routes (Gemini path — now fully multi-provider)
+ * POST /api/gemini/analyze-image  — Vision failover chain → HF CLIP fallback
+ * POST /api/gemini/chat           — Text failover chain (all providers)
  *
  * Path kept as /api/gemini/* for backward compatibility with client code.
  */
@@ -9,15 +9,15 @@ import express from "express";
 import logger from '../utils/logger.js';
 import { authenticateToken } from "../middleware/auth.js";
 import { aiLimiter } from "../middleware/rateLimit.js";
-import openaiService from "../services/openai.js";
-import geminiService from "../services/gemini.js";
+import aiRouter from "../services/ai/index.js";
 import hfService from "../services/huggingface.js";
 
 const router = express.Router();
 
 /**
  * POST /api/gemini/analyze-image
- * Image analysis: OpenAI Vision → Gemini Vision → HF CLIP
+ * LLM vision via the failover router (cycles all vision-capable providers),
+ * then HuggingFace BLIP-2 + CLIP as the deterministic last resort.
  */
 router.post("/analyze-image", authenticateToken, aiLimiter, async (req, res) => {
     try {
@@ -29,54 +29,30 @@ router.post("/analyze-image", authenticateToken, aiLimiter, async (req, res) => 
 
         const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
 
-        // Strategy 1: OpenAI GPT-4o-mini Vision
-        if (openaiService.isAvailable()) {
-            try {
-                const analysis = await openaiService.analyzeClothingImage(cleanBase64);
-                logger.info(`✅ OpenAI Vision analysis: ${analysis.category}`);
-                return res.json({
-                    success: true,
-                    result: {
-                        category: analysis.category || "clothing",
-                        specificType: analysis.specificType || analysis.category,
-                        primaryColor: analysis.primaryColor || "detected from image",
-                        pattern: analysis.pattern || "solid",
-                        style: analysis.style || "casual",
-                        confidence: 0.95,
-                        description: analysis.description || "",
-                        material: analysis.material || "unknown",
-                        season: analysis.season || "all-season",
-                    },
-                    raw: analysis.description,
-                    provider: "openai",
-                });
-            } catch (oaiErr) {
-                logger.warn("OpenAI Vision failed:", oaiErr.message);
-            }
-        }
-
-        // Strategy 2: Gemini Vision
-        if (geminiService.isAvailable()) {
-            try {
-                const analysis = await geminiService.analyzeClothingImage(cleanBase64);
-                logger.info(`✅ Gemini Vision analysis: ${analysis.category}`);
-                return res.json({
-                    success: true,
-                    result: {
-                        category: analysis.category || "clothing",
-                        specificType: analysis.specificType || analysis.category,
-                        primaryColor: analysis.primaryColor || "detected from image",
-                        pattern: analysis.pattern || "solid",
-                        style: analysis.style || "casual",
-                        confidence: 0.95,
-                        description: analysis.description || "",
-                    },
-                    raw: analysis.description,
-                    provider: "gemini",
-                });
-            } catch (geminiErr) {
-                logger.warn("Gemini Vision failed:", geminiErr.message);
-            }
+        // Strategy 1: failover vision chain (Gemini → OpenAI → OpenRouter…)
+        try {
+            const analysisResult = await aiRouter.analyzeClothingImage(cleanBase64);
+            const analysis = analysisResult.result;
+            logger.info(`✅ ${analysisResult.provider} Vision analysis: ${analysis.category}`);
+            return res.json({
+                success: true,
+                result: {
+                    category: analysis.category || "clothing",
+                    specificType: analysis.specificType || analysis.category,
+                    primaryColor: analysis.primaryColor || "detected from image",
+                    pattern: analysis.pattern || "solid",
+                    style: analysis.style || "casual",
+                    confidence: 0.95,
+                    description: analysis.description || "",
+                    material: analysis.material || "unknown",
+                    season: analysis.season || "all-season",
+                },
+                raw: analysis.description,
+                provider: analysisResult.provider,
+            });
+        } catch (visionErr) {
+            const attempts = visionErr.attempts?.map((a) => `${a.provider}:${a.error}`).join(", ");
+            logger.warn("Vision failover chain failed, using HF pipeline:", attempts || visionErr.message);
         }
 
         // Strategy 3: HuggingFace BLIP-2 + CLIP
@@ -114,7 +90,7 @@ router.post("/analyze-image", authenticateToken, aiLimiter, async (req, res) => 
 
 /**
  * POST /api/gemini/chat
- * Chat: OpenAI GPT-4o-mini → Gemini → HuggingFace
+ * Chat via the failover router — cycles all configured text providers.
  */
 router.post("/chat", authenticateToken, aiLimiter, async (req, res) => {
     try {
@@ -141,34 +117,13 @@ router.post("/chat", authenticateToken, aiLimiter, async (req, res) => {
         }
         messages.push({ role: "user", content: prompt });
 
-        // Strategy 1: OpenAI GPT-4o-mini
-        if (openaiService.isAvailable()) {
-            try {
-                const text = await openaiService.chatWithHistory(messages, 800);
-                logger.info("✅ Chat response via OpenAI");
-                return res.json({ success: true, text, provider: "openai" });
-            } catch (oaiErr) {
-                logger.warn("OpenAI chat failed:", oaiErr.message);
-            }
-        }
-
-        // Strategy 2: Gemini 2.0 Flash
-        if (geminiService.isAvailable()) {
-            try {
-                const text = await geminiService.chatWithHistory(messages, 800);
-                logger.info("✅ Chat response via Gemini");
-                return res.json({ success: true, text, provider: "gemini" });
-            } catch (geminiErr) {
-                logger.warn("Gemini chat failed:", geminiErr.message);
-            }
-        }
-
-        // Strategy 3: HuggingFace
-        const text = await hfService.chatWithHistory(messages, 800);
-        res.json({ success: true, text, provider: "huggingface" });
+        const chatResult = await aiRouter.chatWithHistory(messages, 800);
+        logger.info(`✅ Chat response via ${chatResult.provider}`);
+        res.json({ success: true, text: chatResult.text, provider: chatResult.provider });
     } catch (error) {
-        logger.error("Chat error:", error.message);
-        res.status(500).json({ error: "AI chat failed" });
+        const attempts = error.attempts?.map((a) => `${a.provider}:${a.error}`).join(", ");
+        logger.error("Chat failed on all providers:", attempts || error.message);
+        res.status(503).json({ error: "AI chat failed" });
     }
 });
 

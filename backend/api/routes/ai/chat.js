@@ -1,7 +1,8 @@
 /**
  * AI Chat & Smart Search Routes
  * GET  /smart-search — Semantic outfit search with embeddings
- * POST /ai-chat      — OpenAI GPT-4o-mini fashion stylist chat (Gemini → HF fallback)
+ * POST /ai-chat      — Fashion stylist chat via the failover router
+ *                      (Gemini → OpenAI → Aion → Cohere → Ollama → OpenRouter → Cloudflare → HF)
  */
 import express from "express";
 import cosineSimilarity from "compute-cosine-similarity";
@@ -9,9 +10,7 @@ import { supabase } from "../../lib/supabase.js";
 import { authenticateToken } from "../../middleware/auth.js";
 import logger from "../../utils/logger.js";
 import { validateAIChat } from "../../middleware/validators.js";
-import hfService from "../../services/huggingface.js";
-import geminiService from "../../services/gemini.js";
-import openaiService from "../../services/openai.js";
+import aiRouter from "../../services/ai/index.js";
 
 import { getAllStyleRules } from "../../data/styleRules.js";
 
@@ -75,10 +74,12 @@ router.get("/smart-search", authenticateToken, async (req, res) => {
             )
             .map((o) => ({ ...o.toObject(), score: 0.1 }));
 
-        // Embedding re-rank is optional — HF may be down or outfits may lack
-        // embeddings. Never let it fail the request.
+        // Embedding re-rank is optional — providers may be down or outfits
+        // may lack embeddings. Never let it fail the request.
+        // Failover chain: HuggingFace MiniLM → Cohere light (both 384-dim).
         try {
-            const queryEmbedding = await hfService.generateEmbedding(normalizedQuery);
+            const embeddingResult = await aiRouter.generateEmbedding(normalizedQuery);
+            const queryEmbedding = embeddingResult.result;
             const MIN_SIMILARITY = query.length > 20 ? 0.3 : 0.4;
             const embedded = outfits
                 .filter((o) => Array.isArray(o.embedding))
@@ -101,7 +102,8 @@ router.get("/smart-search", authenticateToken, async (req, res) => {
 });
 
 // ── POST /ai-chat ──
-// Primary: OpenAI GPT-4o-mini → Gemini → HuggingFace
+// Cycles through all configured providers via the failover router until one
+// succeeds. `provider` in the response says who actually answered.
 router.post("/ai-chat", authenticateToken, validateAIChat, async (req, res) => {
     const { query } = req.body;
     logger.info("💬 Chat request:", query);
@@ -117,39 +119,16 @@ CLOTHING PRICES AND BUDGET:
 FOLLOW THESE STRICT STYLE RULES:
 ${getAllStyleRules()}`;
 
-    // Strategy 1: OpenAI GPT-4o-mini
-    if (openaiService.isAvailable()) {
-        try {
-            const text = await openaiService.generateText(query, systemPrompt, 500);
-            logger.info("✅ Chat response via OpenAI");
-            return res.json({ text, provider: "openai" });
-        } catch (oaiErr) {
-            logger.warn("OpenAI chat failed:", oaiErr.message);
-        }
-    }
-
-    // Strategy 2: Gemini 2.0 Flash
-    if (geminiService.isAvailable()) {
-        try {
-            const text = await geminiService.generateText(query, systemPrompt, 500);
-            logger.info("✅ Chat response via Gemini");
-            return res.json({ text, provider: "gemini" });
-        } catch (geminiErr) {
-            logger.warn("Gemini chat failed:", geminiErr.message);
-        }
-    }
-
-    // Strategy 3: HuggingFace Llama 3
     try {
-        const text = await hfService.generateText(
-            query,
-            "You are a helpful fashion stylist. Keep answers short and fun with emojis.",
-            500
-        );
-        res.json({ text, provider: "huggingface" });
+        const chatResult = await aiRouter.generateText(query, systemPrompt, 500);
+        logger.info(`✅ Chat response via ${chatResult.provider}`);
+        return res.json({ text: chatResult.text, provider: chatResult.provider });
     } catch (err) {
-        logger.error("All AI providers failed:", err.message);
-        res.status(500).json({ error: "AI model is busy, try again later." });
+        const attempts = err.attempts
+            ?.map((a) => `${a.provider}:${a.error}`)
+            .join(", ");
+        logger.error("All AI providers failed:", attempts || err.message);
+        res.status(503).json({ error: "AI model is busy, try again later." });
     }
 });
 

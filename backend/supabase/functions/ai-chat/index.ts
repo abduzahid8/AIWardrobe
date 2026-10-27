@@ -8,15 +8,17 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
  *
  * Contract (kept identical so mobile clients switch by URL only):
  *   Request:  { query: string (1..1000), conversationHistory?: [{role, content}], stylePreference?: string }
- *   Success:  { text: string, provider: 'openai' | 'gemini' | 'nvidia' | 'huggingface' }
+ *   Success:  { text: string, provider: 'openai' | 'gemini' | 'nvidia' | 'aionlabs' | 'cohere' | 'ollamacloud' | 'openrouter' }
  *   Failure:  400 validation / 401 auth / 503 all-providers-down
  *             (the mobile client falls back to the offline Ava persona).
  *
  * Auth: Supabase JWT required (mirrors authenticateToken).
- * Tier routing mirrors generate-outfits: paid (lite/premium/vip,
- * active/trial) tries Gemini first; free/anonymous tries NVIDIA first,
- * then Gemini on quota failures. OpenAI is attempted first wherever a
- * key exists (cheapest fast path when configured).
+ *
+ * Provider chain — failover cycle: every configured provider is attempted
+ * in order (OpenAI → Gemini → NVIDIA → Aion Labs → Cohere → Ollama Cloud →
+ * OpenRouter); a failure, timeout, or empty response cycles to the next.
+ * Keys come from env or the app_config table (existing three) / secrets
+ * (new providers). No key → provider skipped. All fail → 503.
  */
 
 const corsHeaders = {
@@ -42,27 +44,6 @@ function buildSystemPrompt(stylePreference?: string | null): string {
 }
 
 type ChatMsg = { role: 'system' | 'user' | 'assistant'; content: string }
-
-async function callOpenAI(key: string, messages: ChatMsg[], maxTokens: number): Promise<string | null> {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 25_000)
-    try {
-        const r = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-            body: JSON.stringify({ model: 'gpt-4o-mini', messages, max_tokens: maxTokens, temperature: 0.8 }),
-            signal: controller.signal,
-        })
-        clearTimeout(timer)
-        if (!r.ok) return null
-        const d = await r.json()
-        const text = d.choices?.[0]?.message?.content?.trim()
-        return text || null
-    } catch {
-        clearTimeout(timer)
-        return null
-    }
-}
 
 async function callGemini(key: string, model: string, sys: string, messages: ChatMsg[], maxTokens: number): Promise<string | null> {
     const controller = new AbortController()
@@ -93,10 +74,21 @@ async function callGemini(key: string, model: string, sys: string, messages: Cha
 }
 
 async function callNvidia(key: string, model: string, messages: ChatMsg[], maxTokens: number): Promise<string | null> {
+    return callChatCompletions('https://integrate.api.nvidia.com/v1', key, model, messages, maxTokens, 20_000)
+}
+
+/**
+ * Generic OpenAI-compatible chat call — shared by NVIDIA, Aion Labs,
+ * Ollama Cloud and OpenRouter (all speak the /chat/completions contract).
+ * Aion/gpt-oss-style reasoning models may return empty `content` with a
+ * populated `reasoning` field when the token budget is exhausted; that is
+ * treated as a failure so the chain cycles onward.
+ */
+async function callChatCompletions(baseUrl: string, key: string, model: string, messages: ChatMsg[], maxTokens: number, timeoutMs = 25_000): Promise<string | null> {
     const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 20_000)
+    const timer = setTimeout(() => controller.abort(), timeoutMs)
     try {
-        const r = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+        const r = await fetch(`${baseUrl}/chat/completions`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
             body: JSON.stringify({ model, messages, max_tokens: maxTokens, temperature: 0.8 }),
@@ -113,20 +105,20 @@ async function callNvidia(key: string, model: string, messages: ChatMsg[], maxTo
     }
 }
 
-async function callHuggingFace(key: string, prompt: string, maxTokens: number): Promise<string | null> {
+async function callCohere(key: string, messages: ChatMsg[], maxTokens: number): Promise<string | null> {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), 25_000)
     try {
-        const r = await fetch('https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-8B-Instruct', {
+        const r = await fetch('https://api.cohere.com/v2/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-            body: JSON.stringify({ inputs: prompt, parameters: { max_new_tokens: maxTokens, temperature: 0.8, return_full_text: false } }),
+            body: JSON.stringify({ model: 'command-r7b-12-2024', messages, max_tokens: maxTokens, temperature: 0.8 }),
             signal: controller.signal,
         })
         clearTimeout(timer)
         if (!r.ok) return null
         const d = await r.json()
-        const text = (Array.isArray(d) ? d[0]?.generated_text : d.generated_text || '')?.trim()
+        const text = (d.message?.content || []).map((p: any) => p?.text || '').join('').trim()
         return text || null
     } catch {
         clearTimeout(timer)
@@ -184,16 +176,22 @@ serve(async (req) => {
         || 'meta/llama-3.2-11b-vision-instruct'
     let geminiKey = Deno.env.get('GEMINI_API_KEY') || ''
     const geminiModelPrimary = (Deno.env.get('GEMINI_MODEL') || '').trim() || 'gemini-3.5-flash-lite'
-    let hfKey = Deno.env.get('HF_TOKEN') || ''
-    if (SUPABASE_SERVICE_ROLE_KEY && (!nvidiaKey || !geminiKey || !hfKey)) {
+    // Failover providers (set via `supabase secrets set`):
+    const aionKey = Deno.env.get('AIONLABS_API_KEY') || ''
+    const aionModel = (Deno.env.get('AIONLABS_MODEL') || '').trim() || 'aion-labs/aion-3.5-mini'
+    const cohereKey = Deno.env.get('COHERE_API_KEY') || ''
+    const ollamaKey = Deno.env.get('OLLAMA_API_KEY') || ''
+    const ollamaModel = (Deno.env.get('OLLAMA_MODEL') || '').trim() || 'gpt-oss:20b'
+    const openrouterKey = Deno.env.get('OPENROUTER_API_KEY') || ''
+    const openrouterModel = (Deno.env.get('OPENROUTER_MODEL') || '').trim() || 'google/gemini-2.5-flash'
+    if (SUPABASE_SERVICE_ROLE_KEY && (!nvidiaKey || !geminiKey)) {
         try {
             const svc = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
             const { data: cfg } = await svc.from('app_config').select('key, value')
-                .in('key', ['nvidia_token', 'gemini_token', 'gemini_model', 'hf_token'])
+                .in('key', ['nvidia_token', 'gemini_token', 'gemini_model'])
             for (const row of cfg || []) {
                 if (row.key === 'nvidia_token' && !nvidiaKey) nvidiaKey = row.value
                 if (row.key === 'gemini_token' && !geminiKey) geminiKey = row.value
-                if (row.key === 'hf_token' && !hfKey) hfKey = row.value
             }
         } catch {
             // fall through to whatever keys we have
@@ -217,13 +215,17 @@ serve(async (req) => {
         }
     }
 
-    // ── Provider chain ──
+    // ── Provider chain — failover cycle ──
+    // Each entry is attempted in order; the first provider returning usable
+    // text wins. A provider that errors/times-out/returns null simply cycles
+    // to the next one. Unset keys are skipped.
     const sys = buildSystemPrompt(stylePreference)
     const messages: ChatMsg[] = [
         { role: 'system', content: sys },
         ...history.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
         { role: 'user', content: query },
     ]
+
     const tryGemini = async (): Promise<{ text: string; provider: string } | null> => {
         if (!geminiKey) return null
         for (const gm of geminiModels) {
@@ -233,12 +235,68 @@ serve(async (req) => {
         return null
     }
 
-    // NVIDIA is the configured provider for every subscription tier.
-    const text = nvidiaKey ? await callNvidia(nvidiaKey, nvidiaModel, messages, 500) : null
-    const result = text ? { text, provider: 'nvidia' } : null
+    const chain: Array<{ name: string; run: () => Promise<{ text: string; provider: string } | null> }> = [
+        {
+            name: 'openai',
+            run: async () => {
+                if (!openaiKey) return null
+                const text = await callChatCompletions('https://api.openai.com/v1', openaiKey, 'gpt-4o-mini', messages, 500)
+                return text ? { text, provider: 'openai' } : null
+            },
+        },
+        {
+            name: 'gemini',
+            run: tryGemini,
+        },
+        {
+            name: 'nvidia',
+            run: async () => {
+                if (!nvidiaKey) return null
+                const text = await callNvidia(nvidiaKey, nvidiaModel, messages, 500)
+                return text ? { text, provider: 'nvidia' } : null
+            },
+        },
+        {
+            name: 'aionlabs',
+            run: async () => {
+                if (!aionKey) return null
+                // Reasoning model — extra headroom so content is not starved.
+                const text = await callChatCompletions('https://api.aionlabs.ai/v1', aionKey, aionModel, messages, 500 + 384)
+                return text ? { text, provider: 'aionlabs' } : null
+            },
+        },
+        {
+            name: 'cohere',
+            run: async () => {
+                if (!cohereKey) return null
+                const text = await callCohere(cohereKey, messages, 500)
+                return text ? { text, provider: 'cohere' } : null
+            },
+        },
+        {
+            name: 'ollamacloud',
+            run: async () => {
+                if (!ollamaKey) return null
+                const text = await callChatCompletions('https://ollama.com/v1', ollamaKey, ollamaModel, messages, 500 + 384)
+                return text ? { text, provider: 'ollamacloud' } : null
+            },
+        },
+        {
+            name: 'openrouter',
+            run: async () => {
+                if (!openrouterKey) return null
+                const text = await callChatCompletions('https://openrouter.ai/api/v1', openrouterKey, openrouterModel, messages, 500)
+                return text ? { text, provider: 'openrouter' } : null
+            },
+        },
+    ]
 
-    if (!result) {
-        return json({ error: 'AI model is busy, try again later.' }, 503)
+    for (const provider of chain) {
+        const result = await provider.run()
+        if (result) {
+            return json({ text: result.text, provider: result.provider })
+        }
     }
-    return json({ text: result.text, provider: result.provider })
+
+    return json({ error: 'AI model is busy, try again later.' }, 503)
 })
