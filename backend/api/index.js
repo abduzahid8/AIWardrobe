@@ -135,9 +135,39 @@ app.use("/api", aiLimiter, outfitsRouter);        // /api/generate-outfits
 app.use("/api", aiLimiter, imageProcessorRouter); // /api/process-upload
 app.use("/api/studio", aiLimiter, studioRouter);  // /api/studio/analyze, /api/studio/generate
 
-// AI provider health — configuration + circuit-breaker states (no secrets)
+// AI provider health — configuration + circuit-breaker states (no secrets).
+// `?deep=1` additionally performs one cheap live text call through the
+// failover router and reports which provider actually served it.
 app.get("/ai-status", async (req, res) => {
-    res.json(await aiRouterService.status());
+    const snapshot = await aiRouterService.status();
+    if (req.query.deep !== "1") {
+        return res.json(snapshot);
+    }
+    try {
+        const t0 = Date.now();
+        const chatResult = await aiRouterService.generateText(
+            "Reply with the single word: ok",
+            "You are a health probe. Reply with one word only.",
+            8
+        );
+        return res.json({
+            ...snapshot,
+            deepTest: {
+                ok: true,
+                provider: chatResult.provider,
+                latencyMs: Date.now() - t0,
+            },
+        });
+    } catch (err) {
+        return res.json({
+            ...snapshot,
+            deepTest: {
+                ok: false,
+                error: err.message?.slice(0, 200),
+                attempts: err.attempts,
+            },
+        });
+    }
 });
 
 // Gemini AI proxy (server-side key — never exposed to client)
