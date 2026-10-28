@@ -75,7 +75,7 @@ describe('formatMoney', () => {
 });
 
 let idCounter = 0;
-function shopPiece(slot: 'top' | 'bottom' | 'shoes', name: string, price: number): LocalClothingItem {
+function shopPiece(slot: 'outerwear' | 'top' | 'bottom' | 'shoes', name: string, price: number): LocalClothingItem {
     idCounter += 1;
     return {
         id: `shop_${slot}_${idCounter}`,
@@ -106,6 +106,7 @@ describe('buildLocalOutfits respects budget', () => {
     it('never lets shop spend exceed the user cap', () => {
         idCounter = 0;
         const pool = [
+            shopPiece('outerwear', 'light cotton jacket', 20),
             shopPiece('top', 'cheap polo', 25),
             shopPiece('top', 'luxury knit', 400),
             shopPiece('bottom', 'cheap chinos', 30),
@@ -131,6 +132,7 @@ describe('buildLocalOutfits respects budget', () => {
 it('local outfits retain mixed listed currencies while enforcing a USD cap', () => {
     idCounter = 0;
     const pool = [
+        shopPiece('outerwear', 'light cotton jacket', 1),
         { ...shopPiece('top', 'local cotton polo', 100000), currency: 'UZS' },
         shopPiece('bottom', 'cotton chinos', 5),
         shopPiece('shoes', 'leather loafers', 5),

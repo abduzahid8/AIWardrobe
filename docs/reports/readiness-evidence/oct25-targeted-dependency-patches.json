@@ -1,0 +1,126 @@
+{
+  "measuredAt": "2026-10-25T01:34:53.736507+00:00",
+  "scope": "Two targeted toolchain dependency patches; no production backend or native app installation change.",
+  "changes": [
+    {
+      "package": "fast-uri",
+      "before": "3.1.8",
+      "after": "3.1.9",
+      "reference": "https://github.com/fastify/fast-uri/security/advisories/GHSA-w74x-v6f9-j3xg"
+    },
+    {
+      "package": "serialize-javascript",
+      "before": "7.1.2",
+      "after": "7.1.3",
+      "reference": "https://github.com/yahoo/serialize-javascript/security/advisories/GHSA-m5mm-p8h7-m29v"
+    }
+  ],
+  "onlyTwoInstalledPackageVersionsChanged": true,
+  "regression": {
+    "before": {
+      "tests": 2,
+      "failed": 2
+    },
+    "afterSecurityAndToolchain": {
+      "tests": 15,
+      "passed": 15
+    },
+    "appSuite": {
+      "tests": 2379,
+      "suites": 186,
+      "passed": true
+    },
+    "typescript": true,
+    "iosHermesExport": true
+  },
+  "auditBefore": {
+    "info": 0,
+    "low": 2,
+    "moderate": 13,
+    "high": 65,
+    "critical": 0,
+    "total": 80
+  },
+  "auditAfter": {
+    "info": 0,
+    "low": 0,
+    "moderate": 11,
+    "high": 65,
+    "critical": 0,
+    "total": 76
+  },
+  "patchedFamiliesAbsentFromNewAudit": true,
+  "limits": [
+    "65high and11moderate audit findings remain",
+    "No evidence of exploitation in app asserted",
+    "Not a10,000DAU or full security certification",
+    "Native simulator verification still awaits Mac unlock"
+  ],
+  "remainingAdvisoryFamilies": [
+    {
+      "name": "basic-ftp",
+      "severity": "high",
+      "direct": false
+    },
+    {
+      "name": "body-parser",
+      "severity": "high",
+      "direct": false
+    },
+    {
+      "name": "csv-parse",
+      "severity": "moderate",
+      "direct": true
+    },
+    {
+      "name": "deepmerge-ts",
+      "severity": "high",
+      "direct": false
+    },
+    {
+      "name": "extract-zip",
+      "severity": "high",
+      "direct": false
+    },
+    {
+      "name": "fast-xml-parser",
+      "severity": "moderate",
+      "direct": true
+    },
+    {
+      "name": "follow-redirects",
+      "severity": "high",
+      "direct": false
+    },
+    {
+      "name": "http-cache-semantics",
+      "severity": "high",
+      "direct": false
+    },
+    {
+      "name": "node-forge",
+      "severity": "high",
+      "direct": false
+    },
+    {
+      "name": "postcss-selector-parser",
+      "severity": "moderate",
+      "direct": false
+    },
+    {
+      "name": "undici",
+      "severity": "high",
+      "direct": false
+    },
+    {
+      "name": "uuid",
+      "severity": "moderate",
+      "direct": false
+    },
+    {
+      "name": "zod",
+      "severity": "high",
+      "direct": true
+    }
+  ]
+}

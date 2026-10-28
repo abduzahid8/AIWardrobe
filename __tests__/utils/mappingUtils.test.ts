@@ -46,3 +46,7 @@ describe('mappingUtils', () => {
     });
   });
 });
+
+test.each([['trousers','top','bottoms'],['trousers','tops','bottoms'],['puffer jacket','top','outerwear'],['','bottom','bottoms'],['','upper_body','tops']])('editor maps %s / %s consistently', (type, section, expected) => {
+  expect(mapCategoryToType(type, section)).toBe(expected);
+});

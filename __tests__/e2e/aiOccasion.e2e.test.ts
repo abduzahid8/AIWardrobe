@@ -659,3 +659,8 @@ describe('climate — linen at 15°C is not a real outfit', () => {
     expect(passesStyleJudge(woolLook, 'semi_classic', 'casual', cool)).toBe(true);
   });
 });
+
+test('a footwear brand name is not evidence that loafers are winter boots',()=>{
+ const {rejectForRequestIntent}=require('../../backend/supabase/functions/_shared/occasionRules');
+ expect(rejectForRequestIntent({name:'Lincoln penny loafers',macroCategory:'shoes',brand:'Thursday Boot Co.',description:'Brown leather loafers'},'winter',{temp:0})).toContain('winter boots');
+});

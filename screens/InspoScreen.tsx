@@ -1,3 +1,4 @@
+import { useUzsPrice } from '../hooks/useUzsPrice';
 import { authEvents } from '../store/authEvents';
 /**
  * InspoScreen — Inspiration page
@@ -32,7 +33,6 @@ import { INSPO_MENS_SHOP_ITEMS, CLASSIC_MENS_ITEMS } from '../data/inspoMensShop
 import { useShopCatalog } from '../hooks/useShopCatalog';
 import { useFeaturedCapsules, type FeaturedCapsule } from '../hooks/useFeaturedCapsules';
 import { useTranslation } from 'react-i18next';
-import { formatMoney } from '../src/utils/outfitBudget';
 import { inferShopRowMacro } from '../src/utils/shopCatalogOrder';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -48,13 +48,6 @@ const CAPSULE_CARD_HEIGHT = 250;
 const PRODUCT_CARD_WIDTH = (SCREEN_WIDTH - spacing.screenPadding * 2 - spacing.sm) / 2;
 
 // ── Shop price + spotlight helpers ──────────────────────────────────────
-// shop_catalog rows are priced in UZS (median ~1.2M so'm) — never render
-// them with a `$` prefix. formatMoney('UZS') groups as "2 232 000 UZS".
-const formatShopPrice = (item: ShopCatalogItem): string => {
-    const n = Number((item as unknown as { price?: unknown })?.price);
-    if (!Number.isFinite(n) || n <= 0) return '';
-    return formatMoney(n, 'UZS');
-};
 
 const getShopItemMacro = (item: ShopCatalogItem): string => {
     try {
@@ -163,6 +156,7 @@ const ProductCard = React.memo(({
     plate?: number;
     highlighted?: boolean;
 }) => {
+    const displayPrice = useUzsPrice(Number(item.price), item.currency);
     const handleSave = React.useCallback(() => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         onSave(item);
@@ -183,7 +177,7 @@ const ProductCard = React.memo(({
             onPress={handleCardPress}
             activeOpacity={0.9}
             accessibilityRole="button"
-            accessibilityLabel={`${item.brand} ${item.name} ${formatShopPrice(item)}`}
+            accessibilityLabel={`${item.brand} ${item.name} ${displayPrice || t('common.priceUnavailable')}`}
             accessibilityHint={t('inspo.buyNow')}
         >
             <View
@@ -233,7 +227,7 @@ const ProductCard = React.memo(({
                     {item.brand}
                 </ScaledText>
                 <ScaledText style={[styles.captionPrice, spotlight && styles.captionPriceLarge]}>
-                    {formatShopPrice(item)}
+                    {displayPrice || t('common.priceUnavailable')}
                 </ScaledText>
             </View>
         </TouchableOpacity>
@@ -381,6 +375,8 @@ const InspoScreen = () => {
     const { t } = useTranslation();
     const navigation = useAppNavigation();
 
+    const [searchQuery, setSearchQuery] = useState('');
+    const deferredSearchQuery = useDeferredValue(searchQuery);
     const {
         items: syncedShopItems,
         loading: shopCatalogLoading,
@@ -389,7 +385,7 @@ const InspoScreen = () => {
         hasMore: shopCatalogHasMore,
         loadMore: loadMoreShopCatalog,
         refresh: refreshShopCatalog,
-    } = useShopCatalog({ source: 'all' });
+    } = useShopCatalog({ source: 'all', search: deferredSearchQuery });
 
     const {
         items: featuredCapsules,
@@ -476,7 +472,7 @@ const InspoScreen = () => {
     const savedInspo = useSavedShopStore((s) => s.items);
     const hydrateSavedShop = useSavedShopStore((s) => s.hydrate);
     const [segment, setSegment] = useState<SegmentType>('guide');
-    const [searchQuery, setSearchQuery] = useState('');
+
     const [showSavedOnly, setShowSavedOnly] = useState(false);
     const [saveToast, setSaveToast] = useState<string | null>(null);
     const saveToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -569,14 +565,14 @@ const InspoScreen = () => {
 
     const isShopEmpty = syncedShopItems.length === 0;
     const isInitialShopLoad = isShopEmpty && shopCatalogLoading;
-    const showingFallbackCatalog = isShopEmpty && !shopCatalogLoading;
+    const showingFallbackCatalog = isShopEmpty && !shopCatalogLoading && !deferredSearchQuery.trim();
 
     // Deferred so typing stays responsive: the TextInput keeps the immediate
     // value while the 100+ item filter + full grid rebuild runs at a lower
     // priority. Previously every keystroke synchronously rebuilt shopItems →
     // shopRows → the whole VirtualizedList, blocking the JS thread (~2s with
     // images/animations in flight) and dropping keystrokes.
-    const deferredSearchQuery = useDeferredValue(searchQuery);
+
 
     const shopItems = useMemo(() => {
         const baseItems = showingFallbackCatalog ? INSPO_MENS_SHOP_ITEMS : syncedShopItems;

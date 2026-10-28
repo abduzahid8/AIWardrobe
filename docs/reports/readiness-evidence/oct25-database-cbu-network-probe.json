@@ -1,0 +1,36 @@
+{
+  "measuredAt": "2026-10-25T17:38:01.312Z",
+  "scope": "Database outbound TLS connectivity diagnostic in a rolled-back transaction; no persistent extension, schema, rate snapshot or job installed.",
+  "tlsVerificationEnabled": true,
+  "connectTimeoutMs": 4000,
+  "totalTimeoutMs": 8000,
+  "results": [
+    {
+      "target": "https://www.google.com/",
+      "status": 200,
+      "content_type": "text/html; charset=ISO-8859-1",
+      "body_bytes": 87534,
+      "array_rows": null,
+      "error_code": null,
+      "error_message": null,
+      "elapsed_ms": 159
+    },
+    {
+      "target": "https://cbu.uz/uz/arkhiv-kursov-valyut/json/all/2026-10-25/",
+      "status": null,
+      "content_type": null,
+      "body_bytes": null,
+      "array_rows": null,
+      "error_code": "XX000",
+      "error_message": "Failed to connect to cbu.uz port 443 after 4002 ms: Timeout was reached",
+      "elapsed_ms": 4003
+    }
+  ],
+  "earlierProbe": "Initial GUC-only configuration returned a default one-second timeout; final diagnostic explicitly used http_set_curlopt and a successful Google control request.",
+  "cleanup": {
+    "probeSchemaAbsent": true,
+    "httpExtensionAbsent": true,
+    "pgNetExtensionAbsent": true
+  },
+  "budgetedGenerationReady": false
+}

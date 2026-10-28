@@ -157,8 +157,8 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
     const [isAnalyzing, setIsAnalyzing] = useState(!isEditingExisting && !route.params?.detectedType && !!itemImageUri);
 
     const [selectedType, setSelectedType] = useState(
-        isEditingExisting && existingItem?.subCategory
-            ? mapCategoryToType(existingItem.subCategory, existingItem.category || '')
+        isEditingExisting && existingItem
+            ? mapCategoryToType(`${existingItem.name || ''} ${existingItem.subCategory || ''}`, existingItem.category || '')
             : detectedType
     );
     const [selectedColor, setSelectedColor] = useState(detectedColor);
@@ -258,7 +258,7 @@ const ClothingDetailEditor: React.FC<ClothingDetailEditorProps> = ({
             try {
                 const updateItemInStore = useWardrobeStore.getState().updateItem;
                 const updates: Partial<ClothingItem> = {
-                    ...(selectedType !== mapCategoryToType(existingItem.subCategory, existingItem.category || '') ? {
+                    ...(selectedType !== mapCategoryToType(`${existingItem.name || ''} ${existingItem.subCategory || ''}`, existingItem.category || '') || normalizeCategory(existingItem.category || '') !== normalizeCategory(selectedType) ? {
                         category: selectedType === 'sportswear' || selectedType === 'homewear' ? existingItem.category : normalizeCategory(selectedType),
                         subCategory: selectedType,
                     } : {}),

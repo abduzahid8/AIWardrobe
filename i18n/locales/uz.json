@@ -1,5 +1,6 @@
 {
   "common": {
+    "priceUnavailable": "Narx mavjud emas",
     "localDataCleanupFailed": "Hisobning ayrim mahalliy maʼlumotlarini oʻchirib boʻlmadi. Qurilmani boshqa foydalanuvchiga berishdan oldin qayta urinib koʻring.",
     "upgrade": "Pro'ga o'tish",
     "cancel": "Bekor qilish",
@@ -451,6 +452,7 @@
   },
   "aiThinking": {
     "scanningWardrobe": "Shkafni skanlash...",
+    "reviewingCatalog": "Katalogdagi kiyimlar ko‘rib chiqilmoqda...",
     "analyzingStyle": "Stilni tahlil qilish...",
     "matchingCombinations": "Kombinatsiyalarni moslash...",
     "optimizingOutfits": "Liboslarni optimallashtirish...",
@@ -739,8 +741,8 @@
     "travel": "Sayohat",
     "discoverVibe": "Stilingizni kashf qiling",
     "tapStyleCard": "Quyidagi stil kartasini bosing va AI shkafingizdan to'liq libos yaratadi.",
-    "promptPlaceholder": "Qayerga ketayapsiz, stil (old money, classic…), byudjet ($150)…",
-    "promptPlaceholderShort": "Qayerga ketayapsiz, stil, byudjet ($150)…",
+    "promptPlaceholder": "Qayerga ketayapsiz, stil (old money, classic…), byudjet (1 500 000 UZS)…",
+    "promptPlaceholderShort": "Qayerga ketayapsiz, stil, byudjet (1 500 000 UZS)…",
     "generate": "Yaratish",
     "description1": "Shkafingizdan tanlangan {{style}} libosi.",
     "description2": "Muvozanatli nisbatlarga ega elegan {{style}} ansambli.",
@@ -755,6 +757,7 @@
     "budgetTooLow": "Mavjud kiyimlardan bu byudjetga mos to‘liq obraz tuzib bo‘lmaydi. Byudjetni oshiring yoki o‘zingizdagi kiyimlardan foydalaning.",
     "noItemsWithinBudget": "Bu byudjetga mos kiyim topilmadi. Byudjetni oshiring yoki o‘zingizdagi kiyimlardan foydalaning.",
     "noMatchingClothing": "Tanlovlaringizga mos kiyim topilmadi. Mos kiyim qo‘shing yoki tanlovlarni o‘zgartiring.",
+    "aiCurated": "AI tanlagan",
     "invalidBudget": "Byudjet miqdori yoki valyutasi noto‘g‘ri. Byudjetni tekshirib, qayta urinib ko‘ring.",
     "invalidRequest": "So‘rovni tekshiring: ko‘pi bilan 1000 ta belgi, 200 ta tanlangan kiyim va 15 ta obraz.",
     "requestTooLarge": "So‘rovdagi ma’lumot hajmi juda katta. Kamroq kiyim tanlab, qayta urinib ko‘ring.",
@@ -825,7 +828,9 @@
     "continue": "Davom etish",
     "productUnavailableBody": "Bu reja hozir do'konda mavjud emas. Keyinroq urinib ko'ring.",
     "proFeature6": "Ustuvor AI model · reklamasiz",
-    "proFeature7": "Erta kirish va ustuvor qo'llab-quvvatlash"
+    "proFeature7": "Erta kirish va ustuvor qo'llab-quvvatlash",
+    "purchasePending": "Xarid hali ham ko'rib chiqilmoqda",
+    "purchasePendingBody": "App Store bu xaridni hali tasdiqlamadi. Agar App Store so'rovi ochiq bo'lsa, uni yakunlang yoki bekor qiling. So'ng qayta xarid qilishdan oldin xaridlarni tiklashni tekshiring."
   },
   "featureLock": {
     "feature": "FUNKSIYA",
@@ -1670,7 +1675,6 @@
     "resumeReview": "{{index}}-skanni davom ettirish · {{count}} ta kiyim",
     "reviewRestoreFailed": "Saqlangan skanlarni tiklab bo‘lmadi. Qayta urinib ko‘ring.",
     "reviewUnavailable": "{{count}} ta saqlangan skanni o‘qib bo‘lmadi. Fayllaringiz saqlab qolindi. Boshqa skanlardan foydalanishingiz mumkin.",
-
     "pendingScans": "Saqlangan skanlar",
     "pendingScansDescription": "Bu skanlar tahlilni kutmoqda. Davom etish uchun internetga ulangan holda ushbu ekranni oching.",
     "queuedPhoto": "Surat {{index}}",
@@ -2106,10 +2110,10 @@
     }
   },
   "wardrobeSync": {
-      "capacityTitle": "Ba’zi buyumlar sinxronlanmagan",
-      "capacityMessage": "Bu buyumlarni sinxronlash tarifingizdagi {{limit}} ta bulut buyumi chegarasidan oshadi. Sinxronlanmagan rasmlar shu qurilmada saqlanadi. Tarifni yangilang yoki bulutdagi buyumlarni o‘chiring, so‘ng qayta urinib ko‘ring.",
-      "retry": "Qayta sinxronlash",
-      "upgrade": "Tarifni yangilash",
-      "retrying": "Sinxronlanmoqda…"
+    "capacityTitle": "Ba’zi buyumlar sinxronlanmagan",
+    "capacityMessage": "Bu buyumlarni sinxronlash tarifingizdagi {{limit}} ta bulut buyumi chegarasidan oshadi. Sinxronlanmagan rasmlar shu qurilmada saqlanadi. Tarifni yangilang yoki bulutdagi buyumlarni o‘chiring, so‘ng qayta urinib ko‘ring.",
+    "retry": "Qayta sinxronlash",
+    "upgrade": "Tarifni yangilash",
+    "retrying": "Sinxronlanmoqda…"
   }
 }

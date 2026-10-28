@@ -1,0 +1,19 @@
+{
+  "measuredAt": "2026-10-25T02:10:46.884Z",
+  "scope": "Live NVIDIA category/budget scenarios; not exhaustive accuracy or capacity certification",
+  "checks": [],
+  "fixtureUserId": "b97ce1a3-5090-4441-872a-dcf4069588c5",
+  "budgetRates": {
+    "status": 503,
+    "latencyMs": 11154,
+    "success": false,
+    "error": "budget_rates_unavailable",
+    "snapshotPresent": false
+  },
+  "failure": "BudgetFxError",
+  "cleanup": {
+    "refreshSessionsRevoked": true,
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

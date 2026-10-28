@@ -47,3 +47,44 @@ export function outfitStructureReason(items: unknown, requireLayer = false): str
     if (requireLayer && !slots.has('outerwear')) return 'missing_layer';
     return null;
 }
+
+/** Only identifiable shirts/T-shirts and pants can fill those categories. */
+export function isFourSlotCandidate(item: {macroCategory?: string; name?: string; type?: string}): boolean {
+    const text = `${item.name || ''} ${item.type || ''}`.toLowerCase();
+    const name = String(item.name || '').toLowerCase();
+    if (isNonOutfitItem(item) || isDressGarment(item)) return false;
+    if (item.macroCategory === 'top') {
+        // A stale `type: shirt` field must not override a product title that
+        // identifies a plain knit garment. Knit polos and knit shirts remain
+        // valid because their names identify one of the allowed base-top types.
+        if (/\bknit(?:ted|wear)?\b/.test(name) && !/\b(?:polos?|shirts?|t-?shirts?|tees?)\b/.test(name)) return false;
+        if (/\b(sweaters?|pullovers?|jumpers?|cardigans?|hoodies?|jackets?|blazers?|coats?|vests?|sweatshirts?)\b|свитер|джемпер|кардиган|толстовк|куртк|пиджак/.test(text)) return false;
+        return /\b(t[ -]?shirts?|tees?|shirts?|polos?)\b|рубашк|футболк|поло/.test(text);
+    }
+    if (item.macroCategory === 'bottom') {
+        // Product/color names can contain Jeans; a named shirt is never pants.
+        if (/\b(t[ -]?shirts?|tees?|shirts?|polos?|blouses?|sweaters?|pullovers?|cardigans?|jackets?|blazers?|coats?)\b|рубашк|футболк|поло|свитер|куртк|пиджак/.test(text)) return false;
+        if (/\b(shorts?|bermudas?|skirts?|trunks?|swimwear)\b|шорт|юбк/.test(text)) return false;
+        return /\b(pants?|trousers?|jeans|chinos?|joggers?|slacks?)\b|брюк|джинс|чинос/.test(text);
+    }
+    return item.macroCategory === 'outerwear' || item.macroCategory === 'shoes';
+}
+
+/** App generation contract: layer (when required), base shirt, pants, shoes.
+ * `requireLayer=false` is the hot / explicit no-jacket composition: exactly
+ * top+bottom+shoes, and an outerwear piece makes it invalid. */
+export function fourSlotOutfitReason(items: unknown, requireLayer = true): string | null {
+    const structural = outfitStructureReason(items, requireLayer);
+    if (structural) return structural;
+    const parts = items as Array<{macroCategory: string; name?: string; type?: string}>;
+    if (!requireLayer && parts.some(p => p.macroCategory === 'outerwear')) return 'layer_not_allowed';
+    if (parts.length !== (requireLayer ? 4 : 3) || parts.some(isDressGarment)) return 'requires_four_categories';
+    if (!parts.every(isFourSlotCandidate)) return 'invalid_required_category';
+    const top = parts.find(item => item.macroCategory === 'top')!;
+    const bottom = parts.find(item => item.macroCategory === 'bottom')!;
+    const topName = `${top.name || ''} ${top.type || ''}`.toLowerCase();
+    if (/\b(sweaters?|pullovers?|jumpers?|cardigans?|hoodies?|jackets?|blazers?|coats?|vests?)\b|свитер|джемпер|кардиган|толстовк|куртк|пиджак/.test(topName)) return 'base_top_must_be_shirt';
+    const bottomName = `${bottom.name || ''} ${bottom.type || ''}`.toLowerCase();
+    if (/\b(shorts?|bermudas?|skirts?|trunks?|swimwear)\b|шорт|юбк/.test(bottomName)) return 'bottom_must_be_pants';
+    return null;
+}

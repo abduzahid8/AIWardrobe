@@ -1,0 +1,90 @@
+{
+  "measuredAt": "2026-10-25",
+  "issue": "Old Money / Work shopping generation can return too few compatible cards or reject an unusable model selection.",
+  "baseline": {
+    "version": 130,
+    "report": "v130-oct25-full-deck.json",
+    "httpStatus": 200,
+    "outfitsReturned": 2,
+    "displayedTarget": 3,
+    "shortfallReason": "insufficient_unique_candidates"
+  },
+  "diagnosis": [
+    "Catalog supported three product-unique looks, but the five-look AI shortlist removed compatible alternatives.",
+    "Ranking all 24 options was rejected during real-provider experiments: invented, malformed and empty IDs. None of those experiments was deployed."
+  ],
+  "fix": {
+    "version": 131,
+    "changedHostedFiles": [
+      "functions/generate-outfits/index.ts",
+      "functions/_shared/outfitChoices.ts"
+    ],
+    "preservedOtherHostedFiles": 13,
+    "verifyJwt": true,
+    "exactReadback": true,
+    "behavior": "Build a jointly compatible, validated displayed deck before bounded AI ranking. Reject unknown, repeated or missing selection IDs. Preserve style, composition, budget, anchor and product gates. Single-card selection unchanged.",
+    "outputScope": "Multi-card curated requests return the displayed target (three), rather than five shortlisted alternatives."
+  },
+  "validation": {
+    "jestTests": 2382,
+    "jestSuites": 186,
+    "hostedPackageFocusedTests": 101,
+    "denoCheck": true,
+    "typescript": true,
+    "production": [
+      {
+        "report": "v131-oct25-hosted-deck-1.json",
+        "passed": true,
+        "status": 200,
+        "latencyMs": 4899,
+        "outfits": 3,
+        "visibleDeck": {
+          "count": 3,
+          "illegalProductReuseCount": 0,
+          "forcedRepeatSlots": []
+        },
+        "source": "ai"
+      },
+      {
+        "report": "v131-oct25-hosted-deck-2.json",
+        "passed": true,
+        "status": 200,
+        "latencyMs": 4087,
+        "outfits": 3,
+        "visibleDeck": {
+          "count": 3,
+          "illegalProductReuseCount": 0,
+          "forcedRepeatSlots": []
+        },
+        "source": "ai"
+      },
+      {
+        "report": "v131-oct25-hosted-deck-3.json",
+        "passed": true,
+        "status": 200,
+        "latencyMs": 3296,
+        "outfits": 3,
+        "visibleDeck": {
+          "count": 3,
+          "illegalProductReuseCount": 0,
+          "forcedRepeatSlots": []
+        },
+        "source": "ai"
+      }
+    ],
+    "independentFixtureCleanup": {
+      "usersRemaining": 0,
+      "profilesRemaining": 0,
+      "sessionsRemaining": 0,
+      "fixturesBeforeDeployment": 10,
+      "fixturesAfterDeployment": 3
+    }
+  },
+  "limits": [
+    "Controlled active catalog pool and temporary trial accounts; not the screenshot account.",
+    "Production checks had no entered budget or weather; budget/style branches also covered by regression tests.",
+    "Native signed-in UI not rechecked: Mac locked and original simulator signed out.",
+    "Not exhaustive category coverage, provider reliability guarantee, sustained capacity evidence or 10,000 DAU certification.",
+    "Local source has older unrelated differences from hosted package; deployment preserved all other hosted files."
+  ]
+}

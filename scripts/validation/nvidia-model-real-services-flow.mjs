@@ -34,13 +34,20 @@ await collect('generate-outfits/index.ts');load(path.join(root,'generate-outfits
 if(!handler)throw Error('Candidate handler not captured');
 const originalFetch=globalThis.fetch;
 const observations=[];
+const mockAllChoices=process.env.OUTFIT_ALL_CHOICES_DIAGNOSTIC==='1';
 globalThis.fetch=async(input,init)=>{
  const url=new URL(typeof input==='string'||input instanceof URL?input:input.url);
  if(url.origin===new URL(variables.SUPABASE_URL).origin&&url.pathname==='/functions/v1/generate-outfits')return handler(new Request(input,init));
  if(url.origin==='https://integrate.api.nvidia.com'){
   const body=JSON.parse(init.body),started=performance.now();
+  if(mockAllChoices){
+   const options=JSON.parse(body.messages[1].content);
+   if(!Array.isArray(options.looks))throw Error('Diagnostic requires curated-choice input');
+   observations.push({model:body.model,providerMocked:true,offeredLooks:options.looks.length});
+   return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({outfits:options.looks.map(look=>({items:[{id:look.id}]}))})}}]}),{headers:{'content-type':'application/json'}});
+  }
   const observation={model:body.model,requestCharacters:body.messages.reduce((sum,m)=>sum+String(m.content).length,0),maxTokens:body.max_tokens};observations.push(observation);
-  try{const response=await originalFetch(input,init);const data=await response.clone().json();Object.assign(observation,{status:response.status,latencyMs:Math.round(performance.now()-started),finishReason:data.choices?.[0]?.finish_reason??null,contentCharacters:String(data.choices?.[0]?.message?.content||'').length,usage:data.usage?{promptTokens:data.usage.prompt_tokens,completionTokens:data.usage.completion_tokens}:null});return response;}catch(error){Object.assign(observation,{latencyMs:Math.round(performance.now()-started),transportError:error.name});throw error;}
+  try{const response=await originalFetch(input,init);const data=await response.clone().json();if(process.env.OUTFIT_CAPTURE_CONTENT==='1')await writeFile('/tmp/aiwardrobe-outfit-choice-response.txt',String(data.choices?.[0]?.message?.content||''),{mode:0o600});Object.assign(observation,{status:response.status,latencyMs:Math.round(performance.now()-started),finishReason:data.choices?.[0]?.finish_reason??null,contentCharacters:String(data.choices?.[0]?.message?.content||'').length,usage:data.usage?{promptTokens:data.usage.prompt_tokens,completionTokens:data.usage.completion_tokens}:null});return response;}catch(error){Object.assign(observation,{latencyMs:Math.round(performance.now()-started),transportError:error.name});throw error;}
  }
  return originalFetch(input,init);
 };
@@ -52,7 +59,8 @@ finally{
   const reportPath=new URL('../../docs/reports/readiness-evidence/'+filename,import.meta.url);
   const report=JSON.parse(await readFile(reportPath,'utf8'));
   report.providerObservations=observations;
-  report.execution={runtime:'Local Node with actual current handler modules; real Supabase Auth/catalog/rate guards and hosted NVIDIA',candidateModel:model,sourceHashes:hashes,productionConfigurationChanged:false,limits:'Not hosted Edge runtime or native UI; this comparison does not establish production model throughput.'};
+  if(mockAllChoices){report.providerExecution='MOCKED all offered look IDs; no NVIDIA call';report.scope='Diagnostic Node handler with real Auth/catalog and mocked selection of every offered look; no hosted Edge or AI capacity claim';}
+  report.execution={runtime:'Local Node with actual current handler modules; real Supabase Auth/catalog/rate guards and hosted NVIDIA',candidateModel:model,providerMocked:mockAllChoices,sourceHashes:hashes,productionConfigurationChanged:false,limits:'Not hosted Edge runtime or native UI; this comparison does not establish production model throughput.'};
   await writeFile(reportPath,JSON.stringify(report,null,2)+'\n');
  }
 }

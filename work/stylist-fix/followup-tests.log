@@ -1,0 +1,7 @@
+PASS __tests__/backend/outfitBudgetWire.test.js (24.531 s)
+PASS __tests__/e2e/aiOccasion.e2e.test.ts
+
+Test Suites: 2 passed, 2 total
+Tests:       196 passed, 196 total
+Snapshots:   0 total
+Time:        25.092 s, estimated 27 s

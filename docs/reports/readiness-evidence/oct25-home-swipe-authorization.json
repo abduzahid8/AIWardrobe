@@ -1,0 +1,88 @@
+{
+  "measuredAt": "2026-10-25T16:36:39.190Z",
+  "status": "source_and_bundles_verified_installed_ui_and_recovery_incomplete",
+  "problem": "Home committed save/skip and advanced before awaiting quota authority; rapid actions could pass stale local checks. Awaiting after the old fly-off would leave the card off-screen.",
+  "change": [
+    "Authorize before fly-off; retain visible current card with localized loading indicator.",
+    "Synchronous duplicate-decision guard; obsolete/unmounted cards abort cooperative transport and cannot commit.",
+    "Home requires server confirmation even during pending trial UI; failed verification cannot grant an offline allowance.",
+    "Quota denial opens paywall, verification errors show network feedback, cancelled/old-account results do not navigate.",
+    "Commit callbacks do not recheck the exhausted third reservation or consume twice.",
+    "Server-approved actions do not wait for best-effort storage; owner-scoped writes remain ordered; unchanged counters avoid redundant writes.",
+    "Quota labels subscribe to counter snapshots."
+  ],
+  "sourceSha256": {
+    "store/dailyUsageStore.ts": "4f42e243efac5e177b302b31438d95261f3bb3cd4abe0d703ee1ce4c16214400",
+    "src/hooks/useSubscriptionGate.ts": "bb1515c4bc402f74ace1a0ea25c69ecd84f711a3186620a30ac5a1215213f721",
+    "components/ui/OutfitSwipeStack.tsx": "fd5ec2b7c4174d2f1c19d686f821b376b32004d18f9b32ff8405a7be016be031",
+    "screens/HomeScreen.tsx": "a341557b628302a0c11c416cb38b275e9f44f3acaf6e1bcdd27ea6188b1f34a1"
+  },
+  "regressions": {
+    "strictVerificationBefore": {
+      "failed": 2,
+      "passed": 24,
+      "log": "/tmp/aiwardrobe-oct25-swipe-quota-before.log"
+    },
+    "cacheWaitBefore": {
+      "failed": 1,
+      "passed": 27,
+      "log": "/tmp/aiwardrobe-oct25-swipe-cache-wait-before.log"
+    },
+    "focusedCurrentTests": 39,
+    "fullCurrentTests": 2414,
+    "fullCurrentSuites": 188,
+    "typescript": true,
+    "sourceFrozenDuringFinalVerification": true
+  },
+  "liveStoreAndRpc": {
+    "report": "oct25-home-swipe-admission.json",
+    "passed": true,
+    "requests": {
+      "maxActive": 20,
+      "elapsedMs": 3381,
+      "allowed": 3,
+      "denied": 17,
+      "errors": 0,
+      "errorTypes": []
+    },
+    "serverUsed": 3,
+    "cachedUsed": 3,
+    "cachedRemaining": 0,
+    "boundary": "Actual current store and live ordinary-account RPCs; storage, auth-event selector and free-plan selectors controlled. Profile independently free without trial. Not native Home UI."
+  },
+  "builds": {
+    "iosExport": "/tmp/aiwardrobe-oct25-swipe-frozen-ios-export",
+    "androidExport": "/tmp/aiwardrobe-oct25-swipe-frozen-android-export",
+    "sourceMapCorrespondence": {
+      "ios": {
+        "store/dailyUsageStore.ts": true,
+        "src/hooks/useSubscriptionGate.ts": true,
+        "components/ui/OutfitSwipeStack.tsx": true,
+        "screens/HomeScreen.tsx": true
+      },
+      "android": {
+        "store/dailyUsageStore.ts": true,
+        "src/hooks/useSubscriptionGate.ts": true,
+        "components/ui/OutfitSwipeStack.tsx": true,
+        "screens/HomeScreen.tsx": true
+      }
+    },
+    "installedOrDistributed": false
+  },
+  "cleanup": {
+    "independentSql": true,
+    "fixtureUsers": 4,
+    "usersRemaining": 0,
+    "profilesRemaining": 0,
+    "sessionsRemaining": 0,
+    "usageRowsRemaining": 0
+  },
+  "remaining": [
+    "Installed native gesture/timing verification unavailable: simulator-control selection timed out twice.",
+    "Server increment may succeed before an aborted/lost response. Idempotent reservation recovery/refunds and a durable uncertain-result journal are not implemented by this change.",
+    "Core scan accuracy and CBU production connectivity remain blockers.",
+    "No sustained mixed-load,10k-owner cardinality, payment/auth lifecycle or10,000DAUcertification."
+  ],
+  "backendDeploymentChanged": false,
+  "initialHarnessFailure": "CommonJS controlled default exports lacked ES-module flags; source execution failed before verified quota RPC outcomes. Original report retained separately."
+}

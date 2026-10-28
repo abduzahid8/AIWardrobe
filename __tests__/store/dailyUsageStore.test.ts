@@ -1,3 +1,4 @@
+import {expect as jestExpect} from '@jest/globals';
 let AsyncStorage: typeof import('@react-native-async-storage/async-storage').default;
 
 beforeEach(() => {
@@ -261,4 +262,65 @@ test('does not attribute an unowned legacy cache to the current account', async(
   (AsyncStorage.getItem as jest.Mock).mockImplementation((key:string)=>Promise.resolve(key==='daily_usage_v1'?JSON.stringify({date:new Date().toISOString().slice(0,10),counts:{homeSwipes:3}}):null));
   await useDailyUsageStore.getState().hydrate();
   expect(useDailyUsageStore.getState().getUsed('homeSwipes')).toBe(0);
+});
+
+describe('server-confirmed quota reservations',()=>{
+ it('reuses the displayed card identity after a lost reply, including a remounted store',async()=>{
+  let stores=loadStores();const client=require('../../lib/supabase').supabase;
+  client.rpc=jest.fn().mockRejectedValueOnce(Error('reply lost'))
+   .mockResolvedValueOnce({data:[{allowed:true,used:1,remaining:2}],error:null});
+  const options={requireServer:true,homeCardKey:'outfit-123-old-money-0'};
+  await jestExpect(stores.useDailyUsageStore.getState().consume('homeSwipes',1,options)).rejects.toThrow();
+  // Cache and component state are not needed to recover the same server receipt.
+  stores.useDailyUsageStore.setState({snapshot:{date:'2099-01-01',counts:{}},hydrated:false});
+  expect(await stores.useDailyUsageStore.getState().consume('homeSwipes',1,options)).toEqual({allowed:true,used:1,remaining:2});
+  const expected=['authorize_home_swipe',{p_card_key:options.homeCardKey,p_day:new Date().toISOString().slice(0,10)}];
+  expect(client.rpc.mock.calls).toEqual([expected,expected]);
+ });
+ it('rejects misuse of a Home receipt without making a quota request',async()=>{
+  const{useDailyUsageStore}=loadStores();const client=require('../../lib/supabase').supabase;client.rpc=jest.fn();
+  for(const [feature,amount,options] of [
+   ['wardrobeScans',1,{requireServer:true,homeCardKey:'card'}],
+   ['homeSwipes',2,{requireServer:true,homeCardKey:'card'}],
+   ['homeSwipes',1,{homeCardKey:'card'}],
+   ['homeSwipes',1,{requireServer:true,homeCardKey:''}],
+   ['homeSwipes',1,{requireServer:true,homeCardKey:'x'.repeat(513)}],
+  ] as const)await jestExpect(useDailyUsageStore.getState().consume(feature,amount,options)).rejects.toThrow();
+  expect(client.rpc).not.toHaveBeenCalled();
+ });
+ it('does not grant or cache a swipe when authoritative verification is unavailable',async()=>{
+  const {useDailyUsageStore}=loadStores();const client=require('../../lib/supabase').supabase;
+  client.rpc=jest.fn().mockResolvedValue({data:null,error:{status:503}});
+  await jestExpect(useDailyUsageStore.getState().consume('homeSwipes',1,{requireServer:true})).rejects.toThrow();
+  expect(useDailyUsageStore.getState().getUsed('homeSwipes')).toBe(0);expect(AsyncStorage.setItem).not.toHaveBeenCalled();
+ });
+ it('keeps a server quota denial authoritative',async()=>{
+  const {useDailyUsageStore}=loadStores();const client=require('../../lib/supabase').supabase;
+  client.rpc=jest.fn().mockResolvedValue({data:[{allowed:false,used:3,remaining:0}],error:null});
+  expect(await useDailyUsageStore.getState().consume('homeSwipes',1,{requireServer:true})).toEqual({allowed:false,used:3,remaining:0});
+ });
+ it('aborts a stalled authoritative RPC without consuming a cached allowance',async()=>{
+  jest.useFakeTimers();try{
+   const {useDailyUsageStore}=loadStores();const client=require('../../lib/supabase').supabase;let signal:AbortSignal|undefined;
+   client.rpc=jest.fn(()=>({abortSignal:(value:AbortSignal)=>{signal=value;return new Promise(()=>{})}}));
+   const result=jestExpect(useDailyUsageStore.getState().consume('homeSwipes',1,{requireServer:true})).rejects.toThrow();
+   await jest.advanceTimersByTimeAsync(6000);await result;expect(signal?.aborted).toBe(true);expect(useDailyUsageStore.getState().getUsed('homeSwipes')).toBe(0);
+  }finally{jest.useRealTimers()}
+ });
+});
+
+test('cancelling an in-flight swipe aborts transport without consuming offline allowance',async()=>{
+ const{useDailyUsageStore}=loadStores(),client=require('../../lib/supabase').supabase;const cancel=new AbortController();let transport:AbortSignal|undefined;
+ client.rpc=jest.fn(()=>({abortSignal:(signal:AbortSignal)=>{transport=signal;return new Promise(()=>{})}}));
+ const pending=useDailyUsageStore.getState().consume('homeSwipes',1,{requireServer:true,cancelSignal:cancel.signal});cancel.abort();
+ expect((await pending).allowed).toBe(false);expect(transport?.aborted).toBe(true);expect(useDailyUsageStore.getState().getUsed('homeSwipes')).toBe(0);expect(AsyncStorage.setItem).not.toHaveBeenCalled();
+});
+
+test('a verified swipe does not wait for a stalled best-effort disk cache',async()=>{
+ const{useDailyUsageStore}=loadStores(),client=require('../../lib/supabase').supabase;
+ client.rpc=jest.fn().mockResolvedValue({data:[{allowed:true,used:1,remaining:2}],error:null});
+ let finish!:()=>void;let result:any;
+ (AsyncStorage.setItem as jest.Mock).mockImplementationOnce(()=>new Promise<void>(resolve=>finish=resolve));
+ const pending=useDailyUsageStore.getState().consume('homeSwipes',1,{requireServer:true}).then((value:unknown)=>{result=value});
+ try{for(let i=0;i<30;i++)await Promise.resolve();expect(typeof finish).toBe('function');expect(result?.allowed).toBe(true)}finally{finish?.();await pending}
 });

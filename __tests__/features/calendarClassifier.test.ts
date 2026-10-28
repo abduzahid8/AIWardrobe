@@ -13,20 +13,22 @@ import {
   formatDate,
   getDaysInMonth,
   getFirstDayOfMonth,
+  resolveCalendarOccasion,
 } from '../../features/calendar/types';
 
-// ── Re-implement the style → occasion classifier (mirrors AIOutfitmaker) ──
-function getCalendarOccasion(styleId?: string): string {
-  switch (styleId) {
-    case 'business_casual': return 'work';
-    case 'old_money':
-    case 'classic': return 'formal';
-    case 'semi_classic':
-    case 'minimalist':
-    case 'casual': return 'casual';
-    default: return 'casual';
+// Exercise the production resolver with no explicit occasion for legacy callers.
+const getCalendarOccasion = (styleId?: string) => resolveCalendarOccasion(undefined, styleId);
+
+test.each(OCCASION_IDS)('explicit %s survives every style default', occasion => {
+  for (const style of ['classic','old_money','business_casual','casual','minimalist',undefined]) {
+    expect(resolveCalendarOccasion(occasion,style)).toBe(occasion);
   }
-}
+});
+
+test('an invalid explicit event falls back to a supported occasion',()=>{
+  expect(resolveCalendarOccasion('invalid-event','business_casual')).toBe('work');
+  expect(resolveCalendarOccasion('invalid-event','unknown-style')).toBe('casual');
+});
 
 describe('getCalendarOccasion — style → occasion classifier', () => {
   it('maps business_casual to work', () => {

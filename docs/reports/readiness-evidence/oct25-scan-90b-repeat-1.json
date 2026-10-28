@@ -1,0 +1,16 @@
+{
+  "measuredAt": "2026-10-25T11:30:50.946Z",
+  "sourceSha256": "3ba2e69cdcf02b66ba214163e678ea5322ffbbb2ee876722cf16ea9046719eaa",
+  "scope": "One direct NVIDIA diagnostic using actual staged handler with controlled Auth/config; no production admission claim",
+  "providerResponses": [],
+  "fixture": {
+    "path": "docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/02-originalPath.jpg",
+    "bytes": 666026,
+    "sha256": "2d47a0ac74bd074352bb446576e38d54ca5339ca3b8687cbc78812ca1f80a717"
+  },
+  "candidateModel": "meta/llama-3.2-90b-vision-instruct",
+  "handlerStatus": 503,
+  "latencyMs": 45014,
+  "acceptedClassification": null,
+  "error": "ai_classification_unavailable"
+}

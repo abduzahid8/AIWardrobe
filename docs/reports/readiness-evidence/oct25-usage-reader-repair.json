@@ -1,0 +1,90 @@
+{
+  "measuredAt": "2026-10-25T02:41:31.591Z",
+  "issue": "get_usage_today returned SQL NULL when no counter row existed, because COALESCE was evaluated inside a SELECT that returned no rows.",
+  "fix": "COALESCE now wraps the scalar lookup. Preserve owner, feature and UTC-day filters, STABLE behavior and authenticated/service grants. Pin empty search_path.",
+  "migration": {
+    "version": "20261025024022",
+    "name": "usage_reader_zero_default",
+    "applied": true,
+    "recordedByCliRepair": true
+  },
+  "liveBefore": [
+    {
+      "name": "fresh_owner_0_receives_integer_zero",
+      "passed": false,
+      "value": null,
+      "status": 200
+    }
+  ],
+  "liveAfter": [
+    {
+      "name": "fresh_owner_0_receives_integer_zero",
+      "passed": true,
+      "value": 0,
+      "status": 200
+    },
+    {
+      "name": "fresh_owner_1_receives_integer_zero",
+      "passed": true,
+      "value": 0,
+      "status": 200
+    },
+    {
+      "name": "owner_0_sees_only_own_count",
+      "passed": true,
+      "value": 2,
+      "status": 200
+    },
+    {
+      "name": "owner_0_unrecorded_feature_is_zero",
+      "passed": true,
+      "value": 0,
+      "status": 200
+    },
+    {
+      "name": "owner_1_sees_only_own_count",
+      "passed": true,
+      "value": 4,
+      "status": 200
+    },
+    {
+      "name": "owner_1_unrecorded_feature_is_zero",
+      "passed": true,
+      "value": 0,
+      "status": 200
+    },
+    {
+      "name": "anonymous_reader_denied",
+      "passed": true,
+      "status": 401
+    },
+    {
+      "name": "caller_cannot_supply_another_owner",
+      "passed": true,
+      "status": 404
+    }
+  ],
+  "passed": true,
+  "aclBefore": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+  "aclAfter": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+  "independentCleanup": {
+    "fixtureUsers": 4,
+    "usersRemaining": 0,
+    "profilesRemaining": 0,
+    "sessionsRemaining": 0,
+    "usageRowsRemaining": 0
+  },
+  "otherDefinerReview": {
+    "is_username_available": "Intentional pre-login boolean lookup of normalized, bounded handles; no profile-row output or write.",
+    "check_and_increment_usage": "Owner fixed to auth.uid(); caller legacy limit ignored in favor of server tier; bounded positive amounts and allowed-feature validation. Source review only this turn.",
+    "get_subscription_status": "Owner fixed to auth.uid(), profile existence and subscription-state/expiry filters. Source review only this turn.",
+    "record_brand_click": "Intentional analytic write with owner derived from auth.uid(), nullable for anonymous tracking. Not a pricing or entitlement authority. Existing behavior retained."
+  },
+  "securityAdvisors": "Same remaining categories/counts as before; no new category or mutable search path warning. Remaining notices require individual review rather than blanket revocation.",
+  "limits": [
+    "No client application code changed; no claim of complete native usage UI verification.",
+    "Live checks establish this RPC output and owner boundary, not quota-concurrency or entitlement correctness.",
+    "Budgeted generation remains blocked by production CBU connectivity.",
+    "No whole-app security or10,000 DAU certification."
+  ]
+}

@@ -1,0 +1,449 @@
+{
+  "measuredAt": "2026-10-25T01:42:07.735Z",
+  "runId": "0f1ef44a5d3b",
+  "scope": "Live NVIDIA/Edge/Auth/catalog; one Work/Old Money outfit per request with no budget/weather. Same controlled catalog pool. No native,full-deck,sustained-throughput or10kDAUclaim.",
+  "plannedStages": [
+    2,
+    5,
+    10
+  ],
+  "stages": [
+    {
+      "concurrency": 2,
+      "outcomes": [
+        {
+          "index": 0,
+          "report": "outfit-burst-0f1ef44a5d3b-2-0.json",
+          "exitCode": 0,
+          "passed": true,
+          "status": 200,
+          "source": "ai",
+          "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+          "latencyMs": 5954,
+          "outfitCount": 1,
+          "providerAttempts": [
+            {
+              "provider": "nvidia",
+              "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+              "status": "ok"
+            }
+          ],
+          "cleanup": {
+            "sessionsRevoked": true,
+            "ownerDeleted": true
+          },
+          "failure": null
+        },
+        {
+          "index": 1,
+          "report": "outfit-burst-0f1ef44a5d3b-2-1.json",
+          "exitCode": 0,
+          "passed": true,
+          "status": 200,
+          "source": "ai",
+          "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+          "latencyMs": 5612,
+          "outfitCount": 1,
+          "providerAttempts": [
+            {
+              "provider": "nvidia",
+              "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+              "status": "ok"
+            }
+          ],
+          "cleanup": {
+            "sessionsRevoked": true,
+            "ownerDeleted": true
+          },
+          "failure": null
+        }
+      ],
+      "maxClientInflight": 2,
+      "generationWindowMs": 7540,
+      "validResponses": 2,
+      "aiResponses": 2,
+      "passed": true
+    },
+    {
+      "concurrency": 5,
+      "outcomes": [
+        {
+          "index": 0,
+          "report": "outfit-burst-0f1ef44a5d3b-5-0.json",
+          "exitCode": 0,
+          "passed": true,
+          "status": 200,
+          "source": "ai",
+          "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+          "latencyMs": 5069,
+          "outfitCount": 1,
+          "providerAttempts": [
+            {
+              "provider": "nvidia",
+              "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+              "status": "ok"
+            }
+          ],
+          "cleanup": {
+            "sessionsRevoked": true,
+            "ownerDeleted": true
+          },
+          "failure": null
+        },
+        {
+          "index": 1,
+          "report": "outfit-burst-0f1ef44a5d3b-5-1.json",
+          "exitCode": 0,
+          "passed": true,
+          "status": 200,
+          "source": "ai",
+          "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+          "latencyMs": 4647,
+          "outfitCount": 1,
+          "providerAttempts": [
+            {
+              "provider": "nvidia",
+              "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+              "status": "ok"
+            }
+          ],
+          "cleanup": {
+            "sessionsRevoked": true,
+            "ownerDeleted": true
+          },
+          "failure": null
+        },
+        {
+          "index": 2,
+          "report": "outfit-burst-0f1ef44a5d3b-5-2.json",
+          "exitCode": 0,
+          "passed": true,
+          "status": 200,
+          "source": "ai",
+          "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+          "latencyMs": 4694,
+          "outfitCount": 1,
+          "providerAttempts": [
+            {
+              "provider": "nvidia",
+              "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+              "status": "ok"
+            }
+          ],
+          "cleanup": {
+            "sessionsRevoked": true,
+            "ownerDeleted": true
+          },
+          "failure": null
+        },
+        {
+          "index": 3,
+          "report": "outfit-burst-0f1ef44a5d3b-5-3.json",
+          "exitCode": 0,
+          "passed": true,
+          "status": 200,
+          "source": "ai",
+          "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+          "latencyMs": 5360,
+          "outfitCount": 1,
+          "providerAttempts": [
+            {
+              "provider": "nvidia",
+              "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+              "status": "ok"
+            }
+          ],
+          "cleanup": {
+            "sessionsRevoked": true,
+            "ownerDeleted": true
+          },
+          "failure": null
+        },
+        {
+          "index": 4,
+          "report": "outfit-burst-0f1ef44a5d3b-5-4.json",
+          "exitCode": 0,
+          "passed": true,
+          "status": 200,
+          "source": "ai",
+          "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+          "latencyMs": 5372,
+          "outfitCount": 1,
+          "providerAttempts": [
+            {
+              "provider": "nvidia",
+              "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+              "status": "ok"
+            }
+          ],
+          "cleanup": {
+            "sessionsRevoked": true,
+            "ownerDeleted": true
+          },
+          "failure": null
+        }
+      ],
+      "maxClientInflight": 5,
+      "generationWindowMs": 6891,
+      "validResponses": 5,
+      "aiResponses": 5,
+      "passed": true
+    },
+    {
+      "concurrency": 10,
+      "outcomes": [
+        {
+          "index": 0,
+          "report": "outfit-burst-0f1ef44a5d3b-10-0.json",
+          "exitCode": 0,
+          "passed": true,
+          "status": 200,
+          "source": "ai",
+          "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+          "latencyMs": 5129,
+          "outfitCount": 1,
+          "providerAttempts": [
+            {
+              "provider": "nvidia",
+              "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+              "status": "ok"
+            }
+          ],
+          "cleanup": {
+            "sessionsRevoked": true,
+            "ownerDeleted": true
+          },
+          "failure": null
+        },
+        {
+          "index": 1,
+          "report": "outfit-burst-0f1ef44a5d3b-10-1.json",
+          "exitCode": 0,
+          "passed": true,
+          "status": 200,
+          "source": "ai",
+          "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+          "latencyMs": 4894,
+          "outfitCount": 1,
+          "providerAttempts": [
+            {
+              "provider": "nvidia",
+              "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+              "status": "ok"
+            }
+          ],
+          "cleanup": {
+            "sessionsRevoked": true,
+            "ownerDeleted": true
+          },
+          "failure": null
+        },
+        {
+          "index": 2,
+          "report": "outfit-burst-0f1ef44a5d3b-10-2.json",
+          "exitCode": 0,
+          "passed": true,
+          "status": 200,
+          "source": "ai",
+          "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+          "latencyMs": 5054,
+          "outfitCount": 1,
+          "providerAttempts": [
+            {
+              "provider": "nvidia",
+              "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+              "status": "ok"
+            }
+          ],
+          "cleanup": {
+            "sessionsRevoked": true,
+            "ownerDeleted": true
+          },
+          "failure": null
+        },
+        {
+          "index": 3,
+          "report": "outfit-burst-0f1ef44a5d3b-10-3.json",
+          "exitCode": 0,
+          "passed": true,
+          "status": 200,
+          "source": "ai",
+          "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+          "latencyMs": 5762,
+          "outfitCount": 1,
+          "providerAttempts": [
+            {
+              "provider": "nvidia",
+              "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+              "status": "ok"
+            }
+          ],
+          "cleanup": {
+            "sessionsRevoked": true,
+            "ownerDeleted": true
+          },
+          "failure": null
+        },
+        {
+          "index": 4,
+          "report": "outfit-burst-0f1ef44a5d3b-10-4.json",
+          "exitCode": 0,
+          "passed": true,
+          "status": 200,
+          "source": "ai",
+          "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+          "latencyMs": 5606,
+          "outfitCount": 1,
+          "providerAttempts": [
+            {
+              "provider": "nvidia",
+              "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+              "status": "ok"
+            }
+          ],
+          "cleanup": {
+            "sessionsRevoked": true,
+            "ownerDeleted": true
+          },
+          "failure": null
+        },
+        {
+          "index": 5,
+          "report": "outfit-burst-0f1ef44a5d3b-10-5.json",
+          "exitCode": 0,
+          "passed": true,
+          "status": 200,
+          "source": "ai",
+          "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+          "latencyMs": 5567,
+          "outfitCount": 1,
+          "providerAttempts": [
+            {
+              "provider": "nvidia",
+              "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+              "status": "ok"
+            }
+          ],
+          "cleanup": {
+            "sessionsRevoked": true,
+            "ownerDeleted": true
+          },
+          "failure": null
+        },
+        {
+          "index": 6,
+          "report": "outfit-burst-0f1ef44a5d3b-10-6.json",
+          "exitCode": 0,
+          "passed": true,
+          "status": 200,
+          "source": "ai",
+          "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+          "latencyMs": 4640,
+          "outfitCount": 1,
+          "providerAttempts": [
+            {
+              "provider": "nvidia",
+              "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+              "status": "ok"
+            }
+          ],
+          "cleanup": {
+            "sessionsRevoked": true,
+            "ownerDeleted": true
+          },
+          "failure": null
+        },
+        {
+          "index": 7,
+          "report": "outfit-burst-0f1ef44a5d3b-10-7.json",
+          "exitCode": 0,
+          "passed": true,
+          "status": 200,
+          "source": "ai",
+          "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+          "latencyMs": 5554,
+          "outfitCount": 1,
+          "providerAttempts": [
+            {
+              "provider": "nvidia",
+              "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+              "status": "ok"
+            }
+          ],
+          "cleanup": {
+            "sessionsRevoked": true,
+            "ownerDeleted": true
+          },
+          "failure": null
+        },
+        {
+          "index": 8,
+          "report": "outfit-burst-0f1ef44a5d3b-10-8.json",
+          "exitCode": 0,
+          "passed": true,
+          "status": 200,
+          "source": "ai",
+          "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+          "latencyMs": 5533,
+          "outfitCount": 1,
+          "providerAttempts": [
+            {
+              "provider": "nvidia",
+              "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+              "status": "ok"
+            }
+          ],
+          "cleanup": {
+            "sessionsRevoked": true,
+            "ownerDeleted": true
+          },
+          "failure": null
+        },
+        {
+          "index": 9,
+          "report": "outfit-burst-0f1ef44a5d3b-10-9.json",
+          "exitCode": 0,
+          "passed": true,
+          "status": 200,
+          "source": "ai",
+          "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+          "latencyMs": 4640,
+          "outfitCount": 1,
+          "providerAttempts": [
+            {
+              "provider": "nvidia",
+              "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+              "status": "ok"
+            }
+          ],
+          "cleanup": {
+            "sessionsRevoked": true,
+            "ownerDeleted": true
+          },
+          "failure": null
+        }
+      ],
+      "maxClientInflight": 10,
+      "generationWindowMs": 7377,
+      "validResponses": 10,
+      "aiResponses": 10,
+      "passed": true
+    }
+  ],
+  "completedAt": "2026-10-25T01:42:45.058Z",
+  "cancelled": false,
+  "passed": true,
+  "hostedVersionBefore": 130,
+  "hostedVersionAfter": 130,
+  "independentDatabaseCleanup": {
+    "remainingUsers": 0,
+    "remainingProfiles": 0,
+    "remainingSessions": 0,
+    "fixtureUsersChecked": 17
+  },
+  "childScopeLabelCorrection": "Child reports retain an old static limit-five description. requestedLimit=1 and request construction establish one outfit per request. Future helper descriptions are corrected.",
+  "clientLatencyMs": {
+    "minimum": 4640,
+    "maximum": 5954
+  }
+}

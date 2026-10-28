@@ -1,0 +1,39 @@
+{
+  "measuredAt": "2026-10-25T17:57:33.452Z",
+  "sourceSha256": "fdc809ca6fb2a57a670fb2c318c03a4c294e866acea74687e735a09742a70ffb",
+  "scope": "One direct NVIDIA diagnostic using actual staged handler with controlled Auth/config; no production admission claim",
+  "providerResponses": [
+    {
+      "status": 200,
+      "finishReason": "stop",
+      "contentLength": 173,
+      "parsed": {
+        "category": "t-shirt",
+        "section": "tops",
+        "style": "casual",
+        "color": "white",
+        "material": null,
+        "description": "A plain white short-sleeve t-shirt with a crew neck.",
+        "shoeType": null
+      }
+    }
+  ],
+  "fixture": {
+    "path": "assets/images/basic_white_tshirt.png",
+    "bytes": 58480,
+    "sha256": "6ab2bb7ae1af1b9e061c747a4bb013706d018d297faab883fc22213d1a75ae2c"
+  },
+  "handlerStatus": 200,
+  "latencyMs": 5130,
+  "acceptedClassification": {
+    "category": "t-shirt",
+    "section": "tops",
+    "confidence": 0,
+    "attributes": {
+      "style": "casual",
+      "color": "white",
+      "material": null
+    }
+  },
+  "error": null
+}

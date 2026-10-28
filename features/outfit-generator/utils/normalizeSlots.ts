@@ -1,3 +1,4 @@
+import { fourSlotOutfitReason } from '../../../backend/supabase/functions/_shared/outfitStructure';
 import { fitsBudgetAmount } from '../../../backend/supabase/functions/_shared/budgetFx';
 import readinessLogger from '../../../src/utils/logger';
 /**
@@ -210,17 +211,7 @@ export const PLACEHOLDER_PANTS = {
     return 'top'; // fallback keeps the backend happy
   };
 
-  export const isCompleteNormalizedOutfit = (items: any[]) => {
-    const macros = items.map((item) => canonicalizeMacroCategory(item.macroCategory || ''));
-    const topCount = macros.filter((macro) => macro === 'top').length;
-    const hasBottom = macros.includes('bottom');
-    const hasShoes = macros.includes('shoes');
-    const hasOuterwear = macros.includes('outerwear');
-    // A complete 4-slot outfit needs: top-like (top or outerwear), bottom, shoes.
-    // With the new 4-item model: [outerwear|top, top, bottom, shoes]
-    const hasTopLike = topCount >= 1 || hasOuterwear;
-    return hasTopLike && hasBottom && hasShoes;
-  };
+export const isCompleteNormalizedOutfit = (items: any[], requireLayer = true) => fourSlotOutfitReason(items, requireLayer) === null;
 
 /** Repair Edge-returned items only: names + slot macros. Never picks from a local pool. */
 export function repairEdgeItems(items: any[]): any[] {
@@ -240,12 +231,8 @@ export function repairEdgeItems(items: any[]): any[] {
 const SLOT_FLOOR_MACROS = ['top', 'bottom', 'shoes', 'outerwear'] as const;
 
 /** LAYER + shirt + pants + shoes — the 4-tile card, not “jacket as TOP”. */
-export function isFourSlotLook(items: any[] | null | undefined): boolean {
-  if (!items || items.length < 4) return false;
-  const macros = new Set(
-    items.map((item) => canonicalizeMacroCategory(item?.macroCategory || '')),
-  );
-  return SLOT_FLOOR_MACROS.every((m) => macros.has(m));
+export function isFourSlotLook(items: any[] | null | undefined, requireLayer = true): boolean {
+  return fourSlotOutfitReason(items, requireLayer) === null;
 }
 
 /**

@@ -1,0 +1,16 @@
+{
+  "measuredAt": "2026-10-25T11:33:19.556Z",
+  "sourceSha256": "be646e733ed45de0636a8b2deb1d247102bce034c584356558dc3447f3988bcc",
+  "scope": "One direct NVIDIA diagnostic using actual staged handler with controlled Auth/config; no production admission claim",
+  "providerResponses": [],
+  "fixture": {
+    "path": "assets/images/basic_brown_pants.png",
+    "bytes": 346533,
+    "sha256": "b89e34d53a70406a3b20558300c75a81119aa5887033b638df9f08175dc1dcf7"
+  },
+  "candidateModel": "meta/llama-3.2-90b-vision-instruct",
+  "handlerStatus": 503,
+  "latencyMs": 45007,
+  "acceptedClassification": null,
+  "error": "ai_classification_unavailable"
+}

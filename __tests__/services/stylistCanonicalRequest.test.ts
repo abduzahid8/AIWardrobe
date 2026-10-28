@@ -24,6 +24,7 @@ describe('canonical stylist failure handling', () => {
 });
 
 const complete = { items: [
+  { id: 'layer', name: 'Linen blazer', macroCategory: 'outerwear' },
   { id: 'shirt', name: 'Cotton shirt', macroCategory: 'top' },
   { id: 'pants', name: 'Navy trousers', macroCategory: 'bottom' },
   { id: 'shoes', name: 'Brown loafers', macroCategory: 'shoes' },
@@ -37,7 +38,7 @@ it('keeps a valid sibling when another returned outfit is malformed', async () =
   const result = await generateOutfitsFromDB({});
   expect(result.success).toBe(true);
   expect(result.outfits).toHaveLength(1);
-  expect(result.outfits[0].items.map(item => item.id)).toEqual(['shirt', 'pants', 'shoes']);
+  expect(result.outfits[0].items.map(item => item.id)).toEqual(['layer', 'shirt', 'pants', 'shoes']);
 });
 it('aborts the network request on timeout instead of leaving it running', async () => {
   jest.useFakeTimers();
@@ -55,8 +56,8 @@ it('preserves authoritative item currency while mapping returned catalog prices'
  invoke.mockResolvedValue({data:{success:true,source:'ai',outfits:[priced]},error:null});
  const result=await generateOutfitsFromDB({weather:{temp:20,condition:'Clear'}});
  expect(result.success).toBe(true);
- expect(result.outfits[0].items.map(item=>item.currency)).toEqual(['UZS','UZS','UZS']);
- expect(result.outfits[0].items.map(item=>item.price)).toEqual([800000,800000,800000]);
+ expect(result.outfits[0].items.map(item=>item.currency)).toEqual(['UZS','UZS','UZS','UZS']);
+ expect(result.outfits[0].items.map(item=>item.price)).toEqual([800000,800000,800000,800000]);
  expect(result.outfits[0].items.map(item=>item.shopUrl)).toEqual(complete.items.map(item=>`https://retailer.invalid/products/${item.id}`));
 });
 

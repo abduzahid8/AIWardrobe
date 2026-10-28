@@ -1,0 +1,40 @@
+{
+  "measuredAt": "2026-10-25T17:44:30.633Z",
+  "scope": "Two synchronized direct-provider scans through actual staged classifier; no production authentication/admission or hosted deployment claim.",
+  "results": [
+    {
+      "report": "oct25-scan-reasoning-concurrent-1.json",
+      "status": 200,
+      "latencyMs": 28904,
+      "accepted": {
+        "category": "jacket",
+        "section": "outerwear",
+        "confidence": 0,
+        "attributes": {
+          "style": "casual",
+          "color": "beige",
+          "material": null
+        }
+      },
+      "passed": true
+    },
+    {
+      "report": "oct25-scan-reasoning-concurrent-2.json",
+      "status": 200,
+      "latencyMs": 18928,
+      "accepted": {
+        "category": "jacket",
+        "section": "outerwear",
+        "confidence": 0,
+        "attributes": {
+          "style": "casual",
+          "color": "beige",
+          "material": "cotton"
+        }
+      },
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "productionUnchanged": true
+}

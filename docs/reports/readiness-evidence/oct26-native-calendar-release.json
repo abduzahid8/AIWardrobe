@@ -1,0 +1,33 @@
+{
+  "date": "2026-10-26",
+  "status": "native_calendar_repair_verified_publication_held",
+  "simulator": "AIWardrobe-Media-Render-20261021",
+  "artifact": "/tmp/aiwardrobe-oct26-publication-release/AIWardrobe.app",
+  "hermes_sha256": "adff54bd9f546783dcdbfa8c8f1e84faf8418ba1bfd5bab59fda9d8f1df8ee44",
+  "native_observations": [
+    "Authenticated Home reopened after installation without login",
+    "Classic / Work / New clothing / no entered budget generated three complete looks with product images and UZS prices",
+    "Loading text showed Reviewing catalog pieces and Loading; result label AI curated",
+    "First generated look saved to previously unused 2026-10-27",
+    "Calendar selected October 27 showed Work and the same shirt, trousers and loafers"
+  ],
+  "tests": {
+    "full_suites": 190,
+    "full_tests": 2434,
+    "typescript": "pass",
+    "exports": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "runtime_source_maps_exact_matches": 8,
+    "translated_label_bundle_checks": 6
+  },
+  "limitations": [
+    "Earlier intermittent generation and save errors remain unresolved",
+    "No entered-budget native success established",
+    "Catalog prices and stock not freshly verified",
+    "Android fresh EAS production build failed Git Appium driver preparation; repair in progress",
+    "No 10000 DAU certification or store submission"
+  ]
+}

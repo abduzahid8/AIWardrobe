@@ -1,0 +1,22 @@
+{
+  "measuredAt": "2026-10-25T17:47:16.562Z",
+  "sourceSha256": "aac4327f85e9ca31662f8ac70c27d828ff8e0d0e9f660d15040a671189400d22",
+  "scope": "One direct NVIDIA diagnostic using actual staged handler with controlled Auth/config; no production admission claim",
+  "providerResponses": [
+    {
+      "status": 200,
+      "finishReason": "length",
+      "contentLength": 185,
+      "parsed": null
+    }
+  ],
+  "fixture": {
+    "path": "docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/02-originalPath.jpg",
+    "bytes": 666026,
+    "sha256": "2d47a0ac74bd074352bb446576e38d54ca5339ca3b8687cbc78812ca1f80a717"
+  },
+  "handlerStatus": 503,
+  "latencyMs": 20596,
+  "acceptedClassification": null,
+  "error": "ai_classification_unavailable"
+}

@@ -1,0 +1,105 @@
+{
+  "measuredAt": "2026-10-25T02:21:03.343Z",
+  "hostedVersionBefore": 131,
+  "hostedVersionAfter": 131,
+  "productionCodeChanged": false,
+  "scope": "Real NVIDIA/Edge/Auth/catalog, synchronized bursts of full three-card decks plus one explicit recent-product exclusion request. No entered budget/weather or sustained throughput claim.",
+  "burst": {
+    "report": "outfit-concurrency-390aa2b1026f.json",
+    "requests": 17,
+    "returnedOutfits": 51,
+    "stages": [
+      {
+        "concurrency": 2,
+        "maxClientInflight": 2,
+        "passed": true,
+        "validAiResponses": 2,
+        "minLatencyMs": 3891,
+        "maxLatencyMs": 3891,
+        "allDecksThree": true,
+        "allDecksProductUnique": true
+      },
+      {
+        "concurrency": 5,
+        "maxClientInflight": 5,
+        "passed": true,
+        "validAiResponses": 5,
+        "minLatencyMs": 3334,
+        "maxLatencyMs": 4261,
+        "allDecksThree": true,
+        "allDecksProductUnique": true
+      },
+      {
+        "concurrency": 10,
+        "maxClientInflight": 10,
+        "passed": true,
+        "validAiResponses": 10,
+        "minLatencyMs": 3308,
+        "maxLatencyMs": 12537,
+        "allDecksThree": true,
+        "allDecksProductUnique": true
+      }
+    ]
+  },
+  "exclusionFlow": {
+    "report": "v131-oct25-repeat-exclusions.json",
+    "passed": true,
+    "excludedPreviouslyShownProducts": 9,
+    "newOutfits": 3,
+    "latencyMs": 3733,
+    "checks": [
+      {
+        "name": "all_three_catalog_slots_available",
+        "passed": true
+      },
+      {
+        "name": "usable_outfits_returned",
+        "passed": true
+      },
+      {
+        "name": "every_outfit_passes_structure_and_style",
+        "passed": true
+      },
+      {
+        "name": "every_item_matches_authoritative_active_catalog",
+        "passed": true
+      },
+      {
+        "name": "full_displayed_deck_returned",
+        "passed": true
+      },
+      {
+        "name": "visible_deck_has_no_illegal_product_reuse",
+        "passed": true
+      },
+      {
+        "name": "visible_deck_has_no_duplicate_cards",
+        "passed": true
+      },
+      {
+        "name": "previously_shown_products_are_excluded",
+        "passed": true
+      }
+    ],
+    "boundary": "Fresh disposable account carrying the exact exclusion IDs from a prior successful report; verifies request semantics, not native history persistence."
+  },
+  "independentFixtureCleanup": {
+    "fixtureUsers": 18,
+    "usersRemaining": 0,
+    "profilesRemaining": 0,
+    "sessionsRemaining": 0
+  },
+  "cacheScalingFinding": {
+    "report": "oct25-budget-refresh-isolation.json",
+    "simulatedColdIsolates": 10,
+    "simultaneousUpstreamRefreshes": 10,
+    "globallyCoalesced": false,
+    "productionLoadClaim": false
+  },
+  "limits": [
+    "Same controlled catalog request shape; not broad category accuracy.",
+    "No entered-budget request can be certified while CBU production refresh is blocked.",
+    "The original identical-deck observations used separate accounts without recently shown exclusions; they do not prove a client repeat-generation defect.",
+    "No claim of sustained RPS, mixed workload, 10,000 owner cardinality, provider maximum, native UI or whole-app readiness."
+  ]
+}

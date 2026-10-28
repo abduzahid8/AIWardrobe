@@ -33,15 +33,20 @@ type ConsumeResult = {
   remaining: number;
 };
 
+export type UsageConsumeOptions = { requireServer?: boolean; cancelSignal?: AbortSignal; homeCardKey?: string };
+export class UsageUnavailableError extends Error {
+  constructor() { super('Usage verification unavailable'); this.name = 'UsageUnavailableError'; }
+}
+
 type DailyUsageState = {
   snapshot: DailyUsageSnapshot;
   hydrated: boolean;
   hydrate: () => Promise<void>;
   /**
    * Atomically check quota on the server and increment on success.
-   * Falls back to the local cache only if the server is unreachable.
+   * requireServer rejects unavailable verification; other callers retain the offline cache behavior.
    */
-  consume: (feature: FeatureKey, amount?: number) => Promise<ConsumeResult>;
+  consume: (feature: FeatureKey, amount?: number, options?: UsageConsumeOptions) => Promise<ConsumeResult>;
   getUsed: (feature: FeatureKey) => number;
   getRemaining: (feature: FeatureKey) => number;
   canUse: (feature: FeatureKey) => boolean;
@@ -122,50 +127,72 @@ const useDailyUsageStore = create<DailyUsageState>((set, get) => ({
     }
   },
 
-  consume: async (feature, amount = 1) => {
+  consume: async (feature, amount = 1, options = {}) => {
     const revision = authEvents.getRevision();
     const owner = authEvents.getUserId();
     const requestDay = todayKey();
     const stillCurrent = () => revision === authEvents.getRevision() && requestDay === todayKey();
     const cancelled = () => ({ allowed: false, used: get().getUsed(feature), remaining: get().getRemaining(feature) });
+    if (options.cancelSignal?.aborted) return cancelled();
     if (!Number.isSafeInteger(amount) || amount < 1 || amount > 100) {
       return { allowed: false, used: get().getUsed(feature), remaining: get().getRemaining(feature) };
+    }
+    // A stable displayed-card identity lets a later attempt recover a committed
+    // authorization after timeout, cancellation, remount or app restart.
+    const cardKey = options.homeCardKey;
+    if (cardKey !== undefined && (feature !== 'homeSwipes' || amount !== 1 ||
+        !options.requireServer || typeof cardKey !== 'string' || !cardKey.length || [...cardKey].length > 512)) {
+      throw new UsageUnavailableError();
     }
     let limit = currentFeatureLimit(feature);
 
     // Try the server RPC first — it is atomic and tamper-proof.
     // Bound it with a timeout: on slow networks (15s+ Supabase stalls)
     // awaiting the RPC hangs the Generate button with zero feedback.
-    // On timeout we fall through to the local cache immediately.
+    // A caller requiring verification never grants a cached allowance on timeout.
     const RPC_TIMEOUT_MS = 6000;
     try {
-      const { data, error } = await withRequestDeadline(() => supabase.rpc('check_and_increment_usage', {
-        p_feature: feature,
-        p_limit: limit,
-        p_amount: amount,
-      }), RPC_TIMEOUT_MS);
-      if (!stillCurrent()) return cancelled();
+      const { data, error } = await withRequestDeadline(signal => {
+        const query = cardKey !== undefined ? supabase.rpc('authorize_home_swipe', {
+          p_card_key: cardKey, p_day: requestDay,
+        }) : supabase.rpc('check_and_increment_usage', {
+          p_feature: feature, p_limit: limit, p_amount: amount,
+        });
+        return typeof query.abortSignal === 'function' ? query.abortSignal(signal) : query;
+      }, RPC_TIMEOUT_MS, options.cancelSignal);
+      if (!stillCurrent() || options.cancelSignal?.aborted) return cancelled();
 
-      if (!error && Array.isArray(data) && data.length > 0) {
+      if (!error && Array.isArray(data) && data.length === 1 &&
+          typeof data[0]?.allowed === 'boolean' && Number.isSafeInteger(data[0]?.used) && data[0].used >= 0 &&
+          Number.isSafeInteger(data[0]?.remaining) && data[0].remaining >= -1) {
         const row = data[0] as { allowed: boolean; used: number; remaining: number };
 
         // Mirror to local cache so the UI updates immediately even offline.
-        const current = rollover(get().snapshot);
+        const previous = get().snapshot;
+        const current = rollover(previous);
+        const nextUsed = Math.max(current.counts[feature] ?? 0, row.used);
         const next = {
           date: current.date,
-          counts: { ...current.counts, [feature]: Math.max(current.counts[feature] ?? 0, row.used) },
+          counts: { ...current.counts, [feature]: nextUsed },
         };
-        set({ snapshot: next });
-        await persist(next, owner, revision);
-        if (!stillCurrent()) return cancelled();
+        if (previous.date !== next.date || (current.counts[feature] ?? 0) !== nextUsed) {
+          set({ snapshot: next });
+          const cacheWrite = persist(next, owner, revision);
+          // Server approval is authoritative; cache storage must not stall the gesture.
+          if (options.requireServer) void cacheWrite.catch(() => {});
+          else await cacheWrite;
+        }
+        if (!stillCurrent() || options.cancelSignal?.aborted) return cancelled();
 
         return { allowed: row.allowed, used: row.used, remaining: row.remaining };
       }
     } catch (err) {
-      console.warn('[dailyUsageStore] RPC failed, falling back to local cache', err);
+      if (options.cancelSignal?.aborted) return cancelled();
+      console.warn('[dailyUsageStore] RPC unavailable', err);
     }
 
-    if (!stillCurrent()) return cancelled();
+    if (!stillCurrent() || options.cancelSignal?.aborted) return cancelled();
+    if (options.requireServer) throw new UsageUnavailableError();
 
     // Re-evaluate after the await: a plan or trial may have expired meanwhile.
     limit = currentFeatureLimit(feature);
@@ -183,7 +210,7 @@ const useDailyUsageStore = create<DailyUsageState>((set, get) => ({
     };
     set({ snapshot: next });
     await persist(next, owner, revision);
-    if (!stillCurrent()) return cancelled();
+    if (!stillCurrent() || options.cancelSignal?.aborted) return cancelled();
     return {
       allowed: true,
       used: nextCount,

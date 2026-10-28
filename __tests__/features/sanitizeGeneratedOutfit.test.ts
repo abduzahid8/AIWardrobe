@@ -35,7 +35,7 @@ describe('sanitizeGeneratedOutfitItems', () => {
     },
   ];
 
-  it('replaces duplicate tops with valid bottom and shoes slots in non-layered mode', () => {
+  it('deduplicates claimed items without inventing a second shirt', () => {
     const sanitizedItems = sanitizeGeneratedOutfitItems(
       [
         { id: 'top_1', image: 'top.png', type: 'Oxford Shirt', name: 'Oxford Shirt', macroCategory: 'top' },
@@ -71,10 +71,9 @@ describe('sanitizeGeneratedOutfitItems', () => {
       { layered: true, style: 'old_money', maxItems: 5 },
     );
 
-    expect(result.items.map((item) => item.id)).toEqual(['outer_1', 'top_1', 'top_2', 'bottom_1', 'shoes_1']);
+    expect(result.items.map((item) => item.id)).toEqual(['outer_1', 'top_1', 'bottom_1', 'shoes_1']);
     expect(result.items.map((item) => item.macroCategory)).toEqual([
       'outerwear',
-      'top',
       'top',
       'bottom',
       'shoes',
@@ -107,14 +106,12 @@ describe('sanitizeGeneratedOutfitItems', () => {
     expect(result.items.map((item) => item.macroCategory)).toEqual([
       'outerwear',
       'top',
-      'top',
       'bottom',
       'shoes',
     ]);
     expect(result.items.map((item) => item.id)).toEqual([
       'outer_1',
       'top_1',
-      'top_2',
       'bottom_1',
       'shoes_1',
     ]);
@@ -134,7 +131,7 @@ describe('sanitizeGeneratedOutfitItems', () => {
 
     expect(result.layered).toBe(true);
     expect(result.missingSlots).toContain('outerwear');
-    expect(result.items.map((item) => item.macroCategory)).toEqual(['top', 'top', 'bottom', 'shoes']);
+    expect(result.items.map((item) => item.macroCategory)).toEqual(['top', 'bottom', 'shoes']);
   });
 
   it('does not backfill bottom and shoes with unrelated items', () => {
@@ -155,10 +152,10 @@ describe('sanitizeGeneratedOutfitItems', () => {
     );
 
     expect(result.items.map((item) => item.macroCategory)).toEqual(['top']);
-    expect(result.missingSlots).toEqual(['bottom', 'shoes']);
+    expect(result.missingSlots).toEqual(['outerwear', 'bottom', 'shoes']);
   });
 
-  it('does not require a second top for non-layered outfits', () => {
+  it('a legacy layered=false option cannot waive the required layer', () => {
     const result = sanitizeGeneratedOutfitItemsDetailed(
       [
         { id: 'top_1', image: 'top.png', type: 'Oxford Shirt', name: 'Oxford Shirt', macroCategory: 'top' },
@@ -169,7 +166,7 @@ describe('sanitizeGeneratedOutfitItems', () => {
       { layered: false, style: 'old_money', maxItems: 5 },
     );
 
-    expect(result.missingSlots).toEqual([]);
+    expect(result.missingSlots).toEqual(['outerwear']);
     expect(result.items.map((item) => item.macroCategory)).toEqual(['top', 'bottom', 'shoes']);
   });
 
@@ -185,10 +182,23 @@ describe('sanitizeGeneratedOutfitItems', () => {
     );
 
     expect(sanitizedItems.map((item) => item.id)).toEqual([
+      'generated_top_2',
       'generated_top',
       'generated_bottom',
       'generated_shoes',
     ]);
-    expect(sanitizedItems.map((item) => item.macroCategory)).toEqual(['top', 'bottom', 'shoes']);
+    expect(sanitizedItems.map((item) => item.macroCategory)).toEqual(['outerwear', 'top', 'bottom', 'shoes']);
   });
+});
+
+test('selects a separate woven shirt instead of layering two pullover knits',()=>{
+ const layer={id:'sweater-layer',name:'Fine knit sweater',type:'sweater',macroCategory:'outerwear',image:'layer.jpg'};
+ const knit={id:'knit-shirt',name:'Fine knit polo shirt',type:'polo shirt',macroCategory:'top',image:'knit.jpg'};
+ const shirt={id:'woven-shirt',name:'White cotton shirt',type:'shirt',macroCategory:'top',image:'shirt.jpg'};
+ const pants={id:'pants',name:'Cotton chinos',type:'pants',macroCategory:'bottom',image:'pants.jpg'};
+ const shoes={id:'shoes',name:'Leather loafers',type:'shoes',macroCategory:'shoes',image:'shoes.jpg'};
+ const result=sanitizeGeneratedOutfitItemsDetailed([layer,knit,pants,shoes] as any,[layer,knit,shirt,pants,shoes] as any,{style:'casual'});
+ expect(result.missingSlots).toEqual([]);
+ expect(result.items).toHaveLength(4);
+ expect(result.items.find(item=>item.macroCategory==='top')?.id).toBe(shirt.id);
 });

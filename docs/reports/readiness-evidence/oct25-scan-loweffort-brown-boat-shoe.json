@@ -1,0 +1,40 @@
+{
+  "measuredAt": "2026-10-25T17:58:06.295Z",
+  "sourceSha256": "fdc809ca6fb2a57a670fb2c318c03a4c294e866acea74687e735a09742a70ffb",
+  "scope": "One direct NVIDIA diagnostic using actual staged handler with controlled Auth/config; no production admission claim",
+  "providerResponses": [
+    {
+      "status": 200,
+      "finishReason": "stop",
+      "contentLength": 197,
+      "parsed": {
+        "category": "shoes",
+        "section": "shoes",
+        "style": "casual",
+        "color": "brown",
+        "material": "leather",
+        "description": "A brown leather boat shoe with white stitching and a rubber sole.",
+        "shoeType": "boat_shoe"
+      }
+    }
+  ],
+  "fixture": {
+    "path": "assets/images/basic_brown_loafers.png",
+    "bytes": 179787,
+    "sha256": "6420d406db4ff155ec6d3283e24da6ab77a206f0a08e592218c46609e7b8a2a8"
+  },
+  "handlerStatus": 200,
+  "latencyMs": 14506,
+  "acceptedClassification": {
+    "category": "shoes",
+    "section": "shoes",
+    "confidence": 0,
+    "attributes": {
+      "style": "casual",
+      "color": "brown",
+      "material": "leather",
+      "shoeType": "boat_shoe"
+    }
+  },
+  "error": null
+}

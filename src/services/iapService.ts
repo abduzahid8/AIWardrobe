@@ -54,6 +54,7 @@ function getDynamicTier(productId: string): SubscriptionTier {
  */
 const KNOWN_PRODUCT_IDS: string[] = [
     '2.99',
+    'com.aiwardrobe.lite.monthly',
     'com.aiwardrobe.premium.monthly',
     'com.aiwardrobe.premium.yearly',
 ];
@@ -112,7 +113,14 @@ interface PurchaseResult {
     receipt?: string;
     error?: string;
     verificationPending?: boolean;
+    /** StoreKit still owns an unresolved native sheet or transaction request. */
+    checkoutPending?: boolean;
 }
+
+// StoreKit can wait for Apple account approval without resolving its promise.
+// Bound the UI wait but keep the native operation locked until Apple finishes.
+export const NATIVE_STORE_PURCHASE_TIMEOUT_MS = 120_000;
+const NATIVE_STORE_PURCHASE_PENDING = 'The App Store is still processing this purchase. Finish or cancel its prompt, then try Restore Purchases before buying again.';
 
 class IAPService {
     private isInitialized = false;
@@ -121,6 +129,35 @@ class IAPService {
     private identifiedUserId: string | null = null;
     private serverSyncPromise: Promise<boolean> | null = null;
     private accountRevision = 0;
+    private pendingNativeStoreOperation: Promise<unknown> | null = null;
+
+    private async waitForNativeStoreOperation<T>(operation: () => Promise<T>): Promise<{ completed: true; value: T } | { completed: false }> {
+        if (this.pendingNativeStoreOperation) return { completed: false };
+
+        const pending = Promise.resolve().then(operation);
+        this.pendingNativeStoreOperation = pending;
+        const finish = () => {
+            if (this.pendingNativeStoreOperation === pending) this.pendingNativeStoreOperation = null;
+        };
+        void pending.then(finish, finish);
+
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const settled = pending.then(
+            value => ({ kind: 'completed' as const, value }),
+            error => ({ kind: 'failed' as const, error }),
+        );
+        const deadline = new Promise<{ kind: 'pending' }>(resolve => {
+            timer = setTimeout(() => resolve({ kind: 'pending' }), NATIVE_STORE_PURCHASE_TIMEOUT_MS);
+        });
+        try {
+            const result = await Promise.race([settled, deadline]);
+            if (result.kind === 'pending') return { completed: false };
+            if (result.kind === 'failed') throw result.error;
+            return { completed: true, value: result.value };
+        } finally {
+            if (timer) clearTimeout(timer);
+        }
+    }
 
     /**
      * Initialize IAP connection. Call once on app start.
@@ -231,12 +268,16 @@ class IAPService {
         }
 
         if (!this.isRevenueCatAvailable) {
-            // Mock products for development
-            return [
-                { id: '2.99', title: 'Lite Monthly', price: '$2.99' },
-                { id: 'com.aiwardrobe.premium.monthly', title: 'Premium Monthly', price: '$9.99' },
-                { id: 'com.aiwardrobe.premium.yearly', title: 'Premium Yearly', price: '$99.99' },
-            ];
+            // Mock products help local development, but must never make a
+            // production paywall advertise plans that cannot be purchased.
+            if (__DEV__) {
+                return [
+                    { id: '2.99', title: 'Lite Monthly', price: '$2.99' },
+                    { id: 'com.aiwardrobe.premium.monthly', title: 'Premium Monthly', price: '$9.99' },
+                    { id: 'com.aiwardrobe.premium.yearly', title: 'Premium Yearly', price: '$99.99' },
+                ];
+            }
+            return [];
         }
 
         try {
@@ -295,6 +336,9 @@ class IAPService {
      */
     async purchase(productId: ProductId): Promise<PurchaseResult> {
         try {
+            if (this.pendingNativeStoreOperation) {
+                return { success: false, checkoutPending: true, error: NATIVE_STORE_PURCHASE_PENDING };
+            }
             if (!this.isInitialized) {
                 await this.initialize();
             }
@@ -330,7 +374,14 @@ class IAPService {
             const ownerIsCurrent = () => this.accountRevision === checkoutRevision &&
                 authEvents.getRevision() === checkoutAuthRevision &&
                 this.identifiedUserId === userId && authEvents.canApplyToUser(userId);
-            if (!await this.isCheckoutVerificationReady(userId) || !ownerIsCurrent()) {
+            const checkoutReadiness = await this.isCheckoutVerificationReady(userId);
+            const ownerStillCurrent = ownerIsCurrent();
+            if (!checkoutReadiness.ready || !ownerStillCurrent) {
+                const reason = checkoutReadiness.ready ? 'account_changed' : checkoutReadiness.reason;
+                // Keep credentials, user IDs, and provider response data out of
+                // telemetry. A short reason code is enough to diagnose a
+                // checkout blocked before StoreKit starts.
+                readinessLogger.warn(String('[IAP] Checkout blocked before StoreKit'), [{ reason }]);
                 return { success: false, error: 'Subscriptions are temporarily unavailable. No payment was started.' };
             }
 
@@ -351,7 +402,8 @@ class IAPService {
             if (targetPackage) {
                 resolvedProductId = targetPackage.product.identifier as string;
                 if (!ownerIsCurrent()) return { success: false, error: 'Account changed. No payment was started.' };
-                await Purchases.purchasePackage(targetPackage);
+                const operation = await this.waitForNativeStoreOperation(() => Purchases.purchasePackage(targetPackage));
+                if (!operation.completed) return { success: false, checkoutPending: true, error: NATIVE_STORE_PURCHASE_PENDING };
             } else {
                 // Fallback: buy the product directly from the store without an offering.
                 readinessLogger.debug(String('[IAP] No offering package found — falling back to purchaseStoreProduct'), []);
@@ -382,7 +434,8 @@ class IAPService {
 
                 resolvedProductId = storeProduct.identifier;
                 if (!ownerIsCurrent()) return { success: false, error: 'Account changed. No payment was started.' };
-                await Purchases.purchaseStoreProduct(storeProduct);
+                const operation = await this.waitForNativeStoreOperation(() => Purchases.purchaseStoreProduct(storeProduct));
+                if (!operation.completed) return { success: false, checkoutPending: true, error: NATIVE_STORE_PURCHASE_PENDING };
             }
 
             // Confirm the receipt server-side before activating paid features.
@@ -425,6 +478,11 @@ class IAPService {
      */
     async restorePurchases(): Promise<PurchaseResult> {
         try {
+            if (this.pendingNativeStoreOperation) {
+                return await this.verifyServerSubscription()
+                    ? { success: true }
+                    : { success: false, checkoutPending: true, error: NATIVE_STORE_PURCHASE_PENDING };
+            }
             if (!this.isInitialized) {
                 await this.initialize();
             }
@@ -438,7 +496,9 @@ class IAPService {
             if (this.identifiedUserId !== userId) await this.identify(userId);
             if (this.identifiedUserId !== userId) return { success: false, error: 'Purchase identity could not be verified.' };
 
-            const customerInfo = await Purchases.restorePurchases();
+            const restoration = await this.waitForNativeStoreOperation<any>(() => Purchases.restorePurchases());
+            if (!restoration.completed) return { success: false, checkoutPending: true, error: NATIVE_STORE_PURCHASE_PENDING };
+            const customerInfo = restoration.value;
             const verified = await this.verifyServerSubscription();
             if (!verified && (Object.keys(customerInfo.entitlements?.active || {}).length > 0 || customerInfo.activeSubscriptions?.length > 0)) {
                 return { success: true, verificationPending: true };
@@ -472,16 +532,21 @@ class IAPService {
         await this.verifyServerSubscription();
     }
 
-    private async isCheckoutVerificationReady(owner: string): Promise<boolean> {
+    private async isCheckoutVerificationReady(owner: string): Promise<{ ready: true } | { ready: false; reason: string }> {
         try {
             const { data, error } = await withRequestDeadline(
                 signal => supabase.functions.invoke('sync-subscription', { body: {}, signal }), 20_000,
             );
+            if (error) return { ready: false, reason: 'sync_request_failed' };
+            if (data?.verified !== true) return { ready: false, reason: 'sync_unverified' };
+            if (!['free', 'lite', 'premium', 'vip'].includes(data.tier)) return { ready: false, reason: 'sync_invalid_tier' };
             const { data: identity } = await supabase.auth.getSession();
-            return !error && data?.verified === true &&
-                ['free', 'lite', 'premium', 'vip'].includes(data.tier) &&
-                identity.session?.user?.id === owner;
-        } catch { return false; }
+            if (identity.session?.user?.id !== owner) return { ready: false, reason: 'session_changed' };
+            return { ready: true };
+        } catch (error) {
+            const reason = error instanceof Error && error.name === 'RequestTimeoutError' ? 'sync_timeout' : 'sync_check_failed';
+            return { ready: false, reason };
+        }
     }
 
     async verifyServerSubscription(): Promise<boolean> {

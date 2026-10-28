@@ -1,0 +1,17 @@
+[
+  {
+    "id": "converse-10027994-a01",
+    "brand": "Converse",
+    "name": "Varsity T-Shirt",
+    "price": 24.97,
+    "currency": "USD",
+    "category": "tops",
+    "garment_type": "upper_body",
+    "description": "Converse men's black graphic T-shirt · garment-only product photo on white",
+    "image_url": "https://www.converse.com/dw/image/v2/BCZC_PRD/on/demandware.static/-/Sites-cnv-master-catalog/default/dw671ba3a3/images/a_08/10027994-A01_A_08X1.jpg?sw=406",
+    "source": "converse-official-mens-clothing",
+    "source_url": "https://www.converse.com/shop/p/varsity-t-shirt-mens-t-shirt/10027994-A01_S.html",
+    "is_active": false,
+    "sort_order": 0
+  }
+]

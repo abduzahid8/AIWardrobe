@@ -1,0 +1,62 @@
+{
+  "measuredAt": "2026-10-25T02:16:00Z",
+  "status": "unresolved_production_blocker",
+  "affectedBehavior": "Budgeted generation cannot obtain a current shared reference-rate snapshot. Six intended category/budget scenarios never reached generation.",
+  "facts": {
+    "cachedSnapshotAsOf": "2026-10-22",
+    "cachedSnapshotFetchedAt": "2026-10-22T16:35:58.699Z",
+    "ttlMs": 3600000,
+    "hostedRatesStatus": 503,
+    "hostedRatesError": "budget_rates_unavailable",
+    "observedFailureStage": "upstream_fetch",
+    "aborted": true,
+    "localOfficialFetch": {
+      "status": 200,
+      "asOf": "2026-10-24",
+      "validatedWithActualParser": true
+    },
+    "connectivityProbe": "oct25-cbu-network-probe.json",
+    "regionsTested": [
+      "eu-central-1",
+      "ap-south-1"
+    ],
+    "dnsCorrect": true,
+    "tcp443TimedOutBothRegions": true,
+    "httpsTimedOutBothRegions": true
+  },
+  "changes": {
+    "budgetRatesVersion": 5,
+    "jwtRequired": true,
+    "originalCbuHostnameRestored": true,
+    "refreshStageLoggingAdded": true,
+    "noRateOrFreshnessRelaxation": true,
+    "generateOutfitsVersion": 131,
+    "generationCodeChangedThisTurn": false,
+    "temporaryAdminOnlyProbeDeleted": true
+  },
+  "verification": {
+    "cacheRegressionTests": 31,
+    "hostedPartialRankingRegressionTests": 90,
+    "localHarnessSyntax": true,
+    "ratesPackageDenoCheck": true,
+    "hostedRatesExactReadback": true,
+    "fixtureCleanupIndependentSql": {
+      "usersRemaining": 0,
+      "profilesRemaining": 0,
+      "sessionsRemaining": 0,
+      "fixtures": 6
+    }
+  },
+  "limits": [
+    "Does not establish which network operator filters or loses the connection.",
+    "A local fetch cannot prove reliable production ingestion.",
+    "No guessed rates or manually refreshed cache was installed.",
+    "No category/budget AI accuracy or capacity success may be claimed from these aborted scenarios.",
+    "Some raw diagnostic report scope labels say category/budget although their zero checks show no generation ran; this summary states the actual scope."
+  ],
+  "nextRequiredEvidence": [
+    "A production refresh from the official source must succeed after cache expiry, within the client deadline.",
+    "Then rerun the actual category/budget matrix and full three-card budgeted deck.",
+    "A durable ingestion/network fix must cover refresh failures without changing the user spending cap or freshness contract."
+  ]
+}

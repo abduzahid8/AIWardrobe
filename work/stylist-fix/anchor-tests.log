@@ -1,0 +1,8 @@
+PASS __tests__/backend/outfitBudgetWire.test.js (14.35 s)
+PASS __tests__/backend/fourSlotHosted.test.js
+PASS __tests__/hooks/shopCatalogSearch.test.ts
+
+Test Suites: 3 passed, 3 total
+Tests:       101 passed, 101 total
+Snapshots:   0 total
+Time:        18.124 s, estimated 19 s

@@ -1,0 +1,40 @@
+{
+  "measuredAt": "2026-10-25T16:36:39.190Z",
+  "scope": "Twenty concurrent actual dailyUsageStore calls through live ordinary-account quota RPCs. AsyncStorage and free-plan selectors controlled; not native Home UI, provider work or10kDAUproof.",
+  "checks": [
+    {
+      "name": "fixture_is_free_without_trial",
+      "passed": true
+    },
+    {
+      "name": "exactly_three_of_twenty_reservations_allowed",
+      "passed": true
+    },
+    {
+      "name": "server_counter_is_three",
+      "passed": true
+    },
+    {
+      "name": "cache_matches_server_after_out_of_order_responses",
+      "passed": true
+    }
+  ],
+  "fixtureUserId": "14c2ca5f-2176-479b-8591-0088ed745bbe",
+  "sourceSha256": "4f42e243efac5e177b302b31438d95261f3bb3cd4abe0d703ee1ce4c16214400",
+  "requests": {
+    "maxActive": 20,
+    "elapsedMs": 3381,
+    "allowed": 3,
+    "denied": 17,
+    "errors": 0,
+    "errorTypes": []
+  },
+  "serverUsed": 3,
+  "cachedUsed": 3,
+  "cachedRemaining": 0,
+  "cleanup": {
+    "sessionsRevoked": true,
+    "ownerDeleted": true
+  },
+  "passed": true
+}

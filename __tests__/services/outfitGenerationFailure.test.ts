@@ -63,3 +63,14 @@ test('the actual SDK503 context preserves the AI-specific failure message',async
  const context=new Response(JSON.stringify({error:'ai_generation_unavailable',outfits:[]}),{status:503});
  expect((await outfitGenerationFailure(null,{context})).translationKey).toBe('outfitMaker.aiUnavailable');
 });
+
+test('unknown failure diagnostics retain only a bounded category and status',async()=>{
+ const warn=jest.spyOn(console,'warn').mockImplementation(()=>{});
+ try {
+  const privateValue='private-token-and-user-input';
+  const failure=await outfitGenerationFailure(null,{name:privateValue,message:privateValue,headers:{Authorization:privateValue},context:new Response(JSON.stringify({error:privateValue}),{status:500})});
+  expect(failure.translationKey).toBe('outfitMaker.generateFailed');
+  expect(warn).toHaveBeenCalledWith('[stylist-request-failure]',{phase:'http_body',sdkError:'unknown',httpStatus:500});
+  expect(JSON.stringify(warn.mock.calls)).not.toContain(privateValue);
+ } finally {warn.mockRestore()}
+});

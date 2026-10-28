@@ -1,0 +1,23 @@
+{
+  "measuredAt": "2026-10-28T07:13:00+05:00",
+  "simulator": "AIWardrobe-Payments-20261027",
+  "installedBuild": "56",
+  "appAccount": "Payment QA",
+  "flow": [
+    "Launched the authenticated Home screen.",
+    "Tapped Create outfit after the trial had ended; the paywall opened.",
+    "Tapped Continue with Free; the app returned to Home."
+  ],
+  "result": "Free plan gating and free continuation UI passed. No purchase was started.",
+  "backendBeforeFlow": {
+    "tier": "free",
+    "usageToday": {},
+    "homeSwipesToday": 0,
+    "paymentRows": 0,
+    "activeSubscriptionRows": 0
+  },
+  "limitations": [
+    "This is a simulator UI flow, not a Sandbox transaction.",
+    "No Home swipe was performed; free swipe charging was not verified."
+  ]
+}

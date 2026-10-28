@@ -1,0 +1,8 @@
+PASS __tests__/services/displayExchangeRates.test.ts
+PASS __tests__/utils/uzsPrice.test.ts
+PASS __tests__/features/shopPriceLabel.test.ts
+
+Test Suites: 3 passed, 3 total
+Tests:       15 passed, 15 total
+Snapshots:   0 total
+Time:        0.588 s, estimated 1 s

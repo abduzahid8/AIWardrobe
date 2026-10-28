@@ -88,14 +88,14 @@ const baseParams = (overrides: Partial<GenerateOutfitsParams> = {}): GenerateOut
 });
 
 describe('buildLocalOutfits variety (10-item wardrobe)', () => {
-    it('warm weather: yields 3 complete 3-item looks', () => {
+    it('warm weather: yields 3 complete four-category looks', () => {
         const outfits = buildLocalOutfits(
             tenItemWardrobe(),
             baseParams({ weather: { temp: 24, condition: 'clear' } }),
         );
         expect(outfits.length).toBe(3);
         for (const o of outfits) {
-            expect(o.items.length).toBe(3);
+            expect(o.items.length).toBe(4);
         }
     });
 
@@ -105,8 +105,8 @@ describe('buildLocalOutfits variety (10-item wardrobe)', () => {
             baseParams({ weather: { temp: 24, condition: 'clear' } }),
         );
         const ids = outfits.map((o) => o.items.map((i: any) => String(i.id)));
-        // 3-item looks sharing 2+ pieces read as "the same outfit".
-        expect(maxShared(ids)).toBeLessThanOrEqual(1);
+        // Four-item looks must still differ by at least two products.
+        expect(maxShared(ids)).toBeLessThanOrEqual(2);
     });
 
     it('cool weather: yields 3 complete 4-item layered looks', () => {
@@ -130,7 +130,7 @@ describe('buildLocalOutfits variety (10-item wardrobe)', () => {
         expect(maxShared(ids)).toBeLessThanOrEqual(2);
     });
 
-    it('sparse wardrobe (1 per slot): still yields at least 1 complete look', () => {
+    it('a wardrobe without a layer cannot produce a complete look', () => {
         idCounter = 100;
         const sparse = [
             makeItem('top', 'lone tee'),
@@ -141,8 +141,7 @@ describe('buildLocalOutfits variety (10-item wardrobe)', () => {
             sparse,
             baseParams({ weather: { temp: 24, condition: 'clear' } }),
         );
-        expect(outfits.length).toBeGreaterThanOrEqual(1);
-        expect(outfits[0].items.length).toBe(3);
+        expect(outfits).toEqual([]);
     });
 
     it.each(['casual', 'minimalist', 'old_money', 'streetwear'])(

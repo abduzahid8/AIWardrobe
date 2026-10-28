@@ -1,0 +1,113 @@
+{
+  "recordedAt": "2026-10-27",
+  "scope": "Current source regression and iOS simulator Release build; not a store submission, live purchase, or 10,000-DAU capacity certification",
+  "source": {
+    "appVersion": "2.1.0",
+    "runtimeVersion": "2.1.0",
+    "iosBuildNumber": "58",
+    "androidVersionCode": 57,
+    "bundleId": "com.aiwardrobe"
+  },
+  "iosSimulatorBuild": {
+    "configuration": "Release",
+    "architecture": "arm64",
+    "result": "passed",
+    "codeSigning": "disabled",
+    "installed": false,
+    "bundlePath": "/tmp/aiwardrobe-final-ios-210/Build/Products/Release-iphonesimulator/AIWardrobe.app",
+    "verifiedBundleMetadata": {
+      "CFBundleIdentifier": "com.aiwardrobe",
+      "CFBundleShortVersionString": "2.1.0",
+      "CFBundleVersion": "58",
+      "mainJsBundlePresent": true,
+      "mainJsBundleSha256": "16e5ad4ffb29e6d0639f95972090244f16bf42a62caec1f26afb5a4b36317084",
+      "mainJsBundleBytes": 8516970
+    },
+    "limitations": [
+      "Unsigned simulator build only; it is not an App Store archive.",
+      "It was not installed or used to validate native interactive/payment flows."
+    ]
+  },
+  "automatedChecks": {
+    "jest": {
+      "result": "passed",
+      "tests": 2455,
+      "suites": 193,
+      "command": "npm test -- --runInBand --silent"
+    },
+    "typeScript": {
+      "result": "passed",
+      "command": "npm run typecheck"
+    },
+    "eslint": {
+      "result": "no errors",
+      "command": "npm run lint -- --quiet",
+      "limitations": [
+        "Non-error lint warnings remain."
+      ]
+    },
+    "paymentAndOutfitContracts": {
+      "result": "passed",
+      "tests": 70,
+      "suites": 5
+    },
+    "loadHarness": {
+      "result": "passed",
+      "tests": 38,
+      "scope": "Offline harness tests; no live load traffic sent"
+    },
+    "releaseToolchain": {
+      "result": "passed",
+      "tests": 8
+    },
+    "edgeFunctionTypecheck": {
+      "result": "not run",
+      "reason": "Deno executable is not installed in this environment"
+    },
+    "expoDoctor": {
+      "result": "20/20 checks passed",
+      "note": "appConfigFieldsNotSyncedCheck disabled because ios/ and android/ are maintained native projects; version/build IDs are independently validated."
+    },
+    "outfitDeckStress": {
+      "result": "passed",
+      "mixedWardrobeRuns": 200,
+      "variedCatalogRuns": 100,
+      "contract": "three unique looks with exactly outerwear layer + shirt/T-shirt/polo + pants + shoes when stock supports it"
+    }
+  },
+  "observedReleaseBlockers": [
+    "App Store Connect showed iOS version 2.1 as Invalid Binary and an attached build numbered 57 with bundle version 1.4.3.",
+    "App Store Connect requires the Account Holder to review the updated Apple Developer Program License Agreement before submitting new builds.",
+    "The current App Store version metadata has not been changed to align with the prepared 2.1.0 binary.",
+    "No successful Apple Sandbox purchase or backend paid-entitlement activation has been observed.",
+    "A current hosted 40-RPS representative workload and 10,000-DAU capacity certification have not been performed.",
+    "Android store build, purchase lifecycle, and Google Play configuration remain unverified."
+  ],
+  "androidDependencyInstall": {
+    "result": "npm ci dry-run passed",
+    "appiumXcuitestDriver": "12.18.1 from npm, matching installed Git source files apart from package.json dependency declarations",
+    "gitResolvedPackages": 0,
+    "archiveInspection": {
+      "result": "passed on EAS CLI archive copy plus release-toolchain assertions",
+      "sharedMetroModulesIncluded": 5,
+      "localEnvAndBackendCredentialsExcluded": 5,
+      "generatedNativeCachesAndGitExcluded": 4,
+      "edgeFunctionEntrypointsExcludedByToolchainCheck": true,
+      "archiveDirectorySize": "32 MB"
+    },
+    "latestEasBuild": {
+      "id": "fccc936c-85b4-469a-ad6a-9994aeedba27",
+      "platform": "ANDROID",
+      "profile": "production",
+      "status": "IN_QUEUE",
+      "version": "2.1.0",
+      "buildNumber": 57,
+      "artifactAvailable": false
+    }
+  },
+  "productionAudit": {
+    "result": "3 high advisories remain",
+    "scope": "npm audit --omit=dev",
+    "note": "Remaining advisories are in Expo CLI/Zod; the available automatic fix suggests a breaking Expo SDK downgrade, so it was not forced."
+  }
+}

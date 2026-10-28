@@ -1,0 +1,30 @@
+{
+  "measuredAt": "2026-10-27T15:50:11Z",
+  "simulator": "AIWardrobe-Payments-20261027",
+  "installedBuild": "2.1.0 (58)",
+  "appAccount": "Payment QA",
+  "actions": [
+    "Opened the upgrade paywall from Home.",
+    "Verified Lite $2.99/month, Pro $9.99/month, and Pro Yearly $99.99/year on the native paywall.",
+    "Tapped the Lite Continue button once. The app passed its checkout preflight and presented Apple's Sign in to Apple Account prompt."
+  ],
+  "storeSignInOrPurchaseCompleted": false,
+  "simulatorEnvironmentEvidence": {
+    "prompt": "Generic Sign in to Apple Account; no Sandbox environment marker shown",
+    "appSignature": "ad-hoc",
+    "teamIdentifier": null,
+    "countedAsSandboxTest": false
+  },
+  "pairedPhysicalDevice": {
+    "model": "iPhone 14 Pro Max",
+    "state": "unavailable",
+    "developerMode": "disabled"
+  },
+  "backendAfterAttempt": {
+    "tier": "free",
+    "subscriptionExpiry": null,
+    "paymentRows": 0,
+    "activeSubscriptionRows": 0
+  },
+  "result": "Current build reached a generic StoreKit sign-in prompt; this is not evidence of a Sandbox transaction. No purchase was started or charged and no paid entitlement was granted. A development-signed/TestFlight real-device Sandbox flow is still required, followed by webhook, restore, renewal, cancellation, and refund verification."
+}

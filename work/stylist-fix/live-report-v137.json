@@ -1,0 +1,408 @@
+{
+  "measuredAt": "2026-10-28T04:21:09.291Z",
+  "backendVersion": 137,
+  "cases": [
+    {
+      "name": "winter",
+      "status": 200,
+      "ms": 9268,
+      "count": 3,
+      "source": "ai",
+      "layered": true,
+      "diversity": {
+        "activeSlots": [
+          "outerwear",
+          "top",
+          "bottom",
+          "shoes"
+        ],
+        "strictSlots": [
+          "outerwear",
+          "top",
+          "bottom",
+          "shoes"
+        ],
+        "forcedRepeatSlots": []
+      },
+      "outfits": [
+        {
+          "items": [
+            {
+              "id": "shop_allsaints-usm038ka-6936",
+              "name": "Statten Long-Sleeve Ramskull Polo Shirt",
+              "macroCategory": "top",
+              "price": 149,
+              "currency": "USD",
+              "description": "AllSaints men’s clothing · official product gallery image on a plain light background, no model"
+            },
+            {
+              "id": "shop_allsaints-usm056lb-9503",
+              "name": "Xylon Shearling Biker Jacket",
+              "macroCategory": "outerwear",
+              "price": 1799,
+              "currency": "USD",
+              "description": "AllSaints men’s clothing · official product gallery image on a plain light background, no model"
+            },
+            {
+              "id": "shop_armani_exchange-6dzj16_z3yuz_1500",
+              "name": "J16 Straight Fit Indigo Cotton Denim Jeans",
+              "macroCategory": "bottom",
+              "price": 150,
+              "currency": "USD",
+              "description": "Armani Exchange · men's apparel · front-view product photo on a plain background"
+            },
+            {
+              "id": "shop_thursday-15456871514202",
+              "name": "Duke | Black Coffee",
+              "macroCategory": "shoes",
+              "price": 199,
+              "currency": "USD",
+              "description": "duke chelsea boot black coffee color Black material Leather pf-style Chelsea sole Rubber style Chelsea style Plain Toe. Product Features Black Coffee Hand-Finished Full-Grain Leather Goodyear Welt Construction for Longevity Fully Lined Supple Glove Leather Interior Poron® Antimicrobial Shock Absorbing Insoles Cork-Bed Midsoles that Form to Your Feet Flexible Elastic Goring Durable Studded Rubber Outsoles Handcrafted with Integrity"
+            }
+          ]
+        },
+        {
+          "items": [
+            {
+              "id": "shop_allsaints-usm158sf-723",
+              "name": "Western Denim Shirt",
+              "macroCategory": "top",
+              "price": 179,
+              "currency": "USD",
+              "description": "AllSaints men’s clothing · official product gallery image on a plain light background, no model"
+            },
+            {
+              "id": "shop_armani_exchange-xm002852_af27305_m0410",
+              "name": "Down jacket with abstract pattern and drawstring hood",
+              "macroCategory": "outerwear",
+              "price": 3321349,
+              "currency": "UZS",
+              "description": "Armani Exchange · men's apparel · front-view product photo on a plain background · Original listed price: 280 USD; converted with CBU reference rates dated 2026-10-27."
+            },
+            {
+              "id": "shop_allsaints-usm076ef-10428",
+              "name": "Slim-Straight Leg Selvedge Denim Jeans",
+              "macroCategory": "bottom",
+              "price": 239,
+              "currency": "USD",
+              "description": "AllSaints men’s clothing · official product gallery image on a plain light background, no model"
+            },
+            {
+              "id": "shop_thursday-7719429898330",
+              "name": "Journeyman | Black",
+              "macroCategory": "shoes",
+              "price": 289,
+              "currency": "USD",
+              "description": "journeyman wholecut chelsea boot black color Black material Leather pf-style Lace-Up sole Rubber style Chelsea. Product Features Black Hand-Finished Full-Grain Leather Wholecut Upper Made From a Single Piece of Leather 270° Goodyear Welt Construction Vachetta Leather Insoles Form to Your Feet with Wear Leather Shank, Heel Counter, and Toe Box Reinforcement Knight™ Anti-Slip Durable Rubber Outsoles Dual Leather Pull Tabs Fully Lined Supple Glove Leather Interior Flexible Elastic Goring Handcrafted With Integrity"
+            }
+          ]
+        },
+        {
+          "items": [
+            {
+              "id": "shop_allsaints-usm020jf-10728",
+              "name": "Raine Waffle-Knit Long-Sleeve T-Shirt",
+              "macroCategory": "top",
+              "price": 149,
+              "currency": "USD",
+              "description": "AllSaints men’s clothing · official product gallery image on a plain light background, no model"
+            },
+            {
+              "id": "shop_armani_exchange-xm003325_af27210_ub101",
+              "name": "down jacket nylon with virgin wool blend",
+              "macroCategory": "outerwear",
+              "price": 5219262,
+              "currency": "UZS",
+              "description": "Armani Exchange · men's apparel · front-view product photo on a plain background · Original listed price: 440 USD; converted with CBU reference rates dated 2026-10-27."
+            },
+            {
+              "id": "shop_allsaints-usm061ef-10636",
+              "name": "Flocked Denim Slim-Straight Leg Jeans",
+              "macroCategory": "bottom",
+              "price": 289,
+              "currency": "USD",
+              "description": "AllSaints men’s clothing · official product gallery image on a plain light background, no model"
+            },
+            {
+              "id": "shop_thursday-8140117377114",
+              "name": "President StormKing® | Bull Brown",
+              "macroCategory": "shoes",
+              "price": 199,
+              "currency": "USD",
+              "description": "president lace up boot bull brown stormking color Brown material Rugged pf-style Lace-Up sole Rubber style Lace-Up style Plain Toe. Product Features Bull Brown Rugged & Resilient Leather Goodyear Welt Construction for Longevity StormKing® Durable Rubber Lug Outsoles Fully Lined Supple Glove Leather Interior Hardwearing Steel Shanks Poron® Antimicrobial Shock Absorbing Insoles Long-Lasting Kevlar® Blend Laces Custom Developed Reinforced Eyelets Cork-Bed Midsoles that Form to Your Feet Handcrafted With Integrity"
+            }
+          ]
+        }
+      ],
+      "invalidRows": [],
+      "uniqueTitles": 12,
+      "slots": 12
+    },
+    {
+      "name": "budget_250",
+      "status": 200,
+      "ms": 17470,
+      "count": 3,
+      "source": "ai",
+      "layered": true,
+      "diversity": {
+        "activeSlots": [
+          "outerwear",
+          "top",
+          "bottom",
+          "shoes"
+        ],
+        "strictSlots": [
+          "outerwear",
+          "top",
+          "bottom",
+          "shoes"
+        ],
+        "forcedRepeatSlots": []
+      },
+      "outfits": [
+        {
+          "items": [
+            {
+              "id": "shop_hm-1348532006",
+              "name": "Relaxed-Fit Waffled Resort Shirt",
+              "macroCategory": "top",
+              "price": 24.99,
+              "currency": "USD",
+              "description": "H&M men's clothing · official garment-only product photo on a plain background"
+            },
+            {
+              "id": "shop_hm-1341528001",
+              "name": "Regular-Fit Fine-Knit Sweater",
+              "macroCategory": "outerwear",
+              "price": 29.99,
+              "currency": "USD",
+              "description": "H&M men's clothing · official garment-only product photo on a plain background"
+            },
+            {
+              "id": "shop_everlane-7562831003734",
+              "name": "The Performance 5-Pocket Pant | Uniform | Black",
+              "macroCategory": "bottom",
+              "price": 31,
+              "currency": "USD",
+              "description": "Everlane · men's apparel · product-only photo on a plain background"
+            },
+            {
+              "id": "shop_thursday-15407719448666",
+              "name": "Era | Cloud",
+              "macroCategory": "shoes",
+              "price": 140,
+              "currency": "USD",
+              "description": "era leather sneaker cloud color White material Leather. Product Features White Nappa Leather With Off-White Details Luxe Suede Accents Buttery Soft Leather Interior Lining Shock-Absorbent Performance Footbeds Padded Tongue & Collar for Added Support Dual Density Rubber Outsoles for Comfort & Traction Handcrafted With Integrity"
+            }
+          ]
+        },
+        {
+          "items": [
+            {
+              "id": "shop_hm-1242812006",
+              "name": "Slim Fit Easy-iron Shirt",
+              "macroCategory": "top",
+              "price": 19.99,
+              "currency": "USD",
+              "description": "H&M men's clothing · official garment-only product photo on a plain background"
+            },
+            {
+              "id": "shop_jcrew-cp719-pr0393",
+              "name": "Lightweight Pima cotton crewneck sweater",
+              "macroCategory": "outerwear",
+              "price": 29.99,
+              "currency": "USD",
+              "description": "J.Crew men's apparel · official product-only studio image on a plain background"
+            },
+            {
+              "id": "shop_everlane-7539339493462",
+              "name": "The Performance Chino | Uniform | Deep Navy | Athletic",
+              "macroCategory": "bottom",
+              "price": 30,
+              "currency": "USD",
+              "description": "Everlane · men's apparel · product-only photo on a plain background"
+            },
+            {
+              "id": "shop_thursday-6794356228186",
+              "name": "Renegade | Black",
+              "macroCategory": "shoes",
+              "price": 168,
+              "currency": "USD",
+              "description": "renegade derby shoe black leather color Black derby search_term material Leather pf-style Blucher sole Rubber style Lace-Up style Plain Toe. Product Features Black Soft Semi-Patent Leather Storm Welt Construction for Longevity StormKing® Durable Anti-Slip Rubber Outsoles Fully Lined Supple Glove Leather Interior Poron® Antimicrobial Shock Absorbing Insoles Long-Lasting Kevlar® Blend Laces Cork-Bed Midsoles that Form to Your Feet Handcrafted with Integrity"
+            }
+          ]
+        },
+        {
+          "items": [
+            {
+              "id": "shop_hm-1359341004",
+              "name": "Slim-Fit Ribbed Cotton Henley Shirt",
+              "macroCategory": "top",
+              "price": 24.99,
+              "currency": "USD",
+              "description": "H&M men's clothing · official garment-only product photo on a plain background"
+            },
+            {
+              "id": "shop_hm-1341531001",
+              "name": "Regular-Fit Half-Zip Sweater",
+              "macroCategory": "outerwear",
+              "price": 34.99,
+              "currency": "USD",
+              "description": "H&M men's clothing · official garment-only product photo on a plain background"
+            },
+            {
+              "id": "shop_hm-1316883006",
+              "name": "Relaxed Jeans",
+              "macroCategory": "bottom",
+              "price": 34.99,
+              "currency": "USD",
+              "description": "H&M men's clothing · official garment-only product photo on a plain background"
+            },
+            {
+              "id": "shop_thursday-7824210231386",
+              "name": "Era | Navy",
+              "macroCategory": "shoes",
+              "price": 140,
+              "currency": "USD",
+              "description": "era leather sneaker navy color White material Leather. Product Features White Nappa Leather With Navy Details Luxe Suede Accents Buttery Soft Leather Interior Lining Shock-Absorbent Performance Footbeds Padded Tongue & Collar for Added Support Dual Density Rubber Outsoles for Comfort & Traction Handcrafted With Integrity"
+            }
+          ]
+        }
+      ],
+      "invalidRows": [],
+      "uniqueTitles": 12,
+      "slots": 12,
+      "nativeSpend": [
+        225.98,
+        247.98,
+        234.97
+      ]
+    },
+    {
+      "name": "catalog_anchor",
+      "status": 200,
+      "ms": 7364,
+      "count": 3,
+      "source": "ai",
+      "layered": true,
+      "diversity": {
+        "activeSlots": [
+          "top",
+          "bottom",
+          "shoes"
+        ],
+        "strictSlots": [
+          "top",
+          "bottom",
+          "shoes"
+        ],
+        "forcedRepeatSlots": []
+      },
+      "outfits": [
+        {
+          "items": [
+            {
+              "id": "shop_allsaints-usm038ka-6936",
+              "name": "Statten Long-Sleeve Ramskull Polo Shirt",
+              "macroCategory": "top",
+              "price": 149,
+              "currency": "USD",
+              "description": "AllSaints men’s clothing · official product gallery image on a plain light background, no model"
+            },
+            {
+              "id": "fa3829fa-522c-4644-a33d-bebf74940ad9",
+              "name": "My locked black puffer jacket",
+              "macroCategory": "outerwear"
+            },
+            {
+              "id": "shop_allsaints-usm061ef-10636",
+              "name": "Flocked Denim Slim-Straight Leg Jeans",
+              "macroCategory": "bottom",
+              "price": 289,
+              "currency": "USD",
+              "description": "AllSaints men’s clothing · official product gallery image on a plain light background, no model"
+            },
+            {
+              "id": "shop_thursday-8140117377114",
+              "name": "President StormKing® | Bull Brown",
+              "macroCategory": "shoes",
+              "price": 199,
+              "currency": "USD",
+              "description": "president lace up boot bull brown stormking color Brown material Rugged pf-style Lace-Up sole Rubber style Lace-Up style Plain Toe. Product Features Bull Brown Rugged & Resilient Leather Goodyear Welt Construction for Longevity StormKing® Durable Rubber Lug Outsoles Fully Lined Supple Glove Leather Interior Hardwearing Steel Shanks Poron® Antimicrobial Shock Absorbing Insoles Long-Lasting Kevlar® Blend Laces Custom Developed Reinforced Eyelets Cork-Bed Midsoles that Form to Your Feet Handcrafted With Integrity"
+            }
+          ]
+        },
+        {
+          "items": [
+            {
+              "id": "shop_allsaints-usm020jf-10728",
+              "name": "Raine Waffle-Knit Long-Sleeve T-Shirt",
+              "macroCategory": "top",
+              "price": 149,
+              "currency": "USD",
+              "description": "AllSaints men’s clothing · official product gallery image on a plain light background, no model"
+            },
+            {
+              "id": "fa3829fa-522c-4644-a33d-bebf74940ad9",
+              "name": "My locked black puffer jacket",
+              "macroCategory": "outerwear"
+            },
+            {
+              "id": "shop_armani_exchange-6dzj16_z3yuz_1500",
+              "name": "J16 Straight Fit Indigo Cotton Denim Jeans",
+              "macroCategory": "bottom",
+              "price": 150,
+              "currency": "USD",
+              "description": "Armani Exchange · men's apparel · front-view product photo on a plain background"
+            },
+            {
+              "id": "shop_thursday-7719429898330",
+              "name": "Journeyman | Black",
+              "macroCategory": "shoes",
+              "price": 289,
+              "currency": "USD",
+              "description": "journeyman wholecut chelsea boot black color Black material Leather pf-style Lace-Up sole Rubber style Chelsea. Product Features Black Hand-Finished Full-Grain Leather Wholecut Upper Made From a Single Piece of Leather 270° Goodyear Welt Construction Vachetta Leather Insoles Form to Your Feet with Wear Leather Shank, Heel Counter, and Toe Box Reinforcement Knight™ Anti-Slip Durable Rubber Outsoles Dual Leather Pull Tabs Fully Lined Supple Glove Leather Interior Flexible Elastic Goring Handcrafted With Integrity"
+            }
+          ]
+        },
+        {
+          "items": [
+            {
+              "id": "shop_allsaints-usm159sf-2160",
+              "name": "Gleason Denim Shirt",
+              "macroCategory": "top",
+              "price": 149,
+              "currency": "USD",
+              "description": "AllSaints men’s clothing · official product gallery image on a plain light background, no model"
+            },
+            {
+              "id": "fa3829fa-522c-4644-a33d-bebf74940ad9",
+              "name": "My locked black puffer jacket",
+              "macroCategory": "outerwear"
+            },
+            {
+              "id": "shop_allsaints-usm076ef-10428",
+              "name": "Slim-Straight Leg Selvedge Denim Jeans",
+              "macroCategory": "bottom",
+              "price": 239,
+              "currency": "USD",
+              "description": "AllSaints men’s clothing · official product gallery image on a plain light background, no model"
+            },
+            {
+              "id": "shop_thursday-15456871514202",
+              "name": "Duke | Black Coffee",
+              "macroCategory": "shoes",
+              "price": 199,
+              "currency": "USD",
+              "description": "duke chelsea boot black coffee color Black material Leather pf-style Chelsea sole Rubber style Chelsea style Plain Toe. Product Features Black Coffee Hand-Finished Full-Grain Leather Goodyear Welt Construction for Longevity Fully Lined Supple Glove Leather Interior Poron® Antimicrobial Shock Absorbing Insoles Cork-Bed Midsoles that Form to Your Feet Flexible Elastic Goring Durable Studded Rubber Outsoles Handcrafted with Integrity"
+            }
+          ]
+        }
+      ],
+      "invalidRows": [],
+      "uniqueTitles": 10,
+      "slots": 12
+    }
+  ]
+}

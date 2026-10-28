@@ -1,3 +1,6 @@
+import {formatUzsPrice} from '../src/utils/uzsPrice';
+import { useUzsDisplayRates, useUzsPrice } from '../hooks/useUzsPrice';
+import { resolveStylistWeather } from '../backend/supabase/functions/_shared/outfitComposition';
 import { getBudgetRates } from '../src/services/budgetRates';
 import { budgetFxContext, fitsBudgetAmount } from '../backend/supabase/functions/_shared/budgetFx';
 import readinessLogger from '../src/utils/logger';
@@ -29,7 +32,7 @@ import { confirmedImageReplacements, replaceGeneratedOutfitImages, replaceSavedO
 import { localDateKey, parseCalendarDate, shiftCalendarDay } from '../src/utils/calendarDate';
 import { authEvents } from '../store/authEvents';
 import { readCalendarLogs, updateCalendarLogs } from '../src/services/calendarStorage';
-import { createOutfitLog, type OutfitItem as CalendarOutfitItem } from '../features/calendar/types';
+import { createOutfitLog, resolveCalendarOccasion, type OutfitItem as CalendarOutfitItem } from '../features/calendar/types';
 import AIThinkingAnimation from '../components/AIThinkingAnimation';
 import { canonicalizeMacroCategory } from '../src/utils/categoryMapper';
 import { prioritizeUnseen } from '../features/outfit-generator/utils/deckDedupe';
@@ -353,6 +356,7 @@ const SlotCell = React.memo(function SlotCell({
   textPrimary: string;
   onBuy: (url: string) => void;
 }) {
+  const displayPrice = useUzsPrice(price, priceCurrency);
   const handleBuy = React.useCallback(() => onBuy(buyUrl), [onBuy, buyUrl]);
   const [imgFailed, setImgFailed] = React.useState(false);
   React.useEffect(() => { setImgFailed(false); }, [imageUri, slotKey]);
@@ -372,7 +376,7 @@ const SlotCell = React.memo(function SlotCell({
         <ScaledText style={[slotStyles.name, { color: textPrimary }]} numberOfLines={1}>{name}</ScaledText>
         {typeof price === 'number' && price > 0 && priceCurrency ? (
           <ScaledText style={slotStyles.price} numberOfLines={1}>
-            {formatMoney(price, priceCurrency)}
+            {displayPrice || '— UZS'}
           </ScaledText>
         ) : null}
         {showBuyButton ? (
@@ -1056,6 +1060,7 @@ const AIOutfitGenerator = () => {
   const [loading, setLoading] = useState(false);
   const [outfits, setOutfits] = useState<GeneratedOutfit[]>([]);
   const [error, setError] = useState('');
+  const displayRates = useUzsDisplayRates();
   const [userPrompt, setUserPrompt] = useState('');
   const promptRef = React.useRef(userPrompt);
   // Chip taps are the live dress-code. Stale comment text ("date night, old
@@ -1552,21 +1557,7 @@ const AIOutfitGenerator = () => {
     return mapped;
   }, [currentSource, liveShopMapped, wardrobeItems]);
 
-  const getCalendarOccasion = (styleId?: string) => {
-    switch (styleId) {
-      case 'business_casual':
-        return 'work';
-      case 'old_money':
-      case 'classic':
-        return 'formal';
-      case 'semi_classic':
-      case 'minimalist':
-      case 'casual':
-        return 'casual';
-      default:
-        return 'casual';
-    }
-  };
+  const getCalendarOccasion = (styleId?: string) => resolveCalendarOccasion(selectedOccasion, styleId);
 
   const COLLECTION_CATEGORIES: Array<{ id: string; label: string; icon: string }> = [
     { id: 'casual', label: t('outfitMaker.casual'), icon: 'sunny' },
@@ -1918,7 +1909,7 @@ const AIOutfitGenerator = () => {
     let shopBudget = rawShopBudget;
     const fitsCap = (items: any[]) =>
       !shopBudget || fitsBudgetAmount(outfitShopSpend(items as any[], liveShopMapped, shopBudget?.currency, shopBudget?.fx), shopBudget.amount);
-    const resolvedWeather = weather ?? undefined;
+    const resolvedWeather = resolveStylistWeather(promptText, weather);
 
     if (!isMounted.current) return;
     generationNonce.current += 1;
@@ -2090,13 +2081,7 @@ const AIOutfitGenerator = () => {
         if (__DEV__) readinessLogger.debug(String('[AIOutfitmaker] live shop catalog empty — static fallback pool:'), [staticPool.length]);
         payloadItems = staticPool.map((s: any) => toPayload({ ...s, image: s.imageUrl }));
       }
-      if (payloadItems.length === 0) {
-        if (isMounted.current) {
-          setError(t('outfitMaker.noShopItemsError', { defaultValue: 'No new clothing found in the shop catalog. Pull to refresh or try again later.' }));
-          setLoading(false);
-        }
-        return;
-      }
+
     } else {
       // Wardrobe mode: Supabase clothing only — drop anything not owned,
       // so shop/static items can never leak into the edge candidate pool.
@@ -2137,7 +2122,11 @@ const AIOutfitGenerator = () => {
       if (mixedLimits || crossCurrencyShop) {
         let fx;
         try { fx = budgetFxContext(await getBudgetRates()); }
-        catch { throw new OutfitGenerationFailure('outfitMaker.budgetRatesUnavailable'); }
+        catch {
+          if (mixedLimits) throw new OutfitGenerationFailure('outfitMaker.budgetRatesUnavailable');
+          // Let the server find catalog prices in the requested currency.
+          // No conversion or guessed reference is used in this mode.
+        }
         if (!isCurrentGeneration()) return;
         shopBudget = parseBudgetFromText(promptText, fx);
       }
@@ -2177,10 +2166,11 @@ const AIOutfitGenerator = () => {
         headers: {Authorization: `Bearer ${generationAccessToken}`},
         body: {
           stylePreferences: styleToUse,
-          occasion: edgePrompt || occasionToUse || 'Any',
+          occasion: occasionToUse || 'Any',
           selectedItemIds: [],
           preferences: withOutfitBudget(useStylePreferenceStore.getState().preferences, shopBudget),
-          wardrobeItems: payloadItems,
+          wardrobeItems: effectiveSource === 'shop' ? [] : payloadItems,
+          catalogOnly: effectiveSource === 'shop',
           weather: resolvedWeather,
           limit: 5,
           // The edge asks for a few extra candidates but the user sees three
@@ -2189,11 +2179,8 @@ const AIOutfitGenerator = () => {
           // "thin" and license repeating shoes on the three visible cards.
           deckTarget: 3,
           prompt: edgePrompt,
-          // Lock the anchor item into every outfit when navigated from MyClosetScreen.
-          // Wardrobe mode only: in shop ("New clothing") mode the anchor is a
-          // wardrobe piece and must NOT be sent — otherwise the edge builds
-          // every outfit around the user's own clothing.
-          anchorItemId: effectiveSource === 'wardrobe' ? baseItemId : undefined,
+          // A locked owned piece remains the anchor; the other slots use the catalog.
+          anchorItemId: baseItemId,
           // When source is 'shop', use only the provided shop catalog items
           // (Massimo Dutti etc.) and do NOT mix in user's own wardrobe items
           useProvidedWardrobeOnly: effectiveSource === 'shop',
@@ -2218,23 +2205,13 @@ const AIOutfitGenerator = () => {
         // Feed the rotation window BEFORE normalizing — the next tap must
         // exclude these exact ids even if the deck is edited downstream.
 
-        const normalize = createSlotNormalizer({
-          weather: resolvedWeather,
-          currentSource: effectiveSource,
-          selectedOccasion: occasionToUse,
-          generationNonceRef: generationNonce,
-          poolFallback: genPool,
-          budgetText: effectivePrompt || promptText,
-          maxShopBudget: shopBudget,
-          avoidIds: recentShownIds.current,
-        });
         const slotDeckUsed = new Set<string>();
         const wrapLook = (outfit: any, items: any[], idx: number): GeneratedOutfit => {
           const description =
             effectiveSource === 'shop'
               ? `${stylePhraseFor(styleToUse)} look curated from the shop.`
               : outfit.description;
-          const judgeOk = passesStyleJudge(items as any[], styleToUse, `${occasionToUse} ${effectivePrompt || promptText || ''}`, resolvedWeather);
+          const judgeOk = passesStyleJudge(items as any[], styleToUse, `${occasionToUse} ${effectivePrompt || promptText || ''}`, resolvedWeather, baseItemId);
           const baseScore: number = outfit.confidence ?? outfit.matchScore ?? 0.9;
           return {
             ...outfit,
@@ -2266,14 +2243,14 @@ const AIOutfitGenerator = () => {
           const filled = repaired;
           return wrapLook(outfit, filled, i);
         }).filter((outfit: GeneratedOutfit) =>
-          isFourSlotLook(outfit.items) || isCompleteNormalizedOutfit(outfit.items),
+          isFourSlotLook(outfit.items, data.layered !== false),
         );
 
         // Taste judge: drop cards carrying pieces rejected for this style ×
         // occasion. Never restore rejected looks to pad the deck — fill
         // missing cards from the pool instead.
         const judged = cleanedOutfits.filter((outfit: GeneratedOutfit) =>
-          passesStyleJudge(outfit.items as any[], styleToUse, `${occasionToUse} ${effectivePrompt || promptText || ''}`, resolvedWeather),
+          passesStyleJudge(outfit.items as any[], styleToUse, `${occasionToUse} ${effectivePrompt || promptText || ''}`, resolvedWeather, baseItemId),
         );
         if (__DEV__ && judged.length !== cleanedOutfits.length) {
           readinessLogger.debug(String(`[AIOutfitmaker] style judge: kept ${judged.length}/${cleanedOutfits.length} for ${styleToUse}/${occasionToUse}`), []);
@@ -2334,13 +2311,6 @@ const AIOutfitGenerator = () => {
             .find((x: any) => String(x?.id ?? '') === String(baseItemId));
           return anchorItem ? diversitySlotOf(anchorItem) : null;
         })();
-        const buildFill = (_usedKeys: Set<string>, attempt: number): GeneratedOutfit | null => {
-          const extraItems = normalize([], styleToUse, attempt, tapNonce, genPool, slotDeckUsed);
-          if (!(isFourSlotLook(extraItems) || isCompleteNormalizedOutfit(extraItems))) return null;
-          if (!passesStyleJudge(extraItems as any[], styleToUse, `${occasionToUse} ${effectivePrompt || promptText || ''}`, resolvedWeather)) return null;
-          if (!fitsCap(extraItems as any[])) return null;
-          return wrapLook({ id: `catalog_${tapNonce}_${attempt}` }, extraItems, attempt);
-        };
         if (__DEV__) readinessLogger.debug(String(`[AIOutfitmaker] fill start: judged=${judgedOutfits.length} budgeted=${budgetedOutfits.length}`), []);
         // The edge's capacity verdict (active / strict / forced-repeat slots)
         // as reported by the authoritative valid pool.
@@ -2357,7 +2327,7 @@ const AIOutfitGenerator = () => {
         })();
         // The client renders 4-slot cards (layer + top + bottom + shoes), so
         // every card slot participates in the composition.
-        const clientDiversitySlots: DiversitySlot[] = ['top', 'outerwear', 'bottom', 'shoes'];
+        const clientDiversitySlots: DiversitySlot[] = data.layered === false ? ['top', 'bottom', 'shoes'] : ['top', 'outerwear', 'bottom', 'shoes'];
         const {
           deck: finalOutfits,
           relaxed: deckRelaxed,
@@ -2382,7 +2352,6 @@ const AIOutfitGenerator = () => {
           // edge's legitimate forced repeat and cost the user cards.
           capacity: edgeDiversityCapacity,
           usedKeys: slotDeckUsed,
-          buildFill,
           // The VALID pool (style / occasion / climate filtered) decides
           // whether the inventory is genuinely thin. A catalogue full of
           // alternatives must never fall back to three colourways of one
@@ -2417,7 +2386,7 @@ const AIOutfitGenerator = () => {
             : (deckProducts.forcedRepeatProducts.length > 0
               ? 'FORCED_SLOT_REUSE'
               : 'UNIQUE_PRODUCTS');
-          console.log('[stylist-product-diversity]', JSON.stringify({
+          readinessLogger.debug(String('[stylist-product-diversity]'), [JSON.stringify({
             decision,
             nonAnchorProductReuseCount: deckProducts.nonAnchorProductReuseCount,
             illegalProductReuseCount: deckProducts.illegalProductReuseCount,
@@ -2448,7 +2417,7 @@ const AIOutfitGenerator = () => {
               strictSlots: edgeDiversityCapacity.strictSlots,
               forcedRepeatSlots: edgeDiversityCapacity.forcedRepeatSlots,
             } : null,
-          }));
+          })]);
         }
         if (__DEV__ && deckRelaxed) readinessLogger.debug(String(`[AIOutfitmaker] deck relaxed (${deckRelaxReason}) after strict diverse alternatives were exhausted`), []);
         if (__DEV__) readinessLogger.debug(String(`[AIOutfitmaker] nonce=${generationNonce.current} edge=${cleanedOutfits.length} shown=${finalOutfits.length}`), []);
@@ -2474,7 +2443,7 @@ const AIOutfitGenerator = () => {
                   ? `${stylePhraseFor(styleToUse)} look curated from the shop.`
                   : o.description;
                 return shopBudget
-                  ? { ...o, description: `${baseDescription} · ${formatMoney(outfitShopSpend(o.items as any[], liveShopMapped, shopBudget?.currency, shopBudget?.fx), shopBudget.currency)} / ${formatMoney(shopBudget.amount, shopBudget.currency)}${shopBudget.fx ? ` · ${t('outfitMaker.referenceRate', {date: shopBudget.fx.snapshot.asOf})}` : ''}` }
+                  ? { ...o, description: `${baseDescription} · ${formatUzsPrice(outfitShopSpend(o.items as any[], liveShopMapped, shopBudget?.currency, shopBudget?.fx), shopBudget.currency, displayRates) || '— UZS'} / ${formatUzsPrice(shopBudget.amount, shopBudget.currency, displayRates) || '— UZS'}${shopBudget.fx ? ` · ${t('outfitMaker.referenceRate', {date: shopBudget.fx.snapshot.asOf})}` : ''}` }
                   : { ...o, description: baseDescription };
               }),
           );
@@ -2562,7 +2531,7 @@ const AIOutfitGenerator = () => {
                     </View>
                   ) : <View />}
                   <LinearGradient colors={[D.accent, '#5B7CF9']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.matchPill}>
-                    <ScaledText style={styles.matchPillText}>{Math.round(outfit.matchScore * 100)}% Match</ScaledText>
+                    <ScaledText style={styles.matchPillText}>{t('outfitMaker.aiCurated')}</ScaledText>
                   </LinearGradient>
                 </View>
 
@@ -2714,7 +2683,7 @@ const AIOutfitGenerator = () => {
         <SafeAreaView edges={['bottom', 'left', 'right']} style={{ flex: 1 }}>
           <Reanimated.View entering={FadeIn.duration(350)} style={{ flex: 1, overflow: 'hidden' }}>
             <View style={{ flex: 1, overflow: 'hidden' }}>
-              <AIThinkingAnimation styleName={selectedStyleLabel} clothingItems={animationItems} />
+              <AIThinkingAnimation styleName={selectedStyleLabel} clothingItems={animationItems} source={currentSource} />
             </View>
             {/* Floating cancel — overlays animation, takes no layout space */}
             <SafeAreaView
@@ -3112,7 +3081,7 @@ const AIOutfitGenerator = () => {
                   testID="stylistCommentInput"
                   style={styles.detailsInput}
                   placeholder={t('outfitMaker.promptPlaceholderShort', {
-                    defaultValue: "Where you're going, style, budget ($150)…",
+                    defaultValue: "Where you're going, style, budget (1 500 000 UZS)…",
                   })}
                   placeholderTextColor={D.textSecondary}
                   value={userPrompt}
@@ -3133,11 +3102,7 @@ const AIOutfitGenerator = () => {
                 />
               </View>
 
-              {error ? (
-                <View style={[styles.errorBox, { marginTop: 16 }]}>
-                  <ScaledText style={styles.errorText}>{error}</ScaledText>
-                </View>
-              ) : null}
+
               {currentSource === 'shop' && !shopCatalogLoading && liveShopMapped.length === 0 ? (
                 <View style={[styles.errorBox, { marginTop: 12 }]}>
                   <ScaledText style={styles.errorText}>
@@ -3156,8 +3121,11 @@ const AIOutfitGenerator = () => {
               ) : null}
             </ScrollView>
           </Reanimated.View>
-          {/* Sticky bottom CTA */}
+          {/* Keep failures visible beside the retry action, outside scrolling choices. */}
           <View style={styles.stickyFooter}>
+            {error ? <View accessibilityRole="alert" accessibilityLiveRegion="assertive" style={[styles.errorBox, { marginBottom: 12 }]}>
+              <ScaledText style={styles.errorText}>{error}</ScaledText>
+            </View> : null}
             <TouchableOpacity
               testID="stylistGenerate"
               activeOpacity={0.85}

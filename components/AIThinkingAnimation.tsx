@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { View, Animated, Dimensions, StyleSheet, Easing } from 'react-native'
+import { View, Animated, Dimensions, StyleSheet, Easing, ActivityIndicator } from 'react-native'
 
 import { ScaledText } from './ui/ScaledText';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,6 +27,7 @@ interface ThinkingStep {
 interface AIThinkingAnimationProps {
   styleName?: string;
   clothingItems?: ClothingItem[];
+  source?: 'wardrobe' | 'shop';
 }
 
 interface OrbitItem {
@@ -105,6 +106,7 @@ const OrbitThumb = React.memo(function OrbitThumb({
 export const AIThinkingAnimation: React.FC<AIThinkingAnimationProps> = ({
   styleName,
   clothingItems = [],
+  source = 'wardrobe',
 }) => {
   const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(0);
@@ -119,7 +121,7 @@ export const AIThinkingAnimation: React.FC<AIThinkingAnimationProps> = ({
   const orbitInnerAnim = useRef(new Animated.Value(0));
 
   const THINKING_STEPS: ThinkingStep[] = [
-    { id: 1, text: t('aiThinking.scanningWardrobe'), icon: 'scan-outline' },
+    { id: 1, text: t(source === 'shop' ? 'aiThinking.reviewingCatalog' : 'aiThinking.scanningWardrobe'), icon: 'scan-outline' },
     { id: 2, text: t('aiThinking.analyzingStyle'), icon: 'color-palette-outline' },
     { id: 3, text: t('aiThinking.matchingCombinations'), icon: 'git-merge-outline' },
     { id: 4, text: t('aiThinking.optimizingOutfits'), icon: 'options-outline' },
@@ -286,7 +288,6 @@ export const AIThinkingAnimation: React.FC<AIThinkingAnimationProps> = ({
   const floatY = floatAnim.current.interpolate({ inputRange: [0, 1], outputRange: [0, -12] });
 
   const currentStepData = THINKING_STEPS[currentStep];
-  const progressPct = Math.round((currentStep / (THINKING_STEPS.length - 1)) * 100);
 
   const onLayout = useRef(({ nativeEvent }: any) => {
     const { width: w, height: h } = nativeEvent.layout;
@@ -369,12 +370,10 @@ export const AIThinkingAnimation: React.FC<AIThinkingAnimationProps> = ({
         {styleName && <ScaledText style={styles.styleTag}>{t('aiThinking.synthesizingDna', { style: styleName })}</ScaledText>}
       </View>
 
-      {/* Progress bar — static step width (5 updates total) */}
+      {/* The server does not report measured progress; show indeterminate activity. */}
       <View style={styles.progressContainer}>
-        <View style={styles.progressBackground}>
-          <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
-        </View>
-        <ScaledText style={styles.progressText}>{progressPct}%</ScaledText>
+        <ActivityIndicator color="#2B5CE9" />
+        <ScaledText style={styles.progressText}>{t('common.loading')}</ScaledText>
       </View>
     </View>
   );
@@ -486,19 +485,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     zIndex: 10,
-  },
-  progressBackground: {
-    flex: 1,
-    height: 8,
-    backgroundColor: 'rgba(229, 231, 235, 0.8)',
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginRight: 12,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#2B5CE9',
-    borderRadius: 4,
+    justifyContent: 'center',
+    gap: 12,
   },
   progressText: {
     fontSize: 14,

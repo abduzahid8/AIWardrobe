@@ -239,7 +239,7 @@ describe('stylist agent chaos', () => {
 
     it('limit above combinatorial max fills what exists without dupes', () => {
         n = 900;
-        const tiny = [clothing('top', 'a', 'white'), clothing('bottom', 'b', 'blue'), clothing('shoes', 'c', 'black')];
+        const tiny = [clothing('outerwear', 'Cotton jacket', 'grey'),clothing('top', 'Cotton shirt', 'white'), clothing('bottom', 'Cotton pants', 'blue'), clothing('shoes', 'Leather loafers', 'black')].map(item=>({...item,imageUrl:`https://example.com/${item.id}.jpg`}));
         const outfits = buildLocalOutfits(toLocal(tiny), {
             stylePreferences: 'casual',
             occasion: 'Everyday',

@@ -1,0 +1,47 @@
+[
+  {
+    "id": "geox-98005",
+    "brand": "Geox",
+    "name": "Polo Piquet 1",
+    "price": 634000.0,
+    "currency": "UZS",
+    "category": "tops",
+    "garment_type": "upper_body",
+    "description": "Geox · men's apparel from ETLN Uzbekistan · product-only image on a plain background",
+    "image_url": "https://admin.etln.uz/storage/thumbnails/galleries/18236/n1UJl4p6g8pCxFqaWJWmWjYFBfCFbUdqgMbT0qmo-medium.webp",
+    "source": "geox-etln-white-bg-no-model",
+    "source_url": "https://etln.uz/products/98005-polo-piquet-1",
+    "is_active": true,
+    "sort_order": 0
+  },
+  {
+    "id": "geox-98001",
+    "brand": "Geox",
+    "name": "Polo Printed",
+    "price": 742000.0,
+    "currency": "UZS",
+    "category": "tops",
+    "garment_type": "upper_body",
+    "description": "Geox · men's apparel from ETLN Uzbekistan · product-only image on a plain background",
+    "image_url": "https://admin.etln.uz/storage/thumbnails/galleries/18240/ThgY8SA7T8wGOow2C2djgmhkyn7jxsjcqs6giXap-medium.webp",
+    "source": "geox-etln-white-bg-no-model",
+    "source_url": "https://etln.uz/products/98001-polo-printed",
+    "is_active": true,
+    "sort_order": 1
+  },
+  {
+    "id": "geox-98002",
+    "brand": "Geox",
+    "name": "Polo Printed",
+    "price": 742000.0,
+    "currency": "UZS",
+    "category": "tops",
+    "garment_type": "upper_body",
+    "description": "Geox · men's apparel from ETLN Uzbekistan · product-only image on a plain background",
+    "image_url": "https://admin.etln.uz/storage/thumbnails/galleries/18239/ucuicyc5REzYheLb7TCBFCC0kaGT6PurGahT4IZd-medium.webp",
+    "source": "geox-etln-white-bg-no-model",
+    "source_url": "https://etln.uz/products/98002-polo-printed",
+    "is_active": true,
+    "sort_order": 2
+  }
+]

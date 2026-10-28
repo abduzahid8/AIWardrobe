@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { normalizeRevenueCatSnapshot } from '../_shared/revenuecatSnapshot.ts'
+import { normalizeRevenueCatSnapshot, revenueCatEnvironmentForUser } from '../_shared/revenuecatSnapshot.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -29,7 +29,8 @@ serve(async (req: Request) => {
     if (typeof event.id !== 'string' || !event.id || event.id.length > 250) return json({ error: 'Event ID required' }, 400)
     const environment = Deno.env.get('REVENUECAT_ENVIRONMENT') || 'PRODUCTION'
     if (!['PRODUCTION', 'SANDBOX'].includes(environment)) return json({ error: 'Invalid webhook environment configuration' }, 503)
-    if (event.environment && event.environment !== environment) return json({ success: true, ignored: 'different_environment' })
+    const sandboxUsers = Deno.env.get('REVENUECAT_SANDBOX_USER_IDS') || ''
+    if (event.environment && event.environment !== environment && !(event.environment === 'SANDBOX' && sandboxUsers.trim())) return json({ success: true, ignored: 'different_environment' })
     const admin = createClient(Deno.env.get('SUPABASE_URL') || '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '')
     let ownerIds: string[]
     if (event.type === 'TRANSFER') {
@@ -53,13 +54,16 @@ serve(async (req: Request) => {
     // contain two known accounts; one batch is applied only after every fetch succeeds.
     const deadline = AbortSignal.timeout(45000)
     for (const profile of profiles) {
+      const ownerEnvironment = revenueCatEnvironmentForUser(profile.id, environment, sandboxUsers)
+      if (event.environment && event.environment !== ownerEnvironment) continue
       const response = await fetch(`https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(profile.id)}`, {
         headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' },
         signal: AbortSignal.any([deadline, AbortSignal.timeout(10000)]),
       })
       if (!response.ok) return json({ error: 'Subscription verification unavailable' }, 503)
-      accounts.push(normalizeRevenueCatSnapshot(profile.id, await response.json(), environment as 'PRODUCTION' | 'SANDBOX'))
+      accounts.push(normalizeRevenueCatSnapshot(profile.id, await response.json(), ownerEnvironment))
     }
+    if (!accounts.length) return json({ success: true, ignored: 'different_environment' })
     const { data, error } = await admin.rpc('apply_revenuecat_snapshots', {
       p_event: { ...event, resolved_user_id: event.type === 'TRANSFER' ? null : profiles[0].id },
       p_accounts: accounts,

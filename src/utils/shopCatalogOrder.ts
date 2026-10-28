@@ -331,6 +331,8 @@ export function inferShopRowMacro(garmentType: string, name: string, _descriptio
     // slot as a TOP. Clothing words still win (belt-waist pants stay pants).
     if (ACCESSORY_TYPE_RE.test(nameBlob) && !nameIsTop && !nameIsBottom && !nameIsOuter && !nameIsShoes) return 'other';
 
+    // Jeans can be a color/product prefix: the named shirt remains a top.
+    if (nameIsTop && !nameIsOuter && /\b(?:t[ -]?shirts?|tees?|shirts?|polos?|blouses?)\b(?!.*\b(?:pants?|trousers?|jeans|chinos?)\b)/.test(nameBlob)) return 'top';
     if (nameIsBottom && !nameIsOuter) return 'bottom';
     if (nameIsOuter && !nameIsBottom) return 'outerwear';
     if (nameIsTop && !nameIsOuter) return 'top';

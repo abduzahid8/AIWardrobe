@@ -1,0 +1,40 @@
+{
+  "measuredAt": "2026-10-25T11:28:34.483Z",
+  "sourceSha256": "3ba2e69cdcf02b66ba214163e678ea5322ffbbb2ee876722cf16ea9046719eaa",
+  "scope": "One direct NVIDIA diagnostic using actual staged handler with controlled Auth/config; no production admission claim",
+  "providerResponses": [
+    {
+      "status": 200,
+      "finishReason": "stop",
+      "contentLength": 223,
+      "parsed": {
+        "category": "t-shirt",
+        "section": "tops",
+        "style": "minimalist",
+        "color": "white",
+        "material": "null",
+        "description": "A plain white short-sleeve crew neck t-shirt with a small black label at the back of the collar.",
+        "shoeType": null
+      }
+    }
+  ],
+  "fixture": {
+    "path": "assets/images/basic_white_tshirt.png",
+    "bytes": 58480,
+    "sha256": "6ab2bb7ae1af1b9e061c747a4bb013706d018d297faab883fc22213d1a75ae2c"
+  },
+  "candidateModel": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+  "handlerStatus": 200,
+  "latencyMs": 2105,
+  "acceptedClassification": {
+    "category": "t-shirt",
+    "section": "tops",
+    "confidence": 0,
+    "attributes": {
+      "style": "minimalist",
+      "color": "white",
+      "material": null
+    }
+  },
+  "error": null
+}

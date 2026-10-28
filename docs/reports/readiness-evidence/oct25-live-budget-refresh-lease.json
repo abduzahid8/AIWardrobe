@@ -1,0 +1,75 @@
+{
+  "measuredAt": "2026-10-25T02:26:46.122Z",
+  "scope": "Live service-only lease RPC concurrency and fencing; no rate snapshot publication or CBU call.",
+  "checks": [
+    {
+      "name": "anonymous_claim_denied",
+      "passed": true
+    },
+    {
+      "name": "one_owner_across_twenty_requests",
+      "passed": true
+    },
+    {
+      "name": "wrong_owner_cannot_publish",
+      "passed": true
+    },
+    {
+      "name": "owner_can_record_failed_refresh",
+      "passed": true
+    },
+    {
+      "name": "released_owner_cannot_publish_late",
+      "passed": true
+    },
+    {
+      "name": "failure_cooldown_prevents_upstream_retry_storm",
+      "passed": true
+    }
+  ],
+  "claimStatuses": [
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200
+  ],
+  "claimResults": [
+    "acquired",
+    "busy",
+    "busy",
+    "busy",
+    "busy",
+    "busy",
+    "busy",
+    "busy",
+    "busy",
+    "busy",
+    "busy",
+    "busy",
+    "busy",
+    "busy",
+    "busy",
+    "busy",
+    "busy",
+    "busy",
+    "busy",
+    "busy"
+  ],
+  "passed": true
+}

@@ -1,0 +1,74 @@
+{
+  "measuredAt": "2026-10-25T01:42:33.304Z",
+  "scope": "One real hosted Old Money/Work shopping request, no weather or entered budget, limit five. Controlled catalog pool; not exact screenshot account or capacity proof.",
+  "checks": [
+    {
+      "name": "all_three_catalog_slots_available",
+      "passed": true
+    },
+    {
+      "name": "usable_outfits_returned",
+      "passed": true
+    },
+    {
+      "name": "every_outfit_passes_structure_and_style",
+      "passed": true
+    },
+    {
+      "name": "every_item_matches_authoritative_active_catalog",
+      "passed": true
+    }
+  ],
+  "requestedLimit": 1,
+  "fixtureUserId": "e621748f-05f5-4d8d-b95b-3024b9c1024e",
+  "candidateCount": 40,
+  "response": {
+    "status": 200,
+    "latencyMs": 4640,
+    "code": null,
+    "error": null,
+    "source": "ai",
+    "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+    "providerAttempts": [
+      {
+        "provider": "nvidia",
+        "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+        "status": "ok"
+      }
+    ],
+    "outfitCount": 1
+  },
+  "supplementedIds": [],
+  "outfits": [
+    {
+      "items": [
+        {
+          "id": "shop_fr-tommy-169173-official",
+          "name": "Regular Fit Crest Patch Interlock Polo",
+          "price": 1829000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-113272",
+          "name": "H-Delaware",
+          "price": 2232000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-93163",
+          "name": "TTNM EVO Runn LTSDWV",
+          "price": 3798000,
+          "currency": "UZS"
+        }
+      ],
+      "structureReason": null,
+      "styleReason": null
+    }
+  ],
+  "exactRequestedReturned": true,
+  "cleanup": {
+    "sessionsRevoked": true,
+    "ownerDeleted": true
+  },
+  "passed": true
+}

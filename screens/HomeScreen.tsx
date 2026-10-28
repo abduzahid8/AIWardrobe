@@ -14,6 +14,7 @@ import { useIsFocused, useFocusEffect } from "@react-navigation/native";
 import { useAppNavigation } from '../hooks/useAppNavigation';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import useAuthStore from '../store/auth';
+import { authEvents } from '../store/authEvents';
 import { LinearGradient } from "expo-linear-gradient";
 
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -416,12 +417,9 @@ const DailyOutfitSection = React.memo(({
   const dislikeOutfitItems = useWardrobeStore((s) => s.dislikeOutfit);
 
   // ── Post-trial swipe gate: free/expired users get 3 swipes/day on Home ──
-  // NOTE: swipe handlers below must NEVER await the network. requireFeature
-  // is a synchronous local-quota check; the server increment runs in the
-  // background via consume(). Awaiting consumeOrPaywall (Supabase RPC)
-  // before setStackIndex left the deck blank until the round-trip returned —
-  // a freeze on every swipe, on every Home section.
-  const { consumeOrPaywall, consume, requireFeature, getRemaining, canUseNow } = useSubscriptionGate();
+  // Verify the allowance before the fly-off animation. The stack keeps the
+  // current card visible and disables duplicate gestures while this is pending.
+  const { consumeOrPaywall, getRemaining, canUseNow } = useSubscriptionGate();
   const effectiveTier = useSubscriptionStore((s) => s.effectiveTier);
   const isTrialExpired = useSubscriptionStore((s) => s.isTrialExpired);
   const canGenerateNewLooks = effectiveTier !== 'free';
@@ -637,15 +635,19 @@ const DailyOutfitSection = React.memo(({
   // produced anything at all yet (a real failure, not "all caught up").
   const stackExhausted = cards.length > 0 && !hasTopCard;
 
+  const authorizeHomeSwipe = async (card: SwipeStackCard, _direction: 'left' | 'right', signal: AbortSignal): Promise<boolean> => {
+    const revision = authEvents.getRevision();
+    try {
+      return await consumeOrPaywall('homeSwipes', { requireServer: true, cancelSignal: signal, homeCardKey: card.key });
+    } catch {
+      if (!signal.aborted && revision === authEvents.getRevision()) {
+        Alert.alert(t('common.error'), t('common.networkRequestFailed'));
+      }
+      return false;
+    }
+  };
+
   const handleSwipeRight = (card: SwipeStackCard): boolean => {
-    // Synchronous gate only: when the local quota is exhausted this opens
-    // the Paywall and returns false. The server-authoritative increment
-    // happens in the background AFTER the deck advances (below), so the
-    // gesture never waits on a network round-trip.
-    // The boolean return drives the stack's rollback: on `false` the card
-    // springs back instead of staying flown off (which would desync the
-    // visual deck from `stackIndex` and leave Buy/share reading a stale card).
-    if (!requireFeature('homeSwipes')) return false;
     const itemIds = itemIdsByCardKey.get(card.key) ?? [];
     if (itemIds.length > 0) {
       // Freeze the exact pieces shown on the card (wardrobe + shop images)
@@ -673,21 +675,13 @@ const DailyOutfitSection = React.memo(({
       saveOutfit(outfitId, 'saved', 'home');
     }
     setStackIndex((i) => i + 1);
-    // Server-authoritative swipe count, fire-and-forget: mirrors the new
-    // usage into the local cache on return, so the next swipe's synchronous
-    // requireFeature above stays accurate. Never awaited — awaiting it here
-    // froze the deck blank until the RPC round-trip finished.
-    void consume('homeSwipes').catch(() => {});
     return true;
   };
 
   const handleSwipeLeft = (card: SwipeStackCard): boolean => {
-    // Same 3-swipe/day gate, same optimistic pattern as swipe-right.
-    if (!requireFeature('homeSwipes')) return false;
     const itemIds = itemIdsByCardKey.get(card.key) ?? [];
     if (itemIds.length > 0) dislikeOutfitItems(itemIds);
     setStackIndex((i) => i + 1);
-    void consume('homeSwipes').catch(() => {});
     return true;
   };
 
@@ -798,6 +792,7 @@ const DailyOutfitSection = React.memo(({
           ref={stackRef}
           cards={cards}
           activeIndex={stackIndex}
+          beforeSwipe={authorizeHomeSwipe}
           onSwipeRight={handleSwipeRight}
           onSwipeLeft={handleSwipeLeft}
           reducedMotion={isReducedMotionEnabled}
@@ -822,10 +817,8 @@ const DailyOutfitSection = React.memo(({
             hitSlop={ACTION_ICON_HIT_SLOP}
             disabled={!hasTopCard}
             onPress={() => {
-              // Pre-check the swipe quota BEFORE starting the fly-off
-              // animation: a blocked swipe would otherwise fly the card away
-              // while `stackIndex` stays, desyncing the deck (Buy reads stale).
-              if (!canUseNow('homeSwipes')) { requireFeature('homeSwipes'); return; }
+              // The stack checks the server before animation. A cached zero
+              // must not prevent recovery of this card's committed receipt.
               stackRef.current?.swipeRight();
             }}
             accessibilityLabel={t('home.saveOutfit', 'Save outfit')}
@@ -854,8 +847,7 @@ const DailyOutfitSection = React.memo(({
             hitSlop={ACTION_ICON_HIT_SLOP}
             disabled={!hasTopCard}
             onPress={() => {
-              // Same pre-check as save: never animate a swipe the gate will reject.
-              if (!canUseNow('homeSwipes')) { requireFeature('homeSwipes'); return; }
+              // Use the same authoritative/recoverable path as a pan gesture.
               stackRef.current?.swipeLeft();
             }}
             accessibilityLabel={t('home.dislikeOutfit', 'Dislike outfit')}

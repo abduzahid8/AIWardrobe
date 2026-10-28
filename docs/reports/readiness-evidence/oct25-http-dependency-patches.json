@@ -1,0 +1,66 @@
+{
+  "measuredAt": "2026-10-25T01:39:26.949591+00:00",
+  "scope": "Targeted HTTP dependency patch versions, with local loopback synthetic attacks. No production backend deployment or native installation.",
+  "changes": [
+    {
+      "package": "follow-redirects",
+      "before": "1.16.0",
+      "after": "1.16.1",
+      "reference": "https://github.com/follow-redirects/follow-redirects/security/advisories/GHSA-q3jh-wrc6-jgq8"
+    },
+    {
+      "package": "undici",
+      "before": [
+        "6.28.1",
+        "7.29.1"
+      ],
+      "after": [
+        "6.29.1",
+        "7.30.1"
+      ],
+      "reference": "https://github.com/nodejs/undici/security/advisories/GHSA-xjj6-f33q-929c"
+    }
+  ],
+  "lockGraph": "Only target package versions changed; Undici6moved under webdriver. Existing peer checks retained.",
+  "regressionsBefore": {
+    "redirect": "Fake Authorization header reached loopback redirect target",
+    "undici": "Both installed versions exited on unhandled ResponseContentLengthMismatchError"
+  },
+  "regressionsAfter": {
+    "securityAndToolchain": {
+      "tests": 18,
+      "passed": 18
+    },
+    "app": {
+      "tests": 2379,
+      "suites": 186,
+      "passed": true
+    },
+    "typescript": true,
+    "iosHermesExport": true
+  },
+  "fixtureRepair": "Initial patched6.x test waited indefinitely for loopback server-close callback; final fixture exits after150ms observation window. The original crash happened after10ms connection close; no uncaught-exception handler is installed.",
+  "auditBefore": {
+    "info": 0,
+    "low": 0,
+    "moderate": 11,
+    "high": 65,
+    "critical": 0,
+    "total": 76
+  },
+  "auditAfter": {
+    "info": 0,
+    "low": 0,
+    "moderate": 11,
+    "high": 63,
+    "critical": 0,
+    "total": 74
+  },
+  "patchedFamiliesNoLongerReported": true,
+  "goalAchieved": false,
+  "limitations": [
+    "Not a proof of exploitation in AIWardrobe",
+    "63high/11moderate audit findings remain",
+    "No native UI or10,000DAUcapacity certification"
+  ]
+}

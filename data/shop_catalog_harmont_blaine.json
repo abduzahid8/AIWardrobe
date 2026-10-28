@@ -1,0 +1,47 @@
+[
+  {
+    "id": "harmont_blaine-97003",
+    "brand": "Harmont & Blaine",
+    "name": "Брюки Harmont & Blaine Chino's Sartoriale",
+    "price": 966000.0,
+    "currency": "UZS",
+    "category": "bottoms",
+    "garment_type": "lower_body",
+    "description": "Harmont & Blaine · men's apparel from ETLN Uzbekistan · product-only image on a plain background",
+    "image_url": "https://admin.etln.uz/storage/thumbnails/galleries/18067/YuhRpZ5lTDLumAT8oAYqllXFrqsyX5iLS0BEMqz9-medium.webp",
+    "source": "harmont-blaine-etln-white-bg-no-model",
+    "source_url": "https://etln.uz/products/97003-briuki-trousers-chinos-sartoriale",
+    "is_active": true,
+    "sort_order": 0
+  },
+  {
+    "id": "harmont_blaine-91008",
+    "brand": "Harmont & Blaine",
+    "name": "Knitwear Cardigan Block Color",
+    "price": 1186000.0,
+    "currency": "UZS",
+    "category": "tops",
+    "garment_type": "upper_body",
+    "description": "Harmont & Blaine · men's apparel from ETLN Uzbekistan · product-only image on a plain background",
+    "image_url": "https://admin.etln.uz/storage/thumbnails/galleries/17944/kmmFV2H0zR7dRTxAILCmGQdIWg656omVRFMReSu1-medium.webp",
+    "source": "harmont-blaine-etln-white-bg-no-model",
+    "source_url": "https://etln.uz/products/91008-kardigan-knitwear-cardigan-block-color",
+    "is_active": true,
+    "sort_order": 1
+  },
+  {
+    "id": "harmont_blaine-97155",
+    "brand": "Harmont & Blaine",
+    "name": "Knitwear Maglieria Uomo Lana",
+    "price": 1186000.0,
+    "currency": "UZS",
+    "category": "tops",
+    "garment_type": "upper_body",
+    "description": "Harmont & Blaine · men's apparel from ETLN Uzbekistan · product-only image on a plain background",
+    "image_url": "https://admin.etln.uz/storage/thumbnails/galleries/18064/jQ7dxKQfBcunU8OLXFuHmafgfcFh58JlfeLrrzNV-medium.webp",
+    "source": "harmont-blaine-etln-white-bg-no-model",
+    "source_url": "https://etln.uz/products/97155-sviter-knitwear-maglieria-uomo-lana",
+    "is_active": true,
+    "sort_order": 2
+  }
+]

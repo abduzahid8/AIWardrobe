@@ -1,0 +1,125 @@
+{
+  "measuredAt": "2026-10-25T17:42:46.516Z",
+  "scope": "Direct actual staged classifier; thinking enabled with 2048-token budget, unchanged temperature 0; not hosted admission or deployment.",
+  "productionUnchanged": true,
+  "model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+  "results": [
+    {
+      "name": "jacket-1",
+      "report": "oct25-scan-reasoning-jacket-1.json",
+      "status": 200,
+      "latencyMs": 18702,
+      "accepted": {
+        "category": "jacket",
+        "section": "outerwear",
+        "confidence": 0,
+        "attributes": {
+          "style": "casual",
+          "color": "beige",
+          "material": null
+        }
+      },
+      "passed": true
+    },
+    {
+      "name": "jacket-2",
+      "report": "oct25-scan-reasoning-jacket-2.json",
+      "status": 200,
+      "latencyMs": 38342,
+      "accepted": {
+        "category": "jacket",
+        "section": "outerwear",
+        "confidence": 0,
+        "attributes": {
+          "style": "casual",
+          "color": "beige",
+          "material": "cotton"
+        }
+      },
+      "passed": true
+    },
+    {
+      "name": "jacket-3",
+      "report": "oct25-scan-reasoning-jacket-3.json",
+      "status": 200,
+      "latencyMs": 25676,
+      "accepted": {
+        "category": "jacket",
+        "section": "outerwear",
+        "confidence": 0,
+        "attributes": {
+          "style": "casual",
+          "color": "cream",
+          "material": "cotton"
+        }
+      },
+      "passed": true
+    },
+    {
+      "name": "white-tshirt",
+      "report": "oct25-scan-reasoning-white-tshirt.json",
+      "status": 200,
+      "latencyMs": 5301,
+      "accepted": {
+        "category": "t-shirt",
+        "section": "tops",
+        "confidence": 0,
+        "attributes": {
+          "style": "casual",
+          "color": "white",
+          "material": null
+        }
+      },
+      "passed": true
+    },
+    {
+      "name": "brown-trousers",
+      "report": "oct25-scan-reasoning-brown-trousers.json",
+      "status": 200,
+      "latencyMs": 7992,
+      "accepted": {
+        "category": "pants",
+        "section": "bottoms",
+        "confidence": 0,
+        "attributes": {
+          "style": "semi_classic",
+          "color": "brown",
+          "material": null
+        }
+      },
+      "passed": true
+    },
+    {
+      "name": "brown-boat-shoe",
+      "report": "oct25-scan-reasoning-brown-boat-shoe.json",
+      "status": 200,
+      "latencyMs": 4576,
+      "accepted": {
+        "category": "shoes",
+        "section": "shoes",
+        "confidence": 0,
+        "attributes": {
+          "style": "casual",
+          "color": "brown",
+          "material": "leather",
+          "shoeType": "boat_shoe"
+        }
+      },
+      "passed": true
+    }
+  ],
+  "allSixPassed": true,
+  "subsequentConcurrency": {
+    "twoRequestReport": "oct25-scan-reasoning-concurrency.json",
+    "twoPassed": true,
+    "fiveRequestReport": "oct25-scan-reasoning-burst5.json",
+    "fivePassed": false,
+    "fiveSuccessful": 3,
+    "fiveFailures": [
+      "2048-token output ended before valid JSON",
+      "45-second classifier deadline"
+    ]
+  },
+  "finalDecision": "held_not_deployed_higher_escalation_stopped",
+  "productionVersionVerifiedAfterExperiments": 50
+}

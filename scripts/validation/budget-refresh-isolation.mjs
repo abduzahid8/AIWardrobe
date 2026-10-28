@@ -1,0 +1,23 @@
+/** Reproduce cold-isolate cache misses with actual helper modules and a shared simulated DB. */
+import {readFile,writeFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import ts from 'typescript';
+const root='backend/supabase/functions/_shared/';
+const source=await readFile(root+'budgetFxCache.ts','utf8');
+const coreSource=await readFile(root+'budgetFx.ts','utf8');
+const compile=value=>ts.transpileModule(value,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+const core={};new Function('exports',compile(coreSource))(core);
+const now=Date.parse('2026-10-20T12:00:00Z');
+const rows=[['USD','12044.72'],['EUR','13525.02'],['GBP','16062.84']].map(([Ccy,Rate])=>({Ccy,Rate,Nominal:'1',Date:'20.10.2026'}));
+let cached=null,reads=0,writes=0,upstreamCalls=0,release,owner=null;
+const gate=new Promise(resolve=>{release=resolve});
+const admin={from:()=>{const query={select(){return this},order(){return this},limit(){return this},abortSignal(){return this},async maybeSingle(){reads++;return{data:cached?{snapshot:cached}:null,error:null}},upsert(row){return{abortSignal:async()=>{writes++;cached=row.snapshot;return{error:null}}}}};return query},rpc:(name,args)=>({abortSignal:async()=>{if(name==='claim_budget_rate_refresh'){if(owner)return{data:'busy'};owner=args.p_token;return{data:'acquired'}}if(name==='finish_budget_rate_refresh'){if(owner!==args.p_token)return{data:false};if(args.p_snapshot){cached=args.p_snapshot;writes++}owner=null;return{data:true}}throw Error('Unexpected simulated RPC')}})};
+const request=async()=>{upstreamCalls++;await gate;return new Response(JSON.stringify(rows))};
+const isolates=Array.from({length:10},()=>{const api={};new Function('require','exports',compile(source))(()=>core,api);return api});
+const work=isolates.map(api=>api.currentBudgetRates(admin,now,request));
+await new Promise(setImmediate);
+const simultaneousRefreshes=upstreamCalls;release();
+const snapshots=await Promise.all(work);
+const report={measuredAt:new Date().toISOString(),scope:'Local simulation: ten separately initialized copies of the actual cache helper, one shared simulated empty database, gated official-shaped fixture responses. No production or upstream capacity claim.',sourceSha256:createHash('sha256').update(source).digest('hex'),isolates:isolates.length,reads,writes,upstreamCalls,simultaneousRefreshes,allReturnedSameSnapshot:snapshots.every(value=>value.id===snapshots[0].id),globallyCoalesced:simultaneousRefreshes===1,readinessPassed:simultaneousRefreshes===1,finding:simultaneousRefreshes===1?'Shared refresh coordination observed':'Persistent cache does not coordinate simultaneous cold-isolate refreshes; module promise coalesces only within one isolate.'};
+await writeFile('docs/reports/readiness-evidence/oct25-budget-refresh-coordinated.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));
+if(!report.allReturnedSameSnapshot||simultaneousRefreshes!==1)throw Error('Diagnostic did not reproduce the expected coordinated-isolate setup');

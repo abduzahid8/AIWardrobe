@@ -1,0 +1,47 @@
+[
+  {
+    "id": "brooks-brothers-mb00973-black",
+    "brand": "Brooks Brothers",
+    "name": "Supima® Cotton Crewneck 3 Pack T-Shirts",
+    "price": 54.5,
+    "currency": "USD",
+    "category": "tops",
+    "garment_type": "upper_body",
+    "description": "Brooks Brothers men's Black clothing · isolated garment on a neutral background",
+    "image_url": "https://brooksbrothers.bynder.com/match/WebName/MB00973_BLACK_2/SUPIMA_COTTON_CREWNECK_3_PACK_T_SHIRTS_BLACK?preset=lg",
+    "source": "brooks-brothers-official-mens-clothing",
+    "source_url": "https://www.brooksbrothers.com/supima%C2%AE-cotton-crewneck-3-pack-t-shirts/MB00973.html",
+    "is_active": true,
+    "sort_order": 0
+  },
+  {
+    "id": "brooks-brothers-fp00060-grey",
+    "brand": "Brooks Brothers",
+    "name": "Supima® Cotton Jersey T-Shirt",
+    "price": 29.99,
+    "currency": "USD",
+    "category": "tops",
+    "garment_type": "upper_body",
+    "description": "Brooks Brothers men's Grey clothing · isolated garment on a neutral background",
+    "image_url": "https://brooksbrothers.bynder.com/match/WebName/FP00060_GREY/",
+    "source": "brooks-brothers-official-mens-clothing",
+    "source_url": "https://www.brooksbrothers.com/supima%C2%AE-cotton-jersey-t-shirt/FP00060.html",
+    "is_active": true,
+    "sort_order": 1
+  },
+  {
+    "id": "brooks-brothers-mp01267-blue",
+    "brand": "Brooks Brothers",
+    "name": "Premium Extra-Fine Supima® Cotton Pique T-Shirt",
+    "price": 14.99,
+    "currency": "USD",
+    "category": "tops",
+    "garment_type": "upper_body",
+    "description": "Brooks Brothers men's Bright Blue clothing · isolated garment on a neutral background",
+    "image_url": "https://brooksbrothers.bynder.com/match/WebName/MP01267_BRIGHT-BLUE_2/?preset=lg",
+    "source": "brooks-brothers-official-mens-clothing",
+    "source_url": "https://www.brooksbrothers.com/premium-extra-fine-supima%C2%AE-cotton-pique-t-shirt/MP01267.html",
+    "is_active": true,
+    "sort_order": 2
+  }
+]

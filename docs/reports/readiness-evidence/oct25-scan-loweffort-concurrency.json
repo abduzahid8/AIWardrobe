@@ -1,0 +1,50 @@
+{
+  "measuredAt": "2026-10-25T17:59:13.793Z",
+  "scope": "Synchronized direct NVIDIA scans through actual staged classifier, documented low reasoning effort. Production admission not exercised; model held until quality and hosted tests.",
+  "stages": [
+    {
+      "concurrency": 2,
+      "elapsedMs": 2776,
+      "results": [
+        {
+          "report": "oct25-scan-loweffort-burst2-1.json",
+          "status": 503,
+          "latencyMs": 1622,
+          "accepted": null,
+          "requestConfig": {
+            "model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+            "max_tokens": 2048,
+            "temperature": 0,
+            "reasoning_effort": "low"
+          },
+          "providerResponses": [
+            {
+              "status": 500
+            }
+          ],
+          "passed": false
+        },
+        {
+          "report": "oct25-scan-loweffort-burst2-2.json",
+          "status": 503,
+          "latencyMs": 1520,
+          "accepted": null,
+          "requestConfig": {
+            "model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+            "max_tokens": 2048,
+            "temperature": 0,
+            "reasoning_effort": "low"
+          },
+          "providerResponses": [
+            {
+              "status": 500
+            }
+          ],
+          "passed": false
+        }
+      ],
+      "passed": false
+    }
+  ],
+  "productionUnchanged": true
+}

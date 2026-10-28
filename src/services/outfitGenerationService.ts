@@ -4,7 +4,8 @@ import { validateOutfitGenerationRequest } from '../../backend/supabase/function
 import { getBudgetRates } from './budgetRates';
 import { outfitGenerationFailure, type OutfitGenerationFailure } from './outfitGenerationFailure';
 import readinessLogger from '../utils/logger';
-import { outfitStructureReason } from '../../backend/supabase/functions/_shared/outfitStructure';
+import { fourSlotOutfitReason } from '../../backend/supabase/functions/_shared/outfitStructure';
+import { needsLayering as needsLayeringShared } from '../../backend/supabase/functions/_shared/outfitComposition';
 /**
  * outfitGenerationService.ts
  *
@@ -18,7 +19,7 @@ import { outfitStructureReason } from '../../backend/supabase/functions/_shared/
  * Never substitutes a local outfit when the edge function fails.
  */
 
-import { passesStyleJudge } from '../../features/outfit-generator/utils/occasionRules';
+import { passesStyleJudge, detectSlotMismatch } from '../../features/outfit-generator/utils/occasionRules';
 import { supabase } from '../../lib/supabase';
 import { fillMissingSlots, fetchShopPoolForStyle, type OutfitSlotId, type ShopFillItem } from './shoppingService';
 import type { ClothingItem, ClothingCategory, Season, Occasion } from '../types/domain';
@@ -103,7 +104,7 @@ export interface GenerateOutfitsResult {
     outfits: GeneratedOutfit[];
     error?: string;
     errorTranslationKey?: OutfitGenerationFailure['translationKey'];
-    source?: 'ai' | 'local';
+    source?: 'ai' | 'local' | 'deterministic_fallback';
     /** Whether the backend applied the 4-slot layered schema. */
     layered?: boolean;
 }
@@ -192,27 +193,38 @@ export async function generateOutfitsFromDB(
         catch {
             return { success: false, outfits: [], error: 'invalid_generation_request', errorTranslationKey: 'outfitMaker.invalidRequest' };
         }
-        const invokePromise = supabase.functions.invoke('generate-outfits', {
+        const invokeOnce = () => supabase.functions.invoke('generate-outfits', {
             signal: controller.signal,
             headers: { Authorization: `Bearer ${session.access_token}` },
             body,
         });
 
-        const { data, error } = await wait(invokePromise);
+        let { data, error } = await wait(invokeOnce());
         if (cancelled) throw new Error('generation_account_changed');
+        // One retry for transient provider/transport failures (observed
+        // 503s and lost connections); 4xx and generic errors are not retried.
+        if (error || data?.error === 'ai_generation_unavailable') {
+            const status = (error as any)?.context?.status ?? (data?.error === 'ai_generation_unavailable' ? 503 : 0);
+            const isFetchFailure = (error as any)?.name === 'FunctionsFetchError' || /fetch|network|connection/i.test(String((error as any)?.message || ''));
+            if (status >= 500 || isFetchFailure) {
+                console.warn('[outfitGenerationService] Retrying generate-outfits once after transient failure');
+                ({ data, error } = await wait(invokeOnce()));
+                if (cancelled) throw new Error('generation_account_changed');
+            }
+        }
 
         if (error) {
             console.warn('[outfitGenerationService] Edge function error, generation rejected:', error);
             return { success: false, outfits: [], error: 'stylist_generation_failed', errorTranslationKey: (await outfitGenerationFailure(data, error)).translationKey };
         }
 
-        if ((data?.source && data.source !== 'ai') || !data?.success || !Array.isArray(data?.outfits) || data.outfits.length === 0) {
+        if (data?.source === 'local' || !data?.success || !Array.isArray(data?.outfits) || data.outfits.length === 0) {
             console.warn('[outfitGenerationService] Empty AI response, generation rejected');
             return { success: false, outfits: [], error: 'stylist_generation_failed', errorTranslationKey: (await outfitGenerationFailure(data, error)).translationKey };
         }
 
         const outfits: GeneratedOutfit[] = data.outfits
-            .filter((o: any) => o && !outfitStructureReason(o.items, Boolean(data.layered)))
+            .filter((o: any) => o && !fourSlotOutfitReason(o.items, data.layered !== false))
             .map((o: any) => mapRawOutfit(o, params))
             .filter((o: GeneratedOutfit) => passesStyleJudge(o.items, params.stylePreferences, `${params.occasion || ''} ${params.prompt || ''}`, params.weather));
         if (!outfits.length) return { success: false, outfits: [], error: 'no_valid_outfits_for_request' };
@@ -393,7 +405,7 @@ export async function generateOutfitsLocally(
         // from it (the local path uses shuffle, so exclusion is belt-and-braces).
         recordShownOutfits(outfits);
 
-        return { success: true, outfits, source: 'local' };
+        return outfits.length ? { success: true, outfits, source: 'local' } : { success: false, outfits: [], error: 'no_valid_outfits_for_request', source: 'local' };
     } catch (err: any) {
         return { success: false, outfits: [], error: err.message, source: 'local' };
     }
@@ -448,7 +460,7 @@ export async function fetchWardrobeDisplayItems(
         .map((row: any) => {
             const typeLabel = row.type || row.sub_category || row.category || 'Clothing';
             const cat = row.category || '';
-            const mc = getMacroCategory(cat, typeLabel);
+            const mc = detectSlotMismatch(getMacroCategory(cat, typeLabel), typeLabel, typeLabel) ?? getMacroCategory(cat, typeLabel);
             return {
                 id: row.id,
                 image: row.image_url,
@@ -559,19 +571,7 @@ function isShortsItem(item: { name?: string; type?: string; brand?: string; macr
 }
 
 function isLayeredWeather(weather?: { temp?: number | null; condition?: string | null }, prompt?: string | null): boolean {
-    const promptBlob = (prompt || '').toLowerCase();
-    // Explicit hot/summer keywords override to non-layered, even without weather.
-    if (/\b(summer|hot|heatwave|tee[-\s]?only|no jacket|no outerwear|beach)\b/.test(promptBlob)) return false;
-    const condition = (weather?.condition || '').toString().toLowerCase();
-    const temp = typeof weather?.temp === 'number' ? weather.temp : null;
-    // When we have NEITHER a temperature nor a weather description, default
-    // to layered=true. This matches the client's `needsOuterwear` default
-    // and keeps the pipeline from producing 3-item outfits that render as
-    // "layer + pants + shoes with no base top" on the card.
-    if (temp == null && !condition) return true;
-    const coldTemp = temp != null && temp < 18;
-    const coldCondition = /\b(cold|chilly|freezing|snow|rain|drizzle|wind|storm|cool)\b/.test(condition);
-    return coldTemp || coldCondition;
+    return needsLayeringShared(undefined, weather, prompt);
 }
 
 function getItemStyleScore(item: ClothingItem, style: StyleId): number {
@@ -749,19 +749,6 @@ function shuffleArray<T>(array: T[]): T[] {
         [arr[i], arr[j]] = [arr[j], arr[i]];
     }
     return arr;
-}
-
-// Diverse round-robin — every slot rotates with the outfit index so a 15-card
-// deck doesn't freeze bottom/shoes on one item (the old mixed-radix
-// floor(i / hugeDivisor) stayed 0 for all i < poolSize, leaving 70%+ of each
-// outfit identical). Attempt steps are primes coprime to 3/4/5 so collisions
-// perturb every slot differently.
-const DIVERSE_ATTEMPT_STEPS = [7, 11, 13, 17];
-
-function diverseIndex(outfitIndex: number, slotOffset: number, attempt: number, attemptStep: number, poolLength: number, seed = 0, reverse = false): number {
-    if (poolLength <= 0) return 0;
-    const base = (outfitIndex + seed + slotOffset + attempt * attemptStep) % poolLength;
-    return reverse ? (poolLength - 1 - base) : base;
 }
 
 function deckHashFor(style: string, occasion: string): number {
@@ -1047,6 +1034,7 @@ export function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOu
      * three best-looking but visually identical outfits win every slot.
      */
     const collectedCandidates: GeneratedOutfitItem[][] = [];
+    let candidateOrdinal = 0;
     const outfitSignatureFor = (list: GeneratedOutfitItem[]) =>
         list.map((it) => String(it.id)).sort().join('|');
     const maxSharedWithBuilt = (ids: string[]): number => {
@@ -1063,23 +1051,38 @@ export function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOu
     const deckReverse = deckReverseFor(style, occ);
 
     // Build one candidate deck entry. Returns normalized items, or null when
-    // the pool cannot complete an outfit for this (i, attempt). `attempt`
-    // perturbs every slot rotation so a rejected combination is never
-    // rebuilt identically on retry (previously attempt was hard-coded 0 and
-    // the loop gave up after limit*3 tries — thin pools collapsed to 1-2).
-    const buildCandidateItems = (i: number, attemptForPick: number): GeneratedOutfitItem[] | null => {
+    // the pool cannot complete a valid four-slot outfit.
+    const buildCandidateItems = (i: number): GeneratedOutfitItem[] | null => {
         const outfitItems: GeneratedOutfitItem[] = [];
 
-        // Diverse round-robin: every slot advances with i (plus a small
-        // per-slot offset) so all 15 looks differ in more than one piece.
-        // The old mixed-radix floor(i / hugeDivisor) stayed 0 for every
-        // i < poolSize, freezing base/bottom/shoes on a single item.
-        const topIndex = diverseIndex(i, 0, attemptForPick, DIVERSE_ATTEMPT_STEPS[0], slotSize(outerwear), deckSeed, deckReverse);
-        const baseIndex = diverseIndex(i, 3, attemptForPick, DIVERSE_ATTEMPT_STEPS[1], slotSize(baseTops), deckSeed, deckReverse);
-        const bottomIndex = diverseIndex(i, 6, attemptForPick, DIVERSE_ATTEMPT_STEPS[2], slotSize(bottoms), deckSeed, deckReverse);
-        const shoeIndex = diverseIndex(i, 9, attemptForPick, DIVERSE_ATTEMPT_STEPS[3], slotSize(shoes), deckSeed, deckReverse);
-        const legacyTopIndex = diverseIndex(i, 0, attemptForPick, DIVERSE_ATTEMPT_STEPS[0], slotSize(legacyTops), deckSeed, deckReverse);
-        const legacyBottomIndex = diverseIndex(i, 3, attemptForPick, DIVERSE_ATTEMPT_STEPS[1], slotSize(bottoms), deckSeed, deckReverse);
+        // Mix the candidate ordinal independently for each slot. Linear or
+        // mixed-radix rotations visited only a short diagonal of the
+        // combination space for small inventories, starving the deck picker
+        // of a valid three-look set despite sufficient products.
+        const ordinal = candidateOrdinal++;
+        const outerSize = slotSize(outerwear);
+        const baseSize = slotSize(baseTops);
+        const bottomSize = slotSize(bottoms);
+        const shoeSize = slotSize(shoes);
+        const mixIndex = (input: number): number => {
+            let value = input >>> 0;
+            value ^= value >>> 16;
+            value = Math.imul(value, 0x7feb352d) >>> 0;
+            value ^= value >>> 15;
+            value = Math.imul(value, 0x846ca68b) >>> 0;
+            return (value ^ (value >>> 16)) >>> 0;
+        };
+        const rotationIndex = (slotIndex: number, poolLength: number): number => {
+            const salt = Math.imul(deckSeed + 1, 0x9e3779b1) ^ Math.imul(slotIndex + 1, 0x85ebca6b);
+            const rotated = mixIndex((ordinal + 1) ^ salt) % poolLength;
+            return deckReverse ? poolLength - 1 - rotated : rotated;
+        };
+        const topIndex = rotationIndex(0, outerSize);
+        const baseIndex = rotationIndex(1, baseSize);
+        const bottomIndex = rotationIndex(2, bottomSize);
+        const shoeIndex = rotationIndex(3, shoeSize);
+        const legacyTopIndex = rotationIndex(0, slotSize(legacyTops));
+        const legacyBottomIndex = rotationIndex(2, bottomSize);
 
         // Pre-pick bottom to check for shorts / formal-layer conflict.
         const candidateBottom = bottoms[(layered ? bottomIndex : legacyBottomIndex) % slotSize(bottoms)] || bottoms[0] || effectiveItems[0];
@@ -1119,7 +1122,7 @@ export function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOu
             }
         }
 
-        const nonLayeredShoeIndex = diverseIndex(i, 6, attemptForPick, DIVERSE_ATTEMPT_STEPS[2], slotSize(shoes), deckSeed, deckReverse);
+        const nonLayeredShoeIndex = rotationIndex(3, shoeSize);
         const shoe = shoes[(layered ? shoeIndex : nonLayeredShoeIndex) % slotSize(shoes)] || shoes[0];
 
         if (finalBottom) outfitItems.push(toDisplayItem(finalBottom, deckShopOnly ? 'Suggested from shop' : 'Pairs well with the top'));
@@ -1200,6 +1203,7 @@ export function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOu
     };
 
     const pushOutfit = (normalizedOutfitItems: GeneratedOutfitItem[], tag: number): void => {
+        if (fourSlotOutfitReason(normalizedOutfitItems, layered)) return;
         outfits.push({
             id: `local_${tag}_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
             description: deckShopOnly ? `${styleArticle} ${styleLabel} look curated from the shop.` : `${styleArticle} ${styleLabel} look built around your wardrobe.`,
@@ -1213,6 +1217,7 @@ export function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOu
     };
 
     const tryKeepCandidate = (normalizedOutfitItems: GeneratedOutfitItem[], relaxed: boolean): boolean => {
+        if (fourSlotOutfitReason(normalizedOutfitItems, layered)) return false;
         // Never emit the same combination twice — uniqueness is required,
         // especially for the 15-card shop-only carousel.
         const signature = outfitSignatureFor(normalizedOutfitItems);
@@ -1235,10 +1240,14 @@ export function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOu
     // More candidates are collected than the deck needs: the diversity gate
     // below picks the best COMBINATION, so it needs a choice to pick from —
     // three candidates and three cards would leave it no freedom at all.
-    const collectionTarget = Math.max(limit * 4, limit + 6);
+    // Collect enough alternatives that the deck selector can form a full
+    // deck even when several slot products are shared across the first
+    // few rotations. A short candidate pool occasionally produced only two
+    // looks despite sufficient distinct inventory in every strict slot.
+    const collectionTarget = Math.min(36, Math.max(limit * 8, limit + 6));
     let attempt = 0;
-    for (let i = 0, tag = 0; collectedCandidates.length < collectionTarget && i < limit * 24; i++, tag++) {
-        const candidate = buildCandidateItems(i, attempt);
+    for (let i = 0, tag = 0; collectedCandidates.length < collectionTarget && i < limit * 48; i++, tag++) {
+        const candidate = buildCandidateItems(i);
         if (!candidate) { attempt++; continue; }
         if (tryKeepCandidate(candidate, false)) {
             attempt = 0;
@@ -1257,9 +1266,9 @@ export function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOu
         // 1 + 13 ≡ 0 (mod 2), so thin pools cycled the same bottom and
         // only ~3 signatures were ever explored before giving up at 2.
         let relaxedAttempt = attempt;
-        const relaxedAttemptEnd = attempt + limit * 24;
+        const relaxedAttemptEnd = attempt + limit * 48;
         for (let tag = 1000; collectedCandidates.length < collectionTarget && relaxedAttempt < relaxedAttemptEnd; tag++) {
-            const candidate = buildCandidateItems(limit * 12, relaxedAttempt);
+            const candidate = buildCandidateItems(limit * 12);
             relaxedAttempt++;
             if (!candidate) continue;
             tryKeepCandidate(candidate, true);
@@ -1281,6 +1290,18 @@ export function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOu
             usedKeys: new Set<string>(),
             target: limit,
             poolItems: effectiveItems as any[],
+            // If randomized rotations leave the first candidate window
+            // without a full unique deck, keep exploring combinations rather
+            // than returning two looks from an inventory that can support
+            // three. The fill remains bounded and every candidate still
+            // passes the same four-slot, style and budget checks above.
+            maxFillAttempts: limit <= 3 ? 24 : 0,
+            buildFill: limit <= 3
+                ? (_usedKeys, fillAttempt) => {
+                    const candidate = buildCandidateItems(limit * 48 + fillAttempt);
+                    return candidate && !fourSlotOutfitReason(candidate, layered) ? candidate : null;
+                }
+                : undefined,
         });
         let tag = 0;
         for (const items of selected.deck) pushOutfit(items, tag++);
@@ -1355,7 +1376,7 @@ export function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOu
         }
     }
 
-    return outfits;
+    return outfits.filter(outfit => !fourSlotOutfitReason(outfit.items, layered));
 }
 
 function toDisplayItem(

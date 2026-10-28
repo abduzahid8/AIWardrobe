@@ -1,0 +1,80 @@
+{
+  "measuredAt": "2026-10-25T01:58:52.198Z",
+  "scope": "One real hosted Old Money/Work shopping request, no weather or entered budget, limit 5. Controlled catalog pool; not exact screenshot account or capacity proof.",
+  "checks": [
+    {
+      "name": "all_three_catalog_slots_available",
+      "passed": true
+    },
+    {
+      "name": "usable_outfits_returned",
+      "passed": false
+    }
+  ],
+  "requestedLimit": 5,
+  "requireFullDeck": true,
+  "fixtureUserId": "671c341a-676c-410e-b309-cb7ad90116fe",
+  "candidateCount": 40,
+  "response": {
+    "status": 503,
+    "latencyMs": 5679,
+    "code": null,
+    "error": "ai_generation_unavailable",
+    "source": null,
+    "diversity": null,
+    "provider": null,
+    "providerAttempts": [
+      {
+        "provider": "nvidia",
+        "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+        "status": "ok"
+      }
+    ],
+    "outfitCount": 0
+  },
+  "failure": "Audit assertion failed",
+  "cleanup": {
+    "sessionsRevoked": true,
+    "ownerDeleted": true
+  },
+  "passed": false,
+  "providerObservations": [
+    {
+      "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+      "requestCharacters": 5649,
+      "maxTokens": 700,
+      "status": 200,
+      "latencyMs": 2497,
+      "finishReason": "stop",
+      "contentCharacters": 953,
+      "usage": {
+        "promptTokens": 2383,
+        "completionTokens": 270
+      }
+    }
+  ],
+  "execution": {
+    "runtime": "Local Node with actual current handler modules; real Supabase Auth/catalog/rate guards and hosted NVIDIA",
+    "candidateModel": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "providerMocked": false,
+    "sourceHashes": {
+      "generate-outfits/index.ts": "a7b91a0a00a9fbbe085875e664804378f5efece3023f90278ca7582396d6a001",
+      "_shared/outfitChoices.ts": "c8a4296443a0932b30df1cb87c16fc7c938f4b80f7ba130cb8e3e7c4eab9c883",
+      "_shared/outfitGenerationRequest.ts": "46bf7842edb6b8416ff0d41e04ccb0aca52a6321c0c67ee169b33359b3468746",
+      "_shared/outfitBudgetText.ts": "cf0efe0f3e67ed2cd8e3794d28cd46b16b2567957113327f42bfd42c2a4935b3",
+      "_shared/budgetFx.ts": "9c747666d797cadfad80cb5355dd360273f3384795af7a1f5bc05397bbff3854",
+      "_shared/budgetFxCache.ts": "0e82c51af9eee38f4f0d3124897192c7d9276f7a72ee7d78dce06ec3ad1b1671",
+      "_shared/outfitBudgetFeasibility.ts": "1f7fd099cfbbf584d7fa88bd4e08d4cabc0d6c70f30ec06a44e7761d77fb8d40",
+      "_shared/outfitBudgetSelection.ts": "ba676ebfe662c603d7e9836b8bd369e6e5a3bce067276549a811a9caed4e94f9",
+      "_shared/outfitBudgetFeedback.ts": "ffb3373f563dbb2642253ae10166c98d6e4e3ccc4da1fcc54b3e291ae2ecc548",
+      "_shared/modelOutfitResponse.ts": "8410cf49317dc0b75d8ce71abd94c61333ff7a661f77532ecce62cd890b44acd",
+      "_shared/rateLimit.ts": "c5c290ef5440fb01eeeaad6b9b655cb02fb8534f15bfaf90c001eecd747ee11f",
+      "_shared/outfitStructure.ts": "35b1fe246b06b8b19931e2723f54a5238175a903b8398666ee9cac05180f0351",
+      "_shared/occasionRules.ts": "885053dc09f88fa8c233b66bfb140689098283f0c0fd015c9ee7eff6e2583ce5",
+      "_shared/outfitDiversity.ts": "9b28a7db9149cda3768a4c08526eca015fe8c57e2bf8d4de57f8fb806f47d615",
+      "_shared/outfitComposition.ts": "f7805c0c19b6fdddb2ef103d86b22bd3d353035656fd7318e13f61838c6e4eaa"
+    },
+    "productionConfigurationChanged": false,
+    "limits": "Not hosted Edge runtime or native UI; this comparison does not establish production model throughput."
+  }
+}

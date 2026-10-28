@@ -20,9 +20,9 @@ export function validateOutfitGenerationRequest(body: unknown): Record<string, a
   // limit (the Personal Stylist requests extra candidates but shows three
   // cards). Capacity is judged against deckTarget, so it must be a sane
   // integer no larger than the requested limit.
-  if (body.deckTarget !== undefined && (!Number.isInteger(body.deckTarget) || body.deckTarget < 1 || body.deckTarget > 15)) throw new OutfitRequestError();
+  if (body.deckTarget !== undefined && (!Number.isInteger(body.deckTarget) || body.deckTarget < 1 || body.deckTarget > Math.min(15, body.limit ?? 3))) throw new OutfitRequestError();
   list(body.selectedItemIds, 200, 200); list(body.excludeItemIds, 200, 200);
-  for (const key of ['wardrobeOnly', 'useProvidedWardrobeOnly']) if (body[key] !== undefined && typeof body[key] !== 'boolean') throw new OutfitRequestError();
+  for (const key of ['wardrobeOnly', 'useProvidedWardrobeOnly', 'catalogOnly']) if (body[key] !== undefined && typeof body[key] !== 'boolean') throw new OutfitRequestError();
   if (body.weather !== undefined && body.weather !== null) {
     if (!object(body.weather)) throw new OutfitRequestError();
     if (body.weather.temp !== undefined && (typeof body.weather.temp !== 'number' || !Number.isFinite(body.weather.temp) || body.weather.temp < -100 || body.weather.temp > 100)) throw new OutfitRequestError();

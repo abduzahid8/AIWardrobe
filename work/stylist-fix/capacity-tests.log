@@ -1,0 +1,27 @@
+FAIL __tests__/backend/outfitBudgetWire.test.js (14.791 s)
+  ● a later cheaper catalog bottom is discovered before an affordable budget is rejected
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 503
+
+      468 |  const body=await request({amount:20,currency:'USD'},items).json();body.wardrobeOnly=false;body.prompt='Create one complete casual outfit.';
+      469 |  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
+    > 470 |  expect(response.status).toBe(200);expect(q.rpc).toHaveBeenCalledWith('budget_catalog_candidates',expect.objectContaining({p_slot:'bottom',p_limit:100}));
+          |                          ^
+      471 |  expect((await response.json()).outfits[0].items.map(item=>item.id)).toContain('shop_z-cheap');
+      472 | });
+      473 |
+
+      at Object.toBe (__tests__/backend/outfitBudgetWire.test.js:470:26)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+PASS __tests__/backend/fourSlotHosted.test.js
+PASS __tests__/services/outfitChoices.test.ts
+
+Test Suites: 1 failed, 2 passed, 3 total
+Tests:       1 failed, 108 passed, 109 total
+Snapshots:   0 total
+Time:        18.339 s, estimated 34 s

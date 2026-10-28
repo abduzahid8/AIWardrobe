@@ -1,0 +1,93 @@
+{
+  "measuredAt": "2026-10-25T17:17:40.828Z",
+  "checks": [
+    {
+      "name": "free_fixture_without_trial",
+      "passed": true
+    },
+    {
+      "name": "free_fixture_without_trial",
+      "passed": true
+    },
+    {
+      "name": "twenty_simultaneous_same_card_all_approved_once",
+      "passed": true
+    },
+    {
+      "name": "lost_successful_reply_is_reported_unavailable",
+      "passed": true
+    },
+    {
+      "name": "retry_recovers_without_second_debit",
+      "passed": true
+    },
+    {
+      "name": "fresh_store_recovers_same_receipt",
+      "passed": true
+    },
+    {
+      "name": "third_distinct_card_approved",
+      "passed": true
+    },
+    {
+      "name": "receipt_replays_after_daily_exhaustion",
+      "passed": true
+    },
+    {
+      "name": "twenty_new_cards_denied_after_three",
+      "passed": true
+    },
+    {
+      "name": "same_card_key_is_not_shared_across_accounts",
+      "passed": true
+    },
+    {
+      "name": "parallel_distinct_keys_share_atomic_counter",
+      "passed": true
+    },
+    {
+      "name": "exactly_three_committed_receipts_per_owner",
+      "passed": true
+    },
+    {
+      "name": "old_day_rejected",
+      "passed": true
+    },
+    {
+      "name": "owner_override_rejected",
+      "passed": true
+    },
+    {
+      "name": "anonymous_rpc_denied",
+      "passed": true
+    },
+    {
+      "name": "direct_receipt_table_access_denied",
+      "passed": true
+    }
+  ],
+  "fixtures": [
+    "54f648bc-d86e-4e6a-8dfe-e347eaa4d174",
+    "20e70d1a-a704-49b7-a344-ae20f5aa9c79"
+  ],
+  "scope": "Actual quota store with controlled storage/plan selectors, live authenticated RPCs. Lost response injected only after a successful server response. Not native gesture or 10kDAU certification.",
+  "sourceSha256": "d597591c27c877c443bafe7d2ae3114aad67b2be4b82679a894a6852fcd0f1fa",
+  "requestCounts": {
+    "sameCardConcurrent": 20,
+    "exhaustedConcurrent": 20,
+    "distinctConcurrent": 20
+  },
+  "cleanup": [
+    {
+      "owner": "54f648bc-d86e-4e6a-8dfe-e347eaa4d174",
+      "sessionsRevoked": true,
+      "ownerDeleted": true
+    },
+    {
+      "owner": "20e70d1a-a704-49b7-a344-ae20f5aa9c79",
+      "sessionsRevoked": true,
+      "ownerDeleted": true
+    }
+  ],
+  "passed": true
+}

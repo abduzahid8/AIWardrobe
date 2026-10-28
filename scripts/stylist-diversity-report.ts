@@ -1,13 +1,11 @@
 /**
  * stylist-diversity-report — the Personal Stylist simulator.
  *
- * Runs the REAL production chain for 20 style × occasion scenarios:
+ * Runs controlled fixtures through production selection modules for 20 style × occasion scenarios:
  *
  *   valid pool (style / occasion / climate filtered)
- *     → candidate looks (the "AI" output)
- *     → assembleDiverseDeck()            (the diversity gate)
- *        → createSlotNormalizer()        (the real slot picker builds the
- *                                          targeted replacement looks)
+ *     → bounded, fully validated outfit choices (no provider call)
+ *     → assembleDiverseDeck()            (the diversity gate; no client fill)
  *     → final deck + pairwise metrics
  *
  * For every deck it records the outfit archetype of each look, the three
@@ -30,11 +28,8 @@ import {
     visualSimilarity,
     type DiversitySlot,
 } from '../features/outfit-generator/utils/outfitDiversity';
-import {
-    createSlotNormalizer,
-    isCompleteNormalizedOutfit,
-    isFourSlotLook,
-} from '../features/outfit-generator/utils/normalizeSlots';
+import { outfitChoices } from '../backend/supabase/functions/_shared/outfitChoices';
+import { fourSlotOutfitReason } from '../backend/supabase/functions/_shared/outfitStructure';
 import {
     passesStyleJudge,
     rejectForClimate,
@@ -226,44 +221,10 @@ export function runScenario(scenario: Scenario, catalog: CatalogItem[] = buildCa
     // reported failure mode (three colourways of one formula); the gate has
     // to find three real styling directions among them and the replacements
     // it builds.
-    const bySlot = (slot: DiversitySlot) => valid.filter((item) => item.macroCategory === slot);
-    const slotPools = {
-        outerwear: bySlot('outerwear'),
-        top: bySlot('top'),
-        bottom: bySlot('bottom'),
-        shoes: bySlot('shoes'),
-    };
-    const candidates = [0, 1, 2].map((step) => ({
-        id: `ai_${step}`,
-        items: [
-            slotPools.outerwear[step],
-            slotPools.top[step],
-            slotPools.bottom[step],
-            slotPools.shoes[step],
-        ].filter(Boolean) as CatalogItem[],
-    }));
-
-    const generationNonceRef = { current: 1 };
+    const judge = (items: CatalogItem[]) => !fourSlotOutfitReason(items)
+        && passesStyleJudge(items,scenario.style,scenario.occasion,scenario.weather);
+    const candidates = outfitChoices(valid,true,judge,()=>false,[],120,12000);
     const slotDeckUsed = new Set<string>();
-    const normalize = createSlotNormalizer({
-        weather: scenario.weather,
-        currentSource: 'shop',
-        selectedOccasion: scenario.occasion,
-        generationNonceRef,
-        poolFallback: valid,
-    });
-
-    const judge = (items: any[]) =>
-        passesStyleJudge(items, scenario.style, `${scenario.occasion}`, scenario.weather);
-
-    // The real slot picker builds the targeted replacement looks — the same
-    // builder the AIOutfitmaker screen uses.
-    const buildFill = (_used: Set<string>, attempt: number) => {
-        const items = normalize([], scenario.style, attempt, scenario.id, valid, slotDeckUsed);
-        if (!(isFourSlotLook(items) || isCompleteNormalizedOutfit(items))) return null;
-        if (!judge(items)) return null;
-        return { id: `fill_${attempt}`, items };
-    };
 
     const result = assembleDiverseDeck<{ id: string; items: any[] }>({
         candidates,
@@ -271,7 +232,6 @@ export function runScenario(scenario: Scenario, catalog: CatalogItem[] = buildCa
         qualityOf: () => 0.9,
         keysOf: (item: any) => productIdentityKeys(item),
         usedKeys: slotDeckUsed,
-        buildFill,
         poolItems: valid,
         target: 3,
     });

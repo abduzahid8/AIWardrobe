@@ -1,0 +1,16 @@
+{
+  "source": "https://cbu.uz/uz/arkhiv-kursov-valyut/json/all/2026-10-28/",
+  "snapshot": {
+    "id": "CBU:2026-10-28:11918.98:13283.7:15876.08",
+    "source": "CBU",
+    "asOf": "2026-10-28",
+    "fetchedAt": "2026-10-28T04:39:20.581Z",
+    "uzsPerUnit": {
+      "USD": 11918.98,
+      "EUR": 13283.7,
+      "GBP": 15876.08,
+      "UZS": 1
+    }
+  },
+  "usd150InUzs": 1787847
+}

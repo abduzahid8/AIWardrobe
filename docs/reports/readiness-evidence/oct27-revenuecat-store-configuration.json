@@ -1,0 +1,20 @@
+{
+  "observedAt": "2026-10-27",
+  "source": "RevenueCat project Apps page, read-only inspection",
+  "project": "AIWardrobe",
+  "configuredApps": [
+    {
+      "store": "App Store",
+      "bundleId": "com.aiwardrobe"
+    }
+  ],
+  "androidStoreConfiguration": false,
+  "sessionBlockers": [
+    "The current RevenueCat session displays an unconfirmed-email notice.",
+    "The current RevenueCat session reports no permission to add app configurations."
+  ],
+  "limitations": [
+    "This observation does not verify an Apple Sandbox transaction or entitlement lifecycle.",
+    "This observation does not verify Google Play product mappings or Android purchases."
+  ]
+}

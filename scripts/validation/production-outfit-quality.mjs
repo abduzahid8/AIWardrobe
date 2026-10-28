@@ -14,12 +14,15 @@ const reportOverride = process.env.OUTFIT_QUALITY_REPORT;
 const budgetOverride = process.env.OUTFIT_QUALITY_BUDGET_USD === undefined ? null : Number(process.env.OUTFIT_QUALITY_BUDGET_USD);
 if (budgetOverride !== null && (!Number.isFinite(budgetOverride) || budgetOverride <= 0 || budgetOverride > 10000)) throw new Error('Invalid scenario budget');
 if (reportOverride && !/^[a-z0-9-]+\.json$/.test(reportOverride)) throw new Error('Invalid report filename');
+const ratesOnly=process.env.OUTFIT_RATES_ONLY==='1';
+const diagnosticRegion=process.env.OUTFIT_QUALITY_REGION;
+if(diagnosticRegion&&!['eu-central-1','ap-south-1','ap-southeast-1'].includes(diagnosticRegion))throw Error('Invalid diagnostic region');
 const report = { measuredAt: new Date().toISOString(), scope: 'Live NVIDIA category/budget scenarios; not exhaustive accuracy or capacity certification', checks: [] };
 const call = async (path, headers, body, method = 'POST') => {
   const start = performance.now();
-  const response = await fetch(new URL(path, base), { method, headers, ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(120000), redirect: 'error' });
+  const response = await fetch(new URL(path, base), { method, headers:diagnosticRegion&&path.startsWith('/functions/')?{...headers,'x-region':diagnosticRegion}:headers, ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(120000), redirect: 'error' });
   let data; try { data = await response.json(); } catch { data = null; }
-  return { status: response.status, ok: response.ok, data, latencyMs: Math.round(performance.now() - start) };
+  return { status: response.status, ok: response.ok, data, region:response.headers.get('x-sb-edge-region'), latencyMs: Math.round(performance.now() - start) };
 };
 let owner, authHeaders;
 try {
@@ -37,7 +40,10 @@ try {
   if (!trial.ok) throw new Error(`Trial initialization failed: HTTP ${trial.status}`);
   const {core,client} = await loadBudgetHelpers();
   const rates = await call('/functions/v1/budget-rates',headers,{});
+  report.budgetRates = {status:rates.status,latencyMs:rates.latencyMs,success:rates.data?.success,error:rates.data?.error,snapshotPresent:!!rates.data?.snapshot,region:rates.region,requestedRegion:diagnosticRegion??null};
   const snapshot = core.validateBudgetFxSnapshot(rates.data?.snapshot);
+  report.checks.push({name:'authenticated_budget_reference_available',status:rates.status,passed:rates.ok&&!!snapshot});
+  if(ratesOnly)report.scope='Authenticated live reference-rate diagnostic only; no outfit or provider execution';
   const fx = core.budgetFxContext(snapshot);
   report.reference = snapshot;
   if (process.env.PRODUCTION_OUTFIT_ONLY !== '1') {
@@ -67,7 +73,9 @@ try {
     suppliedPool=catalog.data.map(row=>({...row,id:`shop_${row.id}`,macroCategory:row.id===fixtureIds[0]?'top':row.id===fixtureIds[1]?'bottom':'shoes',isShopItem:true,isWardrobe:false,imageUrl:row.image_url,shopUrl:row.source_url}));
     report.scope='Live authenticated supplied-catalog path; not exhaustive accuracy or capacity certification';
   }
-  for (const scenario of scenarios.filter(scenario => !process.env.OUTFIT_QUALITY_CASE || scenario.name === process.env.OUTFIT_QUALITY_CASE)) {
+  const selectedScenarios=ratesOnly?[]:scenarios.filter(scenario => !process.env.OUTFIT_QUALITY_CASE || scenario.name === process.env.OUTFIT_QUALITY_CASE);
+  if(!ratesOnly&&!selectedScenarios.length)throw Error('No matching outfit scenarios');
+  for (const scenario of selectedScenarios) {
     if (budgetOverride !== null) {
       scenario.prompt = scenario.prompt.replace('$250', `$${budgetOverride}`);
       scenario.name = scenario.name.replace('250_usd', `${budgetOverride}_usd`);

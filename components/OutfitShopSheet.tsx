@@ -1,3 +1,4 @@
+import {useUzsDisplayRates} from '../hooks/useUzsPrice';
 import { shopPriceLabel } from '../src/utils/shopPriceLabel';
 import React, { useCallback } from 'react';
 import {
@@ -73,6 +74,7 @@ const getCategoryLabel = (item: ShopSheetItem): string => {
 
 export const OutfitShopSheet = ({ visible, onClose, items, occasion, style }: OutfitShopSheetProps) => {
   const { t, i18n } = useTranslation();
+  const displayRates = useUzsDisplayRates(visible);
 
   const openShopUrl = useCallback(async (url?: string, itemName?: string) => {
     if (!url && !itemName) return;
@@ -113,7 +115,7 @@ export const OutfitShopSheet = ({ visible, onClose, items, occasion, style }: Ou
               const image = getItemImage(item);
               const shopUrl = getShopUrl(item);
               const retailer = getRetailerLabel(shopUrl);
-              const price = shopPriceLabel(item, i18n?.resolvedLanguage || i18n?.language);
+              const price = shopPriceLabel(item, i18n?.resolvedLanguage || i18n?.language, displayRates);
               const name = item.name || item.type || `Item ${index + 1}`;
               return (
                 <View key={String(item.id ?? `${name}-${index}`)} style={styles.row}>

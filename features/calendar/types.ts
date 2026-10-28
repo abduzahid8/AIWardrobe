@@ -28,7 +28,7 @@ export const matchesCategory = (itemType: string, category: ClothingCategory): b
 
 // ── Occasions ───────────────────────────────────────────────────
 
-export const OCCASION_IDS = ['work', 'casual', 'date', 'party', 'sport', 'formal'] as const;
+export const OCCASION_IDS = ['work', 'casual', 'date', 'party', 'sport', 'formal', 'travel'] as const;
 
 export type OccasionId = (typeof OCCASION_IDS)[number];
 
@@ -46,6 +46,7 @@ export const OCCASIONS: readonly Occasion[] = [
     { id: 'party',  label: 'Party',  icon: '🎉', color: '#F59E0B' },
     { id: 'sport',  label: 'Sport',  icon: '🏃', color: '#8B5CF6' },
     { id: 'formal', label: 'Formal', icon: '🎩', color: '#1A1A1A' },
+    { id: 'travel', label: 'Travel', icon: '✈️', color: '#0891B2' },
 ] as const;
 
 export const getOccasionColor = (id: string): string =>
@@ -53,6 +54,17 @@ export const getOccasionColor = (id: string): string =>
 
 export const isValidOccasion = (id: string): id is OccasionId =>
     OCCASION_IDS.includes(id as OccasionId);
+
+/** An explicit event takes priority over a style-based default. */
+export function resolveCalendarOccasion(occasionId?: string, styleId?: string): OccasionId {
+    if (occasionId && isValidOccasion(occasionId)) return occasionId;
+    switch (styleId) {
+        case 'business_casual': return 'work';
+        case 'old_money':
+        case 'classic': return 'formal';
+        default: return 'casual';
+    }
+}
 
 // ── Calendar Helpers ────────────────────────────────────────────
 

@@ -1,3 +1,4 @@
 <resources>
-    <string name="app_name">AIWardrobe</string>
+  <string name="app_name">AIWardrobe</string>
+  <string name="expo_runtime_version">2.1.0</string>
 </resources>

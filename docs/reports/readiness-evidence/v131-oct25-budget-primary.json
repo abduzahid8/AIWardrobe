@@ -1,0 +1,12 @@
+{
+  "measuredAt": "2026-10-25T02:08:09.647Z",
+  "scope": "Live NVIDIA category/budget scenarios; not exhaustive accuracy or capacity certification",
+  "checks": [],
+  "fixtureUserId": "e3390f29-0358-4aa9-a956-c9c60a207302",
+  "failure": "BudgetFxError",
+  "cleanup": {
+    "refreshSessionsRevoked": true,
+    "temporaryUserDeleted": true,
+    "status": 200
+  }
+}

@@ -7,13 +7,14 @@ if(!service||!rc||new URL(base).hostname!=='fyqpifmrsftsfqibhwhy.supabase.co')th
 const admin={apikey:service,Authorization:`Bearer ${service}`,'Content-Type':'application/json'};
 async function call(url,headers,body,method='POST'){const r=await fetch(url,{method,headers,...(body===undefined?{}:{body:JSON.stringify(body)}),signal:AbortSignal.timeout(30000),redirect:'error'});let data;try{data=await r.json();}catch{data=null;}return {status:r.status,ok:r.ok,data};}
 const api=(path,headers,body,method)=>call(new URL(path,base),headers,body,method);
-const report={measuredAt:new Date().toISOString(),runId:randomUUID(),scope:'One disposable free account; no store purchase or paid access',checks:[],cleanup:[]};let owner;
+const report={measuredAt:new Date().toISOString(),runId:randomUUID(),scope:'One disposable free account; no store purchase or paid access',checks:[],cleanup:[]};let owner,authHeaders;
 const check=(name,passed,details={})=>report.checks.push({name,passed,...details});
 try{
  const email=`readiness-${randomUUID()}@aiwardrobe.club`,password=`${randomUUID()}Aa!9`;
  const created=await api('/auth/v1/admin/users',admin,{email,password,email_confirm:true,app_metadata:{readiness_audit:report.runId}});if(!created.ok||!created.data?.id)throw Error('Fixture creation failed');owner=created.data.id;report.fixtureOwner=owner;
  const login=await api('/auth/v1/token?grant_type=password',{apikey:anon,'Content-Type':'application/json'},{email,password});if(!login.data?.access_token)throw Error('Fixture login failed');
  const headers={apikey:anon,Authorization:`Bearer ${login.data.access_token}`,'Content-Type':'application/json'};
+ authHeaders=headers;
  const anonymous=await api('/functions/v1/sync-subscription',{apikey:anon,Authorization:`Bearer ${anon}`,'Content-Type':'application/json'},{});check('anonymous_denied',anonymous.status===401,{status:anonymous.status});
  const direct=await call(`https://api.revenuecat.com/v1/subscribers/${owner}`,{Authorization:`Bearer ${rc}`},undefined,'GET');report.providerDiagnostic={status:direct.status,requestDateType:typeof direct.data?.request_date_ms,hasSubscriber:!!direct.data?.subscriber,entitlementsType:typeof direct.data?.subscriber?.entitlements};
  if(direct.ok&&Number.isSafeInteger(direct.data?.request_date_ms)&&direct.data?.subscriber?.entitlements&&Object.keys(direct.data.subscriber.entitlements).length===0){const rpc=await api('/rest/v1/rpc/apply_revenuecat_snapshots',admin,{p_event:{id:`diagnostic:${report.runId}`,type:'CUSTOMER_SYNC'},p_accounts:[{user_id:owner,request_date_ms:direct.data.request_date_ms,entitlements:[]}]});report.rpcDiagnostic={status:rpc.status,code:rpc.data?.code||null,message:rpc.data?.message||null};}
@@ -27,12 +28,15 @@ try{
 }catch(error){report.failure=error.name;process.exitCode=1;}
 finally{
  if(owner){
+  const revoked=authHeaders?await api('/auth/v1/logout?scope=global',authHeaders,{}):{ok:false,status:null};
+  report.cleanup.push({system:'supabase_sessions',revoked:revoked.ok,status:revoked.status});
+  if(!revoked.ok)throw Error('Fixture session revocation failed; account retained for cleanup');
   const revenue=await call(`https://api.revenuecat.com/v1/subscribers/${owner}`,{Authorization:`Bearer ${rc}`},undefined,'DELETE');report.cleanup.push({system:'revenuecat',deletionRequested:[200,404].includes(revenue.status),status:revenue.status,note:'RevenueCat deletion is asynchronous; no GET used because it creates missing customers.'});
   const diagnosticLedger=await api(`/rest/v1/processed_webhooks?source=eq.revenuecat&event_id=eq.diagnostic:${report.runId}`,admin,undefined,'DELETE');report.cleanup.push({system:'diagnostic_ledger',deleted:diagnosticLedger.ok,status:diagnosticLedger.status});
   const ledger=await api(`/rest/v1/processed_webhooks?source=eq.revenuecat&event_id=like.customer-sync:${owner}:*`,admin,undefined,'DELETE');report.cleanup.push({system:'sync_ledger',deleted:ledger.ok,status:ledger.status});
   const user=await api(`/auth/v1/admin/users/${owner}`,admin,undefined,'DELETE');report.cleanup.push({system:'supabase_user',deleted:user.ok,status:user.status});
   if(![200,404].includes(revenue.status)||!ledger.ok||!user.ok)process.exitCode=1;
  }
- await writeFile(new URL('../../docs/reports/readiness-evidence/production-subscription-sync.json',import.meta.url),JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report,null,2));
+ await writeFile(new URL('../../docs/reports/readiness-evidence/'+(process.env.PAYMENT_SYNC_REPORT||'production-subscription-sync.json'),import.meta.url),JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report,null,2));
 }
 if(report.checks.length!==6||report.checks.some(c=>!c.passed))process.exitCode=1;

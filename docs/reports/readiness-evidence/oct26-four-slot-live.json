@@ -1,0 +1,192 @@
+{
+  "measuredAt": "2026-10-26T02:56:52.631Z",
+  "scope": "One real hosted Old Money/Work shopping request, no weather or entered budget, limit 3. Controlled catalog pool; not exact screenshot account or capacity proof.",
+  "checks": [
+    {
+      "name": "all_three_catalog_slots_available",
+      "passed": true
+    },
+    {
+      "name": "usable_outfits_returned",
+      "passed": true
+    },
+    {
+      "name": "every_outfit_passes_structure_and_style",
+      "passed": true
+    },
+    {
+      "name": "every_item_matches_authoritative_active_catalog",
+      "passed": true
+    },
+    {
+      "name": "full_displayed_deck_returned",
+      "passed": true
+    },
+    {
+      "name": "visible_deck_has_no_illegal_product_reuse",
+      "passed": true
+    },
+    {
+      "name": "visible_deck_has_no_duplicate_cards",
+      "passed": true
+    }
+  ],
+  "requestedLimit": 3,
+  "requireFullDeck": true,
+  "fixtureUserId": "2675893b-3a59-4911-a9f8-2984daa34720",
+  "candidateCount": 40,
+  "response": {
+    "status": 200,
+    "latencyMs": 4655,
+    "code": null,
+    "error": null,
+    "source": "ai",
+    "diversity": {
+      "activeSlots": [
+        "outerwear",
+        "top",
+        "bottom",
+        "shoes"
+      ],
+      "strictSlots": [
+        "outerwear",
+        "top",
+        "bottom",
+        "shoes"
+      ],
+      "forcedRepeatSlots": [],
+      "deckSize": 3,
+      "deckTarget": 3,
+      "shortfallReason": null
+    },
+    "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+    "providerAttempts": [
+      {
+        "provider": "nvidia",
+        "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+        "status": "ok"
+      }
+    ],
+    "outfitCount": 3
+  },
+  "supplementedIds": [
+    "md-uz-62899832",
+    "md-uz-61729868",
+    "md-uz-61735972"
+  ],
+  "outfits": [
+    {
+      "items": [
+        {
+          "id": "shop_fr-tommy-111152-official",
+          "name": "Regular Fit Striped Rugby Polo",
+          "macroCategory": "top",
+          "price": 1584500,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-62899832",
+          "name": "100% tropical wool suit blazer",
+          "macroCategory": "outerwear",
+          "price": 4500000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61729156",
+          "name": "100% linen pants with dart detail",
+          "macroCategory": "bottom",
+          "price": 1900000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-93412",
+          "name": "Gary_Slon_SDWV_204",
+          "macroCategory": "shoes",
+          "price": 4407000,
+          "currency": "UZS"
+        }
+      ],
+      "structureReason": null,
+      "styleReason": null
+    },
+    {
+      "items": [
+        {
+          "id": "shop_boss-uz-105362",
+          "name": "TTNM Evo_Slon_Ltmxl",
+          "macroCategory": "top",
+          "price": 2492000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61729868",
+          "name": "100% cool wool suit blazer",
+          "macroCategory": "outerwear",
+          "price": 7000000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-113272",
+          "name": "H-Delaware",
+          "macroCategory": "bottom",
+          "price": 2232000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-104096",
+          "name": "Gary_tenn_sdbbe",
+          "macroCategory": "shoes",
+          "price": 4841000,
+          "currency": "UZS"
+        }
+      ],
+      "structureReason": null,
+      "styleReason": null
+    },
+    {
+      "items": [
+        {
+          "id": "shop_boss-uz-140333",
+          "name": "Salbo",
+          "macroCategory": "top",
+          "price": 1488000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61735972",
+          "name": "100% linen suit blazer",
+          "macroCategory": "outerwear",
+          "price": 4000000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61733747",
+          "name": "100% cotton slim fit trousers",
+          "macroCategory": "bottom",
+          "price": 1400000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-141303",
+          "name": "Ttnm Evo_Slon_Knrsd",
+          "macroCategory": "shoes",
+          "price": 2696000,
+          "currency": "UZS"
+        }
+      ],
+      "structureReason": null,
+      "styleReason": null
+    }
+  ],
+  "visibleDeck": {
+    "count": 3,
+    "illegalProductReuseCount": 0,
+    "forcedRepeatSlots": []
+  },
+  "exactRequestedReturned": true,
+  "cleanup": {
+    "sessionsRevoked": true,
+    "ownerDeleted": true
+  },
+  "passed": true
+}

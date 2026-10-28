@@ -48,3 +48,13 @@ export function resolveOutfitChoices(selections: any[] | null, choices: {id:stri
   }
   return result;
 }
+
+/** Compact ranked-choice protocol; only IDs are decoded, never product metadata. */
+export function parseRankedOutfitChoices(raw: string): any[] | null {
+  try {
+    const parsed=JSON.parse(raw.trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,''));
+    const ids=parsed?.rankedLookIds;
+    if(!Array.isArray(ids)||!ids.length||ids.length>100||ids.some(id=>typeof id!=='string'||!id.trim()))return null;
+    return ids.map(id=>({items:[{id:id.trim()}]}));
+  }catch{return null;}
+}

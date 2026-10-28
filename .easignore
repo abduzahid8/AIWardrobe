@@ -1,6 +1,11 @@
-# EAS Build ignore file — excludes files from the tarball
-# uploaded to EAS, but keeps .env so EXPO_PUBLIC_* vars are
-# embedded in the JS bundle at build time.
+# EAS Build ignore file — excludes files from the tarball uploaded to EAS.
+# Production EXPO_PUBLIC_* values are supplied by the EAS build profile;
+# local env files may contain server credentials and must stay on this machine.
+
+.env
+.env.*
+.env*.local
+!.env.example
 
 # Dependencies (rebuilt on the build server)
 node_modules/
@@ -58,8 +63,22 @@ catvton-service/
 alicevision-service/
 scratch/
 
-# Backend / ML services — NOT part of the mobile app
-backend/
+# Backend / ML services — keep only shared TypeScript imported by Metro.
+# Do not ignore backend/supabase or backend/supabase/functions themselves:
+# EAS prunes ignored parent directories before it can apply child exceptions.
+backend/api
+backend/mobile-vton-service
+backend/.env
+backend/.env.*
+backend/config/credentials.json
+backend/supabase/.temp
+backend/supabase/migrations
+backend/supabase/supabase
+backend/supabase/functions/*
+!backend/supabase/functions/_shared
+!backend/supabase/functions/_shared/
+backend/supabase/functions/_shared/*
+!backend/supabase/functions/_shared/*.ts
 cache/
 workers/
 
@@ -90,6 +109,16 @@ groq_prompt_enhancements.json
 
 # Test coverage
 coverage/
+
+# VCS and generated native build outputs are not shipped to EAS workers.
+.git
+android/.gradle
+android/.kotlin
+android/app/.cxx
+android/app/build
+android/build
+ios/Pods
+ios/build
 
 # Supabase (edge functions deployed separately, migrations not needed for iOS build; also covered by backend/ above)
 supabase/.temp/

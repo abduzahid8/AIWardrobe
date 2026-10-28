@@ -48,3 +48,11 @@ export function normalizeRevenueCatSnapshot(userId: string, payload: any, enviro
   }
   return { user_id: userId, request_date_ms: payload.request_date_ms, entitlements: [...entries.values()] };
 }
+
+/** Trusted server configuration only; request bodies cannot select sandbox access. */
+export function revenueCatEnvironmentForUser(userId: string, configured: string, sandboxUsers = ''): 'PRODUCTION' | 'SANDBOX' {
+  if (!['PRODUCTION','SANDBOX'].includes(configured)) throw new Error('Invalid payment environment');
+  const ids = sandboxUsers.split(/[\s,]+/).filter(Boolean);
+  if (ids.length > 50 || ids.some(id => !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))) throw new Error('Invalid sandbox test accounts');
+  return ids.some(id => id.toLowerCase() === userId.toLowerCase()) ? 'SANDBOX' : configured as 'PRODUCTION' | 'SANDBOX';
+}

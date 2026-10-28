@@ -9,13 +9,13 @@ const owner = '11111111-1111-4111-8111-111111111111';
 const other = '22222222-2222-4222-8222-222222222222';
 const event = { id: 'event-1', type: 'INITIAL_PURCHASE', app_user_id: owner, environment: 'PRODUCTION' };
 const customer = { request_date_ms: Date.parse('2026-10-15T00:00:00Z'), subscriber: { entitlements: {}, subscriptions: {} } };
-function load({ profiles = [{ id: owner }], apiStatus = 200, rpcError = null, secret = 'webhook-secret' } = {}) {
+function load({ profiles = [{ id: owner }], apiStatus = 200, rpcError = null, secret = 'webhook-secret', sandboxUsers = '', customerData = customer } = {}) {
   let handler;
   const queries = [];
   const rpc = jest.fn(async () => ({ data: rpcError ? null : { duplicate: false }, error: rpcError }));
   const admin = { rpc, from: table => { queries.push(table); return { select: () => ({ in: async () => ({ data: profiles, error: null }) }) }; } };
-  const fetchMock = jest.fn(async () => new Response(JSON.stringify(customer), { status: apiStatus }));
-  const env = { REVENUECAT_WEBHOOK_SECRET: secret, REVENUECAT_SECRET_API_KEY: 'server-api-key', REVENUECAT_ENVIRONMENT: 'PRODUCTION', SUPABASE_URL: 'https://example.test', SUPABASE_SERVICE_ROLE_KEY: 'server-key' };
+  const fetchMock = jest.fn(async () => new Response(JSON.stringify(customerData), { status: apiStatus }));
+  const env = { REVENUECAT_WEBHOOK_SECRET: secret, REVENUECAT_SECRET_API_KEY: 'server-api-key', REVENUECAT_ENVIRONMENT: 'PRODUCTION', REVENUECAT_SANDBOX_USER_IDS: sandboxUsers, SUPABASE_URL: 'https://example.test', SUPABASE_SERVICE_ROLE_KEY: 'server-key' };
   new Function('require', 'exports', 'Deno', 'fetch', compiled)(name => {
     if (name.includes('revenuecatSnapshot')) return snapshots;
     if (name.includes('server.ts')) return { serve: fn => { handler = fn; } };
@@ -75,4 +75,17 @@ test('sandbox webhook cannot modify production entitlements', async () => {
   expect((await response.json()).ignored).toBe('different_environment');
   expect(rpc).not.toHaveBeenCalled();
   expect(fetchMock).not.toHaveBeenCalled();
+});
+
+test('sandbox events synchronize only explicitly designated test accounts',async()=>{
+ const allowed=load({sandboxUsers:owner});const response=await allowed.handler(request({...event,environment:'SANDBOX'}));
+ expect(response.status).toBe(200);expect(allowed.rpc).toHaveBeenCalledTimes(1);
+ const ordinary=load({profiles:[{id:other}],sandboxUsers:owner});const ignored=await ordinary.handler(request({...event,app_user_id:other,environment:'SANDBOX'}));
+ expect((await ignored.json()).ignored).toBe('different_environment');expect(ordinary.rpc).not.toHaveBeenCalled();expect(ordinary.fetchMock).not.toHaveBeenCalled();
+});
+test('sandbox transfer cannot modify an ordinary production account',async()=>{
+ const result=load({profiles:[{id:owner},{id:other}],sandboxUsers:owner});
+ const response=await result.handler(request({...event,type:'TRANSFER',environment:'SANDBOX',transferred_from:[owner],transferred_to:[other]}));
+ expect(response.status).toBe(200);expect(result.fetchMock).toHaveBeenCalledTimes(1);
+ expect(result.rpc.mock.calls[0][1].p_accounts.map(account=>account.user_id)).toEqual([owner]);
 });

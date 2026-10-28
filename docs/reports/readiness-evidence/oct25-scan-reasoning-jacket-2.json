@@ -1,0 +1,39 @@
+{
+  "measuredAt": "2026-10-25T17:41:15.602Z",
+  "sourceSha256": "aac4327f85e9ca31662f8ac70c27d828ff8e0d0e9f660d15040a671189400d22",
+  "scope": "One direct NVIDIA diagnostic using actual staged handler with controlled Auth/config; no production admission claim",
+  "providerResponses": [
+    {
+      "status": 200,
+      "finishReason": "stop",
+      "contentLength": 221,
+      "parsed": {
+        "category": "jacket",
+        "section": "outerwear",
+        "style": "casual",
+        "color": "beige",
+        "material": "cotton",
+        "description": "A light beige utility jacket with flap pockets and a collar, worn open over a striped shirt.",
+        "shoeType": null
+      }
+    }
+  ],
+  "fixture": {
+    "path": "docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/02-originalPath.jpg",
+    "bytes": 666026,
+    "sha256": "2d47a0ac74bd074352bb446576e38d54ca5339ca3b8687cbc78812ca1f80a717"
+  },
+  "handlerStatus": 200,
+  "latencyMs": 38342,
+  "acceptedClassification": {
+    "category": "jacket",
+    "section": "outerwear",
+    "confidence": 0,
+    "attributes": {
+      "style": "casual",
+      "color": "beige",
+      "material": "cotton"
+    }
+  },
+  "error": null
+}

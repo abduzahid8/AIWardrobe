@@ -1,0 +1,305 @@
+{
+  "measuredAt": "2026-10-26T10:05:54.982Z",
+  "scope": "Sequential real production requests with a disposable trial owner; server discovers live catalog products. No native UI, retailer stock/price refresh or load certification.",
+  "cases": [
+    {
+      "name": "classic_work_no_weather",
+      "requestedBudget": null,
+      "expectedRejection": false,
+      "status": 200,
+      "latencyMs": 9926,
+      "code": null,
+      "source": "ai",
+      "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "status": "ok"
+        }
+      ],
+      "deterministicFallback": {
+        "used": false,
+        "outfitCount": 0,
+        "reason": null
+      },
+      "outfitCount": 3,
+      "failures": [
+        "mixed_currency_spend_requires_reference"
+      ],
+      "outfits": [
+        {
+          "items": [
+            {
+              "id": "shop_aurelien-10186815963466",
+              "name": "AUR1 Polo Navy",
+              "category": "top",
+              "price": 195,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_aurelien-10066008899914",
+              "name": "Navy Technical Leisure Blazer",
+              "category": "outerwear",
+              "price": 575,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_aurelien-15179534139722",
+              "name": "Beige Flannel Trousers",
+              "category": "bottom",
+              "price": 315,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_zara-uz-545437356",
+              "name": "AARON LEVINE X ZARA LEATHER PENNY LOAFERS",
+              "category": "shoes",
+              "price": 1899900,
+              "currency": "UZS"
+            }
+          ],
+          "spendUzs": 1899900,
+          "structureReason": null,
+          "styleReason": null
+        },
+        {
+          "items": [
+            {
+              "id": "shop_armani_exchange-xm002109_af24533_ub101",
+              "name": "Basic Cotton Poplin Casual Shirt",
+              "category": "top",
+              "price": 150,
+              "currency": "USD"
+            },
+            {
+              "id": "shop_aurelien-6039891935412",
+              "name": "Extrafine Merino Zipper Vest Navy",
+              "category": "outerwear",
+              "price": 235,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_aurelien-15501547110730",
+              "name": "Light Beige Pleated Metropolitan Trousers",
+              "category": "bottom",
+              "price": 227.95,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_md-uz-61729189",
+              "name": "Oxford shoes",
+              "category": "shoes",
+              "price": 3000000,
+              "currency": "UZS"
+            }
+          ],
+          "spendUzs": 3000000,
+          "structureReason": null,
+          "styleReason": null
+        },
+        {
+          "items": [
+            {
+              "id": "shop_aurelien-10119652081994",
+              "name": "Nut Linen Pop-over Shirt",
+              "category": "top",
+              "price": 129.95,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_aurelien-16011499667786",
+              "name": "Navy Cotton Wool Button Jacket",
+              "category": "outerwear",
+              "price": 875,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_aurelien-10046869176650",
+              "name": "Navy Linen Seaside Trousers",
+              "category": "bottom",
+              "price": 195,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_fr-tommy-152421",
+              "name": "Лоферы HILFIGER STITCHDOWN SUEDE LOAFER",
+              "category": "shoes",
+              "price": 1384500,
+              "currency": "UZS"
+            }
+          ],
+          "spendUzs": 1384500,
+          "structureReason": null,
+          "styleReason": null
+        }
+      ],
+      "passed": false
+    },
+    {
+      "name": "classic_work_10000000_uzs",
+      "requestedBudget": {
+        "amount": 10000000,
+        "currency": "UZS"
+      },
+      "expectedRejection": false,
+      "status": 503,
+      "latencyMs": 14198,
+      "code": "budget_rates_unavailable",
+      "source": null,
+      "provider": null,
+      "providerAttempts": [],
+      "deterministicFallback": null,
+      "outfitCount": 0,
+      "failures": [
+        "http_503",
+        "three_complete_looks_not_returned",
+        "required_layer_flag_missing"
+      ],
+      "outfits": [],
+      "passed": false
+    },
+    {
+      "name": "old_money_date_10000000_uzs",
+      "requestedBudget": {
+        "amount": 10000000,
+        "currency": "UZS"
+      },
+      "expectedRejection": false,
+      "status": 503,
+      "latencyMs": 4723,
+      "code": "budget_rates_unavailable",
+      "source": null,
+      "provider": null,
+      "providerAttempts": [],
+      "deterministicFallback": null,
+      "outfitCount": 0,
+      "failures": [
+        "http_503",
+        "three_complete_looks_not_returned",
+        "required_layer_flag_missing"
+      ],
+      "outfits": [],
+      "passed": false
+    },
+    {
+      "name": "minimalist_travel_10000000_uzs",
+      "requestedBudget": {
+        "amount": 10000000,
+        "currency": "UZS"
+      },
+      "expectedRejection": false,
+      "status": 503,
+      "latencyMs": 4334,
+      "code": "budget_rates_unavailable",
+      "source": null,
+      "provider": null,
+      "providerAttempts": [],
+      "deterministicFallback": null,
+      "outfitCount": 0,
+      "failures": [
+        "http_503",
+        "three_complete_looks_not_returned",
+        "required_layer_flag_missing"
+      ],
+      "outfits": [],
+      "passed": false
+    },
+    {
+      "name": "casual_everyday_6000000_uzs",
+      "requestedBudget": {
+        "amount": 6000000,
+        "currency": "UZS"
+      },
+      "expectedRejection": false,
+      "status": 503,
+      "latencyMs": 13901,
+      "code": "budget_rates_unavailable",
+      "source": null,
+      "provider": null,
+      "providerAttempts": [],
+      "deterministicFallback": null,
+      "outfitCount": 0,
+      "failures": [
+        "http_503",
+        "three_complete_looks_not_returned",
+        "required_layer_flag_missing"
+      ],
+      "outfits": [],
+      "passed": false
+    },
+    {
+      "name": "sport_workout_6000000_uzs",
+      "requestedBudget": {
+        "amount": 6000000,
+        "currency": "UZS"
+      },
+      "expectedRejection": false,
+      "status": 503,
+      "latencyMs": 4729,
+      "code": "budget_rates_unavailable",
+      "source": null,
+      "provider": null,
+      "providerAttempts": [],
+      "deterministicFallback": null,
+      "outfitCount": 0,
+      "failures": [
+        "http_503",
+        "three_complete_looks_not_returned",
+        "required_layer_flag_missing"
+      ],
+      "outfits": [],
+      "passed": false
+    },
+    {
+      "name": "honest_rejection_1_uzs",
+      "requestedBudget": {
+        "amount": 1,
+        "currency": "UZS"
+      },
+      "expectedRejection": true,
+      "status": 503,
+      "latencyMs": 4062,
+      "code": "budget_rates_unavailable",
+      "source": null,
+      "provider": null,
+      "providerAttempts": [],
+      "deterministicFallback": null,
+      "outfitCount": 0,
+      "failures": [
+        "infeasible_budget_not_rejected"
+      ],
+      "outfits": [],
+      "passed": false
+    },
+    {
+      "name": "classic_work_250_usd",
+      "requestedBudget": {
+        "amount": 250,
+        "currency": "USD"
+      },
+      "expectedRejection": false,
+      "status": 503,
+      "latencyMs": 14038,
+      "code": "budget_rates_unavailable",
+      "source": null,
+      "provider": null,
+      "providerAttempts": [],
+      "deterministicFallback": null,
+      "outfitCount": 0,
+      "failures": [
+        "http_503",
+        "three_complete_looks_not_returned",
+        "required_layer_flag_missing"
+      ],
+      "outfits": [],
+      "passed": false
+    }
+  ],
+  "fixtureUserId": "5110eb43-ebf3-4331-a71c-a3b740ad1594",
+  "cleanup": {
+    "sessionsRevoked": true,
+    "ownerDeleted": true
+  },
+  "passed": false
+}

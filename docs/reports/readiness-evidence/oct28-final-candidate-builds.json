@@ -1,0 +1,41 @@
+{
+  "measuredAt": "2026-10-28T02:01:03Z",
+  "source": {
+    "appVersion": "2.1.0",
+    "reactNativePurchases": "10.11.0",
+    "iosRevenueCatPod": "5.92.0",
+    "outfitComposition": "layer + base top + pants + shoes required for all weather and prompt wording"
+  },
+  "ios": {
+    "easBuildId": "0bcca744-4e76-4cda-89d5-191104c3c7c9",
+    "buildNumber": "61",
+    "distribution": "store",
+    "signature": "Apple Distribution; codesign verification passed",
+    "appStoreConnect": {
+      "processingState": "VALID",
+      "internalState": "IN_BETA_TESTING",
+      "externalState": "READY_FOR_BETA_SUBMISSION"
+    }
+  },
+  "android": {
+    "easBuildId": "53ce70f8-3fb6-47ea-a85d-14cabf35b2c3",
+    "versionCode": 60,
+    "distribution": "store",
+    "artifact": "AAB",
+    "signature": "jarsigner verification passed"
+  },
+  "regression": {
+    "jestSuites": 193,
+    "jestTests": 2455,
+    "jestResult": "all passed",
+    "typecheck": "passed",
+    "offlineLoadHarness": "38 passed; does not certify production capacity"
+  },
+  "payment": {
+    "sandboxTransaction": "not yet observed",
+    "backendAuditOwnerTier": "free",
+    "paymentRows": 0,
+    "activeSubscriptionRows": 0,
+    "physicalDevice": "paired iPhone 14 Pro Max unavailable; Developer Mode disabled"
+  }
+}

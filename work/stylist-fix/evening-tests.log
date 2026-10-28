@@ -1,0 +1,7 @@
+PASS __tests__/backend/outfitBudgetWire.test.js (14.444 s)
+PASS __tests__/backend/fourSlotHosted.test.js
+
+Test Suites: 2 passed, 2 total
+Tests:       99 passed, 99 total
+Snapshots:   0 total
+Time:        17.772 s, estimated 18 s

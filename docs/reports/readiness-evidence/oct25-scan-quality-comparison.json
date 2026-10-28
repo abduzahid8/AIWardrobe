@@ -1,0 +1,187 @@
+{
+  "measuredAt": "2026-10-25",
+  "status": "scan_quality_gate_failed_no_deployment",
+  "production": {
+    "version": 50,
+    "filesUnchanged": true,
+    "model": "meta/llama-3.2-11b-vision-instruct"
+  },
+  "liveBaseline": {
+    "report": "oct25-scan-concurrency-baseline.json",
+    "completedConcurrencyStage": 2,
+    "responsePasses": 2,
+    "expectedCategoryColorPasses": 1,
+    "failure": "One accepted result selected blue jeans instead of the requested primary torso garment.",
+    "higherStagesStopped": true,
+    "fixtureCleanupIndependentSql": {
+      "usersRemaining": 0,
+      "profilesRemaining": 0,
+      "sessionsRemaining": 0,
+      "fixtures": 10
+    }
+  },
+  "modelOnlyComparison": {
+    "model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+    "reports": [
+      "oct25-scan-nemotron-vl-single.json",
+      "oct25-scan-vl-repeat-1.json",
+      "oct25-scan-vl-repeat-2.json",
+      "oct25-scan-vl-white-tshirt.json",
+      "oct25-scan-vl-brown-trousers.json",
+      "oct25-scan-vl-brown-boat-shoe.json"
+    ],
+    "finding": "Torso selection improved on three repeated checks. Original taxonomy forced an observed boat shoe into sneakers despite a boat-shoe description."
+  },
+  "draftContractChanges": {
+    "generalShoesCategoryAdded": true,
+    "shoeSubtypeRetained": true,
+    "contradictoryOrUnknownSubtypeRejected": true,
+    "noImageCropOrAnswerOverride": true,
+    "pinnedPngTypes": "@types/pngjs@6.0.5",
+    "localDefaultModelRetained": "meta/llama-3.2-11b-vision-instruct",
+    "deployed": false
+  },
+  "candidateWithDraftContract": {
+    "model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+    "results": [
+      {
+        "report": "oct25-scan-vl-fixed-brown-boat-shoe.json",
+        "status": 200,
+        "latencyMs": 4033,
+        "accepted": {
+          "category": "shoes",
+          "section": "shoes",
+          "confidence": 0,
+          "attributes": {
+            "style": "casual",
+            "color": "brown",
+            "material": "leather",
+            "shoeType": "boat_shoe"
+          }
+        }
+      },
+      {
+        "report": "oct25-scan-vl-fixed-brown-trousers.json",
+        "status": 200,
+        "latencyMs": 2333,
+        "accepted": {
+          "category": "pants",
+          "section": "bottoms",
+          "confidence": 0,
+          "attributes": {
+            "style": "semi_classic",
+            "color": "brown",
+            "material": null
+          }
+        }
+      },
+      {
+        "report": "oct25-scan-vl-fixed-repeat-1.json",
+        "status": 200,
+        "latencyMs": 6438,
+        "accepted": {
+          "category": "jacket",
+          "section": "outerwear",
+          "confidence": 0,
+          "attributes": {
+            "style": "casual",
+            "color": "grey",
+            "material": null
+          }
+        }
+      },
+      {
+        "report": "oct25-scan-vl-fixed-repeat-2.json",
+        "status": 200,
+        "latencyMs": 4696,
+        "accepted": {
+          "category": "jacket",
+          "section": "outerwear",
+          "confidence": 0,
+          "attributes": {
+            "style": "casual",
+            "color": "beige",
+            "material": null
+          }
+        }
+      },
+      {
+        "report": "oct25-scan-vl-fixed-white-tshirt.json",
+        "status": 200,
+        "latencyMs": 2105,
+        "accepted": {
+          "category": "t-shirt",
+          "section": "tops",
+          "confidence": 0,
+          "attributes": {
+            "style": "minimalist",
+            "color": "white",
+            "material": null
+          }
+        }
+      }
+    ],
+    "qualityGatePassed": false,
+    "reason": "One torso repeat returned grey; original expected beige/cream criterion remains unchanged."
+  },
+  "largerModelComparison": {
+    "model": "meta/llama-3.2-90b-vision-instruct",
+    "results": [
+      {
+        "report": "oct25-scan-90b-brown-trousers.json",
+        "status": 503,
+        "latencyMs": 45007,
+        "accepted": null
+      },
+      {
+        "report": "oct25-scan-90b-repeat-1.json",
+        "status": 503,
+        "latencyMs": 45014,
+        "accepted": null
+      },
+      {
+        "report": "oct25-scan-90b-repeat-2.json",
+        "status": 503,
+        "latencyMs": 45011,
+        "accepted": null
+      },
+      {
+        "report": "oct25-scan-90b-white-tshirt.json",
+        "status": 503,
+        "latencyMs": 45006,
+        "accepted": null
+      }
+    ],
+    "remainingBoatCaseStopped": true,
+    "reason": "Repeated45-second deadlines without accepted classification; matrix parent stopped and in-flight request allowed to terminate. No remaining diagnostic process."
+  },
+  "legacyModelWithDraftContract": {
+    "report": "oct25-scan-legacy-shoe-taxonomy.json",
+    "finding": "Category shoes accepted, but the provider invented a metal-bit loafer description/subtype for the visible laced boat shoe. This semantic mismatch is not detectable from schema validation alone."
+  },
+  "codeVerification": {
+    "originalStagedTests": {
+      "passed": 31,
+      "failed": 6,
+      "tests": 37,
+      "note": "Includes then-strict experimental model expectation; retained raw log."
+    },
+    "currentFocusedTests": 37,
+    "fullLocalDraftTests": 2398,
+    "fullLocalDraftSuites": 186,
+    "typescript": true,
+    "denoRootAndIsolatedChecks": true,
+    "typeOnlyDependencyAdded": true
+  },
+  "bookkeeping": {
+    "originalComparisonReportsRestoredFromUntouchedRawLogs": true,
+    "draftReportsHaveDistinctFixedNames": true,
+    "diagnosticNowExitsNonzeroOnHttpOrMissingClassificationFailure": true
+  },
+  "limits": [
+    "Direct candidate diagnostics use controlled Auth/config; no hosted quota, native or throughput success claim.",
+    "Category/color labels alone do not prove material, construction or description accuracy.",
+    "No model is certified across arbitrary images, garments, lighting or10,000DAU.",
+    "CBU production connectivity and prior authentication/payment/media gaps remain unresolved."
+  ]
+}

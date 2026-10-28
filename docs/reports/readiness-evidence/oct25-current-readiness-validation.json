@@ -1,0 +1,35 @@
+{
+  "measuredAt": "2026-10-25T01:29:27.568196+00:00",
+  "sourceCommit": "5bdf8ac507916fb9383080b2b5e0cf49e4eee7ad",
+  "hostedVersionObserved": 130,
+  "fullSuite": {
+    "tests": 2379,
+    "suites": 186,
+    "passed": true
+  },
+  "typescriptPassed": true,
+  "hostedWorkTest": "v130-oct25-hosted-work.json",
+  "native": {
+    "auditSimulator": "AIWardrobe-Media-Render-20261021",
+    "bundleBuilt": true,
+    "threeRequiredPublicConfigValuesPresentInBytecode": true,
+    "nativeShell": "Existing intact installed audit native shell with current JS/assets",
+    "sourceMapChecks": [
+      {
+        "source": "screens/AIOutfitmaker.tsx",
+        "exact": true
+      },
+      {
+        "source": "src/config/env.ts",
+        "exact": true
+      }
+    ],
+    "installed": true,
+    "launchedViaLifecycleCommand": true,
+    "renderingVerified": false,
+    "blocker": "Mac locked before audit window could be inspected; user unlock requested",
+    "originalSimulatorModified": false
+  },
+  "productionConfigChanged": false,
+  "goalAchieved": false
+}

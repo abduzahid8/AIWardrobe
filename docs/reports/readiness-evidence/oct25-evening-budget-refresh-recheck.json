@@ -1,0 +1,17 @@
+{
+  "measuredAt": "2026-10-25T17:34:38.520Z",
+  "scope": "One authenticated production rate refresh recheck, fifteen hours after the earlier outage. No cache seeding or source changes.",
+  "fixtureUserId": "fe528541-33b1-45ed-8d8e-353a28663f2e",
+  "result": {
+    "status": 503,
+    "error": "budget_rates_unavailable",
+    "snapshotPresent": false,
+    "snapshotId": null,
+    "latencyMs": 12517,
+    "region": "eu-central-1"
+  },
+  "cleanup": {
+    "sessionsRevoked": true,
+    "ownerDeleted": true
+  }
+}

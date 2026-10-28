@@ -118,3 +118,64 @@ test('Mocha serial and parallel modes retain test-runner compatibility',()=>{
   }
  }finally{rmSync(directory,{recursive:true,force:true});}
 });
+
+for(const path of copies('fast-uri')){
+ test(`${path}: encoded schemes cannot become executable or bypass URL equality`,()=>{
+  const uri=require(resolve(root,path));
+  for(const input of ['%6Aavascript:alert(1)','%u006Aavascript:alert(1)']){
+   let parsed,normalized;
+   try{parsed=uri.parse(input);normalized=uri.normalize(input);}catch(error){assert.match(error.message,/uri|scheme|invalid|parse/i);continue;}
+   assert.notEqual(parsed.scheme,'javascript');assert.doesNotMatch(normalized,/^javascript:/i);
+  }
+  assert.equal(uri.equal('%68ttp://a/','http://a/'),false);
+  assert.equal(uri.normalize('https://example.com/a'),'https://example.com/a');
+ });
+}
+for(const path of copies('serialize-javascript')){
+ test(`${path}: terminal closing-script text cannot escape an inline script`,()=>{
+  const serialize=require(resolve(root,path));
+  function f(){}function g(){}
+  f.toString=()=> 'function f(){ return 1 }//</script';
+  g.toString=()=> 'function g(x){ return x } > <img src=x onerror=alert(1)>';
+  const output=serialize({a:{f},g},{space:2});
+  assert.doesNotMatch(output,/<\/script(?=[\t\n\f\r />])/i);
+ });
+}
+
+for(const path of copies('follow-redirects')){
+ test(`${path}: redirect targets cannot receive array-form credential headers`,async()=>{
+  const {createServer}=await import('node:http');
+  const {once}=await import('node:events');
+  const follow=require(resolve(root,path));
+  const target=createServer((req,res)=>{res.setHeader('content-type','application/json');res.end(JSON.stringify(req.headers));});
+  const redirect=createServer((req,res)=>{res.writeHead(302,{location:`http://127.0.0.1:${target.address().port}/target`});res.end();});
+  const listen=async server=>{server.listen(0,'127.0.0.1');await once(server,'listening');};
+  const close=server=>new Promise(resolve=>server.close(resolve));
+  try{
+   await listen(target);await listen(redirect);
+   const request=headers=>new Promise((resolve,reject)=>{
+    const req=follow.http.get({hostname:'127.0.0.1',port:redirect.address().port,path:'/',headers,sensitiveHeaders:['x-fixture-secret']},res=>{
+     let body='';res.setEncoding('utf8');res.on('data',chunk=>body+=chunk);res.on('end',()=>{try{resolve(JSON.parse(body));}catch(error){reject(error);}});res.on('error',reject);
+    });req.on('error',reject);req.setTimeout(2000,()=>req.destroy(new Error('Fixture request timeout')));
+   });
+   const ordinary=await request({'X-Harmless':'fixture'});assert.equal(ordinary['x-harmless'],'fixture');
+   let observed;
+   try{observed=await request(['Host',`127.0.0.1:${redirect.address().port}`,'Authorization','Bearer fixture-token','Cookie','fixture=1','Proxy-Authorization','fixture-proxy','X-Fixture-Secret','fixture-private','X-Harmless','fixture']);}
+   catch(error){assert.match(error.message,/headers.*array|array.*headers/i);return;}
+   for(const name of ['authorization','cookie','proxy-authorization','x-fixture-secret'])assert.equal(observed[name],undefined,name);
+   assert.equal(observed['x-harmless'],'fixture');
+  }finally{await Promise.all([close(redirect),close(target)]);}
+ });
+}
+
+for(const path of copies('undici')){
+ test(`${path}: excessive content encodings cannot crash the caller process`,()=>{
+  const script=`
+   const net=require('node:net');const {fetch}=require(${JSON.stringify(resolve(root,path))});
+   const server=net.createServer(socket=>{socket.on('error',()=>{});socket.once('data',()=>{socket.write('HTTP/1.1 200 OK\\r\\nContent-Length: 100\\r\\nContent-Encoding: gzip, gzip, gzip, gzip, gzip, gzip\\r\\nConnection: close\\r\\n\\r\\nx');setTimeout(()=>socket.end(),10);});});
+   server.listen(0,'127.0.0.1',async()=>{try{await fetch('http://127.0.0.1:'+server.address().port+'/');}catch{}setTimeout(()=>{server.close();process.exit(0);},150);});
+  `;
+  const result=execFileSync(process.execPath,['-e',script],{encoding:'utf8',timeout:4000,stdio:['ignore','pipe','pipe']});
+  assert.equal(result,'');
+ });
+}

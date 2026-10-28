@@ -1,4 +1,4 @@
-import { outfitChoices, resolveOutfitChoices } from '../_shared/outfitChoices.ts'
+import { outfitChoices, resolveOutfitChoices, parseRankedOutfitChoices } from '../_shared/outfitChoices.ts'
 import { readOutfitGenerationRequest, OutfitRequestError } from '../_shared/outfitGenerationRequest.ts'
 import { budgetCandidatesFromText as budgetCandidatesFromTextEdge } from '../_shared/outfitBudgetText.ts'
 import { type BudgetFxContext, BudgetFxError, budgetFxContext, fitsBudgetAmount, referenceAmount } from '../_shared/budgetFx.ts'
@@ -8,9 +8,11 @@ import { strictestOutfitBudget } from '../_shared/outfitBudgetSelection.ts'
 import { outfitBudgetFeedback } from '../_shared/outfitBudgetFeedback.ts'
 import { normalizeModelOutfits } from '../_shared/modelOutfitResponse.ts'
 import { enforceRateLimit } from '../_shared/rateLimit.ts'
-import { outfitStructureReason, isDressGarment, isNonOutfitItem } from '../_shared/outfitStructure.ts'
-import { styleJudgeReason, normalizeGarmentText, isWorkoutOccasion, rejectForStyleOccasion, rejectForClimate, rejectForActivity } from '../_shared/occasionRules.ts'
+import { isFourSlotCandidate, fourSlotOutfitReason, outfitStructureReason, isDressGarment, isNonOutfitItem } from '../_shared/outfitStructure.ts'
+import { styleJudgeReason, normalizeGarmentText, isWorkoutOccasion, rejectForStyleOccasion, rejectForClimate, rejectForRequestIntent, rejectForActivity } from '../_shared/occasionRules.ts'
 import { analyzeDeckProductDiversity, assembleDiverseDeck, canonicalProductKey, productIdentityKeys, diversitySlotOf, type DiversitySlot } from '../_shared/outfitDiversity.ts'
+import { needsLayering as needsLayeringShared, resolveStylistWeather } from '../_shared/outfitComposition.ts'
+import { detectSlotMismatch } from '../_shared/occasionRules.ts'
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
@@ -155,31 +157,9 @@ function isDressItem(item: any): boolean {
     return isDressGarment(item)
 }
 
-// Decide whether an outfit needs a layered composition (outerwear + top +
-// bottom + shoes). Layering now follows WEATHER ONLY — the user confirmed
-// the composition rule is "Top + Bottom + Shoes always; Layer only when
-// cold". Style alone no longer forces a jacket in summer.
-function needsLayering(_style: string | null | undefined, weather: any, prompt: string | null | undefined): boolean {
-    const promptBlob = (prompt || '').toLowerCase()
-    if (/black[ -]?tie|смокинг/.test(promptBlob)) return true
-    // Explicit "hot" / "summer" prompt keywords still opt the user OUT of
-    // layered composition, even when weather is missing.
-    if (/\b(summer|hot|heatwave|tee[-\s]?only|no jacket|no outerwear|beach)\b/.test(promptBlob)) return false
-
-    const condition = (weather?.condition || '').toString().toLowerCase()
-    const temp = typeof weather?.temp === 'number' ? weather.temp : null
-
-    // When we have NEITHER a temperature nor a weather description, default
-    // to layered=true. This matches the client's `needsOuterwear` default
-    // and keeps outfits from degrading to 3-item looks that then render as
-    // "layer + pants + shoes with no base top" on the client. A warm-weather
-    // user will only hit this branch if Location permission is denied, in
-    // which case a safe-layered look is the least-broken fallback.
-    if (temp == null && !condition) return false
-
-    const coldTemp = temp != null && temp < 18
-    const coldCondition = /\b(cold|chilly|freezing|snow|rain|drizzle|wind|storm|cool)\b/.test(condition)
-    return coldTemp || coldCondition
+// Layer required except hot weather / explicit no-jacket intent.
+function needsLayering(style: string | null | undefined, weather: any, prompt: string | null | undefined): boolean {
+    return needsLayeringShared(style, weather, prompt);
 }
 
 // Formal outerwear = blazer/suit jacket/overcoat/topcoat/trench/peacoat/sport
@@ -761,16 +741,20 @@ function getStyleContext(style: string): typeof STYLE_CONTEXT[string] {
 
 function buildSystemPrompt(limit: number, style: string, layered: boolean, preferences?: any, occasion?: string, budget?: { amount: number; currency: string } | null): string {
     const ctx = getStyleContext(style)
-    const shopOnly = isShopOnlyDeck(style, occasion)
+    const shopOnly = isShopOnlyDeck(style, occasion) && !preferences?.lockedAnchorId
     const styleKnowledge = style === 'sport' ? WORKOUT_STYLE_KNOWLEDGE : STYLE_KNOWLEDGE
     const slotRules = layered
-        ? `- EVERY outfit MUST contain exactly these FOUR macroCategory slots, no exceptions:
-    (1) a BASE TOP (macroCategory="top" — t-shirt, shirt, polo, blouse, tank worn next-to-skin)
-    (2) a MAIN TOP / OUTERWEAR LAYER (macroCategory="outerwear" — sweater, cardigan, blazer, hoodie, jacket, coat, vest)
-    (3) a BOTTOM (macroCategory="bottom" — pants, trousers, jeans, shorts, skirt)
+        ? `- EVERY outfit MUST contain exactly FOUR items, one in each category:
+    (1) LAYER (macroCategory="outerwear" — cardigan, blazer, lightweight jacket, coat, vest or sweater)
+    (2) BASE SHIRT (macroCategory="top" — shirt, T-shirt or polo shirt, never another sweater or jacket)
+    (3) PANTS (macroCategory="bottom" — pants, full-length trousers, chinos or jeans; never shorts or skirts)
     (4) SHOES (macroCategory="shoes")
-  A 3-item outfit is INVALID unless the base top is a dress (in which case skip the bottom slot but STILL include outerwear + shoes). Never return fewer than 4 items for a layered look.`
-        : `- EVERY outfit MUST contain exactly THREE items and exactly these three macroCategory slots, no exceptions: (1) a TOP (or a dress), (2) a BOTTOM (skip this slot only if the top is a dress — then the outfit has 2 items: dress + shoes), and (3) SHOES. Do NOT add a fourth outerwear/layer item — the weather does not require layering. A non-layered outfit with 4+ items is INVALID.`
+  Never omit a category, substitute a dress for shirt and pants, or count one garment twice.`
+        : `- EVERY outfit MUST contain exactly THREE items, one in each category:
+    (1) BASE SHIRT (macroCategory="top" — shirt, T-shirt or polo shirt)
+    (2) PANTS (macroCategory="bottom" — pants, full-length trousers, chinos or jeans; never shorts or skirts)
+    (3) SHOES (macroCategory="shoes")
+  Do NOT include any outerwear/layer/jacket in this request. Never substitute a dress for shirt and pants, or count one garment twice.`
 
     const ownershipRule = shopOnly
         ? `- THIS IS A SHOP-ONLY DECK (Team Collaboration). EVERY item in EVERY outfit MUST have an id starting with "shop_". NEVER use user wardrobe items. Build all ${limit} looks purely from shop candidates.`
@@ -1091,9 +1075,10 @@ function validateOutfitAgainstStyle(outfit: any, style: string, itemMap: Map<str
         }
     }
 
-    // Check the style's explicit reject keywords on every item.
+    // The selected anchor may override aesthetic taste; the hard validators above still apply.
     const rejectKeywords = extractRejectKeywords(ctx.reject)
     for (const it of items) {
+        if (preferences?.lockedAnchorId && String(it.id) === preferences.lockedAnchorId) continue
         const src = itemMap.get(it.id) || {}
         const blob = `${it.name || ''} ${src.name || ''} ${src.description || ''} ${src.type || ''} ${it.type || ''} ${it.pattern || ''} ${src.pattern || ''} ${it.material || ''} ${src.material || ''}`.toLowerCase()
         for (const kw of rejectKeywords) {
@@ -1163,14 +1148,14 @@ function validateOutfitCompatibility(outfit: any, itemMap: Map<string, any>, sty
 function filterValidOutfits(outfits: any[], style: string, itemMap: Map<string, any>, layered: boolean, preferences?: any, occasion?: string, weather?: any, onReject?: (index: number, reason: string) => void): any[] {
     const kept: any[] = []
     const signatures = new Set<string>()
-    const shopOnly = isShopOnlyDeck(style, occasion)
+    const shopOnly = isShopOnlyDeck(style, occasion) && !preferences?.lockedAnchorId
     const hasOwnedCandidates = !shopOnly && Array.from(itemMap.values()).some(
         (item: any) => !item.isShopItem && !String(item.id || '').startsWith('shop_'),
     )
     for (const [outfitIndex, proposal] of outfits.entries()) {
         const reject = (reason: string) => onReject?.(outfitIndex + 1, reason.slice(0, 300))
         const resolved = (proposal.items || []).map((it: any) => itemMap.get(String(it.id))).filter(Boolean)
-        const reason = styleJudgeReason(resolved, style, occasion, weather)
+        const reason = styleJudgeReason(resolved, style, occasion, weather, preferences?.lockedAnchorId)
         if (reason || resolved.length !== (proposal.items || []).length) {
             reject(reason || 'unknown_item_id')
             console.warn('[quality-reject]', { reason: reason || 'unknown_item_id' })
@@ -1178,7 +1163,7 @@ function filterValidOutfits(outfits: any[], style: string, itemMap: Map<string, 
         }
         // Only selected IDs come from the model; every validation stage sees
         // the same authoritative metadata that will be returned to the client.
-        const structural = outfitStructureReason(resolved, layered)
+        const structural = fourSlotOutfitReason(resolved, layered)
         if (structural) {
             reject(structural)
             console.warn('[quality-reject]', { reason: structural })
@@ -1339,6 +1324,8 @@ async function fetchShopItemsForAllSlotsEdge(
     excludeSet?: Set<string>,
     eligibility?: (item: any) => boolean,
     budgetFx?: BudgetFxContext,
+    nativeBudget?: {amount: number; currency: string},
+    requestIntent = '',
 ): Promise<any[]> {
     const picks: any[] = []
     const styleKey = style.toLowerCase().replace(/[\s-]+/g, '_')
@@ -1353,10 +1340,11 @@ async function fetchShopItemsForAllSlotsEdge(
       for (const slot of requiredSlots) {
         let cursor: string | undefined
         let cursorCost: string | null = null
+        let nativePage = 0
         let scored: any[] = []
         const compare = (a: any, b: any) => {
-            const value = (entry: any) => entry.row._budget_cost === null ? Infinity : Number(entry.row._budget_cost)
-            return (budgetFx ? value(a) - value(b) : 0) || b.score - a.score
+            const value = (entry: any) => budgetFx ? (entry.row._budget_cost === null ? Infinity : Number(entry.row._budget_cost)) : Number(entry.row.price)
+            return (budgetFx || nativeBudget ? value(a) - value(b) : 0) || b.score - a.score
         }
         const excluded = (row: any) => Boolean(excludeSet?.has(String(row.id)) || excludeSet?.has(`shop_${row.id}`))
         for (;;) {
@@ -1372,20 +1360,31 @@ async function fetchShopItemsForAllSlotsEdge(
                 .from('shop_catalog')
                 .select('id, brand, name, price, currency, image_url, garment_type, category, description, source, source_url')
                 .eq('is_active', true)
-                .order('id', { ascending: true })
                 .limit(100)
                 .abortSignal(controller.signal)
+            if (nativeBudget) q = q.eq('currency', nativeBudget.currency).lte('price', nativeBudget.amount).order('price', {ascending:true}).order('id', {ascending:true}).range(nativePage * 100, nativePage * 100 + 99)
+            else q = q.order('id', {ascending:true})
             let slotFilter = ''
-            if (slot === 'shoes') slotFilter = 'category.eq.shoes,garment_type.eq.shoes'
+            if (slot === 'shoes') slotFilter = 'category.eq.shoes,garment_type.eq.shoes,name.ilike.%shoe%,name.ilike.%boot%,name.ilike.%loafer%,name.ilike.%trainer%,name.ilike.%sneaker%,name.ilike.%derby%,name.ilike.%espadrill%,name.ilike.%moccasin%'
             else if (slot === 'outerwear') slotFilter = 'category.eq.outerwear,garment_type.eq.outerwear,name.ilike.%jacket%,name.ilike.%coat%,name.ilike.%blazer%,name.ilike.%cardigan%,name.ilike.%sweater%,name.ilike.%hoodie%,name.ilike.%puffer%,name.ilike.%vest%'
             else if (slot === 'top') slotFilter = 'category.eq.tops,garment_type.eq.upper_body'
             else if (slot === 'bottom') slotFilter = 'category.eq.bottoms,garment_type.eq.lower_body'
-            if (styleKey === 'sport') {
+            const evening = /black[ -]?tie|блэк[ -]?тай|смокинг/i.test(requestIntent)
+            const eveningTerms: Record<string, string[]> = {
+                top:['tuxedo','dress shirt','formal shirt','white shirt'],
+                bottom:['tuxedo','dinner suit','black trousers','black pants','formal trousers'],
+                outerwear:['tuxedo','dinner jacket'],
+                shoes:['patent','oxford','opera pump'],
+            }
+            if (evening && eveningTerms[slot]) {
+                const intentFilter = eveningTerms[slot].flatMap(term => [`name.ilike.%${term}%`,`description.ilike.%${term}%`]).join(',')
+                q = q.or(`and(or(${slotFilter}),or(${intentFilter}))`)
+            } else if (styleKey === 'sport') {
                 const terms = ['athletic', 'training', 'running', 'workout', 'performance', 'sportswear', 'activewear', 'gym', 'спортивн', 'трениров']
                 const activityFilter = terms.flatMap(term => [`name.ilike.%${term}%`, `description.ilike.%${term}%`]).join(',')
                 q = q.or(`and(or(${slotFilter}),or(${activityFilter}))`)
             } else if (slotFilter) q = q.or(slotFilter)
-            if (cursor) q = q.gt('id', cursor)
+            if (cursor && !nativeBudget) q = q.gt('id', cursor)
             }
             const { data, error } = await Promise.race([q, deadline])
             if (controller.signal.aborted || error || !Array.isArray(data)) throw new CatalogLookupError()
@@ -1436,6 +1435,7 @@ async function fetchShopItemsForAllSlotsEdge(
             const next = data[data.length - 1]?.id
             if (typeof next !== 'string' || !next || next === cursor) throw new CatalogLookupError()
             cursor = next
+            nativePage++
             if (budgetFx) cursorCost = data[data.length - 1]._budget_cost
         }
             // Collapse same-product listings BEFORE the per-slot trim so N
@@ -1498,13 +1498,17 @@ function requiredShopSupplementSlots(
     // Oct 2026). Fetching deeper is cheap; rotation needs real choice.
     const targetChoicesPerSlot = manualSelection
         ? 1
-        : (limit >= 10 ? 8 : 6)
+        : (limit >= 10 ? 16 : items.some(item => !isShopRow(item)) ? 6 : 12)
     const countBySlot = new Map<string, number>()
+    const seenProducts = new Set<string>()
 
     for (const item of items) {
         if (eligibility && !eligibility(item)) continue
         const slot = String(item.macroCategory || '').toLowerCase()
         if (!slot) continue
+        const key = `${slot}:${isShopRow(item) ? canonicalProductKey(item) : item.id}`
+        if (seenProducts.has(key)) continue
+        seenProducts.add(key)
         countBySlot.set(slot, (countBySlot.get(slot) || 0) + 1)
     }
 
@@ -1529,7 +1533,7 @@ async function fillMissingSlotsEdge(
                 .from('shop_catalog')
                 .select('id, brand, name, price, currency, image_url, garment_type, category, description, source, source_url')
                 .eq('is_active', true)
-                .limit(30)
+                .limit(200)
             if (slot === 'shoes') q = q.or('category.eq.shoes,garment_type.eq.shoes')
             else if (slot === 'outerwear') q = q.or('category.eq.outerwear,garment_type.eq.outerwear,name.ilike.%jacket%,name.ilike.%coat%,name.ilike.%blazer%,name.ilike.%cardigan%,name.ilike.%sweater%,name.ilike.%hoodie%,name.ilike.%puffer%,name.ilike.%vest%')
             else if (slot === 'top') q = q.or('category.eq.tops,garment_type.eq.upper_body')
@@ -1584,7 +1588,7 @@ async function localFallback(items: any[], style: string, occasion: string, limi
     // A non-positive limit means "no outfits" — bail before the last-resort
     // single-outfit block below, which otherwise emits 1 look for limit 0.
     if ((limit ?? 3) <= 0) return []
-    const shopOnly = isShopOnlyDeck(style, occasion)
+    const shopOnly = isShopOnlyDeck(style, occasion) && !preferences?.lockedAnchorId
     let filteredItems = [...items]
     if (preferences) {
         if (Array.isArray(preferences.avoidColors) && preferences.avoidColors.length > 0) {
@@ -2211,7 +2215,7 @@ async function callNvidia(key: string, model: string, sys: string, usr: string, 
             const d = await withinDeadline(r.json())
             const content = d.choices?.[0]?.message?.content || '{}'
             console.log(`[NVIDIA] response length: ${content.length} chars`)
-            const outfits = safeParseOutfits(content)
+            const outfits = (outputContract ? parseRankedOutfitChoices(content) : null) || safeParseOutfits(content)
             if (outfits && outfits.length > 0) {
                 console.log(`[NVIDIA] parsed ${outfits.length} outfits`)
                 trace?.push({ provider: 'nvidia', model, status: 'ok' })
@@ -2238,7 +2242,10 @@ async function callNvidia(key: string, model: string, sys: string, usr: string, 
 // into its matching slot in every outfit. If no slot matches the anchor's
 // macroCategory, the anchor is prepended to the items array.
 function enforceAnchorInOutfits(outfits: any[], anchorDbItem: any): any[] {
-    const anchorMacro = macroCategory(anchorDbItem.category || '', anchorDbItem.type || '')
+    // Correct a mistagged closet slot from the product name (trousers stored
+    // as Tops) so the anchor replaces the right slot, not a shirt.
+    const anchorMacro = detectSlotMismatch(anchorDbItem.macroCategory || macroCategory(anchorDbItem.category || '', anchorDbItem.type || ''), anchorDbItem.name || anchorDbItem.type || '', anchorDbItem.type || '')
+        || macroCategory(anchorDbItem.category || '', anchorDbItem.type || '')
     const anchorOutfitItem = {
         id: anchorDbItem.id,
         type: anchorDbItem.type || anchorDbItem.category || 'clothing',
@@ -2307,6 +2314,7 @@ serve(async (req: Request) => {
         selectedItemIds = [],
         wardrobeItems: legacyWardrobe = [],
         useProvidedWardrobeOnly = false,
+        catalogOnly = false,
         anchorItemId,
         // Wardrobe-only (Supabase clothing) requests: build ONLY from
         // clothing_items + provided wardrobe items — no shop_catalog
@@ -2324,6 +2332,12 @@ serve(async (req: Request) => {
         excludeItemIds = [],
     } = body
 
+    if (catalogOnly) {
+        legacyWardrobe = []
+        useProvidedWardrobeOnly = true
+        wardrobeOnly = false
+    }
+    weather = resolveStylistWeather(prompt, weather)
     const selectionStyle = isWorkoutOccasion(`${occasion} ${prompt}`) ? 'sport' : stylePreferences
 
     // Cap the window: 200 ids ≈ 15+ decks. Unbounded arrays would bloat
@@ -2351,7 +2365,17 @@ serve(async (req: Request) => {
     try {
         const selected = strictestOutfitBudget(body.preferences?.maxShopBudget, null, budgetInCurrencyEdge)
         const candidates = budgetCandidatesFromTextEdge(`${prompt} ${occasion}`)
-        if (body.preferences?.budgetRatesId !== undefined || new Set([...candidates.map(b => b.currency), ...(selected ? [selected.currency] : [])]).size > 1) await loadRequestFx()
+        const needsFx = new Set([...candidates.map(b => b.currency), ...(selected ? [selected.currency] : [])]).size > 1
+        const hasPinnedBudgetRatesId = body.preferences?.budgetRatesId !== undefined
+        if (hasPinnedBudgetRatesId || needsFx) {
+            try { await loadRequestFx() } catch (fxError) {
+                // Rates are only required to CONVERT. A single-currency
+                // budget (e.g. explicit "$250") must still be enforced in
+                // its own currency when no reference snapshot was requested.
+                if (!needsFx && !hasPinnedBudgetRatesId) requestFx = undefined
+                else throw fxError
+            }
+        }
         parsedBudget = strictestOutfitBudget(selected, parseBudgetFromText(`${prompt} ${occasion}`, requestFx),
             (budget, currency) => budgetInCurrencyEdge({...budget, fx: requestFx}, currency))
         if (parsedBudget && requestFx) parsedBudget.fx = requestFx
@@ -2362,8 +2386,8 @@ serve(async (req: Request) => {
         })
     }
     const preferences = parsedBudget
-        ? { ...(body.preferences || {}), maxShopBudget: parsedBudget }
-        : body.preferences
+        ? { ...(body.preferences || {}), maxShopBudget: parsedBudget, lockedAnchorId: anchorItemId }
+        : { ...(body.preferences || {}), lockedAnchorId: anchorItemId }
 
     try {
         // ── 1. Authenticate user via JWT ──────────────────────────────────
@@ -2453,19 +2477,33 @@ serve(async (req: Request) => {
                 macroCategory: item.macroCategory || macroCategory(item.category || '', item.type || ''),
             }))
 
+        if (anchorItemId && useProvidedWardrobeOnly && !wardrobeItems.some((item: any) => String(item.id) === String(anchorItemId))) {
+            const {data: anchor, error: anchorError} = await userSupabase.from('clothing_items')
+                .select('id,name,type,category,primary_color,brand,description,image_url')
+                .eq('id', anchorItemId).eq('user_id', requestUserId).maybeSingle()
+            if (anchorError) throw new CatalogLookupError()
+            if (!anchor) return new Response(JSON.stringify({success:false,outfits:[],error:'anchor_not_found'}), {status:422,headers:{...corsHeaders,'Content-Type':'application/json'}})
+            wardrobeItems.push({...anchor, macroCategory: macroCategory(anchor.category || '', anchor.type || '', anchor.name || ''),
+                color:anchor.primary_color || 'neutral', imageUrl:anchor.image_url, isWardrobe:true, isShopItem:false})
+        }
+
         // ── 3b. Attach inferred style metadata to every item, regardless of
         // source. If the client already shipped styleTags (shop payload does),
         // we keep theirs; otherwise we compute from name/description/brand.
         wardrobeItems = wardrobeItems.map((item: any) => {
-            const hasTags = Array.isArray(item.styleTags) && item.styleTags.length > 0
-            if (hasTags && item.material !== undefined) return item
-            const inferred = inferAttrsEdge(item)
+            // Repair mistagged closet slots from the product name before any
+            // filtering (trousers filed under Tops broke wardrobe generation).
+            const fixedMacro = detectSlotMismatch(item.macroCategory, item.name || item.type || '', item.type || '')
+            const withSlot = fixedMacro ? { ...item, macroCategory: fixedMacro } : item
+            const hasTags = Array.isArray(withSlot.styleTags) && withSlot.styleTags.length > 0
+            if (hasTags && withSlot.material !== undefined) return withSlot
+            const inferred = inferAttrsEdge(withSlot)
             return {
-                ...item,
-                styleTags: hasTags ? item.styleTags : inferred.styleTags,
-                material: item.material || inferred.materials,
-                pattern: item.pattern || inferred.patterns,
-                formality: typeof item.formality === 'number' ? item.formality : inferred.formality,
+                ...withSlot,
+                styleTags: hasTags ? withSlot.styleTags : inferred.styleTags,
+                material: withSlot.material || inferred.materials,
+                pattern: withSlot.pattern || inferred.patterns,
+                formality: typeof withSlot.formality === 'number' ? withSlot.formality : inferred.formality,
             }
         })
 
@@ -2487,8 +2525,8 @@ serve(async (req: Request) => {
             String(it.id) === String(anchorItemId || '') ||
             (selectedItemIds || []).includes(String(it.id)) || !excludeSet.has(String(it.id)))
 
-        const eligibleCandidate = (item: any) => !isNonOutfitItem(item) && !rejectForStyleOccasion(item, selectionStyle, `${occasion} ${prompt}`)
-            && !rejectForClimate(item, weather) && !rejectForActivity(item, `${occasion} ${prompt}`)
+        const eligibleCandidate = (item: any) => isFourSlotCandidate(item) && !isNonOutfitItem(item) && !rejectForStyleOccasion(item, String(item.id) === String(anchorItemId || '') ? 'casual' : selectionStyle, `${occasion} ${prompt}`)
+            && !rejectForClimate(item, weather) && !rejectForRequestIntent(item, `${occasion} ${prompt}`, weather) && !rejectForActivity(item, `${occasion} ${prompt}`)
         const requiredIds = new Set([...(selectedItemIds || []).map(String), ...(anchorItemId ? [String(anchorItemId)] : [])])
         const blockedSelectedItemIds = wardrobeItems.filter((item: any) => requiredIds.has(String(item.id)) && !eligibleCandidate(item)).map((item: any) => String(item.id))
         if (blockedSelectedItemIds.length) return new Response(JSON.stringify({ success: false, outfits: [], code: 'no_matching_clothing',
@@ -2525,13 +2563,19 @@ serve(async (req: Request) => {
             try {
                 const svcClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
                 if (parsedBudget && missingSlots.length > 0) {
-                    parsedBudget.fx = await loadRequestFx()
+                    try { parsedBudget.fx = await loadRequestFx() }
+                    catch (error) {
+                        if (body.preferences?.budgetRatesId || new Set(budgetCandidatesFromTextEdge(`${prompt} ${occasion}`).map(b => b.currency)).size > 1) throw error
+                        // Same-currency prices require no exchange rate. Exclude
+                        // foreign quotes rather than inventing a conversion.
+                        console.warn('[budget-rates] using_native_currency_only', {currency: parsedBudget.currency})
+                    }
                     preferences.maxShopBudget = parsedBudget
                 }
                 // A banned choice must not count toward a completed page or
                 // consume a per-slot pick while later eligible products exist.
                 const shopEligible = (item: any) => eligibleCandidate(item) && filterShopByPrefs([item], preferences).length === 1
-                const fetchedShopItems = await fetchShopItemsForAllSlotsEdge(svcClient, missingSlots, selectionStyle, targetChoicesPerSlot, excludeSet, shopEligible, parsedBudget ? requestFx : undefined)
+                const fetchedShopItems = await fetchShopItemsForAllSlotsEdge(svcClient, missingSlots, selectionStyle, targetChoicesPerSlot, excludeSet, shopEligible, parsedBudget ? requestFx : undefined, parsedBudget && !requestFx ? parsedBudget : undefined, `${occasion} ${prompt}`)
                 // Shop candidates must respect color/pattern prefs too — the
                 // wardrobe-side filter above ran before they were appended.
                 const shopItems = filterShopByPrefs(fetchedShopItems, preferences)
@@ -2555,7 +2599,7 @@ serve(async (req: Request) => {
         // wardrobe pieces on a card labelled CURATED LOOK. Drop owned rows
         // from the pool entirely — before ranking, budget, itemMap and prompt
         // build — so there is nothing to leak.
-        if (isShopOnlyDeck(stylePreferences, occasion)) {
+        if (isShopOnlyDeck(stylePreferences, occasion) && !anchorItemId) {
             const beforeShopOnly = wardrobeItems.length
             wardrobeItems = wardrobeItems.filter((item: any) => isShopRow(item))
             console.log(`[shop-only] Pool reduced to catalog-only: ${beforeShopOnly} -> ${wardrobeItems.length} (owned rows dropped)`)
@@ -2571,7 +2615,12 @@ serve(async (req: Request) => {
             Number.isFinite(Number(item.price)) && Number(item.price) > 0 &&
             ['USD','EUR','GBP','UZS'].includes(String(item.currency || '').trim().toUpperCase()) &&
             String(item.currency || '').trim().toUpperCase() !== parsedBudget!.currency)) {
-            await loadRequestFx()
+            try { await loadRequestFx() }
+            catch (error) {
+                if (body.preferences?.budgetRatesId) throw error
+                wardrobeItems = wardrobeItems.filter((item: any) => !isShopPricedItem(item) || String(item.currency || '').toUpperCase() === parsedBudget!.currency)
+                console.warn('[budget-rates] using_native_currency_only', {currency: parsedBudget.currency})
+            }
             parsedBudget.fx = requestFx
             preferences.maxShopBudget = parsedBudget
         }
@@ -2634,15 +2683,15 @@ serve(async (req: Request) => {
                     return true
             }
             const budgetSource = wardrobeItems
-            const rankEligible = (item: any) => eligibleCandidate(item) && tasteEligible(item)
-            wardrobeItems = rankItemsForStyleEdge(wardrobeItems, styleKey, { minKeep: 16, dropThreshold: -2, perCategoryFloor: 4, eligibility: rankEligible })
+            const rankEligible = (item: any) => eligibleCandidate(item) && (String(item.id) === String(anchorItemId || '') || tasteEligible(item))
+            wardrobeItems = rankItemsForStyleEdge(wardrobeItems, styleKey, { minKeep: 16, dropThreshold: -2, perCategoryFloor: 6, eligibility: rankEligible })
             wardrobeItems = collapseBySimEdge(wardrobeItems, (i: any) => simKeyEdge(i.name || i.type || '', i.macroCategory || ''))
             if (parsedBudget) {
                 wardrobeItems = retainBudgetFloorCandidates(budgetSource, wardrobeItems,
-                    item => shopPriceOf(item, parsedBudget!.currency, parsedBudget!.fx), rankEligible, anchorPreRank)
+                    item => shopPriceOf(item, parsedBudget!.currency, parsedBudget!.fx), rankEligible, anchorPreRank, 6)
             } else {
                 // A global trim must not discard an entire required slot.
-                wardrobeItems = retainBudgetFloorCandidates(budgetSource, wardrobeItems, () => 0, rankEligible, anchorPreRank, 4)
+                wardrobeItems = retainBudgetFloorCandidates(budgetSource, wardrobeItems, () => 0, rankEligible, anchorPreRank, 6)
             }
             wardrobeItems = wardrobeItems.slice(0, 40)
             if (anchorPreRank && !wardrobeItems.some((i: any) => String(i.id) === String(anchorItemId))) {
@@ -2654,7 +2703,7 @@ serve(async (req: Request) => {
             wardrobeItems = wardrobeItems.filter(eligibleCandidate)
         }
 
-        console.log(`Outfit gen: ${wardrobeItems.length} items, prompt="${prompt}", style=${stylePreferences}`)
+        console.log('[generation-pool]', {count: wardrobeItems.length, style: selectionStyle, slots: Object.fromEntries(['top','bottom','shoes','outerwear'].map(slot => [slot, wardrobeItems.filter((item: any) => item.macroCategory === slot).length]))})
 
         // Unknown cost is not proof that a budget is too low. Keep optional
         // unpriced rows out, but fail before provider work if a required or
@@ -2679,6 +2728,7 @@ serve(async (req: Request) => {
         if (wardrobeItems.length > 0) {
             const required = [...(wardrobeItems.some(isDressGarment) ? [] : ['top', 'bottom']), 'shoes', ...(needsLayering(selectionStyle, weather, prompt) ? ['outerwear'] : [])]
             const missingSlots = required.filter(slot => !wardrobeItems.some((item: any) => item.macroCategory === slot))
+            if (missingSlots.length) console.warn('[generation-reject]', {code:'no_matching_clothing', missingSlots, wardrobeOnly, useProvidedWardrobeOnly})
             if (missingSlots.length) return new Response(JSON.stringify({ success: false, outfits: [], code: 'no_matching_clothing',
                 error: 'The selected clothing pool has no complete outfit suitable for the requested style, occasion and weather.', missingSlots }), {
                 status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -2707,7 +2757,7 @@ serve(async (req: Request) => {
         // Dresses are alternative compositions; unknown shop prices/currencies
         // leave the decision to normal validation rather than falsely rejecting.
         const budgetEligibleItems = wardrobeItems.filter((item: any) =>
-            !rejectForStyleOccasion(item, selectionStyle, `${occasion} ${prompt}`)
+            !rejectForStyleOccasion(item, String(item.id) === String(anchorItemId || '') ? 'casual' : selectionStyle, `${occasion} ${prompt}`)
                 && !rejectForClimate(item, weather)
                 && !rejectForActivity(item, `${occasion} ${prompt}`))
         if (parsedBudget && !budgetEligibleItems.some(isDressGarment)) {
@@ -2781,6 +2831,12 @@ serve(async (req: Request) => {
         const useCuratedChoices = Deno.env.get('NVIDIA_OUTFIT_SELECTION_MODE') === 'curated'
 
         // ── 5. Decide layering policy (2-top layered composition vs classic 3-slot) ──
+        // A locked anchor that never reached the candidate pool must fail
+        // explicitly, not silently produce anchor-less decks.
+        if (anchorItemId && (!isShopOnlyDeck(stylePreferences, occasion) || !!anchorItemId)
+            && !wardrobeItems.some((i: any) => String(i.id) === String(anchorItemId))) {
+            return new Response(JSON.stringify({ success: false, error: 'anchor_not_found', outfits: [] }), { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        }
         const layered = needsLayering(stylePreferences, weather, `${occasion} ${prompt}`)
         console.log(`[layer] style=${styleKey} weather=${weather?.temp ?? '?'}°C layered=${layered}`)
 
@@ -2793,7 +2849,7 @@ serve(async (req: Request) => {
         const sys = buildSystemPrompt(limit, selectionStyle, layered, preferences, occasion, parsedBudget)
         let usr = buildUserPrompt(wardrobeItems, prompt, selectionStyle, occasion, weather, limit, preferences)
         if (body.conversationContext) usr += `\nConversation context (the latest request above takes precedence):\n${String(body.conversationContext).slice(-4000)}`
-        if (anchorItemId && !isShopOnlyDeck(stylePreferences, occasion)) {
+        if (anchorItemId && (!isShopOnlyDeck(stylePreferences, occasion) || !!anchorItemId)) {
             const anchorForPrompt = wardrobeItems.find((i: any) => String(i.id) === String(anchorItemId))
             if (anchorForPrompt) {
                 const anchorDesc = [anchorForPrompt.color, anchorForPrompt.name || anchorForPrompt.type].filter(Boolean).join(' ')
@@ -2807,32 +2863,59 @@ serve(async (req: Request) => {
         // if >50% fail, call the model once more with a stricter correction
         // prompt. This is what turns "mostly on-style" into "reliably on-style".
         const itemMap = new Map<string, any>(wardrobeItems.map((i: any) => [String(i.id), i] as [string, any]))
+        let verifiedChoiceFallback: any[] = []
         async function generateCuratedChoices(): Promise<any[] | null> {
-        const requiredChoiceIds = [...new Set([...(selectedItemIds || []), ...(anchorItemId && !isShopOnlyDeck(stylePreferences, occasion) ? [anchorItemId] : [])])].map(String)
-        const choices = outfitChoices(wardrobeItems, layered, parts => {
-            if (outfitStructureReason(parts, layered) || styleJudgeReason(parts, styleKey, `${occasion} ${prompt}`, weather)) return false
+        const requiredChoiceIds = [...new Set([...(selectedItemIds || []), ...(anchorItemId && (!isShopOnlyDeck(stylePreferences, occasion) || !!anchorItemId) ? [anchorItemId] : [])])].map(String)
+        let choices = outfitChoices(wardrobeItems, layered, parts => {
+            if (fourSlotOutfitReason(parts, layered) || styleJudgeReason(parts, styleKey, `${occasion} ${prompt}`, weather, anchorItemId)) return false
             const proposal = {items: parts}
             if (!validateOutfitAgainstStyle(proposal, styleKey, itemMap, layered, preferences).ok || !validateOutfitCompatibility(proposal, itemMap, styleKey).ok) return false
             if (isWorkishOccasion(`${occasion} ${prompt}`) && parts.some(item => isSwimBottomItem(item) || isDriverShoeItem(item))) return false
             if (preferences?.maxShopBudget && !fitsBudgetAmount(outfitShopSpend(parts, itemMap, preferences.maxShopBudget.currency, preferences.maxShopBudget.fx), preferences.maxShopBudget.amount)) return false
-            const shopOnly = isShopOnlyDeck(stylePreferences, occasion)
+            const shopOnly = isShopOnlyDeck(stylePreferences, occasion) && !anchorItemId
             if (shopOnly && parts.some(item => !isShopRow(item))) return false
             if (!shopOnly && wardrobeItems.some((item:any) => !isShopRow(item)) && parts.every(item => isShopRow(item))) return false
             return true
-        }, isDressGarment, requiredChoiceIds)
+        }, isDressGarment, requiredChoiceIds, 64, 12000)
         if (!choices.length) return null
+        // Resolve product compatibility jointly BEFORE asking the model to rank.
+        // A five-look shortlist can omit the only compatible third card, while
+        // ranking 24 IDs overloads the compact provider's output reliability.
+        const rankCompleteSet = Math.min(Number(deckTarget) || limit, limit) > 1
+        if (rankCompleteSet) {
+            const anchor = anchorItemId && (!isShopOnlyDeck(stylePreferences, occasion) || !!anchorItemId)
+                ? wardrobeItems.find((item: any) => String(item.id) === String(anchorItemId)) : undefined
+            choices = assembleDiverseDeck({
+                candidates: choices, itemsOf: choice => choice.items,
+                keysOf: item => productIdentityKeys(item), poolItems: wardrobeItems, usedKeys: new Set<string>(),
+                anchorKeys: anchor ? new Set(productIdentityKeys(anchor)) : undefined,
+                anchorSlot: anchor ? diversitySlotOf(anchor) : null,
+                activeSlots: layered ? ['top','outerwear','bottom','shoes'] : ['top','bottom','shoes'],
+                target: Math.min(Number(deckTarget) || limit, limit),
+            }).deck
+        }
+        if (!choices.length) return null
+        verifiedChoiceFallback = choices.map((choice, index) => ({items:choice.items, curationRank:index, description:`${selectionStyle} outfit`, stylingTips:[]}))
         const usedIds = new Set(choices.flatMap(choice => choice.items.map(item => item.id)))
         const context = getStyleContext(selectionStyle)
+        const selectionCount = rankCompleteSet ? choices.length : Math.min(limit, choices.length)
+        const selectionTask = rankCompleteSet
+            ? `Rank all ${selectionCount} supplied complete look IDs from best to least preferred. Return IDs only, without descriptions or explanations.`
+            : `Choose exactly ${selectionCount} of the supplied complete look IDs. Provide a short description per selected look.`
         const choiceSystem = `You are a fashion stylist curating complete outfits for ${selectionStyle}. ${context.vibe}
-Choose exactly ${Math.min(limit, choices.length)} of the supplied complete look IDs, ranked by aesthetic quality, color harmony, occasion and the user's preferences. The options have already passed structural, style and budget validation. Never invent IDs or change the items inside a look. Select distinct looks. Provide a short description per selected look. Return only JSON.`
-        console.log(`[curation] options=${choices.length} required=${Math.min(limit, choices.length)}`)
-        const choiceUser = JSON.stringify({requiredCount:Math.min(limit,choices.length),request:prompt,occasion,weather,preferences:{favoriteColors:preferences?.favoriteColors,fitPreference:preferences?.fitPreference,styleGoals:preferences?.styleGoals},
+${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's preferences. The options have already passed structural, style and budget validation. Never invent IDs or change the items inside a look. Select distinct look IDs. Return only JSON.`
+        console.log(`[curation] options=${choices.length} required=${selectionCount}`)
+        const choiceUser = JSON.stringify({requiredCount:selectionCount,request:prompt,occasion,weather,preferences:{favoriteColors:preferences?.favoriteColors,fitPreference:preferences?.fitPreference,styleGoals:preferences?.styleGoals},
           products:wardrobeItems.filter((item:any)=>usedIds.has(item.id)).map((item:any)=>({id:item.id,name:item.name,slot:item.macroCategory,color:item.color,material:item.material,pattern:item.pattern})),
           looks:choices.map(choice=>({id:choice.id,items:choice.items.map(item=>item.id)}))})
-        const choiceContract = '\nOUTPUT CONTRACT: {"outfits":[{"description":"brief styling explanation","items":[{"id":"look001"}]}]}. Each outfit selects exactly ONE supplied complete look ID. Do not return individual garment IDs.'
+        const choiceContract = rankCompleteSet
+            ? '\nOUTPUT CONTRACT: {"rankedLookIds":["look001","look002"]}. Return every supplied look ID once, best first, in this flat string array. No outfit objects, descriptions, explanations, individual garment IDs or extra fields.'
+            : '\nOUTPUT CONTRACT: {"outfits":[{"description":"brief styling explanation","items":[{"id":"look001"}]}]}. Each outfit selects exactly ONE supplied complete look ID. Do not return individual garment IDs.'
         providerCalls += 1
         const selections = await callNvidia(nvidiaKey,nvidiaModel,choiceSystem,choiceUser,1,providerTrace,false,choiceContract)
-        return resolveOutfitChoices(selections,choices)
+        const ranked = resolveOutfitChoices(selections,choices)
+        if (rankCompleteSet && ranked?.length !== choices.length) return null
+        return rankCompleteSet && ranked ? ranked.map((outfit,index)=>({...outfit,curationRank:index})) : ranked
         }
         // One configured provider for every subscription; a failed provider is
         // an error that falls through to the deterministic fallback below.
@@ -2891,7 +2974,7 @@ Choose exactly ${Math.min(limit, choices.length)} of the supplied complete look 
                     : `${usr}\n\nIMPORTANT CORRECTION: Your previous attempt failed because (a) some items violated the ${styleKey} aesthetic, OR (b) outfits were missing required slots. REQUIREMENTS:\n${layeredReqs}\n  ${layered ? '4' : '3'}. Reject any item whose name/description contains: hoodie (unless casual), graphic tee, logo tee, cargo, ripped, sweatpants, neon, sequin, rhinestone, chunky sneaker, basketball, skate sneaker, casual t-shirt (for old_money / business_casual / minimalist / semi_classic).\n  ${layered ? '5' : '4'}. For ${styleKey} shoes, prefer: loafers, penny loafers, bit loafers, dress shoes, boat shoes, derbies, leather shoes. Avoid ALL sneakers if style is old_money.\nTry again and return ${limit} outfits that each have ${layered ? 'outerwear+base-top+bottom+shoes' : 'top+bottom+shoes'}.`
                 correctionUsr += `\nAUTHORITATIVE VALIDATION FAILURES (JSON data): ${JSON.stringify(validationFailures)}. Fix these specific failures while preserving every category, occasion, style and budget requirement. Do not repeat the rejected combination.`
                 correctionUsr += outfitBudgetFeedback(aiOutfits, itemMap, preferences?.maxShopBudget, (amount, from, to) => convertShopAmountEdge(amount, from, to, preferences?.maxShopBudget?.fx),
-                    item => !rejectForStyleOccasion(item, selectionStyle, `${occasion} ${prompt}`)
+                    item => !rejectForStyleOccasion(item, String(item.id) === String(anchorItemId || '') ? 'casual' : selectionStyle, `${occasion} ${prompt}`)
                         && !rejectForClimate(item, weather)
                         && !rejectForActivity(item, `${occasion} ${prompt}`))
                 const retry = await generate(sys, correctionUsr)
@@ -2925,7 +3008,11 @@ Choose exactly ${Math.min(limit, choices.length)} of the supplied complete look 
         // SAME global deck selector (assembleDiverseDeck). A fallback that
         // cannot satisfy style / occasion / activity / weather / budget is
         // NOT returned — the client gets a retryable 503 instead.
-        if (!aiOutfits?.length && !useCuratedChoices) {
+        if (!aiOutfits?.length && verifiedChoiceFallback.length) {
+            aiOutfits = filterValidOutfits(verifiedChoiceFallback, styleKey, itemMap, layered, preferences, `${occasion} ${prompt}`, weather)
+            if (aiOutfits.length) generationSource = 'deterministic_fallback'
+        }
+        if (!aiOutfits?.length) {
             console.warn('[provider] PROVIDER_GENERATION_FAILED', {
                 attempts: providerTrace,
                 provider: aiProviderUsed,
@@ -2972,12 +3059,7 @@ Choose exactly ${Math.min(limit, choices.length)} of the supplied complete look 
                     occasion,
                 })
             }
-        } else if (!aiOutfits?.length) {
-            // Curated mode fails CLOSED: it selects among whole pre-built
-            // looks, and a locally assembled look is not one of them. The
-            // client gets the retryable 503 instead.
-            console.warn('[provider] curated mode produced no usable selection')
-        }
+                }
 
         if (!aiOutfits?.length) return new Response(JSON.stringify({ success: false, error: 'ai_generation_unavailable', outfits: [], providerAttempts: providerTrace }), {status: 503, headers: {...corsHeaders, 'Content-Type':'application/json'}})
 
@@ -3001,7 +3083,7 @@ Choose exactly ${Math.min(limit, choices.length)} of the supplied complete look 
         // outfit that still contains an owned row, and drop any non-shop row
         // inside a surviving outfit.
         let finalOutfits = enriched
-        if (isShopOnlyDeck(stylePreferences, occasion)) {
+        if (isShopOnlyDeck(stylePreferences, occasion) && !anchorItemId) {
             const beforeStrip = finalOutfits.length
             finalOutfits = finalOutfits
                 .map((o: any) => ({ ...o, items: (o.items || []).filter((it: any) => isShopRow(it)) }))
@@ -3012,7 +3094,7 @@ Choose exactly ${Math.min(limit, choices.length)} of the supplied complete look 
         // ── 9. Apply anchor-item enforcement ──────────────────────────────
         // If anchorItemId was provided, lock that item into its slot in every outfit.
         // This runs after enrichment so the anchor item's imageUrl is already resolved.
-        if (anchorItemId && !isShopOnlyDeck(stylePreferences, occasion)) {
+        if (anchorItemId && (!isShopOnlyDeck(stylePreferences, occasion) || !!anchorItemId)) {
             // Look up the anchor item from the wardrobe pool (pre-enrichment data)
             const anchorDbItem = wardrobeItems.find((i: any) => String(i.id) === String(anchorItemId))
             if (anchorDbItem) {
@@ -3024,8 +3106,9 @@ Choose exactly ${Math.min(limit, choices.length)} of the supplied complete look 
         }
 
         finalOutfits = finalOutfits.filter((outfit: any) => {
-            const reason = styleJudgeReason(outfit.items, styleKey, `${occasion || ''} ${prompt || ''}`, weather)
-            const complete = !outfitStructureReason(outfit.items, layered)
+            const hasAnchor = !anchorItemId || (outfit.items || []).some((it: any) => String(it.id) === String(anchorItemId))
+            const reason = hasAnchor ? styleJudgeReason(outfit.items || [], styleKey, `${occasion || ''} ${prompt || ''}`, weather, anchorItemId) : 'anchor_missing'
+            const complete = !fourSlotOutfitReason(outfit.items, layered)
             if (reason || !complete) console.warn('[quality-reject]', { reason: reason || 'missing_slots', style: styleKey, occasion })
             const repeats = outfit.items.some((it: any) => String(it.id) !== String(anchorItemId || '') && excludeSet.has(String(it.id)) && !(selectedItemIds || []).includes(String(it.id)))
             const budgetOk = !preferences?.maxShopBudget || fitsBudgetAmount(outfitShopSpend(outfit.items, itemMap, preferences.maxShopBudget.currency, preferences.maxShopBudget.fx), preferences.maxShopBudget.amount)
@@ -3042,7 +3125,7 @@ Choose exactly ${Math.min(limit, choices.length)} of the supplied complete look 
         // slot genuinely thin?" from it.
         let diversityCapacity: { activeSlots: DiversitySlot[]; strictSlots: DiversitySlot[]; forcedRepeatSlots: DiversitySlot[] } | undefined
         if (finalOutfits.length > 0) {
-            const anchorForDiversity = anchorItemId && !isShopOnlyDeck(stylePreferences, occasion)
+            const anchorForDiversity = anchorItemId && (!isShopOnlyDeck(stylePreferences, occasion) || !!anchorItemId)
                 ? wardrobeItems.find((i: any) => String(i.id) === String(anchorItemId))
                 : undefined
             const anchorIdentityKeys = new Set<string>(
@@ -3058,12 +3141,14 @@ Choose exactly ${Math.min(limit, choices.length)} of the supplied complete look 
             // The displayed deck size drives the capacity assessment.
             const requestedDeckTarget = Math.max(
                 1,
-                Math.min(Number(deckTarget) || limit, limit, finalOutfits.length || limit),
+                Math.min(Number(deckTarget) || limit, limit),
             )
             const diverseDeck = assembleDiverseDeck<any>({
                 candidates: finalOutfits,
                 itemsOf: (o: any) => o.items || [],
-                qualityOf: (o: any) => Number(o.confidence ?? o.matchScore ?? 0.9),
+                qualityOf: (o: any) => Number.isSafeInteger(o.curationRank) && o.curationRank >= 0
+                    ? 1 / (1 + o.curationRank)
+                    : Number(o.confidence ?? o.matchScore ?? 0.9),
                 keysOf: (item: any) => productIdentityKeys(item),
                 anchorKeys: anchorIdentityKeys.size > 0 ? anchorIdentityKeys : undefined,
                 anchorSlot: anchorForDiversity ? diversitySlotOf(anchorForDiversity) : null,

@@ -1,0 +1,30 @@
+{
+  "measuredAt": "2026-10-25T16:19:28.945Z",
+  "scope": "Twenty concurrent actual dailyUsageStore calls through live ordinary-account quota RPCs. AsyncStorage and free-plan selectors controlled; not native Home UI, provider work or10kDAUproof.",
+  "checks": [
+    {
+      "name": "fixture_is_free_without_trial",
+      "passed": true
+    },
+    {
+      "name": "exactly_three_of_twenty_reservations_allowed",
+      "passed": false
+    }
+  ],
+  "fixtureUserId": "80ef9426-d757-49e0-a7fd-d313d9ca9a26",
+  "sourceSha256": "3d2dd989b202c56fe5e8289c64bf9359c257192f2eac21d9ec8f91555c3ac6ae",
+  "requests": {
+    "maxActive": 20,
+    "elapsedMs": 1,
+    "allowed": 0,
+    "denied": 0,
+    "errors": 20
+  },
+  "failure": "Error",
+  "cleanup": {
+    "sessionsRevoked": true,
+    "ownerDeleted": true
+  },
+  "passed": false,
+  "harnessDiagnostic": "The controlled CommonJS subscription/storage modules lacked ES-module markers; store calls failed before quota RPCs. This is not a production API result."
+}

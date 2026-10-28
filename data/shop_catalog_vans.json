@@ -1,0 +1,47 @@
+[
+  {
+    "id": "vans-vn000p54blk",
+    "brand": "Vans",
+    "name": "Original Standards T-Shirt",
+    "price": 19.95,
+    "currency": "USD",
+    "category": "tops",
+    "garment_type": "upper_body",
+    "description": "Vans men's Black clothing · flat-lay garment on a neutral background",
+    "image_url": "https://assets.vans.com/images/t_img/c_fill%2Cg_center%2Cf_auto%2Ch_2500%2Cw_2000/v1741137983/VN000P54BLK-FLATLAY/Original-Standards-TShirt-VANS-Black-FLATLAY.png",
+    "source": "vans-official-mens-clothing",
+    "source_url": "https://www.vans.com/en-us/p/en-ca/clothing-c00082/original-standards-t-shirt-VN000P54BLK?_sr=1",
+    "is_active": false,
+    "sort_order": 0
+  },
+  {
+    "id": "vans-vn0a3czeatj",
+    "brand": "Vans",
+    "name": "Left Chest Logo T-Shirt",
+    "price": 25.0,
+    "currency": "USD",
+    "category": "tops",
+    "garment_type": "upper_body",
+    "description": "Vans men's Heather Grey clothing · flat-lay garment on a neutral background",
+    "image_url": "https://assets.vans.com/images/t_img/c_fill%2Cg_center%2Cf_auto%2Ch_2500%2Cw_2000/v1741151971/VN0A3CZEATJ-FLATLAY/Left-Chest-Logo-TShirt-VANS-Athletic-HeatherBlack-FLATLAY.png",
+    "source": "vans-official-mens-clothing",
+    "source_url": "https://www.vans.com/en-us/p/clothing-00082/left-chest-logo-t-shirt-VN0A3CZEATJ",
+    "is_active": false,
+    "sort_order": 1
+  },
+  {
+    "id": "vans-vn000g51blk",
+    "brand": "Vans",
+    "name": "Original Standards Loose T-Shirt",
+    "price": 20.97,
+    "currency": "USD",
+    "category": "tops",
+    "garment_type": "upper_body",
+    "description": "Vans men's Black clothing · flat-lay garment on a neutral background",
+    "image_url": "https://assets.vans.com/images/t_img/c_fill%2Cg_center%2Cf_auto%2Ch_2500%2Cw_2000/v1741196243/VN000G51BLK-FLATLAY/Original-Standards-Loose-TShirt-VANS-Black-FLATLAY.png",
+    "source": "vans-official-mens-clothing",
+    "source_url": "https://www.vans.com/en-us/p/40-sos-promo-7000/original-standards-loose-t-shirt-VN000G51BLK",
+    "is_active": false,
+    "sort_order": 2
+  }
+]

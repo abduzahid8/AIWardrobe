@@ -1,0 +1,41 @@
+{
+  "measuredAt": "2026-10-25T11:36:48.855Z",
+  "sourceSha256": "be646e733ed45de0636a8b2deb1d247102bce034c584356558dc3447f3988bcc",
+  "scope": "One direct NVIDIA diagnostic using actual staged handler with controlled Auth/config; no production admission claim",
+  "providerResponses": [
+    {
+      "status": 200,
+      "finishReason": "stop",
+      "contentLength": 198,
+      "parsed": {
+        "category": "shoes",
+        "section": "shoes",
+        "style": "casual",
+        "color": "brown",
+        "material": "leather",
+        "description": "A brown leather loafer with a pebbled sole and a bit on the side.",
+        "shoeType": "bit_loafer"
+      }
+    }
+  ],
+  "fixture": {
+    "path": "assets/images/basic_brown_loafers.png",
+    "bytes": 179787,
+    "sha256": "6420d406db4ff155ec6d3283e24da6ab77a206f0a08e592218c46609e7b8a2a8"
+  },
+  "candidateModel": "meta/llama-3.2-11b-vision-instruct",
+  "handlerStatus": 200,
+  "latencyMs": 5417,
+  "acceptedClassification": {
+    "category": "shoes",
+    "section": "shoes",
+    "confidence": 0,
+    "attributes": {
+      "style": "casual",
+      "color": "brown",
+      "material": "leather",
+      "shoeType": "bit_loafer"
+    }
+  },
+  "error": null
+}

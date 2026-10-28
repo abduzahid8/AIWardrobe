@@ -33,6 +33,18 @@ function messageFrom(payload: unknown, status?: number): MessageKey | undefined 
   return undefined;
 }
 
+/** Keep operational failure categories without logging input, headers or server text. */
+function reportUnmappedFailure(error: unknown, phase: 'transport' | 'http_body' | 'http_decode') {
+  const sdkName = (error as { name?: unknown } | null)?.name;
+  const knownNames = ['FunctionsFetchError', 'FunctionsHttpError', 'FunctionsRelayError', 'AbortError', 'Error'];
+  const status = (error as { context?: { status?: unknown } } | null)?.context?.status;
+  console.warn('[stylist-request-failure]', {
+    phase,
+    sdkError: typeof sdkName === 'string' && knownNames.includes(sdkName) ? sdkName : 'unknown',
+    httpStatus: typeof status === 'number' && Number.isInteger(status) && status >= 100 && status <= 599 ? status : null,
+  });
+}
+
 /** Decode only known server codes; never display raw provider/server messages. */
 export async function outfitGenerationFailure(data: unknown, error?: unknown): Promise<OutfitGenerationFailure> {
   const direct = messageFrom(data);
@@ -43,8 +55,11 @@ export async function outfitGenerationFailure(data: unknown, error?: unknown): P
       // Supabase HTTP errors retain the Response, rather than returning its JSON
       // as data. Bound this read too so an error body cannot stall the screen.
       const payload = await withRequestDeadline(() => context.clone().json(), 1500);
-      return new OutfitGenerationFailure(messageFrom(payload, context.status));
-    } catch { /* Malformed/slow errors use the localized generic message. */ }
+      const message = messageFrom(payload, context.status);
+      if (!message) reportUnmappedFailure(error, 'http_body');
+      return new OutfitGenerationFailure(message);
+    } catch { reportUnmappedFailure(error, 'http_decode'); return new OutfitGenerationFailure(); }
   }
+  reportUnmappedFailure(error, 'transport');
   return new OutfitGenerationFailure();
 }

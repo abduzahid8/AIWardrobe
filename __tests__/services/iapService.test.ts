@@ -80,6 +80,48 @@ describe('iapService purchase product resolution', () => {
         mockVerifySubscriptionFromServer.mockResolvedValue(undefined);
     });
 
+    it('does not advertise mock subscription products in production when RevenueCat is unavailable', async () => {
+        const previousDev = (globalThis as any).__DEV__;
+        (globalThis as any).__DEV__ = false;
+        try {
+            const config = require('../../src/config/env').default;
+            config.revenueCat.apiKey = '';
+            const { iapService } = require('../../src/services/iapService');
+
+            expect(await iapService.getProducts()).toEqual([]);
+            expect(mockConfigure).not.toHaveBeenCalled();
+        } finally {
+            (globalThis as any).__DEV__ = previousDev;
+        }
+    });
+
+    it('includes the canonical Lite product when offerings are empty', async () => {
+        mockGetOfferings.mockResolvedValue({ current: null, all: {} });
+        mockGetProducts.mockResolvedValue([{
+            identifier: 'com.aiwardrobe.lite.monthly',
+            title: 'Lite Monthly',
+            priceString: '$2.99',
+        }]);
+
+        const { iapService } = require('../../src/services/iapService');
+        const products = await iapService.getProducts();
+
+        expect(mockGetProducts).toHaveBeenCalledWith([
+            '2.99',
+            'com.aiwardrobe.lite.monthly',
+            'com.aiwardrobe.premium.monthly',
+            'com.aiwardrobe.premium.yearly',
+        ]);
+        expect(products).toEqual([{
+            id: 'com.aiwardrobe.lite.monthly',
+            title: 'Lite Monthly',
+            price: '$2.99',
+            introductoryPrice: undefined,
+            introductoryPeriod: undefined,
+            hasFreeTrial: undefined,
+        }]);
+    });
+
     it('buys only the requested Lite product when offerings contain Pro and Yearly packages', async () => {
         jest.useFakeTimers();
         const liteStoreProduct = {
@@ -198,11 +240,14 @@ describe('iapService purchase product resolution', () => {
         mockGetOfferings.mockResolvedValue({ current: { availablePackages: [{ product: { identifier: '2.99' } }] }, all: {} });
         mockPurchasePackage.mockResolvedValue({});
         mockSyncInvoke.mockResolvedValue({ data: null, error: new Error('unavailable') });
+        const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
         const { iapService } = require('../../src/services/iapService');
         const result = await iapService.purchase('2.99');
         expect(result.success).toBe(false);
         expect(mockPurchasePackage).not.toHaveBeenCalled();
         expect(mockPurchaseStoreProduct).not.toHaveBeenCalled();
+        expect(warn).toHaveBeenCalledWith('[app]', '[IAP] Checkout blocked before StoreKit', [{ reason: 'sync_request_failed' }]);
+        warn.mockRestore();
     });
     it('a verified free account can start a purchase when reconciliation is ready', async () => {
         mockSyncInvoke.mockResolvedValue({ data: { verified: true, tier: 'free', expiryDate: null }, error: null });
@@ -229,6 +274,46 @@ describe('iapService purchase product resolution', () => {
         expect(mockPurchasePackage).not.toHaveBeenCalled();
         expect(mockPurchaseStoreProduct).not.toHaveBeenCalled();
     });
+    it('ends the paywall wait when StoreKit never responds and blocks duplicate charges', async () => {
+        jest.useFakeTimers();
+        mockGetOfferings.mockResolvedValue({
+            current: { availablePackages: [{ product: { identifier: '2.99' } }] }, all: {},
+        });
+        mockPurchasePackage.mockReturnValue(new Promise(() => {}));
+        const { iapService, NATIVE_STORE_PURCHASE_TIMEOUT_MS } = require('../../src/services/iapService');
+        const first = iapService.purchase('2.99');
+        for (let n = 0; n < 32; n++) await Promise.resolve();
+        expect(mockPurchasePackage).toHaveBeenCalledTimes(1);
+        await jest.advanceTimersByTimeAsync(NATIVE_STORE_PURCHASE_TIMEOUT_MS + 1);
+        const result = await first;
+        expect(result).toMatchObject({ success: false, checkoutPending: true });
+
+        const retry = await iapService.purchase('2.99');
+        expect(retry).toMatchObject({ success: false, checkoutPending: true });
+        expect(mockPurchasePackage).toHaveBeenCalledTimes(1);
+        mockSyncInvoke.mockResolvedValue({ data: { verified: true, tier: 'free', expiryDate: null }, error: null });
+        const restore = await iapService.restorePurchases();
+        expect(restore).toMatchObject({ success: false, checkoutPending: true });
+        expect(mockRestore).not.toHaveBeenCalled();
+    });
+
+    it('releases the StoreKit lock after a timed-out native operation later settles', async () => {
+        jest.useFakeTimers();
+        mockGetOfferings.mockResolvedValue({ current: { availablePackages: [{ product: { identifier: '2.99' } }] }, all: {} });
+        let finishStoreCall: (value: unknown) => void = () => undefined;
+        mockPurchasePackage.mockImplementationOnce(() => new Promise(resolve => { finishStoreCall = resolve; }));
+        const { iapService, NATIVE_STORE_PURCHASE_TIMEOUT_MS } = require('../../src/services/iapService');
+        const first = iapService.purchase('2.99');
+        for (let n = 0; n < 32; n++) await Promise.resolve();
+        await jest.advanceTimersByTimeAsync(NATIVE_STORE_PURCHASE_TIMEOUT_MS + 1);
+        expect(await first).toMatchObject({ success: false, checkoutPending: true });
+        finishStoreCall({ customerInfo: { entitlements: { active: {} } } });
+        for (let n = 0; n < 8; n++) await Promise.resolve();
+        mockPurchasePackage.mockResolvedValueOnce({ customerInfo: { entitlements: { active: {} } } });
+        expect((await iapService.purchase('2.99')).success).toBe(true);
+        expect(mockPurchasePackage).toHaveBeenCalledTimes(2);
+    });
+
     it('logout while offerings load prevents store checkout', async () => {
         let resolveOfferings: (value: unknown) => void = () => undefined;
         mockGetOfferings.mockReturnValue(new Promise(resolve => { resolveOfferings = resolve; }));

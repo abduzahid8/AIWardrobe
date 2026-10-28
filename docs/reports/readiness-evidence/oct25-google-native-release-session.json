@@ -1,0 +1,37 @@
+{
+  "measuredAt": "2026-10-25T17:56:00Z",
+  "scope": "Observed installed self-contained iOS Release build, user-completed personal Google login, read-only production session verification and full simulator restart. No passwords or tokens collected.",
+  "appVersion": "1.4.3 (56)",
+  "simulator": "AIWardrobe-Media-Render-20261021",
+  "simulatorId": "97BD8504-6E4D-4F45-9C45-2E097E407BAA",
+  "checks": {
+    "initialLongRunningAttemptRejectedWithOAuthStateExpired": true,
+    "appReturnedToUsableSignInAfterDismissingError": true,
+    "freshOAuthAttemptRecognizedPreviouslySignedInGoogleAccount": true,
+    "userSelectedTheirPersonalAccount": true,
+    "nativeAuthBrowserClosedAndAppReachedStyleQuiz": true,
+    "backendGoogleIdentityPresent": true,
+    "backendRecentSignIn": true,
+    "backendProfilePresent": true,
+    "backendValidUniqueHandle": true,
+    "backendRecentSessionCount": 1,
+    "fullSimulatorRestartCompleted": true,
+    "coldStartReturnedToAuthenticatedStyleQuizWithoutAnotherLogin": true,
+    "onboardingContinueOpenedStyleChoices": true,
+    "userCompletedOnboarding": true,
+    "authenticatedHomeOpened": true,
+    "backendSessionRefreshedMoreThanOneHourAfterCreation": true,
+    "authenticatedOutfitSaveAfterExpirySucceeded": true,
+    "currentReleaseReinstallReopenedAuthenticatedHome": true
+  },
+  "routeEvidence": "navigation/RootNavigator.tsx only registers StyleQuiz under isAuthenticated and the onboarding gate.",
+  "accountHandling": "Genuine user account retained; not a disposable fixture. No profile preferences invented.",
+  "pending": [
+    "Logout and subsequent Google sign-in",
+    "Apple provider parity",
+    "Android provider parity",
+    "Complete recovery email delivery"
+  ],
+  "fullAuthenticationPublicationGatePassed": false,
+  "followUpDate": "2026-10-26"
+}

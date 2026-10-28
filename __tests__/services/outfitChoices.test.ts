@@ -1,5 +1,5 @@
 import {isDressGarment} from '../../backend/supabase/functions/_shared/outfitStructure';
-import {outfitChoices,resolveOutfitChoices} from '../../backend/supabase/functions/_shared/outfitChoices';
+import {outfitChoices,resolveOutfitChoices,parseRankedOutfitChoices} from '../../backend/supabase/functions/_shared/outfitChoices';
 const items=['top','bottom','shoes','outerwear'].flatMap(macroCategory=>Array.from({length:6},(_,i)=>({id:`${macroCategory}-${i}`,name:macroCategory,macroCategory})));
 test.each([false,true])('offers only complete validated diverse combinations (layered=%s)',layered=>{
  const choices=outfitChoices(items,layered,parts=>!parts.some(p=>p.id==='bottom-0'), isDressGarment);
@@ -40,4 +40,13 @@ test('dress shirts remain eligible tops alongside actual dresses',()=>{
 test('offers dress and separates alternatives together instead of starving dresses',()=>{
  const dress={id:'dress',name:'Cotton dress',macroCategory:'dress'};const choices=outfitChoices([...items,dress],false,()=>true, isDressGarment);
  expect(choices.some(c=>c.items.includes(dress))).toBe(true);expect(choices.some(c=>!c.items.includes(dress))).toBe(true);
+});
+
+test('compact rankings decode only complete-choice references and retain order',()=>{
+ expect(parseRankedOutfitChoices('{"rankedLookIds":["look003","look001"]}')).toEqual([{items:[{id:'look003'}]},{items:[{id:'look001'}]}]);
+ expect(parseRankedOutfitChoices('{"rankedLookIds":[{"id":"look001"}]}')).toBeNull();
+ expect(parseRankedOutfitChoices('{"rankedLookIds":[]}')).toBeNull();
+ expect(parseRankedOutfitChoices('not JSON')).toBeNull();
+ const choices=outfitChoices(items,false,()=>true,isDressGarment);
+ expect(resolveOutfitChoices(parseRankedOutfitChoices('{"rankedLookIds":["invented"]}'),choices)).toBeNull();
 });

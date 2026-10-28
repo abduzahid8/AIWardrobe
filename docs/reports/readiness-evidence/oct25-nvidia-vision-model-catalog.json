@@ -1,0 +1,20 @@
+{
+  "measuredAt": "2026-10-25T11:20:20.811Z",
+  "scope": "Authenticated hosted model listing; listing does not prove chat access, quality, pricing or throughput",
+  "status": 200,
+  "advertisedModelCount": 85,
+  "textCandidates": [
+    "nvidia/nemotron-3-super-120b-a12b",
+    "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "nvidia/nemotron-3.5-super-vl-120b-a12b"
+  ],
+  "visionCandidates": [
+    "meta/llama-3.2-11b-vision-instruct",
+    "meta/llama-3.2-90b-vision-instruct",
+    "microsoft/phi-3-vision-128k-instruct",
+    "nvidia/llama-3.2-nemoretriever-1b-vlm-embed-v1",
+    "nvidia/llama-nemotron-embed-vl-1b-v2",
+    "nvidia/nemotron-3.5-super-vl-120b-a12b"
+  ],
+  "visionBaselineAdvertised": true
+}

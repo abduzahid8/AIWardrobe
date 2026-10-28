@@ -1,0 +1,13 @@
+{
+  "measuredAt": "2026-10-27T09:25:21.598Z",
+  "scope": "Dedicated disposable native payment audit account; no paid state was manually granted",
+  "owner": "225e140f-6722-4cb1-bb1f-a51dfcb149c3",
+  "profile": {
+    "id": "225e140f-6722-4cb1-bb1f-a51dfcb149c3",
+    "subscription_tier": "free",
+    "subscription_expires_at": null,
+    "trial_started_at": "2026-10-19T09:25:19.302+00:00"
+  },
+  "simulator": "AIWardrobe-Payments-20261027",
+  "simulatorId": "BBE8D6A5-D0B5-4DE2-8808-EC5BBEB1B133"
+}

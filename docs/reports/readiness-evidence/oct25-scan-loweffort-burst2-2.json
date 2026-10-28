@@ -1,0 +1,25 @@
+{
+  "measuredAt": "2026-10-25T17:59:12.026Z",
+  "sourceSha256": "fdc809ca6fb2a57a670fb2c318c03a4c294e866acea74687e735a09742a70ffb",
+  "scope": "One direct NVIDIA diagnostic using actual staged handler with controlled Auth/config; no production admission claim",
+  "providerResponses": [
+    {
+      "status": 500
+    }
+  ],
+  "fixture": {
+    "path": "docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/02-originalPath.jpg",
+    "bytes": 666026,
+    "sha256": "2d47a0ac74bd074352bb446576e38d54ca5339ca3b8687cbc78812ca1f80a717"
+  },
+  "requestConfig": {
+    "model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+    "max_tokens": 2048,
+    "temperature": 0,
+    "reasoning_effort": "low"
+  },
+  "handlerStatus": 503,
+  "latencyMs": 1520,
+  "acceptedClassification": null,
+  "error": "ai_classification_unavailable"
+}

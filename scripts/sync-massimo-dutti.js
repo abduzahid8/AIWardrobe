@@ -81,7 +81,7 @@ const KEEP_STALE          = process.argv.includes('--keep-stale');
 function categoryToGarmentType(raw = '') {
     const s = raw.toLowerCase();
     if (/dress|jumpsuit|gown/.test(s))             return { garment_type: 'dresses',    category: 'dresses'   };
-    if (/shoe|boot|sneaker|loafer|heel|flat/.test(s)) return { garment_type: 'shoes',   category: 'shoes'     };
+    if (/shoe|boot|sneaker|loafer|heel|flat|espadrill|trainer|derby|brogue|moccasin/.test(s)) return { garment_type: 'shoes',   category: 'shoes'     };
     if (/pant|trouser|jean|short|skirt|legging/.test(s)) return { garment_type: 'lower_body', category: 'bottoms' };
     if (/coat|jacket|blazer|outerwear|parka|puffer/.test(s)) return { garment_type: 'upper_body', category: 'outerwear' };
     if (/suit/.test(s))                            return { garment_type: 'outfit',     category: 'outfits'   };

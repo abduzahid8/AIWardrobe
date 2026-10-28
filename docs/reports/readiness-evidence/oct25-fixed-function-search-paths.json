@@ -1,0 +1,131 @@
+{
+  "measuredAt": "2026-10-25",
+  "change": "Fixed empty search_path on six existing public functions; no function body, privilege, security-definer flag or signature changes.",
+  "migration": {
+    "version": "20261025023600",
+    "name": "fixed_function_search_paths",
+    "applied": true,
+    "recordedByCliRepair": true
+  },
+  "before": [
+    {
+      "identity": "featured_capsules_set_updated_at()",
+      "body_hash": "ef6b2d76360a727c9d6479352655b7ba",
+      "prosecdef": false,
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "proconfig": null
+    },
+    {
+      "identity": "record_brand_click(text,text,text,numeric,text,text,text)",
+      "body_hash": "e8efa338f4b9f5281d8f5262f330db3b",
+      "prosecdef": true,
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "proconfig": null
+    },
+    {
+      "identity": "set_updated_at()",
+      "body_hash": "ef6b2d76360a727c9d6479352655b7ba",
+      "prosecdef": false,
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "proconfig": null
+    },
+    {
+      "identity": "update_guide_page_updated_at()",
+      "body_hash": "da5ac28a58c8b4bb30209bf0d3d7082c",
+      "prosecdef": false,
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "proconfig": null
+    },
+    {
+      "identity": "update_home_occasions_updated_at()",
+      "body_hash": "da5ac28a58c8b4bb30209bf0d3d7082c",
+      "prosecdef": false,
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "proconfig": null
+    },
+    {
+      "identity": "update_updated_at_column()",
+      "body_hash": "06bcf30ac3d0a7f279a54cbf228a7bec",
+      "prosecdef": false,
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "proconfig": null
+    }
+  ],
+  "after": [
+    {
+      "identity": "featured_capsules_set_updated_at()",
+      "body_hash": "ef6b2d76360a727c9d6479352655b7ba",
+      "prosecdef": false,
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "proconfig": [
+        "search_path=\"\""
+      ]
+    },
+    {
+      "identity": "record_brand_click(text,text,text,numeric,text,text,text)",
+      "body_hash": "e8efa338f4b9f5281d8f5262f330db3b",
+      "prosecdef": true,
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "proconfig": [
+        "search_path=\"\""
+      ]
+    },
+    {
+      "identity": "set_updated_at()",
+      "body_hash": "ef6b2d76360a727c9d6479352655b7ba",
+      "prosecdef": false,
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "proconfig": [
+        "search_path=\"\""
+      ]
+    },
+    {
+      "identity": "update_guide_page_updated_at()",
+      "body_hash": "da5ac28a58c8b4bb30209bf0d3d7082c",
+      "prosecdef": false,
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "proconfig": [
+        "search_path=\"\""
+      ]
+    },
+    {
+      "identity": "update_home_occasions_updated_at()",
+      "body_hash": "da5ac28a58c8b4bb30209bf0d3d7082c",
+      "prosecdef": false,
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "proconfig": [
+        "search_path=\"\""
+      ]
+    },
+    {
+      "identity": "update_updated_at_column()",
+      "body_hash": "06bcf30ac3d0a7f279a54cbf228a7bec",
+      "prosecdef": false,
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "proconfig": [
+        "search_path=\"\""
+      ]
+    }
+  ],
+  "verification": {
+    "bodyHashesRolesAndAclsUnchanged": true,
+    "allSixPathsFixed": true,
+    "timestampTriggersTestedIndividually": 5,
+    "hostileCallerNowShadowActive": true,
+    "timestampsStillServerTransactionTime": true,
+    "anonymousClickUuidReturned": true,
+    "clickAttributesPersistedWithinTestTransaction": true,
+    "rolledBackClickAbsent": true,
+    "rolledBackShadowSchemaAbsent": true,
+    "mutableSearchPathAdvisorWarningsBefore": 6,
+    "mutableSearchPathAdvisorWarningsAfter": 0
+  },
+  "testScript": "scripts/validation/function-search-paths.sql",
+  "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable",
+  "limits": [
+    "Scoped database hardening, not proof of complete security or 10,000 DAU readiness.",
+    "Other security advisor categories remain: intentionally callable SECURITY DEFINER functions require individual authorization review; leaked-password protection is disabled.",
+    "CBU production connectivity, budgeted generation and prior native/payment/capacity gaps remain unresolved.",
+    "No application code changed or new full-suite claim made in this turn."
+  ]
+}

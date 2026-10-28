@@ -1,0 +1,14 @@
+{
+  "measuredAt": "2026-10-25T02:29:10.667Z",
+  "scope": "Local simulation: ten separately initialized copies of the actual cache helper, one shared simulated empty database, gated official-shaped fixture responses. No production or upstream capacity claim.",
+  "sourceSha256": "37cc9662853baaccb87ca068ad33fecf5209e66bbc5227f01bdac514836f0d5f",
+  "isolates": 10,
+  "reads": 20,
+  "writes": 1,
+  "upstreamCalls": 1,
+  "simultaneousRefreshes": 1,
+  "allReturnedSameSnapshot": true,
+  "globallyCoalesced": true,
+  "readinessPassed": true,
+  "finding": "Shared refresh coordination observed"
+}

@@ -1,0 +1,52 @@
+{
+  "measuredAt": "2026-10-25T01:45:49.240088+00:00",
+  "report": "outfit-concurrency-0f1ef44a5d3b.json",
+  "hostedVersion": 130,
+  "requests": 17,
+  "validResponses": 17,
+  "aiResponses": 17,
+  "stages": [
+    {
+      "concurrency": 2,
+      "observedMaxClientInflight": 2,
+      "passed": true
+    },
+    {
+      "concurrency": 5,
+      "observedMaxClientInflight": 5,
+      "passed": true
+    },
+    {
+      "concurrency": 10,
+      "observedMaxClientInflight": 10,
+      "passed": true
+    }
+  ],
+  "latencyMs": {
+    "minimum": 4640,
+    "maximum": 5954
+  },
+  "cleanup": {
+    "remainingUsers": 0,
+    "remainingProfiles": 0,
+    "remainingSessions": 0,
+    "fixtureUsersChecked": 17
+  },
+  "harnessChecks": {
+    "existingReadLoadSuite": {
+      "tests": 38,
+      "passed": 38
+    },
+    "newCoordinatorSyntaxAndPlan": true,
+    "realIPCBarrierExercised": true
+  },
+  "sourceChanges": "Validation tooling only: parameterized requested count, IPC readiness/request lifecycle, graceful cancellation bookkeeping, unique reports. No app/backend configuration changes.",
+  "limits": [
+    "One outfit per request, controlled same catalog pool",
+    "Not full multi-outfit deck capacity",
+    "Not sustainedRPS,10kowner cardinality, scans, tryon,media,auth or billing workload proof",
+    "Catalog fields checked against active database rows, not retailer stock/prices",
+    "Source cancellation/reporting bookkeeping tightened after the live run; no additional live requests used for that tooling-only change"
+  ],
+  "goalAchieved": false
+}

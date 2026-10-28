@@ -1,0 +1,722 @@
+{
+  "measuredAt": "2026-10-26T10:09:57.115Z",
+  "scope": "Sequential real production requests with a disposable trial owner; server discovers live catalog products. No native UI, retailer stock/price refresh or load certification.",
+  "cases": [
+    {
+      "name": "classic_work_no_weather",
+      "requestedBudget": null,
+      "expectedRejection": false,
+      "status": 200,
+      "latencyMs": 6686,
+      "code": null,
+      "source": "ai",
+      "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "status": "ok"
+        }
+      ],
+      "deterministicFallback": {
+        "used": false,
+        "outfitCount": 0,
+        "reason": null
+      },
+      "outfitCount": 3,
+      "failures": [],
+      "outfits": [
+        {
+          "items": [
+            {
+              "id": "shop_aurelien-10186815963466",
+              "name": "AUR1 Polo Navy",
+              "category": "top",
+              "price": 195,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_aurelien-10066008899914",
+              "name": "Navy Technical Leisure Blazer",
+              "category": "outerwear",
+              "price": 575,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_aurelien-15179534139722",
+              "name": "Beige Flannel Trousers",
+              "category": "bottom",
+              "price": 315,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_zara-uz-545437356",
+              "name": "AARON LEVINE X ZARA LEATHER PENNY LOAFERS",
+              "category": "shoes",
+              "price": 1899900,
+              "currency": "UZS"
+            }
+          ],
+          "listedTotals": {
+            "EUR": 1085,
+            "UZS": 1899900
+          },
+          "uzsSubtotal": 1899900,
+          "structureReason": null,
+          "styleReason": null
+        },
+        {
+          "items": [
+            {
+              "id": "shop_armani_exchange-xm002109_af24533_ub101",
+              "name": "Basic Cotton Poplin Casual Shirt",
+              "category": "top",
+              "price": 150,
+              "currency": "USD"
+            },
+            {
+              "id": "shop_aurelien-6039891935412",
+              "name": "Extrafine Merino Zipper Vest Navy",
+              "category": "outerwear",
+              "price": 235,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_aurelien-15501547110730",
+              "name": "Light Beige Pleated Metropolitan Trousers",
+              "category": "bottom",
+              "price": 227.95,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_md-uz-61729189",
+              "name": "Oxford shoes",
+              "category": "shoes",
+              "price": 3000000,
+              "currency": "UZS"
+            }
+          ],
+          "listedTotals": {
+            "USD": 150,
+            "EUR": 462.95,
+            "UZS": 3000000
+          },
+          "uzsSubtotal": 3000000,
+          "structureReason": null,
+          "styleReason": null
+        },
+        {
+          "items": [
+            {
+              "id": "shop_aurelien-10119652081994",
+              "name": "Nut Linen Pop-over Shirt",
+              "category": "top",
+              "price": 129.95,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_aurelien-16011499667786",
+              "name": "Navy Cotton Wool Button Jacket",
+              "category": "outerwear",
+              "price": 875,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_aurelien-10046869176650",
+              "name": "Navy Linen Seaside Trousers",
+              "category": "bottom",
+              "price": 195,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_fr-tommy-152421",
+              "name": "Лоферы HILFIGER STITCHDOWN SUEDE LOAFER",
+              "category": "shoes",
+              "price": 1384500,
+              "currency": "UZS"
+            }
+          ],
+          "listedTotals": {
+            "EUR": 1199.95,
+            "UZS": 1384500
+          },
+          "uzsSubtotal": 1384500,
+          "structureReason": null,
+          "styleReason": null
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "old_money_date_no_budget",
+      "requestedBudget": null,
+      "expectedRejection": false,
+      "status": 200,
+      "latencyMs": 4126,
+      "code": null,
+      "source": "ai",
+      "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "status": "ok"
+        }
+      ],
+      "deterministicFallback": {
+        "used": false,
+        "outfitCount": 0,
+        "reason": null
+      },
+      "outfitCount": 3,
+      "failures": [],
+      "outfits": [
+        {
+          "items": [
+            {
+              "id": "shop_armani_exchange-xm001221_af14619_u0001",
+              "name": "Button-up shirt in linen with classic collar",
+              "category": "top",
+              "price": 140,
+              "currency": "USD"
+            },
+            {
+              "id": "shop_armani_exchange-xm001975_af10348_uc001",
+              "name": "Cotton and Wool Cardigan with Ribbed Knitting",
+              "category": "outerwear",
+              "price": 190,
+              "currency": "USD"
+            },
+            {
+              "id": "shop_aurelien-10228846690634",
+              "name": "Navy Pleated Metropolitan Trousers",
+              "category": "bottom",
+              "price": 227.95,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_zara-uz-545409746",
+              "name": "CASUAL LEATHER LOAFERS WITH TASSELS",
+              "category": "shoes",
+              "price": 649900,
+              "currency": "UZS"
+            }
+          ],
+          "listedTotals": {
+            "USD": 330,
+            "EUR": 227.95,
+            "UZS": 649900
+          },
+          "uzsSubtotal": 649900,
+          "structureReason": null,
+          "styleReason": null
+        },
+        {
+          "items": [
+            {
+              "id": "shop_aurelien-10147023847754",
+              "name": "Rust Linen Polo Shirt",
+              "category": "top",
+              "price": 101.95,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_aurelien-15112679391562",
+              "name": "Extrafine Merino Zipper Vest Light Beige",
+              "category": "outerwear",
+              "price": 235,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_aurelien-15179534139722",
+              "name": "Beige Flannel Trousers",
+              "category": "bottom",
+              "price": 315,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_md-uz-61729184",
+              "name": "Leather loafers with penny strap",
+              "category": "shoes",
+              "price": 2900000,
+              "currency": "UZS"
+            }
+          ],
+          "listedTotals": {
+            "EUR": 651.95,
+            "UZS": 2900000
+          },
+          "uzsSubtotal": 2900000,
+          "structureReason": null,
+          "styleReason": null
+        },
+        {
+          "items": [
+            {
+              "id": "shop_aurelien-10119652081994",
+              "name": "Nut Linen Pop-over Shirt",
+              "category": "top",
+              "price": 129.95,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_aurelien-16011499471178",
+              "name": "Navy Cashmere Blend Leisure Blazer",
+              "category": "outerwear",
+              "price": 950,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_aurelien-10046869176650",
+              "name": "Navy Linen Seaside Trousers",
+              "category": "bottom",
+              "price": 195,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_zara-uz-545447343",
+              "name": "LEATHER LOAFERS",
+              "category": "shoes",
+              "price": 999900,
+              "currency": "UZS"
+            }
+          ],
+          "listedTotals": {
+            "EUR": 1274.95,
+            "UZS": 999900
+          },
+          "uzsSubtotal": 999900,
+          "structureReason": null,
+          "styleReason": null
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "minimalist_travel_no_budget",
+      "requestedBudget": null,
+      "expectedRejection": false,
+      "status": 200,
+      "latencyMs": 6583,
+      "code": null,
+      "source": "ai",
+      "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "status": "ok"
+        }
+      ],
+      "deterministicFallback": {
+        "used": false,
+        "outfitCount": 0,
+        "reason": null
+      },
+      "outfitCount": 3,
+      "failures": [],
+      "outfits": [
+        {
+          "items": [
+            {
+              "id": "shop_aurelien-10119652016458",
+              "name": "White Linen Pop-over Shirt",
+              "category": "top",
+              "price": 147.95,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_aurelien-4285298147417",
+              "name": "Extrafine Merino Crew Neck Sweater Dark Grey",
+              "category": "outerwear",
+              "price": 108.95,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_aurelien-10046869143882",
+              "name": "Nut Linen Seaside Trousers",
+              "category": "bottom",
+              "price": 136.95,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_fr-tommy-164801",
+              "name": "Кеды HILFIGER LIGHT HYBRID SUEDE SHOE",
+              "category": "shoes",
+              "price": 2055200,
+              "currency": "UZS"
+            }
+          ],
+          "listedTotals": {
+            "EUR": 393.84999999999997,
+            "UZS": 2055200
+          },
+          "uzsSubtotal": 2055200,
+          "structureReason": null,
+          "styleReason": null
+        },
+        {
+          "items": [
+            {
+              "id": "shop_armani_exchange-xm001977_af20139_uc001",
+              "name": "Zip-up knit polo shirt",
+              "category": "top",
+              "price": 140,
+              "currency": "USD"
+            },
+            {
+              "id": "shop_aurelien-16010268901706",
+              "name": "Extrafine Merino Zipper Vest Black",
+              "category": "outerwear",
+              "price": 235,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_aurelien-15246859469130",
+              "name": "Beige Cotton Wool Voyager Trousers",
+              "category": "bottom",
+              "price": 385,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_fr-tommy-152421",
+              "name": "Лоферы HILFIGER STITCHDOWN SUEDE LOAFER",
+              "category": "shoes",
+              "price": 1384500,
+              "currency": "UZS"
+            }
+          ],
+          "listedTotals": {
+            "USD": 140,
+            "EUR": 620,
+            "UZS": 1384500
+          },
+          "uzsSubtotal": 1384500,
+          "structureReason": null,
+          "styleReason": null
+        },
+        {
+          "items": [
+            {
+              "id": "shop_aurelien-10186816029002",
+              "name": "White Linen City T-shirt",
+              "category": "top",
+              "price": 115,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_aurelien-15145824715082",
+              "name": "Extrafine Merino Zipper Sweater Light Beige",
+              "category": "outerwear",
+              "price": 225,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_aurelien-10147024240970",
+              "name": "Ash Grey Linen Soleil Trousers",
+              "category": "bottom",
+              "price": 335,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_fr-tommy-164519",
+              "name": "Кроссовки TH COURT PREMIUM SUEDE",
+              "category": "shoes",
+              "price": 2009000,
+              "currency": "UZS"
+            }
+          ],
+          "listedTotals": {
+            "EUR": 675,
+            "UZS": 2009000
+          },
+          "uzsSubtotal": 2009000,
+          "structureReason": null,
+          "styleReason": null
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "casual_everyday_no_budget",
+      "requestedBudget": null,
+      "expectedRejection": false,
+      "status": 200,
+      "latencyMs": 6442,
+      "code": null,
+      "source": "ai",
+      "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "status": "ok"
+        }
+      ],
+      "deterministicFallback": {
+        "used": false,
+        "outfitCount": 0,
+        "reason": null
+      },
+      "outfitCount": 2,
+      "failures": [
+        "three_complete_looks_not_returned"
+      ],
+      "outfits": [
+        {
+          "items": [
+            {
+              "id": "shop_armani_exchange-xm002809_af24509_fb416",
+              "name": "9 oz Delicate Wash Blue Denim Shirt",
+              "category": "top",
+              "price": 200,
+              "currency": "USD"
+            },
+            {
+              "id": "shop_aurelien-6903923671220",
+              "name": "Dolcevita Cable Knit Sweater Gold",
+              "category": "outerwear",
+              "price": 185.95,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_aurelien-16011500454218",
+              "name": "Dark Blue Denim Regent Trousers",
+              "category": "bottom",
+              "price": 325,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_fr-tommy-110618",
+              "name": "Кроссовки OUTDOOR SNEAKER TECH MIX",
+              "category": "shoes",
+              "price": 1743200,
+              "currency": "UZS"
+            }
+          ],
+          "listedTotals": {
+            "USD": 200,
+            "EUR": 510.95,
+            "UZS": 1743200
+          },
+          "uzsSubtotal": 1743200,
+          "structureReason": null,
+          "styleReason": null
+        },
+        {
+          "items": [
+            {
+              "id": "shop_aurelien-10150890013002",
+              "name": "Grey Denim Shirt",
+              "category": "top",
+              "price": 245,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_aurelien-16011498881354",
+              "name": "Beige Mouline Dolcevita Cable Knit Sweater",
+              "category": "outerwear",
+              "price": 285,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_armani_exchange-xm000049_af13364_mb125",
+              "name": "J13 slim fit jeans in cotton denim",
+              "category": "bottom",
+              "price": 170,
+              "currency": "USD"
+            },
+            {
+              "id": "shop_fr-ck-108928",
+              "name": "Кроссовки HIKE RUNNER CASUAL NY-SU",
+              "category": "shoes",
+              "price": 1284500,
+              "currency": "UZS"
+            }
+          ],
+          "listedTotals": {
+            "EUR": 530,
+            "USD": 170,
+            "UZS": 1284500
+          },
+          "uzsSubtotal": 1284500,
+          "structureReason": null,
+          "styleReason": null
+        }
+      ],
+      "passed": false
+    },
+    {
+      "name": "sport_workout_no_budget",
+      "requestedBudget": null,
+      "expectedRejection": false,
+      "status": 422,
+      "latencyMs": 4646,
+      "code": "no_matching_clothing",
+      "source": null,
+      "provider": null,
+      "providerAttempts": [],
+      "deterministicFallback": null,
+      "outfitCount": 0,
+      "failures": [
+        "http_422",
+        "three_complete_looks_not_returned",
+        "required_layer_flag_missing"
+      ],
+      "outfits": [],
+      "passed": false
+    },
+    {
+      "name": "business_work_no_budget",
+      "requestedBudget": null,
+      "expectedRejection": false,
+      "status": 200,
+      "latencyMs": 6450,
+      "code": null,
+      "source": "ai",
+      "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+      "providerAttempts": [
+        {
+          "provider": "nvidia",
+          "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "status": "ok"
+        }
+      ],
+      "deterministicFallback": {
+        "used": false,
+        "outfitCount": 0,
+        "reason": null
+      },
+      "outfitCount": 3,
+      "failures": [],
+      "outfits": [
+        {
+          "items": [
+            {
+              "id": "shop_armani_exchange-xm001221_af14619_u0001",
+              "name": "Button-up shirt in linen with classic collar",
+              "category": "top",
+              "price": 140,
+              "currency": "USD"
+            },
+            {
+              "id": "shop_aurelien-16010268279114",
+              "name": "Dark Brown Jaquard Zipper Sweater",
+              "category": "outerwear",
+              "price": 375,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_aurelien-15246859403594",
+              "name": "Navy Cotton Wool Voyager Trousers",
+              "category": "bottom",
+              "price": 385,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_zara-uz-545409746",
+              "name": "CASUAL LEATHER LOAFERS WITH TASSELS",
+              "category": "shoes",
+              "price": 649900,
+              "currency": "UZS"
+            }
+          ],
+          "listedTotals": {
+            "USD": 140,
+            "EUR": 760,
+            "UZS": 649900
+          },
+          "uzsSubtotal": 649900,
+          "structureReason": null,
+          "styleReason": null
+        },
+        {
+          "items": [
+            {
+              "id": "shop_armani_exchange-xm002191_af21226_u6107",
+              "name": "Cotton Ripstop Shirt",
+              "category": "top",
+              "price": 140,
+              "currency": "USD"
+            },
+            {
+              "id": "shop_aurelien-15112679162186",
+              "name": "Navy Field Jacket",
+              "category": "outerwear",
+              "price": 1895,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_aurelien-16010269884746",
+              "name": "Navy Leisure Trousers",
+              "category": "bottom",
+              "price": 215,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_zara-uz-545423041",
+              "name": "DRESS PENNY LOAFERS",
+              "category": "shoes",
+              "price": 779900,
+              "currency": "UZS"
+            }
+          ],
+          "listedTotals": {
+            "USD": 140,
+            "EUR": 2110,
+            "UZS": 779900
+          },
+          "uzsSubtotal": 779900,
+          "structureReason": null,
+          "styleReason": null
+        },
+        {
+          "items": [
+            {
+              "id": "shop_aurelien-10186815963466",
+              "name": "AUR1 Polo Navy",
+              "category": "top",
+              "price": 195,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_aurelien-16011498979658",
+              "name": "Dark Blue Denim Leisure Blazer",
+              "category": "outerwear",
+              "price": 595,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_aurelien-15230772937034",
+              "name": "Navy Corduroy Metropolitan Trousers",
+              "category": "bottom",
+              "price": 245,
+              "currency": "EUR"
+            },
+            {
+              "id": "shop_zara-uz-545447343",
+              "name": "LEATHER LOAFERS",
+              "category": "shoes",
+              "price": 999900,
+              "currency": "UZS"
+            }
+          ],
+          "listedTotals": {
+            "EUR": 1035,
+            "UZS": 999900
+          },
+          "uzsSubtotal": 999900,
+          "structureReason": null,
+          "styleReason": null
+        }
+      ],
+      "passed": true
+    }
+  ],
+  "fixtureUserId": "b0c64ded-6e0a-40a8-995f-fc26b2d33266",
+  "cleanup": {
+    "sessionsRevoked": true,
+    "ownerDeleted": true
+  },
+  "passed": false
+}

@@ -1,0 +1,68 @@
+{
+  "measuredAt": "2026-10-25T02:15:58.568Z",
+  "scope": "Fixed CBU host connectivity from two Edge regions; temporary diagnostic requires gateway-verified service role",
+  "results": [
+    {
+      "requestedRegion": "eu-central-1",
+      "status": 200,
+      "data": {
+        "region": "eu-central-1",
+        "results": [
+          {
+            "name": "dns_a",
+            "ok": true,
+            "ms": 2,
+            "value": [
+              "185.203.237.70"
+            ]
+          },
+          {
+            "name": "tcp_443",
+            "ok": false,
+            "ms": 5001,
+            "error": "Error",
+            "timeout": true
+          },
+          {
+            "name": "https_headers",
+            "ok": false,
+            "ms": 4502,
+            "error": "AbortError",
+            "timeout": false
+          }
+        ]
+      }
+    },
+    {
+      "requestedRegion": "ap-south-1",
+      "status": 200,
+      "data": {
+        "region": "ap-south-1",
+        "results": [
+          {
+            "name": "dns_a",
+            "ok": true,
+            "ms": 1,
+            "value": [
+              "185.203.237.70"
+            ]
+          },
+          {
+            "name": "tcp_443",
+            "ok": false,
+            "ms": 5002,
+            "error": "Error",
+            "timeout": true
+          },
+          {
+            "name": "https_headers",
+            "ok": false,
+            "ms": 4501,
+            "error": "AbortError",
+            "timeout": false
+          }
+        ]
+      }
+    }
+  ]
+}

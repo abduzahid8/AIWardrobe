@@ -1,0 +1,14 @@
+{
+  "measuredAt": "2026-10-25T02:21:24.752Z",
+  "scope": "Local simulation: ten separately initialized copies of the actual cache helper, one shared simulated empty database, gated official-shaped fixture responses. No production or upstream capacity claim.",
+  "sourceSha256": "39e5d57caf81ca4a99be1ba93da4886c3a15ae5530f55a6c3c2d39499c56acc5",
+  "isolates": 10,
+  "reads": 10,
+  "writes": 10,
+  "upstreamCalls": 10,
+  "simultaneousRefreshes": 10,
+  "allReturnedSameSnapshot": true,
+  "globallyCoalesced": false,
+  "readinessPassed": false,
+  "finding": "Persistent cache does not coordinate simultaneous cold-isolate refreshes; module promise coalesces only within one isolate."
+}

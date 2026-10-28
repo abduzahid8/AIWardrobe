@@ -1,0 +1,8 @@
+PASS __tests__/features/outfitNormalize.test.ts
+PASS __tests__/backend/fourSlotHosted.test.js
+PASS __tests__/utils/mappingUtils.test.ts
+
+Test Suites: 3 passed, 3 total
+Tests:       42 passed, 42 total
+Snapshots:   0 total
+Time:        4.939 s, estimated 5 s

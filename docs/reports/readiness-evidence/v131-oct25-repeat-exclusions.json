@@ -1,0 +1,177 @@
+{
+  "measuredAt": "2026-10-25T02:20:51.198Z",
+  "scope": "One real hosted Old Money/Work shopping request, no weather or entered budget, limit 5. Controlled catalog pool; not exact screenshot account or capacity proof.",
+  "checks": [
+    {
+      "name": "all_three_catalog_slots_available",
+      "passed": true
+    },
+    {
+      "name": "usable_outfits_returned",
+      "passed": true
+    },
+    {
+      "name": "every_outfit_passes_structure_and_style",
+      "passed": true
+    },
+    {
+      "name": "every_item_matches_authoritative_active_catalog",
+      "passed": true
+    },
+    {
+      "name": "full_displayed_deck_returned",
+      "passed": true
+    },
+    {
+      "name": "visible_deck_has_no_illegal_product_reuse",
+      "passed": true
+    },
+    {
+      "name": "visible_deck_has_no_duplicate_cards",
+      "passed": true
+    },
+    {
+      "name": "previously_shown_products_are_excluded",
+      "passed": true
+    }
+  ],
+  "excludeReport": "v131-oct25-hosted-deck-1.json",
+  "excludeItemIds": [
+    "shop_fr-tommy-169173-official",
+    "shop_md-uz-61729804",
+    "shop_boss-uz-141303",
+    "shop_fr-tommy-111152-official",
+    "shop_boss-uz-113272",
+    "shop_boss-uz-93412",
+    "shop_boss-uz-113793",
+    "shop_md-uz-61729156",
+    "shop_boss-uz-105039"
+  ],
+  "requestedLimit": 5,
+  "requireFullDeck": true,
+  "fixtureUserId": "c946f2dd-d3cc-4f3f-9082-87aa8934e030",
+  "candidateCount": 40,
+  "response": {
+    "status": 200,
+    "latencyMs": 3733,
+    "code": null,
+    "error": null,
+    "source": "ai",
+    "diversity": {
+      "activeSlots": [
+        "top",
+        "bottom",
+        "shoes"
+      ],
+      "strictSlots": [
+        "top",
+        "bottom",
+        "shoes"
+      ],
+      "forcedRepeatSlots": [],
+      "deckSize": 3,
+      "deckTarget": 3,
+      "shortfallReason": null
+    },
+    "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+    "providerAttempts": [
+      {
+        "provider": "nvidia",
+        "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+        "status": "ok"
+      }
+    ],
+    "outfitCount": 3
+  },
+  "supplementedIds": [
+    "md-uz-61729172",
+    "md-uz-61729162",
+    "md-uz-61729488"
+  ],
+  "outfits": [
+    {
+      "items": [
+        {
+          "id": "shop_md-uz-61729172",
+          "name": "100% linen slim fit shirt",
+          "price": 1100000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61733747",
+          "name": "100% cotton slim fit trousers",
+          "price": 1400000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-111510",
+          "name": "Gary_Tenn_Ltel",
+          "price": 4570000,
+          "currency": "UZS"
+        }
+      ],
+      "structureReason": null,
+      "styleReason": null
+    },
+    {
+      "items": [
+        {
+          "id": "shop_md-uz-61729162",
+          "name": "Slim fit micro-check tailored fit shirt",
+          "price": 1400000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-137432",
+          "name": "H-Delaware",
+          "price": 2623000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-93163",
+          "name": "TTNM EVO Runn LTSDWV",
+          "price": 3798000,
+          "currency": "UZS"
+        }
+      ],
+      "structureReason": null,
+      "styleReason": null
+    },
+    {
+      "items": [
+        {
+          "id": "shop_md-uz-61729488",
+          "name": "Wool blend knit polo shirt",
+          "price": 1100000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61733853",
+          "name": "Cool wool blend darted pants",
+          "price": 2000000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-82505",
+          "name": "Gary",
+          "price": 2279000,
+          "currency": "UZS"
+        }
+      ],
+      "structureReason": null,
+      "styleReason": null
+    }
+  ],
+  "visibleDeck": {
+    "count": 3,
+    "illegalProductReuseCount": 0,
+    "forcedRepeatSlots": []
+  },
+  "exactRequestedReturned": false,
+  "exactFiveReturned": false,
+  "cleanup": {
+    "sessionsRevoked": true,
+    "ownerDeleted": true
+  },
+  "passed": true
+}

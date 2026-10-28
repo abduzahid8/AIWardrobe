@@ -1,0 +1,47 @@
+[
+  {
+    "id": "fruit-of-the-loom-2828",
+    "brand": "Fruit of the Loom",
+    "name": "Men's Short Sleeve Crew T-Shirt, White 3 Pack",
+    "price": 19.48,
+    "currency": "USD",
+    "category": "tops",
+    "garment_type": "upper_body",
+    "description": "Fruit of the Loom men's clothing · official product pack photo on a plain neutral background",
+    "image_url": "https://assets.fotlinc.com/transform/fruit-metadata/3a4f92cf-7203-463c-9292-05a7a00a87fe/PI_2828_7MN_L_0_0_0.png",
+    "source": "fruit-of-the-loom-official-mens-apparel",
+    "source_url": "https://www.fruit.com/p/men-s-short-sleeve-crew-t-shirt-white-3-pack/2828",
+    "is_active": false,
+    "sort_order": 0
+  },
+  {
+    "id": "fruit-of-the-loom-3p28cam",
+    "brand": "Fruit of the Loom",
+    "name": "Men's Classic Crew T-Shirt, Assorted 3 Pack",
+    "price": 15.98,
+    "currency": "USD",
+    "category": "tops",
+    "garment_type": "upper_body",
+    "description": "Fruit of the Loom men's clothing · official product pack photo on a plain neutral background",
+    "image_url": "https://assets.fotlinc.com/transform/fruit-metadata/67139ff3-8779-49e0-8f99-c56a3afbcfe5/PI_3P28CAM_103_L_0_0_0.png",
+    "source": "fruit-of-the-loom-official-mens-apparel",
+    "source_url": "https://www.fruit.com/p/men-s-classic-crew-t-shirt-assorted-3-pack/3P28CAM",
+    "is_active": false,
+    "sort_order": 1
+  },
+  {
+    "id": "fruit-of-the-loom-6p30bgx",
+    "brand": "Fruit of the Loom",
+    "name": "Men's Classic Fit Pocket T-Shirt, 2XL Black and Gray 6 Pack",
+    "price": 23.99,
+    "currency": "USD",
+    "category": "tops",
+    "garment_type": "upper_body",
+    "description": "Fruit of the Loom men's clothing · official product pack photo on a plain neutral background",
+    "image_url": "https://assets.fotlinc.com/transform/fruit-medium/e20e0fff-ea04-4b09-91d3-85135c2ab5dd/PI_6P30BGX_103_2XL_0_0_0",
+    "source": "fruit-of-the-loom-official-mens-apparel",
+    "source_url": "https://www.fruit.com/p/men-s-classic-fit-pocket-t-shirt-2-xl-black-and-gray-6-pack/6P30BGX",
+    "is_active": false,
+    "sort_order": 2
+  }
+]

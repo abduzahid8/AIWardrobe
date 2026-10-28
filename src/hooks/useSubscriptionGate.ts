@@ -34,7 +34,8 @@ import useSubscriptionStore, {
     type FeatureKey,
     type SubscriptionTier,
 } from '../../store/subscriptionStore';
-import useDailyUsageStore from '../../store/dailyUsageStore';
+import useDailyUsageStore, { type UsageConsumeOptions } from '../../store/dailyUsageStore';
+import { authEvents } from '../../store/authEvents';
 import type { RootStackParamList } from '../../navigation/types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -70,7 +71,7 @@ interface SubscriptionGate {
      *
      * Use this immediately before executing the paid feature.
      */
-    consumeOrPaywall: (feature: FeatureKey) => Promise<boolean>;
+    consumeOrPaywall: (feature: FeatureKey, options?: UsageConsumeOptions) => Promise<boolean>;
 
     /**
      * Record a successful use (server-authoritative).
@@ -105,6 +106,8 @@ export function useSubscriptionGate(): SubscriptionGate {
     const dailyUsed = useDailyUsageStore((s) => s.getUsed);
     const dailyCanUse = useDailyUsageStore((s) => s.canUse);
     const dailyConsume = useDailyUsageStore((s) => s.consume);
+    // Getters are stable functions; subscribe to their data so quota labels update.
+    useDailyUsageStore((s) => s.snapshot);
 
     const openPaywall = useCallback(() => {
         navigation.navigate('Paywall');
@@ -155,16 +158,20 @@ export function useSubscriptionGate(): SubscriptionGate {
     );
 
     const consumeOrPaywall = useCallback(
-        async (feature: FeatureKey): Promise<boolean> => {
-            if (isTrialPending) return true;
-            if (!checkFeatureAccess(feature)) {
+        async (feature: FeatureKey, options: UsageConsumeOptions = {}): Promise<boolean> => {
+            const revision = authEvents.getRevision();
+            const day = new Date().toISOString().slice(0, 10);
+            if (options.cancelSignal?.aborted) return false;
+            if (isTrialPending && !options.requireServer) return true;
+            if (!isTrialPending && !checkFeatureAccess(feature)) {
                 openPaywall();
                 return false;
             }
             if (DAILY_QUOTA_FEATURES.includes(feature)) {
                 // Server-authoritative check — the RPC either allows and
                 // increments atomically, or denies (quota already hit).
-                const result = await dailyConsume(feature);
+                const result = await dailyConsume(feature, 1, options);
+                if (options.cancelSignal?.aborted || revision !== authEvents.getRevision() || day !== new Date().toISOString().slice(0, 10)) return false;
                 if (!result.allowed) {
                     openPaywall();
                     return false;

@@ -97,6 +97,7 @@ function shopOnlyPool(): LocalClothingItem[] {
 
 function budgetPool(): LocalClothingItem[] {
     return [
+        garment('shop', 'outerwear', 'light cotton jacket', { price: 20, currency: 'USD' }),
         garment('shop', 'top', 'cheap polo', { price: 25, currency: 'USD' }),
         garment('shop', 'top', 'luxury knit', { price: 400, currency: 'USD' }),
         garment('shop', 'bottom', 'cheap chinos', { price: 30, currency: 'USD' }),
@@ -249,16 +250,47 @@ describe('personal stylist — 20 acceptance tests', () => {
         expect(outfits).toHaveLength(3);
         for (const outfit of outfits) {
             const slots = outfit.items.map((item) => item.macroCategory);
-            expect(outfit.items.length).toBeGreaterThanOrEqual(3);
+            expect(outfit.items).toHaveLength(4);
+            expect(slots).toContain('outerwear');
             expect(slots).toContain('bottom');
             expect(slots).toContain('shoes');
-            expect(slots.includes('top') || slots.includes('outerwear')).toBe(true);
+            expect(slots).toContain('top');
             expect(outfit.items.some((item) => String(item.id).startsWith('own_'))).toBe(true);
         }
         const signatures = new Set(
             outfits.map((outfit) => outfit.items.map((item) => item.id).sort().join('|')),
         );
         expect(signatures.size).toBe(3);
+    });
+
+    it('15b. consistently fills a three-look deck from a mixed wardrobe', () => {
+        const originalRandom = Math.random;
+        try {
+            for (let attempt = 0; attempt < 200; attempt += 1) {
+                let state = (attempt + 1) >>> 0;
+                Math.random = () => {
+                    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+                    return state / 0x1_0000_0000;
+                };
+                const outfits = buildLocalOutfits(mixedWardrobe(), {
+                    stylePreferences: 'casual',
+                    occasion: 'Everyday',
+                    weather: { temp: 10, condition: 'cool' },
+                    limit: 3,
+                });
+                expect(outfits).toHaveLength(3);
+                for (const outfit of outfits) {
+                    expect(outfit.items.map((item) => item.macroCategory).sort()).toEqual([
+                        'bottom',
+                        'outerwear',
+                        'shoes',
+                        'top',
+                    ]);
+                }
+            }
+        } finally {
+            Math.random = originalRandom;
+        }
     });
 
     it('16. enforces a shop budget and never picks luxury over-cap pieces', () => {

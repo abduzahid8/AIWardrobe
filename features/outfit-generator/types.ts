@@ -89,6 +89,8 @@ export interface WardrobeDisplayItem {
   macroCategory?: string;
   category?: string;
   isShopItem?: boolean;
+  shopUrl?: string;
+  sourceUrl?: string;
 }
 
 export interface AIStyle {

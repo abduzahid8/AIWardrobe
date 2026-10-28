@@ -1,0 +1,40 @@
+{
+  "measuredAt": "2026-10-25T11:28:40.101Z",
+  "sourceSha256": "3ba2e69cdcf02b66ba214163e678ea5322ffbbb2ee876722cf16ea9046719eaa",
+  "scope": "One direct NVIDIA diagnostic using actual staged handler with controlled Auth/config; no production admission claim",
+  "providerResponses": [
+    {
+      "status": 200,
+      "finishReason": "stop",
+      "contentLength": 195,
+      "parsed": {
+        "category": "pants",
+        "section": "bottoms",
+        "style": "semi_classic",
+        "color": "brown",
+        "material": "null",
+        "description": "Brown pinstriped trousers with a straight-leg cut and belt loops.",
+        "shoeType": null
+      }
+    }
+  ],
+  "fixture": {
+    "path": "assets/images/basic_brown_pants.png",
+    "bytes": 346533,
+    "sha256": "b89e34d53a70406a3b20558300c75a81119aa5887033b638df9f08175dc1dcf7"
+  },
+  "candidateModel": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+  "handlerStatus": 200,
+  "latencyMs": 2333,
+  "acceptedClassification": {
+    "category": "pants",
+    "section": "bottoms",
+    "confidence": 0,
+    "attributes": {
+      "style": "semi_classic",
+      "color": "brown",
+      "material": null
+    }
+  },
+  "error": null
+}

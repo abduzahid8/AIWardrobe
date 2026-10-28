@@ -1,0 +1,65 @@
+{
+  "measuredAt": "2026-10-25T02:31:50.481Z",
+  "scope": "Five simultaneous authenticated rate reads during the established upstream outage, then one cooldown read. Does not prove healthy production CBU refresh.",
+  "requests": [
+    {
+      "status": 503,
+      "error": "budget_rates_unavailable",
+      "snapshotPresent": false,
+      "latencyMs": 12111,
+      "region": "eu-central-1"
+    },
+    {
+      "status": 503,
+      "error": "budget_rates_unavailable",
+      "snapshotPresent": false,
+      "latencyMs": 13133,
+      "region": "eu-central-1"
+    },
+    {
+      "status": 503,
+      "error": "budget_rates_unavailable",
+      "snapshotPresent": false,
+      "latencyMs": 13337,
+      "region": "eu-central-1"
+    },
+    {
+      "status": 503,
+      "error": "budget_rates_unavailable",
+      "snapshotPresent": false,
+      "latencyMs": 12856,
+      "region": "eu-central-1"
+    },
+    {
+      "status": 503,
+      "error": "budget_rates_unavailable",
+      "snapshotPresent": false,
+      "latencyMs": 13355,
+      "region": "eu-central-1"
+    }
+  ],
+  "fixtureUserId": "d9009bea-1b6f-4461-a273-c38aeb946ceb",
+  "generationStartedAt": "2026-10-25T02:31:52.907Z",
+  "cooldownRequest": {
+    "status": 503,
+    "error": "budget_rates_unavailable",
+    "snapshotPresent": false,
+    "latencyMs": 3118,
+    "region": "eu-central-1"
+  },
+  "generationFinishedAt": "2026-10-25T02:32:09.383Z",
+  "outageObserved": true,
+  "cooldownFailClosed": true,
+  "coordinatorState": {
+    "readSucceeded": true,
+    "ownerReleased": true,
+    "leaseUntil": "-infinity",
+    "failedUntil": "2026-10-25T02:32:14.991576+00:00"
+  },
+  "cleanup": {
+    "sessionsRevoked": true,
+    "ownerDeleted": true
+  },
+  "coordinatorChecksPassed": true,
+  "budgetedGenerationReady": false
+}

@@ -1,0 +1,90 @@
+{
+  "date": "2026-10-27",
+  "scope": "Live RevenueCat/App Store configuration, native restore and purchase-flow test on a dedicated disposable account",
+  "revenuecatProject": "ab415511",
+  "configuredDefaultOffering": {
+    "packages": [
+      "lite_monthly \u2192 App Store 2.99",
+      "$rc_monthly \u2192 App Store com.aiwardrobe.premium.monthly",
+      "$rc_annual \u2192 App Store com.aiwardrobe.premium.yearly"
+    ],
+    "testStorePackagesAlsoPresent": true
+  },
+  "native": [
+    "Paywall showed Lite $2.99/month, Pro $9.99/month and Pro Yearly $99.99/year.",
+    "Restore Purchases reached the installed RevenueCat/StoreKit integration and returned \u201cNo previous purchases found.\u201d",
+    "Lite Continue reached Apple account sign-in, confirming that the product was available to the native purchase call.",
+    "Apple rejected the existing sandbox tester password. The purchase did not complete; no payment was authorized."
+  ],
+  "liveServerChecks": [
+    "Free authenticated test owner remained free after server sync.",
+    "Anonymous sync rejected; caller-supplied user/tier ignored; client cannot execute authoritative subscription writer.",
+    "Current iOS RevenueCat offering API returned the expected three approved App Store identifiers.",
+    "Webhook test delivered HTTP 200 in earlier dashboard evidence; active webhook remains configured for Sandbox and Production."
+  ],
+  "sandboxIsolation": {
+    "syncSubscriptionFunctionVersion": 5,
+    "revenueCatWebhookFunctionVersion": 20,
+    "defaultEnvironment": "PRODUCTION",
+    "sandboxGrantsRequireServerAllowlistedAppUserID": true,
+    "allowlistContainsOnlyDisposablePaymentAuditAccount": true,
+    "productionDefaultUnchanged": true,
+    "tests": "29 focused subscription and environment tests pass; Deno check passes"
+  },
+  "cleanup": {
+    "disposableSupabaseBackendSyncAudit": {
+      "sessionsRevoked": true,
+      "profilesAndAuthUsersIndependentlyVerifiedAbsent": true
+    },
+    "sandboxPaymentAuditAccount": "retained intentionally until its sandbox purchase lifecycle test completes",
+    "RevenueCatDeleteForNoPurchaseSyncFixture": "HTTP 401 (no receipt or transaction was created)"
+  },
+  "status": "Payment system is not yet fully verified. Positive sandbox purchase, purchase-to-entitlement propagation, renewal, cancellation, refund, reinstall restore, Android purchases and App Review readiness are outstanding. No charge or renewal was made.",
+  "nativeSandboxPurchaseAttempt": {
+    "simulator": "AIWardrobe-Payments-20261027",
+    "initialRegisteredTesterPassword": "rejected by Apple before product confirmation; not recorded",
+    "replacementTester": "Apple lists the new Uzbekistan Sandbox tester created by the user; email is omitted.",
+    "latestNativeState": "Paywall remained in progress after checkout retry; no StoreKit confirmation or receipt was observed.",
+    "appStoreConnect": "The new tester list still showed no Last Purchase entry",
+    "backendAfterAttempt": {
+      "tier": "free",
+      "subscriptionExpiry": null,
+      "activeSubscriptionRows": 0,
+      "revenueCatSnapshots": 2
+    },
+    "purchaseCompleted": false,
+    "sandboxTransactionObserved": false,
+    "chargeAuthorized": false,
+    "appStoreConnectLastPurchase": "none",
+    "postAttemptServerState": {
+      "tier": "free",
+      "subscriptionExpiry": null,
+      "activeSubscriptionRows": 0,
+      "revenueCatSnapshots": 2
+    },
+    "nativeSandboxSignInPrompt": "Open in AIWardrobe-Payments-20261027 with the new sandbox email prefilled; password field still awaits tester input."
+  },
+  "remainingAction": "Tester must type the new sandbox password into the visible Apple prompt, tap OK, then confirm the Lite purchase only on a clearly marked Sandbox purchase sheet. Afterward verify the StoreKit result, RevenueCat Sandbox customer, sandbox webhook, and database tier before running renewal, cancellation, refund and restore tests.",
+  "checkoutReliabilityFix": {
+    "problem": "A native StoreKit request that remained unresolved kept the paywall spinner active indefinitely.",
+    "implementation": "After 120 seconds the paywall reports an unknown pending outcome, blocks duplicate purchases while the native operation remains unresolved, and offers a server-authoritative restore/status check.",
+    "verification": {
+      "focusedIapServiceTests": 18,
+      "paymentBackendAndSnapshotTests": 29,
+      "fullSuites": 193,
+      "fullTests": 2453,
+      "typescript": "pass",
+      "dedicatedSimulatorBundle": "/tmp/aiwardrobe-oct27-native-timeout/AIWardrobe.app",
+      "embeddedIapSourceMatchesCurrentSourceMap": true
+    },
+    "limitation": "No successful sandbox transaction or entitlement activation was observed; timeout behavior is unit-tested but a native timeout experience was not witnessed during this run."
+  },
+  "nativeSandboxCheckout": {
+    "status": "awaiting tester password entry",
+    "appUserProfile": "Payment QA is authenticated in AIWardrobe",
+    "sandboxTester": "created in App Store Connect; email filled in the Apple sign-in prompt",
+    "passwordField": "blank; password is not stored in the repo or report",
+    "purchaseRecorded": false,
+    "entitlementActivationObserved": false
+  }
+}

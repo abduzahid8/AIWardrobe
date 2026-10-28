@@ -8,10 +8,11 @@ import useWardrobeStore from '../../../store/wardrobeStore';
 import { fetchWardrobeDisplayItems } from '../../../src/services/outfitGenerationService';
 import { useShopCatalog } from '../../../hooks/useShopCatalog';
 import { getMacroCategory } from './useItemSelection';
+import { detectSlotMismatch } from '../utils/occasionRules';
 import type { WardrobeDisplayItem } from '../types';
 import type { ShopCatalogItem } from '../../../src/types/shop';
 
-const LIVE_SHOP_SOURCE = 'apify-zara-men';
+const LIVE_SHOP_SOURCE = 'all';
 
 // The shop catalog is fetched from Supabase via useShopCatalog().
 // When that fetch returns zero items (first launch, bad network), we
@@ -60,6 +61,10 @@ export function mapShopCatalogItemToWardrobeDisplayItem(item: ShopCatalogItem): 
     macroCategory: getMacroCategory(category, item.name),
     category,
     isShopItem: true,
+    // Carry the retailer's direct product URL so Buy opens the product
+    // page, not a Google search fallback.
+    shopUrl: item.sourceUrl || undefined,
+    sourceUrl: item.sourceUrl || undefined,
   };
 }
 
@@ -112,7 +117,8 @@ export function useWardrobeLoader(source: 'wardrobe' | 'shop') {
           type: item.type,
           color: item.color,
           name: item.name,
-          macroCategory: item.macroCategory,
+          // Repair mistagged slots (trousers under Tops) from the name.
+          macroCategory: detectSlotMismatch(item.macroCategory, item.name || item.type || '', item.type) ?? item.macroCategory,
           category: item.category,
         })));
         return;

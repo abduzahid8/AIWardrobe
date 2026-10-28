@@ -12,7 +12,9 @@ const admin={apikey:service,Authorization:`Bearer ${service}`,'Content-Type':'ap
 const cancellation=new AbortController();
 process.once('SIGINT',()=>cancellation.abort());process.once('SIGTERM',()=>cancellation.abort());
 const report={measuredAt:new Date().toISOString(),runId:randomUUID(),scope:'Bounded live scan concurrency; same known photo, ordinary free users, expected primary category/color only',plannedStages:stages,maxRequests,stages:[],cleanup:[]};
-const file=new URL('../../docs/reports/readiness-evidence/production-scan-concurrency.json',import.meta.url);
+const filename=process.env.SCAN_CONCURRENCY_REPORT||'production-scan-concurrency.json';
+if(!/^[a-z0-9-]+\.json$/.test(filename))throw Error('Invalid report filename');
+const file=new URL('../../docs/reports/readiness-evidence/'+filename,import.meta.url);
 const save=()=>writeFile(file,JSON.stringify(report,null,2)+'\n');
 async function call(path,headers,body,method='POST',cleanup=false){
  const start=performance.now();
@@ -57,6 +59,6 @@ try{
  }
 }catch(error){report.failure=error.message==='Cancelled'?'Cancelled':error.name;process.exitCode=1;}
 finally{
- for(const owner of users){const removed=await call(`/auth/v1/admin/users/${owner.id}`,admin,undefined,'DELETE',true);report.cleanup.push({deleted:removed.ok,status:removed.status});if(!removed.ok)process.exitCode=1;}
+ for(const owner of users){const revoked=owner.headers?await call('/auth/v1/logout?scope=global',owner.headers,{},'POST',true):null;const removed=await call(`/auth/v1/admin/users/${owner.id}`,admin,undefined,'DELETE',true);report.cleanup.push({id:owner.id,sessionsRevoked:revoked?revoked.ok:null,sessionCreated:!!owner.headers,deleted:removed.ok,status:removed.status});if(!removed.ok||(owner.headers&&!revoked?.ok))process.exitCode=1;}
  report.completedAt=new Date().toISOString();await save();console.log(JSON.stringify({completedStages:report.stages.length,createdUsers:users.length,deletedUsers:report.cleanup.filter(r=>r.deleted).length,failed:!!process.exitCode}));
 }

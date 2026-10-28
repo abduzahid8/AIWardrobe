@@ -1,0 +1,98 @@
+{
+  "measuredAt": "2026-10-25",
+  "change": "Service-only, fenced shared refresh lease with bounded waits and shared failure cooldown. No HTTP request holds a database transaction open.",
+  "migration": {
+    "version": "20261025022536",
+    "name": "budget_rate_refresh_lease",
+    "appliedAndRecordedByCliRepair": true
+  },
+  "deployment": {
+    "budgetRatesVersion": 6,
+    "generateOutfitsVersion": 132,
+    "changedModuleOnly": "functions/_shared/budgetFxCache.ts",
+    "allOtherHostedFilesPreserved": true,
+    "jwtRequired": true,
+    "exactReadbacks": true
+  },
+  "validation": {
+    "fullJestTests": 2387,
+    "fullJestSuites": 186,
+    "budgetCacheTests": 36,
+    "typescript": true,
+    "bothHostedPackagesDeno": true,
+    "simulationBeforeUpstreamCalls": 10,
+    "simulationAfterUpstreamCalls": 1,
+    "simulationColdIsolates": 10,
+    "simulationSameSnapshot": true,
+    "liveDatabaseChecks": [
+      {
+        "name": "anonymous_claim_denied",
+        "passed": true
+      },
+      {
+        "name": "one_owner_across_twenty_requests",
+        "passed": true
+      },
+      {
+        "name": "wrong_owner_cannot_publish",
+        "passed": true
+      },
+      {
+        "name": "owner_can_record_failed_refresh",
+        "passed": true
+      },
+      {
+        "name": "released_owner_cannot_publish_late",
+        "passed": true
+      },
+      {
+        "name": "failure_cooldown_prevents_upstream_retry_storm",
+        "passed": true
+      }
+    ],
+    "liveAtomicPublicationAndExpiredSupersededOwnerChecks": "Passed in a rolled-back transaction; fixture snapshot absent after rollback.",
+    "liveOutage": {
+      "concurrentRequests": 5,
+      "upstreamFailureLogs": 1,
+      "leaseClaimFailureLogs": 5,
+      "cooldownRequest": {
+        "status": 503,
+        "error": "budget_rates_unavailable",
+        "snapshotPresent": false,
+        "latencyMs": 3118,
+        "region": "eu-central-1"
+      },
+      "leaseReleased": true,
+      "noSnapshotReturned": true
+    },
+    "postDeploymentUnbudgetedSmoke": {
+      "report": "v132-oct25-hosted-deck-smoke.json",
+      "passed": true,
+      "outfits": 3,
+      "source": "ai",
+      "latencyMs": 4694
+    },
+    "independentCleanup": {
+      "usersRemaining": 0,
+      "profilesRemaining": 0,
+      "sessionsRemaining": 0,
+      "fixtureUsers": 2
+    }
+  },
+  "security": {
+    "rpcSecurityInvoker": true,
+    "fixedEmptySearchPath": true,
+    "anonAndAuthenticatedExecute": false,
+    "tableRlsEnabled": true,
+    "tableClientGrantsRevoked": true,
+    "newAdvisorFinding": "INFO rls_enabled_no_policy: intentional deny-all client policy on service-only coordination table",
+    "remediationReference": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+  },
+  "remainingBlocker": "Production network path to CBU still times out. Budgeted generation remains unavailable; no healthy real production refresh has been demonstrated.",
+  "limits": [
+    "A healthy shared refresh was simulated and atomic publication verified within a rolled-back database transaction; neither substitutes for healthy production source access.",
+    "Five rate endpoint calls may share Edge isolates; real distributed exclusivity is independently supported by20 simultaneous database claims and10 separately initialized helper modules.",
+    "No expired/guessed rate or manually seeded current cache was installed.",
+    "No native UI, sustained mixed workload or10,000 DAU certification."
+  ]
+}

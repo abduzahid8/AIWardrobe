@@ -101,7 +101,7 @@ describe('buildLocalOutfits diversity invariant', () => {
     });
 
     it('3 looks from a varied pool stay product-unique even when they share an archetype', () => {
-        for (let run = 0; run < 5; run++) {
+        for (let run = 0; run < 100; run++) {
             const outfits = buildLocalOutfits(variedPool(), {
                 stylePreferences: 'casual',
                 occasion: 'Everyday',

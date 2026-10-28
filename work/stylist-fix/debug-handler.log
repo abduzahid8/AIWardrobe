@@ -1,0 +1,224 @@
+[budget-rates] using_native_currency_only { currency: 'USD' }
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Slim Fit Easy-iron Shirt" => Mapped to: "top"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Slim Fit Easy-iron Shirt" => Mapped to: "top"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Slim Fit Easy-iron Shirt" => Mapped to: "top"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Slim Fit Easy-iron Shirt" => Mapped to: "top"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "The Pique Polo | Toasted Coconut" => Mapped to: "top"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Relaxed-Fit Waffled Resort Shirt" => Mapped to: "top"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Relaxed-Fit Waffled Resort Shirt" => Mapped to: "top"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Slim-Fit Ribbed Cotton Henley Shirt" => Mapped to: "top"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "The Classic Oxford Shirt | Grey | Standard" => Mapped to: "top"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "The Pique Polo | Deep Navy" => Mapped to: "top"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "The Pique Polo | Bone" => Mapped to: "top"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "The Long-Sleeve Pique Polo | Bone" => Mapped to: "top"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "The Pique Polo | Heathered Graphite" => Mapped to: "top"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular Fit Oxford Shirt" => Mapped to: "top"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular Fit Oxford Shirt" => Mapped to: "top"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Slim-Fit Stretch Shirt" => Mapped to: "top"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Slim-Fit Stretch Shirt" => Mapped to: "top"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Slim-Fit Stretch Shirt" => Mapped to: "top"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Slim-Fit Stretch Shirt" => Mapped to: "top"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular-Fit Corduroy Shirt" => Mapped to: "top"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular-Fit Corduroy Shirt" => Mapped to: "top"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular-Fit Corduroy Shirt" => Mapped to: "top"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular-Fit Corduroy Shirt" => Mapped to: "top"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Relaxed-Fit Linen-Blend Resort Shirt" => Mapped to: "top"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Compression Fit Sports Shirt with DryMove™" => Mapped to: "top"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular-Fit Cotton Resort Shirt" => Mapped to: "top"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Relaxed-Fit Henley Shirt" => Mapped to: "top"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Relaxed-Fit Henley Shirt" => Mapped to: "top"
+[Deno macroCategory] Input -> category: "bottoms", type: "lower_body", name: "Slim-Fit Cotton Chinos" => Mapped to: "bottom"
+[Deno macroCategory] Input -> category: "bottoms", type: "lower_body", name: "Slim-Fit Cotton Chinos" => Mapped to: "bottom"
+[Deno macroCategory] Input -> category: "bottoms", type: "lower_body", name: "Slim-Fit Cotton Chinos" => Mapped to: "bottom"
+[Deno macroCategory] Input -> category: "bottoms", type: "lower_body", name: "The Performance Chino | Uniform | Deep Navy | Athletic" => Mapped to: "bottom"
+[Deno macroCategory] Input -> category: "bottoms", type: "lower_body", name: "The Performance Chino | Uniform | Toasted Coconut | Slim" => Mapped to: "bottom"
+[Deno macroCategory] Input -> category: "bottoms", type: "lower_body", name: "The Performance 5-Pocket Pant | Uniform | Black" => Mapped to: "bottom"
+[Deno macroCategory] Input -> category: "bottoms", type: "lower_body", name: "Regular Jeans" => Mapped to: "bottom"
+[Deno macroCategory] Input -> category: "bottoms", type: "lower_body", name: "Regular Jeans" => Mapped to: "bottom"
+[Deno macroCategory] Input -> category: "bottoms", type: "lower_body", name: "Regular Jeans" => Mapped to: "bottom"
+[Deno macroCategory] Input -> category: "bottoms", type: "lower_body", name: "Regular Jeans" => Mapped to: "bottom"
+[Deno macroCategory] Input -> category: "bottoms", type: "lower_body", name: "Regular Jeans" => Mapped to: "bottom"
+[Deno macroCategory] Input -> category: "bottoms", type: "lower_body", name: "Relaxed Jeans" => Mapped to: "bottom"
+[Deno macroCategory] Input -> category: "bottoms", type: "lower_body", name: "The Performance Chino | Uniform | Slate Grey | Slim" => Mapped to: "bottom"
+[Deno macroCategory] Input -> category: "bottoms", type: "lower_body", name: "Wide Chino Pants | Tall" => Mapped to: "bottom"
+[Deno macroCategory] Input -> category: "bottoms", type: "lower_body", name: "Slim-Fit Tailored Pants" => Mapped to: "bottom"
+[Deno macroCategory] Input -> category: "bottoms", type: "lower_body", name: "Slim-Fit Tailored Pants" => Mapped to: "bottom"
+[Deno macroCategory] Input -> category: "bottoms", type: "lower_body", name: "Slim-Fit Cargo Pants" => Mapped to: "bottom"
+[Deno macroCategory] Input -> category: "bottoms", type: "lower_body", name: "Slim-Fit Suit Pants" => Mapped to: "bottom"
+[Deno macroCategory] Input -> category: "bottoms", type: "lower_body", name: "Regular Fit Tailored-Look Joggers" => Mapped to: "bottom"
+[Deno macroCategory] Input -> category: "bottoms", type: "lower_body", name: "The Performance Chino | Uniform | Black | Slim" => Mapped to: "bottom"
+[Deno macroCategory] Input -> category: "bottoms", type: "lower_body", name: "The Performance Chino | Uniform | Deep Navy | Slim" => Mapped to: "bottom"
+[Deno macroCategory] Input -> category: "bottoms", type: "lower_body", name: "Ultra Stretch Active Jogger Pants | 2025 Version" => Mapped to: "bottom"
+[Deno macroCategory] Input -> category: "shoes", type: "shoes", name: "Era | Cloud" => Mapped to: "shoes"
+[Deno macroCategory] Input -> category: "shoes", type: "shoes", name: "Era | Navy" => Mapped to: "shoes"
+[Deno macroCategory] Input -> category: "shoes", type: "shoes", name: "Renegade | Black" => Mapped to: "shoes"
+[Deno macroCategory] Input -> category: "shoes", type: "shoes", name: "Statesman | Brandy" => Mapped to: "shoes"
+[Deno macroCategory] Input -> category: "shoes", type: "shoes", name: "Lincoln | Dark Brown" => Mapped to: "shoes"
+[Deno macroCategory] Input -> category: "shoes", type: "shoes", name: "Executive | Black" => Mapped to: "shoes"
+[Deno macroCategory] Input -> category: "shoes", type: "shoes", name: "Chairman | Black" => Mapped to: "shoes"
+[Deno macroCategory] Input -> category: "shoes", type: "shoes", name: "Lincoln | Black" => Mapped to: "shoes"
+[Deno macroCategory] Input -> category: "shoes", type: "shoes", name: "Saint | Cognac" => Mapped to: "shoes"
+[Deno macroCategory] Input -> category: "bottoms", type: "lower_body", name: "Regular-Fit Bootcut Jeans" => Mapped to: "bottom"
+[Deno macroCategory] Input -> category: "shoes", type: "shoes", name: "Duke | Black Coffee" => Mapped to: "shoes"
+[Deno macroCategory] Input -> category: "shoes", type: "shoes", name: "President StormKing® | Bull Brown" => Mapped to: "shoes"
+[Deno macroCategory] Input -> category: "bottoms", type: "lower_body", name: "Regular-Fit Bootcut Jeans" => Mapped to: "bottom"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular-Fit Fine-Knit Sweater" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Lightweight Pima cotton crewneck sweater" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular-Fit Brushed Sweater" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular-Fit Brushed Sweater" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular-Fit Brushed Sweater" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular-Fit Half-Zip Sweater" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular-Fit Half-Zip Sweater" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular-Fit Half-Zip Sweater" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular-Fit Half-Zip Sweater" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Relaxed-Fit Rib-Knit Sweater" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Relaxed-Fit Rib-Knit Sweater" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "bottoms", type: "lower_body", name: "The Performance Chino | Uniform | Trench Coat Khaki | Slim" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "bottoms", type: "lower_body", name: "The Denim Jacket | Uniform | Classic Blue Wash" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Slim-Fit Water-Repellent Puffer Vest" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Lightweight Bomber Jacket" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Lightweight Bomber Jacket" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular-Fit Sweater" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular-Fit Cardigan" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular-Fit Cardigan" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular-Fit Knit Sweater" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Heritage cotton cable-knit sweater" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "The Bomber Jacket | Uniform | Deep Navy" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular-Fit Rib-Knit Cotton Sweater" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular-Fit Rib-Knit Cotton Sweater" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Relaxed-Fit Sweater" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "The No-Sweat Sweater | Uniform | New Black" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Slim-Fit Lightweight Puffer Jacket" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular-Fit Teddy Fleece Jacket" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Relaxed-Fit Half-Zip Rib-Knit Sweater" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Relaxed-Fit Cable-Knit Polo Sweater" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Relaxed-Fit Polo Sweater" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "The Bomber Jacket | Uniform | Trench Coat Khaki" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "The Bomber Jacket | Uniform | Forest Green" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "The Barn Jacket | Black" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Workwear Jacket" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Padded Bomber Jacket" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Padded Windproof and Water-Repellent Jacket" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Padded Windproof and Water-Repellent Jacket" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular-Fit Wool Sweater" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular-Fit Wool Sweater" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular-Fit Wool Sweater" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Scuba Baseball Jacket" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "The Bomber Jacket | Uniform | Kalamata" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Heritage cotton tipped V-neck sweater" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "The No-Sweat Sweater | Uniform | Heathered Ash" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Collared jacket" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Denim Trucker Jacket" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Water-Repellent Puffer Jacket" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Scuba Blouson Jacket" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Teddy Fleece Jacket" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Twill Workwear Jacket" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "PUFFTECH Jacket" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Slim-Fit Jacket" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular-Fit Single-Breasted Jacket" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular-Fit Single-Breasted Jacket" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular-Fit Single-Breasted Jacket" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular-Fit Double-Breasted Jacket" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular-Fit Double-Breasted Jacket" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Single-Breasted Coat" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Single-Breasted Coat" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Regular-Fit Wool Cardigan with Zipper" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Fisherman-rib johnny-collar sweater in cotton" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Fisherman-rib johnny-collar sweater in cotton" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Fisherman-rib johnny-collar sweater in cotton" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Rib-knit sweater in marled cotton" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Rib-knit sweater in marled cotton" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Rib-knit sweater in marled cotton" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "Heritage cotton cable-knit sweater in colorblock" => Mapped to: "outerwear"
+[Deno macroCategory] Input -> category: "tops", type: "upper_body", name: "V-neck sweater in ribbed cotton blend" => Mapped to: "outerwear"
+[shop-fill] Added 24 shop item(s) for sparse slots: top, bottom, shoes, outerwear (target=6)
+[budget] shop items over 250 USD dropped: 24 -> 24
+[rank] 24 -> 24 items after style filter for casual
+[generation-pool] {
+  count: 24,
+  style: 'casual',
+  slots: { top: 6, bottom: 6, shoes: 6, outerwear: 6 }
+}
+[tier] user=a9947003 paid=false
+[layer] style=casual weather=?°C layered=true
+[curation] options=3 required=3
+[NVIDIA] attempt 1, model: meta/llama-3.2-11b-vision-instruct
+[NVIDIA] response length: 49 chars
+[NVIDIA] parsed 3 outfits
+[validate] 3/3 outfits passed style check for casual (layered=true)
+[stylist-diversity] ACTIVE_DIVERSITY_SLOTS {
+  activeSlots: [ 'outerwear', 'top', 'bottom', 'shoes' ],
+  target: 3,
+  uniqueProductsPerSlot: { outerwear: 6, top: 6, bottom: 6, shoes: 6 }
+}
+[stylist-diversity] UNIQUE_INVENTORY_SUPPORTED {
+  strictSlots: [ 'outerwear', 'top', 'bottom', 'shoes' ],
+  forcedRepeatSlots: [],
+  maxDistinctProducts: 6
+}
+[stylist-diversity] candidate 1 archetype: knitwear-tee-jean-dress-shoe {
+  source: 'edge',
+  quality: 1,
+  products: [
+    'n:slim fit ribbed cotton henley shirt',
+    'n:regular fit half zip sweater',
+    'n:relaxed jeans',
+    'n:era navy'
+  ]
+}
+[stylist-diversity] candidate 2 archetype: knitwear-shirt-chino-dress-shoe {
+  source: 'edge',
+  quality: 0.5,
+  products: [
+    'n:slim fit easy iron shirt',
+    'n:lightweight pima cotton crewneck sweater',
+    'n:the performance chino uniform deep navy athletic',
+    'n:renegade black'
+  ]
+}
+[stylist-diversity] candidate 3 archetype: knitwear-shirt-tailored-dress-shoe {
+  source: 'edge',
+  quality: 0.3333333333333333,
+  products: [
+    'n:relaxed fit waffled resort shirt',
+    'n:regular fit fine knit sweater',
+    'n:the performance 5 pocket pant uniform black',
+    'n:era cloud'
+  ]
+}
+[stylist-diversity] similarity 1<->2 = 0.41 {
+  archetypes: [ 'knitwear-tee-jean-dress-shoe', 'knitwear-shirt-chino-dress-shoe' ]
+}
+[stylist-diversity] similarity 1<->3 = 0.47 {
+  archetypes: [
+    'knitwear-tee-jean-dress-shoe',
+    'knitwear-shirt-tailored-dress-shoe'
+  ]
+}
+[stylist-diversity] similarity 2<->3 = 0.67 {
+  archetypes: [
+    'knitwear-shirt-chino-dress-shoe',
+    'knitwear-shirt-tailored-dress-shoe'
+  ]
+}
+[stylist-diversity] DIVERSE_DECK_SELECTED {
+  deckSize: 3,
+  target: 3,
+  archetypes: [
+    'knitwear-tee-jean-dress-shoe',
+    'knitwear-shirt-chino-dress-shoe',
+    'knitwear-shirt-tailored-dress-shoe'
+  ],
+  nonAnchorProductReuseCount: 0,
+  repeatedProductKeys: [],
+  repeatedSlots: [],
+  anchorRepetitionCount: 0,
+  activeSlots: [ 'outerwear', 'top', 'bottom', 'shoes' ],
+  forcedRepeatSlots: [],
+  relaxed: false,
+  relaxReason: null,
+  hasQualitySignal: true
+}
+[stylist-diversity] archetypes=["knitwear-tee-jean-dress-shoe","knitwear-shirt-chino-dress-shoe","knitwear-shirt-tailored-dress-shoe"] similarities=[0.41,0.47,0.67] relaxed=false reason=strict nonAnchorProductReuseCount=0
+[stylist-product-diversity] {"decision":"UNIQUE_PRODUCTS","nonAnchorProductReuseCount":0,"illegalProductReuseCount":0,"forcedRepeatProducts":[],"anchorRepeatProducts":[],"repeatedProductKeys":[],"repeatedCanonicalKeys":[],"repeatedProducts":[],"anchorRepetitionCount":0,"lookProductKeys":[["n:slim fit ribbed cotton henley shirt","n:regular fit half zip sweater","n:relaxed jeans","n:era navy"],["n:slim fit easy iron shirt","n:lightweight pima cotton crewneck sweater","n:the performance chino uniform deep navy athletic","n:renegade black"],["n:relaxed fit waffled resort shirt","n:regular fit fine knit sweater","n:the performance 5 pocket pant uniform black","n:era cloud"]],"lookCanonicalProducts":[["n:slim fit ribbed cotton henley shirt","n:regular fit half zip sweater","n:relaxed jeans","n:era navy"],["n:slim fit easy iron shirt","n:lightweight pima cotton crewneck sweater","n:the performance chino uniform deep navy athletic","n:renegade black"],["n:relaxed fit waffled resort shirt","n:regular fit fine knit sweater","n:the performance 5 pocket pant uniform black","n:era cloud"]],"lookIds":[["shop_hm-1359341004","shop_hm-1341531001","shop_hm-1316883006","shop_thursday-7824210231386"],["shop_hm-1242812006","shop_jcrew-cp719-pr0393","shop_everlane-7539339493462","shop_thursday-6794356228186"],["shop_hm-1348532006","shop_hm-1341528001","shop_everlane-7562831003734","shop_thursday-15407719448666"]],"relaxReason":null,"supportsUniqueProducts":true,"activeSlots":["outerwear","top","bottom","shoes"],"strictSlots":["outerwear","top","bottom","shoes"],"forcedRepeatSlots":[],"uniqueProductsPerSlot":{"outerwear":6,"top":6,"bottom":6,"shoes":6},"deckSize":3,"deckTarget":3,"hasQualitySignal":true,"generationSource":"ai","provider":"nvidia:meta/llama-3.2-11b-vision-instruct"}
+debug complete 200

@@ -1,14 +1,4 @@
-/**
- * outfitTopSlotRegression — guards the non-layered top-slot fix.
- *
- * Bug: in non-layered mode the rotation picks the "top" from legacyTops
- * (outerwear + tops). When it landed on an outerwear piece,
- * normalizeGeneratedOutfitItems dropped it (outerwear excluded from the top
- * slot), emitting broken 2-item cards (bottom + shoes, no top).
- *
- * Fix: non-layered baseTop accepts outerwear-as-top (mirrors the edge
- * validator, which accepts hasBaseTop || hasOuter when not layered).
- */
+/** A layer never replaces the required base shirt, including in summer. */
 import { buildLocalOutfits, type LocalClothingItem } from '../../src/services/outfitGenerationService';
 
 function owned(id: string, slot: string, name: string, color = 'navy'): LocalClothingItem {
@@ -31,19 +21,18 @@ const MIXED = [
   owned('o-shoe1', 'shoes', 'brown penny loafers', 'brown'),
 ];
 
-describe('non-layered top slot keeps outerwear-as-top', () => {
-  it('every hot-summer outfit has exactly 3 items incl. a top', () => {
-    // Pool has 3 top-slot candidates (2 tops + blazer-as-top) sharing one
-    // bottom/shoes pair, so at most 3 distinct looks exist — the point is
-    // none of them is a broken 2-item card.
+describe('four-category top and layer separation', () => {
+  it('summer outfits retain a layer and a separate base shirt', () => {
+    // Two base shirts share one actual layer, pants and shoes: two distinct complete looks.
     const decks = buildLocalOutfits(MIXED, {
       stylePreferences: 'casual', occasion: 'Everyday', limit: 3,
-      prompt: 'hot summer beach day', weather: { temp: 32, condition: 'sunny' },
+      prompt: 'mild beach day', weather: { temp: 18, condition: 'sunny' },
     });
-    expect(decks.length).toBe(3);
+    expect(decks.length).toBe(2);
     for (const o of decks) {
-      expect(o.items.length).toBe(3);
-      expect(o.items.some((i) => ['top', 'outerwear'].includes((i.macroCategory || '').toLowerCase()))).toBe(true);
+      expect(o.items.length).toBe(4);
+      expect(o.items.filter((i) => i.macroCategory === 'top')).toHaveLength(1);
+      expect(o.items.filter((i) => i.macroCategory === 'outerwear')).toHaveLength(1);
       expect(o.items.some((i) => (i.macroCategory || '').toLowerCase() === 'bottom')).toBe(true);
       expect(o.items.some((i) => (i.macroCategory || '').toLowerCase() === 'shoes')).toBe(true);
     }

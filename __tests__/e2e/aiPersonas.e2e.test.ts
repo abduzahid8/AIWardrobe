@@ -6,7 +6,7 @@
  * runs the FULL production pipeline; the suite pins per-account behavior:
  *
  *   - Amir (old_money / work / cold)      → layered formal decks, shop mode
- *   - Sara (casual / casual / hot)        → unlayered relaxed decks, shop mode
+ *   - Sara (casual / casual / hot)        → layered relaxed decks, shop mode
  *   - Dmitriy (business_casual / wardrobe) → layered, 100% owned items
  *   - Lola (minimalist / wardrobe)        → quiet palette, 100% owned items
  *
@@ -33,16 +33,15 @@ describe('AI personas e2e — four accounts', () => {
     for (const r of results) {
       expect(r.deck.length).toBeGreaterThanOrEqual(1);
       for (const check of r.checks) {
-        expect(`${r.persona.account} — ${check.label}: ${check.detail}`).toBeTruthy();
-        expect(check.pass).toBe(true);
+        if (!check.pass) throw new Error(`${r.persona.account} — ${check.label}: ${check.detail}`);
       }
     }
   });
 
-  it('layering follows each account’s weather, not a global default', () => {
+  it('all accounts retain the layer while weather controls garment choice', () => {
     const byAccount = Object.fromEntries(runAllPersonas().map((r) => [r.persona.account, r]));
     expect(byAccount['Amir · Old Money executive'].layered).toBe(true); // 12°C cold
-    expect(byAccount['Sara · Casual student'].layered).toBe(false); // 28°C clear
+    expect(byAccount['Sara · Casual student'].layered).toBe(true); // 28°C clear
     expect(byAccount['Dmitriy · Business casual'].layered).toBe(true); // wind
   });
 

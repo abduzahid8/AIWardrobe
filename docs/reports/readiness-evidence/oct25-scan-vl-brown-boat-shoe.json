@@ -1,0 +1,38 @@
+{
+  "measuredAt": "2026-10-25T11:24:49.807Z",
+  "scope": "One direct NVIDIA diagnostic using actual staged handler with controlled Auth/config; no production admission claim",
+  "providerResponses": [
+    {
+      "status": 200,
+      "finishReason": "stop",
+      "contentLength": 191,
+      "parsed": {
+        "category": "sneakers",
+        "section": "shoes",
+        "style": "casual",
+        "color": "brown",
+        "material": "leather",
+        "description": "A brown leather boat shoe with laces and a pebbled sole."
+      }
+    }
+  ],
+  "fixture": {
+    "path": "assets/images/basic_brown_loafers.png",
+    "bytes": 179787,
+    "sha256": "6420d406db4ff155ec6d3283e24da6ab77a206f0a08e592218c46609e7b8a2a8"
+  },
+  "candidateModel": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+  "handlerStatus": 200,
+  "latencyMs": 2242,
+  "acceptedClassification": {
+    "category": "sneakers",
+    "section": "shoes",
+    "confidence": 0,
+    "attributes": {
+      "style": "casual",
+      "color": "brown",
+      "material": "leather"
+    }
+  },
+  "error": null
+}

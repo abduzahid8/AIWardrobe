@@ -1,0 +1,69 @@
+{
+  "measuredAt": "2026-10-25T02:41:31.591Z",
+  "scope": "Live usage-reader outputs and account isolation; no quota-consumption, provider or10kDAUclaim.",
+  "checks": [
+    {
+      "name": "fresh_owner_0_receives_integer_zero",
+      "passed": true,
+      "value": 0,
+      "status": 200
+    },
+    {
+      "name": "fresh_owner_1_receives_integer_zero",
+      "passed": true,
+      "value": 0,
+      "status": 200
+    },
+    {
+      "name": "owner_0_sees_only_own_count",
+      "passed": true,
+      "value": 2,
+      "status": 200
+    },
+    {
+      "name": "owner_0_unrecorded_feature_is_zero",
+      "passed": true,
+      "value": 0,
+      "status": 200
+    },
+    {
+      "name": "owner_1_sees_only_own_count",
+      "passed": true,
+      "value": 4,
+      "status": 200
+    },
+    {
+      "name": "owner_1_unrecorded_feature_is_zero",
+      "passed": true,
+      "value": 0,
+      "status": 200
+    },
+    {
+      "name": "anonymous_reader_denied",
+      "passed": true,
+      "status": 401
+    },
+    {
+      "name": "caller_cannot_supply_another_owner",
+      "passed": true,
+      "status": 404
+    }
+  ],
+  "fixtureUserIds": [
+    "7601b065-9c5e-4fdb-8109-fa94c6351ac9",
+    "7f82c6c8-3a7f-4202-bd5d-a659329629b3"
+  ],
+  "cleanup": [
+    {
+      "id": "7601b065-9c5e-4fdb-8109-fa94c6351ac9",
+      "sessionsRevoked": true,
+      "ownerDeleted": true
+    },
+    {
+      "id": "7f82c6c8-3a7f-4202-bd5d-a659329629b3",
+      "sessionsRevoked": true,
+      "ownerDeleted": true
+    }
+  ],
+  "passed": true
+}

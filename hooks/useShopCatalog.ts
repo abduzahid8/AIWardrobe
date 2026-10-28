@@ -32,7 +32,7 @@ interface CacheEntry {
 }
 const catalogCache = new Map<string, CacheEntry>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-function cacheKey(source: string, cat: string) { return `${source}|${cat}`; }
+function cacheKey(source: string, cat: string, search = '') { return JSON.stringify([source, cat, search]); }
 
 // ── In-flight request deduplication ──────────────────────────────────────────
 // When HomeScreen and InspoScreen both call useShopCatalog({ source: 'all' })
@@ -48,7 +48,10 @@ const PAGE_SIZE = 100;
 // O(n²) diversification pass over 300 items on the JS thread. 100 rows is
 // plenty for the first paint (essentials need 14, decks need variety across
 // 4 slots); pagination loads more on demand.
-const DEFAULT_SHOP_SOURCE = 'apify-zara-men';
+// The live catalog contains several curated men's sources, including the
+// neutral-background Zara and Massimo Dutti imports. An old single-source
+// default returned no rows after the catalog's ingestion sources changed.
+const DEFAULT_SHOP_SOURCE = 'all';
 const FETCH_TIMEOUT_MS = 15_000;
 const FETCH_RETRY_DELAY_MS = 1_500;
 
@@ -81,10 +84,12 @@ function isTimeoutOrNetworkError(err: any): boolean {
 export interface UseShopCatalogOptions {
     /** Matches UI chips: upper_body | lower_body | shoes | dresses | outfits (or legacy tops/bottoms maps to category). */
     category?: string;
-    /** Limit catalog rows to a specific ingestion source. Defaults to the approved men's Zara sync. */
+    /** Limit catalog rows to a specific ingestion source. Defaults to all catalog sources. */
     source?: string;
     /** Skip querying until the caller is ready to show live catalog data. */
     enabled?: boolean;
+    /** Search the entire active catalog before pagination. */
+    search?: string;
 }
 
 export interface UseShopCatalogResult {
@@ -103,7 +108,7 @@ function dbRowToItem(row: Record<string, any>): ShopCatalogItem {
         brand:       row.brand,
         name:        row.name,
         price:       Number(row.price),
-        currency:    row.currency ?? 'USD',
+        currency:    row.currency ?? undefined,
         imageUrl:    getThumbnailUrl(row.image_url),
         garmentType: row.garment_type as ShopCatalogItem['garmentType'],
         description: row.description ?? '',
@@ -145,13 +150,14 @@ function getStaticSeed(cat: string, activeSource: string): ShopCatalogItem[] {
     return all.filter((i) => (i as any).garmentType === cat).slice(0, PAGE_SIZE);
 }
 
-function buildQuery(page: number, cat: string, activeSource: string, signal?: AbortSignal) {
+function buildQuery(page: number, cat: string, activeSource: string, signal?: AbortSignal, search = '') {
     const size = PAGE_SIZE;
     let q = supabase
         .from('shop_catalog')
         .select('id, brand, name, price, currency, image_url, garment_type, description, source_url')
         .eq('is_active', true)
         .order('sort_order', { ascending: true })
+        .order('id', { ascending: true })
         .range(page * size, page * size + size - 1);
 
     // Cancel the hanging PostgREST request when our timeout fires — otherwise
@@ -178,6 +184,12 @@ function buildQuery(page: number, cat: string, activeSource: string, signal?: Ab
         q = q.eq('garment_type', cat);
     }
 
+    if (search.trim()) {
+        // Quote filter values so punctuation cannot alter the PostgREST grammar.
+        const pattern = `%${search.trim().replace(/[%_*\\]/g, c => `\\${c}`)}%`;
+        const value = JSON.stringify(pattern);
+        q = q.or(`name.ilike.${value},brand.ilike.${value},description.ilike.${value}`);
+    }
     return q;
 }
 
@@ -195,8 +207,9 @@ async function loadCatalogPage(
     cat: string,
     activeSource: string,
     append: boolean,
+    search = '',
 ): Promise<{ items: ShopCatalogItem[]; hasMore: boolean }> {
-    const key = cacheKey(activeSource, cat);
+    const key = cacheKey(activeSource, cat, search);
     const flightKey = append ? `${key}|p${page}` : key;
     const running = inflight.get(flightKey);
     if (running) return running;
@@ -216,7 +229,7 @@ async function loadCatalogPage(
             const controller = new AbortController();
             try {
                 const result = await withTimeout(
-                    buildQuery(page, cat, activeSource, controller.signal),
+                    buildQuery(page, cat, activeSource, controller.signal, search),
                     FETCH_TIMEOUT_MS,
                     controller,
                 );
@@ -307,7 +320,12 @@ export function useShopCatalog({
     category = 'all',
     source = DEFAULT_SHOP_SOURCE,
     enabled = true,
+    search: rawSearch = '',
 }: UseShopCatalogOptions = {}): UseShopCatalogResult {
+    const search = rawSearch.trim().toLowerCase();
+    const searchRef = useRef(search);
+    searchRef.current = search;
+    const requestVersion = useRef(0);
     const [items, setItems]           = useState<ShopCatalogItem[]>([]);
     const [loading, setLoading]       = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
@@ -319,6 +337,9 @@ export function useShopCatalog({
     const enabledRef                  = useRef(enabled);
 
     const fetchPage = useCallback(async (page: number, cat: string, activeSource: string, append: boolean, silent = false) => {
+        const search = searchRef.current;
+        const version = ++requestVersion.current;
+        const current = () => version === requestVersion.current && search === searchRef.current && cat === categoryRef.current && activeSource === sourceRef.current && enabledRef.current;
         // silent=true: background refresh — don't show loading spinner (items still visible)
         if (!silent) {
             if (page === 0) setLoading(true);
@@ -326,9 +347,11 @@ export function useShopCatalog({
         }
         setError(null);
 
-        const key = cacheKey(activeSource, cat);
+        const key = cacheKey(activeSource, cat, search);
         try {
-            const result = await loadCatalogPage(page, cat, activeSource, append);
+            const result = await loadCatalogPage(page, cat, activeSource, append, search);
+            if (!current()) return;
+            pageRef.current = page;
             setItems(append
                 ? (prev: ShopCatalogItem[]) => {
                     const prevIds = new Set(prev.map((i) => (i as any)?.id));
@@ -338,6 +361,7 @@ export function useShopCatalog({
                 : result.items);
             setHasMore(result.hasMore);
         } catch (err: any) {
+            if (!current()) return;
             // Already logged once inside loadCatalogPage (shared flight) —
             // don't log again here or one outage spams N identical errors.
             // Surface it so the UI can show an empty-state with a retry
@@ -347,8 +371,10 @@ export function useShopCatalog({
             if (!append && !catalogCache.has(key)) setItems([]);
             setHasMore(false);
         } finally {
+            if (current()) {
             setLoading(false);
             setLoadingMore(false);
+            }
         }
     }, []);
 
@@ -360,6 +386,8 @@ export function useShopCatalog({
         enabledRef.current = enabled;
         setError(null);
 
+        requestVersion.current += 1;
+        setLoadingMore(false);
         if (!enabled) {
             setItems([]);
             setLoading(false);
@@ -369,7 +397,7 @@ export function useShopCatalog({
         }
 
         // Seed from cache immediately — avoids blank screen on revisit
-        const key = cacheKey(source, category);
+        const key = cacheKey(source, category, search);
         const cached = catalogCache.get(key);
         if (cached) {
             setItems(cached.items);
@@ -384,7 +412,7 @@ export function useShopCatalog({
             // then refresh from Supabase silently in the background.
             // Previously this showed a loading skeleton until the network
             // returned, blocking essentials + outfit decks on cold start.
-            const seed = getStaticSeed(category, source);
+            const seed = search ? [] : getStaticSeed(category, source);
             if (seed.length > 0) {
                 setItems(seed);
                 setHasMore(true);
@@ -398,7 +426,7 @@ export function useShopCatalog({
             }
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [category, source, enabled]);
+    }, [category, source, enabled, search]);
 
     // Listen for cross-tab cache busting events
     useEffect(() => {
@@ -417,7 +445,6 @@ export function useShopCatalog({
         if (!enabledRef.current) return;
         if (loading || loadingMore || !hasMore) return;
         const nextPage = pageRef.current + 1;
-        pageRef.current = nextPage;
         fetchPage(nextPage, categoryRef.current, sourceRef.current, true);
     }, [loading, loadingMore, hasMore, fetchPage]);
 

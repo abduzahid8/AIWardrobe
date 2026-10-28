@@ -6,7 +6,8 @@
  * icon buttons can trigger the identical motion as a real swipe.
  */
 import React, { forwardRef, useImperativeHandle, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import { View, StyleSheet, Dimensions, ActivityIndicator } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -70,6 +71,8 @@ interface OutfitSwipeStackProps {
    */
   onSwipeRight: (card: SwipeStackCard) => boolean | void;
   onSwipeLeft: (card: SwipeStackCard) => boolean | void;
+  /** Authorize before flying the card away; the current card stays visible while pending. */
+  beforeSwipe?: (card: SwipeStackCard, direction: 'left' | 'right', signal: AbortSignal) => boolean | Promise<boolean>;
   reducedMotion?: boolean;
   height?: number;
   emptyState?: React.ReactNode;
@@ -110,14 +113,24 @@ const CardFace: React.FC<{ card: SwipeStackCard; position: number; total: number
 );
 
 export const OutfitSwipeStack = forwardRef<OutfitSwipeStackHandle, OutfitSwipeStackProps>(
-  ({ cards, activeIndex, onSwipeRight, onSwipeLeft, reducedMotion = false, height = 420, emptyState }, ref) => {
+  ({ cards, activeIndex, onSwipeRight, onSwipeLeft, beforeSwipe, reducedMotion = false, height = 420, emptyState }, ref) => {
+    const { t } = useTranslation();
     const translateX = useSharedValue(0);
     const translateY = useSharedValue(0);
     const [busy, setBusy] = useState(false);
+    const [checking, setChecking] = useState(false);
+    const busyRef = useRef(false);
+    const attemptRef = useRef(0);
+    const mountedRef = useRef(true);
+    const authorizationRef = useRef<AbortController | null>(null);
 
     const topCard = cards[activeIndex] ?? null;
     const midCard = cards[activeIndex + 1] ?? null;
     const backCard = cards[activeIndex + 2] ?? null;
+    const identity = `${activeIndex}:${topCard?.key ?? ''}`;
+    const identityRef = useRef(identity);
+    identityRef.current = identity;
+    useLayoutEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; attemptRef.current++; authorizationRef.current?.abort(); }; }, []);
 
     // The mid/back layers only start downloading their shop-catalog photos
     // once they scroll into view, so a swipe used to reveal a card whose
@@ -174,27 +187,52 @@ export const OutfitSwipeStack = forwardRef<OutfitSwipeStackHandle, OutfitSwipeSt
     const springConfig = reducedMotion ? SPRING_BACK_REDUCED : SPRING_BACK;
     const flyDuration = reducedMotion ? 0 : 240;
 
-    const fireDecision = (direction: 'left' | 'right') => {
+    const resetRejected = () => {
+      busyRef.current = false;
       setBusy(false);
+      setChecking(false);
+      translateX.value = withSpring(0, springConfig);
+      translateY.value = withSpring(0, springConfig);
+    };
+    const fireDecision = (direction: 'left' | 'right', attempt: number, expectedIdentity: string) => {
+      if (!mountedRef.current || attempt !== attemptRef.current || expectedIdentity !== identityRef.current) return;
       const card = cards[activeIndex];
-      if (!card) return;
+      if (!card) { resetRejected(); return; }
       Haptics.impactAsync(
         direction === 'right' ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light,
       );
-      const accepted = direction === 'right' ? onSwipeRight(card) : onSwipeLeft(card);
+      let accepted;
+      try { accepted = direction === 'right' ? onSwipeRight(card) : onSwipeLeft(card); }
+      catch { resetRejected(); return; }
       if (accepted === false) {
         // Swipe was rejected (e.g. swipe quota exhausted → paywall opened).
         // The fly-off animation already completed, but `activeIndex` didn't
         // advance — spring the card back so the visual deck stays in sync
         // with the logical top card (Buy/share read from `activeIndex`).
-        translateX.value = withSpring(0, springConfig);
-        translateY.value = withSpring(0, springConfig);
+        resetRejected();
       }
     };
 
-    const triggerSwipe = (direction: 'left' | 'right') => {
-      if (busy || !cards[activeIndex]) return;
+    const triggerSwipe = async (direction: 'left' | 'right') => {
+      const card = cards[activeIndex];
+      if (busyRef.current || !card) return;
+      busyRef.current = true;
+      const attempt = ++attemptRef.current;
+      const expectedIdentity = identity;
       setBusy(true);
+      if (beforeSwipe) {
+        const controller = new AbortController();
+        authorizationRef.current = controller;
+        setChecking(true);
+        translateX.value = withSpring(0, springConfig);
+        translateY.value = withSpring(0, springConfig);
+        let accepted = false;
+        try { accepted = await beforeSwipe(card, direction, controller.signal); } catch { /* Rejection keeps the card visible. */ }
+        if (!mountedRef.current || attempt !== attemptRef.current || expectedIdentity !== identityRef.current) return;
+        authorizationRef.current = null;
+        setChecking(false);
+        if (!accepted) { resetRejected(); return; }
+      }
       const toX = direction === 'right' ? SCREEN_WIDTH * 1.4 : -SCREEN_WIDTH * 1.4;
       // Deliberately NOT resetting translateX/Y to 0 here. That reset lands on
       // the UI thread within a frame or two, while `runOnJS(fireDecision)` has
@@ -211,7 +249,7 @@ export const OutfitSwipeStack = forwardRef<OutfitSwipeStackHandle, OutfitSwipeSt
       translateX.value = withTiming(toX, { duration: flyDuration }, (finished) => {
         'worklet';
         if (finished) {
-          runOnJS(fireDecision)(direction);
+          runOnJS(fireDecision)(direction, attempt, expectedIdentity);
         }
       });
       translateY.value = withTiming(translateY.value * 0.4, { duration: flyDuration });
@@ -221,16 +259,22 @@ export const OutfitSwipeStack = forwardRef<OutfitSwipeStackHandle, OutfitSwipeSt
     // content has already committed, so the reset can never be visible on the
     // outgoing (wrong) card — see the comment in `triggerSwipe` above.
     useLayoutEffect(() => {
+      authorizationRef.current?.abort();
+      authorizationRef.current = null;
+      attemptRef.current++;
+      busyRef.current = false;
+      setBusy(false);
+      setChecking(false);
       translateX.value = 0;
       translateY.value = 0;
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeIndex]);
+    }, [identity]);
 
     useImperativeHandle(ref, () => ({
-      swipeRight: () => triggerSwipe('right'),
-      swipeLeft: () => triggerSwipe('left'),
+      swipeRight: () => { void triggerSwipe('right'); },
+      swipeLeft: () => { void triggerSwipe('left'); },
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }), [busy, activeIndex, cards]);
+    }), [busy, activeIndex, cards, beforeSwipe, onSwipeRight, onSwipeLeft]);
 
     const panGesture = Gesture.Pan()
       .enabled(!busy && !!topCard)
@@ -302,8 +346,9 @@ export const OutfitSwipeStack = forwardRef<OutfitSwipeStackHandle, OutfitSwipeSt
         )}
         {topCard ? (
           <GestureDetector gesture={panGesture}>
-            <Animated.View key={`top-${topCard.key}`} style={[styles.cardSlot, topCardStyle]}>
+            <Animated.View testID={`swipe-card-${topCard.key}`} key={`top-${topCard.key}`} style={[styles.cardSlot, topCardStyle]}>
               <CardFace card={topCard} position={activeIndex + 1} total={cards.length} />
+              {checking && <View pointerEvents="none" style={styles.authorizationIndicator}><ActivityIndicator testID="swipe-authorization-pending" accessibilityLabel={t('common.loading')} color="#0A1931" /></View>}
               <Animated.View pointerEvents="none" style={[styles.stamp, styles.stampSave, saveStampStyle]}>
                 <Ionicons name="heart" size={15} color="#FFFFFF" />
                 <ScaledText style={styles.stampSaveText}>SAVE</ScaledText>
@@ -323,6 +368,7 @@ export const OutfitSwipeStack = forwardRef<OutfitSwipeStackHandle, OutfitSwipeSt
 );
 
 const styles = StyleSheet.create({
+  authorizationIndicator: { position: 'absolute', top: 12, right: 12, padding: 8, borderRadius: 20, backgroundColor: '#FFFFFF' },
   stage: {
     width: '100%',
   },

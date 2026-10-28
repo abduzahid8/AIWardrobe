@@ -36,9 +36,11 @@ test('unknown units and invalid amounts cannot pass a cap',()=>{
 function cacheSetup(cached=null){
  const api={};Function('require','exports',compile(fs.readFileSync('backend/supabase/functions/_shared/budgetFxCache.ts','utf8')))(()=>core,api);
  const read=jest.fn().mockResolvedValue({data:cached?{snapshot:cached}:null,error:null});
- const saved=jest.fn().mockResolvedValue({error:null});const upsert=jest.fn(()=>({abortSignal:()=>saved()}));
+ const saved=jest.fn().mockResolvedValue({error:null});const upsert=jest.fn(row=>{cached=row.snapshot;return{abortSignal:()=>saved()}});
+ let owner=null,cooldown=0;
+ const rpc=jest.fn((name,args)=>({abortSignal:async()=>{if(name==='claim_budget_rate_refresh'){if(cooldown>Date.now())return{data:'cooldown'};if(owner)return{data:'busy'};owner=args.p_token;return{data:'acquired'};}if(name==='finish_budget_rate_refresh'){if(owner!==args.p_token)return{data:false};if(args.p_snapshot){await upsert({snapshot:args.p_snapshot}).abortSignal()}else cooldown=Date.now()+10000;owner=null;return{data:true}}throw Error('Unknown test RPC')}}));
  const query={select(){return this;},eq(){return this;},order(){return this;},limit(){return this;},abortSignal(){return this;},maybeSingle:read,upsert};
- return{api,read,upsert,admin:{from:()=>query}};
+ return{api,read,upsert,rpc,admin:{from:()=>query,rpc}};
 }
 afterEach(()=>jest.useRealTimers());
 test('fresh database cache avoids any CBU request',async()=>{
@@ -78,4 +80,27 @@ test('a named snapshot is validated and must match the requested identifier',asy
 });
 test('an expired named snapshot cannot be admitted',async()=>{
  const app=cacheSetup(snapshot());await expect(app.api.budgetRatesById(app.admin,snapshot().id,now+3600001)).rejects.toThrow();
+});
+
+test('an unavailable shared coordinator fails closed before fetching rates',async()=>{
+ const app=cacheSetup();app.rpc.mockReturnValue({abortSignal:async()=>({error:{code:'PGRST202'}})});const fetch=jest.fn();
+ await expect(app.api.currentBudgetRates(app.admin,now,fetch)).rejects.toThrow('budget_rates_unavailable');expect(fetch).not.toHaveBeenCalled();
+});
+test('a snapshot published between initial read and lease claim avoids a duplicate upstream fetch',async()=>{
+ const app=cacheSetup(snapshot());app.read.mockResolvedValueOnce({data:null,error:null});const fetch=jest.fn();
+ expect(await app.api.currentBudgetRates(app.admin,now,fetch)).toEqual(snapshot());expect(fetch).not.toHaveBeenCalled();expect(app.upsert).toHaveBeenCalledTimes(1);
+});
+test('a failed refresh activates shared cooldown instead of immediate upstream retries',async()=>{
+ const app=cacheSetup();const fetch=jest.fn().mockRejectedValue(Error('upstream unreachable'));
+ await expect(app.api.currentBudgetRates(app.admin,now,fetch)).rejects.toThrow();
+ await expect(app.api.currentBudgetRates(app.admin,now,fetch)).rejects.toThrow();
+ expect(fetch).toHaveBeenCalledTimes(1);expect(app.upsert).not.toHaveBeenCalled();
+});
+test('a worker rejected by publication fencing cannot return its unpublished snapshot',async()=>{
+ const app=cacheSetup();const original=app.rpc.getMockImplementation();app.rpc.mockImplementation((name,args)=>name==='finish_budget_rate_refresh'?{abortSignal:async()=>({data:false})}:original(name,args));
+ await expect(app.api.currentBudgetRates(app.admin,now,async()=>new Response(JSON.stringify(rows())))).rejects.toThrow();expect(app.upsert).not.toHaveBeenCalled();
+});
+test('waiting for an owner is bounded by the complete helper deadline',async()=>{
+ jest.useFakeTimers();const app=cacheSetup();app.rpc.mockReturnValue({abortSignal:async()=>({data:'busy'})});const fetch=jest.fn();
+ const result=expect(app.api.currentBudgetRates(app.admin,now,fetch)).rejects.toThrow();await jest.advanceTimersByTimeAsync(12000);await result;expect(fetch).not.toHaveBeenCalled();
 });

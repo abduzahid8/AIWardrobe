@@ -1,3 +1,5 @@
+import { isFourSlotCandidate } from '../../../backend/supabase/functions/_shared/outfitStructure';
+import { detectSlotMismatch, rejectOutfitIncoherence, rejectForStyleOccasion, rejectForClimate } from './occasionRules';
 import { getMacroCategory } from '../../../src/utils/categoryMapper';
 import type { GeneratedOutfit, OutfitItem, WardrobeDisplayItem } from '../types';
 import {
@@ -76,12 +78,14 @@ function buildCandidate(
   sourceItem: SanitizableItem | undefined,
   index: number
 ): Candidate | null {
-  const resolvedMacroCategory = resolveMacroCategory({
+  const claimedMacroCategory = resolveMacroCategory({
     macroCategory: sourceItem?.macroCategory || generatedItem.macroCategory,
     category: sourceItem?.category || generatedItem.category,
     type: sourceItem?.type || generatedItem.type,
     name: sourceItem?.name || generatedItem.name,
   });
+  const resolvedMacroCategory = (detectSlotMismatch(claimedMacroCategory,sourceItem?.name || generatedItem.name,sourceItem?.type || generatedItem.type) ?? claimedMacroCategory) as OutfitMacroCategory;
+  if (!isFourSlotCandidate({macroCategory:resolvedMacroCategory,name:sourceItem?.name || generatedItem.name,type:sourceItem?.type || generatedItem.type})) return null;
 
   const id = sourceItem?.id ?? generatedItem.id;
   const key = String(id || `generated_${index}_${generatedItem.type || generatedItem.name || 'item'}`);
@@ -256,17 +260,14 @@ export function sanitizeGeneratedOutfitItemsDetailed(
     typeof maxItemsOrOptions === 'number'
       ? { maxItems: maxItemsOrOptions, style: legacyStyle }
       : maxItemsOrOptions;
-  const maxItems = opts.maxItems ?? 5;
+  const maxItems = 4;
   const style = opts.style ?? legacyStyle;
   const normalizedStyle: StyleId | undefined = style ? normalizeStyleId(style) : undefined;
   const rotationOffset = opts.rotationOffset ?? 0;
   const avoidKeys: Set<string> = opts.avoidKeys
     ? new Set(Array.from(opts.avoidKeys as any).map((k: any) => String(k)))
     : new Set<string>();
-  const layered =
-    typeof opts.layered === 'boolean'
-      ? opts.layered
-      : needsLayering(style, opts.weather ?? null, opts.prompt ?? null);
+  const layered = true;
 
   const availableById = new Map(availableItems.map((item) => [String(item.id), item]));
   const generatedCandidates: Candidate[] = [];
@@ -287,15 +288,25 @@ export function sanitizeGeneratedOutfitItemsDetailed(
   const usedKeys = new Set<string>();
   const missingSlots: OutfitSlot[] = [];
 
-  const isDressOutfit = generatedCandidates.some(isDressCandidate);
+  const compatible = (candidate: Candidate): boolean =>
+    !rejectOutfitIncoherence([...sanitizedItems,candidate.item],normalizedStyle || 'casual',opts.prompt || '')
+    && (!normalizedStyle || !rejectForStyleOccasion(candidate.item,normalizedStyle,opts.prompt || ''))
+    && !rejectForClimate(candidate.item,opts.weather);
+  const compatibleGenerated = () => generatedCandidates.filter(compatible);
+  const compatibleAvailable = () => availableItems.filter((item,index) => {
+    const candidate=buildCandidate(item,item,index);
+    return candidate && compatible(candidate);
+  });
+
+  // A dress cannot replace the required shirt and pants categories.
 
   // Slot 1: outerwear / main top. Always try when layered, also try for non-layered to ensure 2 tops.
   // rotationOffset shifts fallback picks so outfit_0/1/2 don't all take best-1.
   const outerwear =
-    layered && !isDressOutfit
+    layered
       ? pickCandidateByPriority(
-          generatedCandidates,
-          availableItems,
+          compatibleGenerated(),
+          compatibleAvailable(),
           usedKeys,
           [['outerwear']],
           normalizedStyle,
@@ -305,15 +316,15 @@ export function sanitizeGeneratedOutfitItemsDetailed(
       : null;
   if (outerwear) {
     addCandidate(sanitizedItems, usedKeys, outerwear);
-  } else if (layered && !isDressOutfit) {
+  } else if (layered) {
     missingSlots.push('outerwear');
   }
 
   // Slot 2: base top. For non-layered outfits this is still the primary top.
   // ALWAYS try to fill this slot - use any available top if needed.
   const baseTop = pickCandidateByPriority(
-    generatedCandidates,
-    availableItems,
+    compatibleGenerated(),
+    compatibleAvailable(),
     usedKeys,
     [['top']],
     normalizedStyle,
@@ -322,35 +333,18 @@ export function sanitizeGeneratedOutfitItemsDetailed(
   );
   if (baseTop) {
     addCandidate(sanitizedItems, usedKeys, baseTop);
-  } else if (!isDressOutfit && !(layered === false && outerwear)) {
+  } else {
     // If layering is off and we already have an outerwear piece, a missing
     // base top is acceptable. Otherwise the outfit is short a top.
     missingSlots.push('top');
   }
 
-  if (layered && !isDressOutfit) {
-    const secondTop = pickCandidateByPriority(
-      generatedCandidates,
-      availableItems,
-      usedKeys,
-      [['top']],
-      normalizedStyle,
-      rotationOffset + 1,
-      avoidKeys,
-    );
-    if (secondTop) {
-      addCandidate(sanitizedItems, usedKeys, secondTop);
-    } else {
-      missingSlots.push('top');
-    }
-  }
-
   // Slot 3: bottom (skipped when the "top" is a dress).
   // Bottoms and shoes rotate fastest — offset by outfit index so 3 looks vary.
-  if (!isDressOutfit) {
+  {
     const bottom =
-      pickGeneratedCandidate(generatedCandidates, usedKeys, ['bottom']) ||
-      pickAvailableCandidate(availableItems, usedKeys, ['bottom'], normalizedStyle, rotationOffset, avoidKeys);
+      pickGeneratedCandidate(compatibleGenerated(), usedKeys, ['bottom']) ||
+      pickAvailableCandidate(compatibleAvailable(), usedKeys, ['bottom'], normalizedStyle, rotationOffset, avoidKeys);
     if (bottom) {
       addCandidate(sanitizedItems, usedKeys, bottom);
     } else {
@@ -360,8 +354,8 @@ export function sanitizeGeneratedOutfitItemsDetailed(
 
   // Slot 4: shoes. ALWAYS try to fill - use any available item if needed.
   const shoes =
-    pickGeneratedCandidate(generatedCandidates, usedKeys, ['shoes']) ||
-    pickAvailableCandidate(availableItems, usedKeys, ['shoes'], normalizedStyle, rotationOffset, avoidKeys);
+    pickGeneratedCandidate(compatibleGenerated(), usedKeys, ['shoes']) ||
+    pickAvailableCandidate(compatibleAvailable(), usedKeys, ['shoes'], normalizedStyle, rotationOffset, avoidKeys);
   if (shoes) {
     addCandidate(sanitizedItems, usedKeys, shoes);
   } else {

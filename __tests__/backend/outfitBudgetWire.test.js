@@ -4,7 +4,7 @@ const fxCore=require('../../backend/supabase/functions/_shared/budgetFx');
 const fs=require('fs'),path=require('path'),ts=require('typescript');
 const entry=process.env.OUTFIT_WIRE_SOURCE || path.resolve(__dirname,'../../backend/supabase/functions/generate-outfits/index.ts');
 const compile=source=>ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-function load(modelItems=['wardrobe-shirt','wardrobe-pants','wardrobe-shoes'],authFailure=null,admission=null,paidTier=null,catalogQuery=null,selectionMode=null){
+function load(modelItems=['wardrobe-shirt','wardrobe-pants','wardrobe-shoes','wardrobe-layer'],authFailure=null,admission=null,paidTier=null,catalogQuery=null,selectionMode=null){
  let handler;
  const loadRates=jest.fn(async()=>makeReferenceSnapshot());
  const pinnedRates=jest.fn(async(_admin,id)=>{const snapshot=makeReferenceSnapshot();if(id!==snapshot.id)throw new fxCore.BudgetFxError();return snapshot;});
@@ -24,7 +24,7 @@ function load(modelItems=['wardrobe-shirt','wardrobe-pants','wardrobe-shoes'],au
  const validation=new Function('require','exports','Deno','fetch',compile(fs.readFileSync(entry,'utf8'))+'\nreturn {filterValidOutfits,fetchShopItemsForAllSlotsEdge};')(requireModule,{}, {env:{get:name=>env[name]}},fetchMock);
  return {handler,fetchMock,rateMock,loadRates,pinnedRates,catalogRpc,...validation};
 }
-const owned=[['wardrobe-shirt','top','White cotton shirt'],['wardrobe-pants','bottom','Navy cotton trousers'],['wardrobe-shoes','shoes','Brown leather loafers']].map(([id,macroCategory,name])=>({id,macroCategory,name,type:macroCategory,color:'neutral',isWardrobe:true,imageUrl:'https://example.invalid/image.jpg',currency:'USD'}));
+const owned=[['wardrobe-shirt','top','White cotton shirt'],['wardrobe-pants','bottom','Navy cotton trousers'],['wardrobe-shoes','shoes','Brown leather loafers'],['wardrobe-layer','outerwear','Beige linen blazer']].map(([id,macroCategory,name])=>({id,macroCategory,name,type:macroCategory,color:'neutral',isWardrobe:true,imageUrl:'https://example.invalid/image.jpg',currency:'USD'}));
 const request=(budget,wardrobeItems=owned)=>new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify({prompt:'Create one casual outfit. Budget under $1000.',stylePreferences:'casual',occasion:'Everyday',weather:{temp:20},limit:1,wardrobeItems,useProvidedWardrobeOnly:true,wardrobeOnly:true,preferences:{maxShopBudget:budget}})});
 test.each([250,0])('wire prompt preserves the selected %s USD cap despite larger prompt text',async amount=>{
  const {handler,fetchMock}=load();const response=await handler(request({amount,currency:'USD'}));
@@ -87,7 +87,7 @@ test('an anchor substitution cannot turn a valid budgeted selection into an over
 test('a complete pool whose cheapest possible look exceeds the cap is rejected before NVIDIA',async()=>{
  const {handler,fetchMock}=load();const items=owned.map(item=>({...item,isWardrobe:false,isShopItem:true,price:100}));
  const response=await handler(request({amount:250,currency:'USD'},items));const body=await response.json();
- expect(response.status).toBe(422);expect(body.code).toBe('no_outfit_within_budget');expect(body.minimumShopSpend).toBe(300);expect(body.outfits).toEqual([]);expect(fetchMock).not.toHaveBeenCalled();
+ expect(response.status).toBe(422);expect(body.code).toBe('no_outfit_within_budget');expect(body.minimumShopSpend).toBe(400);expect(body.outfits).toEqual([]);expect(fetchMock).not.toHaveBeenCalled();
 });
 
 test('unknown required pricing reports unavailable prices without claiming the budget is too low',async()=>{
@@ -95,9 +95,9 @@ test('unknown required pricing reports unavailable prices without claiming the b
  const response=await handler(request({amount:250,currency:'USD'},items));
  expect(response.status).toBe(422);expect((await response.json()).code).toBe('unverified_shop_pricing');expect(fetchMock).not.toHaveBeenCalled();
 });
-test('dress alternatives bypass the ordinary top-bottom cost bound',async()=>{
+test('a dress cannot bypass the required shirt and pants categories',async()=>{
  const {handler,fetchMock}=load();const items=owned.map(item=>({...item,name:item.macroCategory==='top'?'Plain midi dress':item.name,isWardrobe:false,isShopItem:true,price:100}));
- await handler(request({amount:250,currency:'USD'},items));expect(fetchMock).toHaveBeenCalled();
+ const response=await handler(request({amount:250,currency:'USD'},items));expect(response.status).toBe(422);expect((await response.json()).outfits||[]).toEqual([]);expect(fetchMock).not.toHaveBeenCalled();
 });
 
 
@@ -137,7 +137,7 @@ test('mixed-currency infeasibility is measured before a provider request',async(
  const response=await handler(request({amount:400000,currency:'UZS'},shopping));
  const body=await response.json();
  expect(response.status).toBe(422);expect(body.code).toBe('no_outfit_within_budget');
- expect(body.minimumShopSpend).toBeCloseTo(581788.8);expect(fetchMock).not.toHaveBeenCalled();
+ expect(body.minimumShopSpend).toBeCloseTo(100000+3*20*makeReferenceSnapshot().uzsPerUnit.USD);expect(fetchMock).not.toHaveBeenCalled();
 });
 
 test.each([undefined,null,0,-1])('an entirely unpriced pool (%s) returns a pricing error before paid provider work',async price=>{
@@ -200,16 +200,17 @@ test('an owned base-top alternative prevents a false budget rejection',async()=>
  const r=await handler(request({amount:100,currency:'USD'},items));expect(r.status).toBe(200);
 });
 
-test('a style-rejected cheap tee cannot make the required-slot budget look feasible',async()=>{
+test('a disliked cheap tee cannot make the required-slot budget look feasible',async()=>{
  const {handler,fetchMock}=load(['shop_wardrobe-shirt','shop_wardrobe-pants','shop_wardrobe-shoes']);
  const shopping=owned.map(item=>({...item,id:'shop_'+item.id,isWardrobe:false,isShopItem:true,price:100}));
  shopping[0].name='White cotton knit polo shirt';
- shopping.push({...shopping[0],id:'shop_cheap_tee',name:'Футболка SS BADGE 30S JERSEY CLASSIC TEE',price:1});
- const response=await handler(request({amount:250,currency:'USD'},shopping));
+ shopping.push({...shopping[0],id:'shop_cheap_tee',name:'Red graphic T-shirt',color:'red',price:1});
+ const input=await request({amount:250,currency:'USD'},shopping).json();input.stylePreferences='old_money';input.occasion='Work';input.prompt='Work';input.preferences.avoidColors=['red'];
+ const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(input)}));
  const body=await response.json();
  expect(response.status).toBe(422);
  expect(body.code).toBe('no_outfit_within_budget');
- expect(body.minimumShopSpend).toBe(300);
+ expect(body.minimumShopSpend).toBe(400);
  expect(fetchMock).not.toHaveBeenCalled();
 });
 
@@ -233,13 +234,13 @@ test('a correction that fixes the named combination error can return a validated
  const items=owned.map(item=>item.macroCategory==='bottom'?{...item,name:'Wool suit trousers'}:item.macroCategory==='shoes'?{...item,name:'Brown suede loafers'}:item);
  items.push({...owned[2],id:'leather-shoes',name:'Brown leather penny loafers'});
  const resultFor=ids=>new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({outfits:[{items:ids.map(id=>({id}))} ]})}}]}));
- fetchMock.mockResolvedValueOnce(resultFor(['wardrobe-shirt','wardrobe-pants','wardrobe-shoes']))
-   .mockResolvedValueOnce(resultFor(['wardrobe-shirt','wardrobe-pants','leather-shoes']));
+ fetchMock.mockResolvedValueOnce(resultFor(['wardrobe-shirt','wardrobe-pants','wardrobe-shoes','wardrobe-layer']))
+   .mockResolvedValueOnce(resultFor(['wardrobe-shirt','wardrobe-pants','leather-shoes','wardrobe-layer']));
  const body=await request({amount:300,currency:'USD'},items).json();
  body.stylePreferences='old_money';body.occasion='date';body.prompt='Create one old-money date outfit. Budget under $300.';
  const result=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
  expect(result.status).toBe(200);
- expect((await result.json()).outfits[0].items.map(item=>item.id)).toEqual(['wardrobe-shirt','wardrobe-pants','leather-shoes']);
+ expect((await result.json()).outfits[0].items.map(item=>item.id)).toEqual(['wardrobe-shirt','wardrobe-pants','leather-shoes','wardrobe-layer']);
  expect(fetchMock).toHaveBeenCalledTimes(2);
 });
 
@@ -270,14 +271,14 @@ it.each([
  const source=owned.map(item=>item.macroCategory==='top'?{...item,[_field]:canonicalValue}:item);
  const itemMap=new Map(source.map(item=>[item.id,item]));
  const model={items:source.map(item=>({id:item.id,[_field]:modelValue}))};
- expect(filterValidOutfits([model],'casual',itemMap,false,preferences,'Everyday',{temp:20})).toEqual([]);
+ expect(filterValidOutfits([model],'casual',itemMap,true,preferences,'Everyday',{temp:20})).toEqual([]);
 });
 
 test('fabricated model metadata cannot reject otherwise allowed canonical items',()=>{
  const {filterValidOutfits}=load();
  const itemMap=new Map(owned.map(item=>[item.id,item]));
  const model={items:owned.map(item=>({id:item.id,name:'Red graphic hoodie',color:'red',pattern:'floral',macroCategory:'outerwear'}))};
- const result=filterValidOutfits([model],'casual',itemMap,false,{avoidColors:['red'],dislikedPatterns:['floral']},'Everyday',{temp:20});
+ const result=filterValidOutfits([model],'casual',itemMap,true,{avoidColors:['red'],dislikedPatterns:['floral']},'Everyday',{temp:20});
  expect(result).toHaveLength(1);
  expect(result[0].items).toEqual(owned);
 });
@@ -390,19 +391,19 @@ test('a formal pool lacking an eligible bottom is rejected before provider work'
  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
  expect(response.status).toBe(422);expect((await response.json()).missingSlots).toContain('bottom');expect(fetchMock).not.toHaveBeenCalled();
 });
-test('eligibility admission preserves a complete dress-and-shoes pool',async()=>{
+test('eligibility rejects dress-and-shoes as an incomplete four-category pool',async()=>{
  const {handler,fetchMock}=load(['wardrobe-dress','wardrobe-shoes']);
  const items=[{...owned[0],id:'wardrobe-dress',name:'Cotton midi dress',macroCategory:'dress'},owned[2]];
  const body=await request({amount:300,currency:'USD'},items).json();body.prompt='Create one complete outfit with a dress.';
  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
- expect(response.status).toBe(200);expect(fetchMock).toHaveBeenCalled();expect((await response.json()).outfits[0].items).toHaveLength(2);
+ expect(response.status).toBe(422);expect(fetchMock).not.toHaveBeenCalled();expect((await response.json()).outfits||[]).toEqual([]);
 });
-test('cold-weather dress admission requires and preserves outerwear',async()=>{
+test('a coat and dress still cannot replace a shirt and pants',async()=>{
  const {handler}=load(['wardrobe-dress','wardrobe-shoes','wardrobe-coat']);
  const items=[{...owned[0],id:'wardrobe-dress',name:'Wool midi dress',macroCategory:'dress'},owned[2],{...owned[0],id:'wardrobe-coat',name:'Wool coat',macroCategory:'outerwear'}];
  const body=await request({amount:300,currency:'USD'},items).json();body.prompt='Create one complete outfit with a dress.';body.weather={temp:10};
  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
- expect(response.status).toBe(200);expect((await response.json()).outfits[0].items).toHaveLength(3);
+ expect(response.status).toBe(422);expect((await response.json()).outfits||[]).toEqual([]);
 });
 test('six unsuitable owned bottoms no longer suppress a valid shop supplement',async()=>{
  const data=[{id:'catalog-regular',name:'Regular fit cotton trousers',category:'bottoms',garment_type:'lower_body',price:50,currency:'USD',image_url:'https://example.invalid/trousers.jpg',source_url:'https://example.invalid/trousers'}];
@@ -417,7 +418,7 @@ test('six unsuitable owned bottoms no longer suppress a valid shop supplement',a
  expect(JSON.parse(fetchMock.mock.calls[0][1].body).messages[1].content).not.toContain('RELAXED FIT TROUSERS');
 });
 it.each([1,2])('server response never exceeds the requested %s outfit count',async limit=>{
- const {handler}=load([['wardrobe-shirt','wardrobe-pants','wardrobe-shoes'],['alternative-shirt','alternative-pants','wardrobe-shoes']]);
+ const {handler}=load([['wardrobe-shirt','wardrobe-pants','wardrobe-shoes','wardrobe-layer'],['alternative-shirt','alternative-pants','wardrobe-shoes','wardrobe-layer']]);
  const items=[...owned,{...owned[0],id:'alternative-shirt',name:'Cream merino knit polo shirt'},{...owned[1],id:'alternative-pants',name:'Stone regular fit linen chinos'}];
  const body=await request({amount:300,currency:'USD'},items).json();body.limit=limit;
  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
@@ -485,7 +486,7 @@ test('a dress-loafer proposal missing a top enters correction before final valid
  const {handler,fetchMock}=load();
  const encode=items=>new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({outfits:[{items}]})}}]}));
  fetchMock.mockImplementationOnce(async()=>encode(['wardrobe-pants','wardrobe-shoes','dress-penny']))
-  .mockImplementationOnce(async()=>encode(['wardrobe-shirt','wardrobe-pants','wardrobe-shoes']));
+  .mockImplementationOnce(async()=>encode(['wardrobe-shirt','wardrobe-pants','wardrobe-shoes','wardrobe-layer']));
  const items=[...owned,{...owned[2],id:'dress-penny',name:'DRESS PENNY LOAFERS'}];
  const body=await request({amount:300,currency:'USD'},items).json();body.stylePreferences='semi_classic';body.occasion='formal';body.prompt='Create one complete formal outfit.';
  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
@@ -560,7 +561,7 @@ test('primary and format-correction requests both describe the required climate 
  const coat={...owned[0],id:'wardrobe-jacket',name:'Navy wool blazer',macroCategory:'outerwear',type:'blazer'};
  const {handler,fetchMock}=load([...owned.map(item=>item.id),coat.id]);
  fetchMock.mockImplementationOnce(async()=>new Response(JSON.stringify({choices:[{message:{content:'Unreadable output'}}]})));
- const body=await request(null,[...owned,coat]).json();body.stylePreferences='old_money';body.occasion='Work';body.prompt='Work';body.weather={temp:5};
+ const body=await request(null,[...owned,coat]).json();body.stylePreferences='old_money';body.occasion='Work';body.prompt='Work';body.weather={temp:20};
  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
  expect(response.status).toBe(200);expect(fetchMock).toHaveBeenCalledTimes(2);
  for(const call of fetchMock.mock.calls){const system=JSON.parse(call[1].body).messages[0].content;const example=JSON.parse(system.split('OUTPUT CONTRACT: Return ')[1].split('. Every item')[0]);expect(example.outfits[0].items.map(item=>item.id)).toContain('EXACT OUTERWEAR CANDIDATE ID');}
@@ -576,7 +577,7 @@ test('curated mode returns only AI-selected, fully validated whole looks',async(
  const response=await handler(request({amount:300,currency:'USD'}));expect(response.status).toBe(200);
  expect((await response.json()).outfits[0].items.map(i=>i.id).sort()).toEqual(owned.map(i=>i.id).sort());expect(fetchMock).toHaveBeenCalledTimes(1);
 });
-test.each(['unknown','partial','duplicate','timeout'])('curated mode fails closed for %s instead of returning local outfits',async mode=>{
+test.each(['unknown','partial','duplicate','timeout'])('curated mode rejects %s provider output and returns independently validated options',async mode=>{
  const {handler,fetchMock}=load(undefined,null,null,null,null,'curated');
  fetchMock.mockImplementation(async(_url,init)=>{
   if(mode==='timeout')throw new TypeError('network unavailable');
@@ -585,7 +586,7 @@ test.each(['unknown','partial','duplicate','timeout'])('curated mode fails close
   const outfits=mode==='unknown'?[{items:[{id:'invented-look'}]}]:mode==='partial'?[{items:[{id:owned[0].id}]}]:[choice,choice];
   return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({outfits})}}]}));
  });
- const response=await handler(request(null));const data=await response.json();expect(response.status).toBe(503);expect(data.outfits).toEqual([]);expect(data.error).toBe('ai_generation_unavailable');
+ const response=await handler(request(null));const data=await response.json();expect(response.status).toBe(200);expect(data.source).toBe('deterministic_fallback');expect(data.outfits.length).toBeGreaterThan(0);expect(data.outfits[0].items.map(item=>item.id).sort()).toEqual(owned.map(item=>item.id).sort());
  // A network failure is retried once inside the provider call; the
  // correction budget is untouched.
  expect(fetchMock).toHaveBeenCalledTimes(mode==='timeout'?2:1);
@@ -596,12 +597,58 @@ test('curated mode never offers a combination over the selected shopping budget'
  const response=await handler(request({amount:100,currency:'USD'},shopping));expect(response.status).toBe(422);expect(fetchMock).not.toHaveBeenCalled();
 });
 
-test('enrichment preserves the validated slot of a Russian-named knitted polo layer',async()=>{
+test('enrichment cannot return a Russian-named sweater in the base shirt slot',async()=>{
  const layer={...owned[0],id:'knitted-polo-layer',name:'Свитер Dc Knitted Zip Polo',type:'polo',macroCategory:'top'};
  const {handler,fetchMock}=load(undefined,null,null,null,null,'curated');
  fetchMock.mockImplementation(async(_url,init)=>{const options=JSON.parse(JSON.parse(init.body).messages[1].content);return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({outfits:[{items:[{id:options.looks[0].id}]}]})}}]}));});
  const blazer={...owned[0],id:'wool-blazer',name:'Navy wool blazer',type:'blazer',macroCategory:'outerwear'};
- const body=await request(null,[layer,...owned.slice(1),blazer]).json();body.stylePreferences='old_money';body.occasion='Work';body.prompt='Work';body.weather={temp:5};
+ const body=await request(null,[...owned,layer,blazer]).json();body.stylePreferences='old_money';body.occasion='Work';body.prompt='Work';body.weather={temp:20};
  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
- expect(response.status).toBe(200);const data=await response.json();expect(data.outfits[0].items.find(item=>item.id===layer.id).macroCategory).toBe('top');
+ expect(response.status).toBe(200);const data=await response.json();expect(data.outfits.every(outfit=>outfit.items.every(item=>item.id!==layer.id))).toBe(true);expect(data.outfits[0].items).toHaveLength(4);
+});
+
+test('capacity is assessed against the displayed three-card target even when AI returns two looks',async()=>{
+ const fixtures=[
+  ...['a','b','c'].map((key,i)=>({...owned[3],id:'layer-'+key,name:['Navy linen blazer','Beige cotton overshirt','Grey knit cardigan'][i]})),
+  {...owned[0],id:'top-a',name:'White cotton shirt'},
+  {...owned[0],id:'top-b',name:'Navy long sleeve oxford shirt'},
+  {...owned[0],id:'top-c',name:'Fine gauge knit polo'},
+  {...owned[1],id:'bottom-a',name:'Navy cotton trousers'},
+  {...owned[1],id:'bottom-b',name:'Beige cotton chinos'},
+  {...owned[2],id:'shoes-a',name:'Brown leather loafers'},
+  {...owned[2],id:'shoes-b',name:'Tan penny leather loafers'},
+ ].map(item=>({...item,imageUrl:`https://example.invalid/${item.id}.jpg`}));
+ const {handler}=load([['top-a','bottom-a','shoes-a','layer-a'],['top-b','bottom-b','shoes-b','layer-b']]);
+ const body=await request(null,fixtures).json();body.limit=5;body.deckTarget=3;
+ const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
+ expect(response.status).toBe(200);const data=await response.json();
+ // Hosted code may complete the batch; capacity must still use the displayed target.
+ expect(data.outfits.length).toBeGreaterThanOrEqual(2);expect(data.outfits.length).toBeLessThanOrEqual(5);
+ expect(data.diversity.strictSlots).toContain('top');
+ expect(data.diversity.forcedRepeatSlots.sort()).toEqual(['bottom','shoes']);
+});
+
+test('multi-card curation jointly selects a compatible deck before bounded AI ranking',async()=>{
+ const names=[['White cotton shirt','Navy long sleeve oxford shirt','Fine gauge knit polo','Blue cotton shirt'],['Navy cotton trousers','Beige cotton chinos','Grey pleated trousers','Olive tailored chinos'],['Brown leather loafers','Tan penny leather loafers','Brown derby shoes','Black leather oxford shoes'],['Navy linen blazer','Beige linen blazer','Grey wool blazer','Olive cotton blazer']];
+ const fixtures=owned.flatMap((base,slot)=>names[slot].map((name,index)=>({...base,id:`slot${slot}-${index}`,name,imageUrl:`https://example.invalid/slot${slot}-${index}.jpg`})));
+ const {handler,fetchMock}=load(undefined,null,null,null,null,'curated');let options,system;
+ fetchMock.mockImplementation(async(_url,init)=>{const body=JSON.parse(init.body);options=JSON.parse(body.messages[1].content);system=body.messages[0].content;return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({rankedLookIds:options.looks.map(look=>look.id)})}}]}));});
+ const body=await request(null,fixtures).json();body.limit=5;body.deckTarget=3;
+ const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
+ expect(response.status).toBe(200);expect(options.looks.length).toBe(3);expect(options.requiredCount).toBe(options.looks.length);expect(system).toContain('Rank all');expect(system).toContain('without descriptions');
+ const data=await response.json();expect(data.outfits.length).toBeGreaterThanOrEqual(3);expect(data.diversity.strictSlots.sort()).toEqual(['bottom','outerwear','shoes','top']);expect(data.outfits.every(outfit=>Number.isSafeInteger(outfit.curationRank))).toBe(true);
+ // A partial ranking must never masquerade as the complete requested deck.
+ fetchMock.mockImplementation(async(_url,init)=>{const sent=JSON.parse(JSON.parse(init.body).messages[1].content);return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({rankedLookIds:sent.looks.slice(0,2).map(look=>look.id)})}}]}));});
+ const partial=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
+ expect(partial.status).toBe(200);const recovered=await partial.json();expect(recovered.source).toBe('deterministic_fallback');expect(recovered.outfits).toHaveLength(3);expect(new Set(recovered.outfits.flatMap(outfit=>outfit.items.map(item=>item.id))).size).toBe(12);
+});
+
+test('an exchange-rate outage still permits a verified native-currency deck',async()=>{
+ const {handler,loadRates}=load();loadRates.mockRejectedValue(new fxCore.BudgetFxError());
+ const rows=owned.map(item=>({...item,id:'shop_'+item.id,isWardrobe:false,isShopItem:true,price:40,currency:'USD'}));
+ rows.push({...rows[0],id:'shop_foreign',currency:'EUR',price:30});
+ const body=await request({amount:250,currency:'USD'},rows).json();body.prompt='A complete outfit under $250.';
+ const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
+ expect(response.status).toBe(200);const data=await response.json();expect(data.outfits.length).toBeGreaterThan(0);
+ for(const outfit of data.outfits){expect(outfit.items.every(item=>item.currency==='USD')).toBe(true);expect(outfit.items.reduce((sum,item)=>sum+item.price,0)).toBeLessThanOrEqual(250);}
 });

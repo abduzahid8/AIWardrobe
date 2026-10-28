@@ -1,0 +1,113 @@
+{
+  "measuredAt": "2026-10-25T17:58:20.904Z",
+  "scope": "Direct actual staged classifier; documented reasoning_effort low,2048tokens,unchanged temperature0. No hosted admission/deployment claim.",
+  "reference": "https://docs.api.nvidia.com/nim/reference/nvidia-nemotron-3_5-super-vl-120b-a12b-infer",
+  "productionUnchanged": true,
+  "model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+  "results": [
+    {
+      "name": "jacket-1",
+      "report": "oct25-scan-loweffort-jacket-1.json",
+      "status": 200,
+      "latencyMs": 27129,
+      "accepted": {
+        "category": "jacket",
+        "section": "outerwear",
+        "confidence": 0,
+        "attributes": {
+          "style": "casual",
+          "color": "beige",
+          "material": null
+        }
+      },
+      "passed": true
+    },
+    {
+      "name": "jacket-2",
+      "report": "oct25-scan-loweffort-jacket-2.json",
+      "status": 200,
+      "latencyMs": 33100,
+      "accepted": {
+        "category": "jacket",
+        "section": "outerwear",
+        "confidence": 0,
+        "attributes": {
+          "style": "casual",
+          "color": "beige",
+          "material": "cotton"
+        }
+      },
+      "passed": true
+    },
+    {
+      "name": "jacket-3",
+      "report": "oct25-scan-loweffort-jacket-3.json",
+      "status": 200,
+      "latencyMs": 10402,
+      "accepted": {
+        "category": "jacket",
+        "section": "outerwear",
+        "confidence": 0,
+        "attributes": {
+          "style": "casual",
+          "color": "beige",
+          "material": "cotton"
+        }
+      },
+      "passed": true
+    },
+    {
+      "name": "white-tshirt",
+      "report": "oct25-scan-loweffort-white-tshirt.json",
+      "status": 200,
+      "latencyMs": 5130,
+      "accepted": {
+        "category": "t-shirt",
+        "section": "tops",
+        "confidence": 0,
+        "attributes": {
+          "style": "casual",
+          "color": "white",
+          "material": null
+        }
+      },
+      "passed": true
+    },
+    {
+      "name": "brown-trousers",
+      "report": "oct25-scan-loweffort-brown-trousers.json",
+      "status": 200,
+      "latencyMs": 24656,
+      "accepted": {
+        "category": "pants",
+        "section": "bottoms",
+        "confidence": 0,
+        "attributes": {
+          "style": "semi_classic",
+          "color": "brown",
+          "material": null
+        }
+      },
+      "passed": true
+    },
+    {
+      "name": "brown-boat-shoe",
+      "report": "oct25-scan-loweffort-brown-boat-shoe.json",
+      "status": 200,
+      "latencyMs": 14506,
+      "accepted": {
+        "category": "shoes",
+        "section": "shoes",
+        "confidence": 0,
+        "attributes": {
+          "style": "casual",
+          "color": "brown",
+          "material": "leather",
+          "shoeType": "boat_shoe"
+        }
+      },
+      "passed": true
+    }
+  ],
+  "allSixPassed": true
+}

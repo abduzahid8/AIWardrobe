@@ -1,0 +1,59 @@
+{
+  "measuredAt": "2026-10-25T17:34:06.306Z",
+  "status": "backend_deployed_client_source_verified_native_pending",
+  "migration": "20261025171409",
+  "project": "fyqpifmrsftsfqibhwhy",
+  "legacyQuotaUnchangedMd5": "2e898da225bdfe1f60a9d4546fe84b90",
+  "tests": {
+    "focused": 44,
+    "full": 2419,
+    "suites": 189,
+    "typeScript": true,
+    "iosHermes": true,
+    "androidHermes": true,
+    "bothSourceMapsMatchAllFourFiles": true,
+    "transactionalDatabaseAssertions": true,
+    "webExport": true,
+    "iosReleaseSimulatorBuild": true,
+    "allFourSourcesMatchFinalIosAndroidAndInstalledReleaseMap": true
+  },
+  "liveEvidence": "oct25-home-swipe-receipts-live.json",
+  "independentCleanup": {
+    "users": 0,
+    "profiles": 0,
+    "sessions": 0,
+    "counters": 0,
+    "receipts": 0
+  },
+  "sourceSha256": {
+    "store/dailyUsageStore.ts": "d597591c27c877c443bafe7d2ae3114aad67b2be4b82679a894a6852fcd0f1fa",
+    "screens/HomeScreen.tsx": "1f5ebdc3cb8a884819dc449da54decee391d9cfb62855b29b043e694ef1fcf91",
+    "components/ui/OutfitSwipeStack.tsx": "fd5ec2b7c4174d2f1c19d686f821b376b32004d18f9b32ff8405a7be016be031",
+    "src/hooks/useSubscriptionGate.ts": "bb1515c4bc402f74ace1a0ea25c69ecd84f711a3186620a30ac5a1215213f721"
+  },
+  "limits": [
+    "Same-card/day retries recover approval; abandoned authorizations are not refunded.",
+    "A regenerated card identity has its own debit.",
+    "Release build startup/Google provider handoff observed; session return, Home gestures, native lifecycle and Android behavior unverified.",
+    "Not sustained 10,000 DAU proof."
+  ],
+  "native": {
+    "simulator": "AIWardrobe-Media-Render-20261021",
+    "id": "97BD8504-6E4D-4F45-9C45-2E097E407BAA",
+    "configuration": "Release",
+    "buildSucceeded": true,
+    "currentBundleInstalled": true,
+    "startupReached": "Sign In",
+    "googleProviderReached": "Sign in to continue to AIWardrobe",
+    "googleSessionCompletion": "verified_return_to_authenticated_onboarding",
+    "homeGesturesVerified": false,
+    "storeDistributionVerified": false,
+    "preservedArtifact": "/tmp/aiwardrobe-oct25-publication-release/AIWardrobe.app",
+    "binarySha256": "7c3345eab5f5260d6f8de07063174f991f67e0cd9e19a6a49d79ba2aa138dc43",
+    "hermesBundleSha256": "3274160da2dbd84014dfb7a63fb112c9bd7fd7b4405051647a8e2ab32b6bf1df",
+    "signatureVerifiedOnPreservedCopy": true,
+    "rebuildableXcodeOutputsCleanedAfterPreservation": true,
+    "googleColdDeviceRestart": "verified_onboarding_without_relogin",
+    "googleSessionEvidence": "oct25-google-native-release-session.json"
+  }
+}

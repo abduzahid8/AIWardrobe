@@ -1,0 +1,62 @@
+[
+  {
+    "id": "gildan-g1100opp",
+    "brand": "Gildan",
+    "name": "Gildan Men's Crew Neck T-Shirts",
+    "price": 10.0,
+    "currency": "USD",
+    "category": "tops",
+    "garment_type": "upper_body",
+    "description": "Gildan men's clothing · official garment pack photo on a plain white background",
+    "image_url": "https://cdn11.bigcommerce.com/s-ishrbqicno/images/stencil/1280x1280/products/664/11163/GIL_G1100OPP-WHT_P10_GILDAN_OPP_OPP_CREW_TSHIRT_WHITE_ASST__80585.1749162931.386.513__00038.1752699173.jpg?c=1",
+    "source": "gildan-official-mens-t-shirts",
+    "source_url": "https://retail.gildan.com/gildan-men-s-crew-neck-t-shirts/",
+    "is_active": false,
+    "sort_order": 1
+  },
+  {
+    "id": "gildan-gm1500",
+    "brand": "Gildan",
+    "name": "New Arrival Gildan Performance Men's EZ Breeze Crew Neck T-Shirts - 6-Pack",
+    "price": 10.0,
+    "currency": "USD",
+    "category": "tops",
+    "garment_type": "upper_body",
+    "description": "Gildan men's clothing · official garment pack photo on a plain white background",
+    "image_url": "https://cdn11.bigcommerce.com/s-ishrbqicno/images/stencil/1280x1280/products/667/11183/GIL_PERFORMANCE_GM1500_P6_VALUE_PERFORMANCE_MENS_CREW_T-SHIRT_ASST_1_ASST__19214.1749134728.386.513__87168.1752699211.jpg?c=1",
+    "source": "gildan-official-mens-t-shirts",
+    "source_url": "https://retail.gildan.com/gildan-performance-men-s-ez-breeze-crew-neck-t-shirts-6-pack/",
+    "is_active": false,
+    "sort_order": 2
+  },
+  {
+    "id": "gildan-gm1200",
+    "brand": "Gildan",
+    "name": "New Arrival Gildan Select Men's Cotton Stretch Crew Neck T-Shirts",
+    "price": 10.0,
+    "currency": "USD",
+    "category": "tops",
+    "garment_type": "upper_body",
+    "description": "Gildan men's clothing · official garment pack photo on a plain white background",
+    "image_url": "https://cdn11.bigcommerce.com/s-ishrbqicno/images/stencil/1280x1280/products/674/11279/GIL_SELECT_GM1200_P3_COTTON_STRETCH_MENS_CREW_T-SHIRT_ASST_1_WHITE-030_SALL__81050.1749158696.386.513__75552.1752699362.jpg?c=1",
+    "source": "gildan-official-mens-t-shirts",
+    "source_url": "https://retail.gildan.com/gildan-select-men-s-cotton-stretch-crew-neck-t-shirts/",
+    "is_active": false,
+    "sort_order": 3
+  },
+  {
+    "id": "gildan-gm2900",
+    "brand": "Gildan",
+    "name": "New Arrival Gildan SoftStyle Men's Crew Neck T-Shirts",
+    "price": 10.0,
+    "currency": "USD",
+    "category": "tops",
+    "garment_type": "upper_body",
+    "description": "Gildan men's clothing · official garment pack photo on a plain white background",
+    "image_url": "https://cdn11.bigcommerce.com/s-ishrbqicno/images/stencil/1280x1280/products/672/11248/GIL_SOFTSTYLE_GM2900_P6_MENS_CREW_T-SHIRT_ASST_1_WHITE-030_ASST__22046.1749156075.386.513__03803.1752699318.jpg?c=1",
+    "source": "gildan-official-mens-t-shirts",
+    "source_url": "https://retail.gildan.com/gildan-softstyle-men-s-crew-neck-t-shirts/",
+    "is_active": false,
+    "sort_order": 4
+  }
+]

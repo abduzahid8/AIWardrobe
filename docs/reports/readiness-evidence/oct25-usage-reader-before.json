@@ -1,0 +1,30 @@
+{
+  "measuredAt": "2026-10-25T02:41:06.562Z",
+  "scope": "Live usage-reader outputs and account isolation; no quota-consumption, provider or10kDAUclaim.",
+  "checks": [
+    {
+      "name": "fresh_owner_0_receives_integer_zero",
+      "passed": false,
+      "value": null,
+      "status": 200
+    }
+  ],
+  "fixtureUserIds": [
+    "fa96ab7b-9316-4101-9fdf-503fc822c6e7",
+    "987d0f1b-86a4-40ad-ae07-1ce9829620c6"
+  ],
+  "failure": "Error",
+  "cleanup": [
+    {
+      "id": "fa96ab7b-9316-4101-9fdf-503fc822c6e7",
+      "sessionsRevoked": true,
+      "ownerDeleted": true
+    },
+    {
+      "id": "987d0f1b-86a4-40ad-ae07-1ce9829620c6",
+      "sessionsRevoked": true,
+      "ownerDeleted": true
+    }
+  ],
+  "passed": false
+}

@@ -13,6 +13,8 @@
  * run both on the client (React Native) and in Deno edge functions.
  */
 
+import { needsLayering as needsLayeringShared } from '../../../backend/supabase/functions/_shared/outfitComposition';
+
 export type StyleId =
   | 'old_money'
   | 'semi_classic'
@@ -466,21 +468,7 @@ export function needsLayering(
   weather?: LayeringWeather | null,
   prompt?: string | null,
 ): boolean {
-  const normalized = normalizeStyleId(style || '');
-  const promptBlob = (prompt || '').toLowerCase();
-  if (/\b(summer|hot|heatwave|tee[-\s]?only|no jacket|no outerwear|beach)\b/.test(promptBlob)) {
-    return false;
-  }
-
-  const condition = (weather?.condition || '').toLowerCase();
-  const temp = typeof weather?.temp === 'number' ? weather!.temp! : null;
-  const coldTemp = temp != null && temp < 18;
-  const coldCondition = /\b(cold|chilly|freezing|snow|rain|drizzle|wind|storm)\b/.test(condition);
-  if (coldTemp || coldCondition) return true;
-
-  if (normalized === 'old_money' || normalized === 'business_casual' || normalized === 'classic') return true;
-  if (normalized === 'semi_classic') return true; // cardigan-over-tee is canonical
-  return false;
+    return needsLayeringShared(style, weather, prompt);
 }
 
 /**

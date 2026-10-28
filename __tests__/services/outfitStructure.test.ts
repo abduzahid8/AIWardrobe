@@ -1,4 +1,4 @@
-import { outfitStructureReason } from '../../backend/supabase/functions/_shared/outfitStructure';
+import { fourSlotOutfitReason, outfitStructureReason } from '../../backend/supabase/functions/_shared/outfitStructure';
 const top = { id: 'top', name: 'White dress shirt', macroCategory: 'top' };
 const bottom = { id: 'bottom', name: 'Navy trousers', macroCategory: 'bottom' };
 const shoes = { id: 'shoes', name: 'Oxford shoes', macroCategory: 'shoes' };
@@ -42,6 +42,12 @@ it.each(['43Mm Silicone Strap Sport Watch','SUIT CARRIER','SMALL TRAINING TOWEL'
 });
 it.each(['Towel-knit cotton shirt','Watch-print cotton shirt'])('does not confuse a garment texture or print with an accessory: %s',name=>{
  expect(outfitStructureReason([{...top,name},bottom,shoes])).toBeNull();
+});
+
+it('rejects a plain knit garment mislabeled as a shirt but accepts a knit polo',()=>{
+ const fourSlots=[layer,bottom,shoes];
+ expect(fourSlotOutfitReason([...fourSlots,{id:'plain-knit',name:'Fine gauge knit',type:'shirt',macroCategory:'top'}])).toBe('invalid_required_category');
+ expect(fourSlotOutfitReason([...fourSlots,{id:'knit-polo',name:'Navy knit polo',type:'shirt',macroCategory:'top'}])).toBeNull();
 });
 
 it.each(['METAL KEY RING WITH KEYS','METAL CHAIN KEY RING','TOTE BAG','Textured Mini Reporter Bag'])('rejects another accessory labelled as a top: %s',name=>{

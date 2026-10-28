@@ -1,0 +1,40 @@
+{
+  "measuredAt": "2026-10-25T11:28:15.821Z",
+  "sourceSha256": "3ba2e69cdcf02b66ba214163e678ea5322ffbbb2ee876722cf16ea9046719eaa",
+  "scope": "One direct NVIDIA diagnostic using actual staged handler with controlled Auth/config; no production admission claim",
+  "providerResponses": [
+    {
+      "status": 200,
+      "finishReason": "stop",
+      "contentLength": 216,
+      "parsed": {
+        "category": "jacket",
+        "section": "outerwear",
+        "style": "casual",
+        "color": "grey",
+        "material": "null",
+        "description": "A light grey jacket worn over a black striped shirt, featuring a collar and front pockets.",
+        "shoeType": null
+      }
+    }
+  ],
+  "fixture": {
+    "path": "docs/reports/readiness-evidence/jpeg-thumbnail-native-ios/02-originalPath.jpg",
+    "bytes": 666026,
+    "sha256": "2d47a0ac74bd074352bb446576e38d54ca5339ca3b8687cbc78812ca1f80a717"
+  },
+  "candidateModel": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+  "handlerStatus": 200,
+  "latencyMs": 6438,
+  "acceptedClassification": {
+    "category": "jacket",
+    "section": "outerwear",
+    "confidence": 0,
+    "attributes": {
+      "style": "casual",
+      "color": "grey",
+      "material": null
+    }
+  },
+  "error": null
+}

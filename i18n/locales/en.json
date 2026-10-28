@@ -1,5 +1,6 @@
 {
   "common": {
+    "priceUnavailable": "Price unavailable",
     "localDataCleanupFailed": "Some local account data could not be cleared. Please try again before sharing this device.",
     "upgrade": "Upgrade",
     "cancel": "Cancel",
@@ -451,6 +452,7 @@
   },
   "aiThinking": {
     "scanningWardrobe": "Scanning your wardrobe...",
+    "reviewingCatalog": "Reviewing catalog pieces...",
     "analyzingStyle": "Analyzing style DNA...",
     "matchingCombinations": "Matching combinations...",
     "optimizingOutfits": "Optimizing outfits...",
@@ -707,8 +709,8 @@
     "whereGoing": "Where are you going?",
     "discoverVibe": "Discover Your Vibe",
     "tapStyleCard": "Tap a style card below and AI will instantly build a complete look from your wardrobe.",
-    "promptPlaceholder": "Where you're going, style (old money, classic…), budget ($150)…",
-    "promptPlaceholderShort": "Where you're going, style, budget ($150)…",
+    "promptPlaceholder": "Where you're going, style (old money, classic…), budget (1 500 000 UZS)…",
+    "promptPlaceholderShort": "Where you're going, style, budget (1 500 000 UZS)…",
     "generate": "Generate",
     "description1": "A curated {{style}} look styled from your wardrobe.",
     "description2": "An elegant {{style}} ensemble with balanced proportions.",
@@ -723,6 +725,7 @@
     "budgetTooLow": "Available clothing cannot form a complete outfit within this budget. Increase your budget or use items you own.",
     "noItemsWithinBudget": "No available clothing items fit this budget. Increase your budget or use items you own.",
     "noMatchingClothing": "No clothing matches your selections. Add suitable items or adjust your selections.",
+    "aiCurated": "AI curated",
     "invalidBudget": "The budget amount or currency is invalid. Check your budget and try again.",
     "invalidRequest": "Check your request: up to 1,000 characters, 200 selected items and 15 outfits.",
     "requestTooLarge": "This request contains too much data. Select fewer items and try again.",
@@ -810,7 +813,9 @@
     "continue": "Continue",
     "productUnavailableBody": "This plan is not available in the store right now. Please try again later.",
     "proFeature6": "Priority AI model · no ads",
-    "proFeature7": "Early access & priority support"
+    "proFeature7": "Early access & priority support",
+    "purchasePending": "Purchase still in progress",
+    "purchasePendingBody": "The App Store has not confirmed this purchase yet. If its prompt is still open, finish or cancel it. Then check Restore Purchases before trying to buy again."
   },
   "featureLock": {
     "feature": "FEATURE",
@@ -1674,7 +1679,6 @@
     "resumeReview": "Resume scan {{index}} · {{count}} items",
     "reviewRestoreFailed": "Could not restore saved scans. Please try again.",
     "reviewUnavailable": "{{count}} saved scan(s) could not be read. Your files have been kept. Other saved scans are still available.",
-
     "pendingScans": "Saved scans",
     "pendingScansDescription": "These scans are waiting for analysis. Open this screen while online to resume.",
     "queuedPhoto": "Photo {{index}}",
@@ -2106,10 +2110,10 @@
     }
   },
   "wardrobeSync": {
-      "capacityTitle": "Some items need syncing",
-      "capacityMessage": "Syncing these items would exceed your plan’s {{limit}}-item cloud limit. Unsynced photos are kept on this device. Upgrade or remove cloud items, then retry.",
-      "retry": "Retry sync",
-      "upgrade": "Upgrade",
-      "retrying": "Syncing…"
+    "capacityTitle": "Some items need syncing",
+    "capacityMessage": "Syncing these items would exceed your plan’s {{limit}}-item cloud limit. Unsynced photos are kept on this device. Upgrade or remove cloud items, then retry.",
+    "retry": "Retry sync",
+    "upgrade": "Upgrade",
+    "retrying": "Syncing…"
   }
 }

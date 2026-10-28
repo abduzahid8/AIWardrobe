@@ -38,12 +38,15 @@ export const mapCategoryToType = (category: string, section: string = ''): strin
   const cat = (category || '').toLowerCase();
   const sec = (section || '').toLowerCase();
   
-  if (sec === 'tops' || cat.includes('shirt') || cat.includes('blouse') || cat.includes('sweater') || cat.includes('hoodie') || cat === 't-shirt') return 'tops';
-  if (sec === 'bottoms' || cat.includes('pant') || cat.includes('jean') || cat.includes('skirt') || cat.includes('short')) return 'bottoms';
-  if (sec === 'shoes' || cat.includes('shoe') || cat.includes('sneaker') || cat.includes('boot') || cat.includes('sandal')) return 'shoes';
-  if (sec === 'accessories' || cat.includes('bag') || cat.includes('hat') || cat.includes('scarf') || cat.includes('belt') || cat.includes('watch')) return 'accessories';
-  if (sec === 'outerwear' || cat.includes('jacket') || cat.includes('coat') || cat.includes('blazer')) return 'outerwear';
-  if (cat.includes('sport') || cat.includes('gym') || cat.includes('legging')) return 'sportswear';
-  
+  // Specific garment identity wins over stale generic sections.
+  if (/trouser|pant|jean|chino|slack|skirt|short|брюк|джинс/.test(cat)) return 'bottoms';
+  if (/jacket|coat|blazer|puffer|parka|куртк|пиджак/.test(cat)) return 'outerwear';
+  if (/shoe|sneaker|boot|sandal|loafer|кроссов/.test(cat)) return 'shoes';
+  if (/shirt|blouse|sweater|hoodie|polo|рубаш|футбол/.test(cat)) return 'tops';
+  if (/bag|hat|scarf|belt|watch/.test(cat)) return 'accessories';
+  if (/sport|gym|legging/.test(cat)) return 'sportswear';
+  const aliases: Record<string, string> = {top:'tops',tops:'tops',upper_body:'tops',bottom:'bottoms',bottoms:'bottoms',lower_body:'bottoms',shoes:'shoes',outerwear:'outerwear',accessory:'accessories',accessories:'accessories',sportswear:'sportswear',homewear:'homewear'};
+  if (aliases[cat]) return aliases[cat];
+  if (aliases[sec]) return aliases[sec];
   return 'tops'; // Default fallback
 };

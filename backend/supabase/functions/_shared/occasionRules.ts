@@ -63,8 +63,26 @@ function activityReason(items: JudgeableItem[], occasion: string): string | null
     }
     if (/black[ -]?tie|блэк[ -]?тай|смокинг/.test(text)) {
         const has = (slot: string, pattern: RegExp) => items.some(it => macroOf(it) === slot && pattern.test(blobOf(it)));
-        if (!has('outerwear', /tuxedo|dinner jacket/) || !has('bottom', /tuxedo|dinner suit/) || !has('top', /tuxedo|dress shirt|formal shirt/)) return 'black tie requires a tuxedo and formal shirt';
+        // Evening dress codes require actual evening garments.
+        if (!has('outerwear', /tuxedo|dinner jacket/) || !has('bottom', /tuxedo|dinner suit|black trousers|black pants|formal trousers/) || !has('top', /tuxedo|dress shirt|formal shirt|white shirt/)) return 'black tie requires a tuxedo and formal shirt';
         if (!has('shoes', /black/) || !has('shoes', /patent|oxford|opera pump/) || items.some(it => macroOf(it) === 'shoes' && /brown|suede|loafer/.test(blobOf(it)))) return 'black tie requires black formal evening shoes';
+    }
+    return null;
+}
+
+/** Admit scarce required pieces before ranking, rather than discovering them after truncation. */
+export function rejectForRequestIntent(item: JudgeableItem, request: string, weather?: ClimateWeather | null): string | null {
+    const slot = macroOf(item), text = blobOf(item);
+    if (/\b(no|without|skip|exclude)\s+(?:a\s+|any\s+)?(?:jackets?|coats?|layers?|outerwear)\b|без\s+(?:куртк|пиджак|пальто)/i.test(request) && slot === 'outerwear') return 'requested no outerwear';
+    if (weather?.temp != null && weather.temp < 5) {
+        if (slot === 'outerwear' && !/\b(puffer|parka|down|insulated|overcoat|topcoat|winter coat|shearling|quilted)\b/.test(text)) return 'cold request requires insulated coat';
+        if (slot === 'shoes' && !/\b(boots?|chelsea|winter|insulated|snow)\b/.test(text)) return 'cold request requires winter boots';
+    }
+    if (/black[ -]?tie|блэк[ -]?тай|смокинг/i.test(request)) {
+        if (slot === 'outerwear' && !/tuxedo|dinner jacket/.test(text)) return 'black tie requires dinner jacket';
+        if (slot === 'bottom' && !/tuxedo|dinner suit|black trousers|black pants|formal trousers/.test(text)) return 'black tie requires evening trousers';
+        if (slot === 'top' && !/tuxedo|dress shirt|formal shirt|white shirt/.test(text)) return 'black tie requires formal shirt';
+        if (slot === 'shoes' && (!/black/.test(text) || !/patent|oxford|opera pump/.test(text) || /brown|suede|loafer/.test(text))) return 'black tie requires black evening shoes';
     }
     return null;
 }
@@ -216,10 +234,21 @@ export function rejectOutfitClimate(
         return !isWarmWeatherOnlyFabric(it);
     });
     if (!hasWarmLayer) return `${weather.temp}°C needs a warm layer, not summer cloth`;
+    // Below freezing a blazer/knit alone is underdressed (observed: sub-zero
+    // decks with no insulated coat or winter boots). Require both.
+    if (weather.temp < 5) {
+        const hasInsulated = items.some((it) => macroOf(it) === 'outerwear'
+            && /\b(puffer|parka|down|insulated|overcoat|topcoat|winter coat|shearling|quilted)\b/.test(blobOf(it)));
+        if (!hasInsulated) return `${weather.temp}°C requires an insulated coat`;
+        const hasWinterBoots = items.some((it) => macroOf(it) === 'shoes'
+            && /\b(boots?|chelsea|winter|insulated|snow)\b/.test(blobOf(it)));
+        if (!hasWinterBoots) return `${weather.temp}°C requires winter boots`;
+    }
     return null;
 }
 
 export interface JudgeableItem {
+    id?: string | number;
     name?: string | null;
     type?: string | null;
     brand?: string | null;
@@ -250,7 +279,7 @@ export function rejectForStyleOccasion(
     occasionId: string | null | undefined,
 ): string | null {
     if (!item) return 'empty item';
-    const blob = normalizeGarmentText(`${item.name || ''} ${item.type || ''} ${item.brand || ''} ${item.description || ''} ${item.color || ''}`);
+    const blob = normalizeGarmentText(`${item.name || ''} ${item.type || ''} ${item.description || ''} ${item.color || ''}`);
     // Underwear is never visible daywear, in any style or occasion.
     if (UNDERWEAR_RE.test(blob)) return 'underwear must never surface as visible clothing';
     if (/\b(iphone|phone[\s-]?cases?|airpods?)\b/.test(blob)) return 'tech accessories are not outfit pieces';
@@ -460,9 +489,10 @@ const WHITE_RE = /\bwhite\b/;
 const STRIPED_LAYER_RE = /\bstripes?|pinstripes?\b/;
 
 function blobOf(item: JudgeableItem): string {
+    // Brand names are not garment evidence (Thursday Boot Co. also sells loafers).
     // Color field included: catalog names often omit the color
     // ("Linen suit trousers" in black) while the color column has it.
-    return normalizeGarmentText(`${item.name || ''} ${item.type || ''} ${item.brand || ''} ${item.description || ''} ${item.color || ''}`);
+    return normalizeGarmentText(`${item.name || ''} ${item.type || ''} ${item.description || ''} ${item.color || ''}`);
 }
 
 function macroOf(item: JudgeableItem): string {
@@ -770,16 +800,20 @@ export function styleJudgeReason(
     styleId: string | null | undefined,
     occasionId: string | null | undefined,
     weather?: ClimateWeather | null,
+    lockedItemId?: string | null,
 ): string | null {
     if (!items || items.length === 0) return 'empty outfit';
     const activity = activityReason(items, occasionId || '');
     if (activity) return activity;
     if (isWorkoutOccasion(occasionId)) styleId = 'sport';
     for (const it of items) {
-        const r = rejectForStyleOccasion(it, styleId, occasionId);
+        // The locked piece overrides aesthetic taste, never dress code, activity or weather.
+        const r = rejectForStyleOccasion(it, lockedItemId && String(it.id) === lockedItemId ? 'casual' : styleId, occasionId);
         if (r !== null) return `item "${String((it as any)?.name || '?').slice(0, 40)}": ${r}`;
     }
     for (const it of items) {
+        const intent = rejectForRequestIntent(it, occasionId || '', weather);
+        if (intent) return `request: ${intent}`;
         const r = rejectForClimate(it, weather);
         if (r !== null) return `climate "${String((it as any)?.name || '?').slice(0, 40)}": ${r}`;
     }
@@ -794,8 +828,9 @@ export function passesStyleJudge(
     styleId: string | null | undefined,
     occasionId: string | null | undefined,
     weather?: ClimateWeather | null,
+    lockedItemId?: string | null,
 ): boolean {
-    return styleJudgeReason(items, styleId, occasionId, weather) === null;
+    return styleJudgeReason(items, styleId, occasionId, weather, lockedItemId) === null;
 }
 
 const VIEW_PREFIX_RE = /^(front|side|back|close[\s-]?up|detail)\s+view\s+of\s+(?:(a|an|the)\s+)?/i;

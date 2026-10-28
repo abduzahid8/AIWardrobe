@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { enforceRateLimit } from '../_shared/rateLimit.ts'
-import { normalizeRevenueCatSnapshot } from '../_shared/revenuecatSnapshot.ts'
+import { normalizeRevenueCatSnapshot, revenueCatEnvironmentForUser } from '../_shared/revenuecatSnapshot.ts'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -26,7 +26,8 @@ serve(async (req: Request) => {
       headers: { Authorization: `Bearer ${key}`, Accept: 'application/json' }, signal: AbortSignal.timeout(10000),
     })
     if (!response.ok) return json({ error: 'Subscription verification unavailable' }, 503)
-    const account = normalizeRevenueCatSnapshot(owner, await response.json(), environment as 'PRODUCTION' | 'SANDBOX')
+    const ownerEnvironment = revenueCatEnvironmentForUser(owner, environment, Deno.env.get('REVENUECAT_SANDBOX_USER_IDS') || '')
+    const account = normalizeRevenueCatSnapshot(owner, await response.json(), ownerEnvironment)
     const { data: applied, error } = await admin.rpc('apply_revenuecat_snapshots', {
       p_event: { id: `customer-sync:${owner}:${account.request_date_ms}`, type: 'CUSTOMER_SYNC' }, p_accounts: [account],
     })

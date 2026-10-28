@@ -1,0 +1,32 @@
+[
+  {
+    "id": "hanes-cffwc3-white",
+    "brand": "Hanes",
+    "name": "Comfort Flex Fit Men's White Modal Undershirt 3-Pack",
+    "price": 19.0,
+    "currency": "USD",
+    "category": "tops",
+    "garment_type": "upper_body",
+    "description": "Hanes men's White clothing · garments shown on a plain neutral background",
+    "image_url": "https://cdn.hanes.com/catalog/product/H/N/HNS_CFFWC3_White_Front.jpg",
+    "source": "hanes-official-mens-clothing",
+    "source_url": "https://www.hanes.com/products/hanes-men-s-comfort-flex-fit-reg-white-crew-undershirt-3-pack/cffwc3",
+    "is_active": false,
+    "sort_order": 0
+  },
+  {
+    "id": "hanes-o52806-light-steel-6pack",
+    "brand": "Hanes",
+    "name": "Hanes Essentials Men's Cotton T-Shirt, Value 6-Pack",
+    "price": 22.0,
+    "currency": "USD",
+    "category": "tops",
+    "garment_type": "upper_body",
+    "description": "Hanes men's Light Steel clothing · garments shown on a plain neutral background",
+    "image_url": "https://cdn.hanes.com/catalog/product/H/N/HNS_O52806_LightSteel_Front.jpg",
+    "source": "hanes-official-mens-clothing",
+    "source_url": "https://www.hanes.com/products/hanes-essentials-men-s-cotton-t-shirt-6-pack/o52806",
+    "is_active": false,
+    "sort_order": 1
+  }
+]

@@ -1,0 +1,71 @@
+{
+  "measuredAt": "2026-10-25T17:48:01.876Z",
+  "scope": "Five synchronized direct-provider scans through actual staged classifier; no production authentication/admission or hosted deployment claim.",
+  "elapsedMs": 47372,
+  "results": [
+    {
+      "report": "oct25-scan-reasoning-burst5-1.json",
+      "status": 503,
+      "latencyMs": 20596,
+      "accepted": null,
+      "passed": false
+    },
+    {
+      "report": "oct25-scan-reasoning-burst5-2.json",
+      "status": 503,
+      "latencyMs": 45010,
+      "accepted": null,
+      "passed": false
+    },
+    {
+      "report": "oct25-scan-reasoning-burst5-3.json",
+      "status": 200,
+      "latencyMs": 40791,
+      "accepted": {
+        "category": "jacket",
+        "section": "outerwear",
+        "confidence": 0,
+        "attributes": {
+          "style": "casual",
+          "color": "beige",
+          "material": null
+        }
+      },
+      "passed": true
+    },
+    {
+      "report": "oct25-scan-reasoning-burst5-4.json",
+      "status": 200,
+      "latencyMs": 28652,
+      "accepted": {
+        "category": "jacket",
+        "section": "outerwear",
+        "confidence": 0,
+        "attributes": {
+          "style": "casual",
+          "color": "beige",
+          "material": null
+        }
+      },
+      "passed": true
+    },
+    {
+      "report": "oct25-scan-reasoning-burst5-5.json",
+      "status": 200,
+      "latencyMs": 20301,
+      "accepted": {
+        "category": "jacket",
+        "section": "outerwear",
+        "confidence": 0,
+        "attributes": {
+          "style": "casual",
+          "color": "beige",
+          "material": "canvas"
+        }
+      },
+      "passed": true
+    }
+  ],
+  "passed": false,
+  "productionUnchanged": true
+}

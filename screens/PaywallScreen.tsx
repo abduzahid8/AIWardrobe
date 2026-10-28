@@ -49,6 +49,7 @@ const PaywallScreen = () => {
     const [liveYearlyPrice, setLiveYearlyPrice] = useState<string | null>(null);
     const [productsLoaded, setProductsLoaded] = useState(false);
     const [availableProductIds, setAvailableProductIds] = useState<string[]>([]);
+    const [storeCheckoutPending, setStoreCheckoutPending] = useState(false);
 
     const wardrobeItemCount = useWardrobeStore((s) => s.items.length);
 
@@ -203,10 +204,15 @@ const PaywallScreen = () => {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         try {
             const result = await iapService.purchase(productId);
-            if (result.verificationPending) {
+            if (result.checkoutPending) {
+                setStoreCheckoutPending(true);
+                Alert.alert(t('paywall.purchasePending', 'Purchase still in progress'), result.error || t('paywall.purchasePendingBody'));
+            } else if (result.verificationPending) {
+                setStoreCheckoutPending(false);
                 setVerificationPending(true);
                 Alert.alert(t('paywall.verifyingPurchase'), t('paywall.verifyingPurchaseBody'));
             } else if (result.success) {
+                setStoreCheckoutPending(false);
                 void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 completeOnboarding();
                 await useDailyUsageStore.getState().resetToday();
@@ -228,14 +234,20 @@ const PaywallScreen = () => {
         setIsLoading('restore');
         try {
             const result = await iapService.restorePurchases();
-            if (result.verificationPending) {
+            if (result.checkoutPending) {
+                setStoreCheckoutPending(true);
+                Alert.alert(t('paywall.purchasePending', 'Purchase still in progress'), result.error || t('paywall.purchasePendingBody'));
+            } else if (result.verificationPending) {
+                setStoreCheckoutPending(false);
                 setVerificationPending(true);
                 Alert.alert(t('paywall.verifyingPurchase'), t('paywall.verifyingPurchaseBody'));
             } else if (result.success) {
+                setStoreCheckoutPending(false);
                 completeOnboarding();
                 await useDailyUsageStore.getState().resetToday();
                 resetToActivation();
             } else {
+                setStoreCheckoutPending(false);
                 Alert.alert(t('paywall.restoreFailed'), result.error || t('paywall.noPreviousPurchases'));
             }
         } catch (error) {
@@ -360,7 +372,7 @@ const PaywallScreen = () => {
                         <ScaledText style={styles.ctaEyebrow}>{t('paywall.selectedPlan')}</ScaledText>
                         <ScaledText style={styles.ctaPlan}>{selected.title} · {selected.price}</ScaledText>
                     </View>
-                    <TouchableOpacity activeOpacity={0.88} disabled={isLoading !== null || verificationPending} onPress={purchase}>
+                    <TouchableOpacity activeOpacity={0.88} disabled={isLoading !== null || verificationPending || storeCheckoutPending} onPress={purchase}>
                         <LinearGradient colors={['#FFFFFF', '#DCEBFF']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.continueButton}>
                             {isLoading === getProductId(selectedPlan) ? (
                                 <ActivityIndicator color="#050A16" size="small" />

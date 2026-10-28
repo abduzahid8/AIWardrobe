@@ -1,5 +1,7 @@
+import { fourSlotOutfitReason, isFourSlotCandidate } from '../../backend/supabase/functions/_shared/outfitStructure';
+import { styleJudgeReason, rejectForStyleOccasion, rejectForClimate } from '../../features/outfit-generator/utils/occasionRules';
 /**
- * personaHarness — shared engine for multi-account AI e2e.
+ * personaHarness — shared engine for controlled multi-persona local tests.
  *
  * One implementation drives BOTH:
  *   - __tests__/e2e/aiPersonas.e2e.test.ts  (assertions)
@@ -223,15 +225,14 @@ export interface PersonaResult {
 
 /**
  * Run one account end-to-end through production modules.
- * Wardrobe mode = owned items only (Supabase clothing). Shop mode = live
- * catalog pool, owned items excluded (source-purity rule).
+ * Wardrobe mode = owned items only (Supabase clothing). Shop mode = controlled
+ * catalog fixtures, owned items excluded (source-purity rule).
  */
 export function runPersona(persona: Persona): PersonaResult {
   const catalog = shopPool();
-  const available: PersonaItem[] =
-    persona.mode === 'wardrobe'
+  const available: PersonaItem[] = (persona.mode === 'wardrobe'
       ? persona.wardrobe.filter((i) => i.isWardrobe)
-      : catalog.filter((i) => !i.isWardrobe);
+      : catalog.filter((i) => !i.isWardrobe)).filter(item => isFourSlotCandidate(item) && !rejectForStyleOccasion(item,persona.style,persona.occasion) && !rejectForClimate(item,persona.weather));
   const layered = needsLayering(persona.style, persona.weather, null);
   const ranked = rankItemsForStyle(available as any[], persona.style, {
     minKeep: 16,
@@ -267,10 +268,7 @@ export function runPersona(persona: Persona): PersonaResult {
     );
     const items = detailed.items as PersonaDeckItem[];
     const macros = items.map((i) => canonicalizeMacroCategory(i.macroCategory));
-    const complete =
-      macros.includes('bottom') &&
-      macros.includes('shoes') &&
-      (macros.includes('top') || macros.includes('outerwear'));
+    const complete = !fourSlotOutfitReason(items);
     if (!complete || !items.length) continue;
     const withMeta = items.map((i) => {
       const src =
@@ -300,9 +298,9 @@ export function runPersona(persona: Persona): PersonaResult {
     deck.length > 0 &&
       deck.every((o) => {
         const m = o.map((i) => i.slot);
-        return m.includes('bottom') && m.includes('shoes') && (m.includes('top') || m.includes('outerwear'));
+        return !fourSlotOutfitReason(o);
       }),
-    `${deck.length} outfit(s), every card has top-like + bottom + shoes`,
+    `${deck.length} outfit(s), every card has layer + shirt + pants + shoes`,
   );
 
   let uniq = true;
@@ -321,17 +319,8 @@ export function runPersona(persona: Persona): PersonaResult {
     push('New-clothing purity', pure, '0 owned items — Supabase catalog only');
   }
 
-  const names = deck.flatMap((o) => o.map((i) => i.name)).join(' | ').toLowerCase();
-  if (persona.style === 'old_money' || persona.style === 'business_casual') {
-    const banned = /(sneaker|hoodie|graphic|cargo|ripped|sweatpants|chunky)/.test(names);
-    push('Style discipline', !banned, 'no sneakers/hoodies/graphics in formal decks');
-  } else if (persona.style === 'casual') {
-    const formal = /(blazer|suit|tuxedo|derby|dress shoe|overcoat|trench)/.test(names);
-    push('Style discipline', !formal, 'no suiting/dress shoes in the relaxed deck');
-  } else {
-    const loud = /(neon|graphic|logo|chunky|ripped)/.test(names);
-    push('Style discipline', !loud, 'no loud pieces in minimalist deck');
-  }
+  const violations = deck.map(items => styleJudgeReason(items,persona.style,persona.occasion,persona.weather)).filter(Boolean);
+  push('Style discipline', violations.length===0, violations.join(' | ') || 'all looks pass the production style, occasion and climate policy');
 
   return { persona, layered, poolSize: available.length, deck, checks };
 }

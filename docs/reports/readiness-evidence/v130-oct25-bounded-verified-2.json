@@ -1,0 +1,196 @@
+{
+  "measuredAt": "2026-10-25T02:05:10.697Z",
+  "scope": "One real hosted Old Money/Work shopping request, no weather or entered budget, limit 5. Controlled catalog pool; not exact screenshot account or capacity proof.",
+  "checks": [
+    {
+      "name": "all_three_catalog_slots_available",
+      "passed": true
+    },
+    {
+      "name": "usable_outfits_returned",
+      "passed": true
+    },
+    {
+      "name": "every_outfit_passes_structure_and_style",
+      "passed": true
+    },
+    {
+      "name": "every_item_matches_authoritative_active_catalog",
+      "passed": true
+    },
+    {
+      "name": "full_displayed_deck_returned",
+      "passed": true
+    },
+    {
+      "name": "visible_deck_has_no_illegal_product_reuse",
+      "passed": true
+    },
+    {
+      "name": "visible_deck_has_no_duplicate_cards",
+      "passed": true
+    }
+  ],
+  "requestedLimit": 5,
+  "requireFullDeck": true,
+  "fixtureUserId": "c7039ab2-37b7-4fac-a826-404b6d412d75",
+  "candidateCount": 40,
+  "response": {
+    "status": 200,
+    "latencyMs": 4131,
+    "code": null,
+    "error": null,
+    "source": "ai",
+    "diversity": {
+      "activeSlots": [
+        "top",
+        "bottom",
+        "shoes"
+      ],
+      "strictSlots": [
+        "top",
+        "bottom",
+        "shoes"
+      ],
+      "forcedRepeatSlots": [],
+      "deckSize": 3,
+      "deckTarget": 3,
+      "shortfallReason": null
+    },
+    "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+    "providerAttempts": [
+      {
+        "provider": "nvidia",
+        "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+        "status": "ok"
+      }
+    ],
+    "outfitCount": 3
+  },
+  "supplementedIds": [],
+  "outfits": [
+    {
+      "items": [
+        {
+          "id": "shop_fr-tommy-169173-official",
+          "name": "Regular Fit Crest Patch Interlock Polo",
+          "price": 1829000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61729804",
+          "name": "Cold wool suit trousers",
+          "price": 2200000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-141303",
+          "name": "Ttnm Evo_Slon_Knrsd",
+          "price": 2696000,
+          "currency": "UZS"
+        }
+      ],
+      "structureReason": null,
+      "styleReason": null
+    },
+    {
+      "items": [
+        {
+          "id": "shop_fr-tommy-111152-official",
+          "name": "Regular Fit Striped Rugby Polo",
+          "price": 1584500,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-113272",
+          "name": "H-Delaware",
+          "price": 2232000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-93412",
+          "name": "Gary_Slon_SDWV_204",
+          "price": 4407000,
+          "currency": "UZS"
+        }
+      ],
+      "structureReason": null,
+      "styleReason": null
+    },
+    {
+      "items": [
+        {
+          "id": "shop_boss-uz-113793",
+          "name": "Ttnm Evo_Runn_Itynm",
+          "price": 2928000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61729156",
+          "name": "100% linen pants with dart detail",
+          "price": 1900000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-105039",
+          "name": "TTNM Evo_Slon_Ltmxl",
+          "price": 1993000,
+          "currency": "UZS"
+        }
+      ],
+      "structureReason": null,
+      "styleReason": null
+    }
+  ],
+  "visibleDeck": {
+    "count": 3,
+    "illegalProductReuseCount": 0,
+    "forcedRepeatSlots": []
+  },
+  "exactRequestedReturned": false,
+  "exactFiveReturned": false,
+  "cleanup": {
+    "sessionsRevoked": true,
+    "ownerDeleted": true
+  },
+  "passed": true,
+  "providerObservations": [
+    {
+      "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+      "requestCharacters": 2384,
+      "maxTokens": 700,
+      "status": 200,
+      "latencyMs": 1147,
+      "finishReason": "stop",
+      "contentCharacters": 49,
+      "usage": {
+        "promptTokens": 792,
+        "completionTokens": 24
+      }
+    }
+  ],
+  "execution": {
+    "runtime": "Local Node with actual current handler modules; real Supabase Auth/catalog/rate guards and hosted NVIDIA",
+    "candidateModel": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "providerMocked": false,
+    "sourceHashes": {
+      "generate-outfits/index.ts": "2369dfed3b8d2256550dd6e5edf2031cecdd915eb49b21728bbfebcae12308de",
+      "_shared/outfitChoices.ts": "c8a4296443a0932b30df1cb87c16fc7c938f4b80f7ba130cb8e3e7c4eab9c883",
+      "_shared/outfitGenerationRequest.ts": "46bf7842edb6b8416ff0d41e04ccb0aca52a6321c0c67ee169b33359b3468746",
+      "_shared/outfitBudgetText.ts": "cf0efe0f3e67ed2cd8e3794d28cd46b16b2567957113327f42bfd42c2a4935b3",
+      "_shared/budgetFx.ts": "9c747666d797cadfad80cb5355dd360273f3384795af7a1f5bc05397bbff3854",
+      "_shared/budgetFxCache.ts": "0e82c51af9eee38f4f0d3124897192c7d9276f7a72ee7d78dce06ec3ad1b1671",
+      "_shared/outfitBudgetFeasibility.ts": "1f7fd099cfbbf584d7fa88bd4e08d4cabc0d6c70f30ec06a44e7761d77fb8d40",
+      "_shared/outfitBudgetSelection.ts": "ba676ebfe662c603d7e9836b8bd369e6e5a3bce067276549a811a9caed4e94f9",
+      "_shared/outfitBudgetFeedback.ts": "ffb3373f563dbb2642253ae10166c98d6e4e3ccc4da1fcc54b3e291ae2ecc548",
+      "_shared/modelOutfitResponse.ts": "8410cf49317dc0b75d8ce71abd94c61333ff7a661f77532ecce62cd890b44acd",
+      "_shared/rateLimit.ts": "c5c290ef5440fb01eeeaad6b9b655cb02fb8534f15bfaf90c001eecd747ee11f",
+      "_shared/outfitStructure.ts": "35b1fe246b06b8b19931e2723f54a5238175a903b8398666ee9cac05180f0351",
+      "_shared/occasionRules.ts": "885053dc09f88fa8c233b66bfb140689098283f0c0fd015c9ee7eff6e2583ce5",
+      "_shared/outfitDiversity.ts": "9b28a7db9149cda3768a4c08526eca015fe8c57e2bf8d4de57f8fb806f47d615",
+      "_shared/outfitComposition.ts": "f7805c0c19b6fdddb2ef103d86b22bd3d353035656fd7318e13f61838c6e4eaa"
+    },
+    "productionConfigurationChanged": false,
+    "limits": "Not hosted Edge runtime or native UI; this comparison does not establish production model throughput."
+  }
+}

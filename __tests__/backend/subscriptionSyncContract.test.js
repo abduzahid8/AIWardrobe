@@ -6,7 +6,7 @@ const snapshots = require('../../backend/supabase/functions/_shared/revenuecatSn
 const source = fs.readFileSync(path.resolve(__dirname, '../../backend/supabase/functions/sync-subscription/index.ts'), 'utf8');
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
 const owner = '11111111-1111-4111-8111-111111111111';
-function load({ denied = null, authenticated = true, apiStatus = 200, rpcError = null } = {}) {
+function load({ denied = null, authenticated = true, apiStatus = 200, rpcError = null, sandboxUsers = '', customerData = null } = {}) {
   let handler;
   const mockRate = jest.fn(async () => denied);
   const mockRpc = jest.fn(async () => ({ data: rpcError ? null : { duplicate: false }, error: rpcError }));
@@ -15,13 +15,13 @@ function load({ denied = null, authenticated = true, apiStatus = 200, rpcError =
   const admin = { auth: { getUser: mockGetUser }, rpc: mockRpc,
     from: () => ({ select: () => ({ eq: (key, value) => { ownership.push({ key, value }); return { single: async () => ({ data: { subscription_tier: 'free', subscription_expires_at: null }, error: null }) }; } }) }),
   };
-  const mockFetch = jest.fn(async () => new Response(JSON.stringify({ request_date_ms: Date.parse('2026-10-15T00:00:00Z'), subscriber: { entitlements: {} } }), { status: apiStatus }));
+  const mockFetch = jest.fn(async () => new Response(JSON.stringify(customerData || { request_date_ms: Date.parse('2026-10-15T00:00:00Z'), subscriber: { entitlements: {} } }), { status: apiStatus }));
   new Function('require', 'exports', 'Deno', 'fetch', compiled)(name => {
     if (name.includes('rateLimit')) return { enforceRateLimit: mockRate };
     if (name.includes('revenuecatSnapshot')) return snapshots;
     if (name.includes('server.ts')) return { serve: fn => { handler = fn; } };
     return { createClient: () => admin };
-  }, {}, { env: { get: name => name === 'REVENUECAT_ENVIRONMENT' ? 'PRODUCTION' : 'configuration' } }, mockFetch);
+  }, {}, { env: { get: name => name === 'REVENUECAT_ENVIRONMENT' ? 'PRODUCTION' : name === 'REVENUECAT_SANDBOX_USER_IDS' ? sandboxUsers : 'configuration' } }, mockFetch);
   return { handler, mockRate, mockRpc, mockGetUser, mockFetch, ownership };
 }
 const request = () => new Request('https://example.test', { method: 'POST', headers: { Authorization: 'Bearer caller-jwt' }, body: JSON.stringify({ userId: 'victim', tier: 'vip' }) });
@@ -52,4 +52,12 @@ test('a missing identity never queries RevenueCat or reconciles caller-supplied 
 test.each([{ apiStatus: 503 }, { rpcError: { message: 'unavailable' } }])('verification failure is explicit: %j', async config => {
   const { handler } = load(config);
   expect((await handler(request())).status).toBe(503);
+});
+
+const sandboxSnapshot={request_date_ms:Date.parse('2026-10-15T00:00:00Z'),subscriber:{entitlements:{lite:{product_identifier:'2.99',expires_date:'2026-11-15T00:00:00Z',purchase_date:'2026-10-14T00:00:00Z'}},subscriptions:{'2.99':{is_sandbox:true,store:'app_store',purchase_date:'2026-10-14T00:00:00Z'}}}};
+test('only the server-designated owner can synchronize a verified sandbox receipt',async()=>{
+ const allowed=load({sandboxUsers:owner,customerData:sandboxSnapshot});await allowed.handler(request());
+ expect(allowed.mockRpc.mock.calls[0][1].p_accounts[0].entitlements[0].tier).toBe('lite');
+ const ordinary=load({customerData:sandboxSnapshot});await ordinary.handler(request());
+ expect(ordinary.mockRpc.mock.calls[0][1].p_accounts[0].entitlements).toEqual([]);
 });

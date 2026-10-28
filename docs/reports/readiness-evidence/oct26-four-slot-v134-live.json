@@ -1,0 +1,196 @@
+{
+  "measuredAt": "2026-10-26T03:00:54.932Z",
+  "scope": "One real hosted Old Money/Work shopping request, no weather or entered budget, limit 3. Controlled catalog pool; not exact screenshot account or capacity proof.",
+  "checks": [
+    {
+      "name": "all_three_catalog_slots_available",
+      "passed": true
+    },
+    {
+      "name": "usable_outfits_returned",
+      "passed": true
+    },
+    {
+      "name": "every_outfit_passes_structure_and_style",
+      "passed": true
+    },
+    {
+      "name": "every_item_matches_authoritative_active_catalog",
+      "passed": true
+    },
+    {
+      "name": "full_displayed_deck_returned",
+      "passed": true
+    },
+    {
+      "name": "visible_deck_has_no_illegal_product_reuse",
+      "passed": true
+    },
+    {
+      "name": "visible_deck_has_no_duplicate_cards",
+      "passed": true
+    }
+  ],
+  "requestedLimit": 3,
+  "requireFullDeck": true,
+  "fixtureUserId": "11f3fc22-442a-472a-af73-f17263bf4471",
+  "candidateCount": 40,
+  "response": {
+    "status": 200,
+    "latencyMs": 6422,
+    "code": null,
+    "error": null,
+    "source": "ai",
+    "diversity": {
+      "activeSlots": [
+        "outerwear",
+        "top",
+        "bottom",
+        "shoes"
+      ],
+      "strictSlots": [
+        "outerwear",
+        "top",
+        "bottom",
+        "shoes"
+      ],
+      "forcedRepeatSlots": [],
+      "deckSize": 3,
+      "deckTarget": 3,
+      "shortfallReason": null
+    },
+    "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+    "providerAttempts": [
+      {
+        "provider": "nvidia",
+        "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+        "status": "ok"
+      }
+    ],
+    "outfitCount": 3
+  },
+  "supplementedIds": [
+    "md-uz-61729780",
+    "md-uz-61977997",
+    "md-uz-61741519",
+    "md-uz-61729162",
+    "md-uz-61729868",
+    "md-uz-61779798",
+    "md-uz-61735972"
+  ],
+  "outfits": [
+    {
+      "items": [
+        {
+          "id": "shop_md-uz-61729780",
+          "name": "100% cotton striped knit polo shirt",
+          "macroCategory": "top",
+          "price": 900000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61977997",
+          "name": "Striped 100% cool wool suit blazer",
+          "macroCategory": "outerwear",
+          "price": 7000000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61741519",
+          "name": "100% wool striped suit pants",
+          "macroCategory": "bottom",
+          "price": 2200000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-105039",
+          "name": "TTNM Evo_Slon_Ltmxl",
+          "macroCategory": "shoes",
+          "price": 1993000,
+          "currency": "UZS"
+        }
+      ],
+      "structureReason": null,
+      "styleReason": null
+    },
+    {
+      "items": [
+        {
+          "id": "shop_md-uz-61729162",
+          "name": "Slim fit micro-check tailored fit shirt",
+          "macroCategory": "top",
+          "price": 1400000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61729868",
+          "name": "100% cool wool suit blazer",
+          "macroCategory": "outerwear",
+          "price": 7000000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61779798",
+          "name": "Striped wool blend suit trousers",
+          "macroCategory": "bottom",
+          "price": 2000000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-104096",
+          "name": "Gary_tenn_sdbbe",
+          "macroCategory": "shoes",
+          "price": 4841000,
+          "currency": "UZS"
+        }
+      ],
+      "structureReason": null,
+      "styleReason": null
+    },
+    {
+      "items": [
+        {
+          "id": "shop_fr-tommy-169173-official",
+          "name": "Regular Fit Crest Patch Interlock Polo",
+          "macroCategory": "top",
+          "price": 1829000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61735972",
+          "name": "100% linen suit blazer",
+          "macroCategory": "outerwear",
+          "price": 4000000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_md-uz-61729518",
+          "name": "Tapered fit linen pants",
+          "macroCategory": "bottom",
+          "price": 1900000,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_boss-uz-111510",
+          "name": "Gary_Tenn_Ltel",
+          "macroCategory": "shoes",
+          "price": 4570000,
+          "currency": "UZS"
+        }
+      ],
+      "structureReason": null,
+      "styleReason": null
+    }
+  ],
+  "visibleDeck": {
+    "count": 3,
+    "illegalProductReuseCount": 0,
+    "forcedRepeatSlots": []
+  },
+  "exactRequestedReturned": true,
+  "cleanup": {
+    "sessionsRevoked": true,
+    "ownerDeleted": true
+  },
+  "passed": true
+}
