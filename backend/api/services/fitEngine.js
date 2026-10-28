@@ -15,14 +15,17 @@
  * Option (a) is the long-term plan. For now, a faithful port is fine.
  */
 
-import {
-  Confidence,
-  FitAssessment,
-  FitZone,
-  FitZoneAssessment,
-  OverallFit,
-  ZoneStatus,
-} from '../types-fit.js';
+/**
+ * Type-only references — the runtime shapes live in the mobile TS source
+ * (src/types/fitAssessment.ts, src/types/bodyProfile.ts). Pure JSDoc, so
+ * plain ESM JavaScript never tries to resolve them at runtime.
+ * @typedef {import('../../../src/types/bodyProfile').Confidence} Confidence
+ * @typedef {import('../../../src/types/fitAssessment').FitAssessment} FitAssessment
+ * @typedef {import('../../../src/types/fitAssessment').FitZone} FitZone
+ * @typedef {import('../../../src/types/fitAssessment').FitZoneAssessment} FitZoneAssessment
+ * @typedef {import('../../../src/types/fitAssessment').OverallFit} OverallFit
+ * @typedef {import('../../../src/types/fitAssessment').ZoneStatus} ZoneStatus
+ */
 
 const FIT_ENGINE_VERSION = 'fit-engine/v1';
 
