@@ -11,7 +11,7 @@ import { enforceRateLimit } from '../_shared/rateLimit.ts'
 import { isFourSlotCandidate, fourSlotOutfitReason, outfitStructureReason, isDressGarment, isNonOutfitItem } from '../_shared/outfitStructure.ts'
 import { styleJudgeReason, normalizeGarmentText, isWorkoutOccasion, rejectForStyleOccasion, rejectForClimate, rejectForRequestIntent, rejectForActivity } from '../_shared/occasionRules.ts'
 import { analyzeDeckProductDiversity, assembleDiverseDeck, canonicalProductKey, productIdentityKeys, countDistinctProducts, diversitySlotOf, type DiversitySlot } from '../_shared/outfitDiversity.ts'
-import {wasRecentlyShown, rotationPool, freshProductCount} from '../_shared/outfitRotation.ts'
+import {wasRecentlyShown, rotationPool, freshProductCount, rotationDeckPriority, createRotationPriority} from '../_shared/outfitRotation.ts'
 import { needsLayering as needsLayeringShared, resolveStylistWeather } from '../_shared/outfitComposition.ts'
 import { detectSlotMismatch } from '../_shared/occasionRules.ts'
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
@@ -1326,6 +1326,7 @@ async function fetchShopItemsForAllSlotsEdge(
     nativeBudget?: {amount: number; currency: string},
     requestIntent = '',
     recycleTarget = 0,
+    historyPriority?: (items:any[])=>number,
 ): Promise<any[]> {
     const picks: any[] = []
     const styleKey = style.toLowerCase().replace(/[\s-]+/g, '_')
@@ -1483,7 +1484,8 @@ async function fetchShopItemsForAllSlotsEdge(
             // Exhaustion is slot-specific. Keep every fresh option before
             // allowing previously shown products back into a scarce slot.
             if (recycleTarget && countDistinctProducts(slotPicks) < recycleTarget) {
-                for (const {row} of scored) {
+                const historical = [...scored].sort((a,b)=>(historyPriority?.([rowIdentity(b.row)])||0)-(historyPriority?.([rowIdentity(a.row)])||0));
+                for (const {row} of historical) {
                     if (added >= perSlot) break
                     if (row?.image_url && excluded(row)) pushRow(row)
                 }
@@ -2344,6 +2346,9 @@ serve(async (req: Request) => {
         // ~40 items forever. Manual selection (selectedItemIds) ignores this.
         excludeItemIds = [],
         excludeProductKeys = [],
+        previousDeckProductKeys = [],
+        olderRecentProductKeys = [],
+        rotationDecks = [],
     } = body
 
     if (catalogOnly) {
@@ -2362,7 +2367,9 @@ serve(async (req: Request) => {
             .map((v: unknown) => String(v ?? '').trim())
             .filter(Boolean),
     )
-    for (const key of excludeProductKeys) excludeSet.add(key)
+    for (const key of [...excludeProductKeys,...previousDeckProductKeys,...olderRecentProductKeys]) excludeSet.add(key)
+    const previousSet = new Set<string>(previousDeckProductKeys)
+    const deckPriority = createRotationPriority(excludeSet,previousSet,rotationDecks,anchorItemId)
     const rotationTarget = deckTarget === 3 ? 3 : 0
 
     let parsedBudget: { amount: number; currency: string; fx?: BudgetFxContext } | null
@@ -2592,7 +2599,7 @@ serve(async (req: Request) => {
                 // A banned choice must not count toward a completed page or
                 // consume a per-slot pick while later eligible products exist.
                 const shopEligible = (item: any) => eligibleCandidate(item) && filterShopByPrefs([item], preferences).length === 1
-                const fetchedShopItems = await fetchShopItemsForAllSlotsEdge(svcClient, missingSlots, selectionStyle, targetChoicesPerSlot, excludeSet, shopEligible, parsedBudget ? requestFx : undefined, parsedBudget && !requestFx ? parsedBudget : undefined, `${occasion} ${prompt}`, rotationTarget)
+                const fetchedShopItems = await fetchShopItemsForAllSlotsEdge(svcClient, missingSlots, selectionStyle, targetChoicesPerSlot, excludeSet, shopEligible, parsedBudget ? requestFx : undefined, parsedBudget && !requestFx ? parsedBudget : undefined, `${occasion} ${prompt}`, rotationTarget, deckPriority)
                 // Shop candidates must respect color/pattern prefs too — the
                 // wardrobe-side filter above ran before they were appended.
                 const shopItems = filterShopByPrefs(fetchedShopItems, preferences)
@@ -2701,6 +2708,7 @@ serve(async (req: Request) => {
                     if (formalOcc && /\bpiqu/.test(blob) && /\bpolo/.test(blob)) return false
                     return true
             }
+            if (rotationTarget) wardrobeItems.sort((a:any,b:any)=>deckPriority([b])-deckPriority([a]));
             const budgetSource = wardrobeItems
             const rankEligible = (item: any) => eligibleCandidate(item) && (String(item.id) === String(anchorItemId || '') || tasteEligible(item))
             wardrobeItems = rankItemsForStyleEdge(wardrobeItems, styleKey, { minKeep: 16, dropThreshold: -2, perCategoryFloor: 6, eligibility: rankEligible })
@@ -2915,7 +2923,7 @@ serve(async (req: Request) => {
                 anchorSlot: anchor ? diversitySlotOf(anchor) : null,
                 activeSlots: layered ? ['top','outerwear','bottom','shoes'] : ['top','bottom','shoes'],
                 target: Math.min(Number(deckTarget) || limit, limit),
-                priorityOfDeck: deck => freshProductCount(deck.flatMap(choice => choice.items), excludeSet, anchorItemId),
+                priorityOfDeck: deck => deckPriority(deck.flatMap(choice => choice.items)),
             }).deck
         }
         if (!choices.length) return null
@@ -3197,7 +3205,7 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
                 // keep the remaining validated looks behind it so the client
                 // still has alternatives to choose from.
                 target: requestedDeckTarget,
-                priorityOfDeck: deck => freshProductCount(deck.flatMap((outfit: any) => outfit.items), excludeSet, anchorItemId),
+                priorityOfDeck: deck => deckPriority(deck.flatMap((outfit: any) => outfit.items)),
                 debug: (message: string, data?: unknown) => console.log('[stylist-diversity]', message, data ?? ''),
             })
             if (diverseDeck.deck.length > 0) {
@@ -3256,7 +3264,8 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
         if (personalStylist && finalOutfits.length !== 3) return new Response(JSON.stringify({success: false, outfits: [], code: 'incomplete_outfit_deck', error: 'Three complete, suitable outfits are required. Add more suitable clothing or adjust the request.'}), {status: 422, headers: {...corsHeaders, 'Content-Type': 'application/json'}})
         if (!finalOutfits.length) return new Response(JSON.stringify({ success: false, error: 'ai_generation_unavailable', outfits: [], providerAttempts: providerTrace }), {status: 503, headers: {...corsHeaders, 'Content-Type':'application/json'}})
 
-        return new Response(JSON.stringify({ success: true, outfits: finalOutfits, source: generationSource, layered, provider: aiProviderUsed, providerAttempts: providerTrace, diversity: diversityCapacity, rotation: rotation ? {recycledSlots: rotation.recycledSlots, freshProducts: freshProductCount(finalOutfits.flatMap((outfit: any) => outfit.items), excludeSet, anchorItemId)} : undefined, budgetReference: requestFx ? {id: requestFx.snapshot.id, asOf: requestFx.snapshot.asOf, source: 'CBU'} : undefined }), {
+        const previousDeckOverlapBySlot = Object.fromEntries(['outerwear','top','bottom','shoes'].map(slot=>[slot,finalOutfits.flatMap((outfit:any)=>outfit.items).filter((item:any)=>item.macroCategory===slot && String(item.id)!==String(anchorItemId||'') && wasRecentlyShown(item,previousSet)).length]))
+        return new Response(JSON.stringify({ success: true, generationRequestId: body.generationRequestId, rotationScope: body.rotationScope, previousDeckOverlapBySlot, outfits: finalOutfits, source: generationSource, layered, provider: aiProviderUsed, providerAttempts: providerTrace, diversity: diversityCapacity, rotation: rotation ? {recycledSlots: rotation.recycledSlots, freshProducts: freshProductCount(finalOutfits.flatMap((outfit: any) => outfit.items), excludeSet, anchorItemId)} : undefined, budgetReference: requestFx ? {id: requestFx.snapshot.id, asOf: requestFx.snapshot.asOf, source: 'CBU'} : undefined }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
 

@@ -142,3 +142,39 @@ export function recordShownOutfits(outfits: unknown, scope?: string): void {
         // Recency is best-effort — never break generation.
     });
 }
+
+export interface RotationDeck { requestId: string; productKeys: string[] }
+const deckStates = new Map<string, {decks: RotationDeck[]; ready: Promise<void>; writes: Promise<void>}>();
+let requestSequence = 0;
+/** Stable semantic identity; request IDs deliberately live outside this scope. */
+export function rotationScope(userId: string, source: string, style: string, occasion: string): string {
+    const canonical=(value:string)=>value.trim().toLowerCase().replace(/[\s-]+/g,'_');
+    return [userId, source === 'new_clothing' ? 'shop' : canonical(source), canonical(style), canonical(occasion).replace(/^date_night$/,'date')].join('|');
+}
+export function generationRequestId(): string { return `${Date.now().toString(36)}-${(++requestSequence).toString(36)}`; }
+function decksFor(scope: string) {
+    let state=deckStates.get(scope);
+    if (!state) {
+        state={decks:[],ready:Promise.resolve(),writes:Promise.resolve()};
+        const captured=state;
+        captured.ready=AsyncStorage.getItem(`stylistRotationDecks::${scope}`).then(raw=>{
+            try { const decks=JSON.parse(raw||'[]');if(Array.isArray(decks))captured.decks=decks.filter(d=>typeof d?.requestId==='string'&&Array.isArray(d.productKeys)&&d.productKeys.every((k:unknown)=>typeof k==='string')).slice(-12); } catch { /* An unreadable cache is empty. */ }
+        }).catch(()=>undefined);
+        deckStates.set(scope,state);
+    }
+    return state;
+}
+export async function getRotationHistory(scope:string) {
+    const state=decksFor(scope);await state.ready;
+    return {previousDeckProductKeys:[...(state.decks.at(-1)?.productKeys||[])],olderRecentProductKeys:[...new Set(state.decks.slice(0,-1).flatMap(d=>d.productKeys))],rotationDecks:state.decks.map(d=>({...d,productKeys:[...d.productKeys]}))};
+}
+/** Call after final acceptance, before unlocking the next Generate press. */
+export async function recordDisplayedDeck(outfits:unknown,scope:string,requestId:string):Promise<void> {
+    const state=decksFor(scope);await state.ready;
+    if(!Array.isArray(outfits)||state.decks.some(d=>d.requestId===requestId))return;
+    const productKeys=[...new Set<string>(outfits.flatMap(o=>Array.isArray(o?.items)?o.items.flatMap(productIdentityKeys):[]))];
+    if(!productKeys.length)return;
+    state.decks=[...state.decks,{requestId,productKeys}].slice(-12);
+    const snapshot=JSON.stringify(state.decks);
+    state.writes=state.writes.then(()=>AsyncStorage.setItem(`stylistRotationDecks::${scope}`,snapshot)).catch(()=>undefined);
+}

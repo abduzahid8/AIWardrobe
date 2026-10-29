@@ -105,3 +105,28 @@ test('a new catalog ID cannot resurrect a recently shown product by name or norm
  expect(response.status).toBe(200);expect(data.outfits).toHaveLength(3);
  expect(data.outfits.flatMap(o=>o.items).flatMap(productIdentityKeys).filter(key=>history.has(key))).toEqual([]);
 });
+
+test('deck boundaries avoid previous shoes and exhaust older last-use order in a five-shoe pool',async()=>{
+ const rows=rotationFixtures.filter(i=>i.macroCategory!=='shoes'||Number(i.id.split('-').at(-1))<5);
+ const {handler}=load([],null,null,null,null,'curated');const {productIdentityKeys}=require('../../backend/supabase/functions/_shared/outfitDiversity');const decks=[];
+ for(let g=0;g<3;g++){
+  const body=await(await stylistRequest(rows)).json();body.rotationDecks=decks;body.previousDeckProductKeys=decks.at(-1)?.productKeys||[];body.olderRecentProductKeys=decks.slice(0,-1).flatMap(d=>d.productKeys);body.excludeProductKeys=decks.flatMap(d=>d.productKeys);
+  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));const data=await response.json();expect(response.status).toBe(200);expect(data.outfits).toHaveLength(3);
+  const parts=data.outfits.flatMap(o=>o.items),shoes=parts.filter(i=>i.macroCategory==='shoes');
+  if(g===1){const previous=decks[0].shoeIds;expect(shoes.filter(i=>!previous.includes(i.id))).toHaveLength(2);expect(shoes.filter(i=>previous.includes(i.id))).toHaveLength(1);}
+  if(g===2){const previous=decks[1].shoeIds;expect(shoes.filter(i=>previous.includes(i.id))).toHaveLength(1);}
+  decks.push({requestId:`request-${g}`,productKeys:parts.flatMap(productIdentityKeys),shoeIds:shoes.map(i=>i.id)});
+ }
+});
+
+test('five same-intent generations keep all physical products fresh in a rich pool',async()=>{
+ const rows=['outerwear','top','bottom','shoes'].flatMap((slot,s)=>Array.from({length:15},(_,i)=>({id:`five-${s}-${i}`,name:['Navy cotton blazer','White cotton shirt','Beige cotton chinos','Brown leather loafers'][s]+` edition ${i}`,macroCategory:slot,type:slot,color:['navy','white','beige','brown'][s],isWardrobe:true,imageUrl:`https://example.invalid/five-${s}-${i}.jpg`})));
+ const {handler}=load([],null,null,null,null,'curated'),decks=[];const {productIdentityKeys}=require('../../backend/supabase/functions/_shared/outfitDiversity');
+ for(let g=0;g<5;g++){
+  const body=await(await stylistRequest(rows)).json();body.rotationScope='fixture|wardrobe|casual|casual';body.generationRequestId=`five-request-${g}`;body.rotationDecks=decks;body.previousDeckProductKeys=decks.at(-1)?.productKeys||[];body.olderRecentProductKeys=decks.slice(0,-1).flatMap(d=>d.productKeys);body.excludeProductKeys=decks.flatMap(d=>d.productKeys);
+  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));const data=await response.json();expect(response.status).toBe(200);expect(data.outfits).toHaveLength(3);
+  const products=data.outfits.flatMap(o=>o.items),keys=products.flatMap(productIdentityKeys),seen=new Set(decks.flatMap(d=>d.productKeys));expect(keys.filter(k=>seen.has(k))).toEqual([]);
+  expect(data.previousDeckOverlapBySlot).toEqual({outerwear:0,top:0,bottom:0,shoes:0});expect(data.generationRequestId).toBe(body.generationRequestId);expect(data.rotationScope).toBe(body.rotationScope);
+  decks.push({requestId:body.generationRequestId,productKeys:keys});
+ }
+});

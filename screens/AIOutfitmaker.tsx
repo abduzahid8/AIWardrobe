@@ -21,7 +21,7 @@ import { withRequestDeadline } from '../src/lib/requestDeadline';
 import { OutfitGenerationFailure, outfitGenerationFailure } from '../src/services/outfitGenerationFailure';
 import { useShopCatalog } from '../hooks/useShopCatalog';
 import { fillMissingSlots, type OutfitSlotId } from '../src/services/shoppingService';
-import { getRecentShownIds, getRecentShownProductKeys, recordShownOutfits } from '../src/services/recentOutfitIds';
+import { recordShownOutfits, rotationScope, generationRequestId, getRotationHistory, recordDisplayedDeck } from '../src/services/recentOutfitIds';
 import { mergeShopSlices, collapseSimilarByName, collapseDuplicateProductImages, isTrustedProductImage, isBrandCatalogImage, productImageKey, preferMappedMacro, hasUsableProductName, inferCatalogColor, normalizeCatalogNameKey, classicCatalogOffset, garmentVarietyFamily, inferShopRowMacro } from '../src/utils/shopCatalogOrder';
 import { passesStyleJudge, styleJudgeReason, rejectForStyleOccasion, rejectForClimate, humanizeProductName, SHORT_SLEEVE_RE, STRIP_SHORT_SLEEVE_RE } from '../features/outfit-generator/utils/occasionRules';
 import LiquidGlass2026Theme, { SpatialElevation } from '../constants/LiquidGlass2026Theme';
@@ -2158,8 +2158,11 @@ const AIOutfitGenerator = () => {
         return;
       }
 
-      const excludeItemIds = await getRecentShownIds(recencyScope);
-      const excludeProductKeys = await getRecentShownProductKeys(recencyScope);
+      const scope = rotationScope(recencyScope, effectiveSource, styleToUse, occasionToUse || 'Any');
+      const requestId = generationRequestId();
+      const history = await getRotationHistory(scope);
+      const excludeProductKeys = [...new Set([...history.olderRecentProductKeys,...history.previousDeckProductKeys])];
+      const excludeItemIds: string[] = [];
       if (!isCurrentGeneration() || !generationAccessToken) return;
       const EDGE_TIMEOUT_MS = 120000;
       const { data, error: invokeError } = await withRequestDeadline(async (signal) => supabase.functions.invoke('generate-outfits', {
@@ -2196,6 +2199,9 @@ const AIOutfitGenerator = () => {
           // pieces the user just saw, so each tap surfaces new clothing.
           excludeItemIds,
           excludeProductKeys,
+          rotationScope: scope,
+          generationRequestId: requestId,
+          ...history,
         },
       }), EDGE_TIMEOUT_MS, cancelSignal);
 
@@ -2435,6 +2441,16 @@ const AIOutfitGenerator = () => {
           const overCap = finalOutfits.filter((o) => !fitsCap(o.items as any[]));
           const shownOutfits = inCap.slice(0, 3);
           if (shownOutfits.length !== 3) throw new Error('incomplete_outfit_deck');
+          const previousKeys = new Set(history.previousDeckProductKeys);
+          const previousDeckOverlapBySlot = Object.fromEntries(['outerwear','top','bottom','shoes'].map(slot=>[slot,
+            shownOutfits.flatMap(o=>o.items as any[]).filter(item=>item.macroCategory===slot && String(item.id)!==String(baseItemId||'')
+              && productIdentityKeys(item).some(key=>previousKeys.has(key))).length]));
+          // Repair may adjust labels, but must never reintroduce a product
+          // that the authoritative backend deck successfully avoided.
+          for (const [slot,count] of Object.entries(previousDeckOverlapBySlot)) {
+            if (count > Number(data.previousDeckOverlapBySlot?.[slot] ?? 0)) throw new Error('client_rotation_overlap');
+          }
+
           setOutfits(
             shownOutfits
               .map((o) => {
@@ -2449,6 +2465,7 @@ const AIOutfitGenerator = () => {
                   : { ...o, description: baseDescription };
               }),
           );
+          await recordDisplayedDeck(shownOutfits, scope, requestId);
           recordShownOutfits(shownOutfits, recencyScope);
           rememberShownIds(shownOutfits);
           setLoading(false);

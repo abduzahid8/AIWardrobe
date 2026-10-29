@@ -20,3 +20,12 @@ it('keeps a locked anchor even when history contains it',()=>{
  const rows=Array.from({length:5},(_,i)=>product(`p${i}`));const seen=new Set(productIdentityKeys(rows[0]));
  expect(rotationPool(rows,seen,3,new Set(['p0'])).items).toContain(rows[0]);
 });
+
+it('prefers fresh, then older, then previous; chooses the oldest last-use when forced',()=>{
+ const {rotationDeckPriority}=require('../../backend/supabase/functions/_shared/outfitRotation');
+ const a=product('a'),b=product('b'),c=product('c'),d=product('d');
+ const decks=[{productKeys:productIdentityKeys(a)},{productKeys:productIdentityKeys(b)},{productKeys:productIdentityKeys(c)}];
+ const history=new Set(decks.flatMap(d=>d.productKeys)),previous=new Set(productIdentityKeys(c));
+ const score=(p:any)=>rotationDeckPriority([p],history,previous,decks);
+ expect(score(d)).toBeGreaterThan(score(a));expect(score(a)).toBeGreaterThan(score(b));expect(score(b)).toBeGreaterThan(score(c));
+});

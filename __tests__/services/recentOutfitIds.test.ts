@@ -107,3 +107,22 @@ test('records physical identity and rehydrates normalized names and images', asy
     expect(await loadModule().getRecentShownProductKeys('identity-user')).toEqual(keys);
     expect(await loadModule().getRecentShownProductKeys('another-user')).toEqual([]);
 });
+
+test('same choices keep one scope, distinct taps get unique IDs, and deck boundaries survive immediate reads',async()=>{
+ const mod=loadModule();const scope=mod.rotationScope('user','shop','Old Money','Date Night');
+ expect(scope).toBe(mod.rotationScope('user','new_clothing','old_money','date'));
+ const a=mod.generationRequestId(),b=mod.generationRequestId();expect(a).not.toBe(b);
+ await mod.recordDisplayedDeck([{items:[{id:'a',name:'First shirt'}]}],scope,a);
+ expect((await mod.getRotationHistory(scope)).previousDeckProductKeys).toContain('id:a');
+ await mod.recordDisplayedDeck([{items:[{id:'b',name:'Second shirt'}]}],scope,b);
+ const h=await mod.getRotationHistory(scope);expect(h.previousDeckProductKeys).toContain('id:b');expect(h.previousDeckProductKeys).not.toContain('id:a');expect(h.olderRecentProductKeys).toContain('id:a');
+ expect(h.rotationDecks).toHaveLength(2);
+});
+
+test('a pending persistence write cannot make the next request read stale deck history',async()=>{
+ (AsyncStorage.setItem as jest.Mock).mockImplementation(()=>new Promise(()=>{}));
+ const mod=loadModule(),scope=mod.rotationScope('race','shop','old_money','date');
+ await mod.recordDisplayedDeck([{items:[{id:'just-displayed',name:'Cotton shirt'}]}],scope,'tap-one');
+ const history=await mod.getRotationHistory(scope);
+ expect(history.previousDeckProductKeys).toContain('id:just-displayed');
+});
