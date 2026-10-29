@@ -178,7 +178,7 @@ export function inferSeasonalWeather(now: Date = new Date()): { temp: number; co
 }
 
 const SUMMER_OPEN_SHOE_RE = /\b(espadrilles?|sandals?|slides?|flip[\s-]?flops?|jandals?)\b/;
-const HEAVY_WINTER_LAYER_RE = /\b(puffer|parka|ski\b|down\s+jacket|overcoats?|topcoats?)\b/;
+const HEAVY_WINTER_LAYER_RE = /\b(puffer|parka|ski\b|down\s+jacket|overcoats?|topcoats?|peacoats?|duffle|greatcoats?)\b/;
 const WARM_FIBER_RE = /\b(wool|merino|cashmere|flannel|tweed|felt|fleece|boiler)\b/;
 const WARM_LAYER_RE = /\b(coat|jacket|blazer|cardigan|sweater|pullover|knit|trench|peacoat|hoodie|overshirt)\b/;
 
@@ -225,6 +225,11 @@ export function rejectForClimate(
         && /\b(wool|merino|alpaca|cashmere|mohair|angora|lambswool|fleece|shearling|chunky|heavyweight|insulated|padded)\b/.test(blob)
         && !/\btropical\s+wool\b/.test(blob)) {
         return `${temp}°C requires ${slot === 'outerwear' ? 'a light layer' : 'light clothing'}, not warm winter fabric`;
+    }
+    if (hot && slot === 'outerwear'
+        && (/\b(leather|suede|corduroy)\b/.test(blob)
+            || !/\b(lightweight|light[ -]weight|fine[ -]gauge|open[ -]knit|summer|linen|cotton|breathable|unlined)\b/.test(blob))) {
+        return `${temp}°C requires a documented lightweight layer`;
     }
     if (hot && slot === 'outerwear'
         && /\b(sweaters?|pullovers?|hoodies?|sweatshirts?)\b|funnel[ -]neck/.test(blob)

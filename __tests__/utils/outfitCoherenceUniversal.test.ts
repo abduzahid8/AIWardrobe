@@ -265,3 +265,7 @@ it.each(['Alpaca-blend cardigan','Merino wool cardigan','Chunky cashmere sweater
   const look=[item(name,'outerwear'),item('White cotton shirt','top'),item('Beige cotton chinos','bottom'),item('Leather loafers','shoes')];
   expect(styleJudgeReason(look,'casual','summer',{temp:30})).toMatch(/light layer/);
 });
+it('rejects a leather peacoat even when no-jacket intent would allow a coat', () => {
+ const look=[item('Tilson Leather Peacoat','outerwear'),item('Cotton shirt','top'),item('Cotton chinos','bottom'),item('Leather shoes','shoes')];
+ expect(styleJudgeReason(look,'casual','summer, no jacket',{temp:30})).toMatch(/warm|lightweight/);
+});
