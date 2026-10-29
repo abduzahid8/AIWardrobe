@@ -1,6 +1,6 @@
 import {formatUzsPrice} from '../src/utils/uzsPrice';
 import { useUzsDisplayRates, useUzsPrice } from '../hooks/useUzsPrice';
-import { resolveStylistWeather } from '../backend/supabase/functions/_shared/outfitComposition';
+import { DISPLAY_DECK_SIZE, resolveOutfitComposition, resolveStylistWeather } from '../backend/supabase/functions/_shared/outfitComposition';
 import { getBudgetRates } from '../src/services/budgetRates';
 import { budgetFxContext, fitsBudgetAmount } from '../backend/supabase/functions/_shared/budgetFx';
 import readinessLogger from '../src/utils/logger';
@@ -21,7 +21,7 @@ import { withRequestDeadline } from '../src/lib/requestDeadline';
 import { OutfitGenerationFailure, outfitGenerationFailure } from '../src/services/outfitGenerationFailure';
 import { useShopCatalog } from '../hooks/useShopCatalog';
 import { fillMissingSlots, type OutfitSlotId } from '../src/services/shoppingService';
-import { getRecentShownIds, recordShownOutfits } from '../src/services/recentOutfitIds';
+import { getRecentShownIds, getRecentShownProductKeys, getRotationHistory, makeRotationScope, recordShownOutfits } from '../src/services/recentOutfitIds';
 import { mergeShopSlices, collapseSimilarByName, collapseDuplicateProductImages, isTrustedProductImage, isBrandCatalogImage, productImageKey, preferMappedMacro, hasUsableProductName, inferCatalogColor, normalizeCatalogNameKey, classicCatalogOffset, garmentVarietyFamily, inferShopRowMacro } from '../src/utils/shopCatalogOrder';
 import { passesStyleJudge, styleJudgeReason, rejectForStyleOccasion, rejectForClimate, humanizeProductName, SHORT_SLEEVE_RE, STRIP_SHORT_SLEEVE_RE } from '../features/outfit-generator/utils/occasionRules';
 import LiquidGlass2026Theme, { SpatialElevation } from '../constants/LiquidGlass2026Theme';
@@ -582,7 +582,7 @@ async function generateOfflineOutfits(
   if (!itemMacros.has('shoes')) missingSlots.push('shoes');
   if (!itemMacros.has('bottom')) missingSlots.push('bottom');
   if (!itemMacros.has('top')) missingSlots.push('top');
-  const needsLayerFill = !weather || weather.temp < 18 || /\b(cold|rain|wind)\b/.test((weather?.condition || '').toLowerCase());
+  const needsLayerFill = resolveOutfitComposition(style, weather, '').layered;
   if (needsLayerFill && !itemMacros.has('outerwear')) missingSlots.push('outerwear');
   if (needsLayerFill && availableItems.filter((it: any) => getOfflineMacroCategory(it.type || '', it.category || '', it.name || '') === 'top').length < 2) {
     missingSlots.push('top');
@@ -706,7 +706,7 @@ async function generateOfflineOutfits(
   const shoes = shuffleArray(classified.filter(c => c.category === 'shoes').map(c => c.item));
 
   // Determine if layering needed based on weather ONLY
-  const needsLayer = !weather || weather.temp < 18 || /\b(cold|rain|wind)\b/.test((weather?.condition || '').toLowerCase());
+  const needsLayer = resolveOutfitComposition(style, weather, '').layered;
 
   const casualLayers = layers.filter(l => !isFormalLayer(l));
   const nonShortsPants = pants.filter(p => !isShortsBottom(p));
@@ -2135,7 +2135,7 @@ const AIOutfitGenerator = () => {
         if (!isCurrentGeneration()) return;
         if (sess.session?.user.id !== generationOwner || !sess.session?.access_token) throw new Error('generation_session_unavailable');
         generationAccessToken = sess.session.access_token;
-        recencyScope = generationOwner;
+        recencyScope = makeRotationScope(generationOwner, effectiveSource, styleToUse, occasionToUse);
         if (__DEV__) readinessLogger.debug(String('[AIOutfitmaker] edge payload:'), [{
           effectiveSource,
           wardrobeState: (wardrobeItems || []).length,
@@ -2158,8 +2158,23 @@ const AIOutfitGenerator = () => {
         return;
       }
 
-      const excludeItemIds = await getRecentShownIds(recencyScope);
+      const [excludeItemIds, excludeProductKeys, rotationHistory] = await Promise.all([
+        getRecentShownIds(recencyScope),
+        getRecentShownProductKeys(recencyScope),
+        getRotationHistory(recencyScope),
+      ]);
       if (!isCurrentGeneration() || !generationAccessToken) return;
+      const generationRequestId = `${Date.now()}-${tapNonce}-${Math.random().toString(36).slice(2)}`;
+      if (__DEV__) readinessLogger.debug('[rotation-client] GENERATE START', {
+        generationRequestId,
+        tapNonce,
+        style: styleToUse,
+        occasion: occasionToUse,
+        source: effectiveSource,
+        rotationScope: recencyScope,
+        previousDeckProductKeys: rotationHistory.previousDeckProductKeys,
+        olderRecentProductKeysCount: rotationHistory.olderRecentProductKeys.length,
+      });
       const EDGE_TIMEOUT_MS = 120000;
       const { data, error: invokeError } = await withRequestDeadline(async (signal) => supabase.functions.invoke('generate-outfits', {
         signal,
@@ -2194,11 +2209,24 @@ const AIOutfitGenerator = () => {
           // Recently-shown window → edge builds the candidate pool without
           // pieces the user just saw, so each tap surfaces new clothing.
           excludeItemIds,
+          excludeProductKeys,
+          previousDeckProductKeys: rotationHistory.previousDeckProductKeys,
+          olderRecentProductKeys: rotationHistory.olderRecentProductKeys,
+          rotationScope: recencyScope,
+          generationRequestId,
         },
       }), EDGE_TIMEOUT_MS, cancelSignal);
 
       if (!isCurrentGeneration()) return;
       if (invokeError) throw await outfitGenerationFailure(data, invokeError);
+      if (__DEV__) readinessLogger.debug('[rotation-client] RESPONSE', {
+        generationRequestId,
+        source: data?.source,
+        provider: data?.provider,
+        firstOutfitIds: Array.isArray(data?.outfits?.[0]?.items)
+          ? data.outfits[0].items.map((item: any) => String(item?.id || ''))
+          : [],
+      });
 
       if (shopBudget?.fx && data?.success && data?.budgetReference?.id !== shopBudget.fx.snapshot.id) throw new OutfitGenerationFailure('outfitMaker.budgetRatesUnavailable');
       if (data && data.success && data.outfits && data.outfits.length > 0) {
@@ -2422,8 +2450,8 @@ const AIOutfitGenerator = () => {
         if (__DEV__ && deckRelaxed) readinessLogger.debug(String(`[AIOutfitmaker] deck relaxed (${deckRelaxReason}) after strict diverse alternatives were exhausted`), []);
         if (__DEV__) readinessLogger.debug(String(`[AIOutfitmaker] nonce=${generationNonce.current} edge=${cleanedOutfits.length} shown=${finalOutfits.length}`), []);
 
-        if (finalOutfits.length === 0) {
-          throw new Error('No complete outfits returned from AI');
+        if (finalOutfits.length !== DISPLAY_DECK_SIZE) {
+          throw new Error('no_valid_outfits_for_request');
         }
 
         if (!isCurrentGeneration()) return;
@@ -2431,8 +2459,8 @@ const AIOutfitGenerator = () => {
           // Only validated, in-cap looks may become visible.
           const inCap = finalOutfits.filter((o) => fitsCap(o.items as any[]));
           const overCap = finalOutfits.filter((o) => !fitsCap(o.items as any[]));
-          const shownOutfits = inCap.slice(0, 3);
-          if (!shownOutfits.length) throw new Error('no_outfits_within_budget');
+          const shownOutfits = inCap.slice(0, DISPLAY_DECK_SIZE);
+          if (shownOutfits.length !== DISPLAY_DECK_SIZE) throw new Error('no_outfits_within_budget');
           setOutfits(
             shownOutfits
               .map((o) => {
@@ -2447,6 +2475,10 @@ const AIOutfitGenerator = () => {
                   : { ...o, description: baseDescription };
               }),
           );
+          if (__DEV__) readinessLogger.debug('[rotation-client] DISPLAY', {
+            generationRequestId,
+            firstOutfitIds: shownOutfits[0]?.items?.map((item) => String(item.id)) || [],
+          });
           recordShownOutfits(shownOutfits, recencyScope);
           rememberShownIds(shownOutfits);
           setLoading(false);

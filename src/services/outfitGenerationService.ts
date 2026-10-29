@@ -5,7 +5,7 @@ import { getBudgetRates } from './budgetRates';
 import { outfitGenerationFailure, type OutfitGenerationFailure } from './outfitGenerationFailure';
 import readinessLogger from '../utils/logger';
 import { fourSlotOutfitReason } from '../../backend/supabase/functions/_shared/outfitStructure';
-import { needsLayering as needsLayeringShared } from '../../backend/supabase/functions/_shared/outfitComposition';
+import { DISPLAY_DECK_SIZE, needsLayering as needsLayeringShared } from '../../backend/supabase/functions/_shared/outfitComposition';
 /**
  * outfitGenerationService.ts
  *
@@ -27,9 +27,9 @@ import { mapDbCategory as canonicalMapDbCategory, getMacroCategory as canonicalG
 import { rankItemsForStyle, scoreItemForStyle, normalizeStyleId, type StyleId } from '../../features/outfit-generator/utils/styleInference';
 import { AI_STYLES } from '../../features/outfit-generator/types';
 import { buildCatalogSimilarityKey, spreadSimilarCatalogItems } from '../utils/shopCatalogOrder';
-import { assembleDiverseDeck, productIdentityKeys } from '../../features/outfit-generator/utils/outfitDiversity';
+import { assembleDiverseDeck, countDistinctProducts, productIdentityKeys } from '../../features/outfit-generator/utils/outfitDiversity';
 import { parseBudgetFromText, budgetCandidatesFromText, budgetInCurrency, outfitShopSpend, itemShopPrice, isShopPricedItem, type ParsedBudget } from '../utils/outfitBudget';
-import { getRecentShownIds, recordShownOutfits } from './recentOutfitIds';
+import { getRecentShownIds, getRecentShownProductKeys, getRotationHistory, makeRotationScope, recordShownOutfits } from './recentOutfitIds';
 import useWardrobeStore from '../../store/wardrobeStore';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -161,19 +161,35 @@ export async function generateOutfitsFromDB(
         if (sessionError || !session?.user.id || !session.access_token) {
             return { success: false, outfits: [], error: 'authentication_required' };
         }
-        const recencyScope = session.user.id;
+        const recencyScope = makeRotationScope(
+            session.user.id,
+            shopOnlyRequest ? 'shop' : 'wardrobe',
+            params.stylePreferences,
+            params.occasion,
+        );
         subscription = supabase.auth.onAuthStateChange((_event, nextSession) => {
             // Keep this callback synchronous: Supabase auth events hold an auth lock.
-            if (nextSession?.user.id !== recencyScope) cancel('generation_account_changed');
+            if (nextSession?.user.id !== session.user.id) cancel('generation_account_changed');
         }).data.subscription;
         // Recheck after subscribing so a change during the first session read
         // cannot fall between the captured session and event registration.
         const current = await wait(supabase.auth.getSession());
-        if (current.error || current.data.session?.user.id !== recencyScope) {
+        if (current.error || current.data.session?.user.id !== session.user.id) {
             cancel('generation_account_changed');
             throw new Error('generation_account_changed');
         }
-        const excludeItemIds = await wait(getRecentShownIds(recencyScope));
+        const [excludeItemIds, excludeProductKeys] = await wait(Promise.all([
+            getRecentShownIds(recencyScope),
+            getRecentShownProductKeys(recencyScope),
+        ]));
+        const rotationHistory = await wait(getRotationHistory(recencyScope));
+        const generationRequestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        if (__DEV__) readinessLogger.debug('[rotation-client] GENERATE START', {
+            generationRequestId,
+            rotationScope: recencyScope,
+            previousDeckProductKeys: rotationHistory.previousDeckProductKeys,
+            olderRecentProductKeysCount: rotationHistory.olderRecentProductKeys.length,
+        });
         if (cancelled) throw new Error('generation_account_changed');
         const body = {
             prompt: params.prompt || '',
@@ -181,13 +197,19 @@ export async function generateOutfitsFromDB(
             stylePreferences: params.stylePreferences || 'Casual',
             occasion: params.occasion || 'Everyday',
             weather: params.weather,
-            limit: params.limit ?? 3,
+            limit: Math.max(params.limit ?? DISPLAY_DECK_SIZE, DISPLAY_DECK_SIZE),
+            deckTarget: DISPLAY_DECK_SIZE,
             selectedItemIds: params.selectedItemIds ?? [],
             anchorItemId: shopOnlyRequest ? undefined : params.anchorItemId,
             preferences: params.preferences,
             // Recently-shown window → edge skips these when building the
             // candidate pool, so regenerates surface new pieces.
             excludeItemIds,
+            excludeProductKeys,
+            previousDeckProductKeys: rotationHistory.previousDeckProductKeys,
+            olderRecentProductKeys: rotationHistory.olderRecentProductKeys,
+            rotationScope: recencyScope,
+            generationRequestId,
         };
         try { validateOutfitGenerationRequest(body); }
         catch {
@@ -223,11 +245,20 @@ export async function generateOutfitsFromDB(
             return { success: false, outfits: [], error: 'stylist_generation_failed', errorTranslationKey: (await outfitGenerationFailure(data, error)).translationKey };
         }
 
-        const outfits: GeneratedOutfit[] = data.outfits
+        const validOutfits: GeneratedOutfit[] = data.outfits
             .filter((o: any) => o && !fourSlotOutfitReason(o.items, data.layered !== false))
             .map((o: any) => mapRawOutfit(o, params))
             .filter((o: GeneratedOutfit) => passesStyleJudge(o.items, params.stylePreferences, `${params.occasion || ''} ${params.prompt || ''}`, params.weather));
-        if (!outfits.length) return { success: false, outfits: [], error: 'no_valid_outfits_for_request' };
+        const outfits = assembleDiverseDeck<GeneratedOutfit>({
+            candidates: validOutfits,
+            itemsOf: (outfit) => outfit.items,
+            keysOf: (item) => productIdentityKeys(item),
+            usedKeys: new Set<string>(),
+            activeSlots: data.layered === false ? ['top', 'bottom', 'shoes'] : ['outerwear', 'top', 'bottom', 'shoes'],
+            target: DISPLAY_DECK_SIZE,
+            poolItems: validOutfits.flatMap((outfit) => outfit.items),
+        }).deck;
+        if (outfits.length !== DISPLAY_DECK_SIZE) return { success: false, outfits: [], error: 'no_valid_outfits_for_request' };
         if (params.recordShown !== false) recordShownOutfits(outfits, recencyScope);
         return { success: true, outfits, source: data.source ?? 'ai', layered: Boolean(data.layered) };
 
@@ -255,7 +286,43 @@ export async function generateOutfitsLocally(
     params: GenerateOutfitsParams
 ): Promise<GenerateOutfitsResult> {
     try {
-        const items = await fetchClothingItemsFromDB(params.selectedItemIds);
+        const rawItems = await fetchClothingItemsFromDB(params.selectedItemIds);
+        const shopOnly = isShopOnlyDeck(params.stylePreferences, params.occasion);
+        const session = await supabase.auth.getSession();
+        const userId = session.data.session?.user.id;
+        const rotationScope = userId
+            ? makeRotationScope(userId, shopOnly ? 'shop' : 'wardrobe', params.stylePreferences, params.occasion)
+            : undefined;
+        const [recentIds, recentProductKeys, rotationHistory] = rotationScope
+            ? await Promise.all([getRecentShownIds(rotationScope), getRecentShownProductKeys(rotationScope), getRotationHistory(rotationScope)])
+            : [[], [], { previousDeckProductKeys: [], olderRecentProductKeys: [] }] as [string[], string[], { previousDeckProductKeys: string[]; olderRecentProductKeys: string[] }];
+        const recentIdSet = new Set(recentIds);
+        const recentKeySet = new Set(recentProductKeys);
+        const previousKeySet = new Set(rotationHistory.previousDeckProductKeys);
+        const olderKeySet = new Set(rotationHistory.olderRecentProductKeys);
+        const isRecent = (item: any) => recentIdSet.has(String(item?.id || '')) ||
+            productIdentityKeys(item).some((key) => recentKeySet.has(key));
+        const isPrevious = (item: any) => productIdentityKeys(item).some((key) => previousKeySet.has(key));
+        const isOlderRecent = (item: any) => productIdentityKeys(item).some((key) => olderKeySet.has(key));
+        const freshItems = rawItems.filter((item) => !isRecent(item));
+        const olderItems = rawItems.filter((item) => isOlderRecent(item) && !isPrevious(item));
+        const previousItems = rawItems.filter((item) => isPrevious(item));
+        const slots = isLayeredWeather(params.weather, params.prompt)
+            ? ['top', 'bottom', 'shoes', 'outerwear']
+            : ['top', 'bottom', 'shoes'];
+        const selectedItems = [...freshItems];
+        for (const slot of slots) {
+            const freshSlot = freshItems.filter((item) => getItemMacroCategory(item) === slot);
+            if (countDistinctProducts(freshSlot) >= DISPLAY_DECK_SIZE) continue;
+            for (const item of [...olderItems, ...previousItems]) {
+                if (getItemMacroCategory(item) !== slot) continue;
+                const itemKeys = new Set(productIdentityKeys(item));
+                if (selectedItems.some((selected) => productIdentityKeys(selected).some((key) => itemKeys.has(key)))) continue;
+                selectedItems.push(item);
+                if (selectedItems.filter((candidate) => getItemMacroCategory(candidate) === slot).length >= DISPLAY_DECK_SIZE) break;
+            }
+        }
+        const items = selectedItems;
 
         const layered = isLayeredWeather(params.weather, params.prompt);
         const requiredSlots: OutfitSlotId[] = ['top', 'bottom', 'shoes'];
@@ -281,7 +348,6 @@ export async function generateOutfitsLocally(
         // 15 visibly different outfits on Home.
         // Exception: Team Collaboration / business_casual is always shop-only —
         // fetch the full shop pool for every required slot, ignore wardrobe counts.
-        const shopOnly = isShopOnlyDeck(params.stylePreferences, params.occasion);
         const wardrobeCountBySlot = new Map<string, number>();
         filteredItems.forEach((item) => {
             const slot = getItemMacroCategory(item).toLowerCase();
@@ -363,12 +429,26 @@ export async function generateOutfitsLocally(
             ? rankItemsForStyle([...filteredShopAsClothing], styleKey)
             : rankItemsForStyle([...filteredShopAsClothing, ...filteredItems], styleKey);
         const rankedIds = new Set(rankedItems.map((item) => item.id));
-        const mergedItems = shopOnly
+        let mergedItems = shopOnly
             ? [...rankedItems] as LocalClothingItem[]
             : [
                 ...rankedItems,
                 ...filteredItems.filter((item) => !rankedIds.has(item.id)),
             ] as LocalClothingItem[];
+        const freshMerged = mergedItems.filter((item) => !isRecent(item));
+        const recentMerged = mergedItems.filter((item) => isRecent(item));
+        const selectedMerged = [...freshMerged];
+        for (const slot of slots) {
+            if (countDistinctProducts(freshMerged.filter((item) => getItemMacroCategory(item) === slot)) >= DISPLAY_DECK_SIZE) continue;
+            for (const item of recentMerged) {
+                if (getItemMacroCategory(item) !== slot) continue;
+                const itemKeys = new Set(productIdentityKeys(item));
+                if (selectedMerged.some((selected) => productIdentityKeys(selected).some((key) => itemKeys.has(key)))) continue;
+                selectedMerged.push(item);
+                if (selectedMerged.filter((candidate) => getItemMacroCategory(candidate) === slot).length >= DISPLAY_DECK_SIZE) break;
+            }
+        }
+        mergedItems = selectedMerged;
 
         // If wardrobe is completely empty but we have shop items, still proceed.
         if (items.length === 0 && shopAsClothing.length === 0) {
@@ -403,9 +483,12 @@ export async function generateOutfitsLocally(
 
         // Record what the user will see so the next edge call rotates away
         // from it (the local path uses shuffle, so exclusion is belt-and-braces).
-        recordShownOutfits(outfits);
+        const visibleOutfits = outfits.slice(0, DISPLAY_DECK_SIZE);
+        recordShownOutfits(visibleOutfits, rotationScope);
 
-        return outfits.length ? { success: true, outfits, source: 'local' } : { success: false, outfits: [], error: 'no_valid_outfits_for_request', source: 'local' };
+        return visibleOutfits.length === DISPLAY_DECK_SIZE
+            ? { success: true, outfits: visibleOutfits, source: 'local' }
+            : { success: false, outfits: [], error: 'no_valid_outfits_for_request', source: 'local' };
     } catch (err: any) {
         return { success: false, outfits: [], error: err.message, source: 'local' };
     }
@@ -929,7 +1012,7 @@ function enforceShopOnlyDailyOutfit(
 }
 
 export function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOutfitsParams): GeneratedOutfit[] {
-    const limit = params.limit ?? 3;
+    const limit = Math.max(params.limit ?? DISPLAY_DECK_SIZE, DISPLAY_DECK_SIZE);
     // A non-positive limit means "no outfits" — bail before the last-resort
     // single-outfit block below, which otherwise emits 1 look for limit 0.
     if (limit <= 0) return [];

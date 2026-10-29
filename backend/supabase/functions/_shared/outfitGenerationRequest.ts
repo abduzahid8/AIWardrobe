@@ -15,6 +15,8 @@ export function validateOutfitGenerationRequest(body: unknown): Record<string, a
   if (!object(body)) throw new OutfitRequestError();
   text(body.prompt, 1000); text(body.stylePreferences, 80); text(body.occasion, 100);
   text(body.conversationContext, 4000); text(body.anchorItemId, 200);
+  text(body.rotationScope, 300);
+  text(body.generationRequestId, 120);
   if (body.limit !== undefined && (!Number.isInteger(body.limit) || body.limit < 1 || body.limit > 15)) throw new OutfitRequestError();
   // deckTarget = the deck size the caller DISPLAYS. It may be smaller than
   // limit (the Personal Stylist requests extra candidates but shows three
@@ -22,6 +24,7 @@ export function validateOutfitGenerationRequest(body: unknown): Record<string, a
   // integer no larger than the requested limit.
   if (body.deckTarget !== undefined && (!Number.isInteger(body.deckTarget) || body.deckTarget < 1 || body.deckTarget > Math.min(15, body.limit ?? 3))) throw new OutfitRequestError();
   list(body.selectedItemIds, 200, 200); list(body.excludeItemIds, 200, 200);
+  list(body.excludeProductKeys, 600, 300); list(body.previousDeckProductKeys, 300, 300); list(body.olderRecentProductKeys, 600, 300);
   for (const key of ['wardrobeOnly', 'useProvidedWardrobeOnly', 'catalogOnly']) if (body[key] !== undefined && typeof body[key] !== 'boolean') throw new OutfitRequestError();
   if (body.weather !== undefined && body.weather !== null) {
     if (!object(body.weather)) throw new OutfitRequestError();

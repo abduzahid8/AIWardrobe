@@ -10,8 +10,8 @@ import { normalizeModelOutfits } from '../_shared/modelOutfitResponse.ts'
 import { enforceRateLimit } from '../_shared/rateLimit.ts'
 import { isFourSlotCandidate, fourSlotOutfitReason, outfitStructureReason, isDressGarment, isNonOutfitItem } from '../_shared/outfitStructure.ts'
 import { styleJudgeReason, normalizeGarmentText, isWorkoutOccasion, rejectForStyleOccasion, rejectForClimate, rejectForRequestIntent, rejectForActivity } from '../_shared/occasionRules.ts'
-import { analyzeDeckProductDiversity, assembleDiverseDeck, canonicalProductKey, productIdentityKeys, diversitySlotOf, type DiversitySlot } from '../_shared/outfitDiversity.ts'
-import { needsLayering as needsLayeringShared, resolveStylistWeather } from '../_shared/outfitComposition.ts'
+import { analyzeDeckProductDiversity, assembleDiverseDeck, canonicalProductKey, countDistinctProducts, productIdentityKeys, diversitySlotOf, type DiversitySlot } from '../_shared/outfitDiversity.ts'
+import { DISPLAY_DECK_SIZE, needsLayering as needsLayeringShared, resolveStylistWeather } from '../_shared/outfitComposition.ts'
 import { detectSlotMismatch } from '../_shared/occasionRules.ts'
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
@@ -1326,6 +1326,9 @@ async function fetchShopItemsForAllSlotsEdge(
     budgetFx?: BudgetFxContext,
     nativeBudget?: {amount: number; currency: string},
     requestIntent = '',
+    excludeProductKeys?: Set<string>,
+    recentProductKeys?: Set<string>,
+    searchPagesBySlot?: Record<string, number>,
 ): Promise<any[]> {
     const picks: any[] = []
     const styleKey = style.toLowerCase().replace(/[\s-]+/g, '_')
@@ -1346,8 +1349,17 @@ async function fetchShopItemsForAllSlotsEdge(
             const value = (entry: any) => budgetFx ? (entry.row._budget_cost === null ? Infinity : Number(entry.row._budget_cost)) : Number(entry.row.price)
             return (budgetFx || nativeBudget ? value(a) - value(b) : 0) || b.score - a.score
         }
-        const excluded = (row: any) => Boolean(excludeSet?.has(String(row.id)) || excludeSet?.has(`shop_${row.id}`))
+        const excluded = (row: any) => {
+            if (excludeSet?.has(String(row.id)) || excludeSet?.has(`shop_${row.id}`)) return true
+            const keys = productIdentityKeys({
+                id: `shop_${row.id}`,
+                name: row.name,
+                imageUrl: row.image_url,
+            })
+            return keys.some((key) => excludeProductKeys?.has(key))
+        }
         for (;;) {
+            if (searchPagesBySlot) searchPagesBySlot[slot] = (searchPagesBySlot[slot] || 0) + 1
             let q: any
             if (budgetFx) {
                 q = supabaseClient.rpc('budget_catalog_candidates', {
@@ -1429,8 +1441,12 @@ async function fetchShopItemsForAllSlotsEdge(
 
             scored.push(...pageScored)
             scored.sort(compare)
-            const freshProducts = new Set(scored.filter(({ row }: any) => row?.image_url && !excluded(row))
-                .map(({ row }: any) => simKeyEdge(row.name || row.type || '', slot)))
+            const rotationRecentKeys = recentProductKeys ?? excludeProductKeys
+            const freshProducts = new Set(scored
+                .filter(({ row }: any) => row?.image_url && !excluded(row) &&
+                    !productIdentityKeys({ id: `shop_${row.id}`, name: row.name, imageUrl: row.image_url })
+                        .some((key) => rotationRecentKeys?.has(key)))
+                .map(({ row }: any) => canonicalProductKey({ id: `shop_${row.id}`, name: row.name, imageUrl: row.image_url })))
             if (freshProducts.size >= perSlot || data.length < 100) break
             const next = data[data.length - 1]?.id
             if (typeof next !== 'string' || !next || next === cursor) throw new CatalogLookupError()
@@ -1446,7 +1462,7 @@ async function fetchShopItemsForAllSlotsEdge(
             const seenProducts = new Set<string>()
             let added = 0
             const pushRow = (row: any) => {
-                const pkey = simKeyEdge(row.name || row.type || '', slot)
+                const pkey = canonicalProductKey({ id: `shop_${row.id}`, name: row.name, imageUrl: row.image_url })
                 if (seenProducts.has(pkey)) return
                 seenProducts.add(pkey)
                 picks.push({
@@ -1469,8 +1485,14 @@ async function fetchShopItemsForAllSlotsEdge(
                 })
                 added++
             }
-            // Pass 1: skip items the user already saw (rotation window).
-            for (const { row } of scored) {
+            // Fresh products always win. Older history may be restored only
+            // after the full catalog search has established that fresh
+            // inventory cannot fill this slot; the immediate previous deck
+            // is excluded entirely here and can only be restored downstream
+            // as an absolute last resort.
+            const freshRows = scored.filter(({ row }) => !productIdentityKeys({ id: `shop_${row.id}`, name: row.name, imageUrl: row.image_url }).some((key) => rotationRecentKeys?.has(key)))
+            const olderRows = scored.filter(({ row }) => productIdentityKeys({ id: `shop_${row.id}`, name: row.name, imageUrl: row.image_url }).some((key) => rotationRecentKeys?.has(key)) && !excluded(row))
+            for (const { row } of [...freshRows, ...olderRows]) {
                 if (added >= perSlot) break
                 if (!row || !row.image_url) continue
                 if (excluded(row)) continue
@@ -2330,7 +2352,17 @@ serve(async (req: Request) => {
         // regenerate taps bring NEW pieces instead of recombining the same
         // ~40 items forever. Manual selection (selectedItemIds) ignores this.
         excludeItemIds = [],
+        excludeProductKeys = [],
+        previousDeckProductKeys = [],
+        olderRecentProductKeys = [],
+        generationRequestId = '',
     } = body
+    console.log('[rotation-request]', {
+        generationRequestId: String(generationRequestId || ''),
+        rotationScope: body.rotationScope || null,
+        previousDeckProductKeys: Array.isArray(previousDeckProductKeys) ? previousDeckProductKeys.length : 0,
+        olderRecentProductKeys: Array.isArray(olderRecentProductKeys) ? olderRecentProductKeys.length : 0,
+    })
 
     if (catalogOnly) {
         legacyWardrobe = []
@@ -2347,6 +2379,21 @@ serve(async (req: Request) => {
             .slice(0, 200)
             .map((v: unknown) => String(v ?? '').trim())
             .filter(Boolean),
+    )
+    const excludeProductKeyList: string[] = (Array.isArray(excludeProductKeys) ? excludeProductKeys : [])
+        .slice(0, 600)
+        .map((v: unknown) => String(v ?? '').trim())
+        .filter(Boolean)
+    const excludeProductKeySet = new Set(excludeProductKeyList)
+    const previousDeckProductKeySet = new Set(
+        (Array.isArray(previousDeckProductKeys) ? previousDeckProductKeys : [])
+            .map((v: unknown) => String(v ?? '').trim())
+            .filter(Boolean),
+    )
+    const olderRecentProductKeySet = new Set(
+        (Array.isArray(olderRecentProductKeys) ? olderRecentProductKeys : [])
+            .map((v: unknown) => String(v ?? '').trim())
+            .filter((key: string) => key && !previousDeckProductKeySet.has(key)),
     )
 
     let parsedBudget: { amount: number; currency: string; fx?: BudgetFxContext } | null
@@ -2425,7 +2472,7 @@ serve(async (req: Request) => {
                     .from('clothing_items')
                     .select('id, type, category, color, style, brand, season, seasons, occasions, pattern, material, image_url, description, primary_color, sub_category, wear_count, name')
                     .order('wear_count', { ascending: false })
-                    .limit(30)
+                    .limit(150)
 
                 if (selectedItemIds && selectedItemIds.length > 0) {
                     q = q.in('id', selectedItemIds)
@@ -2520,10 +2567,14 @@ serve(async (req: Request) => {
             console.log(`[preferences] Filtered out avoided colors: ${beforeAvoid} -> ${wardrobeItems.length} items`)
         }
 
-        // Variety changes candidates, never the request constraints.
-        wardrobeItems = wardrobeItems.filter((it: any) =>
-            String(it.id) === String(anchorItemId || '') ||
-            (selectedItemIds || []).includes(String(it.id)) || !excludeSet.has(String(it.id)))
+        // Variety changes ranking, never inventory. Recent identity is
+        // restored later per slot, only when fresh inventory cannot fill the
+        // three-look deck.
+        const isRecentItem = (item: any): boolean => {
+            if (String(item?.id || '') === String(anchorItemId || '') || (selectedItemIds || []).includes(String(item?.id))) return false
+            if (excludeSet.has(String(item?.id || ''))) return true
+            return productIdentityKeys(item).some((key) => excludeProductKeySet.has(key))
+        }
 
         const eligibleCandidate = (item: any) => isFourSlotCandidate(item) && !isNonOutfitItem(item) && !rejectForStyleOccasion(item, String(item.id) === String(anchorItemId || '') ? 'casual' : selectionStyle, `${occasion} ${prompt}`)
             && !rejectForClimate(item, weather) && !rejectForRequestIntent(item, `${occasion} ${prompt}`, weather) && !rejectForActivity(item, `${occasion} ${prompt}`)
@@ -2575,7 +2626,9 @@ serve(async (req: Request) => {
                 // A banned choice must not count toward a completed page or
                 // consume a per-slot pick while later eligible products exist.
                 const shopEligible = (item: any) => eligibleCandidate(item) && filterShopByPrefs([item], preferences).length === 1
-                const fetchedShopItems = await fetchShopItemsForAllSlotsEdge(svcClient, missingSlots, selectionStyle, targetChoicesPerSlot, excludeSet, shopEligible, parsedBudget ? requestFx : undefined, parsedBudget && !requestFx ? parsedBudget : undefined, `${occasion} ${prompt}`)
+                const rotationSearchPagesBySlot: Record<string, number> = {}
+                const fetchedShopItems = await fetchShopItemsForAllSlotsEdge(svcClient, missingSlots, selectionStyle, targetChoicesPerSlot, new Set(), shopEligible, parsedBudget ? requestFx : undefined, parsedBudget && !requestFx ? parsedBudget : undefined, `${occasion} ${prompt}`, previousDeckProductKeySet, excludeProductKeySet, rotationSearchPagesBySlot)
+                body.rotationSearchPagesBySlot = rotationSearchPagesBySlot
                 // Shop candidates must respect color/pattern prefs too — the
                 // wardrobe-side filter above ran before they were appended.
                 const shopItems = filterShopByPrefs(fetchedShopItems, preferences)
@@ -2693,15 +2746,75 @@ serve(async (req: Request) => {
                 // A global trim must not discard an entire required slot.
                 wardrobeItems = retainBudgetFloorCandidates(budgetSource, wardrobeItems, () => 0, rankEligible, anchorPreRank, 6)
             }
-            wardrobeItems = wardrobeItems.slice(0, 40)
+            wardrobeItems = wardrobeItems.slice(0, 150)
             if (anchorPreRank && !wardrobeItems.some((i: any) => String(i.id) === String(anchorItemId))) {
                 console.log(`[anchor] Re-adding locked item ${anchorItemId} after rank trim`)
-                wardrobeItems = [anchorPreRank, ...wardrobeItems].slice(0, 40)
+                wardrobeItems = [anchorPreRank, ...wardrobeItems].slice(0, 150)
             }
             console.log(`[rank] ${before} -> ${wardrobeItems.length} items after style filter for ${styleKey}`)
         } else {
             wardrobeItems = wardrobeItems.filter(eligibleCandidate)
         }
+
+        const rotationSlots = needsLayering(selectionStyle, weather, prompt)
+            ? ['top', 'bottom', 'shoes', 'outerwear']
+            : ['top', 'bottom', 'shoes']
+        const freshPool = wardrobeItems.filter((item: any) => !isRecentItem(item))
+        const recentPool = wardrobeItems
+            .filter((item: any) => isRecentItem(item))
+            .sort((a: any, b: any) => {
+                const rank = (item: any) => {
+                    const keys = productIdentityKeys(item)
+                    const indexes = keys.map((key) => excludeProductKeyList.indexOf(key)).filter((index) => index >= 0)
+                    const idIndex = excludeSet.has(String(item?.id || '')) ? excludeItemIds.indexOf(String(item.id)) : -1
+                    return indexes.length ? Math.min(...indexes) : (idIndex >= 0 ? idIndex : Number.MAX_SAFE_INTEGER)
+                }
+                return rank(a) - rank(b)
+            })
+        const isPreviousDeckItem = (item: any) => productIdentityKeys(item).some((key) => previousDeckProductKeySet.has(key))
+        const isOlderRecentItem = (item: any) => productIdentityKeys(item).some((key) => olderRecentProductKeySet.has(key))
+        const hasDeckHistory = previousDeckProductKeySet.size > 0 || olderRecentProductKeySet.size > 0
+        const olderRecentPool = hasDeckHistory
+            ? recentPool.filter((item: any) => isOlderRecentItem(item) && !isPreviousDeckItem(item))
+            : recentPool
+        const previousDeckPool = hasDeckHistory
+            ? recentPool.filter((item: any) => isPreviousDeckItem(item))
+            : []
+        const restoredRecentCountBySlot: Record<string, number> = {}
+        const restoredOlderCountBySlot: Record<string, number> = {}
+        const restoredPreviousCountBySlot: Record<string, number> = {}
+        const sameProduct = (left: any, right: any) => {
+            const rightKeys = new Set(productIdentityKeys(right))
+            return productIdentityKeys(left).some((key) => rightKeys.has(key))
+        }
+        const selectedPool = [...freshPool]
+        for (const slot of rotationSlots) {
+            const selectedSlot = () => selectedPool.filter((item: any) => String(item.macroCategory || '').toLowerCase() === slot)
+            let uniqueCount = countDistinctProducts(selectedSlot())
+            if (uniqueCount >= DISPLAY_DECK_SIZE) continue
+            for (const [pool, counts] of [[olderRecentPool, restoredOlderCountBySlot], [previousDeckPool, restoredPreviousCountBySlot]] as const) {
+                for (const item of pool) {
+                    if (String(item.macroCategory || '').toLowerCase() !== slot) continue
+                    if (selectedPool.some((existing) => sameProduct(existing, item))) continue
+                    selectedPool.push(item)
+                    uniqueCount = countDistinctProducts(selectedSlot())
+                    counts[slot] = (counts[slot] || 0) + 1
+                    restoredRecentCountBySlot[slot] = (restoredRecentCountBySlot[slot] || 0) + 1
+                    if (uniqueCount >= DISPLAY_DECK_SIZE) break
+                }
+                if (uniqueCount >= DISPLAY_DECK_SIZE) break
+            }
+        }
+        wardrobeItems = selectedPool
+        console.log('[rotation]', {
+            recentProductCount: excludeProductKeySet.size,
+            freshCandidateCountBySlot: Object.fromEntries(rotationSlots.map((slot) => [slot, freshPool.filter((item: any) => String(item.macroCategory || '').toLowerCase() === slot).length])),
+            restoredRecentCountBySlot,
+            restoredOlderCountBySlot,
+            restoredPreviousCountBySlot,
+            previousDeckProductKeys: previousDeckProductKeySet.size,
+            olderRecentProductKeysCount: olderRecentProductKeySet.size,
+        })
 
         console.log('[generation-pool]', {count: wardrobeItems.length, style: selectionStyle, slots: Object.fromEntries(['top','bottom','shoes','outerwear'].map(slot => [slot, wardrobeItems.filter((item: any) => item.macroCategory === slot).length]))})
 
@@ -3110,10 +3223,53 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
             const reason = hasAnchor ? styleJudgeReason(outfit.items || [], styleKey, `${occasion || ''} ${prompt || ''}`, weather, anchorItemId) : 'anchor_missing'
             const complete = !fourSlotOutfitReason(outfit.items, layered)
             if (reason || !complete) console.warn('[quality-reject]', { reason: reason || 'missing_slots', style: styleKey, occasion })
-            const repeats = outfit.items.some((it: any) => String(it.id) !== String(anchorItemId || '') && excludeSet.has(String(it.id)) && !(selectedItemIds || []).includes(String(it.id)))
             const budgetOk = !preferences?.maxShopBudget || fitsBudgetAmount(outfitShopSpend(outfit.items, itemMap, preferences.maxShopBudget.currency, preferences.maxShopBudget.fx), preferences.maxShopBudget.amount)
-            return !reason && complete && !repeats && budgetOk
+            return !reason && complete && budgetOk
         })
+        if (finalOutfits.length < DISPLAY_DECK_SIZE) {
+            const fallbackCandidates = await localFallback(
+                wardrobeItems,
+                styleKey,
+                occasion,
+                DISPLAY_DECK_SIZE,
+                layered,
+                undefined,
+                preferences,
+                wardrobeOnly,
+                deckSalt,
+            )
+            for (const item of fallbackCandidates.flatMap((outfit: any) => outfit?.items || [])) {
+                if (item?.id && !itemMap.has(String(item.id))) itemMap.set(String(item.id), item)
+            }
+            const fallbackValid = filterValidOutfits(
+                fallbackCandidates,
+                styleKey,
+                itemMap,
+                layered,
+                preferences,
+                `${occasion} ${prompt}`,
+                weather,
+            )
+            const fallbackEnriched = fallbackValid.map((outfit: any) => ({
+                ...outfit,
+                items: (outfit.items || []).map((item: any) => {
+                    const src = itemMap.get(String(item.id))
+                    return src
+                        ? { ...src, id: String(src.id), imageUrl: src.imageUrl || src.image_url, macroCategory: src.macroCategory, isShopItem: isShopRow(src) }
+                        : null
+                }).filter(Boolean),
+            }))
+            const signatures = new Set(finalOutfits.map((outfit: any) => (outfit.items || []).map((item: any) => String(item.id)).sort().join('|')))
+            finalOutfits = [
+                ...finalOutfits,
+                ...fallbackEnriched.filter((outfit: any) => {
+                    const signature = (outfit.items || []).map((item: any) => String(item.id)).sort().join('|')
+                    if (!signature || signatures.has(signature)) return false
+                    signatures.add(signature)
+                    return true
+                }),
+            ]
+        }
         // Provider compliance is not authority over the requested batch size.
         // ── 9c. Product-uniqueness deck gate ──────────────────────────────
         // Same formula is allowed; same actual product is not. Select the
@@ -3139,10 +3295,7 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
                 ? ['top', 'outerwear', 'bottom', 'shoes']
                 : ['top', 'bottom', 'shoes']
             // The displayed deck size drives the capacity assessment.
-            const requestedDeckTarget = Math.max(
-                1,
-                Math.min(Number(deckTarget) || limit, limit),
-            )
+            const requestedDeckTarget = DISPLAY_DECK_SIZE
             const diverseDeck = assembleDiverseDeck<any>({
                 candidates: finalOutfits,
                 itemsOf: (o: any) => o.items || [],
@@ -3212,8 +3365,71 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
                 }))
             }
         }
-        finalOutfits = finalOutfits.slice(0, limit)
-        if (!finalOutfits.length) return new Response(JSON.stringify({ success: false, error: 'ai_generation_unavailable', outfits: [], providerAttempts: providerTrace }), {status: 503, headers: {...corsHeaders, 'Content-Type':'application/json'}})
+        finalOutfits = finalOutfits.slice(0, DISPLAY_DECK_SIZE)
+        if (finalOutfits.length !== DISPLAY_DECK_SIZE) {
+            return new Response(JSON.stringify({
+                success: false,
+                outfits: [],
+                code: 'no_matching_clothing',
+                error: 'Fewer than three complete matched outfits could be built from the available clothing.',
+                providerAttempts: providerTrace,
+            }), {status: 422, headers: {...corsHeaders, 'Content-Type':'application/json'}})
+        }
+        const reusedProductKeys = [...new Set(
+            finalOutfits.flatMap((outfit: any) => (outfit.items || [])
+                .filter((item: any) => String(item.id) !== String(anchorItemId || ''))
+                .flatMap((item: any) => productIdentityKeys(item))
+                .filter((key: string) => excludeProductKeySet.has(key))),
+        )]
+        const previousDeckKeys = previousDeckProductKeySet
+        const olderHistoryKeys = olderRecentProductKeySet
+        const finalItemsBySlot = new Map<string, Set<string>>()
+        for (const outfit of finalOutfits) {
+            for (const item of outfit.items || []) {
+                if (String(item.id) === String(anchorItemId || '')) continue
+                const slot = String(item.macroCategory || item.category || '').toLowerCase()
+                const keys = finalItemsBySlot.get(slot) || new Set<string>()
+                productIdentityKeys(item).forEach((key) => keys.add(key))
+                finalItemsBySlot.set(slot, keys)
+            }
+        }
+        const previousDeckOverlap = [...new Set(
+            finalOutfits.flatMap((outfit: any) => (outfit.items || [])
+                .filter((item: any) => String(item.id) !== String(anchorItemId || ''))
+                .flatMap((item: any) => productIdentityKeys(item))
+                .filter((key: string) => previousDeckKeys.has(key))),
+        )].length
+        const olderHistoryOverlap = [...new Set(
+            finalOutfits.flatMap((outfit: any) => (outfit.items || [])
+                .filter((item: any) => String(item.id) !== String(anchorItemId || ''))
+                .flatMap((item: any) => productIdentityKeys(item))
+                .filter((key: string) => olderHistoryKeys.has(key))),
+        )].length
+        console.log('[rotation-final]', {
+            generationRequestId: String(generationRequestId || ''),
+            rotationScope: body.rotationScope || null,
+            recentProductCount: excludeProductKeySet.size,
+            previousDeckOverlap,
+            olderHistoryOverlap,
+            overlapBySlot: Object.fromEntries([...finalItemsBySlot.entries()].map(([slot, keys]) => [
+                slot,
+                {
+                    previous: [...keys].filter((key) => previousDeckKeys.has(key)).length,
+                    older: [...keys].filter((key) => olderHistoryKeys.has(key)).length,
+                },
+            ])),
+            restoredOlderCountBySlot,
+            restoredPreviousCountBySlot,
+            pagesSearched: body.rotationSearchPagesBySlot || {},
+            reusedProductKeys,
+            reuseReason: reusedProductKeys.length
+                ? Object.keys(restoredPreviousCountBySlot).length > 0
+                    ? 'fresh_and_older_inventory_exhausted'
+                    : Object.keys(restoredOlderCountBySlot).length > 0
+                        ? 'fresh_inventory_exhausted'
+                        : 'legacy_recent_id'
+                : 'none',
+        })
 
         return new Response(JSON.stringify({ success: true, outfits: finalOutfits, source: generationSource, layered, provider: aiProviderUsed, providerAttempts: providerTrace, diversity: diversityCapacity, budgetReference: requestFx ? {id: requestFx.snapshot.id, asOf: requestFx.snapshot.asOf, source: 'CBU'} : undefined }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }

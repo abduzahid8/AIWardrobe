@@ -96,3 +96,17 @@ test('keeps exclusions and pending writes isolated between accounts', async () =
     expect(AsyncStorage.setItem).toHaveBeenCalledWith(`${STORAGE_KEY}::account-a`, JSON.stringify(['account-a-item']));
     expect(await mod.getRecentShownIds('signed-out')).toEqual([]);
 });
+
+test('preserves deck boundaries so the previous deck is distinct from older history', async () => {
+    const mod = loadModule();
+    const scope = 'user|shop|old_money|work';
+    mod.recordShownOutfits([outfit('a', 'b', 'c')], scope);
+    mod.recordShownOutfits([outfit('d', 'e', 'f')], scope);
+    mod.recordShownOutfits([outfit('g', 'h', 'i')], scope);
+
+    await mod.getRecentShownIds(scope);
+    await expect(mod.getRotationHistory(scope)).resolves.toEqual({
+        previousDeckProductKeys: ['id:g', 'id:h', 'id:i'],
+        olderRecentProductKeys: ['id:a', 'id:b', 'id:c', 'id:d', 'id:e', 'id:f'],
+    });
+});
