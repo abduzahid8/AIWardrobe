@@ -1,0 +1,82 @@
+[
+  {
+    "file": "generate-outfits/index.ts",
+    "matches": true,
+    "sha256": "ca4247ed98635deb9a9904b396cbcbde91bdefdf69248317e6213a17602e02c6"
+  },
+  {
+    "file": "_shared/outfitDiversity.ts",
+    "matches": true,
+    "sha256": "fa643456a594b51728f52e2ebe6739e7417676e3beaaaefd68b671d5358dc9c3"
+  },
+  {
+    "file": "_shared/outfitRotation.ts",
+    "matches": true,
+    "sha256": "e9e84a912aeddae225ebadbf7ab2234b900b2232dabdfc6fdb7a42eb9f8c3ce7"
+  },
+  {
+    "file": "_shared/modelOutfitResponse.ts",
+    "matches": true,
+    "sha256": "8410cf49317dc0b75d8ce71abd94c61333ff7a661f77532ecce62cd890b44acd"
+  },
+  {
+    "file": "_shared/outfitBudgetText.ts",
+    "matches": true,
+    "sha256": "cf0efe0f3e67ed2cd8e3794d28cd46b16b2567957113327f42bfd42c2a4935b3"
+  },
+  {
+    "file": "_shared/budgetFx.ts",
+    "matches": true,
+    "sha256": "9c747666d797cadfad80cb5355dd360273f3384795af7a1f5bc05397bbff3854"
+  },
+  {
+    "file": "_shared/outfitStructure.ts",
+    "matches": true,
+    "sha256": "86377f102be194cc57ba747ec237c028ae8ccca6adc2b02307c48fa5cf4029c2"
+  },
+  {
+    "file": "_shared/outfitChoices.ts",
+    "matches": true,
+    "sha256": "76c3b310d1ecfa19f9fbfe0607c7f106240fc826bb8937dfb8fc087c3de70563"
+  },
+  {
+    "file": "_shared/rateLimit.ts",
+    "matches": true,
+    "sha256": "c5c290ef5440fb01eeeaad6b9b655cb02fb8534f15bfaf90c001eecd747ee11f"
+  },
+  {
+    "file": "_shared/outfitBudgetFeasibility.ts",
+    "matches": true,
+    "sha256": "1f7fd099cfbbf584d7fa88bd4e08d4cabc0d6c70f30ec06a44e7761d77fb8d40"
+  },
+  {
+    "file": "_shared/outfitBudgetSelection.ts",
+    "matches": true,
+    "sha256": "ba676ebfe662c603d7e9836b8bd369e6e5a3bce067276549a811a9caed4e94f9"
+  },
+  {
+    "file": "_shared/outfitGenerationRequest.ts",
+    "matches": true,
+    "sha256": "dd9e5c31073157d190f200d7ed36c5f081334b0b186f081b1594a3c6e5e68315"
+  },
+  {
+    "file": "_shared/outfitComposition.ts",
+    "matches": true,
+    "sha256": "6a51033b09222a111271e9de77d77196c7351b6b5916ee94c87f733f2c3a156e"
+  },
+  {
+    "file": "_shared/budgetFxCache.ts",
+    "matches": true,
+    "sha256": "37cc9662853baaccb87ca068ad33fecf5209e66bbc5227f01bdac514836f0d5f"
+  },
+  {
+    "file": "_shared/outfitBudgetFeedback.ts",
+    "matches": true,
+    "sha256": "ffb3373f563dbb2642253ae10166c98d6e4e3ccc4da1fcc54b3e291ae2ecc548"
+  },
+  {
+    "file": "_shared/occasionRules.ts",
+    "matches": true,
+    "sha256": "e47e03aa9311fff10c4f54d820d11b52f827739a0b004864f4ff815bdbbf1d9a"
+  }
+]
