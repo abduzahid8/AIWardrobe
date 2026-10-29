@@ -130,3 +130,20 @@ test('five same-intent generations keep all physical products fresh in a rich po
   decks.push({requestId:body.generationRequestId,productKeys:keys});
  }
 });
+
+test.each([3,4,5,6,10])('%i admitted shoes meet the minimum across five hosted generations without pinning a favorite',async n=>{
+ const rows=['outerwear','top','bottom','shoes'].flatMap((slot,s)=>Array.from({length:s===3?n:15},(_,i)=>({id:`scheduled-${s}-${i}`,name:['Navy cotton blazer','White cotton shirt','Beige cotton chinos','Brown leather loafers'][s]+` edition ${i}`,macroCategory:slot,type:slot,color:['navy','white','beige','brown'][s],isWardrobe:true,imageUrl:`https://example.invalid/scheduled-${s}-${i}.jpg`})));
+ const {handler}=load([],null,null,null,null,'curated'),decks=[],usage=new Map(),run=[];
+ const {productIdentityKeys}=require('../../backend/supabase/functions/_shared/outfitDiversity');
+ for(let g=0;g<5;g++){
+  const body=await(await stylistRequest(rows)).json();body.rotationDecks=decks;body.previousDeckProductKeys=decks.at(-1)?.productKeys||[];body.olderRecentProductKeys=decks.slice(0,-1).flatMap(d=>d.productKeys);body.excludeProductKeys=decks.flatMap(d=>d.productKeys);
+  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));const data=await response.json();
+  expect(response.status).toBe(200);expect(data.outfits).toHaveLength(3);expect(data.outfits.every(o=>o.items.length===4)).toBe(true);
+  const products=data.outfits.flatMap(o=>o.items),shoes=products.filter(p=>p.macroCategory==='shoes'),previous=new Set(decks.at(-1)?.productKeys||[]);
+  const overlaps=shoes.filter(p=>productIdentityKeys(p).some(k=>previous.has(k))).length;
+  expect(overlaps).toBe(g?Math.max(0,6-n):0);expect(data.shoeRotationAudit.previousShoeOverlap).toBe(overlaps);
+  for(const slot of ['outerwear','top','bottom'])expect(products.filter(p=>p.macroCategory===slot).some(p=>productIdentityKeys(p).some(k=>previous.has(k)))).toBe(false);
+  run.push(shoes.map(p=>p.id));shoes.forEach(p=>usage.set(p.id,(usage.get(p.id)||0)+1));decks.push({requestId:`scheduled-${g}`,productKeys:products.flatMap(productIdentityKeys)});
+ }
+ expect(usage.size).toBe(n);if(n>3)expect(run.some(ids=>!ids.includes('scheduled-3-0'))).toBe(true);
+});

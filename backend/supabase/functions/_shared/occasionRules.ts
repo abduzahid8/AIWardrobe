@@ -113,6 +113,14 @@ const FORMAL_SHOE_RE = /\b(sneakers?|trainers?|athletic|basketball|skate|sandals
 // and never with tailoring. (A loafer by contrast is structured:
 // penny/bit/tassel go with suits.)
 const DRIVER_SHOE_RE = /\b(moccasins?|drivers?|driving|gommino|loafer[s]?\s+with\s+(?:tie|laces?|nubs?)|nubbed|rubber[\s-]?nubs?)\b/;
+/** A stitched moccasin toe is a construction detail, not evidence of a driving sole. */
+export function isDrivingFootwear(item: JudgeableItem): boolean {
+    let text = normalizeGarmentText(`${item.name || ''} ${item.type || ''} ${item.description || ''}`);
+    const structuredLoafer = /\b(penny|tassel|bit|structured)\b/.test(text) && /\bloafer/.test(text)
+        && /\b(blake|leather outsoles?|leather soles?|structured)\b/.test(text);
+    if (structuredLoafer) text = text.replace(/\bmoccasin[ -]+toe\b/g, 'stitched toe');
+    return DRIVER_SHOE_RE.test(text);
+}
 const CLASSIC_UGLY_SHOE_COLOR_RE = /\b(olive|khaki|moss|sage|lime|chartreuse)\b/;
 // Backless loafers ARE mules by construction; slip-ons readesso casual.
 // ('mules?' lives in FORMAL_SHOE_RE too — this family rule covers the
@@ -334,7 +342,7 @@ export function rejectForStyleOccasion(
         // Chunky lug soles read streetwear, even on derby shapes (verified
         // on a live Old Money card). Knitwear chunk is untouched (shoes only).
         if (isShoeish(item, blob) && /\bchunky\b/.test(blob)) return 'chunky soles cheapen polished footwear';
-        if (DRIVER_SHOE_RE.test(blob)) return 'driving moccasins are a tier below evening footwear';
+        if (isDrivingFootwear(item)) return 'driving moccasins are a tier below evening footwear';
         if (MULE_RE.test(blob)) return 'mules and backless shoes are not evening wear';
         if (isTopOrLayer && MANDARIN_RE.test(blob)) return 'mandarin collars cheapen polished lines';
         if (PRINT_TOP_RE.test(blob)) return 'printed tops clash with a polished evening look';
@@ -375,7 +383,7 @@ export function rejectForStyleOccasion(
     if (CLASSIC_STYLES.has(style)) {
         if (isShoeish(item, blob) && /\bchunky\b/.test(blob)) return 'chunky soles break classic discipline';
         if (SLEEPWEAR_RE.test(blob)) return 'sleepwear breaks classic discipline';
-        if (DRIVER_SHOE_RE.test(blob)) return 'driving moccasins never pair with classic tailoring';
+        if (isDrivingFootwear(item)) return 'driving moccasins never pair with classic tailoring';
         if (isShoeish(item, blob) && FORMAL_SHOE_RE.test(blob)) {
             return 'boat/athletic shoes never pair with classic tailoring';
         }

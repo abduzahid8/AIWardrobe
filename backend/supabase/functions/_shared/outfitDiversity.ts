@@ -1542,7 +1542,7 @@ export interface AssembleDiverseDeckOptions<O> {
     /** Quality of a look in 0..1 (match score / confidence). */
     qualityOf?: (outfit: O) => number;
     /** Integer priority among already validated decks, e.g. unused physical products. */
-    priorityOfDeck?: (outfits: O[]) => number;
+    priorityOfDeck?: (outfits: O[]) => number | readonly number[];
     /** Product identity keys of an item (id / normalized name / image). */
     keysOf?: (item: any) => string[];
     /** Product keys of the locked anchor — never counted as repetition. */
@@ -1933,8 +1933,22 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
         const meanSimilarity = pairs > 0 ? similarityPenalty / pairs : 0;
         const variety = bonus - DIVERSITY_SIMILARITY_PENALTY * 0.5 * meanSimilarity;
         const priority = opts.priorityOfDeck?.(members.map(member => member.outfit)) ?? 0;
-        return (Number.isFinite(priority) ? Math.max(0, Math.floor(priority)) : 0) * (target * QUALITY_WEIGHT + 10)
+        return (typeof priority === 'number' && Number.isFinite(priority) ? Math.max(0, Math.floor(priority)) : 0) * (target * QUALITY_WEIGHT + 10)
             + qualityBucket * QUALITY_WEIGHT + variety;
+    };
+
+    // Optional ordered objectives are compared directly, never blended with
+    // quality. Existing scalar callers retain their original scoring.
+    const compareSelections = (a: number[], b: number[]): number => {
+        const first = opts.priorityOfDeck?.(a.map(i => pool[i].outfit));
+        const second = opts.priorityOfDeck?.(b.map(i => pool[i].outfit));
+        if (Array.isArray(first) && Array.isArray(second)) {
+            for (let i = 0; i < Math.max(first.length, second.length); i++) {
+                const delta = (first[i] || 0) - (second[i] || 0);
+                if (delta) return delta;
+            }
+        }
+        return deckScore(a) - deckScore(b);
     };
 
     // Rejection diagnostics (development builds only). Capped so a big pool
@@ -1993,12 +2007,9 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
         const n = pool.length;
         if (n < size || size < 1) return null;
         let best: number[] | null = null;
-        let bestScore = Number.NEGATIVE_INFINITY;
         const consider = (indices: number[]) => {
             if (!combinationAllowed(indices)) return;
-            const score = deckScore(indices);
-            if (score > bestScore) {
-                bestScore = score;
+            if (!best || compareSelections(indices, best) > 0) {
                 best = indices;
             }
         };
@@ -2029,20 +2040,16 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
         // the seed so one strong-but-conflicting look cannot starve the
         // deck (the greedy trap).
         let bestSeed: number[] | null = null;
-        let bestSeedScore = Number.NEGATIVE_INFINITY;
         for (let seed = 0; seed < n; seed++) {
             const chosen = [seed];
             let failed = false;
             while (chosen.length < size) {
                 let bestAdd = -1;
-                let bestAddScore = Number.NEGATIVE_INFINITY;
                 for (let i = 0; i < n; i++) {
                     if (chosen.includes(i)) continue;
                     const trial = [...chosen, i];
                     if (!combinationAllowed(trial)) continue;
-                    const score = deckScore(trial);
-                    if (score > bestAddScore) {
-                        bestAddScore = score;
+                    if (bestAdd < 0 || compareSelections(trial, [...chosen, bestAdd]) > 0) {
                         bestAdd = i;
                     }
                 }
@@ -2050,9 +2057,7 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
                 chosen.push(bestAdd);
             }
             if (failed) continue;
-            const score = deckScore(chosen);
-            if (score > bestSeedScore) {
-                bestSeedScore = score;
+            if (!bestSeed || compareSelections(chosen, bestSeed) > 0) {
                 bestSeed = chosen;
             }
         }
@@ -2096,7 +2101,6 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
 
     if (opts.buildFill) {
         if (selection) seedUsedKeys(selection);
-        let bestScore = selection ? deckScore(selection) : Number.NEGATIVE_INFINITY;
         let staleAttempts = 0;
         const patience = 5;
         while (fillsUsed < maxFillAttempts) {
@@ -2125,10 +2129,8 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
                 staleAttempts = 0;
                 continue;
             }
-            const score = deckScore(next);
-            if (!selection || score > bestScore) {
+            if (!selection || compareSelections(next, selection) > 0) {
                 selection = next;
-                bestScore = score;
                 staleAttempts = 0;
             } else {
                 staleAttempts += 1;

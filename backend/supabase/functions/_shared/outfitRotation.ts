@@ -64,3 +64,79 @@ export function createRotationPriority(history:ReadonlySet<string>,previous:Read
         return total;
     };
 }
+
+export function compareRotationOrder(a: readonly number[], b: readonly number[]): number {
+    for (let i = 0; i < Math.max(a.length, b.length); i++) {
+        const delta = (a[i] || 0) - (b[i] || 0);
+        if (delta) return delta;
+    }
+    return 0;
+}
+
+/** Hard-quality-approved products only. Shoes cannot be pinned by a quality tie-break. */
+export function createShoeRotationPriority(history: ReadonlySet<string>, previous: ReadonlySet<string>, decks: {productKeys: string[]}[], anchorId?: string) {
+    const sets = decks.map(deck => new Set(deck.productKeys));
+    const legacy = createRotationPriority(history, previous, decks, anchorId);
+    const cache = new Map<string, {keys: string[]; previous: boolean; last: number; count: number}>();
+    return (items: any[]): number[] => {
+        let shoeOverlap = 0, otherOverlap = 0;
+        const ages = Array(decks.length + 1).fill(0), counts = Array(decks.length + 1).fill(0);
+        const used = new Set<string>(), clothing: any[] = [];
+        for (const item of items) {
+            const id = String(item.id);
+            if (id === anchorId) continue;
+            let entry = cache.get(id);
+            if (!entry) {
+                let last = -1, count = 0;
+                sets.forEach((set, i) => { if (wasRecentlyShown(item, set)) {last = i; count++;} });
+                entry = {keys: productIdentityKeys(item), previous: wasRecentlyShown(item, previous), last, count};
+                cache.set(id, entry);
+            }
+            if (entry.keys.some(key => used.has(key))) continue;
+            entry.keys.forEach(key => used.add(key));
+            if (diversitySlotOf(item) === 'shoes') {
+                shoeOverlap += Number(entry.previous);
+                ages[entry.last + 1]++;
+                counts[entry.count]++;
+            } else {
+                otherOverlap += Number(entry.previous);
+                clothing.push(item);
+            }
+        }
+        // Prefer the oldest last-use buckets, then the fewest appearances.
+        // Explicit vector comparison avoids weights that quality can outweigh.
+        return [-shoeOverlap, -otherOverlap, ...ages, ...counts, legacy(clothing)];
+    };
+}
+
+/** Exhaustively assign the small admitted shoe pool to already validated looks.
+ * This closes the gap where a bounded complete-look shortlist omits a shoe.
+ * Clothing is immutable; every substitution must pass the caller's full gate. */
+export function assignRotatingShoes<O extends {items: any[]}>(
+    looks: O[], shoes: any[], accepts: (items: any[]) => boolean,
+    priority: (items: any[]) => readonly number[], quality: (items: any[]) => number,
+    anchorId?: string,
+): {deck: O[]; feasibleMinimumOverlap: number | null} {
+    const anchor = shoes.find(shoe => String(shoe.id) === anchorId);
+    const choices = looks.map(look => (anchor ? [anchor] : shoes).map(shoe => {
+        const items = look.items.map(item => diversitySlotOf(item) === 'shoes' ? shoe : item);
+        return accepts(items) ? {look: {...look, items}, keys: productIdentityKeys(shoe), score: quality(items)} : null;
+    }).filter((choice): choice is NonNullable<typeof choice> => choice !== null));
+    const requireUnique = !anchor && countDistinctProducts(shoes) >= looks.length;
+    let best: O[] = [], bestOrder: readonly number[] = [], bestQuality = -Infinity, minimum: number | null = null;
+    const walk = (index: number, selected: O[], used: Set<string>, score: number) => {
+        if (index === choices.length) {
+            const order = priority(selected.flatMap(look => look.items));
+            minimum = Math.min(minimum ?? Infinity, -order[0]);
+            const comparison = best.length ? compareRotationOrder(order, bestOrder) : 1;
+            if (comparison > 0 || (comparison === 0 && score > bestQuality)) {best = [...selected]; bestOrder = order; bestQuality = score;}
+            return;
+        }
+        for (const choice of choices[index]) {
+            if (requireUnique && choice.keys.some(key => used.has(key))) continue;
+            walk(index + 1, [...selected, choice.look as O], new Set([...used, ...choice.keys]), score + choice.score);
+        }
+    };
+    if (looks.length) walk(0, [], new Set(), 0);
+    return {deck: best, feasibleMinimumOverlap: minimum};
+}
