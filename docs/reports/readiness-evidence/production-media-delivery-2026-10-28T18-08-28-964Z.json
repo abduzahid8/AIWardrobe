@@ -1,0 +1,693 @@
+{
+  "startedAt": "2026-10-28T18:08:28.964Z",
+  "scope": "Bounded authenticated production Storage diagnostic, not complete 10000 DAU certification",
+  "originalBytes": 2915128,
+  "previewBytes": 224579,
+  "stages": [
+    {
+      "targetRps": 2,
+      "seconds": 10,
+      "planned": 20,
+      "completed": 20,
+      "dropped": 0,
+      "failures": 0,
+      "elapsedMs": 9766.816707999998,
+      "p95Ms": 2875.4217910000007,
+      "p99Ms": 2885.9496249999975,
+      "p95HeadersMs": 1919.6446660000001,
+      "p95BodyMs": 955.7759589999987,
+      "bytes": 4491580,
+      "samples": [
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-7f53-7acf-93b6-9d7d83b7706d",
+          "headersMs": 1919.6446660000001,
+          "bodyMs": 955.7759589999987,
+          "ms": 2875.4217910000007,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-880d-7e74-9e5f-64d356e1ac13",
+          "headersMs": 562.6934159999946,
+          "bodyMs": 319.08200000000215,
+          "ms": 881.7769159999953,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-842d-7a22-ba87-72f6515017bb",
+          "headersMs": 910.9044999999969,
+          "bodyMs": 974.2208329999994,
+          "ms": 1885.1262080000015,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-8b23-75b9-a6de-80228b68b924",
+          "headersMs": 256.4210000000021,
+          "bodyMs": 29.332125000000815,
+          "ms": 285.75554199999897,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-814a-747e-ace1-23b483f466b4",
+          "headersMs": 2169.0998329999966,
+          "bodyMs": 716.8472920000058,
+          "ms": 2885.9496249999975,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-8a36-70d1-9e99-b9c14e76ceed",
+          "headersMs": 453.4018340000039,
+          "bodyMs": 442.8837910000002,
+          "ms": 896.2871670000022,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-8608-74a2-8ad2-6b839302c046",
+          "headersMs": 1164.8325410000034,
+          "bodyMs": 732.622583999997,
+          "ms": 1897.4557080000013,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-8d03-72f6-bc5c-90fa01a351ea",
+          "headersMs": 173.35158400000364,
+          "bodyMs": 41.191624999999476,
+          "ms": 214.54441700000461,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-8ef6-7b67-a3d3-efbfc949c278",
+          "headersMs": 194.44454199999745,
+          "bodyMs": 63.6663750000007,
+          "ms": 258.11179199999606,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-90f7-7657-87a0-792bead81582",
+          "headersMs": 179.05137499999546,
+          "bodyMs": 46.75420800000575,
+          "ms": 225.80687499999476,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-92e9-7f19-a4d3-fbcfa1a3fd19",
+          "headersMs": 195.06816600000457,
+          "bodyMs": 52.01629200000025,
+          "ms": 247.08541600000171,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-94d6-71e2-9dfc-5b8284557aec",
+          "headersMs": 178.74950000000536,
+          "bodyMs": 96.78529100000014,
+          "ms": 275.53575000000274,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-96c5-79d3-b008-78bcf56ce3f4",
+          "headersMs": 164.21945799999958,
+          "bodyMs": 60.78629199999705,
+          "ms": 225.00666700000147,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-98c9-7a5a-9106-91c6f2498a53",
+          "headersMs": 184.8831250000003,
+          "bodyMs": 63.93720800000301,
+          "ms": 248.8211250000022,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-9ab5-7133-9cb3-92ae1c038660",
+          "headersMs": 184.8578750000015,
+          "bodyMs": 52.92137499999808,
+          "ms": 237.77941699999792,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-9c99-7b0f-bcbd-2b0536c43108",
+          "headersMs": 159.4513750000042,
+          "bodyMs": 102.44162499999948,
+          "ms": 261.89391700000124,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-9e83-78a7-a51a-1137b2654355",
+          "headersMs": 135.31454099999974,
+          "bodyMs": 71.34200000000419,
+          "ms": 206.66420800000196,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-a08a-7eb4-8475-64cccfb7cb4b",
+          "headersMs": 158.54716700000426,
+          "bodyMs": 51.29187499999534,
+          "ms": 209.84004200000345,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-a284-72e1-a88d-509d1383b9d3",
+          "headersMs": 207.9107920000024,
+          "bodyMs": 35.97125000000233,
+          "ms": 243.88291700000264,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-a471-761f-b567-79c75695b4fa",
+          "headersMs": 179.26874999999563,
+          "bodyMs": 86.10066700000607,
+          "ms": 265.37041699999827,
+          "bytes": 224579
+        }
+      ],
+      "errors": []
+    },
+    {
+      "targetRps": 5,
+      "seconds": 10,
+      "planned": 50,
+      "completed": 35,
+      "dropped": 15,
+      "failures": 6,
+      "elapsedMs": 19602.843125,
+      "p95Ms": 15003.135458999997,
+      "p99Ms": 15004.230041999996,
+      "p95HeadersMs": 5612.098417000001,
+      "p95BodyMs": 5710.320707999999,
+      "bytes": 6512791,
+      "samples": [
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-a569-76eb-a5c0-4c643f894fdc",
+          "headersMs": 133.96908299999632,
+          "bodyMs": 117.16575000000012,
+          "ms": 251.13562499999534,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-a6fd-79d0-a3a0-08c11b4125ad",
+          "headersMs": 137.69787499999802,
+          "bodyMs": 64.82983300000342,
+          "ms": 202.52808299999742,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-a71a-7e1a-97c4-c23ecc463b47",
+          "headersMs": 417.820166000005,
+          "bodyMs": 222.0801250000004,
+          "ms": 639.9013750000013,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-a96f-7fb6-8c2e-01732d782a20",
+          "headersMs": 979.9715829999986,
+          "bodyMs": 35.38308400000096,
+          "ms": 1015.3550830000022,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-a897-74f0-9f1d-b30e2375d988",
+          "headersMs": 177.35154200000397,
+          "bodyMs": 1040.896332999997,
+          "ms": 1218.2487499999988,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-a8b0-7fbf-9a44-80936c6de760",
+          "headersMs": 1370.3320410000015,
+          "bodyMs": 329.63900000000285,
+          "ms": 1699.9721250000002,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-aed2-720b-a73f-626643f3aecf",
+          "headersMs": 676.3371659999975,
+          "bodyMs": 1230.468667000001,
+          "ms": 1906.807041,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-af9e-7c2e-bea8-aa9f50bf0e87",
+          "headersMs": 961.5137079999986,
+          "bodyMs": 779.5849170000001,
+          "ms": 1741.099291999999,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-adf4-7b3e-ac4a-91d31b380a34",
+          "headersMs": 730.8767910000024,
+          "bodyMs": 2026.2270839999983,
+          "ms": 2757.1045000000013,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-adfd-7aed-8c25-ee86bc6d1a28",
+          "headersMs": 542.1230419999993,
+          "bodyMs": 2035.7601250000007,
+          "ms": 2577.884417000001,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-adf1-7d8c-a3ed-e2eb546dbf86",
+          "headersMs": 937.802125000002,
+          "bodyMs": 2055.913625000001,
+          "ms": 2993.717125000003,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-ae04-7dfd-a2dd-4ac837286b65",
+          "headersMs": 141.98595800000476,
+          "bodyMs": 2060.6392089999936,
+          "ms": 2202.6256250000006,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-ae01-7a5c-a848-f52993d66b1e",
+          "headersMs": 1154.5011250000025,
+          "bodyMs": 2055.2405,
+          "ms": 3209.7423340000023,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-ae71-77e2-acbd-f5604e49d664",
+          "headersMs": 1019.9231660000005,
+          "bodyMs": 1472.0893339999966,
+          "ms": 2492.012999999999,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-b6a6-7d50-a2ed-14bf076d505a",
+          "headersMs": 155.5547080000033,
+          "bodyMs": 77.13595799999894,
+          "ms": 232.69150000000081,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-b6dd-77bb-96f2-0b639512309d",
+          "headersMs": 1025.8199170000007,
+          "bodyMs": 5710.320707999999,
+          "ms": 6736.142249999997,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-b722-7d39-a34e-1c23f1e2e11d",
+          "headersMs": 678.724166,
+          "bodyMs": 5658.5088749999995,
+          "ms": 6337.2332499999975,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-b835-774f-98e6-6d952dc56c32",
+          "headersMs": 5354.062417000001,
+          "bodyMs": 422.3715830000001,
+          "ms": 5776.434958000005,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-b8fa-7b5f-a20d-8f01e2314d75",
+          "headersMs": 5356.909249999997,
+          "bodyMs": 331.5812090000036,
+          "ms": 5688.491834,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-b9c5-7a7b-b361-1de232d1182d",
+          "headersMs": 5325.139666999996,
+          "bodyMs": 538.4010410000046,
+          "ms": 5863.543082999997,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-ba99-711a-a18b-bf6eb983693a",
+          "headersMs": 5150.754542000002,
+          "bodyMs": 576.0742079999982,
+          "ms": 5726.829832999996,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-cff1-7b0a-8ed8-1b2764fbf8cb",
+          "headersMs": 4653.546625000003,
+          "bodyMs": 254.45212499999616,
+          "ms": 4907.999791000002,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-cf69-77a4-89cc-87dceae1e3df",
+          "headersMs": 4782.1884590000045,
+          "bodyMs": 335.00012499999866,
+          "ms": 5117.189792000005,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-d124-75f6-9699-d26ae1a9f137",
+          "headersMs": 4722.521667000001,
+          "bodyMs": 300.85041700000147,
+          "ms": 5023.373542000001,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-d19d-7888-abdc-6b12fa264d8a",
+          "headersMs": 4679.016542000005,
+          "bodyMs": 330.2410830000008,
+          "ms": 5009.2587920000005,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-bc24-7773-afa2-9e8ec5912fee",
+          "headersMs": 5612.098417000001,
+          "bodyMs": 663.6890419999982,
+          "ms": 6275.788542000002,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-bcdd-7732-9121-698d997dd251",
+          "headersMs": 5514.392208999998,
+          "bodyMs": 620.4748330000002,
+          "ms": 6134.867959000003,
+          "bytes": 224579
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-bb4f-7725-b54a-a39cddd2a75f",
+          "headersMs": 7228.051124999998,
+          "bodyMs": 340.12358400000085,
+          "ms": 7568.176041999999,
+          "bytes": 224579
+        },
+        {
+          "ok": false,
+          "error": "TimeoutError",
+          "status": 200,
+          "requestId": "01a183b3-b6a4-7884-aca3-f8c0fded70f7",
+          "headersMs": 1755.4029169999994,
+          "ms": 15004.230041999996,
+          "bytes": 0
+        },
+        {
+          "ok": false,
+          "error": "TimeoutError",
+          "status": 200,
+          "requestId": "01a183b3-b6b5-709d-8bff-088bde6b086f",
+          "headersMs": 1574.5777920000037,
+          "ms": 15001.902667000002,
+          "bytes": 0
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "requestId": "01a183b3-b6f9-7e9b-991a-6911f1d256a7",
+          "headersMs": 439.7087079999983,
+          "bodyMs": 13429.506083,
+          "ms": 13869.215499999998,
+          "bytes": 224579
+        },
+        {
+          "ok": false,
+          "error": "TimeoutError",
+          "status": 200,
+          "requestId": "01a183b3-b6b1-7409-91d3-f77d6ffcdd46",
+          "headersMs": 1364.9020420000015,
+          "ms": 15003.135458999997,
+          "bytes": 0
+        },
+        {
+          "ok": false,
+          "error": "TimeoutError",
+          "status": 200,
+          "requestId": "01a183b3-b6db-7a8d-9b5a-97a6f3e7aac5",
+          "headersMs": 1234.835957999996,
+          "ms": 15001.470999999998,
+          "bytes": 0
+        },
+        {
+          "ok": false,
+          "error": "TimeoutError",
+          "status": 200,
+          "requestId": "01a183b3-b70f-7be5-b968-1826bf9876af",
+          "headersMs": 899.4247079999986,
+          "ms": 15002.565290999999,
+          "bytes": 0
+        },
+        {
+          "ok": false,
+          "error": "TimeoutError",
+          "status": 200,
+          "requestId": "01a183b3-b766-7299-8bf3-dc93c9c8a290",
+          "headersMs": 146.95604199999798,
+          "ms": 15002.521208999999,
+          "bytes": 0
+        }
+      ],
+      "errors": [
+        {
+          "ok": false,
+          "error": "TimeoutError",
+          "status": 200,
+          "requestId": "01a183b3-b6a4-7884-aca3-f8c0fded70f7",
+          "headersMs": 1755.4029169999994,
+          "ms": 15004.230041999996,
+          "bytes": 0
+        },
+        {
+          "ok": false,
+          "error": "TimeoutError",
+          "status": 200,
+          "requestId": "01a183b3-b6b5-709d-8bff-088bde6b086f",
+          "headersMs": 1574.5777920000037,
+          "ms": 15001.902667000002,
+          "bytes": 0
+        },
+        {
+          "ok": false,
+          "error": "TimeoutError",
+          "status": 200,
+          "requestId": "01a183b3-b6b1-7409-91d3-f77d6ffcdd46",
+          "headersMs": 1364.9020420000015,
+          "ms": 15003.135458999997,
+          "bytes": 0
+        },
+        {
+          "ok": false,
+          "error": "TimeoutError",
+          "status": 200,
+          "requestId": "01a183b3-b6db-7a8d-9b5a-97a6f3e7aac5",
+          "headersMs": 1234.835957999996,
+          "ms": 15001.470999999998,
+          "bytes": 0
+        },
+        {
+          "ok": false,
+          "error": "TimeoutError",
+          "status": 200,
+          "requestId": "01a183b3-b70f-7be5-b968-1826bf9876af",
+          "headersMs": 899.4247079999986,
+          "ms": 15002.565290999999,
+          "bytes": 0
+        },
+        {
+          "ok": false,
+          "error": "TimeoutError",
+          "status": 200,
+          "requestId": "01a183b3-b766-7299-8bf3-dc93c9c8a290",
+          "headersMs": 146.95604199999798,
+          "ms": 15002.521208999999,
+          "bytes": 0
+        }
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "name": "foreign_owner_read_rejected",
+      "passed": true
+    },
+    {
+      "name": "anonymous_read_rejected",
+      "passed": true
+    },
+    {
+      "name": "all_original_bytes_match",
+      "passed": true
+    },
+    {
+      "name": "all_planned_preview_stages_completed",
+      "passed": false
+    }
+  ],
+  "cleanup": [
+    {
+      "objectsRemoved": true
+    },
+    {
+      "userId": "86c6431b-7487-4e66-9fc1-f7aaaace0e8b",
+      "accountDeleted": true
+    },
+    {
+      "userId": "bf2bd0b3-23f9-43bb-bf61-fd2a041eb44a",
+      "accountDeleted": true
+    }
+  ],
+  "fixtureUserIds": [
+    "86c6431b-7487-4e66-9fc1-f7aaaace0e8b",
+    "bf2bd0b3-23f9-43bb-bf61-fd2a041eb44a"
+  ],
+  "status": "finished",
+  "originalReads": {
+    "count": 6,
+    "failures": 0,
+    "p95Ms": 7283.251790999999,
+    "samples": [
+      {
+        "ok": true,
+        "status": 200,
+        "requestId": "01a183b3-3a12-727f-93aa-337b76b70590",
+        "headersMs": 2135.6634999999987,
+        "bodyMs": 5147.583291000003,
+        "ms": 7283.251790999999,
+        "bytes": 2915128
+      },
+      {
+        "ok": true,
+        "status": 200,
+        "requestId": "01a183b3-57a5-752c-b6ef-827d1ea4be8a",
+        "headersMs": 2560.814291999999,
+        "bodyMs": 2210.2217920000003,
+        "ms": 4771.037375,
+        "bytes": 2915128
+      },
+      {
+        "ok": true,
+        "status": 200,
+        "requestId": "01a183b3-6a0b-7835-8a95-3c2f31efaf83",
+        "headersMs": 390.56583300000057,
+        "bodyMs": 1360.825499999999,
+        "ms": 1751.392749999999,
+        "bytes": 2915128
+      },
+      {
+        "ok": true,
+        "status": 200,
+        "requestId": "01a183b3-7012-7df0-8274-d4c45c23a67d",
+        "headersMs": 189.30304199999955,
+        "bodyMs": 1464.3864160000012,
+        "ms": 1653.6916249999995,
+        "bytes": 2915128
+      },
+      {
+        "ok": true,
+        "status": 200,
+        "requestId": "01a183b3-767d-73c9-9001-7f597ef8c799",
+        "headersMs": 184.95866699999897,
+        "bodyMs": 1186.1442080000015,
+        "ms": 1371.104457999998,
+        "bytes": 2915128
+      },
+      {
+        "ok": true,
+        "status": 200,
+        "requestId": "01a183b3-7bd3-7dcf-b4cd-0b44775c21ee",
+        "headersMs": 181.2869589999973,
+        "bodyMs": 714.0686249999999,
+        "ms": 895.3571249999986,
+        "bytes": 2915128
+      }
+    ],
+    "bytes": 17490768
+  },
+  "failure": "Error",
+  "finishedAt": "2026-10-28T18:09:34.858Z",
+  "passed": false
+}

@@ -429,10 +429,32 @@ const DailyOutfitSection = React.memo(({
     style,
     occasion,
     weather: weatherForAI,
-    variants: 15,
+    // Smaller batches reach the first look sooner; exhausted decks refill.
+    variants: 6,
     enabled,
     allowGeneration: canGenerateNewLooks,
   });
+
+  const [regenerationPending, setRegenerationPending] = useState(false);
+  const regenerationRequest = useRef<AbortController | null>(null);
+  useEffect(() => () => { regenerationRequest.current?.abort(); }, []);
+  const handleRegenerate = async () => {
+    if (regenerationRequest.current || dailyAI.loading) return;
+    const controller = new AbortController();
+    regenerationRequest.current = controller;
+    setRegenerationPending(true);
+    try {
+      const ok = await consumeOrPaywall('aiOutfits', { cancelSignal: controller.signal });
+      if (ok && !controller.signal.aborted) dailyAI.regenerate();
+    } catch {
+      if (!controller.signal.aborted) Alert.alert(t('common.error'), t('outfitMaker.generateFailed'));
+    } finally {
+      if (regenerationRequest.current === controller) {
+        regenerationRequest.current = null;
+        if (!controller.signal.aborted) setRegenerationPending(false);
+      }
+    }
+  };
 
   // Tracks the `dailyAI.outfits` batch (by reference) we've already asked to
   // be refilled, so the effect below fires regenerate() at most once per
@@ -715,7 +737,7 @@ const DailyOutfitSection = React.memo(({
         <ScaledText style={styles.createAvatarText}>{t('home.unlockUnlimited', 'Unlock unlimited')}</ScaledText>
       </TouchableOpacity>
     </>
-  ) : dailyAI.loading || (stackExhausted && !dailyAI.error) ? (
+  ) : regenerationPending || dailyAI.loading || (stackExhausted && !dailyAI.error) ? (
     <>
       <ActivityIndicator size="small" color={colors.accent.primary} />
       <ScaledText style={[suggestionTextStyle, { marginTop: spacing.md, textAlign: 'center' }]}>
@@ -730,14 +752,8 @@ const DailyOutfitSection = React.memo(({
       </ScaledText>
       <TouchableOpacity
         style={[styles.createAvatarButton, { marginTop: spacing.md }]}
-        onPress={async () => {
-          // Same AI-generation gate as the refresh button — expired users
-          // go to Paywall instead of regenerating for free.
-          const ok = await consumeOrPaywall('aiOutfits');
-          if (!ok) return;
-          logger.debug(`Regenerate ${style} daily outfits (empty state)`);
-          dailyAI.regenerate();
-        }}
+        onPress={handleRegenerate}
+        disabled={regenerationPending || dailyAI.loading}
         accessibilityLabel={t('home.tryAgain')}
         accessibilityRole="button"
       >
@@ -829,18 +845,13 @@ const DailyOutfitSection = React.memo(({
           <TouchableOpacity
             style={styles.actionIconButton}
             hitSlop={ACTION_ICON_HIT_SLOP}
-            onPress={async () => {
-              // Regenerating the deck costs an AI generation — gate it the
-              // same as Create Outfit for expired-trial users.
-              const ok = await consumeOrPaywall('aiOutfits');
-              if (!ok) return;
-              logger.debug(`Regenerate ${style} daily outfits`);
-              dailyAI.regenerate();
-            }}
+            onPress={handleRegenerate}
+            disabled={regenerationPending || dailyAI.loading}
+            accessibilityState={{ busy: regenerationPending || dailyAI.loading }}
             accessibilityLabel={t('home.tryAgain')}
             accessibilityRole="button"
           >
-            <Ionicons name="refresh-outline" size={22} color={colors.text.primary} />
+            {regenerationPending ? <ActivityIndicator size="small" color={colors.text.primary} /> : <Ionicons name="refresh-outline" size={22} color={colors.text.primary} />}
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionIconButton}

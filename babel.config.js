@@ -2,6 +2,7 @@ module.exports = function (api) {
   api.cache(true);
 
   const plugins = [
+    require.resolve("./scripts/babel/direct-vector-icons.cjs"),
     [
       "module-resolver",
       {

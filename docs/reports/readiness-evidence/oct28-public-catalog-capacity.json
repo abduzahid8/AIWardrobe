@@ -1,0 +1,27 @@
+{
+  "scope": "Public catalog reads only; no authenticated reads, AI, media, writes or user capacity certification",
+  "startedAt": "2026-10-28T17:54:58.347Z",
+  "stages": [
+    {
+      "rps": 0.2,
+      "seconds": 25,
+      "scheduled": 5,
+      "completed": 5,
+      "achievedRps": 0.24444329216592559,
+      "status": {
+        "200": 5
+      },
+      "errors": 0,
+      "dropped": 0,
+      "p50Ms": 1069,
+      "p95Ms": 2147,
+      "p99Ms": 2147,
+      "passed": false
+    }
+  ],
+  "completedAt": "2026-10-28T17:55:18.809Z",
+  "measurementNotes": [
+    "Five requests were scheduled at 0, 5, 10, 15 and 20 seconds. The runner ended after the last response, so achievedRps divides by roughly 20.5 seconds rather than the declared 25-second window; it is not a sustained-throughput measurement.",
+    "With five observations nearest-rank p95 and p99 both equal the maximum."
+  ]
+}

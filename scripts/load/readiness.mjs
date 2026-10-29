@@ -30,7 +30,7 @@ const appRoutes = [
   { name: 'profile', path: '/rest/v1/profiles?select=id,username,profile_image&limit=1', private: true, ownerKey: 'id' },
 ];
 
-export async function runLoad({ baseUrl, apiKey, users, rps, durationSec, maxInflight = 200, timeoutMs = 10000, fetchImpl = fetch, workload = 'lightweight', onProgress, signal }) {
+export async function runLoad({ baseUrl, apiKey, users, rps, durationSec, maxInflight = 200, timeoutMs = 10000, fetchImpl = fetch, workload = 'lightweight', onProgress, onFailure, signal }) {
   if (!/^https?:\/\//.test(baseUrl) || !apiKey || !users?.length || users.some(u => !u.id || !u.accessToken)) throw new Error('URL, anon API key, and authenticated test users are required');
   for (const n of [rps, durationSec, maxInflight, timeoutMs]) if (!Number.isFinite(n) || n <= 0) throw new Error('Invalid load settings');
   if (!['lightweight', 'app'].includes(workload)) throw new Error('Invalid workload');
@@ -49,7 +49,7 @@ export async function runLoad({ baseUrl, apiKey, users, rps, durationSec, maxInf
   let dropped = 0, lastProgress = 0;
   const recordFailure = reason => { failures[reason] = (failures[reason] || 0) + 1; };
   const execute = async index => {
-    const fail = reason => { failedRequests.add(index); recordFailure(reason); };
+    const fail = reason => { failedRequests.add(index); recordFailure(reason); onFailure?.(reason); };
     const route = activeRoutes[index % activeRoutes.length];
     const user = users[Math.floor(index / activeRoutes.length) % users.length];
     let stage = 'fetch';
@@ -99,7 +99,8 @@ export async function runLoad({ baseUrl, apiKey, users, rps, durationSec, maxInf
     if (signal?.aborted) break;
     const delay = started + i * 1000 / rps - performance.now();
     if (delay > 0) await new Promise(resolve => setTimeout(resolve, delay));
-    if (pending.size >= maxInflight) { dropped++; continue; }
+    if (signal?.aborted) break;
+    if (pending.size >= maxInflight) { dropped++; onFailure?.('dropped'); continue; }
     const task = execute(i).finally(() => pending.delete(task));
     pending.add(task);
     const elapsed = performance.now() - started;
@@ -113,14 +114,17 @@ export async function runLoad({ baseUrl, apiKey, users, rps, durationSec, maxInf
   const percentile = p => latencies.length ? latencies[Math.min(latencies.length - 1, Math.ceil(latencies.length * p) - 1)] : null;
   const failed = failedRequests.size;
   const elapsedSec = (performance.now() - started) / 1000;
+  // The final request is scheduled before the end of the nominal window.
+  // Do not inflate the offered throughput when all responses finish early.
+  const measurementWindowSec = Math.max(elapsedSec, durationSec);
   return {
     startedAt, completedAt: new Date().toISOString(), timingMs: {headers:timingSummary(headerTimes),body:timingSummary(bodyTimes)},
     scope: 'read-only HTTP paths; excludes paid AI, uploads, writes, and native rendering', workload, aborted: signal?.aborted ?? false,
     requestedRps: rps, durationSec, elapsedSec, scheduled: total, completed: latencies.length, dropped,
-    achievedRps: latencies.length / elapsedSec, distinctAuthenticatedUsers: exercisedUsers.size,
+    achievedRps: latencies.length / measurementWindowSec, distinctAuthenticatedUsers: exercisedUsers.size,
     statuses, failures, failureDetails, failedRequests: failed, errorRate: (failed + dropped) / total,
     latencyMs: { p50: percentile(0.5), p95: percentile(0.95), p99: percentile(0.99) },
-    passed: !signal?.aborted && latencies.length / elapsedSec >= rps * 0.95 && dropped === 0 && failed === 0 && percentile(0.95) !== null && percentile(0.95) < 1000 && percentile(0.99) < 2000,
+    passed: !signal?.aborted && latencies.length / measurementWindowSec >= rps * 0.95 && dropped === 0 && failed === 0 && percentile(0.95) !== null && percentile(0.95) < 1000 && percentile(0.99) < 2000,
   };
 }
 

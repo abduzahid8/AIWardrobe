@@ -1,0 +1,64 @@
+{
+  "measuredAt": "2026-10-29T03:56:53.553Z",
+  "runId": "f52ea124-f907-4a22-8b8b-8ee16c7e2b92",
+  "assumptions": {
+    "dau": 10000,
+    "sessionsPerDay": 2,
+    "requestsPerSession": 12,
+    "peakHourFraction": 0.2,
+    "headroom": 3,
+    "dailyRequests": 240000,
+    "peakRps": 13.333333333333334,
+    "targetRps": 40
+  },
+  "scope": "Production concurrent 32 app read RPS + 8 wear-log upsert RPS for 120 seconds; 20 temporary free owners, 20 garments/5 outfits each; excludes AI, image delivery, uploads, subscriptions and native",
+  "fixtureUsers": 20,
+  "wardrobeItemsPerUser": 20,
+  "savedOutfitsPerUser": 5,
+  "cleanup": [
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    }
+  ],
+  "fixtureUserIds": [
+    "127d93e5-372d-4cde-9d46-f02ce88044f7",
+    "7ee706f2-54cf-4f6c-b1f4-ec10445dc2ec",
+    "3f20e159-c2df-48b7-961b-8ca1aa7de764",
+    "4667fb3d-c939-4c99-b21c-6a1d2d61df37",
+    "eb6a8083-d958-4824-b549-b2c27260c312",
+    "7bfee78a-25e1-4613-8f45-8fab5b7ba3e3",
+    "7c0c35fb-2ac7-418b-8363-124b2157874c",
+    "5416beca-0eac-48bd-938c-8c8c87847bd3"
+  ],
+  "failure": "Error",
+  "passed": false
+}

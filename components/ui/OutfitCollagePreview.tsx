@@ -111,7 +111,8 @@ const Piece: React.FC<{
     style: StyleProp<ImageStyle>;
     zIndex: number;
     name?: string;
-}> = ({ src, style, zIndex, name }) => {
+    transition?: number;
+}> = ({ src, style, zIndex, name, transition = 180 }) => {
     const [failed, setFailed] = useState(false);
     // A remount (or a deck remap) hands this instance a new uri — a stale
     // failure flag must not blank out the new image.
@@ -136,7 +137,7 @@ const Piece: React.FC<{
             contentFit="contain"
             cachePolicy="memory-disk"
             recyclingKey={srcKey}
-            transition={180}
+            transition={transition}
             onError={() => setFailed(true)}
             accessibilityLabel={name || 'Outfit piece'}
         />
@@ -194,6 +195,7 @@ export const OutfitCollagePreview: React.FC<OutfitCollagePreviewProps> = ({
                             style={[styles.lookboardPiece, slots[index]]}
                             zIndex={index + 1}
                             name={item.name || item.category}
+                            transition={0}
                         />
                     ))}
                 </View>

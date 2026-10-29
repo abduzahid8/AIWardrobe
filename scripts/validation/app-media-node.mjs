@@ -16,8 +16,9 @@ export async function loadAppMediaForNode(client, events, base) {
     });
     return exports;
   }
+  const deadline = await execute('../lib/requestDeadline', {});
   const media = await execute('wardrobeMedia', {'base64-arraybuffer':{decode}, '../../lib/supabase':{supabase:client},
-    '../../store/authEvents':events, '../config/env':{Config:{supabase:{url:base}}}});
+    '../../store/authEvents':events, '../config/env':{Config:{supabase:{url:base}}}, '../lib/requestDeadline':deadline});
   const pending = await execute('pendingWardrobeMedia', {'expo-file-system/legacy':{documentDirectory:null},
     'base64-arraybuffer':{encode}, '../../store/authEvents':events, './wardrobeMedia':media});
   const itemMedia = await execute('wardrobeItemMedia', {'./wardrobeMedia':media, './pendingWardrobeMedia':pending});

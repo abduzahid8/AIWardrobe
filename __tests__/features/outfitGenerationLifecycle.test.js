@@ -7,9 +7,9 @@ const names=['handleGeneratePress','cancelOutfitGeneration'];const declarations=
 function visit(node){if(ts.isVariableDeclaration(node)&&names.includes(node.name.text))declarations.push(`const ${node.getText(ast)};`);ts.forEachChild(node,visit);}visit(ast);
 const code=ts.transpileModule(declarations.join('\n'),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return{promise,resolve,reject};};
-function setup(){
+function setup(generationAvailable=true){
  let owner='owner-a',revision=1;
- const deps={authEvents:{getUserId:()=>owner,getRevision:()=>revision},generationRequest:{current:null},generationNonce:{current:0},isMounted:{current:true},setLoading:jest.fn(),setError:jest.fn(),setOutfits:jest.fn(),setSelectedStyle:jest.fn(),consumeOrPaywall:jest.fn(async()=>true),generateOutfits:jest.fn(async()=>{}),Haptics:{notificationAsync:jest.fn(async()=>{}),NotificationFeedbackType:{Success:'success'}},OutfitGenerationFailure:class extends Error{},t:key=>key};
+ const deps={generationAvailable,authEvents:{getUserId:()=>owner,getRevision:()=>revision},generationRequest:{current:null},generationNonce:{current:0},isMounted:{current:true},setLoading:jest.fn(),setError:jest.fn(),setOutfits:jest.fn(),setSelectedStyle:jest.fn(),consumeOrPaywall:jest.fn(async()=>true),generateOutfits:jest.fn(async()=>{}),Haptics:{notificationAsync:jest.fn(async()=>{}),NotificationFeedbackType:{Success:'success'}},OutfitGenerationFailure:class extends Error{},t:key=>key};
  const api=Function(...Object.keys(deps),code+';return {handleGeneratePress,cancelOutfitGeneration};')(...Object.values(deps));
  return{...deps,...api,switchOwner:()=>{owner='owner-b';revision++;}};
 }
@@ -39,4 +39,24 @@ test('an account switch during admission cannot start work for the new owner',as
 });
 test('unexpected generation failure unlocks retry and clears loading',async()=>{
  const s=setup();s.generateOutfits.mockRejectedValueOnce(new Error('failure'));await s.handleGeneratePress();expect(s.setError).toHaveBeenCalledWith('outfitMaker.generateFailed');expect(s.setLoading).toHaveBeenLastCalledWith(false);await s.handleGeneratePress();expect(s.generateOutfits).toHaveBeenCalledTimes(2);
+});
+
+test('unavailable choices cannot consume quota or start generation',async()=>{
+ const s=setup(false);await s.handleGeneratePress();expect(s.consumeOrPaywall).not.toHaveBeenCalled();expect(s.generateOutfits).not.toHaveBeenCalled();
+});
+
+function generationFailureHandler(current) {
+ let block;
+ function find(node){if(ts.isCatchClause(node)&&node.block.getText(ast).includes("console.warn('[AIOutfitmaker] Edge function failed:'"))block=node.block.getText(ast);ts.forEachChild(node,find);}find(ast);
+ const failureCode=ts.transpileModule(block,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+ const deps={fallbackTimer:{current:null},isCurrentGeneration:()=>current,OutfitGenerationFailure:class extends Error{},isMounted:{current:true},setOutfits:jest.fn(),setLoading:jest.fn(),setError:jest.fn(),t:key=>key};
+ return {...deps,run:Function(...Object.keys(deps),'err',failureCode).bind(null,...Object.values(deps))};
+}
+test('a cancelled or stale edge request exits without a warning or failure UI',()=>{
+ const warn=jest.spyOn(console,'warn').mockImplementation(()=>{});
+ try{const s=generationFailureHandler(false);s.run(Object.assign(new Error('cancelled'),{name:'AbortError'}));expect(warn).not.toHaveBeenCalled();expect(s.setError).not.toHaveBeenCalled();expect(s.setLoading).not.toHaveBeenCalled();}finally{warn.mockRestore();}
+});
+test('an active mapped failure still shows its message without an Expo warning overlay',()=>{
+ const warn=jest.spyOn(console,'warn').mockImplementation(()=>{});
+ try{const s=generationFailureHandler(true);const error=new s.OutfitGenerationFailure();error.translationKey='outfitMaker.noMatchingClothing';s.run(error);expect(s.setError).toHaveBeenCalledWith(error.translationKey);expect(s.setLoading).toHaveBeenCalledWith(false);expect(warn).not.toHaveBeenCalled();}finally{warn.mockRestore();}
 });

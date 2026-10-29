@@ -92,6 +92,6 @@ export type TabParamList = {
     Home: undefined;
     Closet: undefined;
     AI: undefined;
-    Inspo: { focusShopItemId?: string; focusShopItemName?: string } | undefined;
+    Inspo: { focusShopItemId?: string; focusShopItemName?: string; openShop?: boolean } | undefined;
     Profile: undefined;
 };

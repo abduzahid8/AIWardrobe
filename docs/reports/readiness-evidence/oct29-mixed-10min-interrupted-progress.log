@@ -1,0 +1,17 @@
+{"stage":"fixture_setup","usersReady":5}
+{"stage":"fixture_setup","usersReady":10}
+{"stage":"fixture_setup","usersReady":15}
+{"stage":"fixture_setup","usersReady":20}
+{"stage":"populated_fixtures_ready","users":20,"wardrobeItems":400,"savedOutfits":100}
+{"stage":"mixed_read_progress","elapsedSec":30,"completed":948,"inflight":13,"failedRequests":0,"dropped":0}
+{"stage":"mixed_write_progress","scheduled":241,"completed":237,"failed":0,"dropped":0}
+{"stage":"mixed_read_progress","elapsedSec":60,"completed":1905,"inflight":17,"failedRequests":0,"dropped":0}
+{"stage":"mixed_write_progress","scheduled":482,"completed":477,"failed":0,"dropped":0}
+{"stage":"mixed_read_progress","elapsedSec":90,"completed":2869,"inflight":14,"failedRequests":0,"dropped":0}
+{"stage":"mixed_write_progress","scheduled":722,"completed":718,"failed":0,"dropped":0}
+{"stage":"mixed_read_progress","elapsedSec":120,"completed":3830,"inflight":13,"failedRequests":0,"dropped":0}
+{"stage":"mixed_write_progress","scheduled":962,"completed":958,"failed":0,"dropped":0}
+{"stage":"mixed_read_progress","elapsedSec":150,"completed":4363,"inflight":199,"failedRequests":321,"dropped":242}
+{"stage":"mixed_write_progress","scheduled":1202,"completed":1122,"failed":112,"dropped":0}
+{"stage":"mixed_read_progress","elapsedSec":180,"completed":4959,"inflight":200,"failedRequests":917,"dropped":605}
+{"stage":"mixed_write_progress","scheduled":1443,"completed":1362,"failed":352,"dropped":0}

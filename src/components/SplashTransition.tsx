@@ -10,8 +10,8 @@ import { Image } from './MediaImage';
 // handoff between native splash and this overlay is seamless.
 const BRAND_BACKGROUND = '#ADD8E6';
 const LOGO_BOX_RATIO = 0.56; // logo box width as a fraction of screen width
-const HIDE_DELAY_MS = 100; // beat after the first frame so the handoff is seamless
-const OPEN_FADE_MS = 420;
+const HIDE_DELAY_MS = 0; // reveal as soon as the navigator signals its first frame
+const OPEN_FADE_MS = 160;
 const CLOSE_FADE_MS = 240;
 const EXIT_SCALE = 1.04; // barely-there "breath" as the app reveals itself
 
@@ -58,7 +58,7 @@ const SplashTransition: React.FC = () => {
   );
 
   // App open: once RootNavigator signals readiness, keep the branded
-  // overlay up for a beat (covering the first real frame), hide the native
+  // overlay over the first real frame, hide the native
   // splash underneath it, then dissolve into the app.
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;

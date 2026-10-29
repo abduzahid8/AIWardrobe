@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, Suspense } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
+import { scheduleScreenPreloads } from "./screenPreload";
 
 // Eager: only the auth shell + tab host needed for first frame.
 // Everything else is lazy so the startup JS bundle stays small and
@@ -8,23 +9,30 @@ import { View } from "react-native";
 // until the user actually navigates there (fixes 4/10 freeze on launch).
 import SignInScreen from "../screens/SignInScreen";
 import SignUpScreen from "../screens/SignUpScreen";
-import TabNavigator from "../navigation/TabNavigator";
+// Keep Home and its native dependencies out of signed-out startup.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const getTabNavigator = () => require("./TabNavigator").default;
 import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
 import ResetPasswordScreen from "../screens/ResetPasswordScreen";
 import AuthCallbackScreen from "../screens/AuthCallbackScreen";
 import LanguageSelectionScreen from "../screens/LanguageSelectionScreen";
 
-// Lazy screen helper — Suspense with blank fallback (navigator already
-// shows the previous screen during the split-second load).
+// Share each screen import with idle preloading. If opened before it is warm,
+// show immediate progress while its module loads.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const lazyScreen = (loader: () => Promise<{ default: React.ComponentType<any> }>) => {
-  const LazyComp = React.lazy(loader);
+  let pending: ReturnType<typeof loader> | undefined;
+  const preload = () => {
+    if (!pending) pending = loader().catch(error => { pending = undefined; throw error; });
+    return pending;
+  };
+  const LazyComp = React.lazy(preload);
   const Wrapped = (props: Record<string, unknown>) => (
-    <Suspense fallback={<View style={{ flex: 1, backgroundColor: "#FFFFFF" }} />}>
+    <Suspense fallback={<View style={{ flex: 1, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center" }}><ActivityIndicator accessibilityRole="progressbar" /></View>}>
       <LazyComp {...(props as object)} />
     </Suspense>
   );
-  return Wrapped;
+  return Object.assign(Wrapped, { preload });
 };
 
 const AIOutfitmaker = lazyScreen(() => import("../screens/AIOutfitmaker"));
@@ -297,6 +305,23 @@ const RootNavigator = () => {
     }
   }, [isAppReady, isInitialized, isLanguageInitialized]);
 
+  useEffect(() => {
+    if (!isAppReady || !isAuthenticated || !hasCompletedOnboarding) return;
+    // The host is already mounted. Share one idle queue for tabs and push
+    // screens so their module evaluation cannot start in parallel bursts.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { tabScreenPreloaders } = require('./TabNavigator');
+    return scheduleScreenPreloads([
+      ...tabScreenPreloaders,
+      AIOutfitmaker.preload,
+      OutfitCalendarScreen.preload,
+      ClothingDetailScreen.preload,
+      GuideScreen.preload,
+      PaywallScreen.preload,
+      WardrobeVideoScreen.preload,
+    ]);
+  }, [isAppReady, isAuthenticated, hasCompletedOnboarding]);
+
   if (!isInitialized || !isAppReady || !isLanguageInitialized) {
     // Keep the splash screen visible and render nothing while initializing.
     return null;
@@ -354,7 +379,7 @@ const RootNavigator = () => {
           />
         ) : (
           <>
-            <Stack.Screen name="Main" component={TabNavigator} />
+            <Stack.Screen name="Main" getComponent={getTabNavigator} />
 
             {/* Main tab navigation with Home, Add, and Profile */}
             {/* <Stack.Screen name="Home" component={TabNavigator} /> */}

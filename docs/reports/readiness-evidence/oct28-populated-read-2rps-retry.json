@@ -1,0 +1,15 @@
+{
+  "measuredAt": "2026-10-28T18:10:51.897Z",
+  "scope": "Production: 20 temporary users, 50 wardrobe items and 5 saved outfits each; read-only traffic after fixture setup; excludes AI, image delivery and uploads",
+  "fixtureUsers": 20,
+  "wardrobeItemsPerUser": 50,
+  "savedOutfitsPerUser": 5,
+  "cleanup": [
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    }
+  ],
+  "fixtureErrorCode": "P0001",
+  "failure": "fixture_wardrobe_http_400"
+}

@@ -1,0 +1,380 @@
+{
+  "measuredAt": "2026-10-29T04:08:27.042Z",
+  "runId": "32e533a7-5b3e-4871-95c9-3078e2f36321",
+  "assumptions": {
+    "dau": 10000,
+    "sessionsPerDay": 2,
+    "requestsPerSession": 12,
+    "peakHourFraction": 0.2,
+    "headroom": 3,
+    "dailyRequests": 240000,
+    "peakRps": 13.333333333333334,
+    "targetRps": 40
+  },
+  "scope": "Production concurrent 3.2 app read RPS + 0.8 wear-log upsert RPS for 600 seconds; 20 temporary free owners, 20 garments/5 outfits each; excludes AI, image delivery, uploads, subscriptions and native",
+  "fixtureUsers": 20,
+  "wardrobeItemsPerUser": 20,
+  "savedOutfitsPerUser": 5,
+  "cleanup": [
+    {
+      "temporaryUserDeleted": false,
+      "status": 0
+    },
+    {
+      "temporaryUserDeleted": false,
+      "status": 0
+    },
+    {
+      "temporaryUserDeleted": false,
+      "status": 0
+    },
+    {
+      "temporaryUserDeleted": false,
+      "status": 0
+    },
+    {
+      "temporaryUserDeleted": false,
+      "status": 0
+    },
+    {
+      "temporaryUserDeleted": false,
+      "status": 0
+    },
+    {
+      "temporaryUserDeleted": false,
+      "status": 0
+    },
+    {
+      "temporaryUserDeleted": false,
+      "status": 0
+    },
+    {
+      "temporaryUserDeleted": false,
+      "status": 0
+    },
+    {
+      "temporaryUserDeleted": false,
+      "status": 0
+    },
+    {
+      "temporaryUserDeleted": false,
+      "status": 0
+    },
+    {
+      "temporaryUserDeleted": false,
+      "status": 0
+    },
+    {
+      "temporaryUserDeleted": false,
+      "status": 0
+    },
+    {
+      "temporaryUserDeleted": false,
+      "status": 0
+    },
+    {
+      "temporaryUserDeleted": false,
+      "status": 0
+    },
+    {
+      "temporaryUserDeleted": false,
+      "status": 0
+    },
+    {
+      "temporaryUserDeleted": false,
+      "status": 0
+    },
+    {
+      "temporaryUserDeleted": false,
+      "status": 0
+    },
+    {
+      "temporaryUserDeleted": false,
+      "status": 0
+    },
+    {
+      "temporaryUserDeleted": false,
+      "status": 0
+    }
+  ],
+  "fixtureUserIds": [
+    "6d75c37f-776b-4890-8a6c-e02297da3357",
+    "1f546eb1-ce79-45d5-bbd8-6ae63832bfae",
+    "a919be53-88a6-4809-91b7-61d84920f678",
+    "62883684-c0f8-461d-bd95-7b71e7c21dbc",
+    "c861d5af-d30d-4c88-a03a-0b1e7866c282",
+    "f94ef3ab-021f-4d32-84f8-79153eb02a26",
+    "040cf11d-25ba-424d-969f-586b66ab69b0",
+    "a02e8d45-d176-4a5b-9946-19eaa5fc3199",
+    "04270964-c189-4111-9043-17cf096824f0",
+    "f66df9a9-8c2b-48af-981a-faec72f79aad",
+    "1a10c1cc-0299-4f5c-9137-cdd74eae3fd9",
+    "e9f8911d-96fb-44cf-af6a-6c3790f20423",
+    "c2d51283-48f4-4527-884a-ed29b134026d",
+    "d56583cb-cbf6-4e35-95e4-98c0bca26f33",
+    "f07263e2-1071-43ff-8f34-6393c321d564",
+    "a6ba57e0-cc62-46bf-bf77-6dd2c5800b51",
+    "ffffab81-9e35-4391-8a52-ced5e83c6b42",
+    "35091abc-01d2-48f7-bd04-591287fc5b10",
+    "53b9654e-69ca-4264-b514-b5a3e06fdefc",
+    "2b602087-2401-4489-bd49-e97a093669ec"
+  ],
+  "preflight": {
+    "completed": 4,
+    "failedRequests": 0,
+    "statuses": {
+      "200": 4
+    },
+    "failures": {},
+    "passed": true
+  },
+  "stopReason": "network_or_invalid_json",
+  "reads": {
+    "startedAt": "2026-10-29T04:09:33.865Z",
+    "completedAt": "2026-10-29T04:12:28.866Z",
+    "timingMs": {
+      "headers": {
+        "samples": 552,
+        "p50": 417.20933300000615,
+        "p95": 561.6615000000165,
+        "p99": 930.5522920000076
+      },
+      "body": {
+        "samples": 552,
+        "p50": 0.7754169999971054,
+        "p95": 4.6875,
+        "p99": 8.549083999998402
+      }
+    },
+    "scope": "read-only HTTP paths; excludes paid AI, uploads, writes, and native rendering",
+    "workload": "app",
+    "aborted": true,
+    "requestedRps": 3.2,
+    "durationSec": 600,
+    "elapsedSec": 175.00003395800002,
+    "scheduled": 1920,
+    "completed": 560,
+    "dropped": 0,
+    "achievedRps": 0.9333333333333333,
+    "distinctAuthenticatedUsers": 20,
+    "statuses": {
+      "200": 552
+    },
+    "failures": {
+      "network_or_invalid_json": 8
+    },
+    "failureDetails": [
+      {
+        "route": "profile",
+        "stage": "fetch",
+        "requestIndex": 559,
+        "startedAt": "2026-10-29T04:12:28.553Z",
+        "errorType": "TypeError",
+        "causeCode": "ETIMEDOUT"
+      },
+      {
+        "route": "catalog",
+        "stage": "fetch",
+        "requestIndex": 552,
+        "startedAt": "2026-10-29T04:12:26.366Z",
+        "errorType": "AbortError"
+      },
+      {
+        "route": "wardrobe",
+        "stage": "fetch",
+        "requestIndex": 553,
+        "startedAt": "2026-10-29T04:12:26.677Z",
+        "errorType": "AbortError"
+      },
+      {
+        "route": "outfits",
+        "stage": "fetch",
+        "requestIndex": 554,
+        "startedAt": "2026-10-29T04:12:26.990Z",
+        "errorType": "AbortError"
+      },
+      {
+        "route": "profile",
+        "stage": "fetch",
+        "requestIndex": 555,
+        "startedAt": "2026-10-29T04:12:27.302Z",
+        "errorType": "AbortError"
+      },
+      {
+        "route": "catalog",
+        "stage": "fetch",
+        "requestIndex": 556,
+        "startedAt": "2026-10-29T04:12:27.617Z",
+        "errorType": "AbortError"
+      },
+      {
+        "route": "wardrobe",
+        "stage": "fetch",
+        "requestIndex": 557,
+        "startedAt": "2026-10-29T04:12:27.928Z",
+        "errorType": "AbortError"
+      },
+      {
+        "route": "outfits",
+        "stage": "fetch",
+        "requestIndex": 558,
+        "startedAt": "2026-10-29T04:12:28.240Z",
+        "errorType": "AbortError"
+      }
+    ],
+    "failedRequests": 8,
+    "errorRate": 0.004166666666666667,
+    "latencyMs": {
+      "p50": 418.8072909999901,
+      "p95": 620.2056250000023,
+      "p99": 1517.666790999996
+    },
+    "passed": false
+  },
+  "writes": {
+    "startedAt": "2026-10-29T04:09:33.867Z",
+    "completedAt": "2026-10-29T04:12:28.867Z",
+    "timingMs": {
+      "headers": {
+        "samples": 138,
+        "p50": 424.187957999995,
+        "p95": 697.7155419999908,
+        "p99": 1195.2645409999968
+      },
+      "body": {
+        "samples": 138,
+        "p50": 0.5810829999973066,
+        "p95": 2.5122080000001006,
+        "p99": 9.625124999991385
+      }
+    },
+    "planned": 480,
+    "completed": 140,
+    "failed": 2,
+    "dropped": 0,
+    "elapsedSec": 174.999922292,
+    "achievedRps": 0.23333333333333334,
+    "statuses": {
+      "200": 60,
+      "201": 78
+    },
+    "failures": {
+      "transport_or_decode": 2
+    },
+    "failureDetails": [
+      {
+        "requestIndex": 138,
+        "stage": "fetch",
+        "startedAt": "2026-10-29T04:12:26.368Z",
+        "errorType": "AbortError"
+      },
+      {
+        "requestIndex": 139,
+        "stage": "fetch",
+        "startedAt": "2026-10-29T04:12:27.620Z",
+        "errorType": "AbortError"
+      }
+    ],
+    "latencyMs": {
+      "p50": 425.5494999999937,
+      "p95": 709.4264589999948,
+      "p99": 1554.7352919999976
+    },
+    "aborted": true,
+    "diagnostics": {
+      "errorTypes": {
+        "AbortError": 2
+      },
+      "tenSecondWindows": {
+        "0": {
+          "attempted": 8,
+          "failed": 0
+        },
+        "1": {
+          "attempted": 8,
+          "failed": 0
+        },
+        "2": {
+          "attempted": 8,
+          "failed": 0
+        },
+        "3": {
+          "attempted": 8,
+          "failed": 0
+        },
+        "4": {
+          "attempted": 8,
+          "failed": 0
+        },
+        "5": {
+          "attempted": 8,
+          "failed": 0
+        },
+        "6": {
+          "attempted": 8,
+          "failed": 0
+        },
+        "7": {
+          "attempted": 8,
+          "failed": 0
+        },
+        "8": {
+          "attempted": 8,
+          "failed": 0
+        },
+        "9": {
+          "attempted": 9,
+          "failed": 0
+        },
+        "10": {
+          "attempted": 7,
+          "failed": 0
+        },
+        "11": {
+          "attempted": 9,
+          "failed": 0
+        },
+        "12": {
+          "attempted": 7,
+          "failed": 0
+        },
+        "13": {
+          "attempted": 9,
+          "failed": 0
+        },
+        "14": {
+          "attempted": 8,
+          "failed": 0
+        },
+        "15": {
+          "attempted": 7,
+          "failed": 0
+        },
+        "16": {
+          "attempted": 8,
+          "failed": 0
+        },
+        "17": {
+          "attempted": 4,
+          "failed": 2
+        }
+      },
+      "maxScheduleLagMs": 2.56391700002132,
+      "wallElapsedMs": 175000,
+      "eventLoopDelayMs": {
+        "mean": 21.728965881768506,
+        "max": 31.522815
+      },
+      "upstreamHeaderSamples": 138,
+      "upstreamHeaderMaxMs": 891,
+      "runtime": {
+        "node": "v22.23.2",
+        "platform": "darwin",
+        "arch": "arm64"
+      }
+    },
+    "passed": false
+  },
+  "verification": [],
+  "passed": false
+}

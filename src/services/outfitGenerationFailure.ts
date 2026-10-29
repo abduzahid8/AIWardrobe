@@ -2,6 +2,7 @@ import { withRequestDeadline } from '../lib/requestDeadline';
 
 const messages = {
   ai_generation_unavailable: 'outfitMaker.aiUnavailable',
+  catalog_lookup_unavailable: 'outfitMaker.catalogUnavailable',
   invalid_generation_request: 'outfitMaker.invalidRequest',
   budget_rates_unavailable: 'outfitMaker.budgetRatesUnavailable',
   unverified_shop_pricing: 'outfitMaker.shopPricesUnavailable',
@@ -11,7 +12,7 @@ const messages = {
   invalid_outfit_budget: 'outfitMaker.invalidBudget',
 } as const;
 type MessageKey = typeof messages[keyof typeof messages] | 'outfitMaker.generateFailed'
-  | 'outfitMaker.requestTooLarge' | 'outfitMaker.requestUploadTimedOut';
+  | 'outfitMaker.requestTooLarge' | 'outfitMaker.requestUploadTimedOut' | 'outfitMaker.connectionFailed';
 
 export class OutfitGenerationFailure extends Error {
   constructor(readonly translationKey: MessageKey = 'outfitMaker.generateFailed') {
@@ -61,5 +62,6 @@ export async function outfitGenerationFailure(data: unknown, error?: unknown): P
     } catch { reportUnmappedFailure(error, 'http_decode'); return new OutfitGenerationFailure(); }
   }
   reportUnmappedFailure(error, 'transport');
-  return new OutfitGenerationFailure();
+  const name = (error as { name?: unknown } | null)?.name;
+  return new OutfitGenerationFailure(name === 'FunctionsFetchError' || name === 'FunctionsRelayError' ? 'outfitMaker.connectionFailed' : undefined);
 }

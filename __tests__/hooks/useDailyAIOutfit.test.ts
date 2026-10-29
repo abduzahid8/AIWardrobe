@@ -117,3 +117,18 @@ it('upgrading unlocks generation without leaving Home', async () => {
   await waitFor(() => expect(result.current.outfits).toEqual(deck('first')));
   expect(generate).toHaveBeenCalledTimes(1);
 });
+
+it('retains the same deck without reloading when Home loses and regains focus', async () => {
+  const { result, rerender } = renderHook<ReturnType<typeof useDailyAIOutfit>, { enabled: boolean }>(
+    ({ enabled }) => useDailyAIOutfit({ ...options, enabled }),
+    { initialProps: { enabled: true } },
+  );
+  await waitFor(() => expect(result.current.outfits).toEqual(deck('first')));
+  const originalDeck = result.current.outfits;
+  rerender({ enabled: false });
+  expect(result.current.outfits).toBe(originalDeck);
+  rerender({ enabled: true });
+  expect(result.current.outfits).toBe(originalDeck);
+  expect(generate).toHaveBeenCalledTimes(1);
+  expect(AsyncStorage.getItem).toHaveBeenCalledTimes(1);
+});

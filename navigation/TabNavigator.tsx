@@ -12,14 +12,19 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
-import { ScreenTransitionWrapper } from "../components/ScreenTransitionWrapper";
 import { perfTabSwitch, perfTabSwitchComplete } from "../src/utils/perf";
 
 // Original Screens
 import HomeScreen from "../screens/HomeScreen";
-import MyClosetScreen from "../screens/MyClosetScreen";
-import InspoScreen from "../screens/InspoScreen";
-import ProfileScreen from "../screens/ProfileScreen";
+// Resolve secondary modules only when their tab is first opened. Navigation's
+// lazy mounting alone does not defer evaluation of static imports.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const loadCloset = () => require('../screens/MyClosetScreen').default;
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const loadInspo = () => require('../screens/InspoScreen').default;
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const loadProfile = () => require('../screens/ProfileScreen').default;
+export const tabScreenPreloaders = [loadCloset, loadInspo, loadProfile];
 
 // Screen-level ErrorBoundary — isolates crashes to individual tabs
 import { ErrorBoundary } from "../src/components/ErrorBoundary";
@@ -262,47 +267,27 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation, isAdmin }: any) 
 };
 
 // ── Stable wrapper factory — creates components ONCE ─────────────────
-const createAnimatedTabScreen = (Screen: React.ComponentType<any>, tabIndex: number) => {
+const createTabScreen = (load: () => React.ComponentType<any>, name: string) => {
   const Wrapped = (props: any) => {
-    const [isReady, setIsReady] = React.useState(false);
-
-    React.useEffect(() => {
-      // Defer heavy tab-screen mount past the tab-switch animation so the
-      // transition stays at 60fps. Plain setTimeout — InteractionManager is
-      // deprecated (startup warning) and runAfterInteractions fires at
-      // roughly the same point for this use case.
-      const timer = setTimeout(() => {
-        setIsReady(true);
-      }, 50);
-      return () => clearTimeout(timer);
-    }, []);
-
-    // Wrap in a View with the app background color so the placeholder shown
-    // during lazy first-mount is never a blank white void. Without this,
-    // switching to an unvisited tab shows a white flash for one render cycle
-    // before the screen's own background paints.
+    const Screen = load();
     return (
       <ErrorBoundary>
-        <ScreenTransitionWrapper preset="fade_slide_up">
-          <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
-            {isReady ? (
-              <Screen {...props} />
-            ) : (
-              <View style={{ flex: 1, backgroundColor: '#FFFFFF' }} />
-            )}
-          </View>
-        </ScreenTransitionWrapper>
+        <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+          <Screen {...props} />
+        </View>
       </ErrorBoundary>
     );
   };
-  Wrapped.displayName = `AnimatedTab(${tabIndex})`;
+  Wrapped.displayName = `Tab(${name})`;
   return Wrapped;
 };
 
-const AnimatedHomeScreen = createAnimatedTabScreen(HomeScreen, 0);
-const AnimatedClosetScreen = createAnimatedTabScreen(MyClosetScreen, 1);
-const AnimatedInspoScreen = createAnimatedTabScreen(InspoScreen, 2);
-const AnimatedProfileScreen = createAnimatedTabScreen(ProfileScreen, 3);
+// Stable component identities preserve each mounted tab and its scroll position.
+// Tab presses already animate the indicator; show content immediately on focus.
+const AnimatedHomeScreen = createTabScreen(() => HomeScreen, 'Home');
+const AnimatedClosetScreen = createTabScreen(loadCloset, 'Closet');
+const AnimatedInspoScreen = createTabScreen(loadInspo, 'Inspo');
+const AnimatedProfileScreen = createTabScreen(loadProfile, 'Profile');
 
 // ── TabNavigator ─────────────────────────────────────────────────────
 const TabNavigator = () => {

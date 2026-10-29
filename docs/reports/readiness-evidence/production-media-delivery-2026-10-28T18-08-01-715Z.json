@@ -1,0 +1,21 @@
+{
+  "startedAt": "2026-10-28T18:08:01.715Z",
+  "scope": "Bounded authenticated production Storage diagnostic, not complete 10000 DAU certification",
+  "originalBytes": 2915128,
+  "previewBytes": 224579,
+  "stages": [],
+  "checks": [],
+  "cleanup": [
+    {
+      "userId": "aa6ae341-626e-487d-8377-b3114f7011ea",
+      "accountDeleted": true
+    }
+  ],
+  "fixtureUserIds": [
+    "aa6ae341-626e-487d-8377-b3114f7011ea"
+  ],
+  "status": "finished",
+  "failure": "Error",
+  "finishedAt": "2026-10-28T18:08:04.633Z",
+  "passed": false
+}

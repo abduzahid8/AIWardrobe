@@ -6,7 +6,7 @@ import { authEvents } from '../store/authEvents';
  */
 
 import React, { useState, useCallback, useMemo, useEffect, useRef, useDeferredValue } from 'react';
-import { View, TouchableOpacity, StyleSheet, Dimensions, ScrollView, FlatList, StatusBar, TextInput, ActivityIndicator, Linking, Platform,  } from 'react-native'
+import { View, TouchableOpacity, StyleSheet, Dimensions, ScrollView, FlatList, StatusBar, TextInput, ActivityIndicator, Linking, Platform, Modal,  } from 'react-native'
 import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -75,7 +75,7 @@ const isPantsItem = (item: ShopCatalogItem): boolean =>
 // ── Sub-Components ──────────────────────────────────────
 
 const FeaturedCapsuleCard = React.memo(({ item, index, t }: { item: FeaturedCapsule; index: number; t: (key: string) => string }) => (
-    <Animated.View entering={index < 8 ? FadeInDown.delay(100 + index * 80).duration(400) : undefined}>
+    <Animated.View entering={index < 8 ? FadeInDown.duration(120) : undefined}>
         <TouchableOpacity
             style={styles.capsuleCard}
             activeOpacity={0.9}
@@ -166,7 +166,7 @@ const ProductCard = React.memo(({
     }, [item]);
     // Only animate the first screenful — later pages previously waited up to
     // 600ms invisible (delay cap) making "Load more" look frozen.
-    const entering = index < 8 ? FadeInDown.delay(Math.min(150 + (index % 12) * 40, 600)).duration(320) : undefined;
+    const entering = index < 8 ? FadeInDown.duration(120) : undefined;
     return (
     // Cap the stagger so later pages (index 100+) don't wait many seconds
     // before their entering animation starts — otherwise pressing Load more
@@ -345,7 +345,7 @@ const GuideGridCard = ({
                 activeOpacity={0.92}
                 onPress={() => onPress(item)}
                 accessibilityRole="button"
-                accessibilityLabel={`${item.title}. ${t('inspo.shopThisLook')}`}
+                accessibilityLabel={`${item.title}. ${t('inspo.viewLook')}`}
             >
                 <CachedImage
                     uri={typeof item.image === 'string' ? item.image : ''}
@@ -364,8 +364,6 @@ const GuideGridCard = ({
         </View>
     );
 };
-
-type GuideCategory = 'featured' | 'capsules' | 'outfits';
 
 // ── Main Component ──────────────────────────────────────
 
@@ -393,85 +391,22 @@ const InspoScreen = () => {
         refresh: refreshFeaturedCapsules,
     } = useFeaturedCapsules();
 
-    const { items: guideOutfits } = useShopCatalog({
-        category: 'outfits',
-        source: 'all',
-    });
-
-    const [guideHero, setGuideHero] = useState<any>(null);
-
-    useEffect(() => {
-        let mounted = true;
-        const fetchHero = async () => {
-            try {
-                // Prefer the idle-prewarmed row so first visit doesn't pay a
-                // cold query mid-tab-switch (see tabPrewarmService).
-                const { getPrewarmedGuideHero } = await import('../src/services/tabPrewarmService');
-                const prewarmed = getPrewarmedGuideHero();
-                if (mounted && prewarmed) {
-                    setGuideHero(prewarmed);
-                    return;
-                }
-                const { data } = await supabase.from('guide_page').select('*').eq('is_active', true).single();
-                if (mounted && data) setGuideHero(data);
-            } catch (_) {
-            }
-        };
-        fetchHero();
-        return () => { mounted = false; };
-    }, []);
-
-    const displayGuides = useMemo(() => {
-        const results: any[] = [];
-
-        // 1. Add static/dynamic Hero from guide_page — admin-set cta_url, if
-        // any, is where "shop this look" should actually go.
-        if (guideHero) {
-            results.push({
-                id: 'guide_hero',
-                title: guideHero.title,
-                subtitle: guideHero.subtitle,
-                image: guideHero.hero_image_url,
-                category: 'featured' as GuideCategory,
-                linkUrl: guideHero.cta_url || undefined,
-            });
-        }
-
-        // 2. Add Featured Capsules as big cards in the guide tab
-        if (featuredCapsules && featuredCapsules.length > 0) {
-            featuredCapsules.forEach(c => {
-                results.push({
-                    id: c.id,
-                    title: c.title,
-                    subtitle: c.subtitle || '',
-                    image: c.imageUrl,
-                    category: 'capsules' as GuideCategory,
-                    linkUrl: c.linkUrl,
-                });
-            });
-        }
-
-        // 3. Add outfits if we have them — each is a real shop catalog item,
-        // so tapping it should go straight to buying that item, not a link.
-        if (guideOutfits && guideOutfits.length > 0) {
-            guideOutfits.forEach((item) => {
-                results.push({
-                    id: item.id,
-                    title: item.name,
-                    subtitle: item.description || item.brand,
-                    image: item.imageUrl,
-                    category: 'outfits' as GuideCategory,
-                    shopItem: item,
-                });
-            });
-        }
-
-        return results;
-    }, [guideHero, featuredCapsules, guideOutfits]);
+    // Editorial imagery comes from the brand lookbook; the Shop search below
+    // shows that brand's catalog, without claiming an unverified exact match.
+    const displayGuides = useMemo(() => [
+        { id: 'uniqlo-winter', title: 'Winter layers', subtitle: 'UNIQLO · Winter 2026', image: 'https://www.uniqlo.com/jp/ja/special-feature/lifewear-collection/common_26fw/img/winter/men/Category-m-hero-sp.jpg', brand: 'UNIQLO' },
+        { id: 'uniqlo-outerwear', title: 'Outerwear styling', subtitle: 'UNIQLO · Winter 2026', image: 'https://www.uniqlo.com/jp/ja/special-feature/lifewear-collection/common_26fw/img/winter/men/Category-m-outerwear-sp.jpg', brand: 'UNIQLO' },
+        { id: 'uniqlo-trousers', title: 'The trouser edit', subtitle: 'UNIQLO · Winter 2026', image: 'https://www.uniqlo.com/jp/ja/special-feature/lifewear-collection/common_26fw/img/winter/men/Category-m-bottoms-sp.jpg', brand: 'UNIQLO' },
+        { id: 'uniqlo-shirts', title: 'Shirt styling', subtitle: 'UNIQLO · Winter 2026', image: 'https://www.uniqlo.com/jp/ja/special-feature/lifewear-collection/common_26fw/img/winter/men/Category-m-shirt-sp.jpg', brand: 'UNIQLO' },
+        { id: 'uniqlo-tops', title: 'Everyday layers', subtitle: 'UNIQLO · Winter 2026', image: 'https://www.uniqlo.com/jp/ja/special-feature/lifewear-collection/common_26fw/img/winter/men/Category-m-tops-sp.jpg', brand: 'UNIQLO' },
+        { id: 'uniqlo-knit', title: 'Knitwear looks', subtitle: 'UNIQLO · Winter 2026', image: 'https://www.uniqlo.com/jp/ja/special-feature/lifewear-collection/common_26fw/img/winter/men/Category-m-knit-sp.jpg', brand: 'UNIQLO' },
+    ], []);
 
     const savedInspo = useSavedShopStore((s) => s.items);
     const hydrateSavedShop = useSavedShopStore((s) => s.hydrate);
     const [segment, setSegment] = useState<SegmentType>('guide');
+    const [selectedLook, setSelectedLook] = useState<{ title: string; subtitle: string; image: string; brand: string } | null>(null);
+    const [guideShopItem, setGuideShopItem] = useState<ShopCatalogItem | null>(null);
 
     const [showSavedOnly, setShowSavedOnly] = useState(false);
     const [saveToast, setSaveToast] = useState<string | null>(null);
@@ -504,6 +439,14 @@ const InspoScreen = () => {
     // tapping the same piece twice still works (undefined → id transition).
     // If the id isn't in the loaded catalog (later page / retired item) we
     // fall back to a name search so the tap still lands on shopping.
+    const openShop = inspoRoute.params?.openShop;
+    useFocusEffect(useCallback(() => {
+        if (openShop) {
+            setSegment('shop');
+            setShowSavedOnly(false);
+            navigation.setParams({ openShop: undefined });
+        }
+    }, [openShop, navigation]));
     const focusShopItemId = inspoRoute.params?.focusShopItemId;
     const focusShopItemName = inspoRoute.params?.focusShopItemName;
     useFocusEffect(
@@ -564,7 +507,7 @@ const InspoScreen = () => {
     }, [flashSaveToast, t]);
 
     const isShopEmpty = syncedShopItems.length === 0;
-    const isInitialShopLoad = isShopEmpty && shopCatalogLoading;
+    const isInitialShopLoad = isShopEmpty && shopCatalogLoading && !guideShopItem;
     const showingFallbackCatalog = isShopEmpty && !shopCatalogLoading && !deferredSearchQuery.trim();
 
     // Deferred so typing stays responsive: the TextInput keeps the immediate
@@ -582,13 +525,20 @@ const InspoScreen = () => {
         const seenIds = new Set(baseItems.map((item) => item.id));
         const classicsToAppend = CLASSIC_MENS_ITEMS.filter((item) => !seenIds.has(item.id));
         let sourceItems = [...baseItems, ...classicsToAppend];
+        if (guideShopItem && !sourceItems.some(item => item.id === guideShopItem.id)) {
+            sourceItems = [guideShopItem, ...sourceItems];
+        }
 
         if (showSavedOnly) {
             const savedIds = new Set(savedInspo.map((s) => String(s.id)));
             sourceItems = sourceItems.filter((item) => savedIds.has(String(item.id)));
         }
 
-        const query = deferredSearchQuery.trim().toLowerCase();
+        // The deferred query may still contain the previous search for one render
+        // after a guide tap. Keep the selected item visible immediately.
+        const query = focusedShopItemId && !searchQuery.trim()
+            ? ''
+            : (searchQuery !== deferredSearchQuery ? searchQuery : deferredSearchQuery).trim().toLowerCase();
         if (!query) {
             // Deep-linked piece from an outfit: lift it to the top so the
             // user lands exactly on what they tapped.
@@ -605,7 +555,7 @@ const InspoScreen = () => {
             const haystack = `${item.brand} ${item.name} ${item.description ?? ''}`.toLowerCase();
             return haystack.includes(query);
         });
-    }, [deferredSearchQuery, showingFallbackCatalog, syncedShopItems, showSavedOnly, savedInspo, focusedShopItemId]);
+    }, [deferredSearchQuery, showingFallbackCatalog, syncedShopItems, showSavedOnly, savedInspo, focusedShopItemId, guideShopItem, searchQuery]);
 
     // ── FlatList helpers for the shop grid ────────────────────────────────────
     const savedInspoSet = useMemo(
@@ -753,7 +703,7 @@ const InspoScreen = () => {
     const renderShopHeader = useCallback(() => (
         <>
             {/* Personal Stylist Button */}
-            <Animated.View entering={FadeInDown.delay(80).duration(400)}>
+            <Animated.View entering={FadeInDown.duration(120)}>
                 <TouchableOpacity
                     style={styles.personalStylistButton}
                     onPress={() => {
@@ -796,7 +746,7 @@ const InspoScreen = () => {
                 </View>
             )}
 
-            <Animated.View entering={FadeInDown.delay(140).duration(400)}>
+            <Animated.View entering={FadeInDown.duration(120)}>
                 <View style={styles.searchContainer}>
                     <Ionicons name="search" size={20} color={colors.text.tertiary} style={styles.searchIcon} />
                     <TextInput
@@ -805,7 +755,10 @@ const InspoScreen = () => {
                         value={searchQuery}
                         onChangeText={(value) => {
                             setSearchQuery(value);
-                            if (value.trim().length > 0) setFocusedShopItemId(null);
+                            if (value.trim().length > 0) {
+                                setFocusedShopItemId(null);
+                                setGuideShopItem(null);
+                            }
                         }}
                         style={styles.searchInput}
                         returnKeyType="search"
@@ -816,7 +769,7 @@ const InspoScreen = () => {
             </Animated.View>
 
             {(shopCatalogError || showingFallbackCatalog) && (
-                <Animated.View entering={FadeInDown.delay(160).duration(300)}>
+                <Animated.View entering={FadeInDown.duration(120)}>
                     <View style={styles.catalogStatusBanner}>
                         <ScaledText style={styles.catalogStatusText}>
                             {showingFallbackCatalog
@@ -872,30 +825,20 @@ const InspoScreen = () => {
     const shopHeaderElement = useMemo(() => renderShopHeader(), [renderShopHeader]);
     const shopFooterElement = useMemo(() => shopListFooter(), [shopListFooter]);
 
-    // Goal of the Guide tab: see a look, shop it — immediately, not by
-    // dropping the user into the unrelated full catalog. A capsule/hero with
-    // an admin-set link goes straight there; an outfit that's a real shop
-    // item goes straight to buying it; only a look with neither falls back
-    // to the Shop tab, since there's nowhere more specific to send it.
-    const handleGuideCardPress = useCallback((item: any) => {
+    const handleGuideCardPress = useCallback((item: { title: string; subtitle: string; image: string; brand: string }) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-        if (item?.linkUrl) {
-            Linking.canOpenURL(item.linkUrl)
-                .then((canOpen) => {
-                    if (canOpen) Linking.openURL(item.linkUrl);
-                })
-                .catch(() => {});
-            return;
-        }
-
-        if (item?.shopItem) {
-            handleBuyPress(item.shopItem);
-            return;
-        }
-
-        setSegment('shop');
+        setSelectedLook(item);
     }, []);
+
+    const browseLookBrand = useCallback(() => {
+        if (!selectedLook) return;
+        setGuideShopItem(null);
+        setFocusedShopItemId(null);
+        setShowSavedOnly(false);
+        setSearchQuery(selectedLook.brand);
+        setSelectedLook(null);
+        setSegment('shop');
+    }, [selectedLook]);
 
     type GuideRow =
         | { type: 'hero'; item: any }
@@ -908,10 +851,6 @@ const InspoScreen = () => {
         if (displayGuides.length === 0) return [];
         const rows: GuideRow[] = [];
         let startIdx = 0;
-        if (displayGuides[0]?.category === 'featured') {
-            rows.push({ type: 'hero', item: displayGuides[0] });
-            startIdx = 1;
-        }
         let plate = 1;
         for (let i = startIdx; i < displayGuides.length; i += 2) {
             const left = displayGuides[i];
@@ -931,13 +870,13 @@ const InspoScreen = () => {
         if (row.type === 'hero') {
             const { item } = row;
             return (
-                <Animated.View entering={FadeInDown.delay(100).duration(400)}>
+                <Animated.View entering={FadeInDown.duration(120)}>
                     <TouchableOpacity
                         style={styles.guideCardContainer}
                         activeOpacity={0.92}
                         onPress={() => handleGuideCardPress(item)}
                         accessibilityRole="button"
-                        accessibilityLabel={`${item.title}. ${t('inspo.shopThisLook')}`}
+                        accessibilityLabel={`${item.title}. ${t('inspo.viewLook')}`}
                     >
                         <View style={styles.guideCard}>
                             <CachedImage
@@ -964,9 +903,8 @@ const InspoScreen = () => {
 
         const [left, right] = row.items;
         const [leftPlate, rightPlate] = row.plates;
-        const delay = Math.min(120 + (index % 6) * 60, 420);
         return (
-            <Animated.View entering={FadeInDown.delay(delay).duration(380)}>
+            <Animated.View entering={FadeInDown.duration(120)}>
                 <View style={styles.guideGridRow}>
                     <GuideGridCard item={left} plate={leftPlate} onPress={handleGuideCardPress} t={t} />
                     {right ? (
@@ -987,6 +925,27 @@ const InspoScreen = () => {
 
     return (
         <View style={styles.container}>
+            <Modal visible={!!selectedLook} animationType="slide" onRequestClose={() => setSelectedLook(null)}>
+                <SafeAreaView style={styles.lookScreen}>
+                    <View style={styles.lookHeader}>
+                        <TouchableOpacity onPress={() => setSelectedLook(null)} accessibilityRole="button" accessibilityLabel={t('common.close')} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                            <Ionicons name="close" size={28} color="#0A1931" />
+                        </TouchableOpacity>
+                        <ScaledText style={styles.lookHeaderTitle}>{t('inspo.fullLook', 'The look')}</ScaledText>
+                        <View style={{ width: 28 }} />
+                    </View>
+                    <ScrollView contentContainerStyle={styles.lookContent}>
+                        <CachedImage uri={selectedLook?.image || ''} style={styles.lookImage} contentFit="contain" fadeIn={false} />
+                        <ScaledText style={styles.lookTitle}>{selectedLook?.title}</ScaledText>
+                        <ScaledText style={styles.lookSubtitle}>{selectedLook?.subtitle}</ScaledText>
+                        <ScaledText style={styles.lookNote}>{t('inspo.lookShopNote', 'Explore items from this brand in Shop. The exact pieces in this photo may not be available.')}</ScaledText>
+                        <TouchableOpacity style={styles.lookButton} onPress={browseLookBrand} accessibilityRole="button">
+                            <ScaledText style={styles.lookButtonText}>{t('inspo.browseBrandShop', 'Browse this brand in Shop')}</ScaledText>
+                            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+                        </TouchableOpacity>
+                    </ScrollView>
+                </SafeAreaView>
+            </Modal>
             <LinearGradient
                 colors={['#F6FAFF', '#EEF4FF', '#FFFFFF']}
                 style={StyleSheet.absoluteFill}
@@ -1029,12 +988,8 @@ const InspoScreen = () => {
 
                 {segment === 'guide' ? (
                     <>
-                        <ScaledText style={styles.guideTagline}>{t('inspo.guideTagline')}</ScaledText>
-                        {displayGuides.length === 0 && featuredCapsulesLoading ? (
-                            <View style={styles.guideLoadingContainer}>
-                                <ActivityIndicator size="large" color={colors.text.primary} />
-                            </View>
-                        ) : guideRows.length === 0 ? (
+                        <ScaledText style={styles.guideTagline}>{t('inspo.guideViewLooksTagline', 'Discover brand looks. Tap to view the outfit.')}</ScaledText>
+                        {guideRows.length === 0 ? (
                             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                                 <View style={styles.emptyState}>
                                     <ScaledText style={styles.emptyStateText}>{t('inspo.noGuideMatches')}</ScaledText>
@@ -1130,6 +1085,16 @@ const InspoScreen = () => {
 // ── Styles ──────────────────────────────────────
 
 const styles = StyleSheet.create({
+    lookScreen: { flex: 1, backgroundColor: '#F6FAFF' },
+    lookHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12 },
+    lookHeaderTitle: { fontSize: 17, fontWeight: '700', color: '#0A1931' },
+    lookContent: { paddingHorizontal: 20, paddingBottom: 40 },
+    lookImage: { width: '100%', aspectRatio: 1, backgroundColor: '#F1F1EF', borderRadius: 16 },
+    lookTitle: { fontSize: 24, fontWeight: '700', color: '#0A1931', marginTop: 20 },
+    lookSubtitle: { fontSize: 14, color: '#6B7280', marginTop: 5 },
+    lookNote: { fontSize: 14, color: '#606A79', lineHeight: 20, marginTop: 18 },
+    lookButton: { marginTop: 20, borderRadius: 14, backgroundColor: '#0A1931', padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+    lookButtonText: { color: '#FFFFFF', fontWeight: '600', fontSize: 15 },
     container: {
         flex: 1,
         backgroundColor: '#FFFFFF',

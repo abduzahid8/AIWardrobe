@@ -2,10 +2,10 @@
  * useWardrobeLoader — loads wardrobe or shop items for the outfit generator.
  */
 
-import { useState, useEffect, useMemo } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useState, useEffect, useMemo, useSyncExternalStore } from 'react';
 import useWardrobeStore from '../../../store/wardrobeStore';
-import { fetchWardrobeDisplayItems } from '../../../src/services/outfitGenerationService';
+import useAuthStore from '../../../store/auth';
+import { authEvents } from '../../../store/authEvents';
 import { useShopCatalog } from '../../../hooks/useShopCatalog';
 import { getMacroCategory } from './useItemSelection';
 import { detectSlotMismatch } from '../utils/occasionRules';
@@ -13,20 +13,6 @@ import type { WardrobeDisplayItem } from '../types';
 import type { ShopCatalogItem } from '../../../src/types/shop';
 
 const LIVE_SHOP_SOURCE = 'all';
-
-// The shop catalog is fetched from Supabase via useShopCatalog().
-// When that fetch returns zero items (first launch, bad network), we
-// fall back to the empty array below rather than bundling dozens of
-// local PNGs into the IPA like the old scratch implementation did.
-const SHOP_ITEMS_FALLBACK: Array<{
-  id: string;
-  name: string;
-  brand: string;
-  price: number;
-  image: string;
-  type: string;
-  category: string;
-}> = [];
 
 export function mapShopCatalogGarmentTypeToCategory(
   garmentType?: ShopCatalogItem['garmentType'],
@@ -68,109 +54,49 @@ export function mapShopCatalogItemToWardrobeDisplayItem(item: ShopCatalogItem): 
   };
 }
 
+const subscribeAuth = (notify: () => void) => {
+  const login = authEvents.onLogin(notify), logout = authEvents.onLogout(notify);
+  return () => { login(); logout(); };
+};
+
 export function useWardrobeLoader(source: 'wardrobe' | 'shop') {
-  const storeItems = useWardrobeStore((state) => state.items);
-  const [wardrobeItems, setWardrobeItems] = useState<WardrobeDisplayItem[]>([]);
-  const [loading, setLoading] = useState(source === 'shop');
-  const {
-    items: liveShopCatalog,
-    loading: shopCatalogLoading,
-  } = useShopCatalog({
+  const storeItems = useWardrobeStore(state => state.items);
+  const owner = useAuthStore(state => state.session?.user.id);
+  const revision = useSyncExternalStore(subscribeAuth, authEvents.getRevision, authEvents.getRevision);
+  const canRead = Boolean(owner && authEvents.canApplyToUser(owner));
+  const [refreshing, setRefreshing] = useState(false);
+  const { items: liveShopCatalog, loading: shopCatalogLoading } = useShopCatalog({
     source: LIVE_SHOP_SOURCE,
     enabled: source === 'shop',
   });
-  const liveShopItems = useMemo(
-    () => liveShopCatalog.map(mapShopCatalogItemToWardrobeDisplayItem),
-    [liveShopCatalog],
-  );
+  const personalItems = useMemo(() => {
+    if (!canRead) return [];
+    return storeItems.filter(item => item.userId === owner && item.imageUrl).map(item => {
+      const type = item.subCategory || item.category || 'Clothing';
+      const name = item.name || type;
+      const macro = getMacroCategory(item.category, type);
+      return {
+        id: item.id, image: item.imageUrl, type, name,
+        color: item.primaryColor, brand: item.brand, category: item.category,
+        macroCategory: detectSlotMismatch(macro, name, type) ?? macro,
+      };
+    });
+  }, [storeItems, owner, canRead]);
+  const shopItems = useMemo(() => liveShopCatalog.map(mapShopCatalogItemToWardrobeDisplayItem), [liveShopCatalog]);
 
   useEffect(() => {
-    if (source === 'shop') {
-      if (shopCatalogLoading) {
-        setLoading(true);
-        setWardrobeItems([]);
-        return;
-      }
+    if (source !== 'wardrobe' || !owner || !authEvents.canApplyToUser(owner)) return;
+    let active = true;
+    setRefreshing(true);
+    // Reuse the app's paginated, account-scoped sync with its TTL and shared
+    // request. Store updates render directly instead of launching another fetch.
+    void useWardrobeStore.getState().rehydrateFromCloud(false)
+      .catch(() => { /* Retain current owner's cached choices while offline. */ })
+      .finally(() => { if (active) setRefreshing(false); });
+    return () => { active = false; };
+  }, [source, owner, revision]);
 
-      setWardrobeItems(liveShopItems);
-      setLoading(false);
-      return;
-    }
-
-    loadItems();
-  }, [liveShopItems, shopCatalogLoading, source, storeItems]);
-
-  const loadItems = async () => {
-    try {
-      setLoading(true);
-      if (source === 'shop') {
-        setWardrobeItems(liveShopItems);
-        return;
-      }
-
-      // Primary: fetch directly from Supabase DB
-      const dbItems = await fetchWardrobeDisplayItems();
-      if (dbItems.length > 0) {
-        setWardrobeItems(dbItems.map(item => ({
-          id: item.id,
-          image: item.imageUrl,
-          type: item.type,
-          color: item.color,
-          name: item.name,
-          // Repair mistagged slots (trousers under Tops) from the name.
-          macroCategory: detectSlotMismatch(item.macroCategory, item.name || item.type || '', item.type) ?? item.macroCategory,
-          category: item.category,
-        })));
-        return;
-      }
-
-      // Fallback: merge store + AsyncStorage items
-      const data = await AsyncStorage.getItem('myWardrobeItems');
-      const localItems = data ? JSON.parse(data) : [];
-      const normalizedStoreItems = storeItems.map((item) => ({
-        id: item.id,
-        image: item.imageUrl,
-        type: item.subCategory || item.category,
-        color: item.primaryColor,
-        name: item.name,
-      }));
-      const mergedByImage = new Map<string, any>();
-      [...localItems, ...normalizedStoreItems].forEach((item: any) => {
-        const image = item?.image || item?.imageUrl;
-        if (!image) return;
-        mergedByImage.set(String(image), item);
-      });
-      const personalItems = Array.from(mergedByImage.values());
-      const existingIds = new Set(personalItems.map((i: any) => String(i.id || i.uniqueId || i.image || '')));
-      const mergedItems = [
-        ...SHOP_ITEMS_FALLBACK.filter(s => !existingIds.has(String(s.id))),
-        ...personalItems,
-      ];
-      const normalized: WardrobeDisplayItem[] = mergedItems.map((item: any, index: number) => {
-        const resolvedType = item.type || item.itemType || item.subCategory || item.category || 'Clothing Piece';
-        const resolvedName = item.name || resolvedType;
-        const resolvedCategory = item.category || item.itemType || item.subCategory || '';
-
-        return {
-          ...item,
-          id: String(item.id || item.uniqueId || `uniq_item_${index}_${resolvedType || 'unknown'}`),
-          image: item.image || item.imageUrl,
-          type: resolvedType,
-          name: resolvedName,
-          category: resolvedCategory,
-          macroCategory:
-            item.macroCategory ||
-            getMacroCategory(resolvedCategory || resolvedType, resolvedName),
-        };
-      }).filter((item) => item.image);
-
-      setWardrobeItems(normalized);
-    } catch (e) {
-      console.error('Failed to load wardrobe', e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  const wardrobeItems: WardrobeDisplayItem[] = source === 'shop' ? shopItems : personalItems;
+  const loading = wardrobeItems.length === 0 && (source === 'shop' ? shopCatalogLoading : canRead && refreshing);
   return { wardrobeItems, loading };
 }

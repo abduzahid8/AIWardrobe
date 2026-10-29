@@ -110,6 +110,20 @@ export function useOutfitCalendar() {
     const loadWardrobeItems = useCallback(async () => {
         const revision = authEvents.getRevision();
         try {
+            // Show already hydrated, explicitly owned choices before waiting on
+            // the network. A confirmed server response still replaces this cache.
+            const auth = require('../../../store/auth').default.getState();
+            const owner = auth.session?.user.id;
+            if (owner && authEvents.canApplyToUser(owner)) {
+                const cache: { items: import('../../../src/types/domain').ClothingItem[] } =
+                    require('../../../store/wardrobeStore').default.getState();
+                const cached = cache.items.filter(item => item.userId === owner);
+                setWardrobeItems(cached.map(item => ({
+                    id: item.id, type: item.subCategory || item.category || '',
+                    image: item.imageUrl || '', imageUrl: item.imageUrl || '',
+                    color: item.primaryColor || '', name: item.name || '', category: item.category || '',
+                })));
+            }
             let items = await fetchItemsFromServer();
             if (revision !== authEvents.getRevision()) return;
             if (items === null) {

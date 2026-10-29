@@ -10,12 +10,15 @@ if (!service) throw new Error('Temporary-account setup credential missing');
 const admin = { apikey: service, Authorization: `Bearer ${service}`, 'Content-Type': 'application/json' };
 const users = [];
 const durationSec = Number(process.env.LOAD_DURATION_SEC || 120);
+const rps = Number(process.env.LOAD_RPS || 40);
+const reportName = process.env.LOAD_REPORT_NAME || (process.env.LOAD_WORKLOAD === 'app' ? 'production-app-read-soak.json' : 'production-populated-load.json');
+if (![0.2, 2, 4, 40].includes(rps) || !/^[a-z0-9-]+\.json$/.test(reportName)) throw new Error('Unsupported bounded load configuration');
 const workload = process.env.LOAD_WORKLOAD || 'lightweight';
 if (![120, 600].includes(durationSec) || !['lightweight', 'app'].includes(workload)) throw new Error('Unsupported bounded load configuration');
 const controller = new AbortController();
 process.once('SIGINT', () => controller.abort());
 const emit = value => process.stdout.write(JSON.stringify(value) + '\n');
-const report = { measuredAt: new Date().toISOString(), scope: 'Production: 20 temporary users, 50 wardrobe items and 5 saved outfits each; read-only traffic after fixture setup; excludes AI, image delivery and uploads', fixtureUsers: 20, wardrobeItemsPerUser: 50, savedOutfitsPerUser: 5, cleanup: [] };
+const report = { measuredAt: new Date().toISOString(), scope: 'Production: 20 temporary free users, 20 wardrobe items and 5 saved outfits each; read-only traffic after fixture setup; excludes AI, image delivery and uploads', fixtureUsers: 20, wardrobeItemsPerUser: 20, savedOutfitsPerUser: 5, cleanup: [] };
 async function call(path, headers, method = 'GET', body) {
   const response = await fetch(new URL(path, baseUrl), { method, headers, ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(20000), redirect: 'error' });
   let data; try { data = await response.json(); } catch { data = null; }
@@ -35,7 +38,10 @@ try {
     const headers = { apikey: apiKey, Authorization: `Bearer ${user.accessToken}`, 'Content-Type': 'application/json' };
     const items = Array.from({ length: report.wardrobeItemsPerUser }, (_, n) => ({ id: randomUUID(), user_id: user.id, category: ['top', 'bottom', 'shoes'][n % 3], name: 'Readiness capacity fixture', image_url: 'https://example.invalid/readiness-fixture.jpg' }));
     const wardrobe = await call('/rest/v1/clothing_items', headers, 'POST', items);
-    if (!wardrobe.ok) throw new Error(`fixture_wardrobe_http_${wardrobe.status}`);
+    if (!wardrobe.ok) {
+      report.fixtureErrorCode = typeof wardrobe.data?.code === 'string' && /^[A-Z0-9]{5,10}$/.test(wardrobe.data.code) ? wardrobe.data.code : null;
+      throw new Error(`fixture_wardrobe_http_${wardrobe.status}`);
+    }
     const outfits = await call('/rest/v1/saved_outfits', headers, 'POST', Array.from({ length: report.savedOutfitsPerUser }, () => ({ id: randomUUID(), user_id: user.id, items: items.slice(0, 3).map(item => ({ id: item.id, category: item.category })), name: 'Readiness capacity fixture' })));
     if (!outfits.ok) throw new Error(`fixture_outfit_http_${outfits.status}`);
     if ((i + 1) % 5 === 0) emit({ stage: 'fixture_setup', usersReady: i + 1 });
@@ -46,7 +52,7 @@ try {
     report.preflight = { completed: preflight.completed, failedRequests: preflight.failedRequests, statuses: preflight.statuses, failures: preflight.failures, passed: preflight.completed === 4 && preflight.failedRequests === 0 && preflight.dropped === 0 };
     if (!report.preflight.passed) throw new Error('App read preflight failed');
   }
-  report.load = await runLoad({ baseUrl, apiKey, users, rps: 40, durationSec, workload, signal: controller.signal, onProgress: progress => emit({ stage: 'load_progress', ...progress }) });
+  report.load = await runLoad({ baseUrl, apiKey, users, rps, durationSec, workload, signal: controller.signal, onProgress: progress => emit({ stage: 'load_progress', ...progress }) });
   if (!report.load.passed) process.exitCode = 1;
 } catch (error) {
   report.failure = /^[a-z_]+_http_\d+$/.test(error.message) ? error.message : error.name;
@@ -65,6 +71,6 @@ try {
     report.cleanup.push({ temporaryUserDeleted: deleted, status: removed.status });
     if (!deleted) process.exitCode = 1;
   }
-  await writeFile(new URL(workload === 'app' ? '../../docs/reports/readiness-evidence/production-app-read-soak.json' : '../../docs/reports/readiness-evidence/production-populated-load.json', import.meta.url), JSON.stringify(report, null, 2));
+  await writeFile(new URL(`../../docs/reports/readiness-evidence/${reportName}`, import.meta.url), JSON.stringify(report, null, 2));
   emit(report);
 }

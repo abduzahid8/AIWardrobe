@@ -32,14 +32,8 @@ const ROTATION_DEG = 10;
 const CAPTION_BAR_HEIGHT = 52;
 // Current card + the two peeking behind it, plus one more so the card that's
 // about to become "back" is already warm before it's ever rendered.
-// The back card mounts immediately but was historically never prefetched
-// (lookahead covered top+mid only), so every swipe revealed a mid card on
-// top of a back card whose full-res photos were still downloading — the
-// perpetual "wait 2-4s until everything loads". The old 4-ahead storm is
-// gone now that `cards` is a stable memo (the effect below also depends on
-// a content signature, not the array identity), and the dedupe set bounds
-// each run to only genuinely new URIs — at most one card's worth per swipe.
-const PREFETCH_LOOKAHEAD = 4;
+// Each swipe warms the next card as it enters this window.
+const PREFETCH_LOOKAHEAD = 2;
 // Bound the dedupe set so it can't grow unbounded across account switches
 // (delete -> create reuses the same component instance in some navigations).
 const MAX_PREFETCHED_URIS = 200;
@@ -163,7 +157,7 @@ export const OutfitSwipeStack = forwardRef<OutfitSwipeStackHandle, OutfitSwipeSt
       // itself re-requested URIs that <ExpoImage> was already decoding on
       // screen, which raced the on-screen decode and made the current piece
       // blink blank mid-load ("shows up, disappears, reappears"). The top
-      // card's tiles are already mounted — warm only mid/back + one extra.
+      // card's tiles are already mounted — warm only mid/back.
       cards.slice(activeIndex + 1, activeIndex + 1 + PREFETCH_LOOKAHEAD).forEach((card) => {
         card.items.forEach((item) => {
           if (typeof item.image !== 'string' || !item.image) return;
@@ -185,7 +179,7 @@ export const OutfitSwipeStack = forwardRef<OutfitSwipeStackHandle, OutfitSwipeSt
     }, [cardsSignature, activeIndex]);
 
     const springConfig = reducedMotion ? SPRING_BACK_REDUCED : SPRING_BACK;
-    const flyDuration = reducedMotion ? 0 : 240;
+    const flyDuration = reducedMotion ? 0 : 160;
 
     const resetRejected = () => {
       busyRef.current = false;

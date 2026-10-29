@@ -1,6 +1,6 @@
 import { responseDiagnostics, timingSummary } from './http-diagnostics.mjs';
 import { performance, monitorEventLoopDelay } from 'node:perf_hooks';
-export async function runWearWrites({ baseUrl, apiKey, users, rps = 40, durationSec = 120, maxInflight = 100, fetchImpl = fetch, onProgress, signal }) {
+export async function runWearWrites({ baseUrl, apiKey, users, rps = 40, durationSec = 120, maxInflight = 100, fetchImpl = fetch, onProgress, onFailure, signal }) {
   if (!/^https?:\/\//.test(baseUrl) || !apiKey || !users?.length
     || users.some(user => !user.id || !user.accessToken || !user.itemId || !user.logIds?.length)) throw new Error('Incomplete write fixtures');
   for (const value of [rps, durationSec, maxInflight]) if (!Number.isFinite(value) || value <= 0) throw new Error('Invalid load settings');
@@ -49,6 +49,7 @@ export async function runWearWrites({ baseUrl, apiKey, users, rps = 40, duration
       errorTypes[errorType] = (errorTypes[errorType] || 0) + 1;
       const reason = /^(http_\d+|invalid_write_confirmation|FixtureRangeError)$/.test(error.message) ? error.message : 'transport_or_decode';
       failures[reason] = (failures[reason] || 0) + 1;
+      onFailure?.(reason);
       if (failureDetails.length < 10) failureDetails.push({ requestIndex: index, stage, startedAt: requestStartedAt, ...responseInfo,
         errorType,
         ...(typeof error.cause?.code === 'string' && /^[A-Z0-9_]+$/.test(error.cause.code) ? { causeCode: error.cause.code } : {}),
@@ -61,7 +62,7 @@ export async function runWearWrites({ baseUrl, apiKey, users, rps = 40, duration
     if (delay > 0) await new Promise(resolve => setTimeout(resolve, delay));
     if (signal?.aborted) break;
     maxScheduleLagMs = Math.max(maxScheduleLagMs, performance.now() - started - index * 1000 / rps);
-    if (pending.size >= maxInflight) { dropped++; continue; }
+    if (pending.size >= maxInflight) { dropped++; onFailure?.('dropped'); continue; }
     const task = execute(index).finally(() => pending.delete(task)); pending.add(task);
     if (onProgress && performance.now() - progressAt - started >= 30000) {
       progressAt = performance.now() - started;
@@ -71,9 +72,10 @@ export async function runWearWrites({ baseUrl, apiKey, users, rps = 40, duration
   await Promise.all(pending);
   eventLoop.disable();
   const elapsedSec = (performance.now() - started) / 1000;
+  const measurementWindowSec = Math.max(elapsedSec, durationSec);
   latencies.sort((a, b) => a - b);
   const percentile = value => latencies.length ? latencies[Math.min(latencies.length - 1, Math.ceil(value * latencies.length) - 1)] : null;
-  const result = { startedAt, completedAt: new Date().toISOString(), timingMs: {headers:timingSummary(headerTimes),body:timingSummary(bodyTimes)}, planned, completed, failed, dropped, elapsedSec, achievedRps: completed / elapsedSec, statuses, failures, failureDetails,
+  const result = { startedAt, completedAt: new Date().toISOString(), timingMs: {headers:timingSummary(headerTimes),body:timingSummary(bodyTimes)}, planned, completed, failed, dropped, elapsedSec, achievedRps: completed / measurementWindowSec, statuses, failures, failureDetails,
     latencyMs: { p50: percentile(.5), p95: percentile(.95), p99: percentile(.99) }, aborted: Boolean(signal?.aborted),
     diagnostics: { errorTypes, tenSecondWindows: perWindow, maxScheduleLagMs, wallElapsedMs: Date.now() - wallStarted,
       eventLoopDelayMs: { mean: Number.isFinite(eventLoop.mean) ? eventLoop.mean / 1e6 : null, max: eventLoop.max / 1e6 },

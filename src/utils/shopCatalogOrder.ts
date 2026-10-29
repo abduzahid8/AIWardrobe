@@ -358,6 +358,9 @@ const BRAND_CDN_RE = /massimodutti\.net|static\.zara\.net|uniqlo\.com|suitsupply
 export function isTrustedProductImage(url?: string | null): boolean {
     const raw = String(url || '').trim();
     if (!/^https?:\/\//i.test(raw)) return false;
+    // AllSaints' gallery selector ends in .json but serves an actual image.
+    // Keep this scoped to its official image route, not arbitrary JSON URLs.
+    if (/^https:\/\/media\.i\.allsaints\.com\/image\/(?:list|upload)\//i.test(raw)) return true;
     if (IMAGE_EXT_RE.test(raw)) return true;
     if (BRAND_CDN_RE.test(raw)) return true;
     return false;

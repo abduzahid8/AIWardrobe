@@ -127,3 +127,13 @@ test('a read started before a successful save cannot erase the newly saved day',
   await act(async()=>{finish('{}');await old;});expect(result.current.outfitLogs['2099-01-01']).toBeDefined();
  }finally{read.mockImplementation(originalCalendarRead);}
 });
+
+test('cached owned choices appear while the server request is still pending', async () => {
+  let finish!: (items: ClothingItem[]) => void;
+  fetchItems.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+  const { result } = renderHook(() => useOutfitCalendar());
+  act(() => { focus(); });
+  expect(result.current.wardrobeItems.map(item => item.id)).toEqual(['owned-offline']);
+  await act(async () => { finish([]); });
+  expect(result.current.wardrobeItems).toEqual([]);
+});

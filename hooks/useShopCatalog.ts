@@ -326,11 +326,14 @@ export function useShopCatalog({
     const searchRef = useRef(search);
     searchRef.current = search;
     const requestVersion = useRef(0);
-    const [items, setItems]           = useState<ShopCatalogItem[]>([]);
-    const [loading, setLoading]       = useState(true);
+    const [items, setItems]           = useState<ShopCatalogItem[]>(() =>
+        enabled ? catalogCache.get(cacheKey(source, category, search))?.items ?? [] : []);
+    const [loading, setLoading]       = useState(() =>
+        enabled && !catalogCache.has(cacheKey(source, category, search)));
     const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError]           = useState<string | null>(null);
-    const [hasMore, setHasMore]       = useState(true);
+    const [hasMore, setHasMore]       = useState(() =>
+        enabled && (catalogCache.get(cacheKey(source, category, search))?.hasMore ?? true));
     const pageRef                     = useRef(0);
     const categoryRef                 = useRef(category);
     const sourceRef                   = useRef(source);

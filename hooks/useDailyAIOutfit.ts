@@ -22,13 +22,13 @@ const MAX_WARMED_URIS = 400;
  * memory-disk cache at deck-set time — BEFORE the tiles mount. Previously
  * the top card's images only started downloading when its tiles mounted,
  * serializing network after render (≈0.5–1.5s of blank/pop-in tiles on
- * mobile data). Warming the first 2 cards (≤8 http URIs) overlaps download
+ * mobile data). Warming the first card (≤4 http URIs) overlaps download
  * with the render pass; the swipe stack's own lookahead warms the rest.
  * Content and quality are untouched — this only moves the same downloads
  * earlier. Never throws, never blocks, no-op when expo-image is unavailable
  * (e.g. jest).
  */
-function warmDeckImages(outfits: GeneratedOutfit[], cardCount = 2): void {
+function warmDeckImages(outfits: GeneratedOutfit[], cardCount = 1): void {
     try {
         const prefetch = (ExpoImage as unknown as { prefetch?: unknown })?.prefetch;
         if (typeof prefetch !== 'function') return;
@@ -113,6 +113,8 @@ export function useDailyAIOutfit({ style, occasion, weather, variants = 3, enabl
     const epochRef = useRef(0);
     const mountedRef = useRef(false);
     const inFlightRef = useRef<Promise<void> | null>(null);
+    const loadedKeyRef = useRef<string | null>(null);
+    const identityRef = useRef<string | null>(null);
     const count = Math.min(15, Math.max(1, Math.floor(variants) || 3));
 
     const run = useCallback((force: boolean): Promise<void> => {
@@ -137,6 +139,7 @@ export function useDailyAIOutfit({ style, occasion, weather, variants = 3, enabl
                         // A smaller valid deck stays useful. Never fabricate more cards
                         // or repeatedly regenerate it just to fill a carousel quota.
                         if (cached.length) {
+                            loadedKeyRef.current = `${key}:${dateKey}:${count}`;
                             setOutfits(cached);
                             recordShownOutfits(cached, userId);
                             warmDeckImages(cached);
@@ -159,6 +162,7 @@ export function useDailyAIOutfit({ style, occasion, weather, variants = 3, enabl
                 if (!result.success) throw new Error(result.errorTranslationKey || result.error || 'stylist_generation_failed');
                 const fresh = validatedDailyOutfits(result.outfits, style, occasion, context.weather).slice(0, count);
                 if (!fresh.length) throw new Error('no_valid_outfits_for_request');
+                loadedKeyRef.current = `${key}:${dateKey}:${count}`;
                 setOutfits(fresh);
                 recordShownOutfits(fresh, userId);
                 warmDeckImages(fresh);
@@ -184,16 +188,25 @@ export function useDailyAIOutfit({ style, occasion, weather, variants = 3, enabl
         mountedRef.current = true;
         epochRef.current++;
         inFlightRef.current = null;
-        setOutfits([]);
-        setError(null);
+        const identity = userId ? `${dailyOutfitCacheKey(userId, style, occasion)}:${count}` : null;
+        if (identityRef.current !== identity) {
+            identityRef.current = identity;
+            loadedKeyRef.current = null;
+            setOutfits([]);
+            setError(null);
+        }
         setLoading(false);
-        void run(false);
+        // Focus changes cancel pending work, but a loaded deck remains visible
+        // and retains its swipe position when the user returns to Home.
+        if (enabled && identity && loadedKeyRef.current !== `${dailyOutfitCacheKey(userId!, style, occasion)}:${todayKey()}:${count}`) {
+            void run(false);
+        }
         return () => {
             mountedRef.current = false;
             epochRef.current++;
             inFlightRef.current = null;
         };
-    }, [run]);
+    }, [run, enabled, userId, style, occasion, count]);
 
     const regenerate = useCallback(() => run(true), [run]);
     return { outfits, loading, error, regenerate };

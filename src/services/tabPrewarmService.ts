@@ -18,7 +18,7 @@
  */
 
 
-import { supabase } from '../../lib/supabase';
+import { getCachedGuideContent, loadGuideContent } from './guideContent';
 import {
     prefetchShopCatalog,
     getCachedShopCatalog,
@@ -27,38 +27,24 @@ import { prefetchFeaturedCapsules } from '../../hooks/useFeaturedCapsules';
 import useWardrobeStore from '../../store/wardrobeStore';
 import { createLogger } from '../utils/logger';
 import { ExpoImage } from '../components/MediaImage';
+import { loadStylistCatalogInventory } from './stylistCatalogInventory';
 
 
 const logger = createLogger('TabPrewarm');
 
 let dataPrewarmed = false;
 let imagesPrewarmed = false;
-let guideHeroCache: { data: any; fetchedAt: number } | null = null;
-const GUIDE_HERO_TTL_MS = 5 * 60 * 1000;
 
 const isValidImageUrl = (v: unknown): v is string =>
     typeof v === 'string' && v.length > 0 && v.startsWith('http');
 
 /** InspoScreen checks this before firing its own `guide_page` query. */
-export function getPrewarmedGuideHero(): any | null {
-    if (guideHeroCache && Date.now() - guideHeroCache.fetchedAt <= GUIDE_HERO_TTL_MS) {
-        return guideHeroCache.data;
-    }
-    return null;
+export function getPrewarmedGuideHero() {
+    return getCachedGuideContent();
 }
 
 async function prewarmGuideHero(): Promise<void> {
-    try {
-        if (getPrewarmedGuideHero()) return;
-        const { data } = await supabase
-            .from('guide_page')
-            .select('*')
-            .eq('is_active', true)
-            .single();
-        if (data) guideHeroCache = { data, fetchedAt: Date.now() };
-    } catch {
-        // Non-critical — InspoScreen fetches on mount as before.
-    }
+    try { await loadGuideContent(); } catch { /* The guide can retry on open. */ }
 }
 
 async function prewarmImages(): Promise<void> {
@@ -103,6 +89,10 @@ const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
  */
 export async function prewarmTabs(): Promise<void> {
     if (dataPrewarmed && imagesPrewarmed) return;
+
+    // The stylist's balanced inventory is independent of the generic shop page.
+    // Start it before navigation so verified categories are ready on first open.
+    void loadStylistCatalogInventory().catch(() => {});
 
     try {
         // Step 1: data — parallel small queries, one flight each.

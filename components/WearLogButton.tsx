@@ -49,13 +49,13 @@ const WearLogButton: React.FC<WearLogButtonProps> = ({
     const logWear = useWardrobeStore((state) => state.logWear);
     const streak = useWardrobeStore((state) => state.streak);
 
-    const handlePress = useCallback(async () => {
+    const handlePress = useCallback(() => {
         if (isLogged || isLogging) return;
 
         setIsLogging(true);
 
         // Haptic feedback
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
 
         // Bounce animation
         scale.value = withSequence(

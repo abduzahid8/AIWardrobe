@@ -74,3 +74,7 @@ test('unknown failure diagnostics retain only a bounded category and status',asy
   expect(JSON.stringify(warn.mock.calls)).not.toContain(privateValue);
  } finally {warn.mockRestore()}
 });
+
+ test.each(['FunctionsFetchError', 'FunctionsRelayError'])('%s gives connection guidance', async name => {
+  expect((await outfitGenerationFailure(null, {name})).translationKey).toBe('outfitMaker.connectionFailed');
+ });

@@ -1,0 +1,103 @@
+{
+  "measuredAt": "2026-10-28T18:07:06.800Z",
+  "scope": "One real hosted Old Money/Work shopping request, no weather or entered budget, limit 1. Controlled catalog pool; not exact screenshot account or capacity proof.",
+  "checks": [
+    {
+      "name": "all_three_catalog_slots_available",
+      "passed": true
+    },
+    {
+      "name": "usable_outfits_returned",
+      "passed": true
+    },
+    {
+      "name": "every_outfit_passes_structure_and_style",
+      "passed": true
+    },
+    {
+      "name": "every_item_matches_authoritative_active_catalog",
+      "passed": true
+    }
+  ],
+  "requestedLimit": 1,
+  "requireFullDeck": false,
+  "fixtureUserId": "6ee09820-e4d8-4180-9bd0-6c83a15904d1",
+  "candidateCount": 31,
+  "response": {
+    "status": 200,
+    "latencyMs": 10529,
+    "code": null,
+    "error": null,
+    "source": "ai",
+    "diversity": {
+      "activeSlots": [
+        "outerwear",
+        "top",
+        "bottom",
+        "shoes"
+      ],
+      "strictSlots": [
+        "outerwear",
+        "top",
+        "bottom",
+        "shoes"
+      ],
+      "forcedRepeatSlots": []
+    },
+    "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+    "providerAttempts": [
+      {
+        "provider": "nvidia",
+        "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+        "status": "ok"
+      }
+    ],
+    "outfitCount": 1
+  },
+  "supplementedIds": [
+    "allsaints-usm133of-10715",
+    "armani_exchange-xm002089_af11882_u0009"
+  ],
+  "outfits": [
+    {
+      "items": [
+        {
+          "id": "shop_allsaints-usm085kb-5",
+          "name": "Mode Merino Wool Long-Sleeve Polo Shirt",
+          "macroCategory": "top",
+          "price": 149,
+          "currency": "USD"
+        },
+        {
+          "id": "shop_allsaints-usm133of-10715",
+          "name": "Coltra Double-Breasted Wool Trench Coat",
+          "macroCategory": "outerwear",
+          "price": 789,
+          "currency": "USD"
+        },
+        {
+          "id": "shop_armani_exchange-xm002089_af11882_u0009",
+          "name": "Classic Comfort Cotton Twill Trousers",
+          "macroCategory": "bottom",
+          "price": 1660674,
+          "currency": "UZS"
+        },
+        {
+          "id": "shop_thursday-8086847258714",
+          "name": "Saint | Cognac",
+          "macroCategory": "shoes",
+          "price": 188,
+          "currency": "USD"
+        }
+      ],
+      "structureReason": null,
+      "styleReason": null
+    }
+  ],
+  "exactRequestedReturned": true,
+  "cleanup": {
+    "sessionsRevoked": true,
+    "ownerDeleted": true
+  },
+  "passed": true
+}
