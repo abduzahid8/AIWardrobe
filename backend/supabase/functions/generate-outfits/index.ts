@@ -2862,9 +2862,8 @@ serve(async (req: Request) => {
         // prompt. This is what turns "mostly on-style" into "reliably on-style".
         const itemMap = new Map<string, any>(wardrobeItems.map((i: any) => [String(i.id), i] as [string, any]))
         let verifiedChoiceFallback: any[] = []
-        async function generateCuratedChoices(): Promise<any[] | null> {
         const requiredChoiceIds = [...new Set([...(selectedItemIds || []), ...(anchorItemId && (!isShopOnlyDeck(stylePreferences, occasion) || !!anchorItemId) ? [anchorItemId] : [])])].map(String)
-        let choices = outfitChoices(wardrobeItems, layered, parts => {
+        const acceptsCompleteChoice = (parts: any[]): boolean => {
             if (fourSlotOutfitReason(parts, layered) || styleJudgeReason(parts, styleKey, `${occasion} ${prompt}`, weather, anchorItemId)) return false
             const proposal = {items: parts}
             if (!validateOutfitAgainstStyle(proposal, styleKey, itemMap, layered, preferences).ok || !validateOutfitCompatibility(proposal, itemMap, styleKey).ok) return false
@@ -2874,7 +2873,12 @@ serve(async (req: Request) => {
             if (shopOnly && parts.some(item => !isShopRow(item))) return false
             if (!shopOnly && wardrobeItems.some((item:any) => !isShopRow(item)) && parts.every(item => isShopRow(item))) return false
             return true
-        }, isDressGarment, requiredChoiceIds, 64, 12000)
+        }
+        // Keep one-product alternatives for the joint deck selector: pruning
+        // them greedily can remove the only compatible third look.
+        const completeChoices = () => outfitChoices(wardrobeItems, layered, acceptsCompleteChoice, isDressGarment, requiredChoiceIds, 64, 12000, deckTarget === 3 ? 1 : 2)
+        async function generateCuratedChoices(): Promise<any[] | null> {
+        let choices = completeChoices()
         if (!choices.length) return null
         // Resolve product compatibility jointly BEFORE asking the model to rank.
         // A five-look shortlist can omit the only compatible third card, while
@@ -3059,6 +3063,10 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
             }
                 }
 
+        if (!aiOutfits?.length && deckTarget === 3) {
+            aiOutfits = completeChoices().map(choice => ({items: choice.items, description: `${selectionStyle} outfit`, stylingTips: [], confidence: 0.8}))
+            if (aiOutfits.length) generationSource = 'deterministic_fallback'
+        }
         if (!aiOutfits?.length) return new Response(JSON.stringify({ success: false, error: 'ai_generation_unavailable', outfits: [], providerAttempts: providerTrace }), {status: 503, headers: {...corsHeaders, 'Content-Type':'application/json'}})
 
         // Resolve immutable product identity from the exact selected catalog row.
@@ -3112,6 +3120,15 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
             const budgetOk = !preferences?.maxShopBudget || fitsBudgetAmount(outfitShopSpend(outfit.items, itemMap, preferences.maxShopBudget.currency, preferences.maxShopBudget.fx), preferences.maxShopBudget.amount)
             return !reason && complete && !repeats && budgetOk
         })
+        const personalStylist = deckTarget === 3
+        // Replace partial or conflicting model decks with independently
+        // validated complete choices. Never clone a look to fill a card.
+        if (personalStylist) {
+            const signatures = new Set(finalOutfits.map((outfit: any) => outfit.items.map((item: any) => item.id).sort().join('|')))
+            const replacements = completeChoices().filter(choice => !signatures.has(choice.items.map(item => item.id).sort().join('|')))
+                .map(choice => ({items: choice.items, description: `${selectionStyle} outfit`, stylingTips: [], confidence: 0.8, curationRank: Number.MAX_SAFE_INTEGER}))
+            finalOutfits.push(...replacements)
+        }
         // Provider compliance is not authority over the requested batch size.
         // ── 9c. Product-uniqueness deck gate ──────────────────────────────
         // Same formula is allowed; same actual product is not. Select the
@@ -3163,7 +3180,8 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
                 const signatureOf = (o: any) => (o.items || []).map((it: any) => String(it.id)).sort().join('|')
                 const selectedSignatures = new Set(diverseDeck.deck.map(signatureOf))
                 const extras = finalOutfits.filter((o: any) => !selectedSignatures.has(signatureOf(o)))
-                finalOutfits = [...diverseDeck.deck, ...extras]
+                if (personalStylist && diverseDeck.deck.some((outfit: any) => !enriched.includes(outfit))) generationSource = 'deterministic_fallback'
+                finalOutfits = personalStylist ? diverseDeck.deck : [...diverseDeck.deck, ...extras]
                 const productDiversity = analyzeDeckProductDiversity(
                     diverseDeck.deck.map((o: any) => o.items || []),
                     {
@@ -3211,6 +3229,7 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
             }
         }
         finalOutfits = finalOutfits.slice(0, limit)
+        if (personalStylist && finalOutfits.length !== 3) return new Response(JSON.stringify({success: false, outfits: [], code: 'incomplete_outfit_deck', error: 'Three complete, suitable outfits are required. Add more suitable clothing or adjust the request.'}), {status: 422, headers: {...corsHeaders, 'Content-Type': 'application/json'}})
         if (!finalOutfits.length) return new Response(JSON.stringify({ success: false, error: 'ai_generation_unavailable', outfits: [], providerAttempts: providerTrace }), {status: 503, headers: {...corsHeaders, 'Content-Type':'application/json'}})
 
         return new Response(JSON.stringify({ success: true, outfits: finalOutfits, source: generationSource, layered, provider: aiProviderUsed, providerAttempts: providerTrace, diversity: diversityCapacity, budgetReference: requestFx ? {id: requestFx.snapshot.id, asOf: requestFx.snapshot.asOf, source: 'CBU'} : undefined }), {

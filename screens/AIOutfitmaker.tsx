@@ -2432,7 +2432,7 @@ const AIOutfitGenerator = () => {
           const inCap = finalOutfits.filter((o) => fitsCap(o.items as any[]));
           const overCap = finalOutfits.filter((o) => !fitsCap(o.items as any[]));
           const shownOutfits = inCap.slice(0, 3);
-          if (!shownOutfits.length) throw new Error('no_outfits_within_budget');
+          if (shownOutfits.length !== 3) throw new Error('incomplete_outfit_deck');
           setOutfits(
             shownOutfits
               .map((o) => {

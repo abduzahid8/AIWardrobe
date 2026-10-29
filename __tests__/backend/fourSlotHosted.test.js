@@ -49,3 +49,22 @@ test('a locked puffer overrides classic taste while all new slots remain valid',
  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));const data=await response.json();
  expect(response.status).toBe(200);expect(data.outfits.every(o=>o.items.some(i=>i.id==='layer'))).toBe(true);
 });
+
+const richItems = [
+ ['Navy linen blazer','Beige cotton blazer','Grey wool blazer'],
+ ['White cotton shirt','Blue oxford shirt','Cream linen shirt'],
+ ['Navy chino trousers','Grey wool trousers','Beige cotton chinos'],
+ ['Brown leather loafers','Black leather derby shoes','Burgundy leather oxford shoes'],
+].flatMap((names,slotIndex)=>names.map((name,index)=>({id:`rich-${slotIndex}-${index}`,macroCategory:['outerwear','top','bottom','shoes'][slotIndex],name,type:['outerwear','shirt','trousers','shoes'][slotIndex],isWardrobe:true,color:['navy','white','navy','brown'][slotIndex],imageUrl:`https://example.invalid/rich-${slotIndex}-${index}.jpg`})));
+async function stylistRequest(rows){const body=await request(rows).json();return new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify({...body,stylePreferences:'casual',occasion:'Casual',prompt:'Casual',limit:5,deckTarget:3})});}
+test.each([1,2])('replaces a partial %i-card provider deck with three validated four-item cards',async count=>{
+ const proposals=Array.from({length:count},(_,i)=>richItems.filter(row=>row.id.endsWith(`-${i}`)).map(row=>row.id));
+ const {handler}=load(proposals);const response=await handler(await stylistRequest(richItems));const data=await response.json();
+ expect(response.status).toBe(200);expect(data.outfits).toHaveLength(3);
+ for(const outfit of data.outfits)expect(outfit.items.map(i=>i.macroCategory).sort()).toEqual(['bottom','outerwear','shoes','top']);
+ const all=data.outfits.flatMap(o=>o.items.map(i=>i.id));expect(new Set(all).size).toBe(12);
+});
+test('never calls a one-look Personal Stylist deck successful',async()=>{
+ const {handler}=load(items.map(i=>i.id));const response=await handler(await stylistRequest(items));const data=await response.json();
+ expect(response.status).toBe(422);expect(data.code).toBe('incomplete_outfit_deck');expect(data.outfits).toEqual([]);
+});
