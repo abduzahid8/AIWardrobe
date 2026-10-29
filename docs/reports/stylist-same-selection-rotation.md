@@ -1,129 +1,755 @@
-# Same-selection Personal Stylist rotation
+STOP the current unrelated quality expansion for now.
 
-## Source
+The new task is narrowly:
 
-- Branch: `stylist-four-slot-recovery`
-- Starting HEAD: `d9b04caf4fb184e8e12248df3efc6796c29b579f`
-- Implementation HEAD: `7db1a09` (delivery HEAD also includes this evidence report)
-- Edge: v158, active. All 16 downloaded TypeScript files match checkout byte-for-byte.
-- Metro: port 8082, `/Users/v.zahid/AIWardrobe`; only one listener.
+```text
+FIX SHOE ROTATION
+```
 
-## Root cause
+Do not redesign the rest of Personal Stylist.
 
-Reproduced before editing using the real Expo Go screen: New clothing, Old Money, Date Night, no anchor. G2 repeated Chairman and Saint shoes from G1; G3 repeated Saint and Chairman from G2. Exact final displayed decks are in `stylist-rotation-evidence/reproduced-displayed-decks.json`.
+# SOURCE
 
-The history was a user-wide flattened set. Once the shoe slot became exhausted, the Edge restored historical shoes and ranked them without knowing which belonged to the immediately previous deck. Older alternatives were not preferred. This was not demonstrated to be a stale AsyncStorage-read race: the existing flattened-history read already waited for pending writes.
+Continue on:
 
-The patch retains bounded deck records under a stable user/source/style/occasion scope. Each tap has its own request ID. Final accepted decks update in-memory history before another generation can start; persistence runs asynchronously. Previous keys, older keys and deck order travel unchanged to Edge. Selection prioritizes fresh products, then products outside the previous deck, then oldest last-use. Historical catalog trimming uses the same priority. A final backend overlap audit and a client guard prevent repair from adding overlap. Existing quality, weather, budget, provider, classification and 3-by-4 contracts are unchanged.
+```text
+branch:
+stylist-four-slot-recovery
+```
 
-An initial v157 test hit Edge CPU limits because history scoring was repeated for every candidate combination. v158 caches product classification once per request; its real five-generation flow passed.
+Last pushed GitHub HEAD:
 
-## Rotation scope and request IDs
+```text
+26a940f
+```
 
-| Generation | Scope | Request ID | Previous keys | Older keys |
-|---|---|---|---:|---:|
-| G1 | `db0a1cee-6161-45d8-a4c9-d6b195f791a1|shop|old_money|date` | `mvtj1yrx-1` | 0 | 0 |
-| G2 | `db0a1cee-6161-45d8-a4c9-d6b195f791a1|shop|old_money|date` | `mvtj2lbm-2` | 36 | 0 |
-| G3 | `db0a1cee-6161-45d8-a4c9-d6b195f791a1|shop|old_money|date` | `mvtj34fs-3` | 36 | 36 |
-| G4 | `db0a1cee-6161-45d8-a4c9-d6b195f791a1|shop|old_money|date` | `mvtj3kaj-4` | 36 | 72 |
-| G5 | `db0a1cee-6161-45d8-a4c9-d6b195f791a1|shop|old_money|date` | `mvtj3yk9-5` | 36 | 105 |
+Before changing anything:
 
-Scopes identical: **yes**. Request IDs unique: **yes**. G2 receives G1 as previous; G3 receives G2 as previous and G1 as older history.
+```bash
+git status
+git rev-parse HEAD
+```
 
-## Exact final displayed products
+There may be additional uncommitted quality work after `26a940f`.
 
-Captured from the screen’s final accepted `shownOutfits` at `recordDisplayedDeck`, after repair, quality, budget and deck selection. The Maestro flow taps Generate five times without changing any selection. Weather remains unavailable and no explicit budget or anchor is added. The JSON evidence includes physical identity keys for every product.
+DO NOT discard it.
 
-### Generation 1
+If the working tree is dirty, checkpoint those changes safely before starting the shoe-rotation fix.
 
-| Outfit | Outerwear | Top | Bottom | Shoes |
-|---|---|---|---|---|
-| 1 | Hawke Wool Crew-Neck Sweater (`shop_allsaints-usm036kf-3860`) | Court Regular-Fit Double-Faced Shirt (`shop_allsaints-usm128sf-2824`) | Classic Comfort Cotton Twill Trousers (`shop_armani_exchange-xm002089_af11882_u0009`) | Saint / Cognac (`shop_thursday-8086847258714`) |
-| 2 | Wulf Merino Wool Cardigan (`shop_allsaints-usm061kf-3860`) | Gleason Slim-Fit Denim Shirt (`shop_allsaints-usm065sf-10131`) | Ware Straight-Fit Double-Pleat Pants (`shop_allsaints-usm037tf-4074`) | Statesman / Brandy (`shop_thursday-7887606677594`) |
-| 3 | Marko Wool Jacket (`shop_allsaints-usm017kd-5`) | Aspen Long-Sleeve Polo Shirt (`shop_allsaints-usm095kb-10725`) | Oxford Lyocell Trousers (`shop_armani_exchange-xm002298_af22715_uc001`) | Chairman / Black (`shop_thursday-6859648467034`) |
+---
 
-### Generation 2
+# STABLE CONTRACT — DO NOT REGRESS
 
-| Outfit | Outerwear | Top | Bottom | Shoes |
-|---|---|---|---|---|
-| 1 | Chaiyo Suede Trucker Jacket (`shop_allsaints-usm054lf-10262`) | Mercerized Cotton Regular Fit Polo (`shop_armani_exchange-6dzfhl_zj2zz_17ab`) | Tower Slim-Fit Cotton Chinos (`shop_allsaints-usm039tf-8834`) | Journeyman / Black (`shop_thursday-7719429898330`) |
-| 2 | Enzo Funnel-Neck Cashmere Sweater (`shop_allsaints-usm092kf-5`) | Brook Regular-Fit Check Western Shirt (`shop_allsaints-usm130sf-668`) | Cotton Trousers - Black (`shop_arket-1268001004`) | Executive / Black (`shop_thursday-253390159881`) |
-| 3 | Mode Merino Wool Ramskull Sweater (`shop_allsaints-usm002kz-10657`) | Judd Regular-Fit Striped Shirt (`shop_allsaints-usm134sf-10186`) | Blunt Slim-Fit Tailored Pants (`shop_allsaints-usm033tf-2732`) | President StormKing® / Bull Brown (`shop_thursday-8140117377114`) |
+Every successful generation must still produce:
 
-Physical overlap with earlier displayed decks:
+```text
+3 cards
+×
+4 items:
 
-| Earlier deck | Outerwear | Top | Bottom | Shoes |
-|---|---:|---:|---:|---:|
-| G1 | 0 | 0 | 0 | 0 |
+outerwear
+top
+bottom
+shoes
+```
 
-### Generation 3
+Keep existing:
 
-| Outfit | Outerwear | Top | Bottom | Shoes |
-|---|---|---|---|---|
-| 1 | Enzo Cashmere Sweater (`shop_allsaints-usm093kf-3860`) | Gleason Denim Shirt (`shop_allsaints-usm159sf-2160`) | Aston Straight-Fit Double-Pleat Chinos (`shop_allsaints-usm050tf-197`) | Duke / Black Coffee (`shop_thursday-15456871514202`) |
-| 2 | Stamped Cotton Cardigan (`shop_allsaints-usm120kf-5`) | Duke Regular-Fit Striped Shirt (`shop_allsaints-usm111sf-10175`) | Interlock trousers (`shop_armani_exchange-xm002374_af10365_uc001`) | Statesman / Brandy (`shop_thursday-7887606677594`) |
-| 3 | Carlow Slim-Fit Wool-Blend Jacket (`shop_allsaints-usm079of-3860`) | Statten Long-Sleeve Ramskull Polo Shirt (`shop_allsaints-usm038ka-6936`) | Moor Straight-Fit Melange Pants (`shop_allsaints-usm087tf-3860`) | Renegade / Black (`shop_thursday-6794356228186`) |
+```text
+style quality
+occasion quality
+weather handling
+budget handling
+physical product identity
+history semantics
+rotation scope
+request IDs
+```
 
-Physical overlap with earlier displayed decks:
+Do not weaken quality simply to force different shoes.
 
-| Earlier deck | Outerwear | Top | Bottom | Shoes |
-|---|---:|---:|---:|---:|
-| G1 | 0 | 0 | 0 | 1 |
-| G2 | 0 | 0 | 0 | 0 |
+---
 
-### Generation 4
+# ACTUAL BUG
 
-| Outfit | Outerwear | Top | Bottom | Shoes |
-|---|---|---|---|---|
-| 1 | Aspen Waffle-Knit Wool-Blend Sweater (`shop_allsaints-usm089kb-10725`) | Bond Regular-Fit Tencel Shirt (`shop_allsaints-usm108sf-2732`) | Light Aqua Linen Seaside Trousers (`shop_aurelien-10046869209418`) | President StormKing® / Bull Brown (`shop_thursday-8140117377114`) |
-| 2 | Coltra Double-Breasted Wool Trench Coat (`shop_allsaints-usm133of-10715`) | Mode Merino Wool Long-Sleeve Polo Shirt (`shop_allsaints-usm085kb-5`) | Light Beige Pleated Metropolitan Trousers (`shop_aurelien-15501547110730`) | Chairman / Black (`shop_thursday-6859648467034`) |
-| 3 | Single breasted jacket in a wool and viscose blend Icon (`shop_armani_exchange-xm000345_af10897_uc001`) | Foley Regular-Fit Military Shirt (`shop_allsaints-usm124sf-10175`) | Navy Cotton Wool Regent Trousers (`shop_aurelien-16011499340106`) | Saint / Cognac (`shop_thursday-8086847258714`) |
+Clothing changes between repeated Generate presses, but shoes are not rotating enough / appear to stay the same.
 
-Physical overlap with earlier displayed decks:
+We need the shoe slot to obey the same recency logic as the other slots.
 
-| Earlier deck | Outerwear | Top | Bottom | Shoes |
-|---|---:|---:|---:|---:|
-| G1 | 0 | 0 | 0 | 2 |
-| G2 | 0 | 0 | 0 | 1 |
-| G3 | 0 | 0 | 0 | 0 |
+Example current problem:
 
-### Generation 5
+```text
+G1 shoes:
+A B C
 
-| Outfit | Outerwear | Top | Bottom | Shoes |
-|---|---|---|---|---|
-| 1 | Arlo Wool Crew-Neck Breton Sweater (`shop_allsaints-usm064kf-2153`) | Button-up shirt in linen with classic collar (`shop_armani_exchange-xm001221_af14619_u0001`) | Beige Linen Seaside Trousers (`shop_aurelien-7649901707481`) | Journeyman / Black (`shop_thursday-7719429898330`) |
-| 2 | Miller Leather Jacket (`shop_allsaints-usm009la-5`) | Bower Regular-Fit Check Shirt (`shop_allsaints-usm132sf-4938`) | Navy Pleated Metropolitan Trousers (`shop_aurelien-10228846690634`) | Statesman / Brandy (`shop_thursday-7887606677594`) |
-| 3 | Cora slim fit leather jacket (`shop_allsaints-usm034lf-4732`) | Linen and cotton knitted polo shirt (`shop_armani_exchange-xm002151_af22062_m1297`) | Ecru Linen Seaside Trousers (`shop_aurelien-10046869373258`) | Executive / Black (`shop_thursday-253390159881`) |
+G2 shoes:
+A B C
 
-Physical overlap with earlier displayed decks:
+G3 shoes:
+A B C
+```
 
-| Earlier deck | Outerwear | Top | Bottom | Shoes |
-|---|---:|---:|---:|---:|
-| G1 | 0 | 0 | 0 | 1 |
-| G2 | 0 | 0 | 0 | 2 |
-| G3 | 0 | 0 | 0 | 1 |
-| G4 | 0 | 0 | 0 | 0 |
+This is WRONG if other valid shoes exist.
 
-## Thin inventory
+---
 
-- Live Old Money / Date Night inventory supplies eight admitted physical shoe products across these generations. G1 and G2 use six distinct shoes; G3 uses the two remaining fresh shoes and one older shoe. No consecutive shoe overlap occurs. Older shoe reuse starts only as fresh inventory runs out.
-- Controlled hosted test: five valid shoes and nine products in each other slot. G2 uses both remaining fresh shoes and one historical shoe. G3 uses the two shoes absent from G2 and only one unavoidable previous shoe. Other slots stay fresh. Whole-outfit repeat: **no**.
-- A separate hosted rich-inventory test runs five same-intent generations using 15 physical products per slot and verifies zero overlap against all earlier generations. The live Old Money catalog is thinner in shoes; the report does not claim impossible zero older-history overlap there.
+# FIRST: ESTABLISH THE REAL SHOE POOL
 
-## Validation
+For the exact request:
 
-| Requirement | Result |
-|---|---|
-| Exactly three visible cards each generation | PASS |
-| Exactly four items per card | PASS |
-| Existing quality and four-slot checks | PASS |
-| Consecutive physical overlap per slot | 0 / 0 / 0 / 0 for all four pairs |
-| Shoes rotate | PASS |
-| Same selections across five real Generate presses | PASS |
-| Stable scope / unique request IDs | PASS / PASS |
-| Five-generation rich inventory fixture | PASS |
-| Thin-shoe inventory fixture | PASS |
-| Regression tests | 130 suites, 1,602 tests PASS |
-| App TypeScript / Edge Deno checks | PASS / PASS |
+```text
+New clothing
+Old Money
+Date Night
+No anchor
+```
 
-Evidence limitations: quality is checked against the unchanged recovery rules and catalog metadata. The repeat-flow screenshot filenames are overwritten each iteration, so included PNGs show the last generation only; the JSON capture contains all five final displayed decks. Expo Go required a restart after its existing native-module reload error; the complete final flow then passed. No history was cleared on generation errors or retries.
+capture:
+
+```text
+all catalog shoes fetched
+↓
+shoes rejected before style/quality
+↓
+shoes rejected by refined-date rules
+↓
+final admissible physical shoes
+```
+
+For EVERY rejected shoe report:
+
+```text
+product:
+physical product key:
+rejection reason:
+```
+
+We currently believe approximately:
+
+```text
+5 physical shoes
+```
+
+survive the refined-date rules.
+
+PROVE this.
+
+Do not assume it.
+
+---
+
+# CHECK FOR FALSE NEGATIVES
+
+If the catalog contains more genuinely appropriate Old Money / Date Night shoes but they are rejected by an overly broad rule:
+
+fix that classification/filter.
+
+Examples that may be appropriate depending on actual product:
+
+```text
+loafers
+derbies
+oxfords
+refined leather shoes
+monk straps
+dress boots where appropriate
+```
+
+Do NOT blindly add these categories.
+
+Inspect actual catalog items.
+
+Do NOT admit rugged, sporty, technical or obviously inappropriate shoes just to increase inventory.
+
+---
+
+# MATHEMATICAL ROTATION RULE
+
+If:
+
+```text
+N = number of valid physical shoes
+K = 3 shoes required per deck
+```
+
+then the theoretical minimum consecutive overlap is:
+
+```text
+minimumOverlap = max(0, 2*K - N)
+```
+
+Examples:
+
+```text
+N >= 6
+→ expected previous-deck shoe overlap = 0
+
+N = 5
+→ minimum unavoidable overlap = 1
+
+N = 4
+→ minimum unavoidable overlap = 2
+
+N = 3
+→ overlap = 3
+```
+
+The application should achieve this minimum whenever valid outfit combinations allow it.
+
+---
+
+# CURRENT CASE — 5 VALID SHOES
+
+If there are exactly five valid shoes:
+
+```text
+A B C D E
+```
+
+and every generation needs three shoes:
+
+Correct possible sequence:
+
+```text
+G1:
+A B C
+
+G2:
+D E A
+
+G3:
+B C D
+
+G4:
+E A B
+
+G5:
+C D E
+```
+
+The exact order does not matter.
+
+The properties DO matter:
+
+```text
+every next deck uses the two shoes absent from the previous deck
+
+only ONE previous-deck shoe repeats
+
+the repeated shoe itself rotates over time
+```
+
+WRONG:
+
+```text
+G1 A B C
+G2 A B C
+G3 A B C
+```
+
+Also wrong:
+
+```text
+G1 A B C
+G2 A D E
+G3 A B C
+G4 A D E
+```
+
+because shoe A is unfairly pinned and repeated every generation.
+
+---
+
+# LRU / FAIRNESS RULE
+
+Once reuse becomes mathematically necessary:
+
+choose the eligible shoe with the OLDEST last-use.
+
+Do not simply choose:
+
+```text
+highest style score every time
+first DB row
+lowest ID
+same favorite shoe
+```
+
+Required priority among shoes that already pass all hard quality rules:
+
+```text
+1. shoe not in immediately previous deck
+2. shoe least recently used in older history
+3. shoe with fewer total recent appearances
+4. outfit quality/ranking as tie-breaker
+```
+
+Quality is a prerequisite.
+
+Do not select a bad shoe just because it is fresh.
+
+---
+
+# IMPORTANT: QUALITY FILTER FIRST, ROTATION SECOND
+
+Correct pipeline:
+
+```text
+catalog shoes
+↓
+hard style/occasion/weather/quality validation
+↓
+ADMISSIBLE SHOE POOL
+↓
+rotation scheduling
+↓
+outfit combination quality
+```
+
+Do not let rotation resurrect a shoe that failed the hard quality gate.
+
+---
+
+# PREVIOUS DECK MUST HAVE STRONGEST PENALTY
+
+Given:
+
+```text
+previousDeckShoes = A B C
+
+validPool = A B C D E
+```
+
+G2 must first take:
+
+```text
+D
+E
+```
+
+Then only one shoe from:
+
+```text
+A B C
+```
+
+may be restored because three slots are required.
+
+Do NOT restore A/B/C before D/E are used.
+
+---
+
+# OLDER HISTORY MUST BE BETTER THAN PREVIOUS DECK
+
+Suppose:
+
+```text
+G1 = A B C
+G2 = D E A
+```
+
+Before G3:
+
+```text
+previous deck:
+D E A
+
+older history:
+B C
+```
+
+G3 should strongly prefer:
+
+```text
+B
+C
+```
+
+before reusing:
+
+```text
+D
+E
+A
+```
+
+Then choose only the minimum required previous-deck shoe.
+
+This is the key behavior.
+
+---
+
+# AUDIT FINAL OUTFIT SELECTION
+
+Do not only inspect the catalog trimming stage.
+
+The bug may occur later because complete-outfit ranking repeatedly favors the same shoes.
+
+Trace:
+
+```text
+admissible shoes
+↓
+candidate combinations
+↓
+quality scoring
+↓
+diversity selection
+↓
+final 3 outfits
+↓
+displayed shoes
+```
+
+At each stage log shoe IDs/product keys.
+
+We need to identify exactly where alternative shoes disappear.
+
+---
+
+# LEXICOGRAPHIC DECK OBJECTIVE
+
+For candidates that ALREADY pass the hard quality threshold, choose the final deck using this priority:
+
+```text
+1. minimize previous-deck shoe overlap
+2. minimize previous-deck overlap in all other slots
+3. minimize older-history reuse / prefer LRU
+4. maximize outfit quality
+5. maximize visual variety
+```
+
+Do NOT let a tiny quality-score advantage cause:
+
+```text
+same shoes every generation
+```
+
+when another candidate is still above the required quality threshold.
+
+---
+
+# FINAL SHOE AUDIT
+
+Before accepting a deck calculate:
+
+```text
+validPhysicalShoesAvailable
+previousDeckShoes
+selectedShoes
+freshShoesAvailable
+previousShoeOverlap
+minimumPossibleOverlap
+```
+
+Then enforce:
+
+```ts
+previousShoeOverlap <= minimumPossibleOverlap
+```
+
+whenever the available valid combinations permit it.
+
+For the current five-shoe case:
+
+```text
+valid shoes = 5
+selected per deck = 3
+
+minimumPossibleOverlap = 1
+```
+
+If final deck has:
+
+```text
+2 or 3 previous shoes
+```
+
+while all five are valid:
+
+REJECT/RESELECT the deck.
+
+---
+
+# DO NOT HARD-CODE CURRENT FIVE SHOE IDS
+
+The algorithm must work for:
+
+```text
+3 shoes
+4 shoes
+5 shoes
+6 shoes
+10 shoes
+50 shoes
+```
+
+Do not special-case current product names.
+
+---
+
+# TESTS
+
+Add focused tests.
+
+## Case A — six shoes
+
+```text
+valid shoes:
+A B C D E F
+
+G1:
+A B C
+
+G2:
+D E F
+```
+
+Expected overlap:
+
+```text
+0
+```
+
+---
+
+## Case B — five shoes
+
+```text
+A B C D E
+```
+
+Every generation uses 3.
+
+Expected consecutive overlap:
+
+```text
+exactly 1
+```
+
+Never 2 or 3.
+
+Over multiple generations all five shoes must receive usage.
+
+No shoe should remain permanently pinned.
+
+---
+
+## Case C — four shoes
+
+Expected minimum consecutive overlap:
+
+```text
+2
+```
+
+but the non-previous shoe must always be used.
+
+---
+
+## Case D — three shoes
+
+Expected:
+
+```text
+all 3 repeat
+```
+
+because unavoidable.
+
+---
+
+## Case E — duplicate catalog rows
+
+Two DB rows representing the same physical shoe must count as ONE shoe.
+
+Use:
+
+```text
+ID
+normalized name
+normalized image
+```
+
+physical identity.
+
+---
+
+# REAL ACCEPTANCE TEST
+
+Use the real app:
+
+```text
+Old Money
+Date Night
+New clothing
+No anchor
+```
+
+Press Generate five times.
+
+Capture:
+
+```text
+G1 shoes:
+G2 shoes:
+G3 shoes:
+G4 shoes:
+G5 shoes:
+```
+
+For each transition report:
+
+```text
+G1→G2 overlap:
+G2→G3 overlap:
+G3→G4 overlap:
+G4→G5 overlap:
+```
+
+Also report:
+
+```text
+valid shoe pool size:
+theoretical minimum overlap:
+actual overlap:
+```
+
+---
+
+# EXPECTED RESULT IF POOL = 5
+
+For every consecutive transition:
+
+```text
+actual shoe overlap = 1
+```
+
+not:
+
+```text
+2
+3
+```
+
+And across the run:
+
+```text
+all 5 shoes used
+```
+
+with fair/LRU reuse.
+
+---
+
+# CLOTHING ROTATION MUST KEEP WORKING
+
+Regression-check:
+
+```text
+outerwear
+top
+bottom
+```
+
+They should continue rotating as they do now.
+
+Do not solve shoes by breaking clothing rotation.
+
+---
+
+# STOP THE IMAGE-QUALITY RABBIT HOLE FOR THIS TASK
+
+Do not continue building a large visual-classification system right now.
+
+The current task is:
+
+```text
+shoe rotation
+```
+
+Only inspect image evidence if it directly determines whether a SHOE should belong to the valid shoe pool.
+
+Do not widen this patch into general shirt/jacket image understanding.
+
+We can continue that separately after rotation is correct.
+
+---
+
+# FINAL REPORT
+
+Return:
+
+```text
+SOURCE
+- starting HEAD:
+- final HEAD:
+- Edge version:
+
+SHOE POOL
+- catalog shoes:
+- physical unique shoes:
+- admitted refined-date shoes:
+- rejected shoes + reasons:
+
+ROOT CAUSE
+- where alternative shoes were lost:
+- why same shoes kept winning:
+
+ROTATION ALGORITHM
+- minimum-overlap rule:
+- LRU rule:
+- previous-deck handling:
+- older-history handling:
+
+REAL TEST
+
+G1 shoes:
+1.
+2.
+3.
+
+G2 shoes:
+1.
+2.
+3.
+overlap G1→G2:
+
+G3 shoes:
+1.
+2.
+3.
+overlap G2→G3:
+
+G4 shoes:
+1.
+2.
+3.
+overlap G3→G4:
+
+G5 shoes:
+1.
+2.
+3.
+overlap G4→G5:
+
+- valid shoe pool:
+- theoretical minimum:
+- actual maximum observed overlap:
+- all valid shoes used: yes/no
+
+REGRESSION
+- 3 cards: PASS/FAIL
+- 4 items: PASS/FAIL
+- outerwear rotation: PASS/FAIL
+- top rotation: PASS/FAIL
+- bottom rotation: PASS/FAIL
+- quality preserved: PASS/FAIL
+
+FINAL
+- shoe rotation: PASS/FAIL
+```
+
+Do not claim PASS merely because shoes changed once.
+
+PASS means the real app consistently achieves the mathematically minimum previous-deck shoe overlap without admitting lower-quality shoes.
