@@ -260,3 +260,8 @@ describe('four-slot quality gates', () => {
     expect(styleJudgeReason(heavy,'casual','no jacket',{temp:18})).toMatch(/non-jacket/);
   });
 });
+
+it.each(['Alpaca-blend cardigan','Merino wool cardigan','Chunky cashmere sweater','Padded cotton vest'])('rejects %s at 30C', name => {
+  const look=[item(name,'outerwear'),item('White cotton shirt','top'),item('Beige cotton chinos','bottom'),item('Leather loafers','shoes')];
+  expect(styleJudgeReason(look,'casual','summer',{temp:30})).toMatch(/light layer/);
+});

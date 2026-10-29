@@ -221,6 +221,11 @@ export function rejectForClimate(
     if (hot && slot === 'outerwear' && HEAVY_WINTER_LAYER_RE.test(blob)) {
         return `${temp}°C is too warm for heavy winter outerwear`;
     }
+    if (hot && slot === 'outerwear'
+        && /\b(wool|merino|alpaca|cashmere|mohair|angora|lambswool|fleece|shearling|chunky|heavyweight|insulated|padded)\b/.test(blob)
+        && !/\btropical\s+wool\b/.test(blob)) {
+        return `${temp}°C requires a light layer, not warm winter fabric`;
+    }
     if (temp >= 28 && /\b(tweed|flannel)\b/.test(blob) && slot !== 'shoes') {
         return `${temp}°C is too warm for tweed/flannel`;
     }
