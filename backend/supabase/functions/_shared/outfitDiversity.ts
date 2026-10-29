@@ -1541,6 +1541,8 @@ export interface AssembleDiverseDeckOptions<O> {
     itemsOf: (outfit: O) => any[];
     /** Quality of a look in 0..1 (match score / confidence). */
     qualityOf?: (outfit: O) => number;
+    /** Integer priority among already validated decks, e.g. unused physical products. */
+    priorityOfDeck?: (outfits: O[]) => number;
     /** Product identity keys of an item (id / normalized name / image). */
     keysOf?: (item: any) => string[];
     /** Product keys of the locked anchor — never counted as repetition. */
@@ -1694,7 +1696,7 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
         const candidate: DiverseDeckCandidate<O> = {
             outfit,
             fingerprint: buildOutfitFingerprint(items),
-            quality: Number.isFinite(quality) ? quality : 0.9,
+            quality: Number.isFinite(quality) ? Math.max(0, Math.min(1, quality)) : 0.9,
             source,
             index: pool.length,
         };
@@ -1930,7 +1932,9 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
         }
         const meanSimilarity = pairs > 0 ? similarityPenalty / pairs : 0;
         const variety = bonus - DIVERSITY_SIMILARITY_PENALTY * 0.5 * meanSimilarity;
-        return qualityBucket * QUALITY_WEIGHT + variety;
+        const priority = opts.priorityOfDeck?.(members.map(member => member.outfit)) ?? 0;
+        return (Number.isFinite(priority) ? Math.max(0, Math.floor(priority)) : 0) * (target * QUALITY_WEIGHT + 10)
+            + qualityBucket * QUALITY_WEIGHT + variety;
     };
 
     // Rejection diagnostics (development builds only). Capped so a big pool

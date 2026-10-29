@@ -33,3 +33,7 @@ test('a stalled body settles by deadline even if source cancellation hangs',asyn
   const rejected=expect(pending).rejects.toMatchObject({status:408});await jest.advanceTimersByTimeAsync(15000);await rejected;expect(jest.getTimerCount()).toBe(0);
  }finally{jest.useRealTimers();}
 });
+test('bounds normalized physical-product history independently from raw IDs',()=>{
+ const valid={excludeProductKeys:['n:brown leather loafers','i:cdn.test/shoes.jpg']};expect(api.validateOutfitGenerationRequest(valid)).toBe(valid);
+ for(const excludeProductKeys of [Array(451).fill('n:shoe'),['i:'+ 'x'.repeat(2048)],[{}]])expect(()=>api.validateOutfitGenerationRequest({excludeProductKeys})).toThrow('invalid_generation_request');
+});

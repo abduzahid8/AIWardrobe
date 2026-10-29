@@ -2,7 +2,7 @@ jest.mock('../../store/wardrobeStore', () => ({ __esModule: true, default: { get
 import { supabase } from '../../lib/supabase';
 import { generateOutfitsFromDB } from '../../src/services/outfitGenerationService';
 jest.mock('../../lib/supabase', () => ({ supabase: { auth: { onAuthStateChange: jest.fn().mockReturnValue({data:{subscription:{unsubscribe:jest.fn()}}}), getSession: jest.fn().mockResolvedValue({ data: { session: { user: { id: 'account' }, access_token: 'captured-token' } } }) }, functions: { invoke: jest.fn() }, from: jest.fn() } }));
-jest.mock('../../src/services/recentOutfitIds', () => ({ getRecentShownIds: jest.fn().mockResolvedValue(['recent']), recordShownOutfits: jest.fn() }));
+jest.mock('../../src/services/recentOutfitIds', () => ({ getRecentShownIds: jest.fn().mockResolvedValue(['recent']), getRecentShownProductKeys: jest.fn().mockResolvedValue([]), recordShownOutfits: jest.fn() }));
 const invoke = supabase.functions.invoke as jest.Mock;
 describe('canonical stylist failure handling', () => {
   beforeEach(() => jest.clearAllMocks());

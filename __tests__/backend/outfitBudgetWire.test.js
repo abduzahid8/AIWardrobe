@@ -462,7 +462,7 @@ it.each([
 test('a later cheaper catalog bottom is discovered before an affordable budget is rejected',async()=>{
  const expensive=Array.from({length:100},(_,i)=>({id:`a${String(i).padStart(3,'0')}`,name:`Cotton trousers variant${i}`,category:'bottoms',garment_type:'lower_body',price:80,currency:'USD',image_url:'https://example.invalid/pants.jpg'}));
  const cheap={...expensive[0],id:'z-cheap',name:'Regular fit cotton trousers',price:10};
- const q={select:()=>q,eq:()=>q,limit:()=>q,or:()=>q,order:()=>q,gt:()=>q,abortSignal:()=>q,then:resolve=>Promise.resolve({data:expensive,error:null}).then(resolve),rpc:jest.fn((_name,args)=>{const result={abortSignal:()=>result,then:resolve=>Promise.resolve({data:[cheap,...expensive.slice(0,99)].map(row=>({...row,_budget_cost:String(row.price*args.p_rates.USD)})),error:null}).then(resolve)};return result;})};
+ const q={select:()=>q,eq:()=>q,limit:()=>q,or:()=>q,order:()=>q,gt:()=>q,abortSignal:()=>q,then:resolve=>Promise.resolve({data:expensive,error:null}).then(resolve),rpc:jest.fn((_name,args)=>{const result={abortSignal:()=>result,then:resolve=>Promise.resolve({data:args.p_after_id?[]:[cheap,...expensive.slice(0,99)].map(row=>({...row,_budget_cost:String(row.price*args.p_rates.USD)})),error:null}).then(resolve)};return result;})};
  const {handler}=load(['wardrobe-shirt-0','shop_z-cheap','wardrobe-shoes-0'],null,null,null,q);
  const items=owned.filter(item=>item.macroCategory!=='bottom').flatMap(item=>Array.from({length:6},(_,i)=>({...item,id:`${item.id}-${i}`})));
  const body=await request({amount:20,currency:'USD'},items).json();body.wardrobeOnly=false;body.prompt='Create one complete casual outfit.';

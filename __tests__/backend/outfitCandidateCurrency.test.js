@@ -9,6 +9,8 @@ if (process.env.OUTFIT_SIMULATE_MISSING_CURRENCY === '1') source = source.replac
 const compiled = ts.transpileModule(source, {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const api = new Function('require','exports','Deno',compiled+'\nreturn {fetchShopItemsForAllSlotsEdge,budgetInCurrencyEdge};')(
  name=>{
+  if(name.includes('outfitDiversity')) return require('../../backend/supabase/functions/_shared/outfitDiversity');
+  if(name.includes('outfitRotation')) return require('../../backend/supabase/functions/_shared/outfitRotation');
   if(name.includes('budgetFx.ts')) return require('../../backend/supabase/functions/_shared/budgetFx');
   if(name.includes('server.ts')) return {serve:()=>{}};
   if(name.includes('occasionRules') || name.includes('outfitStructure')) {

@@ -29,7 +29,7 @@ import { AI_STYLES } from '../../features/outfit-generator/types';
 import { buildCatalogSimilarityKey, spreadSimilarCatalogItems } from '../utils/shopCatalogOrder';
 import { assembleDiverseDeck, productIdentityKeys } from '../../features/outfit-generator/utils/outfitDiversity';
 import { parseBudgetFromText, budgetCandidatesFromText, budgetInCurrency, outfitShopSpend, itemShopPrice, isShopPricedItem, type ParsedBudget } from '../utils/outfitBudget';
-import { getRecentShownIds, recordShownOutfits } from './recentOutfitIds';
+import { getRecentShownIds, getRecentShownProductKeys, recordShownOutfits } from './recentOutfitIds';
 import useWardrobeStore from '../../store/wardrobeStore';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -174,6 +174,7 @@ export async function generateOutfitsFromDB(
             throw new Error('generation_account_changed');
         }
         const excludeItemIds = await wait(getRecentShownIds(recencyScope));
+        const excludeProductKeys = await wait(getRecentShownProductKeys(recencyScope));
         if (cancelled) throw new Error('generation_account_changed');
         const body = {
             prompt: params.prompt || '',
@@ -188,6 +189,7 @@ export async function generateOutfitsFromDB(
             // Recently-shown window → edge skips these when building the
             // candidate pool, so regenerates surface new pieces.
             excludeItemIds,
+            excludeProductKeys,
         };
         try { validateOutfitGenerationRequest(body); }
         catch {

@@ -21,7 +21,7 @@ import { withRequestDeadline } from '../src/lib/requestDeadline';
 import { OutfitGenerationFailure, outfitGenerationFailure } from '../src/services/outfitGenerationFailure';
 import { useShopCatalog } from '../hooks/useShopCatalog';
 import { fillMissingSlots, type OutfitSlotId } from '../src/services/shoppingService';
-import { getRecentShownIds, recordShownOutfits } from '../src/services/recentOutfitIds';
+import { getRecentShownIds, getRecentShownProductKeys, recordShownOutfits } from '../src/services/recentOutfitIds';
 import { mergeShopSlices, collapseSimilarByName, collapseDuplicateProductImages, isTrustedProductImage, isBrandCatalogImage, productImageKey, preferMappedMacro, hasUsableProductName, inferCatalogColor, normalizeCatalogNameKey, classicCatalogOffset, garmentVarietyFamily, inferShopRowMacro } from '../src/utils/shopCatalogOrder';
 import { passesStyleJudge, styleJudgeReason, rejectForStyleOccasion, rejectForClimate, humanizeProductName, SHORT_SLEEVE_RE, STRIP_SHORT_SLEEVE_RE } from '../features/outfit-generator/utils/occasionRules';
 import LiquidGlass2026Theme, { SpatialElevation } from '../constants/LiquidGlass2026Theme';
@@ -2159,6 +2159,7 @@ const AIOutfitGenerator = () => {
       }
 
       const excludeItemIds = await getRecentShownIds(recencyScope);
+      const excludeProductKeys = await getRecentShownProductKeys(recencyScope);
       if (!isCurrentGeneration() || !generationAccessToken) return;
       const EDGE_TIMEOUT_MS = 120000;
       const { data, error: invokeError } = await withRequestDeadline(async (signal) => supabase.functions.invoke('generate-outfits', {
@@ -2194,6 +2195,7 @@ const AIOutfitGenerator = () => {
           // Recently-shown window → edge builds the candidate pool without
           // pieces the user just saw, so each tap surfaces new clothing.
           excludeItemIds,
+          excludeProductKeys,
         },
       }), EDGE_TIMEOUT_MS, cancelSignal);
 

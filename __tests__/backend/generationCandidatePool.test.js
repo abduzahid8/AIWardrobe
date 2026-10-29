@@ -3,6 +3,7 @@ const fs=require('fs'),path=require('path'),ts=require('typescript');
 const root=process.env.NVIDIA_REQUEST_SOURCE_ROOT||path.resolve(__dirname,'../../backend/supabase/functions');
 const judge={};new Function('exports',ts.transpileModule(fs.readFileSync(path.join(root,'_shared/occasionRules.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(judge);
 new Function('exports',ts.transpileModule(fs.readFileSync(path.join(root,'_shared/outfitStructure.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(judge);
+Object.assign(judge,require(path.join(root,'_shared/outfitDiversity.ts')),require(path.join(root,'_shared/outfitRotation.ts')));
 const strip=s=>s.replace(/^import .*\n/gm,'').replace(/\bexport\s+/g,'');
 const source=['_shared/modelOutfitResponse.ts','generate-outfits/index.ts'].map(file=>strip(fs.readFileSync(path.join(root,file),'utf8'))).join('\n');
 const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.None,target:ts.ScriptTarget.ES2022}}).outputText;

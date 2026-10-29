@@ -68,3 +68,40 @@ test('never calls a one-look Personal Stylist deck successful',async()=>{
  const {handler}=load(items.map(i=>i.id));const response=await handler(await stylistRequest(items));const data=await response.json();
  expect(response.status).toBe(422);expect(data.code).toBe('incomplete_outfit_deck');expect(data.outfits).toEqual([]);
 });
+
+const rotationFixtures = ['outerwear','top','bottom','shoes'].flatMap((slot,s)=>Array.from({length:9},(_,i)=>({id:`rotation-${s}-${i}`,name:['Navy cotton blazer','White cotton shirt','Beige cotton chinos','Brown leather loafers'][s]+` edition ${i}`,type:slot,macroCategory:slot,color:['navy','white','beige','brown'][s],isWardrobe:true,imageUrl:`https://example.invalid/rotation-${s}-${i}.jpg`})));
+test('three generations consume 36 distinct physical products from rich inventory, including nine shoes',async()=>{
+ const {handler}=load(rotationFixtures.slice(0,4).map(i=>i.id),null,null,null,null,'curated');
+ const keys=new Set(),ids=new Set(),generations=[];
+ const {productIdentityKeys}=require('../../backend/supabase/functions/_shared/outfitDiversity');
+ for(let generation=0;generation<3;generation++){
+  const body=await (await stylistRequest(rotationFixtures)).json();body.excludeItemIds=[...ids];body.excludeProductKeys=[...keys];
+  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));const data=await response.json();
+  expect(response.status).toBe(200);expect(data.outfits).toHaveLength(3);expect(data.rotation.recycledSlots).toEqual([]);
+  const parts=data.outfits.flatMap(o=>o.items);expect(parts).toHaveLength(12);
+  const currentKeys=new Set(parts.flatMap(productIdentityKeys));expect([...currentKeys].filter(key=>keys.has(key))).toEqual([]);
+  for(const key of currentKeys)keys.add(key);for(const item of parts)ids.add(item.id);generations.push(parts);
+ }
+ expect(ids.size).toBe(36);expect(new Set(generations.flat().filter(i=>i.macroCategory==='shoes').map(i=>i.id)).size).toBe(9);
+});
+
+test('exhausted shoes recycle only after all fresh shoes are included, while other slots remain fresh',async()=>{
+ const rows=rotationFixtures.filter(i=>i.macroCategory!=='shoes'||i.id==='rotation-3-0'||i.id==='rotation-3-1'||i.id==='rotation-3-2'||i.id==='rotation-3-3');
+ const {handler}=load(rows.slice(0,4).map(i=>i.id),null,null,null,null,'curated');
+ const old=rows.filter(i=>i.macroCategory==='shoes'&&i.id!=='rotation-3-3');const {productIdentityKeys}=require('../../backend/supabase/functions/_shared/outfitDiversity');
+ const body=await (await stylistRequest(rows)).json();body.excludeItemIds=old.map(i=>i.id);body.excludeProductKeys=old.flatMap(productIdentityKeys);
+ const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));const data=await response.json();
+ expect(response.status).toBe(200);expect(data.outfits).toHaveLength(3);expect(data.rotation.recycledSlots).toEqual(['shoes']);
+ expect(data.outfits.flatMap(o=>o.items).some(i=>i.id==='rotation-3-3')).toBe(true);
+ expect(new Set(data.outfits.flatMap(o=>o.items).map(i=>i.id)).size).toBe(12);
+});
+
+test('a new catalog ID cannot resurrect a recently shown product by name or normalized photo',async()=>{
+ const old=rotationFixtures.filter(i=>i.id.endsWith('-0'));
+ const aliases=old.flatMap(i=>[{...i,id:'name-alias-'+i.id,name:i.name.toUpperCase(),imageUrl:`https://example.invalid/alias-${i.id}.jpg`},{...i,id:'photo-alias-'+i.id,name:i.name+' renamed',imageUrl:i.imageUrl+'?width=800'}]);
+ const {handler}=load([],null,null,null,null,'curated');const {productIdentityKeys}=require('../../backend/supabase/functions/_shared/outfitDiversity');const history=new Set(old.flatMap(productIdentityKeys));
+ const body=await (await stylistRequest([...rotationFixtures,...aliases])).json();body.excludeItemIds=old.map(i=>i.id);body.excludeProductKeys=[...history];
+ const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));const data=await response.json();
+ expect(response.status).toBe(200);expect(data.outfits).toHaveLength(3);
+ expect(data.outfits.flatMap(o=>o.items).flatMap(productIdentityKeys).filter(key=>history.has(key))).toEqual([]);
+});

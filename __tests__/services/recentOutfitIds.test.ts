@@ -96,3 +96,14 @@ test('keeps exclusions and pending writes isolated between accounts', async () =
     expect(AsyncStorage.setItem).toHaveBeenCalledWith(`${STORAGE_KEY}::account-a`, JSON.stringify(['account-a-item']));
     expect(await mod.getRecentShownIds('signed-out')).toEqual([]);
 });
+
+test('records physical identity and rehydrates normalized names and images', async () => {
+    const mod=loadModule();
+    mod.recordShownOutfits([{items:[{id:'shoe-original',name:'Brown Leather Loafers',imageUrl:'https://cdn.test/loafers.jpg?width=200'}]}],'identity-user');
+    const keys=await mod.getRecentShownProductKeys('identity-user');
+    expect(keys).toEqual(expect.arrayContaining(['id:shoe-original','n:brown leather loafers','i:cdn.test/loafers.jpg']));
+    const saved=(AsyncStorage.setItem as jest.Mock).mock.calls.find(([key])=>key.endsWith('identity-user::products'))![1];
+    (AsyncStorage.getItem as jest.Mock).mockImplementation(async (key:string)=>key.endsWith('identity-user::products')?saved:null);
+    expect(await loadModule().getRecentShownProductKeys('identity-user')).toEqual(keys);
+    expect(await loadModule().getRecentShownProductKeys('another-user')).toEqual([]);
+});

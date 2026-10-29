@@ -13,12 +13,14 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { productIdentityKeys } from '../../backend/supabase/functions/_shared/outfitDiversity';
 
 const MAX_RECENT_IDS = 150;
 const STORAGE_KEY = 'aiExcludeShownItemIds';
 
 interface RecencyState {
     recentIds: string[];
+    productKeys: string[];
     hydrated: boolean;
     hydratePromise: Promise<void> | null;
     writeChain: Promise<void>;
@@ -28,7 +30,7 @@ function stateFor(scope?: string): { key: string; state: RecencyState } {
     const key = scope ? `${STORAGE_KEY}::${encodeURIComponent(scope)}` : STORAGE_KEY;
     let state = states.get(key);
     if (!state) {
-        state = { recentIds: [], hydrated: false, hydratePromise: null, writeChain: Promise.resolve() };
+        state = { recentIds: [], productKeys: [], hydrated: false, hydratePromise: null, writeChain: Promise.resolve() };
         states.set(key, state);
     }
     return { key, state };
@@ -46,8 +48,14 @@ function isRealPoolId(id: string): boolean {
 function ensureHydrated(state: RecencyState, key: string): Promise<void> {
     if (state.hydrated) return Promise.resolve();
     if (!state.hydratePromise) {
-        state.hydratePromise = AsyncStorage.getItem(key)
-            .then((raw) => {
+        state.hydratePromise = Promise.all([AsyncStorage.getItem(key), AsyncStorage.getItem(`${key}::products`)])
+            .then(([raw, products]) => {
+                if (products) {
+                    try {
+                        const keys = JSON.parse(products);
+                        if (Array.isArray(keys)) state.productKeys = keys.filter((key: unknown) => typeof key === 'string' && /^(id:|n:|i:)/.test(key) && key.length <= 2048).slice(-MAX_RECENT_IDS * 3);
+                    } catch { /* Ignore a corrupt optional identity cache. */ }
+                }
                 if (raw) {
                     try {
                         const ids = JSON.parse(raw);
@@ -80,6 +88,13 @@ export async function getRecentShownIds(scope?: string): Promise<string[]> {
     return [...state.recentIds];
 }
 
+/** The same displayed-product history, including duplicate catalog listings. */
+export async function getRecentShownProductKeys(scope?: string): Promise<string[]> {
+    const {state, key} = stateFor(scope);
+    await Promise.all([ensureHydrated(state, key), state.writeChain]);
+    return [...state.productKeys];
+}
+
 /**
  * Record the decks the user is now looking at (raw edge response or any
  * `outfits` array with `items[].id`). FIFO-capped, persisted. Fire-and-
@@ -92,13 +107,22 @@ export function recordShownOutfits(outfits: unknown, scope?: string): void {
         await ensureHydrated(state, key);
         if (!Array.isArray(outfits)) return;
         const seen = new Set(state.recentIds);
+        const seenKeys = new Set(state.productKeys);
+        let keysAdded = false;
         let added = false;
         for (const outfit of outfits) {
             const items = (outfit as { items?: unknown } | null)?.items;
             if (!Array.isArray(items)) continue;
             for (const raw of items) {
                 const id = String((raw as { id?: unknown } | null)?.id ?? '').trim();
-                if (!isRealPoolId(id) || seen.has(id)) continue;
+                if (!isRealPoolId(id)) continue;
+                for (const key of productIdentityKeys(raw)) {
+                    if (key.length > 2048 || seenKeys.has(key)) continue;
+                    seenKeys.add(key);
+                    state.productKeys.push(key);
+                    keysAdded = true;
+                }
+                if (seen.has(id)) continue;
                 seen.add(id);
                 state.recentIds.push(id);
                 added = true;
@@ -109,6 +133,10 @@ export function recordShownOutfits(outfits: unknown, scope?: string): void {
         }
         if (added) {
             await AsyncStorage.setItem(key, JSON.stringify(state.recentIds)).catch(() => undefined);
+        }
+        if (keysAdded) {
+            state.productKeys = state.productKeys.slice(-MAX_RECENT_IDS * 3);
+            await AsyncStorage.setItem(`${key}::products`, JSON.stringify(state.productKeys)).catch(() => undefined);
         }
     }).catch(() => {
         // Recency is best-effort — never break generation.

@@ -22,6 +22,7 @@ export function validateOutfitGenerationRequest(body: unknown): Record<string, a
   // integer no larger than the requested limit.
   if (body.deckTarget !== undefined && (!Number.isInteger(body.deckTarget) || body.deckTarget < 1 || body.deckTarget > Math.min(15, body.limit ?? 3))) throw new OutfitRequestError();
   list(body.selectedItemIds, 200, 200); list(body.excludeItemIds, 200, 200);
+  list(body.excludeProductKeys, 450, 2048);
   for (const key of ['wardrobeOnly', 'useProvidedWardrobeOnly', 'catalogOnly']) if (body[key] !== undefined && typeof body[key] !== 'boolean') throw new OutfitRequestError();
   if (body.weather !== undefined && body.weather !== null) {
     if (!object(body.weather)) throw new OutfitRequestError();

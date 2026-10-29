@@ -10,7 +10,8 @@ import { normalizeModelOutfits } from '../_shared/modelOutfitResponse.ts'
 import { enforceRateLimit } from '../_shared/rateLimit.ts'
 import { isFourSlotCandidate, fourSlotOutfitReason, outfitStructureReason, isDressGarment, isNonOutfitItem } from '../_shared/outfitStructure.ts'
 import { styleJudgeReason, normalizeGarmentText, isWorkoutOccasion, rejectForStyleOccasion, rejectForClimate, rejectForRequestIntent, rejectForActivity } from '../_shared/occasionRules.ts'
-import { analyzeDeckProductDiversity, assembleDiverseDeck, canonicalProductKey, productIdentityKeys, diversitySlotOf, type DiversitySlot } from '../_shared/outfitDiversity.ts'
+import { analyzeDeckProductDiversity, assembleDiverseDeck, canonicalProductKey, productIdentityKeys, countDistinctProducts, diversitySlotOf, type DiversitySlot } from '../_shared/outfitDiversity.ts'
+import {wasRecentlyShown, rotationPool, freshProductCount} from '../_shared/outfitRotation.ts'
 import { needsLayering as needsLayeringShared, resolveStylistWeather } from '../_shared/outfitComposition.ts'
 import { detectSlotMismatch } from '../_shared/occasionRules.ts'
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
@@ -502,7 +503,7 @@ function retainBudgetFloorCandidates(
         if (ids.has(id)) return false
         ids.add(id)
         return true
-    }), item => simKeyEdge(item.name || item.type || '', item.macroCategory || '')).slice(0, 40)
+    }), item => canonicalProductKey(item)).slice(0, 40)
 }
 function deckHashEdge(style: string, occasion: string): number {
     const key = `${style}::${occasion}`.toLowerCase()
@@ -1324,6 +1325,7 @@ async function fetchShopItemsForAllSlotsEdge(
     budgetFx?: BudgetFxContext,
     nativeBudget?: {amount: number; currency: string},
     requestIntent = '',
+    recycleTarget = 0,
 ): Promise<any[]> {
     const picks: any[] = []
     const styleKey = style.toLowerCase().replace(/[\s-]+/g, '_')
@@ -1344,7 +1346,8 @@ async function fetchShopItemsForAllSlotsEdge(
             const value = (entry: any) => budgetFx ? (entry.row._budget_cost === null ? Infinity : Number(entry.row._budget_cost)) : Number(entry.row.price)
             return (budgetFx || nativeBudget ? value(a) - value(b) : 0) || b.score - a.score
         }
-        const excluded = (row: any) => Boolean(excludeSet?.has(String(row.id)) || excludeSet?.has(`shop_${row.id}`))
+        const rowIdentity = (row: any) => ({id: `shop_${row.id}`, name: row.name, imageUrl: row.image_url})
+        const excluded = (row: any) => Boolean(excludeSet && wasRecentlyShown(rowIdentity(row), excludeSet))
         for (;;) {
             let q: any
             if (budgetFx) {
@@ -1427,9 +1430,8 @@ async function fetchShopItemsForAllSlotsEdge(
 
             scored.push(...pageScored)
             scored.sort(compare)
-            const freshProducts = new Set(scored.filter(({ row }: any) => row?.image_url && !excluded(row))
-                .map(({ row }: any) => simKeyEdge(row.name || row.type || '', slot)))
-            if (freshProducts.size >= perSlot || data.length < 100) break
+            const freshProducts = countDistinctProducts(scored.filter(({ row }: any) => row?.image_url && !excluded(row)).map(({row}: any) => rowIdentity(row)))
+            if (freshProducts >= perSlot || data.length < 100) break
             const next = data[data.length - 1]?.id
             if (typeof next !== 'string' || !next || next === cursor) throw new CatalogLookupError()
             cursor = next
@@ -1442,12 +1444,16 @@ async function fetchShopItemsForAllSlotsEdge(
             // the whole budget and starve decks to ~7 distinct items.
             // Best-scored id per similarity key wins (rank is score-sorted).
             const seenProducts = new Set<string>()
+            const seenIdentityKeys = new Set<string>()
+            const slotPicks: any[] = []
             let added = 0
             const pushRow = (row: any) => {
-                const pkey = simKeyEdge(row.name || row.type || '', slot)
-                if (seenProducts.has(pkey)) return
+                const pkey = canonicalProductKey(rowIdentity(row))
+                const keys = productIdentityKeys(rowIdentity(row))
+                if (seenProducts.has(pkey) || keys.some(key => seenIdentityKeys.has(key))) return
                 seenProducts.add(pkey)
-                picks.push({
+                keys.forEach(key => seenIdentityKeys.add(key))
+                slotPicks.push({
                     id: `shop_${row.id}`,
                     type: row.garment_type || row.category || slot,
                     category: row.category || slot,
@@ -1474,6 +1480,15 @@ async function fetchShopItemsForAllSlotsEdge(
                 if (excluded(row)) continue
                 pushRow(row)
             }
+            // Exhaustion is slot-specific. Keep every fresh option before
+            // allowing previously shown products back into a scarce slot.
+            if (recycleTarget && countDistinctProducts(slotPicks) < recycleTarget) {
+                for (const {row} of scored) {
+                    if (added >= perSlot) break
+                    if (row?.image_url && excluded(row)) pushRow(row)
+                }
+            }
+            picks.push(...slotPicks)
       }
       return picks
     } catch (_) {
@@ -2328,6 +2343,7 @@ serve(async (req: Request) => {
         // regenerate taps bring NEW pieces instead of recombining the same
         // ~40 items forever. Manual selection (selectedItemIds) ignores this.
         excludeItemIds = [],
+        excludeProductKeys = [],
     } = body
 
     if (catalogOnly) {
@@ -2346,6 +2362,8 @@ serve(async (req: Request) => {
             .map((v: unknown) => String(v ?? '').trim())
             .filter(Boolean),
     )
+    for (const key of excludeProductKeys) excludeSet.add(key)
+    const rotationTarget = deckTarget === 3 ? 3 : 0
 
     let parsedBudget: { amount: number; currency: string; fx?: BudgetFxContext } | null
     let requestFx: BudgetFxContext | undefined
@@ -2519,7 +2537,7 @@ serve(async (req: Request) => {
         }
 
         // Variety changes candidates, never the request constraints.
-        wardrobeItems = wardrobeItems.filter((it: any) =>
+        wardrobeItems = wardrobeItems.filter((it: any) => rotationTarget ||
             String(it.id) === String(anchorItemId || '') ||
             (selectedItemIds || []).includes(String(it.id)) || !excludeSet.has(String(it.id)))
 
@@ -2538,6 +2556,7 @@ serve(async (req: Request) => {
             })
             wardrobeItems = wardrobeItems.filter((item: any) => !rejectForActivity(item, `${occasion} ${prompt}`))
         }
+        if (rotationTarget) wardrobeItems = rotationPool(wardrobeItems.filter(eligibleCandidate), excludeSet, rotationTarget, requiredIds).items
 
         // ── 3c. Supplement sparse wardrobe slots from the shop ─────────────
         // Wardrobe pieces remain in the pool, but a 15-card daily deck needs
@@ -2556,7 +2575,7 @@ serve(async (req: Request) => {
                     requiredSlots,
                     limit,
                     selectedItemIds,
-                    item => eligibleCandidate(item) && (!parsedBudget || !isShopPricedItem(item)),
+                    item => eligibleCandidate(item) && (!rotationTarget || !wasRecentlyShown(item, excludeSet)) && (!parsedBudget || !isShopPricedItem(item)),
                 )
             try {
                 const svcClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
@@ -2573,7 +2592,7 @@ serve(async (req: Request) => {
                 // A banned choice must not count toward a completed page or
                 // consume a per-slot pick while later eligible products exist.
                 const shopEligible = (item: any) => eligibleCandidate(item) && filterShopByPrefs([item], preferences).length === 1
-                const fetchedShopItems = await fetchShopItemsForAllSlotsEdge(svcClient, missingSlots, selectionStyle, targetChoicesPerSlot, excludeSet, shopEligible, parsedBudget ? requestFx : undefined, parsedBudget && !requestFx ? parsedBudget : undefined, `${occasion} ${prompt}`)
+                const fetchedShopItems = await fetchShopItemsForAllSlotsEdge(svcClient, missingSlots, selectionStyle, targetChoicesPerSlot, excludeSet, shopEligible, parsedBudget ? requestFx : undefined, parsedBudget && !requestFx ? parsedBudget : undefined, `${occasion} ${prompt}`, rotationTarget)
                 // Shop candidates must respect color/pattern prefs too — the
                 // wardrobe-side filter above ran before they were appended.
                 const shopItems = filterShopByPrefs(fetchedShopItems, preferences)
@@ -2588,6 +2607,8 @@ serve(async (req: Request) => {
         } else {
             console.log(`[wardrobeOnly] Skipping shop supplement — ${wardrobeItems.length} Supabase wardrobe item(s) only`)
         }
+        const rotation = rotationTarget ? rotationPool(wardrobeItems.filter(eligibleCandidate), excludeSet, rotationTarget, requiredIds) : null
+        if (rotation) wardrobeItems = rotation.items
 
         // ── 3c2. Shop-only decks (Team Collaboration) are 100% catalog ────
         // The supplement above APPENDS shop rows to the wardrobe pool, which
@@ -2683,7 +2704,7 @@ serve(async (req: Request) => {
             const budgetSource = wardrobeItems
             const rankEligible = (item: any) => eligibleCandidate(item) && (String(item.id) === String(anchorItemId || '') || tasteEligible(item))
             wardrobeItems = rankItemsForStyleEdge(wardrobeItems, styleKey, { minKeep: 16, dropThreshold: -2, perCategoryFloor: 6, eligibility: rankEligible })
-            wardrobeItems = collapseBySimEdge(wardrobeItems, (i: any) => simKeyEdge(i.name || i.type || '', i.macroCategory || ''))
+            wardrobeItems = collapseBySimEdge(wardrobeItems, (i: any) => canonicalProductKey(i))
             if (parsedBudget) {
                 wardrobeItems = retainBudgetFloorCandidates(budgetSource, wardrobeItems,
                     item => shopPriceOf(item, parsedBudget!.currency, parsedBudget!.fx), rankEligible, anchorPreRank, 6)
@@ -2894,6 +2915,7 @@ serve(async (req: Request) => {
                 anchorSlot: anchor ? diversitySlotOf(anchor) : null,
                 activeSlots: layered ? ['top','outerwear','bottom','shoes'] : ['top','bottom','shoes'],
                 target: Math.min(Number(deckTarget) || limit, limit),
+                priorityOfDeck: deck => freshProductCount(deck.flatMap(choice => choice.items), excludeSet, anchorItemId),
             }).deck
         }
         if (!choices.length) return null
@@ -3116,7 +3138,8 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
             const reason = hasAnchor ? styleJudgeReason(outfit.items || [], styleKey, `${occasion || ''} ${prompt || ''}`, weather, anchorItemId) : 'anchor_missing'
             const complete = !fourSlotOutfitReason(outfit.items, layered)
             if (reason || !complete) console.warn('[quality-reject]', { reason: reason || 'missing_slots', style: styleKey, occasion })
-            const repeats = outfit.items.some((it: any) => String(it.id) !== String(anchorItemId || '') && excludeSet.has(String(it.id)) && !(selectedItemIds || []).includes(String(it.id)))
+            const repeats = outfit.items.some((it: any) => String(it.id) !== String(anchorItemId || '') && wasRecentlyShown(it, excludeSet) && !(selectedItemIds || []).includes(String(it.id))
+                && !rotation?.recycledSlots.includes(diversitySlotOf(it)!))
             const budgetOk = !preferences?.maxShopBudget || fitsBudgetAmount(outfitShopSpend(outfit.items, itemMap, preferences.maxShopBudget.currency, preferences.maxShopBudget.fx), preferences.maxShopBudget.amount)
             return !reason && complete && !repeats && budgetOk
         })
@@ -3174,6 +3197,7 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
                 // keep the remaining validated looks behind it so the client
                 // still has alternatives to choose from.
                 target: requestedDeckTarget,
+                priorityOfDeck: deck => freshProductCount(deck.flatMap((outfit: any) => outfit.items), excludeSet, anchorItemId),
                 debug: (message: string, data?: unknown) => console.log('[stylist-diversity]', message, data ?? ''),
             })
             if (diverseDeck.deck.length > 0) {
@@ -3232,7 +3256,7 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
         if (personalStylist && finalOutfits.length !== 3) return new Response(JSON.stringify({success: false, outfits: [], code: 'incomplete_outfit_deck', error: 'Three complete, suitable outfits are required. Add more suitable clothing or adjust the request.'}), {status: 422, headers: {...corsHeaders, 'Content-Type': 'application/json'}})
         if (!finalOutfits.length) return new Response(JSON.stringify({ success: false, error: 'ai_generation_unavailable', outfits: [], providerAttempts: providerTrace }), {status: 503, headers: {...corsHeaders, 'Content-Type':'application/json'}})
 
-        return new Response(JSON.stringify({ success: true, outfits: finalOutfits, source: generationSource, layered, provider: aiProviderUsed, providerAttempts: providerTrace, diversity: diversityCapacity, budgetReference: requestFx ? {id: requestFx.snapshot.id, asOf: requestFx.snapshot.asOf, source: 'CBU'} : undefined }), {
+        return new Response(JSON.stringify({ success: true, outfits: finalOutfits, source: generationSource, layered, provider: aiProviderUsed, providerAttempts: providerTrace, diversity: diversityCapacity, rotation: rotation ? {recycledSlots: rotation.recycledSlots, freshProducts: freshProductCount(finalOutfits.flatMap((outfit: any) => outfit.items), excludeSet, anchorItemId)} : undefined, budgetReference: requestFx ? {id: requestFx.snapshot.id, asOf: requestFx.snapshot.asOf, source: 'CBU'} : undefined }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
 
