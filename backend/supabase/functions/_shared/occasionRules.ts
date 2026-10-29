@@ -73,7 +73,16 @@ function activityReason(items: JudgeableItem[], occasion: string): string | null
 /** Admit scarce required pieces before ranking, rather than discovering them after truncation. */
 export function rejectForRequestIntent(item: JudgeableItem, request: string, weather?: ClimateWeather | null): string | null {
     const slot = macroOf(item), text = blobOf(item);
-    if (/\b(no|without|skip|exclude)\s+(?:a\s+|any\s+)?(?:jackets?|coats?|layers?|outerwear)\b|без\s+(?:куртк|пиджак|пальто)/i.test(request) && slot === 'outerwear') return 'requested no outerwear';
+    if (slot === 'outerwear') {
+        // Keep the fourth slot, choosing a different garment when a jacket
+        // or coat is unwanted. A cardigan, vest or overshirt can still qualify.
+        const noJacket = /\b(no|without|skip|exclude)\s+(?:a\s+|any\s+)?jackets?\b|без\s+(?:куртк|пиджак)/i.test(request);
+        const noCoat = /\b(no|without|skip|exclude)\s+(?:a\s+|any\s+)?coats?\b|без\s+пальто/i.test(request);
+        const softLayer = /\b(no|without|skip|exclude)\s+(?:a\s+|any\s+)?(?:layers?|outerwear)\b/i.test(request);
+        if (noJacket && /\b(jackets?|blazers?|shackets?)\b/.test(text)) return 'requested a non-jacket layer';
+        if (noCoat && /\b(coats?|overcoats?|topcoats?|parkas?|peacoats?)\b/.test(text)) return 'requested a non-coat layer';
+        if (softLayer && !/\b(cardigans?|vests?|overshirts?)\b/.test(text)) return 'requested a light alternative layer';
+    }
     if (weather?.temp != null && weather.temp < 5) {
         if (slot === 'outerwear' && !/\b(puffer|parka|down|insulated|overcoat|topcoat|winter coat|shearling|quilted)\b/.test(text)) return 'cold request requires insulated coat';
         if (slot === 'shoes' && !/\b(boots?|chelsea|winter|insulated|snow)\b/.test(text)) return 'cold request requires winter boots';

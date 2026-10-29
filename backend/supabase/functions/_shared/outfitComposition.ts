@@ -12,15 +12,13 @@ export interface OutfitCompositionPolicy {
 
 const LAYERED_SLOTS: CompositionSlot[] = ['outerwear', 'top', 'bottom', 'shoes'];
 
-/** Explicit composition intent takes precedence over the usual four-slot deck. */
+/** Personal Stylist always includes a layer; intent changes the garment, not the slots. */
 export function resolveOutfitComposition(
   _style: string | null | undefined,
-  weather?: CompositionWeather | null,
-  prompt?: string | null,
+  _weather?: CompositionWeather | null,
+  _prompt?: string | null,
 ): OutfitCompositionPolicy {
-  const noLayer = /\b(no|without|skip|exclude)\s+(?:a\s+|any\s+)?(?:jackets?|coats?|layers?|outerwear)\b|без\s+(?:куртк|пиджак|пальто)/i.test(prompt || '');
-  const layered = !noLayer;
-  return { layered, activeSlots: layered ? [...LAYERED_SLOTS] : ['top', 'bottom', 'shoes'] };
+  return { layered: true, activeSlots: [...LAYERED_SLOTS] };
 }
 
 /** A destination temperature in the request overrides the current local weather. */

@@ -96,8 +96,6 @@ function fitOutfitToBudget(parts: any[], pool: any[], budget: { amount: number; 
         const repl = cheaper(slotOf(next[worstIdx]), used, room)
         if (repl) {
             next[worstIdx] = { ...repl, recommendation: next[worstIdx].recommendation || 'Suggested from shop' }
-        } else if (slotOf(next[worstIdx]) === 'outerwear' && next.length > 3) {
-            next.splice(worstIdx, 1)
         } else {
             break
         }

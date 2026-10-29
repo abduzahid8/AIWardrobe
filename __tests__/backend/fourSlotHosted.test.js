@@ -17,11 +17,18 @@ test('hosted handler rejects a wardrobe without a layer',async()=>{
  const {handler}=load(['shirt','pants','shoes']);const response=await handler(request(items.slice(1)));const data=await response.json();expect(response.ok).toBe(false);expect(data.outfits||[]).toEqual([]);
 });
 
-test('a summer no-jacket request returns exactly three real slots',async()=>{
- const rows=items.slice(1).map(i=>i.macroCategory==='shoes'?{...i,name:'Brown leather sneakers'}:i.macroCategory==='top'?{...i,name:'White cotton polo shirt'}:i);
+test('a summer no-jacket request keeps a light alternative layer and four slots',async()=>{
+ const rows=items.map(i=>i.macroCategory==='outerwear'?{...i,name:'Lightweight linen cardigan'}:i.macroCategory==='shoes'?{...i,name:'Brown leather sneakers'}:i.macroCategory==='top'?{...i,name:'White cotton shirt'}:i);
  const {handler}=load(rows.map(i=>i.id));const body=await request(rows,{temp:30}).json();body.stylePreferences='casual';body.occasion='Casual';body.prompt='summer, no jacket';
  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));const data=await response.json();
- expect(response.status).toBe(200);expect(data.layered).toBe(false);expect(data.outfits[0].items.map(i=>i.macroCategory).sort()).toEqual(['bottom','shoes','top']);
+ expect(response.status).toBe(200);expect(data.layered).toBe(true);expect(data.outfits[0].items.map(i=>i.macroCategory).sort()).toEqual(['bottom','outerwear','shoes','top']);
+ expect(data.outfits[0].items.find(i=>i.macroCategory==='outerwear').name).toBe('Lightweight linen cardigan');
+});
+
+test('no-jacket intent never permits a successful three-item outfit',async()=>{
+ const rows=items.slice(1);const {handler}=load(rows.map(i=>i.id));const body=await request(rows,{temp:30}).json();body.stylePreferences='casual';body.occasion='Casual';body.prompt='summer, no jacket';
+ const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
+ expect(response.status).toBe(422);expect((await response.json()).outfits).toEqual([]);
 });
 
 test('a winter destination overrides local summer weather and rejects a blazer plus loafers',async()=>{

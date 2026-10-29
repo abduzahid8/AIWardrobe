@@ -70,15 +70,12 @@ export function isFourSlotCandidate(item: {macroCategory?: string; name?: string
     return item.macroCategory === 'outerwear' || item.macroCategory === 'shoes';
 }
 
-/** App generation contract: layer (when required), base shirt, pants, shoes.
- * `requireLayer=false` is the hot / explicit no-jacket composition: exactly
- * top+bottom+shoes, and an outerwear piece makes it invalid. */
-export function fourSlotOutfitReason(items: unknown, requireLayer = true): string | null {
-    const structural = outfitStructureReason(items, requireLayer);
+/** App generation contract: exactly one layer, base shirt, pants and shoes. */
+export function fourSlotOutfitReason(items: unknown, _requireLayer = true): string | null {
+    const structural = outfitStructureReason(items, true);
     if (structural) return structural;
     const parts = items as Array<{macroCategory: string; name?: string; type?: string}>;
-    if (!requireLayer && parts.some(p => p.macroCategory === 'outerwear')) return 'layer_not_allowed';
-    if (parts.length !== (requireLayer ? 4 : 3) || parts.some(isDressGarment)) return 'requires_four_categories';
+    if (parts.length !== 4 || parts.some(isDressGarment)) return 'requires_four_categories';
     if (!parts.every(isFourSlotCandidate)) return 'invalid_required_category';
     const top = parts.find(item => item.macroCategory === 'top')!;
     const bottom = parts.find(item => item.macroCategory === 'bottom')!;
