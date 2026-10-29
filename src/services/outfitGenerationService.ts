@@ -257,7 +257,7 @@ export async function generateOutfitsFromDB(
         }
 
         const validOutfits: GeneratedOutfit[] = data.outfits
-            .filter((o: any) => o && !fourSlotOutfitReason(o.items, data.layered !== false))
+            .filter((o: any) => o && !fourSlotOutfitReason(o.items, true))
             .map((o: any) => mapRawOutfit(o, params))
             .filter((o: GeneratedOutfit) => passesStyleJudge(o.items, params.stylePreferences, `${params.occasion || ''} ${params.prompt || ''}`, params.weather));
         const outfits = assembleDiverseDeck<GeneratedOutfit>({
@@ -265,13 +265,13 @@ export async function generateOutfitsFromDB(
             itemsOf: (outfit) => outfit.items,
             keysOf: (item) => productIdentityKeys(item),
             usedKeys: new Set<string>(),
-            activeSlots: data.layered === false ? ['top', 'bottom', 'shoes'] : ['outerwear', 'top', 'bottom', 'shoes'],
+            activeSlots: ['outerwear', 'top', 'bottom', 'shoes'],
             target: DISPLAY_DECK_SIZE,
             poolItems: validOutfits.flatMap((outfit) => outfit.items),
         }).deck;
         if (outfits.length !== DISPLAY_DECK_SIZE) return { success: false, outfits: [], error: 'no_valid_outfits_for_request' };
         if (params.recordShown !== false) recordShownOutfits(outfits, recencyScope);
-        return { success: true, outfits, source: data.source ?? 'ai', layered: Boolean(data.layered) };
+        return { success: true, outfits, source: data.source ?? 'ai', layered: true };
 
     } catch (err: any) {
         if (err?.message === 'generation_account_changed') {

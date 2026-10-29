@@ -3,6 +3,7 @@ import ts from 'typescript';
 import { needsLayering } from '../../features/outfit-generator/utils/styleInference';
 import { isCompleteNormalizedOutfit } from '../../features/outfit-generator/utils/normalizeSlots';
 import { needsLayering as needsLayeringShared } from '../../backend/supabase/functions/_shared/outfitComposition';
+import { rejectForRequestIntent } from '../../backend/supabase/functions/_shared/occasionRules';
 function loadFunction(path: string, name: string, bindings: Record<string, unknown> = {}) {
  const text=fs.readFileSync(path,'utf8');
  const file=ts.createSourceFile(path,text,ts.ScriptTarget.Latest,true);
@@ -24,6 +25,10 @@ describe('required layer + shirt/T-shirt + pants + shoes',()=>{
  test('four distinct categories are complete',()=>expect(isCompleteNormalizedOutfit(pieces)).toBe(true));
  test('a second layer cannot stand in for the base shirt',()=>expect(isCompleteNormalizedOutfit(pieces.map(p=>p.id==='shirt'?{...p,name:'Wool sweater'}:p))).toBe(false));
  test('shorts cannot stand in for pants',()=>expect(isCompleteNormalizedOutfit(pieces.map(p=>p.id==='pants'?{...p,name:'Cotton shorts'}:p))).toBe(false));
+ test('no jacket allows a cardigan but rejects a blazer',()=>{
+  expect(rejectForRequestIntent({name:'Cotton cardigan',macroCategory:'outerwear'},'no jacket')).toBeNull();
+  expect(rejectForRequestIntent({name:'Linen blazer',macroCategory:'outerwear'},'no jacket')).not.toBeNull();
+ });
 });
 
 test('real Aurélien polo with Jeans in its title cannot fill the pants category',()=>{

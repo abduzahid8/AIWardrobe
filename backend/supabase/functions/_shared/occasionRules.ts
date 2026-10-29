@@ -73,7 +73,10 @@ function activityReason(items: JudgeableItem[], occasion: string): string | null
 /** Admit scarce required pieces before ranking, rather than discovering them after truncation. */
 export function rejectForRequestIntent(item: JudgeableItem, request: string, weather?: ClimateWeather | null): string | null {
     const slot = macroOf(item), text = blobOf(item);
-    if (/\b(no|without|skip|exclude)\s+(?:a\s+|any\s+)?(?:jackets?|coats?|layers?|outerwear)\b|без\s+(?:куртк|пиджак|пальто)/i.test(request) && slot === 'outerwear') return 'requested no outerwear';
+    if (slot === 'outerwear') {
+        if (/\b(no|without|skip|exclude)\s+(?:a\s+|any\s+)?(?:layers?|outerwear)\b/i.test(request)) return 'requested no outerwear';
+        if ((/\b(no|without|skip|exclude)\s+(?:a\s+|any\s+)?(?:jackets?|coats?)\b|без\s+(?:куртк|пиджак|пальто)/i.test(request)) && /\b(jackets?|coats?|blazers?|parkas?|puffers?|trench)\b|куртк|пиджак|пальто/i.test(text)) return 'requested no jacket or coat';
+    }
     if (weather?.temp != null && weather.temp < 5) {
         if (slot === 'outerwear' && !/\b(puffer|parka|down|insulated|overcoat|topcoat|winter coat|shearling|quilted)\b/.test(text)) return 'cold request requires insulated coat';
         if (slot === 'shoes' && !/\b(boots?|chelsea|winter|insulated|snow)\b/.test(text)) return 'cold request requires winter boots';

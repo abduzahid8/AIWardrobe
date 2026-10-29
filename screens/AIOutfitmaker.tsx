@@ -2277,11 +2277,11 @@ const AIOutfitGenerator = () => {
           };
         };
         const cleanedOutfits = data.outfits.map((outfit: any, i: number) => {
-          const repaired = repairEdgeItems(outfit.items || [], data.layered !== false);
+          const repaired = repairEdgeItems(outfit.items || [], true);
           const filled = repaired;
           return wrapLook(outfit, filled, i);
         }).filter((outfit: GeneratedOutfit) =>
-          isFourSlotLook(outfit.items, data.layered !== false),
+          isFourSlotLook(outfit.items, true),
         );
 
         // Taste judge: drop cards carrying pieces rejected for this style ×
@@ -2365,7 +2365,7 @@ const AIOutfitGenerator = () => {
         })();
         // The client renders 4-slot cards (layer + top + bottom + shoes), so
         // every card slot participates in the composition.
-        const clientDiversitySlots: DiversitySlot[] = data.layered === false ? ['top', 'bottom', 'shoes'] : ['top', 'outerwear', 'bottom', 'shoes'];
+        const clientDiversitySlots: DiversitySlot[] = ['top', 'outerwear', 'bottom', 'shoes'];
         const {
           deck: finalOutfits,
           relaxed: deckRelaxed,

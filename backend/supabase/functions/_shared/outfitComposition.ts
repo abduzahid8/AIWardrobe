@@ -13,24 +13,13 @@ export interface OutfitCompositionPolicy {
 const LAYERED_SLOTS: CompositionSlot[] = ['outerwear', 'top', 'bottom', 'shoes'];
 export const DISPLAY_DECK_SIZE = 3;
 
-/** Explicit composition intent takes precedence over the usual four-slot deck. */
+/** Every generated outfit has an outer layer, top, bottom and shoes. */
 export function resolveOutfitComposition(
-  style: string | null | undefined,
-  weather?: CompositionWeather | null,
-  prompt?: string | null,
+  _style: string | null | undefined,
+  _weather?: CompositionWeather | null,
+  _prompt?: string | null,
 ): OutfitCompositionPolicy {
-  const noLayer = /\b(no|without|skip|exclude)\s+(?:a\s+|any\s+)?(?:jackets?|coats?|layers?|outerwear)\b|без\s+(?:куртк|пиджак|пальто)/i.test(prompt || '');
-  const text = `${style || ''} ${prompt || ''}`.toLowerCase();
-  const explicitLayer = /\b(layer(?:ed|ing)?|jacket|coat|blazer|outerwear|parka|puffer|trench|cardigan)\b|слоя|куртк|пиджак|пальто/i.test(text);
-  const temp = Number(weather?.temp);
-  const coldWeather = Number.isFinite(temp)
-    ? temp < 18
-    : /\b(cold|freezing|snow|winter|wind|rain)\b|мороз|снег|зим|ветер|дожд/i.test(
-      `${weather?.condition || ''} ${prompt || ''}`,
-    );
-  const warmWeather = Number.isFinite(temp) && temp >= 20;
-  const layered = !noLayer && (explicitLayer || (coldWeather && !warmWeather));
-  return { layered, activeSlots: layered ? [...LAYERED_SLOTS] : ['top', 'bottom', 'shoes'] };
+  return { layered: true, activeSlots: [...LAYERED_SLOTS] };
 }
 
 /** A destination temperature in the request overrides the current local weather. */

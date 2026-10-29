@@ -87,9 +87,9 @@ describe('composition by climate and intent',()=>{
   test.each([undefined,{temp:5,condition:'snow'}])('retains every category: %j',weather=>{
     expect(resolveOutfitComposition('casual',weather,'summer beach')).toEqual({layered:true,activeSlots:['outerwear','top','bottom','shoes']});
   });
-  test('explicit no-jacket intent removes the layer requirement',()=>{
+  test('four slots remain required even for warm weather and no-jacket text',()=>{
     expect(resolveOutfitComposition('casual',{temp:35,condition:'sunny'},'summer beach')).toEqual({layered:true,activeSlots:['outerwear','top','bottom','shoes']});
-    expect(resolveOutfitComposition('casual',{temp:28,condition:'sunny'},'28C, short sleeves, no jacket')).toEqual({layered:false,activeSlots:['top','bottom','shoes']});
+    expect(resolveOutfitComposition('casual',{temp:28,condition:'sunny'},'28C, short sleeves, no jacket')).toEqual({layered:true,activeSlots:['outerwear','top','bottom','shoes']});
   });
   const look=[{id:'jacket',name:'Denim jacket',macroCategory:'outerwear'},{id:'shirt',name:'Cotton T-shirt',macroCategory:'top'},{id:'pants',name:'Cotton chinos',macroCategory:'bottom'},{id:'shoes',name:'Leather loafers',macroCategory:'shoes'}];
   test('requires pants even when a casual jacket would match shorts',()=>{
