@@ -1,4 +1,4 @@
-import { fourSlotOutfitReason } from '../../../backend/supabase/functions/_shared/outfitStructure';
+import { fourSlotOutfitReason, isNonOutfitItem } from '../../../backend/supabase/functions/_shared/outfitStructure';
 import { fitsBudgetAmount } from '../../../backend/supabase/functions/_shared/budgetFx';
 import readinessLogger from '../../../src/utils/logger';
 /**
@@ -216,7 +216,9 @@ export const isCompleteNormalizedOutfit = (items: any[], requireLayer = true) =>
 /** Repair Edge-returned items only: names + slot macros. Never picks from a local pool. */
 export function repairEdgeItems(items: any[]): any[] {
   return (items || []).map((it: any) => {
-    if (!it || isUnderwearItem(it) || isAccessoryPropItem(it)) return null;
+    // Descriptions mention garment details and styling accessories. A cap-toe
+    // shoe remains footwear; only actual non-garment products are removed.
+    if (!it || isUnderwearItem(it) || isNonOutfitItem(it)) return null;
     const name = humanizeProductName(it.name) || it.name;
     const fixed = detectSlotMismatch(it.macroCategory, name, it.type);
     const own = canonicalizeMacroCategory(it.macroCategory || '');

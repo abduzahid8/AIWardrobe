@@ -1,5 +1,5 @@
 /** Exercise production helpers, rather than copied layering implementations. */
-import { isFormalLayer as isFormalLayerItem, isShortsBottom as isShortsItem } from '../../features/outfit-generator/utils/normalizeSlots';
+import { isFormalLayer as isFormalLayerItem, isShortsBottom as isShortsItem, repairEdgeItems } from '../../features/outfit-generator/utils/normalizeSlots';
 import { resolveOutfitComposition } from '../../backend/supabase/functions/_shared/outfitComposition';
 import { fourSlotOutfitReason } from '../../backend/supabase/functions/_shared/outfitStructure';
 
@@ -97,4 +97,19 @@ describe('composition by climate and intent',()=>{
     expect(fourSlotOutfitReason(look.map(i=>i.id==='pants'?{...i,name:'Chino shorts'}:i))).not.toBeNull();
   });
   test('a coat cannot replace the base shirt',()=>expect(fourSlotOutfitReason(look.filter(i=>i.id!=='shirt'))).not.toBeNull());
+});
+
+it('keeps an authoritative cap-toe shoe through client repair, preserving all four slots',()=>{
+ const items=[
+  {id:'layer',name:'Navy cotton blazer',macroCategory:'outerwear'},
+  {id:'shirt',name:'White cotton shirt',macroCategory:'top'},
+  {id:'pants',name:'Navy cotton trousers',macroCategory:'bottom'},
+  {id:'shop_thursday-253390159881',name:'Executive | Black',type:'shoes',macroCategory:'shoes',description:'Black leather oxford dress shoe. style Cap Toe style Lace-Up.'},
+ ];
+ const repaired=repairEdgeItems(items);
+ expect(repaired).toHaveLength(4);expect(fourSlotOutfitReason(repaired)).toBeNull();
+ expect(repaired[3].id).toBe('shop_thursday-253390159881');
+});
+it('still drops a real accessory even when a catalog row labels it as shoes',()=>{
+ expect(repairEdgeItems([{id:'cap',name:'Cotton baseball cap',type:'shoes',macroCategory:'shoes'}])).toEqual([]);
 });
