@@ -303,6 +303,8 @@ export function rejectForStyleOccasion(
     occasionId: string | null | undefined,
 ): string | null {
     if (!item) return 'empty item';
+    const refinedDate = refinedDateProductReason(item,styleId,occasionId);
+    if (refinedDate) return refinedDate;
     const blob = normalizeGarmentText(`${item.name || ''} ${item.type || ''} ${item.description || ''} ${item.color || ''}`);
     // Underwear is never visible daywear, in any style or occasion.
     if (UNDERWEAR_RE.test(blob)) return 'underwear must never surface as visible clothing';
@@ -862,7 +864,8 @@ export function styleJudgeReason(
     }
     const oc = rejectOutfitClimate(items, weather);
     if (oc !== null) return `outfit climate: ${oc}`;
-    return rejectOutfitIncoherence(items, styleId, occasionId);
+    return rejectOutfitIncoherence(items, styleId, occasionId)
+        || assessOutfitQuality(items,styleId,occasionId,weather).reasons[0] || null;
 }
 
 /** True when the outfit survives the judge (every item unrejected). */
@@ -905,4 +908,101 @@ export function humanizeProductName(raw: string | null | undefined): string {
     // Sentence case to match catalog style ("Slim fit ...").
     if (out) out = out.charAt(0).toUpperCase() + out.slice(1);
     return out;
+}
+
+export interface OutfitQualityAssessment {
+    dimensions: {styleFit:number;occasionFit:number;colorHarmony:number;materialHarmony:number;formalityFit:number;weatherFit:number};
+    score:number;
+    reasons:string[];
+    evidence:string[];
+}
+function isOldMoneyDate(style?:string|null,occasion?:string|null):boolean {
+    return String(style||'').toLowerCase().replace(/[\s-]+/g,'_')==='old_money'
+        && /\bdate\b|свидани/i.test(occasion||'');
+}
+/** Context plus multiple garment cues, never a global one-word product ban. */
+export function refinedDateProductReason(item:JudgeableItem,style?:string|null,occasion?:string|null):string|null {
+    if(!isOldMoneyDate(style,occasion))return null;
+    const text=blobOf(item),slot=macroOf(item);
+    if(slot==='top' && /\bwestern[ -]shirts?\b|\bshirts?\b.{0,25}\bwestern\b/.test(text))return 'Western shirt construction conflicts with refined evening styling';
+    if(slot==='top' && /\bripstop\b/.test(text) && /\bshirts?\b/.test(text))return 'utility ripstop shirt construction underdresses the date';
+    if(slot==='outerwear' && /\bdenim\b/.test(text) && /\b(blazers?|jackets?)\b/.test(text))return 'denim tailoring remains too casual for this refined date';
+    if(slot==='outerwear' && /\btechnical\b/.test(text) && /\b(leisure|elastic|sports?|running)\b/.test(text))return 'technical leisure construction conflicts with refined evening tailoring';
+    if(slot==='bottom' && /\b(sports?|athletic|training|performance)\b/.test(text) && /\b(pants?|trousers?)\b/.test(text))return 'athletic trouser construction is not refined evening wear';
+    if(slot==='top' && /\brelaxed\b/.test(text) && /\b(shirt|button[ -]down|poplin|pinpoint)\b/.test(text))return 'relaxed shirt silhouette underdresses this polished date';
+    if(['top','outerwear','bottom'].includes(slot) && /\b(acid[ -]washed|stone[ -]washed|destroyed|distressed)\b/.test(text))return 'distressed surface treatment conflicts with understated evening clothing';
+    if(slot==='top' && /\b(terry|towelling|toweling|towel)\b/.test(text) && /\b(polo|shirt|knit)\b/.test(text))return 'towelling resort texture underdresses a refined evening';
+    if(slot==='outerwear' && /\b(flight|racer|racing|waxed|technical|track)\b/.test(text) && /\b(jacket|cotton|nylon|zip|pocket)\b/.test(text))return 'sport/utility construction underdresses the refined date';
+    if(slot==='outerwear' && /\b(nylon|contrasting bands|contrast panels)\b/.test(text) && /\b(zip|zipped|jacket|elastic)\b/.test(text))return 'technical or athletic outerwear conflicts with refined evening garments';
+    if(slot==='outerwear' && /\bjacket\b/.test(text)
+        && !/\b(blazer|tailored|single[ -]breasted|double[ -]breasted|suit|wool|cashmere|unstructured|tweed|herringbone|linen)\b/.test(text))return 'jacket lacks evidence of refined tailoring for this date';
+    if(slot==='top' && /\bdenim\b/.test(text) && /\b(shirts?|western)\b/.test(text))return 'denim/Western shirt underdresses a refined date';
+    if(slot==='outerwear' && /\b(biker|motorcycle|moto|trucker)\b/.test(text)
+        && /\b(leather|suede|shearling|jacket|asymmetric|hardware)\b/.test(text))return 'riding/workwear jacket dominates the refined date silhouette';
+    if(slot==='outerwear' && /\b(deck|field|military|utility)\b/.test(text)
+        && /\b(jacket|cargo|pockets|epaulettes)\b/.test(text))return 'utility outerwear is too casual for this refined date';
+    if(slot==='shoes' && /\b(rugged|stormking|hiking|combat|workboot)\b/.test(text)
+        && /\b(lug|anti-slip|reinforced|rugged|workboot)\b/.test(text))return 'rugged lug footwear conflicts with refined evening clothing';
+    if(slot==='bottom' && /\b(drawstring|jogger|track|interlock|jersey)\b/.test(text)
+        && /\b(trousers?|pants?|elasticated|jersey)\b/.test(text))return 'sporting trouser construction underdresses the date';
+    return null;
+}
+function qualityColor(item:JudgeableItem):string {
+    const text=normalizeGarmentText(`${item.color||''} ${item.name||''}`);
+    const groups:Array<[string,RegExp]>=[['white',/\b(white|ivory|ecru|cream|offwhite)\b/],['navy',/\b(navy|indigo|midnight)\b/],['black',/\bblack\b/],['grey',/\b(grey|gray|charcoal|silver)\b/],['earth',/\b(brown|tan|camel|beige|taupe|sand|cognac|brandy|chocolate)\b/],['green',/\b(olive|sage|khaki|forest|green)\b/],['red',/\b(burgundy|maroon|red)\b/],['blue',/\bblue\b/],['yellow',/\b(yellow|mustard)\b/],['orange',/\borange\b/],['purple',/\b(purple|lilac)\b/],['pink',/\bpink\b/]];
+    const explicit=normalizeGarmentText(String(item.color||''));
+    return groups.find(([,pattern])=>pattern.test(explicit))?.[0] || groups.find(([,pattern])=>pattern.test(text))?.[0]||'unknown';
+}
+/** Six equally reported dimensions. Missing evidence stays neutral, not invented. */
+export function assessOutfitQuality(items:JudgeableItem[],style?:string|null,occasion?:string|null,weather?:ClimateWeather|null):OutfitQualityAssessment {
+    const dimensions={styleFit:1,occasionFit:1,colorHarmony:1,materialHarmony:1,formalityFit:1,weatherFit:1};
+    const reasons:string[]=[],evidence:string[]=[];
+    const relevant=isOldMoneyDate(style,occasion);
+    for(const item of items){
+        const reason=refinedDateProductReason(item,style,occasion);
+        if(reason){reasons.push(reason);dimensions.styleFit=0;dimensions.occasionFit=0;dimensions.formalityFit=0;}
+        if(rejectForClimate(item,weather))dimensions.weatherFit=0;
+    }
+    const bySlot=(slot:string)=>items.find(item=>macroOf(item)===slot);
+    const pairs=[['outerwear','top'],['top','bottom'],['bottom','shoes'],['outerwear','shoes']];
+    let conflictingPairs=0;
+    for(const [a,b] of pairs){
+        const first=bySlot(a),second=bySlot(b);if(!first||!second)continue;
+        const x=qualityColor(first),y=qualityColor(second);
+        // Bright complementary colors need deliberate styling; muted earth,
+        // navy, burgundy and olive palettes remain free to mix.
+        const vivid=(item:JudgeableItem)=>/\b(bright|neon|electric|vivid|fluorescent)\b/.test(blobOf(item));
+        const complement=[['red','green'],['blue','orange'],['yellow','purple']].some(p=>p.includes(x)&&p.includes(y)&&x!==y);
+        if(complement&&vivid(first)&&vivid(second)){conflictingPairs++;evidence.push(`${a}/${b}: competing vivid complementary colors`);}
+    }
+    if(conflictingPairs){dimensions.colorHarmony=0;reasons.push('competing vivid complementary colors across outfit pairs');}
+    const palette=outfitPaletteReason(items);if(palette){dimensions.colorHarmony=0;reasons.push(palette);}
+    if(relevant){
+        const layer=bySlot('outerwear'),top=bySlot('top'),bottom=bySlot('bottom');
+        const upper=[layer,top].filter(Boolean).map(item=>blobOf(item!)).join(' ');
+        const lower=bottom?blobOf(bottom):'';
+        const layerEvidence=layer?blobOf(layer):'';
+        const winterCoat=/\b(coat|trench|overcoat|peacoat)\b/.test(layerEvidence)
+            && /\b(wool|cashmere|winter|insulated|double[ -]breasted)\b/.test(layerEvidence)
+            && !/\b(lightweight|tropical|summer|unlined)\b/.test(layerEvidence);
+        if((winterCoat || /\b(shearling|alpaca|mohair|fleece|chunky|heavyweight|rugged|padded)\b/.test(upper))&&/\b(linen|seersucker|gauze)\b/.test(`${lower} ${top?blobOf(top):''}`)){
+            dimensions.materialHarmony=0;reasons.push('heavy rugged upper textures conflict with airy summer trousers');
+        }
+        const utility=items.filter(item=>/\b(western|military|utility|workwear|leisure)\b/.test(blobOf(item)));
+        if(utility.length>=2){dimensions.styleFit=0;reasons.push('multiple utility/leisure pieces dominate the refined date');}
+        if(utility.length===1){dimensions.styleFit=0.75;evidence.push('one casual detail balanced by refined companions');}
+        const layerText=layer?blobOf(layer):'';
+        if(/\b(leather|suede)\b/.test(layerText)&&!reasons.length){dimensions.styleFit=Math.min(dimensions.styleFit,0.75);evidence.push('understated leather layer: smart evening rather than classic tailoring');}
+    }
+    const score=Object.values(dimensions).reduce((sum,n)=>sum+n,0)/6;
+    return {dimensions,score,reasons:[...new Set(reasons)],evidence};
+}
+
+/** Preserve valid alternatives across garment families before bounded candidate trims. */
+export function spreadQualityFamilies<T>(items:T[],familyOf:(item:T)=>string):T[] {
+    const families=new Map<string,T[]>();
+    for(const item of items){const key=familyOf(item);const group=families.get(key)||[];group.push(item);families.set(key,group);}
+    const result:T[]=[];
+    for(let i=0;result.length<items.length;i++)for(const group of families.values())if(i<group.length)result.push(group[i]);
+    return result;
 }

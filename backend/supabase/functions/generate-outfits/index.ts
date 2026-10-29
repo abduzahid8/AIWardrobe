@@ -9,8 +9,8 @@ import { outfitBudgetFeedback } from '../_shared/outfitBudgetFeedback.ts'
 import { normalizeModelOutfits } from '../_shared/modelOutfitResponse.ts'
 import { enforceRateLimit } from '../_shared/rateLimit.ts'
 import { isFourSlotCandidate, fourSlotOutfitReason, outfitStructureReason, isDressGarment, isNonOutfitItem } from '../_shared/outfitStructure.ts'
-import { styleJudgeReason, normalizeGarmentText, isWorkoutOccasion, rejectForStyleOccasion, rejectForClimate, rejectForRequestIntent, rejectForActivity } from '../_shared/occasionRules.ts'
-import { analyzeDeckProductDiversity, assembleDiverseDeck, canonicalProductKey, productIdentityKeys, countDistinctProducts, diversitySlotOf, type DiversitySlot } from '../_shared/outfitDiversity.ts'
+import { styleJudgeReason, assessOutfitQuality, spreadQualityFamilies, normalizeGarmentText, isWorkoutOccasion, rejectForStyleOccasion, rejectForClimate, rejectForRequestIntent, rejectForActivity } from '../_shared/occasionRules.ts'
+import { analyzeDeckProductDiversity, assembleDiverseDeck, canonicalProductKey, productIdentityKeys, garmentArchetypeToken, countDistinctProducts, diversitySlotOf, type DiversitySlot } from '../_shared/outfitDiversity.ts'
 import {wasRecentlyShown, rotationPool, freshProductCount, rotationDeckPriority, createRotationPriority} from '../_shared/outfitRotation.ts'
 import { needsLayering as needsLayeringShared, resolveStylistWeather } from '../_shared/outfitComposition.ts'
 import { detectSlotMismatch } from '../_shared/occasionRules.ts'
@@ -2603,6 +2603,22 @@ serve(async (req: Request) => {
                 // Shop candidates must respect color/pattern prefs too — the
                 // wardrobe-side filter above ran before they were appended.
                 const shopItems = filterShopByPrefs(fetchedShopItems, preferences)
+                if (String(selectionStyle).toLowerCase().replace(/[ -]+/g,'_') === 'old_money' && /\bdate\b/i.test(`${occasion} ${prompt}`)) {
+                    const freshLayers = [...wardrobeItems,...shopItems].filter(item=>item.macroCategory==='outerwear' && !wasRecentlyShown(item,excludeSet));
+                    const families = new Set(freshLayers.map(garmentArchetypeToken));
+                    if (freshLayers.length >= 3 && families.size === 1) {
+                        // Same admitted family can dominate an early catalog page.
+                        // Reuse the existing paginated fetch with a quality eligibility
+                        // predicate; pagination and product-history rules stay unchanged.
+                        const alternatives = await fetchShopItemsForAllSlotsEdge(svcClient,['outerwear'],selectionStyle,3,excludeSet,
+                            item=>shopEligible(item) && !families.has(garmentArchetypeToken(item)),parsedBudget?requestFx:undefined,
+                            parsedBudget&&!requestFx?parsedBudget:undefined,`${occasion} ${prompt}`,rotationTarget,deckPriority)
+                        shopItems.push(...filterShopByPrefs(alternatives,preferences))
+                    }
+                    const layers = spreadQualityFamilies(shopItems.filter(item=>item.macroCategory==='outerwear'),garmentArchetypeToken)
+                    shopItems.splice(0,shopItems.length,...layers,...shopItems.filter(item=>item.macroCategory!=='outerwear'))
+                }
+
                 if (shopItems.length > 0) {
                     console.log(`[shop-fill] Added ${shopItems.length} shop item(s) for sparse slots: ${missingSlots.join(', ')} (target=${targetChoicesPerSlot})`)
                     wardrobeItems = [...wardrobeItems, ...shopItems]
@@ -2905,7 +2921,8 @@ serve(async (req: Request) => {
         }
         // Keep one-product alternatives for the joint deck selector: pruning
         // them greedily can remove the only compatible third look.
-        const completeChoices = () => outfitChoices(wardrobeItems, layered, acceptsCompleteChoice, isDressGarment, requiredChoiceIds, 64, 12000, deckTarget === 3 ? 1 : 2)
+        let completeChoiceCache: ReturnType<typeof outfitChoices<any>> | undefined
+        const completeChoices = () => completeChoiceCache ??= outfitChoices(wardrobeItems, layered, acceptsCompleteChoice, isDressGarment, requiredChoiceIds, 64, 12000, deckTarget === 3 ? 1 : 2)
         async function generateCuratedChoices(): Promise<any[] | null> {
         let choices = completeChoices()
         if (!choices.length) return null
@@ -2918,6 +2935,7 @@ serve(async (req: Request) => {
                 ? wardrobeItems.find((item: any) => String(item.id) === String(anchorItemId)) : undefined
             choices = assembleDiverseDeck({
                 candidates: choices, itemsOf: choice => choice.items,
+                qualityOf: choice => assessOutfitQuality(choice.items,styleKey,`${occasion} ${prompt}`,weather).score,
                 keysOf: item => productIdentityKeys(item), poolItems: wardrobeItems, usedKeys: new Set<string>(),
                 anchorKeys: anchor ? new Set(productIdentityKeys(anchor)) : undefined,
                 anchorSlot: anchor ? diversitySlotOf(anchor) : null,
@@ -3192,9 +3210,7 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
             const diverseDeck = assembleDiverseDeck<any>({
                 candidates: finalOutfits,
                 itemsOf: (o: any) => o.items || [],
-                qualityOf: (o: any) => Number.isSafeInteger(o.curationRank) && o.curationRank >= 0
-                    ? 1 / (1 + o.curationRank)
-                    : Number(o.confidence ?? o.matchScore ?? 0.9),
+                qualityOf: (o: any) => assessOutfitQuality(o.items,styleKey,`${occasion} ${prompt}`,weather).score,
                 keysOf: (item: any) => productIdentityKeys(item),
                 anchorKeys: anchorIdentityKeys.size > 0 ? anchorIdentityKeys : undefined,
                 anchorSlot: anchorForDiversity ? diversitySlotOf(anchorForDiversity) : null,
@@ -3264,6 +3280,7 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
         if (personalStylist && finalOutfits.length !== 3) return new Response(JSON.stringify({success: false, outfits: [], code: 'incomplete_outfit_deck', error: 'Three complete, suitable outfits are required. Add more suitable clothing or adjust the request.'}), {status: 422, headers: {...corsHeaders, 'Content-Type': 'application/json'}})
         if (!finalOutfits.length) return new Response(JSON.stringify({ success: false, error: 'ai_generation_unavailable', outfits: [], providerAttempts: providerTrace }), {status: 503, headers: {...corsHeaders, 'Content-Type':'application/json'}})
 
+        finalOutfits = finalOutfits.map((outfit:any)=>({...outfit, qualityAssessment: assessOutfitQuality(outfit.items,styleKey,`${occasion} ${prompt}`,weather)}))
         const previousDeckOverlapBySlot = Object.fromEntries(['outerwear','top','bottom','shoes'].map(slot=>[slot,finalOutfits.flatMap((outfit:any)=>outfit.items).filter((item:any)=>item.macroCategory===slot && String(item.id)!==String(anchorItemId||'') && wasRecentlyShown(item,previousSet)).length]))
         return new Response(JSON.stringify({ success: true, generationRequestId: body.generationRequestId, rotationScope: body.rotationScope, previousDeckOverlapBySlot, outfits: finalOutfits, source: generationSource, layered, provider: aiProviderUsed, providerAttempts: providerTrace, diversity: diversityCapacity, rotation: rotation ? {recycledSlots: rotation.recycledSlots, freshProducts: freshProductCount(finalOutfits.flatMap((outfit: any) => outfit.items), excludeSet, anchorItemId)} : undefined, budgetReference: requestFx ? {id: requestFx.snapshot.id, asOf: requestFx.snapshot.asOf, source: 'CBU'} : undefined }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }

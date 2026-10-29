@@ -2220,7 +2220,7 @@ const AIOutfitGenerator = () => {
               ? `${stylePhraseFor(styleToUse)} look curated from the shop.`
               : outfit.description;
           const judgeOk = passesStyleJudge(items as any[], styleToUse, `${occasionToUse} ${effectivePrompt || promptText || ''}`, resolvedWeather, baseItemId);
-          const baseScore: number = outfit.confidence ?? outfit.matchScore ?? 0.9;
+          const baseScore: number = outfit.qualityAssessment?.score ?? outfit.confidence ?? outfit.matchScore ?? 0.9;
           return {
             ...outfit,
             id: outfit.id || `look_${tapNonce}_${idx}`,
