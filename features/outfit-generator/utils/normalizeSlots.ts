@@ -214,7 +214,10 @@ export const PLACEHOLDER_PANTS = {
 export const isCompleteNormalizedOutfit = (items: any[], requireLayer = true) => fourSlotOutfitReason(items, requireLayer) === null;
 
 /** Repair Edge-returned items only: names + slot macros. Never picks from a local pool. */
-export function repairEdgeItems(items: any[]): any[] {
+export function repairEdgeItems(items: any[], requireLayer = true): any[] {
+  // A deck that already satisfies the shared wire contract must not be
+  // reclassified by the client and lose a valid slot.
+  if (fourSlotOutfitReason(items, requireLayer) === null) return items;
   return (items || []).map((it: any) => {
     if (!it || isUnderwearItem(it) || isAccessoryPropItem(it)) return null;
     const name = humanizeProductName(it.name) || it.name;

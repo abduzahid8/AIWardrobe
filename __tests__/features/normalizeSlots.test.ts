@@ -6,7 +6,19 @@
  * Added after user screenshots showed: a tee rendered as LAYER, a tee
  * rendered as PANTS, and driving moccasins in Old Money decks.
  */
-import { createSlotNormalizer, ensureSlotFloors, isFourSlotLook } from '../../features/outfit-generator/utils/normalizeSlots';
+import { createSlotNormalizer, ensureSlotFloors, isFourSlotLook, repairEdgeItems } from '../../features/outfit-generator/utils/normalizeSlots';
+import { isAccessoryPropItem } from '../../features/outfit-generator/utils/occasionRules';
+
+it('preserves a valid warm-weather edge outfit with cap-toe shoes', () => {
+  const items = [
+    { id: 'top', macroCategory: 'top', name: 'Cotton shirt', type: 'shirt' },
+    { id: 'bottom', macroCategory: 'bottom', name: 'Wool trousers', type: 'trousers' },
+    { id: 'shoe', macroCategory: 'shoes', name: 'Executive | Black', type: 'shoes', description: 'dress shoe executive black leather oxford style Cap Toe' },
+  ];
+  expect(isAccessoryPropItem(items[2])).toBe(true);
+  expect(isFourSlotLook(items, false)).toBe(true);
+  expect(repairEdgeItems(items, false)).toEqual(items);
+});
 
 function ctx(overrides: Record<string, unknown> = {}) {
   return {

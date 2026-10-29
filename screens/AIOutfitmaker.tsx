@@ -1007,7 +1007,11 @@ const slotStyles = StyleSheet.create({
 const formatPlanningDate = (date: Date): string =>
   date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
+const CLIENT_RUNTIME_MARKER = 'rotation-debug-555b157-v1';
+
 const AIOutfitGenerator = () => {
+  // eslint-disable-next-line no-console
+  useEffect(() => { if (__DEV__) console.log('[client-runtime-marker]', CLIENT_RUNTIME_MARKER); }, []);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   // ── Post-trial soft gate: page stays open, Generate → Paywall ──
@@ -2215,11 +2219,16 @@ const AIOutfitGenerator = () => {
           rotationScope: recencyScope,
           generationRequestId,
           clientPathId: 'AIOutfitmaker-direct',
+          clientRuntimeMarker: CLIENT_RUNTIME_MARKER,
         },
       }), EDGE_TIMEOUT_MS, cancelSignal);
 
       if (!isCurrentGeneration()) return;
-      if (invokeError) throw await outfitGenerationFailure(data, invokeError);
+      if (invokeError) {
+        // eslint-disable-next-line no-console
+        if (__DEV__) console.log('[stylist-http-request]', { generationRequestId, clientPathId: 'AIOutfitmaker-direct' });
+        throw await outfitGenerationFailure(data, invokeError);
+      }
       if (__DEV__) readinessLogger.debug('[rotation-client] RESPONSE', {
         generationRequestId,
         source: data?.source,
@@ -2268,7 +2277,7 @@ const AIOutfitGenerator = () => {
           };
         };
         const cleanedOutfits = data.outfits.map((outfit: any, i: number) => {
-          const repaired = repairEdgeItems(outfit.items || []);
+          const repaired = repairEdgeItems(outfit.items || [], data.layered !== false);
           const filled = repaired;
           return wrapLook(outfit, filled, i);
         }).filter((outfit: GeneratedOutfit) =>
@@ -2452,6 +2461,8 @@ const AIOutfitGenerator = () => {
         if (__DEV__) readinessLogger.debug(String(`[AIOutfitmaker] nonce=${generationNonce.current} edge=${cleanedOutfits.length} shown=${finalOutfits.length}`), []);
 
         if (finalOutfits.length !== DISPLAY_DECK_SIZE) {
+          // eslint-disable-next-line no-console
+          if (__DEV__) console.log('[stylist-deck-rejected]', { generationRequestId, source: data.source, provider: data.provider, layered: data.layered, received: data.outfits.length, cleaned: cleanedOutfits.length, judged: judgedOutfits.length, budgeted: budgetedOutfits.length, selected: finalOutfits.length, reasons: cleanedOutfits.map((o: GeneratedOutfit) => styleJudgeReason(o.items as any[], styleToUse, `${occasionToUse} ${effectivePrompt || promptText || ''}`, resolvedWeather)), items: data.outfits.map((o: any) => o.items?.map((x: any) => ({ id: x.id, name: x.name, type: x.type, category: x.category, macroCategory: x.macroCategory }))) });
           throw new Error('no_valid_outfits_for_request');
         }
 

@@ -56,6 +56,8 @@ export async function outfitGenerationFailure(data: unknown, error?: unknown): P
       // Supabase HTTP errors retain the Response, rather than returning its JSON
       // as data. Bound this read too so an error body cannot stall the screen.
       const payload = await withRequestDeadline(() => context.clone().json(), 1500);
+      // eslint-disable-next-line no-console
+      if (__DEV__) console.log('[stylist-http-response]', { httpStatus: context.status, payload });
       const message = messageFrom(payload, context.status);
       if (!message) reportUnmappedFailure(error, 'http_body');
       return new OutfitGenerationFailure(message);

@@ -1318,7 +1318,7 @@ function filterShopByPrefs(items: any[], preferences?: any): any[] {
 // The caller passes only wardrobe slots that are absent or too sparse.
 // Candidates are style-ranked before they are offered to the outfit builder.
 class CatalogLookupError extends Error {
-    constructor() { super('catalog_lookup_unavailable') }
+    constructor(readonly details: Record<string, unknown> = {}) { super('catalog_lookup_unavailable') }
 }
 
 async function fetchShopItemsForAllSlotsEdge(
@@ -1340,16 +1340,20 @@ async function fetchShopItemsForAllSlotsEdge(
     const ctx = getStyleContext(style)
     const rejectKeywords = extractRejectKeywords(ctx.reject)
     const controller = new AbortController()
+    const started = Date.now()
+    let currentSlot = '', page = 0, currentCursor: string | undefined, stage = 'setup'
     let timer: ReturnType<typeof setTimeout> | undefined
     const deadline = new Promise<never>((_, reject) => {
-        timer = setTimeout(() => { controller.abort(); reject(new CatalogLookupError()) }, 15_000)
+        timer = setTimeout(() => { controller.abort(); reject(new CatalogLookupError({ stage: 'deadline' })) }, 15_000)
     })
     try {
       for (const slot of requiredSlots) {
+        currentSlot = slot
         let cursor: string | undefined
         let cursorCost: string | null = null
         let nativePage = 0
         let scored: any[] = []
+        const rotationRecentKeys = recentProductKeys ?? excludeProductKeys
         const compare = (a: any, b: any) => {
             const value = (entry: any) => budgetFx ? (entry.row._budget_cost === null ? Infinity : Number(entry.row._budget_cost)) : Number(entry.row.price)
             return (budgetFx || nativeBudget ? value(a) - value(b) : 0) || b.score - a.score
@@ -1364,6 +1368,7 @@ async function fetchShopItemsForAllSlotsEdge(
             return keys.some((key) => excludeProductKeys?.has(key))
         }
         for (;;) {
+            page = nativePage + 1; currentCursor = cursor; stage = 'query'
             if (searchPagesBySlot) searchPagesBySlot[slot] = (searchPagesBySlot[slot] || 0) + 1
             let q: any
             if (budgetFx) {
@@ -1404,10 +1409,11 @@ async function fetchShopItemsForAllSlotsEdge(
             if (cursor && !nativeBudget) q = q.gt('id', cursor)
             }
             const { data, error } = await Promise.race([q, deadline])
-            if (controller.signal.aborted || error || !Array.isArray(data)) throw new CatalogLookupError()
+            if (controller.signal.aborted || error || !Array.isArray(data)) throw new CatalogLookupError({ stage: error ? 'query_error' : 'invalid_data', errorMessage: error?.message })
             if (!data.length) break
             if (budgetFx && data.some((row: any) => row._budget_cost !== null &&
-                (typeof row._budget_cost !== 'string' || !/^[0-9]+([.][0-9]+)?$/.test(row._budget_cost)))) throw new CatalogLookupError()
+                (typeof row._budget_cost !== 'string' || !/^[0-9]+([.][0-9]+)?$/.test(row._budget_cost)))) throw new CatalogLookupError({ stage: 'invalid_budget_cost' })
+            stage = 'scoring_or_eligibility'
             const pageScored = data
                 .map((row: any) => ({
                     row,
@@ -1446,7 +1452,7 @@ async function fetchShopItemsForAllSlotsEdge(
 
             scored.push(...pageScored)
             scored.sort(compare)
-            const rotationRecentKeys = recentProductKeys ?? excludeProductKeys
+            stage = 'identity'
             const freshProducts = new Set(scored
                 .filter(({ row }: any) => row?.image_url && !excluded(row) &&
                     !productIdentityKeys({ id: `shop_${row.id}`, name: row.name, imageUrl: row.image_url })
@@ -1454,7 +1460,7 @@ async function fetchShopItemsForAllSlotsEdge(
                 .map(({ row }: any) => canonicalProductKey({ id: `shop_${row.id}`, name: row.name, imageUrl: row.image_url })))
             if (freshProducts.size >= perSlot || data.length < 100) break
             const next = data[data.length - 1]?.id
-            if (typeof next !== 'string' || !next || next === cursor) throw new CatalogLookupError()
+            if (typeof next !== 'string' || !next || next === cursor) throw new CatalogLookupError({ stage: next === cursor ? 'duplicate_cursor' : 'invalid_cursor' })
             cursor = next
             nativePage++
             if (budgetFx) cursorCost = data[data.length - 1]._budget_cost
@@ -1495,6 +1501,7 @@ async function fetchShopItemsForAllSlotsEdge(
             // inventory cannot fill this slot; the immediate previous deck
             // is excluded entirely here and can only be restored downstream
             // as an absolute last resort.
+            stage = 'select_rows'
             const freshRows = scored.filter(({ row }) => !productIdentityKeys({ id: `shop_${row.id}`, name: row.name, imageUrl: row.image_url }).some((key) => rotationRecentKeys?.has(key)))
             const olderRows = scored.filter(({ row }) => productIdentityKeys({ id: `shop_${row.id}`, name: row.name, imageUrl: row.image_url }).some((key) => rotationRecentKeys?.has(key)) && !excluded(row))
             for (const { row } of [...freshRows, ...olderRows]) {
@@ -1505,8 +1512,10 @@ async function fetchShopItemsForAllSlotsEdge(
             }
       }
       return picks
-    } catch (_) {
-      throw new CatalogLookupError()
+    } catch (error) {
+      const details = error instanceof CatalogLookupError ? error.details : {}
+      console.error('[catalog-lookup-failure]', { slot: currentSlot, page, cursor: currentCursor ?? null, stage, elapsedMs: Date.now() - started, errorName: error instanceof Error ? error.name : 'unknown', errorMessage: error instanceof Error ? error.message : 'unknown', ...details })
+      throw error
     } finally {
       if (timer !== undefined) clearTimeout(timer)
     }
@@ -2379,6 +2388,7 @@ serve(async (req: Request) => {
         })
     }
     console.log('[rotation-request]', {
+        clientRuntimeMarker: body.clientRuntimeMarker || '',
         clientPathId: String(clientPathId || ''),
         generationRequestId: String(generationRequestId || ''),
         rotationScope: body.rotationScope || null,
