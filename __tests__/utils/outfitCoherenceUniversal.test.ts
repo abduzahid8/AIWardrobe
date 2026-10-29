@@ -238,3 +238,25 @@ describe('sloppy bottoms rejected regardless of jogger phrasing', () => {
     expect(passesStyleJudge(items, 'old_money', 'work')).toBe(false);
   });
 });
+
+describe('four-slot quality gates', () => {
+  const base = [
+    item('Lightweight linen cardigan', 'outerwear', {color:'navy'}),
+    item('White cotton polo shirt', 'top', {color:'white'}),
+    item('Beige cotton chinos', 'bottom', {color:'beige'}),
+    item('Brown leather loafers', 'shoes', {color:'brown'}),
+  ];
+  it('allows an open lightweight cardigan over a base polo', () => {
+    expect(styleJudgeReason(base, 'casual', 'summer, no jacket', {temp:30})).toBeNull();
+  });
+  it('rejects three competing vivid hues, while allowing one accent with neutrals', () => {
+    const loud=base.map((p,i)=>({...p,color:['red','blue','yellow','brown'][i]}));
+    expect(styleJudgeReason(loud,'casual','casual')).toBe('too many competing vivid colors');
+    expect(styleJudgeReason(base.map((p,i)=>i===1?{...p,color:'red'}:p),'casual','casual')).toBeNull();
+  });
+  it('keeps weather and no-jacket restrictions when choosing the fourth item', () => {
+    const heavy=base.map((p,i)=>i===0?{...p,name:'Insulated down parka jacket'}:p);
+    expect(styleJudgeReason(heavy,'casual','summer',{temp:32})).toMatch(/warm/);
+    expect(styleJudgeReason(heavy,'casual','no jacket',{temp:18})).toMatch(/non-jacket/);
+  });
+});

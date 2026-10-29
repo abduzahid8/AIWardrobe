@@ -531,6 +531,19 @@ const ATHLETIC_SOLE_RE = /\b(?:sneakers?|trainers?|hybrids?)\b|кроссовк�
 /** Sport-occasion shoe silhouette: trainers only. */
 const SPORT_SHOE_RE = /\b(?:sneakers?|trainers?|running|training|athletic|gym|workout)s?\b|кроссовки|кеды/;
 
+/** Neutrals and muted colors support the palette; three vivid hues compete. */
+export function outfitPaletteReason(items: JudgeableItem[]): string | null {
+    const vivid = new Set<string>();
+    for (const item of items) {
+        const color = normalizeGarmentText(String(item.color || ''));
+        if (/\b(navy|olive|khaki|sage|muted|dusty|pastel|pale|dark|burgundy|maroon|beige|cream|brown|grey|gray|black|white|neutral)\b/.test(color)) continue;
+        for (const hue of ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink']) {
+            if (new RegExp(`\\b${hue}\\b`).test(color)) vivid.add(hue);
+        }
+    }
+    return vivid.size >= 3 ? 'too many competing vivid colors' : null;
+}
+
 /**
  * Outfit-level coherence vetoes — rules that only make sense across pieces
  * (a blazer is fine, sneakers are fine, TOGETHER they are not). Returns a
@@ -548,6 +561,9 @@ export function rejectOutfitIncoherence(
     const style = isWorkoutOccasion(occasionId) ? 'sport' : String(styleId || '').toLowerCase().replace(/[\s-]+/g, '_');
     const formal = occasionFormality(occasionId) === 'formal';
     const classic = CLASSIC_STYLES.has(style);
+
+    const palette = outfitPaletteReason(items);
+    if (palette) return palette;
 
     // ── Universal vetoes (all styles, all occasions) ───────────────────
     // Athletic-sole footwear (sneakers, hybrid cupsole derbies) never pairs
@@ -574,7 +590,10 @@ export function rejectOutfitIncoherence(
             if (OUTER_LAYER_CLASS_RE.test(a) && OUTER_LAYER_CLASS_RE.test(b)) {
                 return 'two outer coats never layer together';
             }
-            if (PULLOVER_KNIT_CLASS_RE.test(a) && PULLOVER_KNIT_CLASS_RE.test(b)) {
+            const openCardigan = (item: JudgeableItem, text: string) => macroOf(item) === 'outerwear'
+                && /\bcardigans?\b/.test(text) && !/\bpullover\b/.test(text);
+            if (PULLOVER_KNIT_CLASS_RE.test(a) && PULLOVER_KNIT_CLASS_RE.test(b)
+                && !openCardigan(tops[i], a) && !openCardigan(tops[j], b)) {
                 return 'two pullover knits never layer together';
             }
         }
