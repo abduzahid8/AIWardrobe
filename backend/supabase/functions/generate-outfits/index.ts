@@ -3013,9 +3013,8 @@ serve(async (req: Request) => {
         // prompt. This is what turns "mostly on-style" into "reliably on-style".
         const itemMap = new Map<string, any>(wardrobeItems.map((i: any) => [String(i.id), i] as [string, any]))
         let verifiedChoiceFallback: any[] = []
-        async function generateCuratedChoices(): Promise<any[] | null> {
         const requiredChoiceIds = [...new Set([...(selectedItemIds || []), ...(anchorItemId && (!isShopOnlyDeck(stylePreferences, occasion) || !!anchorItemId) ? [anchorItemId] : [])])].map(String)
-        let choices = outfitChoices(wardrobeItems, layered, parts => {
+        const acceptsChoice = (parts: any[]) => {
             if (fourSlotOutfitReason(parts, layered) || styleJudgeReason(parts, styleKey, `${occasion} ${prompt}`, weather, anchorItemId)) return false
             const proposal = {items: parts}
             if (!validateOutfitAgainstStyle(proposal, styleKey, itemMap, layered, preferences).ok || !validateOutfitCompatibility(proposal, itemMap, styleKey).ok) return false
@@ -3025,7 +3024,9 @@ serve(async (req: Request) => {
             if (shopOnly && parts.some(item => !isShopRow(item))) return false
             if (!shopOnly && wardrobeItems.some((item:any) => !isShopRow(item)) && parts.every(item => isShopRow(item))) return false
             return true
-        }, isDressGarment, requiredChoiceIds, 64, 12000)
+        }
+        async function generateCuratedChoices(): Promise<any[] | null> {
+        let choices = outfitChoices(wardrobeItems, layered, acceptsChoice, isDressGarment, requiredChoiceIds, 64, 12000)
         if (!choices.length) return null
         // Resolve product compatibility jointly BEFORE asking the model to rank.
         // A five-look shortlist can omit the only compatible third card, while
@@ -3034,14 +3035,21 @@ serve(async (req: Request) => {
         if (rankCompleteSet) {
             const anchor = anchorItemId && (!isShopOnlyDeck(stylePreferences, occasion) || !!anchorItemId)
                 ? wardrobeItems.find((item: any) => String(item.id) === String(anchorItemId)) : undefined
-            choices = assembleDiverseDeck({
-                candidates: choices, itemsOf: choice => choice.items,
+            const selectChoices = (candidates: typeof choices) => assembleDiverseDeck({
+                candidates, itemsOf: choice => choice.items,
                 keysOf: item => productIdentityKeys(item), poolItems: wardrobeItems, usedKeys: new Set<string>(),
                 anchorKeys: anchor ? new Set(productIdentityKeys(anchor)) : undefined,
                 anchorSlot: anchor ? diversitySlotOf(anchor) : null,
                 activeSlots: layered ? ['top','outerwear','bottom','shoes'] : ['top','bottom','shoes'],
                 target: Math.min(Number(deckTarget) || limit, limit),
             }).deck
+            let selected = selectChoices(choices)
+            if (selected.length < DISPLAY_DECK_SIZE) {
+                choices = outfitChoices(wardrobeItems, layered, acceptsChoice, isDressGarment, requiredChoiceIds, 160, 12000, true)
+                selected = selectChoices(choices)
+            }
+            if (selected.length < DISPLAY_DECK_SIZE) return null
+            choices = selected
         }
         if (!choices.length) return null
         verifiedChoiceFallback = choices.map((choice, index) => ({items:choice.items, curationRank:index, description:`${selectionStyle} outfit`, stylingTips:[]}))
@@ -3281,6 +3289,8 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
                 wardrobeOnly,
                 deckSalt,
             )
+            const expandedChoices = outfitChoices(wardrobeItems, layered, acceptsChoice, isDressGarment, requiredChoiceIds, 160, 12000, true)
+            fallbackCandidates.push(...expandedChoices.map(choice => ({ items: choice.items, description: `${selectionStyle} outfit`, stylingTips: [] })))
             for (const item of fallbackCandidates.flatMap((outfit: any) => outfit?.items || [])) {
                 if (item?.id && !itemMap.has(String(item.id))) itemMap.set(String(item.id), item)
             }
@@ -3307,13 +3317,23 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
                 ...finalOutfits,
                 ...fallbackEnriched.filter((outfit: any) => {
                     const signature = (outfit.items || []).map((item: any) => String(item.id)).sort().join('|')
-                    if (!signature || signatures.has(signature)) return false
+                    if (!signature || signatures.has(signature) || fourSlotOutfitReason(outfit.items, layered)
+                        || styleJudgeReason(outfit.items, styleKey, `${occasion || ''} ${prompt || ''}`, weather, anchorItemId)) return false
                     signatures.add(signature)
                     return true
                 }),
             ]
         }
         // Provider compliance is not authority over the requested batch size.
+        // Expand valid combinations even when there are already three looks:
+        // those looks may share products and fail the deck-level selector.
+        const existingSignatures = new Set(finalOutfits.map((outfit: any) => (outfit.items || []).map((item: any) => String(item.id)).sort().join('|')))
+        for (const choice of outfitChoices(wardrobeItems, layered, acceptsChoice, isDressGarment, requiredChoiceIds, 160, 12000, true)) {
+            const signature = choice.items.map((item: any) => String(item.id)).sort().join('|')
+            if (existingSignatures.has(signature)) continue
+            existingSignatures.add(signature)
+            finalOutfits.push({ items: choice.items, description: `${selectionStyle} outfit`, stylingTips: [] })
+        }
         // ── 9c. Product-uniqueness deck gate ──────────────────────────────
         // Same formula is allowed; same actual product is not. Select the
         // COMBINATION of validated looks with zero non-anchor product
@@ -3357,11 +3377,8 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
                 target: requestedDeckTarget,
                 debug: (message: string, data?: unknown) => console.log('[stylist-diversity]', message, data ?? ''),
             })
+            finalOutfits = diverseDeck.deck
             if (diverseDeck.deck.length > 0) {
-                const signatureOf = (o: any) => (o.items || []).map((it: any) => String(it.id)).sort().join('|')
-                const selectedSignatures = new Set(diverseDeck.deck.map(signatureOf))
-                const extras = finalOutfits.filter((o: any) => !selectedSignatures.has(signatureOf(o)))
-                finalOutfits = [...diverseDeck.deck, ...extras]
                 const productDiversity = analyzeDeckProductDiversity(
                     diverseDeck.deck.map((o: any) => o.items || []),
                     {

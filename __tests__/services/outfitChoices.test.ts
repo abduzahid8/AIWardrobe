@@ -1,6 +1,16 @@
 import {isDressGarment} from '../../backend/supabase/functions/_shared/outfitStructure';
 import {outfitChoices,resolveOutfitChoices,parseRankedOutfitChoices} from '../../backend/supabase/functions/_shared/outfitChoices';
+import {assembleDiverseDeck, productIdentityKeys} from '../../backend/supabase/functions/_shared/outfitDiversity';
 const items=['top','bottom','shoes','outerwear'].flatMap(macroCategory=>Array.from({length:6},(_,i)=>({id:`${macroCategory}-${i}`,name:macroCategory,macroCategory})));
+test('expanded combinations can replace a short provider batch without repeating products',()=>{
+ const pool=['top','bottom','shoes'].flatMap((macroCategory)=>Array.from({length:3},(_,i)=>({id:`${macroCategory}-${i}`,name:`${macroCategory} ${i}`,macroCategory})));
+ const accepts=(parts: typeof pool)=>!parts.some(item=>item.id==='top-0' && parts.some(x=>x.id==='bottom-0'));
+ const choices=outfitChoices(pool,false,accepts,isDressGarment,[],160,12000,true);
+ const deck=assembleDiverseDeck({candidates:choices,itemsOf:choice=>choice.items,keysOf:productIdentityKeys,poolItems:pool,usedKeys:new Set(),activeSlots:['top','bottom','shoes'],target:3}).deck;
+ expect(deck).toHaveLength(3);
+ expect(new Set(deck.flatMap(choice=>choice.items.map(item=>item.id))).size).toBe(9);
+ expect(deck.every(choice=>accepts(choice.items))).toBe(true);
+});
 test.each([false,true])('offers only complete validated diverse combinations (layered=%s)',layered=>{
  const choices=outfitChoices(items,layered,parts=>!parts.some(p=>p.id==='bottom-0'), isDressGarment);
  expect(choices.length).toBeGreaterThanOrEqual(5);

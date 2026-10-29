@@ -1,7 +1,7 @@
 /** Enumerate bounded, diverse proposals. The caller supplies the full validator. */
 export function outfitChoices<T extends {id: string; macroCategory?: string; name?: string; type?: string}>(
   items: T[], layered: boolean, accepts: (items: T[]) => boolean, isDress: (item: T) => boolean,
-  requiredIds: string[] = [], maximum = 24, searchLimit = 6000,
+  requiredIds: string[] = [], maximum = 24, searchLimit = 6000, allowSharedPairs = false,
 ): {id: string; items: T[]}[] {
   const slot = (name: string) => items.filter(item => item.macroCategory === name);
   const tops = slot('top').filter(item => !isDress(item));
@@ -26,7 +26,7 @@ export function outfitChoices<T extends {id: string; macroCategory?: string; nam
       const parts=group.map(pool=>{const item=pool[n%pool.length];n=Math.floor(n/pool.length);return item;});
       const ids=new Set(parts.map(item=>item.id));
       if(ids.size!==parts.length || requiredIds.some(id=>!ids.has(id)))continue;
-      if(result.some(look=>look.items.filter(item=>ids.has(item.id)).length>Math.min(parts.length,look.items.length)-2))continue;
+      if(!allowSharedPairs && result.some(look=>look.items.filter(item=>ids.has(item.id)).length>Math.min(parts.length,look.items.length)-2))continue;
       if(!accepts(parts))continue;
       result.push({id:`look${String(result.length+1).padStart(3,'0')}`,items:parts});
     }
