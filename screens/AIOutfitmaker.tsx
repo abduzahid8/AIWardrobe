@@ -2214,6 +2214,7 @@ const AIOutfitGenerator = () => {
           olderRecentProductKeys: rotationHistory.olderRecentProductKeys,
           rotationScope: recencyScope,
           generationRequestId,
+          clientPathId: 'AIOutfitmaker-direct',
         },
       }), EDGE_TIMEOUT_MS, cancelSignal);
 

@@ -2,6 +2,7 @@ import { withRequestDeadline } from '../lib/requestDeadline';
 
 const messages = {
   ai_generation_unavailable: 'outfitMaker.aiUnavailable',
+  catalog_lookup_unavailable: 'outfitMaker.catalogUnavailable',
   invalid_generation_request: 'outfitMaker.invalidRequest',
   budget_rates_unavailable: 'outfitMaker.budgetRatesUnavailable',
   unverified_shop_pricing: 'outfitMaker.shopPricesUnavailable',

@@ -122,6 +122,11 @@ function isShopRow(item: any): boolean {
 }
 
 function macroCategory(category: string, type: string, name?: string): string {
+    const structured = normalizeGarmentText(`${category} ${type}`)
+    if (/\b(shoes?|footwear)\b/.test(structured) || /\b(shoes?|footwear)\b/.test(String(type || '').toLowerCase())) return 'shoes'
+    if (/\b(upper[_\s-]?body|tops?)\b/.test(structured)) return 'top'
+    if (/\b(lower[_\s-]?body|bottoms?)\b/.test(structured)) return 'bottom'
+    if (/\b(outerwear|layers?)\b/.test(structured)) return 'outerwear'
     // Explicit garment names override noisy feed slot labels, as English names do.
     const garmentName = String(name || '').toLowerCase()
     if (/кроссовк|кеды|туфл|ботинк|лофер|сапог|мокасин|сандал/.test(garmentName)) return 'shoes'
@@ -2356,8 +2361,25 @@ serve(async (req: Request) => {
         previousDeckProductKeys = [],
         olderRecentProductKeys = [],
         generationRequestId = '',
+        clientPathId = '',
     } = body
+    const terminalLog = (status: number, errorCode: string, extra: Record<string, unknown> = {}) => {
+        console.log('[generation-terminal]', {
+            generationRequestId: String(generationRequestId || ''),
+            clientPathId: String(clientPathId || ''),
+            status,
+            errorCode,
+            generationSource: extra.generationSource ?? null,
+            provider: extra.provider ?? null,
+            activeSlots: extra.activeSlots ?? null,
+            candidateCountsBySlot: extra.candidateCountsBySlot ?? null,
+            validCandidateCount: extra.validCandidateCount ?? null,
+            aiCandidateCount: extra.aiCandidateCount ?? null,
+            fallbackCandidateCount: extra.fallbackCandidateCount ?? null,
+        })
+    }
     console.log('[rotation-request]', {
+        clientPathId: String(clientPathId || ''),
         generationRequestId: String(generationRequestId || ''),
         rotationScope: body.rotationScope || null,
         previousDeckProductKeys: Array.isArray(previousDeckProductKeys) ? previousDeckProductKeys.length : 0,
@@ -2428,6 +2450,7 @@ serve(async (req: Request) => {
         if (parsedBudget && requestFx) parsedBudget.fx = requestFx
     } catch (error) {
         const unavailable = error instanceof BudgetFxError
+        if (unavailable) terminalLog(503, 'budget_rates_unavailable')
         return new Response(JSON.stringify({ success: false, error: unavailable ? 'budget_rates_unavailable' : 'invalid_outfit_budget', outfits: [] }), {
             status: unavailable ? 503 : 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
@@ -2442,9 +2465,12 @@ serve(async (req: Request) => {
         let dbClothingItems: any[] = []
         let requestUserId: string | null = null
 
-        const authReply = (status: number) => new Response(JSON.stringify({
-            success: false, outfits: [], error: status === 401 ? 'unauthorized' : 'auth_unavailable',
-        }), {status, headers: {...corsHeaders, 'Content-Type': 'application/json'}})
+        const authReply = (status: number) => {
+            if (status >= 500) terminalLog(status, 'auth_unavailable')
+            return new Response(JSON.stringify({
+                success: false, outfits: [], error: status === 401 ? 'unauthorized' : 'auth_unavailable',
+            }), {status, headers: {...corsHeaders, 'Content-Type': 'application/json'}})
+        }
         if (!/^Bearer\s+\S+$/i.test(authHeader.trim())) return authReply(401)
         const userSupabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
             global: { headers: { Authorization: authHeader } }
@@ -3174,7 +3200,14 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
             }
                 }
 
-        if (!aiOutfits?.length) return new Response(JSON.stringify({ success: false, error: 'ai_generation_unavailable', outfits: [], providerAttempts: providerTrace }), {status: 503, headers: {...corsHeaders, 'Content-Type':'application/json'}})
+        if (!aiOutfits?.length) {
+            terminalLog(503, 'ai_generation_unavailable', {
+                generationSource,
+                provider: aiProviderUsed,
+                aiCandidateCount: Array.isArray(aiOutfits) ? aiOutfits.length : 0,
+            })
+            return new Response(JSON.stringify({ success: false, error: 'ai_generation_unavailable', outfits: [], providerAttempts: providerTrace }), {status: 503, headers: {...corsHeaders, 'Content-Type':'application/json'}})
+        }
 
         // Resolve immutable product identity from the exact selected catalog row.
         // Never invent product attributes or substitute another item during enrichment.
@@ -3436,8 +3469,14 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
         })
 
     } catch (error: any) {
-        if (error instanceof CatalogLookupError) return new Response(JSON.stringify({success:false,outfits:[],error:'catalog_lookup_unavailable'}), {status:503,headers:{...corsHeaders,'Content-Type':'application/json'}})
-        if (error instanceof BudgetFxError) return new Response(JSON.stringify({success:false,outfits:[],error:'budget_rates_unavailable'}), {status:503,headers:{...corsHeaders,'Content-Type':'application/json'}})
+        if (error instanceof CatalogLookupError) {
+            terminalLog(503, 'catalog_lookup_unavailable')
+            return new Response(JSON.stringify({success:false,outfits:[],error:'catalog_lookup_unavailable'}), {status:503,headers:{...corsHeaders,'Content-Type':'application/json'}})
+        }
+        if (error instanceof BudgetFxError) {
+            terminalLog(503, 'budget_rates_unavailable')
+            return new Response(JSON.stringify({success:false,outfits:[],error:'budget_rates_unavailable'}), {status:503,headers:{...corsHeaders,'Content-Type':'application/json'}})
+        }
         console.error('generate-outfits error:', error)
         return new Response(JSON.stringify({ success: false, error: error.message, outfits: [] }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500

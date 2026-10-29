@@ -763,7 +763,8 @@
     "requestTooLarge": "So‘rovdagi ma’lumot hajmi juda katta. Kamroq kiyim tanlab, qayta urinib ko‘ring.",
     "requestUploadTimedOut": "So‘rovni yuborish juda uzoq davom etdi. Internet aloqasini tekshirib, qayta urinib ko‘ring.",
     "generateFailed": "So‘rovingizga mos to‘liq obraz yaratib bo‘lmadi. Qayta urinib ko‘ring yoki mos kiyim qo‘shing.",
-    "aiUnavailable": "Sun’iy intellekt obrazni yarata olmadi. Birozdan so‘ng qayta urinib ko‘ring."
+    "aiUnavailable": "Sun’iy intellekt obrazni yarata olmadi. Birozdan so‘ng qayta urinib ko‘ring.",
+    "catalogUnavailable": "Do‘kon katalogi vaqtincha mavjud emas. Birozdan so‘ng qayta urinib ko‘ring."
   },
   "paywall": {
     "verifyingPurchase": "Xarid tekshirilmoqda",

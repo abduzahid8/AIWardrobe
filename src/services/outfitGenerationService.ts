@@ -210,6 +210,7 @@ export async function generateOutfitsFromDB(
             olderRecentProductKeys: rotationHistory.olderRecentProductKeys,
             rotationScope: recencyScope,
             generationRequestId,
+            clientPathId: 'outfitGenerationService',
         };
         try { validateOutfitGenerationRequest(body); }
         catch {
@@ -236,8 +237,18 @@ export async function generateOutfitsFromDB(
         }
 
         if (error) {
-            console.warn('[outfitGenerationService] Edge function error, generation rejected:', error);
-            return { success: false, outfits: [], error: 'stylist_generation_failed', errorTranslationKey: (await outfitGenerationFailure(data, error)).translationKey };
+            const failure = await outfitGenerationFailure(data, error);
+            console.warn('[outfitGenerationService] Edge function failure details', {
+                generationRequestId,
+                httpStatus: typeof (error as any)?.context?.status === 'number'
+                    ? (error as any).context.status
+                    : null,
+                sdkError: typeof (error as any)?.name === 'string' ? (error as any).name : 'unknown',
+                responseSource: data?.source ?? null,
+                responseError: typeof data?.error === 'string' ? data.error : null,
+                translationKey: failure.translationKey,
+            });
+            return { success: false, outfits: [], error: 'stylist_generation_failed', errorTranslationKey: failure.translationKey };
         }
 
         if (data?.source === 'local' || !data?.success || !Array.isArray(data?.outfits) || data.outfits.length === 0) {

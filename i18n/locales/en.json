@@ -732,6 +732,7 @@
     "requestUploadTimedOut": "Uploading your request took too long. Check your connection and try again.",
     "generateFailed": "Could not create a complete outfit that meets your request. Try again or add suitable items.",
     "aiUnavailable": "The AI couldn’t finish your outfit. Please try again shortly.",
+    "catalogUnavailable": "The shop catalog is temporarily unavailable. Please try again shortly.",
     "styleChat": "Style chat",
     "outfitAI": "Outfit AI",
     "cannotSave": "Can't save",

@@ -17,6 +17,7 @@ export function validateOutfitGenerationRequest(body: unknown): Record<string, a
   text(body.conversationContext, 4000); text(body.anchorItemId, 200);
   text(body.rotationScope, 300);
   text(body.generationRequestId, 120);
+  text(body.clientPathId, 80);
   if (body.limit !== undefined && (!Number.isInteger(body.limit) || body.limit < 1 || body.limit > 15)) throw new OutfitRequestError();
   // deckTarget = the deck size the caller DISPLAYS. It may be smaller than
   // limit (the Personal Stylist requests extra candidates but shows three
