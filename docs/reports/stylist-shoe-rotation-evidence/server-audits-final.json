@@ -1,0 +1,111 @@
+[
+  {
+    "generationRequestId": "mvttvzy7-5",
+    "validPhysicalShoesAvailable": 7,
+    "minimumPossibleOverlap": 0,
+    "minimumFeasibleOverlap": 0,
+    "previousShoeOverlap": 0,
+    "previousDeckShoeIds": [
+      "shop_thursday-6865670045786",
+      "shop_thursday-15456871514202",
+      "shop_thursday-253390159881"
+    ],
+    "freshShoesAvailable": 0,
+    "admissibleShoes": [
+      {
+        "id": "shop_thursday-8086847258714",
+        "keys": [
+          "id:shop_thursday-8086847258714",
+          "n:saint cognac",
+          "i:cdn.shopify.com/s/files/1/0419/1525/files/01-1024x1024-men-saint-cognac-070226-3.4.jpg"
+        ]
+      },
+      {
+        "id": "shop_thursday-8128950501466",
+        "keys": [
+          "id:shop_thursday-8128950501466",
+          "n:lincoln dark brown",
+          "i:cdn.shopify.com/s/files/1/0419/1525/files/01-1024x1024-men-lincoln-darkbrown-061726-3.4.jpg"
+        ]
+      },
+      {
+        "id": "shop_thursday-6859648467034",
+        "keys": [
+          "id:shop_thursday-6859648467034",
+          "n:chairman black",
+          "i:cdn.shopify.com/s/files/1/0419/1525/files/1024x1024-men-chairman-black-051323-3.4.jpg"
+        ]
+      },
+      {
+        "id": "shop_thursday-7719429898330",
+        "keys": [
+          "id:shop_thursday-7719429898330",
+          "n:journeyman black",
+          "i:cdn.shopify.com/s/files/1/0419/1525/files/1024x1024-men-journeyman-black-122225-3.4.jpg"
+        ]
+      },
+      {
+        "id": "shop_thursday-6865670045786",
+        "keys": [
+          "id:shop_thursday-6865670045786",
+          "n:lincoln black",
+          "i:cdn.shopify.com/s/files/1/0419/1525/files/1024x1024-men-lincoln-black-012124-3.4_606b5f85-613a-4eca-84b5-2230382e1055.jpg"
+        ]
+      },
+      {
+        "id": "shop_thursday-15456871514202",
+        "keys": [
+          "id:shop_thursday-15456871514202",
+          "n:duke black coffee",
+          "i:cdn.shopify.com/s/files/1/0419/1525/files/01-1024x1024-men-duke-blackcoffee-101426-3.4.jpg"
+        ]
+      },
+      {
+        "id": "shop_thursday-253390159881",
+        "keys": [
+          "id:shop_thursday-253390159881",
+          "n:executive black",
+          "i:cdn.shopify.com/s/files/1/0419/1525/products/1024x1024-men-executive-black-061821-3.4.jpg"
+        ]
+      }
+    ],
+    "fetchedShoeIds": [
+      "shop_thursday-8086847258714",
+      "shop_thursday-8128950501466",
+      "shop_thursday-6859648467034",
+      "shop_thursday-7719429898330",
+      "shop_thursday-6865670045786",
+      "shop_thursday-15456871514202",
+      "shop_thursday-253390159881"
+    ],
+    "rankedShoeIds": [
+      "shop_thursday-8086847258714",
+      "shop_thursday-8128950501466",
+      "shop_thursday-6859648467034",
+      "shop_thursday-7719429898330",
+      "shop_thursday-6865670045786",
+      "shop_thursday-15456871514202",
+      "shop_thursday-253390159881"
+    ],
+    "completeCandidateShoeIds": [
+      "shop_thursday-8086847258714",
+      "shop_thursday-15456871514202",
+      "shop_thursday-8128950501466",
+      "shop_thursday-6865670045786",
+      "shop_thursday-7719429898330",
+      "shop_thursday-6859648467034",
+      "shop_thursday-253390159881"
+    ],
+    "preAssignmentShoeIds": [
+      "shop_thursday-6859648467034",
+      "shop_thursday-8086847258714",
+      "shop_thursday-8128950501466"
+    ],
+    "selectedShoeIds": [
+      "shop_thursday-8086847258714",
+      "shop_thursday-8128950501466",
+      "shop_thursday-6859648467034"
+    ],
+    "timestamp": "2026-10-29T17:39:56.450000"
+  }
+]

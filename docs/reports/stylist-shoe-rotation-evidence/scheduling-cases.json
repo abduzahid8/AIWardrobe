@@ -1,0 +1,544 @@
+[
+  {
+    "pool": 3,
+    "minimumOverlap": 3,
+    "generations": [
+      {
+        "generation": 1,
+        "shoes": [
+          "shoe-0",
+          "shoe-1",
+          "shoe-2"
+        ],
+        "previousOverlap": 0
+      },
+      {
+        "generation": 2,
+        "shoes": [
+          "shoe-0",
+          "shoe-1",
+          "shoe-2"
+        ],
+        "previousOverlap": 3
+      },
+      {
+        "generation": 3,
+        "shoes": [
+          "shoe-0",
+          "shoe-1",
+          "shoe-2"
+        ],
+        "previousOverlap": 3
+      },
+      {
+        "generation": 4,
+        "shoes": [
+          "shoe-0",
+          "shoe-1",
+          "shoe-2"
+        ],
+        "previousOverlap": 3
+      },
+      {
+        "generation": 5,
+        "shoes": [
+          "shoe-0",
+          "shoe-1",
+          "shoe-2"
+        ],
+        "previousOverlap": 3
+      },
+      {
+        "generation": 6,
+        "shoes": [
+          "shoe-0",
+          "shoe-1",
+          "shoe-2"
+        ],
+        "previousOverlap": 3
+      },
+      {
+        "generation": 7,
+        "shoes": [
+          "shoe-0",
+          "shoe-1",
+          "shoe-2"
+        ],
+        "previousOverlap": 3
+      },
+      {
+        "generation": 8,
+        "shoes": [
+          "shoe-0",
+          "shoe-1",
+          "shoe-2"
+        ],
+        "previousOverlap": 3
+      }
+    ],
+    "usage": {
+      "shoe-0": 8,
+      "shoe-1": 8,
+      "shoe-2": 8
+    },
+    "pinnedShoes": [
+      "shoe-0",
+      "shoe-1",
+      "shoe-2"
+    ]
+  },
+  {
+    "pool": 4,
+    "minimumOverlap": 2,
+    "generations": [
+      {
+        "generation": 1,
+        "shoes": [
+          "shoe-0",
+          "shoe-1",
+          "shoe-2"
+        ],
+        "previousOverlap": 0
+      },
+      {
+        "generation": 2,
+        "shoes": [
+          "shoe-0",
+          "shoe-1",
+          "shoe-3"
+        ],
+        "previousOverlap": 2
+      },
+      {
+        "generation": 3,
+        "shoes": [
+          "shoe-0",
+          "shoe-2",
+          "shoe-3"
+        ],
+        "previousOverlap": 2
+      },
+      {
+        "generation": 4,
+        "shoes": [
+          "shoe-1",
+          "shoe-2",
+          "shoe-3"
+        ],
+        "previousOverlap": 2
+      },
+      {
+        "generation": 5,
+        "shoes": [
+          "shoe-0",
+          "shoe-1",
+          "shoe-2"
+        ],
+        "previousOverlap": 2
+      },
+      {
+        "generation": 6,
+        "shoes": [
+          "shoe-0",
+          "shoe-1",
+          "shoe-3"
+        ],
+        "previousOverlap": 2
+      },
+      {
+        "generation": 7,
+        "shoes": [
+          "shoe-0",
+          "shoe-2",
+          "shoe-3"
+        ],
+        "previousOverlap": 2
+      },
+      {
+        "generation": 8,
+        "shoes": [
+          "shoe-1",
+          "shoe-2",
+          "shoe-3"
+        ],
+        "previousOverlap": 2
+      }
+    ],
+    "usage": {
+      "shoe-0": 6,
+      "shoe-1": 6,
+      "shoe-2": 6,
+      "shoe-3": 6
+    },
+    "pinnedShoes": []
+  },
+  {
+    "pool": 5,
+    "minimumOverlap": 1,
+    "generations": [
+      {
+        "generation": 1,
+        "shoes": [
+          "shoe-0",
+          "shoe-1",
+          "shoe-2"
+        ],
+        "previousOverlap": 0
+      },
+      {
+        "generation": 2,
+        "shoes": [
+          "shoe-0",
+          "shoe-3",
+          "shoe-4"
+        ],
+        "previousOverlap": 1
+      },
+      {
+        "generation": 3,
+        "shoes": [
+          "shoe-1",
+          "shoe-2",
+          "shoe-3"
+        ],
+        "previousOverlap": 1
+      },
+      {
+        "generation": 4,
+        "shoes": [
+          "shoe-0",
+          "shoe-1",
+          "shoe-4"
+        ],
+        "previousOverlap": 1
+      },
+      {
+        "generation": 5,
+        "shoes": [
+          "shoe-2",
+          "shoe-3",
+          "shoe-4"
+        ],
+        "previousOverlap": 1
+      },
+      {
+        "generation": 6,
+        "shoes": [
+          "shoe-0",
+          "shoe-1",
+          "shoe-2"
+        ],
+        "previousOverlap": 1
+      },
+      {
+        "generation": 7,
+        "shoes": [
+          "shoe-0",
+          "shoe-3",
+          "shoe-4"
+        ],
+        "previousOverlap": 1
+      },
+      {
+        "generation": 8,
+        "shoes": [
+          "shoe-1",
+          "shoe-2",
+          "shoe-3"
+        ],
+        "previousOverlap": 1
+      }
+    ],
+    "usage": {
+      "shoe-0": 5,
+      "shoe-1": 5,
+      "shoe-2": 5,
+      "shoe-3": 5,
+      "shoe-4": 4
+    },
+    "pinnedShoes": []
+  },
+  {
+    "pool": 6,
+    "minimumOverlap": 0,
+    "generations": [
+      {
+        "generation": 1,
+        "shoes": [
+          "shoe-0",
+          "shoe-1",
+          "shoe-2"
+        ],
+        "previousOverlap": 0
+      },
+      {
+        "generation": 2,
+        "shoes": [
+          "shoe-3",
+          "shoe-4",
+          "shoe-5"
+        ],
+        "previousOverlap": 0
+      },
+      {
+        "generation": 3,
+        "shoes": [
+          "shoe-0",
+          "shoe-1",
+          "shoe-2"
+        ],
+        "previousOverlap": 0
+      },
+      {
+        "generation": 4,
+        "shoes": [
+          "shoe-3",
+          "shoe-4",
+          "shoe-5"
+        ],
+        "previousOverlap": 0
+      },
+      {
+        "generation": 5,
+        "shoes": [
+          "shoe-0",
+          "shoe-1",
+          "shoe-2"
+        ],
+        "previousOverlap": 0
+      },
+      {
+        "generation": 6,
+        "shoes": [
+          "shoe-3",
+          "shoe-4",
+          "shoe-5"
+        ],
+        "previousOverlap": 0
+      },
+      {
+        "generation": 7,
+        "shoes": [
+          "shoe-0",
+          "shoe-1",
+          "shoe-2"
+        ],
+        "previousOverlap": 0
+      },
+      {
+        "generation": 8,
+        "shoes": [
+          "shoe-3",
+          "shoe-4",
+          "shoe-5"
+        ],
+        "previousOverlap": 0
+      }
+    ],
+    "usage": {
+      "shoe-0": 4,
+      "shoe-1": 4,
+      "shoe-2": 4,
+      "shoe-3": 4,
+      "shoe-4": 4,
+      "shoe-5": 4
+    },
+    "pinnedShoes": []
+  },
+  {
+    "pool": 10,
+    "minimumOverlap": 0,
+    "generations": [
+      {
+        "generation": 1,
+        "shoes": [
+          "shoe-0",
+          "shoe-1",
+          "shoe-2"
+        ],
+        "previousOverlap": 0
+      },
+      {
+        "generation": 2,
+        "shoes": [
+          "shoe-3",
+          "shoe-4",
+          "shoe-5"
+        ],
+        "previousOverlap": 0
+      },
+      {
+        "generation": 3,
+        "shoes": [
+          "shoe-6",
+          "shoe-7",
+          "shoe-8"
+        ],
+        "previousOverlap": 0
+      },
+      {
+        "generation": 4,
+        "shoes": [
+          "shoe-0",
+          "shoe-1",
+          "shoe-9"
+        ],
+        "previousOverlap": 0
+      },
+      {
+        "generation": 5,
+        "shoes": [
+          "shoe-2",
+          "shoe-3",
+          "shoe-4"
+        ],
+        "previousOverlap": 0
+      },
+      {
+        "generation": 6,
+        "shoes": [
+          "shoe-5",
+          "shoe-6",
+          "shoe-7"
+        ],
+        "previousOverlap": 0
+      },
+      {
+        "generation": 7,
+        "shoes": [
+          "shoe-0",
+          "shoe-8",
+          "shoe-9"
+        ],
+        "previousOverlap": 0
+      },
+      {
+        "generation": 8,
+        "shoes": [
+          "shoe-1",
+          "shoe-2",
+          "shoe-3"
+        ],
+        "previousOverlap": 0
+      }
+    ],
+    "usage": {
+      "shoe-0": 3,
+      "shoe-1": 3,
+      "shoe-2": 3,
+      "shoe-3": 3,
+      "shoe-4": 2,
+      "shoe-5": 2,
+      "shoe-6": 2,
+      "shoe-7": 2,
+      "shoe-8": 2,
+      "shoe-9": 2
+    },
+    "pinnedShoes": []
+  },
+  {
+    "pool": 50,
+    "minimumOverlap": 0,
+    "generations": [
+      {
+        "generation": 1,
+        "shoes": [
+          "shoe-0",
+          "shoe-1",
+          "shoe-2"
+        ],
+        "previousOverlap": 0
+      },
+      {
+        "generation": 2,
+        "shoes": [
+          "shoe-3",
+          "shoe-4",
+          "shoe-5"
+        ],
+        "previousOverlap": 0
+      },
+      {
+        "generation": 3,
+        "shoes": [
+          "shoe-6",
+          "shoe-7",
+          "shoe-8"
+        ],
+        "previousOverlap": 0
+      },
+      {
+        "generation": 4,
+        "shoes": [
+          "shoe-9",
+          "shoe-10",
+          "shoe-11"
+        ],
+        "previousOverlap": 0
+      },
+      {
+        "generation": 5,
+        "shoes": [
+          "shoe-12",
+          "shoe-13",
+          "shoe-14"
+        ],
+        "previousOverlap": 0
+      },
+      {
+        "generation": 6,
+        "shoes": [
+          "shoe-15",
+          "shoe-16",
+          "shoe-17"
+        ],
+        "previousOverlap": 0
+      },
+      {
+        "generation": 7,
+        "shoes": [
+          "shoe-18",
+          "shoe-19",
+          "shoe-20"
+        ],
+        "previousOverlap": 0
+      },
+      {
+        "generation": 8,
+        "shoes": [
+          "shoe-21",
+          "shoe-22",
+          "shoe-23"
+        ],
+        "previousOverlap": 0
+      }
+    ],
+    "usage": {
+      "shoe-0": 1,
+      "shoe-1": 1,
+      "shoe-2": 1,
+      "shoe-3": 1,
+      "shoe-4": 1,
+      "shoe-5": 1,
+      "shoe-6": 1,
+      "shoe-7": 1,
+      "shoe-8": 1,
+      "shoe-9": 1,
+      "shoe-10": 1,
+      "shoe-11": 1,
+      "shoe-12": 1,
+      "shoe-13": 1,
+      "shoe-14": 1,
+      "shoe-15": 1,
+      "shoe-16": 1,
+      "shoe-17": 1,
+      "shoe-18": 1,
+      "shoe-19": 1,
+      "shoe-20": 1,
+      "shoe-21": 1,
+      "shoe-22": 1,
+      "shoe-23": 1
+    },
+    "pinnedShoes": []
+  }
+]
