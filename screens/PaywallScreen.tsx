@@ -300,7 +300,7 @@ const PaywallScreen = () => {
                     </ScaledText>
                 </Animated.View>
 
-                <Animated.View entering={FadeInUp.delay(140).duration(560)} style={styles.planGrid}>
+                <Animated.View entering={FadeInUp.duration(160)} style={styles.planGrid}>
                     {plans.map((plan) => {
                         const isSelected = selectedPlan === plan.id;
                         const productId = getProductId(plan.id);
@@ -355,7 +355,7 @@ const PaywallScreen = () => {
                     })}
                 </Animated.View>
 
-                <Animated.View entering={FadeInUp.delay(180).duration(560)} style={styles.selectedDetails}>
+                <Animated.View entering={FadeInUp.duration(160)} style={styles.selectedDetails}>
                     <ScaledText style={styles.selectedDetailTitle}>{selected.bestFor}</ScaledText>
                     <View style={styles.featureGrid}>
                         {selected.features.map((feature) => (
@@ -367,7 +367,7 @@ const PaywallScreen = () => {
                     </View>
                 </Animated.View>
 
-                <Animated.View entering={FadeInUp.delay(220).duration(560)} style={styles.ctaPanel}>
+                <Animated.View entering={FadeInUp.duration(160)} style={styles.ctaPanel}>
                     <View>
                         <ScaledText style={styles.ctaEyebrow}>{t('paywall.selectedPlan')}</ScaledText>
                         <ScaledText style={styles.ctaPlan}>{selected.title} · {selected.price}</ScaledText>

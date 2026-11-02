@@ -21,6 +21,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { withRequestDeadline } from '../src/lib/requestDeadline';
 import { OutfitGenerationFailure, outfitGenerationFailure } from '../src/services/outfitGenerationFailure';
+import { requestWithInventoryRotation } from '../src/services/stylistInventoryRequest';
+import { getCachedStylistCatalogInventory, loadStylistCatalogInventory } from '../src/services/stylistCatalogInventory';
 import { useShopCatalog } from '../hooks/useShopCatalog';
 import { fillMissingSlots, type OutfitSlotId } from '../src/services/shoppingService';
 import { recordShownOutfits, rotationScope, generationRequestId, getRotationHistory, recordDisplayedDeck } from '../src/services/recentOutfitIds';
@@ -171,6 +173,14 @@ function mapShopCatalogRow(item: {
     price: typeof item.price === 'number' ? item.price : undefined,
     currency: item.currency,
   };
+}
+
+function mapStylistCatalogInventory(rows: NonNullable<ReturnType<typeof getCachedStylistCatalogInventory>>) {
+  return rows.map(row => mapShopCatalogRow({
+    id: row.id, name: row.name, brand: row.brand, description: row.description,
+    imageUrl: row.image_url, garmentType: row.garment_type, sourceUrl: row.source_url,
+    price: Number(row.price) || undefined, currency: row.currency,
+  })).filter(item => hasUsableProductName(item.name, item.id) && isTrustedProductImage(item.imageUrl));
 }
 
 function getStaticPoolItems(): StaticPoolItem[] {
@@ -1038,6 +1048,7 @@ const AIOutfitGenerator = () => {
   // When the user arrives from the Style Quiz, the generator orients on
   // their quiz personality instead of a hardcoded fallback.
   const quizPersonality = useStylePreferenceStore((s) => s.preferences.stylePersonality);
+  const stylistPreferences = useStylePreferenceStore((s) => s.preferences);
   const quizOccasions = useStylePreferenceStore((s) => s.preferences.primaryOccasions);
   const quizStyleDefault = useMemo(
     () => mapQuizStyleToAiStyle(
@@ -1113,7 +1124,7 @@ const AIOutfitGenerator = () => {
   const [wardrobeItems, setWardrobeItems] = useState<any[]>([]);
 
   // Use the live catalog from Supabase (all sources: Zara + Massimo Dutti)
-  const { items: liveShopCatalog, loading: shopCatalogLoading, error: shopCatalogError, refresh: refreshShopCatalog } = useShopCatalog({
+  const { items: liveShopCatalog, loading: shopCatalogLoading, error: shopCatalogError } = useShopCatalog({
     enabled: true,
     source: 'all',
   });
@@ -1138,6 +1149,18 @@ const AIOutfitGenerator = () => {
       .filter((it: any) => hasUsableProductName(it.name, it.id)),
     [liveShopCatalog],
   );
+
+  const initialInventory = useMemo(() => getCachedStylistCatalogInventory(), []);
+  const [stylistCatalog, setStylistCatalog] = useState(() => mapStylistCatalogInventory(initialInventory || []));
+  useEffect(() => {
+    if (currentSource !== 'shop') return;
+    const controller = new AbortController();
+    loadStylistCatalogInventory(controller.signal).then(rows => {
+      if (controller.signal.aborted) return;
+      setStylistCatalog(mapStylistCatalogInventory(rows));
+    }).catch(() => { /* Generation reports catalog failures when requested. */ });
+    return () => controller.abort();
+  }, [currentSource]);
 
   // Prevent setState after unmount
   const isMounted = React.useRef(true);
@@ -1281,12 +1304,15 @@ const AIOutfitGenerator = () => {
   useEffect(() => {
     isMounted.current = true;
     
-    // We only want to load items once the live shop catalog has responded (so we have fallbacks/shop items)
-    if (!shopCatalogLoading) {
-      loadWardrobeItems();
+    let active = true;
+    if (currentSource === 'wardrobe') {
+      loadWardrobeItems(() => active);
+    } else if (!shopCatalogLoading) {
+      loadWardrobeItems(() => active);
     }
     
     return () => {
+      active = false;
       isMounted.current = false;
       if (fallbackTimer.current) clearTimeout(fallbackTimer.current);
     };
@@ -1295,7 +1321,7 @@ const AIOutfitGenerator = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shopCatalogLoading, liveShopMapped, currentSource, baseItemId]);
 
-  const loadWardrobeItems = async () => {
+  const loadWardrobeItems = async (isActive: () => boolean) => {
     try {
       // ── Shop mode: live Supabase shop catalog items ONLY.
       // Real Supabase UUIDs MUST be preserved so the edge function can enrich
@@ -1304,7 +1330,7 @@ const AIOutfitGenerator = () => {
       // anchor must NEVER be injected here, otherwise every outfit gets built
       // around the user's own piece even though the UI shows New clothing.
       if (currentSource === 'shop') {
-        if (!isMounted.current) return;
+        if (!isMounted.current || !isActive()) return;
         const shopOnly = liveShopMapped.map((item: any) => ({
           ...item,
           // Preserve the real UUID from shop_catalog — never overwrite with a fake id
@@ -1432,7 +1458,7 @@ const AIOutfitGenerator = () => {
       // outfits when the user asked for wardrobe outfits. Shop mode has
       // its own branch above and never reaches this code.
 
-      if (!isMounted.current) return;
+      if (!isMounted.current || !isActive()) return;
       setWardrobeItems(items.map((item: any, index: number) => ({
         ...item,
         // For personal wardrobe items that have no real id, generate a stable key.
@@ -1489,8 +1515,8 @@ const AIOutfitGenerator = () => {
     // what produced classic-m-*/shop_* outfits for wardrobe requests.
     const sourcePool =
       currentSource === 'wardrobe'
-        ? (wardrobeItems || []).filter((it: any) => it?.isWardrobe !== false)
-        : [...(wardrobeItems || []), ...(liveShopMapped || [])];
+        ? (wardrobeItems || []).filter((it: any) => it?.isWardrobe === true)
+        : [...(liveShopMapped || []), ...stylistCatalog];
     const seen = new Set<string>();
     const pool: any[] = [];
     for (const it of sourcePool) {
@@ -1537,29 +1563,11 @@ const AIOutfitGenerator = () => {
         _hasImage: REAL_IMAGE_RE.test(image || imageUrl),
       };
     }).sort((a, b) => (b.isWardrobe ? 1 : 0) - (a.isWardrobe ? 1 : 0));
-    // Static fallback: shop mode only. Wardrobe mode must stay pure
-    // Supabase clothing — padding with classic-m-* static items is what
-    // produced non-wardrobe outfits. In wardrobe mode an empty pool stays
-    // empty so the UI can ask the user to add items instead.
-    if (currentSource !== 'wardrobe') {
-      const macroCounts = new Map<string, number>();
-      for (const x of mapped) {
-        macroCounts.set(x.macroCategory, (macroCounts.get(x.macroCategory) ?? 0) + 1);
-      }
-      const countByMacro = (m: string) => macroCounts.get(m) ?? 0;
-      if (countByMacro('top') < 6 || countByMacro('bottom') < 6 || countByMacro('shoes') < 6 || countByMacro('outerwear') < 3) {
-        const seenStatic = new Set(mapped.map((x: any) => String(x.id)));
-        for (const s of getStaticPoolItems()) {
-          if (seenStatic.has(s.id)) continue;
-          if (countByMacro(s.macroCategory) >= 8) continue;
-          seenStatic.add(s.id);
-          macroCounts.set(s.macroCategory, countByMacro(s.macroCategory) + 1);
-          mapped.push({ ...s } as any);
-        }
-      }
-    }
     return mapped;
-  }, [currentSource, liveShopMapped, wardrobeItems]);
+  }, [currentSource, liveShopMapped, stylistCatalog, wardrobeItems]);
+
+  const availableStyles = aiStyles.filter(style => style.id !== 'business_casual');
+  const availableOccasions = OCCASION_PRESETS;
 
   const getCalendarOccasion = (styleId?: string) => resolveCalendarOccasion(selectedOccasion, styleId);
 
@@ -2025,7 +2033,7 @@ const AIOutfitGenerator = () => {
         || occasionToUse === 'work' || occasionToUse === 'date' || occasionToUse === 'formal';
       const randomSlice = await fetchRandomShopSlice({ preferClassicBand: classicOrWork, salt: tapNonce });
       const poolBase = collapseSimilarByName(mergeShopSlices(
-        wardrobeItems.filter((item: any) => item.isWardrobe !== true),
+        mergeShopSlices(liveShopMapped, stylistCatalog),
         randomSlice,
       ));
       // Keep SKU variants in the pick pool so cards can rotate; name-collapse
@@ -2047,15 +2055,10 @@ const AIOutfitGenerator = () => {
             && isTrustedProductImage(item.imageUrl || item.image);
         });
       const tasteKept = payloadItems.length;
-      const staticTaste = getStaticPoolItems().map((s: any) => toPayload({ ...s, image: s.imageUrl }));
-      const rotatedStatic = staticTaste.map((_, i, arr) => arr[(i + tapNonce * 7) % arr.length]);
-      payloadItems = ensureSlotFloors(payloadItems, rotatedStatic, styleToUse, occasionToUse, undefined, resolvedWeather);
       payloadItems = collapseDuplicateProductImages(payloadItems);
-      genPool = collapseDuplicateProductImages(mergeShopSlices(
-        mergeShopSlices(rotatedStatic, payloadItems),
-        genPool,
-      )).filter((it: any) => isBrandCatalogImage(it.imageUrl || it.image) || isTrustedProductImage(it.imageUrl || it.image));
-      if (__DEV__) readinessLogger.debug(String(`[AIOutfitmaker] taste-filtered shop payload: ${tasteKept} items for ${styleToUse}/${occasionToUse}; floored=${payloadItems.length}`), []);
+      genPool = collapseDuplicateProductImages(mergeShopSlices(payloadItems, genPool))
+        .filter((it: any) => isTrustedProductImage(it.imageUrl || it.image));
+      if (__DEV__) readinessLogger.debug(String(`[AIOutfitmaker] taste-filtered shop payload: ${tasteKept} items for ${styleToUse}/${occasionToUse}`), []);
       // Cross-tap recency: recently shown items sort last, so the edge trim
       // prefers fresh pieces. Deprioritized, never deleted (no starvation).
       if (recentShownIds.current.size > 0) {
@@ -2077,18 +2080,13 @@ const AIOutfitGenerator = () => {
           readinessLogger.debug(String(`[AIOutfitmaker] recency: deprioritized ${moved} recently-shown item(s) in shop payload`), []);
         }
       }
-      // Shop mode ("New clothing"): live Supabase catalog only.
-      // STRICT: new clothing must come ONLY from new clothing (shop).
-      // No wardrobe fallback, no bundled fallback (static pools are empty
-      // since the live-exclusive migration). Empty live catalog fails fast
-      // with a clear message instead of calling the edge with an empty pool.
-      // NOTE: the fallback below is a no-op while static pools stay empty —
-      // kept so a future curated seed can't silently reintroduce non-live rows
-      // without passing through the shop-only filter above.
+      // An empty live pool cannot be supplemented with unverified products.
       if (payloadItems.length === 0) {
-        const staticPool = getStaticPoolItems();
-        if (__DEV__) readinessLogger.debug(String('[AIOutfitmaker] live shop catalog empty — static fallback pool:'), [staticPool.length]);
-        payloadItems = staticPool.map((s: any) => toPayload({ ...s, image: s.imageUrl }));
+        if (isMounted.current) {
+          setError(t(shopCatalogError || shopCatalogLoading ? 'outfitMaker.catalogUnavailable' : 'outfitMaker.noMatchingClothing'));
+          setLoading(false);
+        }
+        return;
       }
 
     } else {
@@ -2176,7 +2174,7 @@ const AIOutfitGenerator = () => {
       const excludeItemIds: string[] = [];
       if (!isCurrentGeneration() || !generationAccessToken) return;
       const EDGE_TIMEOUT_MS = 120000;
-      const { data, error: invokeError } = await withRequestDeadline(async (signal) => supabase.functions.invoke('generate-outfits', {
+      const { data, error: invokeError } = await withRequestDeadline(async (signal) => requestWithInventoryRotation((rotationIds) => supabase.functions.invoke('generate-outfits', {
         signal,
         headers: {Authorization: `Bearer ${generationAccessToken}`},
         body: {
@@ -2214,7 +2212,7 @@ const AIOutfitGenerator = () => {
           generationRequestId: requestId,
           ...history,
         },
-      }), EDGE_TIMEOUT_MS, cancelSignal);
+      }), excludeItemIds, signal), EDGE_TIMEOUT_MS, cancelSignal);
 
       if (!isCurrentGeneration()) return;
       if (invokeError) throw await outfitGenerationFailure(data, invokeError);
@@ -2518,7 +2516,7 @@ const AIOutfitGenerator = () => {
         setOutfits([]);
         setLoading(false);
         setError(t(err instanceof OutfitGenerationFailure ? err.translationKey : 'outfitMaker.generateFailed', {
-          defaultValue: 'Could not create a complete outfit that meets your request. Try again or add suitable items.',
+          defaultValue: 'Could not create an outfit right now. Please try again.',
         }));
       }
     }
@@ -2929,6 +2927,7 @@ const AIOutfitGenerator = () => {
                     activeOpacity={0.85}
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setError('');
                       setCurrentSource(opt.id);
                     }}
                     style={[styles.sourceSegBtn, on && styles.sourceSegBtnActive]}
@@ -2948,10 +2947,10 @@ const AIOutfitGenerator = () => {
               </ScaledText>
               {(() => {
                 const quizIds = (Array.isArray(quizOccasions) ? quizOccasions : []).filter((id) =>
-                  OCCASION_PRESETS.some((o) => o.id === id),
+                  availableOccasions.some((o) => o.id === id),
                 );
                 const fillPool: string[] = [...quizIds];
-                for (const o of OCCASION_PRESETS) {
+                for (const o of availableOccasions) {
                   if (!fillPool.includes(o.id as string)) fillPool.push(o.id as string);
                 }
                 // Selected occasion always stays visible.
@@ -2959,8 +2958,8 @@ const AIOutfitGenerator = () => {
                 if (selectedOccasion && !visibleIds.includes(selectedOccasion)) {
                   visibleIds = [selectedOccasion, ...fillPool.filter((id) => id !== selectedOccasion)].slice(0, 2);
                 }
-                const hiddenOnes = OCCASION_PRESETS.filter((o) => !visibleIds.includes(o.id as string));
-                const visibleList = OCCASION_PRESETS.filter((o) => visibleIds.includes(o.id as string));
+                const hiddenOnes = availableOccasions.filter((o) => !visibleIds.includes(o.id as string));
+                const visibleList = availableOccasions.filter((o) => visibleIds.includes(o.id as string));
                 const renderOccTile = (occ: (typeof OCCASION_PRESETS)[number]) => {
                   const on = selectedOccasion === occ.id;
                   return (
@@ -2970,6 +2969,7 @@ const AIOutfitGenerator = () => {
                       activeOpacity={0.85}
                       onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setError('');
                         setSelectedOccasion(on ? undefined : (occ.id as string));
                         commentEditedRef.current = false;
                       }}
@@ -2994,7 +2994,7 @@ const AIOutfitGenerator = () => {
                     <View style={styles.tileRow}>
                       {visibleList.map(renderOccTile)}
                     </View>
-                    <TouchableOpacity
+                    {hiddenOnes.length > 0 && <TouchableOpacity
                       activeOpacity={0.75}
                       onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -3018,7 +3018,7 @@ const AIOutfitGenerator = () => {
                         size={16}
                         color="#173A65"
                       />
-                    </TouchableOpacity>
+                    </TouchableOpacity>}
                     {showAllOccasions && (
                       <Reanimated.View entering={FadeInUp.duration(250)} exiting={FadeOut.duration(200)}>
                         <View style={styles.tileRow}>
@@ -3035,7 +3035,8 @@ const AIOutfitGenerator = () => {
                 {t('outfitMaker.yourStyle', { defaultValue: 'Your style' })}
               </ScaledText>
               {(() => {
-                const allStyles = aiStyles.filter((s) => s.id !== 'business_casual');
+                const allStyles = availableStyles;
+                if (!allStyles.length) return null;
                 // Quiz style first, then list order.
                 const fillPool = [...allStyles].sort((a, b) => {
                   if (a.id === quizStyleDefault) return -1;
@@ -3060,6 +3061,7 @@ const AIOutfitGenerator = () => {
                       activeOpacity={0.9}
                       onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setError('');
                         setSelectedStyle(activeStyle.id);
                         commentEditedRef.current = false;
                       }}
@@ -3083,7 +3085,7 @@ const AIOutfitGenerator = () => {
                         <View style={styles.featureRadioDot} />
                       </View>
                     </TouchableOpacity>
-                    <TouchableOpacity
+                    {hiddenStyles.length > 0 && <TouchableOpacity
                       activeOpacity={0.75}
                       onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -3106,7 +3108,7 @@ const AIOutfitGenerator = () => {
                         size={16}
                         color="#173A65"
                       />
-                    </TouchableOpacity>
+                    </TouchableOpacity>}
                     {showAllStyles && (
                       <Reanimated.View entering={FadeInUp.duration(250)} exiting={FadeOut.duration(200)}>
                         <View style={styles.formGroup}>
@@ -3118,6 +3120,7 @@ const AIOutfitGenerator = () => {
                               styleObj.label,
                               isSelected,
                               () => {
+                                setError('');
                                 setSelectedStyle(styleObj.id);
                                 commentEditedRef.current = false;
                               },
@@ -3159,22 +3162,6 @@ const AIOutfitGenerator = () => {
               </View>
 
 
-              {currentSource === 'shop' && !shopCatalogLoading && liveShopMapped.length === 0 ? (
-                <View style={[styles.errorBox, { marginTop: 12 }]}>
-                  <ScaledText style={styles.errorText}>
-                    {shopCatalogError
-                      ? `Live catalog failed: ${shopCatalogError}. New clothing comes only from the live shop catalog — no fallback.`
-                      : 'Live catalog returned 0 items. New clothing comes only from the live shop catalog — no fallback.'}
-                  </ScaledText>
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    onPress={() => refreshShopCatalog()}
-                    style={{ marginTop: 8, alignSelf: 'flex-start', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, backgroundColor: '#0A1931' }}
-                  >
-                    <ScaledText style={{ color: '#FFF', fontWeight: '700', fontSize: 13 }}>Retry live catalog</ScaledText>
-                  </TouchableOpacity>
-                </View>
-              ) : null}
             </ScrollView>
           </Reanimated.View>
           {/* Keep failures visible beside the retry action, outside scrolling choices. */}

@@ -1,0 +1,259 @@
+{
+  "startedAt": "2026-10-29T04:15:03.448Z",
+  "scope": "12 sequential paired unauthenticated curl probes, 10 second spacing; no app load or capacity certification",
+  "samples": [
+    {
+      "at": "2026-10-29T04:15:03.454Z",
+      "pairs": [
+        {
+          "target": "supabase",
+          "status": 401,
+          "tcp": 0.167951,
+          "tls": 0.333431,
+          "first": 0.471703,
+          "total": 0.472116
+        },
+        {
+          "target": "control",
+          "status": 200,
+          "tcp": 0.153456,
+          "tls": 0.239479,
+          "first": 0.318581,
+          "total": 0.31897
+        }
+      ]
+    },
+    {
+      "at": "2026-10-29T04:15:13.456Z",
+      "pairs": [
+        {
+          "target": "supabase",
+          "status": 401,
+          "tcp": 0.084918,
+          "tls": 0.172571,
+          "first": 0.263151,
+          "total": 0.263442
+        },
+        {
+          "target": "control",
+          "status": 200,
+          "tcp": 0.085003,
+          "tls": 0.172478,
+          "first": 0.254882,
+          "total": 0.255276
+        }
+      ]
+    },
+    {
+      "at": "2026-10-29T04:15:23.458Z",
+      "pairs": [
+        {
+          "target": "supabase",
+          "status": 401,
+          "tcp": 0.081263,
+          "tls": 0.163869,
+          "first": 0.24811,
+          "total": 0.248459
+        },
+        {
+          "target": "control",
+          "status": 200,
+          "tcp": 0.150464,
+          "tls": 0.232594,
+          "first": 0.311916,
+          "total": 0.312282
+        }
+      ]
+    },
+    {
+      "at": "2026-10-29T04:15:33.459Z",
+      "pairs": [
+        {
+          "target": "supabase",
+          "status": 401,
+          "tcp": 0.080858,
+          "tls": 0.16321,
+          "first": 0.251472,
+          "total": 0.251791
+        },
+        {
+          "target": "control",
+          "status": 200,
+          "tcp": 0.080815,
+          "tls": 0.162891,
+          "first": 0.244889,
+          "total": 0.24527
+        }
+      ]
+    },
+    {
+      "at": "2026-10-29T04:15:43.460Z",
+      "pairs": [
+        {
+          "target": "supabase",
+          "status": 401,
+          "tcp": 0.086429,
+          "tls": 0.167753,
+          "first": 0.257421,
+          "total": 0.257548
+        },
+        {
+          "target": "control",
+          "status": 200,
+          "tcp": 0.08637,
+          "tls": 0.167469,
+          "first": 0.245981,
+          "total": 0.246948
+        }
+      ]
+    },
+    {
+      "at": "2026-10-29T04:15:53.462Z",
+      "pairs": [
+        {
+          "target": "supabase",
+          "status": 401,
+          "tcp": 0.079178,
+          "tls": 0.166337,
+          "first": 0.25358,
+          "total": 0.253826
+        },
+        {
+          "target": "control",
+          "status": 200,
+          "tcp": 0.083677,
+          "tls": 0.169059,
+          "first": 0.250882,
+          "total": 0.251221
+        }
+      ]
+    },
+    {
+      "at": "2026-10-29T04:16:03.463Z",
+      "pairs": [
+        {
+          "target": "supabase",
+          "status": 401,
+          "tcp": 0.086497,
+          "tls": 0.176108,
+          "first": 0.273943,
+          "total": 0.274232
+        },
+        {
+          "target": "control",
+          "status": 200,
+          "tcp": 0.079875,
+          "tls": 0.167588,
+          "first": 0.250018,
+          "total": 0.250351
+        }
+      ]
+    },
+    {
+      "at": "2026-10-29T04:16:13.464Z",
+      "pairs": [
+        {
+          "target": "supabase",
+          "status": 401,
+          "tcp": 0.081339,
+          "tls": 0.166976,
+          "first": 0.253563,
+          "total": 0.253921
+        },
+        {
+          "target": "control",
+          "status": 200,
+          "tcp": 0.081325,
+          "tls": 0.166969,
+          "first": 0.246349,
+          "total": 0.246735
+        }
+      ]
+    },
+    {
+      "at": "2026-10-29T04:16:23.465Z",
+      "pairs": [
+        {
+          "target": "supabase",
+          "status": 401,
+          "tcp": 0.104317,
+          "tls": 0.1884,
+          "first": 0.293198,
+          "total": 0.293518
+        },
+        {
+          "target": "control",
+          "status": 200,
+          "tcp": 0.104209,
+          "tls": 0.1884,
+          "first": 0.285968,
+          "total": 0.286397
+        }
+      ]
+    },
+    {
+      "at": "2026-10-29T04:16:33.466Z",
+      "pairs": [
+        {
+          "target": "supabase",
+          "status": 401,
+          "tcp": 0.086341,
+          "tls": 0.176556,
+          "first": 0.265721,
+          "total": 0.266109
+        },
+        {
+          "target": "control",
+          "status": 200,
+          "tcp": 0.086241,
+          "tls": 0.173109,
+          "first": 0.255538,
+          "total": 0.255912
+        }
+      ]
+    },
+    {
+      "at": "2026-10-29T04:16:43.467Z",
+      "pairs": [
+        {
+          "target": "supabase",
+          "status": 401,
+          "tcp": 0.088193,
+          "tls": 0.186574,
+          "first": 0.290641,
+          "total": 0.291037
+        },
+        {
+          "target": "control",
+          "status": 200,
+          "tcp": 0.083613,
+          "tls": 0.167848,
+          "first": 0.252785,
+          "total": 0.253101
+        }
+      ]
+    },
+    {
+      "at": "2026-10-29T04:16:53.468Z",
+      "pairs": [
+        {
+          "target": "supabase",
+          "status": 401,
+          "tcp": 0.110555,
+          "tls": 0.216284,
+          "first": 0.349817,
+          "total": 0.350135
+        },
+        {
+          "target": "control",
+          "status": 200,
+          "tcp": 0.103755,
+          "tls": 0.206782,
+          "first": 0.33617,
+          "total": 0.336547
+        }
+      ]
+    }
+  ],
+  "completedAt": "2026-10-29T04:16:53.846Z"
+}

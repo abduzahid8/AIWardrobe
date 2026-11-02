@@ -27,3 +27,23 @@ test('Home supplies the actual displayed card identity and cancellation signal t
   expect(await authorize({ key: 'displayed-outfit-42' }, 'left', signal)).toBe(true);
   expect(consumeOrPaywall).toHaveBeenCalledWith('homeSwipes', { requireServer: true, cancelSignal: signal, homeCardKey: 'displayed-outfit-42' });
 });
+
+test('regenerate responds before authorization finishes and ignores repeat taps', async () => {
+  const declaration = find(node => ts.isVariableDeclaration(node) && node.name.getText(source) === 'handleRegenerate');
+  let finish;
+  const consumeOrPaywall = jest.fn(() => new Promise(resolve => { finish = resolve; }));
+  const dailyAI = { loading: false, regenerate: jest.fn() }, setRegenerationPending = jest.fn();
+  const handler = callback(declaration.initializer, {
+    regenerationRequest: { current: null }, dailyAI, consumeOrPaywall,
+    setRegenerationPending, AbortController, Alert: { alert: jest.fn() }, t: key => key,
+  });
+  const pending = handler();
+  expect(setRegenerationPending).toHaveBeenCalledWith(true);
+  await handler();
+  expect(consumeOrPaywall).toHaveBeenCalledTimes(1);
+  expect(dailyAI.regenerate).not.toHaveBeenCalled();
+  finish(true);
+  await pending;
+  expect(dailyAI.regenerate).toHaveBeenCalledTimes(1);
+  expect(setRegenerationPending).toHaveBeenLastCalledWith(false);
+});

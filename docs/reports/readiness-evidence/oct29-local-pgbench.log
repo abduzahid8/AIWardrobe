@@ -1,0 +1,15 @@
+pgbench (16.15 (Homebrew))
+transaction type: scripts/validation/capacity.pgbench
+scaling factor: 1
+query mode: simple
+number of clients: 40
+number of threads: 4
+maximum number of tries: 1
+duration: 60 s
+number of transactions actually processed: 12081
+number of failed transactions: 0 (0.000%)
+latency average = 4.104 ms
+latency stddev = 1.960 ms
+rate limit schedule lag: avg 2.150 (max 5.666) ms
+initial connection time = 20.667 ms
+tps = 201.418620 (without initial connection time)

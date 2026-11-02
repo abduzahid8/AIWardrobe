@@ -27,6 +27,7 @@ import { prefetchFeaturedCapsules } from '../../hooks/useFeaturedCapsules';
 import useWardrobeStore from '../../store/wardrobeStore';
 import { createLogger } from '../utils/logger';
 import { ExpoImage } from '../components/MediaImage';
+import { loadStylistCatalogInventory } from './stylistCatalogInventory';
 
 
 const logger = createLogger('TabPrewarm');
@@ -88,6 +89,10 @@ const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
  */
 export async function prewarmTabs(): Promise<void> {
     if (dataPrewarmed && imagesPrewarmed) return;
+
+    // The stylist's balanced inventory is independent of the generic shop page.
+    // Start it before navigation so verified categories are ready on first open.
+    void loadStylistCatalogInventory().catch(() => {});
 
     try {
         // Step 1: data — parallel small queries, one flight each.

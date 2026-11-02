@@ -1,0 +1,11 @@
+{
+  "startedAt": "2026-10-29T03:36:55.618Z",
+  "scope": "Single disposable owner; one synthetic 3.89 MB inline PNG wardrobe row; five sequential actual projection reads, not user capacity",
+  "reads": [],
+  "cleanup": {
+    "sessionRevoked": true,
+    "userDeleted": true
+  },
+  "failure": "The operation was aborted due to timeout",
+  "finishedAt": "2026-10-29T03:37:20.255Z"
+}
