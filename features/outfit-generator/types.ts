@@ -27,6 +27,7 @@ export type GenerationStatus =
 export interface ClosetClothingItem {
   _id: string;
   id?: string;
+  name?: string;
   type?: string;
   itemType?: string;
   color?: string;

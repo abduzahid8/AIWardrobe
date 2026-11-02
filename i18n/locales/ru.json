@@ -175,7 +175,7 @@
     "dressWarm": "Одевайтесь тепло",
     "itemAddedToWardrobe": "{{itemName}} добавлен в гардероб",
     "addItemToWardrobe": "Добавить {{itemName}} в гардероб",
-    "createOutfitFromWardrobe": "Create outfit from wardrobe"
+    "createOutfitFromWardrobe": "Создать образ из гардероба"
   },
   "weeklyPlanner": {
     "days": [
@@ -351,8 +351,8 @@
     "scanWardrobeForSuggestions": "Отсканируйте свой гардероб, чтобы получить персонализированные рекомендации по образам",
     "addMoreItemsForSuggestions": "Добавьте больше вещей в свой шкаф для лучших рекомендаций",
     "title": "Ваш образ на сегодня",
-    "addItemToCloset": "Add item to closet",
-    "noSuggestionYet": "No suggestion yet"
+    "addItemToCloset": "Добавьте вещь в гардероб",
+    "noSuggestionYet": "Пока нет рекомендаций"
   },
   "quickActions": {
     "menu": "Меню",
@@ -512,6 +512,11 @@
     "insights": "Инсайты",
     "style": "СТИЛЬ",
     "travel": "ПОЕЗДКИ",
+    "savedProductsTab": "Избранное",
+    "savedProducts": "Сохранённые вещи",
+    "noSavedProducts": "Пока нет сохранённых вещей",
+    "savedProductsHint": "Нажмите на сердечко у товара, чтобы сохранить его здесь.",
+    "browseShop": "В магазин",
     "savedLooks": "Сохраненные образы",
     "inThisLook": "В этом образе",
     "openInWardrobe": "Открыть в гардеробе",
@@ -561,7 +566,7 @@
     "developerTools": "Инструменты разработчика",
     "proBadge": "PRO",
     "priceFrom": "от",
-    "goProSubtitle": "Upgrade for unlimited outfits and premium features"
+    "goProSubtitle": "Перейдите на Pro: безлимитные образы и премиум-функции"
   },
   "addOutfit": {
     "title": "Добавить образ",
@@ -710,6 +715,9 @@
     "uzbek": "Узбекский"
   },
   "outfitMaker": {
+    "closestShopAlternative": "Ближайшее доступное сочетание с вещами из магазина.",
+    "closestAlternative": "Ближайшее доступное сочетание из вашего гардероба.",
+    "closestAlternativeTip": "Выбранная вещь сохранена. Некоторые вещи могут не полностью соответствовать стилю, случаю или погоде.",
     "budgetRatesUnavailable": "Актуальные справочные курсы валют недоступны. Повторите попытку немного позже.",
     "referenceRate": "Оценка по справочному курсу ЦБ · {{date}}",
     "shopPricesUnavailable": "Не удалось подтвердить цену или валюту нужного товара. Выберите другие вещи или обновите каталог.",

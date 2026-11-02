@@ -30,22 +30,22 @@ export const createOutfitsSlice: StateCreator<WardrobeState, [], [], OutfitsSlic
     addOutfit: (outfitInput) => {
         let newId = '';
         set((state) => {
-            // For AI-generated outfits, allow up to 2 items per macro-category
-            // (layered outfits have base top + outerwear which may both
-            // share macro-category 'top'). For user-created outfits, keep the
-            // stricter 1-per-category rule.
-            const maxPerCategory = outfitInput.generatedBy === 'ai' ? 2 : 1;
+            // Saving an accepted AI look must preserve its exact product IDs.
+            // Reclassifying here can silently discard pieces with legacy categories.
+            const maxPerCategory = 1;
             const macroCounts = new Map<string, number>();
             const seenIds = new Set<string>();
             const validItemIds = outfitInput.itemIds.filter((id) => {
                 if (seenIds.has(id)) return false;
                 seenIds.add(id);
+                if (outfitInput.generatedBy === 'ai') return true;
                 const item = state.items.find((i) => i.id === id);
                 if (!item) {
                     // Unknown item — allow it but prevent exact duplicates
                     return true;
                 }
-                const macro = getMacroCategory(item.category);
+                const macro = getMacroCategory(item.category, item.subCategory);
+                if (macro === 'other') return true;
                 const count = macroCounts.get(macro) ?? 0;
                 if (count >= maxPerCategory) return false;
                 macroCounts.set(macro, count + 1);

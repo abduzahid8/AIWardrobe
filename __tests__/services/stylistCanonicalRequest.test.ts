@@ -165,3 +165,66 @@ describe('client request admission',()=>{
   expect(invoke).toHaveBeenCalledTimes(1);expect(invoke.mock.calls[0][1].body).toEqual(expect.objectContaining(params));
  });
 });
+
+it('retries a starved shop-only Home deck without excluding recent products', async () => {
+  invoke.mockReset();
+  require('../../src/services/recentOutfitIds').getRecentShownProductKeys.mockResolvedValueOnce(['id:shoe']);
+  const shopOutfit = { items: complete.items.map(item => ({ ...item, isShopItem: true })) };
+  invoke.mockResolvedValueOnce({ data: null, error: { context: new Response(JSON.stringify({code:'no_matching_clothing'}), {status:422}) } })
+    .mockResolvedValueOnce({ data: {success:true, source:'ai', outfits:[shopOutfit]}, error:null });
+  const params = {stylePreferences:'business_casual', occasion:'Team Collaboration', allowRecentFallback:true, weather:{temp:20, condition:'clear'}, preferences:{avoidColors:['red']}};
+  const result = await generateOutfitsFromDB(params);
+  expect(result.success).toBe(true);
+  expect(invoke).toHaveBeenCalledTimes(2);
+  const first = invoke.mock.calls[0][1].body, second = invoke.mock.calls[1][1].body;
+  expect(first.excludeItemIds).toEqual(['recent']);
+  expect(first.excludeProductKeys).toEqual(['id:shoe']);
+  expect(second.excludeItemIds).toEqual([]);
+  expect(second.excludeProductKeys).toEqual([]);
+  expect({...first, excludeItemIds: [], excludeProductKeys: []}).toEqual(second);
+  expect(result.outfits[0].items).toHaveLength(4);
+});
+
+it('does not relax history for other failure categories or ordinary requests', async () => {
+  invoke.mockReset();
+  invoke.mockResolvedValue({data:null, error:{context:new Response(JSON.stringify({code:'no_outfit_within_budget'}),{status:422})}});
+  await generateOutfitsFromDB({stylePreferences:'business_casual', occasion:'Team Collaboration', allowRecentFallback:true});
+  expect(invoke).toHaveBeenCalledTimes(1);
+});
+
+
+it('retries when only product identity history exhausts a shop slot', async () => {
+  invoke.mockReset();
+  const history = require('../../src/services/recentOutfitIds');
+  history.getRecentShownIds.mockResolvedValueOnce([]);
+  history.getRecentShownProductKeys.mockResolvedValueOnce(['id:shoe']);
+  const shopOutfit = {items: complete.items.map(item => ({...item, isShopItem:true}))};
+  invoke.mockResolvedValueOnce({data:null,error:{context:new Response(JSON.stringify({code:'no_matching_clothing'}),{status:422})}})
+    .mockResolvedValueOnce({data:{success:true,source:'ai',outfits:[shopOutfit]},error:null});
+  expect((await generateOutfitsFromDB({stylePreferences:'business_casual',occasion:'Team Collaboration',allowRecentFallback:true})).success).toBe(true);
+  expect(invoke).toHaveBeenCalledTimes(2);
+  expect(invoke.mock.calls[1][1].body.excludeProductKeys).toEqual([]);
+});
+
+
+it('allows another Home occasion to recover an exhausted footwear pool without changing its constraints', async () => {
+  invoke.mockReset();
+  const history = require('../../src/services/recentOutfitIds');
+  history.getRecentShownIds.mockResolvedValueOnce(['recent']);
+  history.getRecentShownProductKeys.mockResolvedValueOnce(['id:shoe']);
+  invoke.mockResolvedValueOnce({data:null,error:{context:new Response(JSON.stringify({code:'no_matching_clothing'}),{status:422})}})
+    .mockResolvedValueOnce({data:{success:true,source:'ai',outfits:[complete]},error:null});
+  const result = await generateOutfitsFromDB({stylePreferences:'old_money',occasion:'Night-Time Dinner',allowRecentFallback:true});
+  expect(result.success).toBe(true);
+  const [first, second] = invoke.mock.calls.map((call: any[]) => call[1].body);
+  expect({...first, excludeItemIds: [], excludeProductKeys: []}).toEqual(second);
+  expect(second.stylePreferences).toBe('old_money');
+  expect(result.outfits[0].items).toHaveLength(4);
+});
+
+it('requests a catalog-only pool for the shop-only Home deck', async () => {
+  invoke.mockReset();
+  invoke.mockResolvedValue({data:{success:false,outfits:[]},error:null});
+  await generateOutfitsFromDB({stylePreferences:'business_casual',occasion:'Team Collaboration',allowRecentFallback:true});
+  expect(invoke.mock.calls[0][1].body.catalogOnly).toBe(true);
+});

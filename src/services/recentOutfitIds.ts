@@ -13,7 +13,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { productIdentityKeys } from '../../backend/supabase/functions/_shared/outfitDiversity';
+import { productIdentityKeys, diversitySlotOf } from '../../backend/supabase/functions/_shared/outfitDiversity';
 
 const MAX_RECENT_IDS = 150;
 const STORAGE_KEY = 'aiExcludeShownItemIds';
@@ -166,7 +166,11 @@ function decksFor(scope: string) {
 }
 export async function getRotationHistory(scope:string) {
     const state=decksFor(scope);await state.ready;
-    return {previousDeckProductKeys:[...(state.decks.at(-1)?.productKeys||[])],olderRecentProductKeys:[...new Set(state.decks.slice(0,-1).flatMap(d=>d.productKeys))],rotationDecks:state.decks.map(d=>({...d,productKeys:[...d.productKeys]}))};
+    const shoes=decksFor(`shoes:${scope.split('|')[0]}`);await shoes.ready;
+    return {previousDeckProductKeys:[...(state.decks.at(-1)?.productKeys||[])],olderRecentProductKeys:[...new Set(state.decks.slice(0,-1).flatMap(d=>d.productKeys))],rotationDecks:state.decks.map(d=>({...d,productKeys:[...d.productKeys]})),
+        ...(shoes.decks.length ? {previousShoeProductKeys:[...shoes.decks.at(-1)!.productKeys],
+            recentShoeProductKeys:[...new Set(shoes.decks.flatMap(d=>d.productKeys))],
+            shoeRotationDecks:shoes.decks.map(d=>({...d,productKeys:[...d.productKeys]}))} : {})};
 }
 /** Call after final acceptance, before unlocking the next Generate press. */
 export async function recordDisplayedDeck(outfits:unknown,scope:string,requestId:string):Promise<void> {
@@ -177,4 +181,13 @@ export async function recordDisplayedDeck(outfits:unknown,scope:string,requestId
     state.decks=[...state.decks,{requestId,productKeys}].slice(-12);
     const snapshot=JSON.stringify(state.decks);
     state.writes=state.writes.then(()=>AsyncStorage.setItem(`stylistRotationDecks::${scope}`,snapshot)).catch(()=>undefined);
+    // Shoes rotate across styles and occasions, while clothing keeps the
+    // semantic scope above. Keep accounts isolated and persist only footwear.
+    const shoeScope=`shoes:${scope.split('|')[0]}`,shoes=decksFor(shoeScope);await shoes.ready;
+    const shoeKeys=[...new Set<string>(outfits.flatMap(o=>Array.isArray(o?.items)?o.items.filter((item:any)=>diversitySlotOf(item)==='shoes').flatMap(productIdentityKeys):[]))];
+    if(shoeKeys.length && !shoes.decks.some(d=>d.requestId===requestId)) {
+        shoes.decks=[...shoes.decks,{requestId,productKeys:shoeKeys}].slice(-12);
+        const shoeSnapshot=JSON.stringify(shoes.decks);
+        shoes.writes=shoes.writes.then(()=>AsyncStorage.setItem(`stylistRotationDecks::${shoeScope}`,shoeSnapshot)).catch(()=>undefined);
+    }
 }

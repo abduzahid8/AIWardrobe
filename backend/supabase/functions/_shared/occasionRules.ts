@@ -299,6 +299,16 @@ const EXOTIC_RE = /\b(crocodile|alligator|pythons?|stingray|ostrich|lizard)(\s*(
 // alternative here) — they are the CORRECT base layer, not the violation.
 const BASIC_TEE_RE = /\bt-?shirts?\b|\btees?\b|\btanks?\b/;
 
+// Persisted wardrobe categories can group polos under "tees". A specific
+// garment name wins over that broad type, without exempting actual T-shirts
+// sold by polo brands or ignoring material/occasion evidence.
+function garmentTypeEvidence(item: JudgeableItem): string {
+    const name = normalizeGarmentText(item.name || '');
+    const type = String(item.type || '');
+    return /\bpolos?\b|поло/.test(name) && !BASIC_TEE_RE.test(name)
+        && /^(tees?|t[ -]?shirts?)$/i.test(type.trim()) ? 'polo' : type;
+}
+
 /**
  * Returns a rejection reason when the item has no business in the given
  * style+occasion, else null. Formal occasions veto beach/athletic shoes,
@@ -313,7 +323,7 @@ export function rejectForStyleOccasion(
     if (!item) return 'empty item';
     const refinedDate = refinedDateProductReason(item,styleId,occasionId);
     if (refinedDate) return refinedDate;
-    const blob = normalizeGarmentText(`${item.name || ''} ${item.type || ''} ${item.description || ''} ${item.color || ''}`);
+    const blob = blobOf(item);
     // Underwear is never visible daywear, in any style or occasion.
     if (UNDERWEAR_RE.test(blob)) return 'underwear must never surface as visible clothing';
     if (/\b(iphone|phone[\s-]?cases?|airpods?)\b/.test(blob)) return 'tech accessories are not outfit pieces';
@@ -364,7 +374,7 @@ export function rejectForStyleOccasion(
         if (SLOPPY_BOTTOM_RE.test(blob)) return 'sloppy bottoms underdress the occasion';
         if (isBottom && FASHION_WORK_BOTTOM_RE.test(blob)) return 'fashion denim/splatter bottoms underdress work';
         if (isTopOrLayer && FASHION_WORK_LAYER_RE.test(blob)) return 'washed fashion jackets underdress the occasion';
-        if ((slot === 'top' || slot === '') && PIQUE_POLO_RE.test(blob) && /\bpolo\b/.test(blob)) {
+        if (WORKISH_RE.test(occasion) && (slot === 'top' || slot === '') && PIQUE_POLO_RE.test(blob) && /\bpolo\b/.test(blob)) {
             return 'piqué polos are sporty, not workwear';
         }
         if (SLEEPWEAR_RE.test(blob)) return 'sleepwear is not daywear for a polished occasion';
@@ -526,7 +536,7 @@ function blobOf(item: JudgeableItem): string {
     // Brand names are not garment evidence (Thursday Boot Co. also sells loafers).
     // Color field included: catalog names often omit the color
     // ("Linen suit trousers" in black) while the color column has it.
-    return normalizeGarmentText(`${item.name || ''} ${item.type || ''} ${item.description || ''} ${item.color || ''}`);
+    return normalizeGarmentText(`${item.name || ''} ${garmentTypeEvidence(item)} ${item.description || ''} ${item.color || ''}`);
 }
 
 function macroOf(item: JudgeableItem): string {
@@ -561,12 +571,20 @@ export function outfitPaletteReason(items: JudgeableItem[]): string | null {
     const vivid = new Set<string>();
     for (const item of items) {
         const color = normalizeGarmentText(String(item.color || ''));
-        if (/\b(navy|olive|khaki|sage|muted|dusty|pastel|pale|dark|burgundy|maroon|beige|cream|brown|grey|gray|black|white|neutral)\b/.test(color)) continue;
-        for (const hue of ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink']) {
-            if (new RegExp(`\\b${hue}\\b`).test(color)) vivid.add(hue);
+        // Evaluate each component: white/red is still a red accent. A neutral
+        // component must not hide every other hue in a patterned garment.
+        for (const component of color.split(/[,/;&+]|\band\b/)) {
+            if (/\b(navy|olive|khaki|sage|muted|dusty|pastel|pale|light|dark|burgundy|maroon|mustard|rust|forest)\b/.test(component)) continue;
+            for (const hue of ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink']) {
+                if (new RegExp(`\\b${hue}\\b`).test(component)) vivid.add(hue);
+            }
         }
     }
-    return vivid.size >= 3 ? 'too many competing vivid colors' : null;
+    if (vivid.size >= 3) return 'too many competing vivid colors';
+    if ([['red','green'], ['blue','orange'], ['yellow','purple']].some(pair => pair.every(hue => vivid.has(hue)))) {
+        return 'competing saturated complementary colors';
+    }
+    return null;
 }
 
 /**
@@ -753,7 +771,13 @@ export function rejectOutfitIncoherence(
 export type SlotMacro = 'top' | 'outerwear' | 'bottom' | 'shoes';
 
 const TOP_WORDS_RE = /\bt-?shirts?\b|\btees?\b|\bpolos?\b|\bblouses?\b|\btanks?\b|\bhenleys?\b|\bshirts?\b|\boxfords?\b|\bbutton[\s-]?downs?\b/;
-const OUTER_WORDS_RE = /\bjackets?|coats?|blazers?|hoodies?|cardigans?|sweaters?|pullovers?|puffers?|bombers?|vests?|outerwears?|trenchs?|peacoats?|sweatshirts?|knitwears?|jumpers?|fleece|overshirts?|shackets?|total[\s-]?look\b/;
+/** Oxford is a shoe construction and a shirt fabric. Explicit garments win. */
+export function isOxfordFootwearName(name:string):boolean {
+    const text=normalizeGarmentText(name);
+    return /\boxfords?\b/.test(text)
+        && !/\b(shirts?|blouses?|polos?|jackets?|coats?|blazers?|trousers?|pants?|shorts?|skirts?|dresses?)\b/.test(text);
+}
+const OUTER_WORDS_RE = /\b(?:jackets?|coats?|blazers?|hoodies?|cardigans?|sweaters?|pullovers?|puffers?|bombers?|vests?|outerwears?|trenchs?|peacoats?|sweatshirts?|knitwears?|jumpers?|fleece|overshirts?|shackets?|total[\s-]?look)\b/;
 const BOTTOM_WORDS_RE = /\bpants?|trousers?|jeans?|bottoms?|shorts|bermudas?|skirts?|chinos?|slacks?|joggers?|jogging|trunks?|swim/;
 const SHOE_WORDS_RE = /\bshoes?|sneakers?|boots?|loafers?|sandals?|heels?|trainers?|derbys?|derbies|moccasins?|drivers?|mules?|clogs?|espadrilles?\b|кроссовки|кеды|туфли|ботинки|лоферы|сапоги|мокасины|сандалии/;
 // Underwear must never surface as visible daywear in any slot.
@@ -812,12 +836,13 @@ export function detectSlotMismatch(
     // would self-confirm it (a 'bottoms'-typed T-shirt must still read top).
     const blob = String(name || '').toLowerCase();
     const blobSansSleeves = blob.replace(STRIP_SHORT_SLEEVE_RE, ' ');
-    const hasTop = TOP_WORDS_RE.test(blob);
+    const oxfordFootwear = isOxfordFootwearName(blob);
+    const hasTop = TOP_WORDS_RE.test(blob) && !oxfordFootwear;
     const hasOuter = OUTER_WORDS_RE.test(blob);
     // Strip "short-sleeved" first: `\bshorts?` / `\bshorts` otherwise
     // treat shirts as bottoms (screenshot: black short-sleeved shirt as PANTS).
     const hasBottom = BOTTOM_WORDS_RE.test(blobSansSleeves);
-    const hasShoe = SHOE_WORDS_RE.test(blob);
+    const hasShoe = SHOE_WORDS_RE.test(blob) || oxfordFootwear;
     // Short-sleeve knits/shirts are base tops, never layers or pants.
     // "Wool-blend short-sleeve knit sweater" used to fall through to
     // outerwear because OUTER_WORDS includes "sweater".
@@ -873,7 +898,7 @@ export function styleJudgeReason(
     const oc = rejectOutfitClimate(items, weather);
     if (oc !== null) return `outfit climate: ${oc}`;
     return rejectOutfitIncoherence(items, styleId, occasionId)
-        || assessOutfitQuality(items,styleId,occasionId,weather).reasons[0] || null;
+        || assessOutfitQuality(items,styleId,occasionId,weather,lockedItemId).reasons[0] || null;
 }
 
 /** True when the outfit survives the judge (every item unrejected). */
@@ -962,12 +987,17 @@ function qualityColor(item:JudgeableItem):string {
     return groups.find(([,pattern])=>pattern.test(explicit))?.[0] || groups.find(([,pattern])=>pattern.test(text))?.[0]||'unknown';
 }
 /** Six equally reported dimensions. Missing evidence stays neutral, not invented. */
-export function assessOutfitQuality(items:JudgeableItem[],style?:string|null,occasion?:string|null,weather?:ClimateWeather|null):OutfitQualityAssessment {
+export function assessOutfitQuality(items:JudgeableItem[],style?:string|null,occasion?:string|null,weather?:ClimateWeather|null,lockedItemId?:string|null):OutfitQualityAssessment {
     const dimensions={styleFit:1,occasionFit:1,colorHarmony:1,materialHarmony:1,formalityFit:1,weatherFit:1};
     const reasons:string[]=[],evidence:string[]=[];
     const relevant=isOldMoneyDate(style,occasion);
     for(const item of items){
-        const reason=refinedDateProductReason(item,style,occasion);
+        // The owned anchor defines the styling challenge. Keep aesthetic
+        // exclusions for new companions; dress code, climate and outfit
+        // compatibility are still checked for the entire look by the judge.
+        const locked=!!lockedItemId && String(item.id)===lockedItemId;
+        const reason=locked ? null : refinedDateProductReason(item,style,occasion);
+        if(locked && refinedDateProductReason(item,style,occasion))evidence.push('owned anchor balanced by refined companions');
         if(reason){reasons.push(reason);dimensions.styleFit=0;dimensions.occasionFit=0;dimensions.formalityFit=0;}
         if(rejectForClimate(item,weather))dimensions.weatherFit=0;
     }

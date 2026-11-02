@@ -4,7 +4,7 @@ const fxCore=require('../../backend/supabase/functions/_shared/budgetFx');
 const fs=require('fs'),path=require('path'),ts=require('typescript');
 const entry=process.env.OUTFIT_WIRE_SOURCE || path.resolve(__dirname,'../../backend/supabase/functions/generate-outfits/index.ts');
 const compile=source=>ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-function load(modelItems=['wardrobe-shirt','wardrobe-pants','wardrobe-shoes','wardrobe-layer'],authFailure=null,admission=null,paidTier=null,catalogQuery=null,selectionMode=null){
+function load(modelItems=['wardrobe-shirt','wardrobe-pants','wardrobe-shoes','wardrobe-layer'],authFailure=null,admission=null,paidTier=null,catalogQuery=null,selectionMode=null,wearLogs=[]){
  let handler;
  const loadRates=jest.fn(async()=>makeReferenceSnapshot());
  const pinnedRates=jest.fn(async(_admin,id)=>{const snapshot=makeReferenceSnapshot();if(id!==snapshot.id)throw new fxCore.BudgetFxError();return snapshot;});
@@ -13,7 +13,7 @@ function load(modelItems=['wardrobe-shirt','wardrobe-pants','wardrobe-shoes','wa
  const catalogRpc=jest.fn((name,args)=>{if(catalogQuery.rpc)return catalogQuery.rpc(name,args);if(args.p_after_id)catalogQuery.gt('id',args.p_after_id);const result={abortSignal:()=>result,then:resolve=>Promise.resolve(catalogQuery).then(({data,error})=>({data:data?.map(row=>({...row,_budget_cost:Number(row.price)>0&&args.p_rates[row.currency]?String(Number(row.price)*args.p_rates[row.currency]):null})),error})).then(resolve)};return result;});
  const requireModule=name=>{
   if(name.includes('server.ts'))return {serve:fn=>{handler=fn;}};
-  if(name.includes('supabase-js'))return {createClient:(_url,_key,options)=>({...paidTier?{from:()=>({select:()=>({eq:()=>({order:()=>({limit:async()=>({data:[{tier:paidTier,status:'active'}],error:null})})})})})}:{},...(catalogQuery?{rpc:catalogRpc,from:table=>{if(table==='shop_catalog')return catalogQuery;throw Error('Unexpected fixture table');}}:{}),auth:{getUser:async()=>authFailure?{data:{user:null},error:authFailure}:options?.global?.headers?.Authorization==='Bearer fixture-user'?{data:{user:{id:'fixture-user-id'}},error:null}:{data:{user:null},error:{status:401}}}})};
+  if(name.includes('supabase-js'))return {createClient:(_url,_key,options)=>({...paidTier?{from:()=>({select:()=>({eq:()=>({order:()=>({limit:async()=>({data:[{tier:paidTier,status:'active'}],error:null})})})})})}:{},...(catalogQuery?{rpc:catalogRpc,from:table=>{if(table==='shop_catalog')return catalogQuery;throw Error('Unexpected fixture table');}}:{}),from:table=>{if(table==='wear_logs'){const q={select:()=>q,eq:()=>q,order:()=>q,limit:n=>Promise.resolve({data:wearLogs.slice(0,n),error:null})};return q;}if(table==='shop_catalog'&&catalogQuery)return catalogQuery;if(paidTier)return {select:()=>({eq:()=>({order:()=>({limit:async()=>({data:[{tier:paidTier,status:'active'}],error:null})})})})};throw Error('Unexpected fixture table '+table);},auth:{getUser:async()=>authFailure?{data:{user:null},error:authFailure}:options?.global?.headers?.Authorization==='Bearer fixture-user'?{data:{user:{id:'fixture-user-id'}},error:null}:{data:{user:null},error:{status:401}}}})};
   if(name.includes('rateLimit'))return {enforceRateLimit:rateMock};
   if(name.includes('budgetFxCache'))return {currentBudgetRates:loadRates,budgetRatesById:pinnedRates};
   if(name.includes('budgetFx.ts'))return fxCore;
@@ -651,4 +651,20 @@ test('an exchange-rate outage still permits a verified native-currency deck',asy
  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
  expect(response.status).toBe(200);const data=await response.json();expect(data.outfits.length).toBeGreaterThan(0);
  for(const outfit of data.outfits){expect(outfit.items.every(item=>item.currency==='USD')).toBe(true);expect(outfit.items.reduce((sum,item)=>sum+item.price,0)).toBeLessThanOrEqual(250);}
+});
+
+test('recently worn clothing cannot return through generation or fallback',async()=>{
+ const {handler}=load(undefined,null,null,null,null,null,[{item_ids:['wardrobe-shoes']}]);
+ const response=await handler(request(null));
+ const body=await response.json();
+ expect(response.status).toBe(422);
+ expect(body.outfits).toEqual([]);
+});
+
+test('worn clothing becomes eligible after five other worn outfits',async()=>{
+ const logs=[...Array.from({length:5},(_,i)=>({item_ids:[`other-${i}`]})),{item_ids:['wardrobe-shoes']}];
+ const {handler}=load(undefined,null,null,null,null,null,logs);
+ const response=await handler(request(null));
+ expect(response.status).toBe(200);
+ expect((await response.json()).outfits[0].items.map(item=>item.id)).toContain('wardrobe-shoes');
 });

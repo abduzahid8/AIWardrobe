@@ -1,3 +1,4 @@
+import { withRequestDeadline } from '../src/lib/requestDeadline';
 import { dailyOutfitDisplayItems } from '../src/services/dailyOutfitDisplay';
 /**
  * HomeScreen - 2026 Redesign
@@ -26,11 +27,9 @@ import Animated, {
 
 // 2026 Design System
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
-import {
-  LiquidGlassCard,
-  OutfitSwipeStack,
-} from '../components/ui';
-import type { OutfitSwipeStackHandle, SwipeStackCard } from '../components/ui';
+import { LiquidGlassCard } from '../components/ui/LiquidGlassCard';
+import { OutfitSwipeStack } from '../components/ui/OutfitSwipeStack';
+import type { OutfitSwipeStackHandle, SwipeStackCard } from '../components/ui/OutfitSwipeStack';
 import { useAccessibility } from '../hooks/useAccessibility';
 import Config from '../src/config/env';
 
@@ -429,7 +428,8 @@ const DailyOutfitSection = React.memo(({
     style,
     occasion,
     weather: weatherForAI,
-    variants: 15,
+    // Smaller batches show the first look sooner and refill when exhausted.
+    variants: 6,
     enabled,
     allowGeneration: canGenerateNewLooks,
   });
@@ -466,6 +466,11 @@ const DailyOutfitSection = React.memo(({
   // the reset effect above runs in the same pass but its setState hasn't
   // committed yet — and would otherwise fire a second, redundant regenerate.
   useEffect(() => {
+    // Avoid initiating a new refill while Home is not focused.
+    if (!enabled) {
+      refillRequestedForRef.current = null;
+      return;
+    }
     if (
       dailyAI.outfits.length > 0
       && stackIndex >= dailyAI.outfits.length
@@ -485,7 +490,7 @@ const DailyOutfitSection = React.memo(({
       dailyAI.regenerate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stackIndex, dailyAI.outfits, dailyAI.loading, effectiveTier, isTrialExpired]);
+  }, [stackIndex, dailyAI.outfits, dailyAI.loading, effectiveTier, isTrialExpired, enabled]);
 
   // Determine occasion from the style prop
   const deriveOccasion = useMemo((): Occasion => {
@@ -926,28 +931,15 @@ const HomeScreen = () => {
     };
   }, []);
 
-  // Initialize the player without auto-playing — playback is started lazily
-  // in the useFocusEffect below, only when the screen is actually visible.
-  // This prevents the video from loading into memory on every Home tab visit
-  // before the screen is even rendered (fixes Defect 2.2).
+  // Prepare the original hero video as part of Home, before splash reveal.
   const player = useVideoPlayer(require("../assets/videos/nux_men_o.mp4"), (player) => {
     player.loop = true;
     player.muted = true;
-    // Do NOT call player.play() here — play is deferred to useFocusEffect
   });
 
-  // Use useFocusEffect for reliable play/pause tied to tab focus lifecycle.
-  // This fires correctly when the tab navigator shows/hides the screen,
-  // whereas useIsFocused + useEffect can miss rapid tab switches.
-  // The cleanup (blur) callback pauses the video and releases the decoder
-  // buffer so video memory is not held while the user is on other tabs.
   useFocusEffect(
     useCallback(() => {
       let active = true;
-
-      // Defer video playback past the tab-switch animation to avoid lag
-      // during the transition. Plain setTimeout — InteractionManager is
-      // deprecated (startup warning) and behaves the same here.
       const timer = setTimeout(() => {
         if (!active) return;
         try {
@@ -956,11 +948,9 @@ const HomeScreen = () => {
           logger.warn('Unable to play hero video', error);
         }
       }, 350);
-
       return () => {
         active = false;
         clearTimeout(timer);
-        // Pause on blur — releases decoder resources while off-screen
         try {
           player.pause();
         } catch (error) {
@@ -1002,7 +992,10 @@ const HomeScreen = () => {
   );
 
   // Dynamic home screen occasions editable from admin panel / Supabase
-  const [dynamicOccasions, setDynamicOccasions] = useState<any[]>([]);
+  const [dynamicOccasions, setDynamicOccasions] = useState<any[]>([
+    { id: 'default-1', occasion: 'Team Collaboration', style: 'business_casual' },
+    { id: 'default-2', occasion: 'Night-Time Dinner', style: 'old_money' },
+  ]);
 
   useEffect(() => {
     if (!isFocused) return;
@@ -1010,18 +1003,19 @@ const HomeScreen = () => {
     let active = true;
     const fetchOccasions = async () => {
       try {
-        const { data, error } = await supabase
+        const { data, error } = await withRequestDeadline(signal => supabase
           .from('home_occasions')
           .select('*')
           .eq('is_active', true)
-          .order('sort_order', { ascending: true });
+          .order('sort_order', { ascending: true })
+          .abortSignal(signal));
 
         if (active) {
           if (!error && data && data.length > 0) {
             setDynamicOccasions(data);
           } else {
             // Default occasions fallback
-            setDynamicOccasions([
+            setDynamicOccasions(previous => previous.length ? previous : [
               { id: 'default-1', occasion: 'Team Collaboration', style: 'business_casual' },
               { id: 'default-2', occasion: 'Night-Time Dinner', style: 'old_money' }
             ]);
@@ -1029,7 +1023,7 @@ const HomeScreen = () => {
         }
       } catch (err) {
         if (active) {
-          setDynamicOccasions([
+          setDynamicOccasions(previous => previous.length ? previous : [
             { id: 'default-1', occasion: 'Team Collaboration', style: 'business_casual' },
             { id: 'default-2', occasion: 'Night-Time Dinner', style: 'old_money' }
           ]);
@@ -1066,14 +1060,10 @@ const HomeScreen = () => {
   // Read username from Supabase auth store (no JWT decode needed)
   const authUsername = useAuthStore(selectUsername);
   const userId = useAuthStore((state) => state.user?.id);
-  // Gate the outfit engine: never run edge-function + fallback queries +
-  // combinatorial rebuild for an anonymous/stale user (delete -> create gap)
-  // or while the wardrobe rehydrate is still in flight. Both conditions
-  // caused the thundering herd that froze fresh accounts — the decks now
-  // wait for a real userId + settled wardrobe and then serve the daily
-  // cache instantly.
+  // Shop-only decks do not depend on wardrobe hydration; other decks still
+  // wait for it to settle so their owned-clothing context is complete.
   const isWardrobeLoading = useWardrobeStore((state) => state.isLoading);
-  const dailyDecksEnabled = isFocused && !!userId && !isWardrobeLoading;
+  const dailyDecksEnabled = isFocused && !!userId;
   // Defer deck DATA briefly past first paint so the hero/video paints
   // first. The hook serves the daily cache (async read, no rebuild) or an
   // instant static deck almost for free, and staggers only its network
@@ -1681,12 +1671,12 @@ const HomeScreen = () => {
           {renderTodaysLook()}
 
           {/* Wardrobe Essentials Grid OR Dynamic Occasions */}
-          {items.length < 5 ? (
-            renderEssentials()
-          ) : (
-            dynamicOccasions.map((item) => (
+          {items.length < 5 && renderEssentials()}
+          {dynamicOccasions
+            .filter((item) => items.length >= 5 || isShopOnlyDeck(item.style, item.occasion))
+            .map((item, index) => (
               <DailyOutfitSection
-                key={item.id}
+                key={`${item.style}:${item.occasion}:${index}`}
                 occasion={item.occasion}
                 style={item.style}
                 weather={weather}
@@ -1700,10 +1690,9 @@ const HomeScreen = () => {
                 navigation={navigation}
                 t={t}
                 userId={userId}
-                enabled={decksFetchEnabled}
+                enabled={decksFetchEnabled && (isShopOnlyDeck(item.style, item.occasion) || !isWardrobeLoading)}
               />
-            ))
-          )}
+            ))}
 
           {/* Bottom spacing for tab bar */}
           <View style={{ height: 120 }} />

@@ -43,6 +43,8 @@ export interface GenerateOutfitsParams {
     conversationContext?: string;
     /** Set false when the caller records only after committing a visible result. */
     recordShown?: boolean;
+    /** Allow Home decks to reuse seen products after the pool is exhausted. */
+    allowRecentFallback?: boolean;
     /** Style preset, e.g. 'old_money' | 'semi_classic' | 'minimalist' | 'casual' */
     stylePreferences?: string;
     /** Occasion label, e.g. 'Casual' | 'Formal' | 'Sport' */
@@ -184,6 +186,7 @@ export async function generateOutfitsFromDB(
             weather: params.weather,
             limit: params.limit ?? 3,
             selectedItemIds: params.selectedItemIds ?? [],
+            ...(shopOnlyRequest && params.allowRecentFallback && !params.selectedItemIds?.length ? { catalogOnly: true } : {}),
             anchorItemId: shopOnlyRequest ? undefined : params.anchorItemId,
             preferences: params.preferences,
             // Recently-shown window → edge skips these when building the
@@ -195,10 +198,10 @@ export async function generateOutfitsFromDB(
         catch {
             return { success: false, outfits: [], error: 'invalid_generation_request', errorTranslationKey: 'outfitMaker.invalidRequest' };
         }
-        const invokeOnce = () => supabase.functions.invoke('generate-outfits', {
+        const invokeOnce = (ignoreHistory = false) => supabase.functions.invoke('generate-outfits', {
             signal: controller.signal,
             headers: { Authorization: `Bearer ${session.access_token}` },
-            body,
+            body: ignoreHistory ? { ...body, excludeItemIds: [], excludeProductKeys: [] } : body,
         });
 
         let { data, error } = await wait(invokeOnce());
@@ -215,9 +218,38 @@ export async function generateOutfitsFromDB(
             }
         }
 
+        // A scarce slot (often shoes) can be entirely consumed by recent
+        // history. Reuse seen products only after the server confirms no
+        // match; retain all source, style, weather, and quality constraints.
+        let retriedWithoutHistory = false;
+        if (error && params.allowRecentFallback && (excludeItemIds.length > 0 || excludeProductKeys.length > 0) &&
+            (error as any)?.context?.status === 422 &&
+            (await outfitGenerationFailure(data, error)).translationKey === 'outfitMaker.noMatchingClothing') {
+            if (cancelled) throw new Error('generation_account_changed');
+            retriedWithoutHistory = true;
+            ({ data, error } = await wait(invokeOnce(true)));
+            if (cancelled) throw new Error('generation_account_changed');
+        }
+
         if (error) {
-            console.warn('[outfitGenerationService] Edge function error, generation rejected:', error);
-            return { success: false, outfits: [], error: 'stylist_generation_failed', errorTranslationKey: (await outfitGenerationFailure(data, error)).translationKey };
+            const failure = await outfitGenerationFailure(data, error);
+            const status = (error as any)?.context?.status;
+            console.warn('[outfitGenerationService] Outfit request failed', {
+                status: Number.isInteger(status) ? status : null,
+                reason: failure.translationKey,
+                ...(failure.translationKey === 'outfitMaker.noMatchingClothing' ? {
+                    shopOnly: shopOnlyRequest,
+                    recentCount: excludeItemIds.length,
+                    retriedWithoutHistory,
+                    avoidedColors: Array.isArray(params.preferences?.avoidColors) ? params.preferences.avoidColors.length : 0,
+                    dislikedPatterns: Array.isArray(params.preferences?.dislikedPatterns) ? params.preferences.dislikedPatterns.length : 0,
+                    hasBudget: !!params.preferences?.maxShopBudget,
+                    weatherBand: typeof params.weather?.temp !== 'number' ? 'unknown'
+                        : params.weather.temp < 5 ? 'freezing' : params.weather.temp < 18 ? 'cool'
+                        : params.weather.temp < 26 ? 'mild' : 'hot',
+                } : {}),
+            });
+            return { success: false, outfits: [], error: 'stylist_generation_failed', errorTranslationKey: failure.translationKey };
         }
 
         if (data?.source === 'local' || !data?.success || !Array.isArray(data?.outfits) || data.outfits.length === 0) {

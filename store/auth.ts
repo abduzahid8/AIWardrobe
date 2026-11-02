@@ -98,6 +98,18 @@ export function cleanupAuthSubscription(): void {
   disposeAuthSubscription();
 }
 
+/** Restore purchase identity after reveal, retaining login/logout ordering. */
+export function identifyRestoredPurchases(userId: string): Promise<void> {
+    const revision = authEvents.getRevision();
+    const lifecycle = authLifecycleRevision;
+    return authOperationQueue.run(async retain => {
+        if (lifecycle !== authLifecycleRevision || revision !== authEvents.getRevision()
+            || useAuthStore.getState().session?.user.id !== userId) return;
+        await withLogoutTimeout(retain(iapService.identify(userId).catch(() => undefined)),
+            8000, 'iapService.identify (deferred restore)');
+    });
+}
+
 function disposeAuthSubscription(): void {
   authInitializationVersion++;
   if (_authSubscription) {
@@ -414,7 +426,9 @@ const useAuthStore = create<AuthStore>((set, get) => ({
                         log.warn('Background fetchUser failed during session restore', err);
                     });
 
-                    await withLogoutTimeout(iapService.identify(session.user.id).catch(() => undefined), 8000, 'iapService.identify (restore)');
+                    // RootNavigator identifies purchases after the first frame.
+                    // Waiting here holds both splash readiness and the auth queue
+                    // behind a native SDK/network operation (up to eight seconds).
                     log.info('Restored existing session', { userId: session.user.id });
                 }
             }
@@ -922,7 +936,11 @@ const useAuthStore = create<AuthStore>((set, get) => ({
             }
         } catch (err) {
             if (!stillCurrent()) return;
-            log.error('Failed to fetch user', err);
+            if (err instanceof Error && err.name === 'RequestTimeoutError') {
+                log.warn('Profile request timed out; retaining session profile');
+            } else {
+                log.error('Failed to fetch user', err);
+            }
             set({
                 user: get().user?.id === sessionUser.id ? get().user : basicUser(),
                 error: err instanceof Error ? err.message : 'Failed to fetch user',

@@ -269,3 +269,16 @@ it('rejects a leather peacoat even when no-jacket intent would allow a coat', ()
  const look=[item('Tilson Leather Peacoat','outerwear'),item('Cotton shirt','top'),item('Cotton chinos','bottom'),item('Leather shoes','shoes')];
  expect(styleJudgeReason(look,'casual','summer, no jacket',{temp:30})).toMatch(/warm|lightweight/);
 });
+
+
+describe('automatic color harmony',()=>{
+ it.each([['red','green'],['blue','orange'],['yellow','purple']])('rejects saturated %s and %s across any slots',(a,b)=>{
+  expect(rejectOutfitIncoherence([item('Shirt','top',{color:a}),item('Coat','outerwear',{color:'grey'}),item('Trousers','bottom',{color:b})],'casual','casual')).toBe('competing saturated complementary colors');
+ });
+ it('retains muted complementary palettes',()=>{
+  expect(rejectOutfitIncoherence([item('Shirt','top',{color:'burgundy'}),item('Trousers','bottom',{color:'olive'})],'casual','casual')).toBeNull();
+ });
+ it('does not let neutral components hide multiple saturated hues',()=>{
+  expect(rejectOutfitIncoherence([item('Shirt','top',{color:'white/red'}),item('Trousers','bottom',{color:'blue'}),item('Coat','outerwear',{color:'yellow'})],'casual','casual')).toBe('too many competing vivid colors');
+ });
+});

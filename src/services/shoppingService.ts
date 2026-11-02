@@ -13,6 +13,7 @@ import {
 } from '../../features/outfit-generator/utils/styleInference';
 import type { ShopCatalogItem } from '../types/shop';
 import { getShopDestination } from '../utils/shopDestination';
+import { hasProductOnlyCatalogProvenance } from '../utils/productOnlyCatalog';
 
 // Static catalogs require()d lazily — ~120KB of data modules must not
 // parse/evaluate on app startup (this service is reachable from eager
@@ -527,7 +528,7 @@ function buildShopQueryForSlot(slot: OutfitSlotId, limit: number) {
 }
 
 function rowToShopFillItem(row: ShopCatalogRow, slot: OutfitSlotId): ShopFillItem | null {
-    if (!row?.id || !row?.image_url) return null;
+    if (!row?.id || !row?.image_url || !hasProductOnlyCatalogProvenance(row)) return null;
     return {
         id: `shop_${row.id}`,
         name: row.name || row.brand || 'Shop pick',

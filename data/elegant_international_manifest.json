@@ -1,0 +1,1869 @@
+{
+  "description": "Curated global elegant menswear selection across accessible project feeds; every supplemental entry is restricted to source galleries labelled product-only/no-model. This is not a claim to be an exhaustive directory of every worldwide store.",
+  "pricing_note": "Prices and availability come from existing project feeds and require periodic refresh. Tiers describe brand positioning, not currency-converted product prices.",
+  "brands": [
+    "ARKET",
+    "AllSaints",
+    "Armani Exchange",
+    "Aurelien",
+    "Aurélien",
+    "BOSS",
+    "Berluti",
+    "Boggi Milano",
+    "Boglioli",
+    "Brioni",
+    "Brooks Brothers",
+    "Brunello Cucinelli",
+    "COS",
+    "Calvin Klein",
+    "Canali",
+    "Caruso",
+    "Charles Tyrwhitt",
+    "Church's",
+    "Corneliani",
+    "De Bonne Facture",
+    "De Petrillo",
+    "Drake's",
+    "ECCO",
+    "Edward Green",
+    "Eleventy",
+    "Emporio Armani",
+    "Eton",
+    "Everlane",
+    "GANT",
+    "George Cleverley",
+    "Geox",
+    "Giorgio Armani",
+    "Grenson",
+    "Hackett London",
+    "Harmont & Blaine",
+    "Husbands",
+    "Isaia",
+    "J. Mueser",
+    "J.Crew",
+    "J.M. Weston",
+    "JACK & JONES",
+    "John Lobb",
+    "Johnston & Murphy",
+    "Kiton",
+    "Lacoste",
+    "Lardini",
+    "Loro Piana",
+    "MANGO",
+    "Massimo Alba",
+    "Massimo Dutti",
+    "Matinique",
+    "Morjas",
+    "ONLY & SONS",
+    "Officine Générale",
+    "Pal Zileri",
+    "Paul & Shark",
+    "Paul Smith",
+    "Polo Ralph Lauren",
+    "Ralph Lauren",
+    "Reiss",
+    "Selected Homme",
+    "Slowear",
+    "Suitsupply",
+    "TOM FORD",
+    "Thom Sweeney",
+    "Tommy Hilfiger",
+    "UNIQLO",
+    "ZEGNA",
+    "Zara"
+  ],
+  "products": [
+    {
+      "id": "elegant-menswear-2026-aur-lien",
+      "brand": "Aurélien",
+      "source_url": "https://aurelien-online.com/products/ash-grey-linen-soleil-trousers",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-extra-2026-aur-lien-white-linen-pop-over-shirt",
+      "brand": "Aurélien",
+      "source_url": "https://aurelien-online.com/products/white-linen-pop-over-shirt",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-berluti",
+      "brand": "Berluti",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/berluti/shoes/oxford-shoes/leather-oxford-shoes/10375442619243722",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-boggi-milano",
+      "brand": "Boggi Milano",
+      "source_url": "https://www.boggi.com/en_GB/pure-travel-wool-suit-BO26P0078.html",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-boglioli",
+      "brand": "Boglioli",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/boglioli/clothing/suit-jackets/virgin-wool-fresco-suit-jacket/46376663163067654",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-boss",
+      "brand": "BOSS",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/hugo-boss/clothing/suit-jackets/grey-hayes-slim-fit-super-120s-virgin-wool-suit-jacket/3633577413523069",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-brioni",
+      "brand": "Brioni",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/brioni/clothing/suit-jackets/trevi-slim-fit-textured-wool-suit-jacket/46376663162850591",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-extra-2026-brioni-cotton-piqu-polo-shirt",
+      "brand": "Brioni",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/brioni/clothing/short-sleeve-polo-shirts/cotton-pique-polo-shirt/46376663163070498",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-brooks-brothers",
+      "brand": "Brooks Brothers",
+      "source_url": "https://www.brooksbrothers.com/classic-fit-wool-1818-suit/MK01219.html",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-brunello-cucinelli",
+      "brand": "Brunello Cucinelli",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/brunello-cucinelli/clothing/suit-jackets/double-breasted-pinstripe-cashmere-and-wool-blend-flannel-suit-jacket/46376663163186407",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-extra-2026-brunello-cucinelli-cashmere-sweater",
+      "brand": "Brunello Cucinelli",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/brunello-cucinelli/clothing/crew-necks/cashmere-sweater/46376663163186307",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-canali",
+      "brand": "Canali",
+      "source_url": "https://us.canali.com/light-gray-high-waist-trousers-in-pure-wool-71119an00019205/p",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-extra-2026-canali-melange-gray-wool-and-cashmere-zipp",
+      "brand": "Canali",
+      "source_url": "https://us.canali.com/melange-gray-wool-and-cashmere-zippered-cardigan-c1223mk02552201/p",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-caruso",
+      "brand": "Caruso",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/caruso/clothing/suit-jackets/twill-suit-jacket/46376663163116360",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-charles-tyrwhitt",
+      "brand": "Charles Tyrwhitt",
+      "source_url": "https://www.charlestyrwhitt.com/us/non-iron-stretch-pinpoint-oxford-prince-of-wales-shirt---mid-blue/SCS0139MBU.html",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-extra-2026-charles-tyrwhitt-chunky-pure-merino-shawl-neck-cardi",
+      "brand": "Charles Tyrwhitt",
+      "source_url": "https://www.charlestyrwhitt.com/us/chunky-pure-merino-shawl-neck-cardigan---chocolate-brown/KNR0006CHC.html",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-church-s",
+      "brand": "Church's",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/church-s/shoes/oxford-shoes/consul-leather-oxford-shoes/1647597343217084",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-corneliani",
+      "brand": "Corneliani",
+      "source_url": "https://www.harrods.com/en-gb/p/corneliani-virgin-wool-2-piece-suit-000000000000103199",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-de-bonne-facture",
+      "brand": "De Bonne Facture",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/de-bonne-facture/clothing/suit-jackets/double-breasted-virgin-wool-twill-jacket/46376663163122286",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-de-petrillo",
+      "brand": "De Petrillo",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/de-petrillo/clothing/suit-jackets/posillipo-virgin-wool-twill-suit-jacket/46376663163132918",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-extra-2026-de-petrillo-merino-wool-and-cashmere-blend-roll",
+      "brand": "De Petrillo",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/de-petrillo/clothing/rollnecks/merino-wool-and-cashmere-blend-rollneck-sweater/46376663163132865",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-drake-s",
+      "brand": "Drake's",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/drake-s/clothing/suit-jackets/mk-iv-cotton-moleskin-blazer/46376663163156754",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-extra-2026-drake-s-button-down-collar-cotton-oxford-sh",
+      "brand": "Drake's",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/drake-s/clothing/plain-shirts/button-down-collar-cotton-oxford-shirt/46376663163066345",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-edward-green",
+      "brand": "Edward Green",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/edward-green/shoes/oxford-shoes/chelsea-cap-toe-burnished-leather-oxford-shoes/666467151853255",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-eleventy",
+      "brand": "Eleventy",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/eleventy/clothing/suits/nested-wool-suit/46376663162880333",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-emporio-armani",
+      "brand": "Emporio Armani",
+      "source_url": "https://www.armani.com/en-us/emporio-armani/herringbone-trousers-in-virgin-wool-cod-EM007122-TE23196-F1054/",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-extra-2026-emporio-armani-caban-coat-in-houndstooth-virgin-wo",
+      "brand": "Emporio Armani",
+      "source_url": "https://www.armani.com/en-us/emporio-armani/caban-coat-in-houndstooth-virgin-wool-with-a-ribbed-collar-cod-EM000268-TE23209-F1053/",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-eton",
+      "brand": "Eton",
+      "source_url": "https://www.etonshirts.com/us/en/product/white-striped-bib-shirt",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-gant",
+      "brand": "GANT",
+      "source_url": "https://gant.com/p/tailored-tuxedo-shirt-white/3263057-110",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-extra-2026-gant-striped-merino-wool-sweater-pansy-p",
+      "brand": "GANT",
+      "source_url": "https://gant.com/p/striped-merino-wool-sweater-pansy-purple/8040261-544",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-george-cleverley",
+      "brand": "George Cleverley",
+      "source_url": "https://www.mrporter.com/en-gb/mens/product/george-cleverley/shoes/oxford-shoes/michael-leather-oxford-shoes/46376663162993208",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-giorgio-armani",
+      "brand": "Giorgio Armani",
+      "source_url": "https://www.armani.com/en-us/giorgio-armani/cashmere-twill-trousers-cod-GM000121-TE20771-U8136/",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-grenson",
+      "brand": "Grenson",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/grenson/shoes/oxford-shoes/cambridge-leather-oxford-shoes/36093695689009650",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-hackett-london",
+      "brand": "Hackett London",
+      "source_url": "https://www.hackett.com/uk/en_gb/pd/wool-suit-jacket-woven-in-england-HM470554582.html",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-husbands",
+      "brand": "Husbands",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/husbands/clothing/suits/double-breasted-birdseye-wool-suit/46376663163106313",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-isaia",
+      "brand": "Isaia",
+      "source_url": "https://nmo-ui-to-product-v1-prod.neimanmarcuscloud.com/p/isaia-mens-wool-single-breasted-suit-prod288950183?childItemId=NMNF9DW_&msid=5600257&navpath=cat000000_cat1772061686_cat87720741&page=0&position=103",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-j-mueser",
+      "brand": "J. Mueser",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/j-mueser/clothing/suit-jackets/waverly-virgin-wool-twill-suit-jacket/46376663163148228",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-j-m-weston",
+      "brand": "J.M. Weston",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/jm-weston/shoes/oxford-shoes/cap-toe-leather-oxford-shoes/46376663163186267",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-john-lobb",
+      "brand": "John Lobb",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/john-lobb/shoes/oxford-shoes/city-ii-leather-oxford-shoes/24062987016570059",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-kiton",
+      "brand": "Kiton",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/kiton/clothing/suit-jackets/wool-fresco-suit-jacket/46376663163093941",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-lardini",
+      "brand": "Lardini",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/lardini/clothing/suit-jackets/double-breasted-wool-suit-jacket/46376663163112420",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-loro-piana",
+      "brand": "Loro Piana",
+      "source_url": "https://ii.loropiana.com/en/man/formalwear/ready-to-wear/anden-trousers-FAO6678_H1J1.html",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-extra-2026-loro-piana-sourwood-cardigan-sweater-cash-wool",
+      "brand": "Loro Piana",
+      "source_url": "https://ii.loropiana.com/en/man/office-refinement/sourwood-cardigan-FRM1645_F8SF.html",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-massimo-alba",
+      "brand": "Massimo Alba",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/massimo-alba/clothing/suit-jackets/catch2-linen-suit-jacket/1647597352869924",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-matinique",
+      "brand": "Matinique",
+      "source_url": "https://www.matinique.com/global/george-blazer--30201320-27101",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-extra-2026-matinique-harvey-wool-coat",
+      "brand": "Matinique",
+      "source_url": "https://www.matinique.com/global/harvey-wool-coat--30203845-191103",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-morjas",
+      "brand": "Morjas",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/morjas/shoes/oxford-shoes/leather-oxford-shoes/46376663163185202",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-officine-g-n-rale",
+      "brand": "Officine Générale",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/officine-generale/clothing/suit-jackets/melvyn-wool-cashmere-and-silk-blend-suit-jacket/46376663163072372",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-extra-2026-officine-g-n-rale-hugo-straight-leg-belted-virgin-woo",
+      "brand": "Officine Générale",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/officine-generale/clothing/suit-trousers/hugo-straight-leg-belted-virgin-wool-suit-trousers/46376663162963166",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-pal-zileri",
+      "brand": "Pal Zileri",
+      "source_url": "https://www.harrods.com/en-gb/p/pal-zileri-wool-vicenza-double-breasted-2-piece-suit-000000000000179872",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-paul-smith",
+      "brand": "Paul Smith",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/paul-smith/clothing/suit-jackets/cotton-stretch-corduroy-suit-jacket/46376663163152273",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-extra-2026-paul-smith-cashmere-rollneck-sweater",
+      "brand": "Paul Smith",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/paul-smith/clothing/rollnecks/cashmere-rollneck-sweater/46376663163115908",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-polo-ralph-lauren",
+      "brand": "Polo Ralph Lauren",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/polo-ralph-lauren/clothing/suit-jackets/pinstriped-wool-blend-suit-jacket/46376663163044894",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-extra-2026-polo-ralph-lauren-logo-embroidered-waffle-knit-wool-b",
+      "brand": "Polo Ralph Lauren",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/polo-ralph-lauren/clothing/knitted-zip-throughs/logo-embroidered-waffle-knit-wool-blend-half-zip-sweater/46376663163115865",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-ralph-lauren",
+      "brand": "Ralph Lauren",
+      "source_url": "https://www.ralphlauren.com/men-clothing-button-down-shirts/classic-fit-oxford-shirt-/639388.html?dwvar639388_colorname=Blue",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-extra-2026-ralph-lauren-waffle-knit-cotton-polo-sweater",
+      "brand": "Ralph Lauren",
+      "source_url": "https://www.ralphlauren.com/men-clothing-sweaters/waffle-knit-cotton-polo-sweater/100099805.html",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-reiss",
+      "brand": "Reiss",
+      "source_url": "https://www.reiss.com/us/en/style/sv179404/d37571",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-extra-2026-reiss-100-cashmere-crew-neck-jumper-in-ta",
+      "brand": "Reiss",
+      "source_url": "https://www.reiss.com/us/en/style/sv175401/774002",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-slowear",
+      "brand": "Slowear",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/slowear/clothing/suit-jackets/cotton-blend-suit-jacket/46376663163019254",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-extra-2026-slowear-tapered-pleated-wool-blend-flannel-",
+      "brand": "Slowear",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/slowear/clothing/casual-trousers/tapered-pleated-wool-blend-flannel-trousers/46376663163151042",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-suitsupply",
+      "brand": "Suitsupply",
+      "source_url": "https://suitsupply.com/en-us/men/suits/navy-tailored-fit-havana-suit/C5778-S4.html",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-thom-sweeney",
+      "brand": "Thom Sweeney",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/thom-sweeney/clothing/suit-jackets/wool-suit/46376663163014172",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-tom-ford",
+      "brand": "TOM FORD",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/tom-ford/clothing/suit-jackets/double-breasted-pinstriped-wool-twill-suit-jacket/46376663163132664",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-extra-2026-tom-ford-wool-rollneck-sweater",
+      "brand": "TOM FORD",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/tom-ford/clothing/rollnecks/wool-rollneck-sweater/46376663163058112",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-2026-zegna",
+      "brand": "ZEGNA",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/zegna/clothing/suits/merino-wool-twill-suit/46376663163115165",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "elegant-menswear-extra-2026-zegna-cashmere-and-silk-blend-sweater",
+      "brand": "ZEGNA",
+      "source_url": "https://www.mrporter.com/en-us/mens/product/zegna/clothing/crew-necks/cashmere-and-silk-blend-sweater/46376663163115234",
+      "tier": "premium_and_luxury",
+      "source_file": "elegant_menswear_catalog_2026.json"
+    },
+    {
+      "id": "mango-37024408",
+      "brand": "MANGO",
+      "source_url": "https://shop.mango.com/gb/en/p/men/trousers/slim-fit/bologna-cropped-slim-fit-trousers/37024408",
+      "tier": "affordable",
+      "source_file": "shop_catalog_mango.json"
+    },
+    {
+      "id": "mango-37088274",
+      "brand": "MANGO",
+      "source_url": "https://shop.mango.com/gb/en/p/men/polos/knitwear/100-cashmere-polo-shirt-with-buttons/37088274",
+      "tier": "affordable",
+      "source_file": "shop_catalog_mango.json"
+    },
+    {
+      "id": "mango-37034407",
+      "brand": "MANGO",
+      "source_url": "https://shop.mango.com/gb/en/p/men/trousers/slim-fit/bologna-cropped-slim-fit-trousers/37034407",
+      "tier": "affordable",
+      "source_file": "shop_catalog_mango.json"
+    },
+    {
+      "id": "mango-37017904",
+      "brand": "MANGO",
+      "source_url": "https://shop.mango.com/gb/en/p/men/trousers/corduroy/corduroy-regular-fit-trousers/37017904",
+      "tier": "affordable",
+      "source_file": "shop_catalog_mango.json"
+    },
+    {
+      "id": "mango-37037900",
+      "brand": "MANGO",
+      "source_url": "https://shop.mango.com/gb/en/p/men/trousers/regular-fit/corduroy-regular-fit-trousers/37037900",
+      "tier": "affordable",
+      "source_file": "shop_catalog_mango.json"
+    },
+    {
+      "id": "mango-37077898",
+      "brand": "MANGO",
+      "source_url": "https://shop.mango.com/gb/en/p/men/trousers/slim-fit/corduroy-slim-fit-trousers/37077898",
+      "tier": "affordable",
+      "source_file": "shop_catalog_mango.json"
+    },
+    {
+      "id": "mango-37048284",
+      "brand": "MANGO",
+      "source_url": "https://shop.mango.com/gb/en/p/men/trousers/slim-fit/italian-wool-flannel-slim-fit-suit-trousers/37048284",
+      "tier": "affordable",
+      "source_file": "shop_catalog_mango.json"
+    },
+    {
+      "id": "mango-37051408",
+      "brand": "MANGO",
+      "source_url": "https://shop.mango.com/gb/en/p/men/trousers/regular-fit/london-regular-fit-trousers/37051408",
+      "tier": "affordable",
+      "source_file": "shop_catalog_mango.json"
+    },
+    {
+      "id": "only-sons-22041622-2079",
+      "brand": "ONLY & SONS",
+      "source_url": "https://www.onlyandsons.com/en-gb/product/22041622_2079/tapered-fit-trousers",
+      "tier": "affordable",
+      "source_file": "shop_catalog_only_sons.json"
+    },
+    {
+      "id": "only-sons-22041521-282",
+      "brand": "ONLY & SONS",
+      "source_url": "https://www.onlyandsons.com/en-gb/product/22041521_282/regular-fit-crew-neck-knit-cardigan",
+      "tier": "affordable",
+      "source_file": "shop_catalog_only_sons.json"
+    },
+    {
+      "id": "only-sons-22038664-142",
+      "brand": "ONLY & SONS",
+      "source_url": "https://www.onlyandsons.com/en-gb/product/22038664_142/straight-fit-trousers",
+      "tier": "affordable",
+      "source_file": "shop_catalog_only_sons.json"
+    },
+    {
+      "id": "only-sons-22038664-4041",
+      "brand": "ONLY & SONS",
+      "source_url": "https://www.onlyandsons.com/en-gb/product/22038664_4041/straight-fit-trousers",
+      "tier": "affordable",
+      "source_file": "shop_catalog_only_sons.json"
+    },
+    {
+      "id": "only-sons-22029790-2018",
+      "brand": "ONLY & SONS",
+      "source_url": "https://www.onlyandsons.com/en-gb/product/22029790_2018/tapered-fit-trousers",
+      "tier": "affordable",
+      "source_file": "shop_catalog_only_sons.json"
+    },
+    {
+      "id": "only-sons-22010209-137",
+      "brand": "ONLY & SONS",
+      "source_url": "https://www.onlyandsons.com/en-gb/product/22010209_137/slim-fit-trousers",
+      "tier": "affordable",
+      "source_file": "shop_catalog_only_sons.json"
+    },
+    {
+      "id": "only-sons-22010209-1970",
+      "brand": "ONLY & SONS",
+      "source_url": "https://www.onlyandsons.com/en-gb/product/22010209_1970/slim-fit-trousers",
+      "tier": "affordable",
+      "source_file": "shop_catalog_only_sons.json"
+    },
+    {
+      "id": "only-sons-22022911-2161",
+      "brand": "ONLY & SONS",
+      "source_url": "https://www.onlyandsons.com/en-gb/product/22022911_2161/slim-fit-chinos",
+      "tier": "affordable",
+      "source_file": "shop_catalog_only_sons.json"
+    },
+    {
+      "id": "uniqlo-m-487705-wide-chino-pants-tall",
+      "brand": "UNIQLO",
+      "source_url": "https://www.uniqlo.com/us/en/products/E487705-000/00",
+      "tier": "affordable",
+      "source_file": "shop_catalog_uniqlo.json"
+    },
+    {
+      "id": "uniqlo-m-479996-oxford-oversized-shirt",
+      "brand": "UNIQLO",
+      "source_url": "https://www.uniqlo.com/us/en/products/E479996-000/00",
+      "tier": "affordable",
+      "source_file": "shop_catalog_uniqlo.json"
+    },
+    {
+      "id": "uniqlo-m-479755-pufftech-jacket",
+      "brand": "UNIQLO",
+      "source_url": "https://www.uniqlo.com/us/en/products/E479755-000/00",
+      "tier": "affordable",
+      "source_file": "shop_catalog_uniqlo.json"
+    },
+    {
+      "id": "zara-uz-545456679",
+      "brand": "Zara",
+      "source_url": "https://www.zara.com/uz/en/100-linen-regular-fit-trousers-p05070012.html?v1=545456679",
+      "tier": "affordable",
+      "source_file": "shop_catalog_zara_downloader.json"
+    },
+    {
+      "id": "zara-uz-583130315",
+      "brand": "Zara",
+      "source_url": "https://www.zara.com/uz/en/aaron-levine-x-zara-leather-bow-loafers-p12667720.html?v1=583130315",
+      "tier": "affordable",
+      "source_file": "shop_catalog_zara_downloader.json"
+    },
+    {
+      "id": "zara-uz-545405177",
+      "brand": "Zara",
+      "source_url": "https://www.zara.com/uz/en/100-cashmere-regular-fit-jumper-p02893300.html?v1=545405177",
+      "tier": "affordable",
+      "source_file": "shop_catalog_zara_downloader.json"
+    },
+    {
+      "id": "zara-uz-545447695",
+      "brand": "Zara",
+      "source_url": "https://www.zara.com/uz/en/100-linen-relaxed-fit-trousers-p02634325.html?v1=545447695",
+      "tier": "affordable",
+      "source_file": "shop_catalog_zara_downloader.json"
+    },
+    {
+      "id": "zara-uz-565488009",
+      "brand": "Zara",
+      "source_url": "https://www.zara.com/uz/en/100-linen-pleated-suit-trousers-p04011901.html?v1=565488009",
+      "tier": "affordable",
+      "source_file": "shop_catalog_zara_downloader.json"
+    },
+    {
+      "id": "zara-uz-545490391",
+      "brand": "Zara",
+      "source_url": "https://www.zara.com/uz/en/100-linen-suit-trousers-p04410411.html?v1=545490391",
+      "tier": "affordable",
+      "source_file": "shop_catalog_zara_downloader.json"
+    },
+    {
+      "id": "zara-uz-555071598",
+      "brand": "Zara",
+      "source_url": "https://www.zara.com/uz/en/100-lyocell-relaxed-fit-trousers-p08574310.html?v1=555071598",
+      "tier": "affordable",
+      "source_file": "shop_catalog_zara_downloader.json"
+    },
+    {
+      "id": "zara-uz-557829873",
+      "brand": "Zara",
+      "source_url": "https://www.zara.com/uz/en/100-wool-pinstripe-regular-fit-suit-trousers-p01564771.html?v1=557829873",
+      "tier": "affordable",
+      "source_file": "shop_catalog_zara_downloader.json"
+    },
+    {
+      "id": "zara-new-03284326800-f1",
+      "brand": "Zara",
+      "source_url": "https://www.zara.com/uz/uz/romb-nakshli-jakkard-trikotaj-polo-p03284326.html",
+      "tier": "affordable",
+      "source_file": "shop_catalog_zara_new_2026.json"
+    },
+    {
+      "id": "zara-new-01195200409-f1",
+      "brand": "Zara",
+      "source_url": "https://www.zara.com/uz/uz/erkin-bichimli-oqar-shim-p01195200.html",
+      "tier": "affordable",
+      "source_file": "shop_catalog_zara_new_2026.json"
+    },
+    {
+      "id": "zara-new-12641720700-f1",
+      "brand": "Zara",
+      "source_url": "https://www.zara.com/uz/uz/charm-antifaz-mokasini-p12641720.html",
+      "tier": "affordable",
+      "source_file": "shop_catalog_zara_new_2026.json"
+    },
+    {
+      "id": "zara-new-05755375102-f1",
+      "brand": "Zara",
+      "source_url": "https://www.zara.com/uz/uz/kardigan-erkin-bichim-yung-aralashmali-p05755375.html",
+      "tier": "affordable",
+      "source_file": "shop_catalog_zara_new_2026.json"
+    },
+    {
+      "id": "zara-new-02893348700-f1",
+      "brand": "Zara",
+      "source_url": "https://www.zara.com/uz/uz/100-yung-erkin-bichim-kardigan-p02893348.html",
+      "tier": "affordable",
+      "source_file": "shop_catalog_zara_new_2026.json"
+    },
+    {
+      "id": "zara-new-06431880251-f1",
+      "brand": "Zara",
+      "source_url": "https://www.zara.com/uz/uz/modal-aralash-mavjlanuvchi-ko%CA%BBylak-p06431880.html",
+      "tier": "affordable",
+      "source_file": "shop_catalog_zara_new_2026.json"
+    },
+    {
+      "id": "zara-new-05755367803-f1",
+      "brand": "Zara",
+      "source_url": "https://www.zara.com/uz/uz/erkin-bichim-kashtali-kardigan-p05755367.html",
+      "tier": "affordable",
+      "source_file": "shop_catalog_zara_new_2026.json"
+    },
+    {
+      "id": "zara-new-08281390971-f1",
+      "brand": "Zara",
+      "source_url": "https://www.zara.com/uz/uz/erkin-bichimli-gofralangan-shim-p08281740.html",
+      "tier": "affordable",
+      "source_file": "shop_catalog_zara_new_2026.json"
+    },
+    {
+      "id": "allsaints-usm050tf-197",
+      "brand": "AllSaints",
+      "source_url": "https://www.allsaints.com/us/menswear/aston-straight-fit-double-pleat-chinos/USM050TF-197.html",
+      "tier": "midrange",
+      "source_file": "shop_catalog_allsaints.json"
+    },
+    {
+      "id": "allsaints-usm049og-7711",
+      "brand": "AllSaints",
+      "source_url": "https://www.allsaints.com/us/menswear/abbot-slim-fit-bomber-jacket/USM049OG-7711.html",
+      "tier": "midrange",
+      "source_file": "shop_catalog_allsaints.json"
+    },
+    {
+      "id": "allsaints-usm050tf-5881",
+      "brand": "AllSaints",
+      "source_url": "https://www.allsaints.com/us/menswear/aston-straight-fit-double-pleat-chinos/USM050TF-5881.html",
+      "tier": "midrange",
+      "source_file": "shop_catalog_allsaints.json"
+    },
+    {
+      "id": "allsaints-usm033tf-2732",
+      "brand": "AllSaints",
+      "source_url": "https://www.allsaints.com/us/menswear/blunt-slim-fit-tailored-pants/USM033TF-2732.html",
+      "tier": "midrange",
+      "source_file": "shop_catalog_allsaints.json"
+    },
+    {
+      "id": "allsaints-usm033tf-5",
+      "brand": "AllSaints",
+      "source_url": "https://www.allsaints.com/us/menswear/blunt-slim-fit-tailored-pants/USM033TF-5.html",
+      "tier": "midrange",
+      "source_file": "shop_catalog_allsaints.json"
+    },
+    {
+      "id": "allsaints-usm049tf-197",
+      "brand": "AllSaints",
+      "source_url": "https://www.allsaints.com/us/menswear/haydon-slim-fit-cotton-chinos/USM049TF-197.html",
+      "tier": "midrange",
+      "source_file": "shop_catalog_allsaints.json"
+    },
+    {
+      "id": "allsaints-usm049tf-5881",
+      "brand": "AllSaints",
+      "source_url": "https://www.allsaints.com/us/menswear/haydon-slim-fit-cotton-chinos/USM049TF-5881.html",
+      "tier": "midrange",
+      "source_file": "shop_catalog_allsaints.json"
+    },
+    {
+      "id": "allsaints-usm049tf-8834",
+      "brand": "AllSaints",
+      "source_url": "https://www.allsaints.com/us/menswear/haydon-slim-fit-cotton-chinos/USM049TF-8834.html",
+      "tier": "midrange",
+      "source_file": "shop_catalog_allsaints.json"
+    },
+    {
+      "id": "arket-1255889003",
+      "brand": "ARKET",
+      "source_url": "https://www.arket.com/en-ww/product/relaxed-poplin-shirt-whiteblue-1255889003/",
+      "tier": "midrange",
+      "source_file": "shop_catalog_arket.json"
+    },
+    {
+      "id": "arket-1268001004",
+      "brand": "ARKET",
+      "source_url": "https://www.arket.com/en_gbp/men/product.cotton-trousers-black.1268001004.html",
+      "tier": "midrange",
+      "source_file": "shop_catalog_arket.json"
+    },
+    {
+      "id": "arket-0990934031",
+      "brand": "ARKET",
+      "source_url": "https://www.arket.com/en-gb/product/overdyed-twill-overshirt-green-0990934031/",
+      "tier": "midrange",
+      "source_file": "shop_catalog_arket.json"
+    },
+    {
+      "id": "arket-1264654001",
+      "brand": "ARKET",
+      "source_url": "https://www.arket.com/en-nl/product/relaxed-button-down-shirt-light-bluestriped-1264654001/",
+      "tier": "midrange",
+      "source_file": "shop_catalog_arket.json"
+    },
+    {
+      "id": "arket-1318266001",
+      "brand": "ARKET",
+      "source_url": "https://www.arket.com/en-eu/product/relaxed-pinpoint-shirt-blue-1318266001/",
+      "tier": "midrange",
+      "source_file": "shop_catalog_arket.json"
+    },
+    {
+      "id": "cos-1289730001",
+      "brand": "COS",
+      "source_url": "https://www.cos.com/en-us/men/menswear/shirts/cottonshirts/product/relaxed-pima-cotton-poplin-shirt-white-1289730001",
+      "tier": "midrange",
+      "source_file": "shop_catalog_cos.json"
+    },
+    {
+      "id": "cos-1294209001",
+      "brand": "COS",
+      "source_url": "https://www.cos.com/en-eu-e/men/menswear/trousers/wool/product/split-wool-wide-leg-trousers-charcoal-1294209001",
+      "tier": "midrange",
+      "source_file": "shop_catalog_cos.json"
+    },
+    {
+      "id": "cos-1269790002",
+      "brand": "COS",
+      "source_url": "https://www2.hm.com/en_gb/productpage.1269790002.html",
+      "tier": "midrange",
+      "source_file": "shop_catalog_cos.json"
+    },
+    {
+      "id": "cos-1335805001",
+      "brand": "COS",
+      "source_url": "https://www.cos.com/en-us/men/menswear/shirts/overshirts/product/relaxed-linen-utility-overshirt-navy-1335805001",
+      "tier": "midrange",
+      "source_file": "shop_catalog_cos.json"
+    },
+    {
+      "id": "ecco-500354-01001",
+      "brand": "ECCO",
+      "source_url": "https://gb.ecco.com/product/ecco-helsinki-2/500354/01001",
+      "tier": "midrange",
+      "source_file": "shop_catalog_ecco_20261030.json"
+    },
+    {
+      "id": "ecco-552264-01001",
+      "brand": "ECCO",
+      "source_url": "https://gb.ecco.com/product/ecco-metropole-verona/552264/01001",
+      "tier": "midrange",
+      "source_file": "shop_catalog_ecco_20261030.json"
+    },
+    {
+      "id": "ecco-525654-01001",
+      "brand": "ECCO",
+      "source_url": "https://gb.ecco.com/product/ecco-metropole-london/525654/01001",
+      "tier": "midrange",
+      "source_file": "shop_catalog_ecco_20261030.json"
+    },
+    {
+      "id": "ecco-621944-01001",
+      "brand": "ECCO",
+      "source_url": "https://gb.ecco.com/product/ecco-melbourne/621944/01001",
+      "tier": "midrange",
+      "source_file": "shop_catalog_ecco_20261030.json"
+    },
+    {
+      "id": "ecco-525604-01001",
+      "brand": "ECCO",
+      "source_url": "https://gb.ecco.com/product/ecco-metropole-london/525604/01001",
+      "tier": "midrange",
+      "source_file": "shop_catalog_ecco_20261030.json"
+    },
+    {
+      "id": "ecco-525604-01482",
+      "brand": "ECCO",
+      "source_url": "https://gb.ecco.com/product/ecco-metropole-london/525604/01482",
+      "tier": "midrange",
+      "source_file": "shop_catalog_ecco_20261030.json"
+    },
+    {
+      "id": "ecco-621634-50839",
+      "brand": "ECCO",
+      "source_url": "https://gb.ecco.com/product/ecco-melbourne/621634/50839",
+      "tier": "midrange",
+      "source_file": "shop_catalog_ecco_20261030.json"
+    },
+    {
+      "id": "ecco-523364-01001",
+      "brand": "ECCO",
+      "source_url": "https://gb.ecco.com/product/ecco-metropole-milan/523364/01001",
+      "tier": "midrange",
+      "source_file": "shop_catalog_ecco_20261030.json"
+    },
+    {
+      "id": "everlane-7539337789526",
+      "brand": "Everlane",
+      "source_url": "https://www.everlane.com/products/mens-denim-jacket-classic-bluewash",
+      "tier": "midrange",
+      "source_file": "shop_catalog_everlane.json"
+    },
+    {
+      "id": "everlane-8038797475926",
+      "brand": "Everlane",
+      "source_url": "https://www.everlane.com/products/m-swtr-mmn-bwl-card-bch",
+      "tier": "midrange",
+      "source_file": "shop_catalog_everlane.json"
+    },
+    {
+      "id": "everlane-7539351846998",
+      "brand": "Everlane",
+      "source_url": "https://www.everlane.com/products/mens-easy-pant-beech",
+      "tier": "midrange",
+      "source_file": "shop_catalog_everlane.json"
+    },
+    {
+      "id": "everlane-7539351814230",
+      "brand": "Everlane",
+      "source_url": "https://www.everlane.com/products/mens-easy-pant-black",
+      "tier": "midrange",
+      "source_file": "shop_catalog_everlane.json"
+    },
+    {
+      "id": "everlane-7562831003734",
+      "brand": "Everlane",
+      "source_url": "https://www.everlane.com/products/mens-performance-5-pocket-chino-black",
+      "tier": "midrange",
+      "source_file": "shop_catalog_everlane.json"
+    },
+    {
+      "id": "everlane-7539339591766",
+      "brand": "Everlane",
+      "source_url": "https://www.everlane.com/products/mens-performance-chino-athletic-black",
+      "tier": "midrange",
+      "source_file": "shop_catalog_everlane.json"
+    },
+    {
+      "id": "everlane-7539338674262",
+      "brand": "Everlane",
+      "source_url": "https://www.everlane.com/products/mens-performance-chino-black",
+      "tier": "midrange",
+      "source_file": "shop_catalog_everlane.json"
+    },
+    {
+      "id": "everlane-7539339493462",
+      "brand": "Everlane",
+      "source_url": "https://www.everlane.com/products/mens-performance-chino-athletic-navy",
+      "tier": "midrange",
+      "source_file": "shop_catalog_everlane.json"
+    },
+    {
+      "id": "gant-1505427-273",
+      "brand": "GANT",
+      "source_url": "https://gant.com/p/corduroy-chinos-caramel-brown/1505427-273",
+      "tier": "midrange",
+      "source_file": "shop_catalog_gant_downloader.json"
+    },
+    {
+      "id": "gant-3263100-442",
+      "brand": "GANT",
+      "source_url": "https://gant.com/p/60s-oxford-replica-shirt-vintage-blue/3263100-442",
+      "tier": "midrange",
+      "source_file": "shop_catalog_gant_downloader.json"
+    },
+    {
+      "id": "gant-3263102-200",
+      "brand": "GANT",
+      "source_url": "https://gant.com/p/80s-flannel-replica-shirt-oat-beige/3263102-200",
+      "tier": "midrange",
+      "source_file": "shop_catalog_gant_downloader.json"
+    },
+    {
+      "id": "gant-1505456-225",
+      "brand": "GANT",
+      "source_url": "https://gant.com/p/gant-x-yale-cotton-twill-chinos-darkened-beige/1505456-225",
+      "tier": "midrange",
+      "source_file": "shop_catalog_gant_downloader.json"
+    },
+    {
+      "id": "gant-1505457-229",
+      "brand": "GANT",
+      "source_url": "https://gant.com/p/gant-x-yale-wool-corduroy-suit-pants-mahogany-brown/1505457-229",
+      "tier": "midrange",
+      "source_file": "shop_catalog_gant_downloader.json"
+    },
+    {
+      "id": "gant-1505422-273",
+      "brand": "GANT",
+      "source_url": "https://gant.com/p/moleskin-suit-pants-caramel-brown/1505422-273",
+      "tier": "midrange",
+      "source_file": "shop_catalog_gant_downloader.json"
+    },
+    {
+      "id": "gant-1505420-260",
+      "brand": "GANT",
+      "source_url": "https://gant.com/p/melange-wool-pants-faded-taupe/1505420-260",
+      "tier": "midrange",
+      "source_file": "shop_catalog_gant_downloader.json"
+    },
+    {
+      "id": "gant-3263018-435",
+      "brand": "GANT",
+      "source_url": "https://gant.com/p/brushed-oxford-shirt-crisp-blue/3263018-435",
+      "tier": "midrange",
+      "source_file": "shop_catalog_gant_downloader.json"
+    },
+    {
+      "id": "geox-u66nxb00043c9999",
+      "brand": "Geox",
+      "source_url": "https://www.geox.com/en-GB/leather_oxfords-black-bexford_man-U66NXB00043C9999.html",
+      "tier": "midrange",
+      "source_file": "shop_catalog_geox_shoes_20261030.json"
+    },
+    {
+      "id": "geox-u66nxc00043c6009",
+      "brand": "Geox",
+      "source_url": "https://www.geox.com/en-GB/leather_oxfords-coffee-bexford_man-U66NXC00043C6009.html",
+      "tier": "midrange",
+      "source_file": "shop_catalog_geox_shoes_20261030.json"
+    },
+    {
+      "id": "geox-u66nxc00043c9999",
+      "brand": "Geox",
+      "source_url": "https://www.geox.com/en-GB/leather_oxfords-black-bexford_man-U66NXC00043C9999.html",
+      "tier": "midrange",
+      "source_file": "shop_catalog_geox_shoes_20261030.json"
+    },
+    {
+      "id": "geox-u66nyb00043c6001",
+      "brand": "Geox",
+      "source_url": "https://www.geox.com/en-GB/leather_oxfords-cognac-thalos_man-U66NYB00043C6001.html",
+      "tier": "midrange",
+      "source_file": "shop_catalog_geox_shoes_20261030.json"
+    },
+    {
+      "id": "geox-u66nyb00043c9999",
+      "brand": "Geox",
+      "source_url": "https://www.geox.com/en-GB/leather_oxfords-black-thalos_man-U66NYB00043C9999.html",
+      "tier": "midrange",
+      "source_file": "shop_catalog_geox_shoes_20261030.json"
+    },
+    {
+      "id": "geox-u66nzd00043c9999",
+      "brand": "Geox",
+      "source_url": "https://www.geox.com/en-GB/leather_oxfords-black-thorian_man-U66NZD00043C9999.html",
+      "tier": "midrange",
+      "source_file": "shop_catalog_geox_shoes_20261030.json"
+    },
+    {
+      "id": "geox-u66nze00043c9999",
+      "brand": "Geox",
+      "source_url": "https://www.geox.com/en-GB/leather_oxfords-black-thorian_man-U66NZE00043C9999.html",
+      "tier": "midrange",
+      "source_file": "shop_catalog_geox_shoes_20261030.json"
+    },
+    {
+      "id": "geox-u46hnb00043c9999",
+      "brand": "Geox",
+      "source_url": "https://www.geox.com/en-GB/waterproof_shoes-black-spherica_ec1_abx_man-U46HNB00043C9999.html",
+      "tier": "midrange",
+      "source_file": "shop_catalog_geox_shoes_20261030.json"
+    },
+    {
+      "id": "jack-jones-12306324-127",
+      "brand": "JACK & JONES",
+      "source_url": "https://www.jackjones.com/en-gb/product/12306324_127/straight-fit-5-pockets",
+      "tier": "midrange",
+      "source_file": "shop_catalog_jack_jones.json"
+    },
+    {
+      "id": "jcrew-ch145-bk0001",
+      "brand": "J.Crew",
+      "source_url": "https://www.jcrew.com/p/mens/categories/clothing/jeans/slim/484-slim-fit-bergen-five-pocket-pant/CH145?display=standard&fit=Slim&color_name=black&colorProductCode=CH145",
+      "tier": "midrange",
+      "source_file": "shop_catalog_jcrew.json"
+    },
+    {
+      "id": "jcrew-cq953-wt0002",
+      "brand": "J.Crew",
+      "source_url": "https://www.jcrew.com/p/mens/categories/clothing/shirts/1983-oxford-shirt-in-cotton/CQ953?display=standard&fit=Classic&color_name=white&colorProductCode=CQ953",
+      "tier": "midrange",
+      "source_file": "shop_catalog_jcrew.json"
+    },
+    {
+      "id": "jcrew-ch145-br8754",
+      "brand": "J.Crew",
+      "source_url": "https://www.jcrew.com/p/mens/categories/clothing/jeans/slim/484-slim-fit-bergen-five-pocket-pant/CH145?display=standard&fit=Slim&color_name=balsam-bark&colorProductCode=CH145",
+      "tier": "midrange",
+      "source_file": "shop_catalog_jcrew.json"
+    },
+    {
+      "id": "jcrew-ch145-na0293",
+      "brand": "J.Crew",
+      "source_url": "https://www.jcrew.com/p/mens/categories/clothing/jeans/slim/484-slim-fit-bergen-five-pocket-pant/CH145?display=standard&fit=Slim&color_name=sandwashed-canvas&colorProductCode=CH145",
+      "tier": "midrange",
+      "source_file": "shop_catalog_jcrew.json"
+    },
+    {
+      "id": "jcrew-ch145-wz8309",
+      "brand": "J.Crew",
+      "source_url": "https://www.jcrew.com/p/mens/categories/clothing/jeans/slim/484-slim-fit-bergen-five-pocket-pant/CH145?display=standard&fit=Slim&color_name=dark-khaki&colorProductCode=CH145",
+      "tier": "midrange",
+      "source_file": "shop_catalog_jcrew.json"
+    },
+    {
+      "id": "jcrew-ch146-bk0001",
+      "brand": "J.Crew",
+      "source_url": "https://www.jcrew.com/p/mens/categories/clothing/jeans/straight/770trade-straight-fit-bergen-five-pocket-pant/CH146?display=standard&fit=Straight&color_name=black&colorProductCode=CH146",
+      "tier": "midrange",
+      "source_file": "shop_catalog_jcrew.json"
+    },
+    {
+      "id": "jcrew-ch146-br8754",
+      "brand": "J.Crew",
+      "source_url": "https://www.jcrew.com/p/mens/categories/clothing/jeans/straight/770trade-straight-fit-bergen-five-pocket-pant/CH146?display=standard&fit=Straight&color_name=balsam-bark&colorProductCode=CH146",
+      "tier": "midrange",
+      "source_file": "shop_catalog_jcrew.json"
+    },
+    {
+      "id": "jcrew-ch146-gy0282",
+      "brand": "J.Crew",
+      "source_url": "https://www.jcrew.com/p/mens/categories/clothing/jeans/straight/770trade-straight-fit-bergen-five-pocket-pant/CH146?display=standard&fit=Straight&color_name=dark-basalt&colorProductCode=CH146",
+      "tier": "midrange",
+      "source_file": "shop_catalog_jcrew.json"
+    },
+    {
+      "id": "johnston-murphy-7418112",
+      "brand": "Johnston & Murphy",
+      "source_url": "https://www.johnstonmurphy.com/p/licensed-collegiate-collection/collegiate-xc-gingham-polo/14917.html?dwvar_14917_color=University%20of%20Tennessee%20-%20Orange%20Shirt",
+      "tier": "midrange",
+      "source_file": "shop_catalog_johnston_murphy.json"
+    },
+    {
+      "id": "johnston-murphy-7418114",
+      "brand": "Johnston & Murphy",
+      "source_url": "https://www.johnstonmurphy.com/p/licensed-collegiate-collection/collegiate-xc-gingham-polo/14917.html?dwvar_14917_color=University%20of%20Tennessee%20-%20Black%20Shirt",
+      "tier": "midrange",
+      "source_file": "shop_catalog_johnston_murphy.json"
+    },
+    {
+      "id": "johnston-murphy-7418053",
+      "brand": "Johnston & Murphy",
+      "source_url": "https://www.johnstonmurphy.com/p/mens-polos-tees/game-day-xc-baseball-print-polo/14854.html?dwvar_14854_color=Orange",
+      "tier": "midrange",
+      "source_file": "shop_catalog_johnston_murphy.json"
+    },
+    {
+      "id": "johnston-murphy-7418054",
+      "brand": "Johnston & Murphy",
+      "source_url": "https://www.johnstonmurphy.com/p/mens-polos-tees/game-day-xc-baseball-print-polo/14854.html?dwvar_14854_color=Black",
+      "tier": "midrange",
+      "source_file": "shop_catalog_johnston_murphy.json"
+    },
+    {
+      "id": "johnston-murphy-7418055",
+      "brand": "Johnston & Murphy",
+      "source_url": "https://www.johnstonmurphy.com/p/mens-polos-tees/game-day-xc-baseball-print-polo/14854.html?dwvar_14854_color=Purple",
+      "tier": "midrange",
+      "source_file": "shop_catalog_johnston_murphy.json"
+    },
+    {
+      "id": "johnston-murphy-7418056",
+      "brand": "Johnston & Murphy",
+      "source_url": "https://www.johnstonmurphy.com/p/mens-polos-tees/game-day-xc-baseball-print-polo/14854.html?dwvar_14854_color=Red",
+      "tier": "midrange",
+      "source_file": "shop_catalog_johnston_murphy.json"
+    },
+    {
+      "id": "johnston-murphy-7418057",
+      "brand": "Johnston & Murphy",
+      "source_url": "https://www.johnstonmurphy.com/p/mens-polos-tees/game-day-xc-baseball-print-polo/14854.html?dwvar_14854_color=Navy",
+      "tier": "midrange",
+      "source_file": "shop_catalog_johnston_murphy.json"
+    },
+    {
+      "id": "johnston-murphy-7418051",
+      "brand": "Johnston & Murphy",
+      "source_url": "https://www.johnstonmurphy.com/p/mens-polos-tees/game-day-xc-basketball-print-polo/14853.html?dwvar_14853_color=Light%20Blue",
+      "tier": "midrange",
+      "source_file": "shop_catalog_johnston_murphy.json"
+    },
+    {
+      "id": "selected-homme-16098203-darkbluedenim-1195480",
+      "brand": "Selected Homme",
+      "source_url": "https://www.selected.com/p/220-trousers/16098203_DarkBlueDenim_1195480",
+      "tier": "midrange",
+      "source_file": "shop_catalog_selected_homme.json"
+    },
+    {
+      "id": "selected-homme-16099240-demitasse",
+      "brand": "Selected Homme",
+      "source_url": "https://www.selected.com/p/100-leather-jacket/16099240_Demitasse",
+      "tier": "midrange",
+      "source_file": "shop_catalog_selected_homme.json"
+    },
+    {
+      "id": "selected-homme-16098203-mediumbluedenim-1195483",
+      "brand": "Selected Homme",
+      "source_url": "https://www.selected.com/p/220-trousers/16098203_MediumBlueDenim_1195483",
+      "tier": "midrange",
+      "source_file": "shop_catalog_selected_homme.json"
+    },
+    {
+      "id": "selected-homme-16090139-demitasse-1037326",
+      "brand": "Selected Homme",
+      "source_url": "https://www.selected.com/p/175-slim-fit-brushed-chinos/16090139_Demitasse_1037326",
+      "tier": "midrange",
+      "source_file": "shop_catalog_selected_homme.json"
+    },
+    {
+      "id": "selected-homme-16088636-delicioso",
+      "brand": "Selected Homme",
+      "source_url": "https://www.selected.com/p/knitted-knitted-polo-shirt/16088636_Delicioso",
+      "tier": "midrange",
+      "source_file": "shop_catalog_selected_homme.json"
+    },
+    {
+      "id": "selected-homme-16088636-vetiver",
+      "brand": "Selected Homme",
+      "source_url": "https://www.selected.com/p/knitted-knitted-polo-shirt/16088636_Vetiver",
+      "tier": "midrange",
+      "source_file": "shop_catalog_selected_homme.json"
+    },
+    {
+      "id": "selected-homme-16092437-black",
+      "brand": "Selected Homme",
+      "source_url": "https://www.selected.com/p/knitted-knitted-polo-shirt/16092437_Black",
+      "tier": "midrange",
+      "source_file": "shop_catalog_selected_homme.json"
+    },
+    {
+      "id": "selected-homme-16092437-oatmeal-1078017",
+      "brand": "Selected Homme",
+      "source_url": "https://www.selected.com/p/knitted-knitted-polo-shirt/16092437_Oatmeal_1078017",
+      "tier": "midrange",
+      "source_file": "shop_catalog_selected_homme.json"
+    },
+    {
+      "id": "armani_exchange-xm001512_af25551_mb010",
+      "brand": "Armani Exchange",
+      "source_url": "https://www.armani.com/en-us/",
+      "tier": "premium",
+      "source_file": "shop_catalog_armani_exchange.json"
+    },
+    {
+      "id": "aurelien-7960976392409",
+      "brand": "Aurélien",
+      "source_url": "https://aurelien-online.com/products/cashmere-aquamarine-athleisure-trousers",
+      "tier": "premium",
+      "source_file": "shop_catalog_aurelien.json"
+    },
+    {
+      "id": "aurelien-9547453858122",
+      "brand": "Aurélien",
+      "source_url": "https://aurelien-online.com/products/aur1-polo-longsleeve-ash-grey",
+      "tier": "premium",
+      "source_file": "shop_catalog_aurelien.json"
+    },
+    {
+      "id": "aurelien-15230772904266",
+      "brand": "Aurélien",
+      "source_url": "https://aurelien-online.com/products/beige-corduroy-trousers",
+      "tier": "premium",
+      "source_file": "shop_catalog_aurelien.json"
+    },
+    {
+      "id": "aurelien-15246859469130",
+      "brand": "Aurélien",
+      "source_url": "https://aurelien-online.com/products/beige-wool-pleated-metropolitan-trousers",
+      "tier": "premium",
+      "source_file": "shop_catalog_aurelien.json"
+    },
+    {
+      "id": "aurelien-15179534139722",
+      "brand": "Aurélien",
+      "source_url": "https://aurelien-online.com/products/beige-flannel-trousers",
+      "tier": "premium",
+      "source_file": "shop_catalog_aurelien.json"
+    },
+    {
+      "id": "aurelien-7649901707481",
+      "brand": "Aurélien",
+      "source_url": "https://aurelien-online.com/products/beige-linen-seaside-trousers",
+      "tier": "premium",
+      "source_file": "shop_catalog_aurelien.json"
+    },
+    {
+      "id": "aurelien-10147023946058",
+      "brand": "Aurélien",
+      "source_url": "https://aurelien-online.com/products/beige-linen-soleil-trousers",
+      "tier": "premium",
+      "source_file": "shop_catalog_aurelien.json"
+    },
+    {
+      "id": "aurelien-7878292242649",
+      "brand": "Aurelien",
+      "source_url": "https://aurelien-online.com/products/aquamarine-terry-towelling-leisure-trousers",
+      "tier": "premium",
+      "source_file": "shop_catalog_aurelien_global.json"
+    },
+    {
+      "id": "brunello-262MY6660721",
+      "brand": "Brunello Cucinelli",
+      "source_url": "https://shop.brunellocucinelli.com/en-gb/men/ready-to-wear/shirts/overshirt-with-spread-collar-262MY6660721.html",
+      "tier": "premium",
+      "source_file": "shop_catalog_brunello.json"
+    },
+    {
+      "id": "brunello-262MZURYMR683",
+      "brand": "Brunello Cucinelli",
+      "source_url": "https://shop.brunellocucinelli.com/en-gb/men/shoes/boots/aged-calfskin-and-waxed-nylon-boots-262MZURYMR683.html",
+      "tier": "premium",
+      "source_file": "shop_catalog_brunello.json"
+    },
+    {
+      "id": "brunello-262MD005O2080",
+      "brand": "Brunello Cucinelli",
+      "source_url": "https://shop.brunellocucinelli.com/en-gb/men/ready-to-wear/denim/no-fade-denim-trousers-262MD005O2080.html",
+      "tier": "premium",
+      "source_file": "shop_catalog_brunello.json"
+    },
+    {
+      "id": "brunello-262MZURYMR683CLG50",
+      "brand": "Brunello Cucinelli",
+      "source_url": "https://shop.brunellocucinelli.com/en-gb/men/shoes/boots/aged-calfskin-and-waxed-nylon-boots-262MZURYMR683CLG50.html",
+      "tier": "premium",
+      "source_file": "shop_catalog_brunello.json"
+    },
+    {
+      "id": "brunello-262MQ4566887CMS46",
+      "brand": "Brunello Cucinelli",
+      "source_url": "https://shop.brunellocucinelli.com/en-gb/men/ready-to-wear/coats-jackets/aviator-jacket-in-vicuna-and-shearling-262MQ4566887CMS46.html",
+      "tier": "premium",
+      "source_file": "shop_catalog_brunello.json"
+    },
+    {
+      "id": "brunello-262MZUDBDS890CKJ26",
+      "brand": "Brunello Cucinelli",
+      "source_url": "https://shop.brunellocucinelli.com/en-gb/men/shoes/boots/suede-mountain-style-boots-262MZUDBDS890CKJ26.html",
+      "tier": "premium",
+      "source_file": "shop_catalog_brunello.json"
+    },
+    {
+      "id": "brunello-262MZUVHRR676CQV46",
+      "brand": "Brunello Cucinelli",
+      "source_url": "https://shop.brunellocucinelli.com/en-gb/men/shoes/boots/calfskin-and-techno-fabric-boots-262MZUVHRR676CQV46.html",
+      "tier": "premium",
+      "source_file": "shop_catalog_brunello.json"
+    },
+    {
+      "id": "brunello-262M3600276",
+      "brand": "Brunello Cucinelli",
+      "source_url": "https://shop.brunellocucinelli.com/en-gb/men/ready-to-wear/shirts/knit-shirt-262M3600276.html",
+      "tier": "premium",
+      "source_file": "shop_catalog_brunello.json"
+    },
+    {
+      "id": "fr-ck-172409",
+      "brand": "Calvin Klein",
+      "source_url": "https://frgroup.uz/ru/store/botinki-low-prof-desert-boot-su-calvin-klein-hm0hm02190-bezhevyj",
+      "tier": "premium",
+      "source_file": "shop_catalog_calvin_klein.json"
+    },
+    {
+      "id": "fr-ck-39382",
+      "brand": "Calvin Klein",
+      "source_url": "https://frgroup.uz/ru/store/rubaska-casual-classic-vail-denim-shirt-calvin-klein-jeans-lv040bm733-chernyj",
+      "tier": "premium",
+      "source_file": "shop_catalog_calvin_klein.json"
+    },
+    {
+      "id": "fr-ck-172422",
+      "brand": "Calvin Klein",
+      "source_url": "https://frgroup.uz/ru/store/kedy-chunky-cupsole-laceup-rub-bt-lth-calvin-klein-hm0hm02206-belyj",
+      "tier": "premium",
+      "source_file": "shop_catalog_calvin_klein.json"
+    },
+    {
+      "id": "fr-ck-171057",
+      "brand": "Calvin Klein",
+      "source_url": "https://frgroup.uz/ru/store/krossovki-chunky-runner-laceup-hf-blst-ny-calvin-klein-hm0hm02224-sinij",
+      "tier": "premium",
+      "source_file": "shop_catalog_calvin_klein.json"
+    },
+    {
+      "id": "fr-ck-171173",
+      "brand": "Calvin Klein",
+      "source_url": "https://frgroup.uz/ru/store/krossovki-city-runner-laceup-lth-mix-calvin-klein-hm0hm02214-chernyj",
+      "tier": "premium",
+      "source_file": "shop_catalog_calvin_klein.json"
+    },
+    {
+      "id": "fr-ck-172435",
+      "brand": "Calvin Klein",
+      "source_url": "https://frgroup.uz/ru/store/krossovki-city-runner-laceup-lth-mix-calvin-klein-hm0hm02214-seryj",
+      "tier": "premium",
+      "source_file": "shop_catalog_calvin_klein.json"
+    },
+    {
+      "id": "fr-ck-150933",
+      "brand": "Calvin Klein",
+      "source_url": "https://frgroup.uz/ru/store/krossovki-classic-cups-laceup-knit-calvin-klein-hm0hm02130-chernyj",
+      "tier": "premium",
+      "source_file": "shop_catalog_calvin_klein.json"
+    },
+    {
+      "id": "fr-ck-108932",
+      "brand": "Calvin Klein",
+      "source_url": "https://frgroup.uz/ru/store/krossovki-hike-runner-casual-ny-su-calvin-klein-jeans-ym0ym01459-seryj",
+      "tier": "premium",
+      "source_file": "shop_catalog_calvin_klein.json"
+    },
+    {
+      "id": "canali-pan02369980",
+      "brand": "Canali",
+      "source_url": "https://us.canali.com/navy-blue-canali-travel-wool-flannel-regular-fit-pants-72020an04763302/p",
+      "tier": "premium",
+      "source_file": "shop_catalog_canali.json"
+    },
+    {
+      "id": "canali-pan02373402",
+      "brand": "Canali",
+      "source_url": "https://us.canali.com/dark-brown-canali-travel-wool-flannel-regular-fit-pants-71119an04763902/p",
+      "tier": "premium",
+      "source_file": "shop_catalog_canali.json"
+    },
+    {
+      "id": "canali-pac00048903",
+      "brand": "Canali",
+      "source_url": "https://us.canali.com/white-cotton-gabardine-double-pleated-pants-d91606pt01666005/p",
+      "tier": "premium",
+      "source_file": "shop_catalog_canali.json"
+    },
+    {
+      "id": "canali-pac00051254",
+      "brand": "Canali",
+      "source_url": "https://us.canali.com/beige-cotton-gabardine-double-pleated-pants-d91606pt01666727/p",
+      "tier": "premium",
+      "source_file": "shop_catalog_canali.json"
+    },
+    {
+      "id": "canali-pac00051362",
+      "brand": "Canali",
+      "source_url": "https://us.canali.com/sand-colored-comfort-cotton-gabardine-chinos-d91675pt00417514/p",
+      "tier": "premium",
+      "source_file": "shop_catalog_canali.json"
+    },
+    {
+      "id": "canali-pan02373490",
+      "brand": "Canali",
+      "source_url": "https://us.canali.com/anthracite-canali-impeccabile-wool-regular-fit-pants-72020ar05285112/p",
+      "tier": "premium",
+      "source_file": "shop_catalog_canali.json"
+    },
+    {
+      "id": "emporio-armani-EM007124_TE14101_U8092",
+      "brand": "Emporio Armani",
+      "source_url": "https://www.armani.com/us-en/emporio-armani/men/",
+      "tier": "premium",
+      "source_file": "shop_catalog_emporio_global.json"
+    },
+    {
+      "id": "harmont_blaine-97003",
+      "brand": "Harmont & Blaine",
+      "source_url": "https://etln.uz/products/97003-briuki-trousers-chinos-sartoriale",
+      "tier": "premium",
+      "source_file": "shop_catalog_harmont_blaine.json"
+    },
+    {
+      "id": "harmont_blaine-91008",
+      "brand": "Harmont & Blaine",
+      "source_url": "https://etln.uz/products/91008-kardigan-knitwear-cardigan-block-color",
+      "tier": "premium",
+      "source_file": "shop_catalog_harmont_blaine.json"
+    },
+    {
+      "id": "harmont_blaine-97155",
+      "brand": "Harmont & Blaine",
+      "source_url": "https://etln.uz/products/97155-sviter-knitwear-maglieria-uomo-lana",
+      "tier": "premium",
+      "source_file": "shop_catalog_harmont_blaine.json"
+    },
+    {
+      "id": "lacoste-bh9712_jb1",
+      "brand": "Lacoste",
+      "source_url": "https://www.lacoste.com/us/lacoste/men/clothing/jackets-coats/BH9712-51.html?color=JB1",
+      "tier": "premium",
+      "source_file": "shop_catalog_lacoste.json"
+    },
+    {
+      "id": "lacoste-ch0011_six",
+      "brand": "Lacoste",
+      "source_url": "https://www.lacoste.com/us/lacoste/men/clothing/button-down-shirts/CH0011-51.html?color=SIX",
+      "tier": "premium",
+      "source_file": "shop_catalog_lacoste.json"
+    },
+    {
+      "id": "lacoste-ch8804_69x",
+      "brand": "Lacoste",
+      "source_url": "https://www.lacoste.com/us/lacoste/men/clothing/button-down-shirts/CH8804-51.html?color=69X",
+      "tier": "premium",
+      "source_file": "shop_catalog_lacoste.json"
+    },
+    {
+      "id": "lacoste-ch8804_mxq",
+      "brand": "Lacoste",
+      "source_url": "https://www.lacoste.com/us/lacoste/men/clothing/button-down-shirts/CH8804-51.html?color=MXQ",
+      "tier": "premium",
+      "source_file": "shop_catalog_lacoste.json"
+    },
+    {
+      "id": "lacoste-bh8672_z7x",
+      "brand": "Lacoste",
+      "source_url": "https://www.lacoste.com/us/lacoste/men/clothing/jackets-coats/BH8672-51.html?color=Z7X",
+      "tier": "premium",
+      "source_file": "shop_catalog_lacoste.json"
+    },
+    {
+      "id": "lacoste-dh6809_zb5",
+      "brand": "Lacoste",
+      "source_url": "https://www.lacoste.com/us/lacoste/men/clothing/polos/DH6809-51.html?color=ZB5",
+      "tier": "premium",
+      "source_file": "shop_catalog_lacoste.json"
+    },
+    {
+      "id": "lacoste-dh6809_zdq",
+      "brand": "Lacoste",
+      "source_url": "https://www.lacoste.com/us/lacoste/men/clothing/polos/DH6809-51.html?color=ZDQ",
+      "tier": "premium",
+      "source_file": "shop_catalog_lacoste.json"
+    },
+    {
+      "id": "lacoste-bh8614_mxq",
+      "brand": "Lacoste",
+      "source_url": "https://www.lacoste.com/us/lacoste/nueva-colecci%C3%B3n/nuevas-llegadas-hombre/clothing/BH8614-51.html?color=MXQ",
+      "tier": "premium",
+      "source_file": "shop_catalog_lacoste.json"
+    },
+    {
+      "id": "loro-piana-FAQ7556_W000",
+      "brand": "Loro Piana",
+      "source_url": "https://ii.loropiana.com/en/spring-summer/man/andamane-trousers-FAQ7556_W000.html",
+      "tier": "premium",
+      "source_file": "shop_catalog_loro_piana.json"
+    },
+    {
+      "id": "loro-piana-FRM1574_D1AI",
+      "brand": "Loro Piana",
+      "source_url": "https://ii.loropiana.com/en/man/formalwear/ready-to-wear/anden-trousers-FRM1574_D1AI.html",
+      "tier": "premium",
+      "source_file": "shop_catalog_loro_piana.json"
+    },
+    {
+      "id": "loro-piana-FRM1574_W000",
+      "brand": "Loro Piana",
+      "source_url": "https://ii.loropiana.com/en/man/formalwear/ready-to-wear/anden-trousers-FRM1574_W000.html",
+      "tier": "premium",
+      "source_file": "shop_catalog_loro_piana.json"
+    },
+    {
+      "id": "loro-piana-FRM1877_5O7Q",
+      "brand": "Loro Piana",
+      "source_url": "https://ii.loropiana.com/en/man/trousers-and-bermudas/bayley-trousers-FRM1877_5O7Q.html",
+      "tier": "premium",
+      "source_file": "shop_catalog_loro_piana.json"
+    },
+    {
+      "id": "loro-piana-FRM1026_D0C2",
+      "brand": "Loro Piana",
+      "source_url": "https://ii.loropiana.com/en/man/trousers-and-bermudas/bayley-trousers-FRM1026_D0C2.html",
+      "tier": "premium",
+      "source_file": "shop_catalog_loro_piana.json"
+    },
+    {
+      "id": "loro-piana-FAQ6501_1541",
+      "brand": "Loro Piana",
+      "source_url": "https://ii.loropiana.com/en/gifting-idea/man/ready-to-wear/bexley-trousers-FAQ6501_1541.html",
+      "tier": "premium",
+      "source_file": "shop_catalog_loro_piana.json"
+    },
+    {
+      "id": "loro-piana-FAO4744_A0HQ",
+      "brand": "Loro Piana",
+      "source_url": "https://ii.loropiana.com/en/man/trousers-and-bermudas/breia-trousers-FAO4744_A0HQ.html",
+      "tier": "premium",
+      "source_file": "shop_catalog_loro_piana.json"
+    },
+    {
+      "id": "md-uz-61850981",
+      "brand": "Massimo Dutti",
+      "source_url": "https://www.massimodutti.com/uz/en/100-linen-elasticwaist-pants-l00166015?pelement=61850981",
+      "tier": "premium",
+      "source_file": "shop_catalog_massimo_dutti.json"
+    },
+    {
+      "id": "md-uz-61729275",
+      "brand": "Massimo Dutti",
+      "source_url": "https://www.massimodutti.com/uz/en/contrast-leather-trainers-l12122750?pelement=61729275",
+      "tier": "premium",
+      "source_file": "shop_catalog_massimo_dutti.json"
+    },
+    {
+      "id": "md-uz-63782580",
+      "brand": "Massimo Dutti",
+      "source_url": "https://www.massimodutti.com/uz/en/100-cotton-overshirt-with-pocket-detail-l01933252?pelement=63782580",
+      "tier": "premium",
+      "source_file": "shop_catalog_massimo_dutti.json"
+    },
+    {
+      "id": "md-uz-61733889",
+      "brand": "Massimo Dutti",
+      "source_url": "https://www.massimodutti.com/uz/en/100-linen-striped-pants-l02872394?pelement=61733889",
+      "tier": "premium",
+      "source_file": "shop_catalog_massimo_dutti.json"
+    },
+    {
+      "id": "md-uz-62681554",
+      "brand": "Massimo Dutti",
+      "source_url": "https://www.massimodutti.com/uz/en/100-cool-wool-pants-l02862378?pelement=62681554",
+      "tier": "premium",
+      "source_file": "shop_catalog_massimo_dutti.json"
+    },
+    {
+      "id": "md-uz-61978000",
+      "brand": "Massimo Dutti",
+      "source_url": "https://www.massimodutti.com/uz/en/striped-100-cool-wool-suit-pants-l03680547?pelement=61978000",
+      "tier": "premium",
+      "source_file": "shop_catalog_massimo_dutti.json"
+    },
+    {
+      "id": "md-uz-62899803",
+      "brand": "Massimo Dutti",
+      "source_url": "https://www.massimodutti.com/uz/en/100-cool-wool-suit-blazer-l03623522?pelement=62899803",
+      "tier": "premium",
+      "source_file": "shop_catalog_massimo_dutti.json"
+    },
+    {
+      "id": "md-uz-62812104",
+      "brand": "Massimo Dutti",
+      "source_url": "https://www.massimodutti.com/uz/en/100-cool-wool-total-look-pants-l02863379?pelement=62812104",
+      "tier": "premium",
+      "source_file": "shop_catalog_massimo_dutti.json"
+    },
+    {
+      "id": "paul_shark-124692",
+      "brand": "Paul & Shark",
+      "source_url": "https://etln.uz/products/124692-polo-mens-knitted-cotton-zipped-polo-shirt",
+      "tier": "premium",
+      "source_file": "shop_catalog_paul_shark.json"
+    },
+    {
+      "id": "ralph-lauren-401480-white-navy",
+      "brand": "Ralph Lauren",
+      "source_url": "https://www.ralphlauren.com/hidden-men-polo-shirts/the-iconic-classic-fit-mesh-polo/401480.html",
+      "tier": "premium",
+      "source_file": "shop_catalog_ralph_lauren.json"
+    },
+    {
+      "id": "ralph-lauren-506931",
+      "brand": "Ralph Lauren",
+      "source_url": "https://www.ralphlauren.com/men-clothing-pants/stretch-chino-pant---all-fits/506931-CH.html?masterId=506931&userSelectedColor=Basic+Sand",
+      "tier": "premium",
+      "source_file": "shop_catalog_ralph_lauren.json"
+    },
+    {
+      "id": "ralph-lauren-658159-classic-fit",
+      "brand": "Ralph Lauren",
+      "source_url": "https://www.ralphlauren.global/cv/en/the-iconic-mesh-polo-shirt-658159.html",
+      "tier": "premium",
+      "source_file": "shop_catalog_ralph_lauren.json"
+    },
+    {
+      "id": "ralph-lauren-489740",
+      "brand": "Ralph Lauren",
+      "source_url": "https://www.ralphlauren.com/men-clothing-polo-shirts/mesh-long-sleeve-polo-shirt-%E2%80%93-all-fits/413706-P.html?masterId=489740&userSelectedColor=Nutmeg+Brown",
+      "tier": "premium",
+      "source_file": "shop_catalog_ralph_lauren.json"
+    },
+    {
+      "id": "ralph-lauren-100102112",
+      "brand": "Ralph Lauren",
+      "source_url": "https://www.ralphlauren.com/men-clothing-polo-shirts/classic-fit-polo-bear-mesh-polo-shirt/100102112.html",
+      "tier": "premium",
+      "source_file": "shop_catalog_ralph_lauren.json"
+    },
+    {
+      "id": "ralph-lauren-100103914",
+      "brand": "Ralph Lauren",
+      "source_url": "https://www.ralphlauren.com/men-clothing-sweaters/textured-cotton-polo-collar-sweater/100103914.html",
+      "tier": "premium",
+      "source_file": "shop_catalog_ralph_lauren.json"
+    },
+    {
+      "id": "ralph-lauren-100042569",
+      "brand": "Ralph Lauren",
+      "source_url": "https://www.ralphlauren.com/men-clothing-polo-shirts/classic-fit-performance-polo-shirt/100042569.html",
+      "tier": "premium",
+      "source_file": "shop_catalog_ralph_lauren.json"
+    },
+    {
+      "id": "reiss-777356",
+      "brand": "Reiss",
+      "source_url": "https://www.reiss.com/us/en/style/sv175364/777356",
+      "tier": "premium",
+      "source_file": "shop_catalog_reiss.json"
+    },
+    {
+      "id": "reiss-777280",
+      "brand": "Reiss",
+      "source_url": "https://www.reiss.com/us/en/style/sv175452/777280",
+      "tier": "premium",
+      "source_file": "shop_catalog_reiss.json"
+    },
+    {
+      "id": "reiss-312809",
+      "brand": "Reiss",
+      "source_url": "https://www.reiss.com/us/en/style/sv209066/312809",
+      "tier": "premium",
+      "source_file": "shop_catalog_reiss.json"
+    },
+    {
+      "id": "reiss-312134",
+      "brand": "Reiss",
+      "source_url": "https://www.reiss.com/us/en/style/sv209064/312134",
+      "tier": "premium",
+      "source_file": "shop_catalog_reiss.json"
+    },
+    {
+      "id": "reiss-v98354",
+      "brand": "Reiss",
+      "source_url": "https://www.reiss.com/us/en/style/sv130720/v98354",
+      "tier": "premium",
+      "source_file": "shop_catalog_reiss.json"
+    },
+    {
+      "id": "reiss-d63339",
+      "brand": "Reiss",
+      "source_url": "https://www.reiss.com/us/en/style/sv189322/d63339",
+      "tier": "premium",
+      "source_file": "shop_catalog_reiss.json"
+    },
+    {
+      "id": "reiss-y82479",
+      "brand": "Reiss",
+      "source_url": "https://www.reiss.com/us/en/style/sv237136/y82479",
+      "tier": "premium",
+      "source_file": "shop_catalog_reiss.json"
+    },
+    {
+      "id": "fr-tommy-48587",
+      "brand": "Tommy Hilfiger",
+      "source_url": "https://frgroup.uz/ru/store/botinki-th-chunky-tl-lace-up-boot-tommy-hilfiger-fm0fm05270-chernyj",
+      "tier": "premium",
+      "source_file": "shop_catalog_tommy_hilfiger.json"
+    },
+    {
+      "id": "fr-tommy-163834-official",
+      "brand": "Tommy Hilfiger",
+      "source_url": "https://frgroup.uz/ru/store/rubaska-papertouch-fun-classic-fit-shirt-tommy-hilfiger-mw0mw42985-raznoczvetnyj",
+      "tier": "premium",
+      "source_file": "shop_catalog_tommy_hilfiger.json"
+    },
+    {
+      "id": "fr-tommy-169013",
+      "brand": "Tommy Hilfiger",
+      "source_url": "https://frgroup.uz/ru/store/kedy-harlem-core-ii-cvs-tommy-hilfiger-fm0fm05817-bezhevyj",
+      "tier": "premium",
+      "source_file": "shop_catalog_tommy_hilfiger.json"
+    },
+    {
+      "id": "fr-tommy-164801",
+      "brand": "Tommy Hilfiger",
+      "source_url": "https://frgroup.uz/ru/store/kedy-hilfiger-light-hybrid-suede-shoe-tommy-hilfiger-fm0fm05788-olivkovyj",
+      "tier": "premium",
+      "source_file": "shop_catalog_tommy_hilfiger.json"
+    },
+    {
+      "id": "fr-tommy-52400",
+      "brand": "Tommy Hilfiger",
+      "source_url": "https://frgroup.uz/ru/store/kedy-th-court-lth-detail-ess-tommy-hilfiger-fm0fm05367-chernyj",
+      "tier": "premium",
+      "source_file": "shop_catalog_tommy_hilfiger.json"
+    },
+    {
+      "id": "fr-tommy-161606",
+      "brand": "Tommy Hilfiger",
+      "source_url": "https://frgroup.uz/ru/store/kedy-th-lo-lux-suede-tommy-hilfiger-fm0fm05816-seryj",
+      "tier": "premium",
+      "source_file": "shop_catalog_tommy_hilfiger.json"
+    },
+    {
+      "id": "fr-tommy-174831",
+      "brand": "Tommy Hilfiger",
+      "source_url": "https://frgroup.uz/ru/store/kedy-th-tribeca-sneaker-leather-tommy-hilfiger-fm0fm06083-chernyj",
+      "tier": "premium",
+      "source_file": "shop_catalog_tommy_hilfiger.json"
+    },
+    {
+      "id": "fr-tommy-164454",
+      "brand": "Tommy Hilfiger",
+      "source_url": "https://frgroup.uz/ru/store/krossovki-light-eva-runner-leather-tommy-hilfiger-fm0fm05906-chernyj",
+      "tier": "premium",
+      "source_file": "shop_catalog_tommy_hilfiger.json"
+    }
+  ]
+}

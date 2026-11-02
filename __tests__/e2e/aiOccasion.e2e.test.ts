@@ -572,9 +572,9 @@ describe('work vs date silhouettes (log replay)', () => {
     expect(rejectForStyleOccasion(oxford, 'old_money', 'work')).toBeNull();
   });
 
-  it('keeps knit layers and denim shirts legal for date, rejects boardroom shells', () => {
+  it('keeps knit layers legal for date, rejects denim shirts and boardroom shells', () => {
     expect(rejectForStyleOccasion(knitLayer, 'old_money', 'date')).toBeNull();
-    expect(rejectForStyleOccasion(denimShirt, 'old_money', 'date')).toBeNull();
+    expect(rejectForStyleOccasion(denimShirt, 'old_money', 'date')).not.toBeNull();
     expect(matchesOccasionSilhouette(boardroom, 'date')).toBe(false);
     expect(matchesOccasionSilhouette(linenBlazer, 'date')).toBe(true);
     expect(matchesOccasionSilhouette(woolBlazer, 'work')).toBe(true);

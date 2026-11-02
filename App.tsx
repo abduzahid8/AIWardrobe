@@ -22,7 +22,6 @@ import { validateConfig } from "./src/config/env";
 import useAuthStore from "./store/auth";
 import { createAuthLinking } from "./src/lib/authLinking";
 import { useSubscriptionClock } from './src/hooks/useSubscriptionClock';
-import useTrackingPermission from "./src/hooks/useTrackingPermission";
 
 // Deep linking configuration
 const linking = {
@@ -89,8 +88,6 @@ const AppContent = () => {
   const { colors } = useTheme();
   const missingVars = validateConfig();
 
-  // Initialize App Tracking Transparency
-  useTrackingPermission();
   useSubscriptionClock();
 
   // Hide the splash once the first frame renders. We hide it even on the

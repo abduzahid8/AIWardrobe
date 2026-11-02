@@ -72,3 +72,16 @@ test('vaguely named catalog shoes obey oldest-last-use and appearance tie-breaks
  expect(ids).toContain('shoe-0');expect(ids).toContain('shoe-1');
  expect(result.feasibleMinimumOverlap).toBe(1);
 });
+
+test('a new style uses account-wide shoe recency rather than starting the shoe schedule again',()=>{
+ const pool=Array.from({length:9},(_,i)=>shoe(i)),shoeDecks:{productKeys:string[]}[]=[];
+ const all=new Set<string>();
+ for(let style=0;style<3;style++){
+  const previous=new Set(shoeDecks.at(-1)?.productKeys||[]);
+  const priority=createShoeRotationPriority(all,new Set(),[],undefined,{previous,decks:shoeDecks});
+  const result=assignRotatingShoes(looks(style),pool,()=>true,priority,()=>1);
+  const keys=result.deck.flatMap(o=>o.items.filter(i=>i.macroCategory==='shoes').flatMap(productIdentityKeys));
+  expect(keys.some(k=>all.has(k))).toBe(false);
+  keys.forEach(k=>all.add(k));shoeDecks.push({productKeys:keys});
+ }
+});

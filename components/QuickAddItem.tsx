@@ -112,7 +112,7 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({ onItemAdded, onCancel }) =>
         }
 
         setIsSubmitting(true);
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
 
         try {
             await addItem({
@@ -128,7 +128,7 @@ const QuickAddItem: React.FC<QuickAddItemProps> = ({ onItemAdded, onCancel }) =>
                 occasions: ['casual'] as Occasion[],
             });
 
-            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
             onItemAdded?.();
         } catch (error) {
             console.error('Failed to add item:', error);

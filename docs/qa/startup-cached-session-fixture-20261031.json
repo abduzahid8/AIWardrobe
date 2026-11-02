@@ -1,0 +1,42 @@
+{
+  "scenario": "process-cold; current persisted session/language",
+  "runs": [
+    {
+      "durationMs": 303,
+      "budgetMs": 1000,
+      "passed": true,
+      "origin": "native-app-start",
+      "run": 1
+    },
+    {
+      "durationMs": 290,
+      "budgetMs": 1000,
+      "passed": true,
+      "origin": "native-app-start",
+      "run": 2
+    },
+    {
+      "durationMs": 352,
+      "budgetMs": 1000,
+      "passed": true,
+      "origin": "native-app-start",
+      "run": 3
+    },
+    {
+      "durationMs": 311,
+      "budgetMs": 1000,
+      "passed": true,
+      "origin": "native-app-start",
+      "run": 4
+    },
+    {
+      "durationMs": 276,
+      "budgetMs": 1000,
+      "passed": true,
+      "origin": "native-app-start",
+      "run": 5
+    }
+  ],
+  "maximumMs": 352,
+  "passed": true
+}

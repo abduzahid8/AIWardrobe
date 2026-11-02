@@ -1,4 +1,4 @@
-import { outfitStructureReason } from '../../backend/supabase/functions/_shared/outfitStructure';
+import { fourSlotOutfitReason } from '../../backend/supabase/functions/_shared/outfitStructure';
 import { passesStyleJudge } from '../../features/outfit-generator/utils/occasionRules';
 import { isShopOnlyDeck, type GeneratedOutfit } from './outfitGenerationService';
 
@@ -11,7 +11,7 @@ export function validatedDailyOutfits(value: unknown, style: string, occasion: s
     if (!Array.isArray(value)) return [];
     const signatures = new Set<string>();
     return value.filter((outfit): outfit is GeneratedOutfit => {
-        if (!outfit || outfitStructureReason(outfit.items)) return false;
+        if (!outfit || fourSlotOutfitReason(outfit.items)) return false;
         if (!passesStyleJudge(outfit.items, style, occasion, weather)) return false;
         if (isShopOnlyDeck(style, occasion) && outfit.items.some((item: any) => item.isShopItem !== true)) return false;
         const signature = outfit.items.map((item: any) => item.id).sort().join('|');

@@ -77,5 +77,5 @@ policies.
 - `ITSAppUsesNonExemptEncryption=false` set in `app.json`.
 - `PrivacyInfo.xcprivacy` shipped (`ios/wardrobeapp/PrivacyInfo.xcprivacy`).
 - Usage descriptions are specific, per Apple review guidelines.
-- `NSUserTrackingUsageDescription` declared — only triggered if a future
-  SDK starts tracking.
+- App Tracking Transparency is not requested because the production app has no
+  advertising or cross-app tracking integration.

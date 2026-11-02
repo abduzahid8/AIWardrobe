@@ -536,7 +536,7 @@ const ProfileScreen = () => {
   const [editAvatarMimeType, setEditAvatarMimeType] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [cloudOutfits, setCloudOutfits] = useState<SavedOutfit[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [previewLook, setPreviewLook] = useState<SavedOutfit | null>(null);
   // Progressive looks: the horizontal row mounts a collage (up to 4 images)
   // + a BlurView per card. Mounting ALL saved looks in the first frame is
@@ -661,18 +661,20 @@ const ProfileScreen = () => {
         setCloudOutfits(
           data.map((outfit) => {
             const rawItems = Array.isArray(outfit.items)
-              ? (outfit.items as Array<{ image?: unknown; imageUrl?: unknown }>)
+              ? (outfit.items as Array<{ id?: string; image?: string; imageUrl?: string; category?: string; macroCategory?: string; type?: string; name?: string }>)
               : [];
-            const itemImages: ImageSrc[] = rawItems.flatMap(item => {
-              const image = item?.imageUrl || item?.image;
-              return typeof image === 'string' && image.startsWith('http') ? [image] : [];
-            });
+            const collageItems = rawItems.map((item, index) => ({
+              id: item.id || `piece-${index}`, image: item.imageUrl || item.image || '',
+              category: item.macroCategory || item.category || item.type, name: item.name,
+            }));
+            const itemImages: ImageSrc[] = collageItems.map(item => item.image);
 
             return {
               _id: outfit.id,
               date: outfit.date || outfit.created_at?.split('T')[0],
               occasion: outfit.occasion ?? undefined,
               itemImages,
+              collageItems,
               // Only set a single cover image when there's just one item to
               // show — outfits with multiple items render the itemImages
               // collage instead (see renderLookCard).
@@ -1194,19 +1196,10 @@ const ProfileScreen = () => {
     setVisibleLookCount((c) => (c >= 1000 ? c : Math.min(c + 12, 1000)));
   }, []);
 
-  const renderLooksContent = () => {
-    if (loading) {
-      return (
-        <GlassPanel style={styles.contentPanel}>
-          <View style={styles.loadingBlock}>
-            <ActivityIndicator color={D.accent} />
-            <ScaledText style={styles.loadingText}>{t('common.loading')}</ScaledText>
-          </View>
-        </GlassPanel>
-      );
-    }
+  const savedProducts = useMemo(() => outfits.filter((item) => item.isShop), [outfits]);
 
-    if (outfits.length === 0) {
+  const renderLooksContent = () => {
+    if (savedProducts.length === 0) {
       return (
         <GlassPanel style={styles.contentPanel}>
           <View style={styles.emptyState}>
@@ -1220,14 +1213,14 @@ const ProfileScreen = () => {
                 <Ionicons name="sparkles-outline" size={28} color={D.accent} />
               </LinearGradient>
             </View>
-            <ScaledText style={styles.emptyTitle}>{t('profile.noOutfits')}</ScaledText>
+            <ScaledText style={styles.emptyTitle}>{t('profile.noSavedProducts')}</ScaledText>
             <ScaledText style={styles.emptySubtitle}>
-              Create looks with AI or save your favorite combinations from your wardrobe.
+              {t('profile.savedProductsHint')}
             </ScaledText>
             <PrimaryGradientButton
-              label={t('profile.new')}
-              icon="sparkles"
-              onPress={() => navigation.navigate('AIOutfit', { source: 'wardrobe' })}
+              label={t('profile.browseShop')}
+              icon="heart-outline"
+              onPress={() => navigation.navigate('Main', { screen: 'Inspo', params: { openShop: true } })}
               style={styles.emptyAction}
             />
           </View>
@@ -1237,7 +1230,7 @@ const ProfileScreen = () => {
 
     return (
       <FlatList
-        data={outfits.slice(0, visibleLookCount)}
+        data={savedProducts.slice(0, visibleLookCount)}
         renderItem={renderLookItem}
         keyExtractor={lookKeyExtractor}
         getItemLayout={lookGetItemLayout}
@@ -1664,11 +1657,11 @@ const ProfileScreen = () => {
                       />
                     ) : null}
                     <ScaledText style={[styles.segmentedText, isActive && styles.segmentedTextActive]}>
-                      {titleCase(tab)}
+                      {tab === 'looks' ? t('profile.savedProductsTab') : titleCase(tab)}
                     </ScaledText>
                     <View style={[styles.segmentedBadge, isActive && styles.segmentedBadgeActive]}>
                       <ScaledText style={[styles.segmentedBadgeText, isActive && styles.segmentedBadgeTextActive]}>
-                        {tab === 'looks' ? outfits.length : tripPlanDays.length}
+                        {tab === 'looks' ? savedProducts.length : tripPlanDays.length}
                       </ScaledText>
                     </View>
                   </Pressable>
@@ -1682,13 +1675,13 @@ const ProfileScreen = () => {
           <View style={styles.sectionHeaderRow}>
             <View>
               <ScaledText style={styles.sectionEyebrow}>{activeTab === 'looks' ? t('profile.style') : t('profile.travel')}</ScaledText>
-              <ScaledText style={styles.sectionTitle}>{activeTab === 'looks' ? t('profile.savedLooks') : t('profile.tripsAndPacking')}</ScaledText>
+              <ScaledText style={styles.sectionTitle}>{activeTab === 'looks' ? t('profile.savedProducts') : t('profile.tripsAndPacking')}</ScaledText>
             </View>
             {activeTab === 'looks' ? (
               <SecondaryGlassButton
-                label={t('profile.new')}
-                icon="add-outline"
-                onPress={() => navigation.navigate('AIOutfit', { source: 'wardrobe' })}
+                label={t('profile.browseShop')}
+                icon="heart-outline"
+                onPress={() => navigation.navigate('Main', { screen: 'Inspo', params: { openShop: true } })}
               />
             ) : (
               <SecondaryGlassButton

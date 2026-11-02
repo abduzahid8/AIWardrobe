@@ -175,7 +175,7 @@
     "dressWarm": "Iliq kiyiling",
     "itemAddedToWardrobe": "{{itemName}} shkafga qo'shildi",
     "addItemToWardrobe": "{{itemName}} ni shkafga qo'shish",
-    "createOutfitFromWardrobe": "Create outfit from wardrobe"
+    "createOutfitFromWardrobe": "Garderobdan obraz yaratish"
   },
   "weeklyPlanner": {
     "days": [
@@ -351,8 +351,8 @@
     "scanWardrobeForSuggestions": "Shkafingizni skanering qiling va shaxsiy libos takliflari oling",
     "addMoreItemsForSuggestions": "Yaxshi takliflar uchun shkafingizga ko'proq narsa qo'shing",
     "title": "Bugungi libosingiz",
-    "addItemToCloset": "Add item to closet",
-    "noSuggestionYet": "No suggestion yet"
+    "addItemToCloset": "Garderobga kiyim qo‘shing",
+    "noSuggestionYet": "Hozircha tavsiya yo‘q"
   },
   "quickActions": {
     "menu": "Menyu",
@@ -512,6 +512,11 @@
     "insights": "Tahlillar",
     "style": "USLUB",
     "travel": "SAYOHAT",
+    "savedProductsTab": "Saqlangan",
+    "savedProducts": "Saqlangan mahsulotlar",
+    "noSavedProducts": "Hali saqlangan mahsulotlar yo‘q",
+    "savedProductsHint": "Mahsulotni shu yerga saqlash uchun yurakchani bosing.",
+    "browseShop": "Do‘konga",
     "savedLooks": "Saqlangan turlar",
     "inThisLook": "Bu ko'rinishda",
     "openInWardrobe": "Shkafda ochish",
@@ -561,7 +566,7 @@
     "developerTools": "Dasturchi vositalari",
     "proBadge": "PRO",
     "priceFrom": "dan",
-    "goProSubtitle": "Upgrade for unlimited outfits and premium features"
+    "goProSubtitle": "Cheksiz obrazlar va premium imkoniyatlar uchun Pro rejaga o‘ting"
   },
   "addOutfit": {
     "title": "Libos qo'shish",
@@ -710,6 +715,9 @@
     "uzbek": "O'zbek"
   },
   "outfitMaker": {
+    "closestShopAlternative": "Do‘kondagi kiyimlar bilan eng yaqin mos kombinatsiya.",
+    "closestAlternative": "Garderobingizdagi eng yaqin mos kombinatsiya.",
+    "closestAlternativeTip": "Tanlangan kiyim saqlanadi. Ayrim kiyimlar so‘ralgan uslub, tadbir yoki ob-havoga to‘liq mos kelmasligi mumkin.",
     "budgetRatesUnavailable": "Joriy ma’lumot uchun valyuta kurslari mavjud emas. Birozdan keyin qayta urinib ko‘ring.",
     "referenceRate": "Markaziy bank kursi bo‘yicha taxmin · {{date}}",
     "shopPricesUnavailable": "Kerakli mahsulot narxi yoki valyutasi mavjud emas. Boshqa kiyimlarni tanlang yoki katalogni yangilang.",

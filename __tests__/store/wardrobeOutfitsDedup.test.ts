@@ -61,6 +61,13 @@ describe('wardrobeStore outfits bounded growth', () => {
         generatedBy: 'ai' as const,
     });
 
+    it('preserves every accepted AI piece even when wardrobe categories are legacy or missing', () => {
+        const ids = ['layer', 'shirt', 'pants', 'shoes'];
+        useWardrobeStore.setState({ items: ids.map(id => ({ id, category: 'other', subCategory: '' })) as never });
+        useWardrobeStore.getState().addOutfit({ ...swipeCombo(), itemIds: ids });
+        expect(useWardrobeStore.getState().outfits[0].itemIds).toEqual(ids);
+    });
+
     it('does not duplicate an identical liked combo', () => {
         const first = useWardrobeStore.getState().addOutfit(swipeCombo());
         const second = useWardrobeStore.getState().addOutfit(swipeCombo());

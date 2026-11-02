@@ -1,3 +1,5 @@
+import {productIdentityKeys} from './outfitDiversity.ts';
+
 /** Enumerate bounded, diverse proposals. The caller supplies the full validator. */
 export function outfitChoices<T extends {id: string; macroCategory?: string; name?: string; type?: string}>(
   items: T[], layered: boolean, accepts: (items: T[]) => boolean, isDress: (item: T) => boolean,
@@ -9,18 +11,26 @@ export function outfitChoices<T extends {id: string; macroCategory?: string; nam
   const groups = [layered ? [tops,slot('outerwear'),slot('bottom'),slot('shoes')] : [tops,slot('bottom'),slot('shoes')],
     layered ? [dresses,slot('outerwear'),slot('shoes')] : [dresses,slot('shoes')]];
   const result: {id:string;items:T[]}[] = [];
+  // An anchor removes one varying slot. Keep a bounded reserve before
+  // trimming, so early valid combinations cannot hide the only third look.
+  const reserve = requiredIds.length && maximum >= 3 ? Math.min(maximum * 12, 256) : maximum;
   let examined = 0;
   const gcd=(a:number,b:number):number=>b ? gcd(b,a%b) : a;
-  const configurations=groups.filter(group=>group.every(pool=>pool.length)).map(group=>{
+  // A locked garment fixes its slot before enumeration. Filtering after
+  // sampling wastes the bounded search on outfits that cannot use the anchor.
+  const configurations=groups.map(group=>group.map(pool=>{
+    const locked=pool.filter(item=>requiredIds.includes(item.id));
+    return locked.length?locked:pool;
+  })).filter(group=>group.every(pool=>pool.length)).map(group=>{
     const total=group.reduce((n,pool)=>n*pool.length,1);
     let stride=Math.max(1,Math.floor(total*0.618));
     while(gcd(stride,total)!==1)stride++;
     return {group,total,stride};
   });
   const largest=Math.max(0,...configurations.map(config=>config.total));
-  for(let i=0;i<largest && examined<searchLimit && result.length<maximum;i++) {
+  for(let i=0;i<largest && examined<searchLimit && result.length<reserve;i++) {
     for(const {group,total,stride} of configurations) {
-      if(i>=total || examined>=searchLimit || result.length>=maximum)continue;
+      if(i>=total || examined>=searchLimit || result.length>=reserve)continue;
       examined++;
       let n=(i*stride)%total;
       const parts=group.map(pool=>{const item=pool[n%pool.length];n=Math.floor(n/pool.length);return item;});
@@ -31,7 +41,18 @@ export function outfitChoices<T extends {id: string; macroCategory?: string; nam
       result.push({id:`look${String(result.length+1).padStart(3,'0')}`,items:parts});
     }
   }
-  return result;
+  if(reserve>maximum) {
+    const keys=result.map(look=>new Set(look.items.filter(item=>!requiredIds.includes(item.id)).flatMap(productIdentityKeys)));
+    const overlaps=(a:number,b:number)=>[...keys[a]].some(key=>keys[b].has(key));
+    for(let a=0;a<result.length;a++)for(let b=a+1;b<result.length;b++) {
+      if(overlaps(a,b))continue;
+      for(let c=b+1;c<result.length;c++)if(!overlaps(a,c)&&!overlaps(b,c)) {
+        const seed=new Set([a,b,c]);
+        return [result[a],result[b],result[c],...result.filter((_,i)=>!seed.has(i))].slice(0,maximum);
+      }
+    }
+  }
+  return result.slice(0,maximum);
 }
 
 /** Only an AI-selected complete option may be expanded; unknown/partial IDs fail. */

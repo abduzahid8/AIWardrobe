@@ -30,16 +30,8 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.28;
 const ROTATION_DEG = 10;
 const CAPTION_BAR_HEIGHT = 52;
-// Current card + the two peeking behind it, plus one more so the card that's
-// about to become "back" is already warm before it's ever rendered.
-// The back card mounts immediately but was historically never prefetched
-// (lookahead covered top+mid only), so every swipe revealed a mid card on
-// top of a back card whose full-res photos were still downloading — the
-// perpetual "wait 2-4s until everything loads". The old 4-ahead storm is
-// gone now that `cards` is a stable memo (the effect below also depends on
-// a content signature, not the array identity), and the dedupe set bounds
-// each run to only genuinely new URIs — at most one card's worth per swipe.
-const PREFETCH_LOOKAHEAD = 4;
+// Warm the next two cards while limiting concurrent full-resolution downloads.
+const PREFETCH_LOOKAHEAD = 2;
 // Bound the dedupe set so it can't grow unbounded across account switches
 // (delete -> create reuses the same component instance in some navigations).
 const MAX_PREFETCHED_URIS = 200;
@@ -78,7 +70,7 @@ interface OutfitSwipeStackProps {
   emptyState?: React.ReactNode;
 }
 
-const CardFace: React.FC<{ card: SwipeStackCard; position: number; total: number }> = ({ card, position, total }) => (
+const CardFace = React.memo(({ card, position, total }: { card: SwipeStackCard; position: number; total: number }) => (
   <View style={styles.cardInner}>
     <View style={styles.cardHeader}>
       <View style={styles.wardrobePill}>
@@ -110,7 +102,7 @@ const CardFace: React.FC<{ card: SwipeStackCard; position: number; total: number
       </View>
     </View>
   </View>
-);
+));
 
 export const OutfitSwipeStack = forwardRef<OutfitSwipeStackHandle, OutfitSwipeStackProps>(
   ({ cards, activeIndex, onSwipeRight, onSwipeLeft, beforeSwipe, reducedMotion = false, height = 420, emptyState }, ref) => {
@@ -163,7 +155,7 @@ export const OutfitSwipeStack = forwardRef<OutfitSwipeStackHandle, OutfitSwipeSt
       // itself re-requested URIs that <ExpoImage> was already decoding on
       // screen, which raced the on-screen decode and made the current piece
       // blink blank mid-load ("shows up, disappears, reappears"). The top
-      // card's tiles are already mounted — warm only mid/back + one extra.
+      // card's tiles are already mounted — warm only mid/back.
       cards.slice(activeIndex + 1, activeIndex + 1 + PREFETCH_LOOKAHEAD).forEach((card) => {
         card.items.forEach((item) => {
           if (typeof item.image !== 'string' || !item.image) return;
@@ -185,7 +177,7 @@ export const OutfitSwipeStack = forwardRef<OutfitSwipeStackHandle, OutfitSwipeSt
     }, [cardsSignature, activeIndex]);
 
     const springConfig = reducedMotion ? SPRING_BACK_REDUCED : SPRING_BACK;
-    const flyDuration = reducedMotion ? 0 : 240;
+    const flyDuration = reducedMotion ? 0 : 90;
 
     const resetRejected = () => {
       busyRef.current = false;
@@ -224,7 +216,9 @@ export const OutfitSwipeStack = forwardRef<OutfitSwipeStackHandle, OutfitSwipeSt
         const controller = new AbortController();
         authorizationRef.current = controller;
         setChecking(true);
-        translateX.value = withSpring(0, springConfig);
+        // Keep most of the current card visible while acknowledging the
+        // direction immediately; rejected requests still spring fully back.
+        translateX.value = withSpring((direction === 'right' ? 1 : -1) * SCREEN_WIDTH * 0.08, springConfig);
         translateY.value = withSpring(0, springConfig);
         let accepted = false;
         try { accepted = await beforeSwipe(card, direction, controller.signal); } catch { /* Rejection keeps the card visible. */ }
@@ -334,34 +328,35 @@ export const OutfitSwipeStack = forwardRef<OutfitSwipeStackHandle, OutfitSwipeSt
 
     return (
       <View style={[styles.stage, { height }]}>
-        {backCard && (
-          <View key={`back-${backCard.key}`} style={[styles.cardSlot, styles.backSlot]}>
-            <CardFace card={backCard} position={activeIndex + 3} total={cards.length} />
-          </View>
-        )}
-        {midCard && (
-          <Animated.View key={`mid-${midCard.key}`} style={[styles.cardSlot, midCardStyle]}>
-            <CardFace card={midCard} position={activeIndex + 2} total={cards.length} />
-          </Animated.View>
-        )}
-        {topCard ? (
-          <GestureDetector gesture={panGesture}>
-            <Animated.View testID={`swipe-card-${topCard.key}`} key={`top-${topCard.key}`} style={[styles.cardSlot, topCardStyle]}>
-              <CardFace card={topCard} position={activeIndex + 1} total={cards.length} />
-              {checking && <View pointerEvents="none" style={styles.authorizationIndicator}><ActivityIndicator testID="swipe-authorization-pending" accessibilityLabel={t('common.loading')} color="#0A1931" /></View>}
-              <Animated.View pointerEvents="none" style={[styles.stamp, styles.stampSave, saveStampStyle]}>
-                <Ionicons name="heart" size={15} color="#FFFFFF" />
-                <ScaledText style={styles.stampSaveText}>SAVE</ScaledText>
+        {[
+          { card: backCard, role: 'back' as const, position: activeIndex + 3 },
+          { card: midCard, role: 'mid' as const, position: activeIndex + 2 },
+          { card: topCard, role: 'top' as const, position: activeIndex + 1 },
+        ].filter((entry): entry is { card: SwipeStackCard; role: 'back' | 'mid' | 'top'; position: number } => !!entry.card)
+          .map(({ card, role, position }) => (
+            // The same keyed hierarchy is retained as a card moves from back
+            // to middle to top, avoiding repeated native image view mounts.
+            <GestureDetector key={card.key} gesture={role === 'top' ? panGesture : Gesture.Pan().enabled(false)}>
+              <Animated.View
+                testID={role === 'top' ? `swipe-card-${card.key}` : undefined}
+                style={[styles.cardSlot, role === 'back' ? styles.backSlot : role === 'mid' ? midCardStyle : topCardStyle]}
+              >
+                <CardFace card={card} position={position} total={cards.length} />
+                {role === 'top' && checking && <View pointerEvents="none" style={styles.authorizationIndicator}><ActivityIndicator testID="swipe-authorization-pending" accessibilityLabel={t('common.loading')} color="#0A1931" /></View>}
+                {role === 'top' && <>
+                  <Animated.View pointerEvents="none" style={[styles.stamp, styles.stampSave, saveStampStyle]}>
+                    <Ionicons name="heart" size={15} color="#FFFFFF" />
+                    <ScaledText style={styles.stampSaveText}>SAVE</ScaledText>
+                  </Animated.View>
+                  <Animated.View pointerEvents="none" style={[styles.stamp, styles.stampSkip, skipStampStyle]}>
+                    <Ionicons name="close" size={16} color="#0A1931" />
+                    <ScaledText style={styles.stampSkipText}>SKIP</ScaledText>
+                  </Animated.View>
+                </>}
               </Animated.View>
-              <Animated.View pointerEvents="none" style={[styles.stamp, styles.stampSkip, skipStampStyle]}>
-                <Ionicons name="close" size={16} color="#0A1931" />
-                <ScaledText style={styles.stampSkipText}>SKIP</ScaledText>
-              </Animated.View>
-            </Animated.View>
-          </GestureDetector>
-        ) : (
-          emptyState ?? null
-        )}
+            </GestureDetector>
+          ))}
+        {!topCard && (emptyState ?? null)}
       </View>
     );
   },

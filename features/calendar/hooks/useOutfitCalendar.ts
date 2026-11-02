@@ -110,6 +110,18 @@ export function useOutfitCalendar() {
     const loadWardrobeItems = useCallback(async () => {
         const revision = authEvents.getRevision();
         try {
+            // Cached owned choices are immediately usable while fresh data loads.
+            const auth = require('../../../store/auth').default.getState();
+            const owner = auth.session?.user.id;
+            if (owner && authEvents.canApplyToUser(owner)) {
+                const cache: { items: import('../../../src/types/domain').ClothingItem[] } =
+                    require('../../../store/wardrobeStore').default.getState();
+                setWardrobeItems(cache.items.filter(item => item.userId === owner).map(item => ({
+                    id: item.id, type: item.subCategory || item.category || '',
+                    image: item.imageUrl || '', imageUrl: item.imageUrl || '',
+                    color: item.primaryColor || '', name: item.name || '', category: item.category || '',
+                })));
+            }
             let items = await fetchItemsFromServer();
             if (revision !== authEvents.getRevision()) return;
             if (items === null) {

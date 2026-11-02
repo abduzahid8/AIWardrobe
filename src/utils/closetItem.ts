@@ -4,9 +4,10 @@ import { normalizeCategory } from './categoryMapper';
 
 /** Preserve original and compact media references when adapting persisted garments for the closet. */
 export function toClosetItem(item: ClothingItem): ClosetClothingItem {
-  const category = normalizeCategory(item.subCategory || item.category || '');
+  const category = item.subCategory || normalizeCategory(item.category || '');
   return {
     _id: item.id, id: item.id, type: category, itemType: category,
+    name: item.name,
     color: item.primaryColor || 'various',
     imageUrl: item.imageUrl, image: item.imageUrl, thumbnailUrl: item.thumbnailUrl,
     category: normalizeCategory(item.category || ''), wearCount: item.wearCount,

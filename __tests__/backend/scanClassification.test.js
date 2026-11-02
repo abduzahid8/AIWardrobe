@@ -78,7 +78,7 @@ test('video total payload limit is enforced before admission',async()=>{
 
 test('uses the selected NVIDIA vision model contract',async()=>{
  const {handler,fetchMock}=load(async()=>envelope(valid));await handler(request());const body=JSON.parse(fetchMock.mock.calls[0][1].body);
- const expected=process.env.SCAN_CLASSIFICATION_MODEL_EXPECTED||'meta/llama-3.2-11b-vision-instruct';expect(body.model).toBe(expected);if(expected==='nvidia/nemotron-3.5-super-vl-120b-a12b')expect(body.chat_template_kwargs).toEqual({enable_thinking:false});else expect(body.chat_template_kwargs).toBeUndefined();
+ const expected=process.env.SCAN_CLASSIFICATION_MODEL_EXPECTED||'nvidia/nemotron-3.5-super-vl-120b-a12b';expect(body.model).toBe(expected);if(expected==='nvidia/nemotron-3.5-super-vl-120b-a12b')expect(body.chat_template_kwargs).toEqual({enable_thinking:false});else expect(body.chat_template_kwargs).toBeUndefined();
 });
 test('non-sneaker footwear has an honest shoe category and retains its subtype',async()=>{
  const {handler}=load(async()=>envelope({...valid,category:'shoes',section:'tops',shoeType:'boat_shoe'}));const response=await handler(request());expect(response.status).toBe(200);expect((await response.json()).classification).toMatchObject({category:'shoes',section:'shoes',attributes:{shoeType:'boat_shoe'}});
@@ -88,4 +88,12 @@ test.each(['null','unknown',null,undefined])('unknown shoe subtype %j is omitted
 });
 test.each([['sneakers','boat_shoe'],['boots','oxford'],['sandals','derby'],['shirt','boat_shoe'],['shoes','invented']])('contradictory/unknown footwear metadata %s/%s fails closed',async(category,shoeType)=>{
  const {handler}=load(async()=>envelope({...valid,category,shoeType}));const response=await handler(request());expect(response.status).toBe(503);expect((await response.json()).classification).toBeNull();
+});
+
+test('classification uses the available vision endpoint with reasoning disabled', async () => {
+ const {handler,fetchMock}=load(async()=>envelope(valid));
+ await handler(request());
+ const sent=JSON.parse(fetchMock.mock.calls[0][1].body);
+ expect(sent.model).toBe('nvidia/nemotron-3.5-super-vl-120b-a12b');
+ expect(sent.chat_template_kwargs).toEqual({enable_thinking:false});
 });

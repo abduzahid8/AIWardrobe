@@ -126,3 +126,19 @@ test('a pending persistence write cannot make the next request read stale deck h
  const history=await mod.getRotationHistory(scope);
  expect(history.previousDeckProductKeys).toContain('id:just-displayed');
 });
+
+test('footwear history crosses style and occasion changes without leaking clothing or accounts',async()=>{
+ const mod=loadModule(),first=mod.rotationScope('cross-style','shop','old_money','date'),second=mod.rotationScope('cross-style','shop','minimalist','work');
+ const deck=[{items:[{id:'shirt-a',name:'White shirt',macroCategory:'top'},{id:'shoe-a',name:'Black leather loafers',macroCategory:'shoes',imageUrl:'https://catalog.test/loafer.jpg?size=200'}]}];
+ await mod.recordDisplayedDeck(deck,first,'first-style');
+ const history=await mod.getRotationHistory(second);
+ expect(history.previousDeckProductKeys).toEqual([]);
+ expect(history.previousShoeProductKeys).toEqual(expect.arrayContaining(['id:shoe-a','n:black leather loafers','i:catalog.test/loafer.jpg']));
+ expect(history.recentShoeProductKeys).not.toContain('id:shirt-a');
+ expect((await mod.getRotationHistory(mod.rotationScope('other-user','shop','minimalist','work'))).recentShoeProductKeys).toBeUndefined();
+ const shoeWrite=(AsyncStorage.setItem as jest.Mock).mock.calls.find(([key])=>key==='stylistRotationDecks::shoes:cross-style');
+ expect(shoeWrite).toBeDefined();
+ (AsyncStorage.getItem as jest.Mock).mockImplementation(async(key:string)=>key===shoeWrite![0]?shoeWrite![1]:null);
+ const reloaded=await loadModule().getRotationHistory(second);
+ expect(reloaded.previousShoeProductKeys).toContain('id:shoe-a');
+});

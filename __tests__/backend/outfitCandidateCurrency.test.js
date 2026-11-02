@@ -7,7 +7,7 @@ const filename = process.env.OUTFIT_CANDIDATE_SOURCE || path.resolve(__dirname, 
 let source = fs.readFileSync(filename, 'utf8');
 if (process.env.OUTFIT_SIMULATE_MISSING_CURRENCY === '1') source = source.replace(/\s*currency: row.currency,/g, '');
 const compiled = ts.transpileModule(source, {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-const api = new Function('require','exports','Deno',compiled+'\nreturn {fetchShopItemsForAllSlotsEdge,budgetInCurrencyEdge};')(
+const api = new Function('require','exports','Deno',compiled+'\nreturn {fetchShopItemsForAllSlotsEdge,budgetInCurrencyEdge,inferShopColor};')(
  name=>{
   if(name.includes('outfitDiversity')) return require('../../backend/supabase/functions/_shared/outfitDiversity');
   if(name.includes('outfitRotation')) return require('../../backend/supabase/functions/_shared/outfitRotation');
@@ -34,4 +34,11 @@ test('candidate fetch selects and preserves the exact retailer URL',async()=>{
  const rows=await api.fetchShopItemsForAllSlotsEdge({from:()=>chain},['top'],'casual',1,new Set());
  expect(select.mock.calls[0][0].split(',').map(value=>value.trim())).toContain('source_url');
  expect(rows[0].shopUrl).toBe(row.source_url);
+});
+
+
+test('product title color takes precedence over suggested companion colors',()=>{
+ expect(api.inferShopColor({name:'Navy blue cotton shirt',description:'Pair with white trousers and black shoes'})).toBe('navy');
+ expect(api.inferShopColor({name:'Dark green cardigan',description:'White shirt underneath'})).toBe('dark green');
+ expect(api.inferShopColor({color:'burgundy',name:'White shirt'})).toBe('burgundy');
 });

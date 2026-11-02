@@ -1,6 +1,6 @@
 {
   "name": "wardrobe-app",
-  "version": "3.0.0",
+  "version": "3.0.2",
   "main": "index.ts",
   "expo": {
     "doctor": {
@@ -31,6 +31,11 @@
     "shop:sync-md": "node scripts/sync-massimo-dutti.js",
     "shop:sync-md:dry": "node scripts/sync-massimo-dutti.js --dry-run",
     "shop:sync-md:quick": "node scripts/sync-massimo-dutti.js --max 20",
+    "shop:expand-elegant": "node scripts/expand-elegant-menswear.js",
+    "shop:expand-elegant:check": "node scripts/expand-elegant-menswear.js --check",
+    "shop:expand-elegant:apply": "node scripts/expand-elegant-menswear.js --apply",
+    "shop:sync-product-only-feeds": "node scripts/sync-product-only-downloader-feeds.js",
+    "shop:sync-product-only-feeds:check": "node scripts/sync-product-only-downloader-feeds.js --check",
     "test:wdio": "wdio run ./wdio.conf.ts",
     "test:maestro": "maestro test .maestro/expo_go_smoke.yaml --no-reinstall-driver",
     "test:e2e": "npm run test:maestro",
@@ -84,7 +89,6 @@
     "expo-secure-store": "~57.0.4",
     "expo-splash-screen": "~57.0.10",
     "expo-status-bar": "~57.0.1",
-    "expo-tracking-transparency": "~57.0.2",
     "expo-updates": "~57.0.26",
     "expo-video": "~57.0.5",
     "expo-video-thumbnails": "~57.0.2",

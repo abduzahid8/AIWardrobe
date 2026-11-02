@@ -147,3 +147,100 @@ test.each([3,4,5,6,10])('%i admitted shoes meet the minimum across five hosted g
  }
  expect(usage.size).toBe(n);if(n>3)expect(run.some(ids=>!ids.includes('scheduled-3-0'))).toBe(true);
 });
+
+test.each(['outerwear','top','bottom','shoes'])('a locked owned %s remains in all three cards while shop companions rotate',async slot=>{
+ const rows=rotationFixtures.map(p=>({...p,isWardrobe:false,isShopItem:true,price:30,currency:'USD'}));
+ const original=rows.find(p=>p.macroCategory===slot);
+ const anchor={...original,id:'wardrobe-anchor',isWardrobe:true,isShopItem:false,price:undefined};rows.push(anchor);
+ const {handler}=load([],null,null,null,null,'curated');const decks=[];
+ const {productIdentityKeys}=require('../../backend/supabase/functions/_shared/outfitDiversity');
+ for(let g=0;g<2;g++){
+  const body=await(await stylistRequest(rows)).json();body.anchorItemId=anchor.id;
+  body.rotationDecks=decks;body.previousDeckProductKeys=decks.at(-1)?.productKeys||[];body.excludeProductKeys=decks.flatMap(d=>d.productKeys);
+  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));const data=await response.json();
+  expect(response.status).toBe(200);expect(data.outfits).toHaveLength(3);
+  for(const o of data.outfits){expect(o.items).toHaveLength(4);expect(o.items.filter(p=>p.id===anchor.id)).toHaveLength(1);expect(o.items.filter(p=>p.id!==anchor.id).every(p=>p.isShopItem)).toBe(true);}
+  const companions=data.outfits.flatMap(o=>o.items.filter(p=>p.id!==anchor.id)),old=new Set(decks.flatMap(d=>d.productKeys));
+  expect(companions.flatMap(productIdentityKeys).filter(k=>old.has(k))).toEqual([]);
+  decks.push({requestId:'anchor-'+g,productKeys:data.outfits.flatMap(o=>o.items.flatMap(productIdentityKeys))});
+ }
+});
+
+test('searches past incompatible blazers to complete a wardrobe piqué polo with shop companions',async()=>{
+ const anchor={id:'owned-polo',name:'Polo Piquet 1',type:'tees',macroCategory:'top',isWardrobe:true,imageUrl:'https://example.invalid/polo.jpg'};
+ const rows=[anchor,...rotationFixtures.filter(i=>['bottom','shoes'].includes(i.macroCategory)).map(i=>({...i,isWardrobe:false,isShopItem:true,price:30,currency:'USD'}))];
+ const first=Array.from({length:100},(_,i)=>({id:`blocked-${String(i).padStart(3,'0')}`,name:`Wool suit blazer variant${i}`,category:'outerwear',garment_type:'outerwear',price:80,currency:'USD',image_url:`https://example.invalid/blazer${i}.jpg`}));
+ const valid=['Cashmere cardigan','Merino wool cardigan','Fine cotton cardigan'].map((name,i)=>({id:`cardigan-${i}`,name,category:'outerwear',garment_type:'outerwear',price:60,currency:'USD',image_url:`https://example.invalid/cardigan${i}.jpg`,source_url:`https://example.invalid/cardigan${i}`}));
+ let cursor;const q={select:()=>q,eq:()=>q,limit:()=>q,or:()=>q,order:()=>q,abortSignal:()=>q,gt:jest.fn((_field,value)=>{cursor=value;return q;}),then:resolve=>Promise.resolve({data:cursor?valid:first,error:null}).then(resolve)};
+ const {handler}=load([],null,null,null,q,'curated');
+ const body=await(await stylistRequest(rows)).json();Object.assign(body,{stylePreferences:'old_money',occasion:'date',prompt:'Date night',wardrobeOnly:false,anchorItemId:anchor.id});
+ const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
+ const data=await response.json();expect(response.status).toBe(200);expect(data.outfits).toHaveLength(3);
+ expect(q.gt).toHaveBeenCalledWith('id','blocked-099');
+ for(const outfit of data.outfits){expect(outfit.items).toHaveLength(4);expect(outfit.items.some(i=>i.id===anchor.id)).toBe(true);expect(outfit.items.find(i=>i.macroCategory==='outerwear').name).toMatch(/cardigan/i);}
+});
+
+test('three different style selections consume different physical shoes using shared footwear history',async()=>{
+ const rows=['outerwear','top','bottom','shoes'].flatMap((slot,s)=>Array.from({length:12},(_,i)=>({id:`cross-${s}-${i}`,name:['Navy cotton blazer','White cotton shirt','Beige cotton chinos','Brown leather loafers'][s]+` edition ${i}`,macroCategory:slot,type:slot,color:['navy','white','beige','brown'][s],isWardrobe:true,imageUrl:`https://example.invalid/cross-${s}-${i}.jpg`})));
+ const {handler}=load([],null,null,null,null,'curated'),shoeDecks=[];
+ const {productIdentityKeys}=require('../../backend/supabase/functions/_shared/outfitDiversity');
+ for(const style of ['old_money','minimalist','classic']){
+  const body=await(await stylistRequest(rows)).json();Object.assign(body,{stylePreferences:style,occasion:'work',prompt:'Work',rotationDecks:[],previousDeckProductKeys:[],previousShoeProductKeys:shoeDecks.at(-1)?.productKeys||[],recentShoeProductKeys:shoeDecks.flatMap(d=>d.productKeys),shoeRotationDecks:shoeDecks});
+  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
+  const data=await response.json();expect(response.status).toBe(200);expect(data.outfits).toHaveLength(3);expect(data.shoeRotationAudit.previousShoeOverlap).toBe(0);
+  const keys=data.outfits.flatMap(o=>o.items.filter(i=>i.macroCategory==='shoes').flatMap(productIdentityKeys));
+  const seen=new Set(shoeDecks.flatMap(d=>d.productKeys));expect(keys.some(k=>seen.has(k))).toBe(false);
+  shoeDecks.push({requestId:style,productKeys:keys});
+ }
+});
+
+test('three date outfits retain the owned jersey trousers through the final quality gate',async()=>{
+ const anchor={id:'owned-jersey',name:'3D jersey knit trousers',type:'pants',macroCategory:'bottom',isWardrobe:true,imageUrl:'https://example.invalid/jersey.jpg'};
+ const rows=[anchor,...richItems.filter(i=>i.macroCategory!=='bottom')];
+ const {handler}=load([],null,null,null,null,'curated');const body=await(await stylistRequest(rows)).json();Object.assign(body,{stylePreferences:'old_money',occasion:'date',prompt:'Date night',anchorItemId:anchor.id});
+ const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
+ const data=await response.json();expect(response.status).toBe(200);expect(data.outfits).toHaveLength(3);
+ for(const o of data.outfits){expect(o.items).toHaveLength(4);expect(o.items.filter(i=>i.id===anchor.id)).toHaveLength(1);expect(o.qualityAssessment.reasons).toEqual([]);}
+});
+
+test('anchored discovery counts tops compatible with the discovered layers before completing a page',async()=>{
+ const anchor={id:'owned-jersey',name:'3D jersey knit trousers',type:'pants',macroCategory:'bottom',isWardrobe:true,imageUrl:'https://example.invalid/jersey.jpg'};
+ const rows=[anchor,...rotationFixtures.filter(i=>i.macroCategory==='shoes').map(i=>({...i,isShopItem:true,isWardrobe:false,price:40,currency:'USD'}))];
+ const layers=Array.from({length:6},(_,i)=>({id:`cardigan-${i}`,name:`Fine merino sweater edition ${i}`,category:'outerwear',garment_type:'outerwear',price:60,currency:'USD',image_url:`https://example.invalid/cardigan-${i}.jpg`}));
+ const knits=Array.from({length:100},(_,i)=>({id:`knit-${String(i).padStart(3,'0')}`,name:`Merino knit polo edition ${i}`,category:'tops',garment_type:'upper_body',price:40,currency:'USD',image_url:`https://example.invalid/knit-${i}.jpg`}));
+ const shirts=Array.from({length:6},(_,i)=>({id:`shirt-${i}`,name:`White cotton shirt edition ${i}`,category:'tops',garment_type:'upper_body',price:40,currency:'USD',image_url:`https://example.invalid/shirt-${i}.jpg`}));
+ let cursor,slot;const q={select:()=>q,eq:()=>q,limit:()=>q,order:()=>q,abortSignal:()=>q,or:filter=>{slot=filter.includes('category.eq.outerwear')?'outerwear':'top';cursor=undefined;return q;},gt:jest.fn((_field,value)=>{cursor=value;return q;}),then:resolve=>Promise.resolve({data:slot==='outerwear'?layers:cursor?shirts:knits,error:null}).then(resolve)};
+ const {handler}=load([],null,null,null,q,'curated');const body=await(await stylistRequest(rows)).json();Object.assign(body,{stylePreferences:'old_money',occasion:'date',prompt:'Date night',anchorItemId:anchor.id,wardrobeOnly:false});
+ const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
+ const data=await response.json();expect(response.status).toBe(200);expect(data.outfits).toHaveLength(3);expect(q.gt).toHaveBeenCalledWith('id','knit-099');
+ for(const o of data.outfits){expect(o.items.find(i=>i.macroCategory==='top').name).toMatch(/cotton shirt/);expect(o.items.some(i=>i.id===anchor.id)).toBe(true);}
+});
+
+test.each(['old_money','classic','minimalist','casual'])('owned Bexford Oxfords remain shoes in all three %s date looks',async style=>{
+ const anchor={id:'owned-oxfords',name:'Bexford Leather Oxfords - Black',type:'shoes',category:'shoes',macroCategory:'shoes',isWardrobe:true,isShopItem:false,imageUrl:'https://example.invalid/bexford.jpg'};
+ const rows=[anchor,...richItems.filter(i=>i.macroCategory!=='shoes').map(i=>({...i,isWardrobe:false,isShopItem:true,price:40,currency:'USD'}))];
+ const {handler}=load([],null,null,null,null,'curated');const body=await(await stylistRequest(rows)).json();Object.assign(body,{stylePreferences:style,occasion:'date',prompt:'Date night',anchorItemId:anchor.id});
+ const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
+ const data=await response.json();expect(response.status).toBe(200);expect(data.outfits).toHaveLength(3);
+ for(const o of data.outfits){expect(o.items).toHaveLength(4);expect(o.items.find(i=>i.macroCategory==='shoes').id).toBe(anchor.id);expect(o.items.filter(i=>i.id!==anchor.id).every(i=>i.isShopItem)).toBe(true);}
+});
+
+test('date ranking retains three compatible piqué polos instead of creating a falsely sparse top slot',async()=>{
+ const anchor={id:'owned-oxfords',name:'Bexford Leather Oxfords - Black',type:'shoes',macroCategory:'shoes',isWardrobe:true,imageUrl:'https://example.invalid/oxford.jpg'};
+ const companions=['outerwear','top','bottom'].flatMap((slot,s)=>Array.from({length:3},(_,i)=>({id:`date-pique-${s}-${i}`,name:['Merino cardigan','Cotton piqué polo shirt','Beige cotton chinos'][s]+` edition ${i}`,type:slot,macroCategory:slot,isWardrobe:false,isShopItem:true,price:40,currency:'USD',imageUrl:`https://example.invalid/date-pique-${s}-${i}.jpg`})));
+ const {handler}=load([],null,null,null,null,'curated');const body=await(await stylistRequest([anchor,...companions])).json();Object.assign(body,{stylePreferences:'old_money',occasion:'date',prompt:'Date night',anchorItemId:anchor.id});
+ const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
+ const data=await response.json();expect(response.status).toBe(200);expect(data.outfits).toHaveLength(3);expect(new Set(data.outfits.flatMap(o=>o.items.filter(i=>i.macroCategory==='top').map(i=>i.id))).size).toBe(3);
+});
+
+test('misfiled coated jeans cannot complete the outerwear discovery page for an Oxford anchor',async()=>{
+ const anchor={id:'owned-oxfords',name:'Bexford Leather Oxfords - Black',type:'shoes',macroCategory:'shoes',isWardrobe:true,imageUrl:'https://example.invalid/oxfords.jpg'};
+ const rows=[anchor,...rotationFixtures.filter(i=>['top','bottom'].includes(i.macroCategory))];
+ const bad=Array.from({length:100},(_,i)=>({id:`bad-layer-${String(i).padStart(3,'0')}`,name:`Slim-Straight Leg Metallic Coated Jeans edition ${i}`,category:'outerwear',garment_type:'outerwear',price:60,currency:'USD',image_url:`https://example.invalid/jeans-${i}.jpg`}));
+ const good=['Navy wool blazer','Grey wool blazer','Beige cotton blazer'].map((name,i)=>({id:`real-layer-${i}`,name,category:'outerwear',garment_type:'outerwear',price:80,currency:'USD',image_url:`https://example.invalid/blazer-${i}.jpg`}));
+ let cursor;const q={select:()=>q,eq:()=>q,limit:()=>q,or:()=>q,order:()=>q,abortSignal:()=>q,gt:jest.fn((_field,value)=>{cursor=value;return q;}),then:resolve=>Promise.resolve({data:cursor?good:bad,error:null}).then(resolve)};
+ const {handler}=load([],null,null,null,q,'curated');const body=await(await stylistRequest(rows)).json();Object.assign(body,{stylePreferences:'old_money',occasion:'date',prompt:'Date night',anchorItemId:anchor.id,wardrobeOnly:false});
+ const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
+ const data=await response.json();expect(response.status).toBe(200);expect(data.outfits).toHaveLength(3);expect(q.gt).toHaveBeenCalledWith('id','bad-layer-099');
+ for(const o of data.outfits)expect(o.items.find(i=>i.macroCategory==='outerwear').name).toMatch(/blazer/);
+});

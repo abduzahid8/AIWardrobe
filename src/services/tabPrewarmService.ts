@@ -18,7 +18,7 @@
  */
 
 
-import { supabase } from '../../lib/supabase';
+import { getCachedGuideContent, loadGuideContent } from './guideContent';
 import {
     prefetchShopCatalog,
     getCachedShopCatalog,
@@ -33,32 +33,17 @@ const logger = createLogger('TabPrewarm');
 
 let dataPrewarmed = false;
 let imagesPrewarmed = false;
-let guideHeroCache: { data: any; fetchedAt: number } | null = null;
-const GUIDE_HERO_TTL_MS = 5 * 60 * 1000;
 
 const isValidImageUrl = (v: unknown): v is string =>
     typeof v === 'string' && v.length > 0 && v.startsWith('http');
 
 /** InspoScreen checks this before firing its own `guide_page` query. */
-export function getPrewarmedGuideHero(): any | null {
-    if (guideHeroCache && Date.now() - guideHeroCache.fetchedAt <= GUIDE_HERO_TTL_MS) {
-        return guideHeroCache.data;
-    }
-    return null;
+export function getPrewarmedGuideHero() {
+    return getCachedGuideContent();
 }
 
 async function prewarmGuideHero(): Promise<void> {
-    try {
-        if (getPrewarmedGuideHero()) return;
-        const { data } = await supabase
-            .from('guide_page')
-            .select('*')
-            .eq('is_active', true)
-            .single();
-        if (data) guideHeroCache = { data, fetchedAt: Date.now() };
-    } catch {
-        // Non-critical — InspoScreen fetches on mount as before.
-    }
+    try { await loadGuideContent(); } catch { /* The guide retries when opened. */ }
 }
 
 async function prewarmImages(): Promise<void> {

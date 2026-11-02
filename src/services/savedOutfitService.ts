@@ -5,7 +5,7 @@ import { prepareWardrobeItemMedia } from './wardrobeItemMedia';
 
 export interface SavedOutfitInput {
   id: string;
-  items: Array<{ id: string; type?: string; image?: string; imageUrl?: string; name?: string }>;
+  items: Array<{ id: string; type?: string; category?: string; macroCategory?: string; image?: string; imageUrl?: string; name?: string }>;
   date: string;
   occasion: string;
   caption?: string;

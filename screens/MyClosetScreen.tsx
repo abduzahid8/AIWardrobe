@@ -1,3 +1,4 @@
+import * as ImageManipulator from 'expo-image-manipulator';
 import readinessLogger from '../src/utils/logger';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, TouchableOpacity, StyleSheet, Dimensions, ScrollView, FlatList, ActivityIndicator, Alert, TextInput, StatusBar, Platform, Linking, Modal, Pressable,  } from 'react-native'
@@ -508,7 +509,7 @@ const MyClosetScreen = () => {
         // resolves to "outerwear" (main-top/layer) instead of "top".
         const anchorMacro = getMacroCategory(
             item.category || '',
-            item.type || item.itemType || '',
+            [item.type, item.itemType, item.name].filter(Boolean).join(' '),
         );
         navigation.navigate('AIOutfit', {
             source: 'wardrobe',
@@ -516,7 +517,7 @@ const MyClosetScreen = () => {
             baseItem: {
                 id: item.id || item._id || '',
                 imageUrl: item.imageUrl || item.image,
-                name: item.type || item.itemType || item.category,
+                name: item.name || item.type || item.itemType || item.category,
                 type: item.type || item.itemType || item.category,
                 macroCategory: anchorMacro,
                 color: item.color,
@@ -620,7 +621,16 @@ const MyClosetScreen = () => {
 
             if (!result.canceled && result.assets[0]) {
                 const asset = result.assets[0];
-                runMagicPipeline(asset.base64 || null);
+                // Bound AI payload size and normalize HEIC/PNG camera assets to JPEG.
+                const longestSide = Math.max(asset.width, asset.height);
+                const resized = await ImageManipulator.manipulateAsync(
+                    asset.uri,
+                    longestSide > 1280
+                        ? [{ resize: asset.width >= asset.height ? { width: 1280 } : { height: 1280 } }]
+                        : [],
+                    { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG, base64: true },
+                );
+                await runMagicPipeline(resized.base64 || null);
             }
         } catch (error: any) {
             const msg: string = error?.message ?? '';
@@ -660,7 +670,7 @@ const MyClosetScreen = () => {
             }]);
 
             if (!result.success) {
-                throw new Error("AI processing failed");
+                throw new Error(result.errorMessage || t('myCloset.uploadError'));
             }
 
             // Validate that we have a valid image URL

@@ -6,7 +6,7 @@ import { authEvents } from '../store/authEvents';
  */
 
 import React, { useState, useCallback, useMemo, useEffect, useRef, useDeferredValue } from 'react';
-import { View, TouchableOpacity, StyleSheet, Dimensions, ScrollView, FlatList, StatusBar, TextInput, ActivityIndicator, Linking, Platform,  } from 'react-native'
+import { View, TouchableOpacity, StyleSheet, Dimensions, ScrollView, FlatList, StatusBar, TextInput, ActivityIndicator, Linking, Platform, Modal,  } from 'react-native'
 import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,6 +32,7 @@ import type { ShopCatalogItem } from '../src/types/shop';
 import { INSPO_MENS_SHOP_ITEMS, CLASSIC_MENS_ITEMS } from '../data/inspoMensShopItems';
 import { useShopCatalog } from '../hooks/useShopCatalog';
 import { useFeaturedCapsules, type FeaturedCapsule } from '../hooks/useFeaturedCapsules';
+import { useGuideLooks, type GuideLook, type GuideLookProduct } from '../hooks/useGuideLooks';
 import { useTranslation } from 'react-i18next';
 import { inferShopRowMacro } from '../src/utils/shopCatalogOrder';
 
@@ -43,9 +44,67 @@ const { colors, spacing, typography, radius } = LiquidGlass2026Theme;
 // Featured Capsules now come from Supabase (`featured_capsules` table) via
 // `useFeaturedCapsules`. Rows are admin-editable from the Supabase dashboard.
 
+type GuideCategory = 'featured' | 'capsules' | 'outfits';
+type BrandLookCard = GuideLook & { subtitle: string; image: string; linkUrl: string; category: GuideCategory; isBrandLook: true };
+const fallbackProduct = (lookId: string, id: string, name: string, category: string, image_url: string, price: number, currency: string, product_url: string, sort_order: number): GuideLookProduct => ({
+    id, look_id: lookId, name, category, image_url, price, currency, product_url, sort_order,
+});
+const LOCAL_GUIDE_LOOKS: BrandLookCard[] = [
+    {
+        id: 'asket-fw26-01', brand: 'Asket', collection_name: 'Fall/Winter 2026', title: 'Look 01',
+        subtitle: 'Asket · Fall/Winter 2026', image: 'https://www.asket.com/images/2160x1543/da8501083a/asket_fw26_looks_mens_15_exteneded_header.jpg?auto=format&q=80&w=1000',
+        image_url: '', source_url: 'https://www.asket.com/en-us/journal/inspiration/mens-autumn-winter-looks-2026', linkUrl: 'https://www.asket.com/en-us/journal/inspiration/mens-autumn-winter-looks-2026', sort_order: 10, category: 'capsules', isBrandLook: true,
+        products: [
+            fallbackProduct('asket-fw26-01', 'asket-fw26-01-jacket', 'The Field Jacket · Khaki Green', 'LAYER', 'https://images.asket.com/products/images/488_FJT-MC-KIG-thumbnail-original.jpg', 650, 'USD', 'https://www.asket.com/en-us/mens-field-jacket-khaki-green', 10),
+            fallbackProduct('asket-fw26-01', 'asket-fw26-01-sweater', 'The Heavy Wool Sweater · Black', 'TOP', 'https://images.asket.com/products/images/131_HWS-MA-BLA-thumbnail-original.jpg', 260, 'USD', 'https://www.asket.com/en-us/mens-heavy-wool-sweater-black', 20),
+            fallbackProduct('asket-fw26-01', 'asket-fw26-01-jeans', 'The Loose Jeans · Raw Denim', 'BOTTOM', 'https://images.asket.com/products/images/246_RD4-MK-RWD-thumbnail-original.jpg', 230, 'USD', 'https://www.asket.com/en-us/mens-loose-jeans-raw-denim', 30),
+        ],
+    },
+    {
+        id: 'canali-ss27-01', brand: 'Canali', collection_name: 'Spring/Summer 2027 preview', title: 'Look 01',
+        subtitle: 'Canali · Spring/Summer 2027 preview', image: 'https://canali.vtexassets.com/assets/vtex.file-manager-graphql/images/d3f94624-638e-4535-b4b7-dfd5acf8bbc8___55fcdc9efef8053172d5934e355f9aff.jpg',
+        image_url: '', source_url: 'https://intl.canali.com/collection/spring-summer/preview', linkUrl: 'https://intl.canali.com/collection/spring-summer/preview', sort_order: 20, category: 'capsules', isBrandLook: true,
+        products: [
+            fallbackProduct('canali-ss27-01', 'canali-ss27-01-jacket', 'Dark brown Canali Travel wool flannel modern-fit double-breasted jacket', 'LAYER', 'https://canalius.vtexassets.com/arquivos/ids/373348/15486-AN04763-902_a_.jpg.jpg?v=639207720575630000', 2150, 'USD', 'https://us.canali.com/dark-brown-canali-travel-wool-flannel-modern-fit-double-breasted-jacket-15486an04763902/p', 10),
+            fallbackProduct('canali-ss27-01', 'canali-ss27-01-trousers', 'Dark brown Canali Travel wool flannel regular-fit pants', 'BOTTOM', 'https://canalius.vtexassets.com/arquivos/ids/373421/71119-AN04763-902_a_.jpg.jpg?v=639207721021500000', 725, 'USD', 'https://us.canali.com/dark-brown-canali-travel-wool-flannel-regular-fit-pants-71119an04763902/p', 20),
+            fallbackProduct('canali-ss27-01', 'canali-ss27-01-polo', 'Ochre structured ribbed merino wool polo shirt', 'TOP', 'https://canali.vtexassets.com/arquivos/ids/539022/C1134-MK02483-502_a_.jpg', 450, 'GBP', 'https://gb.canali.com/ochre-structured-ribbed-merino-wool-polo-shirt-c1134mk02483502/p', 30),
+            fallbackProduct('canali-ss27-01', 'canali-ss27-01-cap', 'White linen and silk blend baseball cap', 'ACCESSORY', 'https://canalius.vtexassets.com/arquivos/ids/368231/H155-YA00132-001_a_.jpg?v=639142815347370000', 695, 'USD', 'https://gb.canali.com/white-linen-and-silk-blend-baseball-cap-h155ya00132001/p', 40),
+            fallbackProduct('canali-ss27-01', 'canali-ss27-01-loafers', 'Black calfskin Penny loafers', 'SHOES', 'https://canali.vtexassets.com/arquivos/ids/531343/611242-RA00527-112_a_.jpg', 450, 'GBP', 'https://gb.canali.com/black-calfskin-penny-loafers-611242ra00527112/p', 50),
+            fallbackProduct('canali-ss27-01', 'canali-ss27-01-jacket-blue', 'Relaxed fit tricot effect navy blue 180s wool jacket', 'LAYER', 'https://canali.vtexassets.com/arquivos/ids/546153/31220F-CJ06154-301_a_.jpg', 2250, 'GBP', 'https://gb.canali.com/relaxed-fit-tricot-effect-navy-blue-180s-wool-jacket-31220fcj06154301/p', 60),
+        ],
+    },
+    { id: 'canali-ss27-02', brand: 'Canali', collection_name: 'Spring/Summer 2027 preview', title: 'Look 02', subtitle: 'Canali · Spring/Summer 2027 preview', image: 'https://canali.vtexassets.com/assets/vtex.file-manager-graphql/images/ee5972ac-2a1d-410b-a3f5-a4321110cbcc___ce130248b80403683c6a2681c8d6d980.jpg', image_url: '', source_url: 'https://intl.canali.com/collection/spring-summer/preview', linkUrl: 'https://intl.canali.com/collection/spring-summer/preview', sort_order: 21, category: 'capsules', isBrandLook: true, products: [] },
+    { id: 'canali-ss27-03', brand: 'Canali', collection_name: 'Spring/Summer 2027 preview', title: 'Look 03', subtitle: 'Canali · Spring/Summer 2027 preview', image: 'https://canali.vtexassets.com/assets/vtex.file-manager-graphql/images/5d1a8385-d2e1-43c6-a8d4-7526dd4a5b21___0c1b82e15fd91a049a68b5b7fe104504.jpg', image_url: '', source_url: 'https://intl.canali.com/collection/spring-summer/preview', linkUrl: 'https://intl.canali.com/collection/spring-summer/preview', sort_order: 22, category: 'capsules', isBrandLook: true, products: [] },
+    { id: 'cos-fw26-01', brand: 'COS', collection_name: 'Fall/Winter 2026', title: 'Look 01', subtitle: 'COS · Fall/Winter 2026', image: 'https://media.cos.com/sb/251958/2479x3718/e234513963/aw26-campaign-shoot_08.jpg?imwidth=1000', image_url: '', source_url: 'https://www.cos.com/en-gb/features/collections/men-s-autumn-winter-2026-collection', linkUrl: 'https://www.cos.com/en-gb/features/collections/men-s-autumn-winter-2026-collection', sort_order: 30, category: 'capsules', isBrandLook: true, products: [] },
+    { id: 'cos-fw26-02', brand: 'COS', collection_name: 'Fall/Winter 2026', title: 'Look 02', subtitle: 'COS · Fall/Winter 2026', image: 'https://media.cos.com/sb/251958/2549x3823/9b47c79103/aw26-campaign-shoot_07.jpg?imwidth=1000', image_url: '', source_url: 'https://www.cos.com/en-gb/features/collections/men-s-autumn-winter-2026-collection', linkUrl: 'https://www.cos.com/en-gb/features/collections/men-s-autumn-winter-2026-collection', sort_order: 31, category: 'capsules', isBrandLook: true, products: [] },
+    { id: 'todd-snyder-fw26-01', brand: 'Todd Snyder', collection_name: 'Fall/Winter 2026', title: 'Look 01', subtitle: 'Todd Snyder · Fall/Winter 2026', image: 'https://www.toddsnyder.com/cdn/shop/files/Lookbook_Image_3of3_1280x1920_9acc0a90-29dd-45c9-9bd3-8b385b86e134.jpg?v=1771015043&width=600', image_url: '', source_url: 'https://www.toddsnyder.com/blogs/editorials/fall-winter-2026-lookbook-american-form', linkUrl: 'https://www.toddsnyder.com/blogs/editorials/fall-winter-2026-lookbook-american-form', sort_order: 40, category: 'capsules', isBrandLook: true, products: [] },
+    { id: 'todd-snyder-fw26-02', brand: 'Todd Snyder', collection_name: 'Fall/Winter 2026', title: 'Look 02', subtitle: 'Todd Snyder · Fall/Winter 2026', image: 'https://www.toddsnyder.com/cdn/shop/files/Lookbook_Image_2of3_1280x1920_35c6efb9-83d0-4374-8984-a3a88e643e49.jpg?v=1771015059&width=600', image_url: '', source_url: 'https://www.toddsnyder.com/blogs/editorials/fall-winter-2026-lookbook-american-form', linkUrl: 'https://www.toddsnyder.com/blogs/editorials/fall-winter-2026-lookbook-american-form', sort_order: 41, category: 'capsules', isBrandLook: true, products: [] },
+    { id: 'todd-snyder-fw26-03', brand: 'Todd Snyder', collection_name: 'Fall/Winter 2026', title: 'Look 03', subtitle: 'Todd Snyder · Fall/Winter 2026', image: 'https://www.toddsnyder.com/cdn/shop/files/Lookbook_Image_1of3_1280x1920_922db451-9502-4aa8-9c32-d1781b30503f.jpg?v=1771015079&width=600', image_url: '', source_url: 'https://www.toddsnyder.com/blogs/editorials/fall-winter-2026-lookbook-american-form', linkUrl: 'https://www.toddsnyder.com/blogs/editorials/fall-winter-2026-lookbook-american-form', sort_order: 42, category: 'capsules', isBrandLook: true, products: [] },
+];
+
 const CAPSULE_CARD_WIDTH = 180;
 const CAPSULE_CARD_HEIGHT = 250;
 const PRODUCT_CARD_WIDTH = (SCREEN_WIDTH - spacing.screenPadding * 2 - spacing.sm) / 2;
+
+const GuideLookProductCard = ({ product }: { product: GuideLookProduct }) => {
+    const displayPrice = useUzsPrice(Number(product.price ?? 0), product.currency ?? undefined);
+    return (
+        <View style={styles.lookProductCard}>
+            <View style={styles.lookProductImageBox}>
+                <CachedImage uri={product.image_url} style={styles.lookProductImage} contentFit="contain" contentPosition="center" />
+            </View>
+            <View style={styles.lookProductInfo}>
+                <ScaledText style={styles.lookProductCategory}>{product.category}</ScaledText>
+                <ScaledText style={styles.lookProductName} numberOfLines={2}>{product.name}</ScaledText>
+                <ScaledText style={styles.lookProductPrice}>{product.price == null ? 'Collection preview' : displayPrice || `${product.price} ${product.currency || ''}`}</ScaledText>
+                <TouchableOpacity style={styles.lookProductBuy} onPress={() => Linking.openURL(product.product_url).catch(() => {})} accessibilityRole="button" accessibilityLabel={`Buy ${product.name}`}>
+                    <Ionicons name="cart-outline" size={15} color="#FFFFFF" />
+                    <ScaledText style={styles.lookProductBuyText}>Buy</ScaledText>
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
+};
 
 // ── Shop price + spotlight helpers ──────────────────────────────────────
 
@@ -71,6 +130,32 @@ const isSpotlightEligible = (item: ShopCatalogItem): boolean => {
 
 const isPantsItem = (item: ShopCatalogItem): boolean =>
     getShopItemMacro(item) === 'bottom';
+
+// The catalog is ordered for ingestion, so consecutive rows often have the
+// same garment type. Keep each type's source order while mixing the types in
+// the Shop feed. Categories with fewer products naturally drop out.
+const mixShopGarmentTypes = (items: ShopCatalogItem[]): ShopCatalogItem[] => {
+    const groups = new Map<string, ShopCatalogItem[]>();
+    for (const item of items) {
+        const type = getShopItemMacro(item);
+        if (!groups.has(type)) groups.set(type, []);
+        groups.get(type)!.push(item);
+    }
+    if (groups.size < 2) return items;
+
+    const mixed: ShopCatalogItem[] = [];
+    const types = [...groups.keys()];
+    const offsets = new Map(types.map((type) => [type, 0]));
+    while (mixed.length < items.length) {
+        for (const type of types) {
+            const offset = offsets.get(type)!;
+            const next = groups.get(type)![offset];
+            if (next) mixed.push(next);
+            offsets.set(type, offset + 1);
+        }
+    }
+    return mixed;
+};
 
 // ── Sub-Components ──────────────────────────────────────
 
@@ -345,7 +430,7 @@ const GuideGridCard = ({
                 activeOpacity={0.92}
                 onPress={() => onPress(item)}
                 accessibilityRole="button"
-                accessibilityLabel={`${item.title}. ${t('inspo.shopThisLook')}`}
+                accessibilityLabel={item.isBrandLook ? `${item.subtitle}, ${item.title}. View look details` : `${item.title}. ${t('inspo.shopThisLook')}`}
             >
                 <CachedImage
                     uri={typeof item.image === 'string' ? item.image : ''}
@@ -358,14 +443,12 @@ const GuideGridCard = ({
                 <ScaledText style={styles.guideGridPlate}>{String(plate).padStart(2, '0')}</ScaledText>
                 <ScaledText style={styles.guideGridCardTitle} numberOfLines={1}>{item.title}</ScaledText>
                 {!!item.subtitle && (
-                    <ScaledText style={styles.guideGridCardSubtitle} numberOfLines={1}>{item.subtitle}</ScaledText>
+                    <ScaledText style={styles.guideGridCardSubtitle} numberOfLines={2}>{item.subtitle}</ScaledText>
                 )}
             </View>
         </View>
     );
 };
-
-type GuideCategory = 'featured' | 'capsules' | 'outfits';
 
 // ── Main Component ──────────────────────────────────────
 
@@ -377,101 +460,56 @@ const InspoScreen = () => {
 
     const [searchQuery, setSearchQuery] = useState('');
     const deferredSearchQuery = useDeferredValue(searchQuery);
-    const {
-        items: syncedShopItems,
-        loading: shopCatalogLoading,
-        loadingMore: shopCatalogLoadingMore,
-        error: shopCatalogError,
-        hasMore: shopCatalogHasMore,
-        loadMore: loadMoreShopCatalog,
-        refresh: refreshShopCatalog,
-    } = useShopCatalog({ source: 'all', search: deferredSearchQuery });
+    // Fetch each garment family independently. The catalog's global
+    // sort_order can contain hundreds of shirts before its first pair of
+    // trousers or shoes, so sorting a single page cannot create a mixed feed.
+    const topsCatalog = useShopCatalog({ category: 'tops', source: 'all', search: deferredSearchQuery });
+    const bottomsCatalog = useShopCatalog({ category: 'bottoms', source: 'all', search: deferredSearchQuery });
+    const shoesCatalog = useShopCatalog({ category: 'shoes', source: 'all', search: deferredSearchQuery });
+    const outerwearCatalog = useShopCatalog({ category: 'outerwear', source: 'all', search: deferredSearchQuery });
+    const accessoriesCatalog = useShopCatalog({ category: 'accessory', source: 'all', search: deferredSearchQuery });
+    const dressesCatalog = useShopCatalog({ category: 'dresses', source: 'all', search: deferredSearchQuery });
+    const shopCatalogs = [topsCatalog, bottomsCatalog, shoesCatalog, outerwearCatalog, accessoriesCatalog, dressesCatalog];
+    const syncedShopItems = useMemo(() => {
+        const seen = new Set<string>();
+        return shopCatalogs.flatMap((catalog) => catalog.items.filter((item) => {
+            const id = String(item.id);
+            if (seen.has(id)) return false;
+            seen.add(id);
+            return true;
+        }));
+    }, [topsCatalog.items, bottomsCatalog.items, shoesCatalog.items, outerwearCatalog.items, accessoriesCatalog.items, dressesCatalog.items]);
+    const shopCatalogLoading = shopCatalogs.every((catalog) => catalog.loading && catalog.items.length === 0);
+    const shopCatalogLoadingMore = shopCatalogs.some((catalog) => catalog.loadingMore);
+    const shopCatalogError = shopCatalogs.every((catalog) => catalog.error) ? topsCatalog.error : null;
+    const shopCatalogHasMore = shopCatalogs.some((catalog) => catalog.hasMore);
+    const loadMoreShopCatalog = useCallback(() => {
+        shopCatalogs.forEach((catalog) => { if (catalog.hasMore) catalog.loadMore(); });
+    }, [topsCatalog.loadMore, bottomsCatalog.loadMore, shoesCatalog.loadMore, outerwearCatalog.loadMore, accessoriesCatalog.loadMore, dressesCatalog.loadMore,
+        topsCatalog.hasMore, bottomsCatalog.hasMore, shoesCatalog.hasMore, outerwearCatalog.hasMore, accessoriesCatalog.hasMore, dressesCatalog.hasMore]);
+    const refreshShopCatalog = useCallback(() => {
+        shopCatalogs.forEach((catalog) => catalog.refresh());
+    }, [topsCatalog.refresh, bottomsCatalog.refresh, shoesCatalog.refresh, outerwearCatalog.refresh, accessoriesCatalog.refresh, dressesCatalog.refresh]);
 
     const {
         items: featuredCapsules,
         loading: featuredCapsulesLoading,
         refresh: refreshFeaturedCapsules,
     } = useFeaturedCapsules();
-
-    const { items: guideOutfits } = useShopCatalog({
-        category: 'outfits',
-        source: 'all',
-    });
-
-    const [guideHero, setGuideHero] = useState<any>(null);
-
-    useEffect(() => {
-        let mounted = true;
-        const fetchHero = async () => {
-            try {
-                // Prefer the idle-prewarmed row so first visit doesn't pay a
-                // cold query mid-tab-switch (see tabPrewarmService).
-                const { getPrewarmedGuideHero } = await import('../src/services/tabPrewarmService');
-                const prewarmed = getPrewarmedGuideHero();
-                if (mounted && prewarmed) {
-                    setGuideHero(prewarmed);
-                    return;
-                }
-                const { data } = await supabase.from('guide_page').select('*').eq('is_active', true).single();
-                if (mounted && data) setGuideHero(data);
-            } catch (_) {
-            }
-        };
-        fetchHero();
-        return () => { mounted = false; };
-    }, []);
-
-    const displayGuides = useMemo(() => {
-        const results: any[] = [];
-
-        // 1. Add static/dynamic Hero from guide_page — admin-set cta_url, if
-        // any, is where "shop this look" should actually go.
-        if (guideHero) {
-            results.push({
-                id: 'guide_hero',
-                title: guideHero.title,
-                subtitle: guideHero.subtitle,
-                image: guideHero.hero_image_url,
-                category: 'featured' as GuideCategory,
-                linkUrl: guideHero.cta_url || undefined,
-            });
-        }
-
-        // 2. Add Featured Capsules as big cards in the guide tab
-        if (featuredCapsules && featuredCapsules.length > 0) {
-            featuredCapsules.forEach(c => {
-                results.push({
-                    id: c.id,
-                    title: c.title,
-                    subtitle: c.subtitle || '',
-                    image: c.imageUrl,
-                    category: 'capsules' as GuideCategory,
-                    linkUrl: c.linkUrl,
-                });
-            });
-        }
-
-        // 3. Add outfits if we have them — each is a real shop catalog item,
-        // so tapping it should go straight to buying that item, not a link.
-        if (guideOutfits && guideOutfits.length > 0) {
-            guideOutfits.forEach((item) => {
-                results.push({
-                    id: item.id,
-                    title: item.name,
-                    subtitle: item.description || item.brand,
-                    image: item.imageUrl,
-                    category: 'outfits' as GuideCategory,
-                    shopItem: item,
-                });
-            });
-        }
-
-        return results;
-    }, [guideHero, featuredCapsules, guideOutfits]);
+    const { items: remoteGuideLooks, loading: guideLooksLoading, error: guideLooksError, refresh: refreshGuideLooks } = useGuideLooks();
+    const displayGuides = useMemo<BrandLookCard[]>(() => (guideLooksError ? LOCAL_GUIDE_LOOKS : remoteGuideLooks.map((look) => ({
+        ...look,
+        subtitle: `${look.brand} · ${look.collection_name}`,
+        image: look.image_url,
+        linkUrl: look.source_url,
+        category: 'capsules' as GuideCategory,
+        isBrandLook: true as const,
+    }))), [remoteGuideLooks, guideLooksError]);
 
     const savedInspo = useSavedShopStore((s) => s.items);
     const hydrateSavedShop = useSavedShopStore((s) => s.hydrate);
     const [segment, setSegment] = useState<SegmentType>('guide');
+    const [selectedLook, setSelectedLook] = useState<BrandLookCard | null>(null);
 
     const [showSavedOnly, setShowSavedOnly] = useState(false);
     const [saveToast, setSaveToast] = useState<string | null>(null);
@@ -504,6 +542,14 @@ const InspoScreen = () => {
     // tapping the same piece twice still works (undefined → id transition).
     // If the id isn't in the loaded catalog (later page / retired item) we
     // fall back to a name search so the tap still lands on shopping.
+    const openShop = inspoRoute.params?.openShop;
+    useFocusEffect(useCallback(() => {
+        if (openShop) {
+            setSegment('shop');
+            setShowSavedOnly(false);
+            navigation.setParams({ openShop: undefined });
+        }
+    }, [openShop, navigation]));
     const focusShopItemId = inspoRoute.params?.focusShopItemId;
     const focusShopItemName = inspoRoute.params?.focusShopItemName;
     useFocusEffect(
@@ -535,6 +581,7 @@ const InspoScreen = () => {
         useCallback(() => {
             // Shared shop saves (also shown in Profile → Saved Looks).
             hydrateSavedShop();
+            refreshGuideLooks();
 
             const now = Date.now();
             if (now - lastFetchRef.current > INSPO_REFRESH_TTL_MS) {
@@ -542,7 +589,7 @@ const InspoScreen = () => {
                 refreshFeaturedCapsules();
                 refreshShopCatalog();
             }
-        }, [refreshFeaturedCapsules, refreshShopCatalog, hydrateSavedShop])
+        }, [refreshFeaturedCapsules, refreshShopCatalog, hydrateSavedShop, refreshGuideLooks])
     );
 
     const saveInspo = useCallback(async (item: ShopCatalogItem) => {
@@ -583,12 +630,23 @@ const InspoScreen = () => {
         const classicsToAppend = CLASSIC_MENS_ITEMS.filter((item) => !seenIds.has(item.id));
         let sourceItems = [...baseItems, ...classicsToAppend];
 
-        if (showSavedOnly) {
-            const savedIds = new Set(savedInspo.map((s) => String(s.id)));
-            sourceItems = sourceItems.filter((item) => savedIds.has(String(item.id)));
-        }
+        // Saved items have their own view; keep the main shop focused on
+        // items the user has not saved yet.
+        const savedIds = new Set(savedInspo.map((s) => String(s.id)));
+        sourceItems = sourceItems.filter((item) =>
+            showSavedOnly === savedIds.has(String(item.id)),
+        );
 
         const query = deferredSearchQuery.trim().toLowerCase();
+        if (query) {
+            sourceItems = sourceItems.filter((item) => {
+                const haystack = `${item.brand} ${item.name} ${item.description ?? ''}`.toLowerCase();
+                return haystack.includes(query);
+            });
+        }
+
+        sourceItems = mixShopGarmentTypes(sourceItems);
+
         if (!query) {
             // Deep-linked piece from an outfit: lift it to the top so the
             // user lands exactly on what they tapped.
@@ -601,10 +659,7 @@ const InspoScreen = () => {
             return sourceItems;
         }
 
-        return sourceItems.filter((item) => {
-            const haystack = `${item.brand} ${item.name} ${item.description ?? ''}`.toLowerCase();
-            return haystack.includes(query);
-        });
+        return sourceItems;
     }, [deferredSearchQuery, showingFallbackCatalog, syncedShopItems, showSavedOnly, savedInspo, focusedShopItemId]);
 
     // ── FlatList helpers for the shop grid ────────────────────────────────────
@@ -880,6 +935,11 @@ const InspoScreen = () => {
     const handleGuideCardPress = useCallback((item: any) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
+        if (item?.isBrandLook) {
+            setSelectedLook(item);
+            return;
+        }
+
         if (item?.linkUrl) {
             Linking.canOpenURL(item.linkUrl)
                 .then((canOpen) => {
@@ -1030,14 +1090,15 @@ const InspoScreen = () => {
                 {segment === 'guide' ? (
                     <>
                         <ScaledText style={styles.guideTagline}>{t('inspo.guideTagline')}</ScaledText>
-                        {displayGuides.length === 0 && featuredCapsulesLoading ? (
+                        {displayGuides.length === 0 && guideLooksLoading ? (
                             <View style={styles.guideLoadingContainer}>
                                 <ActivityIndicator size="large" color={colors.text.primary} />
                             </View>
                         ) : guideRows.length === 0 ? (
                             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                                 <View style={styles.emptyState}>
-                                    <ScaledText style={styles.emptyStateText}>{t('inspo.noGuideMatches')}</ScaledText>
+                                    <ScaledText style={styles.emptyStateText}>{guideLooksError ? 'Could not load the outfit previews.' : t('inspo.noGuideMatches')}</ScaledText>
+                                    {guideLooksError && <TouchableOpacity onPress={refreshGuideLooks} style={styles.retryLooksButton}><ScaledText style={styles.retryLooksText}>Try again</ScaledText></TouchableOpacity>}
                                 </View>
                                 {renderGuideFooter()}
                             </ScrollView>
@@ -1103,6 +1164,54 @@ const InspoScreen = () => {
                     </>
                 )}
             </SafeAreaView>
+            <Modal visible={!!selectedLook} animationType="slide" onRequestClose={() => setSelectedLook(null)}>
+                <SafeAreaView style={styles.lookDetailPage}>
+                    <View style={styles.lookDetailHeader}>
+                        <TouchableOpacity
+                            style={styles.lookDetailBackButton}
+                            onPress={() => setSelectedLook(null)}
+                            hitSlop={12}
+                            activeOpacity={0.65}
+                            accessibilityRole="button"
+                            accessibilityLabel={t('common.back')}
+                        >
+                            <Ionicons name="arrow-back" size={24} color="#0A1931" />
+                        </TouchableOpacity>
+                        <ScaledText style={styles.lookDetailHeaderTitle}>{selectedLook?.brand || 'The look'}</ScaledText>
+                        <View style={{ width: 44 }} />
+                    </View>
+                    {selectedLook && <ScrollView contentContainerStyle={styles.lookDetailContent}>
+                        <CachedImage uri={selectedLook.image} style={styles.lookDetailImage} contentFit="contain" />
+                        <ScaledText style={styles.lookDetailTitle}>{selectedLook.subtitle}</ScaledText>
+                        <View style={styles.lookDetailSectionRow}>
+                            <View>
+                                <ScaledText style={styles.lookDetailSection}>Shop the look</ScaledText>
+                                <ScaledText style={styles.lookDetailCount}>{selectedLook.products.length} pieces selected</ScaledText>
+                            </View>
+                            <Ionicons name="sparkles-outline" size={20} color="#2583E8" />
+                        </View>
+                        {selectedLook.products.length > 0 ? (
+                            <View style={styles.lookDetailProductsGrid}>
+                                {selectedLook.products.map((product) => (
+                                    <GuideLookProductCard key={product.id} product={product} />
+                                ))}
+                            </View>
+                        ) : (
+                            <View style={styles.lookEmptyState}>
+                                <Ionicons name="shirt-outline" size={28} color="#748195" />
+                                <ScaledText style={styles.lookEmptyTitle}>Product cards are being curated</ScaledText>
+                                <ScaledText style={styles.lookEmptyBody}>We’ll add official product photos, prices and links here as they become available.</ScaledText>
+                            </View>
+                        )}
+                        {selectedLook.brand === 'Canali' && selectedLook.products.length > 0 && (
+                            <ScaledText style={styles.lookDetailNote}>Canali’s Spring/Summer 2027 preview does not link exact product SKUs to runway looks. These cards use current Canali products matched by type and color. The runway hat is a bucket hat; the current white listing is a baseball cap.</ScaledText>
+                        )}
+                        <TouchableOpacity style={styles.lookDetailLink} onPress={() => Linking.openURL(selectedLook.linkUrl).catch(() => {})} accessibilityRole="link">
+                            <ScaledText style={styles.lookDetailLinkText}>View the brand collection</ScaledText><Ionicons name="arrow-forward" size={18} color="#FFF" />
+                        </TouchableOpacity>
+                    </ScrollView>}
+                </SafeAreaView>
+            </Modal>
             {saveToast && (
                 <View style={styles.saveToast} pointerEvents="box-none" accessibilityLiveRegion="polite">
                     <Ionicons name="heart" size={16} color="#FFFFFF" />
@@ -1130,6 +1239,34 @@ const InspoScreen = () => {
 // ── Styles ──────────────────────────────────────
 
 const styles = StyleSheet.create({
+    lookDetailPage: { flex: 1, backgroundColor: '#FFFFFF' },
+    lookDetailHeader: { paddingHorizontal: 20, paddingVertical: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    lookDetailBackButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F6FA' },
+    lookDetailHeaderTitle: { fontSize: 17, fontWeight: '700', color: '#0A1931' },
+    lookDetailContent: { paddingHorizontal: 20, paddingBottom: 40 },
+    lookDetailImage: { width: '100%', aspectRatio: 3 / 4, backgroundColor: '#F6F6F4', borderRadius: 14, overflow: 'hidden' },
+    lookDetailTitle: { fontSize: 21, fontWeight: '700', color: '#0A1931', marginTop: 20 },
+    lookDetailSectionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 24, marginBottom: 12 },
+    lookDetailSection: { fontSize: 19, fontWeight: '700', color: '#0A1931' },
+    lookDetailCount: { fontSize: 12, color: '#7A8492', marginTop: 3 },
+    lookEmptyState: { borderRadius: 18, backgroundColor: '#F4F6FA', paddingHorizontal: 22, paddingVertical: 28, alignItems: 'center', marginTop: 4 },
+    lookEmptyTitle: { color: '#0A1931', fontSize: 15, fontWeight: '700', marginTop: 10 },
+    lookEmptyBody: { color: '#68717E', fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 5 },
+    lookDetailProductsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 14 },
+    lookProductCard: { width: '48.5%', borderRadius: 18, overflow: 'hidden', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: 'rgba(10,25,49,0.08)', shadowColor: '#0A1931', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+    lookProductImageBox: { width: '100%', aspectRatio: 1, backgroundColor: '#FFFFFF', overflow: 'hidden' },
+    lookProductImage: { width: '100%', height: '100%' },
+    lookProductInfo: { paddingHorizontal: 10, paddingTop: 8, paddingBottom: 10 },
+    lookProductCategory: { fontSize: 10, letterSpacing: 1, color: '#737B88', fontWeight: '600' },
+    lookProductName: { fontSize: 13, lineHeight: 17, color: '#0A1931', fontWeight: '600', minHeight: 34, marginTop: 3, marginBottom: 4 },
+    lookProductPrice: { color: '#1384E8', fontSize: 13, fontWeight: '700', minHeight: 20, marginBottom: 7 },
+    lookProductBuy: { minHeight: 34, borderRadius: 18, backgroundColor: '#071A31', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+    lookProductBuyText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
+    lookDetailNote: { color: '#68717E', fontSize: 13, lineHeight: 19, marginTop: 14 },
+    retryLooksButton: { alignSelf: 'flex-start', marginTop: 12, paddingVertical: 8, paddingHorizontal: 13, borderRadius: 12, backgroundColor: '#0A1931' },
+    retryLooksText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
+    lookDetailLink: { backgroundColor: '#0A1931', borderRadius: 14, padding: 16, marginTop: 24, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    lookDetailLinkText: { color: '#FFF', fontSize: 15, fontWeight: '600' },
     container: {
         flex: 1,
         backgroundColor: '#FFFFFF',
@@ -1442,7 +1579,6 @@ const styles = StyleSheet.create({
         color: colors.text.tertiary,
         marginTop: 2,
     },
-
     // Capsule Cards
     capsulesScroll: {
         paddingHorizontal: spacing.screenPadding,

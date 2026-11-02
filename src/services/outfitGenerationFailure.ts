@@ -8,6 +8,8 @@ const messages = {
   no_outfit_within_budget: 'outfitMaker.budgetTooLow',
   no_items_within_budget: 'outfitMaker.noItemsWithinBudget',
   no_matching_clothing: 'outfitMaker.noMatchingClothing',
+  incomplete_outfit_deck: 'outfitMaker.noMatchingClothing',
+  shoe_rotation_unavailable: 'outfitMaker.noMatchingClothing',
   invalid_outfit_budget: 'outfitMaker.invalidBudget',
 } as const;
 type MessageKey = typeof messages[keyof typeof messages] | 'outfitMaker.generateFailed'

@@ -126,3 +126,14 @@ test('unbudgeted 40-item trim preserves four representatives of every eligible c
  expect(result.length).toBeLessThanOrEqual(40);
  for(const slot of ['top','bottom','shoes','outerwear'])expect(result.filter(item=>item.macroCategory===slot)).toHaveLength(slot==='top'?28:4);
 });
+
+test('catalog discovery evaluates later pages even when the first page fills the shortlist',async()=>{
+ const first=Array.from({length:100},(_,i)=>({id:`early-${String(i).padStart(3,'0')}`,name:'Cotton trousers',category:'bottoms',garment_type:'lower_body',image_url:`https://example.invalid/${i}.jpg`}));
+ const last={...first[0],id:'late-product',name:'Wool tailored trousers',image_url:'https://example.invalid/late.jpg'};
+ let cursor;const visited=[];
+ const q={select:()=>q,eq:()=>q,limit:()=>q,or:()=>q,order:()=>q,abortSignal:()=>q,gt:(_field,value)=>{cursor=value;return q;},then:resolve=>Promise.resolve({data:cursor?[last]:first,error:null}).then(resolve)};
+ const result=await api.fetchShopItemsForAllSlotsEdge({from:()=>q},['bottom'],'casual',1,undefined,item=>{visited.push(item.id);return true;});
+ expect(visited).toContain('late-product');
+ expect(visited).toHaveLength(101);
+ expect(result).toHaveLength(1);
+});

@@ -1,3 +1,5 @@
+import { stylistCalendarItems } from '../features/calendar/outfitSlots';
+import { closestAvailableOutfits } from '../features/outfit-generator/utils/closestWardrobeOutfits';
 import {formatUzsPrice} from '../src/utils/uzsPrice';
 import { useUzsDisplayRates, useUzsPrice } from '../hooks/useUzsPrice';
 import { resolveStylistWeather } from '../backend/supabase/functions/_shared/outfitComposition';
@@ -32,7 +34,7 @@ import { confirmedImageReplacements, replaceGeneratedOutfitImages, replaceSavedO
 import { localDateKey, parseCalendarDate, shiftCalendarDay } from '../src/utils/calendarDate';
 import { authEvents } from '../store/authEvents';
 import { readCalendarLogs, updateCalendarLogs } from '../src/services/calendarStorage';
-import { createOutfitLog, resolveCalendarOccasion, type OutfitItem as CalendarOutfitItem } from '../features/calendar/types';
+import { createOutfitLog, resolveCalendarOccasion } from '../features/calendar/types';
 import AIThinkingAnimation from '../components/AIThinkingAnimation';
 import { canonicalizeMacroCategory } from '../src/utils/categoryMapper';
 import { prioritizeUnseen } from '../features/outfit-generator/utils/deckDedupe';
@@ -49,6 +51,7 @@ import { parseBudgetFromText, stripBudgetFromText, outfitShopSpend, formatMoney,
 import { getShopDestination } from '../src/utils/shopDestination';
 import { parseStylistIntent } from '../features/outfit-generator/utils/stylistIntent';
 import { scoreItemForStyle, normalizeStyleId } from '../features/outfit-generator/utils/styleInference';
+import { hasProductOnlyCatalogProvenance } from '../src/utils/productOnlyCatalog';
 import useWardrobeStore from '../store/wardrobeStore';
 import { useStylePreferenceStore } from '../store/stylePreferenceStore';
 import { useTranslation } from 'react-i18next';
@@ -441,7 +444,7 @@ function OutfitSlotGrid({ items, weather, priceCatalog, showBuyButtons = false }
             imageUri={typeof src === 'object' ? src.uri : undefined}
             itemId={slot.item?.id ? String(slot.item.id) : undefined}
             buyUrl={buyUrl}
-            showBuyButton={showBuyButtons}
+            showBuyButton={showBuyButtons && slot.item.isWardrobe !== true}
             buyLabel={buyLabel}
             textSecondary={D.textSecondary}
             textPrimary={D.textPrimary}
@@ -1217,6 +1220,7 @@ const AIOutfitGenerator = () => {
       const total = catalogTotalRef.current;
       const mapRows = (data: any[] | null) =>
         (data ?? [])
+          .filter(hasProductOnlyCatalogProvenance)
           .map((row: any) =>
             mapShopCatalogRow({
               id: String(row.id),
@@ -1239,7 +1243,7 @@ const AIOutfitGenerator = () => {
         const { data } = await withTimeout(
           supabase
             .from('shop_catalog')
-            .select('id,brand,name,price,currency,image_url,garment_type,description,source_url')
+            .select('id,brand,name,price,currency,image_url,garment_type,description,source,source_url')
             .eq('is_active', true)
             .order('sort_order', { ascending: true })
             .range(start, start + size - 1),
@@ -1574,13 +1578,7 @@ const AIOutfitGenerator = () => {
   // to the trip day (outfitLogs) so the Trips tab / packing list updates
   // and the user gets a visible confirmation + a way back.
   const persistOutfitToTripDay = async (outfit: GeneratedOutfit, dateKey: string, occasion: string) => {
-    const mappedItems: CalendarOutfitItem[] = outfit.items.map((it) => ({
-      id: it.id || it.name || `${Date.now()}`,
-      type: it.type || 'top',
-      image: it.image || it.imageUrl || '',
-      color: it.color,
-      name: it.name,
-    }));
+    const mappedItems = stylistCalendarItems(outfit.items);
     const log = createOutfitLog(dateKey, mappedItems, occasion);
     let updated = false;
     await updateCalendarLogs(logs => {
@@ -1625,7 +1623,7 @@ const AIOutfitGenerator = () => {
     } as any);
 
     let confirmedOutfit = outfit;
-    const snapshotItems = outfit.items.map(item => ({ id: String(item.id || item.image), type: item.type || 'Clothing Piece',
+    const snapshotItems = outfit.items.map(item => ({ id: String(item.id || item.image), type: item.type || 'Clothing Piece', category: item.category, macroCategory: item.macroCategory,
       image: item.image, imageUrl: item.imageUrl, name: item.name }));
     try {
       const confirmedItems = await saveCloudOutfit({
@@ -1707,13 +1705,7 @@ const AIOutfitGenerator = () => {
     const revision = authEvents.getRevision();
     try {
       const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-      const mappedItems: CalendarOutfitItem[] = outfit.items.map(it => ({
-        id: it.id || it.name || `${Date.now()}`,
-        type: it.type || 'top',
-        image: it.image || it.imageUrl || '',
-        color: it.color,
-        name: it.name,
-      }));
+      const mappedItems = stylistCalendarItems(outfit.items);
       const log = createOutfitLog(dateStr, mappedItems, getCalendarOccasion(selectedStyle));
       const logs = await readCalendarLogs();
 
@@ -1989,6 +1981,22 @@ const AIOutfitGenerator = () => {
     // the random slice only reaches the edge while finals keep recycling the
     // same 100 pool items. Wardrobe taps keep the memoized pool (purity).
     let genPool: any[] = candidatePool;
+    // The anchor is owned clothing even when companions come from the shop.
+    // Shop loading deliberately excludes wardrobe items, so resolve it separately.
+    const storedAnchor = baseItemId ? useWardrobeStore.getState().items.find(item => item.id === baseItemId) : undefined;
+    const anchorSource = storedAnchor ? {
+      ...storedAnchor, type: storedAnchor.subCategory || storedAnchor.category,
+      color: storedAnchor.primaryColor,
+    } : baseItem;
+    const lockedAnchor = baseItemId && anchorSource ? {
+      ...anchorSource, id: baseItemId,
+      name: anchorSource.name || anchorSource.type || anchorSource.category || t('common.clothingItem'),
+      macroCategory: getBackendMacroCategory(anchorSource.type || '', anchorSource.category || '', anchorSource.name || ''),
+      image: anchorSource.imageUrl || '', imageUrl: anchorSource.imageUrl || '',
+      isWardrobe: true, isShopItem: false,
+    } : undefined;
+    let alternativeItems: any[] = [];
+
     if (effectiveSource === 'shop') {
       const toPayload = (item: any) => ({
         id: item.id,
@@ -2024,6 +2032,7 @@ const AIOutfitGenerator = () => {
       // is only for the edge payload (LLM trim). Family skip handles clones.
       genPool = collapseDuplicateProductImages(mergeShopSlices(candidatePool, randomSlice))
         .filter((it: any) => isTrustedProductImage(it.imageUrl || it.image));
+      alternativeItems = [...(lockedAnchor ? [lockedAnchor] : []), ...genPool.filter(item => item.isShopItem === true && item.isWardrobe !== true)];
       if (__DEV__) readinessLogger.debug(String(`[AIOutfitmaker] shop pool: live=${wardrobeItems.length} slice=${randomSlice.length} merged=${poolBase.length} genPool=${genPool.length}`), []);
       payloadItems = poolBase
         .map(toPayload)
@@ -2112,6 +2121,8 @@ const AIOutfitGenerator = () => {
         return;
       }
     }
+
+    if (effectiveSource === 'wardrobe') alternativeItems = payloadItems;
 
     try {
       const budgetCandidates = budgetCandidatesFromText(promptText);
@@ -2440,11 +2451,12 @@ const AIOutfitGenerator = () => {
           const inCap = finalOutfits.filter((o) => fitsCap(o.items as any[]));
           const overCap = finalOutfits.filter((o) => !fitsCap(o.items as any[]));
           const shownOutfits = inCap.slice(0, 3);
-          if (shownOutfits.length !== 3) throw new Error('incomplete_outfit_deck');
+          if (shownOutfits.length === 0) throw new Error('incomplete_outfit_deck');
           const previousKeys = new Set(history.previousDeckProductKeys);
+          const previousShoeKeys = new Set(history.previousShoeProductKeys ?? history.previousDeckProductKeys);
           const previousDeckOverlapBySlot = Object.fromEntries(['outerwear','top','bottom','shoes'].map(slot=>[slot,
             shownOutfits.flatMap(o=>o.items as any[]).filter(item=>item.macroCategory===slot && String(item.id)!==String(baseItemId||'')
-              && productIdentityKeys(item).some(key=>previousKeys.has(key))).length]));
+              && productIdentityKeys(item).some(key=>(slot==='shoes'?previousShoeKeys:previousKeys).has(key))).length]));
           // Repair may adjust labels, but must never reintroduce a product
           // that the authoritative backend deck successfully avoided.
           for (const [slot,count] of Object.entries(previousDeckOverlapBySlot)) {
@@ -2478,9 +2490,30 @@ const AIOutfitGenerator = () => {
       if (data?.debug) edgeErr.debug = data.debug;
       throw edgeErr;
     } catch (err: any) {
-      console.warn('[AIOutfitmaker] Edge function failed:', err, err?.stack || '', err?.debug ? JSON.stringify(err.debug) : '');
       if (fallbackTimer.current) clearTimeout(fallbackTimer.current);
       if (!isCurrentGeneration()) return;
+      const noMatch = err instanceof OutfitGenerationFailure
+        ? ['outfitMaker.noMatchingClothing', 'outfitMaker.aiUnavailable'].includes(err.translationKey)
+        : ['No complete outfits returned from AI', 'incomplete_outfit_deck', 'client_rotation_overlap'].includes(err?.message);
+      if (noMatch) {
+        const alternatives = closestAvailableOutfits(alternativeItems, {
+          anchorId: baseItemId, style: styleToUse, occasion: `${occasionToUse} ${promptText}`, weather: resolvedWeather,
+          source: effectiveSource, accepts: fitsCap,
+        });
+        if (alternatives.length) {
+          setOutfits(alternatives.map((look, index) => ({
+            id: `closest_${tapNonce}_${index}`, items: look.items,
+            mainImage: look.items[0]?.image || '', matchScore: Math.min(0.69, look.quality),
+            description: t(effectiveSource === 'shop' ? 'outfitMaker.closestShopAlternative' : 'outfitMaker.closestAlternative'),
+            stylingTips: t('outfitMaker.closestAlternativeTip'),
+            weather: typeof resolvedWeather?.temp === 'number' ? { temp: resolvedWeather.temp, condition: resolvedWeather.condition || '' } : undefined,
+          })));
+          setError('');
+          setLoading(false);
+          return;
+        }
+      }
+      console.warn('[AIOutfitmaker] No outfit available', { source: effectiveSource, messageKey: err instanceof OutfitGenerationFailure ? err.translationKey : 'outfitMaker.generateFailed' });
       if (isMounted.current) {
         setOutfits([]);
         setLoading(false);
@@ -2889,6 +2922,10 @@ const AIOutfitGenerator = () => {
                 return (
                   <TouchableOpacity
                     key={opt.id}
+                    testID={`stylistSource-${opt.id}`}
+                    accessibilityRole="button"
+                    accessibilityLabel={opt.label}
+                    accessibilityState={{selected:on}}
                     activeOpacity={0.85}
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

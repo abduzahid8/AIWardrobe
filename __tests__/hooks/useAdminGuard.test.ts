@@ -1,3 +1,4 @@
+jest.mock('../../hooks/useNetworkRecovery', () => ({ useNetworkRecovery: jest.fn() }));
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import useAuthStore from '../../store/auth';
 import { authEvents } from '../../store/authEvents';
@@ -65,4 +66,30 @@ test('database failure hides admin controls and ends loading', async () => {
   const { result } = renderHook(useAdminGuard);
   await waitFor(() => expect(result.current.loading).toBe(false));
   expect(result.current.isAdmin).toBe(false);
+});
+
+
+test('reconnect retries a failed admin check after the shared request settles', async () => {
+  login(); let finish!: (value:unknown)=>void;
+  mockRead.mockReturnValueOnce(new Promise(resolve=>{finish=resolve;}))
+    .mockResolvedValueOnce({data:{is_admin:true},error:null});
+  const recovery=require('../../hooks/useNetworkRecovery').useNetworkRecovery as jest.Mock;
+  const {result}=renderHook(useAdminGuard);
+  act(()=>recovery.mock.calls[recovery.mock.calls.length-1][0]());
+  await act(async()=>finish({data:null,error:{message:'network unavailable'}}));
+  await waitFor(()=>expect(result.current.isAdmin).toBe(true));
+  expect(mockRead).toHaveBeenCalledTimes(2);
+});
+
+test('reconnect does not retry an old admin check after account change', async () => {
+  login(); let finish!: (value:unknown)=>void;
+  mockRead.mockReturnValueOnce(new Promise(resolve=>{finish=resolve;}));
+  const recovery=require('../../hooks/useNetworkRecovery').useNetworkRecovery as jest.Mock;
+  const {result}=renderHook(useAdminGuard);
+  act(()=>recovery.mock.calls[recovery.mock.calls.length-1][0]());
+  act(()=>login());
+  await act(async()=>finish({data:null,error:{message:'network unavailable'}}));
+  await waitFor(()=>expect(result.current.loading).toBe(false));
+  expect(result.current.isAdmin).toBe(false);
+  expect(mockRead).toHaveBeenCalledTimes(2);
 });

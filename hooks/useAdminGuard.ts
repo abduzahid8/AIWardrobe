@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNetworkRecovery } from './useNetworkRecovery';
 import { supabase } from '../lib/supabase';
 import useAuthStore, { type AuthStore } from '../store/auth';
 import { authEvents } from '../store/authEvents';
@@ -26,6 +27,8 @@ export function useAdminGuard(): AdminGuardResult {
     const key = `${revision}:${userId ?? ''}`;
     const [result, setResult] = useState<{ key: string; allowed: boolean } | null>(null);
     const [loadingKey, setLoadingKey] = useState<string | null>(null);
+    const mountedRef = useRef(false);
+    useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
 
     const readAdmin = useCallback(async (refresh: boolean): Promise<boolean> => {
         const stillCurrent = () => authEvents.getRevision() === revision
@@ -68,6 +71,16 @@ export function useAdminGuard(): AdminGuardResult {
 
     const checkAdmin = useCallback(() => readAdmin(true), [readAdmin]);
     useEffect(() => { void readAdmin(false); }, [readAdmin]);
+    useNetworkRecovery(() => {
+        if (!isAuthenticated || !userId) return;
+        const inFlight = pending.get(key);
+        if (!inFlight) { void readAdmin(true); return; }
+        // Wait for the shared request to settle before retrying a failed one.
+        // Joining the still-pending request would just repeat its failure.
+        void inFlight.catch(() => {
+            if (mountedRef.current && authEvents.getRevision() === revision) void readAdmin(true);
+        });
+    });
 
     return {
         // Identity-tagged results cannot flash the old account's admin controls.

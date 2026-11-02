@@ -74,23 +74,27 @@ export function compareRotationOrder(a: readonly number[], b: readonly number[])
 }
 
 /** Hard-quality-approved products only. Shoes cannot be pinned by a quality tie-break. */
-export function createShoeRotationPriority(history: ReadonlySet<string>, previous: ReadonlySet<string>, decks: {productKeys: string[]}[], anchorId?: string) {
+export function createShoeRotationPriority(history: ReadonlySet<string>, previous: ReadonlySet<string>, decks: {productKeys: string[]}[], anchorId?: string,
+    shoeHistory?: {previous:ReadonlySet<string>; decks:{productKeys:string[]}[]}) {
     const sets = decks.map(deck => new Set(deck.productKeys));
+    const shoeSets = shoeHistory?.decks.map(deck=>new Set(deck.productKeys)) || sets;
     const legacy = createRotationPriority(history, previous, decks, anchorId);
     const cache = new Map<string, {keys: string[]; previous: boolean; last: number; count: number}>();
     return (items: any[]): number[] => {
         let shoeOverlap = 0, otherOverlap = 0;
-        const ages = Array(decks.length + 1).fill(0), counts = Array(decks.length + 1).fill(0);
+        const ages = Array(shoeSets.length + 1).fill(0), counts = Array(shoeSets.length + 1).fill(0);
         const used = new Set<string>(), clothing: any[] = [];
         for (const item of items) {
             const id = String(item.id);
             if (id === anchorId) continue;
-            let entry = cache.get(id);
+            const isShoe=diversitySlotOf(item)==='shoes';
+            const cacheKey=`${id}|${isShoe?'shoe':'clothing'}`;
+            let entry = cache.get(cacheKey);
             if (!entry) {
                 let last = -1, count = 0;
-                sets.forEach((set, i) => { if (wasRecentlyShown(item, set)) {last = i; count++;} });
-                entry = {keys: productIdentityKeys(item), previous: wasRecentlyShown(item, previous), last, count};
-                cache.set(id, entry);
+                (isShoe ? shoeSets : sets).forEach((set, i) => { if (wasRecentlyShown(item, set)) {last = i; count++;} });
+                entry = {keys: productIdentityKeys(item), previous: wasRecentlyShown(item, isShoe ? shoeHistory?.previous || previous : previous), last, count};
+                cache.set(cacheKey, entry);
             }
             if (entry.keys.some(key => used.has(key))) continue;
             entry.keys.forEach(key => used.add(key));
