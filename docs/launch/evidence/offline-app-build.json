@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "scope": "Actual App root, separate signed-out offline environment, native billing/notifications/analytics sending/prewarm stubbed; not production configuration or authenticated-core QA",
+  "simulatorId": "AD2C6D1C-096E-4D89-86B8-22D600E30C86",
+  "bundleId": "com.aiwardrobe.rcoffline",
+  "appPath": "/Users/v.zahid/Library/Developer/CoreSimulator/Devices/AD2C6D1C-096E-4D89-86B8-22D600E30C86/data/Containers/Bundle/Application/9D4B0596-391F-4BCF-92C9-FF663E221A0F/AIWardrobe.app",
+  "buildType": "Release simulator arm64; signing disabled",
+  "entryPoint": "scripts/validation/launch-rc-offline-app-entry.tsx",
+  "entrySha256": "08fe9e4309065689407cc9a4656b3fd0bb4f7404fca59b2af389961a778ee752",
+  "bundleSha256": "790b15e0780031f1bb639e3cae751f3d18893b3bb08bc9c0b4be4e00f672614a",
+  "status": "SIGNED_OUT_OFFLINE_SUBSET_VERIFIED",
+  "startupEvidence": "offline-app-startup.json",
+  "uiEvidence": "offline-app-ui.json",
+  "normalAuthenticatedQaStatus": "MANUAL REQUIRED",
+  "validationSourceBaseline": "16bbfdace25bc9777566efe0007de82c4a5ac7f21734bbdd75d503ec3969a4e6",
+  "laterChanges": "Server paid-work stop and client feature_disabled decoder verified locally after this native baseline; not a newly signed full client validation."
+}

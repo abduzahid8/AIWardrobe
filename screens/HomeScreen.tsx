@@ -45,6 +45,9 @@ import { CachedImage } from '../components/ui/CachedImage';
 import { supabase } from '../lib/supabase';
 import { quickSuggest } from '../src/services/suggestionEngine';
 import { useDailyAIOutfit } from '../hooks/useDailyAIOutfit';
+import { buildCatalogFamilyViews, selectCatalogVariant } from '../src/services/catalogFamilyView';
+import {selectEssentialShoppingMix,classifyUpperBodyItem} from '../src/services/homeShoppingSelection';
+import { CatalogVariantPicker } from '../components/CatalogVariantPicker';
 import { useShopCatalog } from '../hooks/useShopCatalog';
 import useShopCatalogStore from '../store/shopCatalogStore';
 import TrialCountdownBanner from '../components/TrialCountdownBanner';
@@ -56,217 +59,14 @@ import { createLogger } from '../src/utils/logger';
 import { useTranslation } from 'react-i18next';
 import { perfMark, perfMeasure, perfAction, perfScreenReady } from '../src/utils/perf';
 import {
-  buildCatalogSimilarityKey,
   normalizeCatalogImageKey,
   normalizeCatalogNameKey,
-  getCatalogShoeFamily,
 } from '../src/utils/shopCatalogOrder';
 import { ExpoImage } from '../src/components/MediaImage';
 
 
-type EssentialSlot = 'outerwear' | 'shirts' | 'knitwear' | 'tees' | 'bottoms' | 'shoes';
 type EssentialAddState = 'adding' | 'added';
-
-const ESSENTIALS_REQUIREMENTS: Record<EssentialSlot, number> = {
-  outerwear: 2,  // blazers, jackets, coats
-  shirts: 2,     // dress shirts, casual shirts
-  knitwear: 2,   // sweaters, cardigans
-  tees: 2,       // t-shirts, polos
-  bottoms: 3,    // pants, chinos, jeans, shorts
-  shoes: 3,      // sneakers, loafers, boots
-};
-
-const ESSENTIALS_LIMIT = Object.values(ESSENTIALS_REQUIREMENTS).reduce(
-  (sum, count) => sum + count,
-  0
-);
-
-// Keywords for better classification
-const OUTERWEAR_KEYWORDS = [
-  'blazer', 'jacket', 'coat', 'overcoat', 'suit', 'trench', 'parka',
-  'bomber', 'puffer', 'vest', 'waistcoat', 'cardigan', 'hoodie'
-];
-
-const SHIRT_KEYWORDS = [
-  'shirt', 'oxford', 'dress shirt', 'broadcloth', 'poplin', 'linen shirt',
-  'flannel', 'chambray', 'button-down', 'button down'
-];
-
-const KNITWEAR_KEYWORDS = [
-  'sweater', 'knit', 'pullover', 'turtleneck', 'crewneck', 'v-neck',
-  'cashmere', 'merino', 'wool', 'chunky', 'cable', 'cardigan'
-];
-
-const TEE_KEYWORDS = [
-  't-shirt', 'tshirt', 'tee', 'polo', 'henley', 'tank', 'top'
-];
-
-const BOTTOM_KEYWORDS = [
-  'pants', 'trousers', 'chinos', 'jeans', 'shorts', 'joggers',
-  'slacks', 'cargos', 'corduroy'
-];
-
-const SHOE_KEYWORDS = [
-  'shoes', 'sneakers', 'loafers', 'boots', 'oxfords', 'derby',
-  'trainers', 'slip-on', 'mules'
-];
-
-const classifyUpperBodyItem = (item: ShopCatalogItem): 'outerwear' | 'shirts' | 'knitwear' | 'tees' | null => {
-  const text = `${item.name} ${item.description || ''}`.toLowerCase();
-
-  // Check in priority order
-  if (OUTERWEAR_KEYWORDS.some((k) => text.includes(k))) return 'outerwear';
-  if (SHIRT_KEYWORDS.some((k) => text.includes(k))) return 'shirts';
-  if (KNITWEAR_KEYWORDS.some((k) => text.includes(k))) return 'knitwear';
-  if (TEE_KEYWORDS.some((k) => text.includes(k))) return 'tees';
-
-  // Default classification based on common patterns
-  if (text.includes('blazer') || text.includes('jacket') || text.includes('coat')) return 'outerwear';
-  if (text.includes('shirt')) return 'shirts';
-  if (text.includes('sweater') || text.includes('knit')) return 'knitwear';
-
-  return 'tees'; // default
-};
-
-const classifyBottomItem = (item: ShopCatalogItem): 'bottoms' | null => {
-  const text = `${item.name} ${item.description || ''}`.toLowerCase();
-  if (BOTTOM_KEYWORDS.some((k) => text.includes(k))) return 'bottoms';
-  if (item.garmentType === 'lower_body') return 'bottoms';
-  return null;
-};
-
-const classifyShoeItem = (item: ShopCatalogItem): 'shoes' | null => {
-  const text = `${item.name} ${item.description || ''}`.toLowerCase();
-  if (SHOE_KEYWORDS.some((k) => text.includes(k))) return 'shoes';
-  if (item.garmentType === 'shoes') return 'shoes';
-  return null;
-};
-
-/**
- * Deterministic seeded PRNG (mulberry32).
- * Returns a pseudo-random number in [0, 1) for a given 32-bit seed integer.
- * Using a stable daily seed (new Date().toDateString()) ensures the shuffle
- * produces the same order for the entire day, keeping useMemo results stable
- * across renders within the same day (fixes Defect 1.1).
- */
-const seededRandom = (seed: number): () => number => {
-  let s = seed >>> 0;
-  return () => {
-    s += 0x6d2b79f5;
-    let t = Math.imul(s ^ (s >>> 15), 1 | s);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) >>> 0;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-};
-
-/** Convert a string seed to a 32-bit integer via a simple hash. */
-const hashStrToInt = (str: string): number => {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (Math.imul(31, hash) + str.charCodeAt(i)) | 0;
-  }
-  return hash;
-};
-
-export const selectEssentialShoppingMix = (items: ShopCatalogItem[], dailySeed: string): ShopCatalogItem[] => {
-  const pickedCounts: Record<EssentialSlot, number> = {
-    outerwear: 0,
-    shirts: 0,
-    knitwear: 0,
-    tees: 0,
-    bottoms: 0,
-    shoes: 0,
-  };
-
-  const selected: ShopCatalogItem[] = [];
-  const selectedIds = new Set<string>();
-  // Cross-source / near-duplicate guards. Catalog `id` alone is not enough:
-  // the same shoe from `manual` + `apify-massimodutti` + `apify-zara-men-uz`
-  // (or two static variants like classic-m-shoe-16/17 "Leather loafers with
-  // penny strap") has different ids but the same name/image. Without these
-  // sets the `shoes: 3` quota fills with 3 visually identical loafers.
-  const seenImages = new Set<string>();
-  const seenNames = new Set<string>();
-  const seenSimilarityKeys = new Set<string>();
-  const seenShoeFamilies = new Set<string>();
-
-  // Shuffle items for daily variety using a stable seed so the result is
-  // identical across all renders within the same calendar day.
-  // Fisher–Yates O(n) — the old `.sort(() => rand() - 0.5)` was O(n log n)
-  // with a biased comparator, run on every catalog refresh.
-  const rand = seededRandom(hashStrToInt(dailySeed));
-  const shuffled = [...items];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-
-  const getSlot = (item: ShopCatalogItem): EssentialSlot | null => {
-    if (item.garmentType === 'upper_body') {
-      return classifyUpperBodyItem(item);
-    } else if (item.garmentType === 'lower_body') {
-      return classifyBottomItem(item);
-    } else if (item.garmentType === 'shoes') {
-      return classifyShoeItem(item);
-    }
-    return null;
-  };
-
-  const tryPick = (item: ShopCatalogItem, strictVariety: boolean): boolean => {
-    if (!item || selectedIds.has(item.id)) return false;
-
-    const slot = getSlot(item);
-    if (!slot) return false;
-    if (pickedCounts[slot] >= ESSENTIALS_REQUIREMENTS[slot]) return false;
-
-    // Exact + near-duplicate guards (apply in both passes).
-    const imageKey = normalizeCatalogImageKey((item as any).imageUrl);
-    if (imageKey && seenImages.has(imageKey)) return false;
-    const nameKey = normalizeCatalogNameKey((item as any).name);
-    if (nameKey && seenNames.has(nameKey)) return false;
-    const similarityKey = buildCatalogSimilarityKey({
-      id: item.id,
-      name: (item as any).name ?? '',
-      garmentType: (item as any).garmentType,
-    });
-    if (seenSimilarityKeys.has(similarityKey)) return false;
-
-    // Strict pass: at most one shoe family (loafer/sneaker/boot/…) so the
-    // 3-shoe quota can't fill with 3 loafers that have slightly different
-    // names ("oiled leather penny loafer" vs "leather loafer penny strap").
-    if (strictVariety && slot === 'shoes') {
-      const family = getCatalogShoeFamily((item as any).name);
-      if (seenShoeFamilies.has(family)) return false;
-    }
-
-    selected.push(item);
-    selectedIds.add(item.id);
-    if (imageKey) seenImages.add(imageKey);
-    if (nameKey) seenNames.add(nameKey);
-    seenSimilarityKeys.add(similarityKey);
-    if (slot === 'shoes') seenShoeFamilies.add(getCatalogShoeFamily((item as any).name));
-    pickedCounts[slot] += 1;
-    return true;
-  };
-
-  // Pass 1 (strict): enforce shoe-family variety.
-  for (const item of shuffled) {
-    if (selected.length >= ESSENTIALS_LIMIT) break;
-    tryPick(item, true);
-  }
-  // Pass 2 (relaxed fallback): if the catalog has only loafers, still fill
-  // the quota rather than showing an incomplete grid — but exact duplicates
-  // (same image/name/similarity) stay blocked.
-  if (selected.length < ESSENTIALS_LIMIT) {
-    for (const item of shuffled) {
-      if (selected.length >= ESSENTIALS_LIMIT) break;
-      if (selectedIds.has(item.id)) continue;
-      tryPick(item, false);
-    }
-  }
-
-  return selected;
-};
+export {selectEssentialShoppingMix} from '../src/services/homeShoppingSelection';
 
 const garmentTypeToCategory = (
   garmentType: ShopCatalogItem['garmentType']
@@ -1210,7 +1010,7 @@ const HomeScreen = () => {
     items: catalogEssentials,
     loading: essentialsLoading,
     error: essentialsError,
-  } = useShopCatalog({ enabled: true, source: 'all' });
+  } = useShopCatalog({ enabled: true, source: 'all', discovery: true });
 
   // Sync the fetched catalog into the shared store so other screens (e.g.
   // ProfileScreen) can read it without firing their own Supabase query
@@ -1229,9 +1029,15 @@ const HomeScreen = () => {
   // A second useShopCatalog call for shoes was removed to avoid a redundant
   // Supabase query that competed with the main fetch on every mount.
 
+  const [selectedEssentialVariants, setSelectedEssentialVariants] = useState<Record<string,string>>({});
+  const essentialFamilies = useMemo(() => buildCatalogFamilyViews(catalogEssentials, {
+    selectedVariantIds:Object.values(selectedEssentialVariants),
+  }).families,[catalogEssentials,selectedEssentialVariants]);
+  const essentialFamilyById = useMemo(() => new Map(essentialFamilies.flatMap(family =>
+    family.variants.map(variant => [variant.variantId,family] as const))),[essentialFamilies]);
   const essentialsItems = useMemo(
-    () => selectEssentialShoppingMix(catalogEssentials, new Date().toDateString()),
-    [catalogEssentials]
+    () => selectEssentialShoppingMix(essentialFamilies.map(family => selectCatalogVariant(family)!), new Date().toDateString()),
+    [essentialFamilies]
   );
 
   // Owned-product lookup so "Add" buttons stay in "Added" state even after
@@ -1459,6 +1265,9 @@ const HomeScreen = () => {
           ) : null}
         </View>
 
+        <TouchableOpacity accessibilityRole="button" style={{paddingVertical:12}} onPress={()=>navigation.navigate('PurchaseIntelligence',{intent:'complete'})}>
+          <ScaledText>{t('purchase.intent.complete')}</ScaledText>
+        </TouchableOpacity>
         {showSkeleton ? (
           <View style={styles.essentialsLoadingBlock}>
             <ActivityIndicator size="small" color={colors.accent.primary} />
@@ -1513,6 +1322,11 @@ const HomeScreen = () => {
                     ) : null}
                     <ScaledText style={styles.essentialItemName} numberOfLines={2}>{item.name}</ScaledText>
                   </View>
+                  {(essentialFamilyById.get(item.id)?.variants.length || 0) > 1 && (
+                    <CatalogVariantPicker selectedId={item.id}
+                      variants={essentialFamilyById.get(item.id)!.variants.map(variant=>variant.item)}
+                      onSelect={id=>setSelectedEssentialVariants(previous=>({...previous,[essentialFamilyById.get(item.id)!.familyKey]:id}))} />
+                  )}
                   <TouchableOpacity
                     style={[styles.addButton, isAdded && styles.addedButton]}
                     onPress={() => {
@@ -1550,7 +1364,7 @@ const HomeScreen = () => {
         )}
       </View>
     );
-  }, [essentialAddStates, essentialsLoading, essentialsError, essentialsItems, handleAddToWardrobe, ownedEssentialKeys, t]);
+  }, [essentialAddStates, essentialsLoading, essentialsError, essentialsItems, essentialFamilyById, handleAddToWardrobe, ownedEssentialKeys, t]);
 
 
 

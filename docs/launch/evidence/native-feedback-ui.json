@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "scope": "Actual BetaFeedbackButton in isolated iOS Release harness; CUA native AX and screenshots",
+  "bundleId": "com.aiwardrobe.rclocal",
+  "status": "PASS for listed interactions",
+  "checks": [
+    "Review export disabled before helpful choice",
+    "No + Wrong fit + Fit correction selected in native UI",
+    "Before snug and after relaxed visible while keyboard is open after fix",
+    "Review export accessible above keyboard and keyboard dismissed on review",
+    "Sanitized JSON showed schemaVersion 1, synthetic request/rule/confidence/candidate metadata and exact before/after",
+    "Undo retained before/after plus revertedAt and removed Undo control",
+    "Close and discard followed by reopen showed no helpful choice, no selected correction and disabled Review export",
+    "Native share control was NOT invoked; no external message or attachment sent",
+    "Isolated app returned from background to foreground through native Home/App Library UI; same native process and successful stress receipt retained"
+  ],
+  "notTested": [
+    "VoiceOver speech",
+    "Android keyboard behavior",
+    "native account change while modal open (unit covered)",
+    "physical devices",
+    "actual purchase or provider calls",
+    "OS memory-warning injection unavailable in the inspected simulator menus"
+  ],
+  "reproducedDefect": "Original form placed correction inputs under keyboard; fixed using KeyboardAvoidingView, drag-dismiss, Done action and explicit keyboard dismissal",
+  "screenshots": [
+    "feedback-keyboard-before.png",
+    "feedback-keyboard-fixed.png"
+  ]
+}

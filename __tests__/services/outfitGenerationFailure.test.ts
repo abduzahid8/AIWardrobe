@@ -78,3 +78,8 @@ test('unknown failure diagnostics retain only a bounded category and status',asy
  test.each(['FunctionsFetchError', 'FunctionsRelayError'])('%s gives connection guidance', async name => {
   expect((await outfitGenerationFailure(null, {name})).translationKey).toBe('outfitMaker.connectionFailed');
  });
+
+test('operator-disabled paid generation maps to the existing unavailable/local-alternative path', async () => {
+  expect((await outfitGenerationFailure({error:'feature_disabled'})).translationKey).toBe('outfitMaker.aiUnavailable');
+  expect((await outfitGenerationFailure(null,{context:new Response(JSON.stringify({error:'feature_disabled'}),{status:503})})).translationKey).toBe('outfitMaker.aiUnavailable');
+});

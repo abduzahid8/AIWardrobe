@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { loadCatalogDiscovery, catalogDiscoverySeed, discoverySlotForCategory } from '../src/services/catalogDiscovery';
 import { useNetworkRecovery } from './useNetworkRecovery';
 import { DeviceEventEmitter } from 'react-native';
 import { supabase } from '../lib/supabase';
@@ -34,7 +35,8 @@ interface CacheEntry {
 }
 const catalogCache = new Map<string, CacheEntry>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-function cacheKey(source: string, cat: string, search = '') { return JSON.stringify([source, cat, search]); }
+function cacheKey(source: string, cat: string, search = '', discovery = false) { return JSON.stringify([source, cat, search, discovery]); }
+const discoverySeeds = new Map<string, string>();
 
 // ── In-flight request deduplication ──────────────────────────────────────────
 // When HomeScreen and InspoScreen both call useShopCatalog({ source: 'all' })
@@ -84,6 +86,8 @@ function isTimeoutOrNetworkError(err: any): boolean {
 }
 
 export interface UseShopCatalogOptions {
+    /** Balanced full-catalog discovery, with bounded pre-migration reads. */
+    discovery?: boolean;
     /** Matches UI chips: upper_body | lower_body | shoes | dresses | outfits (or legacy tops/bottoms maps to category). */
     category?: string;
     /** Limit catalog rows to a specific ingestion source. Defaults to all catalog sources. */
@@ -112,8 +116,11 @@ function dbRowToItem(row: Record<string, any>): ShopCatalogItem {
         price:       Number(row.price),
         currency:    row.currency ?? undefined,
         imageUrl:    getThumbnailUrl(row.image_url),
+        category:    row.category,
         garmentType: row.garment_type as ShopCatalogItem['garmentType'],
         description: row.description ?? '',
+        source:      row.source ?? undefined,
+        externalId:  row.external_id ?? undefined,
         sourceUrl:   row.source_url ?? '',
     };
 }
@@ -153,7 +160,7 @@ function buildQuery(page: number, cat: string, activeSource: string, signal?: Ab
     const size = PAGE_SIZE;
     let q = supabase
         .from('shop_catalog')
-        .select('id, brand, name, price, currency, image_url, garment_type, description, source, source_url')
+        .select('id, brand, name, price, currency, image_url, garment_type, category, description, source, source_url, external_id')
         .eq('is_active', true)
         .order('sort_order', { ascending: true })
         .order('id', { ascending: true })
@@ -207,8 +214,9 @@ async function loadCatalogPage(
     activeSource: string,
     append: boolean,
     search = '',
+    discovery = false,
 ): Promise<{ items: ShopCatalogItem[]; hasMore: boolean }> {
-    const key = cacheKey(activeSource, cat, search);
+    const key = cacheKey(activeSource, cat, search, discovery);
     const flightKey = append ? `${key}|p${page}` : key;
     const running = inflight.get(flightKey);
     if (running) return running;
@@ -227,7 +235,14 @@ async function loadCatalogPage(
             }
             const controller = new AbortController();
             try {
-                const result = await withTimeout(
+                if (discovery && (!append || !discoverySeeds.has(key))) {
+                    discoverySeeds.set(key, `${catalogDiscoverySeed()}:${Date.now()}`);
+                }
+                const discovered = discovery ? await loadCatalogDiscovery({
+                    slot: discoverySlotForCategory(cat), source: activeSource, search,
+                    page, limit: PAGE_SIZE, seed: discoverySeeds.get(key), refresh: !append,
+                }, controller.signal) : null;
+                const result = discovered ? {data:discovered.rows,error:null} : await withTimeout(
                     buildQuery(page, cat, activeSource, controller.signal, search),
                     FETCH_TIMEOUT_MS,
                     controller,
@@ -245,7 +260,7 @@ async function loadCatalogPage(
                 // Filtering is client-side until the product-only policy is
                 // materialized in the database, so pagination must reflect
                 // the raw page length rather than the visible row count.
-                const hasMore = rawRows.length === PAGE_SIZE;
+                const hasMore = discovered ? discovered.hasMore : rawRows.length === PAGE_SIZE;
                 if (!append) {
                     catalogCache.set(key, { items: diversified, hasMore, fetchedAt: Date.now() });
                 } else {
@@ -326,19 +341,20 @@ export function useShopCatalog({
     source = DEFAULT_SHOP_SOURCE,
     enabled = true,
     search: rawSearch = '',
+    discovery = false,
 }: UseShopCatalogOptions = {}): UseShopCatalogResult {
     const search = rawSearch.trim().toLowerCase();
     const searchRef = useRef(search);
     searchRef.current = search;
     const requestVersion = useRef(0);
     const [items, setItems]           = useState<ShopCatalogItem[]>(() =>
-        enabled ? catalogCache.get(cacheKey(source, category, search))?.items ?? [] : []);
+        enabled ? catalogCache.get(cacheKey(source, category, search, discovery))?.items ?? [] : []);
     const [loading, setLoading]       = useState(() =>
-        enabled && !catalogCache.has(cacheKey(source, category, search)));
+        enabled && !catalogCache.has(cacheKey(source, category, search, discovery)));
     const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError]           = useState<string | null>(null);
     const [hasMore, setHasMore]       = useState(() =>
-        enabled && (catalogCache.get(cacheKey(source, category, search))?.hasMore ?? true));
+        enabled && (catalogCache.get(cacheKey(source, category, search, discovery))?.hasMore ?? true));
     const pageRef                     = useRef(0);
     const categoryRef                 = useRef(category);
     const sourceRef                   = useRef(source);
@@ -358,9 +374,9 @@ export function useShopCatalog({
         }
         setError(null);
 
-        const key = cacheKey(activeSource, cat, search);
+        const key = cacheKey(activeSource, cat, search, discovery);
         try {
-            const result = await loadCatalogPage(page, cat, activeSource, append, search);
+            const result = await loadCatalogPage(page, cat, activeSource, append, search, discovery);
             if (!current()) return;
             pageRef.current = page;
             recoveryPendingRef.current = false;
@@ -390,7 +406,7 @@ export function useShopCatalog({
                 setLoadingMore(false);
             }
         }
-    }, []);
+    }, [discovery]);
 
     // Reset and reload when category or source changes
     useEffect(() => {
@@ -413,7 +429,7 @@ export function useShopCatalog({
         }
 
         // Seed from cache immediately — avoids blank screen on revisit
-        const key = cacheKey(source, category, search);
+        const key = cacheKey(source, category, search, discovery);
         const cached = catalogCache.get(key);
         if (cached) {
             setItems(cached.items);
@@ -439,7 +455,7 @@ export function useShopCatalog({
             }
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [category, source, enabled, search]);
+    }, [category, source, enabled, search, discovery]);
 
     // Listen for cross-tab cache busting events
     useEffect(() => {

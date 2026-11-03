@@ -1,0 +1,31 @@
+{
+  "status": "ISOLATED_NATIVE_CHECKS_PASSED",
+  "simulatorId": "AD2C6D1C-096E-4D89-86B8-22D600E30C86",
+  "simulatorModel": "iPhone 17 Pro",
+  "runtime": "iOS 26.5",
+  "bundleId": "com.aiwardrobe.rclocal",
+  "entryPoint": "scripts/validation/launch-rc-native-entry.tsx",
+  "scope": "Isolated native release harness, not normal client RC. No auth/backend/provider/analytics sink configured. JS fetch/XHR are denied; local images only.",
+  "derivedData": "/tmp/aiwardrobe-rc-native",
+  "buildLog": "/tmp/aiwardrobe-rc-native-build.log",
+  "entrySha256": "9d29c2c363e0443e1d3f132fca3f52907dd47c87263ce79371d50ddab4606bf7",
+  "bundleSha256": "d17f6e234231356498a0f0954f12d8f3ec19ad1a57ed827cfaecd0280125dcbc",
+  "bundleBytes": 3952602,
+  "binarySha256": "cef30e0410768b6333a0a7ead4d4179935f63d9e6283bb6dcb9a14f2b12c96d0",
+  "buildType": "Release, simulator arm64, code signing disabled",
+  "appPath": "/Users/v.zahid/Library/Developer/CoreSimulator/Devices/AD2C6D1C-096E-4D89-86B8-22D600E30C86/data/Containers/Bundle/Application/24571238-17CE-4D76-BB25-F037D9B265BC/AIWardrobe.app",
+  "startupReceipt": "native-isolated-startup.json",
+  "uiStatus": "Listed native feedback interactions passed after manual unlock and keyboard fix; see native-feedback-ui.json",
+  "stressStatus": "Repeat raw-image fixture passed on the keyboard-fixed Release bundle; see native-isolated-stress.json",
+  "feedbackComponentSha256": "3d3bd98c2136a4d77fd5332f4358125f63a4d2ab017349248e1a4ed258ceea47",
+  "memoryStatus": "RSS observation complete; high peak recorded, no physical-device/leak conclusion",
+  "fullAppQaStatus": "MANUAL REQUIRED",
+  "screenshots": [
+    "native-stress-passed.png",
+    "feedback-keyboard-before.png",
+    "feedback-keyboard-fixed.png"
+  ],
+  "note": "Build output directory reused for separate full-App offline probe; this installed container retains the verified isolated bundle.",
+  "validationSourceBaseline": "16bbfdace25bc9777566efe0007de82c4a5ac7f21734bbdd75d503ec3969a4e6",
+  "laterChanges": "Server paid-work stop and client feature_disabled decoder verified locally after this native baseline; not a newly signed full client validation."
+}

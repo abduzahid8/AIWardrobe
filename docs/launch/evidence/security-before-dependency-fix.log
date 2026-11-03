@@ -1,0 +1,157 @@
+TAP version 13
+# Subtest: node_modules/appium-xcuitest-driver/node_modules/proxy-addr: malformed mapped subnet cannot trust a public spoofing client
+ok 1 - node_modules/appium-xcuitest-driver/node_modules/proxy-addr: malformed mapped subnet cannot trust a public spoofing client
+  ---
+  duration_ms: 3.35
+  type: 'test'
+  ...
+# Subtest: node_modules/proxy-addr: malformed mapped subnet cannot trust a public spoofing client
+ok 2 - node_modules/proxy-addr: malformed mapped subnet cannot trust a public spoofing client
+  ---
+  duration_ms: 2.199375
+  type: 'test'
+  ...
+# Subtest: node_modules/appium-xcuitest-driver/node_modules/shell-quote: newline operators and post-comment tokens reject without execution
+not ok 3 - node_modules/appium-xcuitest-driver/node_modules/shell-quote: newline operators and post-comment tokens reject without execution
+  ---
+  duration_ms: 1.505667
+  type: 'test'
+  location: '/Users/v.zahid/AIWardrobe/scripts/validation/dependency-security.test.mjs:25:2'
+  failureType: 'testCodeFailure'
+  error: 'Missing expected exception.'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  operator: 'throws'
+  stack: |-
+    TestContext.<anonymous> (file:///Users/v.zahid/AIWardrobe/scripts/validation/dependency-security.test.mjs:28:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: node_modules/shell-quote: newline operators and post-comment tokens reject without execution
+ok 4 - node_modules/shell-quote: newline operators and post-comment tokens reject without execution
+  ---
+  duration_ms: 1.444458
+  type: 'test'
+  ...
+# Subtest: node_modules/@appium/support: ZIP symlinks cannot escape extraction root
+ok 5 - node_modules/@appium/support: ZIP symlinks cannot escape extraction root
+  ---
+  duration_ms: 216.430041
+  type: 'test'
+  ...
+# Subtest: node_modules/@appium/support: ordinary ZIP extraction still works
+ok 6 - node_modules/@appium/support: ordinary ZIP extraction still works
+  ---
+  duration_ms: 24.391583
+  type: 'test'
+  ...
+# Subtest: node_modules/appium-xcuitest-driver/node_modules/@appium/support: ZIP symlinks cannot escape extraction root
+ok 7 - node_modules/appium-xcuitest-driver/node_modules/@appium/support: ZIP symlinks cannot escape extraction root
+  ---
+  duration_ms: 158.613541
+  type: 'test'
+  ...
+# Subtest: node_modules/appium-xcuitest-driver/node_modules/@appium/support: ordinary ZIP extraction still works
+ok 8 - node_modules/appium-xcuitest-driver/node_modules/@appium/support: ordinary ZIP extraction still works
+  ---
+  duration_ms: 24.057375
+  type: 'test'
+  ...
+# Subtest: advisory checks found the expected dependency families
+ok 9 - advisory checks found the expected dependency families
+  ---
+  duration_ms: 0.629417
+  type: 'test'
+  ...
+# Subtest: node_modules/fast-uri: percent-encoded hostname case cannot evade canonical comparison
+ok 10 - node_modules/fast-uri: percent-encoded hostname case cannot evade canonical comparison
+  ---
+  duration_ms: 4.026667
+  type: 'test'
+  ...
+# Subtest: node_modules/ip-address: address families cannot cross subnet allowlists
+ok 11 - node_modules/ip-address: address families cannot cross subnet allowlists
+  ---
+  duration_ms: 4.413541
+  type: 'test'
+  ...
+# Subtest: node_modules/ip-address: oversized invalid IPv6 input is rejected within a bounded process
+ok 12 - node_modules/ip-address: oversized invalid IPv6 input is rejected within a bounded process
+  ---
+  duration_ms: 21.431708
+  type: 'test'
+  ...
+# Subtest: node_modules/serialize-javascript: regexp metadata cannot inject evaluated code
+ok 13 - node_modules/serialize-javascript: regexp metadata cannot inject evaluated code
+  ---
+  duration_ms: 1.9475
+  type: 'test'
+  ...
+# Subtest: node_modules/serialize-javascript: date metadata cannot inject evaluated code
+ok 14 - node_modules/serialize-javascript: date metadata cannot inject evaluated code
+  ---
+  duration_ms: 0.099541
+  type: 'test'
+  ...
+# Subtest: node_modules/serialize-javascript: ordinary dates, regexps and functions retain compatibility
+ok 15 - node_modules/serialize-javascript: ordinary dates, regexps and functions retain compatibility
+  ---
+  duration_ms: 0.914042
+  type: 'test'
+  ...
+# Subtest: Mocha serial and parallel modes retain test-runner compatibility
+ok 16 - Mocha serial and parallel modes retain test-runner compatibility
+  ---
+  duration_ms: 212.705833
+  type: 'test'
+  ...
+# Subtest: node_modules/fast-uri: encoded schemes cannot become executable or bypass URL equality
+ok 17 - node_modules/fast-uri: encoded schemes cannot become executable or bypass URL equality
+  ---
+  duration_ms: 0.459542
+  type: 'test'
+  ...
+# Subtest: node_modules/serialize-javascript: terminal closing-script text cannot escape an inline script
+ok 18 - node_modules/serialize-javascript: terminal closing-script text cannot escape an inline script
+  ---
+  duration_ms: 0.200292
+  type: 'test'
+  ...
+# Subtest: node_modules/appium-xcuitest-driver/node_modules/follow-redirects: redirect targets cannot receive array-form credential headers
+ok 19 - node_modules/appium-xcuitest-driver/node_modules/follow-redirects: redirect targets cannot receive array-form credential headers
+  ---
+  duration_ms: 10.510125
+  type: 'test'
+  ...
+# Subtest: node_modules/follow-redirects: redirect targets cannot receive array-form credential headers
+ok 20 - node_modules/follow-redirects: redirect targets cannot receive array-form credential headers
+  ---
+  duration_ms: 2.785583
+  type: 'test'
+  ...
+# Subtest: node_modules/cheerio/node_modules/undici: excessive content encodings cannot crash the caller process
+ok 21 - node_modules/cheerio/node_modules/undici: excessive content encodings cannot crash the caller process
+  ---
+  duration_ms: 230.848625
+  type: 'test'
+  ...
+# Subtest: node_modules/undici: excessive content encodings cannot crash the caller process
+ok 22 - node_modules/undici: excessive content encodings cannot crash the caller process
+  ---
+  duration_ms: 237.651125
+  type: 'test'
+  ...
+1..22
+# tests 22
+# suites 0
+# pass 21
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1209.485666

@@ -1,0 +1,98 @@
+[
+  {
+    "file": "feedback-keyboard-before.png",
+    "sha256": "79aeed89f5e3fd3b04b56387efa05e8eb10f5e6b1efcc0bf646db225978df551"
+  },
+  {
+    "file": "feedback-keyboard-fixed.png",
+    "sha256": "9dbd45088ec14c336a2b97b3600d6d49840f757bddfa356c4e725c7ec184a474"
+  },
+  {
+    "file": "native-feedback-ui.json",
+    "sha256": "711890a72cc8c5cbd207878eb644a907f5951a74b6cd1617ca0206b0f61e02e8"
+  },
+  {
+    "file": "native-harness-session-before-keyboard-fix.json",
+    "sha256": "386e69b736b67e342a36e3e5933c00e2c29f6f59a5fe16c3d956a485566e6a9e"
+  },
+  {
+    "file": "native-harness-session.json",
+    "sha256": "e5870cc0f9315833f1dfd9fe0ff2b20ad9025b38a3afbc773cc8ac3962966fd2"
+  },
+  {
+    "file": "native-isolated-memory-initial.json",
+    "sha256": "f05667cacdffd9e585d02b54727a4ac30bf9e64717e11ee4b3e170430b5b7754"
+  },
+  {
+    "file": "native-isolated-memory.json",
+    "sha256": "fac84cd590fd6460077139fbf0b24565458297098271c2d9fa8ea234d88e8072"
+  },
+  {
+    "file": "native-isolated-startup-initial.json",
+    "sha256": "f2b8dfbf7844710ae55e09ac2264db6ad36ed4e270f963de5cc8d77feb782d7d"
+  },
+  {
+    "file": "native-isolated-startup.json",
+    "sha256": "7ce1def69be733d17170856eff6fdd4a5df1522c2a76896b6dbfbcb3a15c064d"
+  },
+  {
+    "file": "native-isolated-stress-initial.json",
+    "sha256": "1b310409df795d2a8bc63277ff8d47b5b9eb8f17c3eddbb30df05948d31f953d"
+  },
+  {
+    "file": "native-isolated-stress.json",
+    "sha256": "044a3421f7a4d586963536ba19a3ae569c82984fd6acf63eafafe3b68ac06a61"
+  },
+  {
+    "file": "native-stress-passed.png",
+    "sha256": "d60b75713fdff47c8dac9a18f22d2d0d48ca5e593dcf4753c55de8a189be50ba"
+  },
+  {
+    "file": "native-validation-summary.json",
+    "sha256": "b61d589aec9cbaf27a0cb273902c313e7180fb8fe57f54188d994eeb67c8f700"
+  },
+  {
+    "file": "offline-app-19.45.27.png",
+    "sha256": "4b2e48f7da8039a0c1e749c943ca7b0d5e9d55a4d366b87e07afe08fb43c2156"
+  },
+  {
+    "file": "offline-app-19.46.31.png",
+    "sha256": "506baf1784453d4effad2389dc7548315fc42f8d61bf344171a09b83ebf6d931"
+  },
+  {
+    "file": "offline-app-19.51.59.png",
+    "sha256": "e15a0ebf60ddbabfca45dd013cf05563bc1d4cdea27c5178103e82564aff4d78"
+  },
+  {
+    "file": "offline-app-after-failed-login.json",
+    "sha256": "c1a924d6bb9a7bc62e4b7c25da1511a5ae1c9c2bf6a25d183d031b92453cba09"
+  },
+  {
+    "file": "offline-app-build-initial.json",
+    "sha256": "4659a62ad9e9a5b5a8fe44f2be38aee48ee8b1d8a267cb2fca54d31dc0482da1"
+  },
+  {
+    "file": "offline-app-build.json",
+    "sha256": "b9b4f07b460a3ce8c58955bc2db9089b55f855bd02ed857b1fc4e5cd43dec33d"
+  },
+  {
+    "file": "offline-app-final-state.json",
+    "sha256": "b1e52813fbd8abc5c11e20959155ee443101524296a250595255dd2aa45b1bb2"
+  },
+  {
+    "file": "offline-app-startup.json",
+    "sha256": "f7abc2599af42c59d903aacebabbd85af954dfaff52899c75b6b96eb1d0b1037"
+  },
+  {
+    "file": "offline-app-ui.json",
+    "sha256": "559079d058ec9d440d512a3a0d4b44caa0250f249d815c7d20456ecceabe5d0f"
+  },
+  {
+    "file": "offline-rc-offline-app.json",
+    "sha256": "1bc51ee1da3d15f89e2f53054ec384aee44743afc0507deee228c62d6ff59a04"
+  },
+  {
+    "file": "offline-startup-timing.json",
+    "sha256": "5dfb8e54373c653c1655b4855edf2115e7948acf6b0f867743d2fd96ff872330"
+  }
+]

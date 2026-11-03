@@ -1,3 +1,4 @@
+import { BetaFeedbackButton } from '../components/BetaFeedbackButton';
 import { stylistCalendarItems } from '../features/calendar/outfitSlots';
 import { closestAvailableOutfits } from '../features/outfit-generator/utils/closestWardrobeOutfits';
 import {formatUzsPrice} from '../src/utils/uzsPrice';
@@ -23,10 +24,12 @@ import { withRequestDeadline } from '../src/lib/requestDeadline';
 import { OutfitGenerationFailure, outfitGenerationFailure } from '../src/services/outfitGenerationFailure';
 import { requestWithInventoryRotation } from '../src/services/stylistInventoryRequest';
 import { getCachedStylistCatalogInventory, loadStylistCatalogInventory } from '../src/services/stylistCatalogInventory';
+import { loadCatalogDiscovery } from '../src/services/catalogDiscovery';
+import { catalogRowToItem } from '../src/services/catalogRepository';
 import { useShopCatalog } from '../hooks/useShopCatalog';
-import { fillMissingSlots, type OutfitSlotId } from '../src/services/shoppingService';
+import { fillMissingSlots, catalogRepository, type OutfitSlotId } from '../src/services/shoppingService';
 import { recordShownOutfits, rotationScope, generationRequestId, getRotationHistory, recordDisplayedDeck } from '../src/services/recentOutfitIds';
-import { mergeShopSlices, collapseSimilarByName, collapseDuplicateProductImages, isTrustedProductImage, isBrandCatalogImage, productImageKey, preferMappedMacro, hasUsableProductName, inferCatalogColor, normalizeCatalogNameKey, classicCatalogOffset, garmentVarietyFamily, inferShopRowMacro } from '../src/utils/shopCatalogOrder';
+import { mergeShopSlices, collapseSimilarByName, collapseDuplicateProductImages, isTrustedProductImage, isBrandCatalogImage, productImageKey, preferMappedMacro, hasUsableProductName, inferCatalogColor, normalizeCatalogNameKey, garmentVarietyFamily, inferShopRowMacro } from '../src/utils/shopCatalogOrder';
 import { passesStyleJudge, styleJudgeReason, rejectForStyleOccasion, rejectForClimate, humanizeProductName, SHORT_SLEEVE_RE, STRIP_SHORT_SLEEVE_RE } from '../features/outfit-generator/utils/occasionRules';
 import LiquidGlass2026Theme, { SpatialElevation } from '../constants/LiquidGlass2026Theme';
 import * as Location from 'expo-location';
@@ -53,7 +56,6 @@ import { parseBudgetFromText, stripBudgetFromText, outfitShopSpend, formatMoney,
 import { getShopDestination } from '../src/utils/shopDestination';
 import { parseStylistIntent } from '../features/outfit-generator/utils/stylistIntent';
 import { scoreItemForStyle, normalizeStyleId } from '../features/outfit-generator/utils/styleInference';
-import { hasProductOnlyCatalogProvenance } from '../src/utils/productOnlyCatalog';
 import useWardrobeStore from '../store/wardrobeStore';
 import { useStylePreferenceStore } from '../store/stylePreferenceStore';
 import { useTranslation } from 'react-i18next';
@@ -1127,6 +1129,7 @@ const AIOutfitGenerator = () => {
   const { items: liveShopCatalog, loading: shopCatalogLoading, error: shopCatalogError } = useShopCatalog({
     enabled: true,
     source: 'all',
+    discovery: true,
   });
 
   // Surface catalog fetch failures in dev logs — an empty live catalog with
@@ -1213,90 +1216,20 @@ const AIOutfitGenerator = () => {
       .catch(() => {});
   }, []);
 
-  // ── Per-tap catalog variety ───────────────────────────────────────
-  // The catalog hook only holds page 1 (first 100 rows by sort_order), so
-  // without this every tap/style draws from the same 100 ids and the same
-  // elite bottoms win forever. Each shop generation fetches one RANDOM
-  // window from the full table and merges it into the pool (dedupe by id).
-  // Bounded + silent-fallback: on timeout we proceed with the live page.
-  const catalogTotalRef = React.useRef<number | null>(null);
-  const RANDOM_SLICE_SIZE = 120;
-  const withTimeout = <T,>(promise: PromiseLike<T>, ms: number, label: string): Promise<T> =>
-    Promise.race([
-      Promise.resolve(promise),
-      new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`${label} timed out`)), ms)),
-    ]);
-
-  const fetchRandomShopSlice = async (opts?: {
-    preferClassicBand?: boolean;
-    salt?: number;
-  }): Promise<Array<ReturnType<typeof mapShopCatalogRow>>> => {
+  // A per-request seed discovers across slots without a guessed catalog count.
+  // Classic/style/budget eligibility remains in the existing request pipeline.
+  const fetchRandomShopSlice = async (opts?: {preferClassicBand?: boolean; salt?: number}): Promise<Array<ReturnType<typeof mapShopCatalogRow>>> => {
     try {
-      if (catalogTotalRef.current == null) {
-        const { count } = await withTimeout(
-          supabase.from('shop_catalog').select('id', { count: 'exact', head: true }).eq('is_active', true),
-          4000,
-          'shop count',
-        ) as { count: number | null };
-        catalogTotalRef.current = count && count > 0 ? count : 2308;
-      }
-      const total = catalogTotalRef.current;
-      const mapRows = (data: any[] | null) =>
-        (data ?? [])
-          .filter(hasProductOnlyCatalogProvenance)
-          .map((row: any) =>
-            mapShopCatalogRow({
-              id: String(row.id),
-              name: row.name,
-              brand: row.brand,
-              description: row.description,
-              imageUrl: row.image_url,
-              garmentType: row.garment_type,
-              sourceUrl: row.source_url,
-              // price/currency MUST survive this mapping: the random slice is
-              // the generation pool, and without them budget caps compare
-              // against 0 (every candidate is rejected -> placeholder
-              // "Pants"/"Shoes" tiles) and tiles can never show a price.
-              price: typeof row.price === 'number' ? row.price : undefined,
-              currency: row.currency || undefined,
-            }),
-          )
-          .filter((it: any) => hasUsableProductName(it.name, it.id));
-      const fetchRange = async (start: number, size: number) => {
-        const { data } = await withTimeout(
-          supabase
-            .from('shop_catalog')
-            .select('id,brand,name,price,currency,image_url,garment_type,description,source,source_url')
-            .eq('is_active', true)
-            .order('sort_order', { ascending: true })
-            .range(start, start + size - 1),
-          6000,
-          'shop slice',
-        ) as { data: any[] | null };
-        return mapRows(data);
-      };
-      // Classic / work / date must stay in the curated MD band (random Zara
-      // windows around offset 1100 left no shirts). Rotate INSIDE that band
-      // so taps are not frozen on the same 38 collapsed names at offset 0.
-      if (opts?.preferClassicBand) {
-        const salt = opts.salt ?? Date.now();
-        const startA = classicCatalogOffset(total, RANDOM_SLICE_SIZE, salt);
-        const startB = classicCatalogOffset(total, RANDOM_SLICE_SIZE, salt * 17 + 91);
-        const [head, sliceA, sliceB] = await Promise.all([
-          fetchRange(0, 80),
-          fetchRange(startA, RANDOM_SLICE_SIZE),
-          startB !== startA ? fetchRange(startB, RANDOM_SLICE_SIZE) : Promise.resolve([]),
-        ]);
-        const rows = mergeShopSlices(mergeShopSlices(head, sliceA), sliceB);
-        if (__DEV__) readinessLogger.debug(String(`[AIOutfitmaker] random slice: offset=${startA}+${startB} head=80 rows=${rows.length} total=${total}`), []);
-        return rows;
-      }
-      const start = Math.floor(Math.random() * Math.max(1, total - RANDOM_SLICE_SIZE));
-      const rows = await fetchRange(start, RANDOM_SLICE_SIZE);
-      if (__DEV__) readinessLogger.debug(String(`[AIOutfitmaker] random slice: offset=${start} rows=${rows.length} total=${total}`), []);
-      return rows;
+      const pages = await Promise.all((['top','bottom','shoes','outerwear'] as const).map(slot =>
+        loadCatalogDiscovery({slot,limit:30,seed:String(opts?.salt ?? Date.now())})));
+      const broad=pages.flatMap(page=>page.rows).map(catalogRowToItem);
+      // Retain the bounded curated representatives the refined-style fallback
+      // previously relied on, alongside broad discovery from every slot.
+      const curated=opts?.preferClassicBand ? (await catalogRepository.search({query:'',limit:80,discovery:false})).items : [];
+      return mergeShopSlices(curated,broad).map(row=>mapShopCatalogRow(row))
+        .filter(item=>hasUsableProductName(item.name,item.id));
     } catch (err) {
-      if (__DEV__) readinessLogger.debug(String('[AIOutfitmaker] random slice failed, using live page only:'), [(err as Error)?.message]);
+      if (__DEV__) readinessLogger.debug('Catalog discovery unavailable; retaining loaded concrete candidates', [(err as Error)?.message]);
       return [];
     }
   };
@@ -2635,6 +2568,7 @@ const AIOutfitGenerator = () => {
                     </ScaledText>
                   </TouchableOpacity>
                 </View>
+                <BetaFeedbackButton feature="outfit" />
               </Animated.View>
             ))}
           </ScrollView>

@@ -3,7 +3,7 @@
 const mockFrom = jest.fn();
 jest.mock('../../lib/supabase', () => ({ supabase: { from: (...args: unknown[]) => mockFrom(...args) } }));
 
-const row = { id: 'live-shirt', name: 'Cotton shirt', garment_type: 'upper_body', image_url: 'https://shop.example/shirt.jpg' };
+const row = { id: 'live-shirt', name: 'Cotton shirt', description: 'product-only fixture', garment_type: 'upper_body', image_url: 'https://shop.example/shirt.jpg' };
 const response = { data: [row], error: null };
 let service: typeof import('../../src/services/stylistCatalogInventory');
 
@@ -79,5 +79,14 @@ test('verified empty inventory stays empty until an explicit refresh checks agai
   pages(Promise.resolve(response));
   expect(await service.loadStylistCatalogInventory()).toEqual([]);
   expect(await service.loadStylistCatalogInventory(undefined, true)).toEqual([row]);
+  expect(mockFrom).toHaveBeenCalledTimes(8);
+});
+
+test('an explicit refresh rechecks the underlying discovery instead of serving its cached window', async () => {
+  pages(Promise.resolve(response));
+  await service.loadStylistCatalogInventory();
+  const replacement={...row,id:'replacement'};
+  pages(Promise.resolve({data:[replacement],error:null}));
+  expect(await service.loadStylistCatalogInventory(undefined,true)).toEqual([replacement]);
   expect(mockFrom).toHaveBeenCalledTimes(8);
 });

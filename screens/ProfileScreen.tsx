@@ -1,3 +1,4 @@
+import { BetaFeedbackButton } from '../components/BetaFeedbackButton';
 import { AccountNameError, assertHandleAvailable, displayNameOf, profileNameUpdates } from '../src/services/accountNames';
 import readinessLogger from '../src/utils/logger';
 /**
@@ -1756,6 +1757,12 @@ const ProfileScreen = () => {
           <ScaledText style={styles.groupHeading}>{t('profile.preferencesHeading')}</ScaledText>
           <GlassPanel radius={28}>
             <MenuRow
+              icon="bag-check-outline"
+              label={t('purchase.hubTitle','Shopping & fit intelligence')}
+              onPress={() => navigation.navigate('PurchaseIntelligence')}
+            />
+            <View style={styles.menuSeparator} />
+            <MenuRow
               icon="language-outline"
               label={t('language.selectLanguage')}
               trailing={LANGUAGE_NAMES[currentLanguage]}
@@ -1789,6 +1796,8 @@ const ProfileScreen = () => {
             />
           </GlassPanel>
         </Animated.View>
+
+        <View style={styles.sectionBlock}><BetaFeedbackButton /></View>
 
         {__DEV__ && isAdminUser && (
           <Animated.View entering={FadeInDown.delay(190).duration(350)} style={styles.sectionBlock}>

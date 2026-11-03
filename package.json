@@ -50,7 +50,11 @@
     "load:plan": "node scripts/load/readiness.mjs --plan",
     "load:readiness": "node scripts/load/readiness.mjs",
     "typecheck:edge": "deno check --no-config --node-modules-dir=none --lock=backend/supabase/functions/deno.lock --frozen backend/supabase/functions/*/index.ts",
-    "test:webdriver-toolchain": "node --test scripts/validation/webdriver-toolchain.test.mjs"
+    "test:webdriver-toolchain": "node --test scripts/validation/webdriver-toolchain.test.mjs",
+    "release:check": "node scripts/release-candidate.mjs",
+    "test:migrations:local": "node scripts/validation/catalog-discovery-local.mjs --release",
+    "beta:personas": "node scripts/launch/personas.mjs",
+    "beta:review": "node scripts/launch/beta-review.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
