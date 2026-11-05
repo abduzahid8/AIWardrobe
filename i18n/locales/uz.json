@@ -715,6 +715,13 @@
     "uzbek": "O'zbek"
   },
   "outfitMaker": {
+    "qualityExplanation": {
+      "lightBase": "Yengil asosiy ustki kiyim ochib kiyiladigan qatlam bilan uyg‘unlashadi.",
+      "tailoredFootwear": "Klassik poyabzal bichimli shim siluetini to‘ldiradi.",
+      "restrainedPalette": "Vazmin ranglar minimalistik uslubni qo‘llab-quvvatlaydi.",
+      "casualLayer": "Ustki ko‘ylak futbolkani kundalik qatlam bilan to‘ldiradi.",
+      "fourPieces": "To‘liq obraz: asosiy ustki kiyim, ikkinchi qatlam, shim va poyabzal."
+    },
     "closestShopAlternative": "Do‘kondagi kiyimlar bilan eng yaqin mos kombinatsiya.",
     "closestAlternative": "Garderobingizdagi eng yaqin mos kombinatsiya.",
     "closestAlternativeTip": "Tanlangan kiyim saqlanadi. Ayrim kiyimlar so‘ralgan uslub, tadbir yoki ob-havoga to‘liq mos kelmasligi mumkin.",

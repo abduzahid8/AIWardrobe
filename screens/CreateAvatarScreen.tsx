@@ -16,10 +16,9 @@ const { width } = Dimensions.get("window");
 
 import { BODY_TYPES, BodyTypeId } from "../src/types/bodyTypes";
 import useAvatarStore from "../store/avatarStore";
-import { Image } from '../src/components/MediaImage';
-
-
-const MANNEQUIN_IMAGE = require('../assets/images/mannequin_front.jpg');
+// Mannequin photo is not distributable (untracked, git-ignored), so the
+// preview renders a neutral bundled-icon placeholder instead of a static
+// image require that breaks clean-clone bundling.
 
 export default function CreateAvatarScreen() {
     const { t } = useTranslation();
@@ -113,11 +112,9 @@ export default function CreateAvatarScreen() {
                 >
                     {/* Static Mannequin Preview */}
                     <View style={styles.mannequinViewer}>
-                        <Image
-                            source={MANNEQUIN_IMAGE}
-                            style={styles.mannequinImage}
-                            resizeMode="contain"
-                        />
+                        <View style={styles.mannequinPlaceholder}>
+                            <Ionicons name="person-outline" size={120} color="rgba(23,58,101,0.25)" />
+                        </View>
                         <View style={styles.mannequinOverlay}>
                             <BlurView intensity={30} tint="light" style={styles.mannequinOverlayInner}>
                                 <Ionicons name="body-outline" size={14} color="rgba(0,0,0,0.5)" />
@@ -348,9 +345,11 @@ const styles = StyleSheet.create({
         shadowRadius: 20,
         elevation: 4,
     },
-    mannequinImage: {
+    mannequinPlaceholder: {
         width: '100%',
         height: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     mannequinOverlay: {
         position: "absolute",

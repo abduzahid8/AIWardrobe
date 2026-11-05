@@ -1,6 +1,7 @@
 import { outfitChoices } from '../../../backend/supabase/functions/_shared/outfitChoices';
 import { isDressGarment, isNonOutfitItem, fourSlotOutfitReason } from '../../../backend/supabase/functions/_shared/outfitStructure';
 import { assessOutfitQuality, rejectForStyleOccasion, rejectForClimate, detectSlotMismatch } from './occasionRules';
+import { recentStylingPenalty } from '../../../src/domain/outfitVisualSignature';
 import { canonicalizeMacroCategory, getMacroCategory } from '../../../src/utils/categoryMapper';
 
 export interface AlternativeItem {
@@ -12,7 +13,7 @@ export interface AlternativeItem {
 /** Rank imperfect matches while retaining source, anchor, budget and real garment slots. */
 export function closestAvailableOutfits(
   input: AlternativeItem[],
-  options: { anchorId?: string; style: string; occasion: string; weather?: { temp?: number | null; condition?: string | null }; limit?: number; source?: 'wardrobe' | 'shop'; accepts?: (items: AlternativeItem[]) => boolean },
+  options: { anchorId?: string; style: string; occasion: string; weather?: { temp?: number | null; condition?: string | null }; limit?: number; source?: 'wardrobe' | 'shop'; accepts?: (items: AlternativeItem[]) => boolean; recentLookSignatures?: string[] },
 ) {
   const seen = new Set<string>();
   const pool = input.filter(item => {
@@ -45,9 +46,12 @@ export function closestAvailableOutfits(
   const penalty = (parts: typeof pool) => parts.reduce((sum, item) => sum
     + (rejectForStyleOccasion(item, options.style, options.occasion) ? 2 : 0)
     + (rejectForClimate(item, options.weather) ? 1 : 0), 0);
+  // Recently shown semantic looks rank lower so the fallback surfaces a
+  // fresher alternative first. Hard validity (penalty) still dominates.
+  const recent = options.recentLookSignatures ?? [];
   return choices.map(choice => ({ ...choice,
     penalty: penalty(choice.items),
-    quality: assessOutfitQuality(choice.items, options.style, options.occasion, options.weather, options.anchorId).score,
+    quality: Math.max(0, assessOutfitQuality(choice.items, options.style, options.occasion, options.weather, options.anchorId).score - recentStylingPenalty(choice.items, recent)),
   })).sort((a, b) => a.penalty - b.penalty || b.quality - a.quality).slice(0, options.limit ?? 3);
 }
 

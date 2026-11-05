@@ -21,7 +21,7 @@ function makeShopItem(slot: 'top' | 'bottom' | 'shoes' | 'outerwear'): LocalClot
         id: `shop_${idCounter}`,
         userId: 'user-1',
         name: `shop ${subCategory}`,
-        imageUrl: 'https://example.com/shop.jpg',
+        imageUrl: `https://example.com/shop-${idCounter}.jpg`,
         category: slot as any,
         subCategory,
         primaryColor: 'navy',
@@ -62,7 +62,7 @@ describe('outfit description copy', () => {
             limit: 1,
         });
         expect(outfits.length).toBeGreaterThan(0);
-        expect(outfits[0].description).toBe('An Old Money look curated from the shop.');
+        expect(outfits[0].description).toBe('A complete look with a top, layer, trousers and shoes.');
     });
 
     it('business_casual maps to its display label', () => {
@@ -73,7 +73,7 @@ describe('outfit description copy', () => {
             limit: 1,
         });
         expect(outfits.length).toBeGreaterThan(0);
-        expect(outfits[0].description).toBe('A Modern Professional look curated from the shop.');
+        expect(outfits[0].description).toBe('A complete look with a top, layer, trousers and shoes.');
     });
 
     it('wardrobe deck uses the same label rules', () => {
@@ -85,6 +85,6 @@ describe('outfit description copy', () => {
             limit: 1,
         });
         expect(outfits.length).toBeGreaterThan(0);
-        expect(outfits[0].description).toBe('An Old Money look built around your wardrobe.');
+        expect(outfits[0].description).toBe('A complete look with a top, layer, trousers and shoes.');
     });
 });

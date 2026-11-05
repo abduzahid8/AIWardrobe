@@ -1,3 +1,4 @@
+import type { CatalogCandidateRpcRequest } from '../domain/catalogCandidates';
 import { supabase } from '../../lib/supabase';
 import { withRequestDeadline } from '../lib/requestDeadline';
 import { hasProductOnlyCatalogProvenance } from '../utils/productOnlyCatalog';
@@ -105,7 +106,7 @@ export async function loadCatalogDiscovery(
             p_offset: options.page * options.limit,
             p_currency: options.currency || null,
             p_max_price: options.maxPrice ?? null,
-          })
+          } satisfies CatalogCandidateRpcRequest)
           .abortSignal(transportSignal);
         if (!error) {
           const raw = (data || []) as CatalogDiscoveryRow[];

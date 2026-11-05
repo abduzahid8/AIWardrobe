@@ -1,7 +1,7 @@
 /** @jest-environment node */
 const fs=require('fs'),path=require('path'),ts=require('typescript'),api={};
 const root=process.env.OUTFIT_REQUEST_SOURCE_ROOT||path.resolve(__dirname,'../../backend/supabase/functions');
-new Function('exports',ts.transpileModule(fs.readFileSync(path.join(root,'_shared/outfitGenerationRequest.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(api);
+Object.assign(api,require('../../backend/supabase/functions/_shared/outfitGenerationRequest'));
 const req=body=>new Request('https://example.invalid',{method:'POST',body:typeof body==='string'?body:JSON.stringify(body)});
 it.each([null,[],true,'not json'])('rejects non-object or malformed bodies: %j',async body=>{
  await expect(api.readOutfitGenerationRequest(req(body))).rejects.toMatchObject({status:400});

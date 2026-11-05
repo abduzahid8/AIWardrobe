@@ -66,10 +66,11 @@ describe('rejectForStyleOccasion — real log offenders (minimalist + date)', ()
     expect(rejectForStyleOccasion({ name: 'Beige Cardigan' }, 'casual', 'casual')).toBeNull();
   });
 
-  it('refined-casual DNA bans hoodies, athletic sneakers and basic tees', () => {
-    expect(rejectForStyleOccasion({ name: 'Grey Hoodie' }, 'casual', 'casual')).not.toBeNull();
-    expect(rejectForStyleOccasion({ name: 'Chunky running sneakers' }, 'casual', 'casual')).not.toBeNull();
-    expect(rejectForStyleOccasion({ name: 'Basic cotton t-shirt', macroCategory: 'top' }, 'casual', 'casual')).not.toBeNull();
+  it('polished occasions reject hoodies, athletic sneakers and basic tees while Casual admits them', () => {
+    expect(rejectForStyleOccasion({ name: 'Grey Hoodie' }, 'casual', 'Formal')).not.toBeNull();
+    expect(rejectForStyleOccasion({ name: 'Chunky running sneakers' }, 'casual', 'Formal')).not.toBeNull();
+    expect(rejectForStyleOccasion({ name: 'Basic cotton t-shirt', macroCategory: 'top' }, 'casual', 'Formal')).not.toBeNull();
+    expect(rejectForStyleOccasion({name:'Basic cotton t-shirt',macroCategory:'top'},'casual','Weekend')).toBeNull();
     // Knit polos and minimal white sneakers stay legal.
     expect(rejectForStyleOccasion({ name: 'Navy knit polo', macroCategory: 'top' }, 'casual', 'casual')).toBeNull();
     expect(rejectForStyleOccasion({ name: 'White leather sneakers' }, 'casual', 'casual')).toBeNull();
@@ -97,7 +98,8 @@ describe('rejectForStyleOccasion — real log offenders (minimalist + date)', ()
     // A basic cotton tee is gym wear under Refined Casual DNA (knit polos
     // are the standard) — so the contrast case uses a loud-but-legal piece.
     expect(rejectForStyleOccasion({ name: 'Neon windbreaker' }, 'casual', 'casual')).toBeNull();
-    expect(rejectForStyleOccasion({ name: 'Neon graphic tee' }, 'casual', 'casual')).not.toBeNull();
+    expect(rejectForStyleOccasion({ name: 'Neon graphic tee' }, 'casual', 'casual')).toBeNull();
+    expect(rejectForStyleOccasion({ name: 'Neon graphic tee' }, 'casual', 'Formal')).not.toBeNull();
   });
 });
 
@@ -661,6 +663,6 @@ describe('climate — linen at 15°C is not a real outfit', () => {
 });
 
 test('a footwear brand name is not evidence that loafers are winter boots',()=>{
- const {rejectForRequestIntent}=require('../../backend/supabase/functions/_shared/occasionRules');
+ const {rejectForRequestIntent}=require('../../src/domain/occasionRules');
  expect(rejectForRequestIntent({name:'Lincoln penny loafers',macroCategory:'shoes',brand:'Thursday Boot Co.',description:'Brown leather loafers'},'winter',{temp:0})).toContain('winter boots');
 });

@@ -498,6 +498,7 @@ const DailyOutfitSection = React.memo(({
       } as any);
       // Home likes → Closet → Collections (Saved). savedFrom='home' keeps
       // them out of Profile → Saved Looks (which is for single-clothing saves).
+      if(!outfitId)return false;
       saveOutfit(outfitId, 'saved', 'home');
     }
     setStackIndex((i) => i + 1);

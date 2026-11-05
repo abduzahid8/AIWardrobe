@@ -13,7 +13,7 @@ visit(ast);
 const code = ts.transpileModule(`async function run(err: any) ${catchBody}`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
 function setup(extra = {}) {
   const deps = {
-    console: { warn: jest.fn() }, fallbackTimer: { current: null }, isCurrentGeneration: () => true,
+    console: { warn: jest.fn() }, fallbackTimer: { current: null }, fallbackHistory: undefined, isCurrentGeneration: () => true,
     isMounted: { current: true }, effectiveSource: 'wardrobe', closestAvailableOutfits, OutfitGenerationFailure,
     alternativeItems: [
       { id: 'layer', macroCategory: 'outerwear', name: 'Denim jacket' },

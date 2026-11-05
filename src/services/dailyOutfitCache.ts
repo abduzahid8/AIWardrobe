@@ -1,10 +1,10 @@
-import { fourSlotOutfitReason } from '../../backend/supabase/functions/_shared/outfitStructure';
+import { fourSlotOutfitReason } from '../domain/outfitStructure';
 import { passesStyleJudge } from '../../features/outfit-generator/utils/occasionRules';
 import { isShopOnlyDeck, type GeneratedOutfit } from './outfitGenerationService';
 
 export function dailyOutfitCacheKey(userId: string, style: string, occasion: string): string {
     // Older entries may lack authoritative currency. Regenerate instead of guessing units.
-    return `daily_ai_outfit_v20::${encodeURIComponent(userId)}::${encodeURIComponent(style)}::${encodeURIComponent(occasion)}`;
+    return `daily_ai_outfit_v21_stylist_quality::${encodeURIComponent(userId)}::${encodeURIComponent(style)}::${encodeURIComponent(occasion)}`;
 }
 
 export function validatedDailyOutfits(value: unknown, style: string, occasion: string, weather?: { temp: number; condition: string } | null): GeneratedOutfit[] {

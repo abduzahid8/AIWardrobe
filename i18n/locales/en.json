@@ -700,6 +700,13 @@
     }
   },
   "outfitMaker": {
+    "qualityExplanation": {
+      "lightBase": "A lightweight base sits under an openable layer.",
+      "tailoredFootwear": "Dress footwear follows the tailored trouser silhouette.",
+      "restrainedPalette": "The restrained palette supports the minimalist style.",
+      "casualLayer": "An overshirt gives the T-shirt a distinct casual layer.",
+      "fourPieces": "A complete look with a top, layer, trousers and shoes."
+    },
     "closestShopAlternative": "Closest available combination with pieces from the shop.",
     "closestAlternative": "Closest available combination from your wardrobe.",
     "closestAlternativeTip": "This alternative keeps your selected item. Some pieces may differ from your requested style, occasion or weather.",

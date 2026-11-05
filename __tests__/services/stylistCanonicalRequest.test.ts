@@ -2,7 +2,7 @@ jest.mock('../../store/wardrobeStore', () => ({ __esModule: true, default: { get
 import { supabase } from '../../lib/supabase';
 import { generateOutfitsFromDB } from '../../src/services/outfitGenerationService';
 jest.mock('../../lib/supabase', () => ({ supabase: { auth: { onAuthStateChange: jest.fn().mockReturnValue({data:{subscription:{unsubscribe:jest.fn()}}}), getSession: jest.fn().mockResolvedValue({ data: { session: { user: { id: 'account' }, access_token: 'captured-token' } } }) }, functions: { invoke: jest.fn() }, from: jest.fn() } }));
-jest.mock('../../src/services/recentOutfitIds', () => ({ getRecentShownIds: jest.fn().mockResolvedValue(['recent']), getRecentShownProductKeys: jest.fn().mockResolvedValue([]), recordShownOutfits: jest.fn() }));
+jest.mock('../../src/services/recentOutfitIds', () => ({ getRecentShownIds: jest.fn().mockResolvedValue(['recent']), getRecentShownProductKeys: jest.fn().mockResolvedValue([]), getRecentShownLookSignatures:jest.fn().mockResolvedValue([]), recordShownOutfits: jest.fn() }));
 const invoke = supabase.functions.invoke as jest.Mock;
 describe('canonical stylist failure handling', () => {
   beforeEach(() => jest.clearAllMocks());
@@ -89,7 +89,8 @@ describe('generation account ownership', () => {
     let finish!: (value: any) => void;
     invoke.mockImplementation(() => new Promise(resolve => {finish=resolve;}));
     const pending = generateOutfitsFromDB({});
-    while (!finish) await Promise.resolve();
+    for(let attempts=0;!finish&&attempts<100;attempts++)await Promise.resolve();
+    expect(finish).toBeDefined();
     listener?.('SIGNED_IN',{user:{id:'other'},access_token:'other-token'});
     finish({data:{success:true,source:'ai',outfits:[complete]},error:null});
     expect((await pending).success).toBe(false);
@@ -102,7 +103,8 @@ describe('generation account ownership', () => {
     let finish!: (ids:string[]) => void;
     recent.mockImplementationOnce(() => new Promise((resolve:any) => {finish=resolve;}));
     const pending=generateOutfitsFromDB({});
-    while (!finish) await Promise.resolve();
+    for(let attempts=0;!finish&&attempts<100;attempts++)await Promise.resolve();
+    expect(finish).toBeDefined();
     listener?.('SIGNED_OUT',null);
     finish(['private-old-account-id']);
     expect((await pending).success).toBe(false);
@@ -129,7 +131,8 @@ describe('generation account ownership', () => {
     let finish!: (value:any) => void;
     invoke.mockImplementation(() => new Promise(resolve => {finish=resolve;}));
     const pending=generateOutfitsFromDB({});
-    while (!finish) await Promise.resolve();
+    for(let attempts=0;!finish&&attempts<100;attempts++)await Promise.resolve();
+    expect(finish).toBeDefined();
     listener('TOKEN_REFRESHED',{user:{id:'account'},access_token:'refreshed-token'});
     finish({data:{success:true,source:'ai',outfits:[complete]},error:null});
     expect((await pending).success).toBe(true);

@@ -1,5 +1,6 @@
 import { closestWardrobeOutfits, closestAvailableOutfits } from '../../features/outfit-generator/utils/closestWardrobeOutfits';
 import { outfitStructureReason } from '../../backend/supabase/functions/_shared/outfitStructure';
+import { outfitVisualSignature } from '../../src/domain/outfitVisualSignature';
 
 const item = (id: string, macroCategory: string, name: string) => ({ id, macroCategory, name, imageUrl: `https://test/${id}.png`, isWardrobe: true });
 const pool = [item('jacket', 'outerwear', 'Denim jacket'), item('shirt', 'top', 'White T-shirt'), item('pants', 'bottom', 'Blue jeans'), item('shoes', 'shoes', 'White sneakers')];
@@ -55,4 +56,19 @@ test('shop mode without an anchor uses only catalog items', () => {
   const looks = closestAvailableOutfits([...pool, ...shopPool], { source: 'shop', style: 'casual', occasion: 'everyday' });
   expect(looks.length).toBeGreaterThan(0);
   expect(looks.flatMap(look => look.items).every(item => item.isShopItem && !item.isWardrobe)).toBe(true);
+});
+
+test('a recently shown semantic look scores below its fresh quality without breaking the contract', () => {
+  const base = closestWardrobeOutfits(pool, { style: 'casual', occasion: 'everyday' });
+  expect(base.length).toBeGreaterThan(0);
+  const keyOf = (look: { items: { id: string }[] }) => look.items.map(item => item.id).sort().join('|');
+  const reranked = closestWardrobeOutfits(pool, {
+    style: 'casual', occasion: 'everyday',
+    recentLookSignatures: [outfitVisualSignature(base[0].items)],
+  });
+  expect(reranked.map(keyOf)).toEqual(expect.arrayContaining(base.map(keyOf)));
+  const same = reranked.find(look => keyOf(look) === keyOf(base[0]));
+  expect(same).toBeDefined();
+  expect(same!.quality).toBeLessThan(base[0].quality);
+  for (const look of reranked) expect(outfitStructureReason(look.items, true)).toBeNull();
 });

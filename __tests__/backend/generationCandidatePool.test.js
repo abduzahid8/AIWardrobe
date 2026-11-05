@@ -1,13 +1,13 @@
 /** @jest-environment node */
 const fs=require('fs'),path=require('path'),ts=require('typescript');
 const root=process.env.NVIDIA_REQUEST_SOURCE_ROOT||path.resolve(__dirname,'../../backend/supabase/functions');
-const judge={};new Function('exports',ts.transpileModule(fs.readFileSync(path.join(root,'_shared/occasionRules.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(judge);
-new Function('exports',ts.transpileModule(fs.readFileSync(path.join(root,'_shared/outfitStructure.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(judge);
-Object.assign(judge,require(path.join(root,'_shared/outfitDiversity.ts')),require(path.join(root,'_shared/outfitRotation.ts')));
+const judge={...require(path.join(root,'../../../src/domain/occasionRules.ts')),...require(path.join(root,'../../../src/domain/outfitStructure.ts')),...require(path.join(root,'../../../src/domain/outfitDiversity.ts')),...require(path.join(root,'../../../src/domain/outfitRotation.ts'))};
+Object.assign(judge,require('../../src/domain/garmentContext'),require('../../src/domain/stylingContext'));
+judge.styleInference = require('../../src/domain/styleInference');
 const strip=s=>s.replace(/^import .*\n/gm,'').replace(/\bexport\s+/g,'');
 const source=['_shared/modelOutfitResponse.ts','generate-outfits/index.ts'].map(file=>strip(fs.readFileSync(path.join(root,file),'utf8'))).join('\n');
 const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.None,target:ts.ScriptTarget.ES2022}}).outputText;
-const api=new Function('serve','createClient','Deno',...Object.keys(judge),compiled+'\nreturn {rankItemsForStyleEdge,requiredShopSupplementSlots,fetchShopItemsForAllSlotsEdge,retainBudgetFloorCandidates: typeof retainBudgetFloorCandidates === "function" ? retainBudgetFloorCandidates : undefined};')(()=>{},()=>{},{env:{get:()=>undefined}},...Object.values(judge));
+const api=new Function('serve','createClient','Deno',...Object.keys(judge),compiled+'\nreturn {inferAttrsEdge,scoreItemForStyleEdge,rankItemsForStyleEdge,requiredShopSupplementSlots,fetchShopItemsForAllSlotsEdge,retainBudgetFloorCandidates: typeof retainBudgetFloorCandidates === "function" ? retainBudgetFloorCandidates : undefined};')(()=>{},()=>{},{env:{get:()=>undefined}},...Object.values(judge));
 test('ranking floors cannot restore a garment rejected by the authoritative eligibility predicate',()=>{
  const items=[{id:'relaxed',name:'100% LINEN RELAXED FIT TROUSERS',macroCategory:'bottom'},
  {id:'regular',name:'100% WOOL REGULAR FIT SUIT TROUSERS',macroCategory:'bottom'},
@@ -20,7 +20,7 @@ test('ranking floors cannot restore a garment rejected by the authoritative elig
  expect(result.every(eligible)).toBe(true);
 });
 test('six ineligible bottoms cannot make a supplemented wardrobe appear complete',()=>{
- const items=['top','shoes','bottom'].flatMap(slot=>Array.from({length:6},(_,i)=>({id:slot+i,macroCategory:slot,name:slot==='bottom'?'LINEN RELAXED FIT TROUSERS':slot==='top'?'Cotton shirt':'Leather loafers'})));
+ const items=['top','shoes','bottom'].flatMap(slot=>Array.from({length:6},(_,i)=>({id:slot+i,macroCategory:slot,name:slot==='bottom'?'LINEN RELAXED FIT TROUSERS':slot==='top'?'Cotton shirt':'Black leather derby shoes'})));
  const eligible=item=>!judge.rejectForStyleOccasion(item,'semi_classic','formal');
  expect(api.requiredShopSupplementSlots(items,['top','bottom','shoes'],1,[],eligible).slots).toEqual(['bottom']);
 });
@@ -33,7 +33,7 @@ test('a shop eligibility predicate applies before per-slot truncation',async()=>
 
 test('an eligible catalog garment after the first100rows remains discoverable',async()=>{
  const invalid=Array.from({length:100},(_,i)=>({id:`bad-${String(i).padStart(3,'0')}`,name:'LINEN RELAXED FIT TROUSERS',category:'bottoms',garment_type:'lower_body',image_url:'https://example.invalid/pants.jpg'}));
- const valid={id:'valid-last',name:'Regular fit cotton trousers',category:'bottoms',garment_type:'lower_body',image_url:'https://example.invalid/valid.jpg'};
+ const valid={id:'valid-last',name:'Regular fit tailored cotton trousers',category:'bottoms',garment_type:'lower_body',image_url:'https://example.invalid/valid.jpg'};
  let cursor;const cursors=[],orders=[];
  const q={select:()=>q,eq:()=>q,limit:()=>q,or:()=>q,abortSignal:()=>q,order:(...args)=>{orders.push(args);return q;},gt:(_field,value)=>{cursor=value;cursors.push(value);return q;},then:resolve=>Promise.resolve({data:cursor?[valid]:invalid,error:null}).then(resolve)};
  const eligible=item=>!judge.rejectForStyleOccasion(item,'semi_classic','formal');
@@ -136,4 +136,43 @@ test('catalog discovery evaluates later pages even when the first page fills the
  expect(visited).toContain('late-product');
  expect(visited).toHaveLength(101);
  expect(result).toHaveLength(1);
+});
+
+test.each([
+ {name:'Navy wool tailored blazer',macroCategory:'outerwear'},
+ {name:'Brown driving moccasins',macroCategory:'shoes'},
+ {name:'Graphic oversized hoodie',macroCategory:'top'},
+ {name:'Linen relaxed-fit trousers',macroCategory:'bottom'},
+])('Edge style adapters preserve the canonical domain result for $name', item=>{
+ const domain=judge.styleInference;
+ const attrs=domain.inferItemAttributes(item);
+ expect(api.inferAttrsEdge(item)).toEqual({styleTags:attrs.styleTags,materials:attrs.materials.join(', '),patterns:attrs.patterns.join(', '),formality:attrs.formality});
+ expect(api.scoreItemForStyleEdge(item,'old_money')).toBe(domain.rawStyleScore(item,'old_money'));
+});
+
+test('activated discovery reaches high IDs with bounded pages and preserves hard eligibility',async()=>{
+ const rows=Array.from({length:100},(_,i)=>({id:`interior-${5000+i}`,name:`Model ${i} cotton trousers`,category:'bottoms',garment_type:'lower_body',image_url:`https://image.invalid/${i}.jpg`,source:'product-only',currency:'EUR',price:50}));
+ const rpc=jest.fn(()=>({abortSignal:async()=>({data:rows,error:null})}));
+ const from=jest.fn(()=>{throw new Error('must not full-scan when the ranked pool is sufficient');});
+ const result=await api.fetchShopItemsForAllSlotsEdge({rpc,from},['bottom'],'casual',4,undefined,item=>item.name!=='Model 0 cotton trousers',undefined,undefined,'',0,undefined,undefined,'replay-seed');
+ expect(result).toHaveLength(4);expect(result.every(item=>item.id.startsWith('shop_interior-'))).toBe(true);
+ expect(result.some(item=>item.name==='Model 0 cotton trousers')).toBe(false);
+ expect(rpc).toHaveBeenCalledTimes(3);expect(from).not.toHaveBeenCalled();
+ expect(rpc).toHaveBeenCalledWith('catalog_discovery_candidates',expect.objectContaining({p_seed:'replay-seed',p_limit:100,p_offset:200}));
+});
+test('RPC missing is a degraded full path, but permissions failures never bypass the RPC',async()=>{
+ const row={id:'late',name:'Cotton trousers',category:'bottoms',garment_type:'lower_body',image_url:'https://image.invalid/late.jpg'};
+ const q={select:()=>q,eq:()=>q,limit:()=>q,or:()=>q,order:()=>q,abortSignal:()=>q,then:resolve=>Promise.resolve({data:[row],error:null}).then(resolve)};
+ const rpc=jest.fn(()=>({abortSignal:async()=>({data:null,error:{code:'PGRST202'}})}));
+ expect(await api.fetchShopItemsForAllSlotsEdge({rpc,from:()=>q},['bottom'],'casual',1)).toHaveLength(1);
+ const from=jest.fn();rpc.mockImplementation(()=>({abortSignal:async()=>({data:null,error:{code:'42501'}})}));
+ await expect(api.fetchShopItemsForAllSlotsEdge({rpc,from},['bottom'],'casual',1)).rejects.toThrow('catalog_lookup_unavailable');
+ expect(from).not.toHaveBeenCalled();
+});
+test('a known missing RPC is cached for its project, without retrying on the next request',async()=>{
+ const row={id:'cached-late',name:'Cotton trousers',category:'bottoms',garment_type:'lower_body',image_url:'https://image.invalid/cached.jpg'};
+ const q={select:()=>q,eq:()=>q,limit:()=>q,or:()=>q,order:()=>q,abortSignal:()=>q,then:resolve=>Promise.resolve({data:[row],error:null}).then(resolve)};
+ const rpc=jest.fn(()=>({abortSignal:async()=>({data:null,error:{code:'PGRST202'}})}));
+ for(let i=0;i<2;i++)expect(await api.fetchShopItemsForAllSlotsEdge({supabaseUrl:'https://capability-fixture.invalid',rpc,from:()=>q},['bottom'],'casual',1)).toHaveLength(1);
+ expect(rpc).toHaveBeenCalledTimes(1);
 });

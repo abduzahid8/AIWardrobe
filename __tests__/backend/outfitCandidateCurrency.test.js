@@ -9,14 +9,12 @@ if (process.env.OUTFIT_SIMULATE_MISSING_CURRENCY === '1') source = source.replac
 const compiled = ts.transpileModule(source, {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const api = new Function('require','exports','Deno',compiled+'\nreturn {fetchShopItemsForAllSlotsEdge,budgetInCurrencyEdge,inferShopColor};')(
  name=>{
-  if(name.includes('outfitDiversity')) return require('../../backend/supabase/functions/_shared/outfitDiversity');
-  if(name.includes('outfitRotation')) return require('../../backend/supabase/functions/_shared/outfitRotation');
-  if(name.includes('budgetFx.ts')) return require('../../backend/supabase/functions/_shared/budgetFx');
+  if(name.includes('styleInference')) return require('../../src/domain/styleInference');
+  if(name.includes('outfitDiversity')) return require('../../src/domain/outfitDiversity');
+  if(name.includes('outfitRotation')) return require('../../src/domain/outfitRotation');
+  if(name.includes('budgetFx.ts')) return require('../../src/domain/budgetFx');
   if(name.includes('server.ts')) return {serve:()=>{}};
-  if(name.includes('occasionRules') || name.includes('outfitStructure')) {
-    const helper={};const file=path.resolve(__dirname,'../../backend/supabase/functions/_shared/',path.basename(name));
-    new Function('exports',ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(helper);return helper;
-  }
+  for(const module of ['occasionRules','outfitStructure','garmentContext','stylingContext'])if(name.includes(module))return require(path.resolve(__dirname,'../../src/domain/',module+'.ts'));
   return {};
  }, {}, {env:{get:()=>undefined}});
 test.each(['UZS','USD','EUR'])('shop candidates retain authoritative %s currency for budget conversion',async currency=>{
