@@ -13,11 +13,12 @@ export function garmentContextReason(
   if (context.sourceMode === 'catalog' && !shop) return 'source_requires_catalog';
   const d = describeGarment(item);
   if (context.dressCode === 'smart' && /\b(work|office|business)\b/.test(context.occasion)
-    && ['classic','old_money','semi_classic','business_casual'].includes(context.style) && d.slot === 'outerwear') {
+    && ['classic','old_money','semi_classic','business_casual'].includes(context.style)) {
+    if (d.slot === 'top' && d.subtype === 't-shirt') return 'work_requires_smart_base';
     const text = normalizeGarmentText(`${item.name || ''} ${item.description || ''}`);
     const cleanWovenJacket = d.subtype === 'jacket' && /\b(wool|linen)\b/.test(text)
       && !/\b(biker|trucker|racer|denim|leather|suede|utility|military|athletic|running)\b/.test(text);
-    if (!['blazer','cardigan','coat'].includes(d.subtype) && !cleanWovenJacket)
+    if (d.slot === 'outerwear' && !['blazer','cardigan','coat'].includes(d.subtype) && !cleanWovenJacket)
       return 'work_requires_smart_layer';
   }
   const explicit =

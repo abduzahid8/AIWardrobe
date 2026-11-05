@@ -18,6 +18,7 @@ test('Work ranks a tailored layer above a trucker without banning the trucker on
  expect(garmentContextReason(jacket,work)).toBe('work_requires_smart_layer');
  expect(garmentContextReason(jacket,casual)).toBeNull();
  expect(garmentContextReason(blazer,work)).toBeNull();
+ expect(garmentContextReason({name:'Slim Shield T Shirt Evening Blue',macroCategory:'top'},work)).toBe('work_requires_smart_base');
 });
 
 test('Classic casual/travel can use minimal leather sneakers while Work/Formal and tailoring remain strict',()=>{
